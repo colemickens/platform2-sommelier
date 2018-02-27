@@ -33,6 +33,15 @@ class TlclStub {
   // Put the TPM into owned state with the specified owner auth secret.
   void SetOwned(const std::vector<uint8_t>& owner_auth);
 
+  // Returns the ownership flag.
+  bool IsOwned();
+
+  // Clear the TPM owner.
+  void Clear();
+
+  // Reset the TPM (i.e. what happens at reboot).
+  void Reset();
+
   // Configure a PCR to contain the specified value.
   void SetPCRValue(uint32_t index, const uint8_t value[TPM_PCR_DIGEST]);
 
@@ -47,6 +56,13 @@ class TlclStub {
   uint32_t GetRandom(uint8_t* data, uint32_t length, uint32_t* size);
 
   uint32_t DefineSpace(uint32_t index, uint32_t perm, uint32_t size);
+  uint32_t DefineSpaceEx(const uint8_t* owner_auth,
+                         uint32_t owner_auth_size,
+                         uint32_t index,
+                         uint32_t perm,
+                         uint32_t size,
+                         const void* auth_policy,
+                         uint32_t auth_policy_size);
   uint32_t GetPermissions(uint32_t index, uint32_t* permissions);
   uint32_t GetSpaceInfo(uint32_t index,
                         uint32_t* permissions,
@@ -60,7 +76,21 @@ class TlclStub {
 
   uint32_t PCRRead(uint32_t index, void *data, uint32_t length);
 
+  uint32_t GetVersion(uint32_t* vendor,
+                          uint64_t* firmware_version,
+                          uint8_t* vendor_specific_buf,
+                          size_t* vendor_specific_buf_size);
+
+  uint32_t IFXFieldUpgradeInfo(TPM_IFX_FIELDUPGRADEINFO* info);
+
 #if !USE_TPM2
+  uint32_t ReadPubek(uint32_t* public_exponent,
+                     uint8_t* modulus,
+                     uint32_t* modulus_size);
+  uint32_t TakeOwnership(uint8_t enc_owner_auth[TPM_RSA_2048_LEN],
+                         uint8_t enc_srk_auth[TPM_RSA_2048_LEN],
+                         uint8_t owner_auth[TPM_AUTH_DATA_LEN]);
+
   uint32_t CreateDelegationFamily(uint8_t family_label);
   uint32_t ReadDelegationFamilyTable(TPM_FAMILY_TABLE_ENTRY* table,
                                      uint32_t* table_size);

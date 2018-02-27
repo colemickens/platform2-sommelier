@@ -35,6 +35,10 @@ uint8_t kSystemKeyInitializedDummyDelegationFamilyLabel = 0xff;
 // Maximum TPM delegation table size.
 const uint32_t kDelegationTableSize = 8;
 
+struct RSADeleter {
+  void operator()(RSA* rsa) const { RSA_free(rsa); }
+};
+
 #endif  // !USE_TPM2
 
 // Initial auth policy buffer size that's expected to be large enough across TPM
@@ -47,6 +51,13 @@ const size_t kInitialAuthPolicySize = 128;
 
 NvramSpace::NvramSpace(Tpm* tpm, uint32_t index)
   : tpm_(tpm), index_(index) {}
+
+void NvramSpace::Reset() {
+  attributes_ = 0;
+  auth_policy_.clear();
+  contents_.clear();
+  status_ = Status::kUnknown;
+}
 
 result_code NvramSpace::GetAttributes(uint32_t* attributes) {
   result_code rc = GetSpaceInfo();
@@ -149,20 +160,33 @@ result_code NvramSpace::WriteLock() {
   return RESULT_SUCCESS;
 }
 
-result_code NvramSpace::Define(uint32_t attributes, uint32_t size) {
+result_code NvramSpace::Define(uint32_t attributes,
+                               uint32_t size,
+                               uint32_t pcr_selection) {
   if (!tpm_->available()) {
     return RESULT_FAIL_FATAL;
   }
 
-  uint32_t result = TlclDefineSpace(index_, attributes, size);
+  std::vector<uint8_t> policy;
+  result_code rc = GetPCRBindingPolicy(pcr_selection, &policy);
+  if (rc != RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to initialize PCR binding policy for " << index_;
+    return RESULT_FAIL_FATAL;
+  }
+
+  uint32_t result = TlclDefineSpaceEx(
+      kOwnerSecret, kOwnerSecretSize, index_, attributes, size,
+      policy.empty() ? nullptr : policy.data(), policy.size());
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to define NVRAM space " << index_ << ": " << result;
     return RESULT_FAIL_FATAL;
   }
 
-  status_ = Status::kAbsent;
+  status_ = Status::kValid;
   contents_.clear();
+  contents_.resize(size);
   attributes_ = attributes;
+  auth_policy_ = std::move(policy);
 
   return RESULT_SUCCESS;
 }
@@ -364,6 +388,32 @@ result_code Tpm::ReadPCR(uint32_t index, std::vector<uint8_t>* value) {
   return RESULT_SUCCESS;
 }
 
+bool Tpm::GetVersionInfo(uint32_t* vendor,
+                         uint64_t* firmware_version,
+                         std::vector<uint8_t>* vendor_specific) {
+  size_t vendor_specific_size = 32;
+  vendor_specific->resize(vendor_specific_size);
+  uint32_t result = TlclGetVersion(
+      vendor, firmware_version, vendor_specific->data(), &vendor_specific_size);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to obtain TPM version info.";
+    return false;
+  }
+
+  vendor_specific->resize(vendor_specific_size);
+  return true;
+}
+
+bool Tpm::GetIFXFieldUpgradeInfo(TPM_IFX_FIELDUPGRADEINFO* field_upgrade_info) {
+  uint32_t result = TlclIFXFieldUpgradeInfo(field_upgrade_info);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to obtain IFX field upgrade info.";
+    return false;
+  }
+
+  return true;
+}
+
 NvramSpace* Tpm::GetLockboxSpace() {
   if (lockbox_space_) {
     return lockbox_space_.get();
@@ -412,6 +462,10 @@ NvramSpace* Tpm::GetEncStatefulSpace() {
 
 #if USE_TPM2
 
+result_code Tpm::TakeOwnership() {
+  return RESULT_FAIL_FATAL;
+}
+
 result_code Tpm::SetSystemKeyInitializedFlag() {
   return RESULT_FAIL_FATAL;
 }
@@ -421,6 +475,52 @@ result_code Tpm::HasSystemKeyInitializedFlag(bool* flag_value) {
 }
 
 #else
+
+result_code Tpm::TakeOwnership() {
+  // Read the public half of the EK.
+  uint32_t public_exponent = 0;
+  uint8_t modulus[TPM_RSA_2048_LEN];
+  uint32_t modulus_size = sizeof(modulus);
+  uint32_t result = TlclReadPubek(&public_exponent, modulus, &modulus_size);
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to read public endorsement key: " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  std::unique_ptr<RSA, RSADeleter> rsa(RSA_new());
+  CHECK(rsa.get());
+  rsa.get()->e = BN_new();
+  CHECK(rsa.get()->e);
+  BN_set_word(rsa.get()->e, public_exponent);
+  rsa.get()->n = BN_bin2bn(modulus, modulus_size, NULL);
+  CHECK(rsa.get()->n);
+
+  // Encrypt the well-known owner secret under the EK.
+  brillo::SecureBlob owner_auth(kOwnerSecret, kOwnerSecret + kOwnerSecretSize);
+  brillo::SecureBlob enc_auth;
+  if (!cryptohome::CryptoLib::TpmCompatibleOAEPEncrypt(
+          rsa.get(), owner_auth, &enc_auth)) {
+    LOG(ERROR) << "Failed to encrypt owner secret.";
+    return RESULT_FAIL_FATAL;
+  }
+
+  // Take ownership.
+  result =
+      TlclTakeOwnership(enc_auth.data(), enc_auth.data(), owner_auth.data());
+  if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to take TPM ownership: " << result;
+    return RESULT_FAIL_FATAL;
+  }
+
+  ownership_checked_ = true;
+  owned_ = true;
+
+  // Ownership implies the initialization flag.
+  initialized_flag_checked_ = true;
+  initialized_flag_ = true;
+
+  return RESULT_SUCCESS;
+}
 
 result_code Tpm::SetSystemKeyInitializedFlag() {
   bool flag_value = false;

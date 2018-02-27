@@ -63,17 +63,30 @@ class EncryptionKey {
   base::FilePath needs_finalization_path() const {
     return needs_finalization_path_;
   }
+  base::FilePath preservation_request_path() const {
+    return preservation_request_path_;
+  }
+  base::FilePath preserved_previous_key_path() const {
+    return preserved_previous_key_path_;
+  }
 
  private:
   // Encrypts the |encryption_key_| under |system_key_| and writes the result to
   // disk to the |key_path_| file.
   void Finalize();
 
+  // Loads the previous system key and encryption key and rewraps the latter
+  // under a fresh system key. This allows carrying over the encryption key (and
+  // thus the encrypted) file system across a TPM clear.
+  bool RewrapPreviousEncryptionKey();
+
   SystemKeyLoader* loader_ = nullptr;
 
   // Paths.
   base::FilePath key_path_;
   base::FilePath needs_finalization_path_;
+  base::FilePath preservation_request_path_;
+  base::FilePath preserved_previous_key_path_;
 
   // Whether the key is generated freshly, which happens if the system key is
   // missing or the key file on disk didn't exist, failed to decrypt, etc.

@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 
 #include <vboot/tlcl.h>
@@ -36,6 +37,31 @@ const uint32_t kEncStatefulSize = 72;
 
 const uint32_t kPCRBootMode = 0;
 
+// Secret used for owner authorization. This is used for taking ownership and in
+// TPM commands that require owner authorization. Currently, only the TPM 1.2
+// implementation uses owner authorization for some of its operations. The
+// constants are nullptr and zero, respectively, for TPM 2.0.
+extern const uint8_t* kOwnerSecret;
+extern const size_t kOwnerSecretSize;
+
+// Path constants. Note that these don't carry the / root prefix because the
+// actual path gets constructed relative to a rootdir (which is a temporary
+// directory in tests, the actual root directory for production).
+namespace paths {
+const char kFirmwareUpdateRequest[] =
+    "mnt/stateful_partition/unencrypted/preserve/tpm_firmware_update_request";
+const char kFirmwareDir[] = "lib/firmware/tpm";
+const char kFirmwareUpdateLocator[] = "usr/sbin/tpm-firmware-locate-update";
+
+namespace cryptohome {
+const char kTpmOwned[] = "mnt/stateful_partition/.tpm_owned";
+const char kTpmStatus[] = "mnt/stateful_partition/.tpm_status";
+const char kShallInitialize[] = "home/.shadow/.can_attempt_ownership";
+const char kAttestationDatabase[] =
+    "mnt/stateful_partition/unencrypted/preserve/attestation.epb";
+}  // namespace cryptohome
+}  // namespace paths
+
 class Tpm;
 
 class NvramSpace {
@@ -53,6 +79,9 @@ class NvramSpace {
   bool is_valid() const { return status() == Status::kValid; }
   const brillo::SecureBlob& contents() const { return contents_; }
 
+  // Resets the space so that it appears invalid. Doesn't update the TPM.
+  void Reset();
+
   // Retrieves the space attributes.
   result_code GetAttributes(uint32_t* attributes);
 
@@ -69,7 +98,9 @@ class NvramSpace {
   result_code WriteLock();
 
   // Attempt to define the space with the given attributes and size.
-  result_code Define(uint32_t attributes, uint32_t size);
+  result_code Define(uint32_t attributes,
+                     uint32_t size,
+                     uint32_t pcr_selection);
 
   // Check whether the space is bound to the specified PCR selection.
   result_code CheckPCRBinding(uint32_t pcr_selection, bool* match);
@@ -116,11 +147,22 @@ class Tpm {
   // Returns the PCR value for PCR |index|, possibly from the cache.
   result_code ReadPCR(uint32_t index, std::vector<uint8_t>* value);
 
+  // Returns TPM version info.
+  bool GetVersionInfo(uint32_t* vendor,
+                      uint64_t* firmware_version,
+                      std::vector<uint8_t>* vendor_specific);
+
+  // Returns Infineon-specific field upgrade status.
+  bool GetIFXFieldUpgradeInfo(TPM_IFX_FIELDUPGRADEINFO* field_upgrade_info);
+
   // Returns the initialized lockbox NVRAM space.
   NvramSpace* GetLockboxSpace();
 
   // Get the initialized encrypted stateful space.
   NvramSpace* GetEncStatefulSpace();
+
+  // Take TPM ownership using an all-zeros password.
+  result_code TakeOwnership();
 
   // Set a flag in the TPM to indicate that the system key has been
   // re-initialized after the last TPM clear. The TPM automatically clears the
@@ -171,7 +213,8 @@ class SystemKeyLoader {
   virtual ~SystemKeyLoader() = default;
 
   // Create a system key loader suitable for the system.
-  static std::unique_ptr<SystemKeyLoader> Create(Tpm* tpm);
+  static std::unique_ptr<SystemKeyLoader> Create(Tpm* tpm,
+                                                 const base::FilePath& rootdir);
 
   // Load the encryption key from TPM NVRAM. Returns true if successful and
   // fills in key, false if the key is not available or there is an error.
@@ -182,7 +225,7 @@ class SystemKeyLoader {
   // switching directly to this version of the code is negligibly small.
   virtual result_code Load(brillo::SecureBlob* key, bool* migrate) = 0;
 
-  // Generate a fresh system key but, do not store it in NVRAM yet.
+  // Generate a fresh system key but do not store it in NVRAM yet.
   virtual brillo::SecureBlob Generate() = 0;
 
   // Persist a previously generated system key in NVRAM. This may not be
@@ -192,6 +235,18 @@ class SystemKeyLoader {
 
   // Lock the system key to prevent further manipulation.
   virtual void Lock() = 0;
+
+  // Set up the TPM to allow generation of a system key. This is an expensive
+  // operation that can take dozens of seconds depending on hardware so this
+  // can't be used routinely.
+  virtual result_code SetupTpm() = 0;
+
+  // Checks whether the system is eligible for encryption key preservation. If
+  // so, sets up a new system key to wrap the existing encryption key. On
+  // success, |previous_key| and |fresh_key| will be filled in. Returns false if
+  // the system is not eligible or there is an error.
+  virtual result_code GenerateForPreservation(
+      brillo::SecureBlob* previous_key, brillo::SecureBlob* fresh_key) = 0;
 };
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_

@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include <openssl/sha.h>
 
@@ -129,12 +130,12 @@ const uint8_t kWrappedKeyNeedsFinalization[] = {
 // Contents of the encstateful TPM NVRAM space used in tests that set up
 // existing valid NVRAM space contents. Contains random system key material.
 const uint8_t kEncStatefulTpm1Contents[] = {
-    0x31, 0x4D, 0x50, 0x54, 0x01, 0x00, 0x00, 0x00, 0xa3, 0xea, 0xd7, 0x78,
+    0x31, 0x4D, 0x50, 0x54, 0x01, 0x01, 0x00, 0x00, 0xa3, 0xea, 0xd7, 0x78,
     0xa6, 0xb4, 0x74, 0xd7, 0x8f, 0xa1, 0x9a, 0xbd, 0x04, 0x6a, 0xc5, 0x6c,
     0x21, 0xc7, 0x60, 0x1c, 0x45, 0xe3, 0x06, 0xe2, 0x6a, 0x68, 0x94, 0x96,
-    0x8b, 0x1a, 0xf3, 0x67, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x8b, 0x1a, 0xf3, 0x67, 0xf1, 0x4c, 0x52, 0xf9, 0x34, 0xf0, 0xf2, 0xeb,
+    0xcb, 0xce, 0x2f, 0xb3, 0xb3, 0x63, 0xb3, 0x67, 0x75, 0x75, 0xdc, 0x5d,
+    0x0e, 0xcb, 0xcd, 0x4b, 0x44, 0xf9, 0x20, 0x49, 0x42, 0x4d, 0x22, 0x96,
 };
 
 // A random encryption key used in tests that exercise the situation where the
@@ -164,11 +165,25 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateDirectory(
         tmpdir_.GetPath().AppendASCII("mnt/stateful_partition")));
-    tpm_ = std::make_unique<Tpm>();
-    loader_ = SystemKeyLoader::Create(tpm_.get());
-    key_ = std::make_unique<EncryptionKey>(loader_.get(), tmpdir_.GetPath());
 
+    ClearTPM();
+    ResetLoader();
+  }
+
+  void ResetLoader() {
+    tpm_ = std::make_unique<Tpm>();
+    loader_ = SystemKeyLoader::Create(tpm_.get(), tmpdir_.GetPath());
+    key_ = std::make_unique<EncryptionKey>(loader_.get(), tmpdir_.GetPath());
+  }
+
+  void ResetTPM() {
+    tlcl_.Reset();
     tlcl_.SetPCRValue(kPCRBootMode, kPCRBootModeValue);
+  }
+
+  void ClearTPM() {
+    tlcl_.Clear();
+    ResetTPM();
   }
 
   void SetOwned() {
@@ -199,6 +214,49 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(base::CreateDirectory(path.DirName()));
     ASSERT_TRUE(base::WriteFile(path, reinterpret_cast<const char*>(key),
                                 kWrappedKeySize));
+  }
+
+  void RequestPreservation() {
+    ASSERT_TRUE(
+        base::File(key_->preservation_request_path(),
+                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE)
+            .IsValid());
+  }
+
+  void SetupPendingFirmwareUpdate(bool available, int exit_status) {
+    // Put the firmware update request into place.
+    base::FilePath update_request_path(
+        tmpdir_.GetPath().AppendASCII(paths::kFirmwareUpdateRequest));
+    ASSERT_TRUE(base::CreateDirectory(update_request_path.DirName()));
+    base::File update_request_file(
+        update_request_path,
+        base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+    ASSERT_TRUE(update_request_file.IsValid());
+
+    // Create a dummy firmware update image file.
+    base::FilePath firmware_update_image_path;
+    if (available) {
+      firmware_update_image_path = tmpdir_.GetPath()
+                                       .AppendASCII(paths::kFirmwareDir)
+                                       .AppendASCII("dummy_fw.bin");
+      ASSERT_TRUE(base::CreateDirectory(firmware_update_image_path.DirName()));
+      base::File firmware_update_image_file(
+          firmware_update_image_path,
+          base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+      ASSERT_TRUE(firmware_update_image_file.IsValid());
+    }
+
+    // Set up a shell script to simulate the update locator tool.
+    std::string script = base::StringPrintf(
+        "#!/bin/sh\necho \"%s\"\nexit %d",
+        firmware_update_image_path.value().c_str(), exit_status);
+    base::FilePath firmware_update_locator_path =
+        tmpdir_.GetPath().AppendASCII(paths::kFirmwareUpdateLocator);
+    ASSERT_TRUE(base::CreateDirectory(firmware_update_locator_path.DirName()));
+    ASSERT_TRUE(base::WriteFile(firmware_update_locator_path, script.data(),
+                                script.size()));
+    ASSERT_TRUE(
+        base::SetPosixFilePermissions(firmware_update_locator_path, 0755));
   }
 
   void ExpectNeedsFinalization() {
@@ -239,6 +297,22 @@ class EncryptionKeyTest : public testing::Test {
     EXPECT_TRUE(space->read_locked);
     EXPECT_TRUE(space->write_locked);
   }
+
+#if !USE_TPM2
+  void CheckLockboxTampering() {
+    ResetTPM();
+
+    // Set up invalid lockbox space contents and perform another load. Verify
+    // that the lockbox space is flagged invalid afterwards.
+    SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+               sizeof(kLockboxV2Contents) - 1);
+
+    ResetLoader();
+    key_->LoadChromeOSSystemKey();
+    key_->LoadEncryptionKey();
+    EXPECT_FALSE(tpm_->GetLockboxSpace()->is_valid());
+  }
+#endif
 
   base::ScopedTempDir tmpdir_;
   TlclStub tlcl_;
@@ -453,6 +527,11 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedExisting) {
   EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  EXPECT_TRUE(tpm_->GetLockboxSpace()->is_valid());
+  EXPECT_EQ(
+      std::vector<uint8_t>(kLockboxV2Contents,
+                           kLockboxV2Contents + sizeof(kLockboxV2Contents)),
+      tpm_->GetLockboxSpace()->contents());
 }
 
 TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadPCRBinding) {
@@ -504,6 +583,148 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedBadSpaceLockboxFallback) {
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
+}
+
+TEST_F(EncryptionKeyTest, EncStatefulLockboxMACFailure) {
+  SetupSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, true,
+             kEncStatefulTpm1Contents, sizeof(kEncStatefulTpm1Contents));
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true,
+             kLockboxV2Contents, sizeof(kLockboxV2Contents) - 1);
+  SetOwned();
+  WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
+
+  ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
+  EXPECT_FALSE(key_->is_migration_allowed());
+  ExpectFinalized(false);
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  EXPECT_FALSE(tpm_->GetLockboxSpace()->is_valid());
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
+  RequestPreservation();
+  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+
+  ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_FALSE(key_->is_migration_allowed());
+  ExpectFinalized(false);
+  EXPECT_TRUE(tlcl_.IsOwned());
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+
+  // Perform another TPM clear and verify that a second preservation succeeds.
+  ClearTPM();
+  ResetLoader();
+  RequestPreservation();
+  SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
+
+  ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_FALSE(key_->is_migration_allowed());
+  ExpectFinalized(false);
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+
+  CheckLockboxTampering();
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationSuccessEncstateful) {
+  SetupSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, true,
+             kEncStatefulTpm1Contents, sizeof(kEncStatefulTpm1Contents));
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
+  RequestPreservation();
+  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+
+  ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
+  EXPECT_FALSE(key_->is_migration_allowed());
+  ExpectFinalized(false);
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  CheckLockboxTampering();
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationErrorNotEligible) {
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
+  RequestPreservation();
+  SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
+
+  ExpectFreshKey();
+  EXPECT_TRUE(key_->is_migration_allowed());
+  ExpectNeedsFinalization();
+  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationErrorUpdateLocatorFailure) {
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
+  RequestPreservation();
+  SetupPendingFirmwareUpdate(true, EXIT_FAILURE);
+
+  ExpectFreshKey();
+  EXPECT_TRUE(key_->is_migration_allowed());
+  ExpectNeedsFinalization();
+  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationNoPreviousKey) {
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  RequestPreservation();
+  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+
+  ExpectFreshKey();
+  EXPECT_TRUE(key_->is_migration_allowed());
+  ExpectNeedsFinalization();
+  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationRetryKeyfileMove) {
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  WriteWrappedKey(key_->preserved_previous_key_path(), kWrappedKeyLockboxV2);
+  RequestPreservation();
+  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+
+  ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_FALSE(key_->is_migration_allowed());
+  ExpectFinalized(false);
+  EXPECT_TRUE(tlcl_.IsOwned());
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationRetryEncryptionKeyWrapping) {
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  WriteWrappedKey(key_->preserved_previous_key_path(), kWrappedKeyLockboxV2);
+  WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
+  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+
+  ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_FALSE(key_->is_migration_allowed());
+  ExpectFinalized(false);
+  EXPECT_TRUE(tlcl_.IsOwned());
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+}
+
+TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
+  SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
+             sizeof(kLockboxV2Contents));
+  tlcl_.SetOwned({kOwnerSecret, kOwnerSecret + kOwnerSecretSize});
+  WriteWrappedKey(key_->preserved_previous_key_path(), kWrappedKeyLockboxV2);
+  WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
+  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+
+  ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_FALSE(key_->is_migration_allowed());
+  ExpectFinalized(false);
+  EXPECT_TRUE(tlcl_.IsOwned());
+  CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
 }
 
 #endif  // !USE_TPM2

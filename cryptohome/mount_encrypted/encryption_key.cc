@@ -16,15 +16,17 @@
 #include "cryptohome/mount_encrypted/tpm.h"
 #include "cryptohome/mount_helpers.h"
 
-namespace {
-
 namespace paths {
 const char kStatefulMount[] = "mnt/stateful_partition";
 const char kEncryptedKey[] = "encrypted.key";
 const char kNeedsFinalization[] = "encrypted.needs-finalization";
 const char kKernelCmdline[] = "/proc/cmdline";
 const char kProductUUID[] = "/sys/class/dmi/id/product_uuid";
+const char kStatefulPreservationRequest[] = "preservation_request";
+const char kPreservedPreviousKey[] = "encrypted.key.preserved";
 }
+
+namespace {
 
 const char kKernelCmdlineOption[] = "encrypted-stateful-key=";
 const char kStaticKeyDefault[] = "default unsafe static key";
@@ -145,6 +147,10 @@ EncryptionKey::EncryptionKey(SystemKeyLoader* loader,
   key_path_ = stateful_mount.AppendASCII(paths::kEncryptedKey);
   needs_finalization_path_ =
       stateful_mount.AppendASCII(paths::kNeedsFinalization);
+  preservation_request_path_ =
+      stateful_mount.AppendASCII(paths::kStatefulPreservationRequest);
+  preserved_previous_key_path_ =
+      stateful_mount.AppendASCII(paths::kPreservedPreviousKey);
 }
 
 result_code EncryptionKey::SetFactorySystemKey() {
@@ -195,6 +201,34 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
 
 result_code EncryptionKey::LoadChromeOSSystemKey() {
   SetTpmSystemKey();
+
+  // Check and handle potential requests to preserve an already existing
+  // encryption key in order to retain the existing stateful file system.
+  if (system_key_.empty() && base::PathExists(preservation_request_path_)) {
+    // Move the previous key file to a different path and clear the request
+    // before changing TPM state. This makes sure that we're not putting the
+    // system into a state where the old key might get picked up accidentally
+    // (even by previous versions of mount-encrypted on rollback) if we reboot
+    // while the preservation process is not completed yet (for example due to
+    // power loss).
+    if (!base::Move(key_path_, preserved_previous_key_path_)) {
+      base::DeleteFile(key_path_, false /* recursive */);
+    }
+    base::DeleteFile(preservation_request_path_, false /* recursive */);
+  }
+
+  // Note that we must check for presence of a to-be-preserved key
+  // unconditionally: If the preservation process doesn't complete on first
+  // attempt (e.g. due to crash or power loss) but already took TPM ownership,
+  // we might see a situation where there appears to be a valid system key but
+  // we still must retry preservation to salvage the previous key.
+  if (base::PathExists(preserved_previous_key_path_)) {
+    RewrapPreviousEncryptionKey();
+
+    // Preservation is done at this point even though it might have bailed or
+    // failed. The code below will handle the potentially absent system key.
+    base::DeleteFile(preserved_previous_key_path_, false /* recursive */);
+  }
 
   // Attempt to generate a fresh system key if we haven't found one.
   if (system_key_.empty()) {
@@ -320,4 +354,52 @@ void EncryptionKey::Finalize() {
 
   // Lock the system key to prevent subsequent manipulation.
   loader_->Lock();
+}
+
+bool EncryptionKey::RewrapPreviousEncryptionKey() {
+  // Key preservation has been requested, but we haven't performed the process
+  // of carrying over the encryption key yet, or we have started and didn't
+  // finish the last attempt.
+  LOG(INFO) << "Attempting to preserve previous encryption key.";
+
+  // Load the previous system key and set up a fresh system key to re-wrap the
+  // encryption key.
+  brillo::SecureBlob fresh_system_key;
+  brillo::SecureBlob previous_system_key;
+  if (loader_->GenerateForPreservation(&previous_system_key,
+                                       &fresh_system_key) != RESULT_SUCCESS) {
+    return false;
+  }
+
+  brillo::SecureBlob previous_encryption_key;
+  if (!ReadKeyFile(preserved_previous_key_path_, &previous_encryption_key,
+                   previous_system_key)) {
+    LOG(WARNING) << "Failed to decrypt preserved previous key, aborting.";
+    return false;
+  }
+
+  // We have the previous encryption key at this point, so we're in business.
+  // Re-wrap the encryption key under the new system key and store it to disk.
+  base::DeleteFile(key_path_, false /* recursive */);
+  if (!WriteKeyFile(key_path_, previous_encryption_key, fresh_system_key)) {
+    return false;
+  }
+
+  // Persist the fresh system key. It's important that the fresh system key gets
+  // written to the NVRAM space as the last step (in particular, only after the
+  // encryption key has been re-wrapped). Otherwise, a crash would lead to a
+  // situation where the new system key has already replaced the old one,
+  // leaving us with no way to recover the preserved encryption key.
+  if (loader_->SetupTpm() != RESULT_SUCCESS ||
+      loader_->Persist() != RESULT_SUCCESS) {
+    return false;
+  }
+
+  // Success. Put the keys in place for later usage.
+  system_key_ = std::move(fresh_system_key);
+  migration_allowed_ = false;
+
+  LOG(INFO) << "Successfully preserved encryption key.";
+
+  return true;
 }

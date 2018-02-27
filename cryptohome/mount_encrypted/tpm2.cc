@@ -55,6 +55,9 @@ brillo::SecureBlob DeriveSystemKey(const struct nvram_area_tpm2* area) {
 
 }  // namespace
 
+const uint8_t* kOwnerSecret = nullptr;
+const size_t kOwnerSecretSize = 0;
+
 class Tpm2SystemKeyLoader : public SystemKeyLoader {
  public:
   explicit Tpm2SystemKeyLoader(Tpm* tpm) : tpm_(tpm) {}
@@ -63,6 +66,9 @@ class Tpm2SystemKeyLoader : public SystemKeyLoader {
   brillo::SecureBlob Generate() override;
   result_code Persist() override;
   void Lock() override;
+  result_code SetupTpm() override;
+  result_code GenerateForPreservation(brillo::SecureBlob* previous_key,
+                                      brillo::SecureBlob* fresh_key) override;
 
  private:
   Tpm* tpm_ = nullptr;
@@ -151,8 +157,8 @@ result_code Tpm2SystemKeyLoader::Persist() {
 
   NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
   if (!IsSpacePresent(encstateful_space)) {
-    result_code rc =
-        encstateful_space->Define(kAttributes, sizeof(struct nvram_area_tpm2));
+    result_code rc = encstateful_space->Define(
+        kAttributes, sizeof(struct nvram_area_tpm2), 0);
     if (rc != RESULT_SUCCESS) {
       LOG(ERROR) << "Failed to define NVRAM space.";
       return rc;
@@ -190,6 +196,19 @@ void Tpm2SystemKeyLoader::Lock() {
   }
 }
 
-std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(Tpm* tpm) {
+result_code Tpm2SystemKeyLoader::SetupTpm() {
+  // NVRAM indexes can be defined without requiring special privileges, so
+  // there's nothing to do here.
+  return RESULT_SUCCESS;
+}
+
+result_code Tpm2SystemKeyLoader::GenerateForPreservation(
+    brillo::SecureBlob* previous_key, brillo::SecureBlob* fresh_key) {
+  LOG(FATAL) << "Preservation not implemented for TPM 2.0";
+  return RESULT_FAIL_FATAL;
+}
+
+std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
+    Tpm* tpm, const base::FilePath& rootdir) {
   return std::make_unique<Tpm2SystemKeyLoader>(tpm);
 }
