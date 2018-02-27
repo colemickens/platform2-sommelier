@@ -16,6 +16,23 @@
 namespace brillo {
 namespace dbus_utils {
 
+namespace {
+
+void SetupDefaultPropertyHandlers(DBusInterface* prop_interface,
+                                  ExportedPropertySet* property_set) {
+  prop_interface->AddSimpleMethodHandler(dbus::kPropertiesGetAll,
+                                         base::Unretained(property_set),
+                                         &ExportedPropertySet::HandleGetAll);
+  prop_interface->AddSimpleMethodHandlerWithError(
+      dbus::kPropertiesGet, base::Unretained(property_set),
+      &ExportedPropertySet::HandleGet);
+  prop_interface->AddSimpleMethodHandlerWithError(
+      dbus::kPropertiesSet, base::Unretained(property_set),
+      &ExportedPropertySet::HandleSet);
+}
+
+}  // namespace
+
 //////////////////////////////////////////////////////////////////////////////
 
 DBusInterface::DBusInterface(DBusObject* dbus_object,
@@ -152,7 +169,21 @@ void DBusInterface::AddSignalImpl(
 DBusObject::DBusObject(ExportedObjectManager* object_manager,
                        const scoped_refptr<dbus::Bus>& bus,
                        const dbus::ObjectPath& object_path)
-    : property_set_(bus.get()), bus_(bus), object_path_(object_path) {
+    : DBusObject::DBusObject(object_manager,
+                             bus,
+                             object_path,
+                             base::Bind(&SetupDefaultPropertyHandlers)) {}
+
+DBusObject::DBusObject(
+    ExportedObjectManager* object_manager,
+    const scoped_refptr<dbus::Bus>& bus,
+    const dbus::ObjectPath& object_path,
+    PropertyHandlerSetupCallback property_handler_setup_callback)
+    : property_set_(bus.get()),
+      bus_(bus),
+      object_path_(object_path),
+      property_handler_setup_callback_(
+          std::move(property_handler_setup_callback)) {
   if (object_manager)
     object_manager_ = object_manager->AsWeakPtr();
 }
@@ -249,18 +280,7 @@ bool DBusObject::SendSignal(dbus::Signal* signal) {
 
 void DBusObject::RegisterPropertiesInterface() {
   DBusInterface* prop_interface = AddOrGetInterface(dbus::kPropertiesInterface);
-  prop_interface->AddSimpleMethodHandler(
-      dbus::kPropertiesGetAll,
-      base::Unretained(&property_set_),
-      &ExportedPropertySet::HandleGetAll);
-  prop_interface->AddSimpleMethodHandlerWithError(
-      dbus::kPropertiesGet,
-      base::Unretained(&property_set_),
-      &ExportedPropertySet::HandleGet);
-  prop_interface->AddSimpleMethodHandlerWithError(
-      dbus::kPropertiesSet,
-      base::Unretained(&property_set_),
-      &ExportedPropertySet::HandleSet);
+  property_handler_setup_callback_.Run(prop_interface, &property_set_);
   property_set_.OnPropertiesInterfaceExported(prop_interface);
 }
 

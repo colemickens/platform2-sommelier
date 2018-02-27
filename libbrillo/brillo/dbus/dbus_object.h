@@ -507,6 +507,9 @@ class BRILLO_EXPORT DBusInterface final {
 // by this object.
 class BRILLO_EXPORT DBusObject {
  public:
+  using PropertyHandlerSetupCallback = base::Callback<void(
+      DBusInterface* prop_interface, ExportedPropertySet* property_set)>;
+
   // object_manager - ExportedObjectManager instance that notifies D-Bus
   //                  listeners of a new interface being claimed and property
   //                  changes on those interfaces.
@@ -514,6 +517,17 @@ class BRILLO_EXPORT DBusObject {
   DBusObject(ExportedObjectManager* object_manager,
              const scoped_refptr<dbus::Bus>& bus,
              const dbus::ObjectPath& object_path);
+
+  // property_handler_setup_callback - To be called when setting up property
+  //                                   method handlers. Clients can register
+  //                                   their own custom property method handlers
+  //                                   (GetAll/Get/Set) by passing in this
+  //                                   callback.
+  DBusObject(ExportedObjectManager* object_manager,
+             const scoped_refptr<dbus::Bus>& bus,
+             const dbus::ObjectPath& object_path,
+             PropertyHandlerSetupCallback property_handler_setup_callback);
+
   virtual ~DBusObject();
 
   // Returns an proxy handler for the interface |interface_name|. If the
@@ -571,6 +585,8 @@ class BRILLO_EXPORT DBusObject {
   dbus::ObjectPath object_path_;
   // D-Bus object instance once this object is successfully exported.
   dbus::ExportedObject* exported_object_ = nullptr;  // weak; owned by |bus_|.
+  // Sets up property method handlers.
+  PropertyHandlerSetupCallback property_handler_setup_callback_;
 
   friend class DBusInterface;
   DISALLOW_COPY_AND_ASSIGN(DBusObject);
