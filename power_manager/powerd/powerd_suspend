@@ -403,11 +403,10 @@ else
 
     if [ -f "${TIMESTAMP_FILE}" ]; then
       # Record the hwclock time at resume for the power_Resume test.
-      if TIME="$(/sbin/hwclock -r --utc 2>&1)"; then
-        echo "${TIME}" > "${TIMESTAMP_FILE}"
+      if /sbin/hwclock -r --utc > "${TIMESTAMP_FILE}" 2>&1; then
         log_msg "Recorded hwclock time for test"
       else
-        log_msg "/sbin/hwclock failed: ${TIME}"
+        log_msg "/sbin/hwclock failed: $(cat "${TIMESTAMP_FILE}")"
         log_msg "debug: $(/sbin/hwclock -r --debug --utc 2>&1)"
       fi
     fi
