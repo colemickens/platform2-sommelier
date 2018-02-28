@@ -76,18 +76,6 @@ cgpt add "${base_dev}" -i $kern_num -S1 -T0
 # Mark the kernel as highest priority
 cgpt prioritize "${base_dev}" -i $kern_num
 
-# Allow the RW firmware to roll forward the kernel version as far as
-# possible.
-#
-# TODO(chromium:783997): When enterprise support for limiting
-# roll-forward is implemented, setgoodkernel should do this only on
-# unenrolled devices.  Enterprise policy will set the appropriate
-# value on enrolled devices.
-#
-# Older firmware ignores this setting and always rolls forward the
-# kernel as far as possible.
-crossystem kernel_max_rollforward=0xfffffffe
-
 # Collect any startup time firmware updater logs (see chromeos_startup)
 FIRMWARE_UPDATE_LOG='/mnt/stateful_partition/update_firmware.log'
 if [ -f "${FIRMWARE_UPDATE_LOG}" ]; then
