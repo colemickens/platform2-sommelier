@@ -770,7 +770,7 @@ cmd_network_diag() (
     # Create a mostly unique filename.  We won't care about clobbering existing
     # files here as this is a user generated request, and we scope the filename
     # to this specific use case.
-    local downloads_dir="/home/${USER}/user/Downloads"
+    local downloads_dir="/home/user/${CROS_USER_ID_HASH}/Downloads"
     local timestamp="$(date +'%Y-%m-%d.%H-%M-%S')"
     local logname="network_diagnostics_${timestamp}.txt"
     local logpath="${downloads_dir}/${logname}"
