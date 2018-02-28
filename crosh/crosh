@@ -1760,7 +1760,8 @@ check_command_available() {
 dispatch() {
   local line="$1"
   local command=""
-  local p params=""
+  local params=""
+  local p
 
   local space_pos=$(expr index "$line" ' ')
 
@@ -1782,7 +1783,6 @@ dispatch() {
 
     # See if --help was requested; if so, handle it directly so each command
     # doesn't have to deal with it directly.
-    local p
     for p in ${params}; do
       if [ "${p}" = "-h" -o "${p}" = "--help" ]; then
         cmd_help "${command}"
