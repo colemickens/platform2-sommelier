@@ -15,9 +15,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <base/files/file_path.h>
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/time/time.h>
 
 #include "imageloader/imageloader.h"
@@ -143,7 +144,7 @@ CommandResponse HelperProcessReceiver::HandleCommand(
     const base::FilePath path(command.unmount_path());
     response.set_success(mounter_.Cleanup(path));
   } else {
-    LOG(ERROR) << "unknown operations";
+    LOG(FATAL) << "unknown operations";
   }
   return response;
 }
@@ -153,9 +154,10 @@ void HelperProcessReceiver::SendResponse(const CommandResponse& response) {
   if (!response.SerializeToString(&response_str))
     LOG(FATAL) << "failed to serialize protobuf";
 
-  if (write(control_fd_.get(), response_str.data(), response_str.size()) !=
+  if (HANDLE_EINTR(
+          write(control_fd_.get(), response_str.data(), response_str.size())) !=
       static_cast<ssize_t>(response_str.size())) {
-    LOG(FATAL) << "short write on protobuf";
+    PLOG(FATAL) << "short write on protobuf";
   }
 }
 

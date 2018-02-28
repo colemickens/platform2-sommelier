@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
 
 #include "imageloader/component.h"
@@ -158,7 +159,8 @@ std::unique_ptr<CommandResponse> HelperProcessProxy::WaitForResponse() {
   if (pfd.revents & POLLIN) {
     char buffer[4096];
     memset(buffer, '\0', sizeof(buffer));
-    ssize_t bytes = read(control_fd_.get(), buffer, sizeof(buffer));
+    ssize_t bytes =
+        HANDLE_EINTR(read(control_fd_.get(), buffer, sizeof(buffer)));
     PCHECK(bytes != -1);
 
     if (!response->ParseFromArray(buffer, bytes)) {
