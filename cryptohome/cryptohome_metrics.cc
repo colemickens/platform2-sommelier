@@ -130,12 +130,12 @@ void ReportCryptohomeError(CryptohomeError error) {
                            kCryptohomeErrorNumBuckets);
 }
 
-void ReportTpmResult(TpmReturnCode result) {
+void ReportTpmResult(TpmResult result) {
   if (!g_metrics) {
     return;
   }
   g_metrics->SendEnumToUMA(kCryptohomeTpmResultsHistogram,
-                           GetTpmResultSample(result),
+                           result,
                            kTpmResultNumberOfBuckets);
 }
 

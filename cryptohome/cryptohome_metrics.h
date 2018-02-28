@@ -9,6 +9,7 @@
 
 #include "cryptohome/migration_type.h"
 #include "cryptohome/tpm.h"
+#include "cryptohome/tpm_metrics.h"
 
 namespace cryptohome {
 
@@ -145,7 +146,7 @@ void TearDownMetrics();
 void ReportCryptohomeError(CryptohomeError error);
 
 // The |result| value is reported to the "Cryptohome.TpmResults" enum histogram.
-void ReportTpmResult(TpmReturnCode result);
+void ReportTpmResult(TpmResult result);
 
 // Cros events are translated to an enum and reported to the generic
 // "Platform.CrOSEvent" enum histogram. The |event| string must be registered in
