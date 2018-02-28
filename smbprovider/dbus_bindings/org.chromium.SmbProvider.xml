@@ -138,7 +138,7 @@
           Serialized DeleteEntryOptions protobuf.
         </tp:docstring>
       </arg>
-      <arg name="error_code" type="i" direction="out">\
+      <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.
         </tp:docstring>
@@ -178,7 +178,7 @@
           Serialized CreateFileOptions protobuf.
         </tp:docstring>
       </arg>
-      <arg name="error_code" type="i" direction="out">\
+      <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.
         </tp:docstring>
@@ -195,7 +195,7 @@
           Serialized TruncateOptions protobuf.
         </tp:docstring>
       </arg>
-      <arg name="error_code" type="i" direction="out">\
+      <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.
         </tp:docstring>
@@ -218,7 +218,7 @@
           File descriptor of the temporary file that contains the data to be written.
         </tp:docstring>
       </arg>
-      <arg name="error_code" type="i" direction="out">\
+      <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.
         </tp:docstring>
@@ -235,7 +235,7 @@
           Serialized CreateDirectoryOptionsProto protobuf.
         </tp:docstring>
       </arg>
-      <arg name="error_code" type="i" direction="out">\
+      <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.
         </tp:docstring>
@@ -252,7 +252,7 @@
           Serialized MoveEntryOptionsProto protobuf.
         </tp:docstring>
       </arg>
-      <arg name="error_code" type="i" direction="out">\
+      <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.
         </tp:docstring>
@@ -269,7 +269,7 @@
           Serialized CopyEntryOptionsProto protobuf.
         </tp:docstring>
       </arg>
-      <arg name="error_code" type="i" direction="out">\
+      <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.
         </tp:docstring>
