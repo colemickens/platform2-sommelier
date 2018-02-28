@@ -136,6 +136,55 @@ bool FakeLECredentialBackend::CheckCredential(
   return (*err == LE_TPM_SUCCESS);
 }
 
+bool FakeLECredentialBackend::ResetCredential(
+    const uint64_t label,
+    const std::vector<std::vector<uint8_t>>& h_aux,
+    const std::vector<uint8_t>& orig_cred_metadata,
+    const brillo::SecureBlob& reset_secret,
+    std::vector<uint8_t>* new_cred_metadata,
+    std::vector<uint8_t>* new_mac,
+    LECredBackendError* err) {
+  *err = LE_TPM_SUCCESS;
+
+  std::vector<uint8_t> orig_mac = CryptoLib::Sha256(orig_cred_metadata);
+
+  std::vector<uint8_t> root_hash = RecalculateRootHash(label, orig_mac, h_aux);
+  if (root_hash != fake_root_hash_) {
+    LOG(ERROR) << "h_aux and/or metadata don't match the current root hash.";
+    *err = LE_TPM_ERROR_HASH_TREE_SYNC;
+    return false;
+  }
+
+  FakeLECredentialMetadata metadata_tmp;
+  if (!metadata_tmp.ParseFromArray(orig_cred_metadata.data(),
+                                   orig_cred_metadata.size())) {
+    LOG(INFO) << "Couldn't deserialize cred metadata, label: " << label;
+    *err = LE_TPM_ERROR_HASH_TREE_SYNC;
+    return false;
+  }
+
+  // Check the Reset secret.
+  if (!memcmp(metadata_tmp.reset_secret().data(), reset_secret.data(),
+              reset_secret.size())) {
+    metadata_tmp.set_attempt_count(0);
+  } else {
+    *err = LE_TPM_ERROR_INVALID_RESET_SECRET;
+  }
+
+  new_cred_metadata->resize(metadata_tmp.ByteSize());
+  if (!metadata_tmp.SerializeToArray(new_cred_metadata->data(),
+                                     new_cred_metadata->size())) {
+    LOG(ERROR) << "Couldn't serialize new cred metadata, label: " << label;
+    return false;
+  }
+
+  *new_mac = CryptoLib::Sha256(*new_cred_metadata);
+
+  fake_root_hash_ = RecalculateRootHash(label, *new_mac, h_aux);
+
+  return (*err == LE_TPM_SUCCESS);
+}
+
 bool FakeLECredentialBackend::RemoveCredential(
     const uint64_t label,
     const std::vector<std::vector<uint8_t>>& h_aux,

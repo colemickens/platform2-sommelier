@@ -1410,6 +1410,19 @@ bool Tpm2Impl::LECredentialBackendImpl::CheckCredential(
   return false;
 }
 
+bool Tpm2Impl::LECredentialBackendImpl::ResetCredential(
+    const uint64_t label,
+    const std::vector<std::vector<uint8_t>>& h_aux,
+    const std::vector<uint8_t>& orig_cred_metadata,
+    const brillo::SecureBlob& reset_secret,
+    std::vector<uint8_t>* new_cred_metadata,
+    std::vector<uint8_t>* new_mac,
+    LECredBackendError* err) {
+  NOTIMPLEMENTED();
+  *err = LE_TPM_ERROR_TPM_OP_FAILED;
+  return false;
+}
+
 bool Tpm2Impl::LECredentialBackendImpl::RemoveCredential(
     const uint64_t label,
     const std::vector<std::vector<uint8_t>>& h_aux,

@@ -98,44 +98,13 @@ LECredError LECredentialManager::CheckCredential(
     const uint64_t& label,
     const brillo::SecureBlob& le_secret,
     brillo::SecureBlob* he_secret) {
-  if (is_locked_) {
-    return LE_CRED_ERROR_HASH_TREE;
-  }
+  return CheckSecret(label, le_secret, he_secret, true);
+}
 
-  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
-  he_secret->clear();
-
-  std::vector<uint8_t> orig_cred, orig_mac;
-  std::vector<std::vector<uint8_t>> h_aux;
-  LECredError ret =
-      RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux);
-  if (ret != LE_CRED_SUCCESS) {
-    return ret;
-  }
-
-  brillo::SecureBlob new_cred, new_mac;
-  LECredBackendError err;
-  le_tpm_backend_->CheckCredential(label, h_aux, orig_cred, le_secret,
-                                   &new_cred, &new_mac, he_secret, &err);
-  if (err == LE_TPM_ERROR_HASH_TREE_SYNC || err == LE_TPM_ERROR_TPM_OP_FAILED) {
-    LOG(ERROR) << "Error running CheckCredential in TPM for label: " << label;
-    return LE_CRED_ERROR_HASH_TREE;
-  }
-
-  if (!hash_tree_->StoreLabel(label_object, new_mac, new_cred)) {
-    LOG(ERROR) << "Failed to update credential in disk hash tree for label: "
-               << label;
-    // This is an un-salvageable state. We can't make LE updates anymore,
-    // since the disk state can't be updated.
-    // We block further LE operations until at least the next boot.
-    // The hope is that on reboot, the disk operations start working. In that
-    // case, we will be able to replay this operation from the TPM log.
-    is_locked_ = true;
-    // TODO(crbug.com/809749): Report failure to UMA.
-    return LE_CRED_ERROR_HASH_TREE;
-  }
-
-  return ConvertTpmError(err);
+LECredError LECredentialManager::ResetCredential(
+    const uint64_t& label,
+    const brillo::SecureBlob& reset_secret) {
+  return CheckSecret(label, reset_secret, nullptr, false);
 }
 
 LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
@@ -173,6 +142,57 @@ LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
   }
 
   return LE_CRED_SUCCESS;
+}
+
+LECredError LECredentialManager::CheckSecret(const uint64_t& label,
+                                             const brillo::SecureBlob& secret,
+                                             brillo::SecureBlob* he_secret,
+                                             bool is_le_secret) {
+  if (is_locked_) {
+    return LE_CRED_ERROR_HASH_TREE;
+  }
+
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  std::vector<uint8_t> orig_cred, orig_mac;
+  std::vector<std::vector<uint8_t>> h_aux;
+  LECredError ret =
+      RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux);
+  if (ret != LE_CRED_SUCCESS) {
+    return ret;
+  }
+
+  brillo::SecureBlob new_cred, new_mac;
+  LECredBackendError err;
+  if (is_le_secret) {
+    he_secret->clear();
+    le_tpm_backend_->CheckCredential(label, h_aux, orig_cred, secret, &new_cred,
+                                     &new_mac, he_secret, &err);
+  } else {
+    le_tpm_backend_->ResetCredential(label, h_aux, orig_cred, secret, &new_cred,
+                                     &new_mac, &err);
+  }
+
+  if (err == LE_TPM_ERROR_HASH_TREE_SYNC || err == LE_TPM_ERROR_TPM_OP_FAILED) {
+    LOG(ERROR) << "Error running CheckSecret in TPM for label: " << label
+               << ", for " << (is_le_secret ? "LE." : "Reset.");
+    return LE_CRED_ERROR_HASH_TREE;
+  }
+
+  if (!hash_tree_->StoreLabel(label_object, new_mac, new_cred)) {
+    LOG(ERROR) << "Failed to update credential in disk hash tree for label: "
+               << label;
+    // This is an un-salvageable state. We can't make LE updates anymore,
+    // since the disk state can't be updated.
+    // We block further LE operations until at least the next boot.
+    // The hope is that on reboot, the disk operations start working. In that
+    // case, we will be able to replay this operation from the TPM log.
+    is_locked_ = true;
+    // TODO(crbug.com/809749): Report failure to UMA.
+    return LE_CRED_ERROR_HASH_TREE;
+  }
+
+  return ConvertTpmError(err);
 }
 
 LECredError LECredentialManager::RetrieveLabelInfo(
@@ -231,6 +251,8 @@ LECredError LECredentialManager::ConvertTpmError(LECredBackendError err) {
       return LE_CRED_SUCCESS;
     case LE_TPM_ERROR_INVALID_LE_SECRET:
       return LE_CRED_ERROR_INVALID_LE_SECRET;
+    case LE_TPM_ERROR_INVALID_RESET_SECRET:
+      return LE_CRED_ERROR_INVALID_RESET_SECRET;
     case LE_TPM_ERROR_TOO_MANY_ATTEMPTS:
       return LE_CRED_ERROR_TOO_MANY_ATTEMPTS;
     case LE_TPM_ERROR_HASH_TREE_SYNC:

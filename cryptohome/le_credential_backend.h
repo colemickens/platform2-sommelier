@@ -25,6 +25,8 @@ enum LECredBackendError {
   LE_TPM_SUCCESS = 0,
   // Check failed due to incorrect Low Entropy credential provided.
   LE_TPM_ERROR_INVALID_LE_SECRET,
+  // Reset failed due to incorrect Reset credential provided.
+  LE_TPM_ERROR_INVALID_RESET_SECRET,
   // Check failed since the credential has been locked out due to too many
   // attempts per the delay schedule.
   LE_TPM_ERROR_TOO_MANY_ATTEMPTS,
@@ -113,6 +115,28 @@ class LECredentialBackend {
                                std::vector<uint8_t>* new_cred_metadata,
                                std::vector<uint8_t>* new_mac,
                                brillo::SecureBlob* he_secret,
+                               LECredBackendError* err) = 0;
+
+  // Tries to reset a (potentially locked out) credential.
+  //
+  // The reset credential is |reset_secret| and the credential metadata is
+  // in |orig_cred_metadata|.
+  //
+  // Returns true on success, false on failure.
+  // On success, |err| is set to LE_TPM_SUCCESS.
+  // On failure, |err| is set with the appropriate error code:
+  // - LE_TPM_ERROR_INVALID_RESET_SECRET for incorrect authentication attempt.
+  // - LE_TPM_ERROR_HASH_TREE for error in hash tree sync.
+  // - LE_TPM_ERROR_TPM_OP_FAILED for Tpm operation error.
+  //
+  // On success, the updated credential metadata and corresponding new MAC will
+  // be returned in |new_cred_metadata| and |new_mac|.
+  virtual bool ResetCredential(const uint64_t label,
+                               const std::vector<std::vector<uint8_t>>& h_aux,
+                               const std::vector<uint8_t>& orig_cred_metadata,
+                               const brillo::SecureBlob& reset_secret,
+                               std::vector<uint8_t>* new_cred_metadata,
+                               std::vector<uint8_t>* new_mac,
                                LECredBackendError* err) = 0;
 
   // Removes the credential which has label |label|.

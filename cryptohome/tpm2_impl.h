@@ -61,6 +61,14 @@ class Tpm2Impl : public Tpm {
                          brillo::SecureBlob* he_secret,
                          LECredBackendError* err) override;
 
+    bool ResetCredential(const uint64_t label,
+                         const std::vector<std::vector<uint8_t>>& h_aux,
+                         const std::vector<uint8_t>& orig_cred_metadata,
+                         const brillo::SecureBlob& reset_secret,
+                         std::vector<uint8_t>* new_cred_metadata,
+                         std::vector<uint8_t>* new_mac,
+                         LECredBackendError* err) override;
+
     bool RemoveCredential(const uint64_t label,
                           const std::vector<std::vector<uint8_t>>& h_aux,
                           const std::vector<uint8_t>& mac) override;

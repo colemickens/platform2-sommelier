@@ -20,6 +20,8 @@ enum LECredError {
   LE_CRED_SUCCESS,
   // Check failed due to incorrect Low Entropy(LE) secret.
   LE_CRED_ERROR_INVALID_LE_SECRET,
+  // Check failed due to incorrect Reset secret.
+  LE_CRED_ERROR_INVALID_RESET_SECRET,
   // Check failed due to too many attempts as per delay schedule.
   LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
   // Error in hash tree synchronization.
@@ -83,6 +85,18 @@ class LECredentialManager {
                               const brillo::SecureBlob& le_secret,
                               brillo::SecureBlob* he_secret);
 
+  // Attempts reset of a LE Credential.
+  //
+  // Returns LE_TPM_SUCCESS on success.
+  //
+  // On failure, returns:
+  // - LE_CRED_ERROR_INVALID_RESET_SECRET for incorrect reset secret.
+  // incorrect attempts).
+  // - LE_CRED_ERROR_HASH_TREE for error in hash tree.
+  // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
+  LECredError ResetCredential(const uint64_t& label,
+                              const brillo::SecureBlob& reset_secret);
+
   // Remove a credential at node with label |label|.
   //
   // Returns LE_TPM_SUCCESS on success.
@@ -92,6 +106,28 @@ class LECredentialManager {
   LECredError RemoveCredential(const uint64_t& label);
 
  private:
+  // Since the CheckCredential() and ResetCredential() functions are very
+  // similar, this function combines the common parts of both the calls
+  // into a generic "check credential" function. The label to be checked
+  // is stored in |label|, the secret to be verified is in |secret|, the
+  // high entropy credential which gets released on successful verification
+  // is stored in |he_secret|, and a flag |is_le_secret| is used to signal
+  // whether the secret being checked is the LE secret (true) or the reset
+  // secret (false).
+  //
+  // Returns LE_TPM_SUCCESS on success.
+  //
+  // On failure, returns:
+  // - LE_CRED_ERROR_INVALID_LE_SECRET for incorrect LE authentication attempt.
+  // - LE_CRED_ERROR_INVALID_RESET_SECRET for incorrect reset secret.
+  // incorrect attempts).
+  // - LE_CRED_ERROR_HASH_TREE for error in hash tree.
+  // - LE_CRED_ERROR_INVALID_LABEL for invalid label
+  LECredError CheckSecret(const uint64_t& label,
+                          const brillo::SecureBlob& secret,
+                          brillo::SecureBlob* he_secret,
+                          bool is_le_secret);
+
   // Helper function to retrieve the credential metadata, MAC, and auxiliary
   // hashes associated with a label |label| (stored in |cred_metadata|, |mac|
   // and |h_aux| respectively).

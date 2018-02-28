@@ -48,7 +48,25 @@ class LECredentialManagerUnitTest : public testing::Test {
         std::make_unique<LECredentialManager>(&fake_backend_, temp_dir_.path());
   }
 
- public:
+  // Helper function to create a credential & then lock it out.
+  // NOTE: Parameterize the secrets once you have more than 1
+  // of them.
+  uint64_t CreateLockedOutCredential() {
+    // TODO(pmalani): fill delay schedule with 0 delays for first 4 attempts and
+    // hard limit at 5.
+    std::map<uint32_t, uint32_t> stub_delay_sched;
+    uint64_t label;
+    EXPECT_EQ(LE_CRED_SUCCESS,
+              le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                        stub_delay_sched, &label));
+    brillo::SecureBlob he_secret;
+    for (int i = 0; i < LE_MAX_INCORRECT_ATTEMPTS; i++) {
+      EXPECT_EQ(LE_CRED_ERROR_INVALID_LE_SECRET,
+                le_mgr_->CheckCredential(label, kHeSecret1, &he_secret));
+    }
+    return label;
+  }
+
   base::ScopedTempDir temp_dir_;
   FakeLECredentialBackend fake_backend_;
   std::unique_ptr<LECredentialManager> le_mgr_;
@@ -82,22 +100,14 @@ TEST_F(LECredentialManagerUnitTest, BasicInsertAndCheck) {
 // TODO(pmalani): Update this once we have started modelling the delay schedule
 // correctly.
 TEST_F(LECredentialManagerUnitTest, LockedOutSecret) {
-  // TODO(pmalani): fill delay schedule with 0 delays for first 4 attempts and
-  // hard limit at 5.
-  std::map<uint32_t, uint32_t> stub_delay_sched;
-  uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS,
-            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
-                                      stub_delay_sched, &label1));
-  brillo::SecureBlob he_secret;
-  for (int i = 0; i < LE_MAX_INCORRECT_ATTEMPTS; i++) {
-    EXPECT_EQ(LE_CRED_ERROR_INVALID_LE_SECRET,
-              le_mgr_->CheckCredential(label1, kHeSecret1, &he_secret));
-  }
+  uint64_t label1 = CreateLockedOutCredential();
+
   // NOTE: The current fake backend hard codes the number of attempts at 5, so
   // all subsequent checks will return false.
+  brillo::SecureBlob he_secret;
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
             le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
@@ -135,6 +145,43 @@ TEST_F(LECredentialManagerUnitTest, BasicInsertRemove) {
   brillo::SecureBlob he_secret;
   EXPECT_EQ(LE_CRED_ERROR_INVALID_LABEL,
             le_mgr_->CheckCredential(label1, kHeSecret1, &he_secret));
+}
+
+// Check that a reset unlocks a locked out credential.
+TEST_F(LECredentialManagerUnitTest, ResetSecret) {
+  uint64_t label1 = CreateLockedOutCredential();
+
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  brillo::SecureBlob he_secret;
+  ASSERT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+
+  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->ResetCredential(label1, kResetSecret1));
+
+  he_secret.clear();
+  // Make sure we can Check successfully, post reset.
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+  EXPECT_EQ(he_secret, kHeSecret1);
+}
+
+// Check that an invalid reset doesn't unlock a locked credential.
+TEST_F(LECredentialManagerUnitTest, ResetSecretNegative) {
+  uint64_t label1 = CreateLockedOutCredential();
+
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  brillo::SecureBlob he_secret;
+  ASSERT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+
+  EXPECT_EQ(LE_CRED_ERROR_INVALID_RESET_SECRET,
+            le_mgr_->ResetCredential(label1, kLeSecret1));
+
+  // Make sure that Check still fails.
+  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
 }
 
 }  // namespace cryptohome
