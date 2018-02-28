@@ -32,6 +32,8 @@ respawn
 # Default parameters to be overridden by upstart configuration.
 env SHILL_LOG_LEVEL=0
 env SHILL_LOG_SCOPES=
+# Disable noisy libchrome and libbrillo VLOGs by default
+env SHILL_LOG_VMODULES="object_proxy=0,dbus_object=0,bus=0"
 env SHILL_PASSIVE_MODE=
 env SHILL_PREPEND_DNS_SERVERS=
 env SHILL_ACCEPT_HOSTNAME_FROM=

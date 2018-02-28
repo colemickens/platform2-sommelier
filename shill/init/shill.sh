@@ -17,6 +17,11 @@
 
 DAEMONBIN="shill"
 ARGS="--log-level=${SHILL_LOG_LEVEL} --log-scopes=${SHILL_LOG_SCOPES}"
+
+if [ -n "${SHILL_LOG_VMODULES}" ]; then
+  ARGS="${ARGS} --vmodule=${SHILL_LOG_VMODULES}"
+fi
+
 if [ -n "${BLACKLISTED_DEVICES}" ] && [ -n "${SHILL_TEST_DEVICES}" ]; then
   ARGS="${ARGS} --device-black-list=${BLACKLISTED_DEVICES},${SHILL_TEST_DEVICES}"
 elif [ -n "${BLACKLISTED_DEVICES}" ]; then
@@ -24,24 +29,31 @@ elif [ -n "${BLACKLISTED_DEVICES}" ]; then
 elif [ -n "${SHILL_TEST_DEVICES}" ]; then
   ARGS="${ARGS} --device-black-list=${SHILL_TEST_DEVICES}"
 fi
+
 if [ -n "${SHILL_PASSIVE_MODE}" ]; then
   ARGS="${ARGS} --passive-mode"
 fi
+
 if [ -n "${SHILL_PREPEND_DNS_SERVERS}" ]; then
   ARGS="${ARGS} --prepend-dns-servers=${SHILL_PREPEND_DNS_SERVERS}"
 fi
+
 if [ -n "${SHILL_ACCEPT_HOSTNAME_FROM}" ]; then
   ARGS="${ARGS} --accept-hostname-from=${SHILL_ACCEPT_HOSTNAME_FROM}"
 fi
+
 if [ -n "${SHILL_MINIMUM_MTU}" ]; then
   ARGS="${ARGS} --minimum-mtu=${SHILL_MINIMUM_MTU}"
 fi
+
 if [ -n "${DHCPV6_ENABLED_DEVICES}" ]; then
   ARGS="${ARGS} --dhcpv6-enabled-devices=${DHCPV6_ENABLED_DEVICES}"
 fi
+
 if [ -n "${ARC_DEVICE}" ]; then
   ARGS="${ARGS} --arc-device=${ARC_DEVICE}"
 fi
+
 ARGS="${ARGS} ${SHILL_TEST_ARGS}"
 
 # If OOBE has not completed (i.e. EULA not agreed to), do not run
