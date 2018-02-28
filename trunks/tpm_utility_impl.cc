@@ -156,21 +156,21 @@ void TpmUtilityImpl::Shutdown() {
   }
 }
 
-TPM_RC TpmUtilityImpl::TpmBasicInit(std::unique_ptr<TpmState> &tpm_state) {
+TPM_RC TpmUtilityImpl::TpmBasicInit(std::unique_ptr<TpmState>* tpm_state) {
   TPM_RC result = TPM_RC_SUCCESS;
 
-  tpm_state = factory_.GetTpmState();
-  result = tpm_state->Initialize();
+  *tpm_state = factory_.GetTpmState();
+  result = (*tpm_state)->Initialize();
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
   // Warn about various unexpected conditions.
-  if (!tpm_state->WasShutdownOrderly()) {
+  if (!(*tpm_state)->WasShutdownOrderly()) {
     LOG(WARNING) << __func__
                  << ": WARNING: The last TPM shutdown was not orderly.";
   }
-  if (tpm_state->IsInLockout()) {
+  if ((*tpm_state)->IsInLockout()) {
     LOG(WARNING) << __func__ << ": WARNING: The TPM is currently in lockout.";
   }
 
@@ -181,8 +181,7 @@ TPM_RC TpmUtilityImpl::CheckState() {
   TPM_RC result;
   std::unique_ptr<TpmState> tpm_state;
 
-
-  result = TpmBasicInit(tpm_state);
+  result = TpmBasicInit(&tpm_state);
 
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
@@ -206,7 +205,7 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
   TPM_RC result;
   std::unique_ptr<TpmState> tpm_state;
 
-  result = TpmBasicInit(tpm_state);
+  result = TpmBasicInit(&tpm_state);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
