@@ -341,7 +341,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       "/unencrypted/cache/.disk_firmware_upgrade_completed";
   unlink(disk_fw_check_complete.c_str());
 
-  if (!RunBoardPostInstall(install_config.root.mount())) {
+  if (!is_factory_install &&
+      !RunBoardPostInstall(install_config.root.mount())) {
     fprintf(stderr, "Failed to perform board specific post install script.");
     return false;
   }
@@ -406,7 +407,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     }
   }
 
-  if (TryCr50Update(install_config.root.mount())) {
+  // Don't update Cr50 in factory
+  if (!is_factory_install && TryCr50Update(install_config.root.mount())) {
     fprintf(stderr, "Failed to update cr50 firmware.\n");
     // Let's not consider cr50 update failure a reason for interrupting
     // installation.
