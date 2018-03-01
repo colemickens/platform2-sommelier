@@ -126,12 +126,6 @@ TEST_F(LECredentialManagerUnitTest, InvalidLabelCheck) {
 // Insert a credential and then remove it.
 // Check that a subsequent CheckCredential on that label fails.
 TEST_F(LECredentialManagerUnitTest, BasicInsertRemove) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-
-  FakeLECredentialBackend fake_backend;
-  auto le_mgr = LECredentialManager(&fake_backend, temp_dir.path());
-
   uint64_t label1;
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ASSERT_EQ(LE_CRED_SUCCESS,
