@@ -1,0 +1,27 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file lists out the seccomp policy for allowed syscalls on ml_service.
+close: 1
+connect: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1
+exit: 1
+exit_group: 1
+fstat: 1
+getegid: 1
+geteuid: 1
+getgid: 1
+gettid: 1
+getuid: 1
+lseek: 1
+open: 1
+pipe2: 1
+read: 1
+restart_syscall: 1
+rt_sigreturn: 1
+sendto: 1
+socket: arg0 == AF_UNIX
+write: 1
