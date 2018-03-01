@@ -1,0 +1,26 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+// This file defines services that will be running in the host that will be used
+// by the container.
+package vm_tools.container;
+
+import "common.proto";
+
+// Request protobuf for notifying host that a container has started up.
+message ContainerStartupInfo {
+  // The name of the container.
+  string name = 1;
+}
+
+// Service that is notified of events from a container.
+service ContainerListener {
+  // Called by each container when it starts up to indicate that it is ready to
+  // handle incoming requests.
+  rpc ContainerReady(ContainerStartupInfo) returns (EmptyMessage);
+}

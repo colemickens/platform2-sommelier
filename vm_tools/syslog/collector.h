@@ -16,7 +16,7 @@
 #include <base/timer/timer.h>
 #include <google/protobuf/arena.h>
 
-#include "host.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace syslog {

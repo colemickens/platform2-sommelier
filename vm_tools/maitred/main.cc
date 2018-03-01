@@ -29,7 +29,7 @@
 #include "vm_tools/maitred/init.h"
 #include "vm_tools/maitred/service_impl.h"
 
-#include "host.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 
 using std::string;
 

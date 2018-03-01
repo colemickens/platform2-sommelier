@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "host.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace syslog {

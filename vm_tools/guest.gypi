@@ -40,6 +40,16 @@
       ],
     },
     {
+      'target_name': 'garcon',
+      'type': 'executable',
+      'dependencies': [
+        'container-rpcs',
+      ],
+      'sources': [
+        'garcon/main.cc',
+      ],
+    },
+    {
       'target_name': 'vm_syslog',
       'type': 'executable',
       'dependencies': ['libsyslog'],

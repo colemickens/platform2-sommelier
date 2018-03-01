@@ -31,8 +31,8 @@
 #include <grpc++/grpc++.h>
 #include <gtest/gtest.h>
 
-#include "host.grpc.pb.h"  // NOLINT(build/include)
-#include "host.pb.h"       // NOLINT(build/include)
+#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_host.pb.h"       // NOLINT(build/include)
 #include "vm_tools/syslog/collector.h"
 
 using std::string;

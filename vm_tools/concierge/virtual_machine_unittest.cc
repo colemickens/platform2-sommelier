@@ -36,7 +36,7 @@
 #include "vm_tools/concierge/virtual_machine.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
-#include "guest.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 
 using std::string;
 

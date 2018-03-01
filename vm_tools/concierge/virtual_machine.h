@@ -23,7 +23,7 @@
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
-#include "guest.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace concierge {
@@ -161,6 +161,10 @@ class VirtualMachine {
   // Returns INADDR_ANY if there is no container subnet.
   uint32_t ContainerSubnet() const;
 
+  // Register the IP address for a named container within this VM.
+  void RegisterContainerIp(const std::string& container_name,
+                           std::string container_ip);
+
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
       std::unique_ptr<SubnetPool::Subnet> subnet,
@@ -200,6 +204,9 @@ class VirtualMachine {
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
+
+  // Mapping of container names to IP address.
+  std::map<std::string, std::string> container_name_to_ip_;
 
   // Runtime directory for this VM.
   base::ScopedTempDir runtime_dir_;

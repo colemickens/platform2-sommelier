@@ -12,7 +12,7 @@
 #include <base/macros.h>
 #include <grpc++/grpc++.h>
 
-#include "guest.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/maitred/init.h"
 
 namespace vm_tools {

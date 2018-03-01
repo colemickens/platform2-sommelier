@@ -21,6 +21,9 @@ Once the VM has started up `vm_concierge` communicates with the `maitred`
 instance inside the VM to finish setting it up.  This includes configuring the
 network and mounting disk images.
 
+`vm_concierge` also can communicate with containers running inside of the VMs
+by interacting with the `garcon` component running in the container.
+
 ## maitred
 
 `maitred` is the agent running inside the VM responsible for managing
@@ -31,6 +34,16 @@ user's application exits or if requested to by `vm_concierge`.
 
 See [docs/init.md](docs/init.md) for more details on the duties maitred carries
 out as pid 1.
+
+## garcon
+
+`garcon` is a daemon that runs inside of a container within a VM. gRPC is used
+to communicate between `vm_concierge` and `garcon`. It is used to control/query
+things inside the contaienr such as application launching, accessibility,
+handling intents, opening files, etc. The communication is bi-directional. It
+uses TCP/IP for the transport and firewall rules ensure that only the container
+IPs are allowed to connect to the corresponding port for `garcon` that is open
+in `vm_concierge`.
 
 ## vsh
 
@@ -88,6 +101,6 @@ transfer.
 ### Wire format
 
 gRPC uses [protocol buffers](https://developers.google.com/protocol-buffers) as
-the serialization format for messages sent over the vsock transport.  The
+the serialization format for messages sent over the vsock and IP transport.  The
 [proto](proto/) directory holds the definitions for all the messages sent and
-services provided between the host and the VM.
+services provided between the host and the VM/container.

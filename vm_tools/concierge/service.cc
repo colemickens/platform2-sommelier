@@ -37,7 +37,6 @@
 #include <base/memory/ptr_util.h>
 #include <base/single_thread_task_runner.h>
 #include <base/strings/stringprintf.h>
-#include <base/synchronization/waitable_event.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <base/version.h>
@@ -111,11 +110,13 @@ void HandleSynchronousDBusMethodCall(
   response_sender.Run(std::move(response));
 }
 
-// Posted to the grpc thread to run the StartupListener service.  Puts a copy
-// of the pointer to the grpc server in |server_copy| and then signals |event|.
-void RunStartupListenerService(StartupListenerImpl* listener,
-                               base::WaitableEvent* event,
-                               std::shared_ptr<grpc::Server>* server_copy) {
+// Posted to a grpc thread to startup a listener service. Puts a copy of
+// the pointer to the grpc server in |server_copy| and then signals |event|.
+// It will listen on the address specified in |listener_address|.
+void RunListenerService(grpc::Service* listener,
+                        const std::string& listener_address,
+                        base::WaitableEvent* event,
+                        std::shared_ptr<grpc::Server>* server_copy) {
   // We are not interested in getting SIGCHLD or SIGTERM on this thread.
   sigset_t mask;
   sigemptyset(&mask);
@@ -125,9 +126,7 @@ void RunStartupListenerService(StartupListenerImpl* listener,
 
   // Build the grpc server.
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
-                                              vm_tools::kStartupListenerPort),
-                           grpc::InsecureServerCredentials());
+  builder.AddListeningPort(listener_address, grpc::InsecureServerCredentials());
   builder.RegisterService(listener);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
@@ -138,6 +137,41 @@ void RunStartupListenerService(StartupListenerImpl* listener,
   if (server) {
     server->Wait();
   }
+}
+
+// Sets up a gRPC listener service by starting the |grpc_thread| and posting the
+// main task to run for the thread. |listener_address| should be the address the
+// gRPC server is listening on. A copy of the pointer to the server is put in
+// |server_copy|. Returns true if setup & started successfully, false otherwise.
+bool SetupListenerService(base::Thread* grpc_thread,
+                          grpc::Service* listener_impl,
+                          const std::string& listener_address,
+                          std::shared_ptr<grpc::Server>* server_copy) {
+  // Start the grpc thread.
+  if (!grpc_thread->Start()) {
+    LOG(ERROR) << "Failed to start grpc thread";
+    return false;
+  }
+
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool ret = grpc_thread->task_runner()->PostTask(
+      FROM_HERE, base::Bind(&RunListenerService, listener_impl,
+                            listener_address, &event, server_copy));
+  if (!ret) {
+    LOG(ERROR) << "Failed to post server startup task to grpc thread";
+    return false;
+  }
+
+  // Wait for the VM grpc server to start.
+  event.Wait();
+
+  if (!server_copy) {
+    LOG(ERROR) << "grpc server failed to start";
+    return false;
+  }
+
+  return true;
 }
 
 // Converts an IPv4 address to a string. The result will be stored in |str|
@@ -231,11 +265,19 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
 }
 
 Service::Service(base::Closure quit_closure)
-    : watcher_(FROM_HERE), quit_closure_(std::move(quit_closure)) {}
+    : watcher_(FROM_HERE),
+      quit_closure_(std::move(quit_closure)),
+      weak_ptr_factory_(this) {
+  container_listener_ =
+      std::make_unique<ContainerListenerImpl>(weak_ptr_factory_.GetWeakPtr());
+}
 
 Service::~Service() {
-  if (grpc_server_) {
-    grpc_server_->Shutdown();
+  if (grpc_server_container_) {
+    grpc_server_container_->Shutdown();
+  }
+  if (grpc_server_vm_) {
+    grpc_server_vm_->Shutdown();
   }
 }
 
@@ -260,6 +302,50 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
 
 void Service::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
+}
+
+void Service::ContainerStartupCompleted(const std::string& container_name,
+                                        const uint32_t container_ip,
+                                        bool* result,
+                                        base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  // TODO(jkardatzke): Add container tokens so we can securely identify which
+  // container a connection is coming from rather than trusting the names
+  // they send us.
+
+  // Find the VM that has a container subnet which has the passed in IP address
+  // within it.
+  for (auto& vm : vms_) {
+    const uint32_t netmask = vm.second->ContainerNetmask();
+    if ((vm.second->ContainerSubnet() & netmask) != (container_ip & netmask)) {
+      continue;
+    }
+    // Found the VM with a matching container subnet, setup our name->ip
+    // mapping for that VM.
+    std::string string_ip;
+    if (!IPv4AddressToString(container_ip, &string_ip)) {
+      LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
+      break;
+    }
+
+    LOG(INFO) << "Startup of container " << container_name << " at "
+              << string_ip << " in VM " << vm.first << " completed.";
+    vm.second->RegisterContainerIp(container_name, std::move(string_ip));
+
+    // Send the D-Bus signal out to indicate the container is ready.
+    dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
+    ContainerStartedSignal proto;
+    proto.set_vm_name(vm.first);
+    proto.set_container_name(container_name);
+    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+    exported_object_->SendSignal(&signal);
+    *result = true;
+    break;
+  }
+  event->Signal();
 }
 
 bool Service::Init() {
@@ -308,27 +394,19 @@ bool Service::Init() {
     return false;
   }
 
-  // Start the grpc thread.
-  if (!grpc_thread_.Start()) {
-    LOG(ERROR) << "Failed to start grpc thread";
+  // Setup & start the gRPC listener services.
+  if (!SetupListenerService(&grpc_thread_vm_, &startup_listener_,
+                            base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
+                                               vm_tools::kStartupListenerPort),
+                            &grpc_server_vm_)) {
+    LOG(ERROR) << "Failed to setup/startup the VM grpc server";
     return false;
   }
-
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
-  bool ret = grpc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&RunStartupListenerService, &startup_listener_,
-                            &event, &grpc_server_));
-  if (!ret) {
-    LOG(ERROR) << "Failed to post server startup task to grpc thread";
-    return false;
-  }
-
-  // Wait for the grpc server to start.
-  event.Wait();
-
-  if (!grpc_server_) {
-    LOG(ERROR) << "grpc server failed to start";
+  if (!SetupListenerService(
+          &grpc_thread_container_, container_listener_.get(),
+          base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
+          &grpc_server_container_)) {
+    LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
 
@@ -348,7 +426,7 @@ bool Service::Init() {
     return false;
   }
 
-  ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
+  bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
       signal_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
       &watcher_, this);
   if (!ret) {
@@ -367,6 +445,7 @@ bool Service::Init() {
 }
 
 void Service::HandleChildExit() {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   // We can't just rely on the information in the siginfo structure because
   // more than one child may have exited but only one SIGCHLD will be
   // generated.
@@ -414,6 +493,7 @@ void Service::HandleSigterm() {
 
 std::unique_ptr<dbus::Response> Service::StartVm(
     dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Received StartVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -652,6 +732,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 }
 
 std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Received StopVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -697,6 +778,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
 
 std::unique_ptr<dbus::Response> Service::StopAllVms(
     dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Received StopAllVms request";
 
   std::vector<std::thread> threads;
@@ -722,6 +804,7 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
 
 std::unique_ptr<dbus::Response> Service::GetVmInfo(
     dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Received GetVmInfo request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -761,6 +844,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
 }
 
 bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Starting lxd";
 
   // Common environment for all LXD functionality.
@@ -868,6 +952,7 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
 
 std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Received CreateDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -969,6 +1054,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
 std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Received DestroyDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -1033,6 +1119,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
 std::unique_ptr<dbus::Response> Service::ListVmDisks(
     dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 

@@ -6,7 +6,7 @@ syntax = "proto3";
 
 option cc_enable_arenas = true;
 
-// This file defines services that will be running in the guest.
+// This file defines services that will be running in the guest VM.
 package vm_tools;
 
 import "common.proto";
@@ -76,7 +76,7 @@ message LaunchProcessResponse {
   // The status of the launched process.
   ProcessStatus status = 1;
 
-  // If |status| is EXITED then this contains the exit status of the process.  If
+  // If |status| is EXITED then this contains the exit status of the process. If
   // |status| is SIGNALED then this contains the signal number that killed the
   // process.  Otherwise the contents of this field are undefined.
   sint32 code = 2;
@@ -99,14 +99,14 @@ message MountResponse {
 // Implemented by maitred inside the VM.
 service Maitred {
   // Set up networking inside the VM so that it can access the internet.
-  rpc ConfigureNetwork (NetworkConfigRequest) returns (EmptyMessage);
+  rpc ConfigureNetwork(NetworkConfigRequest) returns (EmptyMessage);
 
   // Initiate a shut-down of the VM.
-  rpc Shutdown (EmptyMessage) returns (EmptyMessage);
+  rpc Shutdown(EmptyMessage) returns (EmptyMessage);
 
   // Launch one process inside the VM.
-  rpc LaunchProcess (LaunchProcessRequest) returns (LaunchProcessResponse);
+  rpc LaunchProcess(LaunchProcessRequest) returns (LaunchProcessResponse);
 
   // Mount a filesystem in the VM.
-  rpc Mount (MountRequest) returns (MountResponse);
+  rpc Mount(MountRequest) returns (MountResponse);
 }

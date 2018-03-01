@@ -16,6 +16,8 @@ grpc::Status StartupListenerImpl::VmReady(grpc::ServerContext* ctx,
   uint64_t cid = 0;
   if (sscanf(ctx->peer().c_str(), "vsock:%" PRIu64, &cid) != 1) {
     LOG(WARNING) << "Failed to parse peer address " << ctx->peer();
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Invalid peer for StartupListener");
   }
 
   base::AutoLock lock(vm_lock_);

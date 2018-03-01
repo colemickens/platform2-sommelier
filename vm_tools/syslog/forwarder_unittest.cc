@@ -13,7 +13,7 @@
 #include <grpc++/grpc++.h>
 #include <gtest/gtest.h>
 
-#include "host.pb.h"  // NOLINT(build/include)
+#include "vm_host.pb.h"  // NOLINT(build/include)
 #include "vm_tools/syslog/forwarder.h"
 
 using std::string;

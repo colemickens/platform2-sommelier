@@ -9,7 +9,7 @@
 
 #include <base/time/time.h>
 
-#include "host.pb.h"  // NOLINT(build/include)
+#include "vm_host.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace syslog {

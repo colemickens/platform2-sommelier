@@ -14,7 +14,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <grpc++/grpc++.h>
 
-#include "host.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace concierge {

@@ -33,7 +33,7 @@
 #include "vm_tools/launcher/subnet.h"
 #include "vm_tools/launcher/vsock_cid.h"
 
-#include "guest.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace launcher {

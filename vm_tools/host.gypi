@@ -67,7 +67,10 @@
     {
       'target_name': 'libconcierge',
       'type': 'static_library',
-      'dependencies': ['vm-rpcs'],
+      'dependencies': [
+        'vm-rpcs',
+        'container-rpcs',
+      ],
       'variables': {
         'exported_deps': [
           'libqcow_utils',
@@ -86,6 +89,7 @@
         ],
       },
       'sources': [
+        'concierge/container_listener_impl.cc',
         'concierge/mac_address_generator.cc',
         'concierge/service.cc',
         'concierge/startup_listener_impl.cc',

@@ -481,6 +481,11 @@ uint32_t VirtualMachine::ContainerSubnet() const {
   return INADDR_ANY;
 }
 
+void VirtualMachine::RegisterContainerIp(const std::string& container_name,
+                                         std::string container_ip) {
+  container_name_to_ip_[container_name] = std::move(container_ip);
+}
+
 void VirtualMachine::set_stub_for_testing(
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
   stub_ = std::move(stub);
