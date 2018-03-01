@@ -56,6 +56,7 @@
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/process_manager.h"
+#include "shill/scope_logger.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
@@ -297,7 +298,8 @@ bool L2TPIPSecDriver::InitOptions(vector<string>* options, Error* error) {
              "--noppp_lcp_echo", "--ppp_lcp_echo", options);
   AppendValueOption(kL2tpIpsecTunnelGroupProperty, "--tunnel_group", options);
   if (SLOG_IS_ON(VPN, 0)) {
-    options->push_back("--debug");
+    options->push_back(base::StringPrintf(
+        "--log_level=%d", -ScopeLogger::GetInstance()->verbose_level()));
   }
   return true;
 }

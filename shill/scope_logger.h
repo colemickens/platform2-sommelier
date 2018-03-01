@@ -119,6 +119,9 @@ class ScopeLogger {
   // Sets the verbose level for all scopes to |verbose_level|.
   void set_verbose_level(int verbose_level) { verbose_level_ = verbose_level; }
 
+  // Retrieves the current verbose level.
+  int verbose_level() const { return verbose_level_; }
+
  private:
   // Required for constructing LazyInstance<ScopeLogger>.
   friend struct base::DefaultLazyInstanceTraits<ScopeLogger>;

@@ -831,11 +831,30 @@ void OpenVPNDriver::InitLoggingOptions(vector<vector<string>>* options) {
   AppendOption("syslog", options);
 
   string verb = args()->LookupString(kOpenVPNVerbProperty, "");
-  if (verb.empty() && SLOG_IS_ON(VPN, 0)) {
-    verb = "3";
-  }
   if (!verb.empty()) {
     AppendOption("verb", verb, options);
+    return;
+  }
+
+  if (SLOG_IS_ON(VPN, 6)) {
+    // Maximum output:
+    // --verb 9 enables PKCS11 debug, TCP stream, link read/write
+    // --verb 8 enables event waits, scheduler, tls_session
+    AppendOption("verb", "9", options);
+  } else if (SLOG_IS_ON(VPN, 5)) {
+    // --verb 7 enables data channel encryption keys, routing,
+    // pkcs11 actions, pings, push/pull debug
+    AppendOption("verb", "7", options);
+  } else if (SLOG_IS_ON(VPN, 4)) {
+    // --verb 6 enables tcp/udp reads/writes (short), tun/tap reads/writes
+    // --verb 5 enables printing 'R' or 'W' per packet to stdout
+    AppendOption("verb", "6", options);
+  } else if (SLOG_IS_ON(VPN, 3)) {
+    // --verb 4 enables logging packet drops, options
+    AppendOption("verb", "4", options);
+  } else if (SLOG_IS_ON(VPN, 0)) {
+    // --verb 3 is the old default for `ff_debug +vpn`
+    AppendOption("verb", "3", options);
   }
 }
 
