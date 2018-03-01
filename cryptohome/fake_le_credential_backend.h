@@ -29,6 +29,9 @@ class FakeLECredentialBackend : public LECredentialBackend {
   FakeLECredentialBackend();
   bool Reset() override;
 
+  // For the fake backend, we can always assume it's supported.
+  bool IsSupported() override { return true; };
+
   bool InsertCredential(const uint64_t label,
                         const std::vector<std::vector<uint8_t>>& h_aux,
                         const brillo::SecureBlob& le_secret,

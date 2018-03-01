@@ -55,6 +55,11 @@ class LECredentialBackend {
   // Returns true on success, false otherwise.
   virtual bool Reset() = 0;
 
+  // Returns whether LE credential protection is supported in this specific
+  // backend. Not all TPM2-based h/w will support this feature (only Cr50
+  // and later), so this function will only return true for h/w which does.
+  virtual bool IsSupported() = 0;
+
   // Tries to insert a credential into the TPM.
   //
   // The label of the leaf node is in |label|, the list of auxiliary hashes is

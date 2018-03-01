@@ -38,6 +38,11 @@ class Tpm2Impl : public Tpm {
    public:
     bool Reset() override;
 
+    // Hard-code to false, since the Cr50 side functionality is not
+    // checked in yet.
+    // TODO(pmalani): Change once TPM code is checked in.
+    bool IsSupported() override { return false; }
+
     bool InsertCredential(const uint64_t label,
                           const std::vector<std::vector<uint8_t>>& h_aux,
                           const brillo::SecureBlob& le_secret,
