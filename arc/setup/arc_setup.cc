@@ -58,12 +58,14 @@
   } while (false)
 
 // TODO(yusukes): use android_filesystem_config.h.
-#define AID_ROOT 0        /* traditional unix root user */
-#define AID_SYSTEM 1000   /* system server */
-#define AID_LOG 1007      /* log devices */
-#define AID_MEDIA_RW 1023 /* internal media storage write access */
-#define AID_SHELL 2000    /* adb and debug shell user */
-#define AID_CACHE 2001    /* cache access */
+#define AID_ROOT 0         /* traditional unix root user */
+#define AID_SYSTEM 1000    /* system server */
+#define AID_LOG 1007       /* log devices */
+#define AID_SDCARD_RW 1015 /* external storage write access */
+#define AID_MEDIA_RW 1023  /* internal media storage write access */
+#define AID_SHELL 2000     /* adb and debug shell user */
+#define AID_CACHE 2001     /* cache access */
+#define AID_EVERYBODY 9997 /* shared between all apps in the same profile */
 
 namespace arc {
 
@@ -141,6 +143,8 @@ constexpr uid_t kShellUid = AID_SHELL + kShiftUid;
 constexpr uid_t kShellGid = AID_SHELL + kShiftGid;
 constexpr gid_t kCacheGid = AID_CACHE + kShiftGid;
 constexpr gid_t kLogGid = AID_LOG + kShiftGid;
+constexpr gid_t kSdcardRwGid = AID_SDCARD_RW + kShiftGid;
+constexpr gid_t kEverybodyGid = AID_EVERYBODY + kShiftGid;
 
 constexpr char kSwitchSetup[] = "setup";
 constexpr char kSwitchBootContinue[] = "boot-continue";
@@ -149,9 +153,12 @@ constexpr char kSwitchOnetimeSetup[] = "onetime-setup";
 constexpr char kSwitchOnetimeStop[] = "onetime-stop";
 constexpr char kSwitchPreChroot[] = "pre-chroot";
 constexpr char kSwitchReadAhead[] = "read-ahead";
+constexpr char kSwitchMountSdcard[] = "mount-sdcard";
 
 // The maximum time arc::EmulateArcUreadahead() can spend.
 constexpr base::TimeDelta kReadAheadTimeout = base::TimeDelta::FromSeconds(7);
+// The maximum time to wait for /data/media setup.
+constexpr base::TimeDelta kInstalldTimeout = base::TimeDelta::FromSeconds(60);
 
 enum class Mode {
   SETUP = 0,
@@ -161,6 +168,7 @@ enum class Mode {
   ONETIME_STOP,
   PRE_CHROOT,
   READ_AHEAD,
+  MOUNT_SDCARD,
   UNKNOWN,
 };
 
@@ -180,6 +188,8 @@ Mode GetMode() {
     return Mode::PRE_CHROOT;
   if (command_line->HasSwitch(kSwitchReadAhead))
     return Mode::READ_AHEAD;
+  if (command_line->HasSwitch(kSwitchMountSdcard))
+    return Mode::MOUNT_SDCARD;
   CHECK(false) << "Missing mode";
   return Mode::UNKNOWN;
 }
@@ -323,6 +333,71 @@ bool CreateArtContainerDataDirectory(
     }
   }
   return true;
+}
+
+// Stores relative path, mode_t for sdcard mounts.
+struct EsdfsMount {
+  const char* relative_path;
+  mode_t mode;
+  gid_t gid;
+};
+
+constexpr std::array<EsdfsMount, 3> kEsdfsMounts{{
+    {"default/emulated", 0006, kSdcardRwGid},
+    {"read/emulated", 0027, kEverybodyGid},
+    {"write/emulated", 0007, kEverybodyGid},
+}};
+
+// Esdfs mount options:
+// --------------------
+// fsuid, fsgid  : Lower filesystem's uid/gid.
+//
+// derive_gid    : Changes uid/gid values on the lower filesystem for tracking
+//                 storage user by apps and various categories.
+//
+// default_normal: Does not treat the default mount (using gid AID_SDCARD_RW)
+//                 differently. Without this, the gid presented by the upper
+//                 filesystem does not include the user, and would allow shell
+//                 users to access all user’s data.
+//
+// mask          : Masks away permissions.
+//
+// gid           : Upper filesystem's group id.
+//
+// ns_fd         : Namespace file descriptor used to set the base namespace for
+//                 the esdfs mount, similar to the  argument to setns(2).
+
+std::string CreateEsdfsMountOpts(uid_t fsuid,
+                                 gid_t fsgid,
+                                 mode_t mask,
+                                 uid_t userid,
+                                 gid_t gid,
+                                 int container_userns_fd) {
+  std::string opts = base::StringPrintf(
+      "fsuid=%d,fsgid=%d,derive_gid,default_normal,mask=%d,multiuser,"
+      "gid=%d,ns_fd=%d",
+      fsuid, fsgid, mask, gid, container_userns_fd);
+  LOG(INFO) << "Esdfs mount options: " << opts;
+  return opts;
+}
+
+// Wait upto kInstalldTimeout for the sdcard source directory to be setup.
+// On failure, exit.
+bool WaitForSdcardSource(const base::FilePath& android_root) {
+  bool ret;
+  base::TimeDelta elapsed;
+  // <android_root>/data path to synchronize with installd
+  const base::FilePath fs_version = android_root.Append("data/.layout_version");
+
+  LOG(INFO) << "Waiting upto " << kInstalldTimeout
+            << " for installd to complete setting up /data.";
+  ret = WaitForPaths({fs_version}, kInstalldTimeout, &elapsed);
+
+  LOG(INFO) << "Waiting for installd took " << elapsed.InSeconds() << "s";
+  if (!ret)
+    LOG(ERROR) << "Timed out waiting for /data setup.";
+
+  return ret;
 }
 
 }  // namespace
@@ -652,6 +727,26 @@ void ArcSetup::SetUpGservicesCache() {
             << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
 }
 
+void ArcSetup::UnmountSdcard() {
+  // Teardown mounts. pkglist are teared down in an upstart file.
+  const bool is_esdfs_supported =
+      GetBooleanEnvOrDie(arc_paths_->env.get(), "USE_ESDFS");
+
+  // If USE_ESDFS is not set, then /system/bin/sdcard manages the mount instead.
+  if (!is_esdfs_supported) {
+    LOG(INFO) << "Esdfs not enabled. /system/bin/sdcard manages the mount.";
+    return;
+  }
+
+  for (auto mount : kEsdfsMounts) {
+    base::FilePath kDestDirectory =
+        arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
+    IGNORE_ERRORS(arc_mounter_->UmountLazily(kDestDirectory));
+  }
+
+  LOG(INFO) << "Unmount sdcard complete.";
+}
+
 void ArcSetup::CreateContainerFilesAndDirectories() {
   EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
                             base::FilePath("/run/arc")));
@@ -775,6 +870,43 @@ void ArcSetup::MaybeStartUreadaheadInTracingMode() {
     IGNORE_ERRORS(
         LaunchAndWait({"/sbin/initctl", "start", "arc-ureadahead-trace"}));
   }
+}
+
+void ArcSetup::SetUpSdcard() {
+  constexpr unsigned int mount_flags =
+      MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_NOATIME;
+  const base::FilePath source_directory =
+      arc_paths_->android_mutable_source.Append("data/media");
+
+  const bool is_esdfs_supported =
+      GetBooleanEnvOrDie(arc_paths_->env.get(), "USE_ESDFS");
+
+  // Get the container's user namespace file descriptor.
+  int container_pid;
+  base::StringToInt(GetEnvOrDie(arc_paths_->env.get(), "CONTAINER_PID"),
+                    &container_pid);
+  base::ScopedFD container_userns_fd(HANDLE_EINTR(
+      open(base::StringPrintf("/proc/%d/ns/user", container_pid).c_str(),
+           O_RDONLY)));
+
+  // SetUpSdcard can only be called from arc-sdcard is USE_ESDFS is enabled.
+  CHECK(is_esdfs_supported);
+
+  // Installd setups up the user data directory skeleton on first-time boot.
+  // Wait for setup
+  EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source));
+
+  for (auto mount : kEsdfsMounts) {
+    base::FilePath dest_directory =
+        arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
+    EXIT_IF(!arc_mounter_->Mount(
+        source_directory.value(), dest_directory, "esdfs", mount_flags,
+        CreateEsdfsMountOpts(kMediaUid, kMediaGid, mount.mode, kRootUid,
+                             mount.gid, container_userns_fd.get())
+            .c_str()));
+  }
+
+  LOG(INFO) << "Esdfs setup complete.";
 }
 
 void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
@@ -1942,6 +2074,7 @@ void ArcSetup::OnBootContinue() {
 
 void ArcSetup::OnStop() {
   CleanUpBinFmtMiscSetUp();
+  UnmountSdcard();
   UnmountOnStop();
   RemoveBugreportPipe();
   RemoveAndroidKmsgFifo();
@@ -1992,6 +2125,13 @@ void ArcSetup::OnReadAhead() {
   EmulateArcUreadahead(arc_paths_->android_rootfs_directory, kReadAheadTimeout);
 }
 
+void ArcSetup::OnMountSdcard() {
+  // Set up sdcard asynchronously from arc-sdcard so that waiting on installd
+  // does not add latency to boot-continue (and result in session-manager
+  // related timeouts).
+  SetUpSdcard();
+}
+
 void ArcSetup::Run() {
   switch (arc_paths_->mode) {
     case Mode::SETUP:
@@ -2014,6 +2154,9 @@ void ArcSetup::Run() {
       break;
     case Mode::READ_AHEAD:
       OnReadAhead();
+      break;
+    case Mode::MOUNT_SDCARD:
+      OnMountSdcard();
       break;
     case Mode::UNKNOWN:
       NOTREACHED();

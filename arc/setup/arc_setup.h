@@ -116,6 +116,9 @@ class ArcSetup {
   // Sets up shared APK cache directory.
   void SetUpSharedApkDirectory();
 
+  // Sets up sdcard mount, if required.
+  void SetUpSdcard();
+
   // Creates files and directories needed by the container.
   void CreateContainerFilesAndDirectories();
 
@@ -212,6 +215,9 @@ class ArcSetup {
 
   // Cleans up binfmt_misc handlers that run arm binaries on x86.
   void CleanUpBinFmtMiscSetUp();
+
+  // Cleanup sdcard mount.
+  void UnmountSdcard();
 
   // Unmounts files and directories that are not necessary after shutting down
   // the container.
@@ -333,6 +339,9 @@ class ArcSetup {
 
   // Called when arc-setup is called with --read-ahead.
   void OnReadAhead();
+
+  // Called when arc-setup is called with --mount-sdcard.
+  void OnMountSdcard();
 
   std::unique_ptr<ArcMounter> arc_mounter_;
   std::unique_ptr<ArcPaths> arc_paths_;

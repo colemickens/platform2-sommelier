@@ -49,6 +49,10 @@ export DELETE_DATA_EXECUTABLES_AFTER_OTA=0
 # Setting this value to 1 will enable arc-appfuse-provider.
 export ENABLE_APPFUSE_PROVIDER=0
 
+# Setting this value to 1 will switch the implementation of the sdcard mount
+# from a FUSE to esdfs, if supported.
+export USE_ESDFS=0
+
 # ------------------------------------------------------------------------------
 # The variable is regexp-matched by setup_writable_android_mount.sh. Be careful
 # when editing. Setting this value to 1 will make the Android root,
