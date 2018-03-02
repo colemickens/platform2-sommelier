@@ -476,8 +476,7 @@ main ()
         ;;
       --ht-location)
         ht_location="${1}"
-        if [ "${ht_location}" != "above" -a
-              "${ht_location}" != "below" ] ; then
+        if [ "${ht_location}" != "above" -a "${ht_location}" != "below" ] ; then
           command_line_error "HT location must be either \"above\" or \"below\""
         fi
         shift
