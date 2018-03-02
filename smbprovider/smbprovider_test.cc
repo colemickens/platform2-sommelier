@@ -30,6 +30,19 @@ ErrorType CastError(int error) {
   return static_cast<ErrorType>(error);
 }
 
+void ValidateFDContent(const dbus::FileDescriptor& fd,
+                       int32_t length_to_read,
+                       std::vector<uint8_t>::const_iterator data_start_iterator,
+                       std::vector<uint8_t>::const_iterator data_end_iterator) {
+  EXPECT_EQ(length_to_read,
+            std::distance(data_start_iterator, data_end_iterator));
+  std::vector<uint8_t> buffer(length_to_read);
+  EXPECT_TRUE(base::ReadFromFD(
+      fd.value(), reinterpret_cast<char*>(buffer.data()), buffer.size()));
+  EXPECT_TRUE(std::equal(data_start_iterator, data_end_iterator, buffer.begin(),
+                         buffer.end()));
+}
+
 }  // namespace
 
 class SmbProviderTest : public testing::Test {
@@ -148,20 +161,6 @@ class SmbProviderTest : public testing::Test {
         CreateReadFileOptionsBlob(mount_id, file_id, offset, length);
     smbprovider_->ReadFile(read_file_blob, &err, fd);
     EXPECT_EQ(ERROR_OK, CastError(err));
-  }
-
-  void ValidateFDContent(
-      const dbus::FileDescriptor& fd,
-      int32_t length_to_read,
-      std::vector<uint8_t>::const_iterator data_start_iterator,
-      std::vector<uint8_t>::const_iterator data_end_iterator) {
-    EXPECT_EQ(length_to_read,
-              std::distance(data_start_iterator, data_end_iterator));
-    std::vector<uint8_t> buffer(length_to_read);
-    EXPECT_TRUE(base::ReadFromFD(
-        fd.value(), reinterpret_cast<char*>(buffer.data()), buffer.size()));
-    EXPECT_TRUE(std::equal(data_start_iterator, data_end_iterator,
-                           buffer.begin(), buffer.end()));
   }
 
   void WriteToTempFileWithData(const std::vector<uint8_t>& data,
