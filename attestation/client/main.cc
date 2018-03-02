@@ -113,7 +113,8 @@ Commands:
           [--output=<output_file>]
       Creates certificate request to CA for |user|, using provided certificate
         |profile| and |origin|, and stores it to |output_file|.
-        Possible |profile| values: user, machine, content, cpsi, cast, gfsc.
+        Possible |profile| values: user, machine, enrollment, content, cpsi,
+        cast, gfsc.
   finish_cert_request [--user=<user>] [--label=<label>] --input=<input_file>
       Finishes certificate request for |user| using CA response from
       |input_file|, and stores it in the key with the specified |label|.
@@ -339,6 +340,9 @@ class ClientLoop : public ClientLoopBase {
       } else if (profile_str == "enterprise_user" || profile_str == "user" ||
                  profile_str == "u") {
         profile = ENTERPRISE_USER_CERTIFICATE;
+      } else if (profile_str == "enterprise_enrollment" ||
+                 profile_str == "enrollment" || profile_str == "e") {
+        profile = ENTERPRISE_ENROLLMENT_CERTIFICATE;
       } else if (profile_str == "content_protection" ||
                  profile_str == "content" || profile_str == "c") {
         profile = CONTENT_PROTECTION_CERTIFICATE;
