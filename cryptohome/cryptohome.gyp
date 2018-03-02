@@ -99,10 +99,35 @@
 
     # Common objects.
     {
+      'target_name': 'libcrosplatform',
+      'type': 'static_library',
+      'link_settings': {
+        'libraries': [
+          '-lkeyutils',
+          '-lsecure_erase_file',
+        ],
+      },
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+          'libecryptfs',
+          'libmetrics-<(libbase_ver)',
+        ],
+      },
+      'sources': [
+        'cryptohome_metrics.cc',
+        'cryptolib.cc',
+        'dircrypto_util.cc',
+        'platform.cc',
+      ],
+    },
+    {
       'target_name': 'libcrostpm',
       'type': 'static_library',
       'dependencies': [
         'cryptohome-proto',
+        'libcrosplatform',
       ],
       'link_settings': {
         'libraries': [
@@ -121,15 +146,11 @@
         'crc32.c',
         'crc8.c',
         'crypto.cc',
-        'cryptohome_metrics.cc',
-        'cryptolib.cc',
-        'dircrypto_util.cc',
         'firmware_management_parameters.cc',
         'install_attributes.cc',
         'lockbox.cc',
         'pkcs11_init.cc',
         'pkcs11_keystore.cc',
-        'platform.cc',
         'tpm.cc',
         'tpm_init.cc',
         'tpm_persistent_state.cc',
