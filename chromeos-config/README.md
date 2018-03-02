@@ -1035,10 +1035,10 @@ At this point the new compiled database is installed in
 
 To query your new item run the test command in the chroot:
 
- $ cros_config_host_py -c /build/${BOARD}/usr/share/chromeos-config/config.dtb \
+ $ cros_config_host -c /build/${BOARD}/usr/share/chromeos-config/config.dtb \
     -m <MODEL> get </path/to/property> <property name>
 
 for instance:
 
- $ cros_config_host_py -c /build/coral/usr/share/chromeos-config/config.dtb \
+ $ cros_config_host -c /build/coral/usr/share/chromeos-config/config.dtb \
     -m robo360 get /firmware key-id

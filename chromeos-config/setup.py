@@ -20,9 +20,6 @@ setup(
         'console_scripts': [
             'cros_config_host = cros_config_host.cros_config_host:main',
             'cros_config_schema = cros_config_host.v2.cros_config_schema:main',
-            # TODO(crbug.com/813442): Remove after changing callers to
-            # cros_config_host.
-            'cros_config_host_py = cros_config_host.cros_config_host:main',
             'validate_config = cros_config_host.validate_config:Main',
         ],
     },
