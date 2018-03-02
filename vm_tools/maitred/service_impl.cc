@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -35,6 +36,8 @@ namespace {
 // Default name of the interface in the VM.
 constexpr char kInterfaceName[] = "eth0";
 constexpr char kLoopbackName[] = "lo";
+
+constexpr char kHostIpPath[] = "/run/host_ip";
 
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
@@ -189,17 +192,32 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
 
   route.rt_flags = RTF_UP | RTF_GATEWAY;
 
+  string gateway_str = AddressToString(ipv4_config.gateway());
   if (HANDLE_EINTR(ioctl(fd.get(), SIOCADDRT, &route)) != 0) {
     int saved_errno = errno;
     PLOG(ERROR) << "Failed to set default IPv4 gateway for interface "
-                << kInterfaceName << " to "
-                << AddressToString(ipv4_config.gateway());
+                << kInterfaceName << " to " << gateway_str;
     return grpc::Status(grpc::INTERNAL, string("failed to set IPv4 gateway: ") +
                                             strerror(saved_errno));
   }
 
   LOG(INFO) << "Set default IPv4 gateway for interface " << kInterfaceName
-            << " to " << AddressToString(ipv4_config.gateway());
+            << " to " << gateway_str;
+
+  // Write the host IP address to a file for LXD containers to use.
+  base::FilePath host_ip_path(kHostIpPath);
+  size_t gateway_str_len = gateway_str.size();
+  if (base::WriteFile(host_ip_path, gateway_str.c_str(), gateway_str_len) !=
+      gateway_str_len) {
+    LOG(ERROR) << "Failed to write host IPv4 address to file";
+    return grpc::Status(grpc::INTERNAL, "failed to write host IPv4 address");
+  }
+
+  if (!base::SetPosixFilePermissions(host_ip_path, 0644)) {
+    LOG(ERROR) << "Failed to set host IPv4 address file permissions";
+    return grpc::Status(grpc::INTERNAL,
+                        "failed to set host IPv4 address permissions");
+  }
 
   return grpc::Status::OK;
 }
