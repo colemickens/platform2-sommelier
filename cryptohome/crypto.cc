@@ -9,12 +9,14 @@
 #include <sys/types.h>
 
 #include <limits>
+#include <map>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <unistd.h>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -44,6 +46,10 @@ using base::FilePath;
 using brillo::SecureBlob;
 
 namespace cryptohome {
+
+// Location where we store the Low Entropy (LE) credential manager related
+// state.
+const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";
 
 // An upper bound on the amount of memory that we allow Scrypt to use when
 // performing key strengthening (32MB).  A large size is okay since we only use
@@ -84,6 +90,24 @@ const int64_t Crypto::kSaltMax = (1 << 20);  // 1 MB
 // File permissions of salt file (modulo umask).
 const mode_t kSaltFilePermissions = 0644;
 
+// String used as vector in HMAC operation to derive vkk_seed from High Entropy
+// secret.
+const char kHESecretHmacData[] = "vkk_seed";
+
+// A default delay schedule to be used for LE Credentials.
+// The format for a delay schedule entry is as follows:
+//
+// (number_of_incorrect_attempts, delay before_next_attempt)
+//
+// The default schedule is for the first 5 incorrect attempts to have no delay,
+// and no further attempts allowed.
+const struct {
+  uint32_t attempts;
+  uint32_t delay;
+} kDefaultDelaySchedule[] = {
+  { 5, UINT32_MAX }
+};
+
 Crypto::Crypto(Platform* platform)
     : use_tpm_(false),
       tpm_(NULL),
@@ -103,6 +127,11 @@ bool Crypto::Init(TpmInit* tpm_init) {
     }
     tpm_init_ = tpm_init;
     tpm_init_->SetupTpm(true);
+    if (tpm_->GetLECredentialBackend() &&
+        tpm_->GetLECredentialBackend()->IsSupported()) {
+      le_manager_ = std::make_unique<LECredentialManager>(
+          tpm_->GetLECredentialBackend(), base::FilePath(kSignInHashTreeDir));
+    }
   }
   return true;
 }
@@ -117,53 +146,39 @@ Crypto::CryptoError Crypto::EnsureTpm(bool reload_key) const {
   return result;
 }
 
-bool Crypto::PasskeyToSKeys(const brillo::Blob& passkey,
-                            const brillo::Blob& salt,
-                            brillo::SecureBlob* aes_skey,
-                            brillo::SecureBlob* kdf_skey,
-                            brillo::SecureBlob* vkk_iv) const {
-    // Scrypt parameters for deriving key material from UserPasskey.
-    // N = kUPScryptWorkFactor
-    // r = kUPScryptBlockSize
-    // p = kUPScryptParallelFactor
-    const uint64_t kUPScryptWorkFactor = (1 << 14);
-    const uint32_t kUPScryptBlockSize = 8;
-    const uint32_t kUPScryptParallelFactor = 1;
+bool Crypto::DeriveSecretsSCrypt(
+    const brillo::Blob& passkey,
+    const brillo::Blob& salt,
+    std::vector<brillo::SecureBlob*> gen_secrets) const {
+  // Scrypt parameters for deriving key material from UserPasskey.
+  // N = kUPScryptWorkFactor
+  // r = kUPScryptBlockSize
+  // p = kUPScryptParallelFactor
+  const uint64_t kUPScryptWorkFactor = (1 << 14);
+  const uint32_t kUPScryptBlockSize = 8;
+  const uint32_t kUPScryptParallelFactor = 1;
 
-    struct {
-      brillo::SecureBlob* out;
-      size_t size;
-    } generated_values[] = {
-      {aes_skey, kDefaultAesKeySize},
-      {kdf_skey, kDefaultAesKeySize},
-      {vkk_iv, kAesBlockSize},
-    };
+  size_t generated_len = 0;
+  for (auto& secret : gen_secrets) {
+    generated_len += secret->size();
+  }
 
-    size_t generated_len = 0;
-    for (const auto& value : generated_values) {
-      generated_len += value.size;
-    }
-    SecureBlob generated(generated_len);
-    if (crypto_scrypt(passkey.data(),
-                      passkey.size(),
-                      salt.data(),
-                      salt.size(),
-                      kUPScryptWorkFactor,
-                      kUPScryptBlockSize,
-                      kUPScryptParallelFactor,
-                      generated.data(),
-                      generated.size())) {
-      LOG(ERROR) << "Failed to derive scrypt keys from passkey.";
-      return false;
-    }
+  SecureBlob generated(generated_len);
+  if (crypto_scrypt(passkey.data(), passkey.size(), salt.data(), salt.size(),
+                    kUPScryptWorkFactor, kUPScryptBlockSize,
+                    kUPScryptParallelFactor, generated.data(),
+                    generated.size())) {
+    LOG(ERROR) << "Failed to derive scrypt keys from passkey.";
+    return false;
+  }
 
-    uint8_t* data = generated.data();
-    for (const auto& value : generated_values) {
-      *value.out = brillo::SecureBlob(data, data + value.size);
-      data += value.size;
-    }
+  uint8_t* data = generated.data();
+  for (auto& value : gen_secrets) {
+    value->assign(data, data + value->size());
+    data += value->size();
+  }
 
-    return true;
+  return true;
 }
 
 bool Crypto::PasskeyToTokenAuthData(const brillo::Blob& passkey,
@@ -385,13 +400,15 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   SecureBlob tpm_key(serialized.tpm_key().length());
   serialized.tpm_key().copy(tpm_key.char_data(),
                             serialized.tpm_key().length(), 0);
-  SecureBlob aes_skey;
-  SecureBlob kdf_skey;
-  SecureBlob vkk_iv;
+  SecureBlob aes_skey(kDefaultAesKeySize);
+  SecureBlob kdf_skey(kDefaultAesKeySize);
+  SecureBlob vkk_iv(kAesBlockSize);
+
   bool scrypt_derived =
       serialized.flags() & SerializedVaultKeyset::SCRYPT_DERIVED;
   if (scrypt_derived) {
-    if (!PasskeyToSKeys(vault_key, salt, &aes_skey, &kdf_skey, &vkk_iv)) {
+    if (!DeriveSecretsSCrypt(vault_key, salt,
+                             {&aes_skey, &kdf_skey, &vkk_iv})) {
       if (error)
         *error = CE_OTHER_FATAL;
       return false;
@@ -475,33 +492,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     }
   }
 
-  // Use the same key to unwrap the wrapped authorization data.
-  if (serialized.key_data().authorization_data_size() > 0) {
-    KeyData* key_data = keyset->mutable_serialized()->mutable_key_data();
-    for (int auth_data_i = 0;
-         auth_data_i < key_data->authorization_data_size();
-         ++auth_data_i) {
-      KeyAuthorizationData* auth_data =
-          key_data->mutable_authorization_data(auth_data_i);
-      for (int secret_i = 0; secret_i < auth_data->secrets_size(); ++secret_i) {
-        KeyAuthorizationSecret* secret = auth_data->mutable_secrets(secret_i);
-        if (!secret->wrapped() || !secret->has_symmetric_key())
-          continue;
-        SecureBlob encrypted_auth_key(secret->symmetric_key());
-        SecureBlob clear_key;
-        // Is it reasonable to use this key here as well?
-        if (!CryptoLib::AesDecrypt(encrypted_auth_key, vkk_key, vkk_iv,
-                                   &clear_key)) {
-          LOG(ERROR) << "Failed to unwrap a symmetric authorization key:"
-                     << " (" << auth_data_i << "," << secret_i << ")";
-          // This does not force a failure to use the keyset.
-          continue;
-        }
-        secret->set_symmetric_key(clear_key.to_string());
-        secret->set_wrapped(false);
-      }
-    }
-  }
+  DecryptAuthorizationData(serialized, keyset, vkk_key, vkk_iv);
 
   keyset->FromKeysBlob(plain_text);
   if (chaps_key_present) {
@@ -618,11 +609,100 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
   if (!use_tpm_ || !tpm_)
     return false;
 
-  // TODO(crbug.com/794010): use LECredentialHandler when ready.
-  LOG(ERROR) << "Low entropy credentials are not supported.";
-  if (error)
-    *error = CE_OTHER_CRYPTO;
-  return false;
+  // Bail immediately if we don't have a valid LECredentialManager.
+  if (!le_manager_) {
+    if (error)
+      *error = CE_LE_NOT_SUPPORTED;
+    return false;
+  }
+
+  CHECK(serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
+                                    serialized.wrapped_keyset().end());
+  SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
+  SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
+
+  bool chaps_key_present = serialized.has_wrapped_chaps_key();
+  SecureBlob local_wrapped_chaps_key(serialized.wrapped_chaps_key());
+
+  SecureBlob le_secret(kDefaultAesKeySize);
+  SecureBlob kdf_skey(kDefaultAesKeySize);
+  SecureBlob le_iv(kAesBlockSize);
+  if (!DeriveSecretsSCrypt(vault_key, salt, {&le_secret, &kdf_skey, &le_iv})) {
+    if (error)
+      *error = CE_OTHER_FATAL;
+    return false;
+  }
+
+  // Try to obtain the HE Secret from the LECredentialManager.
+  SecureBlob he_secret;
+  int ret =
+      le_manager_->CheckCredential(serialized.le_label(), le_secret,
+                                   &he_secret);
+  if (ret != LE_CRED_SUCCESS) {
+    if (error) {
+      if (ret == LE_CRED_ERROR_INVALID_LE_SECRET) {
+        *error = CE_LE_INVALID_SECRET;
+      } else if (ret == LE_CRED_ERROR_TOO_MANY_ATTEMPTS) {
+        *error = CE_TPM_DEFEND_LOCK;
+      } else if (ret == LE_CRED_ERROR_INVALID_LABEL) {
+        *error = CE_OTHER_FATAL;
+      } else if (ret == LE_CRED_ERROR_HASH_TREE) {
+        *error = CE_OTHER_FATAL;
+      } else {
+        *error = CE_OTHER_FATAL;
+      }
+    }
+    return false;
+  }
+
+  SecureBlob vkk_seed = CryptoLib::HmacSha256(he_secret,
+      { std::begin(kHESecretHmacData), std::end(kHESecretHmacData) });
+
+  // We use separate IVs for decrypting the chaps keys and the file-encryption
+  // keys from the corresponding encrypted blobs.
+  SecureBlob local_fek_iv(serialized.le_fek_iv().begin(),
+                          serialized.le_fek_iv().end());
+  SecureBlob local_chaps_iv(serialized.le_chaps_iv().begin(),
+                            serialized.le_chaps_iv().end());
+
+  SecureBlob vkk_key;
+  vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
+  SecureBlob plain_text;
+  if (!CryptoLib::AesDecrypt(local_encrypted_keyset, vkk_key, local_fek_iv,
+                             &plain_text)) {
+    LOG(ERROR) << "AES decryption failed for vault keyset.";
+    if (error)
+      *error = CE_OTHER_CRYPTO;
+    return false;
+  }
+
+  SecureBlob unwrapped_chaps_key;
+  if (!local_wrapped_chaps_key.empty() &&
+      !CryptoLib::AesDecrypt(local_wrapped_chaps_key, vkk_key, local_chaps_iv,
+                             &unwrapped_chaps_key)) {
+    LOG(ERROR) << "AES decryption failed for chaps key.";
+    if (error)
+      *error = CE_OTHER_CRYPTO;
+    return false;
+  }
+
+  // For Authorization data, use the IV which was generated from
+  // the original Scrypt operations on the LE passphrase.
+  DecryptAuthorizationData(serialized, keyset, vkk_key, le_iv);
+
+  keyset->FromKeysBlob(plain_text);
+  if (chaps_key_present) {
+    keyset->set_chaps_key(unwrapped_chaps_key);
+  }
+
+  // Set the key policy appropriately.
+  keyset->mutable_serialized()
+      ->mutable_key_data()
+      ->mutable_policy()
+      ->set_low_entropy_credential(true);
+
+  return true;
 }
 
 bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
@@ -660,6 +740,33 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
   }
 }
 
+bool Crypto::GenerateEncryptedRawKeyset(const VaultKeyset& vault_keyset,
+                                        const SecureBlob& kdf_skey,
+                                        const SecureBlob& vkk_seed,
+                                        const SecureBlob& fek_iv,
+                                        const SecureBlob& chaps_iv,
+                                        SecureBlob* cipher_text,
+                                        SecureBlob* wrapped_chaps_key,
+                                        SecureBlob* vkk_key) const {
+  SecureBlob blob;
+  if (!vault_keyset.ToKeysBlob(&blob)) {
+    LOG(ERROR) << "Failure serializing keyset to buffer";
+    return false;
+  }
+
+  *vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
+
+  SecureBlob chaps_key = vault_keyset.chaps_key();
+  if (!CryptoLib::AesEncrypt(blob, *vkk_key, fek_iv, cipher_text) ||
+      !CryptoLib::AesEncrypt(chaps_key, *vkk_key, chaps_iv,
+                             wrapped_chaps_key)) {
+    LOG(ERROR) << "AES encryption failed.";
+    return false;
+  }
+
+  return true;
+}
+
 bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
                         const SecureBlob& key,
                         const SecureBlob& salt,
@@ -672,10 +779,11 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   SecureBlob local_blob(kDefaultAesKeySize);
   CryptoLib::GetSecureRandom(local_blob.data(), local_blob.size());
   SecureBlob tpm_key;
-  SecureBlob aes_skey;
-  SecureBlob kdf_skey;
-  SecureBlob vkk_iv;
-  if (!PasskeyToSKeys(key, salt, &aes_skey, &kdf_skey, &vkk_iv)) {
+  SecureBlob aes_skey(kDefaultAesKeySize);
+  SecureBlob kdf_skey(kDefaultAesKeySize);
+  SecureBlob vkk_iv(kAesBlockSize);
+
+  if (!DeriveSecretsSCrypt(key, salt, { &aes_skey, &kdf_skey, &vkk_iv })) {
     return false;
   }
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
@@ -689,18 +797,12 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
     return false;
   }
 
-  SecureBlob vkk_key = CryptoLib::HmacSha256(kdf_skey, local_blob);
-  SecureBlob blob;
-  if (!vault_keyset.ToKeysBlob(&blob)) {
-    LOG(ERROR) << "Failure serializing keyset to buffer";
-    return false;
-  }
-  SecureBlob chaps_key = vault_keyset.chaps_key();
   SecureBlob cipher_text;
   SecureBlob wrapped_chaps_key;
-  if (!CryptoLib::AesEncrypt(blob, vkk_key, vkk_iv, &cipher_text) ||
-      !CryptoLib::AesEncrypt(chaps_key, vkk_key, vkk_iv, &wrapped_chaps_key)) {
-    LOG(ERROR) << "AES encryption failed.";
+  SecureBlob vkk_key;
+  if (!GenerateEncryptedRawKeyset(vault_keyset, kdf_skey, local_blob, vkk_iv,
+                                  vkk_iv, &cipher_text, &wrapped_chaps_key,
+                                  &vkk_key)) {
     return false;
   }
 
@@ -745,38 +847,7 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
     serialized->clear_wrapped_chaps_key();
   }
 
-  // Handle AuthorizationData secrets if provided.
-  if (serialized->key_data().authorization_data_size() > 0) {
-    KeyData* key_data = serialized->mutable_key_data();
-    for (int auth_data_i = 0;
-         auth_data_i < key_data->authorization_data_size();
-         ++auth_data_i) {
-      KeyAuthorizationData* auth_data =
-          key_data->mutable_authorization_data(auth_data_i);
-      for (int secret_i = 0; secret_i < auth_data->secrets_size(); ++secret_i) {
-        KeyAuthorizationSecret* secret = auth_data->mutable_secrets(secret_i);
-        // Secrets that are externally provided should not be wrapped when
-        // this is called.  However, calling Encrypt() again should be
-        // idempotent.  External callers should be filtered at the API layer.
-        if (secret->wrapped() || !secret->has_symmetric_key())
-          continue;
-        SecureBlob clear_auth_key(secret->symmetric_key());
-        SecureBlob encrypted_auth_key;
-
-        if (!CryptoLib::AesEncrypt(clear_auth_key, vkk_key, vkk_iv,
-                                   &encrypted_auth_key)) {
-          LOG(ERROR) << "Failed to wrap a symmetric authorization key:"
-                     << " (" << auth_data_i << "," << secret_i << ")";
-          // This forces a failure.
-          return false;
-        }
-        secret->set_symmetric_key(encrypted_auth_key.to_string());
-        secret->set_wrapped(true);
-      }
-    }
-  }
-
-  return true;
+  return EncryptAuthorizationData(serialized, vkk_key, vkk_iv);
 }
 
 bool Crypto::EncryptScryptBlob(const SecureBlob& blob,
@@ -855,11 +926,168 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
                                  SerializedVaultKeyset* serialized) const {
   if (!use_tpm_ || !tpm_)
     return false;
+  if (!le_manager_)
+    return false;
 
-  // TODO(crbug.com/794010): use LECredentialHandler when ready.
-  // serialized->set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
-  LOG(ERROR) << "Low entropy credentials are not supported.";
+  EnsureTpm(false);
+
+  SecureBlob le_secret(kDefaultAesKeySize);
+  SecureBlob kdf_skey(kDefaultAesKeySize);
+  SecureBlob le_iv(kAesBlockSize);
+  if (!DeriveSecretsSCrypt(key, salt, { &le_secret, &kdf_skey, &le_iv })) {
+    return false;
+  }
+
+  // Create a randomly generated high entropy secret, derive VKKSeed from it,
+  // and use that to generate a VKK. The HE secret will be stored in the
+  // LECredentialManager, along with the LE secret (which is |key| here).
+  SecureBlob he_secret;
+  if (!tpm_->GetRandomData(kDefaultAesKeySize, &he_secret)) {
+    LOG(ERROR) << "Failed to obtain a VKK Seed for LE Credential";
+    return false;
+  }
+
+  // Derive the VKK_seed by performing an HMAC on he_secret.
+  SecureBlob vkk_seed = CryptoLib::HmacSha256(he_secret,
+      { std::begin(kHESecretHmacData), std::end(kHESecretHmacData) });
+
+  // Generate and store random new IVs for file-encryption keys and
+  // chaps key encryption.
+  SecureBlob fek_iv(kAesBlockSize);
+  SecureBlob chaps_iv(kAesBlockSize);
+  CryptoLib::GetSecureRandom(fek_iv.data(), fek_iv.size());
+  CryptoLib::GetSecureRandom(chaps_iv.data(), chaps_iv.size());
+  serialized->set_le_fek_iv(fek_iv.data(), fek_iv.size());
+  serialized->set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
+
+  SecureBlob cipher_text;
+  SecureBlob wrapped_chaps_key;
+  SecureBlob vkk_key;
+  if (!GenerateEncryptedRawKeyset(vault_keyset, kdf_skey, vkk_seed, fek_iv,
+                                  chaps_iv, &cipher_text, &wrapped_chaps_key,
+                                  &vkk_key)) {
+    return false;
+  }
+
+  serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
+  if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+    serialized->set_wrapped_chaps_key(wrapped_chaps_key.data(),
+                                      wrapped_chaps_key.size());
+  } else {
+    serialized->clear_wrapped_chaps_key();
+  }
+
+  if (!EncryptAuthorizationData(serialized, vkk_key, le_iv)) {
+    return false;
+  }
+
+  // Once we are able to correctly set up the VaultKeyset encryption,
+  // store the LE and HE credential in the LECredentialManager.
+
+  // Use the default delay schedule for now.
+  std::map<uint32_t, uint32_t> delay_sched;
+  for (const auto& entry : kDefaultDelaySchedule) {
+    delay_sched[entry.attempts] = entry.delay;
+  }
+
+  // Generate a unique reset secret for this credential.
+  if (vault_keyset.reset_seed().empty()) {
+    LOG(ERROR) << "The VaultKeyset doesn't have a reset seed, so we can't"
+      " set up an LE credential.";
+    return false;
+  }
+  SecureBlob local_reset_seed(vault_keyset.reset_seed().begin(),
+                              vault_keyset.reset_seed().end());
+  SecureBlob reset_salt(kAesBlockSize);
+  CryptoLib::GetSecureRandom(reset_salt.data(), reset_salt.size());
+  serialized->set_reset_salt(reset_salt.data(), reset_salt.size());
+  SecureBlob reset_secret = CryptoLib::HmacSha256(reset_salt, local_reset_seed);
+
+  uint64_t label;
+  int ret = le_manager_->InsertCredential(le_secret, he_secret,
+                                          reset_secret, delay_sched, &label);
+  if (ret == LE_CRED_SUCCESS) {
+    serialized->set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+    serialized->set_le_label(label);
+    return true;
+  }
+
+  if (ret == LE_CRED_ERROR_NO_FREE_LABEL) {
+    LOG(ERROR)
+        << "InsertLECredential failed: No free label available in hash tree.";
+  } else if (ret == LE_CRED_ERROR_HASH_TREE) {
+    LOG(ERROR) << "InsertLECredential failed: hash tree error.";
+  }
+
   return false;
+}
+
+bool Crypto::EncryptAuthorizationData(SerializedVaultKeyset* serialized,
+                                      const SecureBlob& vkk_key,
+                                      const SecureBlob& vkk_iv) const {
+  // Handle AuthorizationData secrets if provided.
+  if (serialized->key_data().authorization_data_size() > 0) {
+    KeyData* key_data = serialized->mutable_key_data();
+    for (int auth_data_i = 0; auth_data_i < key_data->authorization_data_size();
+         ++auth_data_i) {
+      KeyAuthorizationData* auth_data =
+          key_data->mutable_authorization_data(auth_data_i);
+      for (int secret_i = 0; secret_i < auth_data->secrets_size(); ++secret_i) {
+        KeyAuthorizationSecret* secret = auth_data->mutable_secrets(secret_i);
+        // Secrets that are externally provided should not be wrapped when
+        // this is called.  However, calling Encrypt() again should be
+        // idempotent.  External callers should be filtered at the API layer.
+        if (secret->wrapped() || !secret->has_symmetric_key())
+          continue;
+        SecureBlob clear_auth_key(secret->symmetric_key());
+        SecureBlob encrypted_auth_key;
+
+        if (!CryptoLib::AesEncrypt(clear_auth_key, vkk_key, vkk_iv,
+                                   &encrypted_auth_key)) {
+          LOG(ERROR) << "Failed to wrap a symmetric authorization key:"
+                     << " (" << auth_data_i << "," << secret_i << ")";
+          // This forces a failure.
+          return false;
+        }
+        secret->set_symmetric_key(encrypted_auth_key.to_string());
+        secret->set_wrapped(true);
+      }
+    }
+  }
+
+  return true;
+}
+
+void Crypto::DecryptAuthorizationData(const SerializedVaultKeyset& serialized,
+                                      VaultKeyset* keyset,
+                                      const SecureBlob& vkk_key,
+                                      const SecureBlob& vkk_iv) const {
+  // Use the same key to unwrap the wrapped authorization data.
+  if (serialized.key_data().authorization_data_size() > 0) {
+    KeyData* key_data = keyset->mutable_serialized()->mutable_key_data();
+    for (int auth_data_i = 0; auth_data_i < key_data->authorization_data_size();
+         ++auth_data_i) {
+      KeyAuthorizationData* auth_data =
+          key_data->mutable_authorization_data(auth_data_i);
+      for (int secret_i = 0; secret_i < auth_data->secrets_size(); ++secret_i) {
+        KeyAuthorizationSecret* secret = auth_data->mutable_secrets(secret_i);
+        if (!secret->wrapped() || !secret->has_symmetric_key())
+          continue;
+        SecureBlob encrypted_auth_key(secret->symmetric_key());
+        SecureBlob clear_key;
+        // Is it reasonable to use this key here as well?
+        if (!CryptoLib::AesDecrypt(encrypted_auth_key, vkk_key, vkk_iv,
+                                   &clear_key)) {
+          LOG(ERROR) << "Failed to unwrap a symmetric authorization key:"
+                     << " (" << auth_data_i << "," << secret_i << ")";
+          // This does not force a failure to use the keyset.
+          continue;
+        }
+        secret->set_symmetric_key(clear_key.to_string());
+        secret->set_wrapped(false);
+      }
+    }
+  }
 }
 
 bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
@@ -883,8 +1111,7 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
     }
   }
 
-  serialized->set_salt(vault_key_salt.data(),
-                       vault_key_salt.size());
+  serialized->set_salt(vault_key_salt.data(), vault_key_salt.size());
   return true;
 }
 

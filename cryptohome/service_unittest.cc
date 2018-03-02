@@ -381,6 +381,7 @@ TEST_F(ServiceTestNotInitialized, CheckLowDiskCallback) {
 TEST_F(ServiceTestNotInitialized, UploadAlertsCallback) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockTpmInit> tpm_init;
+  tpm_init.set_tpm(&tpm);
 
   service_.set_use_tpm(true);
   service_.set_tpm(&tpm);

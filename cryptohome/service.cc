@@ -3294,9 +3294,10 @@ void Service::DoGetSupportedKeyPolicies(const std::string& request,
       reply.MutableExtension(GetSupportedKeyPoliciesReply::reply);
 
   if (use_tpm_ && tpm_) {
-    // TODO(crbug.com/794010): use LECredentialBackend to check if
-    // LE credentials are supported.
-    extension->set_low_entropy_credentials(false);
+    if (tpm_->GetLECredentialBackend() &&
+        tpm_->GetLECredentialBackend()->IsSupported()) {
+     extension->set_low_entropy_credentials(true);
+    }
   } else {
     extension->set_low_entropy_credentials(false);
   }

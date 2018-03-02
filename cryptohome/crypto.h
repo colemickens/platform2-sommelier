@@ -12,12 +12,15 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
 #include "cryptohome/vault_keyset.h"
@@ -39,6 +42,10 @@ class Crypto {
     CE_OTHER_FATAL,
     CE_OTHER_CRYPTO,
     CE_NO_PUBLIC_KEY_HASH,
+    // Low Entropy(LE) credential protection is not supported on this device.
+    CE_LE_NOT_SUPPORTED,
+    // The LE secret provided during decryption is invalid.
+    CE_LE_INVALID_SECRET,
   };
 
   // Default constructor
@@ -76,19 +83,17 @@ class Crypto {
                                   const brillo::SecureBlob& vault_key_salt,
                                   SerializedVaultKeyset* serialized) const;
 
-  // Derives keys and other values from User Passkey.
+  // Derives secrets and other values from User Passkey.
   //
   // Parameters
-  //   passkey - The User Passkey, from which to derive the keys.
-  //   salt - The salt used when deriving the keys.
-  //   aes_skey (OUT) - The resulting key used at AES step (SKeyAES).
-  //   kdf_skey (OUT) - The resulting key used at KDF step (SKeyKDF).
-  //   vkk_iv (OUT) - The IV used for encrypting/decrypting VK.
-  virtual bool PasskeyToSKeys(const brillo::Blob& passkey,
-                              const brillo::Blob& salt,
-                              brillo::SecureBlob* aes_skey,
-                              brillo::SecureBlob* kdf_skey,
-                              brillo::SecureBlob* vkk_iv) const;
+  //   passkey - The User Passkey, from which to derive the secrets.
+  //   salt - The salt used when deriving the secrests.
+  //   gen_secrets (OUT) - Vector containing resulting secrets.
+  //
+  // The blob in |gen_secrets| should be allocated by the caller.
+  bool DeriveSecretsSCrypt(const brillo::Blob& passkey,
+                           const brillo::Blob& salt,
+                           std::vector<brillo::SecureBlob*> gen_secrets) const;
 
   // Converts the passkey to authorization data for a TPM-backed crypto token.
   //
@@ -214,6 +219,15 @@ class Crypto {
   // Converts a TPM error to a Crypto error
   CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) const;
 
+  bool GenerateEncryptedRawKeyset(const VaultKeyset& vault_keyset,
+                                  const brillo::SecureBlob& kdf_skey,
+                                  const brillo::SecureBlob& vkk_seed,
+                                  const brillo::SecureBlob& fek_iv,
+                                  const brillo::SecureBlob& chaps_iv,
+                                  brillo::SecureBlob* cipher_text,
+                                  brillo::SecureBlob* wrapped_chaps_key,
+                                  brillo::SecureBlob* vkk_key) const;
+
   bool EncryptTPM(const VaultKeyset& vault_keyset,
                   const brillo::SecureBlob& key,
                   const brillo::SecureBlob& salt,
@@ -267,6 +281,15 @@ class Crypto {
                            CryptoError* error,
                            VaultKeyset* vault_keyset) const;
 
+  bool EncryptAuthorizationData(SerializedVaultKeyset* serialized,
+                                const brillo::SecureBlob& vkk_key,
+                                const brillo::SecureBlob& vkk_iv) const;
+
+  void DecryptAuthorizationData(const SerializedVaultKeyset& serialized,
+                                VaultKeyset* keyset,
+                                const brillo::SecureBlob& vkk_key,
+                                const brillo::SecureBlob& vkk_iv) const;
+
   bool IsTPMPubkeyHash(const std::string& hash, CryptoError* error) const;
 
   // If set, the TPM will be used during the encryption of the vault keyset
@@ -282,6 +305,9 @@ class Crypto {
   TpmInit* tpm_init_;
 
   double scrypt_max_encrypt_time_;
+
+  // Handler for Low Entropy credentials.
+  std::unique_ptr<LECredentialManager> le_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Crypto);
 };

@@ -72,4 +72,18 @@ message SerializedVaultKeyset {
   // Used during EncryptTPM/DecryptTPM to perform AES encryption of the
   // reset_seed.
   optional bytes reset_iv = 12;
+
+  // Label under which this key's low entropy and high entropy secrets
+  // are stored by LECredentialManager.
+  optional uint64 le_label = 13;
+
+  // Used during EncryptLECredential/DecryptLECredential to perform AES
+  // encryption of the file encryption key and chaps key in VaultKeyset.
+  optional bytes le_fek_iv = 14;
+  optional bytes le_chaps_iv = 15;
+
+  // Used *only* by EncryptLECredenrtial/DecryptLECredential to wrap
+  // conver the reset_seed (which is only 1-per-user) to a per LE
+  // Credential reset secret using HMACSha256.
+  optional bytes reset_salt = 16;
 }

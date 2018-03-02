@@ -1362,6 +1362,9 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   // scrypt_derived  *   *   *   *   X   -   *   *   X   -   *   *   *   *   *
   //
   // migrate         N   Y   Y   Y   N   Y   Y   Y   N   Y   Y   Y   Y   N   Y
+  //
+  // If the vault keyset represents an LE credential, we should not re-encrypt
+  // it at all (that is unecessary).
   bool tpm_wrapped =
       (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
   bool scrypt_wrapped =
@@ -1370,11 +1373,15 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
       (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED) != 0;
   bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
                      crypto_->is_cryptohome_key_loaded());
+  bool is_le_credential =
+      (crypt_flags & SerializedVaultKeyset::LE_CREDENTIAL) != 0;
   bool should_scrypt = true;
   do {
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
     if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
+      if (is_le_credential)
+        break;
       if (tpm_wrapped && should_tpm && !scrypt_wrapped) {
         if (scrypt_derived)
           break;  // 5, 9
