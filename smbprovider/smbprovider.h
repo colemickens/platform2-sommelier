@@ -156,7 +156,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Helper method to write data from a |buffer| into a temporary file and
   // outputs the resulting file descriptor into |temp_fd|. |options| is used for
   // logging purposes. This sets |error_code| on failure.
-  bool WriteTempFile(const ReadFileOptionsProto& options,
+  template <typename Proto>
+  bool WriteTempFile(const Proto& options,
                      const std::vector<uint8_t>& buffer,
                      int32_t* error_code,
                      dbus::FileDescriptor* temp_fd);

@@ -466,7 +466,8 @@ bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptionsProto& options,
   return true;
 }
 
-bool SmbProvider::WriteTempFile(const ReadFileOptionsProto& options,
+template <typename Proto>
+bool SmbProvider::WriteTempFile(const Proto& options,
                                 const std::vector<uint8_t>& buffer,
                                 int32_t* error_code,
                                 dbus::FileDescriptor* temp_fd) {
