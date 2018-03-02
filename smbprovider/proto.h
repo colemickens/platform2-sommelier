@@ -118,6 +118,8 @@ void AddDirectoryEntry(const DirectoryEntry& entry,
 
 void ConvertToProto(const DirectoryEntry& entry, DirectoryEntryProto* proto);
 
+void AddToDeleteList(const std::string& entry_path, DeleteListProto* proto);
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_PROTO_H_

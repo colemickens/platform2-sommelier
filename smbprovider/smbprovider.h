@@ -162,6 +162,16 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                      int32_t* error_code,
                      dbus::FileDescriptor* temp_fd);
 
+  // Writes |delete_list| to a temporary file and outputs the resulting file
+  // descriptor into |temp_fd|. Sets |bytes_written| to the number of bytes
+  // if writing suceeds, -1 on failure. |options| is used for logging. Sets
+  // |error_code| on failure.
+  bool WriteDeleteListToTempFile(const GetDeleteListOptionsProto& options,
+                                 const DeleteListProto& delete_list,
+                                 int32_t* error_code,
+                                 dbus::FileDescriptor* temp_fd,
+                                 int32_t* bytes_written);
+
   // Helper method to write data from a |buffer| into a file specified by
   // |file_id|. |options| is used for logging. Returns true on success, and sets
   // |error_code| on failure.
@@ -303,6 +313,17 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                     std::vector<uint8_t>* buffer,
                     size_t* bytes_read,
                     int32_t* error_code);
+
+  // Populates |delete_list| with an ordered list of relative paths of entries
+  // that must be deleted in order to recursively delete |full_path|.
+  int32_t GenerateDeleteList(const GetDeleteListOptionsProto& options,
+                             const std::string& full_path,
+                             bool is_directory,
+                             DeleteListProto* delete_list);
+
+  // Returns the relative path to |entry_path| by removing the server path
+  // associated with |mount_id|.
+  std::string GetRelativePath(int32_t mount_id, const std::string& entry_path);
 
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

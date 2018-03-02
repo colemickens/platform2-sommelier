@@ -211,4 +211,9 @@ void ConvertToProto(const DirectoryEntry& entry, DirectoryEntryProto* proto) {
   proto->set_last_modified_time(entry.last_modified_time);
 }
 
+void AddToDeleteList(const std::string& entry_path, DeleteListProto* proto) {
+  DCHECK(proto);
+  proto->add_entries(entry_path);
+}
+
 }  // namespace smbprovider

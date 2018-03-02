@@ -341,4 +341,19 @@ TEST_F(SmbProviderProtoTest, SerializeDirEntryVectorToProto) {
                                                     entries_proto.entries(1));
 }
 
+// AddToDeleteList correctly adds entry paths to a DeleteListProto.
+TEST_F(SmbProviderProtoTest, AddToDeleteList) {
+  const std::string entry_path_1 = "/dogs";
+  const std::string entry_path_2 = "/dogs/1.jpg";
+
+  DeleteListProto delete_list_proto;
+
+  AddToDeleteList(entry_path_1, &delete_list_proto);
+  AddToDeleteList(entry_path_2, &delete_list_proto);
+
+  EXPECT_EQ(2, delete_list_proto.entries_size());
+  EXPECT_EQ(entry_path_1, delete_list_proto.entries(0));
+  EXPECT_EQ(entry_path_2, delete_list_proto.entries(1));
+}
+
 }  // namespace smbprovider

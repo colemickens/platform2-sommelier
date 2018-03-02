@@ -43,6 +43,20 @@ void ValidateFDContent(const dbus::FileDescriptor& fd,
                          buffer.end()));
 }
 
+// Reads the temp file |fd| into a buffer, then parses the buffer into a
+// DeleteListProto.
+DeleteListProto GetDeleteListProtoFromFD(const dbus::FileDescriptor& fd,
+                                         int32_t length_to_read) {
+  std::vector<uint8_t> buffer(length_to_read);
+  EXPECT_TRUE(base::ReadFromFD(
+      fd.value(), reinterpret_cast<char*>(buffer.data()), buffer.size()));
+
+  DeleteListProto delete_list;
+  EXPECT_TRUE(delete_list.ParseFromArray(buffer.data(), buffer.size()));
+
+  return delete_list;
+}
+
 }  // namespace
 
 class SmbProviderTest : public testing::Test {
@@ -2106,6 +2120,182 @@ TEST_F(SmbProviderTest, CopyEntrySucceedsOnDirectory) {
 
   EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs")));
   EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/animals/dogs")));
+}
+
+// GetDeleteList succeeds on an empty directory.
+TEST_F(SmbProviderTest, GetDeleteListSucceedsOnEmptyDirecotry) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+
+  ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/dogs");
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+
+  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  EXPECT_EQ(1, delete_list.entries_size());
+
+  EXPECT_EQ("/dogs", delete_list.entries(0));
+}
+
+// GetDeleteList succeeds on a directory of files.
+TEST_F(SmbProviderTest, GetDeleteListSucceedsOnADirOfFiles) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/1.jpg"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/2.txt"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/3.png"));
+
+  ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path");
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+
+  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  EXPECT_EQ(4, delete_list.entries_size());
+
+  EXPECT_EQ("/path/1.jpg", delete_list.entries(0));
+  EXPECT_EQ("/path/2.txt", delete_list.entries(1));
+  EXPECT_EQ("/path/3.png", delete_list.entries(2));
+  EXPECT_EQ("/path", delete_list.entries(3));
+}
+
+// GetDeleteList succeeds on multiple levels of nested directories.
+TEST_F(SmbProviderTest, GetDeleteListSucceedsOnNestedEmptyDirectories) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/dogs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/dogs/lab"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/cats"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/cats/blue"));
+
+  ProtoBlob blob =
+      CreateGetDeleteListOptionsBlob(mount_id, GetDefaultDirectoryPath());
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+
+  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  EXPECT_EQ(5, delete_list.entries_size());
+
+  EXPECT_EQ("/path/dogs/lab", delete_list.entries(0));
+  EXPECT_EQ("/path/dogs", delete_list.entries(1));
+  EXPECT_EQ("/path/cats/blue", delete_list.entries(2));
+  EXPECT_EQ("/path/cats", delete_list.entries(3));
+  EXPECT_EQ("/path", delete_list.entries(4));
+}
+
+// GetDeleteList succeeds on a dir with a file and a non-empty dir.
+TEST_F(SmbProviderTest, GetDeleteListSucceedsDirWithAfileAndNonEmptyDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/dogs"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/dogs/1.jpg"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/2.txt"));
+
+  ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path");
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+
+  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  EXPECT_EQ(4, delete_list.entries_size());
+
+  EXPECT_EQ("/path/dogs/1.jpg", delete_list.entries(0));
+  EXPECT_EQ("/path/dogs", delete_list.entries(1));
+  EXPECT_EQ("/path/2.txt", delete_list.entries(2));
+  EXPECT_EQ("/path", delete_list.entries(3));
+}
+
+// GetDeleteList fails if Directory cannot be opened.
+TEST_F(SmbProviderTest, GetDeleteListFailsWhenADirectoryCannotBeOpened) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddLockedDirectory(GetDefaultFullPath("/path/dogs"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/2.txt"));
+
+  ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path");
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_ACCESS_DENIED, CastError(error_code));
+}
+
+// GetDeleteList succeeds on a file.
+TEST_F(SmbProviderTest, GetDeleteListSucceedsOnAFile) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/1.jpg"));
+
+  ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path/1.jpg");
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+
+  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  EXPECT_EQ(1, delete_list.entries_size());
+  EXPECT_EQ("/path/1.jpg", delete_list.entries(0));
+}
+
+// GetDeleteList fails on a non-file, non-directory.
+TEST_F(SmbProviderTest, GetDeleteListFailsOnNonFileNonDirectory) {
+  int32_t mount_id = PrepareMount();
+  const std::string printer_path = "/path/canon.cn";
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddEntry(GetDefaultFullPath(printer_path), SMBC_PRINTER_SHARE);
+
+  ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path/cannon.cn");
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+}
+
+// GetDeleteList fails on non-existent path.
+TEST_F(SmbProviderTest, GetDeleteListFailsOnNonExistantEntry) {
+  int32_t mount_id = PrepareMount();
+
+  ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/non-existent");
+
+  int32_t error_code;
+  dbus::FileDescriptor fd;
+  int32_t bytes_written;
+  smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
 }
 
 }  // namespace smbprovider

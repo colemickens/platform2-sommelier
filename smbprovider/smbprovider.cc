@@ -784,11 +784,96 @@ bool SmbProvider::ReadToBuffer(const Proto& options,
   return true;
 }
 
-void SmbProvider::GetDeleteList(const ProtoBlob& options,
+void SmbProvider::GetDeleteList(const ProtoBlob& options_blob,
                                 int32_t* error_code,
                                 dbus::FileDescriptor* temp_fd,
                                 int32_t* bytes_written) {
-  NOTIMPLEMENTED();
+  DCHECK(error_code);
+  DCHECK(temp_fd);
+  DCHECK(bytes_written);
+
+  std::string full_path;
+  GetDeleteListOptionsProto options;
+  if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
+    return;
+  }
+
+  bool is_directory;
+  int32_t get_type_result;
+  if (!GetEntryType(full_path, &get_type_result, &is_directory)) {
+    LogAndSetError(options, GetErrorFromErrno(get_type_result), error_code);
+    return;
+  }
+
+  DeleteListProto delete_list;
+  int32_t result =
+      GenerateDeleteList(options, full_path, is_directory, &delete_list);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return;
+  }
+
+  WriteDeleteListToTempFile(options, delete_list, error_code, temp_fd,
+                            bytes_written);
+}
+
+bool SmbProvider::WriteDeleteListToTempFile(
+    const GetDeleteListOptionsProto& options,
+    const DeleteListProto& delete_list,
+    int32_t* error_code,
+    dbus::FileDescriptor* temp_fd,
+    int32_t* bytes_written) {
+  DCHECK(error_code);
+  DCHECK(temp_fd);
+  DCHECK(bytes_written);
+
+  std::vector<uint8_t> buffer;
+  *error_code =
+      static_cast<int32_t>(SerializeProtoToBlob(delete_list, &buffer));
+  if (*error_code != ERROR_OK) {
+    return false;
+  }
+
+  bool success = WriteTempFile(options, buffer, error_code, temp_fd);
+  *bytes_written = success ? buffer.size() : -1;
+
+  return success;
+}
+
+int32_t SmbProvider::GenerateDeleteList(
+    const GetDeleteListOptionsProto& options,
+    const std::string& full_path,
+    bool is_directory,
+    DeleteListProto* delete_list) {
+  DCHECK(delete_list);
+
+  if (!is_directory) {
+    // |delete_list| will only contain the relative path to the file.
+    AddToDeleteList(GetRelativePath(options.mount_id(), full_path),
+                    delete_list);
+    return 0;
+  }
+
+  PostDepthFirstIterator it = GetPostOrderIterator(full_path);
+  int32_t it_result = it.Init();
+  while (it_result == 0) {
+    if (it.IsDone()) {
+      return 0;
+    }
+
+    AddToDeleteList(GetRelativePath(options.mount_id(), it.Get().full_path),
+                    delete_list);
+    it_result = it.Next();
+  }
+
+  // while-loop is only exited from if there's an iterator error.
+  DCHECK_NE(0, it_result);
+  return it_result;
+}
+
+std::string SmbProvider::GetRelativePath(int32_t mount_id,
+                                         const std::string& entry_path) {
+  return mount_manager_->GetRelativePath(mount_id, entry_path);
 }
 
 }  // namespace smbprovider
