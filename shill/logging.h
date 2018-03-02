@@ -39,6 +39,13 @@
 //         "is greater than or equal to 1, and size is more than 1024";
 //
 
+#if defined(SLOG_MEANS_VLOG)
+
+// For libshill-net, because library users do not implement SLOG.
+#define SLOG(object, verbose_level) VLOG(verbose_level)
+
+#else
+
 #define GET_MACRO_OVERLOAD2(arg1, arg2, arg3, macro_name, ...) macro_name
 
 #define SLOG_IS_ON(scope, verbose_level) \
@@ -77,6 +84,8 @@
 #define SPLOG_IF(scope, verbose_level, condition) \
   LAZY_STREAM(SPLOG_STREAM(verbose_level), \
               SLOG_IS_ON(scope, verbose_level) && (condition))
+
+#endif
 
 namespace base {
 

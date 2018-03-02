@@ -22,6 +22,7 @@
 
 #include <base/logging.h>
 
+#include "shill/logging.h"
 #include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/sockets.h"
@@ -30,6 +31,13 @@
 #define SOL_NETLINK 270
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kRTNL;
+static std::string ObjectID(const NetlinkSocket* obj) {
+  return "(netlink_socket)";
+}
+}  // namespace Logging
 
 NetlinkSocket::NetlinkSocket()
     : sequence_number_(0), file_descriptor_(Sockets::kInvalidFileDescriptor) {}
@@ -52,7 +60,7 @@ bool NetlinkSocket::Init() {
   if (file_descriptor_ == Sockets::kInvalidFileDescriptor)
     return false;
 
-  VLOG(2) << "Netlink socket started";
+  SLOG(this, 2) << "Netlink socket started";
   return true;
 }
 

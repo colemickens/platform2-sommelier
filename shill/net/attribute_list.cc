@@ -26,12 +26,20 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 
+#include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
 
 using std::string;
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kRTNL;
+static std::string ObjectID(const AttributeList* obj) {
+  return "(attribute_list)";
+}
+}  // namespace Logging
 
 AttributeList::AttributeList() {}
 
@@ -40,7 +48,7 @@ AttributeList::~AttributeList() {}
 bool AttributeList::CreateAttribute(
     int id, AttributeList::NewFromIdMethod factory) {
   if (base::ContainsKey(attributes_, id)) {
-    VLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
+    SLOG(this, 7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
   }
   attributes_[id] = factory.Run(id);

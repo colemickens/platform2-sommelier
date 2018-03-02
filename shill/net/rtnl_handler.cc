@@ -34,6 +34,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 
+#include "shill/logging.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
@@ -47,6 +48,13 @@ using base::Unretained;
 using std::string;
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kRTNL;
+static std::string ObjectID(const RTNLHandler* obj) {
+  return "(rtnl_handler)";
+}
+}  // namespace Logging
 
 const int RTNLHandler::kErrorWindowSize = 16;
 
@@ -64,11 +72,11 @@ RTNLHandler::RTNLHandler()
       io_handler_factory_(
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
   error_mask_window_.resize(kErrorWindowSize);
-  VLOG(2) << "RTNLHandler created";
+  SLOG(this, 2) << "RTNLHandler created";
 }
 
 RTNLHandler::~RTNLHandler() {
-  VLOG(2) << "RTNLHandler removed";
+  SLOG(this, 2) << "RTNLHandler removed";
   Stop();
 }
 
@@ -93,7 +101,7 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
       Bind(&RTNLHandler::OnReadError, Unretained(this))));
 
   NextRequest(last_dump_sequence_);
-  VLOG(2) << "RTNLHandler started";
+  SLOG(this, 2) << "RTNLHandler started";
 }
 
 void RTNLHandler::Stop() {
@@ -105,7 +113,7 @@ void RTNLHandler::Stop() {
   }
   in_request_ = false;
   request_flags_ = 0;
-  VLOG(2) << "RTNLHandler stopped";
+  SLOG(this, 2) << "RTNLHandler stopped";
 }
 
 void RTNLHandler::AddListener(RTNLListener* to_add) {
@@ -114,7 +122,7 @@ void RTNLHandler::AddListener(RTNLListener* to_add) {
       return;
   }
   listeners_.push_back(to_add);
-  VLOG(2) << "RTNLHandler added listener";
+  SLOG(this, 2) << "RTNLHandler added listener";
 }
 
 void RTNLHandler::RemoveListener(RTNLListener* to_remove) {
@@ -124,7 +132,7 @@ void RTNLHandler::RemoveListener(RTNLListener* to_remove) {
       return;
     }
   }
-  VLOG(2) << "RTNLHandler removed listener";
+  SLOG(this, 2) << "RTNLHandler removed listener";
 }
 
 void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
@@ -180,10 +188,8 @@ void RTNLHandler::RequestDump(int request_flags) {
 
   request_flags_ |= request_flags;
 
-  VLOG(2) << "RTNLHandler got request to dump "
-          << std::showbase << std::hex
-          << request_flags
-          << std::dec << std::noshowbase;
+  SLOG(this, 2) << "RTNLHandler got request to dump " << std::showbase
+                << std::hex << request_flags << std::dec << std::noshowbase;
 
   if (!in_request_) {
     NextRequest(last_dump_sequence_);
@@ -200,11 +206,9 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   int flag = 0;
   RTNLMessage::Type type;
 
-  VLOG(2) << "RTNLHandler nextrequest " << seq << " "
-          << last_dump_sequence_
-          << std::showbase << std::hex
-          << " " << request_flags_
-          << std::dec << std::noshowbase;
+  SLOG(this, 2) << "RTNLHandler nextrequest " << seq << " "
+                << last_dump_sequence_ << std::showbase << std::hex << " "
+                << request_flags_ << std::dec << std::noshowbase;
 
   if (seq != last_dump_sequence_)
     return;
@@ -230,7 +234,7 @@ void RTNLHandler::NextRequest(uint32_t seq) {
     flag = kRequestBridgeNeighbor;
     family = AF_BRIDGE;
   } else {
-    VLOG(2) << "Done with requests";
+    SLOG(this, 2) << "Done with requests";
     in_request_ = false;
     return;
   }
@@ -259,17 +263,16 @@ void RTNLHandler::ParseRTNL(InputData* data) {
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
-    VLOG(5) << __func__ << ": received payload (" << end - buf << ")";
+    SLOG(this, 5) << __func__ << ": received payload (" << end - buf << ")";
 
     RTNLMessage msg;
     ByteString payload(reinterpret_cast<unsigned char*>(hdr), hdr->nlmsg_len);
-    VLOG(5) << "RTNL received payload length " << payload.GetLength()
-            << ": \"" << payload.HexEncode() << "\"";
+    SLOG(this, 5) << "RTNL received payload length " << payload.GetLength()
+                  << ": \"" << payload.HexEncode() << "\"";
     if (!msg.Decode(payload)) {
-      VLOG(5) << __func__ << ": rtnl packet type "
-              << hdr->nlmsg_type
-              << " length " << hdr->nlmsg_len
-              << " sequence " << hdr->nlmsg_seq;
+      SLOG(this, 5) << __func__ << ": rtnl packet type " << hdr->nlmsg_type
+                    << " length " << hdr->nlmsg_len << " sequence "
+                    << hdr->nlmsg_seq;
 
       switch (hdr->nlmsg_type) {
         case NLMSG_NOOP:
@@ -292,7 +295,7 @@ void RTNLHandler::ParseRTNL(InputData* data) {
                                    error_number)) {
               LOG(ERROR) << message.str();
             } else {
-              VLOG(3) << message.str();
+              SLOG(this, 3) << message.str();
             }
             break;
           }
@@ -426,10 +429,10 @@ int RTNLHandler::GetInterfaceIndex(const string& interface_name) {
 
 bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage* message,
                                            const ErrorMask& error_mask) {
-  VLOG(5) << __func__ << " sequence " << request_sequence_
-          << " message type " << message->type()
-          << " mode " << message->mode()
-          << " with error mask size " << error_mask.size();
+  SLOG(this, 5) << __func__ << " sequence " << request_sequence_
+                << " message type " << message->type() << " mode "
+                << message->mode() << " with error mask size "
+                << error_mask.size();
 
   SetErrorMask(request_sequence_, error_mask);
   message->set_seq(request_sequence_);
@@ -439,7 +442,7 @@ bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage* message,
     return false;
   }
 
-  VLOG(5) << "RTNL sending payload with request sequence "
+  SLOG(this, 5) << "RTNL sending payload with request sequence "
                 << request_sequence_ << ", length " << msgdata.GetLength()
                 << ": \"" << msgdata.HexEncode() << "\"";
 

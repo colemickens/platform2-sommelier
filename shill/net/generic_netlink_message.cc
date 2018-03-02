@@ -22,6 +22,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 
@@ -29,6 +30,13 @@ using base::Bind;
 using base::StringPrintf;
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kRTNL;
+static std::string ObjectID(const GenericNetlinkMessage* obj) {
+  return "(generic_netlink_message)";
+}
+}  // namespace Logging
 
 ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   // Build nlmsghdr.
@@ -98,9 +106,8 @@ bool GenericNetlinkMessage::InitAndStripHeader(NetlinkPacket* packet) {
 
 void GenericNetlinkMessage::Print(int header_log_level,
                                   int detail_log_level) const {
-  VLOG(header_log_level) << StringPrintf("Message %s (%d)",
-                                         command_string(),
-                                         command());
+  SLOG(this, header_log_level)
+      << StringPrintf("Message %s (%d)", command_string(), command());
   attributes_->Print(detail_log_level, 1);
 }
 
