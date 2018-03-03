@@ -288,6 +288,7 @@ bool Service::Init() {
       {kGetVmInfoMethod, &Service::GetVmInfo},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
+      {kListVmDisksMethod, &Service::ListVmDisks},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -1029,5 +1030,67 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
   return dbus_response;
 }
+
+std::unique_ptr<dbus::Response> Service::ListVmDisks(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ListVmDisksRequest request;
+  ListVmDisksResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ListVmDisksRequest from message";
+    response.set_success(false);
+    response.set_failure_reason("Unable to parse ListVmDisksRequest");
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  response.set_success(true);
+
+  base::FilePath image_dir;
+  if (request.storage_location() == STORAGE_CRYPTOHOME_ROOT) {
+    image_dir = base::FilePath(kCryptohomeRoot)
+                    .Append(request.cryptohome_id())
+                    .Append(kCrosvmDir);
+  } else if (request.storage_location() == STORAGE_CRYPTOHOME_DOWNLOADS) {
+    image_dir = base::FilePath(kCryptohomeUser)
+                    .Append(request.cryptohome_id())
+                    .Append(kDownloadsDir);
+  }
+  if (!base::DirectoryExists(image_dir)) {
+    // No directory means no VMs, return the empty response.
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Returns *.qcow2 in the given storage area.
+  base::FileEnumerator dir_enum(image_dir, false, base::FileEnumerator::FILES,
+                                "*.qcow2");
+
+  for (base::FilePath path = dir_enum.Next(); !path.empty();
+       path = dir_enum.Next()) {
+    base::FilePath bare_name = path.BaseName().RemoveExtension();
+    if (bare_name.empty()) {
+      continue;
+    }
+    std::string image_name;
+    if (!base::Base64UrlDecode(bare_name.value(),
+                               base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                               &image_name)) {
+      continue;
+    }
+    std::string* name = response.add_images();
+    *name = std::move(image_name);
+  }
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

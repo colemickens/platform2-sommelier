@@ -77,6 +77,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> DestroyDiskImage(
       dbus::MethodCall* method_call);
 
+  // Handles a request to list existing disk images.
+  std::unique_ptr<dbus::Response> ListVmDisks(
+      dbus::MethodCall* method_call);
+
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
 
