@@ -468,6 +468,13 @@ cmd_vmc() (
       return 1
     fi
     ;;
+  list)
+    concierge_client --list_disks --cryptohome_id="${CROS_USER_ID_HASH}"
+    if [ $? -ne 0 ]; then
+      echo "Unable to list vms"
+      return 1
+    fi
+    ;;
   *)
     echo "Unknown VM command: ${cmd}"
   esac
