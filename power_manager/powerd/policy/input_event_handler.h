@@ -135,6 +135,8 @@ class InputEventHandler : public system::InputObserver {
 
   // Timestamp until when we are ignoring actions on the power button.
   base::TimeTicks ignore_power_button_deadline_;
+  // The last key down event on the power button was ignored.
+  bool power_button_down_ignored_;
 
   DISALLOW_COPY_AND_ASSIGN(InputEventHandler);
 };

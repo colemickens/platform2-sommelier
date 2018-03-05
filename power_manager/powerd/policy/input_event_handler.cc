@@ -28,7 +28,8 @@ InputEventHandler::InputEventHandler()
       only_has_external_display_(false),
       factory_mode_(false),
       lid_state_(LidState::NOT_PRESENT),
-      tablet_mode_(TabletMode::UNSUPPORTED) {}
+      tablet_mode_(TabletMode::UNSUPPORTED),
+      power_button_down_ignored_(false) {}
 
 InputEventHandler::~InputEventHandler() {
   if (input_watcher_)
@@ -84,6 +85,7 @@ void InputEventHandler::IgnoreNextPowerButtonPress(
   if (timeout.is_zero()) {
     VLOG(1) << "Cancel power button press discarding";
     ignore_power_button_deadline_ = base::TimeTicks();
+    power_button_down_ignored_ = false;
   } else {
     VLOG(1) << "Ignoring power button for " << timeout.InMilliseconds()
             << " ms";
@@ -132,11 +134,17 @@ void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
   }
 
   if (clock_->GetCurrentTime() < ignore_power_button_deadline_) {
+    bool ignore = state == ButtonState::DOWN || power_button_down_ignored_;
     if (state == ButtonState::UP)  // Consumed, we no longer need the deadline.
-      ignore_power_button_deadline_ = base::TimeTicks();
-    LOG(INFO) << "Ignored power button " << ButtonStateToString(state);
-    // Do not forward this event.
-    return;
+      IgnoreNextPowerButtonPress(base::TimeDelta());
+    else if (state == ButtonState::DOWN)
+      power_button_down_ignored_ = true;
+    if (ignore) {
+      // Ignore down event or up event if it matches a down event.
+      LOG(INFO) << "Ignored power button " << ButtonStateToString(state);
+      // Do not forward this event.
+      return;
+    }
   }
 
   if (state == ButtonState::DOWN && only_has_external_display_ &&

@@ -290,6 +290,19 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
   AdvanceTime(kShortDelay);
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
+
+  // Race condition between the user and the U2F code, the down event happens
+  // before the ignore event.
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
+  EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
+  AdvanceTime(kShortDelay);
+  // Then the daemon receives the request to ignore the physical presence on
+  // the power button.
+  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  // The user release the button but the release needs to go through else we
+  // have a press without a release (which becomes a long press).
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
+  EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 }
 
 TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
