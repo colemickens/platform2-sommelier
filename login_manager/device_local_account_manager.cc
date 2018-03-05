@@ -114,8 +114,10 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
 }
 
 void DeviceLocalAccountManager::PersistAllPolicy() {
-  for (const auto& kv : policy_map_)
-    kv.second->PersistAllPolicy();
+  for (const auto& kv : policy_map_) {
+    if (kv.second)
+      kv.second->PersistAllPolicy();
+  }
 }
 
 std::string DeviceLocalAccountManager::GetAccountKey(

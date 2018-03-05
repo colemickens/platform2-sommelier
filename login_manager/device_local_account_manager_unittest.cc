@@ -115,6 +115,13 @@ TEST_F(DeviceLocalAccountManagerTest, GetPolicyServiceSucceeds) {
   EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
 }
 
+// PolicyServices are created on demand. PersistAllPolicy() should not try to
+// to access uninitialized PolicyServices, see crbug.com/818302.
+TEST_F(DeviceLocalAccountManagerTest, PersistUninitializedAccounts) {
+  SetupAccount();
+  manager_->PersistAllPolicy();
+}
+
 TEST_F(DeviceLocalAccountManagerTest, PurgeStaleAccounts) {
   SetupKey();
 
