@@ -10,7 +10,7 @@ PC_CFLAGS := $(call get_pc_cflags,$(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS) -D_GNU_SOURCE -I$(abspath $(SRC)) \
 	    -I$(abspath $(SRC)/include)
-CXXFLAGS += -std=c++11 -Wpointer-arith
+CXXFLAGS += -std=c++17 -Wpointer-arith
 CFLAGS += -std=c99
 
 camera_hal_usb: hal/usb/camera_hal

@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/macros.h>
 
+#include "camera3_test/camera3_perf_log.h"
 #include "camera3_test/camera3_test_data_forwarder.h"
 #include "common/utils/camera_hal_enumerator.h"
 
@@ -58,6 +59,23 @@ static void InitCameraModule(void** cam_hal_handle,
   ASSERT_NE(nullptr, cam_module->common.methods->open)
       << "open() is unimplemented";
   g_cam_module = cam_module;
+}
+
+static void InitPerfLog() {
+  // GetNumberOfCameras() returns the number of internal cameras, so here we
+  // should not see any external cameras (facing = 2).
+  const std::string facing_names[] = {"back", "front"};
+  camera3_test::Camera3Module camera_module;
+  int num_cameras = camera_module.GetNumberOfCameras();
+  std::map<int, std::string> name_map;
+  for (int i = 0; i < num_cameras; i++) {
+    camera_info info;
+    ASSERT_EQ(0, camera_module.GetCameraInfo(i, &info));
+    ASSERT_LE(0, info.facing);
+    ASSERT_LT(info.facing, std::size(facing_names));
+    name_map[i] = facing_names[info.facing];
+  }
+  camera3_test::Camera3PerfLog::GetInstance()->SetCameraNameMap(name_map);
 }
 
 static camera_module_t* GetCameraModule() {
@@ -998,6 +1016,8 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   camera3_test::InitCameraModule(cam_hal_handle,
                                  camera_hal_path.value().c_str());
   camera3_test::g_module_thread.Start();
+
+  camera3_test::InitPerfLog();
 
   // Initialize gtest
   ::testing::InitGoogleTest(argc, *argv);

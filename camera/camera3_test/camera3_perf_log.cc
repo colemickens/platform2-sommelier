@@ -47,7 +47,8 @@ Camera3PerfLog::~Camera3PerfLog() {
         LOGF(ERROR) << "Failed to find device opening performance log";
         continue;
       }
-      std::string s = base::StringPrintf("Camera: %d\n", cam_id);
+      std::string s = base::StringPrintf("Camera: %s\n",
+                                         GetCameraNameForId(cam_id).c_str());
       base::AppendToFile(file_path, s.c_str(), s.length());
       for (const auto& jt : it.second) {
         Key key = jt.first;
@@ -73,6 +74,16 @@ Camera3PerfLog::~Camera3PerfLog() {
       }
     }
   }
+}
+
+void Camera3PerfLog::SetCameraNameMap(
+    const std::map<int, std::string>& camera_name_map) {
+  camera_name_map_ = camera_name_map;
+}
+
+std::string Camera3PerfLog::GetCameraNameForId(int id) {
+  auto it = camera_name_map_.find(id);
+  return it != camera_name_map_.end() ? it->second : std::to_string(id);
 }
 
 bool Camera3PerfLog::Update(int cam_id, Key key, base::TimeTicks time) {
