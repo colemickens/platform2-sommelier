@@ -10,10 +10,10 @@
 
 namespace {
 
-constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/cache/apk";
+constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/apkcache";
 constexpr char kHelpText[] =
     "Performs cleaning of the APK cache directory: "
-    "/mnt/stateful_partition/unencrypted/cache/apk/\n"
+    "/mnt/stateful_partition/unencrypted/apkcache/\n"
     "It removes:\n"
     " - all the files in the cache root;\n"
     " - all the package directories that:\n"

@@ -20,9 +20,8 @@ exec minijail0 --profile minimalistic-mountns \
   -k none,/mnt,tmpfs \
   -k none,/mnt/stateful_partition,tmpfs \
   -k none,/mnt/stateful_partition/unencrypted,tmpfs \
-  -k none,/mnt/stateful_partition/unencrypted/cache,tmpfs \
-  -b /mnt/stateful_partition/unencrypted/cache/apk,\
-/mnt/stateful_partition/unencrypted/cache/apk,1 \
+  -b /mnt/stateful_partition/unencrypted/apkcache,\
+/mnt/stateful_partition/unencrypted/apkcache,1 \
   -k none,/var,tmpfs \
   -k none,/var/lib,tmpfs \
   -b /var/lib/timezone,/var/lib/timezone \

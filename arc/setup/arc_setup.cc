@@ -75,7 +75,9 @@ constexpr char kAndroidMutableSource[] =
     "/opt/google/containers/android/rootfs/android-data";
 constexpr char kAndroidRootfsDirectory[] =
     "/opt/google/containers/android/rootfs/root";
-constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/cache/apk";
+constexpr char kOldApkCacheDir[] =
+    "/mnt/stateful_partition/unencrypted/cache/apk";
+constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/apkcache";
 constexpr char kArcBridgeSocketContext[] = "u:object_r:arc_bridge_socket:s0";
 constexpr char kArcBridgeSocketPath[] = "/run/chrome/arc_bridge.sock";
 constexpr char kBinFmtMiscDirectory[] = "/proc/sys/fs/binfmt_misc";
@@ -248,6 +250,7 @@ struct ArcPaths {
   const base::FilePath android_mutable_source{kAndroidMutableSource};
   const base::FilePath android_rootfs_directory{kAndroidRootfsDirectory};
   const base::FilePath arc_bridge_socket_path{kArcBridgeSocketPath};
+  const base::FilePath old_apk_cache_dir{kOldApkCacheDir};
   const base::FilePath apk_cache_dir{kApkCacheDir};
   const base::FilePath art_container_data_directory{kArtContainerDataDirectory};
   const base::FilePath binfmt_misc_directory{kBinFmtMiscDirectory};
@@ -1259,6 +1262,15 @@ void ArcSetup::SetUpCameraProperty() {
 }
 
 void ArcSetup::SetUpSharedApkDirectory() {
+  // TODO(yusuks): Remove the migration code in M68.
+  if (base::PathExists(arc_paths_->old_apk_cache_dir)) {
+    // The old directory is found. Move it to the new location. Still call
+    // InstallDirectory() to make sure permissions, uid, and gid are all
+    // correct.
+    EXIT_IF(
+        !base::Move(arc_paths_->old_apk_cache_dir, arc_paths_->apk_cache_dir));
+  }
+
   EXIT_IF(!InstallDirectory(0700, kSystemUid, kSystemGid,
                             arc_paths_->apk_cache_dir));
 }
