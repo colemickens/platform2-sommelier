@@ -84,60 +84,6 @@ set_ff_debug_level() {
 }
 
 starting_ff_tags=`get_ff_debug_tags`
-# Global strings
-ff_tags_to_set=$starting_ff_tags
-
-# Returns whether or not $2 exists in $1 where $1 is a space
-# separated list of tags
-is_valid_tag(){
-  expr " $1 " : ".* $2 .*"> /dev/null
-}
-
-# Takes a boolean expression and changes
-# flimflam string appropriately
-modify_flimflam_tag_string(){
-  if [ -n "$1" ]; then
-    for tag in `echo "$1" | sed 's/[+-]/ &/g'`; do
-
-      # Skip the tag if it's not in the list of valid tags
-      if ! is_valid_tag "$FF_TAGLIST" "`echo $tag | sed 's/^[+-]//'`"; then
-        continue
-      fi
-
-      case $tag in
-        -*)
-          tag=`echo $tag | sed 's/-//'`
-          if [ -n "$tag" ]; then
-            # First check/remove instances where it lies between +'s
-            # Then check/remove instances where it lies at the ends
-            ff_tags_to_set=`echo $ff_tags_to_set \
-                            | sed 's/+'$tag'+/+/g' \
-                            | sed 's/\(^\|+\)'$tag'\(+\|$\)//g'`
-          fi
-          ;;
-        +*)
-          tag=`echo $tag | sed 's/+//'`
-          if [ -z "$tag" ]; then
-            continue
-          # Check if exact tag is between + symbols, or at the ends of expression
-          elif [ -n "`echo "$ff_tags_to_set" | egrep "\+$tag\+|\+$tag$|^$tag\+"`" ]; then
-            continue
-          elif [ -n "$ff_tags_to_set" ]; then
-            ff_tags_to_set="${ff_tags_to_set}+${tag}"
-          else
-            ff_tags_to_set="$tag"
-          fi
-          ;;
-        *)
-          ff_tags_to_set="$tag"
-          ;;
-      esac
-    done
-    ff_tags_to_set=`echo "$ff_tags_to_set" | sed 's/^+//'`
-  else
-    ff_tags_to_set=""
-  fi
-}
 
 get_or_set_debug_level() {
   local ff_debug_level=`get_ff_debug_level`
@@ -158,7 +104,7 @@ if [ $# -gt 0 ]; then
   while [ $# -gt 0 ]; do
     case "$1" in
     --reset)
-      ff_tags_to_set=""
+      set_ff_debug_tags ''
       break
       ;;
     --level)
@@ -175,16 +121,12 @@ if [ $# -gt 0 ]; then
       exit 0
       ;;
     *)
-      modify_flimflam_tag_string "$1"
+      set_ff_debug_tags "$1"
       ;;
     esac
     shift
   done
 
-  # set tags only when the starting and ending are different
-  if [ "$ff_tags_to_set" != "$starting_ff_tags" ]; then
-    set_ff_debug_tags "$ff_tags_to_set"
-  fi
   echo "Old flimflam tags: [$starting_ff_tags]"
 fi
 echo "Current flimflam tags: [`get_ff_debug_tags`]"
