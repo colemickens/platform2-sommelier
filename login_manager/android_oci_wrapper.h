@@ -43,11 +43,9 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   // Relative path to container from |containers_directory_|.
   constexpr static char kContainerPath[] = "android";
 
-#if USE_ANDROID_MASTER_CONTAINER
-  constexpr static char kContainerId[] = "android-master-run_oci";
-#else   // USE_ANDROID_MASTER_CONTAINER
-  constexpr static char kContainerId[] = "android-nyc-run_oci";
-#endif  // USE_ANDROID_MASTER_CONTAINER
+  // The container ID that is used as a directory name in
+  // /run/containers and a log file name prefix in /var/log.
+  constexpr static char kContainerId[] = "android-run_oci";
 
   // Name of file containing container PID in container root under
   // |ContainerManagerInterface::kContainerRunPath|. run_oci writes init
