@@ -96,20 +96,6 @@
         'validator_utils.cc',
         'vpd_process_impl.cc',
       ],
-      'variables': {
-        'USE_android_container_master_arc_dev%': 0,
-      },
-      'conditions': [
-        ['USE_android_container_master_arc_dev == 1', {
-          'defines': [
-            'USE_ANDROID_MASTER_CONTAINER=1',
-          ],
-        }, { # USE_android_container_master_arc_dev != 1
-          'defines': [
-            'USE_ANDROID_MASTER_CONTAINER=0',
-          ],
-        }],
-      ],
     },
     {
       'target_name': 'keygen',
@@ -152,7 +138,6 @@
               'libchrome-test-<(libbase_ver)',
               'libcros_config',
             ],
-            'USE_android_container_master_arc_dev%': 0,
           },
           'link_settings': {
             'libraries': [
@@ -192,17 +177,6 @@
             'system_utils_unittest.cc',
             'user_policy_service_unittest.cc',
             'validator_utils_unittest.cc',
-          ],
-          'conditions': [
-            ['USE_android_container_master_arc_dev == 1', {
-              'defines': [
-                'USE_ANDROID_MASTER_CONTAINER=1',
-              ],
-            }, { # USE_android_container_master_arc_dev != 1
-              'defines': [
-                'USE_ANDROID_MASTER_CONTAINER=0',
-              ],
-            }],
           ],
         },
       ],

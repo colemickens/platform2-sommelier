@@ -1236,11 +1236,6 @@ bool SessionManagerImpl::UpgradeArcContainer(
                          request.scan_vendor_priv_app()),
       base::StringPrintf("CONTAINER_PID=%d", pid)};
 
-#if USE_ANDROID_MASTER_CONTAINER
-  // This feature is only available in NYC branch.
-  keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
-  keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
-#else
   switch (request.packages_cache_mode()) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
       keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
@@ -1258,7 +1253,6 @@ bool SessionManagerImpl::UpgradeArcContainer(
       NOTREACHED() << "Wrong packages cache mode: "
                    << request.packages_cache_mode() << ".";
   }
-#endif
 
   if (!init_controller_->TriggerImpulse(
           kContinueArcBootImpulse, keyvals,

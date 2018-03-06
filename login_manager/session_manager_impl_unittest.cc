@@ -290,19 +290,11 @@ dbus::FileDescriptor WriteSizeAndDataToPipe(const std::string& data) {
 
 #if USE_CHEETS
 std::string ExpectedSkipPackagesCacheSetupFlagValue(bool enabled) {
-#if USE_ANDROID_MASTER_CONTAINER
-  return "SKIP_PACKAGES_CACHE_SETUP=1";
-#else
   return base::StringPrintf("SKIP_PACKAGES_CACHE_SETUP=%d", enabled);
-#endif
 }
 
 std::string ExpectedCopyPackagesCacheFlagValue(bool enabled) {
-#if USE_ANDROID_MASTER_CONTAINER
-  return "COPY_PACKAGES_CACHE=0";
-#else
   return base::StringPrintf("COPY_PACKAGES_CACHE=%d", enabled);
-#endif
 }
 #endif  // USE_CHEETS
 
