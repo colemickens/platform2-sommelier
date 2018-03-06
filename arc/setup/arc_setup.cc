@@ -1767,6 +1767,13 @@ void ArcSetup::OnSetup(bool for_login_screen) {
 }
 
 void ArcSetup::OnBootContinue() {
+  // This feature is only available in NYC branch.
+  // TODO(khmel): Support them in P and remove this block.
+  if (sdk_version() != AndroidSdkVersion::ANDROID_N) {
+    EXIT_IF(!arc_paths_->env->SetVar("SKIP_PACKAGES_CACHE_SETUP", "1"));
+    EXIT_IF(!arc_paths_->env->SetVar("COPY_PACKAGES_CACHE", "0"));
+  }
+
   const ArcBootType boot_type = GetBootType();
   bool should_delete_data_dalvik_cache_directory;
   bool should_delete_data_app_executables;
