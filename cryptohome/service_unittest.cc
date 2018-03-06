@@ -51,6 +51,7 @@ using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Mock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
@@ -91,6 +92,14 @@ bool AssignSalt(size_t size, SecureBlob* salt) {
   SecureBlob fake_salt(size, 'S');
   salt->swap(fake_salt);
   return true;
+}
+
+bool ProtosAreEqual(const google::protobuf::MessageLite& lhs,
+                    const google::protobuf::MessageLite& rhs) {
+  std::string serialized_lhs, serialized_rhs;
+  return lhs.SerializeToString(&serialized_lhs) &&
+         rhs.SerializeToString(&serialized_rhs) &&
+         serialized_lhs == serialized_rhs;
 }
 
 }  // namespace
@@ -207,157 +216,6 @@ TEST_F(ServiceTest, InvalidAbeDataTest) {
   ASSERT_FALSE(ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
       "", &abe_data));
   ASSERT_EQ(0, abe_data.size());
-}
-
-TEST_F(ServiceTest, CheckKeySuccessTest) {
-  char kUser[] = "chromeos-user";
-  char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
-  SetupMount(kUser);
-
-  AccountIdentifier id;
-  id.set_account_id(kUser);
-  AuthorizationRequest auth;
-  auth.mutable_key()->set_secret(kKey);
-  CheckKeyRequest req;
-
-  // event_source_ will delete reply on cleanup.
-  std::string* base_reply_ptr = NULL;
-  MockDBusReply* reply = new MockDBusReply();
-  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
-
-  EXPECT_CALL(*mount_, AreSameUser(_))
-      .WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, Exists(_))
-      .WillOnce(Return(true));
-  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
-      .WillOnce(Return(true));
-  // Run will never be called because we aren't running the event loop.
-  service_.DoCheckKeyEx(&id, &auth, &req, NULL);
-
-  // Expect an empty reply as success.
-  BaseReply expected_reply;
-  std::string expected_reply_str;
-  expected_reply.SerializeToString(&expected_reply_str);
-  ASSERT_TRUE(base_reply_ptr);
-  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
-  delete base_reply_ptr;
-  base_reply_ptr = NULL;
-}
-
-TEST_F(ServiceTest, CheckKeyMountTest) {
-  static const char kUser[] = "chromeos-user";
-  static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
-  SetupMount(kUser);
-  std::unique_ptr<AccountIdentifier> id(new AccountIdentifier);
-  std::unique_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
-  std::unique_ptr<CheckKeyRequest> req(new CheckKeyRequest);
-  id->set_account_id(kUser);
-  auth->mutable_key()->set_secret(kKey);
-
-  // event_source_ will delete reply on cleanup.
-  std::string* base_reply_ptr = NULL;
-  MockDBusReply* reply = new MockDBusReply();
-  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
-
-  EXPECT_CALL(*mount_, AreSameUser(_))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mount_, AreValid(_))
-       .WillOnce(Return(true));
-  // Run will never be called because we aren't running the event loop.
-  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
-
-  // Expect an empty reply as success.
-  BaseReply expected_reply;
-  std::string expected_reply_str;
-  expected_reply.SerializeToString(&expected_reply_str);
-  ASSERT_TRUE(base_reply_ptr);
-  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
-  delete base_reply_ptr;
-  base_reply_ptr = NULL;
-
-  // Rinse and repeat but fail.
-  EXPECT_CALL(*mount_, AreSameUser(_))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mount_, AreValid(_))
-      .WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, Exists(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
-      .WillOnce(Return(false));
-
-  // event_source_ will delete reply on cleanup.
-  reply = new MockDBusReply();
-  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
-
-  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
-
-  // Expect an empty reply as success.
-  expected_reply.Clear();
-  expected_reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-  expected_reply.SerializeToString(&expected_reply_str);
-  ASSERT_TRUE(base_reply_ptr);
-  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
-  delete base_reply_ptr;
-  base_reply_ptr = NULL;
-}
-
-TEST_F(ServiceTest, CheckKeyHomedirsTest) {
-  static const char kUser[] = "chromeos-user";
-  static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
-  SetupMount(kUser);
-  std::unique_ptr<AccountIdentifier> id(new AccountIdentifier);
-  std::unique_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
-  std::unique_ptr<CheckKeyRequest> req(new CheckKeyRequest);
-  // Expect an error about missing email.
-  // |error| will be cleaned up by event_source_
-  MockDBusReply* reply = new MockDBusReply();
-  std::string* base_reply_ptr = NULL;
-  id->set_account_id(kUser);
-  auth->mutable_key()->set_secret(kKey);
-
-  EXPECT_CALL(*mount_, AreSameUser(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(homedirs_, Exists(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
-      .WillOnce(Return(true));
-
-  // Run will never be called because we aren't running the event loop.
-  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
-  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
-
-  // Expect an empty reply as success.
-  BaseReply expected_reply;
-  std::string expected_reply_str;
-  expected_reply.SerializeToString(&expected_reply_str);
-  ASSERT_TRUE(base_reply_ptr);
-  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
-  delete base_reply_ptr;
-  base_reply_ptr = NULL;
-
-  // Ensure failure
-  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
-      .WillOnce(Return(false));
-
-  // event_source_ will delete reply on cleanup.
-  reply = new MockDBusReply();
-  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
-
-  service_.DoCheckKeyEx(id.get(), auth.get(), req.get(), NULL);
-
-  // Expect an empty reply as success.
-  expected_reply.Clear();
-  expected_reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-  expected_reply.SerializeToString(&expected_reply_str);
-  ASSERT_TRUE(base_reply_ptr);
-  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
-  delete base_reply_ptr;
-  base_reply_ptr = NULL;
 }
 
 TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
@@ -899,6 +757,10 @@ class ServiceExTest : public ServiceTest {
     return reply;
   }
 
+  bool LastReplyIsEmpty() {
+    return ProtosAreEqual(BaseReply(), GetLastReply());
+  }
+
   void PrepareArguments() {
     id_.reset(new AccountIdentifier);
     auth_.reset(new AuthorizationRequest);
@@ -1096,6 +958,91 @@ TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeyLabel) {
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No new key label supplied", g_error_->message);
+}
+
+TEST_F(ServiceExTest, CheckKeySuccessTest) {
+  constexpr char kUser[] = "chromeos-user";
+  constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+
+  SetupReply();
+  PrepareArguments();
+  SetupMount(kUser);
+
+  id_->set_account_id(kUser);
+  auth_->mutable_key()->set_secret(kKey);
+  CheckKeyRequest req;
+
+  EXPECT_CALL(*mount_, AreSameUser(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillOnce(Return(true));
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+
+  // Expect an empty reply as success.
+  EXPECT_TRUE(LastReplyIsEmpty());
+}
+
+TEST_F(ServiceExTest, CheckKeyMountTest) {
+  constexpr char kUser[] = "chromeos-user";
+  constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+
+  SetupReply();
+  PrepareArguments();
+  SetupMount(kUser);
+
+  id_->set_account_id(kUser);
+  auth_->mutable_key()->set_secret(kKey);
+
+  EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(true));
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+
+  // Expect an empty reply as success.
+  EXPECT_TRUE(LastReplyIsEmpty());
+  Mock::VerifyAndClearExpectations(mount_.get());
+
+  // Rinse and repeat but fail.
+  EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
+  SetupReply();
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+
+  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+            GetLastReply().error());
+}
+
+TEST_F(ServiceExTest, CheckKeyHomedirsTest) {
+  constexpr char kUser[] = "chromeos-user";
+  constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+
+  SetupReply();
+  PrepareArguments();
+  SetupMount(kUser);
+
+  id_->set_account_id(kUser);
+  auth_->mutable_key()->set_secret(kKey);
+
+  EXPECT_CALL(*mount_, AreSameUser(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(true));
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+
+  // Expect an empty reply as success.
+  EXPECT_TRUE(LastReplyIsEmpty());
+  Mock::VerifyAndClearExpectations(&homedirs_);
+
+  // Ensure failure
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
+  SetupReply();
+  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+
+  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+            GetLastReply().error());
 }
 
 TEST_F(ServiceExTest, CheckKeyInvalidArgsNoEmail) {
