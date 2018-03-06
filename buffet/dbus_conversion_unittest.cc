@@ -93,13 +93,13 @@ std::unique_ptr<base::Value> CreateRandomValue(int children,
                                                base::Value::Type type) {
   CHECK_GE(children, 1);
   switch (type) {
+    case base::Value::Type::BOOLEAN:
+      return std::make_unique<base::Value>(base::RandInt(0, 1) != 0);
     case base::Value::Type::INTEGER:
-      return std::unique_ptr<base::Value>{new base::FundamentalValue{
-          base::RandInt(std::numeric_limits<int>::min(),
-                        std::numeric_limits<int>::max())}};
+      return std::make_unique<base::Value>(base::RandInt(
+          std::numeric_limits<int>::min(), std::numeric_limits<int>::max()));
     case base::Value::Type::DOUBLE:
-      return std::unique_ptr<base::Value>{
-          new base::FundamentalValue{base::RandDouble()}};
+      return std::make_unique<base::Value>(base::RandDouble());
     case base::Value::Type::STRING:
       return std::unique_ptr<base::Value>{
           new base::StringValue{base::GenerateGUID()}};
@@ -110,8 +110,8 @@ std::unique_ptr<base::Value> CreateRandomValue(int children,
       CHECK_GE(children, 1);
       return CreateRandomList(children - 1);
     default:
-      return std::unique_ptr<base::Value>{
-          new base::FundamentalValue{base::RandInt(0, 1) != 0}};
+      NOTREACHED();
+      return nullptr;
   }
 }
 

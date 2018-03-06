@@ -132,13 +132,13 @@ brillo::Any ValueToAny(const base::Value& json) {
 template <typename T>
 std::unique_ptr<base::Value> CreateValue(const T& value,
                                          brillo::ErrorPtr* error) {
-  return std::unique_ptr<base::Value>{new base::FundamentalValue{value}};
+  return std::make_unique<base::Value>(value);
 }
 
 template <>
 std::unique_ptr<base::Value> CreateValue<std::string>(const std::string& value,
                                                       brillo::ErrorPtr* error) {
-  return std::unique_ptr<base::Value>{new base::StringValue{value}};
+  return std::make_unique<base::StringValue>(value);
 }
 
 template <>
