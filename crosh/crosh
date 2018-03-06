@@ -1561,7 +1561,7 @@ cmd_cryptohome_status() (
   fi
 )
 
-USAGE_dmesg='[-d|-k|-r|-t|-u|-x]'
+USAGE_dmesg='[-d|-k|-r|-t|-u|-w|-x]'
 HELP_dmesg='
   Display kernel log buffer
 '
@@ -1569,7 +1569,7 @@ cmd_dmesg() (
   # We whitelist only a few options.
   local opt
   for opt in "$@"; do
-    if ! printf '%s' "${opt}" | grep -sqE '^-[dkrtux]+$'; then
+    if ! printf '%s' "${opt}" | grep -sqE '^-[dkrtuwx]+$'; then
       help "unknown option: $*"
       return 1
     fi
