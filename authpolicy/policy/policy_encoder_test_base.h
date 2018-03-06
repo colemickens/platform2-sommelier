@@ -35,13 +35,13 @@ class PolicyEncoderTestBase : public ::testing::Test {
   // Clears |policy|, encodes |value| as value for the boolean policy |key| and
   // marks |key| as handled.
   void EncodeBoolean(T_POLICY* policy, const char* key, bool value) {
-    EncodeValue(policy, key, std::make_unique<base::FundamentalValue>(value));
+    EncodeValue(policy, key, std::make_unique<base::Value>(value));
   }
 
   // Clears |policy|, encodes |value| as value for the integer policy |key| and
   // marks |key| as handled.
   void EncodeInteger(T_POLICY* policy, const char* key, int value) {
-    EncodeValue(policy, key, std::make_unique<base::FundamentalValue>(value));
+    EncodeValue(policy, key, std::make_unique<base::Value>(value));
   }
 
   // Clears |policy|, encodes |value| as value for the string policy |key| and
