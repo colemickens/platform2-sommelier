@@ -754,8 +754,16 @@ status_t ControlUnit::fillMetadata(std::shared_ptr<RequestCtrlState> &reqState)
     mMetadata->writeLSCMetadata(reqState);
     mMetadata->fillTonemapCurve(*reqState);
 
-    // TODO: calculate proper rolling shutter skew
-    int64_t rollingShutterSkew = 1000000; // default 1ms
+    rk_aiq_exposure_sensor_descriptor desc;
+    status_t status = getSensorModeData(desc);
+    if (CC_UNLIKELY(status != OK)) {
+        LOGE("Failed to retrieve sensor mode data - BUG");
+        return status;
+    }
+    int64_t rollingShutterSkew = ((int64_t)(desc.sensor_output_height - 1) *
+                                 desc.pixel_periods_per_line /
+                                 (desc.pixel_clock_freq_mhz * 1000000ULL)) *
+                                 1000000000ULL;
     //# ANDROID_METADATA_Dynamic android.sensor.rollingShutterSkew done
     reqState->ctrlUnitResult->update(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW,
                                      &rollingShutterSkew, 1);
