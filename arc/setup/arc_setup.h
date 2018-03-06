@@ -50,6 +50,12 @@ enum class ArcBinaryTranslationType {
   NDK_TRANSLATION = 2,
 };
 
+enum class AndroidSdkVersion {
+  UNKNOWN,
+  ANDROID_N,
+  ANDROID_P,
+};
+
 // A class that does the actual setup (and stop) operations.
 class ArcSetup {
  public:
@@ -60,6 +66,8 @@ class ArcSetup {
   // The return value is void because the function aborts when one or more of
   // the operations fail.
   void Run();
+
+  AndroidSdkVersion sdk_version() const { return sdk_version_; }
 
   void set_arc_mounter_for_testing(std::unique_ptr<ArcMounter> mounter) {
     arc_mounter_ = std::move(mounter);
@@ -281,6 +289,10 @@ class ArcSetup {
   // Creates /dev/.coldboot_done file in the container's mount namespace
   void CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs);
 
+  // Gets the image's SDK version. This function returns UNKNOWN when the system
+  // image hasn't been mounted yet.
+  AndroidSdkVersion GetSdkVersion();
+
   // Called when arc-setup is called with --setup or --setup-for-login-screen.
   void OnSetup(bool for_login_screen);
 
@@ -305,6 +317,7 @@ class ArcSetup {
   std::unique_ptr<ArcMounter> arc_mounter_;
   std::unique_ptr<ArcPaths> arc_paths_;
   std::unique_ptr<ArcSetupMetrics> arc_setup_metrics_;
+  const AndroidSdkVersion sdk_version_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcSetup);
 };

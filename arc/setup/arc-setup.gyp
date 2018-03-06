@@ -39,9 +39,6 @@
       'variables': {
         'USE_houdini%': 0,
         'USE_ndk_translation%': 0,
-        'USE_android_container_master_arc_dev%': 0,
-        'USE_cheets_aosp_userdebug%': 0,
-        'USE_cheets_aosp_userdebug_64%': 0,
       },
       'conditions': [
         ['USE_houdini == 1', {
@@ -52,18 +49,6 @@
         ['USE_ndk_translation == 1', {
           'defines': [
             'USE_NDK_TRANSLATION=1',
-          ],
-        }],
-        ['USE_android_container_master_arc_dev == 1', {
-          'defines': [
-            'USE_MASTER_CONTAINER=1',
-          ],
-          'conditions': [
-            ['USE_cheets_aosp_userdebug == 1 or USE_cheets_aosp_userdebug_64 == 1', {
-              'defines': [
-                'USE_MASTER_AOSP_CONTAINER=1',
-              ],
-            }],
           ],
         }],
       ],

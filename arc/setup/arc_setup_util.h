@@ -39,12 +39,6 @@ constexpr bool kUseHoudini = true;
 constexpr bool kUseHoudini = false;
 #endif  // USE_HOUDINI
 
-#if defined(USE_MASTER_CONTAINER)
-constexpr bool kUseMasterContainer = true;
-#else
-constexpr bool kUseMasterContainer = false;
-#endif  // USE_MASTER_CONTAINER
-
 #if defined(USE_NDK_TRANSLATION)
 constexpr bool kUseNdkTranslation = true;
 #else

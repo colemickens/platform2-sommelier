@@ -293,7 +293,8 @@ struct ArcPaths {
 ArcSetup::ArcSetup()
     : arc_mounter_(GetDefaultMounter()),
       arc_paths_(std::make_unique<ArcPaths>()),
-      arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {}
+      arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()),
+      sdk_version_(GetSdkVersion()) {}
 
 ArcSetup::~ArcSetup() = default;
 
@@ -444,7 +445,7 @@ void ArcSetup::SetUpAndroidData() {
     SetUpGservicesCache();
   }
 
-  if (kUseMasterContainer)
+  if (sdk_version() == AndroidSdkVersion::ANDROID_P)
     SetUpNetwork();
 }
 
@@ -1283,6 +1284,36 @@ void ArcSetup::CleanUpBinFmtMiscSetUp() {
   }
 }
 
+AndroidSdkVersion ArcSetup::GetSdkVersion() {
+  const base::FilePath build_prop =
+      arc_paths_->android_rootfs_directory.Append("system/build.prop");
+  if (!base::PathExists(build_prop)) {
+    // --onetime-setup always takes this path.
+    LOG(INFO) << "SDK version unknown: " << build_prop.value()
+              << " does not exist.";
+    return AndroidSdkVersion::UNKNOWN;
+  }
+
+  std::string version_str;
+  EXIT_IF(
+      !GetPropertyFromFile(build_prop, "ro.build.version.sdk", &version_str));
+  LOG(INFO) << "SDK version string: " << version_str;
+
+  int version;
+  EXIT_IF(!base::StringToInt(version_str, &version));
+  LOG(INFO) << "SDK version: " << version;
+
+  switch (version) {
+    case 25:
+      return AndroidSdkVersion::ANDROID_N;
+    case 27:
+      return AndroidSdkVersion::ANDROID_P;
+  }
+
+  CHECK(false) << "Unknown SDK version.";
+  return AndroidSdkVersion::UNKNOWN;
+}
+
 void ArcSetup::UnmountOnStop() {
   // This function is for Mode::STOP. Use IGNORE_ERRORS to make sure to run all
   // clean up code.
@@ -1433,19 +1464,26 @@ void ArcSetup::MountSharedAndroidDirectories() {
     EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
                               shared_data_directory));
   }
-  if (kUseMasterContainer) {
-    // TODO(yusukes): Double-check if we really want to migrate N's /cache as
-    // /data/cache in P. If we don't, we can remove all the code for master
-    // as well as the MS_REC flag in this function.
-    if (!base::PathExists(data_cache_directory)) {
-      EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
-                                data_cache_directory));
-    }
-  } else {
-    if (!base::PathExists(shared_cache_directory)) {
-      EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
-                                shared_cache_directory));
-    }
+
+  switch (sdk_version()) {
+    case AndroidSdkVersion::UNKNOWN:
+      NOTREACHED();
+      break;
+    case AndroidSdkVersion::ANDROID_N:
+      if (!base::PathExists(shared_cache_directory)) {
+        EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
+                                  shared_cache_directory));
+      }
+      break;
+    case AndroidSdkVersion::ANDROID_P:
+      // TODO(yusukes): Double-check if we really want to migrate N's /cache as
+      // /data/cache in P. If we don't, we can remove all the code for master
+      // as well as the MS_REC flag in this function.
+      if (!base::PathExists(data_cache_directory)) {
+        EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
+                                  data_cache_directory));
+      }
+      break;
   }
 
   // First, make the original data directory a mount point and also make it
@@ -1458,10 +1496,18 @@ void ArcSetup::MountSharedAndroidDirectories() {
 
   // Then, bind-mount /cache to the shared mount point. On master, pass
   // |cache_directory| as part of |data_directory| instead.
-  if (kUseMasterContainer)
-    EXIT_IF(!arc_mounter_->BindMount(cache_directory, data_cache_directory));
-  else
-    EXIT_IF(!arc_mounter_->BindMount(cache_directory, shared_cache_directory));
+  switch (sdk_version()) {
+    case AndroidSdkVersion::UNKNOWN:
+      NOTREACHED();
+      break;
+    case AndroidSdkVersion::ANDROID_N:
+      EXIT_IF(
+          !arc_mounter_->BindMount(cache_directory, shared_cache_directory));
+      break;
+    case AndroidSdkVersion::ANDROID_P:
+      EXIT_IF(!arc_mounter_->BindMount(cache_directory, data_cache_directory));
+      break;
+  }
 
   // Finally, bind-mount /data to the shared mount point. Note that MS_REC is
   // not needed for non-master builds, but it doesn't hurt either.
