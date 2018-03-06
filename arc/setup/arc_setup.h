@@ -175,6 +175,9 @@ class ArcSetup {
   // Sets up a mount point for arc-removable-media.
   void SetUpMountPointForRemovableMedia();
 
+  // Sets up a mount point for arc-adbd.
+  void SetUpMountPointForAdbd();
+
   // Cleans up mount points in |android_mutable_source|/data/dalvik-cache/.
   void CleanUpDalvikCache();
 
@@ -254,9 +257,16 @@ class ArcSetup {
   // point.
   void UnmountSharedAndroidDirectories();
 
+  // Starts the adbd proxy if the system is running in dev mode, not in a VM,
+  // and there is kernel support for it.
+  void MaybeStartAdbdProxy(bool is_dev_mode,
+                           bool is_inside_vm,
+                           const std::string& serialnumber);
+
   // Asks the (partially booted) container to turn itself into a fully
   // functional one.
-  void ContinueContainerBoot(ArcBootType boot_type);
+  void ContinueContainerBoot(ArcBootType boot_type,
+                             const std::string& serialnumber);
 
   // Ensures that directories that are necessary for starting a container
   // exist.

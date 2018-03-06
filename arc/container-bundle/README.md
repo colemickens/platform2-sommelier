@@ -154,6 +154,11 @@ ignore all other flags).
   called `arc-kmsg-logger` and stored in host's /var/log/android.kmsg.
 * `/dev/socket`: This is a normal `tmpfs`, used by Android's `init` to store
   socket files.
+* `/dev/usb-ffs/adb`: This is a bind-mount of the hosts's `/run/arc/adbd` and is
+  a slave mount, which contains a FIFO that acts as the ADB gadget configured
+  through ConfigFS/FunctionFS. This file is only present in Developer Mode. Once
+  the `/dev/usb-ffs/adb/ep0` file is written to, the bulk-in and bulk-out
+  endpoints will be bind-mounted into this same directory.
 * `/data` and `/data/cache`: These two directories are bind-mounted from the
   Chrome OS user's cryptohome (from
   `/home/root/${HASH}/android-data/{data,cache}`), which is only available after

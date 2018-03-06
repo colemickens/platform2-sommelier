@@ -68,6 +68,7 @@ namespace {
 
 // Lexicographically sorted. Usually you don't have to use these constants
 // directly. Prefer base::FilePath variables in ArcPaths instead.
+constexpr char kAdbdMountDirectory[] = "/run/arc/adbd";
 constexpr char kAndroidCmdline[] = "/run/arc/cmdline.android";
 constexpr char kAndroidGeneratedPropertiesDirectory[] = "/run/arc/properties";
 constexpr char kAndroidKmsgFifo[] = "/run/arc/android.kmsg.fifo";
@@ -133,6 +134,7 @@ constexpr gid_t kSystemGid = AID_SYSTEM + kShiftGid;
 constexpr uid_t kMediaUid = AID_MEDIA_RW + kShiftUid;
 constexpr gid_t kMediaGid = AID_MEDIA_RW + kShiftGid;
 constexpr uid_t kShellUid = AID_SHELL + kShiftUid;
+constexpr uid_t kShellGid = AID_SHELL + kShiftGid;
 constexpr gid_t kCacheGid = AID_CACHE + kShiftGid;
 constexpr gid_t kLogGid = AID_LOG + kShiftGid;
 
@@ -243,6 +245,7 @@ struct ArcPaths {
   const Mode mode{GetMode()};
 
   // Lexicographically sorted.
+  const base::FilePath adbd_mount_directory{kAdbdMountDirectory};
   const base::FilePath android_cmdline{kAndroidCmdline};
   const base::FilePath android_generated_properties_directory{
       kAndroidGeneratedPropertiesDirectory};
@@ -1061,6 +1064,19 @@ void ArcSetup::SetUpMountPointForRemovableMedia() {
                         arc_paths_->media_mount_directory.Append("removable")));
 }
 
+void ArcSetup::SetUpMountPointForAdbd() {
+  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->adbd_mount_directory));
+  EXIT_IF(!InstallDirectory(0770, kShellUid, kShellGid,
+                            arc_paths_->adbd_mount_directory));
+
+  const std::string adbd_mount_options =
+      base::StringPrintf("mode=0770,uid=%u,gid=%u", kShellUid, kShellGid);
+  EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->adbd_mount_directory,
+                               "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
+                               adbd_mount_options.c_str()));
+  EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->adbd_mount_directory));
+}
+
 void ArcSetup::CleanUpStaleMountPoints() {
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_dest_directory));
 }
@@ -1336,6 +1352,7 @@ void ArcSetup::UnmountOnStop() {
       arc_paths_->shared_mount_directory.Append("cache")));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(
       arc_paths_->shared_mount_directory.Append("data")));
+  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->adbd_mount_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_dest_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_mount_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->sdcard_mount_directory));
@@ -1544,7 +1561,28 @@ void ArcSetup::UnmountSharedAndroidDirectories() {
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->shared_mount_directory));
 }
 
-void ArcSetup::ContinueContainerBoot(ArcBootType boot_type) {
+void ArcSetup::MaybeStartAdbdProxy(bool is_dev_mode,
+                                   bool is_inside_vm,
+                                   const std::string& serialnumber) {
+  if (!is_dev_mode || is_inside_vm)
+    return;
+  const base::FilePath udc_drivers_directory("/sys/class/udc");
+  if (!base::DirectoryExists(udc_drivers_directory))
+    return;
+
+  // Now that we have identified that the system is capable of continuing, touch
+  // the path where the FIFO will be located.
+  const base::FilePath control_endpoint_path("/run/arc/adbd/ep0");
+  EXIT_IF(!CreateOrTruncate(control_endpoint_path, 0600));
+  EXIT_IF(!Chown(kShellUid, kShellGid, control_endpoint_path));
+
+  EXIT_IF(!LaunchAndWait(
+      {"/sbin/initctl", "start", "--no-wait", "arc-adbd",
+       base::StringPrintf("SERIALNUMBER=%s", serialnumber.c_str())}));
+}
+
+void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
+                                     const std::string& serialnumber) {
   constexpr char kCommand[] = "/system/bin/arcbootcontinue";
 
   // Run |kCommand| on the container side. The binary does the following:
@@ -1567,8 +1605,7 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type) {
       "-p",  // enter pid namespace
       "-r",  // set the root directory
       "-w",  // set the working directory
-      "--", kCommand, "--serialno", GetSerialNumber(),
-      "--disable-boot-completed",
+      "--", kCommand, "--serialno", serialnumber, "--disable-boot-completed",
       GetEnvOrDie(arc_paths_->env.get(), "DISABLE_BOOT_COMPLETED_BROADCAST"),
       "--vendor-privileged",
       GetEnvOrDie(arc_paths_->env.get(), "ENABLE_VENDOR_PRIVILEGED"),
@@ -1756,6 +1793,7 @@ void ArcSetup::OnSetup(bool for_login_screen) {
   CreateFakeProcfsFiles();
   SetUpMountPointForDebugFilesystem(is_dev_mode);
   SetUpMountPointForRemovableMedia();
+  SetUpMountPointForAdbd();
   CleanUpStaleMountPoints();
   RestoreContext();
   SetUpGraphicsSysfsContext();
@@ -1777,6 +1815,11 @@ void ArcSetup::OnBootContinue() {
     EXIT_IF(!arc_paths_->env->SetVar("COPY_PACKAGES_CACHE", "0"));
   }
 
+  const bool is_dev_mode =
+      GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_DEV_MODE");
+  const bool is_inside_vm =
+      GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_INSIDE_VM");
+  const std::string serialnumber = GetSerialNumber();
   const ArcBootType boot_type = GetBootType();
   bool should_delete_data_dalvik_cache_directory;
   bool should_delete_data_app_executables;
@@ -1812,7 +1855,8 @@ void ArcSetup::OnBootContinue() {
 
   // Asks the container to continue boot.
   MaybeStartUreadaheadInTracingMode();
-  ContinueContainerBoot(boot_type);
+  MaybeStartAdbdProxy(is_dev_mode, is_inside_vm, serialnumber);
+  ContinueContainerBoot(boot_type, serialnumber);
   // Unmount /run/arc/shared_mounts and its children. They are unnecessary at
   // this point.
   UnmountSharedAndroidDirectories();

@@ -102,6 +102,15 @@
 			]
 		},
 		{
+			"destination": "/dev/usb-ffs/adb",
+			"type": "bind",
+			"source": "/run/arc/adbd",
+			"options": [
+				"rbind",
+				"rslave"
+			]
+		},
+		{
 			"destination": "/dev/kmsg",
 			"type": "bind",
 			"source": "/run/arc/android.kmsg.fifo",
