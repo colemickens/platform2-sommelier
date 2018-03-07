@@ -447,7 +447,7 @@ const DeviceInfos V4L2CameraDevice::GetCameraDeviceInfos() {
       size_t pos = device.first.find(":");
       if (pos != std::string::npos) {
         LOG(ERROR) << __func__ << ": Device path: " << device.second
-                   << " vid: " << device.first.substr(0, pos - 1)
+                   << " vid: " << device.first.substr(0, pos)
                    << " pid: " << device.first.substr(pos + 1);
       } else {
         LOG(ERROR) << __func__ << ": Invalid device: " << device.first;
