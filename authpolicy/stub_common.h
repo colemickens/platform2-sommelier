@@ -180,6 +180,9 @@ std::string GetKrb5ConfFilePath();
 // an empty string on error.
 std::string GetKrb5CCFilePath();
 
+// Checks that |password| is UTF-8 encoded and 256 characters long.
+void CheckMachinePassword(const std::string& password);
+
 }  // namespace authpolicy
 
 #endif  // AUTHPOLICY_STUB_COMMON_H_

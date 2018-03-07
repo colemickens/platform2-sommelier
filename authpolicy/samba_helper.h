@@ -34,7 +34,7 @@ extern const char kConfigParam[];
 extern const char kDebugParam[];
 extern const char kCommandParam[];
 extern const char kUserParam[];
-extern const char kMachinepassParam[];
+extern const char kMachinepassStdinParam[];
 extern const char kCreatecomputerParam[];
 
 // Params for kinit.
@@ -123,9 +123,11 @@ std::string BuildDistinguishedName(
 // Generates a random password that can be used for Active Directory machine
 // accounts. It is UTF-8 encoded with |kMachinePasswordCodePoints| code points.
 // Since Kerberos code cannot handle higher code points, all code points are
-// below or equal to 0xFFFF. Excludes invalid code points. Also excludes 0x0000,
-// so that the string can be safely converted to and from const char*. The
-// runtime is not deterministic, but the average runtime is
+// below or equal to 0xFFFF. Excludes
+//  - invalid code points,
+//  - '\0', so that the string can be safely converted to and from char*, and
+//  - '\n', so that the password can be read from stdin.
+// The runtime is not deterministic, but the average runtime is
 // O(kMachinePasswordCodePoints).
 std::string GenerateRandomMachinePassword();
 

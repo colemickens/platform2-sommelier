@@ -125,7 +125,6 @@ const char kKeyEncTypeNotSupported[] = "KDC has no support for encryption type";
 
 // Replacement strings for anonymization.
 const char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
-const char kMachinePassPlaceholder[] = "<MACHINE_PASS>";
 const char kLogonNamePlaceholder[] = "<USER_LOGON_NAME>";
 const char kGivenNamePlaceholder[] = "<USER_GIVEN_NAME>";
 const char kDisplayNamePlaceholder[] = "<USER_DISPLAY_NAME>";
@@ -673,20 +672,21 @@ ErrorType SambaInterface::JoinMachine(
     return error;
   }
 
-  // Generate random machine password.
-  const std::string machine_pass = GenerateRandomMachinePassword();
-  anonymizer_->SetReplacement(machine_pass, kMachinePassPlaceholder);
-
   // Call net ads join to join the machine to the Active Directory domain.
-  ProcessExecutor net_cmd(
-      {paths_->Get(Path::NET), "ads", "join", kUserParam, normalized_upn,
-       kConfigParam, paths_->Get(Path::DEVICE_SMB_CONF), kDebugParam,
-       flags_.net_log_level(), kMachinepassParam + machine_pass});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "join", kUserParam,
+                           normalized_upn, kConfigParam,
+                           paths_->Get(Path::DEVICE_SMB_CONF), kDebugParam,
+                           flags_.net_log_level(), kMachinepassStdinParam});
   if (!machine_ou.empty()) {
     net_cmd.PushArg(kCreatecomputerParam +
                     BuildDistinguishedName(machine_ou, join_realm));
   }
-  net_cmd.SetInputFile(password_fd);
+
+  // The machine password and the user password are read from stdin.
+  const std::string machine_pass = GenerateRandomMachinePassword();
+  base::ScopedFD passwords_pipe =
+      WriteStringAndPipeToPipe(machine_pass + "\n", password_fd);
+  net_cmd.SetInputFile(passwords_pipe.get());
   if (!jail_helper_.SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP,
                                     TIMER_NET_ADS_JOIN)) {
     Reset();

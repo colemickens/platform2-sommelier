@@ -86,7 +86,7 @@ constexpr char kConfigParam[] = "--configfile";
 constexpr char kDebugParam[] = "--debuglevel";
 constexpr char kCommandParam[] = "--command";
 constexpr char kUserParam[] = "-U";
-constexpr char kMachinepassParam[] = "machinepass=";
+constexpr char kMachinepassStdinParam[] = "machinepassStdin";
 constexpr char kCreatecomputerParam[] = "createcomputer=";
 
 constexpr char kUseKeytabParam[] = "-k";
@@ -280,7 +280,8 @@ std::string GenerateRandomMachinePassword() {
 
     for (uint16_t code_point : rand_code_points) {
       // Discard bad code points.
-      if (code_point == 0 || !base::IsValidCodepoint(code_point))
+      if (code_point == 0 || code_point == '\n' ||
+          !base::IsValidCodepoint(code_point))
         continue;
 
       base::WriteUnicodeCharacter(code_point, &random_password);

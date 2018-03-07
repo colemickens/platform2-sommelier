@@ -22,9 +22,14 @@ namespace authpolicy {
 // smaller than some limit (see code).
 bool ReadPipeToString(int fd, std::string* out);
 
-// Create a non-blocking pipe and writes the given string to it. |str| must be
+// Creates a non-blocking pipe and writes the given string to it. |str| must be
 // small enough to fit into the pipe buffer. Returns base::ScopedFD() on error.
 base::ScopedFD WriteStringToPipe(const std::string& str);
+
+// Creates a non-blocking pipe and writes the given string and the contents of
+// the given pipe to it. The pipe buffer must be big enough to hold the data.
+// Returns base::ScopedFD() on error.
+base::ScopedFD WriteStringAndPipeToPipe(const std::string& str, int fd);
 
 // Reads the file at |path| into a pipe and returns the corresponding file
 // descriptor. The descriptor is invalid in case reading the file failed or it

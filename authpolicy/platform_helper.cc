@@ -263,9 +263,28 @@ base::ScopedFD WriteStringToPipe(const std::string& str) {
   if (!CreatePipe(&pipe_read_end, &pipe_write_end))
     return base::ScopedFD();
 
-  if (!base::WriteFileDescriptor(pipe_write_end.get(), str.c_str(),
+  if (!base::WriteFileDescriptor(pipe_write_end.get(), str.data(),
                                  str.size())) {
-    DLOG(ERROR) << "Failed to write string to pipe";
+    LOG(ERROR) << "Failed to write string to pipe";
+    return base::ScopedFD();
+  }
+  return pipe_read_end;
+}
+
+base::ScopedFD WriteStringAndPipeToPipe(const std::string& str, int fd) {
+  base::ScopedFD pipe_read_end, pipe_write_end;
+  if (!CreatePipe(&pipe_read_end, &pipe_write_end))
+    return base::ScopedFD();
+
+  if (!base::WriteFileDescriptor(pipe_write_end.get(), str.data(),
+                                 str.size())) {
+    LOG(ERROR) << "Failed to write string to pipe";
+    return base::ScopedFD();
+  }
+
+  if (HANDLE_EINTR(tee(fd, pipe_write_end.get(), INT_MAX, SPLICE_F_NONBLOCK)) <=
+      0) {
+    PLOG(ERROR) << "Failed to duplicate pipe";
     return base::ScopedFD();
   }
   return pipe_read_end;

@@ -6,6 +6,8 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
+#include <base/strings/utf_string_conversions.h>
+#include "authpolicy/samba_helper.h"
 
 #include "authpolicy/constants.h"
 
@@ -142,7 +144,7 @@ bool StartsWithCaseSensitive(const std::string& str, const char* search_for) {
 // Writes |str| to |file_descriptor|.
 void WriteFileDescriptor(int file_descriptor, const std::string& str) {
   if (!str.empty()) {
-    CHECK(base::WriteFileDescriptor(file_descriptor, str.c_str(), str.size()));
+    CHECK(base::WriteFileDescriptor(file_descriptor, str.data(), str.size()));
   }
 }
 
@@ -162,6 +164,12 @@ std::string GetKrb5ConfFilePath() {
 
 std::string GetKrb5CCFilePath() {
   return GetPathFromEnv(kKrb5CCEnvKey, false /* remove_prefix */);
+}
+
+void CheckMachinePassword(const std::string& password) {
+  std::wstring wide_password;
+  CHECK(base::UTF8ToWide(password.data(), password.size(), &wide_password));
+  CHECK_EQ(kMachinePasswordCodePoints, wide_password.size());
 }
 
 }  // namespace authpolicy

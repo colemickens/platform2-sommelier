@@ -383,13 +383,12 @@ TEST_F(SambaHelperTest, GenerateRandomMachinePasswordExcludeSurrogates) {
   g_rand_buffer = nullptr;
 }
 
-TEST_F(SambaHelperTest, GenerateRandomMachinePasswordExcludeNull) {
-  // HELLO\0
-  const std::vector<uint16_t> data = {'H', 'E', 'L', 'L', 'O', 0};
+TEST_F(SambaHelperTest, GenerateRandomMachinePasswordExcludeNullAndNewline) {
+  const std::vector<uint16_t> data = {'H', 'E', 'L', '\n', 'L', 'O', '\0'};
   g_rand_buffer = &data;
   SetRandomNumberGeneratorForTesting(&TestingRandBytes);
 
-  // The \0 should be ignored and data is padded periodically.
+  // The \n and \0 should be ignored and data is padded periodically.
   const std::string password = GenerateRandomMachinePassword();
   constexpr char expected_start[] = "HELLOHELLOHELLO";
   EXPECT_EQ(std::string(password.data()), password);

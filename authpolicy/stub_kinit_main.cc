@@ -13,7 +13,6 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/utf_string_conversions.h>
 
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/samba_helper.h"
@@ -95,13 +94,6 @@ bool HasStubAccountPropagated() {
   const char zero = 0;
   CHECK_EQ(1U, fwrite(&zero, 1, 1, test_file.get()));
   return false;
-}
-
-// Checks that |password| is UTF-8 encoded and 256 characters long.
-void CheckMachinePassword(const std::string& password) {
-  std::wstring wide_password;
-  CHECK(base::UTF8ToWide(password.c_str(), password.size(), &wide_password));
-  CHECK_EQ(kMachinePasswordCodePoints, wide_password.size());
 }
 
 // Reads the contents of the file at |kExpectedMachinePassFilename| and returns

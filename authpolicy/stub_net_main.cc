@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -285,6 +286,22 @@ std::string PrintGpo(const char* guid,
       version_machine, version_machine, guid, guid, kGpFlagsStr[gpflags]);
 }
 
+// Reads the machine and user passwords from stdin.
+// Expected format is:machine_pass + "\n" + user_pass.
+bool GetNetAdsJoinPasswords(std::string* user_password,
+                            std::string* machine_password) {
+  std::string passwords_str;
+  if (!ReadPipeToString(STDIN_FILENO, &passwords_str))
+    return false;
+  std::vector<std::string> passwords = base::SplitString(
+      passwords_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (passwords.size() != 2)
+    return false;
+  *machine_password = std::move(passwords[0]);
+  *user_password = std::move(passwords[1]);
+  return true;
+}
+
 // Reads the smb.conf file at |smb_conf_path| and extracts the netbios name.
 std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
   // We need the device smb.conf here, the user smb.conf doesn't contain the
@@ -377,12 +394,14 @@ int HandleWorkgroup() {
 // passing different user principals, passwords and machine names (in smb.conf).
 int HandleJoin(const std::string& command_line,
                const std::string& smb_conf_path) {
-  // Read the password from stdin.
-  std::string password;
-  if (!ReadPipeToString(STDIN_FILENO, &password)) {
-    LOG(ERROR) << "Failed to read password";
+  // Read the passwords from stdin (should be machine_pass + "\n" + user_pass).
+  std::string user_password, machine_password;
+  if (!GetNetAdsJoinPasswords(&user_password, &machine_password)) {
+    LOG(ERROR) << "Failed to read passwords";
     return kExitCodeError;
   }
+  CheckMachinePassword(machine_password);
+
   const std::string kUserFlag(std::string(kUserParam) + " ");
 
   // Read machine name from smb.conf.
@@ -445,20 +464,20 @@ int HandleJoin(const std::string& command_line,
   // Stub valid user principal. Switch behavior based on password.
   if (Contains(command_line, kUserFlag + kUserPrincipal)) {
     // Stub wrong password.
-    if (password == kWrongPassword) {
+    if (user_password == kWrongPassword) {
       WriteOutput(kWrongPasswordError, "");
       return kExitCodeError;
     }
     // Stub expired password.
-    if (password == kExpiredPassword) {
+    if (user_password == kExpiredPassword) {
       WriteOutput(kExpiredPasswordError, "");
       return kExitCodeError;
     }
     // Stub valid password.
-    if (password == kPassword)
+    if (user_password == kPassword)
       return kExitCodeOk;
 
-    NOTREACHED() << "UNHANDLED PASSWORD " << password;
+    NOTREACHED() << "UNHANDLED PASSWORD " << user_password;
     return kExitCodeError;
   }
 
