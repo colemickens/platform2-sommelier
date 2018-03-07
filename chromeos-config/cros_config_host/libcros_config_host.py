@@ -329,6 +329,39 @@ class CrosConfigImpl(object):
                            for target in build_targets if target}
     return list(build_targets_dedup)
 
+  def GetFirmwareBuildCombinations(self, components):
+    """Get named firmware build combinations for all models.
+
+    Args:
+      components: List of firmware components to get target combinations for.
+
+    Returns:
+      OrderedDict containing firmware combinations
+        key: combination name
+        value: list of firmware targets for specified types
+
+    Raises:
+      ValueError if a collision is encountered for named combinations.
+    """
+    combos = OrderedDict()
+    BUILD_TARGETS = '/firmware/build-targets'
+    for model in self.models.itervalues():
+      node = model.PathNode(BUILD_TARGETS)
+      # Skip nodes with no build targets
+      if not node:
+        continue
+      targets = [node.properties.get(c).value for c in components]
+
+      # Always name firmware combinations after the 'coreboot' name.
+      # TODO(teravest): Add a 'name' field.
+      key = node.properties.get('coreboot').value
+
+      if key in combos and targets != combos[key]:
+        raise ValueError('Colliding firmware combinations found for key %s: '
+                         '%s, %s' % (key, targets, combos[key]))
+      combos[key] = targets
+    return OrderedDict(sorted(combos.iteritems()))
+
   def GetThermalFiles(self):
     """Get a list of unique thermal files for all models
 

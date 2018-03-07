@@ -162,6 +162,19 @@ def GetBspTarFiles(config):
   for fname in config.GetBspTarFiles():
     print(fname)
 
+def GetFirmwareBuildCombinations(config, targets):
+  """Print the firmware build combinations for requested targets
+
+  Args:
+    config: A CrosConfig instance
+    targets: List of names of the build targets to get combinations for
+  """
+  d = config.GetFirmwareBuildCombinations(targets)
+  for name, target_values in d.iteritems():
+    print(name)
+    for value in target_values:
+      print(value)
+
 def WriteTargetDirectories():
   """Writes out a file containing the directory target info"""
   target_dirs = CrosConfigImpl.GetTargetDirectories()
@@ -298,6 +311,15 @@ def GetParser(description):
   subparsers.add_parser(
       'write-phandle-properties',
       help='Writes out a list of properties which are used as phandles')
+  # Parser: get-firmware-build-combinations
+  build_combination_parser = subparsers.add_parser(
+      'get-firmware-build-combinations',
+      help='Lists firmware build combinations for the given types, for all ' +
+      'models.')
+  build_combination_parser.add_argument(
+      'components',
+      help='Comma-separated list of firmware components to get combinations ' +
+      'for.')
   return parser
 
 
@@ -356,6 +378,8 @@ def main(argv=None):
     GetBspTarFiles(config)
   elif opts.subcommand == 'get-bsp-uris':
     GetBspUris(config)
+  elif opts.subcommand == 'get-firmware-build-combinations':
+    GetFirmwareBuildCombinations(config, opts.components.split(','))
 
 
 if __name__ == '__main__':

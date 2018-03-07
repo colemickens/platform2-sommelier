@@ -574,6 +574,16 @@ def MakeTests(pathname):
         del result['whitetip2']
       self.assertEqual(result, expected)
 
+    def testFimwareBuildCombinations(self):
+      """Test generating a dict of firmware build combinations."""
+      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      expected = OrderedDict([
+          ('caroline', ['caroline', 'caroline']),
+          ('pyro', ['pyro', 'pyro']),
+          ])
+      result = config.GetFirmwareBuildCombinations(['coreboot', 'depthcharge'])
+      self.assertEqual(result, expected)
+
     def testGetBspUris(self):
       """Test access to the BSP URIs"""
       config = CrosConfig(self.filepath)
