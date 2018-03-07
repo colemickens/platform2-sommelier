@@ -55,7 +55,7 @@ constexpr int kDefaultTimeoutMs = 30 * 1000;
 
 constexpr char kVshUsage[] =
     "vsh client\n"
-    "Usage: vsh [flags] -- ENV1=VALUE1 ENV2=VALUE2 ...";
+    "Usage: vsh [flags] -- ENV1=VALUE1 ENV2=VALUE2 command arg1 arg2...";
 
 // TODO(smbarber): Globals are bad. Refactor vsh/vshd into classes.
 int exit_code = EXIT_FAILURE;
@@ -243,7 +243,6 @@ int main(int argc, char** argv) {
   DEFINE_uint64(cid, 0, "Cid of VM");
   DEFINE_string(vm_name, "", "Target VM name");
   DEFINE_string(user, "chronos", "Target user in the VM");
-  DEFINE_string(command, "", "Command to run in the VM");
 
   brillo::FlagHelper::Init(argc, argv, kVshUsage);
 
@@ -299,7 +298,6 @@ int main(int argc, char** argv) {
   vm_tools::vsh::SetupConnectionRequest connection_request;
   connection_request.set_target(vm_tools::vsh::kVmShell);
   connection_request.set_user(FLAGS_user);
-  connection_request.set_command(FLAGS_command);
 
   auto env = connection_request.mutable_env();
 
@@ -311,18 +309,22 @@ int main(int argc, char** argv) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   std::vector<std::string> args = cl->GetArgs();
 
-  // Forward any additional environment variables passed on the command line.
+  // Forward any environment variables/args passed on the command line.
+  bool env_done = false;
   for (const auto& arg : args) {
-    std::vector<std::string> components = base::SplitString(
-        arg, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    if (!env_done) {
+      std::vector<std::string> components = base::SplitString(
+          arg, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-    if (components.size() != 2) {
-      LOG(WARNING) << "Argument '" << arg
-                   << "' is not a valid environment variable";
-      continue;
+      if (components.size() != 2) {
+        env_done = true;
+        connection_request.add_argv(arg);
+      } else {
+        (*env)[std::move(components[0])] = std::move(components[1]);
+      }
+    } else {
+      connection_request.add_argv(arg);
     }
-
-    (*env)[components[0]] = components[1];
   }
 
   if (!SendMessage(sockfd.get(), connection_request)) {

@@ -32,8 +32,10 @@ message SetupConnectionRequest {
   string user = 2;
   // Map of environment variables to forward.
   map<string, string> env = 3;
-  // Target command. Empty indicates a login shell.
+  // Deprecated. Target command. Empty indicates a login shell.
   string command = 4;
+  // Argv of the target program to run. Empty indicates a login shell.
+  repeated string argv = 5;
 }
 
 // Response to a SetupConnectionRequest.

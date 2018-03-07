@@ -20,6 +20,7 @@
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
+#include <algorithm>
 #include <memory>
 #include <string>
 
@@ -182,22 +183,27 @@ void PrepareExec(
   }
   envp.emplace_back(nullptr);
 
-  std::string command = connection_request.command();
-  std::vector<char* const> argv;
+  std::vector<string> args(connection_request.argv().begin(),
+                           connection_request.argv().end());
+  std::vector<const char*> argv;
+  const char* executable = nullptr;
 
-  if (command.empty()) {
-    argv = std::vector<char* const>({const_cast<char*>(login_shell.c_str()),
+  if (connection_request.argv().empty()) {
+    argv = std::vector<const char*>({login_shell.c_str(),
                                      nullptr});
+    executable = passwd->pw_shell;
   } else {
-    // Use `sh -c <command>` to execute the command.
-    argv = std::vector<char* const>({passwd->pw_shell,
-                                     const_cast<char*>("-c"),
-                                     const_cast<char*>(command.c_str()),
-                                     nullptr});
+    // Add nullptr at end.
+    argv.resize(args.size() + 1);
+    std::transform(args.begin(), args.end(), argv.begin(),
+            [](const string& arg) -> const char* { return arg.c_str(); });
+    executable = argv[0];
   }
 
-  if (execve(passwd->pw_shell, argv.data(), envp.data()) < 0) {
-      PLOG(ERROR) << "Failed to exec shell";
+  if (execvpe(executable,
+              const_cast<char* const*>(argv.data()),
+              envp.data()) < 0) {
+      PLOG(ERROR) << "Failed to exec '" << executable << "'";
   }
 }
 
@@ -398,7 +404,6 @@ int RunForwarder(base::ScopedFD sockfd) {
     PrepareExec(pts, passwd, connection_request);
 
     // This line shouldn't be reached if exec succeeds.
-    NOTREACHED();
     return EXIT_FAILURE;
   }
 
