@@ -38,8 +38,6 @@
 #include "cryptohome/mount.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/tpm.h"
-#include "cryptohome/tpm_live_test.h"
 #include "cryptohome/username_passkey.h"
 
 #include "attestation.pb.h"  // NOLINT(build/include)
@@ -112,7 +110,6 @@ namespace switches {
                                    "install_attributes_finalize",
                                    "pkcs11_token_status",
                                    "pkcs11_terminate",
-                                   "tpm_live_test",
                                    "tpm_verify_attestation",
                                    "tpm_verify_ek",
                                    "tpm_attestation_status",
@@ -173,7 +170,6 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
     ACTION_PKCS11_TOKEN_STATUS,
     ACTION_PKCS11_TERMINATE,
-    ACTION_TPM_LIVE_TEST,
     ACTION_TPM_VERIFY_ATTESTATION,
     ACTION_TPM_VERIFY_EK,
     ACTION_TPM_ATTESTATION_STATUS,
@@ -206,7 +202,6 @@ namespace switches {
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
-  static const char kTpmOwnerPasswordSwitch[] = "owner_password";
   static const char kKeyLabelSwitch[] = "key_label";
   static const char kKeyRevisionSwitch[] = "key_revision";
   static const char kHmacSigningKeySwitch[] = "hmac_signing_key";
@@ -1747,12 +1742,6 @@ int main(int argc, char **argv) {
             &brillo::Resetter(&error).lvalue())) {
       printf("PKCS #11 terminate call failed: %s.\n", error->message);
     }
-  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_LIVE_TEST],
-                     action.c_str())) {
-    cryptohome::TpmLiveTest tpm_test;
-    SecureBlob owner_password(cl->GetSwitchValueASCII(
-        switches::kTpmOwnerPasswordSwitch));
-    return tpm_test.RunLiveTests(owner_password);
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
       action.c_str())) {
