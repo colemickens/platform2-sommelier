@@ -384,6 +384,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("oobe_skip_postlogin"))
     builder->AddArg("--oobe-skip-postlogin");
 
+  if (builder->UseFlagIsSet("native_assistant"))
+    builder->AddFeatureEnableOverride("ChromeOSAssistant");
   if (builder->UseFlagIsSet("voice_interaction"))
     builder->AddArg("--enable-voice-interaction");
 
