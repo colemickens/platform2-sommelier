@@ -51,9 +51,9 @@ enum class ArcBinaryTranslationType {
 };
 
 enum class AndroidSdkVersion {
-  UNKNOWN,
-  ANDROID_N,
-  ANDROID_P,
+  UNKNOWN = 0,
+  ANDROID_N_MR1 = 25,
+  ANDROID_P = 28,
 };
 
 // A class that does the actual setup (and stop) operations.

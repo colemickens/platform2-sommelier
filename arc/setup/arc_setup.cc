@@ -1315,10 +1315,13 @@ AndroidSdkVersion ArcSetup::GetSdkVersion() {
   EXIT_IF(!base::StringToInt(version_str, &version));
   LOG(INFO) << "SDK version: " << version;
 
+  // TODO(yusukes): What 27 actually means is O-MR1, not P. Once our image
+  // starts using 28, remove 'case 27:'.
   switch (version) {
     case 25:
-      return AndroidSdkVersion::ANDROID_N;
+      return AndroidSdkVersion::ANDROID_N_MR1;
     case 27:
+    case 28:
       return AndroidSdkVersion::ANDROID_P;
   }
 
@@ -1481,7 +1484,7 @@ void ArcSetup::MountSharedAndroidDirectories() {
     case AndroidSdkVersion::UNKNOWN:
       NOTREACHED();
       break;
-    case AndroidSdkVersion::ANDROID_N:
+    case AndroidSdkVersion::ANDROID_N_MR1:
       if (!base::PathExists(shared_cache_directory)) {
         EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
                                   shared_cache_directory));
@@ -1512,7 +1515,7 @@ void ArcSetup::MountSharedAndroidDirectories() {
     case AndroidSdkVersion::UNKNOWN:
       NOTREACHED();
       break;
-    case AndroidSdkVersion::ANDROID_N:
+    case AndroidSdkVersion::ANDROID_N_MR1:
       EXIT_IF(
           !arc_mounter_->BindMount(cache_directory, shared_cache_directory));
       break;
@@ -1769,7 +1772,7 @@ void ArcSetup::OnSetup(bool for_login_screen) {
 void ArcSetup::OnBootContinue() {
   // This feature is only available in NYC branch.
   // TODO(khmel): Support them in P and remove this block.
-  if (sdk_version() != AndroidSdkVersion::ANDROID_N) {
+  if (sdk_version() != AndroidSdkVersion::ANDROID_N_MR1) {
     EXIT_IF(!arc_paths_->env->SetVar("SKIP_PACKAGES_CACHE_SETUP", "1"));
     EXIT_IF(!arc_paths_->env->SetVar("COPY_PACKAGES_CACHE", "0"));
   }
