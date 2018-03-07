@@ -50,11 +50,11 @@ std::unique_ptr<base::Value> ToValue(double value) {
 }
 
 std::unique_ptr<base::Value> ToValue(const char* value) {
-  return std::make_unique<base::StringValue>(value);
+  return std::make_unique<base::Value>(value);
 }
 
 std::unique_ptr<base::Value> ToValue(const std::string& value) {
-  return std::make_unique<base::StringValue>(value);
+  return std::make_unique<base::Value>(value);
 }
 
 }  // namespace brillo
