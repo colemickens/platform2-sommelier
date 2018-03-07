@@ -2118,7 +2118,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              StartsWith("ANDROID_DATA_DIR="),
                               StartsWith("ANDROID_DATA_OLD_DIR="),
                               std::string("CHROMEOS_USER=") + kSaneEmail,
                               "DISABLE_BOOT_COMPLETED_BROADCAST=0",
@@ -2218,7 +2219,8 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
       *init_controller_,
       TriggerImpulseInternal(
           SessionManagerImpl::kContinueArcBootImpulse,
-          ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                      StartsWith("ANDROID_DATA_DIR="),
                       StartsWith("ANDROID_DATA_OLD_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
                       "DISABLE_BOOT_COMPLETED_BROADCAST=0",
@@ -2367,7 +2369,8 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                  ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
+                              StartsWith("ANDROID_DATA_DIR="),
                               StartsWith("ANDROID_DATA_OLD_DIR="),
                               std::string("CHROMEOS_USER=") + kSaneEmail,
                               "DISABLE_BOOT_COMPLETED_BROADCAST=0",
@@ -2603,7 +2606,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              StartsWith("ANDROID_DATA_DIR="),
                               StartsWith("ANDROID_DATA_OLD_DIR="),
                               std::string("CHROMEOS_USER=") + kSaneEmail,
                               "DISABLE_BOOT_COMPLETED_BROADCAST=0",
@@ -2653,7 +2657,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              StartsWith("ANDROID_DATA_DIR="),
                               StartsWith("ANDROID_DATA_OLD_DIR="),
                               std::string("CHROMEOS_USER=") + kSaneEmail,
                               "DISABLE_BOOT_COMPLETED_BROADCAST=0",

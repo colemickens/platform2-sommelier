@@ -1225,6 +1225,8 @@ bool SessionManagerImpl::UpgradeArcContainer(
 
   android_container_->SetStatefulMode(StatefulMode::STATEFUL);
   std::vector<std::string> keyvals = {
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
       "ANDROID_DATA_DIR=" + GetAndroidDataDirForUser(account_id).value(),
       "ANDROID_DATA_OLD_DIR=" + GetAndroidDataOldDirForUser(account_id).value(),
       "CHROMEOS_USER=" + account_id,
