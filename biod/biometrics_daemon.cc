@@ -12,6 +12,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "biod/cros_fp_biometrics_manager.h"
 #include "biod/fake_biometrics_manager.h"
 #include "biod/fpc_biometrics_manager.h"
 #include "biod/proto_bindings/constants.pb.h"
@@ -434,13 +435,29 @@ BiometricsDaemon::BiometricsDaemon() {
   ObjectPath fpc_bio_path = ObjectPath(
       base::StringPrintf("%s/%s", kBiodServicePath, kFpcBiometricsManagerName));
   std::unique_ptr<BiometricsManager> fpc_bio = FpcBiometricsManager::Create();
-  CHECK(fpc_bio);
-  biometrics_managers_.emplace_back(std::make_unique<BiometricsManagerWrapper>(
-      std::move(fpc_bio),
-      object_manager_.get(),
-      fpc_bio_path,
-      sequencer->GetHandler("Failed to register FpcBiometricsManager object",
-                            true)));
+  if (fpc_bio) {
+    biometrics_managers_.emplace_back(
+        std::make_unique<BiometricsManagerWrapper>(
+            std::move(fpc_bio), object_manager_.get(), fpc_bio_path,
+            sequencer->GetHandler(
+                "Failed to register FpcBiometricsManager object", true)));
+  } else {
+    LOG(INFO) << "No FpcBiometricsManager detected.";
+  }
+
+  ObjectPath cros_fp_bio_path = ObjectPath(base::StringPrintf(
+      "%s/%s", kBiodServicePath, kCrosFpBiometricsManagerName));
+  std::unique_ptr<BiometricsManager> cros_fp_bio =
+      CrosFpBiometricsManager::Create();
+  if (cros_fp_bio) {
+    biometrics_managers_.emplace_back(
+        std::make_unique<BiometricsManagerWrapper>(
+            std::move(cros_fp_bio), object_manager_.get(), cros_fp_bio_path,
+            sequencer->GetHandler(
+                "Failed to register CrosFpBiometricsManager object", true)));
+  } else {
+    LOG(INFO) << "No CrosFpBiometricsManager detected.";
+  }
 
   session_manager_proxy_ = bus_->GetObjectProxy(
       login_manager::kSessionManagerServiceName,
