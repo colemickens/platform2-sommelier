@@ -278,7 +278,6 @@ bool SerializationUtils::WriteMetricToFile(const MetricSample& sample,
     return false;
   }
 
-  fchmod(file_descriptor.get(), READ_WRITE_ALL_FILE_FLAGS);
   // Grab a lock to avoid chrome truncating the file
   // underneath us. Keep the file locked as briefly as possible.
   // Freeing file_descriptor will close the file and and remove the lock.
