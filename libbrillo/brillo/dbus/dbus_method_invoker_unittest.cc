@@ -35,6 +35,7 @@ const char kTestMethod1[] = "TestMethod1";
 const char kTestMethod2[] = "TestMethod2";
 const char kTestMethod3[] = "TestMethod3";
 const char kTestMethod4[] = "TestMethod4";
+const char kTestMethod5[] = "TestMethod5";
 
 class DBusMethodInvokerTest : public testing::Test {
  public:
@@ -88,6 +89,7 @@ class DBusMethodInvokerTest : public testing::Test {
           return response.release();
         }
       } else if (method_call->GetMember() == kTestMethod4) {
+        // DEPRECATED. will be removed after libchrome uprev b/37434548
         method_call->SetSerial(123);
         MessageReader reader(method_call);
         dbus::FileDescriptor fd;
@@ -96,6 +98,16 @@ class DBusMethodInvokerTest : public testing::Test {
           MessageWriter writer(response.get());
           fd.CheckValidity();
           writer.AppendFileDescriptor(fd);
+          return response.release();
+        }
+      } else if (method_call->GetMember() == kTestMethod5) {
+        method_call->SetSerial(123);
+        MessageReader reader(method_call);
+        base::ScopedFD fd;
+        if (reader.PopFileDescriptor(&fd)) {
+          auto response = Response::CreateEmpty();
+          MessageWriter writer(response.get());
+          writer.AppendFileDescriptor(fd.get());
           return response.release();
         }
       }
@@ -131,7 +143,7 @@ class DBusMethodInvokerTest : public testing::Test {
   }
 
   // Sends a file descriptor received over D-Bus back to the caller.
-  dbus::FileDescriptor EchoFD(const dbus::FileDescriptor& fd_in) {
+  dbus::FileDescriptor DeprecatedEchoFD(const dbus::FileDescriptor& fd_in) {
     std::unique_ptr<dbus::Response> response =
         brillo::dbus_utils::CallMethodAndBlock(mock_object_proxy_.get(),
                                                kTestInterface, kTestMethod4,
@@ -143,6 +155,19 @@ class DBusMethodInvokerTest : public testing::Test {
     return fd_out;
   }
 
+  // Sends a file descriptor received over D-Bus back to the caller using the
+  // new types.
+  base::ScopedFD EchoFD(int fd_in) {
+    std::unique_ptr<dbus::Response> response =
+        brillo::dbus_utils::CallMethodAndBlock(
+            mock_object_proxy_.get(), kTestInterface, kTestMethod5,
+            nullptr, brillo::dbus_utils::FileDescriptor{fd_in});
+    EXPECT_NE(nullptr, response.get());
+    base::ScopedFD fd_out;
+    using brillo::dbus_utils::ExtractMethodCallResults;
+    EXPECT_TRUE(ExtractMethodCallResults(response.get(), nullptr, &fd_out));
+    return fd_out;
+  }
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
 };
@@ -175,19 +200,37 @@ TEST_F(DBusMethodInvokerTest, TestProtobuf) {
   EXPECT_EQ("bar", resp.bar());
 }
 
-TEST_F(DBusMethodInvokerTest, TestFileDescriptors) {
+TEST_F(DBusMethodInvokerTest, TestFileDescriptors_Deprecated) {
   // Passing a file descriptor over D-Bus would effectively duplicate the fd.
   // So the resulting file descriptor value would be different but it still
   // should be valid.
   dbus::FileDescriptor fd_stdin(0);
   fd_stdin.CheckValidity();
-  EXPECT_NE(fd_stdin.value(), EchoFD(fd_stdin).value());
+  EXPECT_NE(fd_stdin.value(), DeprecatedEchoFD(fd_stdin).value());
   dbus::FileDescriptor fd_stdout(1);
   fd_stdout.CheckValidity();
-  EXPECT_NE(fd_stdout.value(), EchoFD(fd_stdout).value());
+  EXPECT_NE(fd_stdout.value(), DeprecatedEchoFD(fd_stdout).value());
   dbus::FileDescriptor fd_stderr(2);
   fd_stderr.CheckValidity();
-  EXPECT_NE(fd_stderr.value(), EchoFD(fd_stderr).value());
+  EXPECT_NE(fd_stderr.value(), DeprecatedEchoFD(fd_stderr).value());
+}
+
+TEST_F(DBusMethodInvokerTest, TestFileDescriptors) {
+  // Passing a file descriptor over D-Bus would effectively duplicate the fd.
+  // So the resulting file descriptor value would be different but it still
+  // should be valid.
+  int fd_stdin = 0;
+  base::ScopedFD out_fd = EchoFD(fd_stdin);
+  EXPECT_NE(fd_stdin, out_fd.get());
+  EXPECT_TRUE(out_fd.is_valid());
+  int fd_stdout = 1;
+  out_fd = EchoFD(fd_stdout);
+  EXPECT_NE(fd_stdout, out_fd.get());
+  EXPECT_TRUE(out_fd.is_valid());
+  int fd_stderr = 2;
+  out_fd = EchoFD(fd_stderr);
+  EXPECT_NE(fd_stderr, out_fd.get());
+  EXPECT_TRUE(out_fd.is_valid());
 }
 
 //////////////////////////////////////////////////////////////////////////////

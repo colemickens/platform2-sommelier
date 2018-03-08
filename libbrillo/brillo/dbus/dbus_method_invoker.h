@@ -67,8 +67,10 @@
 #include <tuple>
 
 #include <base/bind.h>
+#include <base/files/scoped_file.h>
 #include <brillo/dbus/dbus_param_reader.h>
 #include <brillo/dbus/dbus_param_writer.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
@@ -159,6 +161,9 @@ inline const T& HackMove(const T& val) {
 // const_cast here. It is a bit hacky, but there is no negative side effects.
 inline dbus::FileDescriptor HackMove(const dbus::FileDescriptor& val) {
   return std::move(const_cast<dbus::FileDescriptor&>(val));
+}
+inline base::ScopedFD HackMove(const base::ScopedFD& val) {
+  return std::move(const_cast<base::ScopedFD&>(val));
 }
 }  // namespace internal
 

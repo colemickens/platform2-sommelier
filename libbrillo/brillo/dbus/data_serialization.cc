@@ -67,6 +67,11 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
 }
 
 void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const FileDescriptor& value) {
+  writer->AppendFileDescriptor(value.fd);
+}
+
+void AppendValueToWriter(dbus::MessageWriter* writer,
                          const brillo::Any& value) {
   value.AppendToDBusMessageWriter(writer);
 }
@@ -147,6 +152,13 @@ bool PopValueFromReader(dbus::MessageReader* reader,
   if (ok)
     value->CheckValidity();
   return ok;
+}
+
+bool PopValueFromReader(dbus::MessageReader* reader,
+                        base::ScopedFD* value) {
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopFileDescriptor(value);
 }
 
 namespace {

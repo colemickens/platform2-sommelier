@@ -36,7 +36,9 @@
 //               |     (UVW...)    |  std::tuple<U,V,W,...>
 //   DICT        |       a{KV}     |  std::map<K,V>
 //   VARIANT     |        v        |  brillo::Any
-//   UNIX_FD     |        h        |  dbus::FileDescriptor
+//   UNIX_FD     |        h        |  dbus::FileDescriptor (deprecated)
+//               |                 |  brillo::dbus_utils::FileDescriptor (write)
+//               |                 |  base::ScopedFD (read)
 //   SIGNATURE   |        g        |  (unsupported)
 //
 // Additional overloads/specialization can be provided for custom types.
@@ -57,8 +59,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/brillo_export.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/type_name_undecorate.h>
 #include <dbus/message.h>
 
@@ -428,6 +432,34 @@ struct DBusType<dbus::FileDescriptor> {
   }
   inline static bool Read(dbus::MessageReader* reader,
                           dbus::FileDescriptor* value) {
+    return PopValueFromReader(reader, value);
+  }
+};
+
+// brillo::dbus_utils::FileDescriptor/base::ScopedFD --------------------------
+BRILLO_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         const FileDescriptor& value);
+BRILLO_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        base::ScopedFD* value);
+
+template<>
+struct DBusType<FileDescriptor> {
+  inline static std::string GetSignature() {
+    return DBUS_TYPE_UNIX_FD_AS_STRING;
+  }
+  inline static void Write(dbus::MessageWriter* writer,
+                           const FileDescriptor& value) {
+    AppendValueToWriter(writer, value);
+  }
+};
+
+template<>
+struct DBusType<base::ScopedFD> {
+  inline static std::string GetSignature() {
+    return DBUS_TYPE_UNIX_FD_AS_STRING;
+  }
+  inline static bool Read(dbus::MessageReader* reader,
+                          base::ScopedFD* value) {
     return PopValueFromReader(reader, value);
   }
 };
