@@ -96,6 +96,20 @@ TEST_F(SmbProviderHelperTest, IsFileOrDir) {
   EXPECT_FALSE(IsFileOrDir(SMBC_LINK));
 }
 
+// Only SMBC_FILE_SHARE should return true.
+TEST_F(SmbProviderHelperTest, IsSmbShare) {
+  EXPECT_TRUE(IsSmbShare(SMBC_FILE_SHARE));
+
+  EXPECT_FALSE(IsSmbShare(SMBC_DIR));
+  EXPECT_FALSE(IsSmbShare(SMBC_FILE));
+  EXPECT_FALSE(IsSmbShare(SMBC_WORKGROUP));
+  EXPECT_FALSE(IsSmbShare(SMBC_SERVER));
+  EXPECT_FALSE(IsSmbShare(SMBC_PRINTER_SHARE));
+  EXPECT_FALSE(IsSmbShare(SMBC_COMMS_SHARE));
+  EXPECT_FALSE(IsSmbShare(SMBC_IPC_SHARE));
+  EXPECT_FALSE(IsSmbShare(SMBC_LINK));
+}
+
 // Errors should be returned correctly.
 TEST_F(SmbProviderHelperTest, GetErrorFromErrno) {
   EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrno(EPERM));

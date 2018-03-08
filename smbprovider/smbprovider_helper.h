@@ -62,6 +62,9 @@ bool IsDirectory(const struct stat& stat_info);
 // Helper method to detemine whether a stat struct represents a File.
 bool IsFile(const struct stat& stat_info);
 
+// Helper method to check if the entry is an SMB share.
+bool IsSmbShare(uint32_t smbc_type);
+
 // Helper method to get a valid DBus FileDescriptor |dbus_fd| from a scoped
 // file descriptor |fd|.
 void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd);

@@ -54,6 +54,10 @@ bool IsFileOrDir(uint32_t smbc_type) {
   return smbc_type == SMBC_FILE || smbc_type == SMBC_DIR;
 }
 
+bool IsSmbShare(uint32_t smbc_type) {
+  return smbc_type == SMBC_FILE_SHARE;
+}
+
 bool WriteEntry(const std::string& entry_name,
                 int32_t entry_type,
                 size_t buffer_size,
