@@ -135,6 +135,12 @@ void VaultKeyset::CreateRandomChapsKey() {
   CryptoLib::GetSecureRandom(chaps_key_.data(), chaps_key_.size());
 }
 
+void VaultKeyset::CreateRandomResetSeed() {
+  reset_seed_.clear();
+  reset_seed_.resize(CRYPTOHOME_RESET_SEED_LENGTH);
+  CryptoLib::GetSecureRandom(reset_seed_.data(), reset_seed_.size());
+}
+
 void VaultKeyset::CreateRandom() {
   CHECK(crypto_);
   fek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
@@ -156,6 +162,7 @@ void VaultKeyset::CreateRandom() {
   CryptoLib::GetSecureRandom(fnek_salt_.data(), fnek_salt_.size());
 
   CreateRandomChapsKey();
+  CreateRandomResetSeed();
 }
 
 const SecureBlob& VaultKeyset::fek() const {
@@ -192,6 +199,11 @@ void VaultKeyset::clear_chaps_key() {
   CHECK(chaps_key_.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
   chaps_key_.clear();
   chaps_key_.resize(0);
+}
+
+void VaultKeyset::set_reset_seed(const SecureBlob& reset_seed) {
+  CHECK_EQ(reset_seed.size(), CRYPTOHOME_RESET_SEED_LENGTH);
+  reset_seed_ = reset_seed;
 }
 
 bool VaultKeyset::Load(const FilePath& filename) {

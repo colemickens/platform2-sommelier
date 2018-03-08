@@ -444,6 +444,11 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
+  // It's safe to generate a reset_seed here.
+  if (!serialized.has_wrapped_reset_seed()) {
+    vault_keyset.CreateRandomResetSeed();
+  }
+
   if (!serialized.has_wrapped_chaps_key()) {
     is_pkcs11_passkey_migration_required_ = true;
     vault_keyset.CreateRandomChapsKey();

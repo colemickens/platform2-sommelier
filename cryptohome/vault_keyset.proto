@@ -42,4 +42,34 @@ message SerializedVaultKeyset {
   optional KeyData key_data = 9;
 
   optional bytes wrapped_chaps_key = 10;
+
+  // Used to derive the high entropy reset secret.
+  //
+  // There is a single reset_seed per user. The reset_seed will be used
+  // to generate a reset credential, which is stored in the Low Entropy (LE)
+  // credential metadata. Since the reset_seed can be used to unlock
+  // previously locked out LE credentials, it has to be stored in encrypted
+  // form inside wrapped_reset_seed.
+  //
+  // We encrypt the reset_seed with the VKK, which is tied to the user
+  // phrase. This way, the reset_seed will only be available during
+  // sign-in.
+  //
+  // Once a user signs in, the VaultKeyset will have the unwrapped version,
+  // i.e reset_seed.
+  //
+  // The reset_seed is kept in sync across different Keysets for a particular
+  // user. When a new keyset is being added using Homedirs::AddKeyset()
+  // we check whether a wrapped_reset_seed is already present in the
+  // VaultKeyset. If one exists, we simply re-use it.
+  //
+  // If a previously created "normal" credential is being used to create
+  // an LE credential in AddKeyset(), and it doesn't have a reset_seed,
+  // we generate one and resave the credential before creating the
+  // LE credential.
+  optional bytes wrapped_reset_seed = 11;
+
+  // Used during EncryptTPM/DecryptTPM to perform AES encryption of the
+  // reset_seed.
+  optional bytes reset_iv = 12;
 }

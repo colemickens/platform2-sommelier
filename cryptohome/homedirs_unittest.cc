@@ -1400,6 +1400,18 @@ class KeysetManagementTest : public HomeDirsTest {
     cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                           system_salt_, &passkey);
     up_.reset(new UsernamePasskey(test_helper_.users[1].username, passkey));
+
+    // Since most of the tests were written without reset_seed in mind,
+    // it is tedious to add expectations to every test, for the situation
+    // where a wrapped_reset_seed is not present.
+    // So, we instead set the wrapped_reset_seed by default,
+    // and have a separate test case where it is not set.
+    std::string dummy_reset_seed("DEADBEEF");
+    serialized_.set_wrapped_reset_seed(dummy_reset_seed);
+  }
+
+  void ClearFakeSerializedResetSeed() {
+    serialized_.clear_wrapped_reset_seed();
   }
 
   int last_vk_;
@@ -2052,6 +2064,46 @@ TEST_P(KeysetManagementTest, AddKeysetSaveFail) {
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
             homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
   EXPECT_EQ(index, -1);
+}
+
+TEST_P(KeysetManagementTest, AddKeysetNoResetSeedSuccess) {
+  KeysetSetUp();
+  ClearFakeSerializedResetSeed();
+
+  std::string old_file_name("master.0");
+
+  SecureBlob oldkey;
+  SecureBlob newkey;
+  up_->GetPasskey(&oldkey);
+  cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
+  int index = -1;
+
+  // Expectations for calls used to generate the reset_seed
+  base::FilePath orig_file(old_file_name);
+  EXPECT_CALL(*active_vk_, Encrypt(oldkey)).WillOnce(Return(true));
+  EXPECT_CALL(*active_vk_,
+              Save(Property(&FilePath::value, EndsWith(old_file_name))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*active_vk_, source_file()).WillOnce(ReturnRef(orig_file));
+
+  // The injected keyset in the fixture handles the up_ validation.
+  EXPECT_CALL(platform_,
+              OpenFile(Property(&FilePath::value, EndsWith(old_file_name)),
+                       StrEq("wx")))
+      .WillOnce(Return(reinterpret_cast<FILE*>(NULL)));
+  EXPECT_CALL(
+      platform_,
+      OpenFile(Property(&FilePath::value, EndsWith("master.1")), StrEq("wx")))
+      .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
+  EXPECT_CALL(*active_vk_, Encrypt(newkey)).WillOnce(Return(true));
+  EXPECT_CALL(*active_vk_,
+              Save(Property(&FilePath::value, EndsWith("master.1"))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
+
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+  EXPECT_EQ(index, 1);
 }
 
 TEST_P(KeysetManagementTest, ForceRemoveKeysetSuccess) {

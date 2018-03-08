@@ -574,6 +574,19 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
   }
 
+  // If the VaultKeyset doesn't have a reset seed, simply generate
+  // one and re-encrypt before proceeding.
+  if (!vk->serialized().has_wrapped_reset_seed()) {
+    LOG(INFO) << "Keyset lacks reset_seed; generating one.";
+    vk->CreateRandomResetSeed();
+    brillo::SecureBlob passkey;
+    existing_credentials.GetPasskey(&passkey);
+    if (!vk->Encrypt(passkey) || !vk->Save(vk->source_file())) {
+      LOG(WARNING) << "Failed to re-encrypt the old keyset";
+      return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+    }
+  }
+
   // Walk the namespace looking for the first free spot.
   // Optimizations can come later.
   // Note, nothing is stopping simultaenous access to these files

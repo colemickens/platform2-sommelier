@@ -37,6 +37,7 @@ class VaultKeyset {
   virtual bool ToKeys(VaultKeysetKeys* keys) const;
   virtual bool ToKeysBlob(brillo::SecureBlob* keys_blob) const;
   virtual void CreateRandomChapsKey();
+  virtual void CreateRandomResetSeed();
   virtual void CreateRandom();
 
   virtual const brillo::SecureBlob& fek() const;
@@ -70,8 +71,12 @@ class VaultKeyset {
   virtual const brillo::SecureBlob& chaps_key() const {
     return chaps_key_;
   }
+  virtual const brillo::SecureBlob& reset_seed() const {
+    return reset_seed_;
+  }
   virtual void set_chaps_key(const brillo::SecureBlob& chaps_key);
   virtual void clear_chaps_key();
+  virtual void set_reset_seed(const brillo::SecureBlob& reset_seed);
   virtual bool IsLECredential() const;
 
  private:
@@ -82,6 +87,7 @@ class VaultKeyset {
   brillo::SecureBlob fnek_sig_;
   brillo::SecureBlob fnek_salt_;
   brillo::SecureBlob chaps_key_;
+  brillo::SecureBlob reset_seed_;
 
   Platform* platform_;
   Crypto* crypto_;
