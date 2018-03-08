@@ -17,20 +17,6 @@
 
 namespace smbprovider {
 
-void AddEntryIfValid(const smbc_dirent& dirent,
-                     std::vector<DirectoryEntry>* directory_entries,
-                     const std::string& parent_dir_path) {
-  const std::string name(dirent.name);
-  // Ignore "." and ".." entries.
-  // TODO(allenvic): Handle SMBC_LINK
-  if (IsSelfOrParentDir(name) || !ShouldProcessEntryType(dirent.smbc_type)) {
-    return;
-  }
-  bool is_directory = dirent.smbc_type == SMBC_DIR;
-  directory_entries->emplace_back(is_directory, name,
-                                  AppendPath(parent_dir_path, name));
-}
-
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp) {
   DCHECK(dirp);
   DCHECK_GE(dirp->dirlen, sizeof(smbc_dirent));
@@ -64,7 +50,7 @@ bool IsSelfOrParentDir(const std::string& entry_name) {
   return entry_name == kEntrySelf || entry_name == kEntryParent;
 }
 
-bool ShouldProcessEntryType(uint32_t smbc_type) {
+bool IsFileOrDir(uint32_t smbc_type) {
   return smbc_type == SMBC_FILE || smbc_type == SMBC_DIR;
 }
 

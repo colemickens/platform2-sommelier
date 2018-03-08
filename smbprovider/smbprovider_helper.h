@@ -25,11 +25,6 @@ namespace smbprovider {
 
 using PathParts = const std::vector<std::string>;
 
-// Helper method to transform and add |dirent| to a DirectoryEntryListProto.
-void AddEntryIfValid(const smbc_dirent& dirent,
-                     std::vector<DirectoryEntry>* directory_entries,
-                     const std::string& full_path);
-
 // Helper method to advance |dirp| to the next entry.
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp);
 
@@ -48,9 +43,8 @@ smbc_dirent* GetDirentFromBuffer(uint8_t* buffer);
 // Helper method to check whether an entry is self (".") or parent ("..").
 bool IsSelfOrParentDir(const std::string& entry_name);
 
-// Helper method to check whether or not the entry should be processed on
-// GetDirectoryEntries().
-bool ShouldProcessEntryType(uint32_t smbc_type);
+// Helper method to check if the entry is a file or directory.
+bool IsFileOrDir(uint32_t smbc_type);
 
 // Helper method to write the contents of |entry| into the buffer |dirp|.
 // |dirlen| is the size of the smbc_dirent entry.

@@ -10,23 +10,33 @@
 
 #include "smbprovider/proto.h"
 #include "smbprovider/samba_interface.h"
+#include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
 
-// DirectoryIterator is a class that handles iterating over the DirEnts of
-// an SMB directory.
+// BaseDirectoryIterator is a class that handles iterating over the DirEnts of
+// an SMB directory. It must be subclassed and ShouldIncludeEntryType() have to
+// be defined by the derived classes.
 //
 // Example:
-//    DirectoryIterator it("smb://testShare/test/dogs", SambaInterface.get());
-//    result = it.Init();
-//    while (result == 0)  {
+//    DirectoryIterator it("smb://testShare/test/dogs",
+//    SambaInterface.get()); result = it.Init(); while (result == 0)  {
 //      if it.IsDone: return 0
 //      // Do something with it.Get();
 //      result = it.Next();
 //    }
 //    return result;
-class DirectoryIterator {
+class BaseDirectoryIterator {
  public:
+  BaseDirectoryIterator(const std::string& dir_path,
+                        SambaInterface* samba_interface,
+                        size_t buffer_size);
+
+  BaseDirectoryIterator(const std::string& dir_path,
+                        SambaInterface* samba_interface);
+
+  BaseDirectoryIterator(BaseDirectoryIterator&& other);
+
   // Initializes the iterator, setting the first value of current. Returns 0 on
   // success, error on failure. Must be called before any other operation.
   int32_t Init() WARN_UNUSED_RESULT;
@@ -41,15 +51,11 @@ class DirectoryIterator {
   // Returns true if there is nothing left to iterate over.
   bool IsDone() WARN_UNUSED_RESULT;
 
-  DirectoryIterator(const std::string& dir_path,
-                    SambaInterface* samba_interface,
-                    size_t buffer_size);
-  DirectoryIterator(const std::string& dir_path,
-                    SambaInterface* samba_interface);
+  virtual ~BaseDirectoryIterator();
 
-  DirectoryIterator(DirectoryIterator&& other);
-
-  ~DirectoryIterator();
+ protected:
+  // Returns true on the entry types that should be included.
+  virtual bool ShouldIncludeEntryType(uint32_t smbc_type) const = 0;
 
  private:
   // Fetches the next chunk of DirEntries into entries_ and resets
@@ -72,9 +78,14 @@ class DirectoryIterator {
   // Attempts to Close the directory with |dir_id_|. Logs on failure.
   void CloseDirectory();
 
+  // Helper method to transform and add |dirent| to a DirectoryEntryListProto.
+  void AddEntryIfValid(const smbc_dirent& dirent,
+                       std::vector<DirectoryEntry>* directory_entries,
+                       const std::string& full_path);
+
   const std::string dir_path_;
   // |dir_buf_| is used as the buffer for reading directory entries from Samba
-  // interface. Its initial capacity is specified in the DirectoryIterator
+  // interface. Its initial capacity is specified in the BaseDirectoryIterator
   // constructor.
   std::vector<uint8_t> dir_buf_;
   std::vector<DirectoryEntry> entries_;
@@ -87,6 +98,22 @@ class DirectoryIterator {
   bool is_initialized_ = false;
 
   SambaInterface* samba_interface_;  // not owned.
+
+  DISALLOW_COPY_AND_ASSIGN(BaseDirectoryIterator);
+};
+
+// DirectoryIterator is an implementation of BaseDirectoryIterator that only
+// iterates through files and directories.
+class DirectoryIterator : public BaseDirectoryIterator {
+  using BaseDirectoryIterator::BaseDirectoryIterator;
+
+ public:
+  DirectoryIterator(DirectoryIterator&& other) = default;
+
+ protected:
+  bool ShouldIncludeEntryType(uint32_t smbc_type) const override {
+    return IsFileOrDir(smbc_type);
+  }
 
   DISALLOW_COPY_AND_ASSIGN(DirectoryIterator);
 };

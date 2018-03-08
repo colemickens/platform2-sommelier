@@ -59,66 +59,6 @@ TEST_F(SmbProviderHelperTest, WriteEntrySucceeds) {
   EXPECT_EQ(CalculateEntrySize(name), dirent->dirlen);
 }
 
-// "." and ".." entries shouldn't be added to DirectoryEntryListProto.
-TEST_F(SmbProviderHelperTest, SelfEntryDoesNotGetAdded) {
-  std::vector<uint8_t> dir_buf(kBufferSize);
-  smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
-  EXPECT_TRUE(WriteEntry(".", SMBC_DIR, dir_buf.size(), dirent));
-
-  std::vector<DirectoryEntry> entries;
-  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
-  EXPECT_EQ(0, entries.size());
-
-  EXPECT_TRUE(WriteEntry("..", SMBC_DIR, dir_buf.size(), dirent));
-  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
-  EXPECT_EQ(0, entries.size());
-}
-
-// Incorrect smbc_type should not be added to DirectoryEntryListProto.
-TEST_F(SmbProviderHelperTest, WrongTypeDoesNotGetAdded) {
-  std::vector<uint8_t> dir_buf(kBufferSize);
-  smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
-  EXPECT_TRUE(WriteEntry("printer1", SMBC_PRINTER_SHARE, kBufferSize, dirent));
-
-  std::vector<DirectoryEntry> entries;
-  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
-  EXPECT_EQ(0, entries.size());
-}
-
-// AddEntryIfValid should properly add proper file and directory entries.
-TEST_F(SmbProviderHelperTest, AddEntryProperlyAddsValidEntries) {
-  std::vector<uint8_t> dir_buf(kBufferSize);
-  smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
-
-  std::vector<DirectoryEntry> entries;
-  const std::string file_name("dog.jpg");
-  uint32_t file_type = SMBC_FILE;
-  EXPECT_TRUE(WriteEntry(file_name, file_type, kBufferSize, dirent));
-
-  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
-  EXPECT_EQ(1, entries.size());
-  const DirectoryEntry& file_entry = entries[0];
-  EXPECT_FALSE(file_entry.is_directory);
-  EXPECT_EQ(file_name, file_entry.name);
-  EXPECT_EQ("smb://testUrl/dog.jpg", file_entry.full_path);
-  EXPECT_EQ(-1, file_entry.size);
-  EXPECT_EQ(-1, file_entry.last_modified_time);
-
-  AdvanceDirEnt(dirent);
-  const std::string dir_name("dogs");
-  uint32_t dir_type = SMBC_DIR;
-  EXPECT_TRUE(WriteEntry(dir_name, dir_type, kBufferSize, dirent));
-
-  AddEntryIfValid(*dirent, &entries, "smb://testUrl");
-  EXPECT_EQ(2, entries.size());
-  const DirectoryEntry& dir_entry = entries[1];
-  EXPECT_TRUE(dir_entry.is_directory);
-  EXPECT_EQ(dir_name, dir_entry.name);
-  EXPECT_EQ("smb://testUrl/dogs", dir_entry.full_path);
-  EXPECT_EQ(-1, dir_entry.size);
-  EXPECT_EQ(-1, dir_entry.last_modified_time);
-}
-
 // Tests that AppendPath properly appends with or without the trailing separator
 // "/" on the base path.
 TEST_F(SmbProviderHelperTest, AppendPath) {
@@ -142,18 +82,18 @@ TEST_F(SmbProviderHelperTest, IsSelfOrParentDir) {
   EXPECT_FALSE(IsSelfOrParentDir("test.jpg"));
 }
 
-// Only SMBC_DIR and SMBC_FILE should be processed.
-TEST_F(SmbProviderHelperTest, ShouldProcessEntryType) {
-  EXPECT_TRUE(ShouldProcessEntryType(SMBC_DIR));
-  EXPECT_TRUE(ShouldProcessEntryType(SMBC_FILE));
+// Only SMBC_DIR and SMBC_FILE should return true.
+TEST_F(SmbProviderHelperTest, IsFileOrDir) {
+  EXPECT_TRUE(IsFileOrDir(SMBC_DIR));
+  EXPECT_TRUE(IsFileOrDir(SMBC_FILE));
 
-  EXPECT_FALSE(ShouldProcessEntryType(SMBC_WORKGROUP));
-  EXPECT_FALSE(ShouldProcessEntryType(SMBC_SERVER));
-  EXPECT_FALSE(ShouldProcessEntryType(SMBC_FILE_SHARE));
-  EXPECT_FALSE(ShouldProcessEntryType(SMBC_PRINTER_SHARE));
-  EXPECT_FALSE(ShouldProcessEntryType(SMBC_COMMS_SHARE));
-  EXPECT_FALSE(ShouldProcessEntryType(SMBC_IPC_SHARE));
-  EXPECT_FALSE(ShouldProcessEntryType(SMBC_LINK));
+  EXPECT_FALSE(IsFileOrDir(SMBC_WORKGROUP));
+  EXPECT_FALSE(IsFileOrDir(SMBC_SERVER));
+  EXPECT_FALSE(IsFileOrDir(SMBC_FILE_SHARE));
+  EXPECT_FALSE(IsFileOrDir(SMBC_PRINTER_SHARE));
+  EXPECT_FALSE(IsFileOrDir(SMBC_COMMS_SHARE));
+  EXPECT_FALSE(IsFileOrDir(SMBC_IPC_SHARE));
+  EXPECT_FALSE(IsFileOrDir(SMBC_LINK));
 }
 
 // Errors should be returned correctly.

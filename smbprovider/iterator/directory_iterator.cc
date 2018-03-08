@@ -18,18 +18,18 @@ constexpr int32_t kNoMoreEntriesError = -1;
 
 }  // namespace
 
-DirectoryIterator::DirectoryIterator(const std::string& dir_path,
-                                     SambaInterface* samba_interface)
-    : DirectoryIterator(dir_path, samba_interface, kBufferSize) {}
+BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
+                                             SambaInterface* samba_interface)
+    : BaseDirectoryIterator(dir_path, samba_interface, kBufferSize) {}
 
-DirectoryIterator::DirectoryIterator(const std::string& dir_path,
-                                     SambaInterface* samba_interface,
-                                     size_t buffer_size)
+BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
+                                             SambaInterface* samba_interface,
+                                             size_t buffer_size)
     : dir_path_(dir_path),
       dir_buf_(buffer_size),
       samba_interface_(samba_interface) {}
 
-DirectoryIterator::DirectoryIterator(DirectoryIterator&& other)
+BaseDirectoryIterator::BaseDirectoryIterator(BaseDirectoryIterator&& other)
     : dir_path_(std::move(other.dir_path_)),
       dir_buf_(std::move(other.dir_buf_)),
       entries_(std::move(other.entries_)),
@@ -43,13 +43,13 @@ DirectoryIterator::DirectoryIterator(DirectoryIterator&& other)
   other.samba_interface_ = nullptr;
 }
 
-DirectoryIterator::~DirectoryIterator() {
+BaseDirectoryIterator::~BaseDirectoryIterator() {
   if (dir_id_ != -1) {
     CloseDirectory();
   }
 }
 
-int32_t DirectoryIterator::Init() {
+int32_t BaseDirectoryIterator::Init() {
   DCHECK(!is_initialized_);
 
   int32_t open_dir_error = OpenDirectory();
@@ -57,11 +57,10 @@ int32_t DirectoryIterator::Init() {
     return open_dir_error;
   }
   is_initialized_ = true;
-
   return Next();
 }
 
-int32_t DirectoryIterator::Next() {
+int32_t BaseDirectoryIterator::Next() {
   DCHECK(is_initialized_);
   DCHECK(!is_done_);
 
@@ -75,7 +74,7 @@ int32_t DirectoryIterator::Next() {
   return 0;
 }
 
-const DirectoryEntry& DirectoryIterator::Get() {
+const DirectoryEntry& BaseDirectoryIterator::Get() {
   DCHECK(is_initialized_);
   DCHECK(!is_done_);
   DCHECK_LT(current_entry_index_, entries_.size());
@@ -83,27 +82,27 @@ const DirectoryEntry& DirectoryIterator::Get() {
   return entries_[current_entry_index_];
 }
 
-bool DirectoryIterator::IsDone() {
+bool BaseDirectoryIterator::IsDone() {
   DCHECK(is_initialized_);
   return is_done_;
 }
 
-int32_t DirectoryIterator::OpenDirectory() {
+int32_t BaseDirectoryIterator::OpenDirectory() {
   DCHECK_EQ(-1, dir_id_);
   return samba_interface_->OpenDirectory(dir_path_, &dir_id_);
 }
 
-void DirectoryIterator::CloseDirectory() {
+void BaseDirectoryIterator::CloseDirectory() {
   DCHECK_NE(-1, dir_id_);
   int32_t result = samba_interface_->CloseDirectory(dir_id_);
   if (result != 0) {
-    LOG(ERROR) << "DirectoryIterator: CloseDirectory failed with error: "
+    LOG(ERROR) << "BaseDirectoryIterator: CloseDirectory failed with error: "
                << GetErrorFromErrno(result);
   }
   dir_id_ = -1;
 }
 
-int32_t DirectoryIterator::FillBuffer() {
+int32_t BaseDirectoryIterator::FillBuffer() {
   int32_t bytes_read;
   int32_t fetch_error = ReadEntriesToBuffer(&bytes_read);
   if (fetch_error != 0) {
@@ -121,13 +120,13 @@ int32_t DirectoryIterator::FillBuffer() {
   return 0;
 }
 
-int32_t DirectoryIterator::ReadEntriesToBuffer(int32_t* bytes_read) {
+int32_t BaseDirectoryIterator::ReadEntriesToBuffer(int32_t* bytes_read) {
   return samba_interface_->GetDirectoryEntries(
       dir_id_, GetDirentFromBuffer(dir_buf_.data()), dir_buf_.size(),
       bytes_read);
 }
 
-void DirectoryIterator::ConvertBufferToVector(int32_t bytes_read) {
+void BaseDirectoryIterator::ConvertBufferToVector(int32_t bytes_read) {
   entries_.clear();
   current_entry_index_ = 0;
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
@@ -143,6 +142,21 @@ void DirectoryIterator::ConvertBufferToVector(int32_t bytes_read) {
     DCHECK(dirent);
   }
   DCHECK_EQ(bytes_left, 0);
+}
+
+void BaseDirectoryIterator::AddEntryIfValid(
+    const smbc_dirent& dirent,
+    std::vector<DirectoryEntry>* directory_entries,
+    const std::string& parent_dir_path) {
+  const std::string name(dirent.name);
+  // Ignore "." and ".." entries.
+  // TODO(allenvic): Handle SMBC_LINK
+  if (IsSelfOrParentDir(name) || !ShouldIncludeEntryType(dirent.smbc_type)) {
+    return;
+  }
+  bool is_directory = dirent.smbc_type == SMBC_DIR;
+  directory_entries->emplace_back(is_directory, name,
+                                  AppendPath(parent_dir_path, name));
 }
 
 }  // namespace smbprovider
