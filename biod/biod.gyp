@@ -35,25 +35,6 @@
       'link_settings': {
         'libraries': [
           '-ldl',
-          '-L<(sysroot)/opt/fpc/lib/ -lfpalgorithm',
-        ],
-        'ldflags': [
-          # pass --export-dynamic to the linker so libfpsensor.so can see the
-          # fp_pal_* symbols at dlopen() time.
-          '-Wl,--export-dynamic',
-        ],
-        'conditions': [
-          # For ARM devices, libfpalgorithm and libfpsensor are not completely
-          # separated. Thus we need to link against libfpsensor and set -rpath
-          # so libfpsensor.so is found by the dynamic linker at runtime.
-          ['USE_arm == 1 or USE_arm64 == 1', {
-            'libraries': [
-              '-lfpsensor',
-            ],
-            'ldflags': [
-              '-Wl,-rpath,/opt/fpc/lib',
-            ],
-          }],
         ],
       },
       'dependencies': ['libbiod'],
