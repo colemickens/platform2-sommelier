@@ -33,6 +33,7 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOff) {
   EXPECT_FALSE(flags.log_command_output_on_error());
   EXPECT_FALSE(flags.log_gpo());
   EXPECT_EQ("0", flags.net_log_level());
+  EXPECT_FALSE(flags.disable_anonymizer());
 }
 
 // Check whether parsing the flags data works as expected.
@@ -47,7 +48,8 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
       "log_command_output":true,
       "log_command_output_on_error":true,
       "log_gpo":true,
-      "net_log_level":"10" })!!!");
+      "net_log_level":"10",
+      "disable_anonymizer":true })!!!");
   const protos::DebugFlags& flags = flags_container.Get();
 
   EXPECT_TRUE(flags.disable_seccomp());
@@ -59,6 +61,7 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
   EXPECT_TRUE(flags.log_command_output_on_error());
   EXPECT_TRUE(flags.log_gpo());
   EXPECT_EQ("10", flags.net_log_level());
+  EXPECT_TRUE(flags.disable_anonymizer());
 }
 
 TEST_F(AuthPolicyFlagsTest, FlagsSerialization) {
@@ -79,6 +82,20 @@ TEST_F(AuthPolicyFlagsTest, FlagsSerialization) {
 TEST_F(AuthPolicyFlagsTest, FlagsDeserializationFailsBadString) {
   protos::DebugFlags flags;
   EXPECT_FALSE(DeserializeFlags("!@#$%bogus", &flags));
+}
+
+// For all debug log levels, anonymizer should be enabled. The only way to
+// disable it is via writing an authpolicyd_flags file in dev mode. This is
+// important for privacy reasons since otherwise anyone could disable the
+// anonymizer.
+TEST_F(AuthPolicyFlagsTest, SetDefaultsNeverDisablesAnonymizer) {
+  for (int level = AuthPolicyFlags::kMinLevel;
+       level <= AuthPolicyFlags::kMaxLevel; ++level) {
+    AuthPolicyFlags flags_container;
+    flags_container.SetDefaults(
+        static_cast<AuthPolicyFlags::DefaultLevel>(level));
+    EXPECT_FALSE(flags_container.Get().disable_anonymizer());
+  }
 }
 
 }  // namespace authpolicy

@@ -1679,6 +1679,9 @@ void SambaInterface::ReloadDebugFlags() {
     flags_container.Dump();
   }
   flags_ = flags_container.Get();
+
+  // Toggle anonymizer.
+  anonymizer_->set_disabled(flags_.disable_anonymizer());
 }
 
 }  // namespace authpolicy

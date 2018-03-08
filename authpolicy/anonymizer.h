@@ -55,6 +55,9 @@ class Anonymizer {
   // given replacement. Returns the anonymized string.
   std::string Process(const std::string& input);
 
+  // If set to true, Process() just returns the initial |input|.
+  void set_disabled(bool disabled) { disabled_ = disabled; }
+
   // Returns true iff Process() was called.
   bool process_called_for_testing() const {
     return process_called_for_testing_;
@@ -86,6 +89,7 @@ class Anonymizer {
   std::map<std::string, ReplacementData> search_replacements_;
 
   bool process_called_for_testing_ = false;
+  bool disabled_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(Anonymizer);
 };

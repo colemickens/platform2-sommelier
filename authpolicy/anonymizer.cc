@@ -83,6 +83,11 @@ std::string Anonymizer::Process(const std::string& input) {
     }
   }
 
+  // If turned off, just return the input. Still do the stuff above, though, so
+  // Process() will work properly once the anonymizer is re-enabled.
+  if (disabled_)
+    return input;
+
   // Now handle string replacements.
   std::string output = input;
   for (const auto& replacement : replacements_) {

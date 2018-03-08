@@ -150,4 +150,20 @@ TEST_F(AnonymizerTest, DoesNotReplaceShorterStringsFirst) {
   EXPECT_EQ("ABC_REP XYZ_REP KEY_REP 123_REP", anonymized_str);
 }
 
+// Disabling the anonymizer causes Process() to return the original string.
+TEST_F(AnonymizerTest, Disable) {
+  anonymizer_.ReplaceSearchArg(kUserNameKey, kReplacement);
+  anonymizer_.set_disabled(true);
+  std::string anonymized_log = anonymizer_.Process(kLog);
+  EXPECT_EQ(anonymized_log, kLog);
+
+  // Once reenabled, anonymizer should anonymize again and even remember the
+  // replacement found before.
+  anonymizer_.set_disabled(false);
+  anonymizer_.ResetSearchArgReplacements();
+  anonymized_log = anonymizer_.Process(kDifferentLogWithSameUserName);
+  EXPECT_EQ(std::string::npos, anonymized_log.find(kUserName));
+  EXPECT_NE(std::string::npos, anonymized_log.find(kReplacement));
+}
+
 }  // namespace authpolicy

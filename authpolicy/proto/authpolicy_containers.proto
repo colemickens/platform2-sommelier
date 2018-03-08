@@ -72,6 +72,8 @@ message DebugFlags {
   // Log level for Samba net commands. Only shown if log_command_output is set
   // as well.
   optional string net_log_level = 10 [default = "0"];
+  // Disable the log anonymizer.
+  optional bool disable_anonymizer = 11;
 }
 
 // Container for policy for extensions.

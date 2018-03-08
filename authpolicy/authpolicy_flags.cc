@@ -121,6 +121,7 @@ constexpr BoolFlag kBoolFlags[] = {
     DEFINE_FLAG(log_command_output),
     DEFINE_FLAG(log_command_output_on_error),
     DEFINE_FLAG(log_gpo),
+    DEFINE_FLAG(disable_anonymizer),
 };
 
 // String flags.
