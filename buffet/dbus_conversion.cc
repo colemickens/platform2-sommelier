@@ -138,7 +138,7 @@ std::unique_ptr<base::Value> CreateValue(const T& value,
 template <>
 std::unique_ptr<base::Value> CreateValue<std::string>(const std::string& value,
                                                       brillo::ErrorPtr* error) {
-  return std::make_unique<base::StringValue>(value);
+  return std::make_unique<base::Value>(value);
 }
 
 template <>

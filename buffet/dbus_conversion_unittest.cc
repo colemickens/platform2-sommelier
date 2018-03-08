@@ -101,8 +101,7 @@ std::unique_ptr<base::Value> CreateRandomValue(int children,
     case base::Value::Type::DOUBLE:
       return std::make_unique<base::Value>(base::RandDouble());
     case base::Value::Type::STRING:
-      return std::unique_ptr<base::Value>{
-          new base::StringValue{base::GenerateGUID()}};
+      return std::make_unique<base::Value>(base::GenerateGUID());
     case base::Value::Type::DICTIONARY:
       CHECK_GE(children, 1);
       return CreateRandomDictionary(children - 1);
