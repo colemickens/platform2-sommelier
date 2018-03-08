@@ -129,5 +129,10 @@ cat "${SRC}/TEST_WARNING_OLD_ARM64" >> messages
 sleep 1
 check_log 9 '\-unknown\-function$'
 
+rm -f "selinux-violation"
+cat "${SRC}/TEST_SELINUX" >> messages
+sleep 1
+check_log 10 selinux
+
 # Success!
 exit 0

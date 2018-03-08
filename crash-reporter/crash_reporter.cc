@@ -22,6 +22,7 @@
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
+#include "crash-reporter/selinux_violation_collector.h"
 #include "crash-reporter/service_failure_collector.h"
 #include "crash-reporter/udev_collector.h"
 #include "crash-reporter/unclean_shutdown_collector.h"
@@ -45,6 +46,7 @@ enum CrashKinds {
   kCrashKindKernelWarning = 5,
   kCrashKindEC = 6,
   kCrashKindServiceFailure = 7,
+  kCrashKindSELinuxViolation = 8,
   kCrashKindMax
 };
 
@@ -81,6 +83,10 @@ void CountKernelWarning() {
 
 void CountServiceFailure() {
   SendCrashMetrics(kCrashKindServiceFailure, "service-failure");
+}
+
+void CountSELinuxViolation() {
+  SendCrashMetrics(kCrashKindSELinuxViolation, "selinux-violation");
 }
 
 void CountUncleanShutdown() {
@@ -274,6 +280,14 @@ int HandleServiceFailure(ServiceFailureCollector* service_failure_collector) {
   return 0;
 }
 
+int HandleSELinuxViolation(
+    SELinuxViolationCollector* selinux_violation_collector) {
+  brillo::LogToString(true);
+  bool handled = selinux_violation_collector->Collect();
+  brillo::LogToString(false);
+  return handled ? 0 : 1;
+}
+
 // Interactive/diagnostics mode for generating kernel crash signatures.
 int GenerateKernelSignature(KernelCollector* kernel_collector,
                             const std::string& kernel_signature_file) {
@@ -361,6 +375,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(kernel_suspend_warning, false,
               "Report collected kernel suspend warning");
   DEFINE_bool(service_failure, false, "Report collected service failure");
+  DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_string(pid, "", "PID of crashing process");
   DEFINE_string(uid, "", "UID of crashing process");
@@ -420,6 +435,10 @@ int main(int argc, char* argv[]) {
   ServiceFailureCollector service_failure_collector;
   service_failure_collector.Initialize(CountServiceFailure, IsFeedbackAllowed);
 
+  SELinuxViolationCollector selinux_violation_collector;
+  selinux_violation_collector.Initialize(CountSELinuxViolation,
+                                         IsFeedbackAllowed);
+
   if (FLAGS_init) {
     return Initialize(&user_collector, &udev_collector);
   }
@@ -464,6 +483,10 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_service_failure) {
     return HandleServiceFailure(&service_failure_collector);
+  }
+
+  if (FLAGS_selinux_violation) {
+    return HandleSELinuxViolation(&selinux_violation_collector);
   }
 
   if (!FLAGS_chrome.empty()) {

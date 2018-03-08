@@ -17,10 +17,12 @@
  */
 
 %{
+
 #include <fcntl.h>
 #include <inttypes.h>
 #include <pwd.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <sys/inotify.h>
 #include <sys/select.h>
 #include <sys/stat.h>
@@ -31,10 +33,58 @@
 
 char *cur_service_name;
 
+char *selinux_audit_text;
+char *selinux_audit_text_for_hash;
+char *selinux_audit_comm;
+char *selinux_audit_name;
+char *selinux_audit_scontext;
+char *selinux_audit_tcontext;
+
 int ReportServiceFailure(const char *service_name, const int exit_status);
+int ReportSELinuxViolation(void);
 int KernelWarnStart(void);
 void KernelWarnEnd(void);
 void CollectorInput(char *buf, yy_size_t *result, size_t max_size);
+
+void AppendToString(char** strp, const char *to_append) {
+  if (*strp == NULL) {
+    *strp = strdup(to_append);
+    return;
+  }
+
+  char *new;
+  if (asprintf(&new, "%s%s", *strp, to_append) == -1) {
+    abort();
+  }
+  free(*strp);
+  *strp = new;
+}
+
+void AppendSELinuxText(bool add_to_hash) {
+  AppendToString(&selinux_audit_text, yytext);
+  if (add_to_hash) {
+    AppendToString(&selinux_audit_text_for_hash, yytext);
+  }
+}
+
+void AppendSELinuxTextForHash() {
+  AppendSELinuxText(true);
+}
+
+void CleanUpSELinuxVariables() {
+  free(selinux_audit_text);
+  selinux_audit_text = NULL;
+  free(selinux_audit_text_for_hash);
+  selinux_audit_text_for_hash = NULL;
+  free(selinux_audit_comm);
+  selinux_audit_comm = NULL;
+  free(selinux_audit_name);
+  selinux_audit_name = NULL;
+  free(selinux_audit_scontext);
+  selinux_audit_scontext = NULL;
+  free(selinux_audit_tcontext);
+  selinux_audit_tcontext = NULL;
+}
 
 #define YY_INPUT(buf, result, max_size) CollectorInput(buf, &result, max_size)
 
@@ -61,8 +111,11 @@ END_TRACE       {PREFIX}" ---[ end trace".*
 UPSTART_WARN {PREFIX}" init: "
 SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
 
+
+SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
+
 /* Use exclusive start conditions. */
-%x PRE_WARN WARN SERVICE_FAIL SERVICE_FAIL_SKIP SERVICE_FAIL_EXIT
+%x PRE_WARN WARN SERVICE_FAIL SERVICE_FAIL_SKIP SERVICE_FAIL_EXIT SELINUX_AUDIT SELINUX_AUDIT_NON_VIOLATION
 
 %%
  /* The scanner itself. */
@@ -102,6 +155,47 @@ SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
 <WARN>^{END_TRACE}\n            ECHO; BEGIN(0); KernelWarnEnd();
 <WARN>^.*\n                     ECHO;
 
+ /* Detect SELinux violation */
+^{SELINUX_AUDIT_PREFIX}         BEGIN(SELINUX_AUDIT);
+
+<SELINUX_AUDIT>audit\([0-9.:]*\): ;  // Skip timestamp
+<SELINUX_AUDIT>comm=\"[^"]*\"   {
+                                  selinux_audit_comm = strdup(yytext + 6);
+                                  // Remove the trailing double-quotes.
+                                  selinux_audit_comm[strlen(selinux_audit_comm) - 1] = '\0';
+                                  AppendSELinuxTextForHash();
+                                }
+<SELINUX_AUDIT>name=\"[^"]*\"   {
+                                  selinux_audit_name = strdup(yytext + 6);
+                                  // Remove the trailing double-quotes.
+                                  selinux_audit_name[strlen(selinux_audit_name) - 1] = '\0';
+                                  AppendSELinuxTextForHash();
+                                }
+<SELINUX_AUDIT>scontext=[^ ]*   {
+                                  selinux_audit_scontext = strdup(yytext + 9);
+                                  AppendSELinuxTextForHash();
+                                }
+<SELINUX_AUDIT>tcontext=[^ ]*   {
+                                  selinux_audit_tcontext = strdup(yytext + 9);
+                                  AppendSELinuxTextForHash();
+                                }
+<SELINUX_AUDIT>for[ ]+pid=[0-9]* ; // Skip pid
+<SELINUX_AUDIT>ino=[0-9]*       AppendSELinuxText(false);
+<SELINUX_AUDIT>avc:[ ]*granted  BEGIN(SELINUX_AUDIT_NON_VIOLATION);
+<SELINUX_AUDIT>\n               {
+                                  BEGIN(0);
+                                  AppendSELinuxTextForHash();
+                                  ReportSELinuxViolation();
+                                  CleanUpSELinuxVariables();
+                                }
+<SELINUX_AUDIT>.                AppendSELinuxTextForHash();
+
+<SELINUX_AUDIT_NON_VIOLATION>.*$ {
+                                  BEGIN(0);
+                                  CleanUpSELinuxVariables();
+                                }
+
+
 .|\n                            /* ignore all other input in state 0 */
 
 %%
@@ -111,6 +205,8 @@ SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
 
 const char warn_hist_name[] = "Platform.KernelWarningHashes";
 uint32_t warn_hash_bitmap[HASH_BITMAP_SIZE / 32];
+const char selinux_violation_hist_name[] = "Platform.SELinuxViolationHashes";
+uint32_t selinux_violation_hash_bitmap[HASH_BITMAP_SIZE / 32];
 const char service_failure_hist_name[] = "Platform.ServiceFailureHashes";
 uint32_t service_failure_hash_bitmap[HASH_BITMAP_SIZE / 32];
 CMetricsLibrary metrics_library;
@@ -138,6 +234,9 @@ const char *wifi_warn_crash_reporter_command;
 const char *suspend_warn_crash_reporter_command;
 const char *service_fail_dump_path = "/run/anomaly-collector/service-fail";
 const char *service_fail_crash_reporter_command;
+const char *selinux_violation_dump_path = "/run/anomaly-collector/selinux-violation";
+const char *selinux_violation_crash_reporter_command;
+
 
 __attribute__((__format__(__printf__, 1, 2)))
 static void Die(const char *format, ...) {
@@ -217,6 +316,49 @@ int ReportServiceFailure(const char *service_name, const int exit_status) {
   fprintf(yyout, "%08x-exit%d-%s\n", hash, exit_status, service_name);
 
   AnomalyEnd(service_fail_crash_reporter_command);
+  return 1;
+}
+
+int ReportSELinuxViolation(void) {
+  if (selinux_audit_text == NULL)
+    return 0;
+
+  uint32_t hash = StringHash(selinux_audit_text_for_hash);
+
+  if (!AnomalyStart(selinux_violation_dump_path, selinux_violation_hist_name,
+                    selinux_violation_hash_bitmap, hash))
+    return 0;
+
+  char *selinux_violation_sig;
+  if (selinux_audit_comm != NULL && selinux_audit_name != NULL) {
+    if (asprintf(&selinux_violation_sig, "%s-%s",
+                 selinux_audit_comm, selinux_audit_name) == -1)
+      // We try to collect these error without a human readable signature, but
+      // hash-only.
+      selinux_violation_sig = "failed-to-sig";
+  } else
+    selinux_violation_sig = selinux_audit_comm ? : selinux_audit_name;
+
+  if (selinux_violation_sig)
+    fprintf(yyout, "%08x-selinux-%s\n", hash, selinux_violation_sig);
+  else
+    fprintf(yyout, "%08x-selinux-unknown\n", hash);
+
+  if (selinux_audit_comm != NULL)
+    fprintf(yyout, "comm\x01%s\x02", selinux_audit_comm);
+  if (selinux_audit_name != NULL)
+    fprintf(yyout, "name\x01%s\x02", selinux_audit_name);
+
+  if (selinux_audit_scontext)
+    fprintf(yyout, "scontext\x01%s\x02", selinux_audit_scontext);
+  if (selinux_audit_tcontext)
+    fprintf(yyout, "tcontext\x01%s\x02", selinux_audit_tcontext);
+
+  fputc('\n', yyout);
+  fputs(selinux_audit_text, yyout);
+
+  AnomalyEnd(selinux_violation_crash_reporter_command);
+
   return 1;
 }
 
@@ -368,6 +510,10 @@ int main(int argc, char **argv) {
     "./anomaly_collector_test_reporter.sh service-fail" :
     "/sbin/crash_reporter --service_failure";
 
+  selinux_violation_crash_reporter_command = testing ?
+    "./anomaly_collector_test_reporter.sh selinux-violation" :
+    "/sbin/crash_reporter --selinux_violation";
+
   /* When filtering with --filter (for development) use stdin for input.
    * Otherwise read input from a file or a fifo.
    */
@@ -376,6 +522,7 @@ int main(int argc, char **argv) {
     msg_path = "messages";
     warn_dump_path = "warning";
     service_fail_dump_path = "service-fail";
+    selinux_violation_dump_path = "selinux-violation";
   }
   if (fifo) {
     msg_path = "fifo";

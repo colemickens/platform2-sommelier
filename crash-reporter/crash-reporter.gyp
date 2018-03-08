@@ -29,6 +29,7 @@
         'ec_collector.cc',
         'kernel_collector.cc',
         'kernel_warning_collector.cc',
+        'selinux_violation_collector.cc',
         'service_failure_collector.cc',
         'udev_collector.cc',
         'unclean_shutdown_collector.cc',
@@ -93,6 +94,8 @@
           'libmetrics-<(libbase_ver)',
         ],
       },
+      # -D_GNU_SOURCE is needed for asprintf in anomaly_collector.l
+      'defines': ['_GNU_SOURCE'],
       'link_settings': {
         'libraries': [
           '-lfl',
@@ -153,6 +156,7 @@
             'kernel_collector_test.cc',
             'kernel_collector_test.h',
             'kernel_warning_collector_test.cc',
+            'selinux_violation_collector_test.cc',
             'service_failure_collector_test.cc',
             'testrunner.cc',
             'udev_collector_test.cc',
@@ -174,6 +178,7 @@
             {
               'destination': '<(PRODUCT_DIR)',
               'files': [
+                'TEST_SELINUX',
                 'TEST_SERVICE_FAILURE',
                 'TEST_WARNING',
                 'TEST_WARNING_OLD',
