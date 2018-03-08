@@ -283,7 +283,7 @@ unique_ptr<base::Value> MakeValueForString(const string& native_string) {
   // similar-looking glyphs.)
   if (base::IsStringASCII(native_string) &&
       native_string.find('\0') == string::npos) {
-    return std::make_unique<base::StringValue>(native_string);
+    return std::make_unique<base::Value>(native_string);
   } else {
     const string hex_encoded_string(
         base::HexEncode(native_string.data(), native_string.size()));
