@@ -191,7 +191,9 @@ class Daemon : public policy::BacklightControllerObserver,
                                       double brightness_percent,
                                       BacklightBrightnessChange_Cause cause);
 
-  // Connects to the D-Bus system bus and exports methods.
+  // Connects to the D-Bus system bus and exports methods. Does not publish the
+  // D-Bus service, as additional methods may need to exported by other classes
+  // before that happens.
   void InitDBus();
 
   // Handles various D-Bus services becoming available or restarting.

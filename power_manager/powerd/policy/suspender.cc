@@ -47,7 +47,8 @@ std::string Suspender::TestApi::GetDefaultWakeReason() const {
 
 Suspender::Suspender()
     : clock_(std::make_unique<Clock>()),
-      last_dark_resume_wake_reason_(kDefaultWakeReason) {}
+      last_dark_resume_wake_reason_(kDefaultWakeReason),
+      weak_ptr_factory_(this) {}
 
 Suspender::~Suspender() = default;
 
@@ -76,6 +77,8 @@ void Suspender::Init(Delegate* delegate,
 
   CHECK(prefs->GetInt64(kRetrySuspendAttemptsPref, &max_retries_));
 
+  ExportDBusMethods();
+
   // Clean up if powerd was previously restarted after emitting SuspendImminent
   // but before emitting SuspendDone.
   if (delegate_->GetSuspendAnnounced()) {
@@ -98,92 +101,6 @@ void Suspender::RequestSuspendWithExternalWakeupCount(
   suspend_request_supplied_wakeup_count_ = true;
   suspend_request_wakeup_count_ = wakeup_count;
   HandleEvent(Event::SUSPEND_REQUESTED);
-}
-
-void Suspender::RegisterSuspendDelay(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  RegisterSuspendDelayInternal(suspend_delay_controller_.get(), method_call,
-                               response_sender);
-}
-
-void Suspender::UnregisterSuspendDelay(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  UnregisterSuspendDelayInternal(suspend_delay_controller_.get(), method_call,
-                                 response_sender);
-}
-
-void Suspender::HandleSuspendReadiness(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  HandleSuspendReadinessInternal(suspend_delay_controller_.get(), method_call,
-                                 response_sender);
-}
-
-void Suspender::RegisterDarkSuspendDelay(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  RegisterSuspendDelayInternal(dark_suspend_delay_controller_.get(),
-                               method_call, response_sender);
-}
-
-void Suspender::UnregisterDarkSuspendDelay(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  UnregisterSuspendDelayInternal(dark_suspend_delay_controller_.get(),
-                                 method_call, response_sender);
-}
-
-void Suspender::HandleDarkSuspendReadiness(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  HandleSuspendReadinessInternal(dark_suspend_delay_controller_.get(),
-                                 method_call, response_sender);
-}
-
-// Daemons that want powerd to log the wake duration metrics for the current
-// dark resume to a wake-reason-specific histogram should send the wake reason
-// to powerd during that dark resume.
-//
-// This string should take the form $SUBSYSTEM.$REASON, where $SUBSYSTEM refers
-// to the subsystem that caused the wake, and $REASON is the specific reason for
-// the subsystem waking the system. For example, the wake reason
-// "WiFi.Disconnect" should be passed to this function to indicate that the WiFi
-// subsystem woke the system in dark resume because of disconnection from an AP.
-//
-// Note: If multiple daemons send wake reason to powerd during the same dark
-// resume, a race condition will be created, and only the last histogram name
-// reported to powerd will be used to log wake-reason-specific wake duration
-// metrics for that dark resume. Daemons using this function should coordinate
-// with each other to ensure that no more than one wake reason is reported to
-// powerd per dark resume.
-void Suspender::RecordDarkResumeWakeReason(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  bool overwriting_wake_reason = false;
-  std::string old_wake_reason;
-  if (last_dark_resume_wake_reason_ != kDefaultWakeReason) {
-    overwriting_wake_reason = true;
-    old_wake_reason = last_dark_resume_wake_reason_;
-  }
-  DarkResumeWakeReason proto;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopArrayOfBytesAsProto(&proto)) {
-    LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(
-        std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
-            method_call, DBUS_ERROR_INVALID_ARGS,
-            "Expected wake reason proto")));
-    return;
-  }
-  last_dark_resume_wake_reason_ = proto.wake_reason();
-  if (overwriting_wake_reason) {
-    LOG(WARNING) << "Overwrote existing dark resume wake reason "
-                 << old_wake_reason << " with wake reason "
-                 << last_dark_resume_wake_reason_;
-  }
-  response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void Suspender::HandleLidOpened() {
@@ -231,7 +148,40 @@ void Suspender::OnReadyForSuspend(SuspendDelayController* controller,
   }
 }
 
-void Suspender::RegisterSuspendDelayInternal(
+void Suspender::ExportDBusMethods() {
+  // Normal suspend/resume methods:
+  dbus_wrapper_->ExportMethod(kRegisterSuspendDelayMethod,
+                              base::Bind(&Suspender::RegisterSuspendDelay,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(kUnregisterSuspendDelayMethod,
+                              base::Bind(&Suspender::UnregisterSuspendDelay,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(kHandleSuspendReadinessMethod,
+                              base::Bind(&Suspender::HandleSuspendReadiness,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         suspend_delay_controller_.get()));
+
+  // Dark suspend/resume methods:
+  dbus_wrapper_->ExportMethod(kRegisterDarkSuspendDelayMethod,
+                              base::Bind(&Suspender::RegisterSuspendDelay,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         dark_suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(kUnregisterDarkSuspendDelayMethod,
+                              base::Bind(&Suspender::UnregisterSuspendDelay,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         dark_suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(kHandleDarkSuspendReadinessMethod,
+                              base::Bind(&Suspender::HandleSuspendReadiness,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         dark_suspend_delay_controller_.get()));
+  dbus_wrapper_->ExportMethod(kRecordDarkResumeWakeReasonMethod,
+                              base::Bind(&Suspender::RecordDarkResumeWakeReason,
+                                         weak_ptr_factory_.GetWeakPtr()));
+}
+
+void Suspender::RegisterSuspendDelay(
     SuspendDelayController* controller,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -256,7 +206,7 @@ void Suspender::RegisterSuspendDelayInternal(
   response_sender.Run(std::move(response));
 }
 
-void Suspender::UnregisterSuspendDelayInternal(
+void Suspender::UnregisterSuspendDelay(
     SuspendDelayController* controller,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -274,7 +224,7 @@ void Suspender::UnregisterSuspendDelayInternal(
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
-void Suspender::HandleSuspendReadinessInternal(
+void Suspender::HandleSuspendReadiness(
     SuspendDelayController* controller,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -289,6 +239,50 @@ void Suspender::HandleSuspendReadinessInternal(
     return;
   }
   controller->HandleSuspendReadiness(info, method_call->GetSender());
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
+}
+
+// Daemons that want powerd to log the wake duration metrics for the current
+// dark resume to a wake-reason-specific histogram should send the wake reason
+// to powerd during that dark resume.
+//
+// This string should take the form $SUBSYSTEM.$REASON, where $SUBSYSTEM refers
+// to the subsystem that caused the wake, and $REASON is the specific reason for
+// the subsystem waking the system. For example, the wake reason
+// "WiFi.Disconnect" should be passed to this function to indicate that the WiFi
+// subsystem woke the system in dark resume because of disconnection from an AP.
+//
+// Note: If multiple daemons send wake reason to powerd during the same dark
+// resume, a race condition will be created, and only the last histogram name
+// reported to powerd will be used to log wake-reason-specific wake duration
+// metrics for that dark resume. Daemons using this function should coordinate
+// with each other to ensure that no more than one wake reason is reported to
+// powerd per dark resume.
+void Suspender::RecordDarkResumeWakeReason(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  bool overwriting_wake_reason = false;
+  std::string old_wake_reason;
+  if (last_dark_resume_wake_reason_ != kDefaultWakeReason) {
+    overwriting_wake_reason = true;
+    old_wake_reason = last_dark_resume_wake_reason_;
+  }
+  DarkResumeWakeReason proto;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopArrayOfBytesAsProto(&proto)) {
+    LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
+    response_sender.Run(
+        std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+            method_call, DBUS_ERROR_INVALID_ARGS,
+            "Expected wake reason proto")));
+    return;
+  }
+  last_dark_resume_wake_reason_ = proto.wake_reason();
+  if (overwriting_wake_reason) {
+    LOG(WARNING) << "Overwrote existing dark resume wake reason "
+                 << old_wake_reason << " with wake reason "
+                 << last_dark_resume_wake_reason_;
+  }
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 

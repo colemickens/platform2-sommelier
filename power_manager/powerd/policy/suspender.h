@@ -15,6 +15,7 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
@@ -216,29 +217,6 @@ class Suspender : public SuspendDelayObserver {
   void RequestSuspendWithExternalWakeupCount(SuspendImminent::Reason reason,
                                              uint64_t wakeup_count);
 
-  // Handlers for D-Bus messages.
-  void RegisterSuspendDelay(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-  void UnregisterSuspendDelay(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-  void HandleSuspendReadiness(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-  void RegisterDarkSuspendDelay(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-  void UnregisterDarkSuspendDelay(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-  void HandleDarkSuspendReadiness(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-  void RecordDarkResumeWakeReason(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-
   // Handles the lid being opened, user activity, or the system shutting down,
   // any of which may abort an in-progress suspend attempt.
   void HandleLidOpened();
@@ -286,17 +264,24 @@ class Suspender : public SuspendDelayObserver {
     SHUTDOWN_STARTED,
   };
 
-  // Internal functions that actually process the received D-Bus messages.
-  void RegisterSuspendDelayInternal(
+  // Called by Init() to export suspend-related D-Bus methods on
+  // |dbus_wrapper_|.
+  void ExportDBusMethods();
+
+  // D-Bus method handlers.
+  void RegisterSuspendDelay(
       SuspendDelayController* controller,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
-  void UnregisterSuspendDelayInternal(
+  void UnregisterSuspendDelay(
       SuspendDelayController* controller,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
-  void HandleSuspendReadinessInternal(
+  void HandleSuspendReadiness(
       SuspendDelayController* controller,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void RecordDarkResumeWakeReason(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
@@ -413,6 +398,9 @@ class Suspender : public SuspendDelayObserver {
 
   // Runs HandleEvent(EVENT_READY_TO_RESUSPEND).
   base::OneShotTimer resuspend_timer_;
+
+  // Keep this last.
+  base::WeakPtrFactory<Suspender> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };

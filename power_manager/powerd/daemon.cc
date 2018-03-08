@@ -424,6 +424,10 @@ void Daemon::Init() {
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
       base::FilePath(kPowerOverrideLockfileDir), {});
 
+  // This needs to happen *after* all D-Bus methods are exported:
+  // https://crbug.com/331431
+  CHECK(dbus_wrapper_->PublishService()) << "Failed to publish D-Bus service";
+
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
 }
@@ -928,31 +932,6 @@ void Daemon::InitDBus() {
         it.first, base::Bind(&HandleSynchronousDBusMethodCall,
                              base::Bind(it.second, base::Unretained(this))));
   }
-
-  // Export |suspender_|'s D-Bus method calls.
-  using policy::Suspender;
-  typedef void (Suspender::*SuspenderMethod)(
-      dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
-  const std::map<const char*, SuspenderMethod> kSuspenderMethods = {
-      {kRegisterSuspendDelayMethod, &Suspender::RegisterSuspendDelay},
-      {kUnregisterSuspendDelayMethod, &Suspender::UnregisterSuspendDelay},
-      {kHandleSuspendReadinessMethod, &Suspender::HandleSuspendReadiness},
-      {kRegisterDarkSuspendDelayMethod, &Suspender::RegisterDarkSuspendDelay},
-      {kUnregisterDarkSuspendDelayMethod,
-       &Suspender::UnregisterDarkSuspendDelay},
-      {kHandleDarkSuspendReadinessMethod,
-       &Suspender::HandleDarkSuspendReadiness},
-      {kRecordDarkResumeWakeReasonMethod,
-       &Suspender::RecordDarkResumeWakeReason},
-  };
-  for (const auto& it : kSuspenderMethods) {
-    dbus_wrapper_->ExportMethod(
-        it.first, base::Bind(it.second, base::Unretained(suspender_.get())));
-  }
-
-  // Note that this needs to happen *after* the above methods are exported
-  // (http://crbug.com/331431).
-  CHECK(dbus_wrapper_->PublishService()) << "Failed to publish D-Bus service";
 
   // Listen for NameOwnerChanged signals from the bus itself. Register for all
   // of these signals instead of calling individual proxies'
