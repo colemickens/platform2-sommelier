@@ -49,7 +49,7 @@ class PolicyEncoderTestBase : public ::testing::Test {
   void EncodeString(T_POLICY* policy,
                     const char* key,
                     const std::string& value) {
-    EncodeValue(policy, key, std::make_unique<base::StringValue>(value));
+    EncodeValue(policy, key, std::make_unique<base::Value>(value));
   }
 
   // Clears |policy|, encodes |value| as value for the string list policy |key|
@@ -60,7 +60,7 @@ class PolicyEncoderTestBase : public ::testing::Test {
     auto value_dict = std::make_unique<RegistryDict>();
     for (int n = 0; n < static_cast<int>(value.size()); ++n) {
       value_dict->SetValue(base::IntToString(n + 1),
-                           std::make_unique<base::StringValue>(value[n]));
+                           std::make_unique<base::Value>(value[n]));
     }
     std::unique_ptr<RegistryDict> root_dict;
     RegistryDict* dict = MakeRegistryDictTree(&root_dict);
