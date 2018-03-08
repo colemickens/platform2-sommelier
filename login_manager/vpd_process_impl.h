@@ -12,8 +12,8 @@
 
 #include <base/callback.h>
 
-#include "login_manager/child_job.h"
 #include "login_manager/job_manager.h"
+#include "login_manager/subprocess.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/vpd_process.h"
 
@@ -36,7 +36,7 @@ class VpdProcessImpl : public VpdProcess, public JobManagerInterface {
 
  private:
   // The subprocess tracked by this job.
-  std::unique_ptr<ChildJobInterface::Subprocess> subprocess_;
+  std::unique_ptr<Subprocess> subprocess_;
   SystemUtils* system_utils_;  // Owned by the caller.
   CompletionCallback completion_;
 };

@@ -62,29 +62,33 @@ bool GeneratorJob::RunInBackground() {
 }
 
 void GeneratorJob::KillEverything(int signal, const std::string& message) {
-  if (subprocess_.pid() < 0)
+  if (subprocess_.GetPid() < 0)
     return;
   subprocess_.KillEverything(signal);
 }
 
 void GeneratorJob::Kill(int signal, const std::string& message) {
-  if (subprocess_.pid() < 0)
+  if (subprocess_.GetPid() < 0)
     return;
   subprocess_.Kill(signal);
 }
 
 void GeneratorJob::WaitAndAbort(base::TimeDelta timeout) {
-  if (subprocess_.pid() < 0)
+  if (subprocess_.GetPid() < 0)
     return;
-  if (!system_->ProcessGroupIsGone(subprocess_.pid(), timeout))
+  if (!system_->ProcessGroupIsGone(subprocess_.GetPid(), timeout))
     KillEverything(SIGABRT, std::string());
   else
-    DLOG(INFO) << "Cleaned up child " << subprocess_.pid();
+    DLOG(INFO) << "Cleaned up child " << subprocess_.GetPid();
 }
 
 const std::string GeneratorJob::GetName() const {
   base::FilePath exec_file(kKeygenExecutable);
   return exec_file.BaseName().value();
+}
+
+pid_t GeneratorJob::CurrentPid() const {
+  return subprocess_.GetPid();
 }
 
 }  // namespace login_manager

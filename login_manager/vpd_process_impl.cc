@@ -28,7 +28,7 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
 bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
                                      bool ignore_cache,
                                      const CompletionCallback& completion) {
-  subprocess_.reset(new ChildJobInterface::Subprocess(0, system_utils_));
+  subprocess_.reset(new Subprocess(0, system_utils_));
 
   std::vector<std::string> argv = {"/usr/sbin/update_rw_vpd"};
   for (const auto& entry : updates) {
@@ -52,19 +52,20 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
 }
 
 bool VpdProcessImpl::IsManagedJob(pid_t pid) {
-  return subprocess_ && subprocess_->pid() > 0 && subprocess_->pid() == pid;
+  return subprocess_ && subprocess_->GetPid() > 0 &&
+         subprocess_->GetPid() == pid;
 }
 
 void VpdProcessImpl::RequestJobExit(const std::string& reason) {
-  if (subprocess_ && subprocess_->pid() > 0)
+  if (subprocess_ && subprocess_->GetPid() > 0)
     subprocess_->Kill(SIGTERM);
 }
 
 void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
   if (subprocess_) {
-    if (subprocess_->pid() < 0)
+    if (subprocess_->GetPid() < 0)
       return;
-    if (!system_utils_->ProcessGroupIsGone(subprocess_->pid(), timeout)) {
+    if (!system_utils_->ProcessGroupIsGone(subprocess_->GetPid(), timeout)) {
       subprocess_->KillEverything(SIGABRT);
       DLOG(INFO) << "Child process was killed.";
     }

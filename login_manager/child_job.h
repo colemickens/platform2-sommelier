@@ -21,38 +21,6 @@ class SystemUtils;
 // by SessionManagerService.
 class ChildJobInterface {
  public:
-  // A class that provides functionality for creating/destroying a subprocess.
-  // Intended to be embedded in an implementation of ChildJobInterface.
-  class Subprocess {
-   public:
-    Subprocess(uid_t desired_uid, SystemUtils* system);
-    virtual ~Subprocess();
-
-    // fork(), export |environment_variables|, and exec(argv, env_vars).
-    // Returns false if fork() fails, true otherwise.
-    bool ForkAndExec(const std::vector<std::string>& args,
-                     const std::vector<std::string>& env_vars);
-
-    // Sends signal to pid_. No-op if there is no subprocess running.
-    void Kill(int signal);
-
-    // Sends signal to pid_'s entire process group.
-    // No-op if there is no subprocess running.
-    void KillEverything(int signal);
-
-    pid_t pid() const { return pid_; }
-    void clear_pid() { pid_ = -1; }
-
-   private:
-    // The pid of the managed subprocess, when running. Set to -1 when
-    // cleared, or not yet set by ForkAndExec().
-    pid_t pid_;
-    // The uid the subprocess should be run as.
-    const uid_t desired_uid_;
-    SystemUtils* const system_;  // weak; owned by embedder.
-    DISALLOW_COPY_AND_ASSIGN(Subprocess);
-  };
-
   // Potential exit codes for use in Subprocess::Run().
   static const int kCantSetUid;
   static const int kCantSetGid;

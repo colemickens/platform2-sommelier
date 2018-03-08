@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_GENERATOR_JOB_H_
 
 #include "login_manager/child_job.h"
+#include "login_manager/subprocess.h"
 
 #include <memory>
 #include <string>
@@ -54,7 +55,7 @@ class GeneratorJob : public GeneratorJobInterface {
   void Kill(int signal, const std::string& message) override;
   void WaitAndAbort(base::TimeDelta timeout) override;
   const std::string GetName() const override;
-  pid_t CurrentPid() const override { return subprocess_.pid(); }
+  pid_t CurrentPid() const override;
 
  private:
   GeneratorJob(const std::string& filename,
@@ -71,7 +72,7 @@ class GeneratorJob : public GeneratorJobInterface {
   SystemUtils* system_;
 
   // The subprocess tracked by this job.
-  ChildJobInterface::Subprocess subprocess_;
+  Subprocess subprocess_;
 
   DISALLOW_COPY_AND_ASSIGN(GeneratorJob);
 };

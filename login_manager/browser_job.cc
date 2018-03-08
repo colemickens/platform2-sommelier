@@ -11,23 +11,19 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
 
 #include <algorithm>
-#include <deque>
 #include <queue>
-#include <string>
-#include <vector>
+#include <utility>
 
-#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/macros.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/switches/chrome_switches.h>
 
 #include "login_manager/file_checker.h"
 #include "login_manager/login_metrics.h"
+#include "login_manager/subprocess.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
@@ -96,10 +92,10 @@ void MergeSwitches(std::vector<std::string>* args,
 
 BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
                        const std::vector<std::string>& environment_variables,
-                       uid_t desired_uid,
                        FileChecker* checker,
                        LoginMetrics* metrics,
-                       SystemUtils* utils)
+                       SystemUtils* utils,
+                       std::unique_ptr<SubprocessInterface> subprocess)
     : arguments_(arguments),
       environment_variables_(environment_variables),
       file_checker_(checker),
@@ -108,7 +104,7 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
       start_times_(std::deque<time_t>(kRestartTries, 0)),
       removed_login_manager_flag_(false),
       session_already_started_(false),
-      subprocess_(desired_uid, system_) {
+      subprocess_(std::move(subprocess)) {
   // Take over managing kLoginManagerFlag.
   if (RemoveArgs(&arguments_, kLoginManagerFlag)) {
     removed_login_manager_flag_ = true;
@@ -117,6 +113,10 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
 }
 
 BrowserJob::~BrowserJob() {}
+
+pid_t BrowserJob::CurrentPid() const {
+  return subprocess_->GetPid();
+}
 
 bool BrowserJob::ShouldRunBrowser() {
   return !file_checker_ || !file_checker_->exists();
@@ -146,30 +146,30 @@ bool BrowserJob::RunInBackground() {
   const std::vector<std::string> env_vars(ExportEnvironmentVariables());
   LOG(INFO) << "Running child " << base::JoinString(argv, " ");
   RecordTime();
-  return subprocess_.ForkAndExec(argv, env_vars);
+  return subprocess_->ForkAndExec(argv, env_vars);
 }
 
 void BrowserJob::KillEverything(int signal, const std::string& message) {
-  if (subprocess_.pid() < 0)
+  if (subprocess_->GetPid() < 0)
     return;
 
   LOG(INFO) << "Terminating process group: " << message;
-  subprocess_.KillEverything(signal);
+  subprocess_->KillEverything(signal);
 }
 
 void BrowserJob::Kill(int signal, const std::string& message) {
-  if (subprocess_.pid() < 0)
+  if (subprocess_->GetPid() < 0)
     return;
 
   LOG(INFO) << "Terminating process: " << message;
-  subprocess_.Kill(signal);
+  subprocess_->Kill(signal);
 }
 
 void BrowserJob::WaitAndAbort(base::TimeDelta timeout) {
-  if (subprocess_.pid() < 0)
+  if (subprocess_->GetPid() < 0)
     return;
-  if (!system_->ProcessGroupIsGone(subprocess_.pid(), timeout)) {
-    LOG(WARNING) << "Aborting child process " << subprocess_.pid()
+  if (!system_->ProcessGroupIsGone(subprocess_->GetPid(), timeout)) {
+    LOG(WARNING) << "Aborting child process " << subprocess_->GetPid()
                  << "'s process group " << timeout.InSeconds()
                  << " seconds after sending signal";
     std::string message = base::StringPrintf("Browser took more than %" PRId64
@@ -177,7 +177,7 @@ void BrowserJob::WaitAndAbort(base::TimeDelta timeout) {
                                              timeout.InSeconds());
     KillEverything(SIGABRT, message);
   } else {
-    DLOG(INFO) << "Cleaned up child " << subprocess_.pid();
+    DLOG(INFO) << "Cleaned up child " << subprocess_->GetPid();
   }
 }
 
@@ -233,7 +233,7 @@ void BrowserJob::SetExtraEnvironmentVariables(
 }
 
 void BrowserJob::ClearPid() {
-  subprocess_.clear_pid();
+  subprocess_->ClearPid();
 }
 
 std::vector<std::string> BrowserJob::ExportArgv() const {
@@ -268,6 +268,26 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   MergeSwitches(&to_return, kEnableFeaturesFlag, ",", true /* keep_existing */);
   MergeSwitches(&to_return, kDisableFeaturesFlag, ",",
                 true /* keep_existing */);
+
+  // Add --show-webui-login if we are not in a session and Chrome has crashed.
+  //
+  // TODO(jdufault): Remove this logic after views-based login is stable. See
+  // https://crbug.com/822434.
+  constexpr char kShowWebUiLogin[] = "--show-webui-login";
+  if (!session_already_started_ &&
+      base::STLCount(to_return, kShowWebUiLogin) == 0) {
+    // The start_times_ recording happens after this call, which means all
+    // entries will be 0 on the first run.
+    int crash_count = std::count_if(start_times_.begin(), start_times_.end(),
+                                    [](int value) { return value != 0; });
+    if (crash_count > 0) {
+      to_return.push_back(kShowWebUiLogin);
+      // Only the first crash would have been using views login.
+      if (crash_count == 1) {
+        login_metrics_->SendViewsLoginCrash();
+      }
+    }
+  }
 
   return to_return;
 }

@@ -213,8 +213,9 @@ int main(int argc, char* argv[]) {
 
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
-  auto browser_job = std::make_unique<BrowserJob>(command, env_vars, uid,
-                                                  &checker, &metrics, &system);
+  auto browser_job = std::make_unique<BrowserJob>(
+      command, env_vars, &checker, &metrics, &system,
+      std::make_unique<login_manager::Subprocess>(uid, &system));
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
   base::MessageLoopForIO message_loop;

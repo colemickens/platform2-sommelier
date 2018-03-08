@@ -19,6 +19,7 @@
 #include "login_manager/mock_policy_store.h"
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_session_manager.h"
+#include "login_manager/mock_subprocess.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 
@@ -85,6 +86,9 @@ MockProcessManagerService::~MockProcessManagerService() = default;
 
 MockSessionManager::MockSessionManager() = default;
 MockSessionManager::~MockSessionManager() = default;
+
+MockSubprocess::MockSubprocess() = default;
+MockSubprocess::~MockSubprocess() = default;
 
 MockSystemUtils::MockSystemUtils() = default;
 MockSystemUtils::~MockSystemUtils() = default;

@@ -87,6 +87,7 @@
         'server_backed_state_key_generator.cc',
         'session_manager_impl.cc',
         'session_manager_service.cc',
+        'subprocess.cc',
         'system_utils_impl.cc',
         'systemd_unit_starter.cc',
         'termina_manager_impl.cc',

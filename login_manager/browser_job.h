@@ -13,6 +13,7 @@
 
 #include <deque>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@ namespace login_manager {
 
 class FileChecker;
 class LoginMetrics;
+class SubprocessInterface;
 class SystemUtils;
 
 class BrowserJobInterface : public ChildJobInterface {
@@ -81,10 +83,10 @@ class BrowserJob : public BrowserJobInterface {
  public:
   BrowserJob(const std::vector<std::string>& arguments,
              const std::vector<std::string>& environment_variables,
-             uid_t desired_uid,
              FileChecker* checker,
              LoginMetrics* metrics,
-             SystemUtils* utils);
+             SystemUtils* utils,
+             std::unique_ptr<SubprocessInterface> subprocess);
   ~BrowserJob() override;
 
   // Overridden from BrowserJobInterface
@@ -92,7 +94,7 @@ class BrowserJob : public BrowserJobInterface {
   void KillEverything(int signal, const std::string& message) override;
   void Kill(int signal, const std::string& message) override;
   void WaitAndAbort(base::TimeDelta timeout) override;
-  pid_t CurrentPid() const override { return subprocess_.pid(); }
+  pid_t CurrentPid() const override;
   bool ShouldRunBrowser() override;
   bool ShouldStop() const override;
   void StartSession(const std::string& account_id,
@@ -161,7 +163,7 @@ class BrowserJob : public BrowserJobInterface {
   SystemUtils* system_;
 
   // FIFO of job-start timestamps. Used to determine if we've restarted too many
-  // times too quickly.
+  // times too quickly. The most recent job-start timestamp is at the end.
   std::deque<time_t> start_times_;
 
   // Indicates if we removed login manager flag when session started so we
@@ -174,7 +176,7 @@ class BrowserJob : public BrowserJobInterface {
   bool session_already_started_;
 
   // The subprocess tracked by this job.
-  ChildJobInterface::Subprocess subprocess_;
+  std::unique_ptr<SubprocessInterface> subprocess_;
 
   FRIEND_TEST(BrowserJobTest, InitializationTest);
   FRIEND_TEST(BrowserJobTest, ShouldStopTest);

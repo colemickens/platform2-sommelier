@@ -92,6 +92,9 @@ class LoginMetrics {
   // Writes a histogram indicating the state key generation method used.
   virtual void SendStateKeyGenerationStatus(StateKeyGenerationStatus status);
 
+  // Notify that views login has crashed and we reverted to webui login.
+  virtual void SendViewsLoginCrash();
+
   // Record a stat called |tag| via the bootstat library.
   virtual void RecordStats(const char* tag);
 

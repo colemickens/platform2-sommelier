@@ -12,6 +12,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/command_line.h>
@@ -22,13 +23,17 @@
 
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_metrics.h"
+#include "login_manager/mock_subprocess.h"
 #include "login_manager/mock_system_utils.h"
+#include "login_manager/subprocess.h"
 
 namespace login_manager {
 
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::ElementsAre;
+using ::testing::InSequence;
+using ::testing::Mock;
 using ::testing::Return;
 using ::testing::StrEq;
 
@@ -92,8 +97,9 @@ const char BrowserJobTest::kHash[] = "fake_hash";
 void BrowserJobTest::SetUp() {
   argv_ =
       std::vector<std::string>(kArgv, kArgv + arraysize(BrowserJobTest::kArgv));
-  job_.reset(
-      new BrowserJob(argv_, env_, getuid(), &checker_, &metrics_, &utils_));
+  job_.reset(new BrowserJob(
+      argv_, env_, &checker_, &metrics_, &utils_,
+      std::make_unique<login_manager::Subprocess>(getuid(), &utils_)));
 }
 
 TEST_F(BrowserJobTest, InitializationTest) {
@@ -177,7 +183,8 @@ TEST_F(BrowserJobTest, ShouldRunTest) {
 }
 
 TEST_F(BrowserJobTest, NullFileCheckerTest) {
-  BrowserJob job(argv_, env_, 1, NULL, &metrics_, &utils_);
+  BrowserJob job(argv_, env_, NULL, &metrics_, &utils_,
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
   EXPECT_TRUE(job.ShouldRunBrowser());
 }
 
@@ -233,7 +240,8 @@ TEST_F(BrowserJobTest, StartStopSessionTest) {
 }
 
 TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
-  BrowserJob job(argv_, env_, 1, &checker_, &metrics_, &utils_);
+  BrowserJob job(argv_, env_, &checker_, &metrics_, &utils_,
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
   job.StartSession(kUser, kHash);
 
   std::vector<std::string> job_args = job.ExportArgv();
@@ -261,7 +269,8 @@ TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   const char* kArgvWithLoginFlag[] = {"zero", "one", "two", "--login-manager"};
   std::vector<std::string> argv(
       kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
-  BrowserJob job(argv, env_, 1, &checker_, &metrics_, &utils_);
+  BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
 
   job.StartSession(kUser, kHash);
 
@@ -308,7 +317,8 @@ TEST_F(BrowserJobTest, SetExtraArguments) {
 
 TEST_F(BrowserJobTest, ExportArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
-  BrowserJob job(argv, env_, -1, &checker_, &metrics_, &utils_);
+  BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
+                 std::make_unique<login_manager::Subprocess>(-1, &utils_));
 
   const char* kExtraArgs[] = {"--ichi", "--ni", "--san"};
   std::vector<std::string> extra_args(kExtraArgs,
@@ -320,7 +330,8 @@ TEST_F(BrowserJobTest, ExportArgv) {
 
 TEST_F(BrowserJobTest, SetExtraEnvironmentVariables) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
-  BrowserJob job(argv, {"A=a"}, -1, &checker_, &metrics_, &utils_);
+  BrowserJob job(argv, {"A=a"}, &checker_, &metrics_, &utils_,
+                 std::make_unique<login_manager::Subprocess>(-1, &utils_));
   job.SetExtraEnvironmentVariables({"B=b", "C="});
   EXPECT_EQ((std::vector<std::string>{"A=a", "B=b", "C="}),
             job.ExportEnvironmentVariables());
@@ -344,7 +355,8 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     std::vector<std::string> argv(
         kMultipleVmoduleArgs,
         kMultipleVmoduleArgs + arraysize(kMultipleVmoduleArgs));
-    BrowserJob job(argv, env_, -1, &checker_, &metrics_, &utils_);
+    BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
+                   std::make_unique<login_manager::Subprocess>(-1, &utils_));
 
     const char* kCombinedVmodule =
         "--vmodule=file1=1,file2=2,file3=3,file4=4,file5=5,file6=6";
@@ -364,7 +376,8 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
     std::vector<std::string> argv(kNoVmoduleArgs,
                                   kNoVmoduleArgs + arraysize(kNoVmoduleArgs));
 
-    BrowserJob job(argv, env_, -1, &checker_, &metrics_, &utils_);
+    BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
+                   std::make_unique<login_manager::Subprocess>(-1, &utils_));
 
     auto job_argv = job.ExportArgv();
     ASSERT_EQ(4, job_argv.size());
@@ -399,11 +412,60 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
   // All the --enable-features and --disable-features values should be merged
   // into args at the end of the command line, but the original args should be
   // preserved: https://crbug.com/767266
-  BrowserJob job(kArgv, env_, -1, &checker_, &metrics_, &utils_);
+  BrowserJob job(kArgv, env_, &checker_, &metrics_, &utils_,
+                 std::make_unique<login_manager::Subprocess>(-1, &utils_));
   EXPECT_THAT(
       job.ExportArgv(),
       ElementsAre(kEnable1, kDisable1, kArg1, kEnable2, kDisable2, kArg2,
                   kEnable3, kDisable3, kCombinedEnable, kCombinedDisable));
+}
+
+TEST_F(BrowserJobTest, LoginManagerFlagIsRemoved) {
+  constexpr char kShowWebUiLogin[] = "--show-webui-login";
+  constexpr char kLoginManager[] = "--login-manager";
+
+  auto mock_subprocess0 = std::make_unique<MockSubprocess>();
+  MockSubprocess* mock_subprocess = mock_subprocess0.get();
+  BrowserJob job(std::vector<std::string>{kLoginManager}, env_, &checker_,
+                 &metrics_, &utils_, std::move(mock_subprocess0));
+
+  constexpr int kNoMetric = 0;
+  constexpr int kMetric = 1;
+  auto start_chrome = [&](int time, int metric_crash_count,
+                          std::vector<std::string> flags) {
+    // Why not use ::testing::InSequence? This approach has
+    //  - better diagnostics on failures
+    //  - calls to this fn are sequenced, but the actual EXPECT_* calls are not
+
+    // Prevents the "--first-exec-after-boot" flag.
+    EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(true));
+
+    EXPECT_CALL(metrics_, SendViewsLoginCrash()).Times(metric_crash_count);
+    EXPECT_CALL(utils_, time(nullptr)).WillRepeatedly(Return(time));
+    EXPECT_CALL(*mock_subprocess, ForkAndExec(flags, _));
+    job.RunInBackground();
+
+    Mock::VerifyAndClearExpectations(&metrics_);
+    Mock::VerifyAndClearExpectations(&utils_);
+    Mock::VerifyAndClearExpectations(mock_subprocess);
+  };
+
+  // Chrome starts with views-based login. After that, it removes the flag.
+  start_chrome(1, kNoMetric, {kLoginManager});
+  start_chrome(2, kMetric, {kLoginManager, kShowWebUiLogin});
+  start_chrome(3, kNoMetric, {kLoginManager, kShowWebUiLogin});
+
+  // Adding --show-webui-login is disabled inside a session. Use a large time
+  // value to prevent --safe-mode.
+  constexpr char kLoginUser[] = "--login-user=user";
+  constexpr char kLoginProfile[] = "--login-profile=hash";
+  job.StartSession("user", "hash");
+  start_chrome(50000, kNoMetric, {kLoginUser, kLoginProfile});
+  start_chrome(50001, kNoMetric, {kLoginUser, kLoginProfile});
+  start_chrome(50002, kNoMetric, {kLoginUser, kLoginProfile});
+
+  // We don't need to test log out, because when Chrome logs out session_manager
+  // is killed.
 }
 
 }  // namespace login_manager
