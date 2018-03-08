@@ -47,7 +47,7 @@ bool FakeBiometricsManager::Record::SetLabel(std::string label) {
     // Set label by overwriting records in file.
     return biometrics_manager_->biod_storage_.WriteRecord(
         *this,
-        std::unique_ptr<base::Value>(new base::StringValue("Hello, world!")));
+        std::make_unique<base::Value>("Hello, world!"));
   }
   LOG(ERROR) << "Attempt to set label for invalid BiometricsManager Record";
   return false;
@@ -294,8 +294,7 @@ void FakeBiometricsManager::OnFileCanReadWithoutBlocking(int fd) {
 
           if (!biod_storage_.WriteRecord(
                   current_record,
-                  std::unique_ptr<base::Value>(
-                      new base::StringValue("Hello, world!")))) {
+                  std::make_unique<base::Value>("Hello, world!"))) {
             records_.erase(record_id);
           }
           mode_ = Mode::kNone;

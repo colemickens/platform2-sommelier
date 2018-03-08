@@ -762,7 +762,7 @@ bool FpcBiometricsManager::WriteRecord(const BiometricsManager::Record& record,
   base::Base64Encode(tmpl_sp, &tmpl_base64);
 
   return biod_storage_.WriteRecord(
-      record, std::unique_ptr<base::Value>(new base::StringValue(tmpl_base64)));
+      record, std::make_unique<base::Value>(tmpl_base64));
 }
 
 }  // namespace biod

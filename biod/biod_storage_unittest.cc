@@ -110,7 +110,7 @@ TEST_F(BiodStorageTest, WriteAndReadRecords) {
   // Write the record.
   for (auto const& record : kRecords) {
     EXPECT_TRUE(biod_storage_->WriteRecord(
-        record, std::make_unique<base::StringValue>(record.GetData())));
+        record, std::make_unique<base::Value>(record.GetData())));
   }
 
   // Read the record.
@@ -127,7 +127,7 @@ TEST_F(BiodStorageTest, DeleteRecord) {
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
 
   EXPECT_TRUE(biod_storage_->WriteRecord(
-      kRecord, std::make_unique<base::StringValue>(kRecord.GetData())));
+      kRecord, std::make_unique<base::Value>(kRecord.GetData())));
 
   // Check this record is properly written.
   std::unordered_set<std::string> user_ids({kUserId1});
