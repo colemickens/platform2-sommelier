@@ -329,7 +329,7 @@ MAPPING = '''
         4 &snappy    /* duplicate */
         5 &reef_5
         8 &shared
-        256 &reef_5>;
+        65536 &reef_5>;
     };
     sku-map@1 {
       platform-name = "Pyro";
@@ -641,7 +641,7 @@ class UnitTests(cros_test_lib.TestCase):
     result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + MAPPING)
     self._CheckAllIn([
         'mapping/sku-map@0: Duplicate sku_id 4',
-        'mapping/sku-map@0: sku_id 256 out of range',
+        'mapping/sku-map@0: sku_id 65536 out of range',
         "mapping/sku-map@0: Phandle 'simple-sku-map' sku-id 8 must target a " +
         'model or submodel',
         ], result)

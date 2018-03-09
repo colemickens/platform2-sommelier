@@ -308,7 +308,7 @@ class CrosConfigValidator(object):
     for sku, phandle in itertools.izip(it, it):
       sku_id = fdt_util.fdt32_to_cpu(sku)
       # Allow a SKU ID of -1 as a valid match.
-      if sku_id > 255 and sku_id != 0xffffffff:
+      if sku_id > 0xffff and sku_id != 0xffffffff:
         val.Fail(prop.node.path, 'sku_id %d out of range' % sku_id)
       if sku_id in sku_set:
         val.Fail(prop.node.path, 'Duplicate sku_id %d' % sku_id)
