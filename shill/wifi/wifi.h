@@ -302,6 +302,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiMainTest, DisconnectReasonUpdated);
   FRIEND_TEST(WiFiMainTest, DisconnectReasonCleared);
+  FRIEND_TEST(WiFiMainTest, CurrentAuthModeChanged);  // supplicant_auth_mode_
+  FRIEND_TEST(WiFiMainTest, GetSuffixFromAuthMode);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
   FRIEND_TEST(WiFiMainTest, FullScanFindsNothing);  // ScanMethod, ScanState
@@ -407,6 +409,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void CurrentBSSChanged(const std::string& new_bss);
   void DisconnectReasonChanged(const int32_t new_disconnect_reason);
+  void CurrentAuthModeChanged(const std::string& auth_mode);
+  // Return the correct Metrics suffix (PSK, FTPSK, EAP, FTEAP) corresponding to
+  // the current service's authentication mode.
+  std::string GetSuffixFromAuthMode(const std::string& auth_mode) const;
   // Return the RPC identifier associated with the wpa_supplicant network
   // entry created for |service|.  If one does not exist, an empty string
   // is returned, and |error| is populated.
@@ -650,6 +656,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::string supplicant_state_;
   std::string supplicant_bss_;
   int32_t supplicant_disconnect_reason_;
+  // The auth mode of the last successful connection.
+  std::string supplicant_auth_mode_;
   std::string phy_name_;
   // Indicates that we should flush supplicant's BSS cache after the
   // next scan completes.

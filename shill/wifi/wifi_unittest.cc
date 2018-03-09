@@ -1032,6 +1032,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportDisconnectReasonChanged(int reason) {
     wifi_->DisconnectReasonChanged(reason);
   }
+  void ReportCurrentAuthModeChanged(const string& auth_mode) {
+    wifi_->CurrentAuthModeChanged(auth_mode);
+  }
   void ReportWiFiDebugScopeChanged(bool enabled) {
     wifi_->OnWiFiDebugScopeChanged(enabled);
   }
@@ -2556,6 +2559,26 @@ TEST_F(WiFiMainTest, DisconnectReasonCleared) {
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
   EXPECT_EQ(wifi().get()->supplicant_disconnect_reason_,
             WiFi::kDefaultDisconnectReason);
+}
+
+TEST_F(WiFiMainTest, GetSuffixFromAuthMode) {
+  EXPECT_EQ("PSK", wifi()->GetSuffixFromAuthMode("WPA-PSK"));
+  EXPECT_EQ("PSK", wifi()->GetSuffixFromAuthMode("WPA2-PSK"));
+  EXPECT_EQ("PSK", wifi()->GetSuffixFromAuthMode("WPA2-PSK+WPA-PSK"));
+  EXPECT_EQ("FTPSK", wifi()->GetSuffixFromAuthMode("FT-PSK"));
+  EXPECT_EQ("FTEAP", wifi()->GetSuffixFromAuthMode("FT-EAP"));
+  EXPECT_EQ("EAP", wifi()->GetSuffixFromAuthMode("EAP-TLS"));
+  EXPECT_EQ("", wifi()->GetSuffixFromAuthMode("INVALID-PSK"));
+}
+
+TEST_F(WiFiMainTest, CurrentAuthModeChanged) {
+  const string auth_mode0 = "FT-PSK";
+  ReportCurrentAuthModeChanged(auth_mode0);
+  EXPECT_EQ(wifi().get()->supplicant_auth_mode_, auth_mode0);
+
+  const string auth_mode1 = "EAP-TLS";
+  ReportCurrentAuthModeChanged(auth_mode1);
+  EXPECT_EQ(wifi().get()->supplicant_auth_mode_, auth_mode1);
 }
 
 TEST_F(WiFiMainTest, NewConnectPreemptsPending) {

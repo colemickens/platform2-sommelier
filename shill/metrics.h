@@ -236,6 +236,13 @@ class Metrics {
     kWiFiAp80211vBSSTransitionMax
   };
 
+  enum WiFiRoamComplete {
+    kWiFiRoamSuccess = 0,
+    kWiFiRoamFailure = 1,
+
+    kWiFiRoamCompleteMax
+  };
+
   enum WiFiStatusType {
     kStatusCodeTypeByAp,
     kStatusCodeTypeByClient,
@@ -706,6 +713,27 @@ class Metrics {
   static const char kMetricLinkApDisconnectReason[];
   static const char kMetricLinkClientDisconnectType[];
   static const char kMetricLinkApDisconnectType[];
+
+  // Roam time for FT and non-FT key management suites.
+  static const char kMetricWifiRoamTimePrefix[];
+  static const int kMetricWifiRoamTimeMillisecondsMax;
+  static const int kMetricWifiRoamTimeMillisecondsMin;
+  static const int kMetricWifiRoamTimeNumBuckets;
+
+  // Roam completions for FT and non-FT key management suites.
+  static const char kMetricWifiRoamCompletePrefix[];
+
+  // Session Lengths for FT and non-FT key management suites.
+  static const char kMetricWifiSessionLengthPrefix[];
+  static const int kMetricWifiSessionLengthMillisecondsMax;
+  static const int kMetricWifiSessionLengthMillisecondsMin;
+  static const int kMetricWifiSessionLengthNumBuckets;
+
+  // Suffixes for roam histograms.
+  static const char kMetricWifiPSKSuffix[];
+  static const char kMetricWifiFTPSKSuffix[];
+  static const char kMetricWifiEAPSuffix[];
+  static const char kMetricWifiFTEAPSuffix[];
 
   static const char kMetricApChannelSwitch[];
 

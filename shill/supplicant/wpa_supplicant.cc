@@ -25,6 +25,14 @@ using std::string;
 namespace shill {
 
 // static
+const char WPASupplicant::kAuthModeWPAPSK[] = "WPA-PSK";
+const char WPASupplicant::kAuthModeWPA2PSK[] = "WPA2-PSK";
+const char WPASupplicant::kAuthModeBothPSK[] = "WPA2-PSK+WPA-PSK";
+const char WPASupplicant::kAuthModeFTPSK[] = "FT-PSK";
+const char WPASupplicant::kAuthModeEAPPrefix[] = "EAP-";
+const char WPASupplicant::kAuthModeFTEAP[] = "FT-EAP";
+const char WPASupplicant::kAuthModeInactive[] = "INACTIVE";
+const char WPASupplicant::kAuthModeUnknown[] = "UNKNOWN";
 const char WPASupplicant::kBSSPropertyAge[] = "Age";
 const char WPASupplicant::kBSSPropertyBSSID[] = "BSSID";
 const char WPASupplicant::kBSSPropertyFrequency[] = "Frequency";
@@ -70,6 +78,11 @@ const char WPASupplicant::kInterfacePropertyCurrentBSS[] = "CurrentBSS";
 const char WPASupplicant::kInterfacePropertyDepth[] = "depth";
 const char WPASupplicant::kInterfacePropertyDisconnectReason[]
     = "DisconnectReason";
+const char WPASupplicant::kInterfacePropertyRoamTime[] = "RoamTime";
+const char WPASupplicant::kInterfacePropertyRoamComplete[] = "RoamComplete";
+const char WPASupplicant::kInterfacePropertySessionLength[] = "SessionLength";
+const char WPASupplicant::kInterfacePropertyCurrentAuthMode[] =
+    "CurrentAuthMode";
 const char WPASupplicant::kInterfacePropertyDriver[] = "Driver";
 const char WPASupplicant::kInterfacePropertyName[] = "Ifname";
 const char WPASupplicant::kInterfacePropertyState[] = "State";

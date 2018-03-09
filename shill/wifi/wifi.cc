@@ -150,6 +150,7 @@ WiFi::WiFi(ControlInterface* control_interface,
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       supplicant_disconnect_reason_(kDefaultDisconnectReason),
+      supplicant_auth_mode_(WPASupplicant::kAuthModeUnknown),
       need_bss_flush_(false),
       resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
@@ -865,6 +866,13 @@ void WiFi::DisconnectReasonChanged(const int32_t new_disconnect_reason) {
   supplicant_disconnect_reason_ = new_disconnect_reason;
 }
 
+void WiFi::CurrentAuthModeChanged(const string& auth_mode) {
+  if (auth_mode != WPASupplicant::kAuthModeInactive &&
+      auth_mode != WPASupplicant::kAuthModeUnknown) {
+    supplicant_auth_mode_ = auth_mode;
+  }
+}
+
 void WiFi::HandleDisconnect() {
   // Identify the affected service. We expect to get a disconnect
   // event when we fall off a Service that we were connected
@@ -1400,6 +1408,53 @@ void WiFi::PropertiesChangedTask(
 
   if (properties.ContainsString(WPASupplicant::kInterfacePropertyState)) {
     StateChanged(properties.GetString(WPASupplicant::kInterfacePropertyState));
+
+    // These properties should only be updated when there is a state change.
+    if (properties.ContainsString(
+            WPASupplicant::kInterfacePropertyCurrentAuthMode)) {
+      CurrentAuthModeChanged(properties.GetString(
+          WPASupplicant::kInterfacePropertyCurrentAuthMode));
+    }
+
+    string suffix = GetSuffixFromAuthMode(supplicant_auth_mode_);
+    if (!suffix.empty()) {
+      if (properties.ContainsInt(WPASupplicant::kInterfacePropertyRoamTime)) {
+        // Network.Shill.WiFi.RoamTime.{PSK,FTPSK,EAP,FTEAP}
+        metrics()->SendToUMA(
+            base::StringPrintf(
+                "%s.%s", Metrics::kMetricWifiRoamTimePrefix, suffix.c_str()),
+            properties.GetInt(WPASupplicant::kInterfacePropertyRoamTime),
+            Metrics::kMetricWifiRoamTimeMillisecondsMin,
+            Metrics::kMetricWifiRoamTimeMillisecondsMax,
+            Metrics::kMetricWifiRoamTimeNumBuckets);
+      }
+
+      if (properties.ContainsBool(
+              WPASupplicant::kInterfacePropertyRoamComplete)) {
+        // Network.Shill.WiFi.RoamComplete.{PSK,FTPSK,EAP,FTEAP}
+        metrics()->SendEnumToUMA(
+            base::StringPrintf("%s.%s",
+                               Metrics::kMetricWifiRoamCompletePrefix,
+                               suffix.c_str()),
+            properties.GetBool(WPASupplicant::kInterfacePropertyRoamComplete)
+                ? Metrics::kWiFiRoamSuccess
+                : Metrics::kWiFiRoamFailure,
+            Metrics::kWiFiRoamCompleteMax);
+      }
+
+      if (properties.ContainsInt(
+              WPASupplicant::kInterfacePropertySessionLength)) {
+        // Network.Shill.WiFi.SessionLength.{PSK,FTPSK,EAP,FTEAP}
+        metrics()->SendToUMA(
+            base::StringPrintf("%s.%s",
+                               Metrics::kMetricWifiSessionLengthPrefix,
+                               suffix.c_str()),
+            properties.GetInt(WPASupplicant::kInterfacePropertySessionLength),
+            Metrics::kMetricWifiSessionLengthMillisecondsMin,
+            Metrics::kMetricWifiSessionLengthMillisecondsMax,
+            Metrics::kMetricWifiSessionLengthNumBuckets);
+      }
+    }
   }
 
   if (properties.ContainsInt(
@@ -1407,6 +1462,23 @@ void WiFi::PropertiesChangedTask(
     DisconnectReasonChanged(
         properties.GetInt(WPASupplicant::kInterfacePropertyDisconnectReason));
   }
+}
+
+string WiFi::GetSuffixFromAuthMode(const string& auth_mode) const {
+  if (auth_mode == WPASupplicant::kAuthModeWPAPSK ||
+      auth_mode == WPASupplicant::kAuthModeWPA2PSK ||
+      auth_mode == WPASupplicant::kAuthModeBothPSK) {
+    return Metrics::kMetricWifiPSKSuffix;
+  } else if (auth_mode == WPASupplicant::kAuthModeFTPSK) {
+    return Metrics::kMetricWifiFTPSKSuffix;
+  } else if (auth_mode == WPASupplicant::kAuthModeFTEAP) {
+    return Metrics::kMetricWifiFTEAPSuffix;
+  } else if (base::StartsWith(auth_mode,
+                              WPASupplicant::kAuthModeEAPPrefix,
+                              base::CompareCase::SENSITIVE)) {
+    return Metrics::kMetricWifiEAPSuffix;
+  }
+  return "";
 }
 
 void WiFi::ScanDoneTask() {

@@ -25,6 +25,14 @@ namespace shill {
 
 class WPASupplicant {
  public:
+  static const char kAuthModeWPAPSK[];
+  static const char kAuthModeWPA2PSK[];
+  static const char kAuthModeBothPSK[];
+  static const char kAuthModeFTPSK[];
+  static const char kAuthModeEAPPrefix[];
+  static const char kAuthModeFTEAP[];
+  static const char kAuthModeInactive[];
+  static const char kAuthModeUnknown[];
   static const char kBSSPropertyAge[];
   static const char kBSSPropertyBSSID[];
   static const char kBSSPropertyFrequency[];
@@ -63,6 +71,10 @@ class WPASupplicant {
   static const char kInterfacePropertyCurrentBSS[];
   static const char kInterfacePropertyDepth[];
   static const char kInterfacePropertyDisconnectReason[];
+  static const char kInterfacePropertyRoamTime[];
+  static const char kInterfacePropertyRoamComplete[];
+  static const char kInterfacePropertySessionLength[];
+  static const char kInterfacePropertyCurrentAuthMode[];
   static const char kInterfacePropertyDriver[];
   static const char kInterfacePropertyName[];
   static const char kInterfacePropertyState[];

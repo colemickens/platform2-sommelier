@@ -299,6 +299,28 @@ const char Metrics::kMetricLinkApDisconnectType[] =
     "Network.Shill.WiFi.ApDisconnectType";
 
 // static
+const char Metrics::kMetricWifiRoamTimePrefix[] = "Network.Shill.WiFi.RoamTime";
+const int Metrics::kMetricWifiRoamTimeMillisecondsMax = 1000;
+const int Metrics::kMetricWifiRoamTimeMillisecondsMin = 1;
+const int Metrics::kMetricWifiRoamTimeNumBuckets = 20;
+
+// static
+const char Metrics::kMetricWifiRoamCompletePrefix[] =
+    "Network.Shill.WiFi.RoamComplete";
+
+// static
+const char Metrics::kMetricWifiSessionLengthPrefix[] =
+    "Network.Shill.WiFi.SessionLength";
+const int Metrics::kMetricWifiSessionLengthMillisecondsMax = 10000;
+const int Metrics::kMetricWifiSessionLengthMillisecondsMin = 1;
+const int Metrics::kMetricWifiSessionLengthNumBuckets = 20;
+
+const char Metrics::kMetricWifiPSKSuffix[] = "PSK";
+const char Metrics::kMetricWifiFTPSKSuffix[] = "FTPSK";
+const char Metrics::kMetricWifiEAPSuffix[] = "EAP";
+const char Metrics::kMetricWifiFTEAPSuffix[] = "FTEAP";
+
+// static
 const char Metrics::kMetricCellular3GPPRegistrationDelayedDrop[] =
     "Network.Shill.Cellular.3GPPRegistrationDelayedDrop";
 const char Metrics::kMetricCellularAutoConnectTries[] =
