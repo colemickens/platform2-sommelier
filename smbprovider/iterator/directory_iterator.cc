@@ -154,7 +154,8 @@ void BaseDirectoryIterator::AddEntryIfValid(
   if (IsSelfOrParentDir(name) || !ShouldIncludeEntryType(dirent.smbc_type)) {
     return;
   }
-  bool is_directory = dirent.smbc_type == SMBC_DIR;
+  bool is_directory =
+      dirent.smbc_type == SMBC_DIR || dirent.smbc_type == SMBC_FILE_SHARE;
   directory_entries->emplace_back(is_directory, name,
                                   AppendPath(parent_dir_path, name));
 }
