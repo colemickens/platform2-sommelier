@@ -22,6 +22,35 @@
 
 namespace smbprovider {
 
+template <typename Proto, typename Iterator>
+bool GetEntries(const Proto& options,
+                Iterator iterator,
+                int32_t* error_code,
+                ProtoBlob* out_entries) {
+  DCHECK(error_code);
+  DCHECK(out_entries);
+
+  DirectoryEntryListProto directory_entries;
+
+  int32_t result = iterator.Init();
+  while (result == 0) {
+    if (iterator.IsDone()) {
+      *error_code = static_cast<int32_t>(
+          SerializeProtoToBlob(directory_entries, out_entries));
+      return true;
+    }
+    AddDirectoryEntry(iterator.Get(), &directory_entries);
+    result = iterator.Next();
+  }
+
+  // The while-loop is only exited if there is an error. A full successful
+  // execution will return from inside the above while-loop.
+  *error_code = GetErrorFromErrno(result);
+  LogOperationError(GetMethodName(options), GetMountId(options),
+                    static_cast<ErrorType>(*error_code));
+  return false;
+}
+
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     std::unique_ptr<SambaInterface> samba_interface,
@@ -73,31 +102,26 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
                                 ProtoBlob* out_entries) {
   DCHECK(error_code);
   DCHECK(out_entries);
+
+  ReadDirectoryEntries<ReadDirectoryOptionsProto, DirectoryIterator>(
+      options_blob, error_code, out_entries);
+}
+
+template <typename Proto, typename Iterator>
+void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
+                                       int32_t* error_code,
+                                       ProtoBlob* out_entries) {
+  DCHECK(error_code);
+  DCHECK(out_entries);
   out_entries->clear();
 
   std::string full_path;
-  ReadDirectoryOptionsProto options;
-  if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
-    return;
-  }
+  Proto options;
 
-  DirectoryEntryListProto directory_entries;
-
-  DirectoryIterator it = GetDirectoryIterator(full_path);
-  int32_t result = it.Init();
-  while (result == 0) {
-    if (it.IsDone()) {
-      *error_code = static_cast<int32_t>(
-          SerializeProtoToBlob(directory_entries, out_entries));
-      return;
-    }
-    AddDirectoryEntry(it.Get(), &directory_entries);
-    result = it.Next();
-  }
-
-  // The while-loop is only exited if there is an error. A full successful
-  // execution will return from inside the above while-loop.
-  LogAndSetError(options, GetErrorFromErrno(result), error_code);
+  ParseOptionsAndPath(options_blob, &options, &full_path, error_code) &&
+      GetEntries(options,
+                 GetIterator<Iterator>(full_path, samba_interface_.get()),
+                 error_code, out_entries);
 }
 
 void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
@@ -537,11 +561,6 @@ int32_t SmbProvider::DeleteFile(const std::string& file_path) {
 
 int32_t SmbProvider::DeleteDirectory(const std::string& dir_path) {
   return samba_interface_->RemoveDirectory(dir_path.c_str());
-}
-
-DirectoryIterator SmbProvider::GetDirectoryIterator(
-    const std::string& full_path) {
-  return DirectoryIterator(full_path, samba_interface_.get());
 }
 
 PostDepthFirstIterator SmbProvider::GetPostOrderIterator(

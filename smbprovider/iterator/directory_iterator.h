@@ -118,6 +118,12 @@ class DirectoryIterator : public BaseDirectoryIterator {
   DISALLOW_COPY_AND_ASSIGN(DirectoryIterator);
 };
 
+template <typename Iterator>
+Iterator GetIterator(const std::string& full_path,
+                     SambaInterface* samba_interface) {
+  return Iterator(full_path, samba_interface);
+}
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_ITERATOR_DIRECTORY_ITERATOR_H_

@@ -23,10 +23,18 @@ using brillo::dbus_utils::AsyncEventSequencer;
 namespace smbprovider {
 
 class DirectoryEntryListProto;
-class DirectoryIterator;
 class MountManager;
 class PostDepthFirstIterator;
 class SambaInterface;
+
+// Helper method that reads entries using an |iterator| and outputs them to
+// |out_entries|. Returns true on success and sets |error_code| on failure.
+// |options| is used for logging purposes.
+template <typename Proto, typename Iterator>
+bool GetEntries(const Proto& options,
+                Iterator iterator,
+                int32_t* error_code,
+                ProtoBlob* out_entries);
 
 // Implementation of smbprovider's DBus interface. Mostly routes stuff between
 // DBus and samba_interface.
@@ -208,9 +216,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Calls RemoveDirectory.
   int32_t DeleteDirectory(const std::string& dir_path);
 
-  // Helper method to construct a DirectoryIterator for a given |full_path|.
-  DirectoryIterator GetDirectoryIterator(const std::string& full_path);
-
   // Helper method to construct a PostDepthFirstIterator for a given
   // |full_path|.
   PostDepthFirstIterator GetPostOrderIterator(const std::string& full_path);
@@ -317,6 +322,15 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                     std::vector<uint8_t>* buffer,
                     size_t* bytes_read,
                     int32_t* error_code);
+
+  // Reads the entries in a directory using the specified type of |Iterator| and
+  // outputs the entries in |out_entries|. |options_blob| is parsed into a
+  // |Proto| object and is used as input for the iterator. |error_code| is set
+  // on failure.
+  template <typename Proto, typename Iterator>
+  void ReadDirectoryEntries(const ProtoBlob& options_blob,
+                            int32_t* error_code,
+                            ProtoBlob* out_entries);
 
   // Populates |delete_list| with an ordered list of relative paths of entries
   // that must be deleted in order to recursively delete |full_path|.

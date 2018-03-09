@@ -133,9 +133,15 @@ void LogAndSetError(const char* operation_name,
                     int32_t mount_id,
                     ErrorType error_received,
                     int32_t* error_code) {
+  LogOperationError(operation_name, mount_id, error_received);
+  *error_code = static_cast<int32_t>(error_received);
+}
+
+void LogOperationError(const char* operation_name,
+                       int32_t mount_id,
+                       ErrorType error_received) {
   LOG(ERROR) << "Error performing " << operation_name
              << " from mount id: " << mount_id << ": " << error_received;
-  *error_code = static_cast<int32_t>(error_received);
 }
 
 void LogAndSetDBusParseError(const char* operation_name, int32_t* error_code) {

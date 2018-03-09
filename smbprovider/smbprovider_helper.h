@@ -73,6 +73,11 @@ void LogAndSetError(const char* operation_name,
                     ErrorType error_received,
                     int32_t* error_code);
 
+// Logs error for |operation_name|.
+void LogOperationError(const char* operation_name,
+                       int32_t mount_id,
+                       ErrorType error_received);
+
 // Logs error and sets |error_code|.
 template <typename Proto>
 void LogAndSetError(Proto options,

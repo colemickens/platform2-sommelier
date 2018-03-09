@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "smbprovider/fake_samba_interface.h"
+#include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider.h"
@@ -55,6 +56,14 @@ DeleteListProto GetDeleteListProtoFromFD(const dbus::FileDescriptor& fd,
   EXPECT_TRUE(delete_list.ParseFromArray(buffer.data(), buffer.size()));
 
   return delete_list;
+}
+
+DirectoryEntryListProto GetDirectoryEntryListProtoFromBlob(
+    const ProtoBlob& blob) {
+  DirectoryEntryListProto entries;
+  EXPECT_TRUE(entries.ParseFromArray(blob.data(), blob.size()));
+
+  return entries;
 }
 
 }  // namespace
@@ -2296,6 +2305,71 @@ TEST_F(SmbProviderTest, GetDeleteListFailsOnNonExistantEntry) {
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
   EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+}
+
+TEST_F(SmbProviderTest, GetEntriesFailsWithNonExistentDirectory) {
+  int32_t mount_id = PrepareMount();
+
+  int32_t error_code;
+  ProtoBlob entries;
+  ReadDirectoryOptionsProto proto =
+      CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
+  GetEntries(
+      proto,
+      GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(), fake_samba_),
+      &error_code, &entries);
+
+  DirectoryEntryListProto entry_list =
+      GetDirectoryEntryListProtoFromBlob(entries);
+  EXPECT_EQ(error_code, ERROR_NOT_FOUND);
+}
+
+TEST_F(SmbProviderTest, GetEntriesSucceedsWithEmptyDirectory) {
+  int32_t mount_id = PrepareMount();
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+
+  int32_t error_code;
+  ProtoBlob entries;
+  ReadDirectoryOptionsProto proto =
+      CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
+  GetEntries(
+      proto,
+      GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(), fake_samba_),
+      &error_code, &entries);
+
+  DirectoryEntryListProto entry_list =
+      GetDirectoryEntryListProtoFromBlob(entries);
+  EXPECT_EQ(error_code, ERROR_OK);
+  EXPECT_EQ(entry_list.entries().size(), 0);
+}
+
+TEST_F(SmbProviderTest, GetEntriesSucceedsWithMultipleEntries) {
+  int32_t mount_id = PrepareMount();
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/images"));
+  fake_samba_->AddFile(GetDefaultFullPath("/path/dog.jpg"));
+
+  int32_t error_code;
+  ProtoBlob entries;
+  ReadDirectoryOptionsProto proto =
+      CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
+  GetEntries(
+      proto,
+      GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(), fake_samba_),
+      &error_code, &entries);
+
+  DirectoryEntryListProto entry_list =
+      GetDirectoryEntryListProtoFromBlob(entries);
+  EXPECT_EQ(error_code, ERROR_OK);
+  EXPECT_EQ(entry_list.entries().size(), 2);
+
+  const DirectoryEntryProto& entry1 = entry_list.entries(0);
+  EXPECT_EQ(entry1.name(), "images");
+  EXPECT_TRUE(entry1.is_directory());
+
+  const DirectoryEntryProto& entry2 = entry_list.entries(1);
+  EXPECT_EQ(entry2.name(), "dog.jpg");
+  EXPECT_FALSE(entry2.is_directory());
 }
 
 }  // namespace smbprovider
