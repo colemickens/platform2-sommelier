@@ -14,6 +14,7 @@
 #include "smbprovider/constants.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/iterator/post_depth_first_iterator.h"
+#include "smbprovider/iterator/share_iterator.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -337,7 +338,11 @@ int32_t SmbProvider::CopyEntry(const ProtoBlob& options_blob) {
 void SmbProvider::GetShares(const ProtoBlob& options_blob,
                             int32_t* error_code,
                             ProtoBlob* shares) {
-  NOTIMPLEMENTED();
+  DCHECK(error_code);
+  DCHECK(shares);
+
+  ReadDirectoryEntries<GetSharesOptionsProto, ShareIterator>(
+      options_blob, error_code, shares);
 }
 
 template <typename Proto>

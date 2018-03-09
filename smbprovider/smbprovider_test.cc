@@ -2372,4 +2372,167 @@ TEST_F(SmbProviderTest, GetEntriesSucceedsWithMultipleEntries) {
   EXPECT_FALSE(entry2.is_directory());
 }
 
+TEST_F(SmbProviderTest, GetSharesFailsOnEmptyProto) {
+  ProtoBlob empty_blob;
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(empty_blob, &error, &result);
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(error));
+}
+
+TEST_F(SmbProviderTest, GetSharesFailsOnNonExistentServer) {
+  ProtoBlob blob = CreateGetSharesOptionsBlob("smb://0.0.0.1");
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(blob, &error, &result);
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(error));
+}
+
+TEST_F(SmbProviderTest, GetSharesSucceedsOnEmptyServer) {
+  const std::string server_url = "smb://192.168.0.1";
+  fake_samba_->AddServer(server_url);
+
+  ProtoBlob blob = CreateGetSharesOptionsBlob(server_url);
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(blob, &error, &result);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+  EXPECT_TRUE(GetDirectoryEntryListProtoFromBlob(result).entries().empty());
+}
+
+TEST_F(SmbProviderTest, GetSharesSucceedsWithSingleShare) {
+  const std::string server_url = "smb://192.168.0.1";
+  const std::string share = "share1";
+
+  fake_samba_->AddServer(server_url);
+  fake_samba_->AddShare(server_url + "/" + share);
+
+  ProtoBlob blob = CreateGetSharesOptionsBlob(server_url);
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(blob, &error, &result);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+
+  DirectoryEntryListProto dir_entry_list =
+      GetDirectoryEntryListProtoFromBlob(result);
+  EXPECT_EQ(dir_entry_list.entries().size(), 1);
+
+  const DirectoryEntryProto& entry = dir_entry_list.entries(0);
+  EXPECT_EQ(entry.name(), share);
+  EXPECT_TRUE(entry.is_directory());
+}
+
+TEST_F(SmbProviderTest, GetSharesSucceedsWithMultipleShares) {
+  const std::string server_url = "smb://192.168.0.1";
+  const std::string share1 = "share1";
+  const std::string share2 = "share2";
+
+  fake_samba_->AddServer(server_url);
+  fake_samba_->AddShare(server_url + "/" + share1);
+  fake_samba_->AddShare(server_url + "/" + share2);
+
+  ProtoBlob blob = CreateGetSharesOptionsBlob(server_url);
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(blob, &error, &result);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+
+  DirectoryEntryListProto dir_entry_list =
+      GetDirectoryEntryListProtoFromBlob(result);
+  EXPECT_EQ(dir_entry_list.entries().size(), 2);
+
+  const DirectoryEntryProto& entry1 = dir_entry_list.entries(0);
+  EXPECT_EQ(entry1.name(), share1);
+  EXPECT_TRUE(entry1.is_directory());
+
+  const DirectoryEntryProto& entry2 = dir_entry_list.entries(1);
+  EXPECT_EQ(entry2.name(), share2);
+  EXPECT_TRUE(entry2.is_directory());
+}
+
+TEST_F(SmbProviderTest, GetSharesDoesntReturnSelfAndParentEntries) {
+  const std::string server_url = "smb://192.168.0.1";
+  const std::string share1 = "share1";
+
+  fake_samba_->AddServer(server_url);
+  fake_samba_->AddShare(server_url + "/" + share1);
+
+  // These shouldn't be returned by GetShares.
+  fake_samba_->AddShare(server_url + "/.");
+  fake_samba_->AddShare(server_url + "/..");
+
+  ProtoBlob blob = CreateGetSharesOptionsBlob(server_url);
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(blob, &error, &result);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+
+  DirectoryEntryListProto dir_entry_list =
+      GetDirectoryEntryListProtoFromBlob(result);
+  EXPECT_EQ(dir_entry_list.entries().size(), 1);
+
+  const DirectoryEntryProto& entry1 = dir_entry_list.entries(0);
+  EXPECT_EQ(entry1.name(), share1);
+  EXPECT_TRUE(entry1.is_directory());
+}
+
+TEST_F(SmbProviderTest, GetSharesDoesntReturnNonShareEntries) {
+  const std::string server_url = "smb://192.168.0.1";
+  const std::string share1 = "share1";
+
+  fake_samba_->AddServer(server_url);
+  fake_samba_->AddShare(server_url + "/" + share1);
+
+  // These shouldn't be returned by GetShares since they aren't shares.
+  fake_samba_->AddDirectory(server_url + "/dir");
+  fake_samba_->AddFile(server_url + "/file");
+
+  ProtoBlob blob = CreateGetSharesOptionsBlob(server_url);
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(blob, &error, &result);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+
+  DirectoryEntryListProto dir_entry_list =
+      GetDirectoryEntryListProtoFromBlob(result);
+  EXPECT_EQ(dir_entry_list.entries().size(), 1);
+
+  const DirectoryEntryProto& entry1 = dir_entry_list.entries(0);
+  EXPECT_EQ(entry1.name(), share1);
+  EXPECT_TRUE(entry1.is_directory());
+}
+
+TEST_F(SmbProviderTest, GetSharesReturnsShareContainingDirectory) {
+  const std::string server_url = "smb://192.168.0.1";
+  const std::string share1 = "share1";
+
+  fake_samba_->AddServer(server_url);
+  fake_samba_->AddShare(server_url + "/" + share1);
+
+  // Add a directory in the share.
+  fake_samba_->AddDirectory(server_url + "/" + share1 + "/dir");
+
+  ProtoBlob blob = CreateGetSharesOptionsBlob(server_url);
+  int32_t error;
+  ProtoBlob result;
+
+  smbprovider_->GetShares(blob, &error, &result);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+
+  DirectoryEntryListProto dir_entry_list =
+      GetDirectoryEntryListProtoFromBlob(result);
+  EXPECT_EQ(dir_entry_list.entries().size(), 1);
+
+  const DirectoryEntryProto& entry1 = dir_entry_list.entries(0);
+  EXPECT_EQ(entry1.name(), share1);
+  EXPECT_TRUE(entry1.is_directory());
+}
+
 }  // namespace smbprovider
