@@ -1853,11 +1853,11 @@ bool TpmImpl::QuotePCR(int pcr_index,
     TPM_LOG(ERROR, result) << "QuotePCR: Failed to generate quote.";
     return false;
   }
-  ScopedTssMemory scoped_quoted_data(0, validation.rgbData);
-  ScopedTssMemory scoped_quote(0, validation.rgbValidationData);
+  ScopedTssMemory scoped_quoted_data(context_handle, validation.rgbData);
+  ScopedTssMemory scoped_quote(context_handle, validation.rgbValidationData);
 
   // Get the PCR value that was quoted.
-  ScopedTssMemory pcr_value_buffer;
+  ScopedTssMemory pcr_value_buffer(context_handle);
   UINT32 pcr_value_length = 0;
   result = Tspi_PcrComposite_GetPcrValue(pcrs, pcr_index, &pcr_value_length,
                                          pcr_value_buffer.ptr());
@@ -2088,8 +2088,8 @@ bool TpmImpl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
     TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to certify key.";
     return false;
   }
-  ScopedTssMemory scoped_certified_data(0, validation.rgbData);
-  ScopedTssMemory scoped_proof(0, validation.rgbValidationData);
+  ScopedTssMemory scoped_certified_data(context_handle, validation.rgbData);
+  ScopedTssMemory scoped_proof(context_handle, validation.rgbValidationData);
 
   // Get the certified public key.
   if (!GetDataAttribute(context_handle,
