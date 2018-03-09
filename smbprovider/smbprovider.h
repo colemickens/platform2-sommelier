@@ -87,6 +87,10 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                      dbus::FileDescriptor* temp_fd,
                      int32_t* bytes_written) override;
 
+  void GetShares(const ProtoBlob& options_blob,
+                 int32_t* error_code,
+                 ProtoBlob* shares) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);

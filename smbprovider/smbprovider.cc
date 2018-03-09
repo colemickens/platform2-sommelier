@@ -310,6 +310,12 @@ int32_t SmbProvider::CopyEntry(const ProtoBlob& options_blob) {
   return success ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
 
+void SmbProvider::GetShares(const ProtoBlob& options_blob,
+                            int32_t* error_code,
+                            ProtoBlob* shares) {
+  NOTIMPLEMENTED();
+}
+
 template <typename Proto>
 bool SmbProvider::GetFullPath(Proto* options, std::string* full_path) const {
   DCHECK(options);
