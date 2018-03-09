@@ -203,7 +203,6 @@ void SeqHandler::AddSeqDevice(uint32_t device_id) {
   }
 
   std::string name(snd_seq_client_info_get_name(client_info));
-  uint32_t num_subdevices = snd_seq_client_info_get_num_ports(client_info);
 
   // Store the list of MIDI ports and corresponding capabilities in a map.
   std::map<uint32_t, unsigned int> port_caps;
@@ -221,10 +220,17 @@ void SeqHandler::AddSeqDevice(uint32_t device_id) {
                       snd_seq_port_info_get_capability(port_info));
   }
 
+  // If the number of MIDI ports is 0, there is no use in creating
+  // a device.
+  if (port_caps.size() == 0) {
+    LOG(INFO) << "Connected device: " << name << " has no MIDI ports.";
+    return;
+  }
+
   auto dev = std::make_unique<Device>(
       name, std::string(),
       0 /* card number; TODO(pmalani) remove card number */, device_id,
-      num_subdevices, 0 /* device flags TODO(pmalani): flags not needed. */,
+      port_caps.size(), 0 /* device flags TODO(pmalani): flags not needed. */,
       base::Bind(&SeqHandler::SubscribeInPort, base::Unretained(this)),
       base::Bind(&SeqHandler::SubscribeOutPort, base::Unretained(this)),
       base::Bind(&SeqHandler::UnsubscribeInPort, weak_factory_.GetWeakPtr()),

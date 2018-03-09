@@ -138,6 +138,7 @@ void Device::WriteClientDataToDevice(uint32_t subdevice_id,
     LOG(WARNING)
         << "Data received on port: " << subdevice_id
         << " which doesn't support writing to MIDI device; dropping data";
+    return;
   }
   it->second->SendData(buffer, buf_len);
 }
