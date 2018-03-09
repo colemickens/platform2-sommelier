@@ -22,24 +22,24 @@
 
 namespace {
 
-const char kDeviceLogFile[] = "/sys/kernel/debug/cros_ec/console_log";
+const char kDefaultDeviceLogFile[] = "/sys/kernel/debug/cros_ec/console_log";
 
 const char kDefaultLogDirectory[] = "/var/log/";
 
-const char kCurrentLogFile[] = "cros_ec.log";
-const char kPreviousLogFile[] = "cros_ec.previous";
+const char kCurrentLogExt[] = ".log";
+const char kPreviousLogExt[] = ".previous";
 
 const int kMaxCurrentLogSize = 10 * 1024 * 1024;
 
 class TimberSlide : public brillo::Daemon,
                     public base::MessageLoopForIO::Watcher {
  public:
-  TimberSlide(base::File device_file,
-              const base::FilePath& log_dir):
-      device_file_(std::move(device_file)),
-      total_size_(0) {
-    current_log_ = log_dir.Append(kCurrentLogFile);
-    previous_log_ = log_dir.Append(kPreviousLogFile);
+  TimberSlide(const std::string& ec_type,
+              base::File device_file,
+              const base::FilePath& log_dir)
+      : device_file_(std::move(device_file)), total_size_(0) {
+    current_log_ = log_dir.Append(ec_type + kCurrentLogExt);
+    previous_log_ = log_dir.Append(ec_type + kPreviousLogExt);
   }
 
  private:
@@ -109,22 +109,24 @@ class TimberSlide : public brillo::Daemon,
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(device_log, kDeviceLogFile,
+  DEFINE_string(device_log, kDefaultDeviceLogFile,
                 "File where the recent EC logs are posted to.");
   DEFINE_string(log_directory, kDefaultLogDirectory,
                 "Directory where the output logs should be.");
   brillo::FlagHelper::Init(argc, argv,
       "timberslide concatenates EC logs for use in debugging.");
 
-  base::File device_file(base::FilePath(FLAGS_device_log),
-                         base::File::FLAG_OPEN | base::File::FLAG_READ);
+  base::FilePath path(FLAGS_device_log);
+  base::File device_file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!device_file.IsValid()) {
     LOG(ERROR) << "Error opening " << FLAGS_device_log << ": "
                << base::File::ErrorToString(device_file.error_details());
     return EX_UNAVAILABLE;
   }
 
-  TimberSlide ts(std::move(device_file), (base::FilePath(FLAGS_log_directory)));
+  std::string ec_type = path.DirName().BaseName().value();
+  TimberSlide ts(ec_type, std::move(device_file),
+                 (base::FilePath(FLAGS_log_directory)));
 
   return ts.Run();
 }
