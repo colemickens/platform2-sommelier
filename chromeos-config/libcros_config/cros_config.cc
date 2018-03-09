@@ -80,6 +80,7 @@ bool CrosConfig::CompareResults(bool fdt_ok,
   }
 
   *val_out = fdt_val;
+  CROS_CONFIG_LOG(INFO) << "fdt and yaml agree";
   return fdt_ok;
 }
 
@@ -115,6 +116,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::FilePath& mem_file,
                             const base::FilePath& vpd_file,
                             bool use_yaml) {
+  CROS_CONFIG_LOG(INFO) << ">>>>> starting";
   if (!cros_config_fdt_->InitCommon(filepath, mem_file, vpd_file)) {
     CROS_CONFIG_LOG(ERROR) << "Failed to set up FDT "
                            << filepath.MaybeAsASCII();
@@ -130,6 +132,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     }
   }
   use_yaml_ = use_yaml;
+  CROS_CONFIG_LOG(INFO) << ">>>>> init complete, use_yaml=" << use_yaml;
 
   return true;
 }
