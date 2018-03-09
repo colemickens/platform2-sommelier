@@ -372,6 +372,9 @@ class BRILLO_EXPORT DBusInterface final {
   void AddProperty(const std::string& property_name,
                    ExportedPropertyBase* prop_base);
 
+  // Unregisters a D-Bus property.
+  void RemoveProperty(const std::string& property_name);
+
   // Registers a D-Bus signal that has a specified number and types (|Args|) of
   // arguments. Returns a weak pointer to the DBusSignal object which can be
   // used to send the signal on this interface when needed:
@@ -537,6 +540,16 @@ class BRILLO_EXPORT DBusObject {
   // Finds an interface with the given name. Returns nullptr if there is no
   // interface registered by this name.
   DBusInterface* FindInterface(const std::string& interface_name) const;
+
+  // Removes the previously added proxy handler for the interface
+  // |interface_name|.
+  void RemoveInterface(const std::string& interface_name);
+
+  // Exports a proxy handler for the interface |interface_name|. If the
+  // interface proxy does not exist yet, it will be automatically created.
+  void ExportInterfaceAsync(
+      const std::string& interface_name,
+      const AsyncEventSequencer::CompletionAction& completion_callback);
 
   // Registers the object instance with D-Bus. This is an asynchronous call
   // that will call |completion_callback| when the object and all of its

@@ -46,6 +46,11 @@ void DBusInterface::AddProperty(const std::string& property_name,
       interface_name_, property_name, prop_base);
 }
 
+void DBusInterface::RemoveProperty(const std::string& property_name) {
+  dbus_object_->property_set_.UnregisterProperty(interface_name_,
+                                                 property_name);
+}
+
 void DBusInterface::ExportAsync(
     ExportedObjectManager* object_manager,
     dbus::Bus* /* bus */,
@@ -212,6 +217,21 @@ DBusInterface* DBusObject::FindInterface(
     const std::string& interface_name) const {
   auto itf_iter = interfaces_.find(interface_name);
   return (itf_iter == interfaces_.end()) ? nullptr : itf_iter->second.get();
+}
+
+void DBusObject::RemoveInterface(const std::string& interface_name) {
+  auto itf_iter = interfaces_.find(interface_name);
+  CHECK(itf_iter != interfaces_.end())
+      << "Interface " << interface_name << " has not been added.";
+  interfaces_.erase(itf_iter);
+}
+
+void DBusObject::ExportInterfaceAsync(
+    const std::string& interface_name,
+    const AsyncEventSequencer::CompletionAction& completion_callback) {
+  AddOrGetInterface(interface_name)
+      ->ExportAsync(object_manager_.get(), bus_.get(), exported_object_,
+                    object_path_, completion_callback);
 }
 
 void DBusObject::RegisterAsync(

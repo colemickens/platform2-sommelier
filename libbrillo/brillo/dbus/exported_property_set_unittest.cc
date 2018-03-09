@@ -336,6 +336,14 @@ TEST_F(ExportedPropertySetTest, GetExtraArgs) {
   AssertMethodReturnsError(&method_call);
 }
 
+TEST_F(ExportedPropertySetTest, GetRemovedProperty) {
+  DBusInterface* itf1 = p_->dbus_object_.AddOrGetInterface(kTestInterface1);
+  itf1->RemoveProperty(kBoolPropName);
+
+  auto response = GetPropertyOnInterface(kTestInterface1, kBoolPropName);
+  ASSERT_EQ(DBUS_ERROR_UNKNOWN_PROPERTY, response->GetErrorName());
+}
+
 TEST_F(ExportedPropertySetTest, GetWorksWithBool) {
   auto response = GetPropertyOnInterface(kTestInterface1, kBoolPropName);
   dbus::MessageReader reader(response.get());

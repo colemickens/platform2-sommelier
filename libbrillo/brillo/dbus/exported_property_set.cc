@@ -54,6 +54,16 @@ void ExportedPropertySet::RegisterProperty(
   exported_property->SetUpdateCallback(cb);
 }
 
+void ExportedPropertySet::UnregisterProperty(const std::string& interface_name,
+                                             const std::string& property_name) {
+  bus_->AssertOnOriginThread();
+  auto& prop_map = properties_[interface_name];
+  auto prop_iter = prop_map.find(property_name);
+  CHECK(prop_iter != prop_map.end())
+      << "Property '" << property_name << "' doesn't exist";
+  prop_map.erase(prop_iter);
+}
+
 VariantDictionary ExportedPropertySet::HandleGetAll(
     const std::string& interface_name) {
   bus_->AssertOnOriginThread();

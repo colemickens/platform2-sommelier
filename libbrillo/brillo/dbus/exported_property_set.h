@@ -111,6 +111,10 @@ class BRILLO_EXPORT ExportedPropertySet {
                         const std::string& property_name,
                         ExportedPropertyBase* exported_property);
 
+  // Unregisters a property from this exported property set.
+  void UnregisterProperty(const std::string& interface_name,
+                          const std::string& property_name);
+
   // D-Bus methods for org.freedesktop.DBus.Properties interface.
   VariantDictionary HandleGetAll(const std::string& interface_name);
   bool HandleGet(brillo::ErrorPtr* error,
