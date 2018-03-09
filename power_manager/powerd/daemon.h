@@ -183,14 +183,6 @@ class Daemon : public policy::BacklightControllerObserver,
                                    double brightness_percent,
                                    BacklightBrightnessChange_Cause cause);
 
-  // Emits a D-Bus signal named |signal_name| containing containing int32
-  // brightness and bool "user-initiated" args.
-  // TODO(derat): Delete this once Chrome is no longer consuming
-  // BrightnessChanged signals: https://crbug.com/811138
-  void SendOldBrightnessChangedSignal(const std::string& signal_name,
-                                      double brightness_percent,
-                                      BacklightBrightnessChange_Cause cause);
-
   // Connects to the D-Bus system bus and exports methods. Does not publish the
   // D-Bus service, as additional methods may need to exported by other classes
   // before that happens.

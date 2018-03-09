@@ -487,17 +487,6 @@ void Daemon::SendBrightnessChangedSignal(
   dbus_wrapper_->EmitSignal(&signal);
 }
 
-void Daemon::SendOldBrightnessChangedSignal(
-    const std::string& signal_name,
-    double brightness_percent,
-    BacklightBrightnessChange_Cause cause) {
-  dbus::Signal signal(kPowerManagerInterface, signal_name);
-  dbus::MessageWriter writer(&signal);
-  writer.AppendInt32(round(brightness_percent));
-  writer.AppendBool(cause == BacklightBrightnessChange_Cause_USER_REQUEST);
-  dbus_wrapper_->EmitSignal(&signal);
-}
-
 void Daemon::OnBrightnessChange(double brightness_percent,
                                 BacklightBrightnessChange_Cause cause,
                                 policy::BacklightController* source) {
@@ -505,8 +494,6 @@ void Daemon::OnBrightnessChange(double brightness_percent,
       display_backlight_controller_) {
     SendBrightnessChangedSignal(kScreenBrightnessChangedSignal,
                                 brightness_percent, cause);
-    SendOldBrightnessChangedSignal(kBrightnessChangedSignal, brightness_percent,
-                                   cause);
   } else if (source == keyboard_backlight_controller_.get() &&
              keyboard_backlight_controller_) {
     SendBrightnessChangedSignal(kKeyboardBrightnessChangedSignal,
@@ -1233,9 +1220,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(kScreenBrightnessChangedSignal, percent,
                                 BacklightBrightnessChange_Cause_USER_REQUEST);
-    SendOldBrightnessChangedSignal(
-        kBrightnessChangedSignal, percent,
-        BacklightBrightnessChange_Cause_USER_REQUEST);
   }
   return std::unique_ptr<dbus::Response>();
 }
@@ -1251,9 +1235,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(kScreenBrightnessChangedSignal, percent,
                                 BacklightBrightnessChange_Cause_USER_REQUEST);
-    SendOldBrightnessChangedSignal(
-        kBrightnessChangedSignal, percent,
-        BacklightBrightnessChange_Cause_USER_REQUEST);
   }
   return std::unique_ptr<dbus::Response>();
 }

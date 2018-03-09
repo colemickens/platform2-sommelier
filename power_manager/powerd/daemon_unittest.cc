@@ -322,25 +322,6 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(cause, proto.cause());
   }
 
-  // Checks that the old non-protobuf D-Bus signal at |index| has name
-  // |signal_name| and describes a brightness change to |brightness_percent|.
-  void CheckOldBrightnessChangedSignal(size_t index,
-                                       const std::string& signal_name,
-                                       double brightness_percent,
-                                       bool user_initiated) {
-    std::unique_ptr<dbus::Signal> signal;
-    ASSERT_TRUE(
-        dbus_wrapper_->GetSentSignal(index, signal_name, nullptr, &signal));
-
-    dbus::MessageReader reader(signal.get());
-    int32_t sent_brightness = 0;
-    ASSERT_TRUE(reader.PopInt32(&sent_brightness));
-    EXPECT_EQ(static_cast<int32_t>(round(brightness_percent)), sent_brightness);
-    bool sent_user_initiated = false;
-    ASSERT_TRUE(reader.PopBool(&sent_user_initiated));
-    EXPECT_EQ(user_initiated, sent_user_initiated);
-  }
-
   // Returns the command that Daemon should execute to shut down for a given
   // reason.
   std::string GetShutdownCommand(ShutdownReason reason) {
@@ -693,23 +674,20 @@ TEST_F(DaemonTest, EmitDBusSignalForBrightnessChange) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   Init();
 
-  // Both the new ScreenBrightnessChanged and old BrightnessChanged signal
-  // should be emitted.
+  // A ScreenBrightnessChanged signal should be emitted.
   dbus_wrapper_->ClearSentSignals();
   internal_backlight_controller_->NotifyObservers(
       50.0, BacklightBrightnessChange_Cause_OTHER);
-  EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
+  EXPECT_EQ(1, dbus_wrapper_->num_sent_signals());
   CheckBrightnessChangedSignal(0, kScreenBrightnessChangedSignal, 50.0,
                                BacklightBrightnessChange_Cause_OTHER);
-  CheckOldBrightnessChangedSignal(1, kBrightnessChangedSignal, 50.0, false);
 
   dbus_wrapper_->ClearSentSignals();
   internal_backlight_controller_->NotifyObservers(
       25.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
+  EXPECT_EQ(1, dbus_wrapper_->num_sent_signals());
   CheckBrightnessChangedSignal(0, kScreenBrightnessChangedSignal, 25.0,
                                BacklightBrightnessChange_Cause_USER_REQUEST);
-  CheckOldBrightnessChangedSignal(1, kBrightnessChangedSignal, 25.0, true);
 
   dbus_wrapper_->ClearSentSignals();
   keyboard_backlight_controller_->NotifyObservers(
