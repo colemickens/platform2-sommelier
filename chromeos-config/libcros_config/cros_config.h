@@ -7,9 +7,7 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 
-#include "chromeos-config/libcros_config/cros_config_fdt.h"
 #include "chromeos-config/libcros_config/cros_config_interface.h"
-#include "chromeos-config/libcros_config/cros_config_yaml.h"
 
 #include <map>
 #include <memory>
@@ -28,6 +26,10 @@ class FilePath;
 }  // namespace base
 
 namespace brillo {
+
+class CrosConfigFdt;
+class CrosConfigYaml;
+class ConfigNode;
 
 struct SmbiosTable;
 class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
@@ -113,8 +115,8 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                       bool yaml_ok, const std::string& yaml_val,
                       std::string* val_out);
 
-  CrosConfigFdt cros_config_fdt_;
-  CrosConfigYaml cros_config_yaml_;
+  CrosConfigFdt* cros_config_fdt_;
+  CrosConfigYaml* cros_config_yaml_;
   bool use_yaml_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);

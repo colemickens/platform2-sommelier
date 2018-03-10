@@ -5,6 +5,8 @@
 // Library to provide access to the Chrome OS master configuration
 
 #include "chromeos-config/libcros_config/cros_config.h"
+#include "chromeos-config/libcros_config/cros_config_fdt.h"
+#include "chromeos-config/libcros_config/cros_config_yaml.h"
 #include "chromeos-config/libcros_config/identity.h"
 
 #include <stdlib.h>
@@ -25,9 +27,15 @@ const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 
 namespace brillo {
 
-CrosConfig::CrosConfig() {}
+CrosConfig::CrosConfig() {
+  cros_config_fdt_ = new CrosConfigFdt();
+  cros_config_yaml_ = new CrosConfigYaml();
+}
 
-CrosConfig::~CrosConfig() {}
+CrosConfig::~CrosConfig() {
+  delete cros_config_fdt_;
+  delete cros_config_yaml_;
+}
 
 bool CrosConfig::Init() {
   return InitModel();
@@ -79,13 +87,13 @@ bool CrosConfig::GetString(const std::string& path,
                            const std::string& prop,
                            std::string* val_out) {
   std::string fdt_val;
-  bool fdt_ok = cros_config_fdt_.GetString(path, prop, &fdt_val);
+  bool fdt_ok = cros_config_fdt_->GetString(path, prop, &fdt_val);
   if (!use_yaml_) {
     *val_out = fdt_val;
     return fdt_ok;
   }
   std::string yaml_val;
-  bool yaml_ok = cros_config_yaml_.GetString(path, prop, &yaml_val);
+  bool yaml_ok = cros_config_yaml_->GetString(path, prop, &yaml_val);
   return CompareResults(fdt_ok, fdt_val, yaml_ok, yaml_val, val_out);
 }
 
@@ -93,13 +101,13 @@ bool CrosConfig::GetAbsPath(const std::string& path,
                             const std::string& prop,
                             std::string* val_out) {
   std::string fdt_val;
-  bool fdt_ok = cros_config_fdt_.GetAbsPath(path, prop, &fdt_val);
+  bool fdt_ok = cros_config_fdt_->GetAbsPath(path, prop, &fdt_val);
   if (!use_yaml_) {
     *val_out = fdt_val;
     return fdt_ok;
   }
   std::string yaml_val;
-  bool yaml_ok = cros_config_yaml_.GetAbsPath(path, prop, &yaml_val);
+  bool yaml_ok = cros_config_yaml_->GetAbsPath(path, prop, &yaml_val);
   return CompareResults(fdt_ok, fdt_val, yaml_ok, yaml_val, val_out);
 }
 
@@ -107,7 +115,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::FilePath& mem_file,
                             const base::FilePath& vpd_file,
                             bool use_yaml) {
-  if (!cros_config_fdt_.InitCommon(filepath, mem_file, vpd_file)) {
+  if (!cros_config_fdt_->InitCommon(filepath, mem_file, vpd_file)) {
     CROS_CONFIG_LOG(ERROR) << "Failed to set up FDT "
                            << filepath.MaybeAsASCII();
     return false;
@@ -115,7 +123,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   if (use_yaml) {
     base::FilePath yaml_filepath =
         filepath.RemoveExtension().AddExtension(".json");
-    if (!cros_config_yaml_.InitCommon(yaml_filepath, mem_file, vpd_file)) {
+    if (!cros_config_yaml_->InitCommon(yaml_filepath, mem_file, vpd_file)) {
       CROS_CONFIG_LOG(ERROR) << "Failed to set up yaml "
                             << yaml_filepath.MaybeAsASCII();
       return false;
@@ -131,15 +139,15 @@ bool CrosConfig::GetString(const ConfigNode& base_node,
                            const std::string& prop,
                            std::string* val_out,
                            std::vector<std::string>* log_msgs_out) {
-  return cros_config_fdt_.GetString(base_node, path, prop, val_out,
-                                    log_msgs_out);
+  return cros_config_fdt_->GetString(base_node, path, prop, val_out,
+                                     log_msgs_out);
 }
 
 bool CrosConfig::GetString(const std::string& path,
                            const std::string& prop,
                            std::string* val_out,
                            std::vector<std::string>* log_msgs_out) {
-  return cros_config_fdt_.GetString(path, prop, val_out, log_msgs_out);
+  return cros_config_fdt_->GetString(path, prop, val_out, log_msgs_out);
 }
 
 }  // namespace brillo
