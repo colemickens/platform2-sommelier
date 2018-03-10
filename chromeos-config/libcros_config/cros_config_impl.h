@@ -53,12 +53,6 @@ class CrosConfigImpl {
   CrosConfigImpl();
   virtual ~CrosConfigImpl();
 
-  // Prepare the configuration system for for access to the configuration for
-  // the model this is running on. This reads the configuration file into
-  // memory.
-  // @return true if OK, false on error.
-  virtual bool InitModel() = 0;
-
   // Internal function to obtain a property value and return a list of log
   // messages on failure. Public for tests.
   // @path: Path to locate. Must start with "/".

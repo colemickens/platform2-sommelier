@@ -18,9 +18,6 @@ class CrosConfigFdt : public CrosConfigImpl {
   CrosConfigFdt();
   virtual ~CrosConfigFdt();
 
-  // CrosConfigImpl:
-  bool InitModel() override;
-
  protected:
   // CrosConfigImpl:
   std::string GetFullPath(ConfigNode node) override;

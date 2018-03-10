@@ -17,6 +17,12 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+namespace {
+const char kSmbiosTablePath[] = "/run/cros_config/SMBIOS";
+const char kCustomizationId[] = "/sys/firmware/vpd/ro/customization_id";
+const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
+}  // namespace
+
 namespace brillo {
 
 CrosConfig::CrosConfig() {}
@@ -25,10 +31,6 @@ CrosConfig::~CrosConfig() {}
 
 bool CrosConfig::Init() {
   return InitModel();
-}
-
-bool CrosConfig::InitForConfig(const base::FilePath& filepath) {
-  return cros_config_fdt_.InitForConfig(filepath);
 }
 
 bool CrosConfig::InitForTest(const base::FilePath& filepath,
@@ -47,7 +49,10 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
 }
 
 bool CrosConfig::InitModel() {
-  return cros_config_fdt_.InitModel();
+  base::FilePath smbios_file(kSmbiosTablePath);
+  base::FilePath vpd_file(kCustomizationId);
+  return InitCommon(base::FilePath(kConfigDtbPath), smbios_file, vpd_file,
+                    true);
 }
 
 bool CrosConfig::CompareResults(bool fdt_ok,
@@ -121,7 +126,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   return true;
 }
 
-bool CrosConfig::GetString(ConfigNode base_node,
+bool CrosConfig::GetString(const ConfigNode& base_node,
                            const std::string& path,
                            const std::string& prop,
                            std::string* val_out,

@@ -26,7 +26,6 @@ namespace {
 const char kTargetDirsPath[] = "/chromeos/schema/target-dirs";
 const char kSchemaPath[] = "/chromeos/schema";
 const char kPhandleProperties[] = "phandle-properties";
-const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 }  // namespace
 
 namespace brillo {
@@ -34,10 +33,6 @@ namespace brillo {
 CrosConfigFdt::CrosConfigFdt() {}
 
 CrosConfigFdt::~CrosConfigFdt() {}
-
-bool CrosConfigFdt::InitModel() {
-  return InitForConfig(base::FilePath(kConfigDtbPath));
-}
 
 std::string CrosConfigFdt::GetFullPath(ConfigNode node) {
   const void* blob = blob_.c_str();

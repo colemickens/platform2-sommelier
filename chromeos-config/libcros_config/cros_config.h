@@ -83,12 +83,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                   std::string* val_out) override;
 
  private:
-  // Init for a particular config file
-  // This calls InitCommon() with the given file after reading the identity
-  // information for this device.
-  // @filepath: Path to configuration file to use
-  bool InitForConfig(const base::FilePath& filepath);
-
   // Common init function for both production and test code.
   // @filepath: path to configuration .dtb file.
   // @smbios_file: File containing memory to scan (typically this is /dev/mem)
@@ -109,7 +103,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @val_out: returns the string value found, if any
   // @log_msgs_out: returns a list of error messages if this function fails
   // @return true if found, false if not found
-  bool GetString(ConfigNode base_node,
+  bool GetString(const ConfigNode& base_node,
                  const std::string& path,
                  const std::string& prop,
                  std::string* val_out,

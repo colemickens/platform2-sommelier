@@ -19,9 +19,6 @@ class CrosConfigYaml : public CrosConfigImpl {
   CrosConfigYaml();
   virtual ~CrosConfigYaml();
 
-  // CrosConfigImpl:
-  bool InitModel() override;
-
  protected:
   // CrosConfigImpl:
   std::string GetFullPath(ConfigNode node) override;

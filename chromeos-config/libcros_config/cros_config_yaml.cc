@@ -23,19 +23,11 @@
 #include <base/strings/string_split.h>
 #include <base/values.h>
 
-namespace {
-const char kConfigJsonPath[] = "/usr/share/chromeos-config/config.json";
-}  // namespace
-
 namespace brillo {
 
 CrosConfigYaml::CrosConfigYaml() {}
 
 CrosConfigYaml::~CrosConfigYaml() {}
-
-bool CrosConfigYaml::InitModel() {
-  return InitForConfig(base::FilePath(kConfigJsonPath));
-}
 
 std::string CrosConfigYaml::GetFullPath(ConfigNode node) {
   // TODO(sjg@chromium.org): Figure out how to get the path to a node
