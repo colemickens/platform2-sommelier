@@ -46,7 +46,7 @@
             ],
           },
           'sources': [
-            'newblued/daemon_unittest.cc',
+            'newblued/suspend_manager_unittest.cc',
           ],
         },
       ],
