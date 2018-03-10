@@ -9,6 +9,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 
 #include "chromeos-config/libcros_config/cros_config.h"
@@ -29,6 +30,14 @@ int main(int argc, char* argv[]) {
 
   CHECK_EQ(FLAGS_test_database.empty(), FLAGS_test_name.empty())
       << "You must pass both --test_database and --test_name or neither.";
+
+  logging::LoggingSettings settings;
+  settings.logging_dest = logging::LOG_TO_FILE;
+  settings.log_file = "/var/log/cros_config.log";
+  settings.lock_log = logging::DONT_LOCK_LOG_FILE;
+  settings.delete_old = logging::APPEND_TO_OLD_LOG_FILE;
+  logging::InitLogging(settings);
+  logging::SetMinLogLevel(-3);
 
   brillo::CrosConfig cros_config;
   if (FLAGS_test_database.empty()) {
