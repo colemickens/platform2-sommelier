@@ -358,11 +358,30 @@ std::string IpsecManager::FormatStrongswanConfigFile() {
 std::string IpsecManager::FormatStarterConfigFile() {
   std::string config;
   config.append("config setup\n");
-  if (debug()) {
-    AppendStringSetting(&config, "charondebug", "dmn 2, mgr 2, ike 2, net 2");
-  }
-  AppendStringSetting(&config, "uniqueids", "no");
 
+  std::string charondebug;
+  if (VLOG_IS_ON(6)) {
+    // "enc 4" shows details of each IKE transform payload. Very noisy.
+    charondebug = "ike 4, cfg 2, knl 4, net 3, enc 4";
+  } else if (VLOG_IS_ON(5)) {
+    // "ike 4" logs the session key for the IKE SA.
+    // "knl 4" logs netlink messages containing the ESP session keys.
+    // This information is needed to make sense of IKE packet captures.
+    charondebug = "ike 4, cfg 2, knl 4, net 3, enc 1";
+  } else if (VLOG_IS_ON(3)) {
+    // "net 3" logs raw IKE packets (some are encrypted, some not).
+    charondebug = "ike 2, cfg 2, knl 2, net 3, enc 1";
+  } else {
+    // By default: do not log packet data or keys.
+    // "ike 2" logs some traffic selector info.
+    // "cfg 2" logs algorithm proposals.
+    // "knl 2" logs high-level xfrm crypto parameters.
+    // "net 1" and "enc 1" are strongSwan's defaults.
+    charondebug = "ike 2, cfg 2, knl 2, net 1, enc 1";
+  }
+  AppendStringSetting(&config, "charondebug", charondebug);
+
+  AppendStringSetting(&config, "uniqueids", "no");
   config.append("conn managed\n");
   AppendStringSetting(&config, "ike", ike_);
   AppendStringSetting(&config, "esp", esp_);

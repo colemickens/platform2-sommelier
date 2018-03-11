@@ -100,7 +100,7 @@ static void RunEventLoop(IpsecManager* ipsec, L2tpManager* l2tp) {
 int main(int argc, char* argv[]) {
   DEFINE_string(client_cert_id, "", "PKCS#11 slot with client certificate");
   DEFINE_string(client_cert_slot, "", "PKCS#11 key ID for client certificate");
-  DEFINE_bool(debug, false, "Log debugging information");
+  DEFINE_int32(log_level, 0, "Log verbosity; negative values enable debugging");
   DEFINE_string(psk_file, "", "File with IPsec pre-shared key");
   DEFINE_string(remote_host, "", "VPN server hostname");
   DEFINE_string(server_ca_file, "", "File with IPsec server CA in DER format");
@@ -152,7 +152,6 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(refuse_pap, false, "refuse chap");
   DEFINE_bool(require_authentication, true, "require authentication");
   DEFINE_string(password, "", "password (insecure - use pppd plugin instead)");
-  DEFINE_bool(ppp_debug, true, "ppp debug");
   DEFINE_bool(ppp_lcp_echo, true, "ppp lcp echo connection monitoring");
   DEFINE_int32(ppp_setup_timeout, 60, "timeout to setup ppp (seconds)");
   DEFINE_string(pppd_plugin, "", "pppd plugin");
@@ -192,21 +191,20 @@ int main(int argc, char* argv[]) {
   if (isatty(STDOUT_FILENO))
     log_flags |= brillo::kLogToStderr;
   brillo::InitLog(log_flags);
+  logging::SetMinLogLevel(FLAGS_log_level);
   brillo::OpenLog("l2tpipsec_vpn", true);
+
   IpsecManager ipsec(FLAGS_esp, FLAGS_ike, FLAGS_ipsec_timeout,
                      FLAGS_leftprotoport, FLAGS_rekey, FLAGS_rightprotoport,
                      FLAGS_tunnel_group, FLAGS_type, temp_path,
                      persistent_path);
   L2tpManager l2tp(FLAGS_defaultroute, FLAGS_length_bit, FLAGS_require_chap,
                    FLAGS_refuse_pap, FLAGS_require_authentication,
-                   FLAGS_password, FLAGS_ppp_debug, FLAGS_ppp_lcp_echo,
-                   FLAGS_ppp_setup_timeout, FLAGS_pppd_plugin, FLAGS_usepeerdns,
-                   FLAGS_user, FLAGS_systemconfig, temp_path);
+                   FLAGS_password, FLAGS_ppp_lcp_echo, FLAGS_ppp_setup_timeout,
+                   FLAGS_pppd_plugin, FLAGS_usepeerdns, FLAGS_user,
+                   FLAGS_systemconfig, temp_path);
 
   LockDownUmask();
-
-  ipsec.set_debug(FLAGS_debug);
-  l2tp.set_debug(FLAGS_debug);
 
   struct sockaddr remote_address;
   if (!ServiceManager::ResolveNameToSockAddr(FLAGS_remote_host,

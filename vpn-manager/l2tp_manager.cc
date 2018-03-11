@@ -44,7 +44,6 @@ L2tpManager::L2tpManager(bool default_route,
                          bool refuse_pap,
                          bool require_authentication,
                          const std::string& password,
-                         bool ppp_debug,
                          bool ppp_lcp_echo,
                          int ppp_setup_timeout,
                          const std::string& pppd_plugin,
@@ -59,7 +58,6 @@ L2tpManager::L2tpManager(bool default_route,
       refuse_pap_(refuse_pap),
       require_authentication_(require_authentication),
       password_(password),
-      ppp_debug_(ppp_debug),
       ppp_lcp_echo_(ppp_lcp_echo),
       ppp_setup_timeout_(ppp_setup_timeout),
       pppd_plugin_(pppd_plugin),
@@ -156,8 +154,8 @@ std::string L2tpManager::FormatL2tpdConfiguration(
   AddBool(&l2tpd_config, "refuse pap", refuse_pap_);
   AddBool(&l2tpd_config, "require authentication", require_authentication_);
   AddString(&l2tpd_config, "name", user_);
-  if (debug()) {
-    AddBool(&l2tpd_config, "ppp debug", ppp_debug_);
+  if (VLOG_IS_ON(4)) {
+    AddBool(&l2tpd_config, "ppp debug", true);
   }
   AddString(&l2tpd_config, "pppoptfile", ppp_config_path);
   AddBool(&l2tpd_config, "length bit", length_bit_);
@@ -203,7 +201,7 @@ std::string L2tpManager::FormatPppdConfiguration() {
     DLOG(INFO) << "Using pppd plugin " << pppd_plugin_;
     pppd_config.append(StringPrintf("plugin %s\n", pppd_plugin_.c_str()));
   }
-  if (debug()) {
+  if (VLOG_IS_ON(2)) {
     pppd_config.append("debug\n");
   }
   return pppd_config;

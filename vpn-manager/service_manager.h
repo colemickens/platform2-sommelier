@@ -79,12 +79,6 @@ class ServiceManager {
   // Queries if this service was once running and is now stopped.
   bool was_stopped() const { return was_stopped_; }
 
-  // Accessor for debug_ field.
-  bool debug() const { return debug_; }
-
-  // Setter for debug_ field.
-  void set_debug(bool debug) { debug_ = debug; }
-
   // Set up layering between two service managers |outer| and |inner|.
   // This function may be called multiple times to chain servics together,
   // for instance:
@@ -147,9 +141,6 @@ class ServiceManager {
 
   // Indicates if this service was running and is now stopped.
   bool was_stopped_;
-
-  // Indicates if extra debugging information should be emitted.
-  bool debug_;
 
   // Pointer to the next layer or nullptr if innermost.
   ServiceManager* inner_service_;

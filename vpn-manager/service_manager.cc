@@ -24,7 +24,6 @@ ServiceManager::ServiceManager(const std::string& service_name,
                                const base::FilePath& temp_path)
     : is_running_(false),
       was_stopped_(false),
-      debug_(false),
       inner_service_(nullptr),
       outer_service_(nullptr),
       service_name_(service_name),

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <brillo/process_mock.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/test_helpers.h>
@@ -40,7 +41,6 @@ class L2tpManagerTest : public ::testing::Test {
                                 false,         // refuse_pap
                                 true,          // require_authentication
                                 "",            // password
-                                true,          // ppp_debug
                                 true,          // ppp_lcp_echo
                                 10,            // ppp_setup_timeout
                                 "",            // pppd_plugin
@@ -90,9 +90,10 @@ std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,
 }
 
 TEST_F(L2tpManagerTest, FormatL2tpdConfiguration) {
+  logging::SetMinLogLevel(0);
   EXPECT_EQ(GetExpectedConfig(remote_address_text_, false),
             l2tp_->FormatL2tpdConfiguration(pppd_config_path_.value()));
-  l2tp_->set_debug(true);
+  logging::SetMinLogLevel(-4);
   EXPECT_EQ(GetExpectedConfig(remote_address_text_, true),
             l2tp_->FormatL2tpdConfiguration(pppd_config_path_.value()));
 }
@@ -110,6 +111,7 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "lock\n"
       "connect-delay 5000\n";
 
+  logging::SetMinLogLevel(0);
   l2tp_->SetPppLcpEchoForTesting(false);
   l2tp_->SetDefaultRouteForTesting(false);
   l2tp_->SetUsePeerDnsForTesting(false);
@@ -138,7 +140,7 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
   l2tp_->SetPppdPluginForTesting("myplugin");
   expected.append("plugin myplugin\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
-  l2tp_->set_debug(true);
+  logging::SetMinLogLevel(-2);
   expected.append("debug\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
 }

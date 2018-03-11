@@ -38,7 +38,6 @@ class L2tpManager : public ServiceManager {
               bool refuse_pap,
               bool require_authentication,
               const std::string& password,
-              bool ppp_debug,
               bool ppp_lcp_echo,
               int ppp_setup_timeout,
               const std::string& pppd_plugin,
@@ -107,7 +106,6 @@ class L2tpManager : public ServiceManager {
   bool refuse_pap_;
   bool require_authentication_;
   std::string password_;
-  bool ppp_debug_;
   bool ppp_lcp_echo_;
   int ppp_setup_timeout_;
   std::string pppd_plugin_;

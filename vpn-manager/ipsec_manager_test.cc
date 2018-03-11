@@ -5,6 +5,7 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process_mock.h>
@@ -346,8 +347,11 @@ std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(bool debug,
                                                          bool xauth) {
   std::string expected("config setup\n");
   if (debug) {
-    expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
+    expected.append("\tcharondebug=\"ike 4, cfg 2, knl 4, net 3, enc 1\"\n");
+  } else {
+    expected.append("\tcharondebug=\"ike 2, cfg 2, knl 2, net 1, enc 1\"\n");
   }
+
   expected.append("\tuniqueids=\"no\"\n");
   expected.append(
       "conn managed\n"
@@ -381,11 +385,11 @@ std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(bool debug,
 TEST_F(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile) {
   EXPECT_EQ(GetExpectedStarter(false, false),
             ipsec_->FormatStarterConfigFile());
-  ipsec_->set_debug(true);
+  logging::SetMinLogLevel(-5);
   EXPECT_EQ(GetExpectedStarter(true, false), ipsec_->FormatStarterConfigFile());
   ipsec_->xauth_identity_ = kXauthUser;
   EXPECT_EQ(GetExpectedStarter(true, true), ipsec_->FormatStarterConfigFile());
-  ipsec_->set_debug(false);
+  logging::SetMinLogLevel(0);
   EXPECT_EQ(GetExpectedStarter(false, true), ipsec_->FormatStarterConfigFile());
 }
 
@@ -397,6 +401,7 @@ TEST_F(IpsecManagerTestIkeV1Psk, Start) {
 }
 
 TEST_F(IpsecManagerTestIkeV1Psk, WriteConfigFiles) {
+  logging::SetMinLogLevel(0);
   EXPECT_TRUE(ipsec_->WriteConfigFiles());
   std::string conf_contents;
   ASSERT_TRUE(base::ReadFileToString(persistent_path_.Append("ipsec.conf"),
@@ -430,8 +435,11 @@ TEST_F(IpsecManagerTestIkeV1Certs, FormatSecrets) {
 std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
   std::string expected("config setup\n");
   if (debug) {
-    expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
+    expected.append("\tcharondebug=\"ike 4, cfg 2, knl 4, net 3, enc 1\"\n");
+  } else {
+    expected.append("\tcharondebug=\"ike 2, cfg 2, knl 2, net 1, enc 1\"\n");
   }
+
   expected.append("\tuniqueids=\"no\"\n");
   expected.append(
       "conn managed\n"
@@ -453,10 +461,10 @@ std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
 }
 
 TEST_F(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile) {
+  logging::SetMinLogLevel(0);
   EXPECT_EQ(GetExpectedStarter(false), ipsec_->FormatStarterConfigFile());
-  ipsec_->set_debug(true);
+  logging::SetMinLogLevel(-5);
   EXPECT_EQ(GetExpectedStarter(true), ipsec_->FormatStarterConfigFile());
-  ipsec_->set_debug(true);
 
   // The xauth parameters aren't pertinent to certificate-based authentication.
   ipsec_->xauth_identity_ = kXauthUser;
@@ -464,6 +472,7 @@ TEST_F(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile) {
 }
 
 TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
+  logging::SetMinLogLevel(0);
   EXPECT_TRUE(ipsec_->WriteConfigFiles());
   std::string conf_contents;
   ASSERT_TRUE(base::ReadFileToString(persistent_path_.Append("ipsec.conf"),
