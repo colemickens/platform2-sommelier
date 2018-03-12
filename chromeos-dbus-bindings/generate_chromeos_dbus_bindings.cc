@@ -8,7 +8,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/json/json_reader.h>
+#include <base/json/json_file_value_serializer.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -75,17 +75,19 @@ base::FilePath SanitizeFilePath(const std::string& path) {
 
 // Load the service configuration from the provided JSON file.
 bool LoadConfig(const base::FilePath& path, ServiceConfig *config) {
-  std::string contents;
-  if (!base::ReadFileToString(path, &contents))
+  JSONFileValueDeserializer reader(path);
+  std::string error_str;
+  std::unique_ptr<base::Value> json = reader.Deserialize(nullptr, &error_str);
+  if (!json) {
+    LOG(ERROR) << "Could not load service configuration: " << error_str;
     return false;
-
-  std::unique_ptr<base::Value> json = base::JSONReader::Read(contents);
-  if (!json)
-    return false;
+  }
 
   base::DictionaryValue* dict = nullptr;  // Aliased with |json|.
-  if (!json->GetAsDictionary(&dict))
+  if (!json->GetAsDictionary(&dict)) {
+    LOG(ERROR) << "Service configuration was not a dictionary";
     return false;
+  }
 
   dict->GetStringWithoutPathExpansion("service_name", &config->service_name);
 
