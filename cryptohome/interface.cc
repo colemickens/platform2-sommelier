@@ -747,6 +747,13 @@ gboolean cryptohome_get_current_space_for_gid(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(GetCurrentSpaceForGid, gid, OUT_cur_space);
 }
 
+gboolean cryptohome_lock_to_single_user_mount_until_reboot(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(LockToSingleUserMountUntilReboot, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

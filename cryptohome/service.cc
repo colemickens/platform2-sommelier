@@ -44,6 +44,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/glib_transition.h"
@@ -3239,6 +3240,59 @@ gboolean Service::GetCurrentSpaceForGid(guint32 gid,
                                         GError** error) {
   *OUT_cur_space = arc_disk_quota_->GetCurrentSpaceForGid(gid);
   return TRUE;
+}
+
+gboolean Service::LockToSingleUserMountUntilReboot(
+    const GArray* request,
+    DBusGMethodInvocation* context) {
+  LockToSingleUserMountUntilRebootRequest request_pb;
+  if (!request_pb.ParseFromArray(request->data, request->len)) {
+    SendInvalidArgsReply(context, "Bad DisableLoginUntilRebootRequest.");
+    return FALSE;
+  }
+
+  if (!request_pb.has_account_id()) {
+    SendInvalidArgsReply(context, "Missing account_id.");
+    return FALSE;
+  }
+
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(GetAccountId(request_pb.account_id()),
+                              system_salt_);
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::DoLockToSingleUserMountUntilReboot,
+                 base::Unretained(this),
+                 obfuscated_username,
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoLockToSingleUserMountUntilReboot(
+    const std::string& obfuscated_username,
+    DBusGMethodInvocation* context) {
+  brillo::Blob pcr_value;
+  BaseReply reply;
+  LockToSingleUserMountUntilRebootReply* reply_extension =
+      reply.MutableExtension(LockToSingleUserMountUntilRebootReply::reply);
+  if (!tpm_->ReadPCR(kTpmSingleUserPCR, &pcr_value)) {
+    LOG(ERROR) << "Failed to read PCR";
+    reply_extension->set_result(FAILED_TO_READ_PCR);
+    reply.set_error(CRYPTOHOME_ERROR_TPM_COMM_ERROR);
+  } else if (pcr_value != brillo::Blob(pcr_value.size(), 0)) {
+    reply_extension->set_result(PCR_ALREADY_EXTENDED);
+  } else {
+    brillo::Blob extention_blob(obfuscated_username.begin(),
+                                obfuscated_username.end());
+    if (tpm_->GetVersion() == cryptohome::Tpm::TPM_1_2) {
+      extention_blob = CryptoLib::Sha1(extention_blob);
+    }
+    if (!tpm_->ExtendPCR(kTpmSingleUserPCR, extention_blob)) {
+      reply_extension->set_result(FAILED_TO_EXTEND_PCR);
+      reply.set_error(CRYPTOHOME_ERROR_TPM_COMM_ERROR);
+    }
+  }
+  SendReply(context, reply);
 }
 
 void Service::PreMountCallback() {

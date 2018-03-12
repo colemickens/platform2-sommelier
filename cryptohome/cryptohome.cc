@@ -140,6 +140,7 @@ namespace switches {
                                    "needs_dircrypto_migration",
                                    "get_enrollment_id",
                                    "get_supported_key_policies",
+                                   "lock_to_single_user_mount_until_reboot",
                                    NULL};
   enum ActionEnum {
     ACTION_MOUNT_EX,
@@ -200,6 +201,7 @@ namespace switches {
     ACTION_NEEDS_DIRCRYPTO_MIGRATION,
     ACTION_GET_ENROLLMENT_ID,
     ACTION_GET_SUPPORTED_KEY_POLICIES,
+    ACTION_LOCK_TO_SINGLE_USER_MOUNT_UNTIL_REBOOT,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -2651,6 +2653,32 @@ int main(int argc, char **argv) {
       return 1;
     }
     printf("GetSupportedKeyPolicies success.\n");
+  } else if (!strcmp(
+      switches::kActions[
+          switches::ACTION_LOCK_TO_SINGLE_USER_MOUNT_UNTIL_REBOOT],
+      action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return 1;
+
+    cryptohome::LockToSingleUserMountUntilRebootRequest request;
+    request.mutable_account_id()->CopyFrom(id);
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(request));
+    cryptohome::BaseReply reply;
+    brillo::glib::ScopedError error;
+    GArray* out_reply = NULL;
+    if (
+    !org_chromium_CryptohomeInterface_lock_to_single_user_mount_until_reboot(
+          proxy.gproxy(),
+          req_ary.get(),
+          &out_reply,
+          &brillo::Resetter(&error).lvalue())) {
+      printf("LockToSingleUserMountUntilReboot call failed: %s",
+             error->message);
+      return 1;
+    }
+    ParseBaseReply(out_reply, &reply, true /* print_reply */);
+    printf("Login disabled.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

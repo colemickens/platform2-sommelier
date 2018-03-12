@@ -663,6 +663,14 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
                                          gint64* OUT_cur_space,
                                          GError** error);
 
+  virtual gboolean LockToSingleUserMountUntilReboot(
+      const GArray* request,
+      DBusGMethodInvocation* context);
+
+  virtual void DoLockToSingleUserMountUntilReboot(
+      const std::string& obfuscated_username,
+      DBusGMethodInvocation* context);
+
   void PostTaskToEventLoop(base::OnceClosure task);
  protected:
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);

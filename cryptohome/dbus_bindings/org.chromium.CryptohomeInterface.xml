@@ -517,6 +517,12 @@
       <arg type="x" name="cur_space" direction="out" />
     </method>
 
+    <method name="LockToSingleUserMountUntilReboot">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+
     <!-- Signals:
            TpmInitStatus: Emitted when TPM initialization status changes.
            AsyncCallStatus: Emitted when a legacy asynchronous call has

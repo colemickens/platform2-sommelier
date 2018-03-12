@@ -431,6 +431,12 @@ gboolean cryptohome_get_current_space_for_gid(Cryptohome* self,
                                               guint32 gid,
                                               gint64* OUT_cur_space,
                                               GError** error);
+
+gboolean cryptohome_lock_to_single_user_mount_until_reboot(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* resp);
+
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_
