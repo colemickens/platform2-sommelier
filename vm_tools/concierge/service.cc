@@ -695,22 +695,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     }
   }
 
-  // If at least one extra disk was given, assume that one of them was a
-  // container disk image mounted to /mnt/container_rootfs.  Try to start it
-  // with run_oci.  TODO: Remove this once all the lxc/lxd stuff is ready.
-  if (request.disks_size() > 0) {
-    std::vector<string> run_oci = {
-        "run_oci",
-        "run",
-        "--cgroup_parent=chronos_containers",
-        "--container_path=/mnt/container_rootfs",
-        "termina_container",
-    };
-    if (!vm->StartProcess(std::move(run_oci), {},
-                          ProcessExitBehavior::ONE_SHOT)) {
-      LOG(WARNING) << "run_oci did not launch successfully";
-    }
-  }
   string failure_reason;
   if (request.start_termina() && !StartTermina(vm.get(), &failure_reason)) {
     response.set_failure_reason(std::move(failure_reason));
