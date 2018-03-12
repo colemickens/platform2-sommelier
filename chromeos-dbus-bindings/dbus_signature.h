@@ -22,20 +22,15 @@ class DbusSignature {
   // and returns true on success.  Returns false otherwise.
   bool Parse(const std::string& signature, std::string* output);
 
-  void set_object_path_typename(const std::string& object_path_typename) {
-    object_path_typename_ = object_path_typename;
-  }
-
  private:
   friend class DbusSignatureTest;
-  FRIEND_TEST(DbusSignatureTest, DefaultObjectPathTypename);
   FRIEND_TEST(DbusSignatureTest, ParseSuccesses);
 
   // Typenames are C++ syntax types.
   static const char kArrayTypename[];
   static const char kBooleanTypename[];
   static const char kByteTypename[];
-  static const char kDefaultObjectPathTypename[];
+  static const char kObjectPathTypename[];
   static const char kDictTypename[];
   static const char kDoubleTypename[];
   static const char kSigned16Typename[];
@@ -77,10 +72,6 @@ class DbusSignature {
                                      std::string::const_iterator end,
                                      std::string::const_iterator* next,
                                      std::string* output);
-
-
-  // The C++ typename to be used for D-Bus object pathnames.
-  std::string object_path_typename_;
 
   DISALLOW_COPY_AND_ASSIGN(DbusSignature);
 };

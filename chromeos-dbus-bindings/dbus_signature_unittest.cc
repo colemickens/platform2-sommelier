@@ -31,9 +31,6 @@ const char kUnclosedDictInnerSignature[] = "a{a{u}";
 const char kUnexpectedCloseSignature[] = "a}i{";
 const char kUnknownSignature[] = "al";
 
-// Define an object type name to disambiguate the typenames above.
-const char kObjectPathTypename[] = "ObjectPathType";
-
 }  // namespace
 
 class DbusSignatureTest : public Test {
@@ -60,21 +57,13 @@ TEST_F(DbusSignatureTest, ParseFailures) {
   }
 }
 
-TEST_F(DbusSignatureTest, DefaultObjectPathTypename) {
-  // The ParseSuccesses test below overrides the default object typename, so
-  // test the default behavior separately.
-  string output;
-  EXPECT_TRUE(signature_.Parse(DBUS_TYPE_OBJECT_PATH_AS_STRING, &output));
-  EXPECT_EQ(DbusSignature::kDefaultObjectPathTypename, output);
-}
-
 TEST_F(DbusSignatureTest, ParseSuccesses) {
   const map<string, string> parse_values {
     // Simple types.
     { DBUS_TYPE_BOOLEAN_AS_STRING, DbusSignature::kBooleanTypename },
     { DBUS_TYPE_BYTE_AS_STRING, DbusSignature::kByteTypename },
     { DBUS_TYPE_DOUBLE_AS_STRING, DbusSignature::kDoubleTypename },
-    { DBUS_TYPE_OBJECT_PATH_AS_STRING, kObjectPathTypename },
+    { DBUS_TYPE_OBJECT_PATH_AS_STRING, DbusSignature::kObjectPathTypename },
     { DBUS_TYPE_INT16_AS_STRING, DbusSignature::kSigned16Typename },
     { DBUS_TYPE_INT32_AS_STRING, DbusSignature::kSigned32Typename },
     { DBUS_TYPE_INT64_AS_STRING, DbusSignature::kSigned64Typename },
@@ -89,10 +78,10 @@ TEST_F(DbusSignatureTest, ParseSuccesses) {
     { "ab",             "std::vector<bool>" },
     { "ay",             "std::vector<uint8_t>" },
     { "aay",            "std::vector<std::vector<uint8_t>>" },
-    { "ao",             "std::vector<ObjectPathType>" },
-    { "a{oa{sa{sv}}}",  "std::map<ObjectPathType, std::map<std::string, "
+    { "ao",             "std::vector<dbus::ObjectPath>" },
+    { "a{oa{sa{sv}}}",  "std::map<dbus::ObjectPath, std::map<std::string, "
                           "brillo::VariantDictionary>>" },
-    { "a{os}",          "std::map<ObjectPathType, std::string>" },
+    { "a{os}",          "std::map<dbus::ObjectPath, std::string>" },
     { "as",             "std::vector<std::string>" },
     { "a{ss}",          "std::map<std::string, std::string>" },
     { "a{sa{ss}}",      "std::map<std::string, std::map<std::string, "
@@ -105,7 +94,6 @@ TEST_F(DbusSignatureTest, ParseSuccesses) {
     { "(ib)",           "std::tuple<int32_t, bool>" },
     { "(ibs)",          "std::tuple<int32_t, bool, std::string>" },
   };
-  signature_.set_object_path_typename(kObjectPathTypename);
   for (const auto& parse_test : parse_values) {
     string output;
     EXPECT_TRUE(signature_.Parse(parse_test.first, &output))

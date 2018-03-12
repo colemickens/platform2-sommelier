@@ -19,7 +19,7 @@ namespace chromeos_dbus_bindings {
 const char DbusSignature::kArrayTypename[] = "std::vector";
 const char DbusSignature::kBooleanTypename[] = "bool";
 const char DbusSignature::kByteTypename[] = "uint8_t";
-const char DbusSignature::kDefaultObjectPathTypename[] = "dbus::ObjectPath";
+const char DbusSignature::kObjectPathTypename[] = "dbus::ObjectPath";
 const char DbusSignature::kDictTypename[] = "std::map";
 const char DbusSignature::kDoubleTypename[] = "double";
 const char DbusSignature::kSigned16Typename[] = "int16_t";
@@ -34,8 +34,7 @@ const char DbusSignature::kVariantTypename[] = "brillo::Any";
 const char DbusSignature::kVariantDictTypename[] = "brillo::VariantDictionary";
 const char DbusSignature::kTupleTypename[] = "std::tuple";
 
-DbusSignature::DbusSignature()
-    : object_path_typename_(kDefaultObjectPathTypename) {}
+DbusSignature::DbusSignature() = default;
 
 bool DbusSignature::Parse(const string& signature, string* output) {
   string::const_iterator end;
@@ -89,7 +88,7 @@ bool DbusSignature::GetTypenameForSignature(
       break;
 
     case DBUS_TYPE_OBJECT_PATH:
-      *output = object_path_typename_;
+      *output = kObjectPathTypename;
       break;
 
     case DBUS_TYPE_INT16:
