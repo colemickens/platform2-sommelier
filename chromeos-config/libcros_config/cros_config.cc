@@ -68,19 +68,17 @@ bool CrosConfig::CompareResults(bool fdt_ok,
                                 bool yaml_ok,
                                 const std::string& yaml_val,
                                 std::string* val_out) {
+  // TODO(sjg): For now, continue even if yaml does not agree
+  *val_out = fdt_val;
   if (fdt_ok != yaml_ok) {
     CROS_CONFIG_LOG(ERROR) << "Mismatch fdt_ok=" << fdt_ok
                            << ", yaml_ok=" << yaml_ok;
-    return false;
-  }
-  if (fdt_val != yaml_val) {
+  } else if (fdt_val != yaml_val) {
     CROS_CONFIG_LOG(ERROR) << "Mismatch fdt_val='" << fdt_val << "', yaml_val='"
                            << yaml_val << "'";
-    return false;
+  } else {
+    CROS_CONFIG_LOG(INFO) << "fdt and yaml agree";
   }
-
-  *val_out = fdt_val;
-  CROS_CONFIG_LOG(INFO) << "fdt and yaml agree";
   return fdt_ok;
 }
 
@@ -126,9 +124,9 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
     base::FilePath yaml_filepath =
         filepath.RemoveExtension().AddExtension(".json");
     if (!cros_config_yaml_->InitCommon(yaml_filepath, mem_file, vpd_file)) {
-      CROS_CONFIG_LOG(ERROR) << "Failed to set up yaml "
-                            << yaml_filepath.MaybeAsASCII();
-      return false;
+      CROS_CONFIG_LOG(WARNING) << "Failed to set up yaml "
+                               << yaml_filepath.MaybeAsASCII();
+      use_yaml = false;
     }
   }
   use_yaml_ = use_yaml;
