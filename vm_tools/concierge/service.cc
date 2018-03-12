@@ -653,6 +653,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "VM failed to start in " << kVmStartupTimeout.InSeconds()
                << " seconds";
 
+    startup_listener_.RemovePendingVm(vsock_cid);
     response.set_failure_reason("VM failed to start in time");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
