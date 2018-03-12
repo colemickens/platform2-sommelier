@@ -494,21 +494,31 @@ FakeSambaInterface::FakeEntry::FakeEntry(const std::string& full_path,
       locked(locked) {}
 
 void FakeSambaInterface::AddDirectory(const std::string& path) {
-  AddDirectory(path, false /* locked */);
+  AddDirectory(path, false /* locked */, SMBC_DIR);
 }
 
-void FakeSambaInterface::AddDirectory(const std::string& path, bool locked) {
+void FakeSambaInterface::AddServer(const std::string& server_url) {
+  AddDirectory(server_url, false /* locked */, SMBC_SERVER);
+}
+
+void FakeSambaInterface::AddShare(const std::string& path) {
+  AddDirectory(path, false /* locked */, SMBC_FILE_SHARE);
+}
+
+void FakeSambaInterface::AddDirectory(const std::string& path,
+                                      bool locked,
+                                      uint32_t smbc_type) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
   directory->entries.emplace_back(
-      std::make_unique<FakeDirectory>(path, locked));
+      std::make_unique<FakeDirectory>(path, locked, smbc_type));
 }
 
 void FakeSambaInterface::AddLockedDirectory(const std::string& path) {
-  AddDirectory(path, true);
+  AddDirectory(path, true, SMBC_DIR);
 }
 
 void FakeSambaInterface::AddFile(const std::string& path) {
@@ -689,7 +699,8 @@ bool FakeSambaInterface::FakeEntry::IsFile() const {
 }
 
 bool FakeSambaInterface::FakeEntry::IsDir() const {
-  return smbc_type == SMBC_DIR;
+  return smbc_type == SMBC_DIR || smbc_type == SMBC_SERVER ||
+         smbc_type == SMBC_FILE_SHARE;
 }
 
 bool FakeSambaInterface::HasReadSet(int32_t fd) const {

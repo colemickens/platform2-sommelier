@@ -70,7 +70,13 @@ class FakeSambaInterface : public SambaInterface {
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
-  void AddDirectory(const std::string& path, bool locked);
+  void AddDirectory(const std::string& path, bool locked, uint32_t smbc_type);
+
+  // Adds a directory that has the type SMBC_FILE_SHARE.
+  void AddShare(const std::string& path);
+
+  // Adds a directory that has the type SMBC_SERVER.
+  void AddServer(const std::string& server_url);
 
   // Adds a directory with |locked| set to true. All parents must exist.
   // Operations on a locked directory will fail.
@@ -172,8 +178,12 @@ class FakeSambaInterface : public SambaInterface {
     using Entries = std::vector<std::unique_ptr<FakeEntry>>;
     using EntriesIterator = Entries::iterator;
 
+    FakeDirectory(const std::string& full_path, bool locked, uint32_t smbc_type)
+        : FakeEntry(full_path, smbc_type, 0 /* size */, 0 /* date */, locked) {}
+
     FakeDirectory(const std::string& full_path, bool locked)
-        : FakeEntry(full_path, SMBC_DIR, 0 /* size */, 0 /* date */, locked) {}
+        : FakeDirectory(full_path, locked, SMBC_DIR) {}
+
     explicit FakeDirectory(const std::string& full_path)
         : FakeDirectory(full_path, false /* locked */) {}
 
