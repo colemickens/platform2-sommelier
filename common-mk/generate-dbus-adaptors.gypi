@@ -12,7 +12,6 @@
       'inputs': [
         '<(dbus_service_config)',
         '<(generator)',
-        '<(RULE_INPUT_PATH)',
       ],
       'outputs': [
         '<(h_dir)/<(RULE_INPUT_ROOT).h',

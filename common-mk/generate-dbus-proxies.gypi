@@ -9,7 +9,6 @@
   'inputs': [
     '<(dbus_service_config)',
     '<(generator)',
-    '>@(_sources)',
   ],
   'action': [
     '<(generator)',
