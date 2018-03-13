@@ -26,6 +26,8 @@ int Daemon::Run() {
   if (exit_code != EX_OK)
     return exit_code;
 
+  message_loop_.PostTask(
+      base::Bind(&Daemon::OnEventLoopStartedTask, base::Unretained(this)));
   message_loop_.Run();
 
   OnShutdown(&exit_code_);
@@ -68,6 +70,11 @@ int Daemon::OnInit() {
   return EX_OK;
 }
 
+int Daemon::OnEventLoopStarted() {
+  // Do nothing.
+  return EX_OK;
+}
+
 void Daemon::OnShutdown(int* /* exit_code */) {
   // Do nothing.
 }
@@ -87,6 +94,12 @@ bool Daemon::Restart(const signalfd_siginfo& /* info */) {
     return false;  // Keep listening to the signal.
   Quit();
   return true;  // Unregister the signal handler.
+}
+
+void Daemon::OnEventLoopStartedTask() {
+  int exit_code = OnEventLoopStarted();
+  if (exit_code != EX_OK)
+    QuitWithExitCode(exit_code);
 }
 
 void UpdateLogSymlinks(const base::FilePath& latest_log_symlink,

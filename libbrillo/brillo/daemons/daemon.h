@@ -68,6 +68,10 @@ class BRILLO_EXPORT Daemon : public AsynchronousSignalHandlerInterface {
   // is aborted and Daemon::Run() exits early.
   // When overloading, make sure you call the base implementation of OnInit().
   virtual int OnInit();
+  // Overload to provide initialization code that should be the first code to
+  // run on the message loop. Returning something other than EX_OK will cause
+  // the daemon to exit with that error code.
+  virtual int OnEventLoopStarted();
   // Called when the message loops exits and before Daemon::Run() returns.
   // Overload to clean up the data that was set up during OnInit().
   // |return_code| contains the current error code that will be returned from
@@ -96,6 +100,9 @@ class BRILLO_EXPORT Daemon : public AsynchronousSignalHandlerInterface {
   bool Shutdown(const signalfd_siginfo& info);
   // Called when SIGHUP signal is received.
   bool Restart(const signalfd_siginfo& info);
+
+  // Actual task posted first to the message loop.
+  void OnEventLoopStartedTask();
 
   // |at_exit_manager_| must be first to make sure it is initialized before
   // other members, especially the |message_loop_|.
