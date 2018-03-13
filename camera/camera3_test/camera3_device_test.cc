@@ -1006,18 +1006,18 @@ void Camera3AlgoSandboxIPCErrorTest::Notify(const camera3_notify_msg* msg) {
 TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorBeforeOpen) {
   // TODO(hywu): skip the test on USB HAL
   cam_device_.Destroy();
-  (void)system("stop arc-camera-algo");
+  (void)system("stop cros-camera-algo");
   ASSERT_EQ(nullptr, cam_module_.OpenDevice(cam_id_))
       << "Camera device should not be opened successfully";
 
-  (void)system("start arc-camera-algo");
+  (void)system("start cros-camera-algo");
   ASSERT_EQ(0, cam_device_.Initialize(&cam_module_))
       << "Camera device initialization fails";
 }
 
 TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorAfterOpen) {
   // TODO(hywu): skip the test on USB HAL
-  (void)system("stop arc-camera-algo");
+  (void)system("stop cros-camera-algo");
   struct timespec timeout;
   memset(&timeout, 0, sizeof(timeout));
   if (clock_gettime(CLOCK_REALTIME, &timeout)) {
@@ -1027,7 +1027,7 @@ TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorAfterOpen) {
   timeout.tv_nsec += (kDefaultTimeoutMs % 1000) * 1000;
   ASSERT_EQ(0, sem_timedwait(&ipc_error_sem_, &timeout));
 
-  (void)system("start arc-camera-algo");
+  (void)system("start cros-camera-algo");
   cam_device_.Destroy();
   ASSERT_EQ(0, cam_device_.Initialize(&cam_module_))
       << "Camera device initialization fails";
