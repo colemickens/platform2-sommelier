@@ -37,7 +37,7 @@ void HandleSignalConnected(const std::string& interface,
 
 }  // namespace
 
-// Though bluez doesn't hardcode "hci0" as a constant, Chrome OS devices only
+// Though BlueZ doesn't hardcode "hci0" as a constant, Chrome OS devices only
 // use one Bluetooth adapter per device so the "hci0" is always constant.
 const char SuspendManager::kBluetoothAdapterObjectPath[] = "/org/bluez/hci0";
 
@@ -89,6 +89,7 @@ void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(request);
 
+  VLOG(1) << "Calling RegisterSuspendDelay to powerd";
   power_manager_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendDelayRegistered,
@@ -111,6 +112,8 @@ void SuspendManager::PowerManagerNameOwnerChangedReceived(
 }
 
 void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {
+  VLOG(1) << "Received SuspendImminent signal from powerd";
+
   // Does nothing if we haven't registered a suspend delay with power manager.
   if (!suspend_delay_id_)
     return;
@@ -126,6 +129,8 @@ void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {
 }
 
 void SuspendManager::HandleSuspendDoneSignal(dbus::Signal* signal) {
+  VLOG(1) << "Received SuspendDone signal from powerd";
+
   // Does nothing if we haven't registered a suspend delay with power manager.
   if (!suspend_delay_id_)
     return;
@@ -134,6 +139,8 @@ void SuspendManager::HandleSuspendDoneSignal(dbus::Signal* signal) {
 }
 
 void SuspendManager::OnSuspendDelayRegistered(dbus::Response* response) {
+  VLOG(1) << "Received return of RegisterSuspendDelay from powerd";
+
   // RegisterSuspendDelay has returned from power manager, keeps the delay id.
   power_manager::RegisterSuspendDelayReply reply;
   dbus::MessageReader reader(response);
@@ -145,6 +152,8 @@ void SuspendManager::OnSuspendDelayRegistered(dbus::Response* response) {
 }
 
 void SuspendManager::OnDiscoveryPaused(dbus::Response* response) {
+  VLOG(1) << "Received return of PauseDiscovery from BlueZ";
+
   is_pause_or_unpause_in_progress_ = false;
 
   if (!suspend_id_) {
@@ -168,12 +177,15 @@ void SuspendManager::OnDiscoveryPaused(dbus::Response* response) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(suspend_readiness);
 
+  VLOG(1) << "Calling HandleSuspendReadiness to powerd";
   power_manager_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       dbus::ObjectProxy::EmptyResponseCallback());
 }
 
 void SuspendManager::OnDiscoveryUnpaused(dbus::Response* response) {
+  VLOG(1) << "Received return of UnpauseDiscovery from BlueZ";
+
   is_pause_or_unpause_in_progress_ = false;
 
   if (suspend_id_) {
@@ -199,6 +211,7 @@ void SuspendManager::InitiatePauseDiscovery(int new_suspend_id) {
   is_pause_or_unpause_in_progress_ = true;
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kPauseDiscovery);
+  VLOG(1) << "Calling PauseDiscovery to BlueZ";
   bluez_dbus_proxy_->CallMethod(&method_call,
                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                                 base::Bind(&SuspendManager::OnDiscoveryPaused,
@@ -221,6 +234,7 @@ void SuspendManager::InitiateUnpauseDiscovery() {
   is_pause_or_unpause_in_progress_ = true;
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kUnpauseDiscovery);
+  VLOG(1) << "Calling UnpauseDiscovery to BlueZ";
   bluez_dbus_proxy_->CallMethod(&method_call,
                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                                 base::Bind(&SuspendManager::OnDiscoveryUnpaused,
