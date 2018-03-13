@@ -9237,6 +9237,9 @@ mno {
     }
     mccmnc : "20408"
     mobile_apn {
+      apn : "KPN4G.nl"
+    }
+    mobile_apn {
       apn : "prepaidinternet"
     }
     mobile_apn {
