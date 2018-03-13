@@ -35,8 +35,17 @@ class Daemon : public brillo::DBusDaemon {
  protected:
   // brillo::Daemon overrides.
   int OnInit() override;
+  int OnEventLoopStarted() override;
 
  private:
+  // If the component fails to load at start-up, we can still try again later
+  // when the component updater service has checked for more components.
+  void RetryComponent();
+
+  // Once we have a path for the firmware directory we can set up the
+  // journal and flasher.
+  int CompleteInitialization();
+
   // Called when a modem appears. Generally this means on startup but can
   // also be called in response to e.g. rebooting the modem or SIM hot
   // swapping.
@@ -48,6 +57,8 @@ class Daemon : public brillo::DBusDaemon {
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
   base::FilePath firmware_dir_path_;
+
+  int component_reload_retries_;
 
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
 

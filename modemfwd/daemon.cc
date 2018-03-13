@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/time/time.h>
 
 #include "modemfwd/component.h"
 #include "modemfwd/firmware_directory.h"
@@ -19,6 +20,14 @@
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper_directory.h"
 #include "modemfwd/modem_tracker.h"
+
+namespace {
+
+constexpr int kComponentNumRetries = 3;
+constexpr base::TimeDelta kComponentRetryDelay =
+    base::TimeDelta::FromMinutes(10);
+
+}  // namespace
 
 namespace modemfwd {
 
@@ -32,22 +41,14 @@ Daemon::Daemon(const std::string& journal_file,
     : journal_file_path_(journal_file),
       helper_dir_path_(helper_directory),
       firmware_dir_path_(firmware_directory),
+      component_reload_retries_(kComponentNumRetries),
       weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
   int exit_code = brillo::DBusDaemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
-
   DCHECK(!helper_dir_path_.empty());
-
-  if (firmware_dir_path_.empty()) {
-    component_ = Component::Load(bus_);
-    if (!component_)
-      return EX_UNAVAILABLE;
-
-    firmware_dir_path_ = component_->GetPath();
-  }
 
   if (!base::DirectoryExists(helper_dir_path_)) {
     LOG(ERROR) << "Supplied modem-specific helper directory "
@@ -61,11 +62,25 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
+  // If no firmware directory was supplied, we'll set up the firmware directory
+  // and its dependents later after the message loop has started.
+  if (firmware_dir_path_.empty()) {
+    DLOG(INFO) << "Deferring initialization until firmware component"
+               << " is available";
+    return EX_OK;
+  }
+
   if (!base::DirectoryExists(firmware_dir_path_)) {
     LOG(ERROR) << "Supplied firmware directory " << firmware_dir_path_.value()
                << " does not exist";
     return EX_UNAVAILABLE;
   }
+
+  return CompleteInitialization();
+}
+
+int Daemon::CompleteInitialization() {
+  CHECK(!firmware_dir_path_.empty());
 
   auto firmware_directory = CreateFirmwareDirectory(firmware_dir_path_);
   if (!firmware_directory) {
@@ -88,6 +103,41 @@ int Daemon::OnInit() {
       base::Bind(&Daemon::OnModemAppeared, weak_ptr_factory_.GetWeakPtr()));
 
   return EX_OK;
+}
+
+int Daemon::OnEventLoopStarted() {
+  // We've already done this initialization if we have a dir path.
+  if (!firmware_dir_path_.empty())
+    return EX_OK;
+
+  component_ = Component::Load(bus_);
+  if (!component_) {
+    // This could be because the component updater hasn't registered the
+    // component yet. Try again later.
+    if (--component_reload_retries_ > 0) {
+      DLOG(INFO) << "Could not load component, retrying in "
+                 << kComponentRetryDelay.InMinutes() << " minutes";
+      base::MessageLoop::current()->task_runner()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&Daemon::RetryComponent, weak_ptr_factory_.GetWeakPtr()),
+          kComponentRetryDelay);
+      return EX_OK;
+    }
+
+    LOG(ERROR) << "Exhausted retries for loading component, exiting";
+    return EX_UNAVAILABLE;
+  }
+
+  firmware_dir_path_ = component_->GetPath();
+  CHECK(base::DirectoryExists(firmware_dir_path_));
+  return CompleteInitialization();
+}
+
+void Daemon::RetryComponent() {
+  LOG(INFO) << "Retrying loading the firmware component";
+  int exit_code = OnEventLoopStarted();
+  if (exit_code != EX_OK)
+    QuitWithExitCode(exit_code);
 }
 
 void Daemon::OnModemAppeared(
