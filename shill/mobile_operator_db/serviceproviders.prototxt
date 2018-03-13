@@ -9397,6 +9397,9 @@ mno {
     }
     mccmnc : "20402"
     mobile_apn {
+      apn : "internet.tele2.nl"
+    }
+    mobile_apn {
       apn : "data.tele2.nl"
     }
   }
