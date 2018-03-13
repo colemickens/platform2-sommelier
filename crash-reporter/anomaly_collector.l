@@ -84,7 +84,7 @@ SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
 
  /* Detect kernel warnings. */
 ^{CUT_HERE}\n{WARNING}          BEGIN(PRE_WARN);
-.|\n                            /* ignore all other input in state 0 */
+
 <PRE_WARN>[^ ].*\n              if (KernelWarnStart()) {
                                   /* yytext is
                                    *
@@ -101,6 +101,8 @@ SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
  /* Assume the warning ends at the "end trace" line */
 <WARN>^{END_TRACE}\n            ECHO; BEGIN(0); KernelWarnEnd();
 <WARN>^.*\n                     ECHO;
+
+.|\n                            /* ignore all other input in state 0 */
 
 %%
 
