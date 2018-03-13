@@ -264,6 +264,16 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
                                                     const std::string& value) {
     policy->mutable_auto_update_settings()->set_target_version_prefix(value);
   });
+  EncodeInteger(key::kDeviceRollbackToTargetVersion, [policy](int value) {
+    policy->mutable_auto_update_settings()->set_rollback_to_target_version(
+        static_cast<em::AutoUpdateSettingsProto_RollbackToTargetVersion>(
+            value));
+  });
+  EncodeInteger(key::kDeviceRollbackAllowedMilestones, [policy](int value) {
+    policy->mutable_auto_update_settings()->set_rollback_allowed_milestones(
+        value);
+  });
+
   // target_version_display_name is not actually a policy, but a display
   // string for target_version_prefix, so we ignore it. It seems to be
   // unreferenced as well.
@@ -351,14 +361,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
       key::kDeviceAllowRedeemChromeOsRegistrationOffers, [policy](bool value) {
         policy->mutable_allow_redeem_offers()->set_allow_redeem_offers(value);
       });
-
-  EncodeStringList(key::kDeviceStartUpFlags,
-                   [policy](const std::vector<std::string>& values) {
-                     auto list = policy->mutable_start_up_flags();
-                     list->clear_flags();
-                     for (const std::string& value : values)
-                       list->add_flags(value);
-                   });
 
   EncodeString(key::kDeviceVariationsRestrictParameter,
                [policy](const std::string& value) {
@@ -529,6 +531,15 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeBoolean(key::kDeviceLoginScreenSitePerProcess, [policy](bool value) {
     policy->mutable_device_login_screen_site_per_process()
         ->set_site_per_process(value);
+  });
+
+  EncodeBoolean(key::kVirtualMachinesAllowed, [policy](bool value) {
+    policy->mutable_virtual_machines_allowed()->set_virtual_machines_allowed(
+        value);
+  });
+
+  EncodeInteger(key::kDeviceMachinePasswordChangeRate, [policy](int value) {
+    policy->mutable_device_machine_password_change_rate()->set_rate_days(value);
   });
 }
 

@@ -164,6 +164,15 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDeviceTargetVersionPrefix, kString);
   EXPECT_EQ(kString, policy.auto_update_settings().target_version_prefix());
 
+  // The encoder of this policy converts ints to RollbackToTargetVersion enums.
+  EncodeInteger(&policy, key::kDeviceRollbackToTargetVersion,
+                em::AutoUpdateSettingsProto::ROLLBACK_WITH_FULL_POWERWASH);
+  EXPECT_EQ(em::AutoUpdateSettingsProto::ROLLBACK_WITH_FULL_POWERWASH,
+            policy.auto_update_settings().rollback_to_target_version());
+
+  EncodeInteger(&policy, key::kDeviceRollbackAllowedMilestones, kInt);
+  EXPECT_EQ(kInt, policy.auto_update_settings().rollback_allowed_milestones());
+
   EncodeInteger(&policy, key::kDeviceUpdateScatterFactor, kInt);
   EXPECT_EQ(kInt, policy.auto_update_settings().scatter_factor_in_seconds());
 
@@ -246,9 +255,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceAllowRedeemChromeOsRegistrationOffers,
                 kBool);
   EXPECT_EQ(kBool, policy.allow_redeem_offers().allow_redeem_offers());
-
-  EncodeStringList(&policy, key::kDeviceStartUpFlags, kStringList);
-  EXPECT_EQ(kStringList, ToVector(policy.start_up_flags().flags()));
 
   EncodeString(&policy, key::kDeviceVariationsRestrictParameter, kString);
   EXPECT_EQ(kString, policy.variations_parameter().parameter());
@@ -378,6 +384,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceLoginScreenSitePerProcess, kBool);
   EXPECT_EQ(kBool,
             policy.device_login_screen_site_per_process().site_per_process());
+
+  EncodeBoolean(&policy, key::kVirtualMachinesAllowed, kBool);
+  EXPECT_EQ(kBool,
+            policy.virtual_machines_allowed().virtual_machines_allowed());
+
+  EncodeInteger(&policy, key::kDeviceMachinePasswordChangeRate, kInt);
+  EXPECT_EQ(kInt, policy.device_machine_password_change_rate().rate_days());
 
   //
   // Check whether all device policies have been handled.

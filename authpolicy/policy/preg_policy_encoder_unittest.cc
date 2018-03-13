@@ -205,8 +205,8 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
   writer.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
   writer.AppendInteger(key::kDevicePolicyRefreshRate, kPolicyInt);
   writer.AppendString(key::kSystemTimezone, kPolicyStr);
-  const std::vector<std::string> flags = {"flag1", "flag2"};
-  writer.AppendStringList(key::kDeviceStartUpFlags, flags);
+  const std::vector<std::string> str_list = {"str1", "str2"};
+  writer.AppendStringList(key::kDeviceUserWhitelist, str_list);
   writer.WriteToFile(preg_1_path_);
 
   // Encode preg file into policy.
@@ -219,10 +219,11 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
   EXPECT_EQ(kPolicyInt,
             policy.device_policy_refresh_rate().device_policy_refresh_rate());
   EXPECT_EQ(kPolicyStr, policy.system_timezone().timezone());
-  const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
-  EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
-  for (int n = 0; n < flags_proto.flags_size(); ++n)
-    EXPECT_EQ(flags_proto.flags(n), flags.at(n));
+  const em::UserWhitelistProto& str_list_proto = policy.user_whitelist();
+  EXPECT_EQ(str_list_proto.user_whitelist_size(),
+            static_cast<int>(str_list.size()));
+  for (int n = 0; n < str_list_proto.user_whitelist_size(); ++n)
+    EXPECT_EQ(str_list_proto.user_whitelist(n), str_list.at(n));
 }
 
 // Checks that a device GPO later in the list overrides prior GPOs.
@@ -233,8 +234,8 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   writer1.AppendBoolean(key::kDeviceGuestModeEnabled, kOtherPolicyBool);
   writer1.AppendInteger(key::kDevicePolicyRefreshRate, kPolicyInt);
   writer1.AppendString(key::kSystemTimezone, kPolicyStr);
-  const std::vector<std::string> flags1 = {"flag1", "flag2", "flag3"};
-  writer1.AppendStringList(key::kDeviceStartUpFlags, flags1);
+  const std::vector<std::string> str_list1 = {"str1", "str2", "str3"};
+  writer1.AppendStringList(key::kDeviceUserWhitelist, str_list1);
   writer1.WriteToFile(preg_1_path_);
 
   // Write file 2 with the same policies, but different values.
@@ -242,8 +243,8 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   writer2.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
   writer2.AppendInteger(key::kDevicePolicyRefreshRate, kOtherPolicyInt);
   writer2.AppendString(key::kSystemTimezone, kOtherPolicyStr);
-  const std::vector<std::string> flags2 = {"flag4", "flag5"};
-  writer2.AppendStringList(key::kDeviceStartUpFlags, flags2);
+  const std::vector<std::string> str_list2 = {"str4", "str5"};
+  writer2.AppendStringList(key::kDeviceUserWhitelist, str_list2);
   writer2.WriteToFile(preg_2_path_);
 
   // Encode to policy.
@@ -256,10 +257,11 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   EXPECT_EQ(kOtherPolicyInt,
             policy.device_policy_refresh_rate().device_policy_refresh_rate());
   EXPECT_EQ(kOtherPolicyStr, policy.system_timezone().timezone());
-  const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
-  EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags2.size()));
-  for (int n = 0; n < flags_proto.flags_size(); ++n)
-    EXPECT_EQ(flags_proto.flags(n), flags2.at(n));
+  const em::UserWhitelistProto& str_list_proto = policy.user_whitelist();
+  EXPECT_EQ(str_list_proto.user_whitelist_size(),
+            static_cast<int>(str_list2.size()));
+  for (int n = 0; n < str_list_proto.user_whitelist_size(); ++n)
+    EXPECT_EQ(str_list_proto.user_whitelist(n), str_list2.at(n));
 }
 
 // Encodes extension policies of different types.

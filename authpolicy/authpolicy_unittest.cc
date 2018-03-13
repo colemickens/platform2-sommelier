@@ -716,21 +716,22 @@ class AuthPolicyTest : public testing::Test {
     writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
     writer.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
     writer.AppendString(policy::key::kSystemTimezone, kPolicyStr);
-    const std::vector<std::string> flags = {"flag1", "flag2"};
-    writer.AppendStringList(policy::key::kDeviceStartUpFlags, flags);
+    const std::vector<std::string> str_list = {"str1", "str2"};
+    writer.AppendStringList(policy::key::kDeviceUserWhitelist, str_list);
     writer.WriteToFile(gpo_path);
 
-    validate_device_policy_ = [flags](
+    validate_device_policy_ = [str_list](
                                   const em::ChromeDeviceSettingsProto& policy) {
       EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
       EXPECT_EQ(
           kPolicyInt,
           policy.device_policy_refresh_rate().device_policy_refresh_rate());
       EXPECT_EQ(kPolicyStr, policy.system_timezone().timezone());
-      const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
-      EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
-      for (int n = 0; n < flags_proto.flags_size(); ++n)
-        EXPECT_EQ(flags_proto.flags(n), flags.at(n));
+      const em::UserWhitelistProto& str_list_proto = policy.user_whitelist();
+      EXPECT_EQ(str_list_proto.user_whitelist_size(),
+                static_cast<int>(str_list.size()));
+      for (int n = 0; n < str_list_proto.user_whitelist_size(); ++n)
+        EXPECT_EQ(str_list_proto.user_whitelist(n), str_list.at(n));
     };
   }
 
@@ -1772,28 +1773,29 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   writer1.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kOtherPolicyBool);
   writer1.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
   writer1.AppendString(policy::key::kSystemTimezone, kPolicyStr);
-  const std::vector<std::string> flags1 = {"flag1", "flag2", "flag3"};
-  writer1.AppendStringList(policy::key::kDeviceStartUpFlags, flags1);
+  const std::vector<std::string> str_list1 = {"str1", "str2", "str3"};
+  writer1.AppendStringList(policy::key::kDeviceUserWhitelist, str_list1);
   writer1.WriteToFile(stub_gpo1_path_);
 
   policy::PRegUserDevicePolicyWriter writer2;
   writer2.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
   writer2.AppendInteger(policy::key::kDevicePolicyRefreshRate, kOtherPolicyInt);
   writer2.AppendString(policy::key::kSystemTimezone, kOtherPolicyStr);
-  const std::vector<std::string> flags2 = {"flag4", "flag5"};
-  writer2.AppendStringList(policy::key::kDeviceStartUpFlags, flags2);
+  const std::vector<std::string> str_list2 = {"str4", "str5"};
+  writer2.AppendStringList(policy::key::kDeviceUserWhitelist, str_list2);
   writer2.WriteToFile(stub_gpo2_path_);
 
-  validate_device_policy_ = [flags2](
+  validate_device_policy_ = [str_list2](
                                 const em::ChromeDeviceSettingsProto& policy) {
     EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
     EXPECT_EQ(kOtherPolicyInt,
               policy.device_policy_refresh_rate().device_policy_refresh_rate());
     EXPECT_EQ(kOtherPolicyStr, policy.system_timezone().timezone());
-    const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
-    EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags2.size()));
-    for (int n = 0; n < flags_proto.flags_size(); ++n)
-      EXPECT_EQ(flags_proto.flags(n), flags2.at(n));
+    const em::UserWhitelistProto& str_list_proto = policy.user_whitelist();
+    EXPECT_EQ(str_list_proto.user_whitelist_size(),
+              static_cast<int>(str_list2.size()));
+    for (int n = 0; n < str_list_proto.user_whitelist_size(); ++n)
+      EXPECT_EQ(str_list_proto.user_whitelist(n), str_list2.at(n));
   };
   EXPECT_EQ(ERROR_NONE,
             Join(kTwoGposMachineName, kUserPrincipal, MakePasswordFd()));
