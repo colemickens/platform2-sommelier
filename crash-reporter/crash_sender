@@ -549,7 +549,9 @@ is_complete_metadata() {
 # Make sure the file is sane.  If the disk was corrupted, we should just delete.
 is_valid_metadata() {
   # Delete comments, blank lines, and lines that start with valid keys.
-  [ -z "$(sed -E -e '/^#/d' -e '/^$/d' -e '/^[a-zA-Z0-9_]+=/d' "$1")" ]
+  # We allow underscores, dashes, and periods as Chrome uses them.
+  # https://crbug.com/821530
+  [ -z "$(sed -E -e '/^#/d' -e '/^$/d' -e '/^[a-zA-Z0-9_.-]+=/d' "$1")" ]
 }
 
 # Remove the given report path.
