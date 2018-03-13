@@ -110,9 +110,11 @@ void ImgEncoder::allocateOutputCameraBuffers(EncodePackage &pkg, ExifMetaData& m
 
         if (!mThumbOutBuf.get()) {
             LOG1("Allocating thumb data buffer with %dx%d", thumbwidth, thumbheight);
-            // Use thumbwidth as stride for the heap buffer
+            // Use thumbwidth as stride for the heap buffer and a larger size
+            // for high compression quality
             mThumbOutBuf = MemoryUtils::allocateHeapBuffer(thumbwidth, thumbheight,
-                    thumbwidth, pkg.thumb->v4l2Fmt(), mCameraId);
+                    thumbwidth, pkg.thumb->v4l2Fmt(), mCameraId,
+                    thumbwidth * thumbheight * 2);
         }
     }
     pkg.thumbOut = mThumbOutBuf;

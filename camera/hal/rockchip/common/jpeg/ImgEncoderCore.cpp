@@ -227,8 +227,11 @@ status_t ImgEncoderCore::allocateBufferAndDownScale(EncodePackage & pkg)
         if (!pkg.thumb)
             pkg.thumb = pkg.main;
 
+        // Minimum buffer size required for high compression quality
+        int minThumbBufSize = thumbwidth * thumbheight * 2;
         if (mThumbOutBuf && (mThumbOutBuf->width() != thumbwidth ||
-                    mThumbOutBuf->height() != thumbheight))
+                    mThumbOutBuf->height() != thumbheight ||
+                    mThumbOutBuf->size() < minThumbBufSize))
             mThumbOutBuf.reset();
 
         if (!mThumbOutBuf) {
@@ -245,6 +248,7 @@ status_t ImgEncoderCore::allocateBufferAndDownScale(EncodePackage & pkg)
             props.stride = thumbwidth;
             props.format = pkg.thumb->v4l2Fmt();
             props.type   = BMT_HEAP;
+            props.size   = minThumbBufSize;
             // Use thumbwidth as stride for the heap buffer
             mThumbOutBuf = std::make_shared<CommonBuffer>(props);
             if (!mThumbOutBuf) {
