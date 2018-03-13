@@ -13,18 +13,18 @@
 
 namespace chromeos_dbus_bindings {
 
-class DbusSignature {
+class DBusSignature {
  public:
-  DbusSignature();
-  virtual ~DbusSignature() = default;
+  DBusSignature();
+  virtual ~DBusSignature() = default;
 
   // Returns a C++ typename in |output| for a D-Bus signature in |signature|
   // and returns true on success.  Returns false otherwise.
   bool Parse(const std::string& signature, std::string* output);
 
  private:
-  friend class DbusSignatureTest;
-  FRIEND_TEST(DbusSignatureTest, ParseSuccesses);
+  friend class DBusSignatureTest;
+  FRIEND_TEST(DBusSignatureTest, ParseSuccesses);
 
   // Typenames are C++ syntax types.
   static const char kArrayTypename[];
@@ -73,7 +73,7 @@ class DbusSignature {
                                      std::string::const_iterator* next,
                                      std::string* output);
 
-  DISALLOW_COPY_AND_ASSIGN(DbusSignature);
+  DISALLOW_COPY_AND_ASSIGN(DBusSignature);
 };
 
 }  // namespace chromeos_dbus_bindings

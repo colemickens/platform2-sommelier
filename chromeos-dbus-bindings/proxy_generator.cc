@@ -348,7 +348,7 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
     AddSignalHandlerRegistrationMock(signal, text);
   }
 
-  DbusSignature signature;
+  DBusSignature signature;
   for (const auto& prop : interface.properties) {
     string type;
     CHECK(signature.Parse(prop.type, &type));
@@ -607,7 +607,7 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
   block.AddLine("}");
   block.AddBlankLine();
 
-  DbusSignature signature;
+  DBusSignature signature;
   for (const auto& prop : interface.properties) {
     string type;
     CHECK(signature.Parse(prop.type, &type));
@@ -635,7 +635,7 @@ void ProxyGenerator::AddProperties(const Interface& interface,
   if (declaration_only && !interface.properties.empty())
     text->AddBlankLine();
 
-  DbusSignature signature;
+  DBusSignature signature;
   for (const auto& prop : interface.properties) {
     if (declaration_only) {
       text->AddLine(
@@ -691,7 +691,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     bool declaration_only,
                                     IndentedText* text) {
   IndentedText block;
-  DbusSignature signature;
+  DBusSignature signature;
   block.AddBlankLine();
   block.AddComments(method.doc_string);
   block.AddLine(StringPrintf("%sbool %s(",
@@ -758,7 +758,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
                                          bool declaration_only,
                                          IndentedText* text) {
   IndentedText block;
-  DbusSignature signature;
+  DBusSignature signature;
   block.AddBlankLine();
   block.AddComments(method.doc_string);
   block.AddLine(StringPrintf("%svoid %sAsync(",
@@ -822,7 +822,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
 void ProxyGenerator::AddMethodMock(const Interface::Method& method,
                                    const string& /* interface_name */,
                                    IndentedText* text) {
-  DbusSignature signature;
+  DBusSignature signature;
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
     string argument_type;
@@ -849,7 +849,7 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
 void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
                                         const string& /* interface_name */,
                                         IndentedText* text) {
-  DbusSignature signature;
+  DBusSignature signature;
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
     string argument_type;
@@ -955,7 +955,7 @@ void ProxyGenerator::AddSignalHandlerRegistrationMock(
 void ProxyGenerator::AddSignalCallbackArg(const Interface::Signal& signal,
                                           bool comment_arg_name,
                                           IndentedText* block) {
-  DbusSignature signature;
+  DBusSignature signature;
   string signal_callback = StringPrintf("%ssignal_callback%s",
                                         comment_arg_name ? "/*" : "",
                                         comment_arg_name ? "*/" : "");

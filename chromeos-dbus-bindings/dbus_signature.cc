@@ -16,27 +16,27 @@ using std::vector;
 namespace chromeos_dbus_bindings {
 
 // static
-const char DbusSignature::kArrayTypename[] = "std::vector";
-const char DbusSignature::kBooleanTypename[] = "bool";
-const char DbusSignature::kByteTypename[] = "uint8_t";
-const char DbusSignature::kObjectPathTypename[] = "dbus::ObjectPath";
-const char DbusSignature::kDictTypename[] = "std::map";
-const char DbusSignature::kDoubleTypename[] = "double";
-const char DbusSignature::kSigned16Typename[] = "int16_t";
-const char DbusSignature::kSigned32Typename[] = "int32_t";
-const char DbusSignature::kSigned64Typename[] = "int64_t";
-const char DbusSignature::kStringTypename[] = "std::string";
-const char DbusSignature::kUnixFdTypename[] = "dbus::FileDescriptor";
-const char DbusSignature::kUnsigned16Typename[] = "uint16_t";
-const char DbusSignature::kUnsigned32Typename[] = "uint32_t";
-const char DbusSignature::kUnsigned64Typename[] = "uint64_t";
-const char DbusSignature::kVariantTypename[] = "brillo::Any";
-const char DbusSignature::kVariantDictTypename[] = "brillo::VariantDictionary";
-const char DbusSignature::kTupleTypename[] = "std::tuple";
+const char DBusSignature::kArrayTypename[] = "std::vector";
+const char DBusSignature::kBooleanTypename[] = "bool";
+const char DBusSignature::kByteTypename[] = "uint8_t";
+const char DBusSignature::kObjectPathTypename[] = "dbus::ObjectPath";
+const char DBusSignature::kDictTypename[] = "std::map";
+const char DBusSignature::kDoubleTypename[] = "double";
+const char DBusSignature::kSigned16Typename[] = "int16_t";
+const char DBusSignature::kSigned32Typename[] = "int32_t";
+const char DBusSignature::kSigned64Typename[] = "int64_t";
+const char DBusSignature::kStringTypename[] = "std::string";
+const char DBusSignature::kUnixFdTypename[] = "dbus::FileDescriptor";
+const char DBusSignature::kUnsigned16Typename[] = "uint16_t";
+const char DBusSignature::kUnsigned32Typename[] = "uint32_t";
+const char DBusSignature::kUnsigned64Typename[] = "uint64_t";
+const char DBusSignature::kVariantTypename[] = "brillo::Any";
+const char DBusSignature::kVariantDictTypename[] = "brillo::VariantDictionary";
+const char DBusSignature::kTupleTypename[] = "std::tuple";
 
-DbusSignature::DbusSignature() = default;
+DBusSignature::DBusSignature() = default;
 
-bool DbusSignature::Parse(const string& signature, string* output) {
+bool DBusSignature::Parse(const string& signature, string* output) {
   string::const_iterator end;
   if (!GetTypenameForSignature(
           signature.begin(), signature.end(), &end, output)) {
@@ -50,7 +50,7 @@ bool DbusSignature::Parse(const string& signature, string* output) {
   return true;
 }
 
-bool DbusSignature::GetTypenameForSignature(
+bool DBusSignature::GetTypenameForSignature(
     string::const_iterator signature,
     string::const_iterator end,
     string::const_iterator* next,
@@ -139,7 +139,7 @@ bool DbusSignature::GetTypenameForSignature(
   return true;
 }
 
-bool DbusSignature::GetArrayTypenameForSignature(
+bool DBusSignature::GetArrayTypenameForSignature(
     string::const_iterator signature,
     string::const_iterator end,
     string::const_iterator* next,
@@ -200,7 +200,7 @@ bool DbusSignature::GetArrayTypenameForSignature(
   return true;
 }
 
-bool DbusSignature::GetStructTypenameForSignature(
+bool DBusSignature::GetStructTypenameForSignature(
     string::const_iterator signature,
     string::const_iterator end,
     string::const_iterator* next,

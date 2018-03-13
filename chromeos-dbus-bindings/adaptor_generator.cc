@@ -246,7 +246,7 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
 void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
                                            IndentedText *text) {
   IndentedText block;
-  DbusSignature signature;
+  DBusSignature signature;
   if (!interface.methods.empty())
     block.AddBlankLine();
 
@@ -336,7 +336,7 @@ void AdaptorGenerator::AddSendSignalMethods(
     const Interface& interface,
     IndentedText *text) {
   IndentedText block;
-  DbusSignature signature;
+  DBusSignature signature;
 
   if (!interface.signals.empty())
     block.AddBlankLine();
@@ -387,7 +387,7 @@ void AdaptorGenerator::AddSendSignalMethods(
 void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
                                             IndentedText *text) {
   IndentedText block;
-  DbusSignature signature;
+  DBusSignature signature;
 
   for (const auto& signal : interface.signals) {
     string signal_type_name = StringPrintf("Signal%sType", signal.name.c_str());
@@ -426,7 +426,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     const Interface& interface,
     IndentedText *text) {
   IndentedText block;
-  DbusSignature signature;
+  DBusSignature signature;
 
   for (const auto& property : interface.properties) {
     block.AddBlankLine();
@@ -489,7 +489,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
 void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
                                               IndentedText *text) {
   IndentedText block;
-  DbusSignature signature;
+  DBusSignature signature;
 
   for (const auto& property : interface.properties) {
     string type;

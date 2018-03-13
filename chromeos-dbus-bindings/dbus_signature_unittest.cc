@@ -33,12 +33,12 @@ const char kUnknownSignature[] = "al";
 
 }  // namespace
 
-class DbusSignatureTest : public Test {
+class DBusSignatureTest : public Test {
  protected:
-  DbusSignature signature_;
+  DBusSignature signature_;
 };
 
-TEST_F(DbusSignatureTest, ParseFailures) {
+TEST_F(DBusSignatureTest, ParseFailures) {
   for (const auto& failing_string : { kEmptySignature,
                                       kEmptyDictSignature,
                                       kMissingArraryParameterSignature,
@@ -57,22 +57,22 @@ TEST_F(DbusSignatureTest, ParseFailures) {
   }
 }
 
-TEST_F(DbusSignatureTest, ParseSuccesses) {
+TEST_F(DBusSignatureTest, ParseSuccesses) {
   const map<string, string> parse_values {
     // Simple types.
-    { DBUS_TYPE_BOOLEAN_AS_STRING, DbusSignature::kBooleanTypename },
-    { DBUS_TYPE_BYTE_AS_STRING, DbusSignature::kByteTypename },
-    { DBUS_TYPE_DOUBLE_AS_STRING, DbusSignature::kDoubleTypename },
-    { DBUS_TYPE_OBJECT_PATH_AS_STRING, DbusSignature::kObjectPathTypename },
-    { DBUS_TYPE_INT16_AS_STRING, DbusSignature::kSigned16Typename },
-    { DBUS_TYPE_INT32_AS_STRING, DbusSignature::kSigned32Typename },
-    { DBUS_TYPE_INT64_AS_STRING, DbusSignature::kSigned64Typename },
-    { DBUS_TYPE_STRING_AS_STRING, DbusSignature::kStringTypename },
-    { DBUS_TYPE_UNIX_FD_AS_STRING, DbusSignature::kUnixFdTypename },
-    { DBUS_TYPE_UINT16_AS_STRING, DbusSignature::kUnsigned16Typename },
-    { DBUS_TYPE_UINT32_AS_STRING, DbusSignature::kUnsigned32Typename },
-    { DBUS_TYPE_UINT64_AS_STRING, DbusSignature::kUnsigned64Typename },
-    { DBUS_TYPE_VARIANT_AS_STRING, DbusSignature::kVariantTypename },
+    { DBUS_TYPE_BOOLEAN_AS_STRING, DBusSignature::kBooleanTypename },
+    { DBUS_TYPE_BYTE_AS_STRING, DBusSignature::kByteTypename },
+    { DBUS_TYPE_DOUBLE_AS_STRING, DBusSignature::kDoubleTypename },
+    { DBUS_TYPE_OBJECT_PATH_AS_STRING, DBusSignature::kObjectPathTypename },
+    { DBUS_TYPE_INT16_AS_STRING, DBusSignature::kSigned16Typename },
+    { DBUS_TYPE_INT32_AS_STRING, DBusSignature::kSigned32Typename },
+    { DBUS_TYPE_INT64_AS_STRING, DBusSignature::kSigned64Typename },
+    { DBUS_TYPE_STRING_AS_STRING, DBusSignature::kStringTypename },
+    { DBUS_TYPE_UNIX_FD_AS_STRING, DBusSignature::kUnixFdTypename },
+    { DBUS_TYPE_UINT16_AS_STRING, DBusSignature::kUnsigned16Typename },
+    { DBUS_TYPE_UINT32_AS_STRING, DBusSignature::kUnsigned32Typename },
+    { DBUS_TYPE_UINT64_AS_STRING, DBusSignature::kUnsigned64Typename },
+    { DBUS_TYPE_VARIANT_AS_STRING, DBusSignature::kVariantTypename },
 
     // Complex types.
     { "ab",             "std::vector<bool>" },
