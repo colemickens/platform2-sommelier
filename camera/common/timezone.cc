@@ -13,7 +13,6 @@
 
 #include <base/files/file_util.h>
 #include <base/macros.h>
-#include <base/memory/singleton.h>
 #include <base/strings/string16.h>
 #include <base/strings/utf_string_conversions.h>
 
@@ -29,7 +28,9 @@ const char kZoneInfoFilePath[] = "/usr/share/zoneinfo/";
 class TimezoneMap {
  public:
   static TimezoneMap* GetInstance() {
-    return base::Singleton<TimezoneMap>::get();
+    // TODO(shik): change to base::NoDestructor after libchrome uprev.
+    static TimezoneMap* instance = new TimezoneMap();
+    return instance;
   }
 
   std::string CountryCodeForTimezone(const std::string& olson_code) {
@@ -598,8 +599,6 @@ class TimezoneMap {
     for (size_t i = 0; i < arraysize(link_data); ++i)
       map_[link_data[i].old_code] = map_[link_data[i].new_code];
   }
-
-  friend struct base::DefaultSingletonTraits<TimezoneMap>;
 
   struct CompareCStrings {
     bool operator()(const char* str1, const char* str2) const {
