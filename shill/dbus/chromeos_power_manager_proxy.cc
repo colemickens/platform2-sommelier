@@ -305,6 +305,18 @@ void ChromeosPowerManagerProxy::DarkSuspendImminent(
   delegate_->OnDarkSuspendImminent(proto.suspend_id());
 }
 
+void ChromeosPowerManagerProxy::OnServiceAppeared() {
+  if (!service_appeared_callback_.is_null()) {
+    service_appeared_callback_.Run();
+  }
+}
+
+void ChromeosPowerManagerProxy::OnServiceVanished() {
+  if (!service_vanished_callback_.is_null()) {
+    service_vanished_callback_.Run();
+  }
+}
+
 void ChromeosPowerManagerProxy::OnServiceAvailable(bool available) {
   // The only time this function will ever be invoked with |available| set to
   // false is when we failed to connect the signals, either bus is not setup
@@ -319,30 +331,33 @@ void ChromeosPowerManagerProxy::OnServiceAvailable(bool available) {
 
   // The callback might invoke calls to the ObjectProxy, so defer the callback
   // to event loop.
-  if (!service_appeared_callback_.is_null()) {
-    dispatcher_->PostTask(FROM_HERE, service_appeared_callback_);
-  }
+  dispatcher_->PostTask(
+      FROM_HERE,
+      base::Bind(&ChromeosPowerManagerProxy::OnServiceAppeared,
+                 weak_factory_.GetWeakPtr()));
 
   service_available_ = true;
 }
 
 void ChromeosPowerManagerProxy::OnServiceOwnerChanged(
     const string& old_owner, const string& new_owner) {
-  LOG(INFO) << __func__ << "old: " << old_owner << " new: " << new_owner;
+  LOG(INFO) << __func__ << " old: " << old_owner << " new: " << new_owner;
 
   if (new_owner.empty()) {
     // The callback might invoke calls to the ObjectProxy, so defer the
     // callback to event loop.
-    if (!service_vanished_callback_.is_null()) {
-        dispatcher_->PostTask(FROM_HERE, service_vanished_callback_);
-    }
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::Bind(&ChromeosPowerManagerProxy::OnServiceVanished,
+                   weak_factory_.GetWeakPtr()));
     service_available_ = false;
   } else {
     // The callback might invoke calls to the ObjectProxy, so defer the
     // callback to event loop.
-    if (!service_appeared_callback_.is_null()) {
-      dispatcher_->PostTask(FROM_HERE, service_appeared_callback_);
-    }
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::Bind(&ChromeosPowerManagerProxy::OnServiceAppeared,
+                   weak_factory_.GetWeakPtr()));
     service_available_ = true;
   }
 }

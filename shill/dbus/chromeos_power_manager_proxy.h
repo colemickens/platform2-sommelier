@@ -89,6 +89,12 @@ class ChromeosPowerManagerProxy : public PowerManagerProxyInterface {
                          const std::string& signal_name,
                          bool success);
 
+  // Invoke |service_appeared_callback_| if it is set.
+  void OnServiceAppeared();
+
+  // Invoke |service_vanished_callback_| if it is set.
+  void OnServiceVanished();
+
   std::unique_ptr<org::chromium::PowerManagerProxy> proxy_;
   EventDispatcher* dispatcher_;
   PowerManagerProxyDelegate* delegate_;

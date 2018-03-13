@@ -184,7 +184,13 @@ void PowerManager::OnDarkSuspendImminent(int suspend_id) {
 
 void PowerManager::OnPowerManagerAppeared() {
   LOG(INFO) << __func__;
-  CHECK(!suspend_delay_registered_);
+
+  // This function could get called twice in a row due to races in
+  // ObjectProxy.
+  if (suspend_delay_registered_) {
+    return;
+  }
+
   if (power_manager_proxy_->RegisterSuspendDelay(suspend_delay_,
                                                  kSuspendDelayDescription,
                                                  &suspend_delay_id_))
