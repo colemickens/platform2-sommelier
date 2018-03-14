@@ -5,6 +5,7 @@
 #ifndef CHROMEOS_DBUS_BINDINGS_DBUS_SIGNATURE_H_
 #define CHROMEOS_DBUS_BINDINGS_DBUS_SIGNATURE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,13 +14,29 @@
 
 namespace chromeos_dbus_bindings {
 
+class DBusType {
+ public:
+  virtual ~DBusType() = default;
+
+  // Some types might not be allowed in properties because libchrome bindings
+  // don't support them, or they don't make any sense as properties. One
+  // example would be file descriptors.
+  virtual bool IsValidPropertyType() const = 0;
+
+  // Methods for getting the C++ type corresponding to a D-Bus type.
+  virtual std::string GetBaseType() const = 0;
+  virtual std::string GetInArgType() const = 0;
+  std::string GetOutArgType() const;
+};
+
 class DBusSignature {
  public:
   DBusSignature();
   virtual ~DBusSignature() = default;
 
-  // Returns a C++ typename in |output| for a D-Bus signature in |signature|
-  // and returns true on success.  Returns false otherwise.
+  // Returns a DBusType corresponding to the D-Bus signature given in
+  // |signature|. If the signature fails to parse, returns nullptr.
+  std::unique_ptr<DBusType> Parse(const std::string& signature);
   bool Parse(const std::string& signature, std::string* output);
 
  private:
@@ -46,32 +63,43 @@ class DBusSignature {
   static const char kPairTypename[];
   static const char kTupleTypename[];
 
-  // Returns the C++ type name for the next D-Bus signature in the string at
-  // |signature| in |output|, as well as the next position within the string
-  // that parsing should continue |next|.  It is not an error to pass a
-  // pointer to |signature| or nullptr as |next|.  Returns true on success.
-  bool GetTypenameForSignature(std::string::const_iterator signature,
-                               std::string::const_iterator end,
-                               std::string::const_iterator* next,
-                               std::string* output);
+  // Returns an intermediate-representation type for the next D-Bus signature
+  // in the string at |signature|, as well as the next position within the
+  // string that parsing should continue |next|. Returns nullptr on failure.
+  std::unique_ptr<DBusType> GetTypenameForSignature(
+      std::string::const_iterator signature,
+      std::string::const_iterator end,
+      std::string::const_iterator* next);
+
+  // Parses multiple types out of a D-Bus signature until it encounters an
+  // |end_char| and places them in |children|. Returns true on success.
+  bool ParseChildTypes(std::string::const_iterator signature,
+                       std::string::const_iterator end,
+                       std::string::value_type end_char,
+                       std::string::const_iterator* next,
+                       std::vector<std::unique_ptr<DBusType>>* children);
 
   // Utility task for GetTypenameForSignature() which handles array objects
   // and decodes them into a map or vector depending on the encoded sub-elements
-  // in the array.  The arguments and return values are the same
+  // in the array. The arguments and return values are the same
   // as GetTypenameForSignature().
-  bool GetArrayTypenameForSignature(std::string::const_iterator signature,
-                                    std::string::const_iterator end,
-                                    std::string::const_iterator* next,
-                                    std::string* output);
+  std::unique_ptr<DBusType> GetArrayTypenameForSignature(
+      std::string::const_iterator signature,
+      std::string::const_iterator end,
+      std::string::const_iterator* next);
 
-  // Utility task for GetTypenameForSignature() which handles STRUCT objects
-  // and decodes them into a pair or tuple depending on the number of structure
-  // elements.  The arguments and return values are the same
-  // as GetTypenameForSignature().
-  bool GetStructTypenameForSignature(std::string::const_iterator signature,
-                                     std::string::const_iterator end,
-                                     std::string::const_iterator* next,
-                                     std::string* output);
+  // Utility task for GetArrayTypenameForSignature() which handles dict objects.
+  std::unique_ptr<DBusType> GetDictTypenameForSignature(
+      std::string::const_iterator signature,
+      std::string::const_iterator end,
+      std::string::const_iterator* next);
+
+  // Utility task for GetTypenameForSignature() which handles structs.
+  // The arguments and return values are the same as GetTypenameForSignature().
+  std::unique_ptr<DBusType> GetStructTypenameForSignature(
+      std::string::const_iterator signature,
+      std::string::const_iterator end,
+      std::string::const_iterator* next);
 
   DISALLOW_COPY_AND_ASSIGN(DBusSignature);
 };
