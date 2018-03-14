@@ -10,7 +10,6 @@ namespace chaps {
 const char kChapsInterface[] = "org.chromium.Chaps";
 const char kChapsServicePath[] = "/org/chromium/Chaps";
 const char kChapsServiceName[] = "org.chromium.Chaps";
-const char kObjectManagerPath[] = "/org/chromium/Chaps/ObjectManager";
 // Methods exposed by chaps.
 const char kOpenIsolateMethod[] = "OpenIsolate";
 const char kCloseIsolateMethod[] = "CloseIsolate";

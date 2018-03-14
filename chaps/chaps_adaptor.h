@@ -11,7 +11,7 @@
 #include <base/macros.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
-#include <brillo/dbus/exported_object_manager.h>
+#include <dbus/bus.h>
 #include <chaps/proto_bindings/ck_structs.pb.h>
 
 namespace base {
@@ -27,7 +27,7 @@ class TokenManagerInterface;
 // calls to a ChapsInterface or TokenManagerInterface.
 class ChapsAdaptor {
  public:
-  ChapsAdaptor(brillo::dbus_utils::ExportedObjectManager* object_manager,
+  ChapsAdaptor(scoped_refptr<dbus::Bus> bus,
                base::Lock* lock,
                ChapsInterface* service,
                TokenManagerInterface* token_manager);

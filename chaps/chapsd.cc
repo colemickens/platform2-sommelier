@@ -105,8 +105,7 @@ namespace chaps {
 class Daemon : public brillo::DBusServiceDaemon {
  public:
   Daemon(const std::string& srk_auth_data, bool auto_load_system_token)
-      : DBusServiceDaemon(kChapsServiceName,
-                          dbus::ObjectPath(kObjectManagerPath)),
+      : DBusServiceDaemon(kChapsServiceName),
         srk_auth_data_(srk_auth_data),
         auto_load_system_token_(auto_load_system_token),
         tpm_background_thread_(kTpmThreadName),
@@ -150,10 +149,8 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new ChapsAdaptor(object_manager_.get(),
-                                    &lock_,
-                                    service_.get(),
-                                    slot_manager_.get()));
+    adaptor_.reset(
+        new ChapsAdaptor(bus_, &lock_, service_.get(), slot_manager_.get()));
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed", true));
   }

@@ -24,14 +24,11 @@ using std::vector;
 
 namespace chaps {
 
-ChapsAdaptor::ChapsAdaptor(
-      brillo::dbus_utils::ExportedObjectManager* object_manager,
-      Lock* lock,
-      ChapsInterface* service,
-      TokenManagerInterface* token_manager)
-    : dbus_object_(object_manager,
-                   object_manager->GetBus(),
-                   dbus::ObjectPath(kChapsServicePath)),
+ChapsAdaptor::ChapsAdaptor(scoped_refptr<dbus::Bus> bus,
+                           Lock* lock,
+                           ChapsInterface* service,
+                           TokenManagerInterface* token_manager)
+    : dbus_object_(nullptr, bus, dbus::ObjectPath(kChapsServicePath)),
       lock_(lock),
       service_(service),
       token_manager_(token_manager) {}
