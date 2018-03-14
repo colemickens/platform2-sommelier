@@ -409,6 +409,19 @@ cmd_vmc() (
     echo "This command is not available."
     return 1
   fi
+
+  # Mount the termina component, waiting up to 2 minutes to download it.  If
+  # this fails we won't be able to start the concierge service below.
+  imageloader --reply-timeout=120000 LoadComponent string:cros-termina
+
+  # Start the concierge service.
+  local reply
+  reply="$(debugd StartVmConcierge)"
+  if [ $? -ne 0 -o "${reply}" != "true" ]; then
+    echo "Unable to start concierge service"
+    return 1
+  fi
+
   local cmd="$1"; shift
   case "${cmd}" in
   start)
@@ -418,18 +431,6 @@ cmd_vmc() (
     fi
 
     local name="$1"; shift
-
-    # Mount the termina component, waiting up to 2 minutes to download it.  If
-    # this fails we won't be able to start the concierge service below.
-    imageloader --reply-timeout=120000 LoadComponent string:cros-termina
-
-    # Start the concierge service.
-    local reply
-    reply="$(debugd StartVmConcierge)"
-    if [ $? -ne 0 -o "${reply}" != "true" ]; then
-      echo "Unable to start concierge service"
-      return 1
-    fi
 
     # Actually start the VM.
     concierge_client --start_termina_vm --name="${name}" \
