@@ -12,7 +12,6 @@ namespace hammerd {
 const char kMetricROUpdateResult[] = DETACHABLE_BASE_PREFIX "ROUpdateResult";
 const char kMetricRWUpdateResult[] = DETACHABLE_BASE_PREFIX "RWUpdateResult";
 const char kMetricPairResult[] = DETACHABLE_BASE_PREFIX "PairResult";
-const char kMetricAttachedOnBoot[] = DETACHABLE_BASE_PREFIX "AttachedOnBoot";
 const char kMetricPendingRWUpdate[] =
     DETACHABLE_BASE_PREFIX "PendingRWUpdate";
 

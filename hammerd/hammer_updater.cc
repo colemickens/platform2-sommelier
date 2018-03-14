@@ -96,15 +96,6 @@ HammerUpdater::RunStatus HammerUpdater::Run() {
     return HammerUpdater::RunStatus::kInvalidFirmware;
   }
 
-  if (at_boot_) {
-    bool is_attached = fw_updater_->ConnectUsb() == UsbConnectStatus::kSuccess;
-    metrics_->SendBoolToUMA(kMetricAttachedOnBoot, is_attached);
-    if (!is_attached) {
-      LOG(INFO) << "USB device is not found.";
-      return HammerUpdater::RunStatus::kLostConnection;
-    }
-  }
-
   HammerUpdater::RunStatus status = RunLoop();
   WaitUsbReady(status);
   if (update_condition_ != UpdateCondition::kNever) {

@@ -24,8 +24,40 @@ monitor_dbus_signal() {
   done
 }
 
+# base_connected will block for at most 10 * 0.01 = ~100ms.
+base_connected() {
+  # If the cros_ec_buttons driver hasn't been loaded yet, retry.
+  local event_path=""
+  local retries=10
+  while true; do
+    retries=$((retries - 1))
+    event_path=`grep cros_ec_buttons /sys/class/input/event*/device/name \
+        | sed -n 's|.*\(/input/event[0-9]*\)/.*|/dev\1|p' | head -n 1`
+    if [ "${event_path}" != "" ]; then
+      break
+    fi
+    if [ "${retries}" -lt 1 ]; then
+      logger -t hammer-at-boot \
+          "Error: cros_ec_buttons driver could not be found."
+      return 1
+    fi
+    sleep 0.01
+  done
+
+  # Return code is 0 on base connected, 10 on disconnected.
+  evtest --query "${event_path}" EV_SW SW_TABLET_MODE
+}
+
 main() {
+  if ! base_connected; then
+    logger -t hammer-at-boot "Base not connected, skipping hammerd at boot."
+    metrics_client -e Platform.DetachableBase.AttachedOnBoot 0 2
+    return
+  fi
+
   logger -t hammerd-at-boot "Force trigger hammerd at boot."
+  metrics_client -e Platform.DetachableBase.AttachedOnBoot 1 2
+
   # Background process that catches the DBus signal.
   monitor_dbus_signal &
   local bg_pid=$!
