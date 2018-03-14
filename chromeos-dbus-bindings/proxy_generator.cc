@@ -134,7 +134,6 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
       relative_path = proxy_file;
     } else {
       // Generate a relative path from |mock_file| to |proxy_file|.
-
       // First, get the path components for both source and destination paths.
       std::vector<base::FilePath::StringType> src_components;
       mock_file.DirName().GetComponents(&src_components);
@@ -142,14 +141,9 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
       proxy_file.DirName().GetComponents(&dest_components);
 
       // Find the common root.
-
-      // I wish we had C++14 and its 4-parameter version of std::mismatch()...
-      auto src_end = src_components.end();
-      if (src_components.size() > dest_components.size())
-        src_end = src_components.begin() + dest_components.size();
-
-      auto mismatch_pair = std::mismatch(src_components.begin(), src_end,
-                                         dest_components.begin());
+      auto mismatch_pair =
+          std::mismatch(src_components.begin(), src_components.end(),
+                        dest_components.begin(), dest_components.end());
 
       // For each remaining components in the |src_components|, generate the
       // parent directory references ("..").
