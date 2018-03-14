@@ -247,8 +247,8 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
     TPM_LOG(ERROR, result) << __func__ << ": Failed to certify key.";
     return false;
   }
-  ScopedTssMemory scoped_certified_data(0, validation.rgbData);
-  ScopedTssMemory scoped_proof(0, validation.rgbValidationData);
+  ScopedTssMemory scoped_certified_data(context_handle_, validation.rgbData);
+  ScopedTssMemory scoped_proof(context_handle_, validation.rgbValidationData);
 
   // Get the certified public key.
   if (!GetDataAttribute(context_handle_, key, TSS_TSPATTRIB_KEY_BLOB,
