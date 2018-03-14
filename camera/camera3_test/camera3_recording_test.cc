@@ -8,6 +8,7 @@
 
 #include <base/command_line.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 
 namespace camera3_test {
 
@@ -20,9 +21,7 @@ void Camera3RecordingFixture::SetUp() {
 }
 
 void Camera3RecordingFixture::ProcessRecordingResult(
-    int cam_id,
-    uint32_t frame_number,
-    CameraMetadataUniquePtr metadata) {
+    int cam_id, uint32_t /*frame_number*/, CameraMetadataUniquePtr metadata) {
   VLOGF_ENTER();
   camera_metadata_ro_entry_t entry;
   ASSERT_EQ(0, find_camera_metadata_ro_entry(metadata.get(),
@@ -128,14 +127,14 @@ TEST_P(Camera3BasicRecordingTest, BasicRecording) {
 
 static std::vector<std::tuple<int, int32_t, int32_t, float>>
 ParseRecordingParams() {
-  std::vector<std::tuple<int, int32_t, int32_t, float>> result;
+  // This parameter would be generated and passed by the camera_HAL3 autotest.
   if (!base::CommandLine::ForCurrentProcess()->HasSwitch("recording_params")) {
     LOGF(ERROR) << "Missing recording parameters in the test command";
     // Return invalid parameters to fail the test
-    result.emplace_back(-1, 0, 0, 0.0);
-    return result;
+    return {{-1, 0, 0, 0.0}};
   }
-  std::string params =
+  std::vector<std::tuple<int, int32_t, int32_t, float>> params;
+  std::string params_str =
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           "recording_params");
   // Expected video recording parameters in the format
@@ -145,9 +144,9 @@ ParseRecordingParams() {
   // 1.
   const size_t kNumParamsInProfile = 4;
   enum { CAMERA_ID_IDX, WIDTH_IDX, HEIGHT_IDX, FRAME_RATE_IDX };
-  for (const auto& it :
-       base::SplitString(params, ",", base::WhitespaceHandling::TRIM_WHITESPACE,
-                         base::SplitResult::SPLIT_WANT_ALL)) {
+  for (const auto& it : base::SplitString(
+           params_str, ",", base::WhitespaceHandling::TRIM_WHITESPACE,
+           base::SplitResult::SPLIT_WANT_ALL)) {
     auto profile =
         base::SplitString(it, ":", base::WhitespaceHandling::TRIM_WHITESPACE,
                           base::SplitResult::SPLIT_WANT_ALL);
@@ -156,20 +155,68 @@ ParseRecordingParams() {
                     << ")";
       continue;
     }
-    result.emplace_back(
+    params.emplace_back(
         std::stoi(profile[CAMERA_ID_IDX]), std::stoi(profile[WIDTH_IDX]),
         std::stoi(profile[HEIGHT_IDX]), std::stof(profile[FRAME_RATE_IDX]));
   }
-  auto cam_ids = Camera3Module().GetCameraIds();
-  for (const auto& cam_id : cam_ids) {
-    if (std::find_if(result.begin(), result.end(),
-                     [&](const std::tuple<int, int32_t, int32_t, float>& item) {
-                       return std::get<0>(item) == cam_id;
-                     }) == result.end()) {
-      ADD_FAILURE() << "Missing video recording parameters for camera "
-                    << cam_id;
-    }
+
+  std::set<int> param_ids;
+  for (const auto& param : params) {
+    param_ids.insert(std::get<CAMERA_ID_IDX>(param));
   }
+
+  // We are going to enable usb camera hal on all boards, so there will be more
+  // than one hals on many platforms just like today's nautilus.  The
+  // recording_params is now generated from media_profiles.xml, where the camera
+  // ids are already translated by SuperHAL.  But cros_camera_test is used to
+  // test only one camera hal directly without going through the hal_adapter,
+  // therefore we have to remap the ids here.
+  //
+  // TODO(shik): This is a temporary workaround for SuperHAL camera ids mapping
+  // until we have better ground truth config file.  Here we exploit the fact
+  // that there are at most one back and at most one front internal cameras for
+  // now, and all cameras are sorted by facing in SuperHAL.  I feel bad when
+  // implementing the following hack (sigh).
+  std::vector<std::tuple<int, int32_t, int32_t, float>> result;
+  auto cam_ids = Camera3Module().GetCameraIds();
+  if (cam_ids.size() < param_ids.size()) {
+    // SuperHAL case
+    for (const auto& cam_id : cam_ids) {
+      camera_info info;
+      EXPECT_EQ(0, Camera3Module().GetCameraInfo(cam_id, &info));
+      bool found_matching_param = false;
+      for (auto param : params) {
+        if (std::get<CAMERA_ID_IDX>(param) == info.facing) {
+          found_matching_param = true;
+          std::get<CAMERA_ID_IDX>(param) = cam_id;
+          result.emplace_back(param);
+        }
+      }
+      EXPECT_TRUE(found_matching_param);
+    }
+  } else {
+    // Single HAL case
+    for (const auto& cam_id : cam_ids) {
+      if (std::find_if(
+              params.begin(), params.end(),
+              [&](const std::tuple<int, int32_t, int32_t, float>& item) {
+                return std::get<CAMERA_ID_IDX>(item) == cam_id;
+              }) == params.end()) {
+        ADD_FAILURE() << "Missing video recording parameters for camera "
+                      << cam_id;
+      }
+    }
+    result = std::move(params);
+  }
+
+  LOGF(INFO) << "The parameters will be used for recording test:";
+  for (const auto& param : result) {
+    LOGF(INFO) << base::StringPrintf(
+        "camera id = %d, size = %dx%d, fps = %g",
+        std::get<CAMERA_ID_IDX>(param), std::get<WIDTH_IDX>(param),
+        std::get<HEIGHT_IDX>(param), std::get<FRAME_RATE_IDX>(param));
+  }
+
   return result;
 }
 
