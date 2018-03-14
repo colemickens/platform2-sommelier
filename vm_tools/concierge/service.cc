@@ -97,6 +97,13 @@ constexpr char kDownloadsDir[] = "Downloads";
 // File extenstion for qcow2 disk types
 constexpr char kQcowImageExtension[] = ".qcow2";
 
+// Default name to use for a container.
+constexpr char kDefaultContainerName[] = "penguin";
+
+// Common environment for all LXD functionality.
+const std::map<string, string> kLxdEnv = {
+    {"LXD_DIR", "/mnt/stateful/lxd"}, {"LXD_CONF", "/mnt/stateful/lxd_conf"}};
+
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -335,7 +342,6 @@ void Service::ContainerStartupCompleted(const std::string& container_name,
     LOG(INFO) << "Startup of container " << container_name << " at "
               << string_ip << " in VM " << vm.first << " completed.";
     vm.second->RegisterContainerIp(container_name, std::move(string_ip));
-
     // Send the D-Bus signal out to indicate the container is ready.
     dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
     ContainerStartedSignal proto;
@@ -376,6 +382,7 @@ bool Service::Init() {
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kListVmDisksMethod, &Service::ListVmDisks},
+      {kStartContainerMethod, &Service::StartContainer},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -833,20 +840,17 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Starting lxd";
 
-  // Common environment for all LXD functionality.
-  std::map<string, string> lxd_env = {{"LXD_DIR", "/mnt/stateful/lxd"},
-                                      {"LXD_CONF", "/mnt/stateful/lxd_conf"}};
 
   // Set up the stateful disk. This will format the disk if necessary, then
   // mount it.
-  if (!vm->RunProcess({"stateful_setup.sh"}, lxd_env)) {
+  if (!vm->RunProcess({"stateful_setup.sh"}, kLxdEnv)) {
     LOG(ERROR) << "Stateful setup failed";
     *failure_reason = "stateful setup failed";
     return false;
   }
 
   // Launch the main lxd process.
-  if (!vm->StartProcess({"lxd", "--group", "lxd"}, lxd_env,
+  if (!vm->StartProcess({"lxd", "--group", "lxd"}, kLxdEnv,
                         ProcessExitBehavior::RESPAWN_ON_EXIT)) {
     LOG(ERROR) << "lxd failed to start";
     *failure_reason = "lxd failed to start";
@@ -855,7 +859,7 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
 
   // Wait for lxd to be ready. The first start may take a few seconds, so use
   // a longer timeout than the default.
-  if (!vm->RunProcessWithTimeout({"lxd", "waitready"}, lxd_env,
+  if (!vm->RunProcessWithTimeout({"lxd", "waitready"}, kLxdEnv,
                                  kLxdWaitreadyTimeout)) {
     LOG(ERROR) << "lxd waitready failed";
     *failure_reason = "lxd waitready failed";
@@ -864,7 +868,7 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
 
   // Perform any setup for lxd to be usable. On first run, this sets up the
   // lxd configuration (network bridge, storage pool, etc).
-  if (!vm->RunProcess({"lxd_setup.sh"}, lxd_env)) {
+  if (!vm->RunProcess({"lxd_setup.sh"}, kLxdEnv)) {
     LOG(ERROR) << "lxd setup failed";
     *failure_reason = "lxd setup failed";
     return false;
@@ -927,7 +931,7 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
       base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix);
   if (!vm->RunProcess({"lxc", "network", "set", "lxdbr0", "ipv4.address",
                        std::move(container_subnet_cidr)},
-                      lxd_env)) {
+                      kLxdEnv)) {
     LOG(ERROR) << "lxc network config failed";
     *failure_reason = "lxc network config failed";
     return false;
@@ -1159,6 +1163,65 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
     }
     std::string* name = response.add_images();
     *name = std::move(image_name);
+  }
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::StartContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StartContainerRequest request;
+  StartContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StartContainerRequest from message";
+    response.set_success(false);
+    response.set_failure_reason("Unable to parse StartContainerRequest");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = vms_.find(request.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_success(false);
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // This executes the run_container.sh script in the VM which will startup
+  // a container. We need to construct the command for that with the proper
+  // parameters.
+  std::vector<std::string> container_args = {
+      "run_container.sh", "--container_name",
+      request.container_name().empty() ? kDefaultContainerName
+                                       : request.container_name(),
+  };
+  if (!request.container_username().empty()) {
+    container_args.emplace_back("--user");
+    container_args.emplace_back(request.container_username());
+  }
+
+  // Now execute the startup script in the VM and honor the async parameter in
+  // the request protobuf for how we run that script.
+  response.set_success(true);
+  if (request.async()) {
+    if (!iter->second->StartProcess(std::move(container_args), kLxdEnv,
+                                    ProcessExitBehavior::ONE_SHOT)) {
+      response.set_success(false);
+      response.set_failure_reason("Failed asynchronous container startup");
+    }
+  } else if (!iter->second->RunProcess(std::move(container_args), kLxdEnv)) {
+    response.set_success(false);
+    response.set_failure_reason("Failed synchronous container startup");
   }
 
   writer.AppendProtoAsArrayOfBytes(response);

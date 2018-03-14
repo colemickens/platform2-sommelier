@@ -606,6 +606,59 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int StartContainer(dbus::ObjectProxy* proxy,
+                   string name,
+                   string container_name) {
+  if (name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  if (container_name.empty()) {
+    LOG(ERROR) << "--container_name is required";
+    return -1;
+  }
+
+  LOG(INFO) << "Starting VM Container '" << name << ":" << container_name
+            << "'";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kStartContainerMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::StartContainerRequest request;
+  request.set_vm_name(std::move(name));
+  request.set_container_name(std::move(container_name));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StartContainerRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::StartContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to start container: " << response.failure_reason();
+    return -1;
+  }
+
+  LOG(INFO) << "Started container '" << name << ":" << container_name << "'";
+
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -621,6 +674,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(list_disks, false, "List disk images");
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
+  DEFINE_bool(start_container, false, "Starts a container within a VM");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -628,6 +682,7 @@ int main(int argc, char** argv) {
   DEFINE_string(name, "", "Name to assign to the VM");
   DEFINE_string(extra_disks, "",
                 "Additional disk images to be mounted inside the VM");
+  DEFINE_string(container_name, "", "Name of the container within the VM");
 
   // create_disk parameters.
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
@@ -665,11 +720,11 @@ int main(int argc, char** argv) {
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_start_termina_vm + FLAGS_destroy_disk +
-      FLAGS_list_disks != 1) {
+      FLAGS_list_disks + FLAGS_start_container != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info,"
                << "--create_disk, --destroy_disk, --list_disks, "
-               << "--start_termina_vm must be provided";
+               << "--start_termina_vm, --start_container must be provided";
     return -1;
   }
 
@@ -697,6 +752,9 @@ int main(int argc, char** argv) {
   } else if (FLAGS_start_termina_vm) {
     return StartTerminaVm(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_start_container) {
+    return StartContainer(proxy, std::move(FLAGS_name),
+                          std::move(FLAGS_container_name));
   }
 
   // Unreachable.
