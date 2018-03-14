@@ -14,7 +14,7 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/sequenced_task_runner.h>
-#include <brillo/dbus/exported_object_manager.h>
+#include <dbus/bus.h>
 
 #include "container_utils/device_jail_server.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
@@ -31,7 +31,7 @@ namespace permission_broker {
 class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
-  PermissionBroker(brillo::dbus_utils::ExportedObjectManager* object_manager,
+  PermissionBroker(scoped_refptr<dbus::Bus> bus,
                    const std::string& access_group,
                    const std::string& udev_run_path,
                    int poll_interval_msecs);

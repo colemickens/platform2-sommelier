@@ -15,22 +15,19 @@
 namespace permission_broker {
 
 using brillo::dbus_utils::AsyncEventSequencer;
-const char kObjectServicePath[] =
-    "/org/chromium/PermissionBroker/ObjectManager";
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
   Daemon(std::string access_group, std::string udev_run_path, int poll_interval)
-      : DBusServiceDaemon(kPermissionBrokerServiceName,
-                          dbus::ObjectPath{kObjectServicePath}),
+      : DBusServiceDaemon(kPermissionBrokerServiceName),
         access_group_(access_group),
         udev_run_path_(udev_run_path),
         poll_interval_(poll_interval) {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    broker_.reset(new PermissionBroker{object_manager_.get(), access_group_,
-                                       udev_run_path_, poll_interval_});
+    broker_.reset(new PermissionBroker{bus_, access_group_, udev_run_path_,
+                                       poll_interval_});
     broker_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   }
 

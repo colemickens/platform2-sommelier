@@ -84,15 +84,13 @@ class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
 };
 #endif  // USE_CONTAINERS
 
-PermissionBroker::PermissionBroker(
-    brillo::dbus_utils::ExportedObjectManager* object_manager,
-    const std::string& access_group_name,
-    const std::string& udev_run_path,
-    int poll_interval_msecs)
+PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
+                                   const std::string& access_group_name,
+                                   const std::string& udev_run_path,
+                                   int poll_interval_msecs)
     : org::chromium::PermissionBrokerAdaptor(this),
       rule_engine_(udev_run_path, poll_interval_msecs),
-      dbus_object_(object_manager,
-                   object_manager->GetBus(),
+      dbus_object_(nullptr, bus,
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
       port_tracker_(&firewall_) {
   CHECK(brillo::userdb::GetGroupInfo(access_group_name, &access_group_))
