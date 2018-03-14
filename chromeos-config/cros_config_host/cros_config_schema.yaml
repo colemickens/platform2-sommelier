@@ -82,6 +82,10 @@ properties:
                         this is not supported, this tag can be used to achieve the
                         same end.  This is reported in 'ro.product.metrics.tag'.
                       type: string
+                    first-api-level:
+                      description: |
+                        The first Android API level that this model shipped with.
+                      type: string
                   additionalProperties: false
                 files:
                   type: array

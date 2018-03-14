@@ -3,6 +3,9 @@
     "models": [
       {
         "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }, 
           "files": [
             {
               "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
@@ -93,6 +96,9 @@
       }, 
       {
         "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }, 
           "files": [
             {
               "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
@@ -258,6 +264,9 @@
       }, 
       {
         "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }, 
           "files": [
             {
               "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
@@ -314,6 +323,9 @@
       }, 
       {
         "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }, 
           "files": [
             {
               "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
@@ -369,6 +381,9 @@
       }, 
       {
         "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }, 
           "files": [
             {
               "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
@@ -425,6 +440,9 @@
       }, 
       {
         "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }, 
           "files": [
             {
               "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 

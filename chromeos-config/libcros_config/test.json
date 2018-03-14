@@ -2,7 +2,11 @@
   "chromeos": {
     "models": [
       {
-        "arc": {}, 
+        "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }
+        }, 
         "audio": {
           "main": {
             "cras-config-dir": "some", 
@@ -22,7 +26,11 @@
         "wallpaper": "some"
       }, 
       {
-        "arc": {}, 
+        "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }
+        }, 
         "audio": {
           "main": {
             "cras-config-dir": "some", 
@@ -59,7 +67,11 @@
         "wallpaper": "default"
       }, 
       {
-        "arc": {}, 
+        "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }
+        }, 
         "identity": {
           "customization-id": "whitelabel1", 
           "platform-name": "Some", 
@@ -74,7 +86,11 @@
         "wallpaper": "wallpaper-wl1"
       }, 
       {
-        "arc": {}, 
+        "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }
+        }, 
         "identity": {
           "customization-id": "whitelabel1", 
           "platform-name": "Some", 
@@ -88,7 +104,11 @@
         "wallpaper": "wallpaper-wl1"
       }, 
       {
-        "arc": {}, 
+        "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }
+        }, 
         "identity": {
           "customization-id": "whitelabel2", 
           "platform-name": "Some", 
@@ -103,7 +123,11 @@
         "wallpaper": "wallpaper-wl2"
       }, 
       {
-        "arc": {}, 
+        "arc": {
+          "build-properties": {
+            "first-api-level": "27"
+          }
+        }, 
         "identity": {
           "customization-id": "whitelabel2", 
           "platform-name": "Some", 

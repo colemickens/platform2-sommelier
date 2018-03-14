@@ -486,6 +486,7 @@ ARC_PROPERTIES_SCHEMA = [
     PropString('oem', False),
     PropString('marketing-name', False),
     PropString('metrics-tag', False),
+    PropString('first-api-level', False, '[0-9]+'),
 ]
 
 BASE_AUDIO_NODE = [

@@ -110,6 +110,9 @@ properties.
                     collation of metrics with different tags into groups, but if
                     this is not supported, this tag can be used to achieve the
                     same end. This is reported in `ro.product.metrics.tag`.
+                *   `first-api-level`: The first [Android API
+                    level](https://source.android.com/setup/build-numbers) that
+                    this model shipped with.
 
     *   `power` (optional): Contains information about power devices used by
         this family. Each subnode is defined as a phandle that can be referenced
@@ -853,6 +856,8 @@ chromeos {
 | device | string |  | False | Device name to report in 'ro.product.device'. This
 is often '{product}_cheets' but it can be something else if
 desired.
+ |
+| first-api-level | string |  | False | The first Android API level that this model shipped with.
  |
 | marketing-name | string |  | False | Name of this model as it is called in the
 market, reported in 'ro.product.model'. This often starts

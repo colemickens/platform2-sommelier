@@ -42,6 +42,8 @@ some_base_config: &some_base_config
     files:
       - source: "some/hardware_features"
         destination: "/usr/share/chromeos-config/sbin/some/hardware_features"
+    build-properties:
+      first-api-level: "27"
   firmware:
     bcs-overlay: "overlay-some-private"
     build-targets:
