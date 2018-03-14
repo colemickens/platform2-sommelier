@@ -5,12 +5,15 @@
 #ifndef BLUETOOTH_NEWBLUED_SUSPEND_MANAGER_H_
 #define BLUETOOTH_NEWBLUED_SUSPEND_MANAGER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+
+#include "bluetooth/newblued/service_watcher.h"
 
 namespace bluetooth {
 
@@ -30,10 +33,6 @@ class SuspendManager {
  private:
   // Called when the power manager is initially available or restarted.
   void HandlePowerManagerAvailableOrRestarted(bool available);
-  // Called when ownership of the power manager's D-Bus service name changes.
-  // Invokes HandlePowerManagerAvailableOrRestarted if the service is running.
-  void PowerManagerNameOwnerChangedReceived(const std::string& old_owner,
-                                            const std::string& new_owner);
   // Called when SuspendImminentSignal is received from power manager.
   void HandleSuspendImminentSignal(dbus::Signal* signal);
   // Called when SuspendDoneSignal is received from power manager.
@@ -77,6 +76,9 @@ class SuspendManager {
   // at a time. This flag is needed to decide whether we can make the bluez call
   // immediately or "queued" after the in-progress D-Bus call completes.
   bool is_pause_or_unpause_in_progress_ = false;
+
+  // Watches powerd service availability.
+  std::unique_ptr<ServiceWatcher> service_watcher_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

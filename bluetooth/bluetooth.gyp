@@ -19,6 +19,7 @@
       'type': 'static_library',
       'sources': [
         'newblued/daemon.cc',
+        'newblued/service_watcher.cc',
         'newblued/suspend_manager.cc',
       ],
     },

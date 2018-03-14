@@ -4,6 +4,7 @@
 
 #include "bluetooth/newblued/suspend_manager.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
@@ -55,13 +56,13 @@ void SuspendManager::Init() {
       bus_->GetObjectProxy(bluetooth_adapter::kBluetoothAdapterServiceName,
                            dbus::ObjectPath(kBluetoothAdapterObjectPath));
 
-  // Prepares power manager event handlers.
-  power_manager_dbus_proxy_->WaitForServiceToBeAvailable(
+  service_watcher_ =
+      std::make_unique<ServiceWatcher>(power_manager_dbus_proxy_);
+  service_watcher_->RegisterWatcher(
       base::Bind(&SuspendManager::HandlePowerManagerAvailableOrRestarted,
                  weak_ptr_factory_.GetWeakPtr()));
-  power_manager_dbus_proxy_->SetNameOwnerChangedCallback(
-      base::Bind(&SuspendManager::PowerManagerNameOwnerChangedReceived,
-                 weak_ptr_factory_.GetWeakPtr()));
+
+  // Prepares power manager event handlers.
   power_manager_dbus_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
@@ -77,7 +78,10 @@ void SuspendManager::Init() {
 
 void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
   if (!available) {
-    LOG(ERROR) << "Failed waiting for power manager to become available";
+    // Power manager is dead, resets this to 0 to mark that we don't currently
+    // have a delay id registered.
+    suspend_delay_id_ = 0;
+    LOG(INFO) << "Power manager becomes not available";
     return;
   }
 
@@ -94,21 +98,6 @@ void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendDelayRegistered,
                  weak_ptr_factory_.GetWeakPtr()));
-}
-
-void SuspendManager::PowerManagerNameOwnerChangedReceived(
-    const std::string& old_owner, const std::string& new_owner) {
-  LOG(INFO) << "D-Bus power manager ownership changed from \"" << old_owner
-            << "\" to \"" << new_owner << "\"";
-
-  if (new_owner.empty()) {
-    // Power manager is dead, resets this to 0 to mark that we don't currently
-    // have a delay id registered.
-    suspend_delay_id_ = 0;
-    return;
-  }
-
-  HandlePowerManagerAvailableOrRestarted(true);
 }
 
 void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {

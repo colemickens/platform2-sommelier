@@ -340,6 +340,16 @@ TEST_F(SuspendManagerTest, PowerManagerAvailableSuccess) {
   EmitSuspendDoneSignal(kSuspendId);
 }
 
+TEST_F(SuspendManagerTest, PowerManagerAvailableTwice) {
+  // Power manager should receive one RegisterSuspendDelay after it's available
+  // even though we receive double available signals.
+  EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
+      .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
+  // These two events could both happen.
+  TriggerPowerManagerAvailable(true);
+  TriggerPowerManagerNameOwnerChanged("", ":1.234");
+}
+
 TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Power manager should receive RegisterSuspendDelay after it's available.
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
