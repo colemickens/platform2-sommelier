@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
+#include <base/guid.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
@@ -481,9 +482,49 @@ uint32_t VirtualMachine::ContainerSubnet() const {
   return INADDR_ANY;
 }
 
-void VirtualMachine::RegisterContainerIp(const std::string& container_name,
-                                         std::string container_ip) {
-  container_name_to_ip_[container_name] = std::move(container_ip);
+bool VirtualMachine::RegisterContainerIp(const std::string& container_token,
+                                         const std::string& container_ip) {
+  // The token will be in the pending map if this is the first start of the
+  // container. It will be in the main map if this is from a crash/restart of
+  // the garcon process in the container.
+  auto iter = pending_container_token_to_name_.find(container_token);
+  if (iter != pending_container_token_to_name_.end()) {
+    container_name_to_ip_[iter->second] = container_ip;
+    container_token_to_name_[container_token] = iter->second;
+    pending_container_token_to_name_.erase(iter);
+    return true;
+  }
+  std::string existing_name = GetContainerNameForToken(container_token);
+  if (existing_name.empty()) {
+    return false;
+  }
+  container_name_to_ip_[existing_name] = std::move(container_ip);
+  return true;
+}
+
+std::string VirtualMachine::GenerateContainerToken(
+    const std::string& container_name) {
+  std::string token = base::GenerateGUID();
+  pending_container_token_to_name_[token] = container_name;
+  return token;
+}
+
+std::string VirtualMachine::GetContainerNameForToken(
+    const std::string& container_token) {
+  auto iter = container_token_to_name_.find(container_token);
+  if (iter == container_token_to_name_.end()) {
+    return "";
+  }
+  return iter->second;
+}
+
+std::string VirtualMachine::GetContainerIpForName(
+    const std::string& container_name) {
+  auto iter = container_name_to_ip_.find(container_name);
+  if (iter == container_name_to_ip_.end()) {
+    return "";
+  }
+  return iter->second;
 }
 
 void VirtualMachine::set_stub_for_testing(

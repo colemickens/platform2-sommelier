@@ -47,11 +47,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
-  // Notifies the service that a container with |container_name| and IP of
+  // Notifies the service that a container with |container_token| and IP of
   // |container_ip| has completed startup. Sets |result| to true if this maps to
-  // a subnet inside a currently running VM, and false otherwise. Signals
-  // |event| when done.
-  void ContainerStartupCompleted(const std::string& container_name,
+  // a subnet inside a currently running VM and |container_token| matches a
+  // security token for that VM; false otherwise. Signals |event| when done.
+  void ContainerStartupCompleted(const std::string& container_token,
                                  const uint32_t container_ip,
                                  bool* result,
                                  base::WaitableEvent* event);

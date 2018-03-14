@@ -14,8 +14,8 @@ import "common.proto";
 
 // Request protobuf for notifying host that a container has started up.
 message ContainerStartupInfo {
-  // The name of the container.
-  string name = 1;
+  // The security token the container was given.
+  string token = 1;
 }
 
 // Service that is notified of events from a container.

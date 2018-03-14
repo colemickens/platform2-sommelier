@@ -312,7 +312,7 @@ void Service::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
 }
 
-void Service::ContainerStartupCompleted(const std::string& container_name,
+void Service::ContainerStartupCompleted(const std::string& container_token,
                                         const uint32_t container_ip,
                                         bool* result,
                                         base::WaitableEvent* event) {
@@ -320,10 +320,6 @@ void Service::ContainerStartupCompleted(const std::string& container_name,
   CHECK(result);
   CHECK(event);
   *result = false;
-  // TODO(jkardatzke): Add container tokens so we can securely identify which
-  // container a connection is coming from rather than trusting the names
-  // they send us.
-
   // Find the VM that has a container subnet which has the passed in IP address
   // within it.
   for (auto& vm : vms_) {
@@ -331,17 +327,23 @@ void Service::ContainerStartupCompleted(const std::string& container_name,
     if ((vm.second->ContainerSubnet() & netmask) != (container_ip & netmask)) {
       continue;
     }
-    // Found the VM with a matching container subnet, setup our name->ip
-    // mapping for that VM.
+    // Found the VM with a matching container subnet, register the IP address
+    // for the container with that VM object.
     std::string string_ip;
     if (!IPv4AddressToString(container_ip, &string_ip)) {
       LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
       break;
     }
+    if (!vm.second->RegisterContainerIp(container_token, string_ip)) {
+      LOG(ERROR) << "Invalid container token passed back from VM " << vm.first
+                 << " of " << container_token;
+      break;
+    }
+    std::string container_name =
+        vm.second->GetContainerNameForToken(container_token);
+    LOG(INFO) << "Startup of container " << container_name << " at IP "
+              << string_ip << " for VM " << vm.first << " completed.";
 
-    LOG(INFO) << "Startup of container " << container_name << " at "
-              << string_ip << " in VM " << vm.first << " completed.";
-    vm.second->RegisterContainerIp(container_name, std::move(string_ip));
     // Send the D-Bus signal out to indicate the container is ready.
     dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
     ContainerStartedSignal proto;
@@ -1172,6 +1174,7 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
 std::unique_ptr<dbus::Response> Service::StartContainer(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received StartContainer request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -1200,10 +1203,15 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
   // This executes the run_container.sh script in the VM which will startup
   // a container. We need to construct the command for that with the proper
   // parameters.
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
   std::vector<std::string> container_args = {
-      "run_container.sh", "--container_name",
-      request.container_name().empty() ? kDefaultContainerName
-                                       : request.container_name(),
+      "run_container.sh",
+      "--container_name",
+      container_name,
+      "--container_token",
+      iter->second->GenerateContainerToken(container_name),
   };
   if (!request.container_username().empty()) {
     container_args.emplace_back("--user");

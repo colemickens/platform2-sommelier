@@ -16,6 +16,7 @@
 #include <base/bind_helpers.h>
 #include <base/callback.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/guid.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/macros.h>
@@ -69,6 +70,14 @@ bool IPv4AddressToString(uint32_t addr, string* address) {
 
 // Name of the unix domain socket for the grpc server.
 constexpr char kServerSocket[] = "server";
+
+// Fake IP addresses to use for testing.
+constexpr char kFakeIp1[] = "1.2.3.4";
+constexpr char kFakeIp2[] = "5.6.7.8";
+
+// Fake container names to use for testing.
+constexpr char kFakeContainerName1[] = "box";
+constexpr char kFakeContainerName2[] = "cube";
 
 // Test fixture for actually testing the VirtualMachine functionality.
 class VirtualMachineTest : public ::testing::Test {
@@ -504,6 +513,43 @@ TEST_F(VirtualMachineTest, Mount) {
 
     EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
   }
+}
+
+TEST_F(VirtualMachineTest, NoContainerToken) {
+  // If the token was never generated, then registration should fail.
+  EXPECT_FALSE(vm_->RegisterContainerIp(base::GenerateGUID(), kFakeIp1));
+}
+
+TEST_F(VirtualMachineTest, InvalidContainerToken) {
+  // If the wrong token is used, then registration should fail.
+  std::string token = vm_->GenerateContainerToken(kFakeContainerName1);
+  EXPECT_FALSE(vm_->RegisterContainerIp(base::GenerateGUID(), kFakeIp1));
+}
+
+TEST_F(VirtualMachineTest, ValidContainerToken) {
+  // Valid process for generating a token and then registering it.
+  std::string token = vm_->GenerateContainerToken(kFakeContainerName1);
+  EXPECT_TRUE(vm_->RegisterContainerIp(token, kFakeIp1));
+  EXPECT_EQ(kFakeIp1, vm_->GetContainerIpForName(kFakeContainerName1));
+}
+
+TEST_F(VirtualMachineTest, ReuseContainerToken) {
+  // Re-registering the same token is valid.
+  std::string token = vm_->GenerateContainerToken(kFakeContainerName1);
+  EXPECT_TRUE(vm_->RegisterContainerIp(token, kFakeIp1));
+  EXPECT_TRUE(vm_->RegisterContainerIp(token, kFakeIp2));
+  EXPECT_EQ(kFakeIp2, vm_->GetContainerIpForName(kFakeContainerName1));
+}
+
+TEST_F(VirtualMachineTest, MultipleContainerTokens) {
+  // Valid process for generating a token and then registering it from multiple
+  // containers.
+  std::string token1 = vm_->GenerateContainerToken(kFakeContainerName1);
+  EXPECT_TRUE(vm_->RegisterContainerIp(token1, kFakeIp1));
+  std::string token2 = vm_->GenerateContainerToken(kFakeContainerName2);
+  EXPECT_TRUE(vm_->RegisterContainerIp(token2, kFakeIp2));
+  EXPECT_EQ(kFakeIp1, vm_->GetContainerIpForName(kFakeContainerName1));
+  EXPECT_EQ(kFakeIp2, vm_->GetContainerIpForName(kFakeContainerName2));
 }
 
 }  // namespace concierge

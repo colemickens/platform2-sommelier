@@ -161,9 +161,25 @@ class VirtualMachine {
   // Returns INADDR_ANY if there is no container subnet.
   uint32_t ContainerSubnet() const;
 
-  // Register the IP address for a named container within this VM.
-  void RegisterContainerIp(const std::string& container_name,
-                           std::string container_ip);
+  // Register the IP address for a container token within this VM. Returns true
+  // if the token is valid, false otherwise.
+  bool RegisterContainerIp(const std::string& container_token,
+                           const std::string& container_ip);
+
+  // Generates a random token string that should be passed into the container
+  // which can then be used by the container to identify itself when it
+  // communicates back with us.
+  std::string GenerateContainerToken(const std::string& container_name);
+
+  // Returns the name of the container associated with the passed in
+  // |container_token|. Returns the empty string if no such mapping exists. This
+  // will only return a name that has been confirmed after calling
+  // RegisterContainerIp.
+  std::string GetContainerNameForToken(const std::string& container_token);
+
+  // Returns the IP address of container with the specified |container_name|.
+  // The empty string is returned if no such name is currently registered.
+  std::string GetContainerIpForName(const std::string& container_name);
 
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
@@ -204,6 +220,17 @@ class VirtualMachine {
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
+
+  // Mapping of container tokens to names. The tokens are used to securely
+  // identify a container when it connects back to concierge to identify itself.
+  std::map<std::string, std::string> container_token_to_name_;
+
+  // Pending map of container tokens to names. The tokens are put in here when
+  // they are generated and removed once we have a connection from the
+  // container. We do not immediately put them in the contaienr_token_to_name_
+  // map because we may get redundant requests to start a container that is
+  // already running and we don't want to invalidate an in-use token.
+  std::map<std::string, std::string> pending_container_token_to_name_;
 
   // Mapping of container names to IP address.
   std::map<std::string, std::string> container_name_to_ip_;

@@ -37,7 +37,9 @@ const int kSyslogCritical = LOG_CRIT;
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
 
 constexpr char kHostIpFile[] = "/dev/.host_ip";
+constexpr char kSecurityTokenFile[] = "/dev/.container_token";
 constexpr char kLogPrefix[] = "garcon: ";
+constexpr int kSecurityTokenLength = 36;
 
 bool LogToSyslog(logging::LogSeverity severity,
                  const char* /* file */,
@@ -77,17 +79,21 @@ bool NotifyHostGarconIsReady() {
     return false;
   }
   host_addr[num_read] = '\0';
+  char token[kSecurityTokenLength + 1];
+  base::FilePath security_token_path(kSecurityTokenFile);
+  num_read = base::ReadFile(security_token_path, token, sizeof(token) - 1);
+  if (num_read <= 0) {
+    LOG(ERROR) << "Failed reading the container token from: "
+               << security_token_path.MaybeAsASCII();
+    return false;
+  }
+  token[num_read] = '\0';
   vm_tools::container::ContainerListener::Stub stub(grpc::CreateChannel(
       base::StringPrintf("%s:%u", host_addr, vm_tools::kGarconPort),
       grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
   vm_tools::container::ContainerStartupInfo startup_info;
-  char buf[HOST_NAME_MAX + 1];
-  if (gethostname(buf, sizeof(buf)) < 0) {
-    PLOG(ERROR) << "Failed getting the hostname of the container";
-    return false;
-  }
-  startup_info.set_name(buf);
+  startup_info.set_token(token);
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub.ContainerReady(&ctx, startup_info, &empty);
   if (!status.ok()) {

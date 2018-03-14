@@ -60,7 +60,7 @@ grpc::Status ContainerListenerImpl::ContainerReady(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::concierge::Service::ContainerStartupCompleted,
-                 service_, request->name(), int_ip, &result, &event));
+                 service_, request->token(), int_ip, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerReady but could not find matching VM: "
