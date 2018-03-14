@@ -21,7 +21,7 @@ or during a build.
 ## CLI Usage
 
 There are two CLIs built for Chrome OS configuration access, cros_config for use
-on the target, and cros_config_host_py for use on the host/during building. See
+on the target, and cros_config_host for use on the host/during building. See
 the --help for each tool respectively for help on usage.
 
 ## Debugging
