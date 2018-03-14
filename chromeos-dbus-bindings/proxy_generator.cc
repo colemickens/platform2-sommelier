@@ -995,7 +995,7 @@ void ProxyGenerator::ObjectManager::GenerateProxy(
   object_manager.AddOpenNamespaces(text, false);
   text->AddBlankLine();
 
-  string class_name = object_manager.type_name + "Proxy";
+  string class_name = object_manager.type_name() + "Proxy";
   text->AddLine(StringPrintf("class %s : "
                              "public dbus::ObjectManager::Interface {",
                              class_name.c_str()));
@@ -1140,7 +1140,7 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
   text->AddLine(
       StringPrintf("std::vector<%sInterface*> Get%sInstances() const {",
                    itf_name.MakeProxyName(true).c_str(),
-                   itf_name.type_name.c_str()));
+                   itf_name.type_name().c_str()));
   text->PushOffset(kBlockOffset);
   text->AddLine(StringPrintf("std::vector<%sInterface*> values;",
                              itf_name.MakeProxyName(true).c_str()));
@@ -1153,7 +1153,7 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
 
   // SetAddedCallback().
   text->AddLine(StringPrintf("void Set%sAddedCallback(",
-                              itf_name.type_name.c_str()));
+                              itf_name.type_name().c_str()));
   text->PushOffset(kLineContinuationOffset);
   text->AddLine(
       StringPrintf("const base::Callback<void(%sInterface*)>& callback) {",
@@ -1167,7 +1167,7 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
 
   // SetRemovedCallback().
   text->AddLine(StringPrintf("void Set%sRemovedCallback(",
-                             itf_name.type_name.c_str()));
+                             itf_name.type_name().c_str()));
   text->PushOffset(kLineContinuationOffset);
   text->AddLine("const base::Callback<void(const dbus::ObjectPath&)>& "
                 "callback) {");

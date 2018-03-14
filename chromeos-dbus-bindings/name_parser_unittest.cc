@@ -20,14 +20,14 @@ TEST(NameParser, Parsing_Empty) {
 
 TEST(NameParser, Parsing_NoNamespaces) {
   NameParser parser{"foo"};
-  EXPECT_EQ("foo", parser.type_name);
-  EXPECT_TRUE(parser.namespaces.empty());
+  EXPECT_EQ("foo", parser.type_name());
+  EXPECT_TRUE(parser.namespaces().empty());
 }
 
 TEST(NameParser, Parsing_FullyQualified) {
   NameParser parser{"foo.bar.FooBar"};
-  EXPECT_EQ("FooBar", parser.type_name);
-  EXPECT_THAT(parser.namespaces, testing::ElementsAre("foo", "bar"));
+  EXPECT_EQ("FooBar", parser.type_name());
+  EXPECT_THAT(parser.namespaces(), testing::ElementsAre("foo", "bar"));
 }
 
 TEST(NameParser, MakeFullCppName) {

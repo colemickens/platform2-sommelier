@@ -27,27 +27,27 @@ void AddCloseNamespace(IndentedText *text, const std::string& name) {
 }  // anonymous namespace
 
 NameParser::NameParser(const std::string& name)
-    : namespaces{brillo::string_utils::Split(name, ".")} {
-  CHECK(!namespaces.empty()) << "Empty name specified";
-  type_name = namespaces.back();
-  namespaces.pop_back();
+    : namespaces_{brillo::string_utils::Split(name, ".")} {
+  CHECK(!namespaces_.empty()) << "Empty name specified";
+  type_name_ = namespaces_.back();
+  namespaces_.pop_back();
 }
 
 std::string NameParser::MakeFullyQualified(const std::string& name) const {
-  std::vector<std::string> parts = namespaces;
+  std::vector<std::string> parts = namespaces_;
   parts.push_back(name);
   return brillo::string_utils::Join("::", parts);
 }
 
 std::string NameParser::MakeFullCppName() const {
-  return MakeFullyQualified(type_name);
+  return MakeFullyQualified(type_name_);
 }
 
 std::string NameParser::MakeVariableName() const {
   // Convert CamelCase name to google_style variable name.
   std::string result;
   bool last_upper = true;
-  for (char c : type_name) {
+  for (char c : type_name_) {
     bool is_upper = isupper(c);
     if (is_upper) {
       if (!last_upper)
@@ -61,36 +61,36 @@ std::string NameParser::MakeVariableName() const {
 }
 
 std::string NameParser::MakeInterfaceName(bool fully_qualified) const {
-  std::string interface_name = type_name + "Interface";
+  std::string interface_name = type_name_ + "Interface";
   return fully_qualified ? MakeFullyQualified(interface_name) : interface_name;
 }
 
 std::string NameParser::MakeProxyName(bool fully_qualified) const {
-  std::string proxy_name = type_name + "Proxy";
+  std::string proxy_name = type_name_ + "Proxy";
   return fully_qualified ? MakeFullyQualified(proxy_name) : proxy_name;
 }
 
 std::string NameParser::MakeAdaptorName(bool fully_qualified) const {
-  std::string adaptor_name = type_name + "Adaptor";
+  std::string adaptor_name = type_name_ + "Adaptor";
   return fully_qualified ? MakeFullyQualified(adaptor_name) : adaptor_name;
 }
 
 void NameParser::AddOpenNamespaces(IndentedText *text,
                                    bool add_main_type) const {
-  for (const auto& ns : namespaces) {
+  for (const auto& ns : namespaces_) {
     AddOpenNamespace(text, ns);
   }
 
   if (add_main_type)
-    AddOpenNamespace(text, type_name);
+    AddOpenNamespace(text, type_name_);
 }
 
 void NameParser::AddCloseNamespaces(IndentedText *text,
                                     bool add_main_type) const {
   if (add_main_type)
-    AddCloseNamespace(text, type_name);
+    AddCloseNamespace(text, type_name_);
 
-  for (auto it = namespaces.rbegin(); it != namespaces.rend(); ++it) {
+  for (auto it = namespaces_.rbegin(); it != namespaces_.rend(); ++it) {
     AddCloseNamespace(text, *it);
   }
 }

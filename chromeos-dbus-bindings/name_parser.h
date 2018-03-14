@@ -22,6 +22,9 @@ class NameParser {
  public:
   explicit NameParser(const std::string& name);
 
+  const std::string& type_name() const { return type_name_; }
+  const std::vector<std::string> namespaces() const { return namespaces_; }
+
   // Returns fully-qualified C++ type name for the current D-Bus name
   // for example "org::chromium::TestInterface".
   std::string MakeFullCppName() const;
@@ -50,12 +53,12 @@ class NameParser {
   // If |add_main_type| is true, adds the main type name as a namespace as well.
   void AddCloseNamespaces(IndentedText *text, bool add_main_type) const;
 
-  std::string type_name;  // e.g. "TestInterface".
-  std::vector<std::string> namespaces;  // e.g. {"org", "chromium"}.
-
  private:
   // Helper function to prepend the C++ namespaces to the |name|.
   std::string MakeFullyQualified(const std::string& name) const;
+
+  std::string type_name_;  // e.g. "TestInterface".
+  std::vector<std::string> namespaces_;  // e.g. {"org", "chromium"}.
 };
 
 }  // namespace chromeos_dbus_bindings
