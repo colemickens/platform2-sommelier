@@ -1,0 +1,38 @@
+#!/bin/sh -e
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+dump_var_log() {
+  local filename="$1"
+
+  echo "################################"
+  echo "### ${filename}"
+  echo "################################"
+  tail -c 30k "/var/log/${filename}" || echo "No ${filename}"
+}
+
+dump_var_log android.kmsg
+dump_var_log arc-adbd.log
+dump_var_log arc-boot-continue.log
+dump_var_log arc-camera.log
+dump_var_log arc-network.log
+dump_var_log arc-obb-mounter.log
+dump_var_log arc-removable-media.log
+dump_var_log arc-sdcard.log
+dump_var_log arc-sensor.log
+dump_var_log arc-setfattr.log
+dump_var_log arc-setup-for-login-screen.log
+dump_var_log arc-stale-directory-remover.log
+dump_var_log arc-start-sysctl.log
+dump_var_log arc-stop-sysctl.log
+dump_var_log arc-system-mount.log
+dump_var_log arc-ureadahead.log
+dump_var_log arc-ureadahead-trace.log
+
+if [ -d /var/log/android ] ; then
+  # Dump only the last 3 log files.
+  for f in `ls -1tr /var/log/android | tail -3` ; do
+    dump_var_log android/$f
+  done
+fi
