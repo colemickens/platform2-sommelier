@@ -433,8 +433,8 @@ int dm_setup(uint64_t sectors,
     return 0;
   }
 
-  const gchar* argv[] = {"/sbin/dmsetup", "create",  name,  "--noudevrules",
-                         "--noudevsync",  "--table", table, NULL};
+  const gchar* argv[] = {"/sbin/dmsetup", "create",  name,
+                         "--table", table, NULL};
 
   /* TODO(keescook): replace with call to libdevmapper. */
   if (runcmd(argv, NULL) != 0) {
@@ -442,6 +442,13 @@ int dm_setup(uint64_t sectors,
     return 0;
   }
   g_free(table);
+
+  /* Make sure udev is done with events. */
+  const gchar* settle_argv[] = {
+      "/bin/udevadm", "settle", "-t", "10", "-E", path, NULL};
+  if (runcmd(settle_argv, NULL) != 0) {
+    return 0;
+  }
 
   /* Make sure the dm-crypt device showed up. */
   if (access(path, R_OK)) {
@@ -453,11 +460,17 @@ int dm_setup(uint64_t sectors,
 }
 
 int dm_teardown(const gchar* device) {
-  const char* argv[] = {"/sbin/dmsetup", "remove",       device,
-                        "--noudevrules", "--noudevsync", NULL};
+  const char* argv[] = {"/sbin/dmsetup", "remove", device, NULL};
   /* TODO(keescook): replace with call to libdevmapper. */
   if (runcmd(argv, NULL) != 0)
     return 0;
+
+  /* Make sure udev is done with events. */
+  const gchar* settle_argv[] = {"/bin/udevadm", "settle", NULL};
+  if (runcmd(settle_argv, NULL) != 0) {
+    return 0;
+  }
+
   return 1;
 }
 
