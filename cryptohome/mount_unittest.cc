@@ -101,6 +101,7 @@ Tpm::TpmRetryAction TpmPassthroughEncrypt(uint32_t _key,
 Tpm::TpmRetryAction TpmPassthroughDecrypt(uint32_t _key,
                                           const SecureBlob &ciphertext,
                                           Unused,
+                                          Unused,
                                           SecureBlob *plaintext) {
   plaintext->resize(ciphertext.size());
   memcpy(plaintext->data(), ciphertext.data(), ciphertext.size());
@@ -922,7 +923,7 @@ TEST_P(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->user_salt),
                           Return(true)));
-  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _))
+  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
     MockFileEnumerator* files = new MockFileEnumerator();
@@ -1337,7 +1338,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
                           Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
-  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _))
+  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
   // TPM calls are always ok. Control TPM presence with set_use_tpm()
@@ -1482,7 +1483,7 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
                           Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
-  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _))
+  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
   // TPM calls are always ok. Control TPM presence with set_use_tpm()

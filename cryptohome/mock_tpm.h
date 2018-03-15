@@ -9,7 +9,9 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <set>
+#include <string>
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -26,10 +28,12 @@ class MockTpm : public Tpm {
                                            const brillo::SecureBlob&,
                                            const brillo::SecureBlob&,
                                            brillo::SecureBlob*));
-  MOCK_METHOD4(DecryptBlob, TpmRetryAction(TpmKeyHandle,
-                                           const brillo::SecureBlob&,
-                                           const brillo::SecureBlob&,
-                                           brillo::SecureBlob*));
+  MOCK_METHOD5(DecryptBlob,
+      TpmRetryAction(TpmKeyHandle,
+                     const brillo::SecureBlob&,
+                     const brillo::SecureBlob&,
+                     const std::map<uint32_t, std::string>& pcr_map,
+                     brillo::SecureBlob*));
   MOCK_METHOD2(GetPublicKeyHash, TpmRetryAction(TpmKeyHandle,
                                                 brillo::SecureBlob*));
   MOCK_METHOD1(GetOwnerPassword, bool(brillo::Blob*));
@@ -101,19 +105,16 @@ class MockTpm : public Tpm {
                     const brillo::SecureBlob&,
                     uint32_t,
                     brillo::SecureBlob*));
-  MOCK_METHOD5(CreatePCRBoundKey,
-               bool(uint32_t,
-                    const brillo::SecureBlob&,
-                    brillo::SecureBlob*,
-                    brillo::SecureBlob*,
-                    brillo::SecureBlob*));
-  MOCK_METHOD4(VerifyPCRBoundKey,
-               bool(uint32_t,
-                    const brillo::SecureBlob&,
-                    const brillo::SecureBlob&,
-                    const brillo::SecureBlob&));
   MOCK_METHOD2(ExtendPCR, bool(uint32_t, const brillo::SecureBlob&));
   MOCK_METHOD2(ReadPCR, bool(uint32_t, brillo::SecureBlob*));
+  MOCK_METHOD5(CreatePCRBoundKey, bool(const std::map<uint32_t, std::string>&,
+                                       AsymmetricKeyUsage key_type,
+                                       brillo::SecureBlob*,
+                                       brillo::SecureBlob*,
+                                       brillo::SecureBlob*));
+  MOCK_METHOD3(VerifyPCRBoundKey, bool(const std::map<uint32_t, std::string>&,
+                                       const brillo::SecureBlob&,
+                                       const brillo::SecureBlob&));
   MOCK_METHOD0(IsEndorsementKeyAvailable, bool());
   MOCK_METHOD0(CreateEndorsementKey, bool());
   MOCK_METHOD2(TakeOwnership, bool(int, const brillo::SecureBlob&));
@@ -146,6 +147,13 @@ class MockTpm : public Tpm {
   MOCK_METHOD0(GetSignatureSealingBackend, SignatureSealingBackend*());
 
  private:
+  TpmRetryAction XorDecrypt(TpmKeyHandle _key,
+                            const brillo::SecureBlob& plaintext,
+                            const brillo::SecureBlob& key,
+                            const std::map<uint32_t, std::string>& pcr_map,
+                            brillo::SecureBlob* ciphertext) {
+    return Xor(_key, plaintext, key, ciphertext);
+  }
   TpmRetryAction Xor(TpmKeyHandle _key,
                      const brillo::SecureBlob& plaintext,
                      const brillo::SecureBlob& key,

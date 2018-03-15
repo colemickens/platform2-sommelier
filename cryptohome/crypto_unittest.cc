@@ -300,7 +300,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   crypto.set_use_tpm(true);
 
   EXPECT_CALL(tpm, EncryptBlob(_, _, _, _));
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _));
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _));
   EXPECT_CALL(tpm_init, HasCryptohomeKey())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -408,7 +408,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
 
   // DecryptBlob operation will fail.
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _))
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
       .WillOnce(Return(Tpm::kTpmRetryFatal));
 
   // Unsuccessful DecryptValutKeyset for tpm-backed keyset should not
@@ -474,7 +474,7 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   crypto.set_use_tpm(true);
 
   EXPECT_CALL(tpm, EncryptBlob(_, _, _, _));
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _));
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _));
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.

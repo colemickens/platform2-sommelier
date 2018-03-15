@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -89,8 +90,10 @@ bool BootLockbox::Verify(const brillo::SecureBlob& data,
   if (!GetCreationBlob(&creation_blob)) {
     return false;
   }
-  if (!tpm_->VerifyPCRBoundKey(kPCRIndex, initial_pcr_value_, key_blob,
-                               creation_blob)) {
+  if (!tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, std::string>(
+          {{kPCRIndex, initial_pcr_value_.to_string()}}),
+      key_blob, creation_blob)) {
     return false;
   }
   return true;
@@ -195,8 +198,10 @@ bool BootLockbox::CreateKey() {
   brillo::SecureBlob key_blob;
   brillo::SecureBlob public_key;
   brillo::SecureBlob creation_blob;
-  if (!tpm_->CreatePCRBoundKey(kPCRIndex, initial_pcr_value_, &key_blob,
-                               &public_key, &creation_blob)) {
+  if (!tpm_->CreatePCRBoundKey(
+      std::map<uint32_t, std::string>(
+          {{kPCRIndex, initial_pcr_value_.to_string()}}),
+      AsymmetricKeyUsage::kSignKey, &key_blob, &public_key, &creation_blob)) {
     LOG(ERROR) << "Failed to create boot-lockbox key.";
     return false;
   }

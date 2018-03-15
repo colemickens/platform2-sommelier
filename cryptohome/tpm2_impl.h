@@ -10,7 +10,7 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <vector>
+#include <string>
 
 #include <base/macros.h>
 #include <base/threading/platform_thread.h>
@@ -73,6 +73,7 @@ class Tpm2Impl : public Tpm {
   TpmRetryAction DecryptBlob(TpmKeyHandle key_handle,
                              const brillo::SecureBlob& ciphertext,
                              const brillo::SecureBlob& key,
+                             const std::map<uint32_t, std::string>& pcr_map,
                              brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
@@ -144,13 +145,12 @@ class Tpm2Impl : public Tpm {
             const brillo::SecureBlob& input,
             uint32_t bound_pcr_index,
             brillo::SecureBlob* signature) override;
-  bool CreatePCRBoundKey(uint32_t pcr_index,
-                         const brillo::SecureBlob& pcr_value,
+  bool CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+                         AsymmetricKeyUsage key_type,
                          brillo::SecureBlob* key_blob,
                          brillo::SecureBlob* public_key_der,
                          brillo::SecureBlob* creation_blob) override;
-  bool VerifyPCRBoundKey(uint32_t pcr_index,
-                         const brillo::SecureBlob& pcr_value,
+  bool VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
                          const brillo::SecureBlob& key_blob,
                          const brillo::SecureBlob& creation_blob) override;
   bool ExtendPCR(uint32_t pcr_index,
@@ -200,7 +200,7 @@ class Tpm2Impl : public Tpm {
   // and |hash_alg|. Currently, only the RSA keys are supported.
   // The loaded key handle is returned via |key_handle|.
   bool LoadPublicKeyFromSpki(const brillo::SecureBlob& public_key_spki_der,
-                             trunks::TpmUtility::AsymmetricKeyUsage key_type,
+                             AsymmetricKeyUsage key_type,
                              trunks::TPM_ALG_ID scheme,
                              trunks::TPM_ALG_ID hash_alg,
                              trunks::AuthorizationDelegate* session_delegate,

@@ -60,6 +60,14 @@ namespace {
 const char kDefaultPassword[] = "password";
 const int kDefaultCounter = 3;
 
+// Reset the |pcr_select| and set the bit corresponding to |index|.
+void SetPcrSelectData(uint8_t* pcr_select, uint32_t index) {
+  for (uint8_t i = 0; i < PCR_SELECT_MIN; ++i) {
+    pcr_select[i] = 0;
+  }
+  pcr_select[index / 8] = 1 << (index % 8);
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -423,8 +431,9 @@ TEST_F(Tpm2Test, SealToPCR0Success) {
   SecureBlob value("value");
   SecureBlob sealed_value;
   std::string policy_digest("digest");
-  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValue(0, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(policy_digest), Return(TPM_RC_SUCCESS)));
+  std::map<uint32_t, std::string> pcr_map;
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(policy_digest), Return(TPM_RC_SUCCESS)));
   std::string data_to_seal;
   EXPECT_CALL(mock_tpm_utility_, SealData(_, policy_digest, _, _))
       .WillOnce(DoAll(SaveArg<0>(&data_to_seal), Return(TPM_RC_SUCCESS)));
@@ -435,7 +444,7 @@ TEST_F(Tpm2Test, SealToPCR0Success) {
 TEST_F(Tpm2Test, SealToPCR0PolicyFailure) {
   SecureBlob value("value");
   SecureBlob sealed_value;
-  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValue(0, _, _))
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->SealToPCR0(value, &sealed_value));
 }
@@ -469,7 +478,7 @@ TEST_F(Tpm2Test, UnsealStartPolicySessionFail) {
 TEST_F(Tpm2Test, UnsealPolicyPCRFailure) {
   SecureBlob sealed_value("sealed");
   SecureBlob value;
-  EXPECT_CALL(mock_policy_session_, PolicyPCR(0, _))
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(_))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->Unseal(sealed_value, &value));
 }
@@ -484,7 +493,7 @@ TEST_F(Tpm2Test, UnsealFailure) {
 
 TEST_F(Tpm2Test, SignPolicySuccess) {
   uint32_t pcr_index = 5;
-  EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_index, _))
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(_))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_policy_session_, GetDelegate())
       .WillOnce(Return(&mock_authorization_delegate_));
@@ -535,7 +544,7 @@ TEST_F(Tpm2Test, SignFailure) {
 
 TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
   uint32_t modulus = 2048;
@@ -543,30 +552,47 @@ TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_,
               CreateRSAKeyPair(_, modulus, exponent, _, _, true, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(tpm_->CreatePCRBoundKey(index, pcr_value, &key_blob, nullptr,
-                                      &creation_blob));
+  EXPECT_TRUE(tpm_->CreatePCRBoundKey(
+      std::map<uint32_t, std::string>({{index, pcr_value}}),
+      trunks::TpmUtility::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
-  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValue(index, _, _))
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->CreatePCRBoundKey(index, pcr_value, &key_blob, nullptr,
-                                       &creation_blob));
+  EXPECT_FALSE(tpm_->CreatePCRBoundKey(
+      std::map<uint32_t, std::string>({{index, pcr_value}}),
+      trunks::TpmUtility::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyFailure) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
   EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->CreatePCRBoundKey(index, pcr_value, &key_blob, nullptr,
-                                       &creation_blob));
+  EXPECT_FALSE(tpm_->CreatePCRBoundKey(
+      std::map<uint32_t, std::string>({{index, pcr_value}}),
+      trunks::TpmUtility::kDecryptKey, &key_blob, nullptr, &creation_blob));
+}
+
+TEST_F(Tpm2Test, CreateMultiplePCRBoundKeySuccess) {
+  std::map<uint32_t, std::string> pcr_map({{2, ""}, {5, ""}});
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+  uint32_t modulus = 2048;
+  uint32_t exponent = 0x10001;
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateRSAKeyPair(_, modulus, exponent, _, _, true, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(tpm_->CreatePCRBoundKey(pcr_map,
+                                      trunks::TpmUtility::kDecryptKey,
+                                      &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
@@ -580,14 +606,16 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   std::string pcr_policy_value;
-  EXPECT_CALL(mock_trial_session_, PolicyPCR(index, _))
-      .WillOnce(DoAll(SaveArg<1>(&pcr_policy_value), Return(TPM_RC_SUCCESS)));
+  std::map<uint32_t, std::string> pcr_map;
+  EXPECT_CALL(mock_trial_session_, PolicyPCR(_))
+      .WillOnce(DoAll(SaveArg<0>(&pcr_map),
+                      Return(TPM_RC_SUCCESS)));
   std::string policy_digest(32, 'a');
   EXPECT_CALL(mock_trial_session_, GetDigest(_))
       .WillOnce(DoAll(SetArgPointee<0>(policy_digest), Return(TPM_RC_SUCCESS)));
@@ -599,24 +627,28 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
   ASSERT_TRUE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
-  EXPECT_EQ(pcr_policy_value, pcr_value.to_string());
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value.to_string()}}),
+          key_blob, creation_blob));
+  EXPECT_EQ(pcr_map[index], pcr_value.to_string());
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationBlob) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+          creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationDataCount) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -625,12 +657,14 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationDataCount) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+          creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRBank) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -642,12 +676,14 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRBank) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+          creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCR) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -660,12 +696,14 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCR) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+          creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
   uint32_t index = 2;
-  SecureBlob pcr_value("pcr_value");
+  std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -674,13 +712,15 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(SecureBlob("")).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+          creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
@@ -694,7 +734,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
@@ -703,7 +743,9 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
   EXPECT_CALL(mock_tpm_utility_, CertifyCreation(_, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value.to_string()}}),
+          key_blob, creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
@@ -717,7 +759,10 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  for (size_t i = 0; i < PCR_SELECT_MIN; ++i) {
+    pcr_select.pcr_selections[0].pcr_select[i] = 0;
+  }
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
@@ -726,7 +771,9 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
   EXPECT_CALL(mock_trial_session_, StartUnboundSession(true))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value.to_string()}}),
+          key_blob, creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
@@ -740,16 +787,21 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  for (size_t i = 0; i < PCR_SELECT_MIN; ++i) {
+    pcr_select.pcr_selections[0].pcr_select[i] = 0;
+  }
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
-  EXPECT_CALL(mock_trial_session_, PolicyPCR(index, _))
+  EXPECT_CALL(mock_trial_session_, PolicyPCR(_))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value.to_string()}}),
+          key_blob, creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
@@ -763,7 +815,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
@@ -772,7 +824,9 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
   EXPECT_CALL(mock_trial_session_, GetDigest(_))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value.to_string()}}),
+          key_blob, creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
@@ -786,7 +840,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
@@ -802,7 +856,9 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value.to_string()}}),
+          key_blob, creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
@@ -816,7 +872,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
       creation_data.creation_data.pcr_select;
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
       trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
@@ -834,7 +890,9 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_FALSE(
-      tpm_->VerifyPCRBoundKey(index, pcr_value, key_blob, creation_blob));
+      tpm_->VerifyPCRBoundKey(
+          std::map<uint32_t, std::string>({{index, pcr_value.to_string()}}),
+          key_blob, creation_blob));
 }
 
 TEST_F(Tpm2Test, ExtendPCRSuccess) {
@@ -1020,7 +1078,8 @@ TEST_F(Tpm2Test, DecryptBlobSuccess) {
       .WillOnce(DoAll(SetArgPointee<5>(tpm_plaintext), Return(TPM_RC_SUCCESS)));
   SecureBlob plaintext;
   EXPECT_EQ(Tpm::kTpmRetryNone,
-            tpm_->DecryptBlob(handle, ciphertext, key, &plaintext));
+            tpm_->DecryptBlob(handle, ciphertext, key,
+                              std::map<uint32_t, std::string>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
@@ -1029,7 +1088,8 @@ TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
   SecureBlob ciphertext(32, 'b');
   SecureBlob plaintext;
   EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->DecryptBlob(handle, ciphertext, key, &plaintext));
+            tpm_->DecryptBlob(handle, ciphertext, key,
+                              std::map<uint32_t, std::string>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, DecryptBlobBadCiphertext) {
@@ -1038,7 +1098,8 @@ TEST_F(Tpm2Test, DecryptBlobBadCiphertext) {
   SecureBlob ciphertext(16, 'b');
   SecureBlob plaintext;
   EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->DecryptBlob(handle, ciphertext, key, &plaintext));
+            tpm_->DecryptBlob(handle, ciphertext, key,
+                              std::map<uint32_t, std::string>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, DecryptBlobFailure) {
@@ -1049,7 +1110,8 @@ TEST_F(Tpm2Test, DecryptBlobFailure) {
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob plaintext;
   EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->DecryptBlob(handle, ciphertext, key, &plaintext));
+            tpm_->DecryptBlob(handle, ciphertext, key,
+                              std::map<uint32_t, std::string>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, GetPublicKeyHashSuccess) {
@@ -1275,12 +1337,9 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
       .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
       .WillOnce(DoAll(SetArgPointee<1>(kKeyName), Return(TPM_RC_SUCCESS)));
-  for (const auto& pcr_index_and_value : pcr_values) {
-    EXPECT_CALL(mock_trial_session_,
-                PolicyPCR(pcr_index_and_value.first,
-                          pcr_index_and_value.second.to_string()))
-        .WillOnce(Return(TPM_RC_SUCCESS));
-  }
+  EXPECT_CALL(mock_trial_session_,
+              PolicyPCR(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
   trunks::TPMT_SIGNATURE tpmt_signature;
   memset(&tpmt_signature, 0, sizeof(trunks::TPMT_SIGNATURE));
   EXPECT_CALL(
@@ -1361,10 +1420,12 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
       .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
       .WillOnce(DoAll(SetArgPointee<1>(kKeyName), Return(TPM_RC_SUCCESS)));
-  for (uint32_t pcr_index : kPcrIndexes) {
-    EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_index, "" /* pcr_value */))
-        .WillOnce(Return(TPM_RC_SUCCESS));
+  std::map<uint32_t, std::string> pcr_map;
+  for (int pcr_index : kPcrIndexes) {
+    pcr_map.emplace(pcr_index, std::string());
   }
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_map))
+      .WillOnce(Return(TPM_RC_SUCCESS));
   trunks::TPMT_SIGNATURE tpmt_signature;
   memset(&tpmt_signature, 0, sizeof(trunks::TPMT_SIGNATURE));
   EXPECT_CALL(

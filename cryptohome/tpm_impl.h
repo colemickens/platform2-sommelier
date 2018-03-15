@@ -6,14 +6,17 @@
 #define CRYPTOHOME_TPM_IMPL_H_
 
 #include <base/macros.h>
+
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <set>
+#include <string>
 
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 #include "cryptohome/tpm.h"
@@ -36,6 +39,7 @@ class TpmImpl : public Tpm {
   TpmRetryAction DecryptBlob(TpmKeyHandle key_handle,
                              const brillo::SecureBlob& ciphertext,
                              const brillo::SecureBlob& key,
+                             const std::map<uint32_t, std::string>& pcr_map,
                              brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
@@ -109,13 +113,12 @@ class TpmImpl : public Tpm {
             const brillo::SecureBlob& input,
             uint32_t bound_pcr_index,
             brillo::SecureBlob* signature) override;
-  bool CreatePCRBoundKey(uint32_t pcr_index,
-                         const brillo::SecureBlob& pcr_value,
+  bool CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+                         AsymmetricKeyUsage key_type,
                          brillo::SecureBlob* key_blob,
                          brillo::SecureBlob* public_key_der,
                          brillo::SecureBlob* creation_blob) override;
-  bool VerifyPCRBoundKey(uint32_t pcr_index,
-                         const brillo::SecureBlob& pcr_value,
+  bool VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
                          const brillo::SecureBlob& key_blob,
                          const brillo::SecureBlob& creation_blob) override;
   bool ExtendPCR(uint32_t pcr_index,

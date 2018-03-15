@@ -10,7 +10,9 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <map>
 #include <memory>
+#include <string>
 
 #include <arpa/inet.h>
 #include <base/memory/free_deleter.h>
@@ -273,7 +275,10 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle,
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (DecryptBlob(key_handle, data_out, key, &data) != kTpmRetryNone) {
+    if (DecryptBlob(key_handle,
+                    data_out, key,
+                    std::map<uint32_t, std::string>(),
+                    &data) != kTpmRetryNone) {
       return;
     }
     status->can_decrypt = true;
@@ -549,10 +554,12 @@ Tpm::TpmRetryAction TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
   return kTpmRetryNone;
 }
 
-Tpm::TpmRetryAction TpmImpl::DecryptBlob(TpmKeyHandle key_handle,
-                                         const SecureBlob& ciphertext,
-                                         const SecureBlob& key,
-                                         SecureBlob* plaintext) {
+Tpm::TpmRetryAction TpmImpl::DecryptBlob(
+    TpmKeyHandle key_handle,
+    const SecureBlob& ciphertext,
+    const SecureBlob& key,
+    const std::map<uint32_t, std::string>& pcr_map,
+    SecureBlob* plaintext) {
   TSS_RESULT result = TSS_SUCCESS;
   SecureBlob local_data;
   if (!CryptoLib::UnobscureRSAMessage(ciphertext, key, &local_data)) {
@@ -2478,8 +2485,8 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   return true;
 }
 
-bool TpmImpl::CreatePCRBoundKey(uint32_t pcr_index,
-                                const brillo::SecureBlob& pcr_value,
+bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+                                AsymmetricKeyUsage key_type,
                                 brillo::SecureBlob* key_blob,
                                 brillo::SecureBlob* public_key_der,
                                 brillo::SecureBlob* creation_blob) {
@@ -2508,23 +2515,46 @@ bool TpmImpl::CreatePCRBoundKey(uint32_t pcr_index,
     TPM_LOG(ERROR, result) << __func__ << ": Failed to create PCRS object.";
     return false;
   }
-  BYTE* pcr_value_buffer = const_cast<BYTE*>(pcr_value.data());
-  result = Tspi_PcrComposite_SetPcrValue(pcrs, pcr_index, pcr_value.size(),
-                                         pcr_value_buffer);
 
-  // Create a non-migratable signing key restricted to |pcrs|.
-  ScopedTssKey signing_key(context_handle);
-  UINT32 init_flags = TSS_KEY_TYPE_SIGNING |
-                      TSS_KEY_NOT_MIGRATABLE |
-                      TSS_KEY_VOLATILE |
-                      kDefaultTpmRsaKeyFlag;
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    brillo::SecureBlob pcr_value(map_pair.second);
+    if (pcr_value.empty()) {
+      if (!ReadPCR(pcr_index, &pcr_value)) {
+        LOG(ERROR) << __func__ << ": Failed to read PCR.";
+        return false;
+      }
+    }
+
+    BYTE* pcr_value_buffer = const_cast<BYTE*>(pcr_value.data());
+    Tspi_PcrComposite_SetPcrValue(pcrs, pcr_index, pcr_value.size(),
+                                  pcr_value_buffer);
+  }
+
+  // Create a non-migratable key restricted to |pcrs|.
+  ScopedTssKey pcr_bound_key(context_handle);
+  TSS_FLAG init_flags = TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE |
+                        kDefaultTpmRsaKeyFlag;
+  switch (key_type) {
+    case AsymmetricKeyUsage::kDecryptKey:
+        // In this case, the key is not decrypt only. It can be used to sign the
+        // data too. No easy way to make a decrypt only key here.
+        init_flags |= TSS_KEY_TYPE_LEGACY;
+        break;
+    case AsymmetricKeyUsage::kSignKey:
+        init_flags |= TSS_KEY_TYPE_SIGNING;
+        break;
+    case AsymmetricKeyUsage::kDecryptAndSignKey:
+        init_flags |= TSS_KEY_TYPE_LEGACY;
+        break;
+  }
   result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
-                                     init_flags, signing_key.ptr());
+                                     init_flags, pcr_bound_key.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << __func__ << ": Failed to create object.";
     return false;
   }
-  result = Tspi_SetAttribUint32(signing_key,
+  result = Tspi_SetAttribUint32(pcr_bound_key,
                                 TSS_TSPATTRIB_KEY_INFO,
                                 TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
                                 TSS_SS_RSASSAPKCS1V15_DER);
@@ -2532,12 +2562,12 @@ bool TpmImpl::CreatePCRBoundKey(uint32_t pcr_index,
     TPM_LOG(ERROR, result) << __func__ << ": Failed to set signature scheme.";
     return false;
   }
-  result = Tspi_Key_CreateKey(signing_key, srk_handle, pcrs);
+  result = Tspi_Key_CreateKey(pcr_bound_key, srk_handle, pcrs);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << __func__ << ": Failed to create key.";
     return false;
   }
-  result = Tspi_Key_LoadKey(signing_key, srk_handle);
+  result = Tspi_Key_LoadKey(pcr_bound_key, srk_handle);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << __func__ << ": Failed to load key.";
     return false;
@@ -2546,7 +2576,7 @@ bool TpmImpl::CreatePCRBoundKey(uint32_t pcr_index,
   // Get the public key.
   SecureBlob public_key;
   if (!GetDataAttribute(context_handle,
-                        signing_key,
+                        pcr_bound_key,
                         TSS_TSPATTRIB_KEY_BLOB,
                         TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
                         &public_key)) {
@@ -2559,7 +2589,7 @@ bool TpmImpl::CreatePCRBoundKey(uint32_t pcr_index,
 
   // Get the key blob so we can load it later.
   if (!GetDataAttribute(context_handle,
-                        signing_key,
+                        pcr_bound_key,
                         TSS_TSPATTRIB_KEY_BLOB,
                         TSS_TSPATTRIB_KEYBLOB_BLOB,
                         key_blob)) {
@@ -2569,8 +2599,7 @@ bool TpmImpl::CreatePCRBoundKey(uint32_t pcr_index,
   return true;
 }
 
-bool TpmImpl::VerifyPCRBoundKey(uint32_t pcr_index,
-                                const brillo::SecureBlob& pcr_value,
+bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
                                 const brillo::SecureBlob& key_blob,
                                 const brillo::SecureBlob& creation_blob) {
   ScopedTssContext context_handle;
@@ -2620,17 +2649,24 @@ bool TpmImpl::VerifyPCRBoundKey(uint32_t pcr_index,
   SecureBlob pcr_bitmap(pcr_selection.pcrSelect,
                         pcr_selection.pcrSelect + pcr_selection.sizeOfSelect);
   free(pcr_selection.pcrSelect);
-  size_t offset = pcr_index / 8;
-  unsigned char mask = 1 << (pcr_index % 8);
-  if (pcr_bitmap.size() <= offset || (pcr_bitmap[offset] & mask) == 0) {
-    LOG(ERROR) << __func__ << ": Invalid PCR selection.";
-    return false;
+  std::string concatenated_pcr_values;
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    const std::string pcr_value = map_pair.second;
+    size_t offset = pcr_index / 8;
+    unsigned char mask = 1 << (pcr_index % 8);
+    if (pcr_bitmap.size() <= offset || (pcr_bitmap[offset] & mask) == 0) {
+      LOG(ERROR) << __func__ << ": Invalid PCR selection.";
+      return false;
+    }
+
+    concatenated_pcr_values += pcr_value;
   }
 
-  // Compute the PCR composite hash we're expecting.  Basically, we want to do
+  // Compute the PCR composite hash we're expecting. Basically, we want to do
   // the equivalent of hashing a TPM_PCR_COMPOSITE structure.
   trspi_offset = 0;
-  UINT32 pcr_value_length = pcr_value.size();
+  UINT32 pcr_value_length = concatenated_pcr_values.size();
   SecureBlob pcr_value_length_blob(sizeof(UINT32));
   Trspi_LoadBlob_UINT32(&trspi_offset,
                         pcr_value_length,
@@ -2639,7 +2675,7 @@ bool TpmImpl::VerifyPCRBoundKey(uint32_t pcr_index,
       SecureBlob::Combine(
       pcr_selection_blob,
       pcr_value_length_blob),
-      pcr_value));
+      brillo::SecureBlob(concatenated_pcr_values)));
 
   // Check that the PCR value matches the key creation PCR value.
   SecureBlob pcr_at_creation;

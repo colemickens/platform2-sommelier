@@ -9,7 +9,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <map>
 #include <set>
+#include <string>
 
 #include "cryptohome/tpm.h"
 
@@ -33,6 +35,7 @@ class StubTpm : public Tpm {
   TpmRetryAction DecryptBlob(TpmKeyHandle key_handle,
                              const SecureBlob& ciphertext,
                              const SecureBlob& key,
+                             const std::map<uint32_t, std::string>& pcr_map,
                              SecureBlob* plaintext) override
     { return kTpmRetryFatal; }
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
@@ -128,15 +131,12 @@ class StubTpm : public Tpm {
             SecureBlob* signature) override {
     return false;
   }
-  bool CreatePCRBoundKey(uint32_t pcr_index,
-                         const SecureBlob& pcr_value,
+  bool CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+                         AsymmetricKeyUsage key_type,
                          SecureBlob* key_blob,
                          SecureBlob* public_key_der,
-                         SecureBlob* creation_blob) override {
-    return false;
-  }
-  bool VerifyPCRBoundKey(uint32_t pcr_index,
-                         const SecureBlob& pcr_value,
+                         SecureBlob* creation_blob) override { return false; }
+  bool VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
                          const SecureBlob& key_blob,
                          const SecureBlob& creation_blob) override {
     return false;

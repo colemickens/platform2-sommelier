@@ -19,8 +19,8 @@ MockTpm::MockTpm() {
       .WillByDefault(Return(TpmVersion::TPM_UNKNOWN));
   ON_CALL(*this, EncryptBlob(_, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::Xor));
-  ON_CALL(*this, DecryptBlob(_, _, _, _))
-      .WillByDefault(Invoke(this, &MockTpm::Xor));
+  ON_CALL(*this, DecryptBlob(_, _, _, _, _))
+      .WillByDefault(Invoke(this, &MockTpm::XorDecrypt));
   ON_CALL(*this, GetPublicKeyHash(_, _))
       .WillByDefault(Return(kTpmRetryNone));
   ON_CALL(*this, GetEndorsementPublicKey(_))
@@ -51,7 +51,7 @@ MockTpm::MockTpm() {
       .WillByDefault(Return(true));
   ON_CALL(*this, CreatePCRBoundKey(_, _, _, _, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, VerifyPCRBoundKey(_, _, _, _))
+  ON_CALL(*this, VerifyPCRBoundKey(_, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, ExtendPCR(_, _))
       .WillByDefault(Invoke(this, &MockTpm::FakeExtendPCR));

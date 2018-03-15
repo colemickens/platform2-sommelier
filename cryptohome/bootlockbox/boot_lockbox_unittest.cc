@@ -47,7 +47,7 @@ class BootLockboxTest : public testing::Test {
                                              &BootLockboxTest::FakeSign)));
     ON_CALL(tpm_, CreatePCRBoundKey(_, _, _, _, _))
         .WillByDefault(WithArgs<3>(Invoke(this, &BootLockboxTest::FakeCreate)));
-    ON_CALL(tpm_, VerifyPCRBoundKey(_, _, _, _))
+    ON_CALL(tpm_, VerifyPCRBoundKey(_, _, _))
         .WillByDefault(Return(true));
     ON_CALL(tpm_, ExtendPCR(_, _))
         .WillByDefault(InvokeWithoutArgs(this, &BootLockboxTest::FakeExtend));
@@ -73,7 +73,7 @@ class BootLockboxTest : public testing::Test {
     if (is_fake_extended_)
       return false;
     brillo::SecureBlob der_header(std::begin(kSha256DigestInfo),
-                                    std::end(kSha256DigestInfo));
+                                  std::end(kSha256DigestInfo));
     brillo::SecureBlob der_encoded_input = brillo::SecureBlob::Combine(
         der_header,
         CryptoLib::Sha256(input));
@@ -226,7 +226,7 @@ TEST_F(BootLockboxTest, ExtendPCRError) {
 }
 
 TEST_F(BootLockboxTest, VerifyWithBadKey) {
-  EXPECT_CALL(tpm_, VerifyPCRBoundKey(_, _, _, _))
+  EXPECT_CALL(tpm_, VerifyPCRBoundKey(_, _, _))
       .WillRepeatedly(Return(false));
   brillo::SecureBlob data(100);
   brillo::SecureBlob signature;

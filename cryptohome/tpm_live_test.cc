@@ -75,6 +75,10 @@ bool TpmLiveTest::RunLiveTests(SecureBlob owner_password) {
     LOG(ERROR) << "Error running PCRKeyTest.";
     return false;
   }
+  if (!MultiplePCRKeyTest()) {
+    LOG(ERROR) << "Error running MultiplePCRKeyTest.";
+    return false;
+  }
   if (!DecryptionKeyTest()) {
     LOG(ERROR) << "Error running Decryption test.";
     return false;
@@ -95,23 +99,9 @@ bool TpmLiveTest::RunLiveTests(SecureBlob owner_password) {
   return true;
 }
 
-bool TpmLiveTest::PCRKeyTest() {
-  LOG(INFO) << "PCRKeyTest started";
-  uint32_t index = 5;
-  SecureBlob pcr_data;
-  if (!tpm_->ReadPCR(index, &pcr_data)) {
-    LOG(ERROR) << "Error reading pcr value from TPM.";
-    return false;
-  }
-  SecureBlob pcr_bound_key;
-  SecureBlob public_key_der;
-  SecureBlob creation_blob;
-  if (!tpm_->CreatePCRBoundKey(index, SecureBlob(pcr_data),
-                               &pcr_bound_key, &public_key_der,
-                               &creation_blob)) {
-    LOG(ERROR) << "Error creating PCR bound key.";
-    return false;
-  }
+bool TpmLiveTest::SignData(const SecureBlob& pcr_bound_key,
+                           const SecureBlob& public_key_der,
+                           int index) {
   SecureBlob input_data("input_data");
   SecureBlob signature;
   if (!tpm_->Sign(pcr_bound_key, input_data, index, &signature)) {
@@ -131,20 +121,222 @@ bool TpmLiveTest::PCRKeyTest() {
     LOG(ERROR) << "Failed to verify signature.";
     return false;
   }
-  if (!tpm_->VerifyPCRBoundKey(index, SecureBlob(pcr_data),
-                               pcr_bound_key, creation_blob)) {
+  return true;
+}
+
+bool TpmLiveTest::EncryptAndDecryptData(
+    const SecureBlob& pcr_bound_key,
+    const std::map<uint32_t, std::string>& pcr_map) {
+  ScopedKeyHandle handle;
+  if (tpm_->LoadWrappedKey(pcr_bound_key, &handle) != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error loading wrapped key.";
+    return false;
+  }
+  SecureBlob aes_key(32, 'a');
+  SecureBlob plaintext(32, 'b');
+  SecureBlob ciphertext;
+  if (tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext) !=
+      Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error encrypting blob.";
+    return false;
+  }
+  SecureBlob decrypted_plaintext;
+  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
+                        &decrypted_plaintext) != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error decrypting the data.";
+    return false;
+  }
+  if (plaintext != decrypted_plaintext) {
+    LOG(ERROR) << "Decrypted plaintext does not match plaintext.";
+    return false;
+  }
+  return true;
+}
+
+bool TpmLiveTest::PCRKeyTest() {
+  LOG(INFO) << "PCRKeyTest started";
+  uint32_t index = 5;
+  SecureBlob pcr_data;
+  if (!tpm_->ReadPCR(index, &pcr_data)) {
+    LOG(ERROR) << "Error reading pcr value from TPM.";
+    return false;
+  }
+  SecureBlob pcr_bound_key1;  // Sign key
+  SecureBlob pcr_bound_key2;  // Decrypt key
+  SecureBlob pcr_bound_key3;  // Sign and decrypt key
+  SecureBlob public_key_der1;
+  SecureBlob public_key_der2;
+  SecureBlob public_key_der3;
+  SecureBlob creation_blob1;
+  SecureBlob creation_blob2;
+  SecureBlob creation_blob3;
+  std::map<uint32_t, std::string> pcr_map({{index, pcr_data.to_string()}});
+  // Create the keys.
+  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kSignKey,
+      &pcr_bound_key1, &public_key_der1, &creation_blob1)) {
+    LOG(ERROR) << "Error creating PCR bound signing key.";
+    return false;
+  }
+  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
+      &pcr_bound_key2, &public_key_der2, &creation_blob2)) {
+    LOG(ERROR) << "Error creating PCR bound decryption key.";
+    return false;
+  }
+  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptAndSignKey,
+      &pcr_bound_key3, &public_key_der3, &creation_blob3)) {
+    LOG(ERROR) << "Error creating PCR bound decrypt and sign key.";
+    return false;
+  }
+  if (!tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key1, creation_blob1) ||
+      !tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key2, creation_blob2) ||
+      !tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key3, creation_blob3)) {
     LOG(ERROR) << "Error verifying PCR bound key.";
     return false;
   }
+  // Check that signing key works.
+  if (!SignData(pcr_bound_key1, public_key_der1, index)) {
+    LOG(ERROR) << "Error signing the blob.";
+    return false;
+  }
+  // Check that the key cannot be used to decrypt the data.
+  if (EncryptAndDecryptData(pcr_bound_key1, pcr_map)) {
+    LOG(ERROR) << "Decrypting the blob succeeded with signing only key.";
+    return false;
+  }
+  // Check that the decryption key works as intended.
+  if (!EncryptAndDecryptData(pcr_bound_key2, pcr_map)) {
+    LOG(ERROR) << "Error decrypting the blob.";
+    return false;
+  }
+  // Check that signing data doesn't work (only for TPM2).
+  if (tpm_->GetVersion() != Tpm::TPM_1_2) {
+    if (SignData(pcr_bound_key2, public_key_der2, index)) {
+      LOG(ERROR) << "Signing data succeeded with decryption only key.";
+      return false;
+    }
+  }
+  // Check that the key created for decryption and signing works for both.
+  if (!EncryptAndDecryptData(pcr_bound_key3, pcr_map)) {
+    LOG(ERROR) << "Error decrypting the blob.";
+    return false;
+  }
+  if (!SignData(pcr_bound_key3, public_key_der3, index)) {
+    LOG(ERROR) << "Error signing the blob.";
+    return false;
+  }
+  // Extend PCR to invalidate the keys.
   if (!tpm_->ExtendPCR(index, SecureBlob("01234567890123456789"))) {
     LOG(ERROR) << "Error extending PCR.";
     return false;
   }
-  if (tpm_->Sign(pcr_bound_key, input_data, index, &signature)) {
+  if (SignData(pcr_bound_key1, public_key_der1, index)) {
     LOG(ERROR) << "Sign succeeded without the correct PCR state.";
     return false;
   }
+  if (EncryptAndDecryptData(pcr_bound_key2, pcr_map)) {
+    LOG(ERROR) << "Decryption succeeded without the correct PCR state.";
+    return false;
+  }
+  if (SignData(pcr_bound_key3, public_key_der3, index)) {
+    LOG(ERROR) << "Sign succeeded without the correct PCR state.";
+    return false;
+  }
+  if (EncryptAndDecryptData(pcr_bound_key3, pcr_map)) {
+    LOG(ERROR) << "Decryption succeeded without the correct PCR state.";
+    return false;
+  }
   LOG(INFO) << "PCRKeyTest ended successfully.";
+  return true;
+}
+
+bool TpmLiveTest::MultiplePCRKeyTest() {
+  LOG(INFO) << "MultiplePCRKeyTest started";
+  uint32_t index1 = 7;
+  uint32_t index2 = 12;
+  SecureBlob pcr_data1;
+  SecureBlob pcr_data2;
+  if (!tpm_->ReadPCR(index1, &pcr_data1) ||
+      !tpm_->ReadPCR(index2, &pcr_data2)) {
+    LOG(ERROR) << "Error reading pcr value from TPM.";
+    return false;
+  }
+  SecureBlob pcr_bound_key;
+  SecureBlob public_key_der;
+  SecureBlob creation_blob;
+  std::map<uint32_t, std::string> pcr_map({{index1, pcr_data1.to_string()},
+                                          {index2, pcr_data2.to_string()}});
+  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
+                               &pcr_bound_key, &public_key_der,
+                               &creation_blob)) {
+    LOG(ERROR) << "Error creating PCR bound key.";
+    return false;
+  }
+  ScopedKeyHandle handle;
+  if (tpm_->LoadWrappedKey(pcr_bound_key, &handle) != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error loading wrapped key.";
+    return false;
+  }
+  SecureBlob aes_key(32, 'a');
+  SecureBlob plaintext(32, 'b');
+  SecureBlob ciphertext;
+  if (tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext) !=
+      Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error encrypting blob.";
+    return false;
+  }
+  SecureBlob decrypted_plaintext;
+  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
+                        &decrypted_plaintext) != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error decrypting blob.";
+    return false;
+  }
+  if (plaintext != decrypted_plaintext) {
+    LOG(ERROR) << "Decrypted plaintext does not match plaintext.";
+    return false;
+  }
+  if (!tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key, creation_blob)) {
+    LOG(ERROR) << "Error verifying PCR bound key.";
+    return false;
+  }
+  // Extend a PCR that is bound to the key, to invalidate it.
+  if (!tpm_->ExtendPCR(index2, SecureBlob("01234567890123456789"))) {
+    LOG(ERROR) << "Error extending PCR.";
+    return false;
+  }
+  // Check that the text cannot be decrypted anymore, after the PCR change.
+  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
+                        &decrypted_plaintext) == Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
+    return false;
+  }
+  if (!tpm_->ReadPCR(index2, &pcr_data2)) {
+    LOG(ERROR) << "Error reading pcr value from TPM.";
+    return false;
+  }
+  // Check that the text cannot be decrypted even with the right PCR values.
+  pcr_map[index2] = pcr_data2.to_string();
+  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
+                        &decrypted_plaintext) == Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
+    return false;
+  }
+  // Check that VerifyPCRBoundKey also fails.
+  if (tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key, creation_blob)) {
+    LOG(ERROR) << "VerifyPCRBoundKey succeeded without the correct PCR state.";
+    return false;
+  }
+  // Check that even a newly encrypted text cannot be decrypted.
+  if (tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext) !=
+      Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error encrypting blob.";
+    return false;
+  }
+  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
+                        &decrypted_plaintext) == Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
+    return false;
+  }
+  LOG(INFO) << "MultiplePCRKeyTest ended successfully.";
   return true;
 }
 
@@ -177,6 +369,7 @@ bool TpmLiveTest::DecryptionKeyTest() {
   }
   SecureBlob decrypted_plaintext;
   if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
+                        std::map<uint32_t, std::string>(),
                         &decrypted_plaintext) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Error decrypting blob.";
     return false;

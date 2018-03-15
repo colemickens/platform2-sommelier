@@ -6,9 +6,11 @@
 
 #include "cryptohome/tpm2_impl.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
@@ -111,6 +113,20 @@ void SetOwnerDependency(TpmPersistentState::TpmOwnerDependency dependency,
         dependency_field->clear();
         break;
   }
+}
+
+// Returns the total number of bits set in the first |size| elements from
+// |array|.
+int CountSetBits(const uint8_t* array, size_t size) {
+  int res = 0;
+  for (size_t i = 0; i < size; ++i) {
+    for (int bit_position = 0; bit_position < 8; ++bit_position) {
+      if ((array[i] & (1 << bit_position)) != 0) {
+        ++res;
+      }
+    }
+  }
+  return res;
 }
 
 }  // namespace
@@ -578,7 +594,8 @@ bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
   }
   std::string policy_digest;
   TPM_RC result =
-      trunks->tpm_utility->GetPolicyDigestForPcrValue(0, "", &policy_digest);
+      trunks->tpm_utility->GetPolicyDigestForPcrValues(
+          std::map<uint32_t, std::string>({{0, ""}}), &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;
@@ -613,7 +630,8 @@ bool Tpm2Impl::Unseal(const brillo::Blob& sealed_value, brillo::Blob* value) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
   }
-  result = policy_session->PolicyPCR(0, "");
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{0, ""}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting policy to pcr 0: "
                << GetErrorString(result);
@@ -710,7 +728,8 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
       LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
       return false;
     }
-    result = policy_session->PolicyPCR(bound_pcr_index, "");
+    result = policy_session->PolicyPCR(
+        std::map<uint32_t, std::string>({{bound_pcr_index, ""}}));
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error creating PCR policy: " << GetErrorString(result);
       return false;
@@ -745,8 +764,8 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   return true;
 }
 
-bool Tpm2Impl::CreatePCRBoundKey(uint32_t pcr_index,
-                                 const SecureBlob& pcr_value,
+bool Tpm2Impl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+                                 AsymmetricKeyUsage key_type,
                                  SecureBlob* key_blob,
                                  SecureBlob* public_key_der,
                                  SecureBlob* creation_blob) {
@@ -757,23 +776,26 @@ bool Tpm2Impl::CreatePCRBoundKey(uint32_t pcr_index,
     return false;
   }
   std::string policy_digest;
-  TPM_RC result = trunks->tpm_utility->GetPolicyDigestForPcrValue(
-      pcr_index, pcr_value.to_string(), &policy_digest);
+  TPM_RC result = trunks->tpm_utility->GetPolicyDigestForPcrValues(
+      pcr_map, &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;
+  }
+  std::vector<uint32_t> pcr_list;
+  for (const auto& map_pair : pcr_map) {
+    pcr_list.push_back(map_pair.first);
   }
   std::string tpm_key_blob;
   std::string tpm_creation_blob;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
   result = trunks->tpm_utility->CreateRSAKeyPair(
-      trunks::TpmUtility::kSignKey, kDefaultTpmRsaModulusSize,
-      kDefaultTpmPublicExponent,
-      "",  // No authorization
+      key_type, kDefaultTpmRsaModulusSize,
+      kDefaultTpmPublicExponent, "",  // No authorization
       policy_digest,
       true,  // use_only_policy_authorization
-      pcr_index, delegate.get(), &tpm_key_blob,
+      pcr_list, delegate.get(), &tpm_key_blob,
       &tpm_creation_blob /* No creation_blob */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating a pcr bound key: " << GetErrorString(result);
@@ -797,8 +819,7 @@ bool Tpm2Impl::CreatePCRBoundKey(uint32_t pcr_index,
   return true;
 }
 
-bool Tpm2Impl::VerifyPCRBoundKey(uint32_t pcr_index,
-                                 const SecureBlob& pcr_value,
+bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
                                  const SecureBlob& key_blob,
                                  const SecureBlob& creation_blob) {
   TrunksClientContext* trunks;
@@ -826,12 +847,24 @@ bool Tpm2Impl::VerifyPCRBoundKey(uint32_t pcr_index,
     LOG(ERROR) << "Creation PCR extended with wrong hash algorithm.";
     return false;
   }
-  if (pcr_select.pcr_selections[0].pcr_select[pcr_index / 8] !=
-      (1 << (pcr_index % 8))) {
+  uint8_t* pcr_selections = pcr_select.pcr_selections[0].pcr_select;
+  if (pcr_map.size() != CountSetBits(pcr_selections, PCR_SELECT_MIN)) {
     LOG(ERROR) << "Incorrect creation PCR specified.";
     return false;
   }
-  SecureBlob expected_pcr_digest = CryptoLib::Sha256(pcr_value);
+  std::string concatenated_pcr_values;
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    const std::string pcr_value = map_pair.second;
+    if (pcr_index >= 8 * PCR_SELECT_MIN ||
+        (pcr_selections[pcr_index / 8] & (1 << (pcr_index % 8))) == 0) {
+      LOG(ERROR) << "Incorrect creation PCR specified.";
+      return false;
+    }
+    concatenated_pcr_values += pcr_value;
+  }
+  SecureBlob expected_pcr_digest = CryptoLib::Sha256(
+      SecureBlob(concatenated_pcr_values));
   if (creation_data.creation_data.pcr_digest.size !=
       expected_pcr_digest.size()) {
     LOG(ERROR) << "Incorrect PCR digest size.";
@@ -862,7 +895,7 @@ bool Tpm2Impl::VerifyPCRBoundKey(uint32_t pcr_index,
     LOG(ERROR) << "Error starting a trial session: " << GetErrorString(result);
     return false;
   }
-  result = trial_session->PolicyPCR(pcr_index, pcr_value.to_string());
+  result = trial_session->PolicyPCR(pcr_map);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting trial policy to pcr value: "
                << GetErrorString(result);
@@ -1014,10 +1047,12 @@ Tpm::TpmRetryAction Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
   return Tpm::kTpmRetryNone;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
-                                          const SecureBlob& ciphertext,
-                                          const SecureBlob& key,
-                                          SecureBlob* plaintext) {
+Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(
+    TpmKeyHandle key_handle,
+    const SecureBlob& ciphertext,
+    const SecureBlob& key,
+    const std::map<uint32_t, std::string>& pcr_map,
+    SecureBlob* plaintext) {
   CHECK(plaintext);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -1028,14 +1063,33 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
     LOG(ERROR) << "Error unobscureing message.";
     return Tpm::kTpmRetryFailNoRetry;
   }
-  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      trunks->factory->GetPasswordAuthorization("");
+  trunks::AuthorizationDelegate* delegate;
+  std::unique_ptr<trunks::PolicySession> policy_session;
+  std::unique_ptr<trunks::AuthorizationDelegate> default_delegate;
+  if (!pcr_map.empty()) {
+    policy_session = trunks->factory->GetPolicySession();
+    TPM_RC result = policy_session->StartUnboundSession(true);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+      return Tpm::kTpmRetryFailNoRetry;
+    }
+    result = policy_session->PolicyPCR(pcr_map);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error creating PCR policy: " << GetErrorString(result);
+      return Tpm::kTpmRetryFailNoRetry;
+    }
+    delegate = policy_session->GetDelegate();
+  } else {
+    default_delegate = trunks->factory->GetPasswordAuthorization("");
+    delegate = default_delegate.get();
+  }
+
   std::string tpm_plaintext;
   TPM_RC result = trunks->tpm_utility->AsymmetricDecrypt(
       key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
-      local_data.to_string(), delegate.get(), &tpm_plaintext);
+      local_data.to_string(), delegate, &tpm_plaintext);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error encrypting plaintext: " << GetErrorString(result);
+    LOG(ERROR) << "Error decrypting plaintext: " << GetErrorString(result);
     return ResultToRetryAction(result);
   }
   plaintext->assign(tpm_plaintext.begin(), tpm_plaintext.end());
@@ -1107,7 +1161,8 @@ void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (DecryptBlob(key, data_out, aes_key, &data) != kTpmRetryNone) {
+    if (DecryptBlob(key, data_out, aes_key, std::map<uint32_t, std::string>(),
+                    &data) != kTpmRetryNone) {
       return;
     }
     status->can_decrypt = true;
@@ -1180,7 +1235,7 @@ bool Tpm2Impl::GetTrunksContext(TrunksClientContext** trunks) {
 
 bool Tpm2Impl::LoadPublicKeyFromSpki(
     const SecureBlob& public_key_spki_der,
-    trunks::TpmUtility::AsymmetricKeyUsage key_type,
+    AsymmetricKeyUsage key_type,
     trunks::TPM_ALG_ID scheme,
     trunks::TPM_ALG_ID hash_alg,
     trunks::AuthorizationDelegate* session_delegate,

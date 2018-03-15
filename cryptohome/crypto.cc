@@ -414,6 +414,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
       tpm_init_->GetCryptohomeKey(),
       tpm_key,
       aes_skey,
+      std::map<uint32_t, std::string>(),
       &local_vault_key);
   if (retry_action == Tpm::kTpmRetryLoadFail ||
       retry_action == Tpm::kTpmRetryInvalidHandle ||
@@ -425,6 +426,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
       retry_action = tpm_->DecryptBlob(tpm_init_->GetCryptohomeKey(),
                                        tpm_key,
                                        aes_skey,
+                                       std::map<uint32_t, std::string>(),
                                        &local_vault_key);
     }
   }

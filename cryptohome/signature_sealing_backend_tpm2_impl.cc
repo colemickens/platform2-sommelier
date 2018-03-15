@@ -174,15 +174,15 @@ bool UnsealingSessionTpm2Impl::Unseal(const SecureBlob& signed_challenge_value,
     return false;
   }
   // Update the policy with restricting to selected PCRs.
-  // TODO(emaxx): Replace the loop with a single call to PolicyPCR() once the
-  // trunks API is changed to support that.
-  for (uint32_t pcr_index : bound_pcrs_) {
-    tpm_result = policy_session_->PolicyPCR(pcr_index, "" /* pcr_value */);
-    if (tpm_result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error restricting policy to PCR: "
-                 << GetErrorString(tpm_result);
-      return false;
-    }
+  std::map<uint32_t, std::string> pcr_map;
+  for (int pcr_index : bound_pcrs_) {
+    pcr_map.emplace(pcr_index, std::string());
+  }
+  tpm_result = policy_session_->PolicyPCR(pcr_map);
+  if (tpm_result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to PCR: "
+               << GetErrorString(tpm_result);
+    return false;
   }
   // Update the policy with the signature.
   trunks::TPMT_SIGNATURE signature;
@@ -289,16 +289,15 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     return false;
   }
   // Update the policy with restricting to selected PCRs.
-  // TODO(emaxx): Replace the loop with a single call to PolicyPCR() once the
-  // trunks API is changed to support that.
+  std::map<uint32_t, std::string> pcr_map;
   for (const auto& pcr_index_and_value : pcr_values) {
-    tpm_result = policy_session->PolicyPCR(
-        pcr_index_and_value.first, pcr_index_and_value.second.to_string());
-    if (tpm_result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error restricting policy to PCR: "
-                 << GetErrorString(tpm_result);
-      return false;
-    }
+    pcr_map[pcr_index_and_value.first] = pcr_index_and_value.second.to_string();
+  }
+  tpm_result = policy_session->PolicyPCR(pcr_map);
+  if (tpm_result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to PCR: "
+               << GetErrorString(tpm_result);
+    return false;
   }
   // Update the policy with an empty signature that refers to the public key.
   trunks::TPMT_SIGNATURE signature;
