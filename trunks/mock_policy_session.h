@@ -17,6 +17,7 @@
 #ifndef TRUNKS_MOCK_POLICY_SESSION_H_
 #define TRUNKS_MOCK_POLICY_SESSION_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -39,7 +40,7 @@ class MockPolicySession : public PolicySession {
   MOCK_METHOD1(StartUnboundSession, TPM_RC(bool enable_encryption));
   MOCK_METHOD1(GetDigest, TPM_RC(std::string*));
   MOCK_METHOD1(PolicyOR, TPM_RC(const std::vector<std::string>&));
-  MOCK_METHOD2(PolicyPCR, TPM_RC(uint32_t, const std::string&));
+  MOCK_METHOD1(PolicyPCR, TPM_RC(const std::map<uint32_t, std::string>&));
   MOCK_METHOD1(PolicyCommandCode, TPM_RC(TPM_CC));
   MOCK_METHOD7(PolicySecret, TPM_RC(TPMI_DH_ENTITY, const std::string&,
                                     const std::string&,

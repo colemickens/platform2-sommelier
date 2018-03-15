@@ -32,6 +32,24 @@ using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
 
+namespace {
+
+// Returns the total number of bits set in the first |size| elements from
+// |array|.
+int CountSetBits(const uint8_t* array, size_t size) {
+  int res = 0;
+  for (size_t i = 0; i < size; ++i) {
+    for (int bit_position = 0; bit_position < 8; ++bit_position) {
+      if ((array[i] & (1 << bit_position)) != 0) {
+        ++res;
+      }
+    }
+  }
+  return res;
+}
+
+}  // namespace
+
 namespace trunks {
 
 class PolicySessionTest : public testing::Test {
@@ -155,13 +173,14 @@ TEST_F(PolicySessionTest, PolicyORFailure) {
 TEST_F(PolicySessionTest, PolicyPCRSuccess) {
   PolicySessionImpl session(factory_);
   std::string pcr_digest("digest");
-  int pcr_index = 1;
+  uint32_t pcr_index = 1;
   TPML_PCR_SELECTION pcr_select;
   TPM2B_DIGEST pcr_value;
   EXPECT_CALL(mock_tpm_, PolicyPCRSync(_, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&pcr_value), SaveArg<3>(&pcr_select),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, session.PolicyPCR(pcr_index, pcr_digest));
+  EXPECT_EQ(TPM_RC_SUCCESS, session.PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index, pcr_digest}})));
   uint8_t pcr_select_index = pcr_index / 8;
   uint8_t pcr_select_byte = 1 << (pcr_index % 8);
   EXPECT_EQ(pcr_select.count, 1u);
@@ -173,16 +192,53 @@ TEST_F(PolicySessionTest, PolicyPCRSuccess) {
             crypto::SHA256HashString(pcr_digest));
 }
 
+TEST_F(PolicySessionTest, PolicyMultiplePCRSuccess) {
+  PolicySessionImpl session(factory_);
+  std::string pcr_digest1("digest1");
+  std::string pcr_digest2("digest2");
+  std::string pcr_digest3("digest3");
+  uint32_t pcr_index1 = 1;
+  uint32_t pcr_index2 = 9;
+  uint32_t pcr_index3 = 15;
+  std::map<uint32_t, std::string> pcr_map({{pcr_index1, pcr_digest1},
+                                           {pcr_index2, pcr_digest2},
+                                           {pcr_index3, pcr_digest3}});
+  TPML_PCR_SELECTION pcr_select;
+  TPM2B_DIGEST pcr_value;
+  EXPECT_CALL(mock_tpm_, PolicyPCRSync(_, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&pcr_value), SaveArg<3>(&pcr_select),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, session.PolicyPCR(pcr_map));
+  EXPECT_EQ(pcr_select.count, 1u);
+  TPMS_PCR_SELECTION pcr_selection = pcr_select.pcr_selections[0];
+  EXPECT_EQ(pcr_selection.hash, TPM_ALG_SHA256);
+  EXPECT_EQ(pcr_selection.sizeof_select, PCR_SELECT_MIN);
+  EXPECT_EQ(3, CountSetBits(pcr_selection.pcr_select, PCR_SELECT_MIN));
+  uint8_t pcr_select_index1 = pcr_index1 / 8;
+  uint8_t pcr_select_mask1 = 1 << (pcr_index1 % 8);
+  uint8_t pcr_select_index2 = pcr_index2 / 8;
+  uint8_t pcr_select_mask2 = 1 << (pcr_index2 % 8);
+  uint8_t pcr_select_index3 = pcr_index3 / 8;
+  uint8_t pcr_select_mask3 = 1 << (pcr_index3 % 8);
+  EXPECT_TRUE(pcr_selection.pcr_select[pcr_select_index1] & pcr_select_mask1);
+  EXPECT_TRUE(pcr_selection.pcr_select[pcr_select_index2] & pcr_select_mask2);
+  EXPECT_TRUE(pcr_selection.pcr_select[pcr_select_index3] & pcr_select_mask3);
+  EXPECT_EQ(StringFrom_TPM2B_DIGEST(pcr_value),
+            crypto::SHA256HashString(pcr_digest1 + pcr_digest2 + pcr_digest3));
+}
+
 TEST_F(PolicySessionTest, PolicyPCRFailure) {
   PolicySessionImpl session(factory_);
   EXPECT_CALL(mock_tpm_, PolicyPCRSync(_, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, session.PolicyPCR(1, "pcr_digest"));
+  EXPECT_EQ(TPM_RC_FAILURE, session.PolicyPCR(
+      std::map<uint32_t, std::string>({{1, "pcr_digest"}})));
 }
 
 TEST_F(PolicySessionTest, PolicyPCRTrialWithNoDigest) {
   PolicySessionImpl session(factory_, TPM_SE_TRIAL);
-  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, session.PolicyPCR(1, ""));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, session.PolicyPCR(
+      std::map<uint32_t, std::string>({{1, ""}})));
 }
 
 TEST_F(PolicySessionTest, PolicyCommandCodeSuccess) {

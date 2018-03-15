@@ -108,7 +108,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                           const std::string& password,
                           const std::string& policy_digest,
                           bool use_only_policy_authorization,
-                          int creation_pcr_index,
+                          const std::vector<uint32_t>& creation_pcr_indexes,
                           AuthorizationDelegate* delegate,
                           std::string* key_blob,
                           std::string* creation_blob) override;
@@ -132,9 +132,9 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                     AuthorizationDelegate* delegate,
                     std::string* unsealed_data) override;
   TPM_RC StartSession(HmacSession* session) override;
-  TPM_RC GetPolicyDigestForPcrValue(int pcr_index,
-                                    const std::string& pcr_value,
-                                    std::string* policy_digest) override;
+  TPM_RC GetPolicyDigestForPcrValues(
+      const std::map<uint32_t, std::string>& pcr_map,
+      std::string* policy_digest) override;
   TPM_RC DefineNVSpace(uint32_t index,
                        size_t num_bytes,
                        TPMA_NV attributes,

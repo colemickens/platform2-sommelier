@@ -17,6 +17,7 @@
 #ifndef TRUNKS_POLICY_SESSION_H_
 #define TRUNKS_POLICY_SESSION_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -60,10 +61,10 @@ class PolicySession {
   // by this session is the OR of the provided policies.
   virtual TPM_RC PolicyOR(const std::vector<std::string>& digests) = 0;
 
-  // This method binds the PolicySession to a provided PCR value. If the empty
-  // string is provided, the PolicySession is bound to the current PCR value.
-  virtual TPM_RC PolicyPCR(uint32_t pcr_index,
-                           const std::string& pcr_value) = 0;
+  // This method binds the PolicySession to a provided PCR map. If the empty
+  // string is provided for all the values of the map, the PolicySession is
+  // bound to the current PCR values.
+  virtual TPM_RC PolicyPCR(const std::map<uint32_t, std::string>& pcr_map) = 0;
 
   // This method binds the PolicySession to a specified CommandCode.
   // Once called, this Session can only be used to authorize actions on the

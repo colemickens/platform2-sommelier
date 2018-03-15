@@ -16,6 +16,7 @@
 
 #include "trunks/policy_session_impl.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -109,27 +110,49 @@ TPM_RC PolicySessionImpl::PolicyOR(const std::vector<std::string>& digests) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC PolicySessionImpl::PolicyPCR(uint32_t pcr_index,
-                                    const std::string& pcr_value) {
+TPM_RC PolicySessionImpl::PolicyPCR(
+    const std::map<uint32_t, std::string>& pcr_map) {
   TPML_PCR_SELECTION pcr_select;
   memset(&pcr_select, 0, sizeof(TPML_PCR_SELECTION));
   // This process of selecting pcrs is highlighted in TPM 2.0 Library Spec
   // Part 2 (Section 10.5 - PCR structures).
-  uint8_t pcr_select_index = pcr_index / 8;
-  uint8_t pcr_select_byte = 1 << (pcr_index % 8);
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = TPM_ALG_SHA256;
   pcr_select.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
-  pcr_select.pcr_selections[0].pcr_select[pcr_select_index] = pcr_select_byte;
   TPM2B_DIGEST pcr_digest;
-  if (pcr_value.empty()) {
+  std::string concatenated_pcr_values;
+
+  bool map_contains_empty_value = false;
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    const std::string pcr_value = map_pair.second;
+    if (pcr_value.empty()) {
+      map_contains_empty_value = true;
+    }
+    uint8_t pcr_select_index = pcr_index / 8;
+    uint8_t pcr_select_byte = 1 << (pcr_index % 8);
+    if (pcr_select_index >= PCR_SELECT_MIN) {
+      LOG(ERROR) << "Out of bounds pcr_index provided: " << pcr_index;
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    pcr_select.pcr_selections[0].pcr_select[pcr_select_index] |=
+        pcr_select_byte;
+    concatenated_pcr_values += pcr_value;
+  }
+
+  if (concatenated_pcr_values.empty()) {
     if (session_type_ == TPM_SE_TRIAL) {
       LOG(ERROR) << "Trial sessions have to define a PCR value.";
       return SAPI_RC_BAD_PARAMETER;
     }
     pcr_digest = Make_TPM2B_DIGEST("");
   } else {
-    pcr_digest = Make_TPM2B_DIGEST(crypto::SHA256HashString(pcr_value));
+    if (map_contains_empty_value) {
+      LOG(ERROR) << "PCR map must not have both empty and non-empty values.";
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    pcr_digest = Make_TPM2B_DIGEST(
+          crypto::SHA256HashString(concatenated_pcr_values));
   }
 
   TPM_RC result = factory_.GetTpm()->PolicyPCRSync(

@@ -283,6 +283,11 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Error running SealedDataTest.";
       return -1;
     }
+    LOG(INFO) << "Running Sealed to Multiple PCR Data test.";
+    if (!test.SealedToMultiplePCRDataTest()) {
+      LOG(ERROR) << "Error running SealedToMultiplePCRDataTest.";
+      return -1;
+    }
     LOG(INFO) << "Running PCR test.";
     if (!test.PCRTest()) {
       LOG(ERROR) << "Error running PCRTest.";

@@ -918,16 +918,17 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
-                                        int modulus_bits,
-                                        uint32_t public_exponent,
-                                        const std::string& password,
-                                        const std::string& policy_digest,
-                                        bool use_only_policy_authorization,
-                                        int creation_pcr_index,
-                                        AuthorizationDelegate* delegate,
-                                        std::string* key_blob,
-                                        std::string* creation_blob) {
+TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
+    AsymmetricKeyUsage key_type,
+    int modulus_bits,
+    uint32_t public_exponent,
+    const std::string& password,
+    const std::string& policy_digest,
+    bool use_only_policy_authorization,
+    const std::vector<uint32_t>& creation_pcr_indexes,
+    AuthorizationDelegate* delegate,
+    std::string* key_blob,
+    std::string* creation_blob) {
   CHECK(key_blob);
   TPM_RC result;
   if (delegate == nullptr) {
@@ -969,19 +970,21 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
   public_area.parameters.rsa_detail.key_bits = modulus_bits;
   public_area.parameters.rsa_detail.exponent = public_exponent;
   TPML_PCR_SELECTION creation_pcrs = {};
-  if (creation_pcr_index == kNoCreationPCR) {
+  if (creation_pcr_indexes.empty()) {
     creation_pcrs.count = 0;
-  } else if (creation_pcr_index < 0 ||
-             creation_pcr_index > (PCR_SELECT_MIN * 8)) {
-    LOG(ERROR) << __func__
-               << ": Creation PCR index is not within the allocated bank.";
-    return SAPI_RC_BAD_PARAMETER;
   } else {
     creation_pcrs.count = 1;
     creation_pcrs.pcr_selections[0].hash = TPM_ALG_SHA256;
     creation_pcrs.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
-    creation_pcrs.pcr_selections[0].pcr_select[creation_pcr_index / 8] =
-        1 << (creation_pcr_index % 8);
+    for (uint32_t creation_pcr_index : creation_pcr_indexes) {
+      if (creation_pcr_index >= 8 * PCR_SELECT_MIN) {
+        LOG(ERROR) << __func__
+           << ": Creation PCR index is not within the allocated bank.";
+        return SAPI_RC_BAD_PARAMETER;
+      }
+      creation_pcrs.pcr_selections[0].pcr_select[creation_pcr_index / 8] |=
+          1 << (creation_pcr_index % 8);
+    }
   }
   TPMS_SENSITIVE_CREATE sensitive;
   sensitive.user_auth = Make_TPM2B_DIGEST(password);
@@ -1277,9 +1280,9 @@ TPM_RC TpmUtilityImpl::StartSession(HmacSession* session) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValue(int pcr_index,
-                                                  const std::string& pcr_value,
-                                                  std::string* policy_digest) {
+TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
+    const std::map<uint32_t, std::string>& pcr_map,
+    std::string* policy_digest) {
   CHECK(policy_digest);
   std::unique_ptr<PolicySession> session = factory_.GetTrialSession();
   TPM_RC result = session->StartUnboundSession(false);
@@ -1288,18 +1291,26 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValue(int pcr_index,
                << GetErrorString(result);
     return result;
   }
-  std::string mutable_pcr_value;
-  if (pcr_value.empty()) {
+
+  std::map<uint32_t, std::string> pcr_map_with_values = pcr_map;
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    const std::string pcr_value = map_pair.second;
+    if (!pcr_value.empty()) {
+      continue;
+    }
+
+    std::string mutable_pcr_value;
     result = ReadPCR(pcr_index, &mutable_pcr_value);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << __func__
                  << ": Error reading pcr_value: " << GetErrorString(result);
       return result;
     }
-  } else {
-    mutable_pcr_value = pcr_value;
+    pcr_map_with_values[pcr_index] = mutable_pcr_value;
   }
-  result = session->PolicyPCR(pcr_index, mutable_pcr_value);
+
+  result = session->PolicyPCR(pcr_map_with_values);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error restricting policy to PCR value: "
                << GetErrorString(result);

@@ -16,7 +16,9 @@
 
 #include "trunks/trunks_factory_for_test.h"
 
+#include <map>
 #include <memory>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -267,13 +269,13 @@ class TpmUtilityForwarder : public TpmUtility {
                           const std::string& password,
                           const std::string& policy_digest,
                           bool use_only_policy_authorization,
-                          int creation_pcr_index,
+                          const std::vector<uint32_t>& creation_pcr_indexes,
                           AuthorizationDelegate* delegate,
                           std::string* key_blob,
                           std::string* creation_blob) override {
     return target_->CreateRSAKeyPair(
         key_type, modulus_bits, public_exponent, password, policy_digest,
-        use_only_policy_authorization, creation_pcr_index, delegate, key_blob,
+        use_only_policy_authorization, creation_pcr_indexes, delegate, key_blob,
         creation_blob);
   }
 
@@ -321,11 +323,11 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->StartSession(session);
   }
 
-  TPM_RC GetPolicyDigestForPcrValue(int pcr_index,
-                                    const std::string& pcr_value,
-                                    std::string* policy_digest) override {
-    return target_->GetPolicyDigestForPcrValue(pcr_index, pcr_value,
-                                               policy_digest);
+  TPM_RC GetPolicyDigestForPcrValues(
+      const std::map<uint32_t, std::string>& pcr_map,
+      std::string* policy_digest) override {
+    return target_->GetPolicyDigestForPcrValues(pcr_map,
+                                                policy_digest);
   }
 
   TPM_RC DefineNVSpace(uint32_t index,
@@ -622,8 +624,8 @@ class PolicySessionForwarder : public PolicySession {
     return target_->PolicyOR(digests);
   }
 
-  TPM_RC PolicyPCR(uint32_t pcr_index, const std::string& pcr_value) override {
-    return target_->PolicyPCR(pcr_index, pcr_value);
+  TPM_RC PolicyPCR(const std::map<uint32_t, std::string>& pcr_map) override {
+    return target_->PolicyPCR(pcr_map);
   }
 
   TPM_RC PolicyCommandCode(TPM_CC command_code) override {

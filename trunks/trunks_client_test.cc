@@ -109,7 +109,7 @@ bool TrunksClientTest::SignTest() {
   TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001,
       key_authorization, "", false,  // use_only_policy_authorization
-      kNoCreationPCR, session->GetDelegate(), &key_blob, nullptr);
+      std::vector<uint32_t>(), session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating signing key: " << GetErrorString(result);
     return false;
@@ -150,7 +150,7 @@ bool TrunksClientTest::DecryptTest() {
   TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
       key_authorization, "", false,  // use_only_policy_authorization
-      kNoCreationPCR, session->GetDelegate(), &key_blob, nullptr);
+      std::vector<uint32_t>(), session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating decrypt key: " << GetErrorString(result);
     return false;
@@ -207,7 +207,7 @@ bool TrunksClientTest::AuthChangeTest() {
   TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "old_pass",
       "", false,  // use_only_policy_authorization
-      kNoCreationPCR, session->GetDelegate(), &key_blob, nullptr);
+      std::vector<uint32_t>(), session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating change auth key: " << GetErrorString(result);
     return false;
@@ -249,7 +249,8 @@ bool TrunksClientTest::VerifyKeyCreationTest() {
   TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "", "",
       false,  // use_only_policy_authorization
-      kNoCreationPCR, session->GetDelegate(), &key_blob, &creation_blob);
+      std::vector<uint32_t>(), session->GetDelegate(),
+      &key_blob, &creation_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating certify key: " << GetErrorString(result);
     return false;
@@ -258,7 +259,8 @@ bool TrunksClientTest::VerifyKeyCreationTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "", "",
       false,  // use_only_policy_authorization
-      kNoCreationPCR, session->GetDelegate(), &alternate_key_blob, nullptr);
+      std::vector<uint32_t>(), session->GetDelegate(), &alternate_key_blob,
+      nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating alternate key: " << GetErrorString(result);
     return false;
@@ -298,10 +300,11 @@ bool TrunksClientTest::SealedDataTest() {
     LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
-  int pcr_index = 5;
+  uint32_t pcr_index = 5;
   std::string policy_digest;
   TPM_RC result =
-      utility->GetPolicyDigestForPcrValue(pcr_index, "", &policy_digest);
+      utility->GetPolicyDigestForPcrValues(
+          std::map<uint32_t, std::string>({{pcr_index, ""}}), &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy_digest: " << GetErrorString(result);
     return false;
@@ -320,7 +323,8 @@ bool TrunksClientTest::SealedDataTest() {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
   }
-  result = policy_session->PolicyPCR(pcr_index, "");
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index, ""}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting policy to pcr value: "
                << GetErrorString(result);
@@ -342,12 +346,89 @@ bool TrunksClientTest::SealedDataTest() {
     LOG(ERROR) << "Error extending pcr: " << GetErrorString(result);
     return false;
   }
-  result = policy_session->PolicyPCR(pcr_index, "");
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index, ""}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting policy to pcr value: "
                << GetErrorString(result);
     return false;
   }
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data);
+  if (result == TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error object was unsealed with wrong policy_digest.";
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::SealedToMultiplePCRDataTest() {
+  std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
+  std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
+    return false;
+  }
+  uint32_t pcr_index1 = 0;
+  uint32_t pcr_index2 = 2;
+  // Build policy digest.
+  std::string policy_digest;
+  TPM_RC result =
+      utility->GetPolicyDigestForPcrValues(
+          std::map<uint32_t, std::string>({{pcr_index1, ""}, {pcr_index2, ""}}),
+          &policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy_digest: " << GetErrorString(result);
+    return false;
+  }
+  // Seal the data.
+  std::string data_to_seal("seal_data");
+  std::string sealed_data;
+  result = utility->SealData(data_to_seal, policy_digest,
+                             session->GetDelegate(), &sealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);
+    return false;
+  }
+  std::unique_ptr<PolicySession> policy_session = factory_.GetPolicySession();
+  result = policy_session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index1, ""}, {pcr_index2, ""}}));
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to pcr value: "
+               << GetErrorString(result);
+    return false;
+  }
+  // Unseal the data under the same PCR.
+  std::string unsealed_data;
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error unsealing object: " << GetErrorString(result);
+    return false;
+  }
+  if (data_to_seal != unsealed_data) {
+    LOG(ERROR) << "Error unsealed data from TPM does not match original data.";
+    return false;
+  }
+  // Extend the PCR, thus making the data impossible to unseal.
+  result = utility->ExtendPCR(pcr_index1, "extend", session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error extending pcr: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index1, ""}, {pcr_index2, ""}}));
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to pcr value: "
+               << GetErrorString(result);
+    return false;
+  }
+  // Try to unseal the data, after PCR change. It should fail.
   result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
                                &unsealed_data);
   if (result == TPM_RC_SUCCESS) {
@@ -429,7 +510,7 @@ bool TrunksClientTest::PolicyAuthValueTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
       "password", policy_digest, true,  // use_only_policy_authorization
-      kNoCreationPCR, hmac_session->GetDelegate(), &key_blob, nullptr);
+      std::vector<uint32_t>(), hmac_session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return false;
@@ -530,7 +611,8 @@ bool TrunksClientTest::PolicyAndTest() {
   std::string hashed_extend_data = crypto::SHA256HashString(pcr_extend_data);
   next_pcr_value = crypto::SHA256HashString(pcr_value + hashed_extend_data);
 
-  result = trial_session->PolicyPCR(pcr_index, next_pcr_value);
+  result = trial_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index, next_pcr_value}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
     return false;
@@ -557,7 +639,7 @@ bool TrunksClientTest::PolicyAndTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
       key_authorization, policy_digest, true,  // use_only_policy_authorization
-      kNoCreationPCR, hmac_session->GetDelegate(), &key_blob, nullptr);
+      std::vector<uint32_t>(), hmac_session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return false;
@@ -584,7 +666,8 @@ bool TrunksClientTest::PolicyAndTest() {
     LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
     return false;
   }
-  result = policy_session->PolicyPCR(pcr_index, "");
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index, ""}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
     return false;
@@ -617,7 +700,8 @@ bool TrunksClientTest::PolicyAndTest() {
     LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
     return false;
   }
-  result = policy_session->PolicyPCR(pcr_index, "");
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index, ""}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
     return false;
@@ -650,7 +734,8 @@ bool TrunksClientTest::PolicyAndTest() {
     LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
     return false;
   }
-  result = policy_session->PolicyPCR(pcr_index, "");
+  result = policy_session->PolicyPCR(
+      std::map<uint32_t, std::string>({{pcr_index, ""}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
     return false;
@@ -673,9 +758,8 @@ bool TrunksClientTest::PolicyOrTest() {
   std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
   std::unique_ptr<PolicySession> trial_session = factory_.GetTrialSession();
   TPM_RC result;
-  // Specify a policy that asserts either TPM_CC_RSA_Encrypt or
-  // TPM_CC_RSA_Decrypt. A key created under this policy can only be used
-  // to encrypt or decrypt.
+  // Specify a policy that asserts either TPM_CC_Sign or TPM_CC_RSA_Decrypt.
+  // A key created under this policy can only be used to sign or decrypt.
   result = trial_session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
@@ -734,11 +818,11 @@ bool TrunksClientTest::PolicyOrTest() {
   std::string key_authorization("password");
   std::string key_blob;
   // This key is created with a policy that specifies that it can only be used
-  // for encrypt and decrypt operations.
+  // for sign and decrypt operations.
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
       key_authorization, policy_digest, true,  // use_only_policy_authorization
-      kNoCreationPCR, hmac_session->GetDelegate(), &key_blob, nullptr);
+      std::vector<uint32_t>(), hmac_session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return false;

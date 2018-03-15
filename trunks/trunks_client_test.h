@@ -67,6 +67,9 @@ class TrunksClientTest {
   // it later.
   bool SealedDataTest();
 
+  // Same as SealedDataTest() but uses multiple PCR indexes.
+  bool SealedToMultiplePCRDataTest();
+
   // This test performs a simple PCR extension and then reads the value in the
   // PCR to verify if it is correct.
   // NOTE: PCR banks need to be configured for this test to succeed. Normally

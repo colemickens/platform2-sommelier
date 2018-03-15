@@ -19,6 +19,7 @@
 
 #include "trunks/policy_session.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -57,7 +58,7 @@ class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
   TPM_RC StartUnboundSession(bool enable_encryption) override;
   TPM_RC GetDigest(std::string* digest) override;
   TPM_RC PolicyOR(const std::vector<std::string>& digests) override;
-  TPM_RC PolicyPCR(uint32_t pcr_index, const std::string& pcr_value) override;
+  TPM_RC PolicyPCR(const std::map<uint32_t, std::string>& pcr_map) override;
   TPM_RC PolicyCommandCode(TPM_CC command_code) override;
   TPM_RC PolicySecret(TPMI_DH_ENTITY auth_entity,
                       const std::string& auth_entity_name,
