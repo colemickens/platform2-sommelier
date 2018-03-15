@@ -234,7 +234,8 @@ bool GetDiskPathFromName(const std::string& disk_path,
       }
 
       if (!base::CreateDirectoryAndGetError(crosvm_dir, &dir_error)) {
-        LOG(ERROR) << "Failed to create crosvm directory in /home/root";
+        LOG(ERROR) << "Failed to create crosvm directory in /home/root: "
+                   << base::File::ErrorToString(dir_error);
         return false;
       }
     }
