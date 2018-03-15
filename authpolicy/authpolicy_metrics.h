@@ -46,17 +46,16 @@ enum MetricType {
   METRIC_COUNT,                       // Total number of metrics.
 };
 
-// Enum metric for error types returned from D-Bus calls. Should map to
-// D-Bus calls in authpolicy::AuthPolicy. Keep in sync with
-// kDBusHistogramParams!
-enum DBusCallType {
-  DBUS_CALL_AUTHENTICATE_USER,
-  DBUS_CALL_GET_USER_STATUS,
-  DBUS_CALL_GET_USER_KERBEROS_FILES,
-  DBUS_CALL_JOIN_AD_DOMAIN,
-  DBUS_CALL_REFRESH_USER_POLICY,
-  DBUS_CALL_REFRESH_DEVICE_POLICY,
-  DBUS_CALL_COUNT,
+// Enum metric for error types returned from D-Bus calls. Should map to D-Bus
+// calls in authpolicy::AuthPolicy. Keep in sync with kErrorTypeMetricParams!
+enum ErrorMetricType {
+  ERROR_OF_AUTHENTICATE_USER,        // D-Bus call AuthenticateUser.
+  ERROR_OF_GET_USER_STATUS,          // D-Bus call GetUserStatus.
+  ERROR_OF_GET_USER_KERBEROS_FILES,  // D-Bus call GetUserKerberosFiles.
+  ERROR_OF_JOIN_AD_DOMAIN,           // D-Bus call JoinAdDomain.
+  ERROR_OF_REFRESH_USER_POLICY,      // D-Bus call RefreshUserPolicy.
+  ERROR_OF_REFRESH_DEVICE_POLICY,    // D-Bus call RefreshDevicePolicy.
+  ERROR_OF_COUNT,
 };
 
 class AuthPolicyMetrics;
@@ -89,8 +88,8 @@ class AuthPolicyMetrics {
   // Report a |sample| for the given |metric_type|.
   virtual void Report(MetricType metric_type, int sample);
 
-  // Report an |ErrorType| return value from DBus query.
-  virtual void ReportDBusResult(DBusCallType call_type, ErrorType error);
+  // Report an |ErrorType| return value from a D-Bus query.
+  virtual void ReportError(ErrorMetricType metric_type, ErrorType error);
 
  private:
   MetricsLibrary metrics_;

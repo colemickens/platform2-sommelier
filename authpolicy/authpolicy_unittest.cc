@@ -244,9 +244,9 @@ class TestMetrics : public AuthPolicyMetrics {
     metrics_report_count_[metric_type]++;
   }
 
-  void ReportDBusResult(DBusCallType call_type,
-                        ErrorType /* error */) override {
-    dbus_report_count_[call_type]++;
+  void ReportError(ErrorMetricType metric_type,
+                   ErrorType /* error */) override {
+    error_report_count_[metric_type]++;
   }
 
   // Returns the most recently reported sample for the given |metric_type| or
@@ -264,11 +264,12 @@ class TestMetrics : public AuthPolicyMetrics {
     return count;
   }
 
-  // Returns how often ReportDBusResult() was called with given |call_type| and
-  // erases the count. Inefficient if call_type isn't in the map, but shorter :)
-  int GetNumDBusReports(DBusCallType call_type) {
-    const int count = dbus_report_count_[call_type];
-    dbus_report_count_.erase(call_type);
+  // Returns how often ReportDBusResult() was called with given |metric_type|
+  // and erases the count. Inefficient if |metric_type| isn't in the map, but
+  // shorter :)
+  int GetNumErrorReports(ErrorMetricType metric_type) {
+    const int count = error_report_count_[metric_type];
+    error_report_count_.erase(metric_type);
     return count;
   }
 
@@ -276,7 +277,7 @@ class TestMetrics : public AuthPolicyMetrics {
   TestMetricsLibrary test_metrics_;
   std::map<MetricType, int> last_metrics_sample_;
   std::map<MetricType, int> metrics_report_count_;
-  std::map<DBusCallType, int> dbus_report_count_;
+  std::map<ErrorMetricType, int> error_report_count_;
 };
 
 // Helper to check the ErrorType value returned by authpolicy D-Bus calls.
@@ -433,18 +434,18 @@ class AuthPolicyTest : public testing::Test {
   }
 
   void TearDown() override {
-    EXPECT_EQ(expected_dbus_calls[DBUS_CALL_AUTHENTICATE_USER],
-              metrics_->GetNumDBusReports(DBUS_CALL_AUTHENTICATE_USER));
-    EXPECT_EQ(expected_dbus_calls[DBUS_CALL_GET_USER_STATUS],
-              metrics_->GetNumDBusReports(DBUS_CALL_GET_USER_STATUS));
-    EXPECT_EQ(expected_dbus_calls[DBUS_CALL_GET_USER_KERBEROS_FILES],
-              metrics_->GetNumDBusReports(DBUS_CALL_GET_USER_KERBEROS_FILES));
-    EXPECT_EQ(expected_dbus_calls[DBUS_CALL_JOIN_AD_DOMAIN],
-              metrics_->GetNumDBusReports(DBUS_CALL_JOIN_AD_DOMAIN));
-    EXPECT_EQ(expected_dbus_calls[DBUS_CALL_REFRESH_USER_POLICY],
-              metrics_->GetNumDBusReports(DBUS_CALL_REFRESH_USER_POLICY));
-    EXPECT_EQ(expected_dbus_calls[DBUS_CALL_REFRESH_DEVICE_POLICY],
-              metrics_->GetNumDBusReports(DBUS_CALL_REFRESH_DEVICE_POLICY));
+    EXPECT_EQ(expected_error_reports[ERROR_OF_AUTHENTICATE_USER],
+              metrics_->GetNumErrorReports(ERROR_OF_AUTHENTICATE_USER));
+    EXPECT_EQ(expected_error_reports[ERROR_OF_GET_USER_STATUS],
+              metrics_->GetNumErrorReports(ERROR_OF_GET_USER_STATUS));
+    EXPECT_EQ(expected_error_reports[ERROR_OF_GET_USER_KERBEROS_FILES],
+              metrics_->GetNumErrorReports(ERROR_OF_GET_USER_KERBEROS_FILES));
+    EXPECT_EQ(expected_error_reports[ERROR_OF_JOIN_AD_DOMAIN],
+              metrics_->GetNumErrorReports(ERROR_OF_JOIN_AD_DOMAIN));
+    EXPECT_EQ(expected_error_reports[ERROR_OF_REFRESH_USER_POLICY],
+              metrics_->GetNumErrorReports(ERROR_OF_REFRESH_USER_POLICY));
+    EXPECT_EQ(expected_error_reports[ERROR_OF_REFRESH_DEVICE_POLICY],
+              metrics_->GetNumErrorReports(ERROR_OF_REFRESH_DEVICE_POLICY));
 
     EXPECT_CALL(*mock_exported_object_, Unregister()).Times(1);
     // Don't not leave no mess behind.
@@ -476,7 +477,7 @@ class AuthPolicyTest : public testing::Test {
   ErrorType JoinEx(const JoinDomainRequest& request,
                    dbus::FileDescriptor password_fd,
                    std::string* joined_domain) {
-    expected_dbus_calls[DBUS_CALL_JOIN_AD_DOMAIN]++;
+    expected_error_reports[ERROR_OF_JOIN_AD_DOMAIN]++;
     std::vector<uint8_t> blob(request.ByteSizeLong());
     request.SerializeToArray(blob.data(), blob.size());
     int error;
@@ -493,7 +494,7 @@ class AuthPolicyTest : public testing::Test {
                  ActiveDirectoryAccountInfo* account_info = nullptr) {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> account_info_blob;
-    expected_dbus_calls[DBUS_CALL_AUTHENTICATE_USER]++;
+    expected_error_reports[ERROR_OF_AUTHENTICATE_USER]++;
     int prev_files_changed_count = user_kerberos_files_changed_count_;
     AuthenticateUserRequest request;
     request.set_user_principal_name(user_principal);
@@ -516,7 +517,7 @@ class AuthPolicyTest : public testing::Test {
                           ActiveDirectoryUserStatus* user_status = nullptr) {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> user_status_blob;
-    expected_dbus_calls[DBUS_CALL_GET_USER_STATUS]++;
+    expected_error_reports[ERROR_OF_GET_USER_STATUS]++;
     GetUserStatusRequest request;
     request.set_user_principal_name(user_principal);
     request.set_account_id(account_id);
@@ -531,7 +532,7 @@ class AuthPolicyTest : public testing::Test {
                                  KerberosFiles* kerberos_files = nullptr) {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> kerberos_files_blob;
-    expected_dbus_calls[DBUS_CALL_GET_USER_KERBEROS_FILES]++;
+    expected_error_reports[ERROR_OF_GET_USER_KERBEROS_FILES]++;
     authpolicy_->GetUserKerberosFiles(account_id, &error, &kerberos_files_blob);
     MaybeParseProto(error, kerberos_files_blob, kerberos_files);
     return CastError(error);
@@ -564,7 +565,7 @@ class AuthPolicyTest : public testing::Test {
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
             &method_call,
             base::Bind(&CheckError, expected_error, &callback_was_called));
-    expected_dbus_calls[DBUS_CALL_REFRESH_USER_POLICY]++;
+    expected_error_reports[ERROR_OF_REFRESH_USER_POLICY]++;
     authpolicy_->RefreshUserPolicy(std::move(callback), account_id);
 
     // If policy fetch succeeds, authpolicy_ makes a D-Bus call to Session
@@ -597,7 +598,7 @@ class AuthPolicyTest : public testing::Test {
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
             &method_call,
             base::Bind(&CheckError, expected_error, &callback_was_called));
-    expected_dbus_calls[DBUS_CALL_REFRESH_DEVICE_POLICY]++;
+    expected_error_reports[ERROR_OF_REFRESH_DEVICE_POLICY]++;
     authpolicy_->RefreshDevicePolicy(std::move(callback));
 
     // If policy fetch succeeds, authpolicy_ makes a D-Bus call to Session
@@ -790,7 +791,7 @@ class AuthPolicyTest : public testing::Test {
   }
 
   // Expected calls of metrics reporting functions, set and checked internally.
-  std::map<DBusCallType, int> expected_dbus_calls;
+  std::map<ErrorMetricType, int> expected_error_reports;
 };
 
 // Can't fetch user policy if the user is not logged in.

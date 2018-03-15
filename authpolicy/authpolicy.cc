@@ -44,9 +44,9 @@ void PrintError(const char* msg, ErrorType error) {
     LOG(INFO) << msg << " failed with code " << error;
 }
 
-DBusCallType GetPolicyDBusCallType(bool is_refresh_user_policy) {
-  return is_refresh_user_policy ? DBUS_CALL_REFRESH_USER_POLICY
-                                : DBUS_CALL_REFRESH_DEVICE_POLICY;
+ErrorMetricType GetPolicyErrorMetricType(bool is_refresh_user_policy) {
+  return is_refresh_user_policy ? ERROR_OF_REFRESH_USER_POLICY
+                                : ERROR_OF_REFRESH_DEVICE_POLICY;
 }
 
 // Serializes |proto| to the byte array |proto_blob|. Returns ERROR_NONE on
@@ -110,11 +110,11 @@ class ResponseTracker : public base::RefCountedThreadSafe<ResponseTracker> {
     CHECK_GT(outstanding_response_count_, 0);
     if (--outstanding_response_count_ == 0) {
       // This is the last response, call the callback.
-      const DBusCallType call_type =
-          GetPolicyDBusCallType(is_refresh_user_policy_);
+      const ErrorMetricType metric_type =
+          GetPolicyErrorMetricType(is_refresh_user_policy_);
       ErrorType error =
           all_responses_succeeded_ ? ERROR_NONE : ERROR_STORE_POLICY_FAILED;
-      metrics_->ReportDBusResult(call_type, error);
+      metrics_->ReportError(metric_type, error);
       callback_->Return(error);
 
       if (all_responses_succeeded_) {
@@ -205,7 +205,7 @@ void AuthPolicy::AuthenticateUser(
     error = SerializeProto(account_info, account_info_blob);
 
   PrintError("AuthenticateUser", error);
-  metrics_->ReportDBusResult(DBUS_CALL_AUTHENTICATE_USER, error);
+  metrics_->ReportError(ERROR_OF_AUTHENTICATE_USER, error);
   *int_error = static_cast<int>(error);
 }
 
@@ -228,7 +228,7 @@ void AuthPolicy::GetUserStatus(
     error = SerializeProto(user_status, user_status_blob);
 
   PrintError("GetUserStatus", error);
-  metrics_->ReportDBusResult(DBUS_CALL_GET_USER_STATUS, error);
+  metrics_->ReportError(ERROR_OF_GET_USER_STATUS, error);
   *int_error = static_cast<int>(error);
 }
 
@@ -245,7 +245,7 @@ void AuthPolicy::GetUserKerberosFiles(
   if (error == ERROR_NONE)
     error = SerializeProto(kerberos_files, kerberos_files_blob);
   PrintError("GetUserKerberosFiles", error);
-  metrics_->ReportDBusResult(DBUS_CALL_GET_USER_KERBEROS_FILES, error);
+  metrics_->ReportError(ERROR_OF_GET_USER_KERBEROS_FILES, error);
   *int_error = static_cast<int>(error);
 }
 
@@ -272,7 +272,7 @@ void AuthPolicy::JoinADDomain(
   }
 
   PrintError("JoinADDomain", error);
-  metrics_->ReportDBusResult(DBUS_CALL_JOIN_AD_DOMAIN, error);
+  metrics_->ReportError(ERROR_OF_JOIN_AD_DOMAIN, error);
   *int_error = static_cast<int>(error);
 }
 
@@ -289,7 +289,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
 
   // Return immediately on error.
   if (error != ERROR_NONE) {
-    metrics_->ReportDBusResult(DBUS_CALL_REFRESH_USER_POLICY, error);
+    metrics_->ReportError(ERROR_OF_REFRESH_USER_POLICY, error);
     callback->Return(error);
     return;
   }
@@ -328,7 +328,7 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
 
   // Return immediately on error.
   if (error != ERROR_NONE) {
-    metrics_->ReportDBusResult(DBUS_CALL_REFRESH_DEVICE_POLICY, error);
+    metrics_->ReportError(ERROR_OF_REFRESH_DEVICE_POLICY, error);
     callback->Return(error);
     return;
   }

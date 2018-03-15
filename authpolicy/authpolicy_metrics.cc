@@ -61,21 +61,21 @@ constexpr HistogramParams kMetricHistogramParams[METRIC_COUNT] = {
     {METRIC_DOWNLOAD_GPO_COUNT, "NumGposToDownload", 1, 1000, 50},
 };
 
-// D-Bus metric name plus a parameter to make sure array indices match enum
+// Error metric name plus a parameter to make sure array indices match enum
 // values, see HistogramParams.
-struct DBusMetricParams {
+struct ErrorMetricParams {
   int enum_value;
   const char* metric_name;
 };
 
-// Keep in sync with DBusCallType!
-constexpr DBusMetricParams kDBusMetricParams[DBUS_CALL_COUNT] = {
-    {DBUS_CALL_AUTHENTICATE_USER, "ErrorTypeOfAuthenticateUser"},
-    {DBUS_CALL_GET_USER_STATUS, "ErrorTypeOfGetUserStatus"},
-    {DBUS_CALL_GET_USER_KERBEROS_FILES, "ErrorTypeOfGetUserKerberosFiles"},
-    {DBUS_CALL_JOIN_AD_DOMAIN, "ErrorTypeOfJoinADDomain"},
-    {DBUS_CALL_REFRESH_USER_POLICY, "ErrorTypeOfRefreshUserPolicy"},
-    {DBUS_CALL_REFRESH_DEVICE_POLICY, "ErrorTypeOfRefreshDevicePolicy"},
+// Keep in sync with ErrorMetricType!
+constexpr ErrorMetricParams kErrorMetricParams[ERROR_OF_COUNT] = {
+    {ERROR_OF_AUTHENTICATE_USER, "ErrorTypeOfAuthenticateUser"},
+    {ERROR_OF_GET_USER_STATUS, "ErrorTypeOfGetUserStatus"},
+    {ERROR_OF_GET_USER_KERBEROS_FILES, "ErrorTypeOfGetUserKerberosFiles"},
+    {ERROR_OF_JOIN_AD_DOMAIN, "ErrorTypeOfJoinADDomain"},
+    {ERROR_OF_REFRESH_USER_POLICY, "ErrorTypeOfRefreshUserPolicy"},
+    {ERROR_OF_REFRESH_DEVICE_POLICY, "ErrorTypeOfRefreshDevicePolicy"},
 };
 
 }  // namespace
@@ -114,12 +114,12 @@ void CheckArrayOrder<HistogramParams, kTimerHistogramParams, TIMER_COUNT>() {}
 template <>
 void CheckArrayOrder<HistogramParams, kMetricHistogramParams, METRIC_COUNT>() {}
 template <>
-void CheckArrayOrder<DBusMetricParams, kDBusMetricParams, DBUS_CALL_COUNT>() {}
+void CheckArrayOrder<ErrorMetricParams, kErrorMetricParams, ERROR_OF_COUNT>() {}
 
 AuthPolicyMetrics::AuthPolicyMetrics() {
   CheckArrayOrder<HistogramParams, kTimerHistogramParams, 0>();
   CheckArrayOrder<HistogramParams, kMetricHistogramParams, 0>();
-  CheckArrayOrder<DBusMetricParams, kDBusMetricParams, 0>();
+  CheckArrayOrder<ErrorMetricParams, kErrorMetricParams, 0>();
 
   metrics_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_);
@@ -138,12 +138,12 @@ void AuthPolicyMetrics::Report(MetricType metric_type, int sample) {
       kMetricHistogramParams[metric_type].num_buckets);
 }
 
-void AuthPolicyMetrics::ReportDBusResult(DBusCallType call_type,
-                                         ErrorType error) {
-  DCHECK(call_type >= 0 && call_type < DBUS_CALL_COUNT);
-  metrics_.SendEnumToUMA(MakeFullName(kDBusMetricParams[call_type].metric_name),
-                         static_cast<int>(error),
-                         static_cast<int>(ERROR_COUNT));
+void AuthPolicyMetrics::ReportError(ErrorMetricType metric_type,
+                                    ErrorType error) {
+  DCHECK(metric_type >= 0 && metric_type < ERROR_OF_COUNT);
+  metrics_.SendEnumToUMA(
+      MakeFullName(kErrorMetricParams[metric_type].metric_name),
+      static_cast<int>(error), static_cast<int>(ERROR_COUNT));
 }
 
 }  // namespace authpolicy
