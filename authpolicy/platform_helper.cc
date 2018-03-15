@@ -13,6 +13,8 @@
 #include <sysexits.h>
 #include <cstdint>
 
+#include <sys/ioctl.h>
+
 #include <algorithm>
 #include <vector>
 
@@ -31,6 +33,18 @@ const size_t kBufferSize = PIPE_BUF;  // ~4 Kb on my system
 const int kPollTimeoutMilliseconds = 30000;
 // Default buffer length for getpwnam_r.
 const int kDefaultBufLen = 65536;
+
+// Creates a non-blocking local pipe and returns the read and the write end.
+bool CreatePipe(base::ScopedFD* pipe_read_end, base::ScopedFD* pipe_write_end) {
+  int pipe_fd[2];
+  if (!base::CreateLocalNonBlockingPipe(pipe_fd)) {
+    LOG(ERROR) << "Failed to create pipe";
+    return false;
+  }
+  pipe_read_end->reset(pipe_fd[0]);
+  pipe_write_end->reset(pipe_fd[1]);
+  return true;
+}
 
 // Reads up to |kBufferSize| bytes from the file descriptor |src_fd| and appends
 // them to |dst_str|. Sets |done| to true iff the whole file was read
@@ -121,33 +135,27 @@ bool ReadPipeToString(int fd, std::string* out) {
 }
 
 base::ScopedFD ReadFileToPipe(const base::FilePath& path) {
-  base::ScopedFD pipe;
-  int pipe_fd[2];
-  if (!base::CreateLocalNonBlockingPipe(pipe_fd)) {
-    LOG(ERROR) << "Failed to create pipe";
-    return pipe;
-  }
-  base::ScopedFD pipe_read_end(pipe_fd[0]);
-  base::ScopedFD pipe_write_end(pipe_fd[1]);
+  base::ScopedFD pipe_read_end, pipe_write_end;
+  if (!CreatePipe(&pipe_read_end, &pipe_write_end))
+    return base::ScopedFD();
 
   bool done = false;
   base::ScopedFD file_fd(open(path.value().c_str(), O_RDONLY | O_NONBLOCK));
-  if (file_fd.get() == -1) {
+  if (!file_fd.is_valid()) {
     PLOG(ERROR) << "Failed to open file '" << path.value() << "'";
-    return pipe;
+    return base::ScopedFD();
   }
   // Splice twice. The first splice reads the whole file, but doesn't set
   // |done|. The second splice sets |done| to true.
   if (!SplicePipe(pipe_write_end.get(), file_fd.get(), &done) ||
       !SplicePipe(pipe_write_end.get(), file_fd.get(), &done)) {
-    return pipe;
+    return base::ScopedFD();
   }
   if (!done) {
     LOG(ERROR) << "Failed to splice the whole pipe in one go";
-    return pipe;
+    return base::ScopedFD();
   }
-  pipe.swap(pipe_read_end);
-  return pipe;
+  return pipe_read_end;
 }
 
 bool PerformPipeIo(int stdin_fd,
@@ -238,20 +246,29 @@ bool PerformPipeIo(int stdin_fd,
 }
 
 base::ScopedFD DuplicatePipe(int src_fd) {
-  int pipe_fd[2];
-  base::ScopedFD dup;
-  if (!base::CreateLocalNonBlockingPipe(pipe_fd)) {
-    LOG(ERROR) << "Failed to create pipe";
-    return dup;
-  }
-  dup.reset(pipe_fd[0]);
-  base::ScopedFD pipe_write_end(pipe_fd[1]);
+  base::ScopedFD pipe_read_end, pipe_write_end;
+  if (!CreatePipe(&pipe_read_end, &pipe_write_end))
+    return base::ScopedFD();
+
   if (HANDLE_EINTR(
           tee(src_fd, pipe_write_end.get(), INT_MAX, SPLICE_F_NONBLOCK)) <= 0) {
     PLOG(ERROR) << "Failed to duplicate pipe";
-    dup.reset();
+    return base::ScopedFD();
   }
-  return dup;
+  return pipe_read_end;
+}
+
+base::ScopedFD WriteStringToPipe(const std::string& str) {
+  base::ScopedFD pipe_read_end, pipe_write_end;
+  if (!CreatePipe(&pipe_read_end, &pipe_write_end))
+    return base::ScopedFD();
+
+  if (!base::WriteFileDescriptor(pipe_write_end.get(), str.c_str(),
+                                 str.size())) {
+    DLOG(ERROR) << "Failed to write string to pipe";
+    return base::ScopedFD();
+  }
+  return pipe_read_end;
 }
 
 uid_t GetUserId(const char* user_name) {

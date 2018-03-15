@@ -97,6 +97,10 @@ class TgtManager {
   // Returns the lifetime of a TGT.
   ErrorType GetTgtLifetime(protos::TgtLifetime* lifetime);
 
+  // Use kpasswd to change the password for the current principal.
+  ErrorType ChangePassword(const std::string& old_password,
+                           const std::string& new_password);
+
   // Returns the file path of the Kerberos configuration file.
   Path GetConfigPath() const { return config_path_; }
 

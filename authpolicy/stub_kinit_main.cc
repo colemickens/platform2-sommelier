@@ -104,6 +104,21 @@ void CheckMachinePassword(const std::string& password) {
   CHECK_EQ(kMachinePasswordCodePoints, wide_password.size());
 }
 
+// Reads the contents of the file at |kExpectedMachinePassFilename| and returns
+// it in |expected_machine_pass|. Returns false if it doesn't exist.
+bool GetExpectedMachinePassword(std::string* expected_machine_pass) {
+  const base::FilePath test_dir =
+      base::FilePath(GetKrb5ConfFilePath()).DirName();
+  base::FilePath expected_password_path =
+      test_dir.Append(kExpectedMachinePassFilename);
+  if (!base::PathExists(expected_password_path))
+    return false;
+
+  CHECK(base::ReadFileToString(base::FilePath(expected_password_path),
+                               expected_machine_pass));
+  return true;
+}
+
 // Writes a stub Kerberos credentials cache to the file path given by the
 // kKrb5CCEnvKey environment variable.
 void WriteKrb5CC(const std::string& data) {
@@ -241,6 +256,14 @@ int HandleCommandLine(const std::string& command_line) {
 
     // The ones below should be using a password.
     CheckMachinePassword(password);
+
+    // Compare to the expected password, if it exists.
+    std::string expected_password;
+    if (GetExpectedMachinePassword(&expected_password) &&
+        password != expected_password) {
+      WriteOutput("", kWrongPasswordError);
+      return kExitCodeError;
+    }
 
     // Stub account propagation error.
     if (TestMachinePrincipal(command_line, kPropagationRetryMachineName) &&

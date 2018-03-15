@@ -12,6 +12,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_util.h>
+#include <base/files/important_file_writer.h>
 #include <base/memory/ptr_util.h>
 #include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
@@ -86,6 +87,9 @@ const size_t kConfigSizeLimit = 256 * 1024;
 const int kSmbClientMaxTries = 5;
 // Wait interval between two smbclient tries.
 const int kSmbClientRetryWaitSeconds = 1;
+
+// Check every 120 minutes whether the machine password has to be changed.
+const int kPasswordChangeCheckRateMinutes = 120;
 
 // Keys for interpreting net output.
 const char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
@@ -288,8 +292,8 @@ bool CheckFlagsDefaultLevelValid(const base::FilePath& default_level_path) {
 
   base::File::Info info;
   if (!GetFileInfo(default_level_path, &info)) {
-    PLOG(ERROR) << "Failed to get file info from "
-                << default_level_path.value();
+    PLOG(ERROR) << "Failed to get file info from '"
+                << default_level_path.value() << "'";
     return false;
   }
 
@@ -299,8 +303,8 @@ bool CheckFlagsDefaultLevelValid(const base::FilePath& default_level_path) {
     LOG(INFO) << "Removing flags default level file and resetting (uptime: "
               << uptime_min << " minutes).";
     PCHECK(base::DeleteFile(default_level_path, false /* recursive */))
-        << "Failed to delete flags default level file "
-        << default_level_path.value();
+        << "Failed to delete flags default level file '"
+        << default_level_path.value() << "'";
     return false;
   }
 
@@ -331,8 +335,8 @@ const char* GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
   CHECK(false);
 }
 
-// Gets Kerberos encryption types from the corresponding device policy. Returns
-// ENC_TYPES_STRONG if the policy is not set or invalid.
+// Gets the Kerberos encryption types from the corresponding device policy.
+// Returns ENC_TYPES_STRONG if the policy is not set or invalid.
 KerberosEncryptionTypes GetEncryptionTypes(
     const em::ChromeDeviceSettingsProto& device_policy) {
   if (!device_policy.has_device_kerberos_encryption_types() ||
@@ -355,6 +359,8 @@ KerberosEncryptionTypes GetEncryptionTypes(
   CHECK(false);
 }
 
+// Gets the user policy loopback processing mode the corresponding device
+// policy. Returns USER_POLICY_MODE_DEFAULT if the policy is not.
 em::DeviceUserPolicyLoopbackProcessingModeProto::Mode GetUserPolicyMode(
     const em::ChromeDeviceSettingsProto& device_policy) {
   if (!device_policy.has_device_user_policy_loopback_processing_mode() ||
@@ -363,6 +369,19 @@ em::DeviceUserPolicyLoopbackProcessingModeProto::Mode GetUserPolicyMode(
         USER_POLICY_MODE_DEFAULT;
   }
   return device_policy.device_user_policy_loopback_processing_mode().mode();
+}
+
+// Gets the user policy loopback processing mode the corresponding device
+// policy. Returns a time delta of |kDefaultMachinePasswordChangeRateDays| days
+// if the policy is not.
+base::TimeDelta GetMachinePasswordChangeRate(
+    const em::ChromeDeviceSettingsProto& device_policy) {
+  if (!device_policy.has_device_machine_password_change_rate() ||
+      !device_policy.device_machine_password_change_rate().has_rate_days()) {
+    return base::TimeDelta::FromDays(kDefaultMachinePasswordChangeRateDays);
+  }
+  return base::TimeDelta::FromDays(
+      device_policy.device_machine_password_change_rate().rate_days());
 }
 
 }  // namespace
@@ -429,13 +448,15 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
         std::move(device_policy_impl_for_testing);
     if (!policy_impl)
       policy_impl = std::make_unique<policy::DevicePolicyImpl>();
-    if (policy_impl->LoadPolicy()) {
-      UpdateDevicePolicyDependencies(policy_impl->get_device_policy());
-    } else {
+    if (!policy_impl->LoadPolicy()) {
       LOG(ERROR) << "Failed to load device policy. Authentication and policy "
                     "fetch might behave unexpectedly until the next device "
                     "policy fetch.";
     }
+
+    // Call this even when loading failed to get the defaults right (e.g.
+    // turn on machine password auto renewal).
+    UpdateDevicePolicyDependencies(policy_impl->get_device_policy());
   }
 
   return ERROR_NONE;
@@ -673,7 +694,7 @@ ErrorType SambaInterface::JoinMachine(
   }
 
   // Store the machine password.
-  error = WriteMachinePassword(machine_pass);
+  error = WriteMachinePassword(Path::MACHINE_PASS, machine_pass);
   if (error != ERROR_NONE) {
     Reset();
     return error;
@@ -832,17 +853,28 @@ ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
   // Parse the output to find the KDC IP. Enclose in a sandbox for security
   // considerations.
   ProcessExecutor parse_cmd(
-      {paths_->Get(Path::PARSER), kCmdParseKdcIp, SerializeFlags(flags_)});
+      {paths_->Get(Path::PARSER), kCmdParseServerInfo, SerializeFlags(flags_)});
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
                                     TIMER_NONE)) {
     // Log net output if it hasn't been done yet.
     net_cmd.LogOutputOnce();
-    LOG(ERROR) << "authpolicy_parser parse_kdc_ip failed with exit code "
+    LOG(ERROR) << "authpolicy_parser parse_server_info failed with exit code "
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
   }
-  account->kdc_ip = parse_cmd.GetStdout();
+
+  protos::ServerInfo server_info;
+  if (!server_info.ParseFromString(parse_cmd.GetStdout())) {
+    // Log net output if it hasn't been done yet.
+    net_cmd.LogOutputOnce();
+    LOG(ERROR) << "Failed to parse server info protobuf";
+    return ERROR_PARSE_FAILED;
+  }
+
+  account->kdc_ip = server_info.kdc_ip();
+  account->server_time =
+      base::Time::FromInternalValue(server_info.server_time());
 
   // Explicitly set replacements again, see SearchAccountInfo for an
   // explanation.
@@ -1079,20 +1111,32 @@ ErrorType SambaInterface::AcquireDeviceTgt() {
 
   // Authenticate using password. Note: There is no keytab file here.
   base::ScopedFD password_fd = ReadFileToPipe(password_path);
-  if (password_fd.get() == -1) {
-    LOG(ERROR) << "Failed to open machine password file "
-               << password_path.value();
+  if (!password_fd.is_valid()) {
+    LOG(ERROR) << "Failed to open machine password file '"
+               << password_path.value() << "'";
+    return ERROR_LOCAL_IO;
+  }
+  const base::FilePath prev_password_path(paths_->Get(Path::PREV_MACHINE_PASS));
+  error = device_tgt_manager_.AcquireTgtWithPassword(password_fd.get());
+  if (error != ERROR_BAD_PASSWORD || !base::PathExists(prev_password_path))
+    return error;
+
+  // Try again with the previous password. After a password change the password
+  // might not have propagated through a large AD deployment yet.
+  password_fd = ReadFileToPipe(prev_password_path);
+  if (!password_fd.is_valid()) {
+    LOG(ERROR) << "Failed to open machine password file '"
+               << prev_password_path.value() << "'";
     return ERROR_LOCAL_IO;
   }
   return device_tgt_manager_.AcquireTgtWithPassword(password_fd.get());
 }
 
 ErrorType SambaInterface::WriteMachinePassword(
-    const std::string& machine_pass) const {
-  const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
-  const int machine_pass_size = static_cast<int>(machine_pass.size());
-  if (base::WriteFile(password_path, machine_pass.data(), machine_pass_size) !=
-      machine_pass_size) {
+    Path path, const std::string& machine_pass) const {
+  const base::FilePath password_path(paths_->Get(path));
+  if (!base::ImportantFileWriter::WriteFileAtomically(password_path,
+                                                      machine_pass)) {
     LOG(ERROR) << "Failed to write machine password file '"
                << password_path.value() << "'";
     return ERROR_LOCAL_IO;
@@ -1105,7 +1149,32 @@ ErrorType SambaInterface::WriteMachinePassword(
   if (error != ERROR_NONE)
     return error;
 
+  // Set file time to match server time, so that we can determine the password
+  // age and renew the machine password without relying on local time.
+  if (!base::TouchFile(password_path, device_account_.server_time,
+                       device_account_.server_time)) {
+    LOG(ERROR) << "Failed to set file time on machine password file '"
+               << password_path.value() << "'";
+    return ERROR_LOCAL_IO;
+  }
+
   LOG(INFO) << "Wrote machine password file '" << password_path.value() << "'";
+  return ERROR_NONE;
+}
+
+ErrorType SambaInterface::RollMachinePassword() {
+  const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
+  const base::FilePath prev_password_path(paths_->Get(Path::PREV_MACHINE_PASS));
+  const base::FilePath new_password_path(paths_->Get(Path::NEW_MACHINE_PASS));
+
+  base::File::Error file_error;
+  if (!base::ReplaceFile(password_path, prev_password_path, &file_error) ||
+      !base::ReplaceFile(new_password_path, password_path, &file_error)) {
+    LOG(ERROR) << "Machine password roll failed: "
+               << base::File::ErrorToString(file_error);
+    return ERROR_LOCAL_IO;
+  }
+
   return ERROR_NONE;
 }
 
@@ -1253,7 +1322,9 @@ ErrorType SambaInterface::SearchAccountInfo(
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP,
                                     TIMER_NONE)) {
-    LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
+    // Log net output if it hasn't been done yet.
+    net_cmd.LogOutputOnce();
+    LOG(ERROR) << "Failed to parse account info. Net response: " << net_out;
     return ERROR_PARSE_FAILED;
   }
   const std::string& account_info_blob = parse_cmd.GetStdout();
@@ -1550,6 +1621,126 @@ void SambaInterface::UpdateDevicePolicyDependencies(
 
   // Get loopback processing mode.
   user_policy_mode_ = GetUserPolicyMode(device_policy);
+
+  // Update machine password change rate. Use the default 30 days for now until
+  // the DeviceMachinePasswordChangeRate arrives in Chrome OS.
+  base::TimeDelta password_change_rate =
+      GetMachinePasswordChangeRate(device_policy);
+  UpdateMachinePasswordAutoChange(password_change_rate);
+}
+
+void SambaInterface::UpdateMachinePasswordAutoChange(
+    const base::TimeDelta& rate) {
+  password_change_rate_ = rate;
+
+  // Disable password auto change if the rate is non-positive.
+  if (password_change_rate_ <= base::TimeDelta::FromDays(0)) {
+    password_change_timer_.Stop();
+    return;
+  }
+
+  // Are we using a machine password at all? Devices joined before the switch
+  // from keytab to password still use keytabs, so changing the machine password
+  // isn't possible.
+  if (!base::PathExists(base::FilePath(paths_->Get(Path::MACHINE_PASS)))) {
+    LOG(WARNING)
+        << "Cannot change the machine password since this devices still uses "
+           "the keytab file. Re-enrolling the device will fix this.";
+    return;
+  }
+
+  // Start timer for the password change checker.
+  if (!password_change_timer_.IsRunning()) {
+    base::TimeDelta delta =
+        base::TimeDelta::FromMinutes(kPasswordChangeCheckRateMinutes);
+    password_change_timer_.Start(
+        FROM_HERE, delta, this,
+        &SambaInterface::AutoCheckMachinePasswordChange);
+
+    // Perform a check immediately. This usually happens on startup and makes
+    // sure we do at least one check during a session.
+    AutoCheckMachinePasswordChange();
+  }
+}
+
+void SambaInterface::AutoCheckMachinePasswordChange() {
+  LOG(INFO) << "Running scheduled machine password age check";
+  ErrorType error = CheckMachinePasswordChange();
+  if (error != ERROR_NONE)
+    LOG(ERROR) << "Machine password check failed with error " << error;
+  did_password_change_check_run_for_testing_ = true;
+  metrics_->ReportError(ERROR_OF_AUTO_MACHINE_PASSWORD_CHANGE, error);
+}
+
+ErrorType SambaInterface::CheckMachinePasswordChange() {
+  // Get the latest server time.
+  UpdateAccountData(&device_account_);
+
+  const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
+  base::File::Info file_info;
+  if (!GetFileInfo(password_path, &file_info)) {
+    LOG(ERROR)
+        << "Machine password check failed. Could not get info for machine "
+        << "password file '" << password_path.value() << "'";
+    return ERROR_LOCAL_IO;
+  }
+
+  // Check if the password is older than the change rate (=max age).
+  base::TimeDelta password_age =
+      device_account_.server_time - file_info.last_modified;
+  if (password_age < password_change_rate_) {
+    int days_left = (password_change_rate_ - password_age).InDays();
+    LOG(INFO) << "No need to change machine password (" << days_left
+              << " days left)";
+    return ERROR_NONE;
+  }
+
+  LOG(INFO) << "Machine password is older than "
+            << password_change_rate_.InDays() << " days. Changing.";
+
+  // Read the old password.
+  std::string old_password;
+  if (!base::ReadFileToString(password_path, &old_password)) {
+    PLOG(ERROR) << "Could not read machine password file '"
+                << password_path.value() << "'";
+    return ERROR_LOCAL_IO;
+  }
+
+  // Generate and write a new password.
+  const std::string new_password = GenerateRandomMachinePassword();
+  ErrorType error = WriteMachinePassword(Path::NEW_MACHINE_PASS, new_password);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Change the machine password on the server.
+  error = device_tgt_manager_.ChangePassword(old_password, new_password);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Roll password files.
+  error = RollMachinePassword();
+
+  if (error != ERROR_NONE) {
+    // Try writing the new password directly, ignoring the previous one.
+    error = WriteMachinePassword(Path::MACHINE_PASS, new_password);
+  }
+
+  if (error != ERROR_NONE) {
+    // Do a best effort recovering the old password. If that doesn't work, we
+    // won't be able to access the machine account anymore!
+    ErrorType change_back_error =
+        device_tgt_manager_.ChangePassword(new_password, old_password);
+    ErrorType write_error =
+        WriteMachinePassword(Path::MACHINE_PASS, old_password);
+    if (change_back_error != ERROR_NONE || write_error != ERROR_NONE) {
+      LOG(ERROR) << "Recovering the old machine password failed. Your device "
+                    "is in an invalid state and needs to be re-enrolled.";
+    }
+    return error;
+  }
+
+  LOG(INFO) << "Successfully changed machine password";
+  return ERROR_NONE;
 }
 
 void SambaInterface::SetUser(const std::string& account_id) {
@@ -1617,6 +1808,13 @@ void SambaInterface::Reset() {
   user_tgt_manager_.Reset();
   device_tgt_manager_.Reset();
   SetKerberosEncryptionTypes(ENC_TYPES_STRONG);
+  user_policy_mode_ =
+      em::DeviceUserPolicyLoopbackProcessingModeProto::USER_POLICY_MODE_DEFAULT;
+  password_change_timer_.Stop();
+  password_change_rate_ = base::TimeDelta();
+  has_device_policy_ = false;
+  device_policy_impl_for_testing.reset();
+  did_password_change_check_run_for_testing_ = false;
 }
 
 void SambaInterface::LoadFlagsDefaultLevel() {
@@ -1626,8 +1824,8 @@ void SambaInterface::LoadFlagsDefaultLevel() {
     return;
   std::string level_str;
   if (!base::ReadFileToStringWithMaxSize(default_level_path, &level_str, 16)) {
-    PLOG(ERROR) << "Failed to read flags default level from "
-                << default_level_path.value();
+    PLOG(ERROR) << "Failed to read flags default level from '"
+                << default_level_path.value() << "'";
     return;
   }
   int level_int;
@@ -1649,14 +1847,14 @@ void SambaInterface::SaveFlagsDefaultLevel() {
   if (flags_default_level_ == AuthPolicyFlags::kQuiet) {
     // Remove the file, kQuiet is the default, anyway.
     if (!base::DeleteFile(default_level_path, false /* recursive */)) {
-      PLOG(ERROR) << "Failed to delete flags default level file "
-                  << default_level_path.value();
+      PLOG(ERROR) << "Failed to delete flags default level file '"
+                  << default_level_path.value() << "'";
     }
   } else {
     // Write the file.
     if (base::WriteFile(default_level_path, level_str.data(), size) != size) {
-      PLOG(ERROR) << "Failed to write flags default level to "
-                  << default_level_path.value();
+      PLOG(ERROR) << "Failed to write flags default level to '"
+                  << default_level_path.value() << "'";
     }
   }
 }

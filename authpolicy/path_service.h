@@ -39,13 +39,17 @@ enum class Path {
   USER_CREDENTIAL_CACHE,
   DEVICE_CREDENTIAL_CACHE,
 
-  // Machine credentials (authpolicy uses EITHER password OR keytab)
-  MACHINE_PASS,    // Password (used on newer installations)
-  MACHINE_KEYTAB,  // Keytab (used on older (used on older installations)
+  // Machine credentials. Authpolicy uses EITHER password OR keytab. Newly
+  // enrolled devices use passwords, older devices use keytabs.
+  MACHINE_PASS,       // Current machine password.
+  PREV_MACHINE_PASS,  // Previous machine password.
+  NEW_MACHINE_PASS,   // New machine password.
+  MACHINE_KEYTAB,     // Kerberos machine keytab file.
 
   // Samba/Kerberos/parser executables.
   KINIT,
   KLIST,
+  KPASSWD,
   NET,
   SMBCLIENT,
   PARSER,
@@ -53,6 +57,7 @@ enum class Path {
   // Seccomp filter policies.
   KINIT_SECCOMP,
   KLIST_SECCOMP,
+  KPASSWD_SECCOMP,
   NET_ADS_SECCOMP,
   PARSER_SECCOMP,
   SMBCLIENT_SECCOMP,
@@ -61,7 +66,7 @@ enum class Path {
   DEBUG_FLAGS,          // File with debug flags, see AuthPolicyFlags.
   FLAGS_DEFAULT_LEVEL,  // File with flags default level (as integer), see
                         // AuthPolicyFlags::DefaultLevel.
-  KRB5_TRACE,           // kinit trace log.
+  KRB5_TRACE,           // kinit and kpasswd trace log.
 };
 
 // Simple path service.

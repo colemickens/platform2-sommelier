@@ -43,6 +43,7 @@ constexpr HistogramParams kTimerHistogramParams[TIMER_COUNT] = {
     {TIMER_NET_ADS_WORKGROUP, "TimeToRunNetAdsWorkgroup", 1, 120000, 50},
     {TIMER_KINIT, "TimeToRunKinit", 1, 120000, 50},
     {TIMER_KLIST, "TimeToRunKlist", 1, 120000, 50},
+    {TIMER_KPASSWD, "TimeToRunKpasswd", 1, 120000, 50},
     {TIMER_SMBCLIENT, "TimeToRunSmbclient", 1, 120000, 50},
     {TIMER_AUTHENTICATE_USER, "TimeToAuthenticateUser", 1, 600000, 50},
     {TIMER_GET_USER_STATUS, "TimeToGetUserStatus", 1, 600000, 50},
@@ -76,6 +77,9 @@ constexpr ErrorMetricParams kErrorMetricParams[ERROR_OF_COUNT] = {
     {ERROR_OF_JOIN_AD_DOMAIN, "ErrorTypeOfJoinADDomain"},
     {ERROR_OF_REFRESH_USER_POLICY, "ErrorTypeOfRefreshUserPolicy"},
     {ERROR_OF_REFRESH_DEVICE_POLICY, "ErrorTypeOfRefreshDevicePolicy"},
+    {ERROR_OF_AUTO_TGT_RENEWAL, "ErrorTypeOfAutoTgtRenewal"},
+    {ERROR_OF_AUTO_MACHINE_PASSWORD_CHANGE,
+     "ErrorTypeOfAutoMachinePasswordChange"},
 };
 
 }  // namespace

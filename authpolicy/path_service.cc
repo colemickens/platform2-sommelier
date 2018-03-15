@@ -36,11 +36,14 @@ const char kDeviceCredentialCache[] = "/krb5cc_device";
 
 // Machine credentials.
 const char kMachinePass[] = "/machine_pass";
+const char kPrevMachinePass[] = "/prev_machine_pass";
+const char kNewMachinePass[] = "/new_machine_pass";
 const char kMachineKeyTab[] = "/krb5_machine.keytab";
 
 // Executables.
 const char kKInitPath[] = "/usr/bin/kinit";
 const char kKListPath[] = "/usr/bin/klist";
+const char kKPasswdPath[] = "/usr/bin/kpasswd";
 const char kNetPath[] = "/usr/bin/net";
 const char kParserPath[] = "/usr/sbin/authpolicy_parser";
 const char kSmbClientPath[] = "/usr/bin/smbclient";
@@ -48,6 +51,8 @@ const char kSmbClientPath[] = "/usr/bin/smbclient";
 // Seccomp filters.
 const char kKInitSeccompFilterPath[] = "/usr/share/policy/kinit-seccomp.policy";
 const char kKListSeccompFilterPath[] = "/usr/share/policy/klist-seccomp.policy";
+const char kKPasswdSeccompFilterPath[] =
+    "/usr/share/policy/kpasswd-seccomp.policy";
 const char kNetAdsSeccompFilterPath[] =
     "/usr/share/policy/net_ads-seccomp.policy";
 const char kParserSeccompFilterPath[] =
@@ -59,7 +64,7 @@ const char kSmbClientSeccompFilterPath[] =
 const char kDebugFlagsPath[] = "/etc/authpolicyd_flags";
 // Flags default level.
 const char kFlagsDefaultLevelPath[] = "/run/authpolicyd/flags_default_level";
-// kinit trace logs.
+// Kerberos trace logs (kinit, kpasswd).
 const char kKrb5Trace[] = "/krb5_trace";
 
 }  // namespace
@@ -100,16 +105,20 @@ void PathService::Initialize() {
   Insert(Path::DEVICE_CREDENTIAL_CACHE, samba_dir + kDeviceCredentialCache);
 
   Insert(Path::MACHINE_PASS, state_dir + kMachinePass);
+  Insert(Path::PREV_MACHINE_PASS, state_dir + kPrevMachinePass);
+  Insert(Path::NEW_MACHINE_PASS, state_dir + kNewMachinePass);
   Insert(Path::MACHINE_KEYTAB, state_dir + kMachineKeyTab);
 
   Insert(Path::KINIT, kKInitPath);
   Insert(Path::KLIST, kKListPath);
+  Insert(Path::KPASSWD, kKPasswdPath);
   Insert(Path::NET, kNetPath);
   Insert(Path::PARSER, kParserPath);
   Insert(Path::SMBCLIENT, kSmbClientPath);
 
   Insert(Path::KINIT_SECCOMP, kKInitSeccompFilterPath);
   Insert(Path::KLIST_SECCOMP, kKListSeccompFilterPath);
+  Insert(Path::KPASSWD_SECCOMP, kKPasswdSeccompFilterPath);
   Insert(Path::NET_ADS_SECCOMP, kNetAdsSeccompFilterPath);
   Insert(Path::PARSER_SECCOMP, kParserSeccompFilterPath);
   Insert(Path::SMBCLIENT_SECCOMP, kSmbClientSeccompFilterPath);

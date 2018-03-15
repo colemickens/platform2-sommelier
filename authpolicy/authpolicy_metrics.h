@@ -27,6 +27,7 @@ enum TimerType {
   TIMER_NET_ADS_WORKGROUP,        // net ads workgroup.
   TIMER_KINIT,                    // kinit.
   TIMER_KLIST,                    // klist.
+  TIMER_KPASSWD,                  // kpasswd.
   TIMER_SMBCLIENT,                // smbclient.
   TIMER_AUTHENTICATE_USER,        // User authentication D-Bus call.
   TIMER_GET_USER_STATUS,          // User status query D-Bus call.
@@ -46,15 +47,18 @@ enum MetricType {
   METRIC_COUNT,                       // Total number of metrics.
 };
 
-// Enum metric for error types returned from D-Bus calls. Should map to D-Bus
-// calls in authpolicy::AuthPolicy. Keep in sync with kErrorTypeMetricParams!
+// Enum metric for error types returned from D-Bus calls and scheduled
+// operations. Should contain all D-Bus calls in authpolicy::AuthPolicy. Keep in
+// sync with kErrorTypeMetricParams!
 enum ErrorMetricType {
-  ERROR_OF_AUTHENTICATE_USER,        // D-Bus call AuthenticateUser.
-  ERROR_OF_GET_USER_STATUS,          // D-Bus call GetUserStatus.
-  ERROR_OF_GET_USER_KERBEROS_FILES,  // D-Bus call GetUserKerberosFiles.
-  ERROR_OF_JOIN_AD_DOMAIN,           // D-Bus call JoinAdDomain.
-  ERROR_OF_REFRESH_USER_POLICY,      // D-Bus call RefreshUserPolicy.
-  ERROR_OF_REFRESH_DEVICE_POLICY,    // D-Bus call RefreshDevicePolicy.
+  ERROR_OF_AUTHENTICATE_USER,             // D-Bus call AuthenticateUser.
+  ERROR_OF_GET_USER_STATUS,               // D-Bus call GetUserStatus.
+  ERROR_OF_GET_USER_KERBEROS_FILES,       // D-Bus call GetUserKerberosFiles.
+  ERROR_OF_JOIN_AD_DOMAIN,                // D-Bus call JoinAdDomain.
+  ERROR_OF_REFRESH_USER_POLICY,           // D-Bus call RefreshUserPolicy.
+  ERROR_OF_REFRESH_DEVICE_POLICY,         // D-Bus call RefreshDevicePolicy.
+  ERROR_OF_AUTO_TGT_RENEWAL,              // Automatic TGT renewal.
+  ERROR_OF_AUTO_MACHINE_PASSWORD_CHANGE,  // Automatic machine password change.
   ERROR_OF_COUNT,
 };
 
@@ -88,7 +92,8 @@ class AuthPolicyMetrics {
   // Report a |sample| for the given |metric_type|.
   virtual void Report(MetricType metric_type, int sample);
 
-  // Report an |ErrorType| return value from a D-Bus query.
+  // Report an |ErrorType| return value from a D-Bus query or a scheduled
+  // operation.
   virtual void ReportError(ErrorMetricType metric_type, ErrorType error);
 
  private:

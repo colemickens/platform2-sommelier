@@ -54,6 +54,7 @@ const char kGpoToken_Options[] = "options";
 // 'net ads' tokens.
 const char kToken_NoResults[] = "Got 0 replies";
 const char kToken_KdcServer[] = "KDC server";
+const char kToken_ServerTime[] = "Server time";
 const char kToken_DomainController[] = "Domain Controller";
 const char kToken_Workgroup[] = "Workgroup";
 
@@ -177,6 +178,36 @@ bool ParseTgtDateTime(const std::string& str, size_t offset, time_t* time) {
 
   *time = mktime(&tm);
   return true;
+}
+
+// Parses the output of net ads info into a ServerInfo protobuf and prints
+// it to stdout.
+int ParseServerInfo(const std::string& net_out) {
+  std::string kdc_ip, server_time_str;
+  if (!FindToken(net_out, ':', kToken_KdcServer, &kdc_ip) ||
+      !FindToken(net_out, ':', kToken_ServerTime, &server_time_str)) {
+    LOG(ERROR) << "Failed to parse server info";
+    return EXIT_CODE_FIND_TOKEN_FAILED;
+  }
+
+  // Parse time. The time format is "Thu, 15 Feb 2018 11:21:26 PST".
+  base::Time server_time;
+  if (!base::Time::FromString(server_time_str.c_str(), &server_time)) {
+    LOG(ERROR) << "Failed to parse server time " << server_time_str;
+    return EXIT_CODE_PARSE_INPUT_FAILED;
+  }
+
+  // Put data into proto.
+  protos::ServerInfo server_info;
+  server_info.set_kdc_ip(kdc_ip);
+  server_info.set_server_time(server_time.ToInternalValue());
+
+  std::string server_info_blob;
+  if (!server_info.SerializeToString(&server_info_blob)) {
+    LOG(ERROR) << "Failed to convert server info proto to string";
+    return EXIT_CODE_WRITE_OUTPUT_FAILED;
+  }
+  return OutputForCaller(server_info_blob);
 }
 
 // Parses the output of net ads search to get the user's account info and prints
@@ -498,8 +529,8 @@ int ParseTgtLifetime(const std::string& klist_out) {
 int HandleCommand(const std::string& cmd,
                   const std::string& arg,
                   const protos::DebugFlags& flags) {
-  if (cmd == kCmdParseKdcIp)
-    return ParseSingleToken(arg, kToken_KdcServer);
+  if (cmd == kCmdParseServerInfo)
+    return ParseServerInfo(arg);
   if (cmd == kCmdParseDcName)
     return ParseSingleToken(arg, kToken_DomainController);
   if (cmd == kCmdParseWorkgroup)

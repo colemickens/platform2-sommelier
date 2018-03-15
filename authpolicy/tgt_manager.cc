@@ -74,7 +74,7 @@ const char kKrb5RealmData[] =
     "\t\tkpasswd_server = [%s]\n"
     "\t}\n";
 
-// Env variable to trace debug info of kinit.
+// Env variable to trace debug info of kinit and kpasswd.
 const char kKrb5TraceEnvKey[] = "KRB5_TRACE";
 
 // Maximum kinit tries.
@@ -82,13 +82,17 @@ const int kKinitMaxTries = 60;
 // Wait interval between two kinit tries.
 const int kKinitRetryWaitSeconds = 1;
 
-// Keys for interpreting kinit output.
+// Keys for interpreting kinit, klist and kpasswd output.
 const char kKeyBadPrincipal[] =
     "not found in Kerberos database while getting initial credentials";
+const char kKeyBadPrincipal2[] =
+    "Client not found in Kerberos database getting initial ticket";
 const char kKeyBadPassword[] =
     "Preauthentication failed while getting initial credentials";
 const char kKeyBadPassword2[] =
     "Password incorrect while getting initial credentials";
+const char kKeyBadPassword3[] =
+    "Preauthentication failed getting initial ticket";
 const char kKeyPasswordExpiredStdout[] =
     "Password expired.  You must change it now.";
 const char kKeyPasswordRejectedStdout[] = "Password change rejected";
@@ -97,6 +101,7 @@ const char kCannotReadPasswordStderr[] =
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
 const char kKeyCannotContactKDC[] = "Cannot contact any KDC";
+const char kKeyCannotFindKDC[] = "Cannot find KDC";
 const char kKeyNoCrentialsCache[] = "No credentials cache found";
 const char kKeyTicketExpired[] = "Ticket expired while renewing credentials";
 
@@ -216,6 +221,36 @@ ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
   return ERROR_KLIST_FAILED;
 }
 
+// In case kpasswd failed, checks the output and returns appropriate error
+// codes.
+ErrorType GetKPasswdError(const ProcessExecutor& kpasswd_cmd,
+                          bool is_machine_principal) {
+  DCHECK_NE(0, kpasswd_cmd.GetExitCode());
+  const std::string& kpasswd_err = kpasswd_cmd.GetStderr();
+
+  if (Contains(kpasswd_err, kKeyCannotContactKDC) ||
+      Contains(kpasswd_err, kKeyCannotFindKDC)) {
+    LOG(ERROR) << "kpasswd failed - failed to contact KDC";
+    return ERROR_CONTACTING_KDC_FAILED;
+  }
+  if (Contains(kpasswd_err, kKeyBadPrincipal2)) {
+    LOG(ERROR) << "kpasswd failed - bad "
+               << (is_machine_principal ? "machine" : "user") << " name";
+    return is_machine_principal ? ERROR_BAD_MACHINE_NAME : ERROR_BAD_USER_NAME;
+  }
+  if (Contains(kpasswd_err, kKeyBadPassword3)) {
+    LOG(ERROR) << "kpasswd failed - bad password";
+    return ERROR_BAD_PASSWORD;
+  }
+  if (Contains(kpasswd_err, kKeyPasswordRejectedStdout)) {
+    LOG(ERROR) << "kpasswd failed - password rejected";
+    return ERROR_PASSWORD_REJECTED;
+  }
+
+  LOG(ERROR) << "kpasswd failed with exit code " << kpasswd_cmd.GetExitCode();
+  return ERROR_KPASSWD_FAILED;
+}
+
 std::string GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
   switch (encryption_types) {
     case ENC_TYPES_ALL:
@@ -269,6 +304,7 @@ void TgtManager::Reset() {
   kdc_ip_.clear();
   kinit_retry_ = false;
   encryption_types_ = ENC_TYPES_STRONG;
+  EnableTgtAutoRenewal(false);
 }
 
 ErrorType TgtManager::AcquireTgtWithPassword(int password_fd) {
@@ -419,6 +455,32 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
   }
 }
 
+ErrorType TgtManager::ChangePassword(const std::string& old_password,
+                                     const std::string& new_password) {
+  // Write configuration.
+  ErrorType error = WriteKrb5Conf();
+  if (error != ERROR_NONE)
+    return error;
+
+  // Write passwords to pipe.
+  base::ScopedFD password_fd = WriteStringToPipe(
+      old_password + "\n" + new_password + "\n" + new_password);
+  if (!password_fd.is_valid())
+    return ERROR_LOCAL_IO;
+
+  // Setup and run kpasswd command.
+  ProcessExecutor kpasswd_cmd({paths_->Get(Path::KPASSWD), principal_});
+  kpasswd_cmd.SetInputFile(password_fd.get());
+  kpasswd_cmd.SetEnv(kKrb5ConfEnvKey, kFilePrefix + paths_->Get(config_path_));
+  SetupKrb5Trace(&kpasswd_cmd);
+  if (!jail_helper_->SetupJailAndRun(&kpasswd_cmd, Path::KPASSWD_SECCOMP,
+                                     TIMER_KPASSWD)) {
+    OutputKrb5Trace();
+    return GetKPasswdError(kpasswd_cmd, is_machine_principal_);
+  }
+  return ERROR_NONE;
+}
+
 ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
                                int password_fd) const {
   // Write configuration.
@@ -514,10 +576,10 @@ void TgtManager::SetupKrb5Trace(ProcessExecutor* krb5_cmd) const {
     return;
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   {
-    // Delete kinit trace file (must be done as authpolicyd-exec).
+    // Delete krb5 trace file (must be done as authpolicyd-exec).
     ScopedSwitchToSavedUid switch_scope;
     if (!base::DeleteFile(base::FilePath(trace_path), false /* recursive */)) {
-      LOG(WARNING) << "Failed to delete kinit trace file";
+      LOG(WARNING) << "Failed to delete krb5 trace file";
     }
   }
   krb5_cmd->SetEnv(kKrb5TraceEnvKey, trace_path);
@@ -529,12 +591,12 @@ void TgtManager::OutputKrb5Trace() const {
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   std::string trace;
   {
-    // Read kinit trace file (must be done as authpolicyd-exec).
+    // Read krb5 trace file (must be done as authpolicyd-exec).
     ScopedSwitchToSavedUid switch_scope;
     if (!base::ReadFileToString(base::FilePath(trace_path), &trace))
       trace = "<failed to read>";
   }
-  LogLongString(kColorKrb5Trace, "Kinit trace: ", trace, anonymizer_);
+  LogLongString(kColorKrb5Trace, "Krb5 trace: ", trace, anonymizer_);
 }
 
 void TgtManager::UpdateTgtAutoRenewal() {
@@ -584,7 +646,8 @@ void TgtManager::AutoRenewTgt() {
   if (error == ERROR_NONE)
     LOG(INFO) << kTgtRenewalHeader << "Succeeded";
   else
-    LOG(INFO) << kTgtRenewalHeader << "Failed with error " << error;
+    LOG(ERROR) << kTgtRenewalHeader << "Failed with error " << error;
+  metrics_->ReportError(ERROR_OF_AUTO_TGT_RENEWAL, error);
 }
 
 void TgtManager::MaybeTriggerKerberosFilesChanged() {

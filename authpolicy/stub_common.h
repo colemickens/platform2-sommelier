@@ -126,6 +126,9 @@ extern const char kDisableUserFlagMachineName[];
 extern const char kLoopbackGpoMachineName[];
 // Triggers kinit to expect a keytab instead of a password.
 extern const char kExpectKeytabMachineName[];
+// Triggers net ads info to print a server time later than password write time +
+// kDefaultMachinePasswordChangeRateDays, which should cause a password change.
+extern const char kChangePasswordMachineName[];
 // Triggers kinit to be retried a few times for the machine TGT (simulates that
 // the account hasn't propagated yet).
 extern const char kPropagationRetryMachineName[];
@@ -147,6 +150,10 @@ extern const char kGpo1Filename[];
 // Filename of stub GPO 2 file. "Download" can be triggered by using
 // kTwoGposMachineName.
 extern const char kGpo2Filename[];
+
+// Filename of the expected machine password. stub_kinit fails if the file
+// exists and the contained machine password does not match.
+extern const char kExpectedMachinePassFilename[];
 
 // Returns |argv[1] + " " + argv[2] + " " + ... + argv[argc-1]|.
 std::string GetCommandLine(int argc, const char* const* argv);

@@ -24,6 +24,8 @@ namespace {
 
 const char kSmbConfDevice[] = "smb_device.conf";
 const char kSmbConfUser[] = "smb_user.conf";
+const char kMachinePass[] = "machine_pass";
+const char kStateDir[] = "state";
 
 // Various stub error messages.
 const char kSmbConfArgMissingError[] =
@@ -61,11 +63,13 @@ LDAP server name: LDAPNAME.example.com
 Realm: REALM.EXAMPLE.COM
 Bind Path: dc=REALM,dc=EXAMPLE,dc=COM
 LDAP port: 389
-Server time: Fri, 03 Feb 2017 05:24:05 PST
+Server time: %s
 KDC server: 111.222.33.2
 Server time offset: -91
 Last machine account password change:
 Wed, 31 Dec 1969 16:00:00 PST)!!!";
+
+constexpr char kDefaultServerTime[] = "Fri, 03 Feb 2017 05:24:05 PST";
 
 // Stub net ads info response.
 const char kStubLookup[] = R"!!!(Information for Domain Controller: 111.222.33.3
@@ -353,6 +357,16 @@ std::string GetSearchResultFromSAMAccountName(
   return search_builder.GetResult();
 }
 
+// Formats time according to "Fri, 03 Feb 2017 05:24:05 UTC".
+std::string FormatServerTime(const base::Time& time) {
+  time_t utime = time.ToTimeT();
+  struct tm tm;
+  gmtime_r(&utime, &tm);
+  char str[64];
+  CHECK(strftime(str, sizeof(str), "%a, %d %b %Y %H:%M:%S UTC", &tm));
+  return std::string(str);
+}
+
 // Handles a stub 'net ads workgroup' call. Just returns a fake workgroup.
 int HandleWorkgroup() {
   WriteOutput("Workgroup: WOKGROUP", "");
@@ -373,7 +387,6 @@ int HandleJoin(const std::string& command_line,
 
   // Read machine name from smb.conf.
   const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
-  CHECK(!machine_name.empty());
 
   // Stub too long machine name error.
   if (machine_name.size() > kMaxMachineNameSize) {
@@ -454,8 +467,32 @@ int HandleJoin(const std::string& command_line,
 }
 
 // Handles a stub 'net ads info' call. Just returns stub information.
-int HandleInfo() {
-  WriteOutput(kStubInfo, "");
+int HandleInfo(const std::string& smb_conf_path) {
+  // Read machine name from smb.conf.
+  const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
+
+  if (machine_name == base::ToUpperASCII(kChangePasswordMachineName)) {
+    // Figure out the machine pass last modified time.
+    // smb.conf is at <basepath>/temp/smb_*.conf, the
+    // password is at <basepath>/state/machine_pass.
+    const base::FilePath password_path = base::FilePath(smb_conf_path)
+                                             .DirName()
+                                             .DirName()
+                                             .Append(kStateDir)
+                                             .Append(kMachinePass);
+    base::File::Info file_info;
+    if (GetFileInfo(password_path, &file_info)) {
+      const base::Time password_time = file_info.last_modified;
+      const base::Time server_time =
+          password_time +
+          base::TimeDelta::FromDays(kDefaultMachinePasswordChangeRateDays + 1);
+      const std::string server_time_str = FormatServerTime(server_time);
+      WriteOutput(base::StringPrintf(kStubInfo, server_time_str.c_str()), "");
+      return kExitCodeOk;
+    }
+  }
+
+  WriteOutput(base::StringPrintf(kStubInfo, kDefaultServerTime), "");
   return kExitCodeOk;
 }
 
@@ -470,7 +507,6 @@ int HandleLookup() {
 int HandleGpoList(const std::string& smb_conf_path) {
   // Read machine name from smb.conf.
   const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
-  CHECK(!machine_name.empty());
 
   // Stub empty GPO list.
   if (machine_name == base::ToUpperASCII(kEmptyGpoMachineName))
@@ -550,7 +586,7 @@ int HandleCommandLine(const std::string& command_line,
 
   // Stub net ads info.
   if (StartsWithCaseSensitive(command_line, "ads info"))
-    return HandleInfo();
+    return HandleInfo(smb_conf_path);
 
   // Stub net ads lookup.
   if (StartsWithCaseSensitive(command_line, "ads lookup"))

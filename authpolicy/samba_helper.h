@@ -15,6 +15,9 @@ class Anonymizer;
 // Number of code points in randomly generated machine passwords.
 constexpr size_t kMachinePasswordCodePoints = 32;
 
+// By default, change the machine password every 30 days.
+constexpr int kDefaultMachinePasswordChangeRateDays = 30;
+
 // Group policy flags.
 const int kGpFlagAllEnabled = 0x00;
 const int kGpFlagUserDisabled = 0x01;

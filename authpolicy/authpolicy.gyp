@@ -262,6 +262,21 @@
           'sources': ['stub_klist_main.cc'],
         },
         {
+          'target_name': 'stub_kpasswd',
+          'type': 'executable',
+          'dependencies': [
+            'libauthpolicy',
+            'stub_common',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-<(libbase_ver)',
+              'libpcrecpp',
+            ],
+          },
+          'sources': ['stub_kpasswd_main.cc'],
+        },
+        {
           'target_name': 'stub_smbclient',
           'type': 'executable',
           'dependencies': [

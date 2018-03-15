@@ -50,6 +50,14 @@ message TgtLifetime {
   optional int64 renewal_seconds = 2;
 }
 
+// Data returned from net ads info.
+message ServerInfo {
+  // Key distribution center IP address.
+  optional string kdc_ip = 1;
+  // Server time in base::Time's internal time representation.
+  optional int64 server_time = 2;
+}
+
 // Debug flags.
 message DebugFlags {
   // Disable seccomp filters.

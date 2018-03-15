@@ -8,7 +8,7 @@
 namespace authpolicy {
 
 // Commands for the parser.
-extern const char kCmdParseKdcIp[];
+extern const char kCmdParseServerInfo[];
 extern const char kCmdParseDcName[];
 extern const char kCmdParseWorkgroup[];
 extern const char kCmdParseAccountInfo[];

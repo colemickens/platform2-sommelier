@@ -82,14 +82,17 @@ const char kZeroUserVersionMachineName[] = "zerouserversion";
 const char kDisableUserFlagMachineName[] = "disableuserflag";
 const char kLoopbackGpoMachineName[] = "loopback";
 const char kExpectKeytabMachineName[] = "expectkeytab";
+const char kChangePasswordMachineName[] = "changepassword";
 const char kPropagationRetryMachineName[] = "propagat.nretry";
 
-extern const char kGpo1Guid[] = "{11111111-1111-1111-1111-111111111111}";
-extern const char kGpo2Guid[] = "{22222222-2222-2222-2222-222222222222}";
-extern const char kErrorGpoGuid[] = "{eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee}";
+const char kGpo1Guid[] = "{11111111-1111-1111-1111-111111111111}";
+const char kGpo2Guid[] = "{22222222-2222-2222-2222-222222222222}";
+const char kErrorGpoGuid[] = "{eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee}";
 
 const char kGpo1Filename[] = "stub_registry_1.pol";
 const char kGpo2Filename[] = "stub_registry_2.pol";
+
+const char kExpectedMachinePassFilename[] = "expected_machine_pass";
 
 namespace {
 

@@ -17,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/file_utils.h>
 #include <dbus/bus.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/message.h>
@@ -210,6 +211,7 @@ class TestPathService : public PathService {
     Insert(Path::STATE_DIR, base_path.Append("state").value());
     Insert(Path::KINIT, stub_path.Append("stub_kinit").value());
     Insert(Path::KLIST, stub_path.Append("stub_klist").value());
+    Insert(Path::KPASSWD, stub_path.Append("stub_kpasswd").value());
     Insert(Path::NET, stub_path.Append("stub_net").value());
     Insert(Path::SMBCLIENT, stub_path.Append("stub_smbclient").value());
 
@@ -658,12 +660,20 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
   }
 
+  // Does not validate user policy. Use if you're testing something unrelated.
+  static void DontValidateUserPolicy(
+      const em::CloudPolicySettings& /* policy */) {}
+
   // Checks whether the device |policy| is empty.
   static void CheckDevicePolicyEmpty(
       const em::ChromeDeviceSettingsProto& policy) {
     em::ChromeDeviceSettingsProto empty_policy;
     EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
   }
+
+  // Does not validate device policy. Use if you're testing something unrelated.
+  static void DontValidateDevicePolicy(
+      const em::ChromeDeviceSettingsProto& /* policy */) {}
 
   // Checks whether the extension |policy_json| is empty.
   static void CheckExtensionPolicyEmpty(const std::string& /* extension_id */,
@@ -745,9 +755,44 @@ class AuthPolicyTest : public testing::Test {
     em::PolicyFetchResponse policy_fetch_response;
     policy_fetch_response.set_policy_data(policy_data.SerializeAsString());
     std::string policy_blob = policy_fetch_response.SerializeAsString();
-    int policy_size = static_cast<int>(policy_blob.size());
-    EXPECT_EQ(policy_size,
-              base::WriteFile(policy_path, policy_blob.data(), policy_size));
+    brillo::WriteStringToFile(policy_path, policy_blob);
+  }
+
+  // Writes |device_policy| to a file, points samba() to it and reinitializes
+  // samba(). This simulates a restart of authpolicyd with given device policy.
+  void WritePolicyAndRestartAuthpolicy(
+      const em::ChromeDeviceSettingsProto& device_policy) {
+    const base::FilePath policy_path = base_path_.Append("policy");
+    WriteDevicePolicyFile(policy_path, device_policy);
+
+    // Set up a device policy instance that reads from our fake file.
+    // Verification has to be disabled since MarkDeviceAsLocked() applies to
+    // authpolicy only, but doesn't actually set the real install attributes
+    // read by the impl.
+    auto policy_impl = std::make_unique<policy::DevicePolicyImpl>();
+    policy_impl->set_policy_path_for_testing(policy_path);
+    policy_impl->set_verify_policy_for_testing(false);
+
+    // Initialize again. This should load the device policy file.
+    samba().ResetForTesting();
+    samba().SetDevicePolicyImplForTesting(std::move(policy_impl));
+    EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+  }
+
+  // Returns the modification time of the file at |path|.
+  base::Time GetLastModified(Path path) {
+    const base::FilePath password_path(paths_->Get(path));
+    base::File::Info file_info;
+    EXPECT_TRUE(GetFileInfo(password_path, &file_info));
+    return file_info.last_modified;
+  }
+
+  // Returns the contents of the file at |path|.
+  std::string ReadFile(Path path) {
+    std::string str;
+    EXPECT_TRUE(
+        base::ReadFileToString(base::FilePath(paths_->Get(path)), &str));
+    return str;
   }
 
   std::unique_ptr<base::MessageLoop> message_loop_;
@@ -878,8 +923,15 @@ TEST_F(AuthPolicyTest, JoinSetsProperEncTypes) {
 
 // The encryption types reset to strong after device policy fetch.
 TEST_F(AuthPolicyTest, EncTypesResetAfterDevicePolicyFetch) {
+  // Disable machine password change, because the password check runs
+  // immediately and wipes smb.conf (to get server time) with ENC_TYPES_STRONG,
+  // so the check below for kEncTypesAll fails.
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.AppendInteger(policy::key::kDeviceMachinePasswordChangeRate, 0);
+  writer.WriteToFile(stub_gpo1_path_);
+
   JoinDomainRequest request;
-  request.set_machine_name(kMachineName);
+  request.set_machine_name(kOneGpoMachineName);
   request.set_user_principal_name(kUserPrincipal);
   request.set_kerberos_encryption_types(ENC_TYPES_ALL);
   std::string joined_realm_unused;
@@ -889,7 +941,7 @@ TEST_F(AuthPolicyTest, EncTypesResetAfterDevicePolicyFetch) {
 
   // After the first device policy fetch, the enc types should be 'strong'
   // internally, but the conf files used should still contain 'all' types.
-  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  validate_device_policy_ = &DontValidateDevicePolicy;
   FetchAndValidateDevicePolicy(ERROR_NONE);
   CheckSmbEncTypes(paths_->Get(Path::DEVICE_SMB_CONF), kEncTypesAll);
   CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesAll);
@@ -913,24 +965,12 @@ TEST_F(AuthPolicyTest, LoadsDevicePolicyOnStartup) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   MarkDeviceAsLocked();
 
-  // Write a device policy file with Kerberos encryption types set to 'all'.
+  // Set a device policy file with Kerberos encryption types set to 'all' and
+  // restart authpolicy, so that it loads this file on startup.
   em::ChromeDeviceSettingsProto device_policy;
   device_policy.mutable_device_kerberos_encryption_types()->set_types(
       em::DeviceKerberosEncryptionTypesProto::ENC_TYPES_ALL);
-  const base::FilePath policy_path = base_path_.Append("policy");
-  WriteDevicePolicyFile(policy_path, device_policy);
-
-  // Set up a device policy instance that reads from our fake file. Verification
-  // has to be disabled since MarkDeviceAsLocked() applies to authpolicy only,
-  // but doesn't actually set the real install attributes read by the impl.
-  auto policy_impl = std::make_unique<policy::DevicePolicyImpl>();
-  policy_impl->set_policy_path_for_testing(policy_path);
-  policy_impl->set_verify_policy_for_testing(false);
-
-  // Initialize again. This should load the device policy file.
-  samba().ResetForTesting();
-  samba().SetDevicePolicyImplForTesting(std::move(policy_impl));
-  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+  WritePolicyAndRestartAuthpolicy(device_policy);
 
   // Now an auth operation should use the loaded encryption types.
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
@@ -946,10 +986,7 @@ TEST_F(AuthPolicyTest, UsesEncTypesFromDevicePolicy) {
   writer.AppendInteger(policy::key::kDeviceKerberosEncryptionTypes,
                        enc_types_all);
   writer.WriteToFile(stub_gpo1_path_);
-  validate_device_policy_ = [enc_types_all](
-                                const em::ChromeDeviceSettingsProto& policy) {
-    EXPECT_EQ(enc_types_all, policy.device_kerberos_encryption_types().types());
-  };
+  validate_device_policy_ = &DontValidateDevicePolicy;
 
   // Join and fetch device policy. This should set encryption types to 'all' in
   // Samba.
@@ -981,6 +1018,123 @@ TEST_F(AuthPolicyTest, TgtsUseStrongEncTypesByDefault) {
   CheckKrb5EncTypes(paths_->Get(Path::DEVICE_KRB5_CONF), kKrb5EncTypesStrong);
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
   CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesStrong);
+}
+
+// The password check runs when device policy is fetched.
+TEST_F(AuthPolicyTest, ChecksMachinePasswordOnDevicePolicyFetch) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_FALSE(samba().DidPasswordChangeCheckRunForTesting());
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_TRUE(samba().DidPasswordChangeCheckRunForTesting());
+}
+
+// The password check can be toggled by fetched device policy.
+TEST_F(AuthPolicyTest, FetchedPolicyTogglesMachinePassword) {
+  // Join domain.
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &DontValidateDevicePolicy;
+
+  // Turn off password change in policy.
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.AppendInteger(policy::key::kDeviceMachinePasswordChangeRate, 0);
+  writer.WriteToFile(stub_gpo1_path_);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_FALSE(samba().DidPasswordChangeCheckRunForTesting());
+
+  // Turn password change back on in policy.
+  policy::PRegUserDevicePolicyWriter writer2;
+  writer2.AppendInteger(policy::key::kDeviceMachinePasswordChangeRate, 1);
+  writer2.WriteToFile(stub_gpo1_path_);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_TRUE(samba().DidPasswordChangeCheckRunForTesting());
+}
+
+// The password check can be toggled by device policy loaded from disk.
+TEST_F(AuthPolicyTest, PolicyOnDiskTogglesMachinePasswordChangeCheck) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+
+  // Write a policy to disk that turns off password change and restart.
+  em::ChromeDeviceSettingsProto device_policy;
+  device_policy.mutable_device_machine_password_change_rate()->set_rate_days(0);
+  WritePolicyAndRestartAuthpolicy(device_policy);
+  EXPECT_FALSE(samba().DidPasswordChangeCheckRunForTesting());
+
+  // Write a policy to disk that turns password change back on and restart.
+  device_policy.mutable_device_machine_password_change_rate()->set_rate_days(1);
+  WritePolicyAndRestartAuthpolicy(device_policy);
+  EXPECT_TRUE(samba().DidPasswordChangeCheckRunForTesting());
+}
+
+// The password actually gets reset once it exceeds the max age.
+TEST_F(AuthPolicyTest, MachinePasswordChangesWhenMaxAgeIsReached) {
+  EXPECT_EQ(ERROR_NONE,
+            Join(kChangePasswordMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+
+  // Device policy fetch should trigger a password age check.
+  // kChangePasswordMachineName should trigger a server time that's bigger than
+  // initial_password_time + 30 days, so that the password should change.
+  const std::string initial_password = ReadFile(Path::MACHINE_PASS);
+  const base::Time initial_password_time = GetLastModified(Path::MACHINE_PASS);
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  const std::string current_password = ReadFile(Path::MACHINE_PASS);
+  const base::Time current_password_time = GetLastModified(Path::MACHINE_PASS);
+  EXPECT_NE(initial_password, current_password);
+  EXPECT_NE(initial_password_time, current_password_time);
+  EXPECT_GE((current_password_time - initial_password_time).InDays(),
+            kDefaultMachinePasswordChangeRateDays);
+
+  // Authpolicy should also keep the prev password around.
+  const std::string previous_password = ReadFile(Path::PREV_MACHINE_PASS);
+  const base::Time previous_password_time =
+      GetLastModified(Path::PREV_MACHINE_PASS);
+  EXPECT_EQ(initial_password, previous_password);
+  EXPECT_EQ(initial_password_time, previous_password_time);
+}
+
+// If the current machine password has just been changed, it might not have
+// propagated through Active Directory yet. In that case, kinit should fail and
+// authpolicy should retry with the previous machine password.
+TEST_F(AuthPolicyTest, DevicePolicyFetchUsesPrevMachinePassword) {
+  JoinAndFetchDevicePolicy(kMachineName);
+
+  // Create an expected password. stub_kinit will compare the expected password
+  // with the actual password and cause device policy fetch to fail.
+  const base::FilePath prev_password_path(paths_->Get(Path::PREV_MACHINE_PASS));
+  const base::FilePath expected_password_path =
+      base::FilePath(paths_->Get(Path::DEVICE_KRB5_CONF))
+          .DirName()
+          .Append(kExpectedMachinePassFilename);
+  const std::string expected_password = GenerateRandomMachinePassword();
+  brillo::WriteStringToFile(expected_password_path, expected_password);
+  EXPECT_FALSE(base::PathExists(prev_password_path));
+  FetchAndValidateDevicePolicy(ERROR_BAD_PASSWORD);
+
+  // Write the expected password at PREV_MACHINE_PASS and verify fetch works.
+  brillo::WriteStringToFile(prev_password_path, expected_password);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  // kinit should be called 1x from 1st fetch, 1x from 2nd fetch and 2x from 3rd
+  // fetch (for current and prev machine password).
+  EXPECT_EQ(4, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// The password check runs on startup on an enrolled device.
+TEST_F(AuthPolicyTest, ChecksMachinePasswordOnStartup) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_FALSE(samba().DidPasswordChangeCheckRunForTesting());
+
+  // Restart with empty device policy. This should trigger it as well.
+  samba().ResetForTesting();
+  EXPECT_FALSE(samba().DidPasswordChangeCheckRunForTesting());
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+  EXPECT_TRUE(samba().DidPasswordChangeCheckRunForTesting());
 }
 
 // Successful user authentication.
@@ -1512,8 +1666,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   };
   EXPECT_TRUE(MakeConfigWriteable());
   samba().ResetForTesting();
-  EXPECT_EQ(ERROR_NONE,
-            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  JoinAndFetchDevicePolicy(kOneGpoMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
 }
 
@@ -1536,8 +1689,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   };
   EXPECT_TRUE(MakeConfigWriteable());
   samba().ResetForTesting();
-  EXPECT_EQ(ERROR_NONE,
-            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  JoinAndFetchDevicePolicy(kOneGpoMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
 }
 

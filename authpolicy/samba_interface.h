@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/timer/timer.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
 #include "authpolicy/authpolicy_flags.h"
@@ -170,6 +171,11 @@ class SambaInterface {
     user_policy_mode_ = mode;
   }
 
+  // Returns true if AutoCheckMachinePasswordChange() was called at least once.
+  bool DidPasswordChangeCheckRunForTesting() const {
+    return did_password_change_check_run_for_testing_;
+  }
+
   // Resets internal state (useful for doing multiple domain joins).
   void ResetForTesting() { Reset(); }
 
@@ -183,6 +189,7 @@ class SambaInterface {
     std::string kdc_ip;        // IPv4/IPv6 address of key distribution center.
     std::string dc_name;       // DNS name of the domain controller
     std::string user_name;     // User sAMAccountName or device netbios_name+$.
+    base::Time server_time;    // The server time at last query.
     Path smb_conf_path;        // Path of the Samba configuration file.
 
     explicit AccountData(Path _smb_conf_path) : smb_conf_path(_smb_conf_path) {}
@@ -237,11 +244,17 @@ class SambaInterface {
 
   // Acquire a Kerberos ticket-granting-ticket for the device account. Uses the
   // machine password file for authentication (or the keytab for backwards
-  // compatibility).
+  // compatibility). If the current machine password doesn't work, uses the
+  // previous password (e.g. password change didn't propagate through AD yet).
   ErrorType AcquireDeviceTgt();
 
-  // Writes the machine password to disk.
-  ErrorType WriteMachinePassword(const std::string& machine_pass) const;
+  // Writes the machine password to the path specified by |path|.
+  ErrorType WriteMachinePassword(Path path,
+                                 const std::string& machine_pass) const;
+
+  // Rolls NEW_MACHINE_PASS -> MACHINE_PASS -> PREV_MACHINE_PASS. Used during
+  // machine password change.
+  ErrorType RollMachinePassword();
 
   // Writes the file with configuration information.
   ErrorType WriteConfiguration() const;
@@ -300,6 +313,19 @@ class SambaInterface {
   // be called whenever new device policy is available.
   void UpdateDevicePolicyDependencies(
       const enterprise_management::ChromeDeviceSettingsProto& device_policy);
+
+  // Sets the |rate| at which the machine password is changed. Turns off
+  // automatic password change if |rate| is non-positive. Turned off by default.
+  // Prints out a warning on devices that are still using the machine keytab.
+  // Repeatedly schedules AutoCheckMachinePasswordChange() every few hours.
+  void UpdateMachinePasswordAutoChange(const base::TimeDelta& rate);
+
+  // Calls CheckMachinePasswordChange() and logs errors.
+  void AutoCheckMachinePasswordChange();
+
+  // Checks whether the age of the password exceeds |password_change_rate_| and
+  // renews the password if it does.
+  ErrorType CheckMachinePasswordChange();
 
   // Get user or device AccountData. Depends on GpoSource, not on PolicyScope,
   // since that determines what account to download GPOs for.
@@ -399,7 +425,16 @@ class SambaInterface {
   // Loopback processing mode (how/if user policy from machine GPOs is used).
   // Updated by UpdateDevicePolicyDependencies.
   enterprise_management::DeviceUserPolicyLoopbackProcessingModeProto::Mode
-      user_policy_mode_;
+      user_policy_mode_ = enterprise_management::
+          DeviceUserPolicyLoopbackProcessingModeProto::USER_POLICY_MODE_DEFAULT;
+
+  // Timer for automatic machine password change. Updated by
+  // UpdateDevicePolicyDependencies.
+  base::TimeDelta password_change_rate_;
+
+  // Timer for repeated password age checks. Calls
+  // AutoCheckMachinePasswordChange().
+  base::RepeatingTimer password_change_timer_;
 
   // Whether device policy has been fetched or loaded from disk on startup.
   bool has_device_policy_ = false;
@@ -409,6 +444,9 @@ class SambaInterface {
 
   // Whether to sleep when retrying smbclient (disable for testing).
   bool smbclient_retry_sleep_enabled_ = true;
+
+  // Keeps track of whether AutoCheckMachinePasswordChange() ran or not.
+  bool did_password_change_check_run_for_testing_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterface);
 };
