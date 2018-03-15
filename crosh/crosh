@@ -399,7 +399,7 @@ imageloader() {
     2>&1 >/dev/null
 }
 
-USAGE_vmc='[ start <name> | stop <name> | destroy <name> ]'
+USAGE_vmc='[ start <name> | stop <name> | destroy <name> | list ]'
 HELP_vmc='
   Start or stop a VM.
 '
