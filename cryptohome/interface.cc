@@ -759,14 +759,6 @@ gboolean cryptohome_migrate_to_dircrypto(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(MigrateToDircrypto, id, migrate_request);
 }
 
-gboolean cryptohome_migrate_to_dircrypto_ex(
-    Cryptohome* self,
-    GArray* id,
-    GArray* migrate_request,
-    GError** error) {
-  CRYPTOHOME_WRAP_METHOD(MigrateToDircrypto, id, migrate_request);
-}
-
 gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,
                                               GArray* identifier,
                                               gboolean* OUT_needs_migration,

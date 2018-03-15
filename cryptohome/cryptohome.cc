@@ -2487,7 +2487,7 @@ int main(int argc, char **argv) {
       return 1;
 
     brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto_ex(
+    if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto(
             proxy.gproxy(),
             account_ary.get(),
             request_ary.get(),
