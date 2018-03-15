@@ -79,6 +79,17 @@ const char* GetMethodName(const CopyEntryOptionsProto& unused);
 const char* GetMethodName(const GetDeleteListOptionsProto& unused);
 const char* GetMethodName(const GetSharesOptionsProto& unused);
 
+template <typename Proto>
+int32_t GetMountId(const Proto& options) {
+  return options.mount_id();
+}
+
+template <>
+int32_t GetMountId(const MountOptionsProto& unused);
+
+template <>
+int32_t GetMountId(const GetSharesOptionsProto& unused);
+
 // Struct mapping to DirectoryEntryProto.
 struct DirectoryEntry {
   bool is_directory;

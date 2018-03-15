@@ -61,7 +61,7 @@ int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
   UnmountOptionsProto options;
   if (!ParseOptionsProto(options_blob, &options, &error_code) ||
-      !RemoveMount(options.mount_id(), &error_code)) {
+      !RemoveMount(GetMountId(options), &error_code)) {
     return error_code;
   }
 
@@ -321,7 +321,7 @@ bool SmbProvider::GetFullPath(Proto* options, std::string* full_path) const {
   DCHECK(options);
   DCHECK(full_path);
 
-  const int32_t mount_id = options->mount_id();
+  const int32_t mount_id = GetMountId(*options);
   const std::string entry_path = GetEntryPath(*options);
 
   bool success = mount_manager_->GetFullPath(mount_id, entry_path, full_path);
@@ -341,7 +341,7 @@ bool SmbProvider::GetFullPaths(Proto* options,
   DCHECK(source_full_path);
   DCHECK(target_full_path);
 
-  const int32_t mount_id = options->mount_id();
+  const int32_t mount_id = GetMountId(*options);
   const std::string source_path = GetSourcePath(*options);
   const std::string target_path = GetDestinationPath(*options);
 
@@ -628,7 +628,7 @@ bool SmbProvider::GenerateParentPaths(
   while (current_path.value() != "/") {
     std::string full_path;
     if (!mount_manager_->GetFullPath(
-            options.mount_id(), current_path.StripTrailingSeparators().value(),
+            GetMountId(options), current_path.StripTrailingSeparators().value(),
             &full_path)) {
       *error_code = static_cast<int32_t>(ERROR_NOT_FOUND);
       return false;
@@ -855,7 +855,7 @@ int32_t SmbProvider::GenerateDeleteList(
 
   if (!is_directory) {
     // |delete_list| will only contain the relative path to the file.
-    AddToDeleteList(GetRelativePath(options.mount_id(), full_path),
+    AddToDeleteList(GetRelativePath(GetMountId(options), full_path),
                     delete_list);
     return 0;
   }
@@ -867,7 +867,7 @@ int32_t SmbProvider::GenerateDeleteList(
       return 0;
     }
 
-    AddToDeleteList(GetRelativePath(options.mount_id(), it.Get().full_path),
+    AddToDeleteList(GetRelativePath(GetMountId(options), it.Get().full_path),
                     delete_list);
     it_result = it.Next();
   }

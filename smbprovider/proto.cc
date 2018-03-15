@@ -196,6 +196,16 @@ const char* GetMethodName(const GetSharesOptionsProto& unused) {
   return kGetSharesMethod;
 }
 
+template <>
+int32_t GetMountId(const MountOptionsProto& unused) {
+  return -1;
+}
+
+template <>
+int32_t GetMountId(const GetSharesOptionsProto& unused) {
+  return -1;
+}
+
 void SerializeDirEntryVectorToProto(
     const std::vector<DirectoryEntry>& entries_vector,
     DirectoryEntryListProto* entries_proto) {

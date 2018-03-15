@@ -78,7 +78,7 @@ template <typename Proto>
 void LogAndSetError(Proto options,
                     ErrorType error_received,
                     int32_t* error_code) {
-  LogAndSetError(GetMethodName(options), options.mount_id(), error_received,
+  LogAndSetError(GetMethodName(options), GetMountId(options), error_received,
                  error_code);
 }
 
