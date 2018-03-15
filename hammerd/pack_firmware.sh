@@ -15,7 +15,7 @@ SCRIPT_ROOT="${CURRENT_DIR}/../../scripts"
 # The mapping from the board name and the base name. We only support the boards
 # listed here.
 BOARD_LOOKUP_TABLE="\
-poppy hammer
+poppy wand
 soraka staff"
 
 DEFINE_string board "" "The board name. e.g. poppy" b
