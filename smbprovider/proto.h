@@ -55,6 +55,7 @@ std::string GetEntryPath(const CreateFileOptionsProto& options);
 std::string GetEntryPath(const TruncateOptionsProto& options);
 std::string GetEntryPath(const CreateDirectoryOptionsProto& options);
 std::string GetEntryPath(const GetDeleteListOptionsProto& options);
+std::string GetEntryPath(const GetSharesOptionsProto& options);
 
 std::string GetSourcePath(const MoveEntryOptionsProto& options);
 std::string GetDestinationPath(const MoveEntryOptionsProto& options);

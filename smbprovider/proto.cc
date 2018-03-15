@@ -116,6 +116,10 @@ std::string GetEntryPath(const GetDeleteListOptionsProto& options) {
   return options.entry_path();
 }
 
+std::string GetEntryPath(const GetSharesOptionsProto& options) {
+  return options.server_url();
+}
+
 std::string GetSourcePath(const MoveEntryOptionsProto& options) {
   return options.source_path();
 }

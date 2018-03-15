@@ -357,6 +357,16 @@ bool SmbProvider::GetFullPath(Proto* options, std::string* full_path) const {
   return success;
 }
 
+template <>
+bool SmbProvider::GetFullPath(GetSharesOptionsProto* options,
+                              std::string* full_path) const {
+  DCHECK(options);
+  DCHECK(full_path);
+
+  *full_path = GetEntryPath(*options);
+  return true;
+}
+
 template <typename Proto>
 bool SmbProvider::GetFullPaths(Proto* options,
                                std::string* source_full_path,
