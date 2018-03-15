@@ -164,13 +164,6 @@ dev_mount_packages() {
   mount_or_fail --bind ${STATEFUL_PARTITION}/dev_image /usr/local
   mount -n -o remount,exec,suid /usr/local
 
-  # Add exceptions to allow symlink traversal and opening of FIFOs in the
-  # dev_image subtree.
-  printf "/mnt/stateful_partition/dev_image" \
-      > /sys/kernel/security/chromiumos/inode_security_policies/allow_symlink
-  printf "/mnt/stateful_partition/dev_image" \
-      > /sys/kernel/security/chromiumos/inode_security_policies/allow_fifo
-
   # Set up /var elements needed by gmerge.
   # TODO(keescook) Use dev/test package installs instead of piling more
   # things here (crosbug.com/14091).
@@ -188,10 +181,12 @@ dev_mount_packages() {
         continue
       fi
       dest="/var/${dir}"
-      # Previous versions of this script created a symlink instead of setting up
-      # a bind mount, so get rid of the symlink if it exists.
-      (rm -f "${dest}" && mkdir -p "${dest}") || :
-      mount_or_fail --bind "${base}/${dir}" "${dest}"
+      if [ -e "${dest}" ]; then
+        continue
+      fi
+      parent="$(dirname "${dest}")"
+      mkdir -p "${parent}"
+      ln -sf "${base}/${dir}" "${dest}"
     done
   fi
 }
