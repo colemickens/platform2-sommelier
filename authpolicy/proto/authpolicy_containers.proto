@@ -56,8 +56,8 @@ message DebugFlags {
   optional bool disable_seccomp = 1;
   // Log seccomp filter failures.
   optional bool log_seccomp = 2;
-  // Enable kinit trace logs. Only shown if log_command_output is set as well.
-  optional bool trace_kinit = 3;
+  // Enable krb5 trace logs. Only shown if log_command_output is set as well.
+  optional bool trace_krb5 = 3;
   // Log policy values read from GPO.
   optional bool log_policy_values = 4;
   // Log command line and exit code in ProcessExecutor.

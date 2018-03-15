@@ -26,7 +26,7 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOff) {
 
   EXPECT_FALSE(flags.disable_seccomp());
   EXPECT_FALSE(flags.log_seccomp());
-  EXPECT_FALSE(flags.trace_kinit());
+  EXPECT_FALSE(flags.trace_krb5());
   EXPECT_FALSE(flags.log_policy_values());
   EXPECT_FALSE(flags.log_commands());
   EXPECT_FALSE(flags.log_command_output());
@@ -41,7 +41,7 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
   flags_container.LoadFromJsonString(R"!!!(
     { "disable_seccomp":true,
       "log_seccomp":true,
-      "trace_kinit":true,
+      "trace_krb5":true,
       "log_policy_values":true,
       "log_commands":true,
       "log_command_output":true,
@@ -52,7 +52,7 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
 
   EXPECT_TRUE(flags.disable_seccomp());
   EXPECT_TRUE(flags.log_seccomp());
-  EXPECT_TRUE(flags.trace_kinit());
+  EXPECT_TRUE(flags.trace_krb5());
   EXPECT_TRUE(flags.log_policy_values());
   EXPECT_TRUE(flags.log_commands());
   EXPECT_TRUE(flags.log_command_output());

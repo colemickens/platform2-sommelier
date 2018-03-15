@@ -123,11 +123,11 @@ class TgtManager {
   // Writes the krb5 configuration file.
   ErrorType WriteKrb5Conf() const;
 
-  // Turns on kinit trace logging if |flags_->TraceKinit()| is enabled.
-  void SetupKinitTrace(ProcessExecutor* kinit_cmd) const;
+  // Turns on krb5 trace logging if |flags_->TraceKrb5()| is enabled.
+  void SetupKrb5Trace(ProcessExecutor* krb5_cmd) const;
 
-  // Logs the kinit trace if |flags_->TraceKinit()| is enabled.
-  void OutputKinitTrace() const;
+  // Logs the krb5 trace if |flags_->TraceKrb5()| is enabled.
+  void OutputKrb5Trace() const;
 
   // Cancels |tgt_renewal_callback_|. If |tgt_autorenewal_enabled_| is true and
   // the TGT is valid, schedules RenewTgt() with a delay of a fraction of the

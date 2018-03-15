@@ -439,7 +439,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kKinitRetryWaitSeconds));
     }
-    SetupKinitTrace(kinit_cmd);
+    SetupKrb5Trace(kinit_cmd);
 
     // Set password as input. Duplicate it in any case since we don't know
     // whether we'll have to rerun.
@@ -460,7 +460,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
     }
 
     failed_tries++;
-    OutputKinitTrace();
+    OutputKrb5Trace();
     error = GetKinitError(*kinit_cmd, is_machine_principal_);
 
     // If kinit fails because credentials are not propagated yet, these are
@@ -509,8 +509,8 @@ ErrorType TgtManager::WriteKrb5Conf() const {
   return ERROR_NONE;
 }
 
-void TgtManager::SetupKinitTrace(ProcessExecutor* kinit_cmd) const {
-  if (!flags_->trace_kinit())
+void TgtManager::SetupKrb5Trace(ProcessExecutor* krb5_cmd) const {
+  if (!flags_->trace_krb5())
     return;
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   {
@@ -520,11 +520,11 @@ void TgtManager::SetupKinitTrace(ProcessExecutor* kinit_cmd) const {
       LOG(WARNING) << "Failed to delete kinit trace file";
     }
   }
-  kinit_cmd->SetEnv(kKrb5TraceEnvKey, trace_path);
+  krb5_cmd->SetEnv(kKrb5TraceEnvKey, trace_path);
 }
 
-void TgtManager::OutputKinitTrace() const {
-  if (!flags_->trace_kinit())
+void TgtManager::OutputKrb5Trace() const {
+  if (!flags_->trace_krb5())
     return;
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   std::string trace;
@@ -534,7 +534,7 @@ void TgtManager::OutputKinitTrace() const {
     if (!base::ReadFileToString(base::FilePath(trace_path), &trace))
       trace = "<failed to read>";
   }
-  LogLongString(kColorKinitTrace, "Kinit trace: ", trace, anonymizer_);
+  LogLongString(kColorKrb5Trace, "Kinit trace: ", trace, anonymizer_);
 }
 
 void TgtManager::UpdateTgtAutoRenewal() {

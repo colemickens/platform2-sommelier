@@ -115,7 +115,7 @@ class StringFlag {
 constexpr BoolFlag kBoolFlags[] = {
     DEFINE_FLAG(disable_seccomp),
     DEFINE_FLAG(log_seccomp),
-    DEFINE_FLAG(trace_kinit),
+    DEFINE_FLAG(trace_krb5),
     DEFINE_FLAG(log_policy_values),
     DEFINE_FLAG(log_commands),
     DEFINE_FLAG(log_command_output),
@@ -178,7 +178,7 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       // uprev'ing a dependency of Samba might introduce seccomp failures,
       // though! See https://crbug.com/752944.
       flags_.set_log_seccomp(true);
-      flags_.set_trace_kinit(true);
+      flags_.set_trace_krb5(true);
       break;
   }
 }
