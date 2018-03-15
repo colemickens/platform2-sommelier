@@ -18,10 +18,6 @@
 #include "buffet/socket_stream.h"
 #include "buffet/weave_error_conversion.h"
 
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-#include "buffet/ap_manager_client.h"
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
-
 using brillo::Any;
 using brillo::VariantDictionary;
 using dbus::ObjectPath;
@@ -102,9 +98,6 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
       manager_proxy_{bus_},
       device_whitelist_{device_whitelist},
       disable_xmpp_{disable_xmpp} {
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  ap_manager_client_.reset(new ApManagerClient(bus));
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
   manager_proxy_.RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnManagerPropertyChange,
                  weak_factory_.GetWeakPtr()),
@@ -201,15 +194,9 @@ Network::State ShillClient::GetConnectionState() const {
 }
 
 void ShillClient::StartAccessPoint(const std::string& ssid) {
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  ap_manager_client_->Start(ssid);
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 }
 
 void ShillClient::StopAccessPoint() {
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  ap_manager_client_->Stop();
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 }
 
 std::string ShillClient::GetIpAddress() {

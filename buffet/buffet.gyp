@@ -44,26 +44,6 @@
         'shill_client.cc',
         'socket_stream.cc',
       ],
-      'conditions': [
-        ['USE_wifi_bootstrapping == 1', {
-          'variables': {
-            'exported_deps': [
-              'libapmanager-client',
-              'libpeerd-client',
-              'libwebserv-<(libbase_ver)',
-            ],
-          },
-          'all_dependent_settings': {
-            'defines': [ 'BUFFET_USE_WIFI_BOOTSTRAPPING' ],
-          },
-          'defines': [ 'BUFFET_USE_WIFI_BOOTSTRAPPING' ],
-          'sources': [
-            'ap_manager_client.cc',
-            'peerd_client.cc',
-            'webserv_client.cc',
-          ],
-        }],
-      ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
       'actions': [
         {

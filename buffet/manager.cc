@@ -38,11 +38,6 @@
 #include "buffet/shill_client.h"
 #include "buffet/weave_error_conversion.h"
 
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-#include "buffet/peerd_client.h"
-#include "buffet/webserv_client.h"
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
-
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::ExportedObjectManager;
 
@@ -163,44 +158,17 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
                                       !options_.xmpp_enabled});
   shill_client_->AddConnectionChangedCallback(base::Bind(
       &Manager::OnConnectionStateChanged, weak_ptr_factory_.GetWeakPtr()));
-  weave::provider::HttpServer* http_server{nullptr};
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  if (!options_.disable_privet) {
-    peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
-    web_serv_client_.reset(new WebServClient{
-        dbus_object_.GetBus(), sequencer,
-        base::Bind(&Manager::CreateDevice, weak_ptr_factory_.GetWeakPtr())});
-    http_server = web_serv_client_.get();
-    if (options_.enable_ping) {
-      auto ping_handler = base::Bind(
-          [](std::unique_ptr<weave::provider::HttpServer::Request> request) {
-            request->SendReply(brillo::http::status_code::Ok, "Hello, world!",
-                               brillo::mime::text::kPlain);
-          });
-      http_server->AddHttpRequestHandler("/privet/ping", ping_handler);
-      http_server->AddHttpsRequestHandler("/privet/ping", ping_handler);
-    }
-  }
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
-  if (!http_server)
-    CreateDevice();
+  CreateDevice();
 }
 
 void Manager::CreateDevice() {
   if (device_)
     return;
 
-  weave::provider::DnsServiceDiscovery* mdns{nullptr};
-  weave::provider::HttpServer* http_server{nullptr};
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  mdns = peerd_client_.get();
-  http_server = web_serv_client_.get();
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
-
-  device_ = weave::Device::Create(config_.get(), task_runner_.get(),
-                                  http_client_.get(), shill_client_.get(), mdns,
-                                  http_server, shill_client_.get(), nullptr);
+  device_ = weave::Device::Create(
+      config_.get(), task_runner_.get(), http_client_.get(),
+      shill_client_.get(), nullptr, nullptr, shill_client_.get(), nullptr);
 
   LoadCommandDefinitions(options_.config_options, device_.get());
   LoadStateDefinitions(options_.config_options, device_.get());
@@ -226,10 +194,6 @@ void Manager::CreateDevice() {
 void Manager::Stop() {
   command_dispatcher_.reset();
   device_.reset();
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  web_serv_client_.reset();
-  peerd_client_.reset();
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
   shill_client_.reset();
   http_client_.reset();
   config_.reset();
