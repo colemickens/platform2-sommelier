@@ -25,4 +25,4 @@ ExecStartPre=-/bin/mv /mnt/stateful_partition/home/.shadow/attestation.epb \
 ExecStart=/usr/sbin/cryptohomed --noclose
 
 # Any long-running invocations of the client must first be terminated.
-ExecStopPost=/usr/bin/pkill -TERM cryptohome
+ExecStopPost=/usr/bin/pkill -x -TERM cryptohome
