@@ -130,6 +130,7 @@ class SeqHandler : public SeqHandlerInterface {
 
  private:
   friend class SeqHandlerTest;
+  friend class SeqHandlerFuzzer;
   FRIEND_TEST(SeqHandlerTest, TestEncodeBytes);
   FRIEND_TEST(SeqHandlerTest, TestProcessAlsaClientFdPositive);
   FRIEND_TEST(SeqHandlerTest, TestProcessMidiEventsPositive);

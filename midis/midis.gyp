@@ -139,5 +139,21 @@
         },
       ],
     }],
+    # Fuzzer target.
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'midis_seq_handler_fuzzer',
+          'type': 'executable',
+          'dependencies': [
+            'midis_common',
+          ],
+          'includes': ['../common-mk/common_fuzzer.gypi'],
+          'sources': [
+            'seq_handler_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
