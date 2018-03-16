@@ -26,7 +26,6 @@ class MethodNameGenerator : public HeaderGenerator {
  public:
   static bool GenerateMethodNames(const std::vector<Interface>& interfaces,
                                   const base::FilePath& output_file);
-  static std::string GenerateMethodNameConstant(const std::string& method_name);
 
  private:
   friend class MethodNameGeneratorTest;
