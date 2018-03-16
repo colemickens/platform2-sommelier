@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <sysexits.h>
 
+#include <memory>
 #include <string>
 
 #include <base/command_line.h>
@@ -32,8 +33,6 @@
 #include "webservd/utils.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
-using BaseDaemon = brillo::DBusServiceDaemon;
-using FirewallImpl = webservd::PermissionBrokerFirewall;
 
 namespace {
 
@@ -42,7 +41,7 @@ const char kDefaultConfigFilePath[] = "/etc/webservd/config";
 const char kServiceName[] = "org.chromium.WebServer";
 const char kRootServicePath[] = "/org/chromium/WebServer";
 
-class Daemon final : public BaseDaemon {
+class Daemon final : public brillo::DBusServiceDaemon {
  public:
   explicit Daemon(webservd::Config config)
       : DBusServiceDaemon{kServiceName, kRootServicePath},
@@ -53,7 +52,7 @@ class Daemon final : public BaseDaemon {
     webservd::LogManager::Init(base::FilePath{config_.log_directory});
     server_.reset(new webservd::Server{
         object_manager_.get(), config_,
-        std::unique_ptr<webservd::FirewallInterface>{new FirewallImpl()}});
+        std::make_unique<webservd::PermissionBrokerFirewall>()});
     server_->RegisterAsync(
         sequencer->GetHandler("Server.RegisterAsync() failed.", true));
   }
