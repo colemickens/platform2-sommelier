@@ -33,6 +33,9 @@ def main():
 
     flim = flimflam.FlimFlam(dbus.SystemBus())
 
+    # Nothing found -> exit(1)
+    retval = 1
+
     for service in flim.GetObjectList('Service'):
         properties = service.GetProperties(utf8_strings = True)
         if not bool(properties['IsActive']):
@@ -48,8 +51,11 @@ def main():
             requested_keys = properties.keys()
 
         for key in requested_keys:
+            retval = 0
             print('    %s = %s' % (
                     key, flimflam.convert_dbus_value(properties[key], 4)))
 
+    return retval
+
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
