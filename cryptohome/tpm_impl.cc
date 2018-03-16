@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/values.h>
@@ -97,9 +98,9 @@ cryptohome::Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
 
 namespace cryptohome {
 
-#define TPM_LOG(severity, result) \
-  LOG(severity) << "TPM error 0x" << std::hex << result \
-                << " (" << Trspi_Error_String(result) << "): "
+#define TPM_LOG(severity, result)                                      \
+  LOG(severity) << base::StringPrintf("TPM error 0x%x (%s): ", result, \
+                                      Trspi_Error_String(result))
 
 const unsigned char kDefaultSrkAuth[] = { };
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
