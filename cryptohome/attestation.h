@@ -96,8 +96,6 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Populates the enrollment id in |enterprise_enrollment_id|. The result is
   // taken from cache or computed if not available. Returns true on success.
-  // TODO(igorcov): Store and retrieve the ID from a certificate.
-  // http://crbug.com/798707
   virtual bool GetEnterpriseEnrollmentId(
       brillo::SecureBlob* enterprise_enrollment_id);
 

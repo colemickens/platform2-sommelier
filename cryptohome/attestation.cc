@@ -19,6 +19,7 @@
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <google/protobuf/repeated_field.h>
 #include <openssl/aes.h>
 #include <openssl/evp.h>
@@ -2453,26 +2454,46 @@ bool Attestation::ComputeEnterpriseEnrollmentId(
     return true;
   }
 
-  brillo::SecureBlob ekm;
+  brillo::SecureBlob pubek;
   if (database_pb_.has_delegate()) {
     SecureBlob delegate_blob(database_pb_.delegate().blob());
     SecureBlob delegate_secret(database_pb_.delegate().secret());
     if (!tpm_->GetEndorsementPublicKeyWithDelegate(
-            &ekm, delegate_blob, delegate_secret)) {
+            &pubek, delegate_blob, delegate_secret)) {
       return false;
     }
   } else {
-    if (!tpm_->GetEndorsementPublicKey(&ekm))
+    if (!tpm_->GetEndorsementPublicKey(&pubek))
       return false;
   }
 
-  if (ekm.empty()) {
+  if (pubek.empty()) {
     enterprise_enrollment_id->clear();
     return true;
   }
 
-  // Compute the EID based on den and ekm.
-  *enterprise_enrollment_id = CryptoLib::HmacSha256(ekm, den);
+  // Extract the modulus from the public key.
+  const unsigned char* asn1_ptr =
+      reinterpret_cast<const unsigned char*>(pubek.data());
+  crypto::ScopedRSA public_key(
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, pubek.size()));
+  if (!public_key.get()) {
+    LOG(ERROR) << "Attestation: Failed to decode public endorsement key.";
+    return false;
+  }
+  SecureBlob modulus(BN_num_bytes(public_key.get()->n), 0);
+  int length =
+      BN_bn2bin(public_key.get()->n,
+                reinterpret_cast<unsigned char*>(modulus.char_data()));
+  if (length <= 0) {
+    LOG(ERROR)
+        << "Attestation: Failed to extract public endorsement key modulus.";
+    return false;
+  }
+  modulus.resize(length);
+
+  // Compute the EID based on den and modulus.
+  *enterprise_enrollment_id = CryptoLib::HmacSha256(den, modulus);
   return true;
 }
 
