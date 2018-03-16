@@ -18,9 +18,19 @@ message ContainerStartupInfo {
   string token = 1;
 }
 
+// Request protobuf for notifying host that a container is shutting down.
+message ContainerShutdownInfo {
+  // The security token the container was given.
+  string token = 1;
+}
+
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
   // handle incoming requests.
   rpc ContainerReady(ContainerStartupInfo) returns (EmptyMessage);
+
+  // Called by each container before it shuts down to indicate it should no
+  // longer be sent incoming requests.
+  rpc ContainerShutdown(ContainerShutdownInfo) returns (EmptyMessage);
 }

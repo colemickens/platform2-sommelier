@@ -320,40 +320,66 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   CHECK(result);
   CHECK(event);
   *result = false;
-  // Find the VM that has a container subnet which has the passed in IP address
-  // within it.
-  for (auto& vm : vms_) {
-    const uint32_t netmask = vm.second->ContainerNetmask();
-    if ((vm.second->ContainerSubnet() & netmask) != (container_ip & netmask)) {
-      continue;
-    }
-    // Found the VM with a matching container subnet, register the IP address
-    // for the container with that VM object.
-    std::string string_ip;
-    if (!IPv4AddressToString(container_ip, &string_ip)) {
-      LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
-      break;
-    }
-    if (!vm.second->RegisterContainerIp(container_token, string_ip)) {
-      LOG(ERROR) << "Invalid container token passed back from VM " << vm.first
-                 << " of " << container_token;
-      break;
-    }
-    std::string container_name =
-        vm.second->GetContainerNameForToken(container_token);
-    LOG(INFO) << "Startup of container " << container_name << " at IP "
-              << string_ip << " for VM " << vm.first << " completed.";
-
-    // Send the D-Bus signal out to indicate the container is ready.
-    dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
-    ContainerStartedSignal proto;
-    proto.set_vm_name(vm.first);
-    proto.set_container_name(container_name);
-    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-    exported_object_->SendSignal(&signal);
-    *result = true;
-    break;
+  VirtualMachine* vm;
+  std::string vm_name;
+  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &vm_name)) {
+    event->Signal();
+    return;
   }
+
+  // Found the VM with a matching container subnet, register the IP address
+  // for the container with that VM object.
+  std::string string_ip;
+  if (!IPv4AddressToString(container_ip, &string_ip)) {
+    LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
+    event->Signal();
+    return;
+  }
+  if (!vm->RegisterContainerIp(container_token, string_ip)) {
+    LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
+               << " of " << container_token;
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  LOG(INFO) << "Startup of container " << container_name << " at IP "
+            << string_ip << " for VM " << vm_name << " completed.";
+
+  // Send the D-Bus signal out to indicate the container is ready.
+  dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
+  ContainerStartedSignal proto;
+  proto.set_vm_name(vm_name);
+  proto.set_container_name(container_name);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
+void Service::ContainerShutdown(const std::string& container_token,
+                                const uint32_t container_ip,
+                                bool* result,
+                                base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string vm_name;
+  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &vm_name)) {
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (!vm->UnregisterContainerIp(container_token)) {
+    LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
+               << " of " << container_token;
+    event->Signal();
+    return;
+  }
+  LOG(INFO) << "Shutdown of container " << container_name << " for VM "
+            << vm_name;
+  *result = true;
   event->Signal();
 }
 
@@ -1234,6 +1260,24 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
+}
+
+bool Service::GetVirtualMachineForContainerIp(uint32_t container_ip,
+                                              VirtualMachine** vm_out,
+                                              std::string* name_out) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(vm_out);
+  CHECK(name_out);
+  for (auto& vm : vms_) {
+    const uint32_t netmask = vm.second->ContainerNetmask();
+    if ((vm.second->ContainerSubnet() & netmask) != (container_ip & netmask)) {
+      continue;
+    }
+    *name_out = vm.first;
+    *vm_out = vm.second.get();
+    return true;
+  }
+  return false;
 }
 
 }  // namespace concierge

@@ -166,6 +166,10 @@ class VirtualMachine {
   bool RegisterContainerIp(const std::string& container_token,
                            const std::string& container_ip);
 
+  // Unregister the IP address for a container token within this VM. Returns
+  // true if the token is valid, false otherwise.
+  bool UnregisterContainerIp(const std::string& container_token);
+
   // Generates a random token string that should be passed into the container
   // which can then be used by the container to identify itself when it
   // communicates back with us.

@@ -516,40 +516,59 @@ TEST_F(VirtualMachineTest, Mount) {
 }
 
 TEST_F(VirtualMachineTest, NoContainerToken) {
-  // If the token was never generated, then registration should fail.
+  // If the token was never generated, then [un]registration should fail.
   EXPECT_FALSE(vm_->RegisterContainerIp(base::GenerateGUID(), kFakeIp1));
+  EXPECT_FALSE(vm_->UnregisterContainerIp(base::GenerateGUID()));
 }
 
 TEST_F(VirtualMachineTest, InvalidContainerToken) {
   // If the wrong token is used, then registration should fail.
   std::string token = vm_->GenerateContainerToken(kFakeContainerName1);
   EXPECT_FALSE(vm_->RegisterContainerIp(base::GenerateGUID(), kFakeIp1));
+  // Invalid token should fail unregister operation.
+  EXPECT_FALSE(vm_->UnregisterContainerIp(base::GenerateGUID()));
 }
 
 TEST_F(VirtualMachineTest, ValidContainerToken) {
-  // Valid process for generating a token and then registering it.
+  // Valid process for generating a token and then registering it and
+  // unregistering it.
   std::string token = vm_->GenerateContainerToken(kFakeContainerName1);
   EXPECT_TRUE(vm_->RegisterContainerIp(token, kFakeIp1));
   EXPECT_EQ(kFakeIp1, vm_->GetContainerIpForName(kFakeContainerName1));
+  EXPECT_TRUE(vm_->UnregisterContainerIp(token));
+  EXPECT_EQ("", vm_->GetContainerIpForName(kFakeContainerName1));
 }
 
 TEST_F(VirtualMachineTest, ReuseContainerToken) {
-  // Re-registering the same token is valid.
+  // Re-registering the same token is valid and unregistering it should work.
   std::string token = vm_->GenerateContainerToken(kFakeContainerName1);
   EXPECT_TRUE(vm_->RegisterContainerIp(token, kFakeIp1));
   EXPECT_TRUE(vm_->RegisterContainerIp(token, kFakeIp2));
   EXPECT_EQ(kFakeIp2, vm_->GetContainerIpForName(kFakeContainerName1));
+  EXPECT_TRUE(vm_->UnregisterContainerIp(token));
+  EXPECT_EQ("", vm_->GetContainerIpForName(kFakeContainerName1));
 }
 
 TEST_F(VirtualMachineTest, MultipleContainerTokens) {
   // Valid process for generating a token and then registering it from multiple
-  // containers.
+  // containers and also unregistering them.
   std::string token1 = vm_->GenerateContainerToken(kFakeContainerName1);
   EXPECT_TRUE(vm_->RegisterContainerIp(token1, kFakeIp1));
   std::string token2 = vm_->GenerateContainerToken(kFakeContainerName2);
   EXPECT_TRUE(vm_->RegisterContainerIp(token2, kFakeIp2));
   EXPECT_EQ(kFakeIp1, vm_->GetContainerIpForName(kFakeContainerName1));
   EXPECT_EQ(kFakeIp2, vm_->GetContainerIpForName(kFakeContainerName2));
+
+  // Now unregister the first one.
+  EXPECT_TRUE(vm_->UnregisterContainerIp(token1));
+  EXPECT_EQ("", vm_->GetContainerIpForName(kFakeContainerName1));
+
+  // Second one should still be there.
+  EXPECT_EQ(kFakeIp2, vm_->GetContainerIpForName(kFakeContainerName2));
+
+  // No unregister the second one.
+  EXPECT_TRUE(vm_->UnregisterContainerIp(token2));
+  EXPECT_EQ("", vm_->GetContainerIpForName(kFakeContainerName2));
 }
 
 }  // namespace concierge

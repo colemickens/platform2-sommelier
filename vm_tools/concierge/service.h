@@ -56,6 +56,15 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                  bool* result,
                                  base::WaitableEvent* event);
 
+  // Notifies the service that a container with |container_token| and IP of
+  // |container_ip| is shutting down. Sets |result| to true if this maps to
+  // a subnet inside a currently running VM and |container_token| matches a
+  // security token for that VM; false otherwise. Signals |event| when done.
+  void ContainerShutdown(const std::string& container_token,
+                         const uint32_t container_ip,
+                         bool* result,
+                         base::WaitableEvent* event);
+
  private:
   explicit Service(base::Closure quit_closure);
 
@@ -100,6 +109,13 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
+
+  // Gets the VirtualMachine that corresponds to a container at |container_ip|
+  // and sets |vm_out| to the VirtualMachine and |name_out| to the name of the
+  // VM. Returns false if no such mapping exists.
+  bool GetVirtualMachineForContainerIp(uint32_t container_ip,
+                                       VirtualMachine** vm_out,
+                                       std::string* name_out);
 
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;

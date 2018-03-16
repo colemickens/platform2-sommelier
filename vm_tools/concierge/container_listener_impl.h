@@ -33,6 +33,10 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::ContainerStartupInfo* request,
       vm_tools::EmptyMessage* response) override;
+  grpc::Status ContainerShutdown(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::ContainerShutdownInfo* request,
+      vm_tools::EmptyMessage* response) override;
 
  private:
   base::WeakPtr<vm_tools::concierge::Service> service_;  // not owned

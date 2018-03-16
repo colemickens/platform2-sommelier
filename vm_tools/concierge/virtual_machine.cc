@@ -502,6 +502,18 @@ bool VirtualMachine::RegisterContainerIp(const std::string& container_token,
   return true;
 }
 
+bool VirtualMachine::UnregisterContainerIp(const std::string& container_token) {
+  auto token_iter = container_token_to_name_.find(container_token);
+  if (token_iter == container_token_to_name_.end()) {
+    return false;
+  }
+  auto name_iter = container_name_to_ip_.find(token_iter->second);
+  DCHECK(name_iter != container_name_to_ip_.end());
+  container_token_to_name_.erase(token_iter);
+  container_name_to_ip_.erase(name_iter);
+  return true;
+}
+
 std::string VirtualMachine::GenerateContainerToken(
     const std::string& container_name) {
   std::string token = base::GenerateGUID();
