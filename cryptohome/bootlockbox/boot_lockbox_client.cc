@@ -14,7 +14,7 @@
 #include <dbus/dbus.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 
-#include "cryptohome/dbus-proxies.h"
+#include "bootlockbox/dbus-proxies.h"
 
 namespace cryptohome {
 

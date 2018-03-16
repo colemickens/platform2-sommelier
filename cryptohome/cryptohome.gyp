@@ -10,11 +10,11 @@
       'target_name': 'bootlockboxtool',
       'type': 'executable',
       'dependencies': [
-        'bootlockbox-proxies',
         'cryptohome-proto',
       ],
       'variables': {
         'deps': [
+          'libbootlockbox-client',
           'libchrome-<(libbase_ver)',
           'libbrillo-<(libbase_ver)',
           'protobuf',

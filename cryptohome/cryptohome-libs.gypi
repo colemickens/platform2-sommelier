@@ -253,23 +253,5 @@
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
-    # BootLockbox dbus client.
-    {
-      'target_name': 'bootlockbox-proxies',
-      'type': 'none',
-      'actions': [{
-        'action_name': 'generate-dbus-proxies',
-        'variables': {
-          'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
-          'proxy_output_file': 'include/cryptohome/dbus-proxies.h',
-          'mock_output_file': 'include/cryptohome/dbus-proxy-mocks.h',
-          'proxy_path_in_mocks': 'cryptohome/dbus-proxies.h',
-        },
-        'sources': [
-          'dbus_adaptors/org.chromium.BootLockboxInterface.xml',
-        ],
-        'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-      }],
-    },
   ],
 }
