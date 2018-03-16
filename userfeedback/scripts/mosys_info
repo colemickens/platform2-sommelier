@@ -37,3 +37,5 @@ PARAMS="
 for param in ${PARAMS}; do
   mosys -l platform "${param}"
 done > "${PLATFORM_INFO_FILE}"
+
+exit 0
