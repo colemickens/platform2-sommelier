@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/strings/string_util.h>
 #include <brillo/http/http_request.h>
 #include <brillo/mime_utils.h>
 
@@ -42,6 +43,15 @@ void OnError(Request* request,
                     brillo::mime::text::kPlain, error_msg);
 }
 
+bool CompleteRequestIfInvalid(Request* request, const std::string& value) {
+  if (base::IsStringUTF8(value))
+    return false;
+
+  request->Complete(brillo::http::status_code::BadRequest, {},
+                    brillo::mime::text::kPlain, "Invalid Characters\n");
+  return true;
+}
+
 }  // anonymous namespace
 
 DBusRequestHandler::DBusRequestHandler(Server* server,
@@ -53,8 +63,11 @@ DBusRequestHandler::DBusRequestHandler(Server* server,
 void DBusRequestHandler::HandleRequest(Request* request,
                                        const std::string& src) {
   std::vector<std::tuple<std::string, std::string>> headers;
-  for (const auto& pair : request->GetHeaders())
+  for (const auto& pair : request->GetHeaders()) {
+    if (CompleteRequestIfInvalid(request, pair.second))
+      return;
     headers.emplace_back(pair.first, pair.second);
+  }
   headers.emplace_back("Source-Host", src);
 
   std::vector<std::tuple<int32_t, std::string, std::string, std::string,
@@ -66,11 +79,17 @@ void DBusRequestHandler::HandleRequest(Request* request,
   }
 
   std::vector<std::tuple<bool, std::string, std::string>> params;
-  for (const auto& pair : request->GetDataGet())
+  for (const auto& pair : request->GetDataGet()) {
+    if (CompleteRequestIfInvalid(request, pair.second))
+      return;
     params.emplace_back(false, pair.first, pair.second);
+  }
 
-  for (const auto& pair : request->GetDataPost())
+  for (const auto& pair : request->GetDataPost()) {
+    if (CompleteRequestIfInvalid(request, pair.second))
+      return;
     params.emplace_back(true, pair.first, pair.second);
+  }
 
   auto error_callback = base::Bind(&OnError,
                                    base::Unretained(request),
