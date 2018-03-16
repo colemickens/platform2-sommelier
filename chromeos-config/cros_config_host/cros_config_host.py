@@ -217,6 +217,19 @@ def WritePhandleProperties():
 };
 ''' % (', '.join(quoted)))
 
+def GetWallpaperFiles(config):
+  """Get the wallpaper files needed for installation
+
+  Args:
+    config: A CrosConfig instance
+
+  Returns:
+    List of wallpaper filenames (sorted)
+  """
+  for fname in config.GetWallpaperFiles():
+    print(fname)
+
+
 def GetParser(description):
   """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -320,6 +333,10 @@ def GetParser(description):
       'components',
       help='Comma-separated list of firmware components to get combinations ' +
       'for.')
+  # Parser: get-wallpaper-files
+  subparsers.add_parser(
+      'get-wallpaper-files',
+      help='Gets a list of wallpaper files which are used in the config')
   return parser
 
 
@@ -380,6 +397,8 @@ def main(argv=None):
     GetBspUris(config)
   elif opts.subcommand == 'get-firmware-build-combinations':
     GetFirmwareBuildCombinations(config, opts.components.split(','))
+  elif opts.subcommand == 'get-wallpaper-files':
+    GetWallpaperFiles(config)
 
 
 if __name__ == '__main__':

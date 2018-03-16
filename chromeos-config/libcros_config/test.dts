@@ -341,6 +341,11 @@
 				brand-code = "HBBO";
 				key-id = "BLACKTIP2";
 			};
+			blacktip3 {
+				wallpaper = "shark";
+				brand-code = "HBBR";
+				key-id = "BLACKTIP3";
+			};
 		};
 	};
 };

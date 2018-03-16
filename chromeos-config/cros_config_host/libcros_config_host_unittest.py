@@ -548,6 +548,9 @@ def MakeTests(pathname):
           ('blacktip-blacktip2', caroline._replace(
               model='blacktip-blacktip2', key_id='BLACKTIP2', have_image=False,
               sig_id='blacktip-blacktip2')),
+          ('blacktip-blacktip3', caroline._replace(
+              model='blacktip-blacktip3', key_id='BLACKTIP3', have_image=False,
+              sig_id='blacktip-blacktip3')),
           ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
           ('pyro', FirmwareInfo(
               model='pyro', shared_model=None, key_id='', have_image=True,
@@ -633,6 +636,13 @@ def MakeTests(pathname):
       with self.assertRaisesRegexp(ValueError,
                                    'Properties.*differ.*4209.*4210'):
         pyro.GetMergedProperties(stylus, 'touch-type')
+
+    def testGetWallpaper(self):
+      """Test that we can access the wallpaper information"""
+      config = CrosConfig(self.filepath)
+      self.assertEquals(['caroline', 'dark', 'darker', 'default', 'epic',
+                         'more_shark', 'shark'],
+                        config.GetWallpaperFiles())
 
   return CrosConfigHostTest
 

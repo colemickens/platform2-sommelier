@@ -489,6 +489,13 @@ class CrosConfigImpl(object):
     """
     return list(self.GetTouchBspUris())
 
+  def GetWallpaperFiles(self):
+    """Get a list of wallpaper files used for all models"""
+    wallpapers = set()
+    for model in self.models.values():
+      wallpapers |= model.GetWallpaperFiles()
+    return sorted(wallpapers)
+
   class Node(object):
     """Represents a single node in the CrosConfig tree, including Model.
 
@@ -871,13 +878,15 @@ class CrosConfigImpl(object):
                                                           tarball)
       return files
 
-    def AllPathNodes(self, relative_path):
+    def AllPathNodes(self, relative_path, whitelabel=False):
       """List all path nodes which match the relative path (including submodels)
 
       This looks in the model and all its submodels for this relative path.
 
       Args:
         relative_path: A relative path string separated by '/', '/thermal'
+        whitelabel: True to look in the whitelabels subnode as well (for
+            whiltelabel alternative schema)
 
       Returns:
         Dict of:
@@ -892,6 +901,11 @@ class CrosConfigImpl(object):
         node = submodel_node.PathNode(relative_path)
         if node:
           path_nodes[submodel_node.name] = node
+      if whitelabel:
+        whitelabels = self.PathNode('/whitelabels')
+        if whitelabels:
+          for node in whitelabels.subnodes.values():
+            path_nodes[node.name] = node
       return path_nodes
 
     def GetArcFiles(self):
@@ -1067,13 +1081,24 @@ class CrosConfigImpl(object):
       result = OrderedDict()
       result[self.name] = info
       if whitelabels:
-        for whitelabel in whitelabels.subnodes.values():
+        # Sort these to get a deterministic ordering with yaml (for tests).
+        for name in sorted(whitelabels.subnodes):
+          whitelabel = whitelabels.subnodes[name]
           key_id = whitelabel.GetStr('key-id')
           whitelabel_name = '%s-%s' % (base_model.name, whitelabel.name)
           result[whitelabel_name] = info._replace(
               model=whitelabel_name, key_id=key_id, have_image=False,
               sig_id=whitelabel_name)
       return result
+
+    def GetWallpaperFiles(self):
+      """Get a set of wallpaper files used for this model"""
+      wallpapers = set()
+      for node in self.AllPathNodes('/', whitelabel=True).values():
+        wallpaper = node.properties.get('wallpaper')
+        if wallpaper:
+          wallpapers.add(wallpaper.value)
+      return wallpapers
 
   class Property(object):
     """Represents a single property in a ChromeOS Configuration."""

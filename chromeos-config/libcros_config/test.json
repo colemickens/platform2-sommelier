@@ -363,6 +363,11 @@
             "brand-code": "HBBO", 
             "key-id": "BLACKTIP2", 
             "wallpaper": "darker"
+          }, 
+          "blacktip3": {
+            "brand-code": "HBBO", 
+            "key-id": "BLACKTIP3", 
+            "wallpaper": "shark"
           }
         }
       }

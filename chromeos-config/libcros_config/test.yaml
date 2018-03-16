@@ -279,5 +279,9 @@ chromeos:
           wallpaper: "darker"
           brand-code: "HBBO"
           key-id: "BLACKTIP2"
+        blacktip3:
+          wallpaper: "shark"
+          brand-code: "HBBO"
+          key-id: "BLACKTIP3"
 
 #include "target_dirs.yamli"

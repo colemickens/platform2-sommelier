@@ -152,6 +152,12 @@ def MakeTests(pathname):
       props = m.group(0).split('", "')
       self.assertTrue(len(props) > 5)
 
+    def testGetWallpaperFiles(self):
+      call_args = '{} -c {} get-wallpaper-files'.format(
+          CLI_FILE, self.conf_file).split()
+      output = subprocess.check_output(call_args)
+      self.CheckManyLines(output, 1)
+
   return CrosConfigHostTest
 
 
