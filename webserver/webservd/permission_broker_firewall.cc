@@ -36,7 +36,7 @@ PermissionBrokerFirewall::~PermissionBrokerFirewall() {
 }
 
 void PermissionBrokerFirewall::WaitForServiceAsync(
-    dbus::Bus* bus,
+    scoped_refptr<dbus::Bus> bus,
     const base::Closure& callback) {
   service_online_cb_ = callback;
   object_manager_.reset(

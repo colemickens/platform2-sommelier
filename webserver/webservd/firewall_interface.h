@@ -21,6 +21,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_object.h>
 
 namespace webservd {
@@ -30,7 +31,7 @@ class FirewallInterface {
   virtual ~FirewallInterface() = default;
 
   // Wait for the firewall DBus service to be up.
-  virtual void WaitForServiceAsync(dbus::Bus* bus,
+  virtual void WaitForServiceAsync(scoped_refptr<dbus::Bus> bus,
                                    const base::Closure& callback) = 0;
 
   // Methods for managing firewall ports.

@@ -33,7 +33,7 @@ class PermissionBrokerFirewall : public FirewallInterface {
   ~PermissionBrokerFirewall() override;
 
   // Interface overrides.
-  void WaitForServiceAsync(dbus::Bus* bus,
+  void WaitForServiceAsync(scoped_refptr<dbus::Bus> bus,
                            const base::Closure& callback) override;
   void PunchTcpHoleAsync(
       uint16_t port, const std::string& interface_name,
@@ -60,6 +60,7 @@ class PermissionBrokerFirewall : public FirewallInterface {
   int lifeline_write_fd_{-1};
 
   base::WeakPtrFactory<PermissionBrokerFirewall> weak_ptr_factory_{this};
+
   DISALLOW_COPY_AND_ASSIGN(PermissionBrokerFirewall);
 };
 
