@@ -136,8 +136,14 @@ bool TpmLiveTest::NvramTest() {
   uint32_t index = 12;
   SecureBlob nvram_data("nvram_data");
   if (tpm_->IsNvramDefined(index)) {
-    LOG(ERROR) << "Nvram index is already defined.";
-    return false;
+    if (!tpm_->DestroyNvram(index)) {
+      LOG(ERROR) << "Error destroying old Nvram.";
+      return false;
+    }
+    if (tpm_->IsNvramDefined(index)) {
+      LOG(ERROR) << "Nvram still defined after it was destroyed.";
+      return false;
+    }
   }
   if (!tpm_->DefineNvram(index, nvram_data.size(),
                          Tpm::kTpmNvramWriteDefine |
