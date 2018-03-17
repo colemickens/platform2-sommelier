@@ -16,7 +16,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "midis/device.h"
-#include "midis/seq_handler_interface.h"
+#include "midis/seq_handler.h"
 #include "mojo/midis.mojom.h"
 
 namespace midis {
@@ -95,7 +95,7 @@ class DeviceTracker {
   void NotifyObserversDeviceAddedOrRemoved(const Device& dev, bool added);
 
   std::map<uint32_t, std::unique_ptr<Device>> devices_;
-  std::unique_ptr<SeqHandlerInterface> seq_handler_;
+  std::unique_ptr<SeqHandler> seq_handler_;
 
   base::ObserverList<Observer> observer_list_;
 

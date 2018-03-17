@@ -13,7 +13,6 @@
 
 #include "midis/device.h"
 #include "midis/device_tracker.h"
-#include "midis/seq_handler_interface.h"
 
 namespace midis {
 
@@ -24,7 +23,7 @@ class DeviceTracker;
 // external clients that are registered to the ALSA sequencer interfance. The
 // term "output" refers to data that a client of midis write *to* MIDI H/W and
 // external clients.
-class SeqHandler : public SeqHandlerInterface {
+class SeqHandler {
  public:
   using AddDeviceCallback = base::Callback<void(std::unique_ptr<Device>)>;
   using RemoveDeviceCallback = base::Callback<void(uint32_t, uint32_t)>;
@@ -54,46 +53,46 @@ class SeqHandler : public SeqHandlerInterface {
              IsDevicePresentCallback is_device_present_cb,
              IsPortPresentCallback is_port_present_cb);
 
-  ~SeqHandler() override = default;
+  virtual ~SeqHandler() = default;
 
   // Initializes the ALSA seq interface. Creates client handles for input and
   // output, as well create an input port to receive messages (announce as
   // well as MIDI data) from ALSA seq. Also starts off the file watcher which
   // watches for events on the input port.
-  bool InitSeq() override;
-  void ProcessAlsaClientFd() override;
+  bool InitSeq();
+  void ProcessAlsaClientFd();
 
   // Creates a Device object and runs the necessary callback to register that
   // object with DeviceTracker, stored in |add_device_cb_|
-  void AddSeqDevice(uint32_t device_id) override;
+  virtual void AddSeqDevice(uint32_t device_id);
 
   // At present, we don't support hotplugging of individual ports in devices.
   // so, we enumerate all the available ports in AddAlsaDevice().
   // This function is here merely to handle MIDI events associated with any
   // port being added or removed later (and to print an error message, since
   // we don't support it yet)
-  void AddSeqPort(uint32_t device_id, uint32_t port_id) override;
+  virtual void AddSeqPort(uint32_t device_id, uint32_t port_id);
 
   // Runs the relevant callback, stored in |remove_device_cb_|, when a MIDI H/W
   // device or external client is removed from the ALSA sequencer interface.
-  void RemoveSeqDevice(uint32_t device_id) override;
+  virtual void RemoveSeqDevice(uint32_t device_id);
 
-  void RemoveSeqPort(uint32_t device_id, uint32_t port_id) override;
+  virtual void RemoveSeqPort(uint32_t device_id, uint32_t port_id);
 
   // Callback to run when starting an input port (establishes a subscription,
   // and creates a relevant port on the server side, in necessary).
   // Returns true on success, false otherwise.
-  bool SubscribeInPort(uint32_t device_id, uint32_t port_id) override;
+  bool SubscribeInPort(uint32_t device_id, uint32_t port_id);
 
   // Callback to run when starting an input port (establishes a subscription,
   // and creates a relevant port on the server side, in necessary).
   // Returns created seq port id success, -1 otherwise.
-  int SubscribeOutPort(uint32_t device_id, uint32_t port_id) override;
+  int SubscribeOutPort(uint32_t device_id, uint32_t port_id);
 
   // The following two functions undo the work of the Subscribe*Port() function,
   // for input and output ports respectively.
-  void UnsubscribeInPort(uint32_t device_id, uint32_t port_id) override;
-  void UnsubscribeOutPort(int out_port_id) override;
+  void UnsubscribeInPort(uint32_t device_id, uint32_t port_id);
+  void UnsubscribeOutPort(int out_port_id);
 
   // Encodes the bytes in a MIDI buffer into the provided |encoder|.
   bool EncodeMidiBytes(int out_port_id,
@@ -108,12 +107,12 @@ class SeqHandler : public SeqHandlerInterface {
   // listening for data from it's client.
   void SendMidiData(int out_port_id,
                     const uint8_t* buffer,
-                    size_t buf_len) override;
+                    size_t buf_len);
 
   // This function processes the MIDI data received from H/W or an external
   // client, and invokes the callback |handle_rx_data_cb_| which handles the
   // data accordingly.
-  void ProcessMidiEvent(snd_seq_event_t* event) override;
+  void ProcessMidiEvent(snd_seq_event_t* event);
 
   // Wrappers for functions that interact with the ALSA Sequencer interface.
   // These are kept separately, because the intention is to mock these functions
