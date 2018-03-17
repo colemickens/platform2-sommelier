@@ -59,7 +59,8 @@ const char kSignChallengeCommand[] = "sign_challenge";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
-  create_and_certify [--user=<email>] [--label=<keylabel>]
+  create_and_certify [--attestation-server=default|test] [--user=<email>]
+          [--label=<keylabel>]
       Creates a key and requests certification by the Google Attestation CA.
       This is the default command.
   create [--user=<email>] [--label=<keylabel>] [--usage=sign|decrypt]
@@ -79,21 +80,21 @@ Commands:
   attestation_key
       Prints info about the TPM attestation key.
   verify_attestation [--ek-only] [--cros-core]
-      Verifies attestation information. If |ek-only| flag is provided, verifies
-      only the endorsement key. If |cros-core| flag is provided, verifies
-      using CrosCore CA public key.
+      Verifies attestation information. If |ek-only| flag is provided,
+      verifies only the endorsement key. If |cros-core| flag is provided,
+      verifies using CrosCore CA public key.
 
   activate --input=<input_file> [--save]
       Activates an attestation key using the encrypted credential in
       |input_file| and optionally saves it for future certifications.
   encrypt_for_activate --input=<input_file> --output=<output_file>
-      Encrypts the content of |input_file| as required by the TPM for activating
-      an attestation key. The result is written to |output_file|.
+      Encrypts the content of |input_file| as required by the TPM for
+      activating an attestation key. The result is written to |output_file|.
 
   encrypt [--user=<email>] [--label=<keylabel>] --input=<input_file>
           --output=<output_file>
-      Encrypts the contents of |input_file| as required by the TPM for a decrypt
-      operation. The result is written to |output_file|.
+      Encrypts the contents of |input_file| as required by the TPM for a
+      decrypt operation. The result is written to |output_file|.
   decrypt [--user=<email>] [--label=<keylabel>] --input=<input_file>
       Decrypts the contents of |input_file|.
 
@@ -105,18 +106,20 @@ Commands:
       Verifies the signature in |signature_file| against the contents of
       |input_file|.
 
-  create_enroll_request [--output=<output_file>]
+  create_enroll_request [--attestation-server=default|test]
+          [--output=<output_file>]
       Creates enroll request to CA and stores it to |output_file|.
   finish_enroll --input=<input_file>
-      Finishes enrollment using CA response from |input_file|.
-  create_cert_request [--user=<user>] [--profile=<profile>] [--origin=<origin>]
-          [--output=<output_file>]
+      Finishes enrollment using the CA response from |input_file|.
+  create_cert_request [--attestation-server=default|test]
+        [--profile=<profile>] [--user=<user>] [--origin=<origin>]
+        [--output=<output_file>]
       Creates certificate request to CA for |user|, using provided certificate
         |profile| and |origin|, and stores it to |output_file|.
         Possible |profile| values: user, machine, enrollment, content, cpsi,
-        cast, gfsc.
+        cast, gfsc. Default is user.
   finish_cert_request [--user=<user>] [--label=<label>] --input=<input_file>
-      Finishes certificate request for |user| using CA response from
+      Finishes certificate request for |user| using the CA response from
       |input_file|, and stores it in the key with the specified |label|.
   sign_challenge [--enterprise [--va_server=default|test]] [--user=<user>]
           [--label=<label>] [--domain=<domain>] [--device_id=<device_id>]
@@ -170,8 +173,14 @@ class ClientLoop : public ClientLoopBase {
       return EX_USAGE;
     }
     if (args.empty() || args.front() == kCreateAndCertifyCommand) {
+      ACAType aca_type;
+      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
+      if (status != EX_OK) {
+        return status;
+      }
       task = base::Bind(&ClientLoop::CallCreateGoogleAttestedKey,
                         weak_factory_.GetWeakPtr(),
+                        aca_type,
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kCreateCommand) {
@@ -316,8 +325,14 @@ class ClientLoop : public ClientLoopBase {
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kCreateEnrollRequestCommand) {
+      ACAType aca_type;
+      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
+      if (status != EX_OK) {
+        return status;
+      }
       task = base::Bind(
-          &ClientLoop::CallCreateEnrollRequest, weak_factory_.GetWeakPtr());
+          &ClientLoop::CallCreateEnrollRequest, weak_factory_.GetWeakPtr(),
+          aca_type);
     } else if (args.front() == kFinishEnrollCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -332,14 +347,18 @@ class ClientLoop : public ClientLoopBase {
           &ClientLoop::CallFinishEnroll, weak_factory_.GetWeakPtr(),
           input);
     } else if (args.front() == kCreateCertRequestCommand) {
+      if (command_line->HasSwitch("attestation-server")) {
+        LOG(WARNING) << "Cert request will be made for the CA the device is"
+                     << " enrolled with.";
+      }
       std::string profile_str = command_line->GetSwitchValueASCII("profile");
       CertificateProfile profile;
-      if (profile_str.empty() || profile_str == "enterprise_machine" ||
+      if (profile_str.empty() || profile_str == "enterprise_user" ||
+          profile_str == "user" || profile_str == "u") {
+        profile = ENTERPRISE_USER_CERTIFICATE;
+      } else if (profile_str == "enterprise_machine" ||
           profile_str == "machine" || profile_str == "m") {
         profile = ENTERPRISE_MACHINE_CERTIFICATE;
-      } else if (profile_str == "enterprise_user" || profile_str == "user" ||
-                 profile_str == "u") {
-        profile = ENTERPRISE_USER_CERTIFICATE;
       } else if (profile_str == "enterprise_enrollment" ||
                  profile_str == "enrollment" || profile_str == "e") {
         profile = ENTERPRISE_ENROLLMENT_CERTIFICATE;
@@ -387,15 +406,10 @@ class ClientLoop : public ClientLoopBase {
         return EX_NOINPUT;
       }
       if (command_line->HasSwitch("enterprise")) {
-        VAType va_type = DEFAULT_VA;
-        std::string va_server(command_line->GetSwitchValueASCII("va_server"));
-        va_type = DEFAULT_VA;
-        if (va_server == "test") {
-          va_type = TEST_VA;
-        }
-        if (va_server != "" && va_server != "default") {
-          LOG(ERROR) << "Invalid va_server value: " << va_server;
-          return EX_USAGE;
+        VAType va_type;
+        int status = GetVerifiedAccessServerType(command_line, &va_type);
+        if (status != EX_OK) {
+          return status;
         }
         task = base::Bind(
             &ClientLoop::CallSignEnterpriseChallenge,
@@ -422,6 +436,52 @@ class ClientLoop : public ClientLoopBase {
     return EX_OK;
   }
 
+  int GetVerifiedAccessServerType(base::CommandLine* command_line,
+                                  VAType* va_type) {
+    *va_type = DEFAULT_VA;
+    if (command_line->HasSwitch("va-server")) {
+      std::string va_server(command_line->GetSwitchValueASCII("va-server"));
+      if (va_server == "test") {
+        *va_type = TEST_VA;
+      } else if (va_server != "" && va_server != "default") {
+        LOG(ERROR) << "Invalid va-server value: " << va_server;
+        return EX_USAGE;
+      }
+    } else {
+      // Convert the CA type to a VA server type.
+      ACAType aca_type;
+      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
+      if (status != EX_OK) {
+        return status;
+      }
+      switch (aca_type) {
+        case TEST_ACA:
+          *va_type = TEST_VA;
+          break;
+
+        case DEFAULT_ACA:
+        default:
+          *va_type = DEFAULT_VA;
+          break;
+      }
+    }
+    return EX_OK;
+  }
+
+  int GetCertificateAuthorityServerType(base::CommandLine* command_line,
+                                        ACAType* aca_type) {
+    *aca_type = DEFAULT_ACA;
+    std::string aca_server(command_line->GetSwitchValueASCII(
+        "attestation-server"));
+    if (aca_server == "test") {
+      *aca_type = TEST_ACA;
+    } else if (aca_server != "" && aca_server != "default") {
+      LOG(ERROR) << "Invalid attestation-server value: " << aca_server;
+      return EX_USAGE;
+    }
+    return EX_OK;
+  }
+
   template <typename ProtobufType>
   void PrintReplyAndQuit(const ProtobufType& reply) {
     printf("%s\n", GetProtoDebugString(reply).c_str());
@@ -438,9 +498,11 @@ class ClientLoop : public ClientLoopBase {
     }
   }
 
-  void CallCreateGoogleAttestedKey(const std::string& label,
+  void CallCreateGoogleAttestedKey(ACAType aca_type,
+                                   const std::string& label,
                                    const std::string& username) {
     CreateGoogleAttestedKeyRequest request;
+    request.set_aca_type(aca_type);
     request.set_key_label(label);
     request.set_key_type(KEY_TYPE_RSA);
     request.set_key_usage(KEY_USAGE_SIGN);
@@ -677,8 +739,9 @@ class ClientLoop : public ClientLoopBase {
             weak_factory_.GetWeakPtr()));
   }
 
-  void CallCreateEnrollRequest() {
+  void CallCreateEnrollRequest(ACAType aca_type) {
     CreateEnrollRequestRequest request;
+    request.set_aca_type(aca_type);
     attestation_->CreateEnrollRequest(
         request, base::Bind(&ClientLoop::OnCreateEnrollRequestComplete,
         weak_factory_.GetWeakPtr()));
