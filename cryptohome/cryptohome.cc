@@ -227,6 +227,7 @@ namespace switches {
   static const char kPublicMount[] = "public_mount";
   static const char kKeyPolicySwitch[] = "key_policy";
   static const char kKeyPolicyLECredential[] = "le";
+  static const char kProfileSwitch[] = "profile";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -1873,12 +1874,37 @@ int main(int argc, char **argv) {
       action.c_str())) {
     brillo::glib::ScopedError error;
     std::string response_data;
+    std::string profile_str = cl->GetSwitchValueASCII(switches::kProfileSwitch);
+    cryptohome::CertificateProfile profile;
+    if (profile_str.empty() || profile_str == "enterprise_user"
+        || profile_str == "user" || profile_str == "u") {
+      profile = cryptohome::ENTERPRISE_USER_CERTIFICATE;
+    } else if (profile_str == "enterprise_machine" ||
+               profile_str == "machine" || profile_str == "m") {
+      profile = cryptohome::ENTERPRISE_MACHINE_CERTIFICATE;
+    } else if (profile_str == "enterprise_enrollment" ||
+               profile_str == "enrollment" || profile_str == "e") {
+      profile = cryptohome::ENTERPRISE_ENROLLMENT_CERTIFICATE;
+    } else if (profile_str == "content_protection" ||
+               profile_str == "content" || profile_str == "c") {
+      profile = cryptohome::CONTENT_PROTECTION_CERTIFICATE;
+    } else if (profile_str == "content_protection_with_stable_id" ||
+               profile_str == "cpsi") {
+      profile = cryptohome::CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
+    } else if (profile_str == "cast") {
+      profile = cryptohome::CAST_CERTIFICATE;
+    } else if (profile_str == "gfsc") {
+      profile = cryptohome::GFSC_CERTIFICATE;
+    } else {
+      printf("Unknown certificate profile: %s.\n", profile_str.c_str());
+      return 1;
+    }
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       brillo::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
           proxy.gproxy(),
           pca_type,
-          cryptohome::ENTERPRISE_USER_CERTIFICATE,
+          profile,
           "", "",
           &brillo::Resetter(&data).lvalue(),
           &brillo::Resetter(&error).lvalue())) {
@@ -1894,7 +1920,7 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(  // NOLINT
               proxy.gproxy(),
               pca_type,
-              cryptohome::ENTERPRISE_USER_CERTIFICATE,
+              profile,
               "", "",
               &async_id,
               &brillo::Resetter(&error).lvalue())) {
