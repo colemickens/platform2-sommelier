@@ -69,14 +69,37 @@ void Client::ListDevices(const ListDevicesCallback& callback) {
 
 void Client::RequestPort(arc::mojom::MidisRequestPtr request,
                          const RequestPortCallback& callback) {
+  mojo::ScopedHandle handle = CreateRequestPortFD(
+      request->card, request->device_num, request->subdevice_num);
+  callback.Run(std::move(handle));
+}
+
+void Client::RequestPortDeprecated(
+    arc::mojom::MidisRequestPtr request,
+    const RequestPortDeprecatedCallback& callback) {
+  mojo::ScopedHandle handle = CreateRequestPortFD(
+      request->card, request->device_num, request->subdevice_num);
+  if (!handle.is_valid()) {
+    return;
+  }
+  callback.Run(std::move(handle));
+}
+
+void Client::CloseDevice(arc::mojom::MidisRequestPtr request) {
+  device_tracker_->RemoveClientFromDevice(client_id_, request->card,
+                                          request->device_num);
+}
+
+mojo::ScopedHandle Client::CreateRequestPortFD(uint32_t card,
+                                               uint32_t device,
+                                               uint32_t subdevice) {
   base::ScopedFD clientfd = device_tracker_->AddClientToReadSubdevice(
-      request->card, request->device_num, request->subdevice_num, client_id_);
+      card, device, subdevice, client_id_);
   if (!clientfd.is_valid()) {
-    LOG(ERROR) << "AddClientToReadSubdevice failed.";
+    LOG(ERROR) << "CreateRequestPortFD failed for device: " << device;
     // We don't delete the client here, because this could mean an issue with
     // the device h/w.
-    callback.Run(mojo::ScopedHandle());
-    return;
+    return mojo::ScopedHandle();
   }
 
   mojo::edk::ScopedPlatformHandle platform_handle{
@@ -85,20 +108,14 @@ void Client::RequestPort(arc::mojom::MidisRequestPtr request,
   MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
       std::move(platform_handle), &wrapped_handle);
   if (wrap_result != MOJO_RESULT_OK) {
-    LOG(ERROR) << "Failed to wrap port FD in a Mojo Handle.";
-    callback.Run(mojo::ScopedHandle());
-    return;
+    LOG(ERROR) << "Failed to wrap port FD in a Mojo Handle for device: "
+               << device;
+    return mojo::ScopedHandle();
   }
 
   mojo::ScopedHandle scoped_handle{mojo::Handle(wrapped_handle)};
-
-  callback.Run(std::move(scoped_handle));
   DVLOG(1) << "Converted port into Mojo scoped handle successfully.";
-}
-
-void Client::CloseDevice(arc::mojom::MidisRequestPtr request) {
-  device_tracker_->RemoveClientFromDevice(client_id_, request->card,
-                                          request->device_num);
+  return scoped_handle;
 }
 
 }  // namespace midis

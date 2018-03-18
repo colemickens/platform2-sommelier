@@ -39,9 +39,19 @@ class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
 
   // arc::mojom:MidisServer overrides
   void ListDevices(const ListDevicesCallback& callback) override;
+  void RequestPortDeprecated(
+      arc::mojom::MidisRequestPtr request,
+      const RequestPortDeprecatedCallback& callback) override;
   void RequestPort(arc::mojom::MidisRequestPtr request,
                    const RequestPortCallback& callback) override;
   void CloseDevice(arc::mojom::MidisRequestPtr request) override;
+
+  // Function which returns a scoped handle when a port is requested,
+  // and an empty handle on error. This can be used by both
+  // RequestPort and RequestPortDeprecated.
+  mojo::ScopedHandle CreateRequestPortFD(uint32_t card,
+                                         uint32_t device,
+                                         uint32_t subdevice);
 
   // The DeviceTracker can be guaranteed to exist for the lifetime of the
   // service. As such, it is safe to maintain this pointer as a means to make
