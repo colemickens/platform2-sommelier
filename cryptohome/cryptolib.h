@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <openssl/rsa.h>
+
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
@@ -112,9 +114,16 @@ class CryptoLib {
   static bool ObscureRSAMessage(const brillo::SecureBlob& plaintext,
                                 const brillo::SecureBlob& key,
                                 brillo::SecureBlob* ciphertext);
-  static  bool UnobscureRSAMessage(const brillo::SecureBlob& ciphertext,
-                                   const brillo::SecureBlob& key,
-                                   brillo::SecureBlob* plaintext);
+  static bool UnobscureRSAMessage(const brillo::SecureBlob& ciphertext,
+                                  const brillo::SecureBlob& key,
+                                  brillo::SecureBlob* plaintext);
+
+  // Decrypts the data encrypted with RSA OAEP with the SHA-1 hash function, the
+  // MGF1 mask function, and the label parameter equal to |oaep_label|.
+  static bool RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
+                             const brillo::SecureBlob& oaep_label,
+                             RSA* key,
+                             brillo::SecureBlob* plaintext);
 
   // Encodes a binary blob to hex-ascii. Similar to base::HexEncode but
   // produces lowercase letters for hex digits.

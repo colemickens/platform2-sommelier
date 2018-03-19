@@ -396,6 +396,7 @@
             'bootlockbox/boot_lockbox_unittest.cc',
             'crypto_unittest.cc',
             'cryptohome_event_source_unittest.cc',
+            'cryptolib_unittest.cc',
             'dircrypto_data_migrator/migration_helper_unittest.cc',
             'fake_le_credential_backend.cc',
             'firmware_management_parameters_unittest.cc',

@@ -5,13 +5,13 @@
 #include "cryptohome/cryptolib.h"
 
 #include <limits>
+#include <utility>
 #include <vector>
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
-#include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <unistd.h>
 
@@ -554,6 +554,39 @@ bool CryptoLib::UnobscureRSAMessage(const SecureBlob& ciphertext,
   memcpy(data, ciphertext.data(), ciphertext.size());
   memcpy(data + offset, unobscured_chunk.data(),
          unobscured_chunk.size());
+  return true;
+}
+
+bool CryptoLib::RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
+                               const brillo::SecureBlob& oaep_label,
+                               RSA* key,
+                               brillo::SecureBlob* plaintext) {
+  const int key_size = RSA_size(key);
+  SecureBlob raw_decrypted_data(key_size);
+  const int decryption_result =
+      RSA_private_decrypt(ciphertext.size(), ciphertext.data(),
+                          raw_decrypted_data.data(), key, RSA_NO_PADDING);
+  if (decryption_result == -1) {
+    LOG(ERROR) << "RSA raw decryption failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    return false;
+  }
+  if (decryption_result != key_size) {
+    LOG(ERROR) << "RSA raw decryption returned too few data";
+    return false;
+  }
+  SecureBlob local_plaintext(key_size);
+  const int padding_check_result = RSA_padding_check_PKCS1_OAEP(
+      local_plaintext.data(), local_plaintext.size(), raw_decrypted_data.data(),
+      raw_decrypted_data.size(), key_size, oaep_label.data(),
+      oaep_label.size());
+  if (padding_check_result == -1) {
+    LOG(ERROR)
+        << "Failed to perform RSA OAEP decoding of the raw decrypted data";
+    return false;
+  }
+  local_plaintext.resize(padding_check_result);
+  *plaintext = std::move(local_plaintext);
   return true;
 }
 
