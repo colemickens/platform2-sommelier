@@ -1805,7 +1805,8 @@ TPM_RC TpmUtilityImpl::DeclareTpmFirmwareStable() {
   return rc;
 }
 
-TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKey(std::string* public_key) {
+TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKeyModulus(
+    std::string* ekm) {
   uint32_t index = kRSAEndorsementCertificateIndex;
   trunks::TPMS_NV_PUBLIC nvram_public;
   TPM_RC result = GetNVSpacePublicArea(index, &nvram_public);
@@ -1858,7 +1859,7 @@ TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKey(std::string* public_key) {
 
   std::vector<unsigned char> key(buf_len);
   BN_bn2bin(bn, key.data());
-  public_key->assign(reinterpret_cast<const char*>(key.data()), buf_len);
+  ekm->assign(reinterpret_cast<const char*>(key.data()), buf_len);
 
   return TPM_RC_SUCCESS;
 }

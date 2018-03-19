@@ -2383,13 +2383,13 @@ TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Failure) {
   EXPECT_EQ(TPM_RC_FAILURE, utility_.DeclareTpmFirmwareStable());
 }
 
-TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_NoDataInNvram) {
-  std::string public_key;
+TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_NoDataInNvram) {
+  std::string ekm;
   EXPECT_EQ(SAPI_RC_CORRUPTED_DATA,
-            utility_.GetPublicRSAEndorsementKey(&public_key));
+            utility_.GetPublicRSAEndorsementKeyModulus(&ekm));
 }
 
-TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_EmptyNvram) {
+TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_EmptyNvram) {
   uint32_t nv_index = 29360128;
   TPM2B_MAX_NV_BUFFER nvram_data_buffer;
   std::vector<unsigned char> cert = {};
@@ -2408,12 +2408,12 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_EmptyNvram) {
       .WillRepeatedly(
           DoAll(SetArgPointee<6>(nvram_data_buffer), Return(TPM_RC_SUCCESS)));
 
-  std::string public_key;
+  std::string ekm;
   EXPECT_EQ(SAPI_RC_CORRUPTED_DATA,
-            utility_.GetPublicRSAEndorsementKey(&public_key));
+            utility_.GetPublicRSAEndorsementKeyModulus(&ekm));
 }
 
-TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_InvalidDataInNvram) {
+TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_InvalidDataInNvram) {
   uint32_t nv_index = 29360128;
   TPM2B_MAX_NV_BUFFER nvram_data_buffer;
   std::vector<unsigned char> cert = {1, 2, 3, 4};
@@ -2432,12 +2432,13 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_InvalidDataInNvram) {
       .WillRepeatedly(
           DoAll(SetArgPointee<6>(nvram_data_buffer), Return(TPM_RC_SUCCESS)));
 
-  std::string public_key;
+  std::string ekm;
   EXPECT_EQ(SAPI_RC_CORRUPTED_DATA,
-            utility_.GetPublicRSAEndorsementKey(&public_key));
+            utility_.GetPublicRSAEndorsementKeyModulus(&ekm));
 }
 
-TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_ValidCertificateInNvram) {
+TEST_F(TpmUtilityTest,
+       GetPublicRSAEndorsementKeyModulus_ValidCertificateInNvram) {
   std::string hex_encoded_cert =
       "308203EB308202D3A00302010202105A12528603AC1ABE3FE8EB925C951823300D06092A"
       "864886F70D01010B0500308180310B30090603550406130255533113301106035504080C"
@@ -2490,9 +2491,10 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_ValidCertificateInNvram) {
       .WillRepeatedly(
           DoAll(SetArgPointee<6>(nvram_data_buffer), Return(TPM_RC_SUCCESS)));
 
-  std::string public_key;
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetPublicRSAEndorsementKey(&public_key));
-  std::string hex_encoded_pk =
+  std::string ekm;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.GetPublicRSAEndorsementKeyModulus(&ekm));
+  std::string hex_encoded_ekm =
       "AC5869BD60F30463612BB0C472AA19E5400E524A213290EBFB728D1AAC956F74B7CF6A8D"
       "57F17C94D4BE2B3D07FD882CF708C30C476DCB1FF32695A8BAC77BDD5C04E89E2AB228D6"
       "EDFF2EFAA54BE9C30F9D211E2E42DE7E50CF424EEE6C310D677D8870522E8C953711BE42"
@@ -2501,8 +2503,8 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKey_ValidCertificateInNvram) {
       "81EB9C9EACF0029C4F41B2E4033AB68453884D5BB3E0DD9F680E150CB604428546CFA32B"
       "05743B073BAE97964A847756BB79D132EAEFF44EE1B25315C6B45CE74087A777CFD14276"
       "9B5CF4E5";
-  EXPECT_EQ(hex_encoded_pk,
-            base::HexEncode(public_key.data(), public_key.size()));
+  EXPECT_EQ(hex_encoded_ekm,
+            base::HexEncode(ekm.data(), ekm.size()));
 }
 
 TEST_F(TpmUtilityTest, ManageCCDPwdNonCr50) {

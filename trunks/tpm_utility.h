@@ -378,8 +378,8 @@ class TRUNKS_EXPORT TpmUtility {
   virtual TPM_RC DeclareTpmFirmwareStable() = 0;
 
   // Reads the RSA certificate from nvram space and extracts the public key
-  // modulus into |public_key|. Returns TPM_RC_SUCCESS on success.
-  virtual TPM_RC GetPublicRSAEndorsementKey(std::string* public_key) = 0;
+  // modulus into |ekm|. Returns TPM_RC_SUCCESS on success.
+  virtual TPM_RC GetPublicRSAEndorsementKeyModulus(std::string* ekm) = 0;
 
   // For TPMs that support it: allow setting the CCD password if |allow_pwd|
   // is true, prohibit otherwise.

@@ -209,10 +209,10 @@ int TpmVersion(const TrunksFactory& factory) {
 }
 
 int EndorsementPublicKey(const TrunksFactory& factory) {
-  std::string public_key;
-  factory.GetTpmUtility()->GetPublicRSAEndorsementKey(&public_key);
-  std::string public_key_hex = HexEncode(public_key);
-  printf("  Public Endorsement Key: %s\n", public_key_hex.c_str());
+  std::string ekm;
+  factory.GetTpmUtility()->GetPublicRSAEndorsementKeyModulus(&ekm);
+  std::string ekm_hex = HexEncode(ekm);
+  printf("  Public Endorsement Key Modulus: %s\n", ekm_hex.c_str());
   return 0;
 }
 
