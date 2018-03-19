@@ -462,8 +462,13 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // TODO(poromov): Remove after http://b/69546724 is resolved.
   builder->AddVmodulePattern("automatic_reboot_manager=1");
 
-  if (builder->UseFlagIsSet("cheets"))
+  if (builder->UseFlagIsSet("cheets")) {
     builder->AddVmodulePattern("*arc/*=1");
+
+    // Used to investigate issue with restarting ARC kiosk app.
+    // TODO(poromov): Remove after http://crbug.com/812594 is resolved.
+    builder->AddVmodulePattern("arc_kiosk*=2");
+  }
 }
 
 }  // namespace
