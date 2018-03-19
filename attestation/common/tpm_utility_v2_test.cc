@@ -310,27 +310,26 @@ TEST_F(TpmUtilityTest, GetEndorsementPublicKey) {
   EXPECT_TRUE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_ECC, &key));
 }
 
-TEST_F(TpmUtilityTest, GetEndorsementPublicKeyNoKey) {
-  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKey(_))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementKey(_, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
+TEST_F(TpmUtilityTest, GetEndorsementPublicKeyModulusSuccess) {
+  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKeyModulus(_))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
   std::string key;
-  EXPECT_FALSE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &key));
-  EXPECT_TRUE(key.empty());
-  EXPECT_FALSE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_ECC, &key));
-  EXPECT_TRUE(key.empty());
+  EXPECT_TRUE(tpm_utility_->GetEndorsementPublicKeyModulus(
+      KEY_TYPE_RSA, &key));
+  // The key type ECC is not implemented yet.
+  EXPECT_FALSE(tpm_utility_->GetEndorsementPublicKeyModulus(
+      KEY_TYPE_ECC, &key));
 }
 
-TEST_F(TpmUtilityTest, GetEndorsementPublicKeyNoPublic) {
-  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKey(_))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+TEST_F(TpmUtilityTest, GetEndorsementPublicKeyModulusNoKey) {
+  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKeyModulus(_))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string key;
-  EXPECT_FALSE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &key));
+  EXPECT_FALSE(tpm_utility_->GetEndorsementPublicKeyModulus(
+      KEY_TYPE_RSA, &key));
   EXPECT_TRUE(key.empty());
-  EXPECT_FALSE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_ECC, &key));
+  EXPECT_FALSE(tpm_utility_->GetEndorsementPublicKeyModulus(
+      KEY_TYPE_ECC, &key));
   EXPECT_TRUE(key.empty());
 }
 

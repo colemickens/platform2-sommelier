@@ -159,6 +159,11 @@ class TpmUtility {
   // Returns true if the dependency was removed this time, or it already has
   // been removed earlier; false otherwise.
   virtual bool RemoveOwnerDependency() = 0;
+
+  // Reads an endorsement public key from the TPM and extracts the modulus in
+  // |ekm|.
+  virtual bool GetEndorsementPublicKeyModulus(KeyType key_type,
+                                              std::string* ekm) = 0;
 };
 
 }  // namespace attestation

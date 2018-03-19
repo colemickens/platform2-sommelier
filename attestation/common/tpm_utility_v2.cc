@@ -493,11 +493,6 @@ bool TpmUtilityV2::Unseal(const std::string& sealed_data, std::string* data) {
 
 bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
                                            std::string* public_key) {
-  if (key_type == KEY_TYPE_RSA) {
-    return trunks_utility_->GetPublicRSAEndorsementKey(public_key) ==
-           TPM_RC_SUCCESS;
-  }
-
   TPM_HANDLE key_handle;
   if (!GetEndorsementKey(key_type, &key_handle)) {
     LOG(ERROR) << __func__ << ": EK not available.";
@@ -906,6 +901,18 @@ bool TpmUtilityV2::RemoveOwnerDependency() {
     return false;
   }
   return true;
+}
+
+bool TpmUtilityV2::GetEndorsementPublicKeyModulus(
+    KeyType key_type,
+    std::string* ekm) {
+  if (key_type == KEY_TYPE_RSA) {
+    return trunks_utility_->GetPublicRSAEndorsementKeyModulus(ekm) ==
+           TPM_RC_SUCCESS;
+  }
+
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
 }
 
 }  // namespace attestation

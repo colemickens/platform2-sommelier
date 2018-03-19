@@ -2012,8 +2012,8 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeBadPrefix) {
 }
 
 TEST_F(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(std::string("pub_ek")),
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyModulus(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(std::string("ekm")),
                       Return(true)));
   brillo::SecureBlob abe_data(0xCA, 32);
   service_->set_abe_data(&abe_data);
@@ -2021,14 +2021,14 @@ TEST_F(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
   service_->set_crypto_utility(&crypto_utility);
   std::string enrollment_id = ComputeEnterpriseEnrollmentId();
   EXPECT_EQ(
-      "fb6d3b463fc73aca4e3b1e717cf07dfac82bdb9c02b9301e8d0d28866944e559",
+      "635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
       base::ToLowerASCII(
           base::HexEncode(enrollment_id.data(), enrollment_id.size())));
 }
 
 TEST_F(AttestationServiceTest, GetEnrollmentId) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(std::string("pub_ek")),
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyModulus(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(std::string("ekm")),
                       Return(true)));
   brillo::SecureBlob abe_data(0xCA, 32);
   service_->set_abe_data(&abe_data);
@@ -2036,7 +2036,7 @@ TEST_F(AttestationServiceTest, GetEnrollmentId) {
   service_->set_crypto_utility(&crypto_utility);
   std::string enrollment_id = GetEnrollmentId();
   EXPECT_EQ(
-      "fb6d3b463fc73aca4e3b1e717cf07dfac82bdb9c02b9301e8d0d28866944e559",
+      "635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
       base::ToLowerASCII(
           base::HexEncode(enrollment_id.data(), enrollment_id.size())));
 
@@ -2051,7 +2051,7 @@ TEST_F(AttestationServiceTest, GetEnrollmentId) {
   service_->set_abe_data(&abe_data_new);
   enrollment_id = GetEnrollmentId();
   EXPECT_EQ(
-      "fb6d3b463fc73aca4e3b1e717cf07dfac82bdb9c02b9301e8d0d28866944e559",
+      "635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
       base::ToLowerASCII(
           base::HexEncode(enrollment_id.data(), enrollment_id.size())));
 }

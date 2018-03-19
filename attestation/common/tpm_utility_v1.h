@@ -85,6 +85,8 @@ class TpmUtilityV1 : public TpmUtility {
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der) override;
   bool RemoveOwnerDependency() override;
+  bool GetEndorsementPublicKeyModulus(KeyType key_type,
+                                      std::string* ekm) override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with

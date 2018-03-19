@@ -1397,7 +1397,10 @@ bool AttestationService::ActivateAttestationKeyInternal(
     auto identity_key = database_->GetMutableProtobuf()
         ->mutable_identity_key();
     identity_key->set_identity_credential(certificate_local);
-    identity_key->set_enrollment_id(ComputeEnterpriseEnrollmentId());
+    const std::string& enrollment_id = ComputeEnterpriseEnrollmentId();
+    if (!enrollment_id.empty()) {
+      identity_key->set_enrollment_id(enrollment_id);
+    }
     if (!database_->SaveChanges()) {
       LOG(ERROR) << __func__ << ": Failed to persist database changes.";
       return false;
@@ -2237,14 +2240,22 @@ void AttestationService::GetEnrollmentIdTask(
   auto database_pb = database_->GetProtobuf();
   if (database_pb.has_identity_key() &&
       database_pb.identity_key().has_enrollment_id()) {
+    DCHECK(!database_pb.identity_key().enrollment_id().empty());
     result->set_enrollment_id(
         std::string(database_pb.identity_key().enrollment_id()));
     return;
   }
 
   const std::string& enrollment_id = ComputeEnterpriseEnrollmentId();
-  if (enrollment_id.empty())
+  if (!enrollment_id.empty()) {
+    auto identity_key = database_->GetMutableProtobuf()
+        ->mutable_identity_key();
+    identity_key->set_enrollment_id(enrollment_id);
+    database_->SaveChanges();
+  } else {
     result->set_status(STATUS_NOT_AVAILABLE);
+  }
+
   result->set_enrollment_id(enrollment_id);
 }
 
@@ -2265,12 +2276,12 @@ std::string AttestationService::ComputeEnterpriseEnrollmentId() {
   if (den.empty())
     return "";
 
-  std::string public_key;
-  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &public_key))
+  std::string ekm;
+  if (!tpm_utility_->GetEndorsementPublicKeyModulus(KEY_TYPE_RSA, &ekm))
     return "";
 
   // Compute the EID based on den and ekm.
-  return crypto_utility_->HmacSha256(public_key, den);
+  return crypto_utility_->HmacSha256(den, ekm);
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

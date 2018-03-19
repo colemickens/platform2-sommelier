@@ -66,6 +66,7 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD2(SealToPCR0, bool(const std::string&, std::string*));
   MOCK_METHOD2(Unseal, bool(const std::string&, std::string*));
   MOCK_METHOD2(GetEndorsementPublicKey, bool(KeyType, std::string*));
+  MOCK_METHOD2(GetEndorsementPublicKeyModulus, bool(KeyType, std::string*));
   MOCK_METHOD2(GetEndorsementCertificate,
                bool(KeyType, std::string*));
   MOCK_METHOD3(Unbind,

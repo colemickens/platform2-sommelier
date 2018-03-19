@@ -735,5 +735,11 @@ bool TpmUtilityV1::RemoveOwnerDependency() {
   return false;
 }
 
+bool TpmUtilityV1::GetEndorsementPublicKeyModulus(
+    KeyType key_type,
+    std::string* ekm) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
 
 }  // namespace attestation
