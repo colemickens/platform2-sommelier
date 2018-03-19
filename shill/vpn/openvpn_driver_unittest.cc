@@ -547,13 +547,14 @@ TEST_F(OpenVPNDriverTest, SetRoutes) {
   routes[5].gateway = kGateway2;
 
   IPConfig::Properties props;
+  props.address = kGateway1;
   OpenVPNDriver::SetRoutes(routes, &props);
   ASSERT_EQ(2, props.routes.size());
 
   EXPECT_EQ(kGateway1, props.routes[0].gateway);
   EXPECT_EQ(kPrefix1, props.routes[0].prefix);
   EXPECT_EQ(kNetwork1, props.routes[0].host);
-  EXPECT_EQ(kGateway2, props.routes[1].gateway);
+  EXPECT_EQ(kGateway1, props.routes[1].gateway);
   EXPECT_EQ(kPrefix2, props.routes[1].prefix);
   EXPECT_EQ(kNetwork2, props.routes[1].host);
 
@@ -670,10 +671,10 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   driver_->ParseIPConfiguration(config, &props);
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ("4.5.6.7", props.address);
+  EXPECT_EQ("4.5.6.7", props.gateway);
   EXPECT_EQ("1.2.255.255", props.broadcast_address);
   EXPECT_EQ(24, props.subnet_prefix);
-  EXPECT_EQ("33.44.55.66", props.peer_address);
-  EXPECT_EQ("192.168.1.1", props.gateway);
+  EXPECT_EQ("", props.peer_address);
   EXPECT_EQ("99.88.77.66/32", props.exclusion_list[0]);
   EXPECT_EQ(1, props.exclusion_list.size());
   EXPECT_EQ(1000, props.mtu);
@@ -681,29 +682,29 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
   EXPECT_EQ("4.4.4.4", props.dns_servers[1]);
   EXPECT_EQ("2.2.2.2", props.dns_servers[2]);
-  ASSERT_EQ(2, props.routes.size());
-  EXPECT_EQ(kGateway1, props.routes[0].gateway);
-  EXPECT_EQ(kPrefix1, props.routes[0].prefix);
-  EXPECT_EQ(kNetwork1, props.routes[0].host);
-  EXPECT_EQ(kGateway2, props.routes[1].gateway);
-  EXPECT_EQ(kPrefix2, props.routes[1].prefix);
-  EXPECT_EQ(kNetwork2, props.routes[1].host);
-  EXPECT_TRUE(props.blackhole_ipv6);
+  ASSERT_EQ(3, props.routes.size());
+  EXPECT_EQ("4.5.6.7", props.routes[0].gateway);
+  EXPECT_EQ(32, props.routes[0].prefix);
+  EXPECT_EQ("33.44.55.66", props.routes[0].host);
+  EXPECT_EQ("4.5.6.7", props.routes[1].gateway);
+  EXPECT_EQ(kPrefix1, props.routes[1].prefix);
+  EXPECT_EQ(kNetwork1, props.routes[1].host);
+  EXPECT_EQ("4.5.6.7", props.routes[2].gateway);
+  EXPECT_EQ(kPrefix2, props.routes[2].prefix);
+  EXPECT_EQ(kNetwork2, props.routes[2].host);
+  EXPECT_FALSE(props.default_route);
 
-  // If the driver is configured to ignore the gateway provided, it will
-  // not set the "gateway" property for the properties, however the
-  // explicitly supplied routes should still be set.
+  config["redirect_gateway"] = "def1";
+  IPConfig::Properties props_with_gateway;
+  driver_->ParseIPConfiguration(config, &props_with_gateway);
+  EXPECT_TRUE(props_with_gateway.default_route);
+  EXPECT_TRUE(props_with_gateway.blackhole_ipv6);
+
+  // Don't set a default route if the user asked to ignore it.
   SetArg(kOpenVPNIgnoreDefaultRouteProperty, "some value");
   IPConfig::Properties props_without_gateway;
   driver_->ParseIPConfiguration(config, &props_without_gateway);
-  EXPECT_EQ(kGateway1, props_without_gateway.routes[0].gateway);
-  EXPECT_EQ("", props_without_gateway.gateway);
-
-  // A pushed redirect flag should override the IgnoreDefaultRoute property.
-  config["redirect_gateway"] = "def1";
-  IPConfig::Properties props_with_override;
-  driver_->ParseIPConfiguration(config, &props_with_override);
-  EXPECT_EQ("192.168.1.1", props_with_override.gateway);
+  EXPECT_FALSE(props_without_gateway.default_route);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {

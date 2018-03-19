@@ -69,11 +69,23 @@ const char kOpenVPNIfconfigLocal[] = "ifconfig_local";
 const char kOpenVPNIfconfigNetmask[] = "ifconfig_netmask";
 const char kOpenVPNIfconfigRemote[] = "ifconfig_remote";
 const char kOpenVPNRedirectGateway[] = "redirect_gateway";
-const char kOpenVPNRedirectPrivate[] = "redirect_private";
 const char kOpenVPNRouteOptionPrefix[] = "route_";
+const char kOpenVPNRouteNetGateway[] = "route_net_gateway";
 const char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 const char kOpenVPNTrustedIP[] = "trusted_ip";
 const char kOpenVPNTunMTU[] = "tun_mtu";
+
+// Typically OpenVPN will set environment variables like:
+//   route_net_gateway=<existing default LAN gateway>
+//   route_vpn_gateway=10.8.0.1
+//   route_gateway_1=10.8.0.1
+//   route_netmask_1=255.255.255.0
+//   route_network_1=192.168.10.0
+// This example shows a split include route of 192.168.10.0/24, and
+// 10.8.0.1 is the ifconfig_remote (remote peer) address.
+const char kOpenVPNRouteNetworkPrefix[] = "network_";
+const char kOpenVPNRouteNetmaskPrefix[] = "netmask_";
+const char kOpenVPNRouteGatewayPrefix[] = "gateway_";
 
 const char kDefaultPKCS11Provider[] = "libchaps.so";
 
@@ -385,7 +397,7 @@ void OpenVPNDriver::ParseIPConfiguration(
     IPConfig::Properties* properties) const {
   ForeignOptions foreign_options;
   RouteOptions routes;
-  bool is_gateway_route_required = false;
+  bool redirect_gateway = false;
 
   properties->address_family = IPAddress::kFamilyIPv4;
   if (!properties->subnet_prefix) {
@@ -418,18 +430,15 @@ void OpenVPNDriver::ParseIPConfiguration(
             IPAddress::GetPrefixLengthFromMask(properties->address_family,
                                                value);
       } else {
+        // This creates an explicit route to the peer address in SetRoutes().
         properties->peer_address = value;
       }
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNRedirectGateway) ||
-               base::LowerCaseEqualsASCII(key, kOpenVPNRedirectPrivate)) {
-      is_gateway_route_required = true;
-    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNRouteVPNGateway)) {
-      properties->gateway = value;
+    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNRedirectGateway)) {
+      redirect_gateway = true;
     } else if (base::LowerCaseEqualsASCII(key, kOpenVPNTrustedIP)) {
       size_t prefix = IPAddress::GetMaxPrefixLength(properties->address_family);
       properties->exclusion_list.push_back(value + "/" +
                                            base::SizeTToString(prefix));
-
     } else if (base::LowerCaseEqualsASCII(key, kOpenVPNTunMTU)) {
       int mtu = 0;
       if (base::StringToInt(value, &mtu) && mtu >= IPConfig::kMinIPv4MTU) {
@@ -446,6 +455,10 @@ void OpenVPNDriver::ParseIPConfiguration(
       } else {
         LOG(ERROR) << "Ignored unexpected foreign option suffix: " << suffix;
       }
+    } else if (base::LowerCaseEqualsASCII(key, kOpenVPNRouteNetGateway) ||
+               base::LowerCaseEqualsASCII(key, kOpenVPNRouteVPNGateway)) {
+      // These options are unused.  Catch them here so that they don't
+      // get passed to ParseRouteOption().
     } else if (base::StartsWith(key, kOpenVPNRouteOptionPrefix,
                                 base::CompareCase::INSENSITIVE_ASCII)) {
       ParseRouteOption(key.substr(strlen(kOpenVPNRouteOptionPrefix)),
@@ -457,18 +470,20 @@ void OpenVPNDriver::ParseIPConfiguration(
   ParseForeignOptions(foreign_options, properties);
 
   manager()->vpn_provider()->SetDefaultRoutingPolicy(properties);
-  SetRoutes(routes, properties);
 
-  if (const_args()->ContainsString(kOpenVPNIgnoreDefaultRouteProperty)) {
-    if (is_gateway_route_required) {
-      LOG(INFO) << "Configuration request to ignore default route is "
-                << "overridden by the remote server.";
-    } else {
-      SLOG(this, 2) << "Ignoring default route parameter as requested by "
-                    << "configuration.";
-      properties->gateway.clear();
-    }
+  // Ignore the route_vpn_gateway parameter as VPNs don't need gateway IPs.
+  // This guarantees that we will pass the various sanity checks in
+  // connection.cc.
+  properties->gateway = properties->address;
+
+  if (redirect_gateway &&
+      const_args()->ContainsString(kOpenVPNIgnoreDefaultRouteProperty)) {
+    LOG(INFO) << "Ignoring default route parameter as requested by "
+              << "configuration.";
+    redirect_gateway = false;
   }
+  properties->default_route = properties->blackhole_ipv6 = redirect_gateway;
+  SetRoutes(routes, properties);
 }
 
 // static
@@ -482,7 +497,7 @@ void OpenVPNDriver::ParseForeignOptions(const ForeignOptions& options,
   if (!domain_search.empty()) {
     properties->domain_search.swap(domain_search);
   }
-  LOG_IF(WARNING, properties->domain_search.empty())
+  LOG_IF(INFO, properties->domain_search.empty())
       << "No search domains provided.";
   if (!dns_servers.empty()) {
     properties->dns_servers.swap(dns_servers);
@@ -525,18 +540,19 @@ void OpenVPNDriver::ParseRouteOption(
     const string& key, const string& value, RouteOptions* routes) {
   // IPv4 uses route_{network,netmask,gateway}_<index>
   // IPv6 uses route_ipv6_{network,gateway}_<index>
-  IPConfig::Route* route = GetRouteOptionEntry("network_", key, routes);
+  IPConfig::Route* route =
+      GetRouteOptionEntry(kOpenVPNRouteNetworkPrefix, key, routes);
   if (route) {
     route->host = value;
     return;
   }
-  route = GetRouteOptionEntry("netmask_", key, routes);
+  route = GetRouteOptionEntry(kOpenVPNRouteNetmaskPrefix, key, routes);
   if (route) {
     route->prefix = IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4,
                                                        value);
     return;
   }
-  route = GetRouteOptionEntry("gateway_", key, routes);
+  route = GetRouteOptionEntry(kOpenVPNRouteGatewayPrefix, key, routes);
   if (route) {
     route->gateway = value;
     return;
@@ -548,19 +564,52 @@ void OpenVPNDriver::ParseRouteOption(
 void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
                               IPConfig::Properties* properties) {
   vector<IPConfig::Route> new_routes;
+  int32_t max_prefix =
+      IPAddress::GetMaxPrefixLength(properties->address_family);
+  if (!properties->peer_address.empty()) {
+    // --topology net30 or p2p will set ifconfig_remote
+
+    // Setting a point-to-point address in the kernel will create a route
+    // in RT_TABLE_MAIN instead of our per-device table.  To avoid this,
+    // create an explicit host route here, and clear
+    // |properties->peer_address.|
+    IPConfig::Route route(
+        properties->peer_address, max_prefix, properties->address);
+    new_routes.push_back(route);
+    properties->peer_address.clear();
+  } else if (properties->subnet_prefix != max_prefix) {
+    // --topology subnet will set ifconfig_netmask instead
+    IPAddress network_addr(properties->address);
+    if (network_addr.family() != properties->address_family) {
+      LOG(WARNING) << "Error obtaining network address for "
+                   << properties->address;
+    } else {
+      network_addr.set_prefix(properties->subnet_prefix);
+
+      IPConfig::Route route(network_addr.GetNetworkPart().ToString(),
+                            properties->subnet_prefix,
+                            properties->address);
+      new_routes.push_back(route);
+    }
+  }
+
+  // Ignore |route.gateway|.  If it's wrong, it can cause the kernel to
+  // refuse to add the route.  If it's correct, it has no effect anyway.
   for (const auto& route_map : routes) {
     const IPConfig::Route& route = route_map.second;
     if (route.host.empty() || route.gateway.empty()) {
       LOG(WARNING) << "Ignoring incomplete route: " << route_map.first;
       continue;
     }
-    new_routes.push_back(route);
+    IPConfig::Route new_route(route.host, route.prefix, properties->address);
+    new_routes.push_back(new_route);
   }
+
   if (!new_routes.empty()) {
     properties->routes.swap(new_routes);
-    properties->blackhole_ipv6 = true;
+  } else if (!properties->default_route) {
+    LOG(WARNING) << "No routes provided.";
   }
-  LOG_IF(WARNING, properties->routes.empty()) << "No routes provided.";
 }
 
 // static
