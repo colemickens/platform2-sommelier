@@ -37,16 +37,18 @@ class V4L2CameraDevice {
   void Disconnect();
 
   // Enable camera device stream. Setup captured frame with |width|x|height|
-  // resolution, |pixel_format|, and |frame_rate|. Get frame buffer file
-  // descriptors |fds| and |buffer_size|. |buffer_size| is the size allocated
-  // for each buffer. The ownership of |fds| are transferred to the caller and
-  // |fds| should be closed when done. Caller can memory map |fds| and should
-  // unmap when done. Return 0 if device supports the format. Otherwise, return
-  // -|errno|. This function should be called after Connect().
+  // resolution, |pixel_format|, |frame_rate|, and whether we want
+  // |constant_frame_rate|. Get frame buffer file descriptors |fds| and
+  // |buffer_size|. |buffer_size| is the size allocated for each buffer. The
+  // ownership of |fds| are transferred to the caller and |fds| should be closed
+  // when done. Caller can memory map |fds| and should unmap when done. Return 0
+  // if device supports the format.  Otherwise, return -|errno|. This function
+  // should be called after Connect().
   int StreamOn(uint32_t width,
                uint32_t height,
                uint32_t pixel_format,
                float frame_rate,
+               bool constant_frame_rate,
                std::vector<base::ScopedFD>* fds,
                uint32_t* buffer_size);
 
@@ -55,13 +57,15 @@ class V4L2CameraDevice {
   // stream is already stopped.
   int StreamOff();
 
-  // Get next frame buffer from device. Device returns the corresponding
-  // buffer with |buffer_id| and |data_size| bytes. |data_size| is how many
-  // bytes used in the buffer for this frame. Return 0 if device gets the
-  // buffer successfully. Otherwise, return -|errno|. Return -EAGAIN immediately
-  // if next frame buffer is not ready. This function should be called after
-  // StreamOn().
-  int GetNextFrameBuffer(uint32_t* buffer_id, uint32_t* data_size);
+  // Get next frame buffer from device. Device returns the corresponding buffer
+  // with |buffer_id|, |data_size| bytes and its |timestamp| in nanoseconds.
+  // |data_size| is how many bytes used in the buffer for this frame. Return 0
+  // if device gets the buffer successfully. Otherwise, return -|errno|. Return
+  // -EAGAIN immediately if next frame buffer is not ready. This function should
+  // be called after StreamOn().
+  int GetNextFrameBuffer(uint32_t* buffer_id,
+                         uint32_t* data_size,
+                         uint64_t* timestamp);
 
   // Return |buffer_id| buffer to device. Return 0 if the buffer is returned
   // successfully. Otherwise, return -|errno|. This function should be called

@@ -143,6 +143,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
                                uint32_t height,
                                uint32_t pixel_format,
                                float frame_rate,
+                               bool constant_frame_rate,
                                std::vector<base::ScopedFD>* fds,
                                uint32_t* buffer_size) {
   base::AutoLock l(lock_);
@@ -155,10 +156,19 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     return -EIO;
   }
 
+  int ret;
+  struct v4l2_control control;
+  control.id = V4L2_CID_EXPOSURE_AUTO_PRIORITY;
+  control.value = constant_frame_rate ? 0 : 1;
+  ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_CTRL, &control));
+  if (ret < 0) {
+    LOGF(ERROR) << "Failed to set V4L2_CID_EXPOSURE_AUTO_PRIORITY";
+    return -EINVAL;
+  }
+
   // Some drivers use rational time per frame instead of float frame rate, this
   // constant k is used to convert between both: A fps -> [k/k*A] seconds/frame.
   const int kFrameRatePrecision = 10000;
-  int ret;
   v4l2_format fmt = {};
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   fmt.fmt.pix.width = width;
@@ -198,6 +208,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
         LOGF(ERROR) << "Failed to set camera framerate";
         return -EIO;
       }
+
       VLOGF(1) << "Actual camera driver framerate: "
                << streamparm.parm.capture.timeperframe.denominator << "/"
                << streamparm.parm.capture.timeperframe.numerator;
@@ -306,7 +317,8 @@ int V4L2CameraDevice::StreamOff() {
 }
 
 int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
-                                         uint32_t* data_size) {
+                                         uint32_t* data_size,
+                                         uint64_t* timestamp) {
   base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
@@ -333,9 +345,15 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
     LOGF(ERROR) << "Invalid buffer id " << buffer.index;
     return -EINVAL;
   }
+
   *buffer_id = buffer.index;
   *data_size = buffer.bytesused;
+
+  struct timeval tv = buffer.timestamp;
+  *timestamp = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
+
   buffers_at_client_[buffer.index] = true;
+
   return 0;
 }
 

@@ -87,6 +87,7 @@ class CameraClient {
 
   // Start |request_thread_| and streaming.
   int StreamOn(Size stream_on_resolution,
+               bool constant_frame_rate,
                int crop_rotate_scale_degrees,
                int* num_buffers);
 
@@ -149,6 +150,7 @@ class CameraClient {
 
     // Synchronous call to start streaming.
     void StreamOn(Size stream_on_resolution,
+                  bool constant_frame_rate,
                   int crop_rotate_scale_degrees,
                   const base::Callback<void(int, int)>& callback);
 
@@ -163,13 +165,16 @@ class CameraClient {
 
    private:
     // Start streaming implementation.
-    int StreamOnImpl(Size stream_on_resolution);
+    int StreamOnImpl(Size stream_on_resolution, bool constant_frame_rate);
 
     // Stop streaming implementation.
     int StreamOffImpl();
 
     // Handle aborted request when flush is called.
     void HandleAbortedRequest(camera3_capture_result_t* capture_result);
+
+    // Check whether we should enable constant frame rate according to metadata.
+    bool ShouldEnableConstantFrameRate(const android::CameraMetadata& metadata);
 
     // Convert |cache_frame_| to the |buffer| with corresponding format.
     int WriteStreamBuffer(int stream_index,
@@ -188,7 +193,7 @@ class CameraClient {
     void AbortGrallocBufferSync(camera3_capture_result_t* capture_result);
 
     // Notify shutter event.
-    void NotifyShutter(uint32_t frame_number, int64_t* timestamp);
+    void NotifyShutter(uint32_t frame_number);
 
     // Notify request error event.
     void NotifyRequestError(uint32_t frame_number);
@@ -235,8 +240,14 @@ class CameraClient {
     // The resolution for stream on.
     Size stream_on_resolution_;
 
+    // The constant_frame_rate setting for stream on.
+    bool constant_frame_rate_;
+
     // Current using buffer id for |input_buffers_|.
     int current_v4l2_buffer_id_;
+
+    // Current buffer timestamp.
+    uint64_t current_v4l2_buffer_timestamp_;
 
     // Used to notify that flush is called from framework.
     bool flush_started_;

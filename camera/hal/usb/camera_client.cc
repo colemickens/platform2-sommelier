@@ -172,9 +172,14 @@ int CameraClient::ConfigureStreams(
     return -EINVAL;
   }
 
+  // We don't have enough information to decide whether to enable constant frame
+  // rate or not here.  Tried some common camera apps and seems that true is a
+  // sensible default.
+  bool constant_frame_rate = true;
+
   int num_buffers;
-  int ret =
-      StreamOn(stream_on_resolution, crop_rotate_scale_degrees, &num_buffers);
+  int ret = StreamOn(stream_on_resolution, constant_frame_rate,
+                     crop_rotate_scale_degrees, &num_buffers);
   if (ret) {
     LOGFID(ERROR, id_) << "StreamOn failed";
     StreamOff();
@@ -318,6 +323,7 @@ void CameraClient::SetUpStreams(int num_buffers,
 }
 
 int CameraClient::StreamOn(Size stream_on_resolution,
+                           bool constant_frame_rate,
                            int crop_rotate_scale_degrees,
                            int* num_buffers) {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
@@ -339,10 +345,10 @@ int CameraClient::StreamOn(Size stream_on_resolution,
       base::Bind(&CameraClient::StreamOnCallback, base::Unretained(this),
                  base::RetainedRef(future), num_buffers);
   request_task_runner_->PostTask(
-      FROM_HERE,
-      base::Bind(&CameraClient::RequestHandler::StreamOn,
-                 base::Unretained(request_handler_.get()), stream_on_resolution,
-                 crop_rotate_scale_degrees, streamon_callback));
+      FROM_HERE, base::Bind(&CameraClient::RequestHandler::StreamOn,
+                            base::Unretained(request_handler_.get()),
+                            stream_on_resolution, constant_frame_rate,
+                            crop_rotate_scale_degrees, streamon_callback));
   return future->Get();
 }
 
@@ -406,12 +412,14 @@ CameraClient::RequestHandler::~RequestHandler() {}
 
 void CameraClient::RequestHandler::StreamOn(
     Size stream_on_resolution,
+    bool constant_frame_rate,
     int crop_rotate_scale_degrees,
     const base::Callback<void(int, int)>& callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   crop_rotate_scale_degrees_ = crop_rotate_scale_degrees;
-  int ret = StreamOnImpl(stream_on_resolution);
+
+  int ret = StreamOnImpl(stream_on_resolution, constant_frame_rate);
   if (ret) {
     callback.Run(0, ret);
   }
@@ -470,10 +478,9 @@ void CameraClient::RequestHandler::HandleRequest(
     }
   }
 
-  int64_t timestamp;
-  NotifyShutter(capture_result.frame_number, &timestamp);
-  int ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
-                                                 timestamp, metadata);
+  NotifyShutter(capture_result.frame_number);
+  int ret = metadata_handler_->PostHandleRequest(
+      capture_result.frame_number, current_v4l2_buffer_timestamp_, metadata);
   if (ret) {
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";
@@ -499,14 +506,16 @@ void CameraClient::RequestHandler::HandleFlush(
                                     base::Unretained(this), callback));
 }
 
-int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution) {
+int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
+                                               bool constant_frame_rate) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   int ret;
-  // If new stream resolution is the same as current stream, do nothing.
+  // If new stream configuration is the same as current stream, do nothing.
   if (stream_on_resolution.width == stream_on_resolution_.width &&
-      stream_on_resolution.height == stream_on_resolution_.height) {
-    VLOGFID(1, device_id_) << "Skip stream on for the same resolution";
+      stream_on_resolution.height == stream_on_resolution_.height &&
+      constant_frame_rate == constant_frame_rate_) {
+    VLOGFID(1, device_id_) << "Skip stream on for the same configuration";
     return 0;
   } else if (!input_buffers_.empty()) {
     // StreamOff first if stream is started.
@@ -535,12 +544,14 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution) {
   }
   VLOGFID(1, device_id_) << "streamOn with width " << format->width
                          << ", height " << format->height << ", fps " << max_fps
-                         << ", format " << FormatToString(format->fourcc);
+                         << ", format " << FormatToString(format->fourcc)
+                         << ", constant_frame_rate " << std::boolalpha
+                         << constant_frame_rate;
 
   std::vector<base::ScopedFD> fds;
   uint32_t buffer_size;
   ret = device_->StreamOn(format->width, format->height, format->fourcc,
-                          max_fps, &fds, &buffer_size);
+                          max_fps, constant_frame_rate, &fds, &buffer_size);
   if (ret) {
     LOGFID(ERROR, device_id_) << "StreamOn failed: " << strerror(-ret);
     return ret;
@@ -561,6 +572,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution) {
   }
 
   stream_on_resolution_ = stream_on_resolution;
+  constant_frame_rate_ = constant_frame_rate;
   SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
 
   // Reset test pattern.
@@ -593,23 +605,78 @@ void CameraClient::RequestHandler::HandleAbortedRequest(
   callback_ops_->process_capture_result(callback_ops_, capture_result);
 }
 
+bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
+    const android::CameraMetadata& metadata) {
+  if (device_info_.constant_framerate_unsupported) {
+    LOGF(ERROR) << "All usb camera modules should support constant frame rate "
+                   "in HAL v3";
+    return false;
+  }
+
+  if (metadata.exists(ANDROID_CONTROL_AE_TARGET_FPS_RANGE)) {
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
+    if (entry.data.i32[0] == entry.data.i32[1]) {
+      return true;
+    }
+  }
+
+  if (metadata.exists(ANDROID_CONTROL_CAPTURE_INTENT)) {
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_CONTROL_CAPTURE_INTENT);
+    switch (entry.data.u8[0]) {
+      case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD:
+      case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT:
+        return true;
+    }
+  }
+
+  if (metadata.exists(ANDROID_COLOR_CORRECTION_ABERRATION_MODE)) {
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_COLOR_CORRECTION_ABERRATION_MODE);
+    switch (entry.data.u8[0]) {
+      case ANDROID_COLOR_CORRECTION_ABERRATION_MODE_OFF:
+      case ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST:
+        return true;
+    }
+  }
+
+  if (metadata.exists(ANDROID_NOISE_REDUCTION_MODE)) {
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_NOISE_REDUCTION);
+    switch (entry.data.u8[0]) {
+      case ANDROID_NOISE_REDUCTION_MODE_OFF:
+      case ANDROID_NOISE_REDUCTION_MODE_FAST:
+      case ANDROID_NOISE_REDUCTION_MODE_MINIMAL:
+        return true;
+    }
+  }
+
+  return false;
+}
+
 int CameraClient::RequestHandler::WriteStreamBuffer(
     int stream_index,
     int num_streams,
     const android::CameraMetadata& metadata,
     camera3_stream_buffer_t* buffer) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+
+  bool constant_frame_rate = ShouldEnableConstantFrameRate(metadata);
+
   VLOGFID(1, device_id_) << "output buffer stream format: "
                          << buffer->stream->format
                          << ", buffer ptr: " << *buffer->buffer
                          << ", width: " << buffer->stream->width
-                         << ", height: " << buffer->stream->height;
+                         << ", height: " << buffer->stream->height
+                         << ", constant_frame_rate " << std::boolalpha
+                         << constant_frame_rate;
 
-  // Require different resolution. We have to restart the stream.
+  // Require different configuration. We have to restart the stream.
   bool stream_restart = false;
   int ret = 0;
   if (buffer->stream->width != stream_on_resolution_.width ||
-      buffer->stream->height != stream_on_resolution_.height) {
+      buffer->stream->height != stream_on_resolution_.height ||
+      constant_frame_rate != constant_frame_rate_) {
     VLOGFID(1, device_id_) << "Restart stream";
     // If stream_index is not 0, we have to return the current v4l2 buffer
     // first.
@@ -624,7 +691,8 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
       return ret;
     }
     Size new_resolution(buffer->stream->width, buffer->stream->height);
-    ret = StreamOnImpl(new_resolution);
+
+    ret = StreamOnImpl(new_resolution, constant_frame_rate);
     if (ret) {
       return ret;
     }
@@ -669,7 +737,8 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
   for (size_t i = 0; i < num_frames; i++) {
     uint32_t buffer_id, data_size;
-    device_->GetNextFrameBuffer(&buffer_id, &data_size);
+    uint64_t timestamp;
+    device_->GetNextFrameBuffer(&buffer_id, &data_size, &timestamp);
     device_->ReuseFrameBuffer(buffer_id);
   }
 }
@@ -717,27 +786,14 @@ void CameraClient::RequestHandler::AbortGrallocBufferSync(
   }
 }
 
-void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number,
-                                                 int64_t* timestamp) {
+void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  int res;
-  struct timespec ts;
 
-  // TODO(henryhsu): Check we can use the timestamp from v4l2_buffer or not.
-  res = clock_gettime(CLOCK_MONOTONIC, &ts);
-  if (res == 0) {
-    *timestamp = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
-  } else {
-    LOGFID(ERROR, device_id_)
-        << "No timestamp and failed to get CLOCK_MONOTONIC: "
-        << strerror(errno);
-    *timestamp = 0;
-  }
   camera3_notify_msg_t m;
   memset(&m, 0, sizeof(m));
   m.type = CAMERA3_MSG_SHUTTER;
   m.message.shutter.frame_number = frame_number;
-  m.message.shutter.timestamp = *timestamp;
+  m.message.shutter.timestamp = current_v4l2_buffer_timestamp_;
   callback_ops_->notify(callback_ops_, &m);
 }
 
@@ -755,7 +811,8 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
 int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   uint32_t buffer_id, data_size;
-  int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
+  uint64_t timestamp;
+  int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &timestamp);
   if (ret) {
     LOGFID(ERROR, device_id_)
         << "GetNextFrameBuffer failed: " << strerror(-ret);
@@ -769,6 +826,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
         << "Set data size failed for input buffer id: " << buffer_id;
     return ret;
   }
+
+  current_v4l2_buffer_timestamp_ = timestamp;
 
   if (!test_pattern_->SetTestPatternMode(pattern_mode)) {
     return -EINVAL;
