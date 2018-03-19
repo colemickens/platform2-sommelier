@@ -31,6 +31,24 @@ message SignatureSealedData {
     repeated uint32 bound_pcr = 5;
   }
 
+  // Data for the TPM 1.2 method based on the "Certified Migratable Key"
+  // functionality.
+  message Tpm12CertifiedMigratableKeyData {
+    // DER-encoded blob of the X.509 Subject Public Key Info of the key that
+    // should be used for unsealing.
+    optional bytes public_key_spki_der = 1;
+
+    // The blob of the Certified Migratable Key wrapped by the TPM's Storage
+    // Root Key.
+    optional bytes srk_wrapped_cmk = 2;
+
+    // The TPM_PUBKEY blob of the Certified Migratable Key.
+    optional bytes cmk_pubkey = 3;
+  }
+
   // The union containing the data depending on the sealing method.
-  oneof data { Tpm2PolicySignedData tpm2_policy_signed_data = 1; }
+  oneof data {
+    Tpm2PolicySignedData tpm2_policy_signed_data = 1;
+    Tpm12CertifiedMigratableKeyData tpm12_certified_migratable_key_data = 2;
+  }
 }

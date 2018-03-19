@@ -202,6 +202,7 @@
         }],
         ['USE_tpm2 == 0', {
           'sources': [
+            'signature_sealing_backend_tpm1_impl.cc',
             'tpm_impl.cc',
             'tpm_metrics.cc',
           ],

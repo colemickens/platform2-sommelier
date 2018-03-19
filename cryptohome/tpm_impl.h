@@ -15,6 +15,7 @@
 #include <memory>
 #include <set>
 
+#include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 #include "cryptohome/tpm.h"
 
 namespace cryptohome {
@@ -358,6 +359,10 @@ class TpmImpl : public Tpm {
 
   // Tpm Context information
   trousers::ScopedTssContext tpm_context_;
+
+  // A single instance of the backend for signature-sealing operations that is
+  // returned from GetSignatureSealingBackend().
+  SignatureSealingBackendTpm1Impl signature_sealing_backend_{this};
 
   DISALLOW_COPY_AND_ASSIGN(TpmImpl);
 };
