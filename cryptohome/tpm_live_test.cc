@@ -6,9 +6,12 @@
 
 #include "cryptohome/tpm_live_test.h"
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
 #include <set>
+#include <utility>
 
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
@@ -22,9 +25,47 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/signature_sealing_backend.h"
 
+#include <openssl/err.h>
+
+#if !USE_TPM2
+#include <trousers/scoped_tss_type.h>
+#include <trousers/tss.h>
+#include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
+
+#include "cryptohome/tpm_impl.h"
+#endif  // !USE_TPM2
+
 using brillo::SecureBlob;
 
 namespace cryptohome {
+
+namespace {
+
+// Scoped setter of the owner password of the global Tpm instance.
+// Does nothing if the version is different from |TPM_1_2|.
+class ScopedTpmOwnerPasswordSetter {
+ public:
+  explicit ScopedTpmOwnerPasswordSetter(const SecureBlob& owner_password)
+      : tpm_(Tpm::GetSingleton()) {
+    if (ShouldApply()) {
+      tpm_->GetOwnerPassword(&previous_tpm_owner_password_);
+      tpm_->SetOwnerPassword(owner_password);
+    }
+  }
+
+  ~ScopedTpmOwnerPasswordSetter() {
+    if (ShouldApply())
+      tpm_->SetOwnerPassword(previous_tpm_owner_password_);
+  }
+
+ private:
+  bool ShouldApply() const { return tpm_->GetVersion() == Tpm::TPM_1_2; }
+
+  Tpm* const tpm_;
+  SecureBlob previous_tpm_owner_password_;
+};
+
+}  // namespace
 
 TpmLiveTest::TpmLiveTest() : tpm_(Tpm::GetSingleton()) {}
 
@@ -38,15 +79,15 @@ bool TpmLiveTest::RunLiveTests(SecureBlob owner_password) {
     LOG(ERROR) << "Error running Decryption test.";
     return false;
   }
-  if (!SignatureSealedSecretTest()) {
-    LOG(ERROR) << "Error running SignatureSealedSecretTest.";
-    return false;
-  }
-  if (!owner_password.empty()) {
-    VLOG(1) << "Running tests that require owner password.";
-    tpm_->SetOwnerPassword(owner_password);
-    if (!NvramTest()) {
+  if (tpm_->GetVersion() == Tpm::TPM_1_2 && !owner_password.empty()) {
+    if (!NvramTest(owner_password)) {
       LOG(ERROR) << "Error running NvramTest.";
+      return false;
+    }
+  }
+  if (tpm_->GetVersion() != Tpm::TPM_1_2 || !owner_password.empty()) {
+    if (!SignatureSealedSecretTest(owner_password)) {
+      LOG(ERROR) << "Error running SignatureSealedSecretTest.";
       return false;
     }
   }
@@ -55,7 +96,7 @@ bool TpmLiveTest::RunLiveTests(SecureBlob owner_password) {
 }
 
 bool TpmLiveTest::PCRKeyTest() {
-  VLOG(1) << "PCRKeyTest started";
+  LOG(INFO) << "PCRKeyTest started";
   int index = 5;
   SecureBlob pcr_data;
   if (!tpm_->ReadPCR(index, &pcr_data)) {
@@ -103,12 +144,12 @@ bool TpmLiveTest::PCRKeyTest() {
     LOG(ERROR) << "Sign succeeded without the correct PCR state.";
     return false;
   }
-  VLOG(1) << "PCRKeyTest ended successfully.";
+  LOG(INFO) << "PCRKeyTest ended successfully.";
   return true;
 }
 
 bool TpmLiveTest::DecryptionKeyTest() {
-  VLOG(1) << "DecryptionKeyTest started";
+  LOG(INFO) << "DecryptionKeyTest started";
   SecureBlob n;
   SecureBlob p;
   uint32_t tpm_key_bits = 2048;
@@ -144,12 +185,14 @@ bool TpmLiveTest::DecryptionKeyTest() {
     LOG(ERROR) << "Decrypted plaintext does not match plaintext.";
     return false;
   }
-  VLOG(1) << "DecryptionKeyTest ended successfully.";
+  LOG(INFO) << "DecryptionKeyTest ended successfully.";
   return true;
 }
 
-bool TpmLiveTest::NvramTest() {
-  VLOG(1) << "NvramTest started";
+bool TpmLiveTest::NvramTest(const SecureBlob& owner_password) {
+  LOG(INFO) << "NvramTest started";
+  const ScopedTpmOwnerPasswordSetter scoped_tpm_owner_password_setter(
+      owner_password);
   uint32_t index = 12;
   SecureBlob nvram_data("nvram_data");
   if (tpm_->IsNvramDefined(index)) {
@@ -213,49 +256,110 @@ bool TpmLiveTest::NvramTest() {
     LOG(ERROR) << "Nvram still defined after it was destroyed.";
     return false;
   }
-  VLOG(1) << "NvramTest ended successfully.";
+  LOG(INFO) << "NvramTest ended successfully.";
   return true;
 }
 
 namespace {
+
+struct SignatureSealedSecretTestCaseParam {
+  using Algorithm = SignatureSealingBackend::Algorithm;
+
+  SignatureSealedSecretTestCaseParam(
+      const std::string& test_case_description,
+      Tpm* tpm,
+      int key_size_bits,
+      const std::vector<Algorithm>& supported_algorithms,
+      std::unique_ptr<Algorithm> expected_algorithm,
+      int openssl_algorithm_nid)
+      : test_case_description(test_case_description),
+        tpm(tpm),
+        key_size_bits(key_size_bits),
+        supported_algorithms(supported_algorithms),
+        expected_algorithm(std::move(expected_algorithm)),
+        openssl_algorithm_nid(openssl_algorithm_nid) {}
+
+  SignatureSealedSecretTestCaseParam(SignatureSealedSecretTestCaseParam&&) =
+      default;
+
+  static SignatureSealedSecretTestCaseParam MakeSuccessful(
+      const std::string& test_case_description,
+      Tpm* tpm,
+      int key_size_bits,
+      const std::vector<Algorithm>& supported_algorithms,
+      Algorithm expected_algorithm,
+      int openssl_algorithm_nid) {
+    return SignatureSealedSecretTestCaseParam(
+        test_case_description, tpm, key_size_bits, supported_algorithms,
+        base::MakeUnique<Algorithm>(expected_algorithm), openssl_algorithm_nid);
+  }
+
+  static SignatureSealedSecretTestCaseParam MakeFailing(
+      const std::string& test_case_description,
+      Tpm* tpm,
+      int key_size_bits,
+      const std::vector<Algorithm>& supported_algorithms) {
+    return SignatureSealedSecretTestCaseParam(
+        test_case_description, tpm, key_size_bits, supported_algorithms, {}, 0);
+  }
+
+  bool expect_success() const { return expected_algorithm.get(); }
+
+  std::string test_case_description;
+  Tpm* tpm;
+  int key_size_bits;
+  std::vector<Algorithm> supported_algorithms;
+  std::unique_ptr<Algorithm> expected_algorithm;
+  int openssl_algorithm_nid;
+};
 
 class SignatureSealedSecretTestCase final {
  public:
   using Algorithm = SignatureSealingBackend::Algorithm;
   using UnsealingSession = SignatureSealingBackend::UnsealingSession;
 
-  SignatureSealedSecretTestCase(
-      Tpm* tpm,
-      int key_size_bits,
-      const std::string& test_case_description,
-      const std::vector<Algorithm>& supported_algorithms,
-      Algorithm expected_algorithm,
-      int openssl_algorithm_nid)
-      : tpm_(tpm),
-        key_size_bits_(key_size_bits),
-        test_case_description_(test_case_description),
-        supported_algorithms_(supported_algorithms),
-        expected_algorithm_(expected_algorithm),
-        openssl_algorithm_nid_(openssl_algorithm_nid) {}
+  SignatureSealedSecretTestCase(SignatureSealedSecretTestCaseParam param,
+                                const SecureBlob& owner_password)
+      : param_(std::move(param)), owner_password_(owner_password) {
+    LOG(INFO) << "SignatureSealedSecretTestCase: " << param_.key_size_bits
+              << "-bit key, " << param_.test_case_description;
+  }
 
-  SignatureSealedSecretTestCase(SignatureSealedSecretTestCase&& other) =
-      default;
+  ~SignatureSealedSecretTestCase() { CleanUpDelegate(); }
 
-  void SetUp() { GenerateRsaKey(key_size_bits_, &pkey_, &key_spki_der_); }
+  bool SetUp() {
+    if (!GenerateRsaKey(param_.key_size_bits, &pkey_, &key_spki_der_)) {
+      LOG(ERROR) << "Error generating the RSA key";
+      return false;
+    }
+    if (!InitDelegate()) {
+      LOG(ERROR) << "Error creating the delegate";
+      return false;
+    }
+    return true;
+  }
 
   bool Run() {
-    VLOG(1) << "SignatureSealedSecretTestCase: " << key_size_bits_
-            << "-bit key, " << test_case_description_;
+    if (!param_.expect_success()) {
+      if (!CheckSecretCreationFails()) {
+        LOG(ERROR) << "Error: successfully created secret unexpectedly";
+        return false;
+      }
+      return true;
+    }
     // Create a secret.
     SignatureSealedData sealed_secret_data;
-    if (!CreateSecret(&sealed_secret_data))
+    if (!CreateSecret(&sealed_secret_data)) {
+      LOG(ERROR) << "Error creating a secret";
       return false;
+    }
     // Unseal the secret.
     SecureBlob first_challenge_value;
     SecureBlob first_challenge_signature;
     SecureBlob first_unsealed_value;
     if (!Unseal(sealed_secret_data, &first_challenge_value,
                 &first_challenge_signature, &first_unsealed_value)) {
+      LOG(ERROR) << "Error unsealing a secret";
       return false;
     }
     // Unseal the secret again - the challenge is different, but the result is
@@ -265,6 +369,7 @@ class SignatureSealedSecretTestCase final {
     SecureBlob second_unsealed_value;
     if (!Unseal(sealed_secret_data, &second_challenge_value,
                 &second_challenge_signature, &second_unsealed_value)) {
+      LOG(ERROR) << "Error unsealing secret for the second time";
       return false;
     }
     if (first_challenge_value == second_challenge_value) {
@@ -278,84 +383,212 @@ class SignatureSealedSecretTestCase final {
     // Unsealing with a bad challenge response fails.
     if (!CheckUnsealingFailsWithOldSignature(sealed_secret_data,
                                              first_challenge_signature) ||
+        !CheckUnsealingFailsWithBadAlgorithmSignature(sealed_secret_data) ||
         !CheckUnsealingFailsWithBadSignature(sealed_secret_data)) {
+      LOG(ERROR) << "Failed testing against bad challenge responses";
       return false;
     }
     // Unsealing with a bad key fails.
     if (!CheckUnsealingFailsWithWrongAlgorithm(sealed_secret_data) ||
         !CheckUnsealingFailsWithWrongKey(sealed_secret_data)) {
+      LOG(ERROR) << "Failed testing against bad keys";
       return false;
     }
-    // Unsealing after PCRs change fails.
-    if (!CheckUnsealingFailsWithChangedPcrs(sealed_secret_data))
-      return false;
     // Create and unseal another secret - it has a different value.
     SignatureSealedData another_sealed_secret_data;
-    if (!CreateSecret(&another_sealed_secret_data))
+    if (!CreateSecret(&another_sealed_secret_data)) {
+      LOG(ERROR) << "Error creating another secret";
       return false;
+    }
     SecureBlob third_challenge_value;
     SecureBlob third_challenge_signature;
     SecureBlob third_unsealed_value;
     if (!Unseal(another_sealed_secret_data, &third_challenge_value,
                 &third_challenge_signature, &third_unsealed_value)) {
+      LOG(ERROR) << "Error unsealing another secret";
       return false;
     }
     if (first_unsealed_value == third_unsealed_value) {
       LOG(ERROR) << "Error: secret value collision";
       return false;
     }
+    // Unsealing after PCRs change fails.
+    if (!CheckUnsealingFailsWithChangedPcrs(another_sealed_secret_data)) {
+      LOG(ERROR) << "Failed testing against changed PCRs";
+      return false;
+    }
     return true;
   }
 
  private:
-  const std::vector<int> kPcrIndexes{0, 16};
-  const std::set<int> kPcrIndexesSet{kPcrIndexes.begin(), kPcrIndexes.end()};
   static constexpr int kPcrIndexToExtend = 16;  // The Debug PCR.
+  const std::set<int> kPcrIndexes{0, kPcrIndexToExtend};
+  static constexpr uint8_t kDelegateFamilyLabel = 100;
+  static constexpr uint8_t kDelegateLabel = 101;
+
+  Tpm* tpm() { return param_.tpm; }
 
   SignatureSealingBackend* backend() {
-    return tpm_->GetSignatureSealingBackend();
+    return tpm()->GetSignatureSealingBackend();
   }
 
-  static void GenerateRsaKey(int key_size_bits,
+  static bool GenerateRsaKey(int key_size_bits,
                              crypto::ScopedEVP_PKEY* pkey,
                              SecureBlob* key_spki_der) {
     crypto::ScopedEVP_PKEY_CTX pkey_context(
         EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
-    CHECK(pkey_context);
-    CHECK_GT(EVP_PKEY_keygen_init(pkey_context.get()), 0);
-    CHECK_GT(
-        EVP_PKEY_CTX_set_rsa_keygen_bits(pkey_context.get(), key_size_bits), 0);
+    if (!pkey_context)
+      return false;
+    if (EVP_PKEY_keygen_init(pkey_context.get()) <= 0)
+      return false;
+    if (EVP_PKEY_CTX_set_rsa_keygen_bits(pkey_context.get(), key_size_bits) <=
+        0) {
+      return false;
+    }
     EVP_PKEY* pkey_raw = nullptr;
-    CHECK_GT(EVP_PKEY_keygen(pkey_context.get(), &pkey_raw), 0);
+    if (EVP_PKEY_keygen(pkey_context.get(), &pkey_raw) <= 0)
+      return false;
     pkey->reset(pkey_raw);
     // Obtain the DER-encoded Subject Public Key Info.
     const int key_spki_der_length = i2d_PUBKEY(pkey->get(), nullptr);
-    CHECK_GE(key_spki_der_length, 0);
+    if (key_spki_der_length < 0)
+      return false;
     key_spki_der->resize(key_spki_der_length);
     unsigned char* key_spki_der_buffer = key_spki_der->data();
-    CHECK_EQ(key_spki_der->size(),
-             i2d_PUBKEY(pkey->get(), &key_spki_der_buffer));
+    return i2d_PUBKEY(pkey->get(), &key_spki_der_buffer) ==
+           key_spki_der->size();
+  }
+
+  // Creates the TPM 1.2 delegate.
+  bool InitDelegate() {
+    if (tpm()->GetVersion() != Tpm::TPM_1_2)
+      return true;
+    const ScopedTpmOwnerPasswordSetter scoped_tpm_owner_password_setter(
+        owner_password_);
+    // TODO(emaxx): Remove conversion into std::set<uint32_t>.
+    return tpm()->CreateDelegate(
+        std::set<uint32_t>(kPcrIndexes.begin(), kPcrIndexes.end()),
+        kDelegateFamilyLabel, kDelegateLabel, &delegate_blob_,
+        &delegate_secret_);
+  }
+
+  // Deletes the TPM 1.2 delegate and family from the TPM's NVRAM. Not doing
+  // that will result in the NVRAM space exhaustion after several launches of
+  // the test.
+  void CleanUpDelegate() {
+#if !USE_TPM2
+    CHECK_EQ(Tpm::TPM_1_2, tpm()->GetVersion());
+    using trousers::ScopedTssContext;
+    using trousers::ScopedTssMemory;
+    using trousers::ScopedTssObject;
+    if (delegate_blob_.empty() || delegate_secret_.empty())
+      return;
+    // Obtain the TPM context and handle with the owner authorization.
+    const ScopedTpmOwnerPasswordSetter scoped_tpm_owner_password_setter(
+        owner_password_);
+    ScopedTssContext tpm_context;
+    TSS_HTPM tpm_handle = 0;
+    if (!static_cast<TpmImpl*>(tpm())->ConnectContextAsOwner(tpm_context.ptr(),
+                                                             &tpm_handle)) {
+      LOG(ERROR)
+          << "Failed to clean up the delegate: error connecting to the TPM";
+      return;
+    }
+    // Obtain all TPM delegates and delegate families.
+    UINT32 family_table_size = 0;
+    TSS_FAMILY_TABLE_ENTRY* family_table_ptr = nullptr;
+    UINT32 delegate_table_size = 0;
+    TSS_DELEGATION_TABLE_ENTRY* delegate_table_ptr = nullptr;
+    TSS_RESULT tss_result = Tspi_TPM_Delegate_ReadTables(
+        tpm_context, &family_table_size, &family_table_ptr,
+        &delegate_table_size, &delegate_table_ptr);
+    if (TPM_ERROR(tss_result)) {
+      LOG(ERROR)
+          << "Failed to clean up the delegate: error reading delegate table: "
+          << Trspi_Error_String(tss_result);
+      return;
+    }
+    ScopedTssMemory scoped_family_table(
+        tpm_context, reinterpret_cast<BYTE*>(family_table_ptr));
+    ScopedTssMemory scoped_delegate_table(
+        tpm_context, reinterpret_cast<BYTE*>(delegate_table_ptr));
+    // Invalidate the delegate families which have the test label. Note that
+    // this removes from the NVRAM both the delegate families and the delegates
+    // themselves.
+    int invalidated_family_count = 0;
+    UINT64 family_table_offset = 0;
+    for (int family_index = 0; family_index < family_table_size;
+         ++family_index) {
+      TSS_FAMILY_TABLE_ENTRY family_entry;
+      Trspi_UnloadBlob_TSS_FAMILY_TABLE_ENTRY(
+          &family_table_offset, scoped_family_table.value(), &family_entry);
+      if (family_entry.label == kDelegateFamilyLabel) {
+        ScopedTssObject<TSS_HDELFAMILY> family_handle(tpm_context);
+        tss_result = Tspi_TPM_Delegate_GetFamily(
+            tpm_handle, family_entry.familyID, family_handle.ptr());
+        if (TPM_ERROR(tss_result)) {
+          LOG(ERROR) << "Failed to clean up the delegate: error getting "
+                        "delegate family handle: "
+                     << Trspi_Error_String(tss_result);
+          continue;
+        }
+        tss_result =
+            Tspi_TPM_Delegate_InvalidateFamily(tpm_handle, family_handle);
+        if (TPM_ERROR(tss_result)) {
+          LOG(ERROR) << "Failed to clean up the delegate: error invalidating "
+                        "delegate family: "
+                     << Trspi_Error_String(tss_result);
+          continue;
+        }
+        ++invalidated_family_count;
+      }
+    }
+    if (!invalidated_family_count) {
+      LOG(ERROR) << "Failed to clean up the delegate: no entry was "
+                    "successfully invalidated";
+      return;
+    }
+    VLOG(1) << "Delegate families cleaned up: " << invalidated_family_count;
+#endif  // !USE_TPM2
   }
 
   bool CreateSecret(SignatureSealedData* sealed_secret_data) {
     std::map<int, SecureBlob> pcr_values;
-    for (auto pcr_index : kPcrIndexes) {
-      SecureBlob pcr_value;
-      if (!tpm_->ReadPCR(pcr_index, &pcr_value)) {
-        LOG(ERROR) << "Error reading PCR value";
-        return false;
-      }
-      pcr_values[pcr_index] = pcr_value;
+    if (!GetCurrentPcrValues(&pcr_values)) {
+      LOG(ERROR) << "Error reading PCR values";
+      return false;
     }
-    if (!backend()->CreateSealedSecret(key_spki_der_, supported_algorithms_,
-                                       pcr_values, delegate_blob_,
-                                       delegate_secret_, sealed_secret_data)) {
+    if (!backend()->CreateSealedSecret(
+            key_spki_der_, param_.supported_algorithms, pcr_values,
+            delegate_blob_, delegate_secret_, sealed_secret_data)) {
       LOG(ERROR) << "Error creating signature-sealed secret";
       return false;
     }
-    if (!sealed_secret_data->has_tpm2_policy_signed_data()) {
-      LOG(ERROR) << "Error: the resulting proto misses Tpm2PolicySignedData";
+    return true;
+  }
+
+  bool CheckSecretCreationFails() {
+    std::map<int, SecureBlob> pcr_values;
+    if (!GetCurrentPcrValues(&pcr_values)) {
+      LOG(ERROR) << "Error reading PCR values";
       return false;
+    }
+    SignatureSealedData sealed_secret_data;
+    if (backend()->CreateSealedSecret(
+            key_spki_der_, param_.supported_algorithms, pcr_values,
+            delegate_blob_, delegate_secret_, &sealed_secret_data)) {
+      LOG(ERROR) << "Error: secret creation completed unexpectedly";
+      return false;
+    }
+    return true;
+  }
+
+  bool GetCurrentPcrValues(std::map<int, SecureBlob>* pcr_values) {
+    for (auto pcr_index : kPcrIndexes) {
+      if (!tpm()->ReadPCR(pcr_index, &(*pcr_values)[pcr_index])) {
+        LOG(ERROR) << "Error reading PCR value " << pcr_index;
+        return false;
+      }
     }
     return true;
   }
@@ -365,14 +598,15 @@ class SignatureSealedSecretTestCase final {
               SecureBlob* challenge_signature,
               SecureBlob* unsealed_value) {
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          supported_algorithms_, kPcrIndexesSet,
-                                          delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            kPcrIndexes, delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
     }
-    if (unsealing_session->GetChallengeAlgorithm() != expected_algorithm_) {
+    if (unsealing_session->GetChallengeAlgorithm() !=
+        *param_.expected_algorithm) {
       LOG(ERROR) << "Wrong challenge signature algorithm";
       return false;
     }
@@ -381,7 +615,7 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "The challenge is empty";
       return false;
     }
-    if (!SignWithKey(*challenge_value, openssl_algorithm_nid_,
+    if (!SignWithKey(*challenge_value, param_.openssl_algorithm_nid,
                      challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
@@ -401,33 +635,34 @@ class SignatureSealedSecretTestCase final {
       const SignatureSealedData& sealed_secret_data,
       const SecureBlob& challenge_signature) {
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          supported_algorithms_, kPcrIndexesSet,
-                                          delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            kPcrIndexes, delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
     }
     SecureBlob unsealed_value;
     if (unsealing_session->Unseal(challenge_signature, &unsealed_value)) {
-      LOG(ERROR) << "Error: unsealed completed with an old challenge signature";
+      LOG(ERROR)
+          << "Error: unsealing completed with an old challenge signature";
       return false;
     }
     return true;
   }
 
-  bool CheckUnsealingFailsWithBadSignature(
+  bool CheckUnsealingFailsWithBadAlgorithmSignature(
       const SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          supported_algorithms_, kPcrIndexesSet,
-                                          delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            kPcrIndexes, delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
     }
     const int wrong_openssl_algorithm_nid =
-        openssl_algorithm_nid_ == NID_sha1 ? NID_sha256 : NID_sha1;
+        param_.openssl_algorithm_nid == NID_sha1 ? NID_sha256 : NID_sha1;
     SecureBlob challenge_signature;
     if (!SignWithKey(unsealing_session->GetChallengeValue(),
                      wrong_openssl_algorithm_nid, &challenge_signature)) {
@@ -442,14 +677,39 @@ class SignatureSealedSecretTestCase final {
     return true;
   }
 
+  bool CheckUnsealingFailsWithBadSignature(
+      const SignatureSealedData& sealed_secret_data) {
+    std::unique_ptr<UnsealingSession> unsealing_session(
+        backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            kPcrIndexes, delegate_blob_, delegate_secret_));
+    if (!unsealing_session) {
+      LOG(ERROR) << "Error starting the unsealing session";
+      return false;
+    }
+    SecureBlob challenge_signature;
+    if (!SignWithKey(unsealing_session->GetChallengeValue(),
+                     param_.openssl_algorithm_nid, &challenge_signature)) {
+      LOG(ERROR) << "Error generating signature of challenge";
+      return false;
+    }
+    challenge_signature.front() ^= 1;
+    SecureBlob unsealed_value;
+    if (unsealing_session->Unseal(challenge_signature, &unsealed_value)) {
+      LOG(ERROR) << "Error: unsealing completed with a wrong signature";
+      return false;
+    }
+    return true;
+  }
+
   bool CheckUnsealingFailsWithWrongAlgorithm(
       const SignatureSealedData& sealed_secret_data) {
     const Algorithm wrong_algorithm =
-        expected_algorithm_ == Algorithm::kRsassaPkcs1V15Sha1
+        *param_.expected_algorithm == Algorithm::kRsassaPkcs1V15Sha1
             ? Algorithm::kRsassaPkcs1V15Sha256
             : Algorithm::kRsassaPkcs1V15Sha1;
     if (backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          {wrong_algorithm}, kPcrIndexesSet,
+                                          {wrong_algorithm}, kPcrIndexes,
                                           delegate_blob_, delegate_secret_)) {
       LOG(ERROR) << "Error: unsealing session creation completed with a "
                     "wrong algorithm";
@@ -462,10 +722,14 @@ class SignatureSealedSecretTestCase final {
       const SignatureSealedData& sealed_secret_data) {
     crypto::ScopedEVP_PKEY other_pkey;
     SecureBlob other_key_spki_der;
-    GenerateRsaKey(key_size_bits_, &other_pkey, &other_key_spki_der);
+    if (!GenerateRsaKey(param_.key_size_bits, &other_pkey,
+                        &other_key_spki_der)) {
+      LOG(ERROR) << "Error generating the other RSA key";
+      return false;
+    }
     if (backend()->CreateUnsealingSession(
-            sealed_secret_data, other_key_spki_der, supported_algorithms_,
-            kPcrIndexesSet, delegate_blob_, delegate_secret_)) {
+            sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
+            kPcrIndexes, delegate_blob_, delegate_secret_)) {
       LOG(ERROR)
           << "Error: unsealing session creation completed with a wrong key";
       return false;
@@ -475,22 +739,22 @@ class SignatureSealedSecretTestCase final {
 
   bool CheckUnsealingFailsWithChangedPcrs(
       const SignatureSealedData& sealed_secret_data) {
-    if (!tpm_->ExtendPCR(kPcrIndexToExtend,
-                         SecureBlob("01234567890123456789"))) {
+    if (!tpm()->ExtendPCR(kPcrIndexToExtend,
+                          SecureBlob("01234567890123456789"))) {
       LOG(ERROR) << "Error extending PCR";
       return false;
     }
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          supported_algorithms_, kPcrIndexesSet,
-                                          delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            kPcrIndexes, delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
     }
     SecureBlob challenge_signature;
     if (!SignWithKey(unsealing_session->GetChallengeValue(),
-                     openssl_algorithm_nid_, &challenge_signature)) {
+                     param_.openssl_algorithm_nid, &challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
     }
@@ -507,29 +771,35 @@ class SignatureSealedSecretTestCase final {
                    SecureBlob* signature) {
     signature->resize(EVP_PKEY_size(pkey_.get()));
     crypto::ScopedEVP_MD_CTX sign_context(EVP_MD_CTX_create());
+    EVP_MD_CTX_init(sign_context.get());
     unsigned signature_size = 0;
-    if (!sign_context ||
-        !EVP_SignInit(sign_context.get(), EVP_get_digestbynid(algorithm_nid)) ||
-        !EVP_SignUpdate(sign_context.get(), unhashed_data.data(),
-                        unhashed_data.size()) ||
-        !EVP_SignFinal(sign_context.get(), signature->data(), &signature_size,
-                       pkey_.get())) {
-      LOG(ERROR) << "Error signing data";
+    if (!sign_context) {
+      LOG(ERROR) << "Error creating signing context";
       return false;
     }
+    if (!EVP_SignInit(sign_context.get(), EVP_get_digestbynid(algorithm_nid))) {
+      LOG(ERROR) << "Error initializing signature operation";
+      return false;
+    }
+    if (!EVP_SignUpdate(sign_context.get(), unhashed_data.data(),
+                        unhashed_data.size())) {
+      LOG(ERROR) << "Error updating signature operation with data";
+      return false;
+    }
+    if (!EVP_SignFinal(sign_context.get(), signature->data(), &signature_size,
+                       pkey_.get())) {
+      LOG(ERROR) << "Error finalizing signature operation";
+      return false;
+    }
+    CHECK_LE(signature_size, signature->size());
     signature->resize(signature_size);
     return true;
   }
 
-  // Unowned.
-  Tpm* const tpm_;
-  const int key_size_bits_;
-  const std::string test_case_description_;
-  const std::vector<Algorithm> supported_algorithms_;
-  const Algorithm expected_algorithm_;
-  const int openssl_algorithm_nid_;
-  const SecureBlob delegate_blob_;
-  const SecureBlob delegate_secret_;
+  const SignatureSealedSecretTestCaseParam param_;
+  const SecureBlob owner_password_;
+  SecureBlob delegate_blob_;
+  SecureBlob delegate_secret_;
   crypto::ScopedEVP_PKEY pkey_;
   SecureBlob key_spki_der_;
 
@@ -538,43 +808,58 @@ class SignatureSealedSecretTestCase final {
 
 }  // namespace
 
-bool TpmLiveTest::SignatureSealedSecretTest() {
+bool TpmLiveTest::SignatureSealedSecretTest(const SecureBlob& owner_password) {
   using Algorithm = SignatureSealingBackend::Algorithm;
+  using TestCaseParam = SignatureSealedSecretTestCaseParam;
   if (!tpm_->GetSignatureSealingBackend()) {
     // Not supported by the Tpm implementation, just skip the test.
     return true;
   }
-  VLOG(1) << "SignatureSealedSecretTest started";
-  std::vector<SignatureSealedSecretTestCase> test_cases;
+  LOG(INFO) << "SignatureSealedSecretTest started";
+  std::vector<TestCaseParam> test_case_params;
   for (int key_size_bits : {1024, 2048}) {
-    test_cases.push_back(SignatureSealedSecretTestCase(
-        tpm_, key_size_bits, "SHA-1", {Algorithm::kRsassaPkcs1V15Sha1},
+    test_case_params.push_back(TestCaseParam::MakeSuccessful(
+        "SHA-1", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha1},
         Algorithm::kRsassaPkcs1V15Sha1, NID_sha1));
-    test_cases.push_back(SignatureSealedSecretTestCase(
-        tpm_, key_size_bits, "SHA-256", {Algorithm::kRsassaPkcs1V15Sha256},
-        Algorithm::kRsassaPkcs1V15Sha256, NID_sha256));
-    test_cases.push_back(SignatureSealedSecretTestCase(
-        tpm_, key_size_bits, "SHA-384", {Algorithm::kRsassaPkcs1V15Sha384},
-        Algorithm::kRsassaPkcs1V15Sha384, NID_sha384));
-    test_cases.push_back(SignatureSealedSecretTestCase(
-        tpm_, key_size_bits, "SHA-512", {Algorithm::kRsassaPkcs1V15Sha512},
-        Algorithm::kRsassaPkcs1V15Sha512, NID_sha512));
-    test_cases.push_back(SignatureSealedSecretTestCase(
-        tpm_, key_size_bits, "{SHA-384,SHA-256,SHA-512}",
-        {Algorithm::kRsassaPkcs1V15Sha384, Algorithm::kRsassaPkcs1V15Sha256,
-         Algorithm::kRsassaPkcs1V15Sha512},
-        Algorithm::kRsassaPkcs1V15Sha384, NID_sha384));
-    test_cases.push_back(SignatureSealedSecretTestCase(
-        tpm_, key_size_bits, "{SHA-1,SHA-256}",
-        {Algorithm::kRsassaPkcs1V15Sha1, Algorithm::kRsassaPkcs1V15Sha256},
-        Algorithm::kRsassaPkcs1V15Sha256, NID_sha256));
+    if (tpm_->GetVersion() == Tpm::TPM_1_2) {
+      test_case_params.push_back(TestCaseParam::MakeFailing(
+          "SHA-256", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha256}));
+      test_case_params.push_back(TestCaseParam::MakeFailing(
+          "SHA-384", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha384}));
+      test_case_params.push_back(TestCaseParam::MakeFailing(
+          "SHA-512", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha512}));
+      test_case_params.push_back(TestCaseParam::MakeSuccessful(
+          "{SHA-1,SHA-256}", tpm_, key_size_bits,
+          {Algorithm::kRsassaPkcs1V15Sha256, Algorithm::kRsassaPkcs1V15Sha1},
+          Algorithm::kRsassaPkcs1V15Sha1, NID_sha1));
+    } else {
+      test_case_params.push_back(TestCaseParam::MakeSuccessful(
+          "SHA-256", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha256},
+          Algorithm::kRsassaPkcs1V15Sha256, NID_sha256));
+      test_case_params.push_back(TestCaseParam::MakeSuccessful(
+          "SHA-384", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha384},
+          Algorithm::kRsassaPkcs1V15Sha384, NID_sha384));
+      test_case_params.push_back(TestCaseParam::MakeSuccessful(
+          "SHA-512", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha512},
+          Algorithm::kRsassaPkcs1V15Sha512, NID_sha512));
+      test_case_params.push_back(TestCaseParam::MakeSuccessful(
+          "{SHA-384,SHA-256,SHA-512}", tpm_, key_size_bits,
+          {Algorithm::kRsassaPkcs1V15Sha384, Algorithm::kRsassaPkcs1V15Sha256,
+           Algorithm::kRsassaPkcs1V15Sha512},
+          Algorithm::kRsassaPkcs1V15Sha384, NID_sha384));
+      test_case_params.push_back(TestCaseParam::MakeSuccessful(
+          "{SHA-1,SHA-256}", tpm_, key_size_bits,
+          {Algorithm::kRsassaPkcs1V15Sha1, Algorithm::kRsassaPkcs1V15Sha256},
+          Algorithm::kRsassaPkcs1V15Sha256, NID_sha256));
+    }
   }
-  for (auto& test_case : test_cases) {
-    test_case.SetUp();
-    if (!test_case.Run())
+  for (auto&& test_case_param : test_case_params) {
+    SignatureSealedSecretTestCase test_case(std::move(test_case_param),
+                                            owner_password);
+    if (!test_case.SetUp() || !test_case.Run())
       return false;
   }
-  VLOG(1) << "SignatureSealedSecretTest ended successfully.";
+  LOG(INFO) << "SignatureSealedSecretTest ended successfully.";
   return true;
 }
 

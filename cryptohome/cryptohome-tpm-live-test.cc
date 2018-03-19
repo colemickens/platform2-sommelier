@@ -11,6 +11,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <openssl/evp.h>
 
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_live_test.h"
@@ -25,6 +26,7 @@ int main(int argc, char** argv) {
                            "the TPM must be available and owned.");
   brillo::InitLog(brillo::kLogToStderr);
   base::AtExitManager exit_manager;
+  OpenSSL_add_all_algorithms();
   LOG(INFO) << "Running TPM live tests.";
 
   // Set up the Tpm singleton state, assuming that the preconditions for running

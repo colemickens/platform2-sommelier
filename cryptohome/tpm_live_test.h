@@ -33,15 +33,18 @@ class TpmLiveTest {
   // it to encrypt and decrypt.
   bool DecryptionKeyTest();
 
-  // The below tests need |owner_password| to be provided to run.
-
   // This test verifies that the Nvram subsystem of the TPM is working
   // correctly.
-  bool NvramTest();
+  // This test requires the TPM owner password to be provided via
+  // |owner_password|.
+  bool NvramTest(const brillo::SecureBlob& owner_password);
 
   // This test checks the signature-sealed secret creation and its unsealing. A
   // random RSA key is used.
-  bool SignatureSealedSecretTest();
+  // For TPM 1.2, this test requires the TPM owner password to be provided via
+  // |owner_password|; for other implementations, this test may be run with an
+  // empty |owner_password|.
+  bool SignatureSealedSecretTest(const brillo::SecureBlob& owner_password);
 
   Tpm* tpm_;
 
