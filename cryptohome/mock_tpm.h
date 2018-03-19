@@ -80,7 +80,12 @@ class MockTpm : public Tpm {
                                         brillo::SecureBlob*,
                                         brillo::SecureBlob*,
                                         brillo::SecureBlob*));
-  MOCK_METHOD2(CreateDelegate, bool(brillo::SecureBlob*, brillo::SecureBlob*));
+  MOCK_METHOD5(CreateDelegate,
+               bool(const std::set<uint32_t>&,
+                    uint8_t,
+                    uint8_t,
+                    brillo::SecureBlob*,
+                    brillo::SecureBlob*));
   MOCK_METHOD6(ActivateIdentity, bool(const brillo::SecureBlob&,
                                       const brillo::SecureBlob&,
                                       const brillo::SecureBlob&,

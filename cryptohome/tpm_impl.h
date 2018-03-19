@@ -5,11 +5,15 @@
 #ifndef CRYPTOHOME_TPM_IMPL_H_
 #define CRYPTOHOME_TPM_IMPL_H_
 
-#include "cryptohome/tpm.h"
-
+#include <base/macros.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
+
+#include <memory>
+#include <set>
+
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -85,7 +89,10 @@ class TpmImpl : public Tpm {
       brillo::SecureBlob* certified_key_blob,
       brillo::SecureBlob* certified_key_info,
       brillo::SecureBlob* certified_key_proof) override;
-  bool CreateDelegate(brillo::SecureBlob* delegate_blob,
+  bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
+                      uint8_t delegate_family_label,
+                      uint8_t delegate_label,
+                      brillo::SecureBlob* delegate_blob,
                       brillo::SecureBlob* delegate_secret) override;
   bool ActivateIdentity(const brillo::SecureBlob& delegate_blob,
                         const brillo::SecureBlob& delegate_secret,
@@ -143,6 +150,47 @@ class TpmImpl : public Tpm {
   LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
 
+  bool CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
+                                      TSS_FLAG policy_type,
+                                      TSS_HPOLICY* policy_handle);
+
+  // Gets a handle to the SRK.
+  bool LoadSrk(TSS_HCONTEXT context_handle,
+               TSS_HKEY* srk_handle,
+               TSS_RESULT* result) const;
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object iff the owner password is available and
+  // authorization is successfully acquired.
+  bool ConnectContextAsOwner(TSS_HCONTEXT* context_handle,
+                             TSS_HTPM* tpm_handle);
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object authorized by the given delegation.
+  bool ConnectContextAsDelegate(const brillo::SecureBlob& delegate_blob,
+                                const brillo::SecureBlob& delegate_secret,
+                                TSS_HCONTEXT* context,
+                                TSS_HTPM* tpm_handle);
+
+  // Wrapper for Tspi_GetAttribData.
+  bool GetDataAttribute(TSS_HCONTEXT context,
+                        TSS_HOBJECT object,
+                        TSS_FLAG flag,
+                        TSS_FLAG sub_flag,
+                        brillo::SecureBlob* data) const;
+
+  // Creates Trousers key object for the RSA public key, given its public
+  // modulus in |key_modulus|, creation flags in |key_flags|, signature scheme
+  // or |TSS_SS_NONE| in |signature_scheme|, encryption scheme or |TSS_ES_NONE|
+  // in |encryption_scheme|. The key's public exponent is assumed to be 65537.
+  // Populates |key_handle| with the loaded key handle.
+  bool CreateRsaPublicKeyObject(TSS_HCONTEXT tpm_context,
+                                const brillo::SecureBlob& key_modulus,
+                                TSS_FLAG key_flags,
+                                UINT32 signature_scheme,
+                                UINT32 encryption_scheme,
+                                TSS_HKEY* key_handle);
+
  private:
   // Connects to the TPM and return its context at |context_handle|.
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
@@ -159,10 +207,6 @@ class TpmImpl : public Tpm {
                   TSS_HKEY key_handle,
                   brillo::SecureBlob* data_out,
                   TSS_RESULT* result) const;
-
-  // Gets a handle to the SRK.
-  bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
-               TSS_RESULT* result) const;
 
   // Zeros the SRK password (sets it to an empty string)
   //
@@ -182,18 +226,6 @@ class TpmImpl : public Tpm {
 
   // Tries to connect to the TPM
   TSS_HCONTEXT ConnectContext();
-
-  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object iff the owner password is available and
-  // authorization is successfully acquired.
-  bool ConnectContextAsOwner(TSS_HCONTEXT* context_handle,
-                             TSS_HTPM* tpm_handle);
-
-  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object authorized by the given delegation.
-  bool ConnectContextAsDelegate(const brillo::SecureBlob& delegate_blob,
-                                const brillo::SecureBlob& delegate_secret,
-                                TSS_HCONTEXT* context, TSS_HTPM* tpm);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object iff the context can be created and a TPM object
@@ -282,13 +314,6 @@ class TpmImpl : public Tpm {
   //   public_key_der - The same public key in DER encoded form.
   bool ConvertPublicKeyToDER(const brillo::SecureBlob& public_key,
                              brillo::SecureBlob* public_key_der);
-
-  // Wrapper for Tspi_GetAttribData.
-  bool GetDataAttribute(TSS_HCONTEXT context,
-                        TSS_HOBJECT object,
-                        TSS_FLAG flag,
-                        TSS_FLAG sub_flag,
-                        brillo::SecureBlob* data) const;
 
   // Wrapper for Tspi_TPM_GetCapability. If |data| is not NULL, the raw
   // capability data will be assigned. If |value| is not NULL, the capability

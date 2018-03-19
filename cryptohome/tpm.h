@@ -14,6 +14,7 @@
 
 #include <stdint.h>
 
+#include <set>
 #include <string>
 
 #include <base/synchronization/lock.h>
@@ -167,6 +168,10 @@ class Tpm {
     // alert counters with UMA enum index
     uint16_t counters[kAlertsNumber];
   };
+
+  // Constants for default labels for use with the CreateDelegate() method.
+  static constexpr uint8_t kDefaultDelegateFamilyLabel = 1;
+  static constexpr uint8_t kDefaultDelegateLabel = 2;
 
   static Tpm* GetSingleton();
 
@@ -452,10 +457,23 @@ class Tpm {
   // Creates a TPM owner delegate for future use.
   //
   // Parameters
+  //   bound_pcrs - Specifies the PCRs to which the delegate is bound.
+  //   delegate_family_label - Specifies the label of the created delegate
+  //                           family. Should be equal to
+  //                           |kDefaultDelegateFamilyLabel| in most cases. Non-
+  //                           default values are primarily intended for testing
+  //                           purposes.
+  //   delegate_label - Specifies the label of the created delegate. Should be
+  //                    equal to |kDefaultDelegateLabel| in most cases. Non-
+  //                    default values are primarily intended for testing
+  //                    purposes.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret that will be required to perform
   //                     privileged operations in the future.
-  virtual bool CreateDelegate(brillo::SecureBlob* delegate_blob,
+  virtual bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
+                              uint8_t delegate_family_label,
+                              uint8_t delegate_label,
+                              brillo::SecureBlob* delegate_blob,
                               brillo::SecureBlob* delegate_secret) = 0;
 
   // Activates an AIK by using the EK to decrypt the AIK credential.

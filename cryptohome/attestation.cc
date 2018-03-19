@@ -494,7 +494,9 @@ void Attestation::PrepareForEnrollment() {
   // Create a delegate so we can activate the AIK later.
   SecureBlob delegate_blob;
   SecureBlob delegate_secret;
-  if (!tpm_->CreateDelegate(&delegate_blob, &delegate_secret)) {
+  if (!tpm_->CreateDelegate(
+          {} /* bound_pcrs */, Tpm::kDefaultDelegateFamilyLabel,
+          Tpm::kDefaultDelegateLabel, &delegate_blob, &delegate_secret)) {
     LOG(ERROR) << "Attestation: Failed to create delegate.";
     return;
   }

@@ -19,6 +19,10 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <openssl/bn.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 #include <crypto/scoped_openssl_types.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
@@ -38,6 +42,8 @@ using trousers::ScopedTssObject;
 using trousers::ScopedTssPcrs;
 using trousers::ScopedTssPolicy;
 
+namespace cryptohome {
+
 namespace {
 
 typedef std::unique_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
@@ -53,50 +59,48 @@ const unsigned char kSha256DigestInfo[] = {
 const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
                                            {0, 9, 8, 1, 0, 3}};
 
-cryptohome::Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
-  cryptohome::Tpm::TpmRetryAction status = cryptohome::Tpm::kTpmRetryFatal;
-  cryptohome::ReportTpmResult(cryptohome::GetTpmResultSample(result));
+Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
+  Tpm::TpmRetryAction status = Tpm::kTpmRetryFatal;
+  ReportTpmResult(GetTpmResultSample(result));
   switch (ERROR_CODE(result)) {
     case ERROR_CODE(TSS_SUCCESS):
-      status = cryptohome::Tpm::kTpmRetryNone;
+      status = Tpm::kTpmRetryNone;
       break;
     case ERROR_CODE(TSS_E_COMM_FAILURE):
       LOG(ERROR) << "Communications failure with the TPM.";
-      ReportCryptohomeError(cryptohome::kTssCommunicationFailure);
-      status = cryptohome::Tpm::kTpmRetryCommFailure;
+      ReportCryptohomeError(kTssCommunicationFailure);
+      status = Tpm::kTpmRetryCommFailure;
       break;
     case ERROR_CODE(TSS_E_INVALID_HANDLE):
       LOG(ERROR) << "Invalid handle to the TPM.";
-      ReportCryptohomeError(cryptohome::kTssInvalidHandle);
-      status = cryptohome::Tpm::kTpmRetryInvalidHandle;
+      ReportCryptohomeError(kTssInvalidHandle);
+      status = Tpm::kTpmRetryInvalidHandle;
       break;
     case ERROR_CODE(TCS_E_KM_LOADFAILED):
       LOG(ERROR) << "Key load failed; problem with parent key authorization.";
-      ReportCryptohomeError(cryptohome::kTcsKeyLoadFailed);
-      status = cryptohome::Tpm::kTpmRetryLoadFail;
+      ReportCryptohomeError(kTcsKeyLoadFailed);
+      status = Tpm::kTpmRetryLoadFail;
       break;
     case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
       LOG(ERROR) << "The TPM is defending itself against possible dictionary "
                  << "attacks.";
-      ReportCryptohomeError(cryptohome::kTpmDefendLockRunning);
-      status = cryptohome::Tpm::kTpmRetryDefendLock;
+      ReportCryptohomeError(kTpmDefendLockRunning);
+      status = Tpm::kTpmRetryDefendLock;
       break;
     // This error code occurs when the TPM is in an error state.
     case ERROR_CODE(TPM_E_FAIL):
-      status = cryptohome::Tpm::kTpmRetryReboot;
-      ReportCryptohomeError(cryptohome::kTpmFail);
+      status = Tpm::kTpmRetryReboot;
+      ReportCryptohomeError(kTpmFail);
       LOG(ERROR) << "The TPM returned TPM_E_FAIL.  A reboot is required.";
       break;
     default:
-      status = cryptohome::Tpm::kTpmRetryFailNoRetry;
+      status = Tpm::kTpmRetryFailNoRetry;
       break;
   }
   return status;
 }
 
 }  // namespace
-
-namespace cryptohome {
 
 #define TPM_LOG(severity, result)                                      \
   LOG(severity) << base::StringPrintf("TPM error 0x%x (%s): ", result, \
@@ -113,8 +117,6 @@ const unsigned int kTpmConnectIntervalMs = 100;
 const unsigned int kTpmBootPCR = 0;
 const unsigned int kTpmPCRLocality = 1;
 const int kDelegateSecretSize = 20;
-const int kDelegateFamilyLabel = 1;
-const int kDelegateEntryLabel = 2;
 const size_t kPCRExtensionSize = 20;  // SHA-1 digest size.
 
 // This error is returned when an attempt is made to use the SRK but it does not
@@ -193,9 +195,10 @@ bool TpmImpl::ConnectContextAsUser(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
 
 bool TpmImpl::ConnectContextAsDelegate(const SecureBlob& delegate_blob,
                                        const SecureBlob& delegate_secret,
-                                       TSS_HCONTEXT* context, TSS_HTPM* tpm) {
+                                       TSS_HCONTEXT* context,
+                                       TSS_HTPM* tpm_handle) {
   *context = 0;
-  *tpm = 0;
+  *tpm_handle = 0;
   if (!is_owned_ || is_being_owned_) {
     LOG(ERROR) << "ConnectContextAsDelegate: TPM is unowned.";
     return false;
@@ -204,11 +207,12 @@ bool TpmImpl::ConnectContextAsDelegate(const SecureBlob& delegate_blob,
     LOG(ERROR) << "ConnectContextAsDelegate: Could not open the TPM.";
     return false;
   }
-  if (!GetTpmWithDelegation(*context, delegate_blob, delegate_secret, tpm)) {
+  if (!GetTpmWithDelegation(*context, delegate_blob, delegate_secret,
+                            tpm_handle)) {
     LOG(ERROR) << "ConnectContextAsDelegate: Failed to authorize.";
     Tspi_Context_Close(*context);
     *context = 0;
-    *tpm = 0;
+    *tpm_handle = 0;
     return false;
   }
   return true;
@@ -378,6 +382,74 @@ bool TpmImpl::ResetDictionaryAttackMitigation(
     return false;
   }
   LOG(WARNING) << "Dictionary attack mitigation has been reset.";
+  return true;
+}
+
+bool TpmImpl::CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
+                                             TSS_FLAG policy_type,
+                                             TSS_HPOLICY* policy_handle) {
+  trousers::ScopedTssPolicy local_policy(context_handle);
+  TSS_RESULT result = TSS_SUCCESS;
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(
+                    context_handle, TSS_OBJECT_TYPE_POLICY, policy_type,
+                    local_policy.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error creating policy object";
+    return false;
+  }
+  SecureBlob migration_password(kDefaultDiscardableWrapPasswordLength);
+  CryptoLib::GetSecureRandom(migration_password.data(),
+                             migration_password.size());
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
+                    local_policy, TSS_SECRET_MODE_PLAIN,
+                    migration_password.size(), migration_password.data()))) {
+    TPM_LOG(ERROR, result) << "Error setting policy password";
+    return false;
+  }
+  *policy_handle = local_policy.release();
+  return true;
+}
+
+bool TpmImpl::CreateRsaPublicKeyObject(TSS_HCONTEXT context_handle,
+                                       const SecureBlob& key_modulus,
+                                       TSS_FLAG key_flags,
+                                       UINT32 signature_scheme,
+                                       UINT32 encryption_scheme,
+                                       TSS_HKEY* key_handle) {
+  ScopedTssKey local_key(context_handle);
+  TSS_RESULT tss_result = Tspi_Context_CreateObject(
+      context_handle, TSS_OBJECT_TYPE_RSAKEY, key_flags, local_key.ptr());
+  if (TPM_ERROR(tss_result)) {
+    TPM_LOG(ERROR, tss_result) << __func__ << ": Error creating the key object";
+    return false;
+  }
+  tss_result = Tspi_SetAttribData(
+      local_key, TSS_TSPATTRIB_RSAKEY_INFO, TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
+      key_modulus.size(), const_cast<BYTE*>(key_modulus.data()));
+  if (TPM_ERROR(tss_result)) {
+    TPM_LOG(ERROR, tss_result) << __func__ << ": Error setting the key modulus";
+    return false;
+  }
+  if (signature_scheme != TSS_SS_NONE) {
+    tss_result =
+        Tspi_SetAttribUint32(local_key, TSS_TSPATTRIB_KEY_INFO,
+                             TSS_TSPATTRIB_KEYINFO_SIGSCHEME, signature_scheme);
+    if (TPM_ERROR(tss_result)) {
+      TPM_LOG(ERROR, tss_result)
+          << __func__ << ": Error setting the key signing scheme";
+      return false;
+    }
+  }
+  if (encryption_scheme != TSS_ES_NONE) {
+    tss_result = Tspi_SetAttribUint32(local_key, TSS_TSPATTRIB_KEY_INFO,
+                                      TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
+                                      encryption_scheme);
+    if (TPM_ERROR(tss_result)) {
+      TPM_LOG(ERROR, tss_result)
+          << __func__ << ": Error setting the key encryption scheme";
+      return false;
+    }
+  }
+  *key_handle = local_key.release();
   return true;
 }
 
@@ -2126,7 +2198,10 @@ bool TpmImpl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
   return true;
 }
 
-bool TpmImpl::CreateDelegate(SecureBlob* delegate_blob,
+bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
+                             uint8_t delegate_family_label,
+                             uint8_t delegate_label,
+                             SecureBlob* delegate_blob,
                              SecureBlob* delegate_secret) {
   CHECK(delegate_blob && delegate_secret);
 
@@ -2188,9 +2263,44 @@ bool TpmImpl::CreateDelegate(SecureBlob* delegate_blob,
     return false;
   }
 
+  // Bind the delegate to the specified PCRs. Note: it's crucial to pass a null
+  // TSS_HPCRS to Tspi_TPM_Delegate_CreateDelegation() when no PCR is selected,
+  // otherwise it will fail with TPM_E_BAD_PARAM_SIZE.
+  ScopedTssPcrs pcrs_handle(context_handle);
+  if (!bound_pcrs.empty()) {
+    result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
+                                       TSS_PCRS_STRUCT_INFO_SHORT,
+                                       pcrs_handle.ptr());
+    if (TPM_ERROR(result)) {
+      TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create PCRS object.";
+      return false;
+    }
+    for (auto bound_pcr : bound_pcrs) {
+      UINT32 pcr_len = 0;
+      ScopedTssMemory pcr_value(context_handle);
+      if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, bound_pcr, &pcr_len,
+                                              pcr_value.ptr()))) {
+        TPM_LOG(ERROR, result) << "Could not read PCR value";
+        return false;
+      }
+      result = Tspi_PcrComposite_SetPcrValue(pcrs_handle, bound_pcr, pcr_len,
+                                             pcr_value.value());
+      if (TPM_ERROR(result)) {
+        TPM_LOG(ERROR, result) << "Could not set value for PCR in PCRS handle";
+        return false;
+      }
+    }
+    result = Tspi_PcrComposite_SetPcrLocality(pcrs_handle, kTpmPCRLocality);
+    if (TPM_ERROR(result)) {
+      TPM_LOG(ERROR, result)
+          << "Could not set locality for PCRs in PCRS handle";
+      return false;
+    }
+  }
+
   // Create a delegation family.
   ScopedTssObject<TSS_HDELFAMILY> family(context_handle);
-  result = Tspi_TPM_Delegate_AddFamily(tpm_handle, kDelegateFamilyLabel,
+  result = Tspi_TPM_Delegate_AddFamily(tpm_handle, delegate_family_label,
                                        family.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create family.";
@@ -2198,8 +2308,8 @@ bool TpmImpl::CreateDelegate(SecureBlob* delegate_blob,
   }
 
   // Create the delegation.
-  result = Tspi_TPM_Delegate_CreateDelegation(tpm_handle, kDelegateEntryLabel,
-                                              0, 0, family, policy);
+  result = Tspi_TPM_Delegate_CreateDelegation(tpm_handle, delegate_label, 0,
+                                              pcrs_handle, family, policy);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create delegation.";
     return false;
@@ -2708,34 +2818,21 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
     return false;
   }
 
-  trousers::ScopedTssPolicy policy_handle(tpm_context_.value());
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(tpm_context_.value(),
-                                                   TSS_OBJECT_TYPE_POLICY,
-                                                   TSS_POLICY_MIGRATION,
-                                                   policy_handle.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error creating policy object";
-    return false;
-  }
-
   // Set a random migration policy password, and discard it.  The key will not
   // be migrated, but to create the key outside of the TPM, we have to do it
   // this way.
-  SecureBlob migration_password(kDefaultDiscardableWrapPasswordLength);
-  CryptoLib::GetSecureRandom(migration_password.data(),
-                             migration_password.size());
-  if (TPM_ERROR(result = Tspi_Policy_SetSecret(policy_handle,
-                         TSS_SECRET_MODE_PLAIN,
-                         migration_password.size(),
-                         migration_password.data()))) {
-    TPM_LOG(ERROR, result) << "Error setting migration policy password";
+  trousers::ScopedTssPolicy policy_handle(tpm_context_);
+  if (!CreatePolicyWithRandomPassword(tpm_context_, TSS_POLICY_MIGRATION,
+                                      policy_handle.ptr())) {
+    TPM_LOG(ERROR, result) << "Error creating policy object";
     return false;
   }
-
   if (TPM_ERROR(result = Tspi_Policy_AssignToObject(policy_handle,
                                                     local_key_handle))) {
     TPM_LOG(ERROR, result) << "Error assigning migration policy";
     return false;
   }
+
   SecureBlob mutable_modulus(public_modulus.begin(), public_modulus.end());
   BYTE* public_modulus_buffer = static_cast<BYTE *>(mutable_modulus.data());
   if (TPM_ERROR(result = Tspi_SetAttribData(local_key_handle,

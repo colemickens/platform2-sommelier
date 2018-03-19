@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <set>
+
 #include "cryptohome/tpm.h"
 
 namespace cryptohome {
@@ -99,7 +101,10 @@ class StubTpm : public Tpm {
                           SecureBlob* certified_key_info,
                           SecureBlob* certified_key_proof) override
     { return false; }
-  bool CreateDelegate(SecureBlob* delegate_blob,
+  bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
+                      uint8_t delegate_family_label,
+                      uint8_t delegate_label,
+                      SecureBlob* delegate_blob,
                       SecureBlob* delegate_secret) override {
     return false;
   }

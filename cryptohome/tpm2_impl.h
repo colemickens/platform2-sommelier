@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include <base/macros.h>
@@ -163,7 +164,10 @@ class Tpm2Impl : public Tpm {
                           brillo::SecureBlob* certified_key_blob,
                           brillo::SecureBlob* certified_key_info,
                           brillo::SecureBlob* certified_key_proof) override;
-  bool CreateDelegate(brillo::SecureBlob* delegate_blob,
+  bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
+                      uint8_t delegate_family_label,
+                      uint8_t delegate_label,
+                      brillo::SecureBlob* delegate_blob,
                       brillo::SecureBlob* delegate_secret) override;
   bool ActivateIdentity(const brillo::SecureBlob& delegate_blob,
                         const brillo::SecureBlob& delegate_secret,

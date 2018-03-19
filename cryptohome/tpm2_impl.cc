@@ -630,7 +630,10 @@ bool Tpm2Impl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
   return false;
 }
 
-bool Tpm2Impl::CreateDelegate(SecureBlob* delegate_blob,
+bool Tpm2Impl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
+                              uint8_t delegate_family_label,
+                              uint8_t delegate_label,
+                              SecureBlob* delegate_blob,
                               SecureBlob* delegate_secret) {
   LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
