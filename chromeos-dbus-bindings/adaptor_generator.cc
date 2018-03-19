@@ -262,7 +262,9 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
     switch (method.kind) {
       case Interface::Method::Kind::kSimple:
         if (output_arguments_copy.size() == 1) {
-          CHECK(signature.Parse(output_arguments_copy[0].type, &return_type));
+          auto type = signature.Parse(output_arguments_copy[0].type);
+          CHECK(type);
+          return_type = type->GetBaseType();
           output_arguments_copy.clear();
         }
         break;
@@ -275,9 +277,9 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
       case Interface::Method::Kind::kAsync: {
         std::vector<std::string> out_types;
         for (const auto& argument : output_arguments_copy) {
-          string param_type;
-          CHECK(signature.Parse(argument.type, &param_type));
-          out_types.push_back(param_type);
+          auto type = signature.Parse(argument.type);
+          CHECK(type);
+          out_types.push_back(type->GetBaseType());
         }
         method_params.push_back(base::StringPrintf(
             "std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<%s>> "
@@ -303,18 +305,19 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
     string method_end = StringPrintf(")%s = 0;", const_method.c_str());
     int index = 0;
     for (const auto& argument : input_arguments_copy) {
-      string param_type;
-      CHECK(signature.Parse(argument.type, &param_type));
-      MakeConstReferenceIfNeeded(&param_type);
+      auto type = signature.Parse(argument.type);
+      CHECK(type);
+      string param_type = type->GetInArgType();
       string param_name = GetArgName("in", argument.name, ++index);
       method_params.push_back(param_type + ' ' + param_name);
     }
 
     for (const auto& argument : output_arguments_copy) {
-      string param_type;
-      CHECK(signature.Parse(argument.type, &param_type));
+      auto type = signature.Parse(argument.type);
+      CHECK(type);
+      string param_type = type->GetOutArgType();
       string param_name = GetArgName("out", argument.name, ++index);
-      method_params.push_back(param_type + "* " + param_name);
+      method_params.push_back(param_type + ' ' + param_name);
     }
 
     if (method_params.empty()) {
@@ -351,9 +354,9 @@ void AdaptorGenerator::AddSendSignalMethods(
     vector<string> method_params;
     vector<string> param_names;
     for (const auto& argument : signal.arguments) {
-      string param_type;
-      CHECK(signature.Parse(argument.type, &param_type));
-      MakeConstReferenceIfNeeded(&param_type);
+      auto type = signature.Parse(argument.type);
+      CHECK(type);
+      string param_type = type->GetInArgType();
       string param_name = GetArgName("in", argument.name, ++index);
       param_names.push_back(param_name);
       method_params.push_back(param_type + ' ' + param_name);
@@ -397,8 +400,9 @@ void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
     string signal_type_alias_end = ">;";
     vector<string> params;
     for (const auto& argument : signal.arguments) {
-      string param;
-      CHECK(signature.Parse(argument.type, &param));
+      auto type = signature.Parse(argument.type);
+      CHECK(type);
+      string param = type->GetBaseType();
       if (!argument.name.empty())
         base::StringAppendF(&param, " /*%s*/", argument.name.c_str());
       params.push_back(param);
@@ -430,8 +434,9 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
 
   for (const auto& property : interface.properties) {
     block.AddBlankLine();
-    string type;
-    CHECK(signature.Parse(property.type, &type));
+    auto parsed_type = signature.Parse(property.type);
+    CHECK(parsed_type && parsed_type->IsValidPropertyType());
+    string type = parsed_type->GetBaseType();
     string variable_name = NameParser{property.name}.MakeVariableName();
 
     // Property name accessor.
@@ -451,7 +456,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     block.AddLine("}");
 
     // Setter method.
-    MakeConstReferenceIfNeeded(&type);
+    type = parsed_type->GetInArgType();
     block.AddLine(StringPrintf("void Set%s(%s %s) {",
                                property.name.c_str(),
                                type.c_str(),
@@ -465,12 +470,12 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
 
     // Validation method for property with write access.
     if (property.access != "read") {
-      CHECK(signature.Parse(property.type, &type));
       block.AddLine(StringPrintf("virtual bool Validate%s(",
                                  property.name.c_str()));
       block.PushOffset(kLineContinuationOffset);
       // Explicitly specify the "value" parameter as const & to match the
       // validator callback function signature.
+      type = parsed_type->GetBaseType();
       block.AddLine(
           StringPrintf(
               "brillo::ErrorPtr* /*error*/, const %s& /*value*/) {",
@@ -492,8 +497,9 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
   DBusSignature signature;
 
   for (const auto& property : interface.properties) {
-    string type;
-    CHECK(signature.Parse(property.type, &type));
+    auto parsed_type = signature.Parse(property.type);
+    CHECK(parsed_type && parsed_type->IsValidPropertyType());
+    string type = parsed_type->GetBaseType();
     string variable_name = NameParser{property.name}.MakeVariableName();
 
     block.AddLine(

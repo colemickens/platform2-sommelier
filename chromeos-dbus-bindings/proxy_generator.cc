@@ -344,9 +344,9 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
 
   DBusSignature signature;
   for (const auto& prop : interface.properties) {
-    string type;
-    CHECK(signature.Parse(prop.type, &type));
-    MakeConstReferenceIfNeeded(&type);
+    auto parsed_type = signature.Parse(prop.type);
+    CHECK(parsed_type && parsed_type->IsValidPropertyType());
+    string type = parsed_type->GetInArgType();
     string name = NameParser{prop.name}.MakeVariableName();
     text->AddLine(StringPrintf("MOCK_CONST_METHOD0(%s, %s());",
                                name.c_str(), type.c_str()));
@@ -603,8 +603,9 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
 
   DBusSignature signature;
   for (const auto& prop : interface.properties) {
-    string type;
-    CHECK(signature.Parse(prop.type, &type));
+    auto parsed_type = signature.Parse(prop.type);
+    CHECK(parsed_type && parsed_type->IsValidPropertyType());
+    string type = parsed_type->GetBaseType();
     block.AddLine(
         StringPrintf("brillo::dbus_utils::Property<%s> %s;",
                      type.c_str(),
@@ -637,9 +638,9 @@ void ProxyGenerator::AddProperties(const Interface& interface,
                        prop.name.c_str(),
                        prop.name.c_str()));
     }
-    string type;
-    CHECK(signature.Parse(prop.type, &type));
-    MakeConstReferenceIfNeeded(&type);
+    auto parsed_type = signature.Parse(prop.type);
+    CHECK(parsed_type && parsed_type->IsValidPropertyType());
+    string type = parsed_type->GetInArgType();
     string name = NameParser{prop.name}.MakeVariableName();
     if (!declaration_only)
       text->AddBlankLine();
@@ -695,9 +696,9 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   vector<string> argument_names;
   int argument_number = 0;
   for (const auto& argument : method.input_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
-    MakeConstReferenceIfNeeded(&argument_type);
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetInArgType();
     string argument_name = GetArgName("in", argument.name, ++argument_number);
     argument_names.push_back(argument_name);
     block.AddLine(StringPrintf(
@@ -705,12 +706,13 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   }
   vector<string> out_param_names{"response.get()", "error"};
   for (const auto& argument : method.output_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetOutArgType();
     string argument_name = GetArgName("out", argument.name, ++argument_number);
     out_param_names.push_back(argument_name);
     block.AddLine(StringPrintf(
-        "%s* %s,", argument_type.c_str(), argument_name.c_str()));
+        "%s %s,", argument_type.c_str(), argument_name.c_str()));
   }
   block.AddLine("brillo::ErrorPtr* error,");
   block.AddLine(
@@ -762,9 +764,9 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   vector<string> argument_names;
   int argument_number = 0;
   for (const auto& argument : method.input_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
-    MakeConstReferenceIfNeeded(&argument_type);
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetInArgType();
     string argument_name = GetArgName("in", argument.name, ++argument_number);
     argument_names.push_back(argument_name);
     block.AddLine(StringPrintf(
@@ -772,9 +774,9 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   }
   vector<string> out_params;
   for (const auto& argument : method.output_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
-    MakeConstReferenceIfNeeded(&argument_type);
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetInArgType();
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*%s*/", argument.name.c_str());
     out_params.push_back(argument_type);
@@ -819,17 +821,17 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
   DBusSignature signature;
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
-    MakeConstReferenceIfNeeded(&argument_type);
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetInArgType();
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*in_%s*/", argument.name.c_str());
     arguments.push_back(argument_type);
   }
   for (const auto& argument : method.output_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
-    argument_type += '*';
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetOutArgType();
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*out_%s*/", argument.name.c_str());
     arguments.push_back(argument_type);
@@ -846,18 +848,18 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
   DBusSignature signature;
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
-    MakeConstReferenceIfNeeded(&argument_type);
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetInArgType();
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*in_%s*/", argument.name.c_str());
     arguments.push_back(argument_type);
   }
   vector<string> out_params;
   for (const auto& argument : method.output_arguments) {
-    string argument_type;
-    CHECK(signature.Parse(argument.type, &argument_type));
-    MakeConstReferenceIfNeeded(&argument_type);
+    auto type = signature.Parse(argument.type);
+    CHECK(type);
+    string argument_type = type->GetInArgType();
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*%s*/", argument.name.c_str());
     out_params.push_back(argument_type);
@@ -970,8 +972,9 @@ void ProxyGenerator::AddSignalCallbackArg(const Interface::Signal& signal,
           block->AddLine(StringPrintf("%s,", last_argument.c_str()));
         }
       }
-      CHECK(signature.Parse(argument.type, &last_argument));
-      MakeConstReferenceIfNeeded(&last_argument);
+      auto type = signature.Parse(argument.type);
+      CHECK(type);
+      last_argument = type->GetInArgType();
     }
     block->AddLine(StringPrintf("%s%s)>& %s,",
                                 prefix.c_str(),
