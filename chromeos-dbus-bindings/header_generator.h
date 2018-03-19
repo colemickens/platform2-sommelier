@@ -51,12 +51,6 @@ class HeaderGenerator {
   // Create a unique header guard string to protect multiple includes of header.
   static std::string GenerateHeaderGuard(const base::FilePath& output_file);
 
-  // Used to decide whether the argument should be a const reference.
-  static bool IsIntegralType(const std::string& type);
-
-  // If |type| is a non-integral type, converts it into a const reference.
-  static void MakeConstReferenceIfNeeded(std::string* type);
-
   // Writes indented text to a file.
   static bool WriteTextToFile(const base::FilePath& output_file,
                               const IndentedText& text);

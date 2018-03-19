@@ -35,18 +35,6 @@ string HeaderGenerator::GenerateHeaderGuard(
 }
 
 // static
-bool HeaderGenerator::IsIntegralType(const string& type) {
-  return type.find("::") == std::string::npos;
-}
-
-// static
-void HeaderGenerator::MakeConstReferenceIfNeeded(std::string* type) {
-  if (!IsIntegralType(*type)) {
-    *type = base::StringPrintf("const %s&", type->c_str());
-  }
-}
-
-// static
 bool HeaderGenerator::WriteTextToFile(
     const base::FilePath& output_file, const IndentedText &text) {
   string contents = text.GetContents();
