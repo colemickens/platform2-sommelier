@@ -131,10 +131,11 @@ ignore all other flags).
 
 ### List of mounts visible in the container mount namespace
 
-* `/`: This is mounted by `/etc/init/arc-system-mount.conf` in
-  the init namespace, and span container invocations since it is stateless.
-  The `exec`/`suid` flags are added in the intermediate mount namespace, as well
-  as recursively changing its propagation flags to be `MS_SLAVE`.
+* `/`: This is `/opt/google/containers/android/system.raw.img` loop-mounted by
+  `arc-setup` (called from `/etc/init/arc-system-mount.conf`) in the init
+  namespace. This spans container invocations since it is stateless.  The
+  `exec`/`suid` flags are added in the intermediate mount namespace, as well as
+  recursively changing its propagation flags to be `MS_SLAVE`.
 * `/dev`: This is a `tmpfs` mounted in the intermediate mount namespace with
   `android-root` as owner. This is needed to get the `dev`/`exec` mount flags.
 * `/dev/pts`: Pseudo TTS devpts file system with namespace support so that it is
@@ -146,9 +147,7 @@ ignore all other flags).
   documentation](https://www.kernel.org/doc/Documentation/filesystems/devpts.txt)
   for devpts indicates that there are two ways to support `/dev/ptmx`: creating
   a symlink that points to `/dev/pts/ptmx`, or bind-mounting `/dev/pts/ptmx`.
-  The bind-mount was chosen because it is easier to find in `config.json`. The
-  device is mounted with nosuid and noexec mount options for better security
-  although stock Android does not use them.
+  The bind-mount was chosen to mark it `u:object_r:ptmx_device:s0`.
 * `/dev/kmsg`: This is a bind-mount of the host's `/run/arc/android.kmsg.fifo`,
   which is just a FIFO file. Logs written to the fake device are read by a job
   called `arc-kmsg-logger` and stored in host's /var/log/android.kmsg.
@@ -216,8 +215,8 @@ ignore all other flags).
   daemon running outside the container called `/usr/bin/mount-passthrough` mounts
   an external storage as a FUSE file system to the directory when needed.
 * `/vendor`: This is loop-mounted from host's
-  `opt/google/containers/android/vendor.raw.img`. The directory may have graphic
-   drivers, Houdini, board-specific APKs, and so on.
+  `/opt/google/containers/android/vendor.raw.img`. The directory may have
+  graphic drivers, Houdini, board-specific APKs, and so on.
 
 ## Capabilities
 
