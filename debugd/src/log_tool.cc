@@ -126,6 +126,10 @@ const Log kCommandLogs[] = {
 #endif  // USE_IWLWIFI_DUMP
   { "kernel-crashes",
     "/bin/cat /var/spool/crash/kernel.*.kcrash 2> /dev/null" },
+  { "logcat", "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
+    kRoot,
+    kRoot,
+  },
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
   { "lsusb", "lsusb && lsusb -t" },
@@ -163,6 +167,11 @@ const Log kCommandLogs[] = {
   { "mount-encrypted", "/bin/cat /var/log/mount-encrypted.log" },
   { "mountinfo", "/bin/cat /proc/1/mountinfo" },
   { "netlog", "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log" },
+  // --processes requires root.
+  { "netstat", "/sbin/ss --all --query inet --numeric --processes",
+    kRoot,
+    kRoot,
+  },
   {
     "nvmap_iovmm",
     "/bin/cat /sys/kernel/debug/nvmap/iovmm/allocations 2> /dev/null",
@@ -258,6 +267,11 @@ const Log kCommandLogs[] = {
   // { "xrandr", "/usr/bin/xrandr --verbose" }
   { nullptr, nullptr }
 };
+
+// netstat and logcat should appear in chrome://system but not in feedback
+// reports.  Open sockets may have privacy implications, and logcat is
+// already incorporated via arc-bugreport.
+const std::vector<string> kCommandLogsExclude = {"netstat", "logcat"};
 
 const Log kExtraLogs[] = {
 #if USE_CELLULAR
@@ -404,6 +418,9 @@ LogTool::LogMap LogTool::GetFeedbackLogs() {
   CreateConnectivityReport();
   LogMap result;
   GetLogsFrom(kCommandLogs, &result);
+  for (const auto& key : kCommandLogsExclude) {
+    result.erase(key);
+  }
   GetLogsFrom(kFeedbackLogs, &result);
   AnonymizeLogMap(&result);
   return result;
@@ -413,6 +430,9 @@ void LogTool::GetBigFeedbackLogs(const dbus::FileDescriptor& fd) {
   CreateConnectivityReport();
   base::DictionaryValue dictionary;
   GetLogsInDictionary(kCommandLogs, &anonymizer_, &dictionary);
+  for (const auto& key : kCommandLogsExclude) {
+    dictionary.Remove(key, nullptr);
+  }
   GetLogsInDictionary(kFeedbackLogs, &anonymizer_, &dictionary);
   GetLogsInDictionary(kBigFeedbackLogs, &anonymizer_, &dictionary);
   SerializeLogsAsJSON(dictionary, fd);
