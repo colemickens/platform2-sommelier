@@ -430,6 +430,8 @@ cmd_vmc() (
       return 1
     fi
 
+    metrics_client -v "Vm.VmcStart"
+
     local name="$1"; shift
 
     # Actually start the VM.
@@ -439,6 +441,8 @@ cmd_vmc() (
       echo "Unable to start VM"
       return 1
     fi
+
+    metrics_client -v "Vm.VmcStartSuccess"
 
     # Give the user a shell in the VM.
     vsh --vm_name="${name}" -- LXD_DIR=/mnt/stateful/lxd \
@@ -466,6 +470,8 @@ cmd_vmc() (
                      --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "Unable to delete vm"
+
+      metrics_client -v "Vm.DiskEraseFailed"
       return 1
     fi
     ;;

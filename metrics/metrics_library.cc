@@ -65,6 +65,9 @@ const char* kCrosEventNames[] = {
     "VeyronEmmcUpgrade.FailedWPEnable",         // 18
     "VeyronEmmcUpgrade.SignatureDetected",      // 19
     "Watchdog.StartupFailed",                   // 20
+    "Vm.VmcStart",                              // 21
+    "Vm.VmcStartSuccess",                       // 22
+    "Vm.DiskEraseFailed",                       // 23
 };
 
 }  // namespace
