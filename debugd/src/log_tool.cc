@@ -162,7 +162,6 @@ const Log kCommandLogs[] = {
   },
   { "mount-encrypted", "/bin/cat /var/log/mount-encrypted.log" },
   { "mountinfo", "/bin/cat /proc/1/mountinfo" },
-  { "net-diags.net.log", "/bin/cat /var/log/net-diags.net.log" },
   { "netlog", "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log" },
   {
     "nvmap_iovmm",
