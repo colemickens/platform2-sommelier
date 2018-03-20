@@ -690,23 +690,32 @@ status_t ControlUnit::handleNewStat(MessageStats msg)
         return status;
     }
 
+    bool cio2Starving = false;
+    if (statsId == mLatestRequestId && mLatestRequestId >= AWB_CONVERGENCE_WAIT_COUNT) {
+        // The 0 ~ AWB_CONVERGENCE_WAIT_COUNT request will run with new statistics to speed
+        // AWB converging process. Otherwise, queue all pending requests to CIO2.
+        cio2Starving = true;
+    }
+
     // Process request
-    std::shared_ptr<RequestCtrlState> reqState = mPendingRequests[0];
-    mPendingRequests.erase(mPendingRequests.begin());
+    do {
+        std::shared_ptr<RequestCtrlState> reqState = mPendingRequests[0];
+        mPendingRequests.erase(mPendingRequests.begin());
 
-    if (CC_UNLIKELY(!reqState || reqState->request == nullptr)) {
-        LOGE("reqState is nullptr, find BUG!");
-        return UNKNOWN_ERROR;
-    }
+        if (CC_UNLIKELY(!reqState || reqState->request == nullptr)) {
+            LOGE("reqState is nullptr, find BUG!");
+            return UNKNOWN_ERROR;
+        }
 
-    LOG2("@%s: process reqState %d, with stat id of req %d", __FUNCTION__,
-            reqState->request->getId(), statsId);
+        LOG2("@%s: process reqState %d, with stat id of req %d", __FUNCTION__,
+                reqState->request->getId(), statsId);
 
-    status = processRequestForCapture(reqState, mLatestStatistics);
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Failed to process request %d for capture ", reqState->request->getId());
-        // TODO: handle error !
-    }
+        status = processRequestForCapture(reqState, mLatestStatistics);
+        if (CC_UNLIKELY(status != OK)) {
+            LOGE("Failed to process request %d for capture ", reqState->request->getId());
+            // TODO: handle error !
+        }
+    } while (cio2Starving && !mPendingRequests.empty());
 
     return status;
 }
