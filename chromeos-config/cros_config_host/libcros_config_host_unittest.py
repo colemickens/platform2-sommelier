@@ -410,7 +410,11 @@ def MakeTests(pathname):
     def testGetFirmwareBuildTargets(self):
       config = CrosConfig(self.filepath)
       self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
-                               ['pyro', 'caroline'])
+                               ['caroline', 'pyro'])
+      os.environ['FW_NAME'] = 'pyro'
+      self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
+                               ['pyro'])
+      del os.environ['FW_NAME']
 
     def testFileTree(self):
       """Test that we can obtain a file tree"""
@@ -583,6 +587,12 @@ def MakeTests(pathname):
           ])
       result = config.GetFirmwareBuildCombinations(['coreboot', 'depthcharge'])
       self.assertEqual(result, expected)
+
+      os.environ['FW_NAME'] = 'pyro'
+      expected = OrderedDict([('pyro', ['pyro', 'pyro'])])
+      result = config.GetFirmwareBuildCombinations(['coreboot', 'depthcharge'])
+      self.assertEqual(result, expected)
+      del os.environ['FW_NAME']
 
     def testGetBspUris(self):
       """Test access to the BSP URIs"""

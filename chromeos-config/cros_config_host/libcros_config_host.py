@@ -319,15 +319,26 @@ class CrosConfigImpl(object):
     Returns:
       A list of all build-targets of the given type, for all models.
     """
-    build_targets = [model.PathProperty('/firmware/build-targets', target_type)
-                     for model in self.models.values()]
-    if target_type == 'ec':
-      build_targets += [model.PathProperty('/firmware/build-targets', 'cr50')
-                        for model in self.models.values()]
-    # De-duplicate
-    build_targets_dedup = {target.value if target else None
-                           for target in build_targets if target}
-    return list(build_targets_dedup)
+    firmware_filter = os.getenv('FW_NAME')
+    build_targets = []
+    for model in self.models.itervalues():
+      node = model.PathNode('/firmware/build-targets')
+      # Skip nodes with no build targets
+      if not node:
+        continue
+
+      # TODO(teravest): Add a name field and use here instead of coreboot.
+      key = node.GetStr('coreboot')
+      if firmware_filter and key != firmware_filter:
+        continue
+      target = node.GetStr(target_type)
+      if target:
+        build_targets.append(target)
+      if target_type == 'ec':
+        target = node.GetStr('cr50')
+        if target:
+          build_targets.append(target)
+    return sorted(set(build_targets))
 
   def GetFirmwareBuildCombinations(self, components):
     """Get named firmware build combinations for all models.
@@ -343,10 +354,11 @@ class CrosConfigImpl(object):
     Raises:
       ValueError if a collision is encountered for named combinations.
     """
+    firmware_filter = os.getenv('FW_NAME')
+
     combos = OrderedDict()
-    BUILD_TARGETS = '/firmware/build-targets'
     for model in self.models.itervalues():
-      node = model.PathNode(BUILD_TARGETS)
+      node = model.PathNode('/firmware/build-targets')
       # Skip nodes with no build targets
       if not node:
         continue
@@ -354,7 +366,9 @@ class CrosConfigImpl(object):
 
       # Always name firmware combinations after the 'coreboot' name.
       # TODO(teravest): Add a 'name' field.
-      key = node.properties.get('coreboot').value
+      key = node.GetStr('coreboot')
+      if firmware_filter and key != firmware_filter:
+        continue
 
       if key in combos and targets != combos[key]:
         raise ValueError('Colliding firmware combinations found for key %s: '
