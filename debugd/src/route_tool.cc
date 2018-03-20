@@ -60,6 +60,7 @@ std::vector<std::string> RouteTool::GetRoutes(
   // Always print the main table first.  Ignore local and default since
   // they'll just confuse the user.
   RunOneIPCommand(&cmd_result, {ip_version, "route", "show", "table", "main"});
+  full_result.push_back("");
   full_result.insert(full_result.end(), cmd_result.begin(), cmd_result.end());
 
   // Multiple routing policy rules can reference the same table, so keep
@@ -77,6 +78,7 @@ std::vector<std::string> RouteTool::GetRoutes(
         table_map[table_id] = true;
         RunOneIPCommand(&cmd_result, {ip_version, "route", "show", "table",
                                       base::IntToString(table_id)});
+        full_result.push_back("");
         full_result.insert(full_result.end(), cmd_result.begin(),
                            cmd_result.end());
       }

@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 #include "debugd/src/error_utils.h"
 
@@ -70,6 +71,13 @@ bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) {
   std::string contents;
   if (!base::ReadFileToString(outfile_path_, &contents))
     return false;
+
+  // If the file contains "a\nb\n", base::SplitString() will return a vector
+  // {"a", "b", ""} because it treats "\n" as a delimiter, not an EOL
+  // character.  Removing the final "\n" fixes this.
+  if (base::EndsWith(contents, "\n", base::CompareCase::SENSITIVE)) {
+    contents.pop_back();
+  }
 
   *output = base::SplitString(contents, "\n", base::KEEP_WHITESPACE,
                               base::SPLIT_WANT_ALL);
