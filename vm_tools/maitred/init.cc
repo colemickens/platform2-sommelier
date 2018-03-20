@@ -240,6 +240,10 @@ constexpr struct {
         .mode = 0755,
     },
     {
+        .path = "/run/tokens",
+        .mode = 01777,
+    },
+    {
         .path = "/var/cache",
         .mode = 0755,
     },
