@@ -36,3 +36,19 @@ rt_sigreturn: 1
 rt_sigprocmask: 1
 munmap: 1
 tgkill: 1
+
+# For modprobe(8)
+clone: 1
+execve: 1
+wait4: 1
+set_robust_list: 1
+dup2: 1
+getrlimit: 1
+getdents64: 1
+prctl: 1
+arch_prctl: 1
+uname: 1
+newfstatat: 1
+fcntl: 1
+lseek: 1
+finit_module: 1

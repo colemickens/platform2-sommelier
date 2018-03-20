@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
@@ -20,8 +21,13 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/process/launch.h>
+#include <base/strings/string_util.h>
+#include <base/sys_info.h>
+#include <base/values.h>
 #include <brillo/flag_helper.h>
 
 namespace {
@@ -32,6 +38,8 @@ constexpr base::FilePath::CharType kConfigFSPath[] =
     FILE_PATH_LITERAL("/dev/config");
 constexpr base::FilePath::CharType kFunctionFSPath[] =
     FILE_PATH_LITERAL("/dev/usb-ffs/adb");
+constexpr base::FilePath::CharType kConfigPath[] =
+    FILE_PATH_LITERAL("/etc/arc/adbd.json");
 
 // The shifted u/gid of the shell user, used by Android's adbd.
 constexpr uid_t kShellUgid = 657360;
@@ -70,6 +78,16 @@ constexpr const uint8_t kControlStrings[] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x09, 0x04, 0x41, 0x44, 0x42, 0x20,
     0x49, 0x6E, 0x74, 0x65, 0x72, 0x66, 0x61, 0x63, 0x65, 0x00};
 
+// TODO(lhchavez): Remove once libchrome rolls and provides this method.
+std::string GetStrippedReleaseBoard() {
+  std::string board = base::SysInfo::GetLsbReleaseBoard();
+  const size_t index = board.find("-signed-");
+  if (index != std::string::npos)
+    board.resize(index);
+
+  return base::ToLowerASCII(board);
+}
+
 // Returns the name of the UDC driver that is available in the system, or an
 // empty string if none are available.
 std::string GetUDCDriver() {
@@ -82,6 +100,87 @@ std::string GetUDCDriver() {
   // We expect to only have one UDC driver in the system, so we can just return
   // the first file in the directory.
   return name.BaseName().value();
+}
+
+// Represents a loadable kernel module. This is then converted to a modprobe(8)
+// invocation.
+struct AdbdConfigurationKernelModule {
+  // Name of the kernel module.
+  std::string name;
+
+  // Optional parameters to the module.
+  std::vector<std::string> parameters;
+};
+
+// Represents the configuration for the service.
+struct AdbdConfiguration {
+  // The USB product ID. Is SoC-specific.
+  std::string usb_product_id;
+
+  // Optional list of kernel modules that need to be loaded before setting up
+  // the USB gadget.
+  std::vector<AdbdConfigurationKernelModule> kernel_modules;
+};
+
+// Returns the USB product ID for the current device, or an empty string if the
+// device does not support ADB over USB.
+bool GetConfiguration(AdbdConfiguration* config) {
+  std::string config_json_data;
+  if (!base::ReadFileToString(base::FilePath(kConfigPath), &config_json_data)) {
+    PLOG(ERROR) << "Failed to read config from " << kConfigPath;
+    return false;
+  }
+
+  std::string error_msg;
+  std::unique_ptr<const base::Value> config_root_val =
+      base::JSONReader::ReadAndReturnError(
+          config_json_data, base::JSON_PARSE_RFC, nullptr /* error_code_out */,
+          &error_msg, nullptr /* error_line_out */,
+          nullptr /* error_column_out */);
+  if (!config_root_val) {
+    LOG(ERROR) << "Failed to parse adb.json: " << error_msg;
+    return false;
+  }
+  const base::DictionaryValue* config_root_dict = nullptr;
+  if (!config_root_val->GetAsDictionary(&config_root_dict)) {
+    LOG(ERROR) << "Failed to parse root dictionary from adb.json";
+    return false;
+  }
+  if (!config_root_dict->GetString("usbProductId", &config->usb_product_id)) {
+    LOG(ERROR) << "Failed to parse usbProductId";
+    return false;
+  }
+  const base::ListValue* kernel_module_list = nullptr;
+  // kernelModules are optional.
+  if (config_root_dict->GetList("kernelModules", &kernel_module_list)) {
+    for (const auto* kernel_module_value : *kernel_module_list) {
+      AdbdConfigurationKernelModule module;
+      const base::DictionaryValue* kernel_module_dict = nullptr;
+      if (!kernel_module_value->GetAsDictionary(&kernel_module_dict)) {
+        LOG(ERROR) << "kernelModules contains a non-dictionary";
+        return false;
+      }
+      if (!kernel_module_dict->GetString("name", &module.name)) {
+        LOG(ERROR) << "Failed to parse kernelModules.name";
+        return false;
+      }
+      const base::ListValue* parameter_list = nullptr;
+      if (kernel_module_dict->GetList("parameters", &parameter_list)) {
+        // Parameters are optional.
+        for (const auto* parameter_value : *parameter_list) {
+          std::string parameter;
+          if (!parameter_value->GetAsString(&parameter)) {
+            LOG(ERROR) << "kernelModules.parameters contains a non-string";
+            return false;
+          }
+          module.parameters.emplace_back(parameter);
+        }
+      }
+      config->kernel_modules.emplace_back(module);
+    }
+  }
+
+  return true;
 }
 
 // Writes a string to a file. Returns false if the full string was not able to
@@ -102,10 +201,41 @@ bool WriteFile(const base::FilePath& filename, const std::string& contents) {
   return true;
 }
 
+// Sets up all the necessary kernel modules for the device.
+bool SetupKernelModules(
+    const std::vector<AdbdConfigurationKernelModule>& kernel_modules) {
+  for (const auto& kernel_module : kernel_modules) {
+    std::vector<std::string> argv;
+    argv.emplace_back("/sbin/modprobe");
+    argv.emplace_back(kernel_module.name);
+    argv.insert(std::end(argv), std::begin(kernel_module.parameters),
+                std::end(kernel_module.parameters));
+    base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
+    if (!process.IsValid()) {
+      PLOG(ERROR) << "Failed to invoke /sbin/modprobe " << kernel_module.name;
+      return false;
+    }
+    int exit_code = -1;
+    if (!process.WaitForExit(&exit_code)) {
+      PLOG(ERROR) << "Failed to wait for /sbin/modprobe " << kernel_module.name;
+      return false;
+    }
+    if (exit_code != 0) {
+      LOG(ERROR) << "Invocation of /sbin/modprobe " << kernel_module.name
+                 << " exited with non-zero code " << exit_code;
+      return false;
+    }
+  }
+  return true;
+}
+
 // Sets up the ConfigFS files to be able to use the ADB gadget. The
 // |serialnumber| parameter is used to setup how the device appears in "adb
-// devices".
-bool SetupConfigFS(const std::string& serialnumber) {
+// devices". The |usb_product_id| and |usb_product_name| parameters are used so
+// that the USB gadget self-reports as Android running in Chrome OS.
+bool SetupConfigFS(const std::string& serialnumber,
+                   const std::string& usb_product_id,
+                   const std::string& usb_product_name) {
   const base::FilePath configfs_directory(kConfigFSPath);
   if (!base::CreateDirectory(configfs_directory)) {
     PLOG(ERROR) << "Failed to create " << configfs_directory.value();
@@ -142,7 +272,7 @@ bool SetupConfigFS(const std::string& serialnumber) {
   }
   if (!WriteFile(gadget_path.Append("idVendor"), "0x18d1"))
     return false;
-  if (!WriteFile(gadget_path.Append("idProduct"), "0x4ee7"))
+  if (!WriteFile(gadget_path.Append("idProduct"), usb_product_id))
     return false;
   if (!WriteFile(gadget_path.Append("strings/0x409/serialnumber"),
                  serialnumber)) {
@@ -150,7 +280,7 @@ bool SetupConfigFS(const std::string& serialnumber) {
   }
   if (!WriteFile(gadget_path.Append("strings/0x409/manufacturer"), "google"))
     return false;
-  if (!WriteFile(gadget_path.Append("strings/0x409/product"), "Cheets"))
+  if (!WriteFile(gadget_path.Append("strings/0x409/product"), usb_product_name))
     return false;
   if (!WriteFile(gadget_path.Append("configs/b.1/MaxPower"), "500"))
     return false;
@@ -293,6 +423,15 @@ int main(int argc, char** argv) {
     return 0;
   }
 
+  AdbdConfiguration config;
+  if (!GetConfiguration(&config)) {
+    LOG(INFO) << "Unable to find the configuration for this service. "
+              << "This device does not support ADB over USB.";
+    return 0;
+  }
+
+  const std::string board = GetStrippedReleaseBoard();
+
   const base::FilePath control_pipe_path = runtime_path.Append("ep0");
   if (!CreatePipe(control_pipe_path))
     return 1;
@@ -331,7 +470,11 @@ int main(int argc, char** argv) {
     // Once adbd has opened the control pipe, we set up the adb gadget on behalf
     // of that process, if we have not already.
     if (!configured) {
-      if (!SetupConfigFS(FLAGS_serialnumber)) {
+      if (!SetupKernelModules(config.kernel_modules)) {
+        LOG(ERROR) << "Failed to load kernel modules";
+        return 1;
+      }
+      if (!SetupConfigFS(FLAGS_serialnumber, config.usb_product_id, board)) {
         LOG(ERROR) << "Failed to configure ConfigFS";
         return 1;
       }
