@@ -93,6 +93,11 @@ enum bind_dir {
   BIND_DEST,
 };
 
+enum result_code {
+  RESULT_SUCCESS = 0,
+  RESULT_FAIL_FATAL = 1,
+};
+
 #define str_literal(s) (const_cast<char *>(s))
 static struct bind_mount {
   char* src;      /* Location of bind source. */
@@ -182,15 +187,14 @@ static int check_tpm_result(uint32_t result, const char* operation) {
 }
 #define RETURN_ON_FAILURE(x, y) \
   if (!check_tpm_result(x, y))  \
-  return 0
+    return RESULT_FAIL_FATAL
 #define LOG_RESULT(x, y) check_tpm_result(x, y)
 
 static void sha256(char const* str, uint8_t* digest) {
   SHA256((unsigned char*)(str), strlen(str), digest);
 }
 
-/* Returns 1 on success, 0 on failure. */
-static int get_random_bytes_tpm(unsigned char* buffer, int wanted) {
+static result_code get_random_bytes_tpm(unsigned char* buffer, int wanted) {
   uint32_t remaining = wanted;
 
   tpm_init();
@@ -201,29 +205,28 @@ static int get_random_bytes_tpm(unsigned char* buffer, int wanted) {
     result = TlclGetRandom(buffer + (wanted - remaining), remaining, &size);
     if (result != TPM_SUCCESS || size > remaining) {
       ERROR("TPM GetRandom failed: error 0x%02x.", result);
-      return 0;
+      return RESULT_FAIL_FATAL;
     }
     remaining -= size;
   }
 
-  return 1;
+  return RESULT_SUCCESS;
 }
 
-/* Returns 1 on success, 0 on failure. */
-static int get_random_bytes(unsigned char* buffer, int wanted) {
-  if (has_tpm && get_random_bytes_tpm(buffer, wanted))
-    return 1;
+static result_code get_random_bytes(unsigned char* buffer, int wanted) {
+  if (has_tpm && get_random_bytes_tpm(buffer, wanted) == RESULT_SUCCESS)
+    return RESULT_SUCCESS;
 
   if (RAND_bytes(buffer, wanted))
-    return 1;
+    return RESULT_SUCCESS;
   SSL_ERROR("RAND_bytes");
 
-  return 0;
+  return RESULT_FAIL_FATAL;
 }
 
 /* Extract the desired system key from the kernel's boot command line. */
-static int get_key_from_cmdline(uint8_t* digest) {
-  int result = 0;
+static result_code get_key_from_cmdline(uint8_t* digest) {
+  result_code rc = RESULT_FAIL_FATAL;
   gchar* buffer;
   gsize length;
   char *cmdline, *option_end;
@@ -232,7 +235,7 @@ static int get_key_from_cmdline(uint8_t* digest) {
 
   if (!g_file_get_contents(kKernelCmdline, &buffer, &length, NULL)) {
     PERROR("%s", kKernelCmdline);
-    return 0;
+    return RESULT_FAIL_FATAL;
   }
 
   /* Find a string match either at start of string or following
@@ -248,21 +251,22 @@ static int get_key_from_cmdline(uint8_t* digest) {
     *option_end = '\0';
     sha256(cmdline, digest);
     debug_dump_hex("system key", digest, DIGEST_LENGTH);
-    result = 1;
+    rc = RESULT_SUCCESS;
   }
 
   g_free(buffer);
-  return result;
+  return rc;
 }
 
-static int get_system_property(const char* prop, char* buf, size_t length) {
+static result_code get_system_property(const char* prop, char* buf,
+                                       size_t length) {
   const char* rc;
 
   DEBUG("Fetching System Property '%s'", prop);
   rc = VbGetSystemPropertyString(prop, buf, length);
   DEBUG("Got System Property 'mainfw_type': %s", rc ? buf : "FAIL");
 
-  return rc != NULL;
+  return rc != NULL ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
 }
 
 static int has_chromefw(void) {
@@ -273,7 +277,7 @@ static int has_chromefw(void) {
   if (state != -1)
     return state;
 
-  if (!get_system_property("mainfw_type", fw, sizeof(fw)))
+  if (get_system_property("mainfw_type", fw, sizeof(fw)) != RESULT_SUCCESS)
     state = 0;
   else
     state = strcmp(fw, "nonchrome") != 0;
@@ -288,7 +292,7 @@ static int is_cr48(void) {
   if (state != -1)
     return state;
 
-  if (!get_system_property("hwid", hwid, sizeof(hwid)))
+  if (get_system_property("hwid", hwid, sizeof(hwid)) != RESULT_SUCCESS)
     state = 0;
   else
     state = strstr(hwid, "MARIO") != NULL;
@@ -328,9 +332,8 @@ static uint32_t _read_nvram(uint8_t* buffer,
 /*
  * Cache Lockbox NVRAM area in nvram_data, set nvram_size to the actual size.
  * Set *migrate to 0 for Version 2 Lockbox area, and 1 otherwise.
- * Returns 1 on success.
  */
-int read_lockbox_nvram_area(int* migrate) {
+result_code read_lockbox_nvram_area(int* migrate) {
   uint8_t owned = 0;
   uint8_t bytes_anded, bytes_ored;
   uint32_t result, i;
@@ -342,11 +345,11 @@ int read_lockbox_nvram_area(int* migrate) {
   result = tpm_owned(&owned);
   if (result != TPM_SUCCESS) {
     INFO("Could not read TPM Permanent Flags: error 0x%02x.", result);
-    return 0;
+    return RESULT_FAIL_FATAL;
   }
   if (!owned) {
     INFO("TPM not Owned, ignoring Lockbox NVRAM area.");
-    return 0;
+    return RESULT_FAIL_FATAL;
   }
 
   /* Reading the NVRAM takes 40ms. Instead of querying the NVRAM area
@@ -365,7 +368,7 @@ int read_lockbox_nvram_area(int* migrate) {
     if (result != TPM_SUCCESS) {
       /* No NVRAM area at all. */
       INFO("No Lockbox NVRAM area defined: error 0x%02x", result);
-      return 0;
+      return RESULT_FAIL_FATAL;
     }
     /* Legacy NVRAM area. */
     nvram_size = kLockboxSizeV1;
@@ -388,10 +391,10 @@ int read_lockbox_nvram_area(int* migrate) {
   if (bytes_ored == 0x0 || bytes_anded == 0xff) {
     INFO("NVRAM area has been defined but not written.");
     nvram_size = 0;
-    return 0;
+    return RESULT_FAIL_FATAL;
   }
 
-  return 1;
+  return RESULT_SUCCESS;
 }
 
 /*
@@ -401,29 +404,29 @@ int read_lockbox_nvram_area(int* migrate) {
  *  - wrong-size NVRAM or invalid write-locked NVRAM: tampered with / corrupted
  *    ignore
  *    will never have the salt in NVRAM (finalization_needed forever)
- *    return 0 (will re-create the mounts, if existed)
+ *    return FAIL_FATAL (will re-create the mounts, if existed)
  *  - read-locked NVRAM: already started / tampered with
  *    ignore
- *    return 0 (will re-create the mounts, if existed)
+ *    return FAIL_FATAL (will re-create the mounts, if existed)
  *  - no NVRAM or invalid but not write-locked NVRAM: OOBE or interrupted OOBE
  *    generate new salt, write to NVRAM, write-lock, read-lock
- *    return 1
+ *    return SUCCESS
  *  - valid NVRAM not write-locked: interrupted OOBE
  *    use NVRAM, write-lock, read-lock
  *    (security-wise not worse than finalization_needed forever)
- *    return 1
+ *    return SUCCESS
  *  - valid NVRAM:
  *    use NVRAM, read-lock
- *    return 1
+ *    return SUCCESS
  *
- * When returning 1: (NVRAM area found and used)
+ * In case of success: (NVRAM area found and used)
  *  - *digest populated with NVRAM area entropy.
  *  - *migrate is 0
- * When returning 0: (NVRAM missing or error)
+ * In case of failure: (NVRAM missing or error)
  *  - *digest untouched.
  *  - *migrate is 0
  */
-static int get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
+static result_code get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
   uint32_t result;
   uint32_t perm;
   struct nvram_area_tpm2 area;
@@ -438,7 +441,7 @@ static int get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
 
   tpm_init();
   if (!has_tpm)
-    return 0;
+    return RESULT_FAIL_FATAL;
 
   result = TlclGetPermissions(kNvramAreaTpm2Index, &perm);
   if (result == TPM_SUCCESS) {
@@ -465,11 +468,11 @@ static int get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
     unsigned char rand_bytes[DIGEST_LENGTH];
     if (perm & TPMA_NV_WRITELOCKED) {
       ERROR("NVRAM area is not valid and write-locked");
-      return 0;
+      return RESULT_FAIL_FATAL;
     }
     INFO("NVRAM area is new or not valid -- generating new key");
 
-    if (!get_random_bytes(rand_bytes, sizeof(rand_bytes)))
+    if (get_random_bytes(rand_bytes, sizeof(rand_bytes)) != RESULT_SUCCESS)
       ERROR(
           "No entropy source found -- "
           "using uninitialized stack");
@@ -496,7 +499,7 @@ static int get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
   SHA256(area.salt, DIGEST_LENGTH, digest);
   debug_dump_hex("system key", digest, DIGEST_LENGTH);
 
-  return 1;
+  return RESULT_SUCCESS;
 }
 
 /*
@@ -522,20 +525,22 @@ static int get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
  *    - if legacy size, allow migration.
  *    - if not, disallow migration.
  *
- * When returning 1: (NVRAM area found and used)
+ * In case of success: (NVRAM area found and used)
  *  - *digest populated with NVRAM area entropy.
  *  - *migrate is 1 for NVRAM v1, 0 for NVRAM v2.
- * When returning 0: (NVRAM missing or error)
+ * In case of failure: (NVRAM missing or error)
  *  - *digest untouched.
  *  - *migrate always 1
  */
-static int get_nvram_key_tpm1(uint8_t* digest, int* migrate) {
+static result_code get_nvram_key_tpm1(uint8_t* digest, int* migrate) {
   uint8_t* rand_bytes;
   uint32_t rand_size;
+  result_code rc;
 
   /* Read lockbox nvram data and "export" it for use after the helper. */
-  if (!read_lockbox_nvram_area(migrate))
-    return 0;
+  rc = read_lockbox_nvram_area(migrate);
+  if (rc != RESULT_SUCCESS)
+    return rc;
 
   /* Choose random bytes to use based on NVRAM version. */
   if (nvram_size == kLockboxSizeV1) {
@@ -545,23 +550,23 @@ static int get_nvram_key_tpm1(uint8_t* digest, int* migrate) {
     rand_bytes = nvram_data + kLockboxSaltOffset;
     if (kLockboxSaltOffset + DIGEST_LENGTH > nvram_size) {
       INFO("Impossibly small NVRAM area size (%d).", nvram_size);
-      return 0;
+      return RESULT_FAIL_FATAL;
     }
     rand_size = DIGEST_LENGTH;
   }
   if (rand_size < DIGEST_LENGTH) {
     INFO("Impossibly small rand_size (%d).", rand_size);
-    return 0;
+    return RESULT_FAIL_FATAL;
   }
   debug_dump_hex("rand_bytes", rand_bytes, rand_size);
 
   SHA256(rand_bytes, rand_size, digest);
   debug_dump_hex("system key", digest, DIGEST_LENGTH);
 
-  return 1;
+  return RESULT_SUCCESS;
 }
 
-static int get_nvram_key(uint8_t* digest, int* migrate) {
+static result_code get_nvram_key(uint8_t* digest, int* migrate) {
   return is_tpm2() ? get_nvram_key_tpm2(digest, migrate)
                    : get_nvram_key_tpm1(digest, migrate);
 }
@@ -571,7 +576,8 @@ static int get_nvram_key(uint8_t* digest, int* migrate) {
  * fallback through various places (kernel command line, BIOS UUID, and
  * finally a static value) for a system key.
  */
-static int find_system_key(int mode, uint8_t* digest, int* migration_allowed) {
+static result_code find_system_key(int mode, uint8_t* digest,
+                                   int* migration_allowed) {
   gchar* key;
   gsize length;
 
@@ -583,17 +589,17 @@ static int find_system_key(int mode, uint8_t* digest, int* migration_allowed) {
     INFO("Using factory insecure system key.");
     sha256(kStaticKeyFactory, digest);
     debug_dump_hex("system key", digest, DIGEST_LENGTH);
-    return 1;
+    return RESULT_SUCCESS;
   }
 
   /* Force ChromeOS devices into requiring the system key come from
    * NVRAM.
    */
   if (has_chromefw()) {
-    int rc;
+    result_code rc;
     rc = get_nvram_key(digest, migration_allowed);
 
-    if (rc) {
+    if (rc == RESULT_SUCCESS) {
       INFO("Using NVRAM as system key; already populated%s.",
            *migration_allowed ? " (legacy)" : "");
     } else {
@@ -602,9 +608,9 @@ static int find_system_key(int mode, uint8_t* digest, int* migration_allowed) {
     return rc;
   }
 
-  if (get_key_from_cmdline(digest)) {
+  if (get_key_from_cmdline(digest) == RESULT_SUCCESS) {
     INFO("Using kernel command line argument as system key.");
-    return 1;
+    return RESULT_SUCCESS;
   }
   if (g_file_get_contents("/sys/class/dmi/id/product_uuid", &key, &length,
                           NULL)) {
@@ -612,20 +618,20 @@ static int find_system_key(int mode, uint8_t* digest, int* migration_allowed) {
     debug_dump_hex("system key", digest, DIGEST_LENGTH);
     g_free(key);
     INFO("Using UUID as system key.");
-    return 1;
+    return RESULT_SUCCESS;
   }
 
   INFO("Using default insecure system key.");
   sha256(kStaticKeyDefault, digest);
   debug_dump_hex("system key", digest, DIGEST_LENGTH);
-  return 1;
+  return RESULT_SUCCESS;
 }
 
 static char* choose_encryption_key(void) {
   unsigned char rand_bytes[DIGEST_LENGTH];
   unsigned char digest[DIGEST_LENGTH];
 
-  if (!get_random_bytes(rand_bytes, sizeof(rand_bytes)))
+  if (get_random_bytes(rand_bytes, sizeof(rand_bytes)) != RESULT_SUCCESS)
     ERROR("No entropy source found -- using uninitialized stack");
 
   SHA256(rand_bytes, DIGEST_LENGTH, digest);
@@ -634,7 +640,7 @@ static char* choose_encryption_key(void) {
   return stringify_hex(digest, DIGEST_LENGTH);
 }
 
-static int check_bind(struct bind_mount* bind, enum bind_dir dir) {
+static result_code check_bind(struct bind_mount* bind, enum bind_dir dir) {
   struct passwd* user;
   struct group* group;
   const gchar* target;
@@ -646,36 +652,36 @@ static int check_bind(struct bind_mount* bind, enum bind_dir dir) {
 
   if (access(target, R_OK) && mkdir(target, bind->mode)) {
     PERROR("mkdir(%s)", target);
-    return -1;
+    return RESULT_FAIL_FATAL;
   }
 
   /* Destination may be on read-only filesystem, so skip tweaks. */
   if (dir == BIND_DEST)
-    return 0;
+    return RESULT_SUCCESS;
 
   if (!(user = getpwnam(bind->owner))) {  // NOLINT(runtime/threadsafe_fn)
     PERROR("getpwnam(%s)", bind->owner);
-    return -1;
+    return RESULT_FAIL_FATAL;
   }
   if (!(group = getgrnam(bind->group))) {  // NOLINT(runtime/threadsafe_fn)
     PERROR("getgrnam(%s)", bind->group);
-    return -1;
+    return RESULT_FAIL_FATAL;
   }
 
   /* Must do explicit chmod since mkdir()'s mode respects umask. */
   if (chmod(target, bind->mode)) {
     PERROR("chmod(%s)", target);
-    return -1;
+    return RESULT_FAIL_FATAL;
   }
   if (chown(target, user->pw_uid, group->gr_gid)) {
     PERROR("chown(%s)", target);
-    return -1;
+    return RESULT_FAIL_FATAL;
   }
 
-  return 0;
+  return RESULT_SUCCESS;
 }
 
-static int migrate_contents(struct bind_mount* bind,
+static result_code migrate_contents(struct bind_mount* bind,
                             enum migration_method method) {
   const gchar* previous = NULL;
   const gchar* pending = NULL;
@@ -687,11 +693,11 @@ static int migrate_contents(struct bind_mount* bind,
   if (bind->previous && access(bind->previous, R_OK) == 0)
     previous = bind->previous;
   if (!pending && !previous)
-    return 0;
+    return RESULT_FAIL_FATAL;
 
   /* Pretend migration happened. */
   if (method == MIGRATE_TEST_ONLY)
-    return 1;
+    return RESULT_SUCCESS;
 
   check_bind(bind, BIND_SOURCE);
 
@@ -745,7 +751,7 @@ mark_for_removal:
   /* As noted above, failures are unrecoverable, so getting here means
    * "we're done" more than "it worked".
    */
-  return 1;
+  return RESULT_SUCCESS;
 }
 
 static void finalized(void) {
@@ -795,55 +801,57 @@ static void needs_finalization(char* encryption_key) {
  * TPM is done being set up. If the system key is passed as an argument,
  * use it, otherwise attempt to query the TPM again.
  */
-static int finalize_from_cmdline(char* key) {
+static result_code finalize_from_cmdline(char* key) {
   uint8_t system_key[DIGEST_LENGTH];
   char* encryption_key;
   int migrate;
+  result_code rc;
 
   /* For TPM2 mount-encrypted itself generates the system-key, and
    * finalizes the encryption key at boot time. So, finalization from
    * command line is ignored.
    */
   if (is_tpm2() && has_chromefw())
-    return EXIT_SUCCESS;
+    return RESULT_SUCCESS;
 
   /* Early sanity-check to see if the encrypted device exists,
    * instead of failing at the end of this function.
    */
   if (access(dmcrypt_dev, R_OK)) {
     ERROR("'%s' does not exist, giving up.", dmcrypt_dev);
-    return EXIT_FAILURE;
+    return RESULT_FAIL_FATAL;
   }
 
   if (key) {
     if (strlen(key) != 2 * DIGEST_LENGTH) {
       ERROR("Invalid key length.");
-      return EXIT_FAILURE;
+      return RESULT_FAIL_FATAL;
     }
 
     if (!hexify_string(key, system_key, DIGEST_LENGTH)) {
       ERROR("Failed to convert hex string to byte array");
-      return EXIT_FAILURE;
+      return RESULT_FAIL_FATAL;
     }
   } else {
     /* Factory mode will never call finalize from the command
      * line, so force Production mode here.
      */
-    if (!find_system_key(kModeProduction, system_key, &migrate)) {
+    rc = find_system_key(kModeProduction, system_key, &migrate);
+    if (rc != RESULT_SUCCESS) {
       ERROR("Could not locate system key.");
-      return EXIT_FAILURE;
+      return rc;
     }
   }
 
   encryption_key = dm_get_key(dmcrypt_dev);
   if (!encryption_key) {
     ERROR("Could not locate encryption key for %s.", dmcrypt_dev);
-    return EXIT_FAILURE;
+    return RESULT_FAIL_FATAL;
   }
 
   finalize(system_key, encryption_key);
 
-  return EXIT_SUCCESS;
+  return RESULT_SUCCESS;
 }
 
 static void spawn_resizer(const char* device,
@@ -882,15 +890,15 @@ static void spawn_resizer(const char* device,
 
 out:
   INFO_DONE("Done.");
-  exit(0);
+  exit(RESULT_SUCCESS);
 }
 
 /* Do all the work needed to actually set up the encrypted partition.
  * Takes "mode" argument to help determine where the system key should
  * come from.
  */
-static int setup_encrypted(int mode) {
-  int has_system_key;
+static result_code setup_encrypted(int mode) {
+  int has_system_key = 0;
   uint8_t system_key[DIGEST_LENGTH];
   char* encryption_key = NULL;
   int migrate_allowed = 0, migrate_needed = 0, rebuild = 0;
@@ -904,17 +912,20 @@ static int setup_encrypted(int mode) {
   struct statvfs stateful_statbuf;
   uint64_t blocks_min, blocks_max;
   int valid_keyfile = 0;
-  int rc = 0;
+  result_code rc;
 
   /* Use the "system key" to decrypt the "encryption key" stored in
    * the stateful partition.
    */
-  has_system_key = find_system_key(mode, system_key, &migrate_allowed);
-  if (has_system_key) {
+  rc = find_system_key(mode, system_key, &migrate_allowed);
+  if (rc == RESULT_SUCCESS) {
+    has_system_key = 1;
     encryption_key = keyfile_read(key_path, system_key);
   } else {
     INFO("No usable system key found.");
   }
+  /* Set rc back to fail by default; will be set to success at the end. */
+  rc = RESULT_FAIL_FATAL;
 
   if (encryption_key) {
     /* If we found a stored encryption key, we've already
@@ -1015,7 +1026,7 @@ static int setup_encrypted(int mode) {
     migrate_allowed = 0;
   if (migrate_allowed) {
     for (bind = bind_mounts; bind->src; ++bind) {
-      if (migrate_contents(bind, MIGRATE_TEST_ONLY))
+      if (migrate_contents(bind, MIGRATE_TEST_ONLY) == RESULT_SUCCESS)
         migrate_needed = 1;
     }
   }
@@ -1109,7 +1120,8 @@ static int setup_encrypted(int mode) {
   /* Perform bind mounts. */
   for (bind = bind_mounts; bind->src; ++bind) {
     INFO("Bind mounting %s onto %s.", bind->src, bind->dst);
-    if (check_bind(bind, BIND_SOURCE) || check_bind(bind, BIND_DEST))
+    if (check_bind(bind, BIND_SOURCE) != RESULT_SUCCESS ||
+        check_bind(bind, BIND_DEST) != RESULT_SUCCESS)
       goto unbind;
     if (mount(bind->src, bind->dst, "none", MS_BIND, NULL)) {
       PERROR("mount(%s,%s)", bind->src, bind->dst);
@@ -1152,7 +1164,7 @@ static int setup_encrypted(int mode) {
   }
 
   /* Everything completed without error.*/
-  rc = 1;
+  rc = RESULT_SUCCESS;
   goto finished;
 
 unbind:
@@ -1191,7 +1203,7 @@ finished:
  * can be cleaned up from, and continue the shutdown process on a
  * second call. If the loopback cannot be found, claim success.
  */
-static int shutdown(void) {
+static result_code shutdown(void) {
   struct bind_mount* bind;
 
   for (bind = bind_mounts; bind->src; ++bind) {
@@ -1201,7 +1213,7 @@ static int shutdown(void) {
     if (umount(bind->dst)) {
       if (errno != EINVAL) {
         PERROR("umount(%s)", bind->dst);
-        return EXIT_FAILURE;
+        return RESULT_FAIL_FATAL;
       }
     }
   }
@@ -1212,7 +1224,7 @@ static int shutdown(void) {
   if (umount(encrypted_mount)) {
     if (errno != EINVAL) {
       PERROR("umount(%s)", encrypted_mount);
-      return EXIT_FAILURE;
+      return RESULT_FAIL_FATAL;
     }
   }
 
@@ -1245,20 +1257,20 @@ static int shutdown(void) {
   INFO("Unlooping %s (named %s).", block_path, dmcrypt_name);
   if (!loop_detach_name(dmcrypt_name)) {
     ERROR("loop_detach_name(%s)", dmcrypt_name);
-    return EXIT_FAILURE;
+    return RESULT_FAIL_FATAL;
   }
   sync();
 
-  return EXIT_SUCCESS;
+  return RESULT_SUCCESS;
 }
 
-static void check_mount_states(void) {
+static result_code check_mount_states(void) {
   struct bind_mount* bind;
 
   /* Verify stateful partition exists. */
   if (access(stateful_mount, R_OK)) {
     INFO("%s does not exist.", stateful_mount);
-    exit(1);
+    return RESULT_FAIL_FATAL;
   }
   /* Verify stateful is either a separate mount, or that the
    * root directory is writable (i.e. a factory install, dev mode
@@ -1266,21 +1278,21 @@ static void check_mount_states(void) {
    */
   if (same_vfs(stateful_mount, rootdir) && access(rootdir, W_OK)) {
     INFO("%s is not mounted.", stateful_mount);
-    exit(1);
+    return RESULT_FAIL_FATAL;
   }
 
   /* Verify encrypted partition is missing or not already mounted. */
   if (access(encrypted_mount, R_OK) == 0 &&
       !same_vfs(encrypted_mount, stateful_mount)) {
     INFO("%s already appears to be mounted.", encrypted_mount);
-    exit(0);
+    return RESULT_SUCCESS;
   }
 
   /* Verify that bind mount targets exist. */
   for (bind = bind_mounts; bind->src; ++bind) {
     if (access(bind->dst, R_OK)) {
       PERROR("%s mount point is missing.", bind->dst);
-      exit(1);
+      return RESULT_FAIL_FATAL;
     }
   }
 
@@ -1291,14 +1303,15 @@ static void check_mount_states(void) {
 
     if (same_vfs(bind->dst, stateful_mount)) {
       INFO("%s already bind mounted.", bind->dst);
-      exit(1);
+      return RESULT_FAIL_FATAL;
     }
   }
 
   INFO("VFS mount state sanity check ok.");
+  return RESULT_SUCCESS;
 }
 
-static int report_info(void) {
+static result_code report_info(void) {
   uint8_t system_key[DIGEST_LENGTH];
   uint8_t owned = 0;
   struct bind_mount* mnt;
@@ -1314,13 +1327,12 @@ static int report_info(void) {
   printf("CR48: %s\n", is_cr48() ? "yes" : "no");
   printf("TPM2: %s\n", is_tpm2() ? "yes" : "no");
   if (has_chromefw()) {
-    int rc;
+    result_code rc;
     rc = get_nvram_key(system_key, &migrate);
-    if (!rc) {
+    if (rc != RESULT_SUCCESS) {
       printf("NVRAM: missing.\n");
     } else {
-      printf("NVRAM: %s, %s.\n", migrate ? "legacy" : "modern",
-             rc ? "available" : "ignored");
+      printf("NVRAM: %s, available.\n", migrate ? "legacy" : "modern");
     }
   } else {
     printf("NVRAM: not present\n");
@@ -1345,11 +1357,11 @@ static int report_info(void) {
     printf("\n");
   }
 
-  return EXIT_SUCCESS;
+  return RESULT_SUCCESS;
 }
 
 /* This expects "mnt" to be allocated and initialized to NULL bytes. */
-static int dup_bind_mount(struct bind_mount* mnt,
+static result_code dup_bind_mount(struct bind_mount* mnt,
                           struct bind_mount* old,
                           char* dir) {
   if (old->src && asprintf(&mnt->src, "%s%s", dir, old->src) == -1)
@@ -1368,14 +1380,14 @@ static int dup_bind_mount(struct bind_mount* mnt,
   mnt->mode = old->mode;
   mnt->submount = old->submount;
 
-  return 0;
+  return RESULT_SUCCESS;
 
 fail:
   perror(__FUNCTION__);
-  return 1;
+  return RESULT_FAIL_FATAL;
 }
 
-static void prepare_paths(void) {
+static result_code prepare_paths(void) {
   char* dir = NULL;
   struct bind_mount* old;
   struct bind_mount* mnt;
@@ -1385,7 +1397,7 @@ static void prepare_paths(void) {
       sizeof(*bind_mounts_default));
   if (!mnt) {
     perror("calloc");
-    exit(1);
+    return RESULT_FAIL_FATAL;
   }
 
   if ((dir = getenv("MOUNT_ENCRYPTED_ROOT")) != NULL) {
@@ -1426,15 +1438,16 @@ static void prepare_paths(void) {
     goto fail;
 
   for (old = bind_mounts_default; old->src; ++old) {
-    if (dup_bind_mount(mnt++, old, rootdir))
-      exit(1);
+    result_code rc = dup_bind_mount(mnt++, old, rootdir);
+    if (rc != RESULT_SUCCESS)
+      return rc;
   }
 
-  return;
+  return RESULT_SUCCESS;
 
 fail:
   perror("asprintf");
-  exit(1);
+  return RESULT_FAIL_FATAL;
 }
 
 /* Exports NVRAM contents to tmpfs for use by install attributes */
@@ -1458,11 +1471,13 @@ void nvram_export(uint8_t* data, uint32_t size) {
 }
 
 int main(int argc, char* argv[]) {
-  int okay;
   int mode = kModeProduction;
+  result_code rc;
 
   INFO_INIT("Starting.");
-  prepare_paths();
+  rc = prepare_paths();
+  if (rc != RESULT_SUCCESS)
+    return rc;
 
   if (argc > 1) {
     if (!strcmp(argv[1], "umount")) {
@@ -1475,20 +1490,23 @@ int main(int argc, char* argv[]) {
       mode = kModeFactory;
     } else {
       fprintf(stderr, "Usage: %s [info|finalize|umount|factory]\n", argv[0]);
-      return 1;
+      return RESULT_FAIL_FATAL;
     }
   }
 
-  check_mount_states();
+  /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
+   * chromeos_startup do the stateful wipe.
+   */
+  rc = check_mount_states();
+  if (rc != RESULT_SUCCESS)
+    return rc;
 
-  okay = setup_encrypted(mode);
-  /* If we fail, let chromeos_startup handle the stateful wipe. */
-
-  if (okay)
+  rc = setup_encrypted(mode);
+  if (rc == RESULT_SUCCESS)
     nvram_export(nvram_data, nvram_size);
 
   INFO_DONE("Done.");
 
   /* Continue boot. */
-  return okay ? EXIT_SUCCESS : EXIT_FAILURE;
+  return rc;
 }
