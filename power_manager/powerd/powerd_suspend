@@ -67,6 +67,12 @@ readonly SUSPEND_TO_RAM_TIME_FILE="${ROOT_SPOOL_DIR}"/suspend-to-ram-time
 # File containing suspend-related information to log on failure.
 readonly SUSPEND_STATS_FILE=/sys/kernel/debug/suspend_stats
 
+# Compact if order 3 page count is less than this.
+readonly COMPACT_ORDER3_THRESHOLD=500
+
+# For testing: do not compact before suspending if this file exists.
+readonly NO_COMPACT_FILE="${ROOT_RUN_DIR}"/no-compact
+
 log_msg() {
   logger -t "powerd_suspend[$$]" -- "$@"
 }
@@ -289,6 +295,48 @@ setup_dark_resume() {
   fi
 }
 
+# Gets the allocatable order 3 page count. Using order 3 threshold because
+# there are many order 3 allocation by network modules when running low memory
+# suspending stress test. /proc/pagetypeinfo provides available high order
+# pages count, example:
+# Free pages count per migrate type at order    0    1    2    3   4 ... 10
+# ...
+# Node    0, zone    DMA32, type    Unmovable   1    9   29    5   2 ...  0
+# Node    0, zone    DMA32, type  Reclaimable 160  204   17    8   0 ...  0
+# Node    0, zone    DMA32, type      Movable   0 1163 1530 1236 298 ...  0
+# Node    0, zone    DMA32, type      Reserve   0    0    0    0   0 ...  2
+# Movable order 3 field 1236: there are 1236 order 3 pages ((2 ^ 3) * 4KB
+# consecutive memory).
+order3_available() {
+  awk '(NF == 17) &&
+    ($6 == "Unmovable" || $6 == "Movable" || $6 == "Reclaimable") {
+    size = 1
+    for (i = 10; i <= 17; i++) {
+      sum += $i * size
+      size *= 2
+    }
+  }
+  END { print sum }' /proc/pagetypeinfo
+}
+
+# When system is suspending, memory compaction and swap are disabled. If
+# memory is fragmented at this time, high order allocation would fail.
+# When memory fragmentation is detected (too few allocatable order 3 pages),
+# compact memory before suspending. For 4.4 or earlier kernel without
+# kcompactd.
+# TODO(crbug.com/827053): Check if compaction before suspending is necessary
+# on newer kernel.
+try_compact_memory() {
+  local order3="$(order3_available)"
+  log_msg "Available order 3 pages: ${order3}"
+  if uname -r | grep -q "^3\.\|^4\.4\." && [ ! -f ${NO_COMPACT_FILE} ] && \
+    [ "${order3}" -le "${COMPACT_ORDER3_THRESHOLD}" ]; then
+    log_msg "Compacting memory before suspend"
+    echo 1 > /proc/sys/vm/compact_memory
+    log_msg "Available order 3 pages after compaction: $(order3_available)"
+  fi
+}
+
 # Encourage people to use powerd_dbus_suspend instead of running this
 # script directly so that e.g. suspend delays will happen.
 if [ -z "${POWERD_SETUID_HELPER}" ]; then
@@ -371,6 +419,9 @@ else
 
   # Disable Bluetooth mode change events.
   bt_hci_mode_change_event_ctrl "disable"
+
+  # Compact memory if it is fragmented.
+  try_compact_memory
 
   log_msg "Finalizing suspend"
   # Make sure that hwclock is cached for when we wake up, this way we don't
