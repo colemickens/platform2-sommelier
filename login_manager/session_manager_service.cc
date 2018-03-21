@@ -42,7 +42,6 @@
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/systemd_unit_starter.h"
-#include "login_manager/termina_manager_impl.h"
 #include "login_manager/upstart_signal_emitter.h"
 
 namespace em = enterprise_management;
@@ -130,7 +129,6 @@ SessionManagerService::SessionManagerService(
       vpd_process_(utils),
       android_container_(std::make_unique<AndroidOciWrapper>(
           utils, base::FilePath(kContainerInstallDirectory))),
-      termina_manager_(std::make_unique<TerminaManagerImpl>(utils)),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       aborted_browser_pid_path_(kAbortedBrowserPidPath),
@@ -157,10 +155,6 @@ bool SessionManagerService::Initialize() {
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  dbus::ObjectProxy* component_updater_proxy = bus_->GetObjectProxy(
-      chromeos::kComponentUpdaterServiceName,
-      dbus::ObjectPath(chromeos::kComponentUpdaterServicePath));
-
   dbus::ObjectProxy* system_clock_proxy = bus_->GetObjectProxy(
       system_clock::kSystemClockServiceName,
       dbus::ObjectPath(system_clock::kSystemClockServicePath));
@@ -186,8 +180,8 @@ bool SessionManagerService::Initialize() {
       &key_gen_, &state_key_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), system_, &crossystem_, &vpd_process_, &owner_key_,
-      android_container_.get(), termina_manager_.get(),
-      &install_attributes_reader_, component_updater_proxy, system_clock_proxy);
+      android_container_.get(),
+      &install_attributes_reader_, system_clock_proxy);
   if (!InitializeImpl())
     return false;
 
@@ -306,8 +300,6 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   // Also ensure all containers are gone.
   android_container_->RequestJobExit("browser exited");
   android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
-  termina_manager_->RequestJobExit("browser exited");
-  termina_manager_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 
   // Do nothing if already shutting down.
   if (shutting_down_)
@@ -404,7 +396,6 @@ void SessionManagerService::SetUpHandlers() {
   job_managers.push_back(&key_gen_);
   job_managers.push_back(&vpd_process_);
   job_managers.push_back(android_container_.get());
-  job_managers.push_back(termina_manager_.get());
   signal_handler_.Init();
   child_exit_handler_.Init(&signal_handler_, job_managers);
   for (int i = 0; i < kNumSignals; ++i) {
@@ -499,10 +490,8 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout,
   RequestJobExit(reason);
   key_gen_.RequestJobExit(reason);
   android_container_->RequestJobExit(reason);
-  termina_manager_->RequestJobExit(reason);
   EnsureJobExit(timeout);
   key_gen_.EnsureJobExit(timeout);
-  termina_manager_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 }
 
 bool SessionManagerService::OnTerminationSignal(

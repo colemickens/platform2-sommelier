@@ -51,7 +51,6 @@ class PolicyKey;
 class ProcessManagerServiceInterface;
 class StartArcInstanceRequest;
 class SystemUtils;
-class TerminaManagerInterface;
 class UserPolicyServiceFactory;
 class VpdProcess;
 
@@ -135,9 +134,7 @@ class SessionManagerImpl
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
                      ContainerManagerInterface* android_container,
-                     TerminaManagerInterface* termina_manager,
                      InstallAttributesReader* install_attributes_reader,
-                     dbus::ObjectProxy* component_updater_proxy,
                      dbus::ObjectProxy* system_clock_proxy);
   ~SessionManagerImpl() override;
 
@@ -283,13 +280,6 @@ class SessionManagerImpl
 
   bool InitMachineInfo(brillo::ErrorPtr* error,
                        const std::string& in_data) override;
-  bool StartContainer(brillo::ErrorPtr* error,
-                      const std::string& in_path,
-                      const std::string& in_name,
-                      const std::string& in_hashed_username,
-                      bool in_writable) override;
-  bool StopContainer(brillo::ErrorPtr* error,
-                     const std::string& in_name) override;
   bool StartArcInstance(brillo::ErrorPtr* error,
                         const std::vector<uint8_t>& in_request,
                         std::string* out_container_instance_id,
@@ -473,9 +463,7 @@ class SessionManagerImpl
   VpdProcess* vpd_process_;                             // Owned by the caller.
   PolicyKey* owner_key_;                                // Owned by the caller.
   ContainerManagerInterface* android_container_;        // Owned by the caller.
-  TerminaManagerInterface* termina_manager_;            // Owned by the caller.
   InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
-  dbus::ObjectProxy* component_updater_proxy_;          // Owned by the caller.
   dbus::ObjectProxy* system_clock_proxy_;               // Owned by the caller.
 
   std::unique_ptr<DevicePolicyService> device_policy_;

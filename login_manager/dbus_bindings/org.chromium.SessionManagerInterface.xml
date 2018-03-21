@@ -560,32 +560,6 @@
     </method>
 
     <!--
-        StartContainer:
-        @path: The path to the disk image that holds the container.
-        @hashed_username: User hash used to find the data of the active user.
-        @name: A string containing the name to give the container.
-        @writable: If true, mount the container R/W inside the VM.
-
-        Starts an untrusted container using a VM to sandbox it.
-    -->
-    <method name="StartContainer">
-      <arg type="s" name="path" direction="in" />
-      <arg type="s" name="hashed_username" direction="in" />
-      <arg type="s" name="name" direction="in" />
-      <arg type="b" name="writable" direction="in" />
-    </method>
-
-    <!--
-        StopContainer:
-        @name: A string containing the name of the container to stop.
-
-        Stops a currently running container.
-    -->
-    <method name="StopContainer">
-      <arg type="s" name="name" direction="in" />
-    </method>
-
-    <!--
         StartArcInstance:
         @request: Serialized StartArcInstanceRequest proto message containing
                   ARC startup options.

@@ -43,7 +43,6 @@ class BrowserJobInterface;
 class LoginMetrics;
 class NssUtil;
 class SystemUtils;
-class TerminaManagerImpl;
 
 // Provides methods for running the browser, watching its progress, and
 // restarting it if need be.
@@ -233,7 +232,6 @@ class SessionManagerService
   CrossystemImpl crossystem_;
   VpdProcessImpl vpd_process_;
   std::unique_ptr<ContainerManagerInterface> android_container_;
-  std::unique_ptr<TerminaManagerImpl> termina_manager_;
   InstallAttributesReader install_attributes_reader_;
   std::unique_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
