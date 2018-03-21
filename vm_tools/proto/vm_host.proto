@@ -84,7 +84,7 @@ service LogCollector {
 service CrashCollector {
   // When an application in the VM crashes, maitre’d prepares
   // the crash report by converting the core dump to a minidump,
-  // and then sends this request to the VM-launcher so that it
+  // and then sends this request to concierge so that it
   // can launch crash-reporter to report the crash.
   rpc CollectCrashReport(CrashReportRequest) returns (EmptyMessage);
 }

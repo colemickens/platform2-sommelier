@@ -81,7 +81,7 @@ uploading it to Google servers.
 
 ## VM <-> host communication
 
-All communication between `vm_launcher` and the applications inside the VM
+All communication between `vm_concierge` and the applications inside the VM
 happen over a [vsock](https://lwn.net/Articles/695981/) transport. The actual
 RPC communication uses the [gRPC](http://grpc.io) framework. Every `maitred`
 instance listens on a known port in the vsock namespace (port 8888).

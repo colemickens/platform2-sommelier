@@ -16,20 +16,6 @@
       ],
     },
     {
-      'target_name': 'vm_launcher',
-      'type': 'executable',
-      'dependencies': ['vm-rpcs'],
-      'sources': [
-        'launcher/crosvm.cc',
-        'launcher/mac_address.cc',
-        'launcher/nfs_export.cc',
-        'launcher/pooled_resource.cc',
-        'launcher/subnet.cc',
-        'launcher/vm_launcher.cc',
-        'launcher/vsock_cid.cc',
-      ],
-    },
-    {
       'target_name': 'libforwarder',
       'type': 'static_library',
       'dependencies': ['vm-rpcs'],
