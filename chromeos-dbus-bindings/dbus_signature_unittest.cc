@@ -13,8 +13,12 @@
 using std::map;
 using std::string;
 using testing::Test;
+using testing::TestWithParam;
 
 namespace chromeos_dbus_bindings {
+
+using Direction = DBusType::Direction;
+using Receiver = DBusType::Receiver;
 
 namespace {
 
@@ -33,12 +37,10 @@ const char kUnknownSignature[] = "al";
 
 }  // namespace
 
-class DBusSignatureTest : public Test {
- protected:
-  DBusSignature signature_;
-};
+class DBusSignatureTest : public testing::TestWithParam<bool> {};
 
-TEST_F(DBusSignatureTest, ParseFailures) {
+TEST_P(DBusSignatureTest, ParseFailures) {
+  DBusSignature signature(GetParam() /* new_fd_bindings */);
   for (const auto& failing_string : { kEmptySignature,
                                       kEmptyDictSignature,
                                       kMissingArraryParameterSignature,
@@ -50,29 +52,28 @@ TEST_F(DBusSignatureTest, ParseFailures) {
                                       kUnclosedDictInnerSignature,
                                       kUnexpectedCloseSignature,
                                       kUnknownSignature }) {
-    string unused_output;
-    EXPECT_FALSE(signature_.Parse(failing_string, &unused_output))
+    EXPECT_FALSE(signature.Parse(failing_string))
         << "Expected signature " << failing_string
         << " to fail but it succeeded";
   }
 }
 
-TEST_F(DBusSignatureTest, ParseSuccesses) {
+TEST_P(DBusSignatureTest, ParseSuccesses) {
+  DBusSignature signature(GetParam() /* new_fd_bindings */);
   const map<string, string> parse_values {
     // Simple types.
-    { DBUS_TYPE_BOOLEAN_AS_STRING, DBusSignature::kBooleanTypename },
-    { DBUS_TYPE_BYTE_AS_STRING, DBusSignature::kByteTypename },
-    { DBUS_TYPE_DOUBLE_AS_STRING, DBusSignature::kDoubleTypename },
-    { DBUS_TYPE_OBJECT_PATH_AS_STRING, DBusSignature::kObjectPathTypename },
-    { DBUS_TYPE_INT16_AS_STRING, DBusSignature::kSigned16Typename },
-    { DBUS_TYPE_INT32_AS_STRING, DBusSignature::kSigned32Typename },
-    { DBUS_TYPE_INT64_AS_STRING, DBusSignature::kSigned64Typename },
-    { DBUS_TYPE_STRING_AS_STRING, DBusSignature::kStringTypename },
-    { DBUS_TYPE_UNIX_FD_AS_STRING, DBusSignature::kUnixFdTypename },
-    { DBUS_TYPE_UINT16_AS_STRING, DBusSignature::kUnsigned16Typename },
-    { DBUS_TYPE_UINT32_AS_STRING, DBusSignature::kUnsigned32Typename },
-    { DBUS_TYPE_UINT64_AS_STRING, DBusSignature::kUnsigned64Typename },
-    { DBUS_TYPE_VARIANT_AS_STRING, DBusSignature::kVariantTypename },
+    { DBUS_TYPE_BOOLEAN_AS_STRING, "bool" },
+    { DBUS_TYPE_BYTE_AS_STRING, "uint8_t" },
+    { DBUS_TYPE_DOUBLE_AS_STRING, "double" },
+    { DBUS_TYPE_OBJECT_PATH_AS_STRING, "dbus::ObjectPath" },
+    { DBUS_TYPE_INT16_AS_STRING, "int16_t" },
+    { DBUS_TYPE_INT32_AS_STRING, "int32_t" },
+    { DBUS_TYPE_INT64_AS_STRING, "int64_t" },
+    { DBUS_TYPE_STRING_AS_STRING, "std::string" },
+    { DBUS_TYPE_UINT16_AS_STRING, "uint16_t" },
+    { DBUS_TYPE_UINT32_AS_STRING, "uint32_t" },
+    { DBUS_TYPE_UINT64_AS_STRING, "uint64_t" },
+    { DBUS_TYPE_VARIANT_AS_STRING, "brillo::Any" },
 
     // Complex types.
     { "ab",             "std::vector<bool>" },
@@ -95,19 +96,26 @@ TEST_F(DBusSignatureTest, ParseSuccesses) {
     { "(ibs)",          "std::tuple<int32_t, bool, std::string>" },
   };
   for (const auto& parse_test : parse_values) {
-    string output;
-    EXPECT_TRUE(signature_.Parse(parse_test.first, &output))
+    auto type = signature.Parse(parse_test.first);
+    EXPECT_TRUE(type)
         << "Expected signature " << parse_test.first
         << " to succeed but it failed.";
+
+    string output = type->GetBaseType(Direction::kAppend);
     EXPECT_EQ(parse_test.second, output)
-        << "Expected typename for " << parse_test.first
-        << " to be " << parse_test.second << " but instead it was " << output;
+        << "Expected typename for " << parse_test.first << " to be "
+        << parse_test.second << " but instead it was " << output;
+    output = type->GetBaseType(Direction::kExtract);
+    EXPECT_EQ(parse_test.second, output)
+        << "Expected typename for " << parse_test.first << " to be "
+        << parse_test.second << " but instead it was " << output;
   }
 }
 
 // Scalar types should not have reference behavior when used as in-args, and
 // should just produce the base type as their in-arg type.
-TEST_F(DBusSignatureTest, ScalarTypes) {
+TEST_P(DBusSignatureTest, ScalarTypes) {
+  DBusSignature signature(GetParam() /* new_fd_bindings */);
   const std::vector<string> parse_values{
     DBUS_TYPE_BOOLEAN_AS_STRING,
     DBUS_TYPE_BYTE_AS_STRING,
@@ -121,20 +129,23 @@ TEST_F(DBusSignatureTest, ScalarTypes) {
   };
 
   for (const auto& parse_test : parse_values) {
-    auto type = signature_.Parse(parse_test);
+    auto type = signature.Parse(parse_test);
     EXPECT_TRUE(type);
-    EXPECT_EQ(type->GetBaseType(), type->GetInArgType());
+    EXPECT_EQ(type->GetBaseType(Direction::kExtract),
+              type->GetInArgType(Receiver::kAdaptor));
+    EXPECT_EQ(type->GetBaseType(Direction::kAppend),
+              type->GetInArgType(Receiver::kProxy));
   }
 }
 
 // Non-scalar types should have const reference behavior when used as in-args.
 // The references should not be nested.
-TEST_F(DBusSignatureTest, NonScalarTypes) {
+TEST_P(DBusSignatureTest, NonScalarTypes) {
+  DBusSignature signature(GetParam() /* new_fd_bindings */);
   const map<string, string> parse_values{
     { "o",              "const dbus::ObjectPath&" },
     { "s",              "const std::string&" },
     { "v",              "const brillo::Any&" },
-    { "h",              "const dbus::FileDescriptor&" },
     { "ab",             "const std::vector<bool>&" },
     { "ay",             "const std::vector<uint8_t>&" },
     { "aay",            "const std::vector<std::vector<uint8_t>>&" },
@@ -156,14 +167,16 @@ TEST_F(DBusSignatureTest, NonScalarTypes) {
   };
 
   for (const auto& parse_test : parse_values) {
-    auto type = signature_.Parse(parse_test.first);
+    auto type = signature.Parse(parse_test.first);
     EXPECT_TRUE(type);
-    EXPECT_EQ(parse_test.second, type->GetInArgType());
+    EXPECT_EQ(parse_test.second, type->GetInArgType(Receiver::kAdaptor));
+    EXPECT_EQ(parse_test.second, type->GetInArgType(Receiver::kProxy));
   }
 }
 
 // Out-args should be pointers, but only at the top level.
-TEST_F(DBusSignatureTest, OutArgTypes) {
+TEST_P(DBusSignatureTest, OutArgTypes) {
+  DBusSignature signature(GetParam() /* new_fd_bindings */);
   const map<string, string> parse_values{
     { "b",              "bool*" },
     { "y",              "uint8_t*" },
@@ -193,15 +206,17 @@ TEST_F(DBusSignatureTest, OutArgTypes) {
   };
 
   for (const auto& parse_test : parse_values) {
-    auto type = signature_.Parse(parse_test.first);
+    auto type = signature.Parse(parse_test.first);
     EXPECT_TRUE(type);
-    EXPECT_EQ(parse_test.second, type->GetOutArgType());
+    EXPECT_EQ(parse_test.second, type->GetOutArgType(Receiver::kAdaptor));
+    EXPECT_EQ(parse_test.second, type->GetOutArgType(Receiver::kProxy));
   }
 }
 
 // Test to ensure that file descriptors at varying levels of depth do
 // not produce valid types.
-TEST_F(DBusSignatureTest, IsValidPropertyType) {
+TEST_P(DBusSignatureTest, IsValidPropertyType) {
+  DBusSignature signature(GetParam() /* new_fd_bindings */);
   const std::vector<string> valid_property_types{
     "b",
     "y",
@@ -228,7 +243,7 @@ TEST_F(DBusSignatureTest, IsValidPropertyType) {
   };
 
   for (const auto& parse_test : valid_property_types) {
-    auto type = signature_.Parse(parse_test);
+    auto type = signature.Parse(parse_test);
     EXPECT_TRUE(type);
     EXPECT_TRUE(type->IsValidPropertyType());
   }
@@ -245,10 +260,84 @@ TEST_F(DBusSignatureTest, IsValidPropertyType) {
   };
 
   for (const auto& parse_test : invalid_property_types) {
-    auto type = signature_.Parse(parse_test);
+    auto type = signature.Parse(parse_test);
     EXPECT_TRUE(type);
     EXPECT_FALSE(type->IsValidPropertyType());
   }
+}
+
+INSTANTIATE_TEST_CASE_P(NewStyleBindings, DBusSignatureTest, testing::Bool());
+
+TEST(DBusSignatureTest, OldStyleFileDescriptors) {
+  DBusSignature signature(false /* new_fd_bindings */);
+
+  // for_extraction and for_adaptor shouldn't matter for old-style bindings.
+  auto type = signature.Parse(DBUS_TYPE_UNIX_FD_AS_STRING);
+  EXPECT_TRUE(type);
+  EXPECT_EQ("dbus::FileDescriptor", type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("dbus::FileDescriptor", type->GetBaseType(Direction::kExtract));
+  EXPECT_EQ("const dbus::FileDescriptor&",
+            type->GetInArgType(Receiver::kProxy));
+  EXPECT_EQ("const dbus::FileDescriptor&",
+            type->GetInArgType(Receiver::kAdaptor));
+  EXPECT_EQ("dbus::FileDescriptor*", type->GetOutArgType(Receiver::kProxy));
+  EXPECT_EQ("dbus::FileDescriptor*", type->GetOutArgType(Receiver::kAdaptor));
+
+  // Check that more involved types are correct as well.
+  type = signature.Parse("ah");
+  EXPECT_EQ("std::vector<dbus::FileDescriptor>",
+            type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("std::vector<dbus::FileDescriptor>",
+            type->GetBaseType(Direction::kExtract));
+
+  type = signature.Parse("a{ih}");
+  EXPECT_EQ("std::map<int32_t, dbus::FileDescriptor>",
+            type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("std::map<int32_t, dbus::FileDescriptor>",
+            type->GetBaseType(Direction::kExtract));
+
+  type = signature.Parse("(ih)");
+  EXPECT_EQ("std::tuple<int32_t, dbus::FileDescriptor>",
+            type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("std::tuple<int32_t, dbus::FileDescriptor>",
+            type->GetBaseType(Direction::kExtract));
+}
+
+TEST(DBusSignatureTest, NewStyleFileDescriptors) {
+  DBusSignature signature(true /* new_fd_bindings */);
+
+  auto type = signature.Parse(DBUS_TYPE_UNIX_FD_AS_STRING);
+  EXPECT_TRUE(type);
+  // for_extraction does matter now.
+  EXPECT_EQ("brillo::dbus_utils::FileDescriptor",
+            type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("base::ScopedFD", type->GetBaseType(Direction::kExtract));
+  // for_adaptor propagates as a different for_extraction as well.
+  EXPECT_EQ("const brillo::dbus_utils::FileDescriptor&",
+            type->GetInArgType(Receiver::kProxy));
+  EXPECT_EQ("const base::ScopedFD&", type->GetInArgType(Receiver::kAdaptor));
+  EXPECT_EQ("base::ScopedFD*", type->GetOutArgType(Receiver::kProxy));
+  EXPECT_EQ("brillo::dbus_utils::FileDescriptor*",
+            type->GetOutArgType(Receiver::kAdaptor));
+
+  // Check that more involved types are correct as well.
+  type = signature.Parse("ah");
+  EXPECT_EQ("std::vector<brillo::dbus_utils::FileDescriptor>",
+            type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("std::vector<base::ScopedFD>",
+            type->GetBaseType(Direction::kExtract));
+
+  type = signature.Parse("a{ih}");
+  EXPECT_EQ("std::map<int32_t, brillo::dbus_utils::FileDescriptor>",
+            type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("std::map<int32_t, base::ScopedFD>",
+            type->GetBaseType(Direction::kExtract));
+
+  type = signature.Parse("(ih)");
+  EXPECT_EQ("std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>",
+            type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("std::tuple<int32_t, base::ScopedFD>",
+            type->GetBaseType(Direction::kExtract));
 }
 
 }  // namespace chromeos_dbus_bindings

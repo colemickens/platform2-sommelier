@@ -20,8 +20,10 @@ using std::vector;
 
 namespace chromeos_dbus_bindings {
 
-std::string DBusType::GetOutArgType() const {
-  return GetBaseType() + "*";
+std::string DBusType::GetOutArgType(Receiver receiver) const {
+  return GetBaseType(receiver == Receiver::kAdaptor ? Direction::kAppend
+                                                    : Direction::kExtract) +
+         "*";
 }
 
 namespace {
@@ -45,7 +47,7 @@ class Scalar : public DBusType {
 
   bool IsValidPropertyType() const override { return true; }
 
-  std::string GetBaseType() const override {
+  std::string GetBaseType(Direction direction) const override {
     switch (type_) {
       case Type::kBoolean:
         return "bool";
@@ -68,7 +70,14 @@ class Scalar : public DBusType {
     }
   }
 
-  std::string GetInArgType() const override { return GetBaseType(); }
+  std::string GetInArgType(Receiver receiver) const override {
+    return GetBaseType(receiver == Receiver::kAdaptor ? Direction::kExtract
+                                                      : Direction::kAppend);
+  }
+
+  std::string GetCallbackArgType() const override {
+    return GetBaseType(Direction::kExtract);
+  }
 
  private:
   Type type_;
@@ -80,15 +89,24 @@ class Scalar : public DBusType {
 // Example would be brillo::Any or std::map.
 class NonScalar : public DBusType {
  public:
-  std::string GetInArgType() const override {
-    return base::StringPrintf("const %s&", GetBaseType().c_str());
+  std::string GetInArgType(Receiver receiver) const override {
+    return base::StringPrintf(
+        "const %s&",
+        GetBaseType(receiver == Receiver::kAdaptor ? Direction::kExtract
+                                                   : Direction::kAppend)
+            .c_str());
+  }
+
+  std::string GetCallbackArgType() const override {
+    return base::StringPrintf(
+        "const %s&", GetBaseType(Direction::kExtract).c_str());
   }
 };
 
 class SimpleNonScalar : public NonScalar {
  public:
   enum class Type {
-    kFileDescriptor,
+    kDeprecatedFileDescriptor,
     kObjectPath,
     kString,
     kVariant,
@@ -101,12 +119,12 @@ class SimpleNonScalar : public NonScalar {
     // FDs might be lurking inside variants, but they've already been
     // copied into a brillo::Any as the relevant type, so we can't do
     // much about that.
-    return type_ != Type::kFileDescriptor;
+    return type_ != Type::kDeprecatedFileDescriptor;
   }
 
-  std::string GetBaseType() const override {
+  std::string GetBaseType(Direction direction) const override {
     switch (type_) {
-      case Type::kFileDescriptor:
+      case Type::kDeprecatedFileDescriptor:
         return "dbus::FileDescriptor";
       case Type::kObjectPath:
         return "dbus::ObjectPath";
@@ -125,6 +143,17 @@ class SimpleNonScalar : public NonScalar {
   DISALLOW_COPY_AND_ASSIGN(SimpleNonScalar);
 };
 
+class FileDescriptor : public NonScalar {
+ public:
+  bool IsValidPropertyType() const override { return false; }
+
+  std::string GetBaseType(Direction direction) const override {
+    return direction == Direction::kExtract
+               ? "base::ScopedFD"
+               : "brillo::dbus_utils::FileDescriptor";
+  }
+};
+
 class Array : public NonScalar {
  public:
   explicit Array(std::unique_ptr<DBusType> inner_type)
@@ -134,9 +163,9 @@ class Array : public NonScalar {
     return inner_type_->IsValidPropertyType();
   }
 
-  std::string GetBaseType() const override {
+  std::string GetBaseType(Direction direction) const override {
     return base::StringPrintf("std::vector<%s>",
-                              inner_type_->GetBaseType().c_str());
+                              inner_type_->GetBaseType(direction).c_str());
   }
 
  private:
@@ -156,10 +185,10 @@ class Dict : public NonScalar {
            value_type_->IsValidPropertyType();
   }
 
-  std::string GetBaseType() const override {
+  std::string GetBaseType(Direction direction) const override {
     return base::StringPrintf("std::map<%s, %s>",
-                              key_type_->GetBaseType().c_str(),
-                              value_type_->GetBaseType().c_str());
+                              key_type_->GetBaseType(direction).c_str(),
+                              value_type_->GetBaseType(direction).c_str());
   }
 
  private:
@@ -182,10 +211,10 @@ class Struct : public NonScalar {
     return true;
   }
 
-  std::string GetBaseType() const override {
+  std::string GetBaseType(Direction direction) const override {
     std::vector<std::string> child_types;
     for (const auto& child : inner_types_)
-      child_types.push_back(child->GetBaseType());
+      child_types.push_back(child->GetBaseType(direction));
     return base::StringPrintf(
         "std::tuple<%s>",
         brillo::string_utils::Join(", ", child_types).c_str());
@@ -199,26 +228,10 @@ class Struct : public NonScalar {
 
 }  // namespace
 
-// static
-const char DBusSignature::kArrayTypename[] = "std::vector";
-const char DBusSignature::kBooleanTypename[] = "bool";
-const char DBusSignature::kByteTypename[] = "uint8_t";
-const char DBusSignature::kObjectPathTypename[] = "dbus::ObjectPath";
-const char DBusSignature::kDictTypename[] = "std::map";
-const char DBusSignature::kDoubleTypename[] = "double";
-const char DBusSignature::kSigned16Typename[] = "int16_t";
-const char DBusSignature::kSigned32Typename[] = "int32_t";
-const char DBusSignature::kSigned64Typename[] = "int64_t";
-const char DBusSignature::kStringTypename[] = "std::string";
-const char DBusSignature::kUnixFdTypename[] = "dbus::FileDescriptor";
-const char DBusSignature::kUnsigned16Typename[] = "uint16_t";
-const char DBusSignature::kUnsigned32Typename[] = "uint32_t";
-const char DBusSignature::kUnsigned64Typename[] = "uint64_t";
-const char DBusSignature::kVariantTypename[] = "brillo::Any";
-const char DBusSignature::kVariantDictTypename[] = "brillo::VariantDictionary";
-const char DBusSignature::kTupleTypename[] = "std::tuple";
+DBusSignature::DBusSignature() : new_fd_bindings_(false) {}
 
-DBusSignature::DBusSignature() = default;
+DBusSignature::DBusSignature(bool new_fd_bindings)
+    : new_fd_bindings_(new_fd_bindings) {}
 
 std::unique_ptr<DBusType> DBusSignature::Parse(const string& signature) {
   string::const_iterator end;
@@ -234,15 +247,6 @@ std::unique_ptr<DBusType> DBusSignature::Parse(const string& signature) {
   }
 
   return type;
-}
-
-bool DBusSignature::Parse(const string& signature, string* output) {
-  auto type = Parse(signature);
-  if (!type)
-    return false;
-
-  *output = type->GetBaseType();
-  return true;
 }
 
 std::unique_ptr<DBusType> DBusSignature::GetTypenameForSignature(
@@ -291,8 +295,12 @@ std::unique_ptr<DBusType> DBusSignature::GetTypenameForSignature(
       type = std::make_unique<SimpleNonScalar>(SimpleNonScalar::Type::kString);
       break;
     case DBUS_TYPE_UNIX_FD:
-      type = std::make_unique<SimpleNonScalar>(
-          SimpleNonScalar::Type::kFileDescriptor);
+      if (new_fd_bindings_) {
+        type = std::make_unique<FileDescriptor>();
+      } else {
+        type = std::make_unique<SimpleNonScalar>(
+            SimpleNonScalar::Type::kDeprecatedFileDescriptor);
+      }
       break;
     case DBUS_TYPE_UINT16:
       type = std::make_unique<Scalar>(Scalar::Type::kUint16);

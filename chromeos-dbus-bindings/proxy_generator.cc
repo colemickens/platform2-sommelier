@@ -347,7 +347,7 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
   for (const auto& prop : interface.properties) {
     auto parsed_type = signature.Parse(prop.type);
     CHECK(parsed_type && parsed_type->IsValidPropertyType());
-    string type = parsed_type->GetInArgType();
+    string type = parsed_type->GetInArgType(DBusType::Receiver::kProxy);
     string name = NameParser{prop.name}.MakeVariableName();
     text->AddLine(StringPrintf("MOCK_CONST_METHOD0(%s, %s());",
                                name.c_str(), type.c_str()));
@@ -606,7 +606,7 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
   for (const auto& prop : interface.properties) {
     auto parsed_type = signature.Parse(prop.type);
     CHECK(parsed_type && parsed_type->IsValidPropertyType());
-    string type = parsed_type->GetBaseType();
+    string type = parsed_type->GetBaseType(DBusType::Direction::kExtract);
     block.AddLine(
         StringPrintf("brillo::dbus_utils::Property<%s> %s;",
                      type.c_str(),
@@ -641,7 +641,7 @@ void ProxyGenerator::AddProperties(const Interface& interface,
     }
     auto parsed_type = signature.Parse(prop.type);
     CHECK(parsed_type && parsed_type->IsValidPropertyType());
-    string type = parsed_type->GetInArgType();
+    string type = parsed_type->GetInArgType(DBusType::Receiver::kProxy);
     string name = NameParser{prop.name}.MakeVariableName();
     if (!declaration_only)
       text->AddBlankLine();
@@ -699,7 +699,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   for (const auto& argument : method.input_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetInArgType();
+    string argument_type = type->GetInArgType(DBusType::Receiver::kProxy);
     string argument_name = GetArgName("in", argument.name, ++argument_number);
     argument_names.push_back(argument_name);
     block.AddLine(StringPrintf(
@@ -709,7 +709,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   for (const auto& argument : method.output_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetOutArgType();
+    string argument_type = type->GetOutArgType(DBusType::Receiver::kProxy);
     string argument_name = GetArgName("out", argument.name, ++argument_number);
     out_param_names.push_back(argument_name);
     block.AddLine(StringPrintf(
@@ -767,7 +767,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   for (const auto& argument : method.input_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetInArgType();
+    string argument_type = type->GetInArgType(DBusType::Receiver::kProxy);
     string argument_name = GetArgName("in", argument.name, ++argument_number);
     argument_names.push_back(argument_name);
     block.AddLine(StringPrintf(
@@ -777,7 +777,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   for (const auto& argument : method.output_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetInArgType();
+    string argument_type = type->GetCallbackArgType();
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*%s*/", argument.name.c_str());
     out_params.push_back(argument_type);
@@ -824,7 +824,7 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
   for (const auto& argument : method.input_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetInArgType();
+    string argument_type = type->GetInArgType(DBusType::Receiver::kProxy);
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*in_%s*/", argument.name.c_str());
     arguments.push_back(argument_type);
@@ -832,7 +832,7 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
   for (const auto& argument : method.output_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetOutArgType();
+    string argument_type = type->GetOutArgType(DBusType::Receiver::kProxy);
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*out_%s*/", argument.name.c_str());
     arguments.push_back(argument_type);
@@ -851,7 +851,7 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
   for (const auto& argument : method.input_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetInArgType();
+    string argument_type = type->GetInArgType(DBusType::Receiver::kProxy);
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*in_%s*/", argument.name.c_str());
     arguments.push_back(argument_type);
@@ -860,7 +860,7 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
   for (const auto& argument : method.output_arguments) {
     auto type = signature.Parse(argument.type);
     CHECK(type);
-    string argument_type = type->GetInArgType();
+    string argument_type = type->GetCallbackArgType();
     if (!argument.name.empty())
       base::StringAppendF(&argument_type, " /*%s*/", argument.name.c_str());
     out_params.push_back(argument_type);
@@ -975,7 +975,7 @@ void ProxyGenerator::AddSignalCallbackArg(const Interface::Signal& signal,
       }
       auto type = signature.Parse(argument.type);
       CHECK(type);
-      last_argument = type->GetInArgType();
+      last_argument = type->GetCallbackArgType();
     }
     block->AddLine(StringPrintf("%s%s)>& %s,",
                                 prefix.c_str(),

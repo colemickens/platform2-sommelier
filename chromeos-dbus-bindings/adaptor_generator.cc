@@ -265,7 +265,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         if (output_arguments_copy.size() == 1) {
           auto type = signature.Parse(output_arguments_copy[0].type);
           CHECK(type);
-          return_type = type->GetBaseType();
+          return_type = type->GetBaseType(DBusType::Direction::kAppend);
           output_arguments_copy.clear();
         }
         break;
@@ -280,7 +280,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         for (const auto& argument : output_arguments_copy) {
           auto type = signature.Parse(argument.type);
           CHECK(type);
-          out_types.push_back(type->GetBaseType());
+          out_types.push_back(type->GetBaseType(DBusType::Direction::kAppend));
         }
         method_params.push_back(base::StringPrintf(
             "std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<%s>> "
@@ -308,7 +308,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
     for (const auto& argument : input_arguments_copy) {
       auto type = signature.Parse(argument.type);
       CHECK(type);
-      string param_type = type->GetInArgType();
+      string param_type = type->GetInArgType(DBusType::Receiver::kAdaptor);
       string param_name = GetArgName("in", argument.name, ++index);
       method_params.push_back(param_type + ' ' + param_name);
     }
@@ -316,7 +316,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
     for (const auto& argument : output_arguments_copy) {
       auto type = signature.Parse(argument.type);
       CHECK(type);
-      string param_type = type->GetOutArgType();
+      string param_type = type->GetOutArgType(DBusType::Receiver::kAdaptor);
       string param_name = GetArgName("out", argument.name, ++index);
       method_params.push_back(param_type + ' ' + param_name);
     }
@@ -357,7 +357,9 @@ void AdaptorGenerator::AddSendSignalMethods(
     for (const auto& argument : signal.arguments) {
       auto type = signature.Parse(argument.type);
       CHECK(type);
-      string param_type = type->GetInArgType();
+      // We are the sender for signals, so pretend we're a proxy
+      // when generating the type.
+      string param_type = type->GetInArgType(DBusType::Receiver::kProxy);
       string param_name = GetArgName("in", argument.name, ++index);
       param_names.push_back(param_name);
       method_params.push_back(param_type + ' ' + param_name);
@@ -403,7 +405,7 @@ void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
     for (const auto& argument : signal.arguments) {
       auto type = signature.Parse(argument.type);
       CHECK(type);
-      string param = type->GetBaseType();
+      string param = type->GetBaseType(DBusType::Direction::kAppend);
       if (!argument.name.empty())
         base::StringAppendF(&param, " /*%s*/", argument.name.c_str());
       params.push_back(param);
@@ -437,7 +439,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     block.AddBlankLine();
     auto parsed_type = signature.Parse(property.type);
     CHECK(parsed_type && parsed_type->IsValidPropertyType());
-    string type = parsed_type->GetBaseType();
+    string type = parsed_type->GetBaseType(DBusType::Direction::kExtract);
     string variable_name = NameParser{property.name}.MakeVariableName();
 
     // Property name accessor.
@@ -457,7 +459,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     block.AddLine("}");
 
     // Setter method.
-    type = parsed_type->GetInArgType();
+    type = parsed_type->GetInArgType(DBusType::Receiver::kAdaptor);
     block.AddLine(StringPrintf("void Set%s(%s %s) {",
                                property.name.c_str(),
                                type.c_str(),
@@ -476,7 +478,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
       block.PushOffset(kLineContinuationOffset);
       // Explicitly specify the "value" parameter as const & to match the
       // validator callback function signature.
-      type = parsed_type->GetBaseType();
+      type = parsed_type->GetBaseType(DBusType::Direction::kExtract);
       block.AddLine(
           StringPrintf(
               "brillo::ErrorPtr* /*error*/, const %s& /*value*/) {",
@@ -500,7 +502,7 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
   for (const auto& property : interface.properties) {
     auto parsed_type = signature.Parse(property.type);
     CHECK(parsed_type && parsed_type->IsValidPropertyType());
-    string type = parsed_type->GetBaseType();
+    string type = parsed_type->GetBaseType(DBusType::Direction::kExtract);
     string variable_name = NameParser{property.name}.MakeVariableName();
 
     block.AddLine(

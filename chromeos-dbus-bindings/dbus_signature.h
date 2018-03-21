@@ -16,6 +16,15 @@ namespace chromeos_dbus_bindings {
 
 class DBusType {
  public:
+  enum class Direction {
+    kExtract,
+    kAppend,
+  };
+
+  enum class Receiver {
+    kAdaptor,
+    kProxy,
+  };
   virtual ~DBusType() = default;
 
   // Some types might not be allowed in properties because libchrome bindings
@@ -24,45 +33,33 @@ class DBusType {
   virtual bool IsValidPropertyType() const = 0;
 
   // Methods for getting the C++ type corresponding to a D-Bus type.
-  virtual std::string GetBaseType() const = 0;
-  virtual std::string GetInArgType() const = 0;
-  std::string GetOutArgType() const;
+  // If you are reading the argument from a message, use kExtract; otherwise,
+  // use kAppend.
+  virtual std::string GetBaseType(Direction direction) const = 0;
+
+  // Use these if possible, they will give you e.g. the correct reffiness.
+  // The |receiver| should be kAdaptor if you are generating an adaptor, and
+  // kProxy if you are generating a proxy.
+  virtual std::string GetInArgType(Receiver receiver) const = 0;
+  std::string GetOutArgType(Receiver receiver) const;
+
+  // CallbackArg types are a bit special because they are out-arguments but
+  // the D-Bus bindings call a callback with them, so they have the same
+  // reffiness as in-arguments.
+  virtual std::string GetCallbackArgType() const = 0;
 };
 
 class DBusSignature {
  public:
   DBusSignature();
+  explicit DBusSignature(bool new_fd_bindings);
   virtual ~DBusSignature() = default;
 
   // Returns a DBusType corresponding to the D-Bus signature given in
   // |signature|. If the signature fails to parse, returns nullptr.
   std::unique_ptr<DBusType> Parse(const std::string& signature);
-  bool Parse(const std::string& signature, std::string* output);
 
  private:
-  friend class DBusSignatureTest;
-  FRIEND_TEST(DBusSignatureTest, ParseSuccesses);
-
-  // Typenames are C++ syntax types.
-  static const char kArrayTypename[];
-  static const char kBooleanTypename[];
-  static const char kByteTypename[];
-  static const char kObjectPathTypename[];
-  static const char kDictTypename[];
-  static const char kDoubleTypename[];
-  static const char kSigned16Typename[];
-  static const char kSigned32Typename[];
-  static const char kSigned64Typename[];
-  static const char kStringTypename[];
-  static const char kUnixFdTypename[];
-  static const char kUnsigned16Typename[];
-  static const char kUnsigned32Typename[];
-  static const char kUnsigned64Typename[];
-  static const char kVariantTypename[];
-  static const char kVariantDictTypename[];
-  static const char kPairTypename[];
-  static const char kTupleTypename[];
-
   // Returns an intermediate-representation type for the next D-Bus signature
   // in the string at |signature|, as well as the next position within the
   // string that parsing should continue |next|. Returns nullptr on failure.
@@ -100,6 +97,11 @@ class DBusSignature {
       std::string::const_iterator signature,
       std::string::const_iterator end,
       std::string::const_iterator* next);
+
+  // True if we are creating bindings using the new-style file descriptor
+  // types.
+  // TODO(crbug/824839): remove this after migration
+  const bool new_fd_bindings_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusSignature);
 };
