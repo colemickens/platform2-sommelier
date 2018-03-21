@@ -12,6 +12,7 @@
 #include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
+#include "chromeos-dbus-bindings/header_generator.h"
 #include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/interface.h"
 #include "chromeos-dbus-bindings/name_parser.h"

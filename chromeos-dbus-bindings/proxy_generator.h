@@ -10,9 +10,9 @@
 
 #include <base/macros.h>
 
-#include "chromeos-dbus-bindings/header_generator.h"
 #include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/interface.h"
+#include "chromeos-dbus-bindings/service_config.h"
 
 namespace base {
 
@@ -25,7 +25,7 @@ namespace chromeos_dbus_bindings {
 class IndentedText;
 struct Interface;
 
-class ProxyGenerator : public HeaderGenerator {
+class ProxyGenerator {
  public:
   static bool GenerateProxies(const ServiceConfig& config,
                               const std::vector<Interface>& interfaces,

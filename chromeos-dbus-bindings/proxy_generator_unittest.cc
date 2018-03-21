@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "chromeos-dbus-bindings/interface.h"
+#include "chromeos-dbus-bindings/service_config.h"
 #include "chromeos-dbus-bindings/test_utils.h"
 
 using std::string;

@@ -10,7 +10,6 @@
 
 #include <base/macros.h>
 
-#include "chromeos-dbus-bindings/header_generator.h"
 #include "chromeos-dbus-bindings/indented_text.h"
 
 namespace base {
@@ -24,7 +23,7 @@ namespace chromeos_dbus_bindings {
 class IndentedText;
 struct Interface;
 
-class AdaptorGenerator : public HeaderGenerator {
+class AdaptorGenerator {
  public:
   static bool GenerateAdaptors(const std::vector<Interface>& interfaces,
                                const base::FilePath& output_file);

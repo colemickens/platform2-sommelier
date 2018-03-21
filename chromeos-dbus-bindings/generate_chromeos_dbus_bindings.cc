@@ -17,6 +17,7 @@
 #include "chromeos-dbus-bindings/adaptor_generator.h"
 #include "chromeos-dbus-bindings/method_name_generator.h"
 #include "chromeos-dbus-bindings/proxy_generator.h"
+#include "chromeos-dbus-bindings/service_config.h"
 #include "chromeos-dbus-bindings/xml_interface_parser.h"
 
 using chromeos_dbus_bindings::AdaptorGenerator;

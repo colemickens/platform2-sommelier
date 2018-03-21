@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
 
+#include "chromeos-dbus-bindings/header_generator.h"
 #include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/interface.h"
 #include "chromeos-dbus-bindings/name_parser.h"
@@ -29,7 +30,7 @@ bool MethodNameGenerator::GenerateMethodNames(
     }
     parser.AddCloseNamespaces(&text, true);
   }
-  return HeaderGenerator::WriteTextToFile(output_file, text);
+  return WriteTextToFile(output_file, text);
 }
 
 }  // namespace chromeos_dbus_bindings

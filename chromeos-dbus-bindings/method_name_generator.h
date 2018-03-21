@@ -10,8 +10,6 @@
 
 #include <base/macros.h>
 
-#include "chromeos-dbus-bindings/header_generator.h"
-
 namespace base {
 
 class FilePath;
@@ -22,7 +20,7 @@ namespace chromeos_dbus_bindings {
 
 struct Interface;
 
-class MethodNameGenerator : public HeaderGenerator {
+class MethodNameGenerator {
  public:
   static bool GenerateMethodNames(const std::vector<Interface>& interfaces,
                                   const base::FilePath& output_file);
