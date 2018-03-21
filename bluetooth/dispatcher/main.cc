@@ -9,11 +9,11 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "bluetooth/newblued/daemon.h"
+#include "bluetooth/dispatcher/daemon.h"
 
 int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv,
-                           "newblued, the Chromium OS Bluetooth service.");
+                           "btdispatch, the Chromium OS Bluetooth service.");
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 

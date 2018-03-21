@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_COMPLETE_MOCK_OBJECT_PROXY_H_
-#define BLUETOOTH_NEWBLUED_COMPLETE_MOCK_OBJECT_PROXY_H_
+#ifndef BLUETOOTH_DISPATCHER_COMPLETE_MOCK_OBJECT_PROXY_H_
+#define BLUETOOTH_DISPATCHER_COMPLETE_MOCK_OBJECT_PROXY_H_
 
 #include "dbus/mock_object_proxy.h"
 
@@ -21,4 +21,4 @@ class CompleteMockObjectProxy : public dbus::MockObjectProxy {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_COMPLETE_MOCK_OBJECT_PROXY_H_
+#endif  // BLUETOOTH_DISPATCHER_COMPLETE_MOCK_OBJECT_PROXY_H_

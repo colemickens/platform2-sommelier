@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_DAEMON_H_
-#define BLUETOOTH_NEWBLUED_DAEMON_H_
+#ifndef BLUETOOTH_DISPATCHER_DAEMON_H_
+#define BLUETOOTH_DISPATCHER_DAEMON_H_
 
 #include <memory>
 
-#include "bluetooth/newblued/suspend_manager.h"
+#include "bluetooth/dispatcher/suspend_manager.h"
 
 namespace bluetooth {
 
-// Main class within newblued daemon that ties all other classes together.
+// Main class within btdispatch daemon that ties all other classes together.
 class Daemon {
  public:
   explicit Daemon(scoped_refptr<dbus::Bus> bus);
@@ -29,4 +29,4 @@ class Daemon {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_DAEMON_H_
+#endif  // BLUETOOTH_DISPATCHER_DAEMON_H_

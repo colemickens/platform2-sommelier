@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_SUSPEND_MANAGER_H_
-#define BLUETOOTH_NEWBLUED_SUSPEND_MANAGER_H_
+#ifndef BLUETOOTH_DISPATCHER_SUSPEND_MANAGER_H_
+#define BLUETOOTH_DISPATCHER_SUSPEND_MANAGER_H_
 
 #include <memory>
 #include <string>
@@ -13,7 +13,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
-#include "bluetooth/newblued/service_watcher.h"
+#include "bluetooth/dispatcher/service_watcher.h"
 
 namespace bluetooth {
 
@@ -89,4 +89,4 @@ class SuspendManager {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_SUSPEND_MANAGER_H_
+#endif  // BLUETOOTH_DISPATCHER_SUSPEND_MANAGER_H_

@@ -13,8 +13,8 @@
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 
-#include "bluetooth/newblued/complete_mock_object_proxy.h"
-#include "bluetooth/newblued/suspend_manager.h"
+#include "bluetooth/dispatcher/complete_mock_object_proxy.h"
+#include "bluetooth/dispatcher/suspend_manager.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 using ::testing::_;

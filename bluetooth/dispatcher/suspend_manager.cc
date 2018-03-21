@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "bluetooth/newblued/suspend_manager.h"
+#include "bluetooth/dispatcher/suspend_manager.h"
 
 #include <memory>
 #include <string>
@@ -19,7 +19,7 @@ namespace bluetooth {
 namespace {
 
 // Description for power manager's RegisterSuspendDelay.
-constexpr char kSuspendDelayDescription[] = "newblued";
+constexpr char kSuspendDelayDescription[] = "btdispatch";
 
 // Timeout for power manager's SuspendImminent wait.
 // Bluez's PauseDiscovery should take less than 5 seconds to complete.

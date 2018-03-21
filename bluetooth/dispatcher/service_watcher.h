@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_SERVICE_WATCHER_H_
-#define BLUETOOTH_NEWBLUED_SERVICE_WATCHER_H_
+#ifndef BLUETOOTH_DISPATCHER_SERVICE_WATCHER_H_
+#define BLUETOOTH_DISPATCHER_SERVICE_WATCHER_H_
 
 #include <string>
 
@@ -55,4 +55,4 @@ class ServiceWatcher {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_SERVICE_WATCHER_H_
+#endif  // BLUETOOTH_DISPATCHER_SERVICE_WATCHER_H_

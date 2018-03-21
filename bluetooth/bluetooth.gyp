@@ -15,30 +15,30 @@
   },
   'targets': [
     {
-      'target_name': 'libnewblued',
+      'target_name': 'libdispatcher',
       'type': 'static_library',
       'sources': [
-        'newblued/daemon.cc',
-        'newblued/service_watcher.cc',
-        'newblued/suspend_manager.cc',
+        'dispatcher/daemon.cc',
+        'dispatcher/service_watcher.cc',
+        'dispatcher/suspend_manager.cc',
       ],
     },
     {
-      'target_name': 'newblued',
+      'target_name': 'btdispatch',
       'type': 'executable',
-      'dependencies': ['libnewblued'],
-      'sources': ['newblued/main.cc'],
+      'dependencies': ['libdispatcher'],
+      'sources': ['dispatcher/main.cc'],
     },
   ],
   'conditions': [
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'newblued_test',
+          'target_name': 'btdispatch_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
-            'libnewblued',
+            'libdispatcher',
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'variables': {
@@ -47,7 +47,7 @@
             ],
           },
           'sources': [
-            'newblued/suspend_manager_unittest.cc',
+            'dispatcher/suspend_manager_unittest.cc',
           ],
         },
       ],
