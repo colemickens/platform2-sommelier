@@ -48,20 +48,20 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          int32_t in_interface_id) override;
   bool OpenPath(brillo::ErrorPtr* error,
                 const std::string& in_path,
-                dbus::FileDescriptor* out_fd) override;
+                brillo::dbus_utils::FileDescriptor* out_fd) override;
   bool RequestTcpPortAccess(uint16_t in_port,
                             const std::string& in_interface,
-                            const dbus::FileDescriptor& dbus_fd) override;
+                            const base::ScopedFD& dbus_fd) override;
   bool RequestUdpPortAccess(uint16_t in_port,
                             const std::string& in_interface,
-                            const dbus::FileDescriptor& dbus_fd) override;
+                            const base::ScopedFD& dbus_fd) override;
   bool ReleaseTcpPort(uint16_t in_port,
                       const std::string& in_interface) override;
   bool ReleaseUdpPort(uint16_t in_port,
                       const std::string& in_interface) override;
   bool RequestVpnSetup(const std::vector<std::string>& usernames,
                        const std::string& interface,
-                       const dbus::FileDescriptor& dbus_fd) override;
+                       const base::ScopedFD& dbus_fd) override;
   bool RemoveVpnSetup() override;
 
   // Grants access to |path|, which is accomplished by changing the owning group

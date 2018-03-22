@@ -19,6 +19,7 @@
       'variables': {
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'dbus_adaptors_out_dir': 'include/permission_broker/dbus_adaptors',
+        'new_fd_bindings': 1,
       },
       'sources': [
         'dbus_bindings/org.chromium.PermissionBroker.xml',

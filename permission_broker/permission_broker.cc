@@ -148,7 +148,7 @@ bool PermissionBroker::RequestPathAccess(const std::string& in_path,
 
 bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
                                 const std::string& in_path,
-                                dbus::FileDescriptor* out_fd) {
+                                brillo::dbus_utils::FileDescriptor* out_fd) {
   Rule::Result rule_result = rule_engine_.ProcessPath(in_path);
   if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN
       && rule_result != Rule::ALLOW_WITH_DETACH) {
@@ -158,8 +158,8 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
     return false;
   }
 
-  int fd = HANDLE_EINTR(open(in_path.c_str(), O_RDWR));
-  if (fd < 0) {
+  base::ScopedFD fd(HANDLE_EINTR(open(in_path.c_str(), O_RDWR)));
+  if (!fd.is_valid()) {
     brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
     brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
                                  kOpenFailedError, "Failed to open path '%s'",
@@ -167,13 +167,9 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
     return false;
   }
 
-  dbus::FileDescriptor result;
-  result.PutValue(fd);
-  result.CheckValidity();
-
   uint32_t mask = -1U;
   if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
-    if (ioctl(fd, USBDEVFS_DROP_PRIVILEGES, &mask) < 0) {
+    if (ioctl(fd.get(), USBDEVFS_DROP_PRIVILEGES, &mask) < 0) {
       brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kErrorDomainPermissionBroker, kOpenFailedError,
@@ -183,28 +179,28 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
   }
 
   if (rule_result == Rule::ALLOW_WITH_DETACH) {
-    if (!usb_driver_tracker_.DetachPathFromKernel(fd, in_path))
+    if (!usb_driver_tracker_.DetachPathFromKernel(fd.get(), in_path))
       return false;
   }
 
-  *out_fd = std::move(result);
+  *out_fd = fd.get();
   return true;
 }
 
 bool PermissionBroker::RequestTcpPortAccess(
     uint16_t in_port,
     const std::string& in_interface,
-    const dbus::FileDescriptor& in_lifeline_fd) {
+    const base::ScopedFD& in_lifeline_fd) {
   return port_tracker_.AllowTcpPortAccess(in_port, in_interface,
-                                          in_lifeline_fd.value());
+                                          in_lifeline_fd.get());
 }
 
 bool PermissionBroker::RequestUdpPortAccess(
     uint16_t in_port,
     const std::string& in_interface,
-    const dbus::FileDescriptor& in_lifeline_fd) {
+    const base::ScopedFD& in_lifeline_fd) {
   return port_tracker_.AllowUdpPortAccess(in_port, in_interface,
-                                          in_lifeline_fd.value());
+                                          in_lifeline_fd.get());
 }
 
 bool PermissionBroker::ReleaseTcpPort(uint16_t in_port,
@@ -220,9 +216,9 @@ bool PermissionBroker::ReleaseUdpPort(uint16_t in_port,
 bool PermissionBroker::RequestVpnSetup(
     const std::vector<std::string>& usernames,
     const std::string& interface,
-    const dbus::FileDescriptor& in_lifeline_fd) {
+    const base::ScopedFD& in_lifeline_fd) {
   return port_tracker_.PerformVpnSetup(usernames, interface,
-                                       in_lifeline_fd.value());
+                                       in_lifeline_fd.get());
 }
 
 bool PermissionBroker::RemoveVpnSetup() {
