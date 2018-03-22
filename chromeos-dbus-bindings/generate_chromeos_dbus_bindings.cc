@@ -34,6 +34,7 @@ static const char kProxy[] = "proxy";
 static const char kMock[] = "mock";
 static const char kProxyPathForMocks[] = "proxy-path-in-mocks";
 static const char kServiceConfig[] = "service-config";
+static const char kNewFdBindings[] = "new-fd-bindings";
 static const char kHelpMessage[] = "\n"
     "generate-chromeos-dbus-bindings itf1.xml [itf2.xml...] [switches]\n"
     "    itf1.xml, ... = the input interface file(s) [mandatory].\n"
@@ -47,7 +48,9 @@ static const char kHelpMessage[] = "\n"
     "  --mock=<mock header filename>\n"
     "    The output header file name containing the DBus proxy mock class.\n"
     "  --service-config=<config.json>\n"
-    "    The DBus service configuration file for the generator.\n";
+    "    The DBus service configuration file for the generator.\n"
+    "  --new-fd-bindings\n"
+    "    Specify to use new bindings for file descriptor-type arguments.\n";
 
 }  // namespace switches
 
@@ -180,15 +183,20 @@ int main(int argc, char** argv) {
     }
   }
 
+  const bool new_fd_bindings = cl->HasSwitch(switches::kNewFdBindings);
+
   if (cl->HasSwitch(switches::kAdaptor)) {
     std::string adaptor_file = cl->GetSwitchValueASCII(switches::kAdaptor);
     VLOG(1) << "Outputting adaptor to " << adaptor_file;
-    if (!AdaptorGenerator::GenerateAdaptors(parser.interfaces(),
-                                            RemoveQuotes(adaptor_file))) {
+    AdaptorGenerator adaptor_gen{new_fd_bindings};
+    if (!adaptor_gen.GenerateAdaptors(parser.interfaces(),
+                                      RemoveQuotes(adaptor_file))) {
       LOG(ERROR) << "Failed to output adaptor.";
       return 1;
      }
   }
+
+  ProxyGenerator proxy_gen{new_fd_bindings};
 
   base::FilePath proxy_path;  // Used by both Proxy and Mock generation.
   if (cl->HasSwitch(switches::kProxy)) {
@@ -196,8 +204,7 @@ int main(int argc, char** argv) {
     proxy_path = RemoveQuotes(proxy_file);
     base::NormalizeFilePath(proxy_path, &proxy_path);
     VLOG(1) << "Outputting proxy to " << proxy_path.value();
-    if (!ProxyGenerator::GenerateProxies(config, parser.interfaces(),
-                                         proxy_path)) {
+    if (!proxy_gen.GenerateProxies(config, parser.interfaces(), proxy_path)) {
       LOG(ERROR) << "Failed to output proxy.";
       return 1;
      }
@@ -217,9 +224,9 @@ int main(int argc, char** argv) {
     base::FilePath mock_path = RemoveQuotes(mock_file);
     base::NormalizeFilePath(mock_path, &mock_path);
     VLOG(1) << "Outputting mock to " << mock_path.value();
-    if (!ProxyGenerator::GenerateMocks(config, parser.interfaces(), mock_path,
-                                       proxy_include_path,
-                                       use_literal_include_path)) {
+    if (!proxy_gen.GenerateMocks(config, parser.interfaces(), mock_path,
+                                 proxy_include_path,
+                                 use_literal_include_path)) {
       LOG(ERROR) << "Failed to output mock.";
       return 1;
      }

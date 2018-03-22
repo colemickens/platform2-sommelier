@@ -28,6 +28,7 @@ const char kDBusTypeBool[] = "b";
 const char kDBusTypeInt32[] = "i";
 const char kDBusTypeInt64[] = "x";
 const char kDBusTypeString[] = "s";
+const char kDBusTypeFileDescriptor[] = "h";
 
 const char kPropertyAccessReadOnly[] = "read";
 const char kPropertyAccessReadWrite[] = "readwrite";
@@ -35,17 +36,19 @@ const char kPropertyAccessReadWrite[] = "readwrite";
 const char kInterfaceName[] = "org.chromium.Test";
 const char kInterfaceName2[] = "org.chromium.Test2";
 
-const char kExpectedContent[] = R"literal_string(
+const char kGenerateAdaptorsOutput[] = R"literal_string(
 #include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <dbus/object_path.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/variant_dictionary.h>
 
 namespace org {
@@ -220,6 +223,77 @@ class Test2Adaptor {
 }  // namespace org
 )literal_string";
 
+const char kNewFileDescriptorsOutput[] = R"literal_string(
+#include <memory>
+#include <string>
+#include <tuple>
+#include <vector>
+
+#include <base/files/scoped_file.h>
+#include <base/macros.h>
+#include <dbus/object_path.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/dbus/file_descriptor.h>
+#include <brillo/variant_dictionary.h>
+
+namespace org {
+namespace chromium {
+
+// Interface definition for org::chromium::Test.
+class TestInterface {
+ public:
+  virtual ~TestInterface() = default;
+
+  virtual bool WrapFileDescriptor(
+      brillo::ErrorPtr* error,
+      const base::ScopedFD& in_1,
+      brillo::dbus_utils::FileDescriptor* out_2) = 0;
+};
+
+// Interface adaptor for org::chromium::Test.
+class TestAdaptor {
+ public:
+  TestAdaptor(TestInterface* interface) : interface_(interface) {}
+
+  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
+    brillo::dbus_utils::DBusInterface* itf =
+        object->AddOrGetInterface("org.chromium.Test");
+
+    itf->AddSimpleMethodHandlerWithError(
+        "WrapFileDescriptor",
+        base::Unretained(interface_),
+        &TestInterface::WrapFileDescriptor);
+
+    signal_File_ = itf->RegisterSignalOfType<SignalFileType>("File");
+  }
+
+  void SendFileSignal(
+      const brillo::dbus_utils::FileDescriptor& in_1) {
+    auto signal = signal_File_.lock();
+    if (signal)
+      signal->Send(in_1);
+  }
+
+  static dbus::ObjectPath GetObjectPath() {
+    return dbus::ObjectPath{"/org/chromium/Test"};
+  }
+
+ private:
+  using SignalFileType = brillo::dbus_utils::DBusSignal<
+      brillo::dbus_utils::FileDescriptor>;
+  std::weak_ptr<SignalFileType> signal_File_;
+
+  TestInterface* interface_;  // Owned by container of this adapter.
+
+  DISALLOW_COPY_AND_ASSIGN(TestAdaptor);
+};
+
+}  // namespace chromium
+}  // namespace org
+)literal_string";
+
 }  // namespace
 class AdaptorGeneratorTest : public Test {
  public:
@@ -301,13 +375,35 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
   interface2.methods.back().include_dbus_message = true;
 
   base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
-  EXPECT_TRUE(AdaptorGenerator::GenerateAdaptors({interface, interface2},
-                                                 output_path));
+  AdaptorGenerator gen{false};
+  EXPECT_TRUE(gen.GenerateAdaptors({interface, interface2}, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
-  test_utils::EXPECT_TEXT_CONTAINED(kExpectedContent, contents);
+  test_utils::EXPECT_TEXT_CONTAINED(kGenerateAdaptorsOutput, contents);
+}
+
+TEST_F(AdaptorGeneratorTest, NewFileDescriptors) {
+  Interface interface;
+  interface.name = kInterfaceName;
+  interface.path = "/org/chromium/Test";
+  interface.methods.emplace_back(
+      "WrapFileDescriptor",
+      vector<Interface::Argument>{{"", kDBusTypeFileDescriptor}},
+      vector<Interface::Argument>{{"", kDBusTypeFileDescriptor}});
+  interface.signals.emplace_back(
+      "File",
+      vector<Interface::Argument>{{"", kDBusTypeFileDescriptor}});
+
+  base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
+  AdaptorGenerator gen{true};
+  EXPECT_TRUE(gen.GenerateAdaptors({interface}, output_path));
+  string contents;
+  EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
+  // The header guards contain the (temporary) filename, so we search for
+  // the content we need within the string.
+  test_utils::EXPECT_TEXT_CONTAINED(kNewFileDescriptorsOutput, contents);
 }
 
 }  // namespace chromeos_dbus_bindings

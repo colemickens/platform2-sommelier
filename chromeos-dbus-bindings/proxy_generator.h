@@ -27,123 +27,122 @@ struct Interface;
 
 class ProxyGenerator {
  public:
-  static bool GenerateProxies(const ServiceConfig& config,
-                              const std::vector<Interface>& interfaces,
-                              const base::FilePath& output_file);
+  explicit ProxyGenerator(bool new_fd_bindings);
 
-  static bool GenerateMocks(const ServiceConfig& config,
-                            const std::vector<Interface>& interfaces,
-                            const base::FilePath& mock_file,
-                            const base::FilePath& proxy_file,
-                            bool use_literal_proxy_file);
+  bool GenerateProxies(const ServiceConfig& config,
+                       const std::vector<Interface>& interfaces,
+                       const base::FilePath& output_file);
+
+  bool GenerateMocks(const ServiceConfig& config,
+                     const std::vector<Interface>& interfaces,
+                     const base::FilePath& mock_file,
+                     const base::FilePath& proxy_file,
+                     bool use_literal_proxy_file);
 
  private:
   friend class ProxyGeneratorTest;
 
   // Generates an abstract interface for one D-Bus interface proxy.
-  static void GenerateInterfaceProxyInterface(const ServiceConfig& config,
-                                              const Interface& interface,
-                                              IndentedText* text);
+  void GenerateInterfaceProxyInterface(const ServiceConfig& config,
+                                       const Interface& interface,
+                                       IndentedText* text);
 
   // Generates one interface proxy.
-  static void GenerateInterfaceProxy(const ServiceConfig& config,
-                                     const Interface& interface,
-                                     IndentedText* text);
+  void GenerateInterfaceProxy(const ServiceConfig& config,
+                              const Interface& interface,
+                              IndentedText* text);
 
   // Generates one interface mock object.
-  static void GenerateInterfaceMock(const ServiceConfig& config,
-                                    const Interface& interface,
-                                    IndentedText* text);
+  void GenerateInterfaceMock(const ServiceConfig& config,
+                             const Interface& interface,
+                             IndentedText* text);
 
   // Generates the constructor and destructor for the proxy.
-  static void AddConstructor(const ServiceConfig& config,
-                             const Interface& interface,
-                             const std::string& class_name,
-                             IndentedText* text);
-  static void AddDestructor(const std::string& class_name,
-                            IndentedText* text);
+  void AddConstructor(const ServiceConfig& config,
+                      const Interface& interface,
+                      const std::string& class_name,
+                      IndentedText* text);
+  void AddDestructor(const std::string& class_name, IndentedText* text);
 
   // Generates ReleaseObjectProxy() method to release ownership
   // of the object proxy.
-  static void AddReleaseObjectProxy(IndentedText* text);
+  void AddReleaseObjectProxy(IndentedText* text);
 
   // Generates AddGetObjectPath() method.
-  static void AddGetObjectPath(IndentedText* text);
+  void AddGetObjectPath(IndentedText* text);
 
   // Generates GetObjectProxy() method.
-  static void AddGetObjectProxy(IndentedText* text);
+  void AddGetObjectProxy(IndentedText* text);
 
   // Generates InitializeProperties() method and callback.
-  static void AddInitializeProperties(const std::string& class_name,
-                                      bool declaration_only,
-                                      IndentedText* text);
+  void AddInitializeProperties(const std::string& class_name,
+                               bool declaration_only,
+                               IndentedText* text);
 
   // Generates SetPropertyChanged() method and callback.
-  static void AddSetPropertyChanged(const std::string& class_name,
-                                    bool declaration_only,
-                                    IndentedText* text);
-
-  // Generates GetProperties() methods.
-  static void AddGetProperties(IndentedText* text);
-
-  // Generates OnPropertyChanged() method.
-  static void AddOnPropertyChanged(IndentedText* text);
-
-  // Generates logic permitting users to register handlers for signals.
-  static void AddSignalHandlerRegistration(const Interface::Signal& signal,
-                                           const std::string& interface_name,
-                                           bool declaration_only,
-                                           IndentedText* text);
-
-  // Generates the property set class to contain interface properties.
-  static void AddPropertySet(const ServiceConfig& config,
-                             const Interface& interface,
-                             IndentedText* text);
-
-  // Generates the property accessors.
-  static void AddProperties(const Interface& interface,
-                            bool declaration_only,
-                            IndentedText* text);
-
-  // Generates a native C++ method which calls a D-Bus method on the proxy.
-  static void AddMethodProxy(const Interface::Method& interface,
-                             const std::string& interface_name,
+  void AddSetPropertyChanged(const std::string& class_name,
                              bool declaration_only,
                              IndentedText* text);
 
+  // Generates GetProperties() methods.
+  void AddGetProperties(IndentedText* text);
+
+  // Generates OnPropertyChanged() method.
+  void AddOnPropertyChanged(IndentedText* text);
+
+  // Generates logic permitting users to register handlers for signals.
+  void AddSignalHandlerRegistration(const Interface::Signal& signal,
+                                    const std::string& interface_name,
+                                    bool declaration_only,
+                                    IndentedText* text);
+
+  // Generates the property set class to contain interface properties.
+  void AddPropertySet(const ServiceConfig& config,
+                      const Interface& interface,
+                      IndentedText* text);
+
+  // Generates the property accessors.
+  void AddProperties(const Interface& interface,
+                     bool declaration_only,
+                     IndentedText* text);
+
+  // Generates a native C++ method which calls a D-Bus method on the proxy.
+  void AddMethodProxy(const Interface::Method& interface,
+                      const std::string& interface_name,
+                      bool declaration_only,
+                      IndentedText* text);
+
   // Generates a native C++ method which calls a D-Bus method asynchronously.
-  static void AddAsyncMethodProxy(const Interface::Method& interface,
-                                  const std::string& interface_name,
-                                  bool declaration_only,
-                                  IndentedText* text);
+  void AddAsyncMethodProxy(const Interface::Method& interface,
+                           const std::string& interface_name,
+                           bool declaration_only,
+                           IndentedText* text);
 
   // Generates a mock for blocking D-Bus method.
-  static void AddMethodMock(const Interface::Method& interface,
-                            const std::string& interface_name,
-                            IndentedText* text);
+  void AddMethodMock(const Interface::Method& interface,
+                     const std::string& interface_name,
+                     IndentedText* text);
 
   // Generates a mock for asynchronous D-Bus method.
-  static void AddAsyncMethodMock(const Interface::Method& interface,
-                                 const std::string& interface_name,
-                                 IndentedText* text);
+  void AddAsyncMethodMock(const Interface::Method& interface,
+                          const std::string& interface_name,
+                          IndentedText* text);
 
   // Generates the MOCK_METHOD entry for the given arguments handling methods
   // with more than 10 arguments.
-  static void AddMockMethodDeclaration(
-      const std::string& method_name,
-      const std::string& return_type,
-      const std::vector<std::string>& arguments,
-      IndentedText* text);
+  void AddMockMethodDeclaration(const std::string& method_name,
+                                const std::string& return_type,
+                                const std::vector<std::string>& arguments,
+                                IndentedText* text);
 
   // Generates a mock for the signal handler registration method.
-  static void AddSignalHandlerRegistrationMock(
-      const Interface::Signal& signal,
-      IndentedText* text);
+  void AddSignalHandlerRegistrationMock(const Interface::Signal& signal,
+                                        IndentedText* text);
 
   // Generate the signal callback argument of a signal handler.
-  static void AddSignalCallbackArg(const Interface::Signal& signal,
-                                   bool comment_arg_name,
-                                   IndentedText* block);
+  void AddSignalCallbackArg(const Interface::Signal& signal,
+                            bool comment_arg_name,
+                            IndentedText* block);
 
   // Generates the Object Manager proxy class.
   struct ObjectManager {
@@ -195,7 +194,10 @@ class ProxyGenerator {
                                IndentedText* text);
   };
   // Generates the signal handler name for a given signal name.
-  static std::string GetHandlerNameForSignal(const std::string& signal);
+  std::string GetHandlerNameForSignal(const std::string& signal);
+
+  // True if we should be generating new-style bindings for file descriptors.
+  const bool new_fd_bindings_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyGenerator);
 };

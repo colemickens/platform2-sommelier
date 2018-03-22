@@ -241,8 +241,9 @@ TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
   base::FilePath proxy_path = temp_dir_.GetPath().Append("proxies.h");
   ServiceConfig config;
   config.object_manager.name = "ObjectManager";
-  EXPECT_TRUE(ProxyGenerator::GenerateMocks(config, interfaces, output_path,
-                                            proxy_path, false));
+  ProxyGenerator gen{false};
+  EXPECT_TRUE(
+      gen.GenerateMocks(config, interfaces, output_path, proxy_path, false));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for

@@ -23,7 +23,9 @@ using std::vector;
 
 namespace chromeos_dbus_bindings {
 
-// static
+AdaptorGenerator::AdaptorGenerator(bool new_fd_bindings)
+    : new_fd_bindings_(new_fd_bindings) {}
+
 bool AdaptorGenerator::GenerateAdaptors(
     const std::vector<Interface>& interfaces,
     const base::FilePath& output_file) {
@@ -42,11 +44,13 @@ bool AdaptorGenerator::GenerateAdaptors(
   text.AddLine("#include <tuple>");
   text.AddLine("#include <vector>");
   text.AddBlankLine();
+  text.AddLine("#include <base/files/scoped_file.h>");
   text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <dbus/object_path.h>");
   text.AddLine("#include <brillo/any.h>");
   text.AddLine("#include <brillo/dbus/dbus_object.h>");
   text.AddLine("#include <brillo/dbus/exported_object_manager.h>");
+  text.AddLine("#include <brillo/dbus/file_descriptor.h>");
   text.AddLine("#include <brillo/variant_dictionary.h>");
 
   for (const auto& interface : interfaces)
@@ -57,7 +61,6 @@ bool AdaptorGenerator::GenerateAdaptors(
   return WriteTextToFile(output_file, text);
 }
 
-// static
 void AdaptorGenerator::GenerateInterfaceAdaptor(
     const Interface& interface,
     IndentedText *text) {
@@ -124,7 +127,6 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   parser.AddCloseNamespaces(text, false);
 }
 
-// static
 void AdaptorGenerator::AddConstructor(const Interface& interface,
                                       const string& class_name,
                                       const string& itf_name,
@@ -139,7 +141,6 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
   }
 }
 
-// static
 void AdaptorGenerator::AddRegisterWithDBusObject(
     const std::string& itf_name,
     const Interface& interface,
@@ -157,7 +158,6 @@ void AdaptorGenerator::AddRegisterWithDBusObject(
   text->AddLine("}");
 }
 
-// static
 void AdaptorGenerator::RegisterInterface(const string& itf_name,
                                          const Interface& interface,
                                          IndentedText *text) {
@@ -243,11 +243,10 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
   }
 }
 
-// static
 void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
                                            IndentedText *text) {
   IndentedText block;
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   if (!interface.methods.empty())
     block.AddBlankLine();
 
@@ -335,12 +334,11 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
   text->AddBlock(block);
 }
 
-// static
 void AdaptorGenerator::AddSendSignalMethods(
     const Interface& interface,
     IndentedText *text) {
   IndentedText block;
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
 
   if (!interface.signals.empty())
     block.AddBlankLine();
@@ -389,11 +387,10 @@ void AdaptorGenerator::AddSendSignalMethods(
   text->AddBlock(block);
 }
 
-// static
 void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
                                             IndentedText *text) {
   IndentedText block;
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
 
   for (const auto& signal : interface.signals) {
     string signal_type_name = StringPrintf("Signal%sType", signal.name.c_str());
@@ -428,12 +425,11 @@ void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
   text->AddBlock(block);
 }
 
-// static
 void AdaptorGenerator::AddPropertyMethodImplementation(
     const Interface& interface,
     IndentedText *text) {
   IndentedText block;
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
 
   for (const auto& property : interface.properties) {
     block.AddBlankLine();
@@ -493,11 +489,10 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
   text->AddBlock(block);
 }
 
-// static
 void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
                                               IndentedText *text) {
   IndentedText block;
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
 
   for (const auto& property : interface.properties) {
     auto parsed_type = signature.Parse(property.type);

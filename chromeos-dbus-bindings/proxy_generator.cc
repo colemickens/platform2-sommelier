@@ -43,7 +43,9 @@ string GetParamString(const ParamDef& param_def) {
 }
 }  // anonymous namespace
 
-// static
+ProxyGenerator::ProxyGenerator(bool new_fd_bindings)
+    : new_fd_bindings_(new_fd_bindings) {}
+
 bool ProxyGenerator::GenerateProxies(
     const ServiceConfig& config,
     const std::vector<Interface>& interfaces,
@@ -63,6 +65,7 @@ bool ProxyGenerator::GenerateProxies(
   text.AddBlankLine();
   text.AddLine("#include <base/bind.h>");
   text.AddLine("#include <base/callback.h>");
+  text.AddLine("#include <base/files/scoped_file.h>");
   text.AddLine("#include <base/logging.h>");
   text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <base/memory/ref_counted.h>");
@@ -70,6 +73,7 @@ bool ProxyGenerator::GenerateProxies(
   text.AddLine("#include <brillo/dbus/dbus_method_invoker.h>");
   text.AddLine("#include <brillo/dbus/dbus_property.h>");
   text.AddLine("#include <brillo/dbus/dbus_signal_handler.h>");
+  text.AddLine("#include <brillo/dbus/file_descriptor.h>");
   text.AddLine("#include <brillo/errors/error.h>");
   text.AddLine("#include <brillo/variant_dictionary.h>");
   text.AddLine("#include <dbus/bus.h>");
@@ -100,7 +104,6 @@ bool ProxyGenerator::GenerateProxies(
   return WriteTextToFile(output_file, text);
 }
 
-// static
 bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
                                    const std::vector<Interface>& interfaces,
                                    const base::FilePath& mock_file,
@@ -178,7 +181,6 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
   return WriteTextToFile(mock_file, text);
 }
 
-// static
 void ProxyGenerator::GenerateInterfaceProxyInterface(
     const ServiceConfig& config,
     const Interface& interface,
@@ -225,7 +227,6 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
   text->AddBlankLine();
 }
 
-// static
 void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
                                             const Interface& interface,
                                             IndentedText* text) {
@@ -314,7 +315,6 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   text->AddBlankLine();
 }
 
-// static
 void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
                                            const Interface& interface,
                                            IndentedText* text) {
@@ -343,7 +343,7 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
     AddSignalHandlerRegistrationMock(signal, text);
   }
 
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   for (const auto& prop : interface.properties) {
     auto parsed_type = signature.Parse(prop.type);
     CHECK(parsed_type && parsed_type->IsValidPropertyType());
@@ -391,7 +391,6 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
   text->AddBlankLine();
 }
 
-// static
 void ProxyGenerator::AddConstructor(const ServiceConfig& config,
                                     const Interface& interface,
                                     const string& class_name,
@@ -433,7 +432,6 @@ void ProxyGenerator::AddConstructor(const ServiceConfig& config,
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddDestructor(const string& class_name,
                                    IndentedText* text) {
   IndentedText block;
@@ -442,7 +440,6 @@ void ProxyGenerator::AddDestructor(const string& class_name,
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddReleaseObjectProxy(IndentedText* text) {
   text->AddBlankLine();
   text->AddLine("void ReleaseObjectProxy(const base::Closure& callback) {");
@@ -452,7 +449,6 @@ void ProxyGenerator::AddReleaseObjectProxy(IndentedText* text) {
   text->AddLine("}");
 }
 
-// static
 void ProxyGenerator::AddGetObjectPath(IndentedText* text) {
   text->AddBlankLine();
   text->AddLine("const dbus::ObjectPath& GetObjectPath() const override {");
@@ -460,7 +456,6 @@ void ProxyGenerator::AddGetObjectPath(IndentedText* text) {
   text->AddLine("}");
 }
 
-// static
 void ProxyGenerator::AddGetObjectProxy(IndentedText* text) {
   text->AddBlankLine();
   text->AddLine("dbus::ObjectProxy* GetObjectProxy() const override {");
@@ -468,7 +463,6 @@ void ProxyGenerator::AddGetObjectProxy(IndentedText* text) {
   text->AddLine("}");
 }
 
-// static
 void ProxyGenerator::AddInitializeProperties(const string& class_name,
                                              bool declaration_only,
                                              IndentedText* text) {
@@ -495,7 +489,6 @@ void ProxyGenerator::AddInitializeProperties(const string& class_name,
   }
 }
 
-// static
 void ProxyGenerator::AddSetPropertyChanged(const string& class_name,
                                            bool declaration_only,
                                            IndentedText* text) {
@@ -514,7 +507,6 @@ void ProxyGenerator::AddSetPropertyChanged(const string& class_name,
   }
 }
 
-// static
 void ProxyGenerator::AddGetProperties(IndentedText* text) {
   text->AddBlankLine();
   // Dereference and take the address since sometimes property_set_ is a raw
@@ -525,7 +517,6 @@ void ProxyGenerator::AddGetProperties(IndentedText* text) {
   text->AddLine("PropertySet* GetProperties() { return &(*property_set_); }");
 }
 
-// static
 void ProxyGenerator::AddOnPropertyChanged(IndentedText* text) {
   text->AddLine("void OnPropertyChanged(const std::string& property_name) {");
   text->PushOffset(kBlockOffset);
@@ -570,7 +561,6 @@ void ProxyGenerator::AddSignalHandlerRegistration(
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
                                     const Interface& interface,
                                     IndentedText* text) {
@@ -602,7 +592,7 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
   block.AddLine("}");
   block.AddBlankLine();
 
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   for (const auto& prop : interface.properties) {
     auto parsed_type = signature.Parse(prop.type);
     CHECK(parsed_type && parsed_type->IsValidPropertyType());
@@ -624,14 +614,13 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddProperties(const Interface& interface,
                                    bool declaration_only,
                                    IndentedText* text) {
   if (declaration_only && !interface.properties.empty())
     text->AddBlankLine();
 
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   for (const auto& prop : interface.properties) {
     if (declaration_only) {
       text->AddLine(
@@ -681,13 +670,12 @@ void ProxyGenerator::AddProperties(const Interface& interface,
   }
 }
 
-// static
 void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     const string& interface_name,
                                     bool declaration_only,
                                     IndentedText* text) {
   IndentedText block;
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   block.AddBlankLine();
   block.AddComments(method.doc_string);
   block.AddLine(StringPrintf("%sbool %s(",
@@ -749,13 +737,12 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
                                          const string& interface_name,
                                          bool declaration_only,
                                          IndentedText* text) {
   IndentedText block;
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   block.AddBlankLine();
   block.AddComments(method.doc_string);
   block.AddLine(StringPrintf("%svoid %sAsync(",
@@ -815,11 +802,10 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddMethodMock(const Interface::Method& method,
                                    const string& /* interface_name */,
                                    IndentedText* text) {
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
     auto type = signature.Parse(argument.type);
@@ -842,11 +828,10 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
   AddMockMethodDeclaration(method.name, "bool", arguments, text);
 }
 
-// static
 void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
                                         const string& /* interface_name */,
                                         IndentedText* text) {
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
     auto type = signature.Parse(argument.type);
@@ -924,7 +909,6 @@ void ProxyGenerator::AddMockMethodDeclaration(const string& method_name,
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddSignalHandlerRegistrationMock(
     const Interface::Signal& signal,
     IndentedText* text) {
@@ -948,11 +932,10 @@ void ProxyGenerator::AddSignalHandlerRegistrationMock(
   text->AddBlock(block);
 }
 
-// static
 void ProxyGenerator::AddSignalCallbackArg(const Interface::Signal& signal,
                                           bool comment_arg_name,
                                           IndentedText* block) {
-  DBusSignature signature;
+  DBusSignature signature{new_fd_bindings_};
   string signal_callback = StringPrintf("%ssignal_callback%s",
                                         comment_arg_name ? "/*" : "",
                                         comment_arg_name ? "*/" : "");
@@ -1031,6 +1014,7 @@ void ProxyGenerator::ObjectManager::GenerateProxy(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddConstructor(
     const ServiceConfig& config,
     const std::string& class_name,
@@ -1076,6 +1060,7 @@ void ProxyGenerator::ObjectManager::AddConstructor(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddDestructor(
     const std::string& class_name,
     const std::vector<Interface>& interfaces,
@@ -1092,6 +1077,7 @@ void ProxyGenerator::ObjectManager::AddDestructor(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddGetObjectManagerProxy(
     IndentedText* text) {
   text->AddLine("dbus::ObjectManager* GetObjectManagerProxy() const {");
@@ -1100,6 +1086,7 @@ void ProxyGenerator::ObjectManager::AddGetObjectManagerProxy(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
     const Interface& interface,
     IndentedText* text) {
@@ -1185,6 +1172,7 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddOnPropertyChanged(
     const std::vector<Interface>& interfaces,
     IndentedText* text) {
@@ -1236,6 +1224,7 @@ void ProxyGenerator::ObjectManager::AddOnPropertyChanged(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddObjectAdded(
     const ServiceConfig& config,
     const std::vector<Interface>& interfaces,
@@ -1298,6 +1287,7 @@ void ProxyGenerator::ObjectManager::AddObjectAdded(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddObjectRemoved(
     const std::vector<Interface>& interfaces,
     IndentedText* text) {
@@ -1337,6 +1327,7 @@ void ProxyGenerator::ObjectManager::AddObjectRemoved(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddCreateProperties(
     const std::vector<Interface>& interfaces,
     const std::string& class_name,
@@ -1380,6 +1371,7 @@ void ProxyGenerator::ObjectManager::AddCreateProperties(
   text->AddBlankLine();
 }
 
+// static
 void ProxyGenerator::ObjectManager::AddDataMembers(
     const ServiceConfig& config,
     const std::vector<Interface>& interfaces,
@@ -1412,7 +1404,6 @@ void ProxyGenerator::ObjectManager::AddDataMembers(
   text->AddBlankLine();
 }
 
-// static
 string ProxyGenerator::GetHandlerNameForSignal(const string& signal) {
   return StringPrintf("On%sSignal", signal.c_str());
 }

@@ -39,6 +39,7 @@ const char kExpectedContent[] = R"literal_string(
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -46,6 +47,7 @@ const char kExpectedContent[] = R"literal_string(
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -419,6 +421,7 @@ const char kExpectedContentWithService[] = R"literal_string(
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -426,6 +429,7 @@ const char kExpectedContentWithService[] = R"literal_string(
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -568,6 +572,7 @@ const char kExpectedContentWithObjectManager[] = R"literal_string(
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -575,6 +580,7 @@ const char kExpectedContentWithObjectManager[] = R"literal_string(
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -978,6 +984,7 @@ const char kExpectedContentWithProperties[] = R"literal_string(
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -985,6 +992,7 @@ const char kExpectedContentWithProperties[] = R"literal_string(
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -1108,6 +1116,7 @@ const char kExpectedContentWithObjectManagerAndServiceName[] = R"literal_string(
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -1115,6 +1124,7 @@ const char kExpectedContentWithObjectManagerAndServiceName[] = R"literal_string(
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -1446,6 +1456,147 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
 }  // namespace chromium
 }  // namespace org
 )literal_string";
+
+const char kExpectedContentNewFileDescriptors[] = R"literal_string(
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <base/macros.h>
+#include <base/memory/ref_counted.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/file_descriptor.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_manager.h>
+#include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
+
+namespace org {
+namespace chromium {
+
+// Abstract interface proxy for org::chromium::TestInterface.
+class TestInterfaceProxyInterface {
+ public:
+  virtual ~TestInterfaceProxyInterface() = default;
+
+  virtual bool WrapFileDescriptor(
+      const brillo::dbus_utils::FileDescriptor& in_1,
+      base::ScopedFD* out_2,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void WrapFileDescriptorAsync(
+      const brillo::dbus_utils::FileDescriptor& in_1,
+      const base::Callback<void(const base::ScopedFD&)>& success_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void RegisterFileSignalHandler(
+      const base::Callback<void(const base::ScopedFD&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
+// Interface proxy for org::chromium::TestInterface.
+class TestInterfaceProxy final : public TestInterfaceProxyInterface {
+ public:
+  TestInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name) :
+          bus_{bus},
+          service_name_{service_name},
+          dbus_object_proxy_{
+              bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
+  ~TestInterfaceProxy() override {
+  }
+
+  void RegisterFileSignalHandler(
+      const base::Callback<void(const base::ScopedFD&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
+    brillo::dbus_utils::ConnectToSignal(
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "File",
+        signal_callback,
+        on_connected_callback);
+  }
+
+  void ReleaseObjectProxy(const base::Closure& callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  }
+
+  const dbus::ObjectPath& GetObjectPath() const override {
+    return object_path_;
+  }
+
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
+
+  bool WrapFileDescriptor(
+      const brillo::dbus_utils::FileDescriptor& in_1,
+      base::ScopedFD* out_2,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "WrapFileDescriptor",
+        error,
+        in_1);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_2);
+  }
+
+  void WrapFileDescriptorAsync(
+      const brillo::dbus_utils::FileDescriptor& in_1,
+      const base::Callback<void(const base::ScopedFD&)>& success_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "WrapFileDescriptor",
+        success_callback,
+        error_callback,
+        in_1);
+  }
+
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
+  const dbus::ObjectPath object_path_{"/org/chromium/Test"};
+  dbus::ObjectProxy* dbus_object_proxy_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestInterfaceProxy);
+};
+
+}  // namespace chromium
+}  // namespace org
+
+)literal_string";
 }  // namespace
 
 class ProxyGeneratorTest : public Test {
@@ -1503,7 +1654,8 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
   vector<Interface> interfaces{interface, interface2};
   base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
   ServiceConfig config;
-  EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
+  ProxyGenerator gen{false};
+  EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
@@ -1522,7 +1674,8 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithServiceName) {
   base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
   ServiceConfig config;
   config.service_name = "org.chromium.Test";
-  EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
+  ProxyGenerator gen{false};
+  EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
@@ -1540,7 +1693,8 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithProperties) {
   base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
   ServiceConfig config;
   config.service_name = "org.chromium.Test";
-  EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
+  ProxyGenerator gen{false};
+  EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
@@ -1562,7 +1716,8 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
   ServiceConfig config;
   config.object_manager.name = "org.chromium.ObjectManager";
   config.object_manager.object_path = "/org/chromium/Test";
-  EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
+  ProxyGenerator gen{false};
+  EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
@@ -1584,13 +1739,37 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManagerAndServiceName) {
   config.service_name = "org.chromium.Test";
   config.object_manager.name = "org.chromium.ObjectManager";
   config.object_manager.object_path = "/org/chromium/Test";
-  EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
+  ProxyGenerator gen{false};
+  EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
   test_utils::EXPECT_TEXT_CONTAINED(
       kExpectedContentWithObjectManagerAndServiceName, contents);
+}
+
+TEST_F(ProxyGeneratorTest, NewFileDescriptors) {
+  Interface interface;
+  interface.name = "org.chromium.TestInterface";
+  interface.path = "/org/chromium/Test";
+  interface.methods.emplace_back(
+      "WrapFileDescriptor",
+      vector<Interface::Argument>{{"", "h"}},
+      vector<Interface::Argument>{{"", "h"}});
+  interface.signals.emplace_back(
+      "File",
+      vector<Interface::Argument>{{"", "h"}});
+  base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
+  ServiceConfig config;
+  ProxyGenerator gen{true};
+  EXPECT_TRUE(gen.GenerateProxies(config, {interface}, output_path));
+  string contents;
+  EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
+  // The header guards contain the (temporary) filename, so we search for
+  // the content we need within the string.
+  test_utils::EXPECT_TEXT_CONTAINED(
+      kExpectedContentNewFileDescriptors, contents);
 }
 
 }  // namespace chromeos_dbus_bindings
