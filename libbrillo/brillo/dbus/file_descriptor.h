@@ -13,6 +13,7 @@ namespace dbus_utils {
 // a wrapper as possible to match the libchrome bindings below when this
 // class is used by chromeos-dbus-bindings.
 struct FileDescriptor {
+  FileDescriptor() : fd(-1) {}
   FileDescriptor(int fd) : fd(fd) {}
 
   inline FileDescriptor& operator=(int new_fd) {
