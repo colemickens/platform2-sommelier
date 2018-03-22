@@ -12,6 +12,13 @@
       ],
     },
     {
+      'target_name': 'libgarcon',
+      'type': 'static_library',
+      'sources': [
+        'garcon/desktop_file.cc',
+      ],
+    },
+    {
       'target_name': 'libsyslog',
       'type': 'static_library',
       'dependencies': [
@@ -44,6 +51,7 @@
       'type': 'executable',
       'dependencies': [
         'container-rpcs',
+        'libgarcon',
       ],
       'sources': [
         'garcon/main.cc',
@@ -107,6 +115,18 @@
           'sources': [
             'syslog/collector_unittest.cc',
             'syslog/parser_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'garcon_desktop_file_test',
+          'type': 'executable',
+          'dependencies': [
+            'libgarcon',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'garcon/desktop_file_unittest.cc',
           ],
         },
       ],
