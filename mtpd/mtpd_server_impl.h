@@ -61,7 +61,7 @@ class MtpdServer : public org::chromium::MtpdInterface,
                      std::vector<uint8_t>* file_contents) override;
   bool CopyFileFromLocal(brillo::ErrorPtr* error,
                          const std::string& handle,
-                         const dbus::FileDescriptor& file_descriptor,
+                         const base::ScopedFD& file_descriptor,
                          uint32_t parent_id,
                          const std::string& file_name) override;
   bool DeleteObject(brillo::ErrorPtr* error,

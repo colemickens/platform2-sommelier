@@ -21,6 +21,7 @@
       'variables': {
         'dbus_adaptors_out_dir': 'include/mtpd/dbus_adaptors',
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+        'new_fd_bindings': 1,
       },
       'sources': [
         'dbus_bindings/org.chromium.Mtpd.xml',

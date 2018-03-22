@@ -185,7 +185,7 @@ bool MtpdServer::ReadFileChunk(brillo::ErrorPtr* error,
 
 bool MtpdServer::CopyFileFromLocal(brillo::ErrorPtr* error,
                                    const std::string& handle,
-                                   const dbus::FileDescriptor& file_descriptor,
+                                   const base::ScopedFD& file_descriptor,
                                    uint32_t parent_id,
                                    const std::string& file_name) {
   const std::string storage_name = LookupHandle(handle);
@@ -194,7 +194,7 @@ bool MtpdServer::CopyFileFromLocal(brillo::ErrorPtr* error,
     return false;
   }
 
-  if (!device_manager_.CopyFileFromLocal(storage_name, file_descriptor.value(),
+  if (!device_manager_.CopyFileFromLocal(storage_name, file_descriptor.get(),
                                          parent_id, file_name)) {
     AddError(error, FROM_HERE, "CopyFileFromLocal failed");
     return false;
