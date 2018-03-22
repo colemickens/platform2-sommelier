@@ -107,7 +107,7 @@ struct Krb5Conf {
 };
 
 // Checks and casts an integer |error| to the corresponding ErrorType.
-ErrorType CastError(int error) {
+WARN_UNUSED_RESULT ErrorType CastError(int error) {
   EXPECT_GE(error, 0);
   EXPECT_LT(error, ERROR_COUNT);
   return static_cast<ErrorType>(error);
@@ -458,7 +458,7 @@ class AuthPolicyTest : public testing::Test {
   // Joins a (stub) Active Directory domain. Returns the error code.
   ErrorType Join(const std::string& machine_name,
                  const std::string& user_principal,
-                 dbus::FileDescriptor password_fd) {
+                 dbus::FileDescriptor password_fd) WARN_UNUSED_RESULT {
     JoinDomainRequest request;
     request.set_machine_name(machine_name);
     request.set_user_principal_name(user_principal);
@@ -478,7 +478,7 @@ class AuthPolicyTest : public testing::Test {
   // Extended Join() that takes a full JoinDomainRequest proto.
   ErrorType JoinEx(const JoinDomainRequest& request,
                    dbus::FileDescriptor password_fd,
-                   std::string* joined_domain) {
+                   std::string* joined_domain) WARN_UNUSED_RESULT {
     expected_error_reports[ERROR_OF_JOIN_AD_DOMAIN]++;
     std::vector<uint8_t> blob(request.ByteSizeLong());
     request.SerializeToArray(blob.data(), blob.size());
@@ -493,7 +493,8 @@ class AuthPolicyTest : public testing::Test {
   ErrorType Auth(const std::string& user_principal,
                  const std::string& account_id,
                  dbus::FileDescriptor password_fd,
-                 ActiveDirectoryAccountInfo* account_info = nullptr) {
+                 ActiveDirectoryAccountInfo* account_info = nullptr)
+      WARN_UNUSED_RESULT {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> account_info_blob;
     expected_error_reports[ERROR_OF_AUTHENTICATE_USER]++;
@@ -516,7 +517,8 @@ class AuthPolicyTest : public testing::Test {
   // status to |user_status| if a non-nullptr is given.
   ErrorType GetUserStatus(const std::string& user_principal,
                           const std::string& account_id,
-                          ActiveDirectoryUserStatus* user_status = nullptr) {
+                          ActiveDirectoryUserStatus* user_status = nullptr)
+      WARN_UNUSED_RESULT {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> user_status_blob;
     expected_error_reports[ERROR_OF_GET_USER_STATUS]++;
@@ -531,7 +533,8 @@ class AuthPolicyTest : public testing::Test {
   }
 
   ErrorType GetUserKerberosFiles(const std::string& account_id,
-                                 KerberosFiles* kerberos_files = nullptr) {
+                                 KerberosFiles* kerberos_files = nullptr)
+      WARN_UNUSED_RESULT {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> kerberos_files_blob;
     expected_error_reports[ERROR_OF_GET_USER_KERBEROS_FILES]++;
@@ -1157,7 +1160,7 @@ TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
 TEST_F(AuthPolicyTest, AuthFailsDifferentAccountIds) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
-  EXPECT_DEATH(Auth(kUserPrincipal, kAltAccountId, MakePasswordFd()),
+  EXPECT_DEATH((void)Auth(kUserPrincipal, kAltAccountId, MakePasswordFd()),
                kMultiUserNotSupported);
 }
 
@@ -1250,7 +1253,7 @@ TEST_F(AuthPolicyTest, GetUserStatusFailsNotJoined) {
 TEST_F(AuthPolicyTest, GetUserStatusFailsDifferentAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
-  EXPECT_DEATH(GetUserStatus(kUserPrincipal, kAltAccountId),
+  EXPECT_DEATH((void)GetUserStatus(kUserPrincipal, kAltAccountId),
                kMultiUserNotSupported);
 }
 
@@ -1391,7 +1394,7 @@ TEST_F(AuthPolicyTest, GetUserKerberosFilesEmptyNotLoggedIn) {
 TEST_F(AuthPolicyTest, GetUserKerberosFilesBeforeAuthWithAltIdDies) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserKerberosFiles(kAccountId));
-  EXPECT_DEATH(Auth(kUserPrincipal, kAltAccountId, MakePasswordFd()),
+  EXPECT_DEATH((void)Auth(kUserPrincipal, kAltAccountId, MakePasswordFd()),
                kMultiUserNotSupported);
 }
 

@@ -115,7 +115,8 @@ bool IsMachine(const std::string& principal) {
 
 // Reads the file at |path| into |data|. Returns |ERROR_LOCAL_IO| if the file
 // could not be read.
-ErrorType ReadFile(const base::FilePath& path, std::string* data) {
+WARN_UNUSED_RESULT ErrorType ReadFile(const base::FilePath& path,
+                                      std::string* data) {
   data->clear();
   if (!base::ReadFileToStringWithMaxSize(path, data, kKrb5FileSizeLimit)) {
     PLOG(ERROR) << "Failed to read '" << path.value() << "'";
@@ -149,8 +150,8 @@ std::ostream& operator<<(std::ostream& os,
 }
 
 // In case kinit failed, checks the output and returns appropriate error codes.
-ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
-                        bool is_machine_principal) {
+WARN_UNUSED_RESULT ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
+                                           bool is_machine_principal) {
   DCHECK_NE(0, kinit_cmd.GetExitCode());
   const std::string& kinit_out = kinit_cmd.GetStdout();
   const std::string& kinit_err = kinit_cmd.GetStderr();
@@ -198,7 +199,7 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
 }
 
 // In case klist failed, checks the output and returns appropriate error codes.
-ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
+WARN_UNUSED_RESULT ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
   DCHECK_NE(0, klist_cmd.GetExitCode());
   const std::string& klist_out = klist_cmd.GetStdout();
   const std::string& klist_err = klist_cmd.GetStderr();
@@ -223,8 +224,8 @@ ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
 
 // In case kpasswd failed, checks the output and returns appropriate error
 // codes.
-ErrorType GetKPasswdError(const ProcessExecutor& kpasswd_cmd,
-                          bool is_machine_principal) {
+WARN_UNUSED_RESULT ErrorType GetKPasswdError(const ProcessExecutor& kpasswd_cmd,
+                                             bool is_machine_principal) {
   DCHECK_NE(0, kpasswd_cmd.GetExitCode());
   const std::string& kpasswd_err = kpasswd_cmd.GetStderr();
 

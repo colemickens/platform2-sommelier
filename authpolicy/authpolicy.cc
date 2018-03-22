@@ -51,8 +51,9 @@ ErrorMetricType GetPolicyErrorMetricType(bool is_refresh_user_policy) {
 
 // Serializes |proto| to the byte array |proto_blob|. Returns ERROR_NONE on
 // success and ERROR_PARSE_FAILED otherwise.
-ErrorType SerializeProto(const google::protobuf::MessageLite& proto,
-                         std::vector<uint8_t>* proto_blob) {
+WARN_UNUSED_RESULT ErrorType
+SerializeProto(const google::protobuf::MessageLite& proto,
+               std::vector<uint8_t>* proto_blob) {
   proto_blob->resize(proto.ByteSizeLong());
   if (!proto.SerializeToArray(proto_blob->data(), proto_blob->size())) {
     LOG(ERROR) << "Failed to serialize proto";
@@ -61,8 +62,9 @@ ErrorType SerializeProto(const google::protobuf::MessageLite& proto,
   return ERROR_NONE;
 }
 
-ErrorType ParseProto(google::protobuf::MessageLite* proto,
-                     const std::vector<uint8_t>& proto_blob) {
+WARN_UNUSED_RESULT ErrorType
+ParseProto(google::protobuf::MessageLite* proto,
+           const std::vector<uint8_t>& proto_blob) {
   if (!proto->ParseFromArray(proto_blob.data(), proto_blob.size())) {
     LOG(ERROR) << "Failed to parse proto";
     return ERROR_PARSE_FAILED;
