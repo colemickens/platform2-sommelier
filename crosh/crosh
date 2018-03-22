@@ -752,8 +752,9 @@ HELP_network_logging=''
 unset USAGE_network_logging HELP_network_logging
 cmd_network_logging() (
   cat <<EOF
-This command has been removed.  Please use the Chrome page instead:
-chrome://net-internals/#chromeos   (Ctrl+Click to open)
+This command has been removed.  Please use the Chrome page instead, and select
+your interface there:
+chrome://net-internals/#chromeos
 EOF
 )
 
