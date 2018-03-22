@@ -7,34 +7,31 @@
  *
  */
 #define _FILE_OFFSET_BITS 64
+#define CHROMEOS_ENVIRONMENT
+
+#include <errno.h>
+#include <fcntl.h>
+#include <glib.h>
+#include <grp.h>
+#include <inttypes.h>
+#include <openssl/rand.h>
+#include <pwd.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <grp.h>
-#include <pwd.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/mount.h>
-#include <linux/fs.h>
-
-#include <glib.h>
-
-#include <openssl/rand.h>
-
-#define CHROMEOS_ENVIRONMENT
-#include <vboot/tlcl.h>
+#include <unistd.h>
 #include <vboot/crossystem.h>
+#include <vboot/tlcl.h>
 
-#include "mount_encrypted.h"
-#include "mount_helpers.h"
+#include "cryptohome/mount_encrypted.h"
+#include "cryptohome/mount_helpers.h"
 
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
@@ -96,25 +93,29 @@ enum bind_dir {
   BIND_DEST,
 };
 
+#define str_literal(s) (const_cast<char *>(s))
 static struct bind_mount {
   char* src;      /* Location of bind source. */
   char* dst;      /* Destination of bind. */
   char* previous; /* Migratable prior bind source. */
   char* pending;  /* Location for pending deletion. */
-  char* owner;
-  char* group;
+  char const* owner;
+  char const* group;
   mode_t mode;
   int submount; /* Submount is bound already. */
 } bind_mounts_default[] = {
-    {(char*)ENCRYPTED_MNT "/var", (char*)"var", (char*)STATEFUL_MNT "/var",
-     (char*)STATEFUL_MNT "/.var", (char*)"root", (char*)"root",
+    {str_literal(ENCRYPTED_MNT "/var"), str_literal("var"),
+     str_literal(STATEFUL_MNT "/var"), str_literal(STATEFUL_MNT "/.var"),
+     "root", "root",
      S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 0},
-    {(char*)ENCRYPTED_MNT "/chronos", (char*)"home/chronos",
-     (char*)STATEFUL_MNT "/home/chronos", (char*)STATEFUL_MNT "/home/.chronos",
-     (char*)"chronos", (char*)"chronos",
+    {str_literal(ENCRYPTED_MNT "/chronos"), str_literal("home/chronos"),
+     str_literal(STATEFUL_MNT "/home/chronos"),
+     str_literal(STATEFUL_MNT "/home/.chronos"),
+     "chronos", "chronos",
      S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 1},
     {},
 };
+#undef str_literal
 
 #if DEBUG_ENABLED
 struct timeval tick = {};
@@ -184,8 +185,8 @@ static int check_tpm_result(uint32_t result, const char* operation) {
   return 0
 #define LOG_RESULT(x, y) check_tpm_result(x, y)
 
-static void sha256(char* string, uint8_t* digest) {
-  SHA256((unsigned char*)string, strlen(string), digest);
+static void sha256(char const* str, uint8_t* digest) {
+  SHA256((unsigned char*)(str), strlen(str), digest);
 }
 
 /* Returns 1 on success, 0 on failure. */
@@ -445,7 +446,8 @@ static int get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
     DEBUG("Reading %d bytes from NVRAM", sizeof(area));
     RETURN_ON_FAILURE(TlclRead(kNvramAreaTpm2Index, &area, sizeof(area)),
                       "Reading NVRAM area");
-    debug_dump_hex("key nvram", (uint8_t*)&area, sizeof(area));
+    debug_dump_hex("key nvram", reinterpret_cast<uint8_t*>(&area),
+                   sizeof(area));
   } else {
     INFO("NVRAM area doesn't exist or can't check permissions");
     memset(&area, 0, sizeof(area));
@@ -475,7 +477,8 @@ static int get_nvram_key_tpm2(uint8_t* digest, int* migrate) {
     area.magic = kNvramAreaTpm2Magic;
     area.ver_flags = kNvramAreaTpm2CurrentVersion;
     memcpy(area.salt, rand_bytes, DIGEST_LENGTH);
-    debug_dump_hex("key nvram", (uint8_t*)&area, sizeof(area));
+    debug_dump_hex("key nvram", reinterpret_cast<uint8_t*>(&area),
+                   sizeof(area));
 
     RETURN_ON_FAILURE(TlclWrite(kNvramAreaTpm2Index, &area, sizeof(area)),
                       "Writing NVRAM area");
@@ -578,7 +581,7 @@ static int find_system_key(int mode, uint8_t* digest, int* migration_allowed) {
   /* Factory mode uses a static system key. */
   if (mode == kModeFactory) {
     INFO("Using factory insecure system key.");
-    sha256((char*)kStaticKeyFactory, digest);
+    sha256(kStaticKeyFactory, digest);
     debug_dump_hex("system key", digest, DIGEST_LENGTH);
     return 1;
   }
@@ -613,7 +616,7 @@ static int find_system_key(int mode, uint8_t* digest, int* migration_allowed) {
   }
 
   INFO("Using default insecure system key.");
-  sha256((char*)kStaticKeyDefault, digest);
+  sha256(kStaticKeyDefault, digest);
   debug_dump_hex("system key", digest, DIGEST_LENGTH);
   return 1;
 }
@@ -650,11 +653,11 @@ static int check_bind(struct bind_mount* bind, enum bind_dir dir) {
   if (dir == BIND_DEST)
     return 0;
 
-  if (!(user = getpwnam(bind->owner))) {
+  if (!(user = getpwnam(bind->owner))) {  // NOLINT(runtime/threadsafe_fn)
     PERROR("getpwnam(%s)", bind->owner);
     return -1;
   }
-  if (!(group = getgrnam(bind->group))) {
+  if (!(group = getgrnam(bind->group))) {  // NOLINT(runtime/threadsafe_fn)
     PERROR("getgrnam(%s)", bind->group);
     return -1;
   }
@@ -778,7 +781,7 @@ static void finalize(uint8_t* system_key, char* encryption_key) {
 
 static void needs_finalization(char* encryption_key) {
   uint8_t useless_key[DIGEST_LENGTH];
-  sha256((char*)kStaticKeyFinalizationNeeded, useless_key);
+  sha256(kStaticKeyFinalizationNeeded, useless_key);
 
   INFO("Writing finalization intent %s.", needs_finalization_path);
   if (!keyfile_write(needs_finalization_path, useless_key, encryption_key)) {
@@ -922,7 +925,7 @@ static int setup_encrypted(int mode) {
     valid_keyfile = 1;
   } else {
     uint8_t useless_key[DIGEST_LENGTH];
-    sha256((char*)kStaticKeyFinalizationNeeded, useless_key);
+    sha256(kStaticKeyFinalizationNeeded, useless_key);
     encryption_key = keyfile_read(needs_finalization_path, useless_key);
     if (!encryption_key) {
       /* This is a brand new system with no keys. */
@@ -1223,9 +1226,9 @@ static int shutdown(void) {
   if (getenv("MOUNT_ENCRYPTED_FSCK")) {
     char* cmd;
 
-    if (asprintf(&cmd, "fsck -a %s", dmcrypt_dev) == -1)
+    if (asprintf(&cmd, "fsck -a %s", dmcrypt_dev) == -1) {
       PERROR("asprintf");
-    else {
+    } else {
       int rc;
 
       rc = system(cmd);
@@ -1313,9 +1316,9 @@ static int report_info(void) {
   if (has_chromefw()) {
     int rc;
     rc = get_nvram_key(system_key, &migrate);
-    if (!rc)
+    if (!rc) {
       printf("NVRAM: missing.\n");
-    else {
+    } else {
       printf("NVRAM: %s, %s.\n", migrate ? "legacy" : "modern",
              rc ? "available" : "ignored");
     }
@@ -1402,7 +1405,7 @@ static void prepare_paths(void) {
       goto fail;
     g_free(hex);
   } else {
-    rootdir = (gchar*)"/";
+    rootdir = const_cast<gchar*>("/");
     if (!(dmcrypt_name = strdup(kCryptDevName)))
       goto fail;
   }
@@ -1462,15 +1465,15 @@ int main(int argc, char* argv[]) {
   prepare_paths();
 
   if (argc > 1) {
-    if (!strcmp(argv[1], "umount"))
+    if (!strcmp(argv[1], "umount")) {
       return shutdown();
-    else if (!strcmp(argv[1], "info"))
+    } else if (!strcmp(argv[1], "info")) {
       return report_info();
-    else if (!strcmp(argv[1], "finalize"))
+    } else if (!strcmp(argv[1], "finalize")) {
       return finalize_from_cmdline(argc > 2 ? argv[2] : NULL);
-    else if (!strcmp(argv[1], "factory"))
+    } else if (!strcmp(argv[1], "factory")) {
       mode = kModeFactory;
-    else {
+    } else {
       fprintf(stderr, "Usage: %s [info|finalize|umount|factory]\n", argv[0]);
       return 1;
     }
