@@ -71,6 +71,9 @@ class BRILLO_EXPORT ExportedPropertyBase {
   // interface of the exported object.
   virtual void SetUpdateCallback(const OnUpdateCallback& cb);
 
+  // Clears the update callback that was previously set with SetUpdateCallback.
+  virtual void ClearUpdateCallback();
+
   // Returns the contained value as Any.
   virtual brillo::Any GetValue() const = 0;
 

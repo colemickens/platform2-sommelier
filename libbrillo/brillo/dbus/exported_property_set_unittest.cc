@@ -342,6 +342,10 @@ TEST_F(ExportedPropertySetTest, GetRemovedProperty) {
 
   auto response = GetPropertyOnInterface(kTestInterface1, kBoolPropName);
   ASSERT_EQ(DBUS_ERROR_UNKNOWN_PROPERTY, response->GetErrorName());
+
+  // Signal should not be emitted for removed property.
+  EXPECT_CALL(*mock_exported_object_, SendSignal(_)).Times(0);
+  p_->bool_prop_.SetValue(true);
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithBool) {
