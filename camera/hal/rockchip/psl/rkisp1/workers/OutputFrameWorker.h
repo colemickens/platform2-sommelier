@@ -22,10 +22,13 @@
 #include "tasks/ICaptureEventSource.h"
 #include "tasks/JpegEncodeTask.h"
 #include "NodeTypes.h"
+
+#include <cros-camera/camera_thread.h>
+
 namespace android {
 namespace camera2 {
 
-class OutputFrameWorker: public FrameWorker, public ICaptureEventSource, public IMessageHandler
+class OutputFrameWorker: public FrameWorker, public ICaptureEventSource
 {
 public:
     OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream,
@@ -103,14 +106,7 @@ private:
         Camera3Request *request;
     };
 private:
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,            // call requestExitAndWait
-        MESSAGE_ID_PROCESS,
-        MESSAGE_ID_MAX
-    };
-    struct Message {
-        Message() : id(MESSAGE_ID_MAX) {}
-        MessageId id;
+    struct MessageProcess {
         std::shared_ptr<PostProcFrame> frame;
     };
 
@@ -122,8 +118,7 @@ private:
     bool checkListenerBuffer(Camera3Request* request);
     std::shared_ptr<CameraBuffer> getOutputBufferForListener();
     status_t allocListenerProcessBuffers();
-    virtual void messageThreadLoop(void);
-    status_t handleMessageProcess(Message & msg);
+    status_t handleMessageProcess(MessageProcess msg);
     void returnBuffers(bool returnListenerBuffers);
 
 private:
@@ -135,6 +130,8 @@ private:
     bool mNeedPostProcess;
     NodeTypes mNodeName;
 
+    cros::CameraThread mCameraThread;
+
     SWPostProcessor mProcessor;
 
     // For listeners
@@ -143,11 +140,6 @@ private:
     // Put to ISP if requests require listeners'buffer only
     std::shared_ptr<CameraBuffer> mOutputForListener;
     SharedItemPool<PostProcFrame> mPostProcFramePool;
-
-    std::unique_ptr<MessageThread> mMessageThread;
-    MessageQueue<Message, MessageId> mMessageQueue;
-    bool mThreadRunning;
-
 };
 
 } /* namespace camera2 */

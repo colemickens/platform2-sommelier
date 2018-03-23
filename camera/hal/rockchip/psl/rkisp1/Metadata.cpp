@@ -394,10 +394,10 @@ status_t Metadata::fillTonemapCurve(RequestCtrlState &reqState)
 }
 
 void
-Metadata::FillSensorDescriptor(const ControlUnit::Message &msg)
+Metadata::FillSensorDescriptor(const ControlUnit::MessageSensorMode &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    mSensorDescriptor = msg.data.sensor.exposureDesc;
+    mSensorDescriptor = msg.exposureDesc;
 }
 
 } /* namespace camera2 */

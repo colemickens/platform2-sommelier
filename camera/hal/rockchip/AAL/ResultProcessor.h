@@ -25,11 +25,11 @@
 
 #include "LogHelper.h"
 #include "CameraStream.h"
-#include "MessageQueue.h"
-#include "MessageThread.h"
 #include "ItemPool.h"
 
 #include "IErrorCallback.h"
+
+#include <cros-camera/camera_thread.h>
 
 NAMESPACE_DECLARATION {
 
@@ -55,7 +55,7 @@ class Camera3Request;
  * - buffer return
  * - partial metadata return
  */
-class ResultProcessor : public IErrorCallback, public IRequestCallback, public IMessageHandler {
+class ResultProcessor : public IErrorCallback, public IRequestCallback {
 public:
     ResultProcessor(RequestThread * aReqThread,
                     const camera3_callback_ops_t * cbOps);
@@ -125,51 +125,32 @@ private:  /* types  and constants */
     static const int MAX_REQUEST_IN_TRANSIT = 10;    /*!> worst case number used
                                                          for pool allocation */
 
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,            // call requestExitAndWait
-        MESSAGE_ID_SHUTTER_DONE,
-        MESSAGE_ID_METADATA_DONE,       // partial metadata
-        MESSAGE_ID_BUFFER_DONE,
-        MESSAGE_ID_REGISTER_REQUEST,
-        MESSAGE_ID_DEVICE_ERROR,
-        // max number of messages
-        MESSAGE_ID_MAX
-    };
-
     struct MessageMetadataDone {
+        Camera3Request* request;  // any sent request
         int resultIndex;    /*!> Index from the partial result array that is
                                  being returned */
      };
 
     struct MessageShutterDone {
+        Camera3Request* request;  // any sent request
         int64_t time;
      };
 
-    union MessageData {
-        MessageMetadataDone meta;
-        MessageShutterDone shutter;
-    };
-
-    /**
-     * \struct
-     * Result processor message structure
-     */
-    struct Message {
-        MessageId id;
-        MessageData data;
-        // common, more complex fields, that can't be put in a union like MessageData
+    struct MessageBufferDone {
         Camera3Request* request;  // any sent request
         std::shared_ptr<CameraBuffer> buffer;
-    };
+     };
+
+    struct MessageRegisterRequest {
+        Camera3Request* request;  // any sent request
+     };
 
 private:  /* methods */
-    /* IMessageHandler overloads */
-    virtual void messageThreadLoop(void);
-    status_t handleMessageExit();
-    status_t handleShutterDone(Message &msg);
-    status_t handleMetadataDone(Message &msg);
-    status_t handleBufferDone(Message & msg);
-    status_t handleRegisterRequest(Message &msg);
+    status_t handleExit();
+    status_t handleShutterDone(MessageShutterDone msg);
+    status_t handleMetadataDone(MessageMetadataDone msg);
+    status_t handleBufferDone(MessageBufferDone msg);
+    status_t handleRegisterRequest(MessageRegisterRequest msg);
     void handleDeviceError(void);
     status_t recycleRequest(Camera3Request *req);
     void returnPendingBuffers(RequestState_t *reqState);
@@ -183,10 +164,9 @@ private:  /* methods */
 
 private:  /* members */
     RequestThread *mRequestThread;
-    MessageQueue<Message, MessageId> mMessageQueue;
-    std::shared_ptr<MessageThread> mMessageThread;
+    cros::CameraThread mCameraThread;
+
     const camera3_callback_ops_t *mCallbackOps;
-    bool mThreadRunning;
     ItemPool<RequestState_t> mReqStatePool;
 
     /* New request id and RequestState stroe in mReqStatePool.

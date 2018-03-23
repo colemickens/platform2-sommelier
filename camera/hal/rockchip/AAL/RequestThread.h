@@ -18,11 +18,12 @@
 #ifndef _CAMERA3_REQUESTTHREAD_H_
 #define _CAMERA3_REQUESTTHREAD_H_
 
-#include "MessageThread.h"
-#include "MessageQueue.h"
 #include "ResultProcessor.h"
 #include "ItemPool.h"
 #include <hardware/camera3.h>
+
+#include <cros-camera/camera_thread.h>
+#include <base/synchronization/waitable_event.h>
 
 NAMESPACE_DECLARATION {
 
@@ -33,22 +34,19 @@ NAMESPACE_DECLARATION {
  * The RequestThread  is the in charge of controlling the flow of request from
  * the client to the HW class.
  */
-class RequestThread: public IMessageHandler,
-                     public MessageThread {
+class RequestThread {
 public:
     RequestThread(int cameraId, ICameraHw *aCameraHW);
     virtual ~RequestThread();
 
     status_t init(const camera3_callback_ops_t *callback_ops);
     status_t deinit(void);
+    status_t run();
 
     status_t configureStreams(camera3_stream_configuration_t *stream_list);
     status_t constructDefaultRequest(int type, camera_metadata_t** meta);
     status_t processCaptureRequest(camera3_capture_request_t *request);
     status_t flush();
-
-    /* IMessageHandler override */
-    void messageThreadLoop(void);
 
     int returnRequest(Camera3Request* req);
 
@@ -63,27 +61,8 @@ public:
     };
 
 private:  /* types */
-
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,            // call requestExitAndWait
-
-        MESSAGE_ID_REQUEST_DONE,
-        MESSAGE_ID_FLUSH,
-
-        // For HAL API
-        MESSAGE_ID_CONFIGURE_STREAMS,
-        MESSAGE_ID_CONSTRUCT_DEFAULT_REQUEST,
-        MESSAGE_ID_PROCESS_CAPTURE_REQUEST,
-
-        MESSAGE_ID_MAX
-    };
-
     struct MessageConfigureStreams {
         camera3_stream_configuration_t * list;
-    };
-
-    struct MessageRegisterStreamBuffers {
-        const camera3_stream_buffer_set_t * set;
     };
 
     struct MessageConstructDefaultRequest {
@@ -95,48 +74,17 @@ private:  /* types */
         camera3_capture_request * request3;
     };
 
-    struct MessageShutter {
-        int reqId;
-        int64_t time;
-    };
-
-    struct MessageCaptureDone {
-        int reqId;
-        int64_t time;
-        struct timeval timestamp;
-    };
-
     struct MessageStreamOutDone {
         int reqId;
-        int finished;
-        status_t status;
-    };
-
-    // union of all message data
-    union MessageData {
-        MessageConfigureStreams streams;
-        MessageRegisterStreamBuffers buffers;
-        MessageConstructDefaultRequest defaultRequest;
-        MessageProcessCaptureRequest request3;
-        MessageShutter shutter;
-        MessageCaptureDone capture;
-        MessageStreamOutDone streamOut;
-    };
-
-    // message id and message data
-    struct Message {
-        Message() : id(MESSAGE_ID_MAX), request(nullptr) { CLEAR(data); }
-        MessageId id;
-        MessageData data;
         Camera3Request *request;
     };
 
 private:  /* methods */
-
-    status_t handleConfigureStreams(Message & msg);
-    status_t handleConstructDefaultRequest(Message & msg);
-    status_t handleProcessCaptureRequest(Message & msg);
-    int handleReturnRequest(Message & msg);
+    status_t handleConfigureStreams(MessageConfigureStreams msg);
+    status_t handleConstructDefaultRequest(MessageConstructDefaultRequest msg);
+    status_t handleProcessCaptureRequest(MessageProcessCaptureRequest msg);
+    status_t handleReturnRequest(MessageStreamOutDone msg);
+    status_t handleExit();
 
     status_t captureRequest(Camera3Request* request);
 
@@ -146,12 +94,9 @@ private:  /* methods */
 private:  /* members */
     int mCameraId;
     ICameraHw   *mCameraHw; /* allocate from outside and should not delete in here */
-    MessageQueue<Message, MessageId> mMessageQueue;
     ItemPool<Camera3Request> mRequestsPool;
-    bool mThreadRunning;
 
     int mRequestsInHAL;
-    bool mFlushing;
     Camera3Request* mWaitingRequest;  /*!< storage during need to wait for
                                            captures to be finished.
                                            It is one item from mRequestsPool */
@@ -168,6 +113,9 @@ private:  /* members */
     std::vector<CameraStream*> mLocalStreams; /* Local storage of streaming informations */
     unsigned int mStreamSeqNo;
 
+    cros::CameraThread mCameraThread;
+
+    base::WaitableEvent mWaitRequest; /* Guide blocking capture request */
 };
 
 } NAMESPACE_DECLARATION_END

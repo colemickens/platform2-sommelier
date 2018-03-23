@@ -26,14 +26,14 @@
 #include "ICameraRKISP1HwControls.h"
 #include "PlatformData.h"
 #include "RKISP1CameraCapInfo.h"
-#include "MessageThread.h"
-#include "MessageQueue.h"
 #include "Camera3Request.h"
 #include "PollerThread.h"
 #include "CaptureUnitSettings.h"
 #include "Rk3aPlus.h"
 #include "CaptureUnitSettings.h"
 #include "SensorHwOp.h"
+
+#include <cros-camera/camera_thread.h>
 
 namespace android {
 namespace camera2 {
@@ -71,8 +71,7 @@ public:
  * the flash and sensorHw
  *
  */
-class SyncManager : public IMessageHandler,
-                    public IPollEventListener {
+class SyncManager : public IPollEventListener {
 
 public:
     SyncManager(int32_t cameraId,
@@ -84,12 +83,11 @@ public:
 
     status_t init(int32_t exposureDelay, int32_t gainDelay);
     status_t getSensorModeData(rk_aiq_exposure_sensor_descriptor &desc);
-    status_t requestExitAndWait();
     status_t stop();
     status_t start();
     status_t isStarted(bool &isStarted);
     status_t flush();
-    status_t setParameters(std::shared_ptr<CaptureUnitSettings> &settings, rk_aiq_exposure_sensor_descriptor *sensor_desc);
+    status_t setParameters(std::shared_ptr<CaptureUnitSettings> settings);
     status_t setSensorFT(int width, int height);
 
     virtual int32_t getCurrentCameraId(void);
@@ -111,22 +109,6 @@ private:
     SensorType                      mSensorType;
     std::shared_ptr<SensorHwOp>     mSensorOp;
 
-    //Thread message id's
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0, // messages from client
-        MESSAGE_ID_INIT,
-        MESSAGE_ID_GET_SENSOR_MODEDATA,
-        MESSAGE_ID_START,
-        MESSAGE_ID_IS_STARTED,
-        MESSAGE_ID_STOP,
-        MESSAGE_ID_FLUSH,
-        MESSAGE_ID_SET_PARAMS,
-        MESSAGE_ID_SOF,     // messages from sensor
-        MESSAGE_ID_EOF,
-        MESSAGE_ID_SET_SENSOR_FT,
-        MESSAGE_ID_MAX      // error
-    };
-
     //frame sync
     enum FrameSyncSource {
         FRAME_SYNC_NA,
@@ -145,12 +127,7 @@ private:
         struct timeval timestamp;
     };
 
-    struct MessageFrameEvent        mLatestFrameEvent;
-
-    struct MessageAeParams {
-        rk_aiq_ae_results aeResults;
-        int32_t requestId;
-    };
+    struct MessageFrameEvent        mLatestFrameEventMsg;
 
     struct MessageIsStarted {
         bool *value;
@@ -166,25 +143,7 @@ private:
         int32_t gainDelay;
     };
 
-    union MessageData {
-        MessageSensorModeData sensorModeData;
-        MessageAeParams aeParams;
-        MessageFrameEvent frameEvent;
-        MessageIsStarted isStarted;
-        MessageInit init;
-        MessageSensorFT sFT;
-    };
-
-    struct Message {
-        MessageId id;
-        MessageData data;
-        std::shared_ptr<CaptureUnitSettings> settings;
-        Message() : id(MESSAGE_ID_EXIT), settings(nullptr) {}
-    };
-
-    MessageQueue<Message, MessageId> mMessageQueue;
-    std::shared_ptr<MessageThread> mMessageThread;
-    bool mThreadRunning;
+    cros::CameraThread mCameraThread;
     bool mStarted;
 
     /**
@@ -208,19 +167,17 @@ private:
     uint32_t mLatestInEffectFrom;
 private:
     /* IMessageHandler overloads */
-    virtual void messageThreadLoop(void);
-    status_t handleMessageExit();
-    status_t handleMessageInit(Message &msg);
-    status_t handleMessageGetSensorModeData(Message &msg);
-    status_t handleMessageFlush();
-    status_t handleMessageStart();
-    status_t handleMessageIsStarted(Message &msg);
-    status_t handleMessageStop();
+    status_t handleInit(MessageInit msg);
+    status_t handleGetSensorModeData(MessageSensorModeData msg);
+    status_t handleFlush();
+    status_t handleStart();
+    status_t handleIsStarted(MessageIsStarted msg);
+    status_t handleStop();
     status_t applyParameters(std::shared_ptr<CaptureUnitSettings> &settings);
-    status_t handleMessageSetParams(Message &msg);
-    status_t handleMessageSOF(Message &msg);
-    status_t handleMessageEOF(Message &msg);
-    status_t handleMessageSetSensorFT(Message &msg);
+    status_t handleSetParams(std::shared_ptr<CaptureUnitSettings> settings);
+    status_t handleSOF(MessageFrameEvent msg);
+    status_t handleEOF();
+    status_t handleSetSensorFT(MessageSensorFT msg);
 
     status_t initSynchronization();
     status_t deInitSynchronization();

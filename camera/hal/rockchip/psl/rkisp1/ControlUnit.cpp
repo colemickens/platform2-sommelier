@@ -49,9 +49,7 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         m3aWrapper(nullptr),
         mCameraId(cameraId),
         mMediaCtl(mc),
-        mThreadRunning(false),
-        mMessageQueue("CtrlUnitThread", static_cast<int>(MESSAGE_ID_MAX)),
-        mMessageThread(nullptr),
+        mCameraThread("CtrlUThread"),
         mStreamCfgProv(aStreamCfgProv),
         mSettingsProcessor(nullptr),
         mMetadata(nullptr),
@@ -143,8 +141,10 @@ ControlUnit::init()
         }
     }
 
-    mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "CtrlUThread"));
-    mMessageThread->run();
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
+        return UNKNOWN_ERROR;
+    }
 
     const RKISP1CameraCapInfo *cap = getRKISP1CameraCapInfo(mCameraId);
     if (!cap) {
@@ -386,12 +386,7 @@ ControlUnit::~ControlUnit()
 
     mSettingsHistory.clear();
 
-    requestExitAndWait();
-
-    if (mMessageThread != nullptr) {
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
+    mCameraThread.Stop();
 
     if (mSettingsProcessor) {
         delete mSettingsProcessor;
@@ -443,23 +438,6 @@ ControlUnit::configStreamsDone(bool configChanged)
         notifyCaptureEvent(&outMsg);
     }
 
-    return NO_ERROR;
-}
-
-status_t
-ControlUnit::requestExitAndWait()
-{
-    Message msg;
-    msg.id = MESSAGE_ID_EXIT;
-    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
-    status |= mMessageThread->requestExitAndWait();
-    return status;
-}
-
-status_t
-ControlUnit::handleMessageExit()
-{
-    mThreadRunning = false;
     return NO_ERROR;
 }
 
@@ -520,7 +498,6 @@ status_t
 ControlUnit::processRequest(Camera3Request* request,
                             std::shared_ptr<GraphConfig> graphConfig)
 {
-    Message msg;
     status_t status = NO_ERROR;
     std::shared_ptr<RequestCtrlState> state;
     LOG2("@%s: id %d", __FUNCTION__, request->getId());
@@ -532,19 +509,19 @@ ControlUnit::processRequest(Camera3Request* request,
 
     state->init(request, graphConfig);
 
-    msg.id = MESSAGE_ID_NEW_REQUEST;
-    msg.state = state;
-    status = mMessageQueue.send(&msg);
-    return status;
+    base::Callback<status_t()> closure =
+            base::Bind(&ControlUnit::handleNewRequest, base::Unretained(this),
+                       base::Passed(std::move(state)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return OK;
 }
 
-status_t
-ControlUnit::handleNewRequest(Message &msg)
+status_t ControlUnit::handleNewRequest(std::shared_ptr<RequestCtrlState> state)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     status_t status = NO_ERROR;
-    std::shared_ptr<RequestCtrlState> reqState = msg.state;
+    std::shared_ptr<RequestCtrlState> reqState = state;
 
     /**
      * PHASE 1: Process the settings
@@ -681,8 +658,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
     if (mLatestRequestId < 0)
     {
         //handle the first request
-        Message msg;
-        msg.id = MESSAGE_ID_NEW_2A_STAT;
+        MessageStats msg;
         msg.stats = NULL;
         handleNewStat(msg);
     }
@@ -736,11 +712,8 @@ status_t
 ControlUnit::applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCaptureSettings)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = NO_ERROR;
 
-    status = mSyncManager->setParameters(aiqCaptureSettings, &mSensorDescriptor);
-
-    return status;
+    return mSyncManager->setParameters(aiqCaptureSettings);
 }
 
 status_t ControlUnit::fillMetadata(std::shared_ptr<RequestCtrlState> &reqState)
@@ -777,7 +750,7 @@ status_t ControlUnit::fillMetadata(std::shared_ptr<RequestCtrlState> &reqState)
 }
 
 status_t
-ControlUnit::handleNewStat(Message &msg)
+ControlUnit::handleNewStat(MessageStats msg)
 {
     status_t status = NO_ERROR;
     std::shared_ptr<RequestCtrlState> reqState = nullptr;
@@ -866,7 +839,7 @@ ControlUnit::handleNewStat(Message &msg)
 }
 
 status_t
-ControlUnit::handleNewRequestDone(Message &msg)
+ControlUnit::handleRequestDone(MessageRequestDone msg)
 {
     std::shared_ptr<RequestCtrlState> reqState = nullptr;
     int reqId = msg.requestId;
@@ -945,12 +918,11 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
     return NO_ERROR;
 }
 
-status_t
-ControlUnit::handleNewShutter(Message &msg)
+status_t ControlUnit::handleNewShutter(MessageShutter msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     std::shared_ptr<RequestCtrlState> reqState = nullptr;
-    int reqId = msg.data.shutter.requestId;
+    int reqId = msg.requestId;
 
     //check whether this reqId has been shutter done
     if (reqId <= mShutterDoneReqId)
@@ -981,8 +953,9 @@ ControlUnit::handleNewShutter(Message &msg)
 
     //# ANDROID_METADATA_Dynamic android.flash.state done
     reqState->ctrlUnitResult->update(ANDROID_FLASH_STATE, &flashState, 1);
-    int64_t ts = msg.data.shutter.tv_sec * 1000000000; // seconds to nanoseconds
-    ts += msg.data.shutter.tv_usec * 1000; // microseconds to nanoseconds
+
+    int64_t ts = msg.tv_sec * 1000000000; // seconds to nanoseconds
+    ts += msg.tv_usec * 1000; // microseconds to nanoseconds
 
     //# ANDROID_METADATA_Dynamic android.sensor.timestamp done
     reqState->ctrlUnitResult->update(ANDROID_SENSOR_TIMESTAMP, &ts, 1);
@@ -994,12 +967,13 @@ ControlUnit::handleNewShutter(Message &msg)
     return NO_ERROR;
 }
 
-status_t
-ControlUnit::handleNewSensorDescriptor(Message &msg)
+status_t ControlUnit::handleNewSensorDescriptor(MessageSensorMode msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     mMetadata->FillSensorDescriptor(msg);
-    mSensorDescriptor = msg.data.sensor.exposureDesc;
+    mSensorDescriptor = msg.exposureDesc;
+
     return mSettingsProcessor->handleNewSensorDescriptor(msg);
 }
 
@@ -1007,17 +981,14 @@ status_t
 ControlUnit::flush(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    Message msg;
-    msg.id = MESSAGE_ID_FLUSH;
-    mMessageQueue.remove(MESSAGE_ID_NEW_REQUEST);
-    mMessageQueue.remove(MESSAGE_ID_NEW_2A_STAT);
-    mMessageQueue.remove(MESSAGE_ID_NEW_SENSOR_DESCRIPTOR);
-    mMessageQueue.remove(MESSAGE_ID_NEW_SHUTTER);
-    return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&ControlUnit::handleFlush, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
-status_t
-ControlUnit::handleMessageFlush(void)
+status_t ControlUnit::handleFlush(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
@@ -1081,59 +1052,6 @@ ControlUnit::getSensorModeData(rk_aiq_exposure_sensor_descriptor &desc)
     return status;
 }
 
-void
-ControlUnit::messageThreadLoop()
-{
-    LOG1("@%s - Start", __FUNCTION__);
-
-    mThreadRunning = true;
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-
-        Message msg;
-        mMessageQueue.receive(&msg);
-
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        LOG2("@%s, receive message id:%d", __FUNCTION__, msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            status = handleMessageExit();
-            break;
-        case MESSAGE_ID_NEW_REQUEST:
-            status = handleNewRequest(msg);
-            break;
-        case MESSAGE_ID_NEW_2A_STAT:
-            if (handleNewStat(msg) != NO_ERROR)
-                LOGE("Error handling new stats");
-            break;
-        case MESSAGE_ID_NEW_SENSOR_DESCRIPTOR:
-            if (handleNewSensorDescriptor(msg) != NO_ERROR)
-                LOGE("Error getting sensor descriptor");
-            break;
-        case MESSAGE_ID_NEW_SHUTTER:
-            status = handleNewShutter(msg);
-            break;
-        case MESSAGE_ID_NEW_REQUEST_DONE:
-            status = handleNewRequestDone(msg);
-            break;
-        case MESSAGE_ID_FLUSH:
-            status = handleMessageFlush();
-            break;
-        default:
-            LOGE("ERROR Unknown message %d", msg.id);
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE("error %d in handling message: %d", status,
-                    static_cast<int>(msg.id));
-        LOG2("@%s, finish message id:%d", __FUNCTION__, msg.id);
-        mMessageQueue.reply(msg.id, status);
-    }
-
-    LOG1("%s: Exit", __FUNCTION__);
-}
-
 bool
 ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
 {
@@ -1148,35 +1066,59 @@ ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
         return true;
     }
 
-    Message msg;
     switch (captureMsg->data.event.type) {
         case CAPTURE_EVENT_NEW_SENSOR_DESCRIPTOR:
-            msg.id = MESSAGE_ID_NEW_SENSOR_DESCRIPTOR;
-            msg.data.sensor.exposureDesc = captureMsg->data.event.exposureDesc;
-            msg.data.sensor.frameParams = captureMsg->data.event.frameParams;
-            mMessageQueue.send(&msg);
+        {
+            MessageSensorMode msg;
+            msg.exposureDesc = captureMsg->data.event.exposureDesc;
+            msg.frameParams = captureMsg->data.event.frameParams;
+            base::Callback<status_t()> closure =
+                    base::Bind(&ControlUnit::handleNewSensorDescriptor,
+                               base::Unretained(this),
+                               base::Passed(std::move(msg)));
+            mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
             break;
+        }
         case CAPTURE_EVENT_2A_STATISTICS:
-            msg.id = MESSAGE_ID_NEW_2A_STAT;
+        {
+            MessageStats msg;
             msg.stats = captureMsg->data.event.stats;
-            mMessageQueue.send(&msg);
+            base::Callback<status_t()> closure =
+                    base::Bind(&ControlUnit::handleNewStat,
+                               base::Unretained(this),
+                               base::Passed(std::move(msg)));
+            mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
             break;
+        }
         case CAPTURE_EVENT_SHUTTER:
-            msg.id = MESSAGE_ID_NEW_SHUTTER;
-            msg.data.shutter.requestId = captureMsg->data.event.reqId;
-            msg.data.shutter.tv_sec = captureMsg->data.event.timestamp.tv_sec;
-            msg.data.shutter.tv_usec = captureMsg->data.event.timestamp.tv_usec;
-            mMessageQueue.send(&msg, MESSAGE_ID_NEW_SHUTTER);
+        {
+            status_t status = OK;
+            MessageShutter msg;
+            msg.requestId = captureMsg->data.event.reqId;
+            msg.tv_sec = captureMsg->data.event.timestamp.tv_sec;
+            msg.tv_usec = captureMsg->data.event.timestamp.tv_usec;
+            base::Callback<status_t()> closure =
+                    base::Bind(&ControlUnit::handleNewShutter,
+                               base::Unretained(this),
+                               base::Passed(std::move(msg)));
+            mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
             break;
+        }
         case CAPTURE_EVENT_NEW_SOF:
             mSofSequence = captureMsg->data.event.sequence;
             LOG2("sof event sequence = %u", mSofSequence);
             break;
         case CAPTURE_REQUEST_DONE:
-            msg.id = MESSAGE_ID_NEW_REQUEST_DONE;
+        {
+            MessageRequestDone msg;
             msg.requestId = captureMsg->data.event.reqId;
-            mMessageQueue.send(&msg);
+            base::Callback<status_t()> closure =
+                    base::Bind(&ControlUnit::handleRequestDone,
+                               base::Unretained(this),
+                               base::Passed(std::move(msg)));
+            mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
             break;
+        }
         default:
             LOGW("Unsupported Capture event ");
             break;

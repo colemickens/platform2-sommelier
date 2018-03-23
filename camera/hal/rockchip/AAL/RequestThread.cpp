@@ -34,38 +34,27 @@ const metadata_value_t streamTypeValues[] = {
 };
 
 RequestThread::RequestThread(int cameraId, ICameraHw *aCameraHW) :
-    MessageThread(this, "Cam3ReqThread"),
     mCameraId(cameraId),
     mCameraHw(aCameraHW),
-    mMessageQueue("RequestThread", MESSAGE_ID_MAX),
-    mThreadRunning(false),
     mRequestsInHAL(0),
-    mFlushing(false),
     mWaitingRequest(nullptr),
     mBlockAction(REQBLK_NONBLOCKING),
     mInitialized(false),
     mResultProcessor(nullptr),
-    mStreamSeqNo(0)
+    mStreamSeqNo(0),
+    mCameraThread("Cam3ReqThread"),
+    mWaitRequest(true, false)
 {
     LOG1("@%s", __FUNCTION__);
 
     // Run Cam3ReqThread thread
-    if (run() == OK) {
-        mThreadRunning = true;
-    } else {
+    if (run() != OK) {
         LOGE("Failed to run Cam3ReqThread thread");
     }
 }
 
 RequestThread::~RequestThread()
 {
-    if (mThreadRunning) {
-        Message msg;
-        msg.id = MESSAGE_ID_EXIT;
-        mMessageQueue.send(&msg);
-        requestExitAndWait();
-    }
-
     deinit();
 }
 
@@ -107,6 +96,12 @@ RequestThread::deinit()
         mResultProcessor = nullptr;
     }
 
+    base::Callback<status_t()> closure =
+            base::Bind(&RequestThread::handleExit, base::Unretained(this));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+
+    mCameraThread.Stop();
+
     // Delete all streams
     for (unsigned int i = 0; i < mLocalStreams.size(); i++) {
         CameraStream *s = mLocalStreams.at(i);
@@ -123,17 +118,31 @@ RequestThread::deinit()
     return NO_ERROR;
 }
 
-status_t
-RequestThread::configureStreams(camera3_stream_configuration_t *stream_list)
+status_t RequestThread::run()
 {
-    Message msg;
-    msg.id = MESSAGE_ID_CONFIGURE_STREAMS;
-    msg.data.streams.list = stream_list;
-    return mMessageQueue.send(&msg, MESSAGE_ID_CONFIGURE_STREAMS);
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
+        return UNKNOWN_ERROR;
+    }
+    return OK;
 }
 
 status_t
-RequestThread::handleConfigureStreams(Message & msg)
+RequestThread::configureStreams(camera3_stream_configuration_t *stream_list)
+{
+    MessageConfigureStreams msg;
+    msg.list = stream_list;
+
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&RequestThread::handleConfigureStreams,
+                       base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
+}
+
+status_t RequestThread::handleConfigureStreams(MessageConfigureStreams msg)
 {
     LOG1("@%s", __FUNCTION__);
 
@@ -141,16 +150,16 @@ RequestThread::handleConfigureStreams(Message & msg)
     mLastSettings.clear();
     mWaitingRequest = nullptr;
 
-    uint32_t streamsNum = msg.data.streams.list->num_streams;
+    uint32_t streamsNum = msg.list->num_streams;
     int inStreamsNum = 0;
     int outStreamsNum = 0;
-    uint32_t operation_mode = msg.data.streams.list->operation_mode;
+    uint32_t operation_mode = msg.list->operation_mode;
     camera3_stream_t *stream = nullptr;
     CameraStream * s = nullptr;
     LOG1("Received %d streams, operation mode %d :", streamsNum, operation_mode);
     // Check number and type of streams
     for (uint32_t i = 0; i < streamsNum; i++) {
-        stream = msg.data.streams.list->streams[i];
+        stream = msg.list->streams[i];
         LOG1("Config stream (%s): %dx%d, fmt %s, usage %d, max buffers:%d, priv %p",
                 METAID2STR(streamTypeValues, stream->stream_type),
                 stream->width, stream->height,
@@ -187,7 +196,7 @@ RequestThread::handleConfigureStreams(Message & msg)
 
     // Create for new streams
     for (uint32_t i = 0; i < streamsNum; i++) {
-        stream = msg.data.streams.list->streams[i];
+        stream = msg.list->streams[i];
         if (!stream->priv) {
             mStreams.push_back(stream);
             CameraStream* localStream = new CameraStream(mStreamSeqNo, stream, mResultProcessor);
@@ -225,40 +234,54 @@ status_t
 RequestThread::constructDefaultRequest(int type,
                                             camera_metadata_t** meta)
 {
-    Message msg;
-    msg.id = MESSAGE_ID_CONSTRUCT_DEFAULT_REQUEST;
-    msg.data.defaultRequest.type= type;
-    msg.data.defaultRequest.request = meta;
-    return mMessageQueue.send(&msg, MESSAGE_ID_CONSTRUCT_DEFAULT_REQUEST);
+    MessageConstructDefaultRequest msg;
+    msg.type= type;
+    msg.request = meta;
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&RequestThread::handleConstructDefaultRequest,
+                       base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
 status_t
-RequestThread::handleConstructDefaultRequest(Message & msg)
+RequestThread::handleConstructDefaultRequest(MessageConstructDefaultRequest msg)
 {
     LOG2("@%s", __FUNCTION__);
-    int requestType = msg.data.defaultRequest.type;
+    int requestType = msg.type;
     const camera_metadata_t* defaultRequest;
     defaultRequest = mCameraHw->getDefaultRequestSettings(requestType);
-    *(msg.data.defaultRequest.request) = (camera_metadata_t*)defaultRequest;
+    *(msg.request) = (camera_metadata_t*)defaultRequest;
 
-    return (*(msg.data.defaultRequest.request)) ? NO_ERROR : NO_MEMORY;
+    return (*(msg.request)) ? NO_ERROR : NO_MEMORY;
 }
 
 status_t
 RequestThread::processCaptureRequest(camera3_capture_request_t *request)
 {
-    Message msg;
-    msg.id = MESSAGE_ID_PROCESS_CAPTURE_REQUEST;
-    msg.data.request3.request3 = request;
+    MessageProcessCaptureRequest msg;
+    msg.request3 = request;
 
-    return mMessageQueue.send(&msg, MESSAGE_ID_PROCESS_CAPTURE_REQUEST);
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&RequestThread::handleProcessCaptureRequest,
+                       base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    if (mBlockAction != REQBLK_NONBLOCKING) {
+        mWaitRequest.Reset();
+        mWaitRequest.Wait();
+    }
+    return status;
 }
 
 // NO_ERROR: request process is OK (waiting for ISP mode change or shutter)
 // BAD_VALUE: request is not correct
 // else: request process failed due to device error
 status_t
-RequestThread::handleProcessCaptureRequest(Message & msg)
+RequestThread::handleProcessCaptureRequest(MessageProcessCaptureRequest msg)
 {
     LOG2("%s:", __FUNCTION__);
     status_t status = BAD_VALUE;
@@ -277,18 +300,18 @@ RequestThread::handleProcessCaptureRequest(Message & msg)
      * Settings may be nullptr in repeating requests but not in the first one
      * check that now.
      */
-    if (msg.data.request3.request3->settings) {
-        MetadataHelper::dumpMetadata(msg.data.request3.request3->settings);
+    if (msg.request3->settings) {
+        MetadataHelper::dumpMetadata(msg.request3->settings);
         // This assignment implies a memcopy.
         // mLastSettings has a copy of the current settings
-        mLastSettings = msg.data.request3.request3->settings;
+        mLastSettings = msg.request3->settings;
     } else if (mLastSettings.isEmpty()) {
         status = BAD_VALUE;
         LOGE("ERROR: nullptr settings for the first request!");
         goto badRequest;
     }
 
-    status = request->init(msg.data.request3.request3,
+    status = request->init(msg.request3,
                            mResultProcessor,
                            mLastSettings, mCameraId);
     if (status != NO_ERROR) {
@@ -330,17 +353,19 @@ badRequest:
 int
 RequestThread::returnRequest(Camera3Request* req)
 {
-    Message msg;
-    msg.id = MESSAGE_ID_REQUEST_DONE;
+    MessageStreamOutDone msg;
     msg.request = req;
-    msg.data.streamOut.reqId = req->getId();
-    mMessageQueue.send(&msg);
+    msg.reqId = req->getId();
 
+    base::Callback<status_t()> closure =
+            base::Bind(&RequestThread::handleReturnRequest,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
     return 0;
 }
 
-int
-RequestThread::handleReturnRequest(Message & msg)
+status_t
+RequestThread::handleReturnRequest(MessageStreamOutDone msg)
 {
     Camera3Request* request = msg.request;
     status_t status = NO_ERROR;
@@ -364,14 +389,9 @@ RequestThread::handleReturnRequest(Message & msg)
         if (mWaitingRequest == nullptr) {
             if (areAllStreamsUnderMaxBuffers()) {
                 mBlockAction = REQBLK_NONBLOCKING;
-                mMessageQueue.reply(MESSAGE_ID_PROCESS_CAPTURE_REQUEST, status);
+                mWaitRequest.Signal();
             }
         }
-    }
-
-    if (mFlushing && !mRequestsInHAL) {
-        mMessageQueue.reply(MESSAGE_ID_FLUSH, NO_ERROR);
-        mFlushing = false;
     }
 
     return 0;
@@ -419,64 +439,14 @@ status_t RequestThread::flush(void)
     return 0;
 }
 
-void
-RequestThread::messageThreadLoop(void)
+status_t RequestThread::handleExit()
 {
-    LOG2("%s: Start", __func__);
-    while (1) {
-        status_t status = NO_ERROR;
-
-        Message msg;
-        mMessageQueue.receive(&msg);
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        if (msg.id == MESSAGE_ID_EXIT) {
-            if (mBlockAction != REQBLK_NONBLOCKING) {
-                mBlockAction = REQBLK_NONBLOCKING;
-                LOG1("%s: exit - replying", __FUNCTION__);
-                mMessageQueue.reply(MESSAGE_ID_PROCESS_CAPTURE_REQUEST, NO_INIT);
-            }
-            LOG1("%s: EXIT", __FUNCTION__);
-            break;
-        }
-
-        if (mFlushing && msg.id != MESSAGE_ID_REQUEST_DONE) {
-             mMessageQueue.reply(msg.id, INVALID_OPERATION);
-        }
-
-        LOG2("@%s, receive message id:%d", __FUNCTION__, msg.id);
-        bool replyImmediately = true;
-        switch (msg.id) {
-        case MESSAGE_ID_CONFIGURE_STREAMS:
-            status = handleConfigureStreams(msg);
-            break;
-        case MESSAGE_ID_CONSTRUCT_DEFAULT_REQUEST:
-            status = handleConstructDefaultRequest(msg);
-            break;
-        case MESSAGE_ID_PROCESS_CAPTURE_REQUEST:
-            status = handleProcessCaptureRequest(msg);
-            replyImmediately = (mBlockAction == REQBLK_NONBLOCKING);
-            break;
-        case MESSAGE_ID_REQUEST_DONE:
-            status = handleReturnRequest(msg);
-            break;
-        case MESSAGE_ID_FLUSH:
-            break;
-        default:
-            LOGE("ERROR @%s: Unknow message %d", __FUNCTION__, msg.id);
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE("    error %d in handling message: %d", status, (int)msg.id);
-
-        LOG2("@%s, finish message id:%d", __FUNCTION__, msg.id);
-
-        if (replyImmediately)
-            mMessageQueue.reply(msg.id, status);
-
+    if (mBlockAction != REQBLK_NONBLOCKING) {
+        mBlockAction = REQBLK_NONBLOCKING;
+        LOG1("%s: exit - replying", __FUNCTION__);
+        mWaitRequest.Signal();
     }
-
-    LOG2("%s: Exit", __FUNCTION__);
+    return OK;
 }
 
 status_t

@@ -46,9 +46,7 @@ SyncManager::SyncManager(int32_t cameraId,
     mSensorType(SENSOR_TYPE_NONE),
     mSensorOp(nullptr),
     mFrameSyncSource(FRAME_SYNC_NA),
-    mMessageQueue("Camera_SyncManager", (int)MESSAGE_ID_MAX),
-    mMessageThread(new MessageThread(this, "SyncManager", PRIORITY_CAMERA)),
-    mThreadRunning(false),
+    mCameraThread("SyncManager"),
     mStarted(false),
     mExposureDelay(0),
     mGainDelay(0),
@@ -57,7 +55,9 @@ SyncManager::SyncManager(int32_t cameraId,
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mCapInfo = getRKISP1CameraCapInfo(cameraId);
-    mMessageThread->run();
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
+    }
 }
 
 SyncManager::~SyncManager()
@@ -65,20 +65,12 @@ SyncManager::~SyncManager()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status;
 
-    mMessageQueue.remove(MESSAGE_ID_SOF);
-    mMessageQueue.remove(MESSAGE_ID_EOF);
-    mMessageQueue.remove(MESSAGE_ID_SET_PARAMS);
-
     status = stop();
     if (status != NO_ERROR) {
         LOGE("Error stopping sync manager during destructor");
     }
 
-    status = requestExitAndWait();
-    if (mMessageThread != nullptr) {
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
+    mCameraThread.Stop();
 
     if (mFrameSyncSource != FRAME_SYNC_NA) {
         // both EOF and SOF are from the ISYS receiver
@@ -151,7 +143,7 @@ status_t SyncManager::setMediaEntity(const std::string &name,
                                      const sensorEntityType type)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = NO_ERROR;
+    status_t status = OK;
     std::shared_ptr<MediaEntity> mediaEntity = nullptr;
     std::string entityName;
     const RKISP1CameraCapInfo *cap = getRKISP1CameraCapInfo(mCameraId);
@@ -190,8 +182,7 @@ status_t SyncManager::setMediaEntity(const std::string &name,
     LOG1("found entityName: %s\n", entityName.c_str());
     if (entityName == "none" && name == "pixel_array") {
         LOGE("No %s in this Sensor. Should not happen", entityName.c_str());
-        status = UNKNOWN_ERROR;
-        return status;
+        return UNKNOWN_ERROR;
     } else if (entityName == "none") {
         LOG1("No %s in this Sensor. Should not happen", entityName.c_str());
     } else {
@@ -201,7 +192,7 @@ status_t SyncManager::setMediaEntity(const std::string &name,
             return UNKNOWN_ERROR;
         }
         status = setSubdev(mediaEntity, type);
-        if (status != NO_ERROR) {
+        if (status != OK) {
             LOGE("Cannot set %s subdev", entityName.c_str());
             return status;
         }
@@ -221,8 +212,7 @@ status_t SyncManager::setMediaEntity(const std::string &name,
 status_t SyncManager::init(int32_t exposureDelay, int32_t gainDelay)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_INIT;
+    MessageInit msg;
     /**
      * The delay we want to store is the relative between exposure and gain
      * Usually exposure time delay is bigger. The model currently
@@ -230,14 +220,19 @@ status_t SyncManager::init(int32_t exposureDelay, int32_t gainDelay)
      * does this.
      */
     if (exposureDelay >= gainDelay) {
-        msg.data.init.gainDelay = exposureDelay - gainDelay;
+        msg.gainDelay = exposureDelay - gainDelay;
     } else {
         LOGE("analog Gain delay bigger than exposure... not supported - BUG");
-        msg.data.init.gainDelay = 0;
+        msg.gainDelay = 0;
     }
-    msg.data.init.exposureDelay = exposureDelay;
+    msg.exposureDelay = exposureDelay;
 
-    return mMessageQueue.send(&msg, MESSAGE_ID_INIT);
+    status_t status = NO_ERROR;
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleInit, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
 /**
@@ -245,15 +240,13 @@ status_t SyncManager::init(int32_t exposureDelay, int32_t gainDelay)
  * set subdev.
  * create sensor object, pollerthread object.
  * register sensor events.
- *
- * \return status of synchronous messaging.
  */
-status_t SyncManager::handleMessageInit(Message &msg)
+status_t SyncManager::handleInit(MessageInit msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = NO_ERROR;
-    mExposureDelay = msg.data.init.exposureDelay;
-    mGainDelay = msg.data.init.gainDelay;
+    status_t status = OK;
+    mExposureDelay = msg.exposureDelay;
+    mGainDelay = msg.gainDelay;
     mDigiGainOnSensor = mCapInfo->digiGainOnSensor();
     mSensorType = (SensorType)mCapInfo->sensorType();
 
@@ -274,7 +267,6 @@ status_t SyncManager::handleMessageInit(Message &msg)
     mDelayedDGains.clear();
 
 exit:
-    mMessageQueue.reply(MESSAGE_ID_INIT, status);
     return status;
 }
 
@@ -283,7 +275,7 @@ exit:
  * is using and create sensor object based on it.
  * at the moment, either SMIA or CRL.
  *
- * \return NO_ERROR if success.
+ * \return OK if success.
  */
 status_t SyncManager::createSensorObj()
 {
@@ -304,28 +296,31 @@ status_t SyncManager::createSensorObj()
  *
  * \param[OUT] desc sensor descriptor data
  *
- * \return status of sync message.
+ * \return OK, if sensor mode data retrieval was successful with good values
+ * \return UNKNOWN_ERROR if pixel clock value was bad
+ * \return Other non-OK value depending on error case
  */
 status_t SyncManager::getSensorModeData(rk_aiq_exposure_sensor_descriptor &desc)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
+    MessageSensorModeData msg;
 
-    msg.id = MESSAGE_ID_GET_SENSOR_MODEDATA;
-    msg.data.sensorModeData.desc = &desc;
-    return mMessageQueue.send(&msg, MESSAGE_ID_GET_SENSOR_MODEDATA);
+    msg.desc = &desc;
+
+    status_t status = OK;
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleGetSensorModeData,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
 /**
  * retrieve mode data (descriptor) from sensor
  *
  * \param[in] msg holding pointer to descriptor pointer
- *
- * \return OK, if sensor mode data retrieval was successful with good values
- * \return UNKNOWN_ERROR if pixel clock value was bad
- * \return Other non-OK value depending on error case
  */
-status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
+status_t SyncManager::handleGetSensorModeData(MessageSensorModeData msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = OK;
@@ -335,12 +330,11 @@ status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
     unsigned int vBlank = 0;
     rk_aiq_exposure_sensor_descriptor *desc;
 
-    desc = msg.data.sensorModeData.desc;
+    desc = msg.desc;
 
     status = mSensorOp->getPixelRate(pixel_rate);
     if (status != NO_ERROR) {
         LOGE("Failed to get pixel clock");
-        mMessageQueue.reply(MESSAGE_ID_GET_SENSOR_MODEDATA, status);
         return status;
     } else if (pixel_rate <= 0) {
         LOGE("Bad pixel clock value: %d", pixel_rate);
@@ -353,7 +347,6 @@ status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
     status = mSensorOp->updateMembers();
     if (status != NO_ERROR) {
         LOGE("Failed to update members");
-        mMessageQueue.reply(MESSAGE_ID_GET_SENSOR_MODEDATA, status);
         return status;
     }
 
@@ -361,7 +354,6 @@ status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
                                          line_periods_per_field);
     if (status != NO_ERROR) {
         LOGE("Failed to get frame Durations");
-        mMessageQueue.reply(MESSAGE_ID_GET_SENSOR_MODEDATA, status);
         return status;
     }
     desc->pixel_periods_per_line = pixel_periods_per_line > USHRT_MAX ?
@@ -374,7 +366,6 @@ status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
                                          integration_max, integration_step);
     if (status != NO_ERROR) {
         LOGE("Failed to get Exposure Range");
-        mMessageQueue.reply(MESSAGE_ID_GET_SENSOR_MODEDATA, status);
         return status;
     }
 
@@ -409,7 +400,6 @@ status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
                                     desc->sensor_output_width,
                                     desc->sensor_output_height);
 
-    mMessageQueue.reply(MESSAGE_ID_GET_SENSOR_MODEDATA, status);
     return status;
 }
 
@@ -420,16 +410,14 @@ status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
  *
  * \return status for enqueueing message
  */
-status_t SyncManager::setParameters(std::shared_ptr<CaptureUnitSettings> &settings,
-                                    rk_aiq_exposure_sensor_descriptor *sensor_desc)
+status_t SyncManager::setParameters(std::shared_ptr<CaptureUnitSettings> settings)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    Message msg;
-    msg.id = MESSAGE_ID_SET_PARAMS;
-    msg.settings = settings;
-    msg.data.sensorModeData.desc = sensor_desc;
-
-    return mMessageQueue.send(&msg);
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleSetParams, base::Unretained(this),
+                       base::Passed(std::move(settings)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return OK;
 }
 
 status_t SyncManager::applyParameters(std::shared_ptr<CaptureUnitSettings> &settings)
@@ -447,8 +435,8 @@ status_t SyncManager::applyParameters(std::shared_ptr<CaptureUnitSettings> &sett
         return status;
     }
     LOG2("Applying settings @exp_id %d in Effect @ %d",
-         mLatestFrameEvent.exp_id,
-         mLatestFrameEvent.exp_id + mExposureDelay);
+         mLatestFrameEventMsg.exp_id,
+         mLatestFrameEventMsg.exp_id + mExposureDelay);
 
     status = applySensorParams(expParams);
     if (status != NO_ERROR)
@@ -477,7 +465,7 @@ status_t SyncManager::applyParameters(std::shared_ptr<CaptureUnitSettings> &sett
      * Then remove it from the Q.
      */
     // TODO: use frame idx for algo after stats rate meet out request
-    settings->inEffectFrom = mLatestFrameEvent.exp_id + mExposureDelay;
+    settings->inEffectFrom = mLatestFrameEventMsg.exp_id + mExposureDelay;
     mLatestExpParams = expParams;
     mLatestInEffectFrom = settings->inEffectFrom;
     return status;
@@ -491,7 +479,7 @@ status_t SyncManager::applyParameters(std::shared_ptr<CaptureUnitSettings> &sett
  *
  * \return OK
  */
-status_t SyncManager::handleMessageSetParams(Message &msg)
+status_t SyncManager::handleSetParams(std::shared_ptr<CaptureUnitSettings> settings)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
@@ -510,14 +498,14 @@ status_t SyncManager::handleMessageSetParams(Message &msg)
     (pixels_per_line) * (lines_per_frame) / (pixel_clock_freq_mhz)
 
     rk_aiq_exposure_sensor_parameters &expParams =
-        msg.settings->aiqResults.aeResults.sensor_exposure;
+        settings->aiqResults.aeResults.sensor_exposure;
     int64_t frameDuration = FRAME_DURATION(expParams.line_length_pixels,
             expParams.frame_length_lines,
             (float)pixel_rate / 1000000);
     int64_t safetyNewExpTime = TIMEVAL2USECS(&mLatestFrameEventMsg.timestamp) +
         frameDuration / SAFETY_NEW_EXP_DELAY_DIV;
 
-    mQueuedSettings.push_back(msg.settings);
+    mQueuedSettings.push_back(std::move(settings));
 
     if ((systemTime() / 1000) < safetyNewExpTime) {
         status = applyParameters(mQueuedSettings[0]);
@@ -541,21 +529,24 @@ status_t SyncManager::handleMessageSetParams(Message &msg)
 status_t SyncManager::setSensorFT(int width, int height)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    Message msg;
-    msg.id = MESSAGE_ID_SET_SENSOR_FT;
-    msg.data.sFT.width = width;
-    msg.data.sFT.height = height;
+    MessageSensorFT msg;
+    msg.width = width;
+    msg.height = height;
 
-    return mMessageQueue.send(&msg, MESSAGE_ID_SET_SENSOR_FT);
-
+    status_t status = OK;
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleSetSensorFT,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
-status_t SyncManager::handleMessageSetSensorFT(Message &msg)
+status_t SyncManager::handleSetSensorFT(MessageSensorFT msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = NO_ERROR;
-    int width = msg.data.sFT.width;
-    int height = msg.data.sFT.height;
+    status_t status = OK;
+    int width = msg.width;
+    int height = msg.height;
 
     if (mSensorOp.get() == nullptr) {
         LOGE("SensorHwOp class not initialized");
@@ -568,7 +559,6 @@ status_t SyncManager::handleMessageSetSensorFT(Message &msg)
         return UNKNOWN_ERROR;
     }
 
-    mMessageQueue.reply(MESSAGE_ID_SET_SENSOR_FT, status);
     return status;
 }
 
@@ -580,16 +570,15 @@ status_t SyncManager::handleMessageSetSensorFT(Message &msg)
  *
  * \return status for work done
  */
-status_t SyncManager::handleMessageSOF(Message &msg)
+status_t SyncManager::handleSOF(MessageFrameEvent msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = NO_ERROR;
+    status_t status = OK;
 
-    mLatestFrameEvent = msg.data.frameEvent;
+    mLatestFrameEventMsg = msg;
 
     if (!mStarted) {
-        LOGD("SOF[%d] received while closing- ignoring",
-                msg.data.frameEvent.exp_id);
+        LOGD("SOF[%d] received while closing- ignoring", msg.exp_id);
         return OK;
     }
     // Poll again
@@ -598,7 +587,7 @@ status_t SyncManager::handleMessageSOF(Message &msg)
 
     if (CC_UNLIKELY(mQueuedSettings.empty())) {
         LOG2("SOF[%d] Arrived and sensor does not have settings queued",
-               msg.data.frameEvent.exp_id);
+               msg.exp_id);
         // TODO: this will become an error once we fix capture unit to run at
         // sensor rate.
         // delete all gain from old previous client request.
@@ -610,7 +599,6 @@ status_t SyncManager::handleMessageSOF(Message &msg)
             LOGE("Failed to apply sensor parameters.");
         mQueuedSettings.erase(mQueuedSettings.begin());
     }
-
     return status;
 }
 
@@ -622,18 +610,15 @@ status_t SyncManager::handleMessageSOF(Message &msg)
  *
  * \return status for work done
  */
-status_t SyncManager::handleMessageEOF(Message &msg)
+status_t SyncManager::handleEOF()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = NO_ERROR;
-    UNUSED(msg);
     /**
      * We are not getting EOF yet, but once we do ...
      * TODO: In this case we should check the time before we apply the settings
      * to make sure we apply them after blanking.
      */
-
-    return status;
+    return OK;
 }
 
 /**
@@ -647,7 +632,7 @@ status_t SyncManager::applySensorParams(rk_aiq_exposure_sensor_parameters &expPa
                                         bool noDelay)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = NO_ERROR;
+    status_t status = OK;
     uint16_t aGain, dGain;
 
     status |= mSensorOp->setFrameDuration(expParams.line_length_pixels,
@@ -683,31 +668,29 @@ status_t SyncManager::applySensorParams(rk_aiq_exposure_sensor_parameters &expPa
 status_t SyncManager::start()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_START;
-    return mMessageQueue.send(&msg, MESSAGE_ID_START);
+    status_t status = OK;
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleStart, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
 /**
  *
  * Request start of polling to sensor sync events
- *
- * \return OK
  */
-status_t SyncManager::handleMessageStart()
+status_t SyncManager::handleStart()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = OK;
     if (mStarted) {
         LOGW("SyncManager already started");
-        mMessageQueue.reply(MESSAGE_ID_START, OK);
         return OK;
     }
 
     status = initSynchronization();
     if (CC_UNLIKELY(status != NO_ERROR)) {
        LOGE("Failed to initialize CSI synchronization");
-       mMessageQueue.reply(MESSAGE_ID_START, UNKNOWN_ERROR);
        return UNKNOWN_ERROR;
     }
 
@@ -732,7 +715,6 @@ status_t SyncManager::handleMessageStart()
     mPollerThread->pollRequest(0, 1000,
                               (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mDevicesToPoll);
     mStarted = true;
-    mMessageQueue.reply(MESSAGE_ID_START, OK);
     return OK;
 }
 
@@ -744,10 +726,15 @@ status_t SyncManager::handleMessageStart()
 status_t SyncManager::isStarted(bool &started)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_IS_STARTED;
-    msg.data.isStarted.value = &started;
-    return mMessageQueue.send(&msg, MESSAGE_ID_IS_STARTED);
+    MessageIsStarted msg;
+    msg.value = &started;
+
+    status_t status = OK;
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleIsStarted,
+                       base::Unretained(this), base::Passed(std::move(msg)));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
 /**
@@ -755,15 +742,15 @@ status_t SyncManager::isStarted(bool &started)
  *
  * \return OK
  */
-status_t SyncManager::handleMessageIsStarted(Message &msg)
+status_t SyncManager::handleIsStarted(MessageIsStarted msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    *msg.data.isStarted.value = mStarted;
+    *msg.value = mStarted;
 
-    mMessageQueue.reply(MESSAGE_ID_IS_STARTED, OK);
     return OK;
 }
+
 /**
  * enqueue request to stop
  *
@@ -772,9 +759,11 @@ status_t SyncManager::handleMessageIsStarted(Message &msg)
 status_t SyncManager::stop()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_STOP;
-    return mMessageQueue.send(&msg,MESSAGE_ID_STOP);
+    status_t status = OK;
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleStop, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
 /**
@@ -784,10 +773,10 @@ status_t SyncManager::stop()
  *
  * \return OK
  */
-status_t SyncManager::handleMessageStop()
+status_t SyncManager::handleStop()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = NO_ERROR;
+    status_t status = OK;
 
     if (mStarted) {
         status = mPollerThread->flush(true);
@@ -797,114 +786,39 @@ status_t SyncManager::handleMessageStop()
     }
 
     status = deInitSynchronization();
-    mMessageQueue.reply(MESSAGE_ID_STOP, status);
-    return OK;
+    return status;
 }
 
 /**
  * enqueue request to flush the queue of polling requests
  * synchronous call
  *
- * \return value of success for enqueueing message
+ * \return flush status from Pollerthread.
  */
 status_t SyncManager::flush()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_FLUSH;
-    return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+    status_t status = OK;
+    base::Callback<status_t()> closure =
+            base::Bind(&SyncManager::handleFlush, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
 /**
  * empty queues and request of sensor settings
- *
- * \return flush status from Pollerthread.
  */
-status_t SyncManager::handleMessageFlush()
+status_t SyncManager::handleFlush()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = NO_ERROR;
+    status_t status = OK;
 
     if (mPollerThread)
         status = mPollerThread->flush(true);
 
     mQueuedSettings.clear();
 
-    mMessageQueue.reply(MESSAGE_ID_FLUSH, status);
     return status;
-}
-
-status_t SyncManager::requestExitAndWait(void)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    Message msg;
-    msg.id = MESSAGE_ID_EXIT;
-    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
-    status |= mMessageThread->requestExitAndWait();
-    return status;
-}
-
-status_t SyncManager::handleMessageExit(void)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    mThreadRunning = false;
-    mMessageQueue.reply(MESSAGE_ID_EXIT, NO_ERROR);
-    return NO_ERROR;
-}
-
-void SyncManager::messageThreadLoop(void)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    mThreadRunning = true;
-
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-        Message msg;
-        mMessageQueue.receive(&msg);
-
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            status = handleMessageExit();
-            break;
-        case MESSAGE_ID_INIT:
-            status = handleMessageInit(msg);
-            break;
-        case MESSAGE_ID_GET_SENSOR_MODEDATA:
-            status = handleMessageGetSensorModeData(msg);
-            break;
-        case MESSAGE_ID_START:
-            status = handleMessageStart();
-            break;
-        case MESSAGE_ID_IS_STARTED:
-            status = handleMessageIsStarted(msg);
-            break;
-        case MESSAGE_ID_STOP:
-            status = handleMessageStop();
-            break;
-        case MESSAGE_ID_FLUSH:
-            status = handleMessageFlush();
-            break;
-        case MESSAGE_ID_SET_PARAMS:
-            status = handleMessageSetParams(msg);
-            break;
-        case MESSAGE_ID_SOF:
-            status = handleMessageSOF(msg);
-            break;
-        case MESSAGE_ID_EOF:
-            status = handleMessageEOF(msg);
-            break;
-        case MESSAGE_ID_SET_SENSOR_FT:
-            status = handleMessageSetSensorFT(msg);
-            break;
-        default:
-            LOGE("ERROR @%d: Unknown message %d", status, (int)msg.id);
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE(" error %d in handling message: %d", status, (int)msg.id);
-    }
 }
 
 int SyncManager::getCurrentCameraId(void)
@@ -925,8 +839,8 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     struct v4l2_event event;
-    Message msg;
-    status_t status = NO_ERROR;
+    MessageFrameEvent msg;
+    status_t status = OK;
 
     CLEAR(event);
     if (pollEventMsg == nullptr || pollEventMsg->data.activeDevices == nullptr)
@@ -952,19 +866,24 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
                 break;
             }
 
-            msg.data.frameEvent.timestamp.tv_sec = event.timestamp.tv_sec;
-            msg.data.frameEvent.timestamp.tv_usec = (event.timestamp.tv_nsec / 1000);
-            msg.data.frameEvent.exp_id = event.u.frame_sync.frame_sequence;
-            msg.data.frameEvent.reqId = pollEventMsg->data.reqId;
+            msg.timestamp.tv_sec = event.timestamp.tv_sec;
+            msg.timestamp.tv_usec = (event.timestamp.tv_nsec / 1000);
+            msg.exp_id = event.u.frame_sync.frame_sequence;
+            msg.reqId = pollEventMsg->data.reqId;
             if (mFrameSyncSource == FRAME_SYNC_SOF) {
-                msg.id = MESSAGE_ID_SOF;
+                base::Callback<status_t()> closure =
+                        base::Bind(&SyncManager::handleSOF,
+                                   base::Unretained(this),
+                                   base::Passed(std::move(msg)));
+                mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
             } else if (mFrameSyncSource == FRAME_SYNC_EOF) {
-                msg.id = MESSAGE_ID_EOF;
+                base::Callback<status_t()> closure =
+                        base::Bind(&SyncManager::handleEOF,
+                                   base::Unretained(this));
+                mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
             } else {
-                msg.id = MESSAGE_ID_MAX;
-                LOGE("Message ID = MESSAGE_ID_MAX should never end up here");
+                LOGE("Unhandled frame sync source : %d", mFrameSyncSource);
             }
-            mMessageQueue.send(&msg);
             LOG2("%s: EVENT, MessageId: %d, activedev: %zu, reqId: %d, seq: %u, frame sequence: %u",
                  __FUNCTION__, pollEventMsg->id, pollEventMsg->data.activeDevices->size(),
                  pollEventMsg->data.reqId, event.sequence, event.u.frame_sync.frame_sequence);

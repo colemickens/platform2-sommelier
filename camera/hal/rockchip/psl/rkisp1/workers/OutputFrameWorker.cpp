@@ -36,19 +36,17 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int ca
                 mStream(stream),
                 mNeedPostProcess(false),
                 mNodeName(nodeName),
+                mCameraThread("OutputFrameWorker"),
                 mProcessor(cameraId),
-                mPostProcFramePool("PostProcFramePool"),
-                mMessageQueue("PostProcThread", MESSAGE_ID_MAX)
+                mPostProcFramePool("PostProcFramePool")
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mNode)
         LOG1("@%s, node name:%d, device name:%s", __FUNCTION__, nodeName, mNode->name());
-    mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "PostProcThread"));
-    if (mMessageThread == nullptr) {
-        LOGE("Error creating postproc thread");
-        return;
+
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
     }
-    mMessageThread->run();
 }
 
 OutputFrameWorker::~OutputFrameWorker()
@@ -58,21 +56,11 @@ OutputFrameWorker::~OutputFrameWorker()
         mOutputForListener->unlock();
     }
 
-    if (mThreadRunning) {
-        Message msg;
-        msg.id = MESSAGE_ID_EXIT;
-        mMessageQueue.send(&msg);
-        mMessageThread->requestExitAndWait();
-    }
-
-    if (mMessageThread != nullptr) {
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
+    mCameraThread.Stop();
 }
 
 status_t
-OutputFrameWorker::handleMessageProcess(Message & msg)
+OutputFrameWorker::handleMessageProcess(MessageProcess msg)
 {
     status_t status = mStreamToSWProcessMap[msg.frame->stream]->processFrame(msg.frame->processBuffer,
                                                   msg.frame->listenBuffer,
@@ -89,38 +77,6 @@ OutputFrameWorker::handleMessageProcess(Message & msg)
     return status;
 }
 
-void
-OutputFrameWorker::messageThreadLoop(void)
-{
-    mThreadRunning = true;
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-
-        Message msg;
-        mMessageQueue.receive(&msg);
-
-        LOG2("%s:%d: receive message id:%d", __func__, __LINE__, msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            mThreadRunning = false;
-            break;
-        case MESSAGE_ID_PROCESS:
-            status = handleMessageProcess(msg);
-            break;
-        default:
-            LOGE("ERROR Unknown message %d in thread loop", msg.id);
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE("error %d in handling message: %d",
-                 status, static_cast<int>(msg.id));
-        LOG2("%s:%d: finish message id:%d", __func__, __LINE__, msg.id);
-        mMessageQueue.reply(msg.id, status);
-    }
-    LOG2("%s:%d: exit", __func__, __LINE__);
-
-}
 void OutputFrameWorker::addListener(camera3_stream_t* stream)
 {
     if (stream != nullptr) {
@@ -392,10 +348,9 @@ status_t OutputFrameWorker::postRun()
             continue;
         }
         if (mStreamToSWProcessMap[listener]->needPostProcess()) {
-            Message msg;
+            MessageProcess msg;
             mPostProcFramePool.acquireItem(msg.frame);
 
-            msg.id = MESSAGE_ID_PROCESS;
             msg.frame->request = request;
             msg.frame->stream = listener;
             msg.frame->processingSettings = mMsg->pMsg.processingSettings;
@@ -404,7 +359,11 @@ status_t OutputFrameWorker::postRun()
             MEMCPY_S(msg.frame->processBuffer->data(), msg.frame->processBuffer->size(),
                      mWorkingBuffer->data(), mWorkingBuffer->size());
 
-            mMessageQueue.send(&msg);
+            base::Callback<status_t()> closure =
+                base::Bind(&OutputFrameWorker::handleMessageProcess,
+                        base::Unretained(this),
+                        base::Passed(std::move(msg)));
+            mCameraThread.PostTaskAsync(FROM_HERE, closure);
         } else {
             MEMCPY_S(listenerBuf->data(), listenerBuf->size(),
                      mWorkingBuffer->data(), mWorkingBuffer->size());

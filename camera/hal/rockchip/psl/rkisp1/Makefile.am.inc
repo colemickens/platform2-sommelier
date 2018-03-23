@@ -29,10 +29,8 @@ PSLSRC = \
     psl/rkisp1/ImguUnit.cpp \
     psl/rkisp1/SettingsProcessor.cpp \
     psl/rkisp1/Metadata.cpp \
-    psl/rkisp1/tasks/ExecuteTaskBase.cpp \
     psl/rkisp1/tasks/ITaskEventSource.cpp \
     psl/rkisp1/tasks/ICaptureEventSource.cpp \
-    psl/rkisp1/tasks/TaskThreadBase.cpp \
     psl/rkisp1/tasks/ITaskEventListener.cpp \
     psl/rkisp1/tasks/JpegEncodeTask.cpp \
     psl/rkisp1/workers/FrameWorker.cpp \

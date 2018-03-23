@@ -23,8 +23,6 @@
 #include <vector>
 #include "Camera3Request.h"
 #include "CameraStream.h"
-#include "MessageQueue.h"
-#include "TaskThreadBase.h"
 #include "CameraWindow.h"
 #include "IExecuteTask.h"
 #include "ITaskEventListener.h"
@@ -56,70 +54,6 @@ struct ProcTaskMsg {
 
     // Default constructor:
     ProcTaskMsg() : immediate(false), reqId(0){}
-};
-
-/**
- * \class ExecuteTaskBase
- * Base class of all Processing unit Tasks.Defines how Tasks
- * behave and communicate with other Tasks
- *
- * A common base for tasks that implement a "basic task".
- * ExecuteTaskBase has the basic messageThreadLoop.
- *
- * In case a new Task needs a specific \e messageThreadLoop() and custom
- * message queue, the task should derive \e TaskThreadBase and implement
- * a specialized message loop and queue.
- *
- * \sa TaskThreadBase
- */
-class ExecuteTaskBase : public IExecuteTask, public TaskThreadBase {
-public:
-    ExecuteTaskBase(const char* name, int priority = PRIORITY_CAMERA);
-    virtual ~ExecuteTaskBase();
-
-    virtual status_t init();
-
-    virtual status_t executeTask(ProcTaskMsg &msg); // override IExecuteTask
-    std::string getName() { return mName; }
-
-    virtual status_t allocateInterBuffer(bool isFallback, camera3_stream_t *stream,
-            int w,
-            int h,
-            int cameraId,
-            std::map<camera3_stream_t *, std::shared_ptr<CameraBuffer>> &interBufMap);
-    virtual status_t setIntermediateBuffer(
-            bool isFallback,
-            std::vector<GraphConfig::PSysPipelineConnection>::iterator it,
-            int cameraId,
-            std::map<camera3_stream_t *, std::shared_ptr<CameraBuffer>> &interBufMap);
-    virtual bool isVideoStream(CameraStream *stream);
-// MessageThread -related types
-// Declared 'protected' to be accessable in subclasses
-protected:
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,
-        MESSAGE_ID_PREPARE,
-        MESSAGE_ID_EXECUTE_TASK,
-        MESSAGE_ID_ITERATION_DONE,
-        MESSAGE_ID_MAX
-    };
-
-    struct Message {
-        MessageId id;
-        ProcTaskMsg data;
-    };
-
-protected:
-    virtual status_t handleExecuteTask(Message &msg) = 0;
-    virtual status_t handleMessageIterationDone(Message &msg);
-    uint8_t analyzeIntent(ProcTaskMsg &pMsg);
-    virtual status_t requestExitAndWait();
-protected:
-    MessageQueue<Message, MessageId> mMessageQueue;
-
-private:
-    /* IMessageHandler overloads */
-    virtual void messageThreadLoop();
 };
 
 }  // namespace camera2

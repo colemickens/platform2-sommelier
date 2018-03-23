@@ -92,8 +92,6 @@ libhalcommon_include_HEADERS = \
     ISYSTypes.h \
     MemoryDumper.h \
     PollerThread.h \
-    MessageQueue.h \
-    MessageThread.h \
     Camera3V4l2Format.h \
     PerformanceTraces.h \
     SharedItemPool.h \

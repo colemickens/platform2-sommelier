@@ -38,7 +38,7 @@ public:
     void writeJpegMetadata(RequestCtrlState &reqState) const;
     void writeLensMetadata(RequestCtrlState &reqState) const;
     void writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) const;
-    void FillSensorDescriptor(const ControlUnit::Message &msg);
+    void FillSensorDescriptor(const ControlUnit::MessageSensorMode &msg);
     status_t fillTonemapCurve(RequestCtrlState &reqAiqCfg);
 
 private:

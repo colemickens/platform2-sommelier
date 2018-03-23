@@ -36,8 +36,7 @@ ImguUnit::ImguUnit(int cameraId,
         mState(IMGU_IDLE),
         mCameraId(cameraId),
         mGCM(gcm),
-        mThreadRunning(false),
-        mMessageQueue("ImguUnitThread", static_cast<int>(MESSAGE_ID_MAX)),
+        mCameraThread("ImguThread"),
         mCurPipeConfig(nullptr),
         mMediaCtlHelper(mediaCtl, nullptr, true),
         mPollerThread(new PollerThread("ImguPollerThread")),
@@ -50,12 +49,11 @@ ImguUnit::ImguUnit(int cameraId,
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mActiveStreams.inputStream = nullptr;
 
-    mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "ImguThread"));
-    if (mMessageThread == nullptr) {
-        LOGE("Error creating poller thread");
+    if (!mCameraThread.Start()) {
+        LOGE("Camera thread failed to start");
         return;
     }
-    mMessageThread->run();
+
     mPollerThreadMeta.reset(new PollerThread("ImguPollerThreadMeta"));
 }
 
@@ -73,11 +71,7 @@ ImguUnit::~ImguUnit()
         mPollerThreadMeta.reset();
     }
 
-    requestExitAndWait();
-    if (mMessageThread != nullptr) {
-        mMessageThread.reset();
-        mMessageThread = nullptr;
-    }
+    mCameraThread.Stop();
 
     if (mMessagesUnderwork.size())
         LOGW("There are messages that are not processed %zu:", mMessagesUnderwork.size());
@@ -482,38 +476,34 @@ status_t
 ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
                           bool updateMeta)
 {
-        HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-        Camera3Request *request = processingSettings->request;
-        if (CC_UNLIKELY(request == nullptr)) {
-            LOGE("ProcUnit: nullptr request - BUG");
-            return UNKNOWN_ERROR;
-        }
-        const std::vector<camera3_stream_buffer> *outBufs = request->getOutputBuffers();
-        const std::vector<camera3_stream_buffer> *inBufs = request->getInputBuffers();
-        int reqId = request->getId();
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    Camera3Request *request = processingSettings->request;
+    if (CC_UNLIKELY(request == nullptr)) {
+        LOGE("ProcUnit: nullptr request - BUG");
+        return UNKNOWN_ERROR;
+    }
+    int reqId = request->getId();
 
-        LOG2("@%s: Req id %d,  Num outbufs %zu Num inbufs %zu",
-             __FUNCTION__, reqId, outBufs ? outBufs->size() : 0, inBufs ? inBufs->size() : 0);
+    ProcTaskMsg procMsg;
+    procMsg.reqId = reqId;
+    procMsg.processingSettings = processingSettings;
 
-        ProcTaskMsg procMsg;
-        procMsg.reqId = reqId;
-        procMsg.processingSettings = processingSettings;
+    MessageCallbackMetadata cbMetadataMsg;
+    cbMetadataMsg.updateMeta = updateMeta;
+    cbMetadataMsg.request = request;
 
-        MessageCallbackMetadata cbMetadataMsg;
-        cbMetadataMsg.updateMeta = updateMeta;
-        cbMetadataMsg.request = request;
-
-        DeviceMessage msg;
-        msg.id = MESSAGE_COMPLETE_REQ;
-        msg.pMsg = procMsg;
-        msg.cbMetadataMsg = cbMetadataMsg;
-        mMessageQueue.send(&msg);
-
-        return NO_ERROR;
+    DeviceMessage msg;
+    msg.id = MESSAGE_COMPLETE_REQ;
+    msg.pMsg = procMsg;
+    msg.cbMetadataMsg = cbMetadataMsg;
+    base::Callback<status_t()> closure =
+            base::Bind(&ImguUnit::handleCompleteReq, base::Unretained(this),
+                       base::Passed(std::move(msg)));
+    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    return NO_ERROR;
 }
 
-status_t
-ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
+status_t ImguUnit::handleCompleteReq(DeviceMessage msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
@@ -541,6 +531,10 @@ ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
     LOG2("%s:%d: poll request id(%d)", __func__, __LINE__, request->getId());
     status |= mPollerThread->pollRequest(request->getId(), 3000,
                                          &(mCurPipeConfig->nodes));
+
+    if (status != NO_ERROR)
+        LOGE("error %d in handling message: %d",
+             status, static_cast<int>(msg.id));
 
     return status;
 }
@@ -815,6 +809,11 @@ ImguUnit::startProcessing(DeviceMessage pollmsg)
 status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    status_t status = OK;
+
+    std::lock_guard<std::mutex> l(mFlushMutex);
+    if (mFlushing)
+        return OK;
 
     if (pollMsg == nullptr || pollMsg->data.activeDevices == nullptr)
         return BAD_VALUE;
@@ -856,41 +855,24 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
             return -EAGAIN;
         }
 
-        {
-            std::lock_guard<std::mutex> l(mFlushMutex);
-            if (mFlushing)
-                return OK;
+        base::Callback<status_t()> closure =
+               base::Bind(&ImguUnit::handlePoll, base::Unretained(this),
+                          base::Passed(std::move(msg)));
 
-            if (std::find(mMetaConfig.nodes.begin(), mMetaConfig.nodes.end(),
-                          (std::shared_ptr<V4L2DeviceBase>&)msg.pollEvent.activeDevices[0]) != mMetaConfig.nodes.end()) {
-                msg.id = MESSAGE_ID_POLL_META;
-                mMessageQueue.send(&msg, MESSAGE_ID_POLL_META);
-            } else {
-                msg.id = MESSAGE_ID_POLL;
-                mMessageQueue.send(&msg, MESSAGE_ID_POLL);
-            }
-        }
-
+        mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     } else if (pollMsg->id == POLL_EVENT_ID_ERROR) {
         LOGE("Device poll failed");
-        // For now, set number of device to zero in error case
         msg.pollEvent.numDevices = 0;
         msg.pollEvent.polledDevices = pollMsg->data.polledDevices->size();
-        msg.id = MESSAGE_ID_POLL;
-
-        /* report poll error */
-        if (msg.pollEvent.polledDevices) {
-            auto &it = *(pollMsg->data.polledDevices);
-            if (std::find(mMetaConfig.nodes.begin(), mMetaConfig.nodes.end(),
-                        it[0]) != mMetaConfig.nodes.end())
-                msg.id = MESSAGE_ID_POLL_META;
-        }
-        mMessageQueue.send(&msg);
+        base::Callback<status_t()> closure =
+                base::Bind(&ImguUnit::handlePoll, base::Unretained(this),
+                           base::Passed(std::move(msg)));
+        mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
     } else {
         LOGW("unknown poll event id (%d)", pollMsg->id);
     }
 
-    return OK;
+    return status;
 }
 
 /**
@@ -949,11 +931,14 @@ ImguUnit::updateDVSMetadata(CameraMetadata &procUnitResults,
                            1);
 }
 
-status_t ImguUnit::handleMessagePoll(DeviceMessage msg)
+status_t ImguUnit::handlePoll(DeviceMessage msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     status_t status = startProcessing(msg);
+    if (status != NO_ERROR)
+        LOGE("error %d in handling message: %d",
+             status, static_cast<int>(msg.id));
 
     delete [] msg.pollEvent.activeDevices;
     msg.pollEvent.activeDevices = nullptr;
@@ -961,87 +946,24 @@ status_t ImguUnit::handleMessagePoll(DeviceMessage msg)
     return status;
 }
 
-void
-ImguUnit::messageThreadLoop(void)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
-    mThreadRunning = true;
-    while (mThreadRunning) {
-        status_t status = NO_ERROR;
-
-        DeviceMessage msg;
-        mMessageQueue.receive(&msg);
-
-        PERFORMANCE_HAL_ATRACE_PARAM1("msg", msg.id);
-        LOG2("@%s, receive message id:%d", __FUNCTION__, msg.id);
-        switch (msg.id) {
-        case MESSAGE_ID_EXIT:
-            status = handleMessageExit();
-            break;
-        case MESSAGE_COMPLETE_REQ:
-            status = handleMessageCompleteReq(msg);
-            break;
-        case MESSAGE_ID_POLL:
-        case MESSAGE_ID_POLL_META:
-            status = handleMessagePoll(msg);
-            break;
-        case MESSAGE_ID_FLUSH:
-            status = handleMessageFlush();
-            break;
-        default:
-            LOGE("ERROR Unknown message %d in thread loop", msg.id);
-            status = BAD_VALUE;
-            break;
-        }
-        if (status != NO_ERROR)
-            LOGE("error %d in handling message: %d",
-                 status, static_cast<int>(msg.id));
-        LOG2("@%s, finish message id:%d", __FUNCTION__, msg.id);
-        mMessageQueue.reply(msg.id, status);
-    }
-    LOG2("%s: Exit", __FUNCTION__);
-}
-
-status_t
-ImguUnit::handleMessageExit(void)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    mThreadRunning = false;
-    return NO_ERROR;
-}
-
-status_t
-ImguUnit::requestExitAndWait(void)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    DeviceMessage msg;
-    msg.id = MESSAGE_ID_EXIT;
-    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
-    status |= mMessageThread->requestExitAndWait();
-    return status;
-}
-
 status_t
 ImguUnit::flush(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    DeviceMessage msg;
-    msg.id = MESSAGE_ID_FLUSH;
+    status_t status = NO_ERROR;
 
     {
         std::lock_guard<std::mutex> l(mFlushMutex);
         mFlushing = true;
     }
 
-    mMessageQueue.remove(MESSAGE_ID_POLL);
-    mMessageQueue.remove(MESSAGE_ID_POLL_META);
-
-    return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+    base::Callback<status_t()> closure =
+            base::Bind(&ImguUnit::handleFlush, base::Unretained(this));
+    mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
+    return status;
 }
 
-status_t
-ImguUnit::handleMessageFlush(void)
+status_t ImguUnit::handleFlush(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 

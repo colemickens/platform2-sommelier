@@ -21,9 +21,9 @@
 #include <string>
 #include <vector>
 
+#include <cros-camera/camera_thread.h>
+
 #include "v4l2device.h"
-#include "MessageQueue.h"
-#include "MessageThread.h"
 
 NAMESPACE_DECLARATION {
 
@@ -62,11 +62,10 @@ public:
 
 }; //IPollEventListener
 
-class PollerThread : public IMessageHandler
+class PollerThread
 {
 public:
-    PollerThread(const char* name,
-                        int priority = PRIORITY_CAMERA);
+    explicit PollerThread(const char* name);
     ~PollerThread();
 
     // Public Methods
@@ -81,40 +80,21 @@ public:
 
 //Private Members
 private:
-    enum MessageId {
-        MESSAGE_ID_EXIT = 0,
-        MESSAGE_ID_INIT,
-        MESSAGE_ID_POLL_REQUEST,
-        MESSAGE_ID_FLUSH,
-        MESSAGE_ID_MAX
-    };
-
     struct MessageInit {
         IPollEventListener *observer;
         int events;
         bool makeRealtime;
+        std::vector<std::shared_ptr<V4L2DeviceBase>> devices;
     };
 
     struct MessageFlush {
-        bool sync;
         bool clearVectors;
     };
 
     struct MessagePollRequest {
         unsigned int reqId;
         unsigned int timeout;
-    };
-
-    union MessagePollData {
-        MessageInit init;
-        MessagePollRequest request;
-        MessageFlush flush;
-    };
-
-    struct Message {
-        MessageId id;
-        MessagePollData data;
-        std::vector<std::shared_ptr<V4L2DeviceBase>> devices; // for poll and init
+        std::vector<std::shared_ptr<V4L2DeviceBase>> devices;
     };
 
     std::vector<std::shared_ptr<V4L2DeviceBase>> mPollingDevices;
@@ -122,10 +102,7 @@ private:
     std::vector<std::shared_ptr<V4L2DeviceBase>> mInactiveDevices;
 
     std::string mName;
-    int mPriority;
-    bool mThreadRunning;
-    MessageQueue<Message, MessageId> mMessageQueue;
-    std::shared_ptr<MessageThread> mMessageThread;
+    cros::CameraThread mCameraThread;
     IPollEventListener* mListener; // one listener per PollerThread, PollerThread doesn't has ownership
     int mFlushFd[2];    // Flush file descriptor
     pid_t mPid;
@@ -133,11 +110,9 @@ private:
 
 //Private Methods
 private:
-    /* IMessageHandlerOverload */
-    virtual void messageThreadLoop(void);
-    status_t handleInit(Message &msg);
-    status_t handlePollRequest(Message &msg);
-    status_t handleMessageExit(void);
+    status_t handleInit(MessageInit msg);
+    status_t handlePollRequest(MessagePollRequest msg);
+    status_t handleFlush(MessageFlush msg);
 
     status_t notifyListener(IPollEventListener::PollEventMessage *msg);
 

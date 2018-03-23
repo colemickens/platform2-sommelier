@@ -436,11 +436,11 @@ SettingsProcessor::processAeSettings(const CameraMetadata&  settings,
 }
 
 status_t
-SettingsProcessor::handleNewSensorDescriptor(ControlUnit::Message &msg)
+SettingsProcessor::handleNewSensorDescriptor(ControlUnit::MessageSensorMode &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    mCurrentFrameParams = msg.data.sensor.frameParams;
-    mSensorDescriptor = msg.data.sensor.exposureDesc;
+    mCurrentFrameParams = msg.frameParams;
+    mSensorDescriptor = msg.exposureDesc;
 
     /*
      * store the minimum frame time for this sensor mode.
