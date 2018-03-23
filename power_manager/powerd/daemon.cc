@@ -784,9 +784,6 @@ void Daemon::OnDBusNameOwnerChanged(const std::string& name,
   if (name == login_manager::kSessionManagerServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
     HandleSessionManagerAvailableOrRestarted(true);
-  } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
-    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    HandleCrasAvailableOrRestarted(true);
   } else if (name == chromeos::kDisplayServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
     HandleDisplayServiceAvailableOrRestarted(true);
@@ -851,27 +848,6 @@ void Daemon::InitDBus() {
       login_manager::kSessionStateChangedSignal,
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
                  weak_ptr_factory_.GetWeakPtr()));
-
-  if (BoolPrefIsTrue(kUseCrasPref)) {
-    dbus::ObjectProxy* cras_proxy = dbus_wrapper_->GetObjectProxy(
-        cras::kCrasServiceName, cras::kCrasServicePath);
-    dbus_wrapper_->RegisterForServiceAvailability(
-        cras_proxy, base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
-                               weak_ptr_factory_.GetWeakPtr()));
-    dbus_wrapper_->RegisterForSignal(
-        cras_proxy, cras::kCrasControlInterface, cras::kNodesChanged,
-        base::Bind(&Daemon::HandleCrasNodesChangedSignal,
-                   weak_ptr_factory_.GetWeakPtr()));
-    dbus_wrapper_->RegisterForSignal(
-        cras_proxy, cras::kCrasControlInterface, cras::kActiveOutputNodeChanged,
-        base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
-                   weak_ptr_factory_.GetWeakPtr()));
-    dbus_wrapper_->RegisterForSignal(
-        cras_proxy, cras::kCrasControlInterface,
-        cras::kNumberOfActiveStreamsChanged,
-        base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
-                   weak_ptr_factory_.GetWeakPtr()));
-  }
 
   update_engine_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(update_engine::kUpdateEngineServiceName,
@@ -988,15 +964,6 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
   OnSessionStateChange(state);
 }
 
-void Daemon::HandleCrasAvailableOrRestarted(bool available) {
-  if (!available) {
-    LOG(ERROR) << "Failed waiting for CRAS to become available";
-    return;
-  }
-  if (audio_client_)
-    audio_client_->LoadInitialState();
-}
-
 void Daemon::HandleUpdateEngineAvailable(bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for update engine to become available";
@@ -1060,21 +1027,6 @@ void Daemon::HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal) {
     return;
   }
   OnUpdateOperation(operation);
-}
-
-void Daemon::HandleCrasNodesChangedSignal(dbus::Signal* signal) {
-  DCHECK(audio_client_);
-  audio_client_->UpdateDevices();
-}
-
-void Daemon::HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal) {
-  DCHECK(audio_client_);
-  audio_client_->UpdateDevices();
-}
-
-void Daemon::HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal) {
-  DCHECK(audio_client_);
-  audio_client_->UpdateNumOutputStreams();
 }
 
 void Daemon::HandleGetTpmStatusResponse(dbus::Response* response) {

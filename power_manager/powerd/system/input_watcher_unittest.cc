@@ -79,8 +79,6 @@ const char* GetPowerButtonAction(ButtonState state) {
   return "power-invalid";
 }
 
-}  // namespace
-
 // InputObserver implementation that just records the events that it receives.
 class TestObserver : public InputObserver, public ActionRecorder {
  public:
@@ -110,6 +108,8 @@ class TestObserver : public InputObserver, public ActionRecorder {
 
   DISALLOW_COPY_AND_ASSIGN(TestObserver);
 };
+
+}  // namespace
 
 class InputWatcherTest : public testing::Test {
  public:

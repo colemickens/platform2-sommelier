@@ -345,6 +345,7 @@
             'powerd/system/acpi_wakeup_helper_unittest.cc',
             'powerd/system/ambient_light_sensor_unittest.cc',
             'powerd/system/async_file_reader_unittest.cc',
+            'powerd/system/audio_client_unittest.cc',
             'powerd/system/display/display_watcher_unittest.cc',
             'powerd/system/display/external_display_unittest.cc',
             'powerd/system/input_watcher_unittest.cc',

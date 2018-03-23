@@ -20,17 +20,11 @@ class AudioClientStub : public AudioClientInterface {
   ~AudioClientStub() override;
 
   bool suspended() const { return suspended_; }
-  int initial_loads() const { return initial_loads_; }
-  int device_updates() const { return device_updates_; }
-  int stream_updates() const { return stream_updates_; }
 
   void set_headphone_jack_plugged(bool plugged) {
     headphone_jack_plugged_ = plugged;
   }
   void set_hdmi_active(bool active) { hdmi_active_ = active; }
-
-  // Resets counters.
-  void ResetStats();
 
   // AudioClientInterface:
   bool GetHeadphoneJackPlugged() const override;
@@ -38,21 +32,11 @@ class AudioClientStub : public AudioClientInterface {
   void AddObserver(AudioObserver* observer) override;
   void RemoveObserver(AudioObserver* observer) override;
   void SetSuspended(bool suspended) override;
-  void LoadInitialState() override;
-  void UpdateDevices() override;
-  void UpdateNumOutputStreams() override;
 
  private:
-  bool headphone_jack_plugged_;
-  bool hdmi_active_;
-
-  bool suspended_;
-
-  // Number of times that LoadInitialState(), UpdateDevices(), and
-  // UpdateNumOutputStreams() have been called.
-  int initial_loads_;
-  int device_updates_;
-  int stream_updates_;
+  bool headphone_jack_plugged_ = false;
+  bool hdmi_active_ = false;
+  bool suspended_ = false;
 
   base::ObserverList<AudioObserver> observers_;
 

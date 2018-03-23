@@ -30,9 +30,9 @@ bool DBusWrapperStub::RegisteredSignalInfo::operator<(
          std::tie(o.proxy, o.interface_name, o.signal_name);
 }
 
-DBusWrapperStub::DBusWrapperStub() : service_published_(false) {}
+DBusWrapperStub::DBusWrapperStub() = default;
 
-DBusWrapperStub::~DBusWrapperStub() {}
+DBusWrapperStub::~DBusWrapperStub() = default;
 
 bool DBusWrapperStub::GetSentSignal(size_t index,
                                     const std::string& expected_signal_name,
@@ -108,6 +108,21 @@ void DBusWrapperStub::EmitRegisteredSignal(dbus::ObjectProxy* proxy,
   signal_handlers_[info].Run(signal);
 }
 
+void DBusWrapperStub::SetMethodCallback(const MethodCallback& callback) {
+  method_callback_ = callback;
+}
+
+void DBusWrapperStub::NotifyServiceAvailable(dbus::ObjectProxy* proxy,
+                                             bool available) {
+  auto it = service_availability_callbacks_.find(proxy);
+  if (it == service_availability_callbacks_.end())
+    return;
+
+  for (auto cb : it->second)
+    cb.Run(available);
+  service_availability_callbacks_.erase(it);
+}
+
 void DBusWrapperStub::NotifyNameOwnerChanged(const std::string& service_name,
                                              const std::string& old_owner,
                                              const std::string& new_owner) {
@@ -150,7 +165,7 @@ void DBusWrapperStub::RegisterForServiceAvailability(
     dbus::ObjectProxy* proxy,
     dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) {
   DCHECK(proxy);
-  // TODO(derat): Record registered services.
+  service_availability_callbacks_[proxy].push_back(callback);
 }
 
 void DBusWrapperStub::RegisterForSignal(
@@ -208,8 +223,12 @@ std::unique_ptr<dbus::Response> DBusWrapperStub::CallMethodSync(
     base::TimeDelta timeout) {
   DCHECK(proxy);
   DCHECK(method_call);
-  // TODO(derat): Return canned response.
-  return std::unique_ptr<dbus::Response>();
+  DCHECK(!method_callback_.is_null());
+
+  // libdbus asserts that the serial number is set. Prevent tests from needing
+  // to bother setting it.
+  method_call->SetSerial(1);
+  return method_callback_.Run(proxy, method_call);
 }
 
 void DBusWrapperStub::CallMethodAsync(
@@ -219,6 +238,11 @@ void DBusWrapperStub::CallMethodAsync(
     dbus::ObjectProxy::ResponseCallback callback) {
   DCHECK(proxy);
   DCHECK(method_call);
+  DCHECK(!method_callback_.is_null());
+
+  // libdbus asserts that the serial number is set. Prevent tests from needing
+  // to bother setting it.
+  method_call->SetSerial(1);
   // TODO(derat): Invoke callback with canned response.
 }
 

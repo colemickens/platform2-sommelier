@@ -29,16 +29,6 @@ class AudioClientInterface {
   // Suspends or resumes the audio according to the value of |suspended|.
   virtual void SetSuspended(bool suspended) = 0;
 
-  // Calls Update*() to load the initial state from CRAS.
-  virtual void LoadInitialState() = 0;
-
-  // Updates the client's view of connected audio devices.
-  virtual void UpdateDevices() = 0;
-
-  // Updates the client's view of the number of active audio output streams and
-  // notifies observers if the state changed.
-  virtual void UpdateNumOutputStreams() = 0;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(AudioClientInterface);
 };

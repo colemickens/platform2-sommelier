@@ -8,41 +8,59 @@
 #include <memory>
 #include <string>
 
+#include <base/bind.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/audio_observer.h"
-#include "power_manager/powerd/system/dbus_wrapper.h"
 
 namespace power_manager {
 namespace system {
 
 namespace {
 
-// Maximum amount of time to wait for a reply from CRAS, in milliseconds.
-const int kCrasDBusTimeoutMs = 3000;
-
-// Keys within node dictionaries returned by CRAS.
-const char kTypeKey[] = "Type";
-const char kActiveKey[] = "Active";
-
-// Types assigned to headphone and HDMI nodes by CRAS.
-const char kHeadphoneNodeType[] = "HEADPHONE";
-const char kHdmiNodeType[] = "HDMI";
+// Maximum amount of time to wait for a reply from CRAS.
+constexpr base::TimeDelta kCrasDBusTimeout = base::TimeDelta::FromSeconds(3);
 
 }  // namespace
 
-AudioClient::AudioClient() = default;
+constexpr char AudioClient::kTypeKey[];
+constexpr char AudioClient::kActiveKey[];
+constexpr char AudioClient::kHeadphoneNodeType[];
+constexpr char AudioClient::kHdmiNodeType[];
 
-AudioClient::~AudioClient() = default;
+AudioClient::AudioClient() : weak_ptr_factory_(this) {}
+
+AudioClient::~AudioClient() {
+  if (dbus_wrapper_)
+    dbus_wrapper_->RemoveObserver(this);
+}
 
 void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
   DCHECK(dbus_wrapper);
   dbus_wrapper_ = dbus_wrapper;
+  dbus_wrapper_->AddObserver(this);
+
   cras_proxy_ = dbus_wrapper_->GetObjectProxy(cras::kCrasServiceName,
                                               cras::kCrasServicePath);
+  dbus_wrapper_->RegisterForServiceAvailability(
+      cras_proxy_, base::Bind(&AudioClient::HandleCrasAvailableOrRestarted,
+                              weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->RegisterForSignal(
+      cras_proxy_, cras::kCrasControlInterface, cras::kNodesChanged,
+      base::Bind(&AudioClient::HandleNodesChangedSignal,
+                 weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->RegisterForSignal(
+      cras_proxy_, cras::kCrasControlInterface, cras::kActiveOutputNodeChanged,
+      base::Bind(&AudioClient::HandleActiveOutputNodeChangedSignal,
+                 weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->RegisterForSignal(
+      cras_proxy_, cras::kCrasControlInterface,
+      cras::kNumberOfActiveStreamsChanged,
+      base::Bind(&AudioClient::HandleNumberOfActiveStreamsChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 bool AudioClient::GetHeadphoneJackPlugged() const {
@@ -63,9 +81,22 @@ void AudioClient::RemoveObserver(AudioObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-void AudioClient::LoadInitialState() {
-  UpdateDevices();
-  UpdateNumOutputStreams();
+void AudioClient::SetSuspended(bool suspended) {
+  dbus::MethodCall method_call(cras::kCrasControlInterface,
+                               cras::kSetSuspendAudio);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendBool(suspended);
+  dbus_wrapper_->CallMethodSync(cras_proxy_, &method_call, kCrasDBusTimeout);
+}
+
+void AudioClient::OnDBusNameOwnerChanged(const std::string& service_name,
+                                         const std::string& old_owner,
+                                         const std::string& new_owner) {
+  if (service_name == cras::kCrasServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << service_name << " ownership changed to "
+              << new_owner;
+    HandleCrasAvailableOrRestarted(true);
+  }
 }
 
 void AudioClient::UpdateDevices() {
@@ -77,8 +108,7 @@ void AudioClient::UpdateDevices() {
 
   dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
+      cras_proxy_, &method_call, kCrasDBusTimeout);
   if (!response)
     return;
 
@@ -127,8 +157,7 @@ void AudioClient::UpdateNumOutputStreams() {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
                                cras::kGetNumberOfActiveOutputStreams);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
+      cras_proxy_, &method_call, kCrasDBusTimeout);
   int num_streams = 0;
   if (response) {
     dbus::MessageReader reader(response.get());
@@ -153,14 +182,25 @@ void AudioClient::UpdateNumOutputStreams() {
   }
 }
 
-void AudioClient::SetSuspended(bool suspended) {
-  dbus::MethodCall method_call(cras::kCrasControlInterface,
-                               cras::kSetSuspendAudio);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendBool(suspended);
-  dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
+void AudioClient::HandleCrasAvailableOrRestarted(bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for CRAS to become available";
+    return;
+  }
+  UpdateDevices();
+  UpdateNumOutputStreams();
+}
+
+void AudioClient::HandleNodesChangedSignal(dbus::Signal* signal) {
+  UpdateDevices();
+}
+
+void AudioClient::HandleActiveOutputNodeChangedSignal(dbus::Signal* signal) {
+  UpdateDevices();
+}
+
+void AudioClient::HandleNumberOfActiveStreamsChanged(dbus::Signal* signal) {
+  UpdateNumOutputStreams();
 }
 
 }  // namespace system

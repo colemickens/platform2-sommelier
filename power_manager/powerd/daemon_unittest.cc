@@ -407,10 +407,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
 
 TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
-  prefs_->SetInt64(kUseCrasPref, 1);
 
   Init();
-  audio_client_->ResetStats();
   internal_backlight_controller_->ResetStats();
   keyboard_backlight_controller_->ResetStats();
 
@@ -524,23 +522,6 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
                                         "newer");
   EXPECT_EQ(2, internal_backlight_controller_->display_service_starts());
   EXPECT_EQ(2, keyboard_backlight_controller_->display_service_starts());
-
-  // CRAS restarts and signals.
-  dbus_wrapper_->NotifyNameOwnerChanged(cras::kCrasServiceName, "old", "new");
-  dbus::ObjectProxy* cras_proxy = dbus_wrapper_->GetObjectProxy(
-      cras::kCrasServiceName, cras::kCrasServicePath);
-  dbus::Signal cras_nodes_signal(cras::kCrasControlInterface,
-                                 cras::kNodesChanged);
-  dbus_wrapper_->EmitRegisteredSignal(cras_proxy, &cras_nodes_signal);
-  dbus::Signal cras_active_node_signal(cras::kCrasControlInterface,
-                                       cras::kActiveOutputNodeChanged);
-  dbus_wrapper_->EmitRegisteredSignal(cras_proxy, &cras_active_node_signal);
-  dbus::Signal cras_streams_signal(cras::kCrasControlInterface,
-                                   cras::kNumberOfActiveStreamsChanged);
-  dbus_wrapper_->EmitRegisteredSignal(cras_proxy, &cras_streams_signal);
-  EXPECT_EQ(1, audio_client_->initial_loads());
-  EXPECT_EQ(2, audio_client_->device_updates());
-  EXPECT_EQ(1, audio_client_->stream_updates());
 }
 
 TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {

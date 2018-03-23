@@ -197,7 +197,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Handles various D-Bus services becoming available or restarting.
   void HandleDisplayServiceAvailableOrRestarted(bool available);
   void HandleSessionManagerAvailableOrRestarted(bool available);
-  void HandleCrasAvailableOrRestarted(bool available);
 
   // Handles other D-Bus services just becoming initially available (i.e.
   // restarts are ignored).
@@ -207,9 +206,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
   void HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal);
-  void HandleCrasNodesChangedSignal(dbus::Signal* signal);
-  void HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal);
-  void HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal);
   void HandleGetTpmStatusResponse(dbus::Response* response);
   std::unique_ptr<dbus::Response> HandleRequestShutdownMethod(
       dbus::MethodCall* method_call);

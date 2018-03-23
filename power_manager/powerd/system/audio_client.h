@@ -5,10 +5,15 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
 
+#include "power_manager/powerd/system/audio_client_interface.h"
+
+#include <string>
+
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 
-#include "power_manager/powerd/system/audio_client_interface.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 
 namespace dbus {
 class ObjectProxy;
@@ -17,14 +22,19 @@ class ObjectProxy;
 namespace power_manager {
 namespace system {
 
-class DBusWrapperInterface;
-
 // Real implementation of AudioClientInterface that monitors audio activity as
 // reported by CRAS, the Chrome OS audio server.
-// TODO(derat): Write unit tests for this class now that it's using
-// DBusWrapperInterface.
-class AudioClient : public AudioClientInterface {
+class AudioClient : public AudioClientInterface,
+                    public DBusWrapperInterface::Observer {
  public:
+  // Keys within node dictionaries returned by CRAS.
+  static constexpr char kTypeKey[] = "Type";
+  static constexpr char kActiveKey[] = "Active";
+
+  // Types assigned to headphone and HDMI nodes by CRAS.
+  static constexpr char kHeadphoneNodeType[] = "HEADPHONE";
+  static constexpr char kHdmiNodeType[] = "HDMI";
+
   AudioClient();
   ~AudioClient() override;
 
@@ -38,11 +48,26 @@ class AudioClient : public AudioClientInterface {
   void AddObserver(AudioObserver* observer) override;
   void RemoveObserver(AudioObserver* observer) override;
   void SetSuspended(bool suspended) override;
-  void LoadInitialState() override;
-  void UpdateDevices() override;
-  void UpdateNumOutputStreams() override;
+
+  // DBusWrapperInterface::Observer:
+  void OnDBusNameOwnerChanged(const std::string& service_name,
+                              const std::string& old_owner,
+                              const std::string& new_owner) override;
 
  private:
+  // Updates connected audio devices.
+  void UpdateDevices();
+
+  // Updates the the number of active audio output streams and notifies
+  // observers if the state changed.
+  void UpdateNumOutputStreams();
+
+  // Handles various events announced over D-Bus.
+  void HandleCrasAvailableOrRestarted(bool available);
+  void HandleNodesChangedSignal(dbus::Signal* signal);
+  void HandleActiveOutputNodeChangedSignal(dbus::Signal* signal);
+  void HandleNumberOfActiveStreamsChanged(dbus::Signal* signal);
+
   DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
   dbus::ObjectProxy* cras_proxy_ = nullptr;       // weak
 
@@ -56,6 +81,8 @@ class AudioClient : public AudioClientInterface {
   bool hdmi_active_ = false;
 
   base::ObserverList<AudioObserver> observers_;
+
+  base::WeakPtrFactory<AudioClient> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(AudioClient);
 };

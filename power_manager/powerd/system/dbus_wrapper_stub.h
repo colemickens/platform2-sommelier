@@ -64,6 +64,15 @@ class DBusWrapperStub : public DBusWrapperInterface {
   // registered via RegisterForSignal().
   void EmitRegisteredSignal(dbus::ObjectProxy* proxy, dbus::Signal* signal);
 
+  using MethodCallback = base::Callback<std::unique_ptr<dbus::Response>(
+      dbus::ObjectProxy*, dbus::MethodCall*)>;
+
+  // Sets a callback to be invoked in response to calls to CallMethod*().
+  void SetMethodCallback(const MethodCallback& callback);
+
+  // Runs and clears callbacks for |proxy| in |service_availability_callbacks_|.
+  void NotifyServiceAvailable(dbus::ObjectProxy* proxy, bool available);
+
   // Calls |observers_|' OnDBusNameOwnerChanged methods.
   void NotifyNameOwnerChanged(const std::string& service_name,
                               const std::string& old_owner,
@@ -119,10 +128,15 @@ class DBusWrapperStub : public DBusWrapperInterface {
   base::ObserverList<Observer> observers_;
 
   // Has PublishService() been called?
-  bool service_published_;
+  bool service_published_ = false;
 
   // All proxies that have been created.
   std::vector<ObjectProxyInfo> object_proxy_infos_;
+
+  // Map from proxy to callbacks passed to RegisterForServiceAvailability().
+  std::map<dbus::ObjectProxy*,
+           std::vector<dbus::ObjectProxy::WaitForServiceToBeAvailableCallback>>
+      service_availability_callbacks_;
 
   // powerd methods that have been exported via ExportMethod(), keyed by method
   // name.
@@ -135,6 +149,9 @@ class DBusWrapperStub : public DBusWrapperInterface {
 
   // Information about signals that powerd has sent using Emit*Signal*().
   std::vector<SignalInfo> sent_signals_;
+
+  // Invoked to handle calls to CallMethod*().
+  MethodCallback method_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusWrapperStub);
 };
