@@ -331,23 +331,23 @@ status_t SyncManager::handleMessageGetSensorModeData(Message &msg)
     status_t status = OK;
     int integration_step = 0;
     int integration_max = 0;
-    int pixel = 0;
+    int pixel_rate = 0;
     unsigned int vBlank = 0;
     rk_aiq_exposure_sensor_descriptor *desc;
 
     desc = msg.data.sensorModeData.desc;
 
-    status = mSensorOp->getPixelRate(pixel);
+    status = mSensorOp->getPixelRate(pixel_rate);
     if (status != NO_ERROR) {
         LOGE("Failed to get pixel clock");
         mMessageQueue.reply(MESSAGE_ID_GET_SENSOR_MODEDATA, status);
         return status;
-    } else if (pixel == 0) {
-        LOGE("Bad pixel clock value: %d", pixel);
+    } else if (pixel_rate <= 0) {
+        LOGE("Bad pixel clock value: %d", pixel_rate);
         return UNKNOWN_ERROR;
     }
 
-    desc->pixel_clock_freq_mhz = (float)pixel / 1000000;
+    desc->pixel_clock_freq_mhz = (float)pixel_rate / 1000000;
     unsigned int pixel_periods_per_line = 0, line_periods_per_field = 0;
 
     status = mSensorOp->updateMembers();
@@ -480,7 +480,6 @@ status_t SyncManager::applyParameters(std::shared_ptr<CaptureUnitSettings> &sett
     settings->inEffectFrom = mLatestFrameEvent.exp_id + mExposureDelay;
     mLatestExpParams = expParams;
     mLatestInEffectFrom = settings->inEffectFrom;
-
     return status;
 }
 
@@ -496,19 +495,31 @@ status_t SyncManager::handleMessageSetParams(Message &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
+    int pixel_rate = 0;
 
-    mQueuedSettings.push_back(msg.settings);
+    status = mSensorOp->getPixelRate(pixel_rate);
+    if (status != NO_ERROR) {
+        LOGE("Failed to get pixel clock");
+        return status;
+    } else if (pixel_rate <= 0) {
+        LOGE("Bad pixel clock value: %d", pixel_rate);
+        return UNKNOWN_ERROR;
+    }
+
+#define FRAME_DURATION(pixels_per_line, lines_per_frame, pixel_clock_freq_mhz) \
+    (pixels_per_line) * (lines_per_frame) / (pixel_clock_freq_mhz)
 
     rk_aiq_exposure_sensor_parameters &expParams =
         msg.settings->aiqResults.aeResults.sensor_exposure;
-    rk_aiq_exposure_sensor_descriptor *sensor_desc =
-        msg.data.sensorModeData.desc;
+    int64_t frameDuration = FRAME_DURATION(expParams.line_length_pixels,
+            expParams.frame_length_lines,
+            (float)pixel_rate / 1000000);
+    int64_t safetyNewExpTime = TIMEVAL2USECS(&mLatestFrameEventMsg.timestamp) +
+        frameDuration / SAFETY_NEW_EXP_DELAY_DIV;
 
-    int64_t frameDuration = (expParams.line_length_pixels * expParams.frame_length_lines) /
-                            sensor_desc->pixel_clock_freq_mhz;
+    mQueuedSettings.push_back(msg.settings);
 
-    if ((systemTime() / 1000) <
-        (TIMEVAL2USECS(&mLatestFrameEvent.timestamp) + frameDuration / SAFETY_NEW_EXP_DELAY_DIV)) {
+    if ((systemTime() / 1000) < safetyNewExpTime) {
         status = applyParameters(mQueuedSettings[0]);
         if (status != NO_ERROR)
             LOGE("Failed to apply sensor parameters.");
