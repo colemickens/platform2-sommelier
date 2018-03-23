@@ -364,7 +364,8 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
       trunks_key_usage, 2048 /* modulus_bits */,
       0 /* Use default public exponent */, std::string() /* password */,
       std::string() /* policy_digest */,
-      false /* use_only_policy_authorization */, trunks::kNoCreationPCR,
+      false /* use_only_policy_authorization */,
+      std::vector<uint32_t>() /* creation_pcr_indexes */,
       empty_password_authorization.get(), key_blob,
       nullptr /* creation_blob */);
   if (result != TPM_RC_SUCCESS) {
@@ -447,8 +448,10 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
 bool TpmUtilityV2::SealToPCR0(const std::string& data,
                               std::string* sealed_data) {
   std::string policy_digest;
-  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValue(
-      0, std::string() /* Use current PCR value */, &policy_digest);
+  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValues(
+      std::map<uint32_t, std::string>(
+          {{0, std::string() /* Use current PCR value */}}),
+      &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to compute policy digest: "
                << trunks::GetErrorString(result);
@@ -475,7 +478,8 @@ bool TpmUtilityV2::Unseal(const std::string& sealed_data, std::string* data) {
                << trunks::GetErrorString(result);
     return false;
   }
-  result = session->PolicyPCR(0, std::string() /* Use current PCR value */);
+  result = session->PolicyPCR(std::map<uint32_t, std::string>(
+      {{0, std::string() /* Use current PCR value */}}));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to setup policy session: "
                << trunks::GetErrorString(result);
