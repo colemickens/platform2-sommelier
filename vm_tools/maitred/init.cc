@@ -153,10 +153,10 @@ constexpr struct {
     },
     {
         .source = "cgroup",
-        .target = "/sys/fs/cgroup/cpu",
+        .target = "/sys/fs/cgroup/cpu,cpuacct",
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "cpu",
+        .data = "cpu,cpuacct",
         .failure_is_fatal = true,
     },
     {
@@ -177,11 +177,11 @@ constexpr struct {
     },
     {
         .source = "cgroup",
-        .target = "/sys/fs/cgroup/cpuacct",
+        .target = "/sys/fs/cgroup/net_cls,net_prio",
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "cpuacct",
-        .failure_is_fatal = true,
+        .data = "net_cls",
+        .failure_is_fatal = false,
     },
     {
         .source = "cgroup",
@@ -222,6 +222,24 @@ constexpr struct {
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "none,name=systemd",
         .failure_is_fatal = false,
+    },
+};
+
+// Symlinks to be created on boot. It's done after all mounts have completed.
+constexpr struct {
+  const char* source;
+  const char* target;
+} symlinks[] = {
+    {
+        .source = "/sys/fs/cgroup/cpu,cpuacct", .target = "/sys/fs/cgroup/cpu",
+    },
+    {
+        .source = "/sys/fs/cgroup/cpu,cpuacct",
+        .target = "/sys/fs/cgroup/cpuacct",
+    },
+    {
+        .source = "/sys/fs/cgroup/net_cls,net_prio",
+        .target = "/sys/fs/cgroup/net_cls",
     },
 };
 
@@ -1321,6 +1339,15 @@ bool Init::Setup() {
       PLOG(ERROR) << "Failed to mount " << mt.target;
       if (mt.failure_is_fatal)
         return false;
+    }
+  }
+
+  // Create all the symlinks.
+  for (const auto& sl : symlinks) {
+    if (symlink(sl.source, sl.target) != 0) {
+      PLOG(ERROR) << "Failed to create symlink: source " << sl.source
+                  << ", target " << sl.target;
+      return false;
     }
   }
 
