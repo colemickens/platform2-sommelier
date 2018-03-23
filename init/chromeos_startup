@@ -162,10 +162,9 @@ fi
 # Path to the securityfs directory for configuring inode security policies.
 LSM_INODE_POLICIES="/sys/kernel/security/chromiumos/inode_security_policies"
 
-# Block symlink and FIFO access on the given path.
-block_symlink_and_fifo() {
+# Block symlink access on the given path.
+block_symlink() {
   printf "$1" > "${LSM_INODE_POLICIES}/block_symlink"
-  printf "$1" > "${LSM_INODE_POLICIES}/block_fifo"
 }
 
 # Allow symlink access on the given path.
@@ -225,9 +224,9 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   fi
 
   if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
-    # Block symlink traversal and opening of FIFOs on stateful. Note that we set
-    # up exceptions for developer mode later on.
-    block_symlink_and_fifo /mnt/stateful_partition
+    # Block symlink traversal on stateful. Note that we set up exceptions for
+    # developer mode later on.
+    block_symlink /mnt/stateful_partition
   fi
 
   # Mount the OEM partition.
@@ -357,11 +356,11 @@ fi
 dev_gather_logs
 
 if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
-  # Set up symlink traversal and FIFO blocking policy for /var, which may reside
-  # on a separate file system than /mnt/stateful_partition. Block symlink
-  # traversal and opening of FIFOs by default, but allow exceptions in the few
-  # instances where they are used intentionally.
-  block_symlink_and_fifo /var
+  # Set up symlink traversal blocking policy for /var, which may reside on a
+  # separate file system than /mnt/stateful_partition. Block symlink traversal
+  # by default, but allow exceptions for symlinks in the few instances where
+  # they are used intentionally.
+  block_symlink /var
   # Generic symlink exceptions.
   for symlink_exception in /var/cache/echo /var/cache/vpd /var/lib/timezone \
                            /var/log /home; do
@@ -384,26 +383,6 @@ if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
         *)
           mkdir -p "${path}"
           allow_symlink "${path}"
-          ;;
-        esac
-      done < "${path_file}"
-    fi
-  done
-  # Project-specific FIFO exceptions. Projects may add exceptions by adding a
-  # file under /usr/share/cros/startup/fifo_exceptions/ whose contents contains
-  # a list of paths (one per line) for which an exception should be made. File
-  # name should use the following format: <project-name>-fifo-exceptions.txt
-  for path_file in /usr/share/cros/startup/fifo_exceptions/*; do
-    if [ -f "${path_file}" ]; then
-      while read -r path; do
-        case "${path}" in
-        # Ignore blank lines.
-        "") ;;
-        # Ignore comments.
-        "#"*) ;;
-        *)
-          mkdir -p "${path}"
-          allow_fifo "${path}"
           ;;
         esac
       done < "${path_file}"
