@@ -107,13 +107,13 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Uses |options| to create the full path based on the mount id and entry path
   // supplied in |options|. |full_path| will be unmodified on failure.
   template <typename Proto>
-  bool GetFullPath(Proto* options, std::string* full_path) const;
+  bool GetFullPath(const Proto* options, std::string* full_path) const;
 
   // Uses |options| to create the source and target paths based on the mount id,
   // source path and target path supplied in |options|. |source_full_path| and
   // |target_full_path| will be unmodified on failure.
   template <typename Proto>
-  bool GetFullPaths(Proto* options,
+  bool GetFullPaths(const Proto* options,
                     std::string* source_full_path,
                     std::string* target_full_path) const;
 

@@ -346,7 +346,8 @@ void SmbProvider::GetShares(const ProtoBlob& options_blob,
 }
 
 template <typename Proto>
-bool SmbProvider::GetFullPath(Proto* options, std::string* full_path) const {
+bool SmbProvider::GetFullPath(const Proto* options,
+                              std::string* full_path) const {
   DCHECK(options);
   DCHECK(full_path);
 
@@ -363,7 +364,7 @@ bool SmbProvider::GetFullPath(Proto* options, std::string* full_path) const {
 }
 
 template <>
-bool SmbProvider::GetFullPath(GetSharesOptionsProto* options,
+bool SmbProvider::GetFullPath(const GetSharesOptionsProto* options,
                               std::string* full_path) const {
   DCHECK(options);
   DCHECK(full_path);
@@ -373,7 +374,7 @@ bool SmbProvider::GetFullPath(GetSharesOptionsProto* options,
 }
 
 template <typename Proto>
-bool SmbProvider::GetFullPaths(Proto* options,
+bool SmbProvider::GetFullPaths(const Proto* options,
                                std::string* source_full_path,
                                std::string* target_full_path) const {
   DCHECK(options);
