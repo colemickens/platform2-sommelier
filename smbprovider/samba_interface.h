@@ -128,7 +128,7 @@ class SambaInterface {
       WARN_UNUSED_RESULT = 0;
 
  private:
-  static_assert(sizeof(int32_t) == sizeof(int),
+  static_assert(std::is_same<int, int32_t>::value,
                 "Ensure that int32_t is same as int, due to casting of int to "
                 "int32_t in samba interface");
   DISALLOW_COPY_AND_ASSIGN(SambaInterface);
