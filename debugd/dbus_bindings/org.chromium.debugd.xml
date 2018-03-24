@@ -915,5 +915,11 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetRlzPingSent">
+      <tp:docstring>
+        Sets should_send_rlz_ping in RW_VPD to 0.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
   </interface>
 </node>

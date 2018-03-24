@@ -17,6 +17,7 @@
 
 #include "debugd/src/constants.h"
 #include "debugd/src/error_utils.h"
+#include "debugd/src/process_with_output.h"
 
 namespace debugd {
 
@@ -24,6 +25,8 @@ namespace {
 
 const char kDevCoredumpDBusErrorString[] =
     "org.chromium.debugd.error.DevCoreDump";
+
+const char kShouldSendRlzPingKey[] = "should_send_rlz_ping";
 
 }  // namespace
 
@@ -421,6 +424,25 @@ void DebugdDBusAdaptor::StartVmConcierge(
 
 void DebugdDBusAdaptor::StopVmConcierge() {
   vm_concierge_tool_->StopVmConcierge();
+}
+
+bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
+  std::string stderr;
+  int result = ProcessWithOutput::RunProcess(
+      "vpd", {"-i", "RW_VPD", "-s", std::string(kShouldSendRlzPingKey) + "=0"},
+      true,      // requires root
+      nullptr,   // stdin
+      nullptr,   // stdout
+      &stderr, error);
+  if (result != EXIT_SUCCESS) {
+    std::string error_string =
+        "Failed to set vpd key for " + std::string(kShouldSendRlzPingKey) +
+        " with exit code: " + std::to_string(result) + " with error: " + stderr;
+    DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
+    PLOG(ERROR) << error_string;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace debugd

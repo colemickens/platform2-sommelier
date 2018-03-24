@@ -171,6 +171,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
   void StopVmConcierge() override;
+  bool SetRlzPingSent(brillo::ErrorPtr* error) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
