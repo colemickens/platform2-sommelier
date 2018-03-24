@@ -156,6 +156,15 @@ class Platform2(object):
       env['%s_target' % var] = (board_env[var] if board_env[var] else \
                                 '%s-%s' % (board_env['CHOST'], tool))
 
+    # ToT GYP uses these environment variables directly when generating ninja
+    # files. Remove them from the environment used to run GYP to avoid
+    # targets ending up with flags they can't remove. These environment values
+    # are passed via external_*flags GYP variables.
+    env.pop('CFLAGS', None)
+    env.pop('CXXFLAGS', None)
+    env.pop('CPPFLAGS', None)
+    env.pop('LDFLAGS', None)
+
     return env
 
   def get_components_glob(self):
