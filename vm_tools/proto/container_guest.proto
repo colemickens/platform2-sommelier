@@ -1,0 +1,36 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+// This file defines services that will be running in the guest container that
+// will be used by the host.
+package vm_tools.container;
+
+import "common.proto";
+
+// Request protobuf for launching an application in the container.
+message LaunchApplicationRequest {
+  // The ID of the application to launch. This should correspond to an
+  // identifier for a .desktop file available in the container.
+  string desktop_file_id = 1;
+}
+
+// Response protobuf for launching an application.
+message LaunchApplicationResponse {
+  // If true, the requested application launched successfully.
+  bool success = 1;
+
+  // The failure_reason if the requested application could not be started.
+  string failure_reason = 2;
+}
+
+// Implemented by garcon inside of the container.
+service Garcon {
+  // Called to launch an application in a container.
+  rpc LaunchApplication(LaunchApplicationRequest)
+      returns (LaunchApplicationResponse);
+}

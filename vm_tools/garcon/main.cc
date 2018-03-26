@@ -34,7 +34,9 @@ const int kSyslogCritical = LOG_CRIT;
 #include <grpc++/grpc++.h>
 
 #include "vm_tools/common/constants.h"
+#include "vm_tools/garcon/service_impl.h"
 
+#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
 
 constexpr char kHostIpFile[] = "/dev/.host_ip";
@@ -188,11 +190,33 @@ int main(int argc, char** argv) {
   openlog(kLogPrefix, LOG_PID, LOG_DAEMON);
   logging::SetLogMessageHandler(LogToSyslog);
 
-  // All we are doing for now is notifying the host the container is started up
-  // and we are ready to receive messages (once we have that part implemented).
+  // Build the server.
+  grpc::ServerBuilder builder;
+  builder.AddListeningPort(base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
+                           grpc::InsecureServerCredentials());
+
+  vm_tools::garcon::ServiceImpl garcon_service;
+  builder.RegisterService(&garcon_service);
+
+  std::unique_ptr<grpc::Server> server = builder.BuildAndStart();
+  CHECK(server);
+
+  LOG(INFO) << "Server listening on port " << vm_tools::kGarconPort;
+
+  if (signal(SIGCHLD, SIG_IGN) == SIG_ERR) {
+    PLOG(ERROR) << "Unable to explicitly ignore SIGCHILD";
+    return -1;
+  }
+
+  // Notify the host the container is started up and we are ready to receive
+  // messages.
   if (!NotifyHostGarconIsReady()) {
     LOG(ERROR) << "Failed notifying host that container is ready";
   }
+
+  // The following call will never return since we have no mechanism for
+  // actually shutting down garcon.
+  server->Wait();
 
   return 0;
 }

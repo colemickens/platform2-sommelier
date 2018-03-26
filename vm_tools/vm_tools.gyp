@@ -56,6 +56,7 @@
         },
       },
       'sources': [
+        '<(proto_in_dir)/container_guest.proto',
         '<(proto_in_dir)/container_host.proto',
       ],
       'includes': [

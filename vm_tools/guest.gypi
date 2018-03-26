@@ -16,6 +16,7 @@
       'type': 'static_library',
       'sources': [
         'garcon/desktop_file.cc',
+        'garcon/service_impl.cc',
       ],
     },
     {
