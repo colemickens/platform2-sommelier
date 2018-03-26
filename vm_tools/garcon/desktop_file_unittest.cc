@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/environment.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -37,30 +38,47 @@ struct DesktopFileTestData {
   std::string startup_wm_class;
 };
 
+constexpr char kFilename1[] = "/absolute/file/path";
+constexpr char kFilename2[] = "file_path";
+constexpr char kUrl1[] = "http://www.example.com/";
+constexpr char kUrl2[] = "http://www.example.com.fr/foo/";
+
 class DesktopFileTest : public ::testing::Test {
  public:
   DesktopFileTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     apps_dir_ = temp_dir_.GetPath().Append("applications");
     CHECK(base::CreateDirectory(apps_dir_));
+    // Set the XDG_DATA_DIRS env var to be the one we created as our
+    // temp dir.
+    base::Environment::Create()->SetVar("XDG_DATA_DIRS",
+                                        temp_dir_.GetPath().value());
   }
   ~DesktopFileTest() override = default;
 
-  void ValidateDesktopFile(std::string file_contents,
-                           std::string relative_path,
-                           const DesktopFileTestData& results,
-                           bool expect_pass) {
+  base::FilePath WriteDesktopFile(const std::string& file_contents,
+                                  const std::string& relative_path) {
     base::FilePath desktop_file_path = apps_dir_.Append(relative_path);
     // If there's a relative path, create any directories in it.
     CHECK(base::CreateDirectory(desktop_file_path.DirName()));
     EXPECT_EQ(file_contents.size(),
               base::WriteFile(desktop_file_path, file_contents.c_str(),
                               file_contents.size()));
+    return desktop_file_path;
+  }
+
+  std::unique_ptr<DesktopFile> ValidateDesktopFile(
+      const std::string& file_contents,
+      const std::string& relative_path,
+      const DesktopFileTestData& results,
+      bool expect_pass) {
+    base::FilePath desktop_file_path =
+        WriteDesktopFile(file_contents, relative_path);
     std::unique_ptr<DesktopFile> result =
         DesktopFile::ParseDesktopFile(desktop_file_path);
     if (!expect_pass) {
       EXPECT_EQ(nullptr, result.get());
-      return;
+      return nullptr;
     }
     EXPECT_EQ(result->app_id(), results.app_id);
     EXPECT_EQ(result->entry_type(), results.entry_type);
@@ -77,6 +95,7 @@ class DesktopFileTest : public ::testing::Test {
     EXPECT_EQ(result->mime_types(), results.mime_types);
     EXPECT_EQ(result->categories(), results.categories);
     EXPECT_EQ(result->startup_wm_class(), results.startup_wm_class);
+    return result;
   }
 
  private:
@@ -209,35 +228,38 @@ TEST_F(DesktopFileTest, WhitespaceRemoval) {
 }
 
 TEST_F(DesktopFileTest, Types) {
-  ValidateDesktopFile(
-      "[Desktop Entry]\n"
-      "Type=Application\n"
-      "Name=TestApplication\n",
-      "ApplicationTest.desktop",
-      {
-          "ApplicationTest",
-          "Application",
-          {std::make_pair("", "TestApplication")},
-      },
-      true);
-  ValidateDesktopFile(
-      "[Desktop Entry]\n"
-      "Type=Directory\n"
-      "Name=TestDirectory\n",
-      "DirectoryTest.desktop",
-      {
-          "DirectoryTest", "Directory", {std::make_pair("", "TestDirectory")},
-      },
-      true);
-  ValidateDesktopFile(
-      "[Desktop Entry]\n"
-      "Type=Link\n"
-      "Name=TestLink\n",
-      "LinkTest.desktop",
-      {
-          "LinkTest", "Link", {std::make_pair("", "TestLink")},
-      },
-      true);
+  EXPECT_TRUE(ValidateDesktopFile("[Desktop Entry]\n"
+                                  "Type=Application\n"
+                                  "Name=TestApplication\n",
+                                  "ApplicationTest.desktop",
+                                  {
+                                      "ApplicationTest",
+                                      "Application",
+                                      {std::make_pair("", "TestApplication")},
+                                  },
+                                  true)
+                  ->IsApplication());
+  EXPECT_FALSE(ValidateDesktopFile("[Desktop Entry]\n"
+                                   "Type=Directory\n"
+                                   "Name=TestDirectory\n",
+                                   "DirectoryTest.desktop",
+                                   {
+                                       "DirectoryTest",
+                                       "Directory",
+                                       {std::make_pair("", "TestDirectory")},
+                                   },
+                                   true)
+                   ->IsApplication());
+  EXPECT_FALSE(ValidateDesktopFile(
+                   "[Desktop Entry]\n"
+                   "Type=Link\n"
+                   "Name=TestLink\n",
+                   "LinkTest.desktop",
+                   {
+                       "LinkTest", "Link", {std::make_pair("", "TestLink")},
+                   },
+                   true)
+                   ->IsApplication());
   // Now try an invalid type, which should fail
   ValidateDesktopFile(
       "[Desktop Entry]\n"
@@ -282,6 +304,131 @@ TEST_F(DesktopFileTest, IgnoreOtherGroups) {
           {std::make_pair("", "TestApplication")},
       },
       true);
+}
+
+TEST_F(DesktopFileTest, FindDesktopFile) {
+  base::FilePath test_path = WriteDesktopFile(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "FindTest.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("FindTest").value());
+  test_path = WriteDesktopFile(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "find/me/in/subdir.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("find-me-in-subdir").value());
+  test_path = WriteDesktopFile(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "test/applications/subdir.desktop");
+  EXPECT_EQ(
+      test_path.value(),
+      DesktopFile::FindFileForDesktopId("test-applications-subdir").value());
+}
+
+TEST_F(DesktopFileTest, GenerateArgvNoArgs) {
+  EXPECT_EQ(ValidateDesktopFile("[Desktop Entry]\n"
+                                "Type=Application\n"
+                                "Name=Vim\n"
+                                "Exec=/usr/bin/vim\n",
+                                "vim.desktop",
+                                {
+                                    "vim",
+                                    "Application",
+                                    {std::make_pair("", "Vim")},
+                                    {},
+                                    false,
+                                    "",
+                                    false,
+                                    {},
+                                    "",
+                                    "/usr/bin/vim",
+                                },
+                                true)
+                ->GenerateArgvWithFiles(std::vector<std::string>()),
+            std::vector<std::string>({"/usr/bin/vim"}));
+}
+
+TEST_F(DesktopFileTest, GenerateArgvComplexArgs) {
+  std::unique_ptr<DesktopFile> desktop_file = ValidateDesktopFile(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=Foobar\n"
+      "Icon=fooicon\n"
+      "Exec=foobar.bin --singlefile=%f MultiFile %F --single_url %u "
+      "multi-url %U Icon %i Name %c DesktopPath %k\n",
+      "foobar.desktop",
+      {
+          "foobar",
+          "Application",
+          {std::make_pair("", "Foobar")},
+          {},
+          false,
+          "fooicon",
+          false,
+          {},
+          "",
+          "foobar.bin --singlefile=%f MultiFile %F --single_url %u "
+          "multi-url %U Icon %i Name %c DesktopPath %k",
+      },
+      true);
+  EXPECT_EQ(desktop_file->GenerateArgvWithFiles(std::vector<std::string>(
+                {kFilename1, kFilename2, kUrl1, kUrl2})),
+            std::vector<std::string>({
+                "foobar.bin",
+                std::string("--singlefile=").append(kFilename1),
+                "MultiFile",
+                kFilename1,
+                kFilename2,
+                kUrl1,
+                kUrl2,
+                "--single_url",
+                kFilename1,
+                "multi-url",
+                kFilename1,
+                kFilename2,
+                kUrl1,
+                kUrl2,
+                "Icon",
+                "--icon",
+                "fooicon",
+                "Name",
+                "Foobar",
+                "DesktopPath",
+                desktop_file->file_path().value(),
+            }));
+}
+
+TEST_F(DesktopFileTest, GenerateArgvWithQuotingAndEscaping) {
+  EXPECT_EQ(ValidateDesktopFile(
+                u8R"xxx(
+                [Desktop Entry]
+                Type=Application
+                Name=QuoteMaster
+                Exec=quote-master %% \"A B %f %i C \\" B \\\\ \" \"C D\"
+                )xxx",
+                "quoter.desktop",
+                {
+                    "quoter",
+                    "Application",
+                    {std::make_pair("", "QuoteMaster")},
+                    {},
+                    false,
+                    "",
+                    false,
+                    {},
+                    "",
+                    u8R"xxx(quote-master %% "A B %f %i C \" B \\ " "C D")xxx",
+                },
+                true)
+                ->GenerateArgvWithFiles(std::vector<std::string>()),
+            std::vector<std::string>(
+                {"quote-master", "%", u8R"xxx(A B %f %i C " B \ )xxx", "C D"}));
 }
 
 TEST_F(DesktopFileTest, MissingNameFails) {

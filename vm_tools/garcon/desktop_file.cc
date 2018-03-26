@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdlib.h>
+
 #include <memory>
 #include <utility>
 
@@ -39,8 +41,13 @@ constexpr char kDesktopEntryTerminal[] = "Terminal";
 constexpr char kDesktopEntryMimeType[] = "MimeType";
 constexpr char kDesktopEntryCategories[] = "Categories";
 constexpr char kDesktopEntryStartupWmClass[] = "StartupWMClass";
+constexpr char kDesktopEntryTypeApplication[] = "Application";
 // Valid values for the "Type" entry.
-const char* kValidDesktopEntryTypes[] = {"Application", "Link", "Directory"};
+const char* const kValidDesktopEntryTypes[] = {kDesktopEntryTypeApplication,
+                                               "Link", "Directory"};
+constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
+// Default path to to use if the XDG_DATA_DIRS env var is not set.
+constexpr char kDefaultDesktopFilesPath[] = "/usr/share";
 
 // Extracts name from "[Name]" formatted string, empty string returned if error.
 base::StringPiece ParseGroupName(base::StringPiece group_line) {
@@ -166,6 +173,36 @@ std::unique_ptr<DesktopFile> DesktopFile::ParseDesktopFile(
   return retval;
 }
 
+// static
+base::FilePath DesktopFile::FindFileForDesktopId(
+    const std::string& desktop_id) {
+  if (desktop_id.empty()) {
+    return base::FilePath();
+  }
+  // First we need to create the relative path that corresponds to this ID. This
+  // is done by replacing all dash chars with the path separator and then
+  // appending the .desktop file extension to the name.
+  std::string rel_path;
+  base::ReplaceChars(desktop_id, "-", "/", &rel_path);
+  rel_path += kDesktopFileExtension;
+
+  const char* xdg_data_dirs = getenv(kXdgDataDirsEnvVar);
+  if (!xdg_data_dirs || !strlen(xdg_data_dirs)) {
+    xdg_data_dirs = kDefaultDesktopFilesPath;
+  }
+  // Now break it up into the paths that we should search.
+  std::vector<base::StringPiece> search_dirs = base::SplitStringPiece(
+      xdg_data_dirs, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (auto curr_dir : search_dirs) {
+    base::FilePath curr_path(curr_dir);
+    curr_path = curr_path.Append(kDesktopPathStartDelimiter).Append(rel_path);
+    if (base::PathExists(curr_path)) {
+      return curr_path;
+    }
+  }
+  return base::FilePath();
+}
+
 bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
   // First read in the file as a string.
   std::string desktop_contents;
@@ -174,6 +211,7 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
     LOG(ERROR) << "Failed reading in desktop file: " << file_path.value();
     return false;
   }
+  file_path_ = file_path;
 
   std::vector<base::StringPiece> desktop_lines = base::SplitStringPiece(
       desktop_contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -307,6 +345,122 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
   }
 
   return true;
+}
+
+std::vector<std::string> DesktopFile::GenerateArgvWithFiles(
+    const std::vector<std::string>& app_args) const {
+  std::vector<std::string> retval;
+  if (exec_.empty()) {
+    return retval;
+  }
+  // We have already unescaped this string, which we are supposed to do first
+  // according to the spec. We need to process this to handle quoted arguments
+  // and also field code substitution.
+  std::string curr_arg;
+  bool in_quotes = false;
+  bool next_escaped = false;
+  bool next_field_code = false;
+  for (auto c : exec_) {
+    if (next_escaped) {
+      next_escaped = false;
+      curr_arg.push_back(c);
+      continue;
+    }
+    if (c == '"') {
+      if (in_quotes && !curr_arg.empty()) {
+        // End of a quoted argument.
+        retval.emplace_back(std::move(curr_arg));
+        curr_arg.clear();
+      }
+      in_quotes = !in_quotes;
+      continue;
+    }
+    if (in_quotes) {
+      // There is no field expansion inside quotes, so just append the char
+      // unless we have escaping. We only deal with escaping inside of quoted
+      // strings here.
+      if (c == '\\') {
+        next_escaped = true;
+        continue;
+      }
+      curr_arg.push_back(c);
+      continue;
+    }
+    if (next_field_code) {
+      next_field_code = false;
+      if (c == '%') {
+        // Escaped percent sign (I don't know why they just didn't use backslash
+        // for escaping percent).
+        curr_arg.push_back(c);
+        continue;
+      }
+      switch (c) {
+        case 'u':  // Single URL field code.
+        case 'f':  // Single file field code.
+          if (!app_args.empty()) {
+            curr_arg.append(app_args.front());
+          }
+          continue;
+        case 'U':  // Multiple URLs field code.
+        case 'F':  // Multiple files field code.
+          // For multi-args, the spec is explicit that each file is passed as
+          // a separate arg to the program and that %U and %F must only be
+          // used as an argument on their own, so complete any active arg
+          // that we may have been parsing.
+          if (!curr_arg.empty()) {
+            retval.emplace_back(std::move(curr_arg));
+            curr_arg.clear();
+          }
+          if (!app_args.empty()) {
+            retval.insert(retval.end(), app_args.begin(), app_args.end());
+          }
+          continue;
+        case 'i':  // Icon field code, expands to 2 args.
+          if (!curr_arg.empty()) {
+            retval.emplace_back(std::move(curr_arg));
+            curr_arg.clear();
+          }
+          if (!icon_.empty()) {
+            retval.emplace_back("--icon");
+            retval.emplace_back(icon_);
+          }
+          continue;
+        case 'c':  // Translated app name.
+          // TODO(jkardatzke): Determine the proper localized name for the app.
+          // We enforce that this key exists when we populate the object.
+          curr_arg.append(locale_name_map_.find("")->second);
+          continue;
+        case 'k':  // Path to the desktop file itself.
+          curr_arg.append(file_path_.value());
+          continue;
+        default:  // Unrecognized/deprecated field code. Unrecognized ones are
+                  // technically invalid, but it seems better to just ignore
+                  // them then completely abort executing this desktop file.
+          continue;
+      }
+    }
+    if (c == ' ') {
+      // Argument separator.
+      if (!curr_arg.empty()) {
+        retval.emplace_back(std::move(curr_arg));
+        curr_arg.clear();
+      }
+      continue;
+    }
+    if (c == '%') {
+      next_field_code = true;
+      continue;
+    }
+    curr_arg.push_back(c);
+  }
+  if (!curr_arg.empty()) {
+    retval.emplace_back(std::move(curr_arg));
+  }
+  return retval;
+}
+
+bool DesktopFile::IsApplication() const {
+  return entry_type_ == kDesktopEntryTypeApplication;
 }
 
 }  // namespace garcon

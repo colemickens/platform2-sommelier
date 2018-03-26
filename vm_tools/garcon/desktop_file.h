@@ -23,6 +23,24 @@ class DesktopFile {
       const base::FilePath& file_path);
   ~DesktopFile() = default;
 
+  // Searches for the corresponding .desktop file which correlates to the passed
+  // in |desktop_id|. This follows the rules of the spec for searching and in
+  // addition to that, if there is no XDG_DATA_DIRS env variable, then it will
+  // just search in /usr/share/applications/.  If no such file can be found this
+  // will return an empty file path.
+  static base::FilePath FindFileForDesktopId(const std::string& desktop_id);
+
+  // Generates an argv list that can be used for executing the program
+  // associated with this desktop file. The returned vector will be empty if
+  // there are any issues with the Exec key or it didn't exist. It also handles
+  // the case where we need to pass one or more filenames or URLs for a
+  // parameter. If Exec doesn't handle file/URL args, then |app_args| will be
+  // ignored; if it only handles one file/URL then only the first in the list
+  // will be used. It is valid for |app_args| to be empty if there are no
+  // files/URLs to pass as args.
+  std::vector<std::string> GenerateArgvWithFiles(
+      const std::vector<std::string>& app_args) const;
+
   const std::string& app_id() const { return app_id_; }
   const std::string& entry_type() const { return entry_type_; }
   const std::map<std::string, std::string>& locale_name_map() const {
@@ -42,11 +60,17 @@ class DesktopFile {
   const std::vector<std::string>& mime_types() const { return mime_types_; }
   const std::vector<std::string>& categories() const { return categories_; }
   const std::string& startup_wm_class() const { return startup_wm_class_; }
+  // This returns the path to the parsed .desktop file itself.
+  const base::FilePath& file_path() const { return file_path_; }
+
+  // Returns true if this desktop file is of type "Application".
+  bool IsApplication() const;
 
  private:
   DesktopFile() = default;
   bool LoadFromFile(const base::FilePath& file_path);
 
+  base::FilePath file_path_;
   std::string app_id_;
   std::string entry_type_;
   std::map<std::string, std::string> locale_name_map_;
