@@ -107,6 +107,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to start a container in a VM.
   std::unique_ptr<dbus::Response> StartContainer(dbus::MethodCall* method_call);
 
+  // Handles a request to launch an application in a container.
+  std::unique_ptr<dbus::Response> LaunchContainerApplication(
+      dbus::MethodCall* method_call);
+
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
 

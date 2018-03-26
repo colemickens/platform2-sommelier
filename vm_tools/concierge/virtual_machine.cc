@@ -24,6 +24,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <grpc++/grpc++.h>
 
+#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/common/constants.h"
 
 using std::string;
@@ -487,18 +488,23 @@ bool VirtualMachine::RegisterContainerIp(const std::string& container_token,
   // The token will be in the pending map if this is the first start of the
   // container. It will be in the main map if this is from a crash/restart of
   // the garcon process in the container.
+  std::string container_name;
   auto iter = pending_container_token_to_name_.find(container_token);
   if (iter != pending_container_token_to_name_.end()) {
-    container_name_to_ip_[iter->second] = container_ip;
-    container_token_to_name_[container_token] = iter->second;
+    container_name = iter->second;
+    container_token_to_name_[container_token] = container_name;
     pending_container_token_to_name_.erase(iter);
-    return true;
+  } else {
+    container_name = GetContainerNameForToken(container_token);
+    if (container_name.empty()) {
+      return false;
+    }
   }
-  std::string existing_name = GetContainerNameForToken(container_token);
-  if (existing_name.empty()) {
-    return false;
-  }
-  container_name_to_ip_[existing_name] = std::move(container_ip);
+  container_name_to_garcon_stub_[container_name] =
+      std::make_unique<vm_tools::container::Garcon::Stub>(
+          grpc::CreateChannel(base::StringPrintf("%s:%u", container_ip.c_str(),
+                                                 vm_tools::kGarconPort),
+                              grpc::InsecureChannelCredentials()));
   return true;
 }
 
@@ -507,10 +513,10 @@ bool VirtualMachine::UnregisterContainerIp(const std::string& container_token) {
   if (token_iter == container_token_to_name_.end()) {
     return false;
   }
-  auto name_iter = container_name_to_ip_.find(token_iter->second);
-  DCHECK(name_iter != container_name_to_ip_.end());
+  auto name_iter = container_name_to_garcon_stub_.find(token_iter->second);
+  DCHECK(name_iter != container_name_to_garcon_stub_.end());
   container_token_to_name_.erase(token_iter);
-  container_name_to_ip_.erase(name_iter);
+  container_name_to_garcon_stub_.erase(name_iter);
   return true;
 }
 
@@ -530,13 +536,41 @@ std::string VirtualMachine::GetContainerNameForToken(
   return iter->second;
 }
 
-std::string VirtualMachine::GetContainerIpForName(
-    const std::string& container_name) {
-  auto iter = container_name_to_ip_.find(container_name);
-  if (iter == container_name_to_ip_.end()) {
-    return "";
+bool VirtualMachine::LaunchContainerApplication(
+    const std::string& container_name,
+    const std::string& desktop_file_id,
+    std::string* out_error) {
+  CHECK(out_error);
+  // Get the gRPC stub for communicating with the container.
+  auto iter = container_name_to_garcon_stub_.find(container_name);
+  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
+    LOG(ERROR) << "Requested container " << container_name
+               << " is not registered with the corresponding VM";
+    out_error->assign("Requested container is not registered");
+    return false;
   }
-  return iter->second;
+
+  vm_tools::container::LaunchApplicationRequest container_request;
+  vm_tools::container::LaunchApplicationResponse container_response;
+  container_request.set_desktop_file_id(desktop_file_id);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = iter->second->LaunchApplication(&ctx, container_request,
+                                                        &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to launch application " << desktop_file_id
+               << " in container " << container_name << ": "
+               << status.error_message();
+    out_error->assign("gRPC failure launching application: " +
+                      status.error_message());
+    return false;
+  }
+  out_error->assign(container_response.failure_reason());
+  return container_response.success();
 }
 
 void VirtualMachine::set_stub_for_testing(

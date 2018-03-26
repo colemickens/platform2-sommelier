@@ -627,8 +627,8 @@ int StartContainer(dbus::ObjectProxy* proxy,
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::StartContainerRequest request;
-  request.set_vm_name(std::move(name));
-  request.set_container_name(std::move(container_name));
+  request.set_vm_name(name);
+  request.set_container_name(container_name);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode StartContainerRequest protobuf";
@@ -659,6 +659,68 @@ int StartContainer(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int LaunchApplication(dbus::ObjectProxy* proxy,
+                      string name,
+                      string container_name,
+                      string application) {
+  if (name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  if (container_name.empty()) {
+    LOG(ERROR) << "--container_name is required";
+    return -1;
+  }
+
+  if (application.empty()) {
+    LOG(ERROR) << "--application is required";
+    return -1;
+  }
+
+  LOG(INFO) << "Starting application " << application << " in '" << name << ":"
+            << container_name << "'";
+
+  dbus::MethodCall method_call(
+      vm_tools::concierge::kVmConciergeInterface,
+      vm_tools::concierge::kLaunchContainerApplicationMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::LaunchContainerApplicationRequest request;
+  request.set_vm_name(name);
+  request.set_container_name(container_name);
+  request.set_desktop_file_id(application);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode LaunchContainerApplicationRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::LaunchContainerApplicationResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to launch application: " << response.failure_reason();
+    return -1;
+  }
+
+  LOG(INFO) << "Launched application " << application << " in '" << name << ":"
+            << container_name << "'";
+
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -675,6 +737,8 @@ int main(int argc, char** argv) {
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
   DEFINE_bool(start_container, false, "Starts a container within a VM");
+  DEFINE_bool(launch_application, false,
+              "Launches an application in a container");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -683,6 +747,7 @@ int main(int argc, char** argv) {
   DEFINE_string(extra_disks, "",
                 "Additional disk images to be mounted inside the VM");
   DEFINE_string(container_name, "", "Name of the container within the VM");
+  DEFINE_string(application, "", "Name of the application to launch");
 
   // create_disk parameters.
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
@@ -720,11 +785,13 @@ int main(int argc, char** argv) {
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_start_termina_vm + FLAGS_destroy_disk +
-      FLAGS_list_disks + FLAGS_start_container != 1) {
+      FLAGS_list_disks + FLAGS_start_container +
+      FLAGS_launch_application != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info,"
                << "--create_disk, --destroy_disk, --list_disks, "
-               << "--start_termina_vm, --start_container must be provided";
+               << "--start_termina_vm, --start_container, --launch_application "
+               << "must be provided";
     return -1;
   }
 
@@ -755,6 +822,10 @@ int main(int argc, char** argv) {
   } else if (FLAGS_start_container) {
     return StartContainer(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_container_name));
+  } else if (FLAGS_launch_application) {
+    return LaunchApplication(proxy, std::move(FLAGS_name),
+                             std::move(FLAGS_container_name),
+                             std::move(FLAGS_application));
   }
 
   // Unreachable.

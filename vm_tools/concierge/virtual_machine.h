@@ -23,6 +23,7 @@
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
+#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
@@ -181,9 +182,12 @@ class VirtualMachine {
   // RegisterContainerIp.
   std::string GetContainerNameForToken(const std::string& container_token);
 
-  // Returns the IP address of container with the specified |container_name|.
-  // The empty string is returned if no such name is currently registered.
-  std::string GetContainerIpForName(const std::string& container_name);
+  // Launches the application associated with |desktop_file_id| in the container
+  // named |container_name| within this VM. Returns true on success, false
+  // otherwise and fills out |out_error| on failure.
+  bool LaunchContainerApplication(const std::string& container_name,
+                                  const std::string& desktop_file_id,
+                                  std::string* out_error);
 
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
@@ -236,8 +240,10 @@ class VirtualMachine {
   // already running and we don't want to invalidate an in-use token.
   std::map<std::string, std::string> pending_container_token_to_name_;
 
-  // Mapping of container names to IP address.
-  std::map<std::string, std::string> container_name_to_ip_;
+  // Mapping of container names to a stub for making RPC requests to the garcon
+  // process inside the container.
+  std::map<std::string, std::unique_ptr<vm_tools::container::Garcon::Stub>>
+      container_name_to_garcon_stub_;
 
   // Runtime directory for this VM.
   base::ScopedTempDir runtime_dir_;
