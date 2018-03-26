@@ -39,6 +39,15 @@
     <signal name="LoginPromptVisible" />
 
     <!--
+        EmitAshInitialized
+
+        Emits the "ash-initialized" upstart signal on the browser's behalf.
+    -->
+    <method name="EmitAshInitialized">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
         EnableChromeTesting:
         @force_relaunch: Restart the browser no matter what.
         @extra_arguments: Extra command line arguments to pass on restart.

@@ -185,6 +185,7 @@ class SessionManagerImpl
 
   // org::chromium::SessionManagerInterfaceInterface implementation.
   void EmitLoginPromptVisible() override;
+  void EmitAshInitialized() override;
   bool EnableChromeTesting(
       brillo::ErrorPtr* error,
       bool in_force_relaunch,

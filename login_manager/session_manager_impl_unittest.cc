@@ -829,6 +829,14 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   impl_->EmitLoginPromptVisible();
 }
 
+TEST_F(SessionManagerImplTest, EmitAshInitialized) {
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal("ash-initialized", ElementsAre(),
+                                     InitDaemonController::TriggerMode::ASYNC))
+      .Times(1);
+  impl_->EmitAshInitialized();
+}
+
 TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   std::vector<std::string> args = {"--repeat-arg", "--one-time-arg"};
   const std::vector<std::string> kEnvVars = {"FOO=", "BAR=/tmp"};

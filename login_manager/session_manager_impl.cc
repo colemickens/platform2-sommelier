@@ -480,6 +480,11 @@ void SessionManagerImpl::EmitLoginPromptVisible() {
                                    InitDaemonController::TriggerMode::ASYNC);
 }
 
+void SessionManagerImpl::EmitAshInitialized() {
+  init_controller_->TriggerImpulse("ash-initialized", {},
+                                   InitDaemonController::TriggerMode::ASYNC);
+}
+
 bool SessionManagerImpl::EnableChromeTesting(
     brillo::ErrorPtr* error,
     bool in_force_relaunch,
