@@ -139,7 +139,6 @@ constexpr gid_t kCacheGid = AID_CACHE + kShiftGid;
 constexpr gid_t kLogGid = AID_LOG + kShiftGid;
 
 constexpr char kSwitchSetup[] = "setup";
-constexpr char kSwitchSetupForLoginScreen[] = "setup-for-login-screen";
 constexpr char kSwitchBootContinue[] = "boot-continue";
 constexpr char kSwitchStop[] = "stop";
 constexpr char kSwitchOnetimeSetup[] = "onetime-setup";
@@ -152,7 +151,6 @@ constexpr base::TimeDelta kReadAheadTimeout = base::TimeDelta::FromSeconds(7);
 
 enum class Mode {
   SETUP = 0,
-  SETUP_FOR_LOGIN_SCREEN,
   BOOT_CONTINUE,
   STOP,
   ONETIME_SETUP,
@@ -166,8 +164,6 @@ Mode GetMode() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kSwitchSetup))
     return Mode::SETUP;
-  if (command_line->HasSwitch(kSwitchSetupForLoginScreen))
-    return Mode::SETUP_FOR_LOGIN_SCREEN;
   if (command_line->HasSwitch(kSwitchBootContinue))
     return Mode::BOOT_CONTINUE;
   if (command_line->HasSwitch(kSwitchStop))
@@ -286,8 +282,7 @@ struct ArcPaths {
   // session_manager must start arc-setup job with ANDROID_DATA_DIR parameter
   // containing the path of the real android-data directory. They are passed
   // only when the mode is either --setup or --boot-continue.
-  const bool kHasAndroidDataDir =
-      mode == Mode::SETUP || mode == Mode::BOOT_CONTINUE;
+  const bool kHasAndroidDataDir = mode == Mode::BOOT_CONTINUE;
   const base::FilePath android_data_directory =
       kHasAndroidDataDir ? GetFilePathOrDie(env.get(), "ANDROID_DATA_DIR")
                          : base::FilePath();
@@ -897,11 +892,9 @@ bool ArcSetup::InstallLinksToHostSideCode() {
   return result;
 }
 
-void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
-                                        bool is_dev_mode,
+void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
                                         bool is_inside_vm,
-                                        bool is_debuggable,
-                                        ArcBootType boot_type) {
+                                        bool is_debuggable) {
   const base::FilePath lsb_release_file_path("/etc/lsb-release");
   LOG(INFO) << "Developer mode is " << is_dev_mode;
   LOG(INFO) << "Inside VM is " << is_inside_vm;
@@ -921,31 +914,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
   const std::string arc_gateway_ipv4_address =
       GetEnvOrDie(arc_paths_->env.get(), "ARC_GATEWAY_IPV4_ADDRESS");
 
-  // When |for_login_screen| is true, don't set all properties. The serialno
-  // is unknown until the user's /home is mounted. |disable_boot_completed|,
-  // |vendor_privileged|, and |container_boot_type| are unnecessary until
-  // system_server starts.
-  std::string serialno;
-  std::string disable_boot_completed;
-  std::string vendor_privileged;
-  std::string container_boot_type;
-  std::string copy_packages_cache;
-  if (!for_login_screen) {
-    serialno = base::StringPrintf("androidboot.serialno=%s ",
-                                  GetSerialNumber().c_str());
-    disable_boot_completed = base::StringPrintf(
-        "androidboot.disable_boot_completed=%d ",
-        GetBooleanEnvOrDie(arc_paths_->env.get(),
-                           "DISABLE_BOOT_COMPLETED_BROADCAST"));
-    vendor_privileged = base::StringPrintf(
-        "androidboot.vendor_privileged=%d ",
-        GetBooleanEnvOrDie(arc_paths_->env.get(), "ENABLE_VENDOR_PRIVILEGED"));
-    container_boot_type =
-        base::StringPrintf("androidboot.container_boot_type=%d ", boot_type);
-    copy_packages_cache = base::StringPrintf(
-        "androidboot.copy.packages.cache=%d ",
-        GetBooleanEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"));
-  }
   std::string native_bridge;
   switch (IdentifyBinaryTranslationType()) {
     case ArcBinaryTranslationType::NONE:
@@ -960,7 +928,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
   }
   LOG(INFO) << "native_bridge is \"" << native_bridge << "\"";
 
-  std::string content;
   // Note that we are intentionally not setting the ro.kernel.qemu property
   // since that is tied to running the Android emulator, which has a few key
   // differences:
@@ -970,7 +937,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
   //   (but can be overriden by setting ro.kernel.qemu.gles to -1).
   // * It disables a bunch of pixel formats and uses only RGB565.
   // * It disables Bluetooth (which we might do regardless).
-  content = base::StringPrintf(
+  const std::string content = base::StringPrintf(
       "androidboot.hardware=cheets "
       "androidboot.container=1 "
       "androidboot.dev_mode=%d "
@@ -980,21 +947,16 @@ void ArcSetup::CreateAndroidCmdlineFile(bool for_login_screen,
       "androidboot.ui_scale=%s "
       "androidboot.container_ipv4_address=%s "
       "androidboot.gateway_ipv4_address=%s "
-      "androidboot.partial_boot=%d "
+      "androidboot.partial_boot=1 "
       "androidboot.native_bridge=%s "
-      "androidboot.chromeos_channel=%s "
-      "%s"  // serialno
-      "%s"  // disable_boot_completed
-      "%s"  // vendor_privileged
-      "%s"  // container_boot_type
-      "%s"  // copy_packages_cache
-      "\n",
+      "androidboot.chromeos_channel=%s\n",
       is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density.c_str(),
       arc_ui_scale.c_str(), arc_container_ipv4_address.c_str(),
-      arc_gateway_ipv4_address.c_str(), for_login_screen, native_bridge.c_str(),
-      chromeos_channel.c_str(), serialno.c_str(),
-      disable_boot_completed.c_str(), vendor_privileged.c_str(),
-      container_boot_type.c_str(), copy_packages_cache.c_str());
+      arc_gateway_ipv4_address.c_str(), native_bridge.c_str(),
+      chromeos_channel.c_str());
+
+  // TODO(yusukes): Stop using ro.boot.partial_boot in the container and
+  // remove "androidboot.partial_boot=1".
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }
 
@@ -1089,20 +1051,16 @@ void ArcSetup::CleanUpStaleMountPoints() {
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_dest_directory));
 }
 
-void ArcSetup::SetUpSharedMountPoints(bool for_login_screen) {
+void ArcSetup::SetUpSharedMountPoints() {
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->shared_mount_directory));
   EXIT_IF(!InstallDirectory(0755, kRootUid, kRootGid,
                             arc_paths_->shared_mount_directory));
-  if (!for_login_screen)
-    return;
 
   // Use 0755 to make sure only the real root user can write to the shared
   // mount point.
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->shared_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
-  // The shared mount point is needed only when the container is started for
-  // login screen.
   EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->shared_mount_directory));
 }
 
@@ -1631,9 +1589,6 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
 }
 
-// TODO(yusukes): The mini instance for login screen does not really require
-// any /run directories. Only the fully featured instance does. If we use a
-// different runtime.json file for login screen, we can remove this function.
 void ArcSetup::EnsureContainerDirectories() {
   // uid/gid will be modified by cras.conf later.
   // FIXME(b/64553266): Work around push_to_device/deploy_vendor_image running
@@ -1736,7 +1691,7 @@ void ArcSetup::CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs) {
   EXIT_IF(!Chown(kRootUid, kRootGid, coldboot_done));
 }
 
-void ArcSetup::OnSetup(bool for_login_screen) {
+void ArcSetup::OnSetup() {
   const bool is_dev_mode =
       GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_DEV_MODE");
   const bool is_inside_vm =
@@ -1744,60 +1699,33 @@ void ArcSetup::OnSetup(bool for_login_screen) {
   const bool is_debuggable =
       GetBooleanEnvOrDie(arc_paths_->env.get(), "ANDROID_DEBUGGABLE");
 
-  // ArcBootType is unknown until the user's /data is mounted.
-  const ArcBootType boot_type =
-      for_login_screen ? ArcBootType::UNKNOWN : GetBootType();
-
-  if (!for_login_screen) {
-    // This is not necessary when |for_login_screen| is true because in that
-    // case /data is always empty.
-    bool should_delete_data_dalvik_cache_directory;
-    bool should_delete_data_app_executables;
-    ShouldDeleteDataExecutables(boot_type,
-                                &should_delete_data_dalvik_cache_directory,
-                                &should_delete_data_app_executables);
-    DeleteExecutableFilesInData(should_delete_data_dalvik_cache_directory,
-                                should_delete_data_app_executables);
-  }
-
   // The host-side dalvik-cache directory is mounted into the container
   // via the json file. Create it regardless of whether the code integrity
   // feature is enabled.
   ArtContainer::CreateArtContainerDataDirectory();
 
-  // For login screen, mount host-compiled and host-verified .art and .oat
-  // files. The container will see these files, but other than that, the
-  // /data and /cache directories are empty and read-only which is the best
-  // for security.
-  if (for_login_screen) {
-    // Unconditionally generate host-side code here.
-    const base::FilePath art_dalvik_cache_directory =
-        arc_paths_->art_container_data_directory.Append("dalvik-cache");
-    base::ElapsedTimer timer;
-    GenerateHostSideCode(art_dalvik_cache_directory);
-    // For now, integrity checking time is the time needed to relocate
-    // boot*.art files because of b/67912719. Once TPM is enabled, this will
-    // report the total time spend on code verification + [relocation + sign]
-    arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
-    SetUpDalvikCache();
-  } else {
-    SetUpAndroidData();
-    InstallLinksToHostSideCode();
-  }
+  // Mount host-compiled and host-verified .art and .oat files. The container
+  // will see these files, but other than that, the /data and /cache
+  // directories are empty and read-only which is the best for security.
 
-  SetUpSharedMountPoints(for_login_screen);
+  // Unconditionally generate host-side code here.
+  const base::FilePath art_dalvik_cache_directory =
+      arc_paths_->art_container_data_directory.Append("dalvik-cache");
+  base::ElapsedTimer timer;
+  GenerateHostSideCode(art_dalvik_cache_directory);
+
+  // For now, integrity checking time is the time needed to relocate
+  // boot*.art files because of b/67912719. Once TPM is enabled, this will
+  // report the total time spend on code verification + [relocation + sign]
+  arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
+  SetUpDalvikCache();
+
+  SetUpSharedMountPoints();
   CreateContainerFilesAndDirectories();
   ApplyPerBoardConfigurations();
-  if (!for_login_screen) {
-    // We don't trace the container startup when |for_login_screen| is true
-    // because the mini container itself is started for preloading files. We
-    // don't run ureadahead before starting the mini container.
-    MaybeStartUreadaheadInTracingMode();
-  }
   SetUpSharedTmpfsForExternalStorage();
   SetUpFilesystemForObbMounter();
-  CreateAndroidCmdlineFile(for_login_screen, is_dev_mode, is_inside_vm,
-                           is_debuggable, boot_type);
+  CreateAndroidCmdlineFile(is_dev_mode, is_inside_vm, is_debuggable);
   CreateFakeProcfsFiles();
   SetUpMountPointForDebugFilesystem(is_dev_mode);
   SetUpMountPointForRemovableMedia();
@@ -1923,8 +1851,7 @@ void ArcSetup::OnReadAhead() {
 void ArcSetup::Run() {
   switch (arc_paths_->mode) {
     case Mode::SETUP:
-    case Mode::SETUP_FOR_LOGIN_SCREEN:
-      OnSetup(arc_paths_->mode == Mode::SETUP_FOR_LOGIN_SCREEN);
+      OnSetup();
       break;
     case Mode::STOP:
       OnStop();

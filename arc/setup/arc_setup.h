@@ -117,11 +117,11 @@ class ArcSetup {
   // Sets up shared APK cache directory.
   void SetUpSharedApkDirectory();
 
-  // Sets up android-data/data/dalvik-cache/<isa> directory for login screen.
+  // Sets up android-data/data/dalvik-cache/<isa> directory.
   void SetUpDalvikCacheInternal(const base::FilePath& dalvik_cache_directory,
                                 const base::FilePath& isa_relative);
 
-  // Sets up android-data/data/dalvik-cache directory for login screen.
+  // Sets up android-data/data/dalvik-cache directory.
   void SetUpDalvikCache();
 
   // Creates files and directories needed by the container.
@@ -159,11 +159,9 @@ class ArcSetup {
       const std::string& isa);
 
   // Provides some fake kernel command line arguments that are needed.
-  void CreateAndroidCmdlineFile(bool for_login_screen,
-                                bool is_dev_mode,
+  void CreateAndroidCmdlineFile(bool is_dev_mode,
                                 bool is_inside_vm,
-                                bool is_debuggable,
-                                ArcBootType boot_type);
+                                bool is_debuggable);
 
   // Create fake procfs entries expected by android.
   void CreateFakeProcfsFiles();
@@ -186,7 +184,7 @@ class ArcSetup {
 
   // Sets up a mount point for passing the user's /data and /cache to the
   // container.
-  void SetUpSharedMountPoints(bool for_login_screen);
+  void SetUpSharedMountPoints();
 
   // Restores the labels of files and directories. This has to be called before
   // MakeMountpointsReadOnly() makes the directories read-only.
@@ -303,8 +301,8 @@ class ArcSetup {
   // image hasn't been mounted yet.
   AndroidSdkVersion GetSdkVersion();
 
-  // Called when arc-setup is called with --setup or --setup-for-login-screen.
-  void OnSetup(bool for_login_screen);
+  // Called when arc-setup is called with --setup
+  void OnSetup();
 
   // Called when arc-setup is called with ---boot-continue.
   void OnBootContinue();
