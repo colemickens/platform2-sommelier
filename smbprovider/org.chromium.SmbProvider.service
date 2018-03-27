@@ -3,5 +3,5 @@
 # found in the LICENSE file.
 [D-BUS Service]
 Name=org.chromium.SmbProvider
-Exec=/usr/bin/smbproviderd-jailed
+Exec=/sbin/start smbproviderd
 User=root
