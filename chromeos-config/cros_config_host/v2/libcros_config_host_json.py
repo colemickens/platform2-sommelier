@@ -32,8 +32,7 @@ class CrosConfigJson(CrosConfigImpl):
   """
   def __init__(self, infile):
     super(CrosConfigJson, self).__init__(infile)
-    self._json = json.loads(
-        TransformConfig(self.infile.read(), drop_family=False))
+    self._json = json.loads(TransformConfig(self.infile.read()))
     self.root = CrosConfigJson.MakeNode(self, None, '/', self._json)
     self.family = self.root.subnodes['chromeos'].subnodes.get('family')
 

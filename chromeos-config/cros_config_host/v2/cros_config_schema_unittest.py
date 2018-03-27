@@ -26,21 +26,31 @@ reef-9042-fw: &reef-9042-fw
     coreboot: 'reef'
 
 chromeos:
-  models:
-    - name: 'basking'
-      identity:
-        sku-id: 0
-      audio:
-        main:
-          card: 'bxtda7219max'
-          cras-config-dir: 'basking'
-          ucm-suffix: 'basking'
-      brand-code: 'ASUN'
-      firmware:
-        <<: *reef-9042-fw
-        key-id: 'OEM2'
-      powerd-prefs: 'reef'
-      test-alias: 'reef'
+  devices:
+    - $name: 'basking'
+      products:
+        - $key-id: 'OEM2'
+          $brand-code: 'ASUN'
+      skus:
+        - $sku-id: 0
+          config:
+            audio:
+              main:
+                $card: 'bxtda7219max'
+                cras-config-dir: '{{$name}}'
+                ucm-suffix: '{{$name}}'
+                volume: "cras-config/{{cras-config-dir}}/{{$card}}"
+            brand-code: '{{$brand-code}}'
+            identity:
+              platform-name: "Reef"
+              smbios-name-match: "Reef"
+              sku-id: "{{$sku-id}}"
+            name: '{{$name}}'
+            firmware:
+              <<: *reef-9042-fw
+              key-id: '{{$key-id}}'
+            powerd-prefs: 'reef'
+            test-alias: 'reef'
 """
 
 this_dir = os.path.dirname(__file__)
@@ -98,11 +108,21 @@ class ValidateConfigSchemaTests(unittest.TestCase):
 
   def testMissingRequiredElement(self):
     config = re.sub(r" *cras-config-dir: .*", "", BASIC_CONFIG)
+    config = re.sub(r" *volume: .*", "", BASIC_CONFIG)
     try:
       cros_config_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))
     except jsonschema.ValidationError as err:
       self.assertIn('required', err.__str__())
+      self.assertIn('cras-config-dir', err.__str__())
+
+  def testReferencedNonExistentTemplateVariable(self):
+    config = re.sub(r" *cras-config-dir: .*", "", BASIC_CONFIG)
+    try:
+      cros_config_schema.ValidateConfigSchema(
+          self._schema, cros_config_schema.TransformConfig(config))
+    except cros_config_schema.ValidationError as err:
+      self.assertIn('Referenced template variable', err.__str__())
       self.assertIn('cras-config-dir', err.__str__())
 
 
@@ -111,7 +131,7 @@ class ValidateConfigTests(unittest.TestCase):
     cros_config_schema.ValidateConfig(
         cros_config_schema.TransformConfig(BASIC_CONFIG))
 
-  def testModelNamesNotUnique(self):
+  def testIdentitiesNotUnique(self):
     config = """
 reef-9042-fw: &reef-9042-fw
   bcs-overlay: 'overlay-reef-private'
@@ -121,29 +141,43 @@ reef-9042-fw: &reef-9042-fw
   build-targets:
     coreboot: 'reef'
 chromeos:
-  models:
-    - name: 'astronaut'
-      audio:
-        main:
-          card: 'bxtda7219max'
-          cras-config-dir: 'astronaut'
-      firmware:
-        <<: *reef-9042-fw
-        key-id: 'OEM2'
-    - name: 'astronaut'
-      audio:
-        main:
-          card: 'bxtda7219max'
-          cras-config-dir: 'astronaut'
-      firmware:
-        <<: *reef-9042-fw
-        key-id: 'OEM2'
+  devices:
+    - $name: 'astronaut'
+      products:
+        - $key-id: 'OEM2'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+            audio:
+              main:
+                cras-config-dir: '{{$name}}'
+                ucm-suffix: '{{$name}}'
+            name: '{{$name}}'
+            firmware:
+              <<: *reef-9042-fw
+              key-id: '{{$key-id}}'
+    - $name: 'astronaut'
+      products:
+        - $key-id: 'OEM2'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+            audio:
+              main:
+                cras-config-dir: '{{$name}}'
+                ucm-suffix: '{{$name}}'
+            name: '{{$name}}'
+            firmware:
+              <<: *reef-9042-fw
+              key-id: '{{$key-id}}'
 """
     try:
       cros_config_schema.ValidateConfig(
           cros_config_schema.TransformConfig(config))
     except cros_config_schema.ValidationError as err:
-      self.assertIn('Model names are not unique', err.__str__())
+      self.assertIn('Identities are not unique', err.__str__())
 
 
 class FilterBuildElements(unittest.TestCase):
@@ -169,8 +203,8 @@ class MainTests(unittest.TestCase):
             output_stream.read(),
             ('To regenerate the expected output, run:\n'
              '\tpython -m cros_config_host.v2.cros_config_schema '
-             '-c libcros_config_host/test.yaml '
-             '-o libcros_config_host/test.json'))
+             '-c libcros_config/test.yaml '
+             '-o libcros_config/test.json'))
 
     os.remove(output)
 
