@@ -55,6 +55,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
              int32_t* error_code,
              int32_t* mount_id) override;
 
+  int32_t Remount(const ProtoBlob& options_blob) override;
+
   int32_t Unmount(const ProtoBlob& options_blob) override;
 
   void ReadDirectory(const ProtoBlob& options_blob,

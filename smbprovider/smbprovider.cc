@@ -87,6 +87,11 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   *error_code = static_cast<int32_t>(ERROR_OK);
 }
 
+int32_t SmbProvider::Remount(const ProtoBlob& options_blob) {
+  NOTREACHED();
+  return 0;
+}
+
 int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
   UnmountOptionsProto options;

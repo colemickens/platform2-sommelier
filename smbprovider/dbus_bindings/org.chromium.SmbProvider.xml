@@ -28,6 +28,25 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="Remount">
+      <tp:docstring>
+        'Remounts' a given share by attempting to call smbc_opendir on given share path. 'Remounts' is
+        in quotes because similarly to Mount this does not do an actual mount since it is not needed on an SMB share.
+        This will assign the mount the mount_id in the RemountOptions proto.
+      </tp:docstring>
+      <arg name="options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized RemountOptions protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
     <method name="Unmount">
       <tp:docstring>
         Unmounts' the mount corresponding to the mount id. 'Unmounts' is in quotes because this
