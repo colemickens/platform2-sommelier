@@ -23,6 +23,10 @@ class DesktopFile {
       const base::FilePath& file_path);
   ~DesktopFile() = default;
 
+  // Gets the list of paths where .desktop files can reside under. Each path
+  // returned from this will have "applications" as the last path component.
+  static std::vector<base::FilePath> GetPathsForDesktopFiles();
+
   // Searches for the corresponding .desktop file which correlates to the passed
   // in |desktop_id|. This follows the rules of the spec for searching and in
   // addition to that, if there is no XDG_DATA_DIRS env variable, then it will
@@ -40,6 +44,11 @@ class DesktopFile {
   // files/URLs to pass as args.
   std::vector<std::string> GenerateArgvWithFiles(
       const std::vector<std::string>& app_args) const;
+
+  // Returns true if this .desktop file is one that should be sent to the host.
+  // There are various rules contained in here that determine what files should
+  // actually be passed along.
+  bool ShouldPassToHost() const;
 
   const std::string& app_id() const { return app_id_; }
   const std::string& entry_type() const { return entry_type_; }

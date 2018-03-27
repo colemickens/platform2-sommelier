@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <arpa/inet.h>
 #include <limits.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -26,23 +25,22 @@ const int kSyslogCritical = LOG_CRIT;
 }  // namespace
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/command_line.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/string_util.h>
-#include <grpc++/grpc++.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/threading/thread.h>
 
 #include "vm_tools/common/constants.h"
+#include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/service_impl.h"
 
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
-#include "container_host.grpc.pb.h"  // NOLINT(build/include)
 
-constexpr char kHostIpFile[] = "/dev/.host_ip";
-constexpr char kSecurityTokenFile[] = "/dev/.container_token";
 constexpr char kLogPrefix[] = "garcon: ";
-constexpr int kSecurityTokenLength = 36;
 constexpr char kServerSwitch[] = "server";
 constexpr char kClientSwitch[] = "client";
 constexpr char kShutdownSwitch[] = "shutdown";
@@ -74,76 +72,28 @@ bool LogToSyslog(logging::LogSeverity severity,
   return true;
 }
 
-std::string GetHostIp() {
-  char host_addr[INET_ADDRSTRLEN + 1];
-  base::FilePath host_ip_path(kHostIpFile);
-  int num_read = base::ReadFile(host_ip_path, host_addr, sizeof(host_addr) - 1);
-  if (num_read <= 0) {
-    LOG(ERROR) << "Failed reading the host IP from: "
-               << host_ip_path.MaybeAsASCII();
-    return "";
-  }
-  host_addr[num_read] = '\0';
-  return std::string(host_addr);
-}
+void RunGarconService(base::WaitableEvent* event,
+                      std::shared_ptr<grpc::Server>* server_copy) {
+  // Build the server.
 
-std::string GetSecurityToken() {
-  char token[kSecurityTokenLength + 1];
-  base::FilePath security_token_path(kSecurityTokenFile);
-  int num_read = base::ReadFile(security_token_path, token, sizeof(token) - 1);
-  if (num_read <= 0) {
-    LOG(ERROR) << "Failed reading the container token from: "
-               << security_token_path.MaybeAsASCII();
-    return "";
-  }
-  token[num_read] = '\0';
-  return std::string(token);
-}
+  grpc::ServerBuilder builder;
+  builder.AddListeningPort(base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
+                           grpc::InsecureServerCredentials());
 
-bool NotifyHostGarconIsReady() {
-  // Notify the host system that we are ready.
-  std::string host_ip = GetHostIp();
-  std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
-    return false;
-  }
-  vm_tools::container::ContainerListener::Stub stub(grpc::CreateChannel(
-      base::StringPrintf("%s:%u", host_ip.c_str(), vm_tools::kGarconPort),
-      grpc::InsecureChannelCredentials()));
-  grpc::ClientContext ctx;
-  vm_tools::container::ContainerStartupInfo startup_info;
-  startup_info.set_token(token);
-  vm_tools::EmptyMessage empty;
-  grpc::Status status = stub.ContainerReady(&ctx, startup_info, &empty);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to notify host system that container is ready: "
-                 << status.error_message();
-    return false;
-  }
-  return true;
-}
+  vm_tools::garcon::ServiceImpl garcon_service;
+  builder.RegisterService(&garcon_service);
 
-bool NotifyHostOfContainerShutdown() {
-  // Notify the host system that we are ready.
-  std::string host_ip = GetHostIp();
-  std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
-    return false;
+  std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
+
+  *server_copy = server;
+  event->Signal();
+
+  if (server) {
+    LOG(INFO) << "Server listening on port " << vm_tools::kGarconPort;
+    // The following call will never return since we have no mechanism for
+    // actually shutting down garcon.
+    server->Wait();
   }
-  vm_tools::container::ContainerListener::Stub stub(grpc::CreateChannel(
-      base::StringPrintf("%s:%u", host_ip.c_str(), vm_tools::kGarconPort),
-      grpc::InsecureChannelCredentials()));
-  grpc::ClientContext ctx;
-  vm_tools::container::ContainerShutdownInfo shutdown_info;
-  shutdown_info.set_token(token);
-  vm_tools::EmptyMessage empty;
-  grpc::Status status = stub.ContainerShutdown(&ctx, shutdown_info, &empty);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to notify host system that container is shutting "
-                 << "down: " << status.error_message();
-    return false;
-  }
-  return true;
 }
 
 void PrintUsage() {
@@ -157,6 +107,7 @@ void PrintUsage() {
 
 int main(int argc, char** argv) {
   base::AtExitManager at_exit;
+  base::MessageLoopForIO message_loop;
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   logging::InitLogging(logging::LoggingSettings());
@@ -175,7 +126,7 @@ int main(int argc, char** argv) {
 
   if (clientMode) {
     if (cl->HasSwitch(kShutdownSwitch)) {
-      if (!NotifyHostOfContainerShutdown()) {
+      if (!vm_tools::garcon::HostNotifier::NotifyHostOfContainerShutdown()) {
         return -1;
       }
     } else {
@@ -190,33 +141,50 @@ int main(int argc, char** argv) {
   openlog(kLogPrefix, LOG_PID, LOG_DAEMON);
   logging::SetLogMessageHandler(LogToSyslog);
 
-  // Build the server.
-  grpc::ServerBuilder builder;
-  builder.AddListeningPort(base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
-                           grpc::InsecureServerCredentials());
+  // Thread that the gRPC server is running on.
+  base::Thread grpc_thread{"gRPC Thread"};
+  if (!grpc_thread.Start()) {
+    LOG(ERROR) << "Failed starting the gRPC thread";
+    return -1;
+  }
 
-  vm_tools::garcon::ServiceImpl garcon_service;
-  builder.RegisterService(&garcon_service);
+  // Launch the gRPC server on the gRPC thread.
+  std::shared_ptr<grpc::Server> server_copy;
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool ret = grpc_thread.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&RunGarconService, &event, &server_copy));
+  if (!ret) {
+    LOG(ERROR) << "Failed to post server startup task to grpc thread";
+    return -1;
+  }
 
-  std::unique_ptr<grpc::Server> server = builder.BuildAndStart();
-  CHECK(server);
+  // Wait for the gRPC server to start.
+  event.Wait();
 
-  LOG(INFO) << "Server listening on port " << vm_tools::kGarconPort;
+  if (!server_copy) {
+    LOG(ERROR) << "gRPC server failed to start";
+    return -1;
+  }
 
   if (signal(SIGCHLD, SIG_IGN) == SIG_ERR) {
     PLOG(ERROR) << "Unable to explicitly ignore SIGCHILD";
     return -1;
   }
 
-  // Notify the host the container is started up and we are ready to receive
-  // messages.
-  if (!NotifyHostGarconIsReady()) {
-    LOG(ERROR) << "Failed notifying host that container is ready";
+  // Now setup the HostNotifier on the run loop for the main thread. It needs to
+  // have its own run loop separate from the gRPC server since it will be using
+  // base::FilePathWatcher to identify installed application changes.
+  base::RunLoop run_loop;
+
+  std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
+      vm_tools::garcon::HostNotifier::Create();
+  if (!host_notifier) {
+    LOG(ERROR) << "Failure setting up the HostNotifier";
+    return -1;
   }
 
-  // The following call will never return since we have no mechanism for
-  // actually shutting down garcon.
-  server->Wait();
+  run_loop.Run();
 
   return 0;
 }

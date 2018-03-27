@@ -50,14 +50,20 @@ class DesktopFileTest : public ::testing::Test {
     apps_dir_ = temp_dir_.GetPath().Append("applications");
     CHECK(base::CreateDirectory(apps_dir_));
     // Set the XDG_DATA_DIRS env var to be the one we created as our
-    // temp dir.
-    base::Environment::Create()->SetVar("XDG_DATA_DIRS",
-                                        temp_dir_.GetPath().value());
+    // temp dir. Also add a 'path' subdir which we will add to the system
+    // path env var.
+    base::Environment* env = base::Environment::Create();
+    env->SetVar("XDG_DATA_DIRS", temp_dir_.GetPath().value());
+    base::FilePath sys_path = temp_dir_.GetPath().Append("path");
+    CHECK(base::CreateDirectory(sys_path));
+    std::string curr_path;
+    CHECK(env->GetVar("PATH", &curr_path));
+    env->SetVar("PATH", curr_path + ":" + sys_path.value());
   }
   ~DesktopFileTest() override = default;
 
-  base::FilePath WriteDesktopFile(const std::string& file_contents,
-                                  const std::string& relative_path) {
+  base::FilePath WriteContentsToPath(const std::string& file_contents,
+                                     const std::string& relative_path) {
     base::FilePath desktop_file_path = apps_dir_.Append(relative_path);
     // If there's a relative path, create any directories in it.
     CHECK(base::CreateDirectory(desktop_file_path.DirName()));
@@ -73,7 +79,7 @@ class DesktopFileTest : public ::testing::Test {
       const DesktopFileTestData& results,
       bool expect_pass) {
     base::FilePath desktop_file_path =
-        WriteDesktopFile(file_contents, relative_path);
+        WriteContentsToPath(file_contents, relative_path);
     std::unique_ptr<DesktopFile> result =
         DesktopFile::ParseDesktopFile(desktop_file_path);
     if (!expect_pass) {
@@ -96,6 +102,16 @@ class DesktopFileTest : public ::testing::Test {
     EXPECT_EQ(result->categories(), results.categories);
     EXPECT_EQ(result->startup_wm_class(), results.startup_wm_class);
     return result;
+  }
+
+  bool ShouldPassDesktopFileContents(const std::string& file_contents,
+                                     const std::string& relative_path) {
+    base::FilePath test_path =
+        WriteContentsToPath(file_contents, relative_path);
+    std::unique_ptr<DesktopFile> desktop_file =
+        DesktopFile::ParseDesktopFile(test_path);
+    EXPECT_NE(nullptr, desktop_file.get());
+    return desktop_file->ShouldPassToHost();
   }
 
  private:
@@ -307,21 +323,21 @@ TEST_F(DesktopFileTest, IgnoreOtherGroups) {
 }
 
 TEST_F(DesktopFileTest, FindDesktopFile) {
-  base::FilePath test_path = WriteDesktopFile(
+  base::FilePath test_path = WriteContentsToPath(
       "[Desktop Entry]\n"
       "Type=Application\n"
       "Name=TestApplication\n",
       "FindTest.desktop");
   EXPECT_EQ(test_path.value(),
             DesktopFile::FindFileForDesktopId("FindTest").value());
-  test_path = WriteDesktopFile(
+  test_path = WriteContentsToPath(
       "[Desktop Entry]\n"
       "Type=Application\n"
       "Name=TestApplication\n",
       "find/me/in/subdir.desktop");
   EXPECT_EQ(test_path.value(),
             DesktopFile::FindFileForDesktopId("find-me-in-subdir").value());
-  test_path = WriteDesktopFile(
+  test_path = WriteContentsToPath(
       "[Desktop Entry]\n"
       "Type=Application\n"
       "Name=TestApplication\n",
@@ -329,6 +345,13 @@ TEST_F(DesktopFileTest, FindDesktopFile) {
   EXPECT_EQ(
       test_path.value(),
       DesktopFile::FindFileForDesktopId("test-applications-subdir").value());
+  test_path = WriteContentsToPath(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "dashes-in-name.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("dashes-in-name").value());
 }
 
 TEST_F(DesktopFileTest, GenerateArgvNoArgs) {
@@ -445,6 +468,160 @@ TEST_F(DesktopFileTest, InvalidFileExtensionFails) {
       "Type=Application\n"
       "Name=TestName\n",
       "badextension.notdesktop", {}, false);
+}
+
+TEST_F(DesktopFileTest, PassDesktopFileBasic) {
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, DontPassNonApplicationDesktopFiles) {
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Link\n"
+                                    "Exec=mybinary\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Directory\n"
+                                    "Exec=mybinary\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, PassCheckHiddenDesktopFiles) {
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "Hidden=true\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "Hidden=false\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, DontPassDesktopFileWithoutExec) {
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, PassCheckNoDisplayDesktopFiles) {
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "NoDisplay=true\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "NoDisplay=true\n"
+                                    "MimeType=text/plain\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "NoDisplay=false\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, DontPassDesktopFileWithOnlyShowIn) {
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "OnlyShowIn=KDE\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, PassCheckTerminalDesktopFiles) {
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "Terminal=true\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "Terminal=false\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, PassCheckCategoriesDesktopFiles) {
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "Categories=Internet\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=mybinary\n"
+                                    "Categories=Settings\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, PassCheckTryExecDesktopFiles) {
+  // If TryExec is there, the path must exist and have the executable bit set.
+  base::FilePath fake_exec =
+      WriteContentsToPath("#/bin/sh\necho foo", "../path/fakebinary.sh");
+  EXPECT_FALSE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=fakebinary.sh\n"
+                                    "TryExec=" +
+                                        fake_exec.value() +
+                                        "\n"
+                                        "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  EXPECT_TRUE(base::SetPosixFilePermissions(
+      fake_exec, base::FILE_PERMISSION_READ_BY_USER |
+                     base::FILE_PERMISSION_EXECUTE_BY_USER));
+  // Absolute path.
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=fakebinary.sh\n"
+                                    "TryExec=" +
+                                        fake_exec.value() +
+                                        "\n"
+                                        "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
+  // System path.
+  EXPECT_TRUE(
+      ShouldPassDesktopFileContents("[Desktop Entry]\n"
+                                    "Type=Application\n"
+                                    "Exec=fakebinary.sh\n"
+                                    "TryExec=fakebinary.sh\n"
+                                    "Name=TestApplication\n",
+                                    "FilterTest.desktop"));
 }
 
 }  // namespace garcon

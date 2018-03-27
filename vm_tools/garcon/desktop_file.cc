@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/environment.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -48,6 +49,8 @@ const char* const kValidDesktopEntryTypes[] = {kDesktopEntryTypeApplication,
 constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
 // Default path to to use if the XDG_DATA_DIRS env var is not set.
 constexpr char kDefaultDesktopFilesPath[] = "/usr/share";
+constexpr char kSettingsCategory[] = "Settings";
+constexpr char kPathEnvVar[] = "PATH";
 
 // Extracts name from "[Name]" formatted string, empty string returned if error.
 base::StringPiece ParseGroupName(base::StringPiece group_line) {
@@ -174,18 +177,7 @@ std::unique_ptr<DesktopFile> DesktopFile::ParseDesktopFile(
 }
 
 // static
-base::FilePath DesktopFile::FindFileForDesktopId(
-    const std::string& desktop_id) {
-  if (desktop_id.empty()) {
-    return base::FilePath();
-  }
-  // First we need to create the relative path that corresponds to this ID. This
-  // is done by replacing all dash chars with the path separator and then
-  // appending the .desktop file extension to the name.
-  std::string rel_path;
-  base::ReplaceChars(desktop_id, "-", "/", &rel_path);
-  rel_path += kDesktopFileExtension;
-
+std::vector<base::FilePath> DesktopFile::GetPathsForDesktopFiles() {
   const char* xdg_data_dirs = getenv(kXdgDataDirsEnvVar);
   if (!xdg_data_dirs || !strlen(xdg_data_dirs)) {
     xdg_data_dirs = kDefaultDesktopFilesPath;
@@ -193,11 +185,36 @@ base::FilePath DesktopFile::FindFileForDesktopId(
   // Now break it up into the paths that we should search.
   std::vector<base::StringPiece> search_dirs = base::SplitStringPiece(
       xdg_data_dirs, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (auto curr_dir : search_dirs) {
+  std::vector<base::FilePath> retval;
+  for (const auto& curr_dir : search_dirs) {
     base::FilePath curr_path(curr_dir);
-    curr_path = curr_path.Append(kDesktopPathStartDelimiter).Append(rel_path);
-    if (base::PathExists(curr_path)) {
-      return curr_path;
+    retval.emplace_back(curr_path.Append(kDesktopPathStartDelimiter));
+  }
+  return retval;
+}
+
+// static
+base::FilePath DesktopFile::FindFileForDesktopId(
+    const std::string& desktop_id) {
+  if (desktop_id.empty()) {
+    return base::FilePath();
+  }
+  // First we need to create the relative path that corresponds to this ID. This
+  // is done by replacing all dash chars with the path separator and then
+  // appending the .desktop file extension to the name. Alternatively, we also
+  // look without doing any replacing.
+  std::string rel_path1;
+  base::ReplaceChars(desktop_id, "-", "/", &rel_path1);
+  rel_path1 += kDesktopFileExtension;
+  std::string rel_paths[] = {rel_path1, desktop_id + kDesktopFileExtension};
+
+  std::vector<base::FilePath> search_paths = GetPathsForDesktopFiles();
+  for (const auto& curr_path : search_paths) {
+    for (const auto& rel_path : rel_paths) {
+      base::FilePath test_path = curr_path.Append(rel_path);
+      if (base::PathExists(test_path)) {
+        return test_path;
+      }
     }
   }
   return base::FilePath();
@@ -219,7 +236,7 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
   // Go through the file line by line, we are looking for the section marked:
   // [Desktop Entry]
   bool in_entry = false;
-  for (auto curr_line : desktop_lines) {
+  for (const auto& curr_line : desktop_lines) {
     if (curr_line.front() == '#') {
       // Skip comment lines.
       continue;
@@ -457,6 +474,65 @@ std::vector<std::string> DesktopFile::GenerateArgvWithFiles(
     retval.emplace_back(std::move(curr_arg));
   }
   return retval;
+}
+
+bool DesktopFile::ShouldPassToHost() const {
+  // Rules to follow:
+  // -Only allow Applications.
+  // -Don't pass hidden.
+  // -Don't pass without an exec entry.
+  // -Don't pass no_display that also have no mime types.
+  // -Don't pass where OnlyShowIn has entries.
+  // -Don't pass terminal apps (e.g. apps that run in a terminal like vim).
+  // -Don't pass if in the Settings category.
+  // -Don't pass if TryExec doesn't resolve to a valid executable file.
+  if (!IsApplication() || hidden_ || exec_.empty() ||
+      (no_display_ && mime_types_.empty()) || !only_show_in_.empty() ||
+      terminal_) {
+    return false;
+  }
+
+  for (const auto& category : categories_) {
+    if (category == kSettingsCategory) {
+      return false;
+    }
+  }
+
+  if (!try_exec_.empty()) {
+    // If it's absolute, we just check it the way it is.
+    base::FilePath try_exec_path(try_exec_);
+    if (try_exec_path.IsAbsolute()) {
+      int permissions;
+      if (!base::GetPosixFilePermissions(try_exec_path, &permissions) ||
+          !(permissions & base::FILE_PERMISSION_EXECUTE_BY_USER)) {
+        return false;
+      }
+    } else {
+      // Search the system path instead.
+      std::string path;
+      if (!base::Environment::Create()->GetVar(kPathEnvVar, &path)) {
+        // If there's no PATH set we can't search.
+        return false;
+      }
+      bool found_match = false;
+      for (const base::StringPiece& cur_path : base::SplitStringPiece(
+               path, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+        base::FilePath file(cur_path);
+        int permissions;
+        if (base::GetPosixFilePermissions(file.Append(try_exec_),
+                                          &permissions) &&
+            (permissions & base::FILE_PERMISSION_EXECUTE_BY_USER)) {
+          found_match = true;
+          break;
+        }
+      }
+      if (!found_match) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 bool DesktopFile::IsApplication() const {
