@@ -160,4 +160,35 @@ TEST_F(MountManagerTest, TestGetRelativePathOnRoot) {
             manager_.GetRelativePath(mount_id, full_path));
 }
 
+TEST_F(MountManagerTest, TestRemountSucceeds) {
+  const std::string root_path = "smb://server/share1";
+  const int32_t mount_id = 9;
+
+  manager_.Remount(root_path, mount_id);
+  EXPECT_EQ(1, manager_.MountCount());
+  EXPECT_TRUE(manager_.IsAlreadyMounted(mount_id));
+}
+
+TEST_F(MountManagerTest, TestMountAfterRemounts) {
+  const std::string root_path_1 = "smb://server/share1";
+  const int32_t mount_id_1 = 9;
+
+  const std::string root_path_2 = "smb://server/share2";
+  const int32_t mount_id_2 = 4;
+
+  const std::string new_root_path = "smb://server/share3";
+
+  manager_.Remount(root_path_1, mount_id_1);
+  manager_.Remount(root_path_2, mount_id_2);
+
+  EXPECT_EQ(2, manager_.MountCount());
+  EXPECT_TRUE(manager_.IsAlreadyMounted(mount_id_1));
+  EXPECT_TRUE(manager_.IsAlreadyMounted(mount_id_2));
+
+  const int32_t mount_id_3 = manager_.AddMount(new_root_path);
+  EXPECT_EQ(3, manager_.MountCount());
+  EXPECT_TRUE(manager_.IsAlreadyMounted(mount_id_3));
+  EXPECT_GT(mount_id_3, mount_id_1);
+}
+
 }  // namespace smbprovider

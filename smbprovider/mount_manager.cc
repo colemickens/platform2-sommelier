@@ -4,6 +4,8 @@
 
 #include "smbprovider/mount_manager.h"
 
+#include <algorithm>
+
 #include <base/strings/string_util.h>
 
 #include "smbprovider/smbprovider_helper.h"
@@ -21,8 +23,18 @@ bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
 int32_t MountManager::AddMount(const std::string& mount_root) {
   DCHECK(!IsAlreadyMounted(next_mount_id_));
 
+  can_remount_ = false;
   mounts_[next_mount_id_] = mount_root;
   return next_mount_id_++;
+}
+
+void MountManager::Remount(const std::string& mount_root, int32_t mount_id) {
+  DCHECK(can_remount_);
+  DCHECK(!IsAlreadyMounted(mount_id));
+  DCHECK_GE(mount_id, 0);
+
+  mounts_[mount_id] = mount_root;
+  next_mount_id_ = std::max(next_mount_id_, mount_id) + 1;
 }
 
 bool MountManager::RemoveMount(int32_t mount_id) {

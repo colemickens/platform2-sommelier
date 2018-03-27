@@ -30,6 +30,10 @@ class MountManager {
   // level.
   int32_t AddMount(const std::string& mount_root);
 
+  // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not
+  // be called after AddMount is called for the first time.
+  void Remount(const std::string& mount_root, int32_t mount_id);
+
   // Returns true if |mount_id| was mounted and removes the mount.
   bool RemoveMount(int32_t mount_id);
 
@@ -48,6 +52,7 @@ class MountManager {
                               const std::string& full_path) const;
 
  private:
+  bool can_remount_ = true;
   std::map<int32_t, std::string> mounts_;
   int32_t next_mount_id_ = 0;
 
