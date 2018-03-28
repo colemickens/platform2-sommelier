@@ -145,7 +145,7 @@ class CameraMetadata {
 
     template<typename T>
     status_t update(uint32_t tag, std::vector<T> data) {
-        return update(tag, data.array(), data.size());
+        return update(tag, data.data(), data.size());
     }
 
     /**

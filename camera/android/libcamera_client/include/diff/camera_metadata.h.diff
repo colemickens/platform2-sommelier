@@ -1,5 +1,6 @@
-index d284477..73ec9e2 100644
---- a/usr/local/google/home/hywu/code/arc/./frameworks/av/include/camera/CameraMetadata.h
+diff --git a/usr/local/google/home/shik/arc/frameworks/av/include/camera/CameraMetadata.h b/android/libcamera_client/include/camera/camera_metadata.h
+index d284477..45f41d6 100644
+--- a/usr/local/google/home/shik/arc/frameworks/av/include/camera/CameraMetadata.h
 +++ b/android/libcamera_client/include/camera/camera_metadata.h
 @@ -17,20 +17,20 @@
  #ifndef ANDROID_CLIENT_CAMERA2_CAMERAMETADATA_CPP
@@ -28,7 +29,7 @@ index d284477..73ec9e2 100644
    public:
      /** Creates an empty object; best used when expecting to acquire contents
       * from elsewhere */
-@@ -139,12 +139,12 @@ class CameraMetadata: public Parcelable {
+@@ -139,13 +139,13 @@ class CameraMetadata: public Parcelable {
      status_t update(uint32_t tag,
              const camera_metadata_rational_t *data, size_t data_count);
      status_t update(uint32_t tag,
@@ -39,10 +40,12 @@ index d284477..73ec9e2 100644
  
      template<typename T>
 -    status_t update(uint32_t tag, Vector<T> data) {
+-        return update(tag, data.array(), data.size());
 +    status_t update(uint32_t tag, std::vector<T> data) {
-         return update(tag, data.array(), data.size());
++        return update(tag, data.data(), data.size());
      }
  
+     /**
 @@ -186,40 +186,6 @@ class CameraMetadata: public Parcelable {
       */
      void dump(int fd, int verbosity = 1, int indentation = 0) const;
