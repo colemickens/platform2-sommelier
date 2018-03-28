@@ -26,3 +26,26 @@ CXX_BINARY(common/jpeg/libjda_test): CPPFLAGS += $(libjda_test_CPPFLAGS)
 CXX_BINARY(common/jpeg/libjda_test): LDLIBS += $(libjda_test_LDLIBS)
 clean: CLEAN(common/jpeg/libjda_test)
 common/jpeg/libjda_test: CXX_BINARY(common/jpeg/libjda_test)
+
+libjea_PC_DEPS := libcamera_common libcamera_ipc libchrome-$(BASE_VER) \
+	libmojo-$(BASE_VER)
+libjea_CPPFLAGS := $(call get_pc_cflags,$(libjea_PC_DEPS))
+libjea_LDLIBS := $(call get_pc_libs,$(libjea_PC_DEPS))
+libjea_OBJS = common/jpeg/jpeg_encode_accelerator_impl.o
+CXX_STATIC_LIBRARY(common/jpeg/libjea.pic.a): $(libjea_OBJS)
+CXX_STATIC_LIBRARY(common/jpeg/libjea.pic.a): CPPFLAGS += $(libjea_CPPFLAGS)
+CXX_STATIC_LIBRARY(common/jpeg/libjea.pic.a): LDLIBS += $(libjea_LDLIBS)
+clean: CLEAN(common/jpeg/libjea.pic.a)
+common/jpeg/libjea: CXX_STATIC_LIBRARY(common/jpeg/libjea.pic.a)
+
+libjea_test_OBJS = common/jpeg/jpeg_encode_accelerator_test.o
+libjea_test_PC_DEPS := libjea libcamera_common libcamera_ipc \
+	libchrome-$(BASE_VER) libmojo-$(BASE_VER) libcamera_jpeg libyuv \
+	libcamera_exif
+libjea_test_CPPFLAGS := $(call get_pc_cflags,$(libjea_test_PC_DEPS))
+libjea_test_LDLIBS := $(call get_pc_libs,$(libjea_test_PC_DEPS)) -lgtest -ljpeg
+CXX_BINARY(common/jpeg/libjea_test): $(libjea_test_OBJS)
+CXX_BINARY(common/jpeg/libjea_test): CPPFLAGS += $(libjea_test_CPPFLAGS)
+CXX_BINARY(common/jpeg/libjea_test): LDLIBS += $(libjea_test_LDLIBS)
+clean: CLEAN(common/jpeg/libjea_test)
+common/jpeg/libjea_test: CXX_BINARY(common/jpeg/libjea_test)

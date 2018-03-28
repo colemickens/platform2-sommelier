@@ -9,6 +9,7 @@
 
 #include "mojo/algorithm/camera_algorithm.mojom.h"
 #include "mojo/jda/jpeg_decode_accelerator.mojom.h"
+#include "mojo/jea/jpeg_encode_accelerator.mojom.h"
 
 namespace cros {
 
@@ -25,6 +26,10 @@ class CameraMojoChannelManager {
   // Creates a new JpegDecodeAccelerator.
   virtual void CreateJpegDecodeAccelerator(
       mojom::JpegDecodeAcceleratorRequest request) = 0;
+
+  // Creates a new JpegEncodeAccelerator.
+  virtual void CreateJpegEncodeAccelerator(
+      mojom::JpegEncodeAcceleratorRequest request) = 0;
 
   // Create a new CameraAlgorithmOpsPtr.
   virtual mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() = 0;

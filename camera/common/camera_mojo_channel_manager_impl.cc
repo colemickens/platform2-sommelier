@@ -69,6 +69,15 @@ void CameraMojoChannelManagerImpl::CreateJpegDecodeAccelerator(
           base::Unretained(this), base::Passed(std::move(request))));
 }
 
+void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
+    mojom::JpegEncodeAcceleratorRequest request) {
+  ipc_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(
+          &CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread,
+          base::Unretained(this), base::Passed(std::move(request))));
+}
+
 mojom::CameraAlgorithmOpsPtr
 CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr() {
   VLOGF_ENTER();
@@ -100,6 +109,16 @@ void CameraMojoChannelManagerImpl::CreateJpegDecodeAcceleratorOnIpcThread(
   EnsureDispatcherConnectedOnIpcThread();
   if (dispatcher_.is_bound()) {
     dispatcher_->GetJpegDecodeAccelerator(std::move(request));
+  }
+}
+
+void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
+    mojom::JpegEncodeAcceleratorRequest request) {
+  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+
+  EnsureDispatcherConnectedOnIpcThread();
+  if (dispatcher_.is_bound()) {
+    dispatcher_->GetJpegEncodeAccelerator(std::move(request));
   }
 }
 

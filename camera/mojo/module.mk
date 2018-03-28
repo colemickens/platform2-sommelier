@@ -18,7 +18,8 @@ MOJOM_FILES := \
 	mojo/algorithm/camera_algorithm.mojom \
 	mojo/jda/geometry.mojom \
 	mojo/jda/jpeg_decode_accelerator.mojom \
-	mojo/jda/time.mojom
+	mojo/jda/time.mojom \
+	mojo/jea/jpeg_encode_accelerator.mojom
 
 mojo/mojo_templates:
 	$(QUIET)echo generate_mojo_templates: $(GEN_MOJO_TEMPLATES_DIR)

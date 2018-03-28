@@ -31,6 +31,12 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
   void CreateJpegDecodeAccelerator(
       mojom::JpegDecodeAcceleratorRequest request) final;
 
+  // Creates a new JpegEncodeAccelerator.
+  // This API uses CameraHalDispatcher to pass |request| to another process to
+  // create Mojo channel.
+  void CreateJpegEncodeAccelerator(
+      mojom::JpegEncodeAcceleratorRequest request) final;
+
   // Create a new CameraAlgorithmOpsPtr.
   // This API uses domain socket to connect to the Algo adapter as a parent to
   // create Mojo channel, and then return mojom::CameraAlgorithmOpsPtr.
@@ -46,6 +52,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
 
   void CreateJpegDecodeAcceleratorOnIpcThread(
       mojom::JpegDecodeAcceleratorRequest request);
+
+  void CreateJpegEncodeAcceleratorOnIpcThread(
+      mojom::JpegEncodeAcceleratorRequest request);
 
   // Error handler for camera dispatcher Mojo channel.
   void OnDispatcherError();

@@ -82,3 +82,11 @@ libjda: common/jpeg/libjda
 libjda_test: common/jpeg/libjda_test
 
 .PHONY: libjda_test
+
+libjea: common/jpeg/libjea
+
+.PHONY: libjea
+
+libjea_test: common/jpeg/libjea_test
+
+.PHONY: libjea_test
