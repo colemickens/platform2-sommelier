@@ -46,6 +46,7 @@ const char kKeyboardBacklightKeepOnDuringVideoMsPref[] =
     "keyboard_backlight_keep_on_during_video_ms";
 const char kKeyboardBacklightTurnOnForUserActivityPref[] =
     "keyboard_backlight_turn_on_for_user_activity";
+const char kAlsSmoothingConstantPref[] = "als_smoothing_constant";
 const char kRequireUsbInputDeviceToSuspendPref[] =
     "require_usb_input_device_to_suspend";
 const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";

@@ -87,8 +87,12 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // ALS later falls below 200 (the top step's decrease threshold), 75% will be
   // used, and if it then falls below 80 (the middle step's decrease threshold),
   // 50% will be used.
+  //
+  // |smoothing_constant| should contain value in the range (0.0, 1.0] that will
+  // be used to calculated |smoothed_lux_| using simple exponential smoothing.
   void Init(const std::string& steps_pref_value,
-            double initial_brightness_percent);
+            double initial_brightness_percent,
+            double smoothing_constant);
 
   // Should be called when the power source changes.
   void HandlePowerSourceChange(PowerSource source);
@@ -130,13 +134,25 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // |step_index_| and |power_source_|.
   double GetTargetPercent() const;
 
+  // Update |smoothed_lux_| using simple exponential smoothing.
+  void UpdateSmoothedLux(int raw_lux);
+
   system::AmbientLightSensorInterface* sensor_;  // weak
   Delegate* delegate_;                           // weak
 
   PowerSource power_source_;
 
-  // Value from |sensor_| at the time of the last brightness adjustment.
-  int lux_level_;
+  // Rounded value of |smoothed_lux_| at the time of the last brightness
+  // adjustment.
+  int smoothed_lux_at_last_adjustment_;
+
+  // Smoothed lux value from simple exponential smoothing.
+  double smoothed_lux_;
+
+  // Smoothing constant used to calculated smoothed ambient lux level, in the
+  // range of (0.0, 1.0]. Value closer to 0.0 means |smoothed_lux_| will respond
+  // to ambient light change slower. Value of 1.0 means smoothing is disabled.
+  double smoothing_constant_;
 
   HysteresisState hysteresis_state_;
 

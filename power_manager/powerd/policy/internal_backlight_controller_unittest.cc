@@ -64,6 +64,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
     backlight_.set_max_level(max_backlight_level_);
     backlight_.set_current_level(initial_backlight_level_);
     light_sensor_.set_lux(initial_als_lux_);
+    prefs_.SetDouble(kAlsSmoothingConstantPref, 1.0);
 
     controller_.reset(new InternalBacklightController);
     if (!init_time_.is_null())

@@ -48,7 +48,8 @@ class AmbientLightHandlerTest : public ::testing::Test {
   AmbientLightHandlerTest()
       : light_sensor_(0),
         handler_(&light_sensor_, &delegate_),
-        initial_brightness_percent_(0.0) {}
+        initial_brightness_percent_(0.0),
+        als_smoothing_constant_(1.0) {}
 
   ~AmbientLightHandlerTest() override {}
 
@@ -56,7 +57,8 @@ class AmbientLightHandlerTest : public ::testing::Test {
   // Initializes |handler_|.
   void Init() {
     light_sensor_.set_lux(initial_lux_);
-    handler_.Init(steps_pref_, initial_brightness_percent_);
+    handler_.Init(steps_pref_, initial_brightness_percent_,
+                  als_smoothing_constant_);
   }
 
   // Updates the lux level returned by |light_sensor_| and notifies
@@ -78,6 +80,9 @@ class AmbientLightHandlerTest : public ::testing::Test {
 
   // Initial backlight brightness level passed to AmbientLightHandler::Init().
   double initial_brightness_percent_;
+
+  // Initial als smoothing constant passed to AmbientLightHandler::Init().
+  double als_smoothing_constant_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AmbientLightHandlerTest);
@@ -112,6 +117,48 @@ TEST_F(AmbientLightHandlerTest, UpdatePercent) {
   UpdateSensor(110);
   EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
   UpdateSensor(90);
+  EXPECT_DOUBLE_EQ(100.0, delegate_.percent());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+}
+
+TEST_F(AmbientLightHandlerTest, SmoothedLux) {
+  steps_pref_ = "20.0 -1 40\n50.0 20 80\n100.0 60 -1";
+  initial_lux_ = 50;
+  initial_brightness_percent_ = 60.0;
+  als_smoothing_constant_ = 0.2;
+  Init();
+  EXPECT_LT(delegate_.percent(), 0.0);
+
+  // The middle step should be used as soon as a light reading is received.
+  UpdateSensor(50);  // smooth_lux_ = 50
+  EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+
+  // Contrary to UpdatePercent Test, this time 6 readings at 10 lux are needed
+  // before the smoothed lux to go down to lower level
+  for (int i = 0; i < 6; i++) {
+    UpdateSensor(10);  // smooth_lux_ = 42, 36, 30, 26, 23, 20
+    EXPECT_DOUBLE_EQ(50.0, delegate_.percent()) << " iteration: " << i;
+  }
+  UpdateSensor(10);  // smooth_lux_ = 18
+  EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+
+  // Send high readings and check that brightness gradually jumps to top step.
+  for (int i = 0; i < 2; i++) {
+    UpdateSensor(110);  // smooth_lux_ = 37, 51
+    EXPECT_DOUBLE_EQ(20.0, delegate_.percent()) << " iteration: " << i;
+  }
+  UpdateSensor(110);  // smooth_lux_ = 63
+  EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+  UpdateSensor(110);  // smooth_lux_ = 72
+  EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
+  UpdateSensor(110);  // smooth_lux_ = 80
   EXPECT_DOUBLE_EQ(100.0, delegate_.percent());
   EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
             delegate_.cause());

@@ -147,7 +147,12 @@ void KeyboardBacklightController::Init(
     std::string pref_value;
     CHECK(prefs_->GetString(kKeyboardBacklightAlsStepsPref, &pref_value))
         << "Unable to read pref " << kKeyboardBacklightAlsStepsPref;
-    ambient_light_handler_->Init(pref_value, current_percent_);
+
+    double als_smoothing_constant;
+    CHECK(prefs_->GetDouble(kAlsSmoothingConstantPref, &als_smoothing_constant))
+        << "Failed to read pref " << kAlsSmoothingConstantPref;
+    ambient_light_handler_->Init(pref_value, current_percent_,
+                                 als_smoothing_constant);
   } else {
     automated_percent_ = user_steps_.back();
     prefs_->GetDouble(kKeyboardBacklightNoAlsBrightnessPref,

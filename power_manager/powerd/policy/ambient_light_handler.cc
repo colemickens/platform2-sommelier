@@ -43,7 +43,9 @@ AmbientLightHandler::AmbientLightHandler(
     : sensor_(sensor),
       delegate_(delegate),
       power_source_(PowerSource::AC),
-      lux_level_(0),
+      smoothed_lux_at_last_adjustment_(0),
+      smoothed_lux_(0),
+      smoothing_constant_(1.0),
       hysteresis_state_(HysteresisState::IMMEDIATE),
       hysteresis_count_(0),
       step_index_(0),
@@ -58,7 +60,8 @@ AmbientLightHandler::~AmbientLightHandler() {
 }
 
 void AmbientLightHandler::Init(const std::string& steps_pref_value,
-                               double initial_brightness_percent) {
+                               double initial_brightness_percent,
+                               double smoothing_constant) {
   std::vector<std::string> lines = base::SplitString(
       steps_pref_value, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator iter = lines.begin();
@@ -109,17 +112,24 @@ void AmbientLightHandler::Init(const std::string& steps_pref_value,
   // can.
   if (steps_[step_index_].decrease_lux_threshold >= 0 &&
       steps_[step_index_].increase_lux_threshold >= 0) {
-    lux_level_ = steps_[step_index_].decrease_lux_threshold +
-                 (steps_[step_index_].increase_lux_threshold -
-                  steps_[step_index_].decrease_lux_threshold) /
-                     2;
+    smoothed_lux_at_last_adjustment_ =
+        steps_[step_index_].decrease_lux_threshold +
+        (steps_[step_index_].increase_lux_threshold -
+         steps_[step_index_].decrease_lux_threshold) /
+            2;
   } else if (steps_[step_index_].decrease_lux_threshold >= 0) {
-    lux_level_ = steps_[step_index_].decrease_lux_threshold;
+    smoothed_lux_at_last_adjustment_ =
+        steps_[step_index_].decrease_lux_threshold;
   } else if (steps_[step_index_].increase_lux_threshold >= 0) {
-    lux_level_ = steps_[step_index_].increase_lux_threshold;
+    smoothed_lux_at_last_adjustment_ =
+        steps_[step_index_].increase_lux_threshold;
   } else {
-    lux_level_ = 0;
+    smoothed_lux_at_last_adjustment_ = 0;
   }
+
+  CHECK_GT(smoothing_constant, 0.0);
+  CHECK_LE(smoothing_constant, 1.0);
+  smoothing_constant_ = smoothing_constant;
 }
 
 void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
@@ -143,21 +153,24 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     system::AmbientLightSensorInterface* sensor) {
   DCHECK_EQ(sensor, sensor_);
 
-  int new_lux = sensor_->GetAmbientLightLux();
-  if (new_lux < 0) {
+  const int raw_lux = sensor_->GetAmbientLightLux();
+  if (raw_lux < 0) {
     LOG(WARNING) << "Sensor doesn't have valid value";
     return;
   }
 
+  UpdateSmoothedLux(raw_lux);
+  const int new_lux = lround(smoothed_lux_);
+
   if (hysteresis_state_ != HysteresisState::IMMEDIATE &&
-      new_lux == lux_level_) {
+      new_lux == smoothed_lux_at_last_adjustment_) {
     hysteresis_state_ = HysteresisState::STABLE;
     return;
   }
 
   int new_step_index = step_index_;
   int num_steps = steps_.size();
-  if (new_lux > lux_level_) {
+  if (new_lux > smoothed_lux_at_last_adjustment_) {
     if (hysteresis_state_ != HysteresisState::IMMEDIATE &&
         hysteresis_state_ != HysteresisState::INCREASING) {
       VLOG(1) << "ALS transitioned to brightness increasing (" << name_ << ")";
@@ -169,7 +182,7 @@ void AmbientLightHandler::OnAmbientLightUpdated(
           steps_[new_step_index].increase_lux_threshold == -1)
         break;
     }
-  } else if (new_lux < lux_level_) {
+  } else if (new_lux < smoothed_lux_at_last_adjustment_) {
     if (hysteresis_state_ != HysteresisState::IMMEDIATE &&
         hysteresis_state_ != HysteresisState::DECREASING) {
       VLOG(1) << "ALS transitioned to brightness decreasing (" << name_ << ")";
@@ -190,7 +203,7 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     double target_percent = GetTargetPercent();
     LOG(INFO) << "Immediately going to " << target_percent << "% (step "
               << step_index_ << ") for lux " << new_lux << " (" << name_ << ")";
-    lux_level_ = new_lux;
+    smoothed_lux_at_last_adjustment_ = new_lux;
     hysteresis_state_ = HysteresisState::STABLE;
     hysteresis_count_ = 0;
     delegate_->SetBrightnessPercentForAmbientLight(
@@ -204,15 +217,15 @@ void AmbientLightHandler::OnAmbientLightUpdated(
 
   hysteresis_count_++;
   VLOG(1) << "Incremented hysteresis count to " << hysteresis_count_
-          << " (lux went from " << lux_level_ << " to " << new_lux << ") ("
-          << name_ << ")";
+          << " (lux went from " << smoothed_lux_at_last_adjustment_ << " to "
+          << new_lux << ") (" << name_ << ")";
   if (hysteresis_count_ >= kHysteresisThreshold) {
     step_index_ = new_step_index;
     double target_percent = GetTargetPercent();
     LOG(INFO) << "Hysteresis overcome; transitioning to " << target_percent
               << "% (step " << step_index_ << ") for lux " << new_lux << " ("
               << name_ << ")";
-    lux_level_ = new_lux;
+    smoothed_lux_at_last_adjustment_ = new_lux;
     hysteresis_count_ = 1;
     delegate_->SetBrightnessPercentForAmbientLight(
         target_percent, BrightnessChangeCause::AMBIENT_LIGHT);
@@ -225,6 +238,16 @@ double AmbientLightHandler::GetTargetPercent() const {
   return power_source_ == PowerSource::AC
              ? steps_[step_index_].ac_target_percent
              : steps_[step_index_].battery_target_percent;
+}
+
+void AmbientLightHandler::UpdateSmoothedLux(int raw_lux) {
+  // For the first sensor reading, use raw lux value directly without smoothing.
+  if (hysteresis_state_ == HysteresisState::IMMEDIATE) {
+    smoothed_lux_ = raw_lux;
+  } else {
+    smoothed_lux_ = smoothing_constant_ * raw_lux +
+                    (1 - smoothing_constant_) * smoothed_lux_;
+  }
 }
 
 }  // namespace policy

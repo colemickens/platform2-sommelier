@@ -179,7 +179,12 @@ void InternalBacklightController::Init(
     std::string pref_value;
     CHECK(prefs_->GetString(kInternalBacklightAlsStepsPref, &pref_value))
         << "Failed to read pref " << kInternalBacklightAlsStepsPref;
-    ambient_light_handler_->Init(pref_value, initial_percent);
+
+    double als_smoothing_constant;
+    CHECK(prefs_->GetDouble(kAlsSmoothingConstantPref, &als_smoothing_constant))
+        << "Failed to read pref " << kAlsSmoothingConstantPref;
+    ambient_light_handler_->Init(pref_value, initial_percent,
+                                 als_smoothing_constant);
   } else {
     use_ambient_light_ = false;
   }

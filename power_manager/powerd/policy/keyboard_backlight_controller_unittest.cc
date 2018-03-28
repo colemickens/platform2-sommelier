@@ -60,6 +60,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     prefs_.SetString(kKeyboardBacklightUserStepsPref, user_steps_pref_);
     prefs_.SetDouble(kKeyboardBacklightNoAlsBrightnessPref,
                      no_als_brightness_pref_);
+    prefs_.SetDouble(kAlsSmoothingConstantPref, 1.0);
     prefs_.SetInt64(kDetectHoverPref, detect_hover_pref_);
     prefs_.SetInt64(kKeyboardBacklightTurnOnForUserActivityPref,
                     turn_on_for_user_activity_pref_);

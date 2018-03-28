@@ -112,6 +112,11 @@ extern const char kKeyboardBacklightKeepOnDuringVideoMsPref[];
 // kDetectHoverPref is set.
 extern const char kKeyboardBacklightTurnOnForUserActivityPref[];
 
+// Smoothing constant used to calculated smoothed ambient lux level, in the
+// range of (0.0, 1.0]. Value closer to 0.0 means smoothed_lux will respond to
+// ambient light change slower. Value of 1.0 means smoothing is disabled.
+extern const char kAlsSmoothingConstantPref[];
+
 // If true, the system won't be suspended due to user inactivity unless a USB
 // input device is connected.
 extern const char kRequireUsbInputDeviceToSuspendPref[];
