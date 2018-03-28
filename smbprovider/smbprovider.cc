@@ -88,8 +88,21 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
 }
 
 int32_t SmbProvider::Remount(const ProtoBlob& options_blob) {
-  NOTREACHED();
-  return 0;
+  int32_t error_code;
+
+  RemountOptionsProto options;
+  bool can_remount = ParseOptionsProto(options_blob, &options, &error_code) &&
+                     CanMountPath(options.path(), &error_code);
+
+  if (!can_remount) {
+    // ParseOptionsProto() or CanMountPath() already set |error_code|.
+    return error_code;
+  }
+
+  mount_manager_->Remount(options.path(), options.mount_id());
+  error_code = static_cast<int32_t>(ERROR_OK);
+
+  return error_code;
 }
 
 int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {

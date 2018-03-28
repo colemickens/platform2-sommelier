@@ -2537,4 +2537,36 @@ TEST_F(SmbProviderTest, GetSharesReturnsShareContainingDirectory) {
   EXPECT_TRUE(entry1.is_directory());
 }
 
+// Remount fails on an invalid protobuf.
+TEST_F(SmbProviderTest, RemountFailsWithInvalidProto) {
+  ProtoBlob empty_blob;
+
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->Remount(empty_blob)));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  ExpectNoOpenEntries();
+}
+
+// Remount fails on a share that doesn't exist.
+TEST_F(SmbProviderTest, RemountFailsWithInvalidShare) {
+  const int32_t mount_id = 1;
+  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare/none", mount_id);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->Remount(blob)));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  ExpectNoOpenEntries();
+}
+
+// Remount succeeds on a mountable share.
+TEST_F(SmbProviderTest, RemountSucceedsOnValidShare) {
+  fake_samba_->AddDirectory("smb://testshare");
+
+  const int32_t mount_id = 1;
+  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare", mount_id);
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob)));
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
+}
+
 }  // namespace smbprovider
