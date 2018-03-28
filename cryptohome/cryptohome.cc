@@ -646,7 +646,7 @@ int main(int argc, char **argv) {
     brillo::InitLog(brillo::kLogToStderr);
 
   cryptohome::Attestation::PCAType pca_type =
-      cryptohome::Attestation::kDefaultPCA;
+      cryptohome::Attestation::kMaxPCAType;
   if (cl->HasSwitch(switches::kAttestationServerSwitch)) {
     std::string server =
         cl->GetSwitchValueASCII(switches::kAttestationServerSwitch);
@@ -656,10 +656,15 @@ int main(int argc, char **argv) {
         break;
       }
     }
+    if (pca_type == cryptohome::Attestation::kMaxPCAType) {
+      printf("Invalid attestation server: %s\n", server.c_str());
+      return 1;
+    }
+  } else {
+    pca_type = cryptohome::Attestation::kDefaultPCA;
   }
 
-  cryptohome::Attestation::VAType va_type =
-      cryptohome::Attestation::kDefaultVA;
+  cryptohome::Attestation::VAType va_type = cryptohome::Attestation::kMaxVAType;
   std::string va_server(cl->HasSwitch(switches::kVaServerSwitch) ?
       cl->GetSwitchValueASCII(switches::kVaServerSwitch) :
       cl->GetSwitchValueASCII(switches::kAttestationServerSwitch));
@@ -670,6 +675,12 @@ int main(int argc, char **argv) {
         break;
       }
     }
+    if (va_type == cryptohome::Attestation::kMaxVAType) {
+      printf("Invalid Verified Access server: %s\n", va_server.c_str());
+      return 1;
+    }
+  } else {
+    va_type = cryptohome::Attestation::kDefaultVA;
   }
 
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
@@ -1952,7 +1963,7 @@ int main(int argc, char **argv) {
       printf("Failed to read input file.\n");
       return 1;
     }
-    gboolean is_user_specific = (key_name != "attest-ent-machine");
+    gboolean is_user_specific = !account_id.empty();
     brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(data.get(), contents.data(), contents.length());
     gboolean success = FALSE;
@@ -2010,7 +2021,7 @@ int main(int argc, char **argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    gboolean is_user_specific = (key_name != "attest-ent-machine");
+    gboolean is_user_specific = !account_id.empty();
     brillo::glib::ScopedError error;
     gboolean exists = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
@@ -2097,7 +2108,7 @@ int main(int argc, char **argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    gboolean is_user_specific = (key_name != "attest-ent-machine");
+    gboolean is_user_specific = !account_id.empty();
     std::string contents;
     if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
@@ -2149,7 +2160,7 @@ int main(int argc, char **argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
-    gboolean is_user_specific = (key_name != "attest-ent-machine");
+    gboolean is_user_specific = !account_id.empty();
     brillo::glib::ScopedError error;
     gboolean success = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_delete_keys(
