@@ -55,11 +55,12 @@ int FrameBuffer::SetDataSize(size_t data_size) {
 }
 
 AllocatedFrameBuffer::AllocatedFrameBuffer(int buffer_size) {
-  buffer_.reset(new uint8_t[buffer_size]);
+  shm_buffer_.reset(new base::SharedMemory);
+  shm_buffer_->CreateAndMapAnonymous(buffer_size);
   buffer_size_ = buffer_size;
   num_planes_ = 1;
   data_.resize(num_planes_, nullptr);
-  data_[0] = buffer_.get();
+  data_[0] = static_cast<uint8_t*>(shm_buffer_->memory());
   stride_.resize(num_planes_, 0);
 }
 
@@ -88,7 +89,8 @@ void AllocatedFrameBuffer::SetFourcc(uint32_t fourcc) {
 
 int AllocatedFrameBuffer::SetDataSize(size_t size) {
   if (size > buffer_size_) {
-    buffer_.reset(new uint8_t[size]);
+    shm_buffer_.reset(new base::SharedMemory);
+    shm_buffer_->CreateAndMapAnonymous(size);
     buffer_size_ = size;
   }
   data_size_ = size;
@@ -105,13 +107,13 @@ void AllocatedFrameBuffer::SetData() {
         return;
       }
       data_.resize(num_planes_, 0);
-      data_[YPLANE] = buffer_.get();
+      data_[YPLANE] = static_cast<uint8_t*>(shm_buffer_->memory());
       data_[UPLANE] = data_[YPLANE] + stride_[YPLANE] * height_;
       data_[VPLANE] = data_[UPLANE] + stride_[UPLANE] * height_ / 2;
       break;
     default:
       data_.resize(num_planes_, 0);
-      data_[0] = buffer_.get();
+      data_[0] = static_cast<uint8_t*>(shm_buffer_->memory());
       break;
   }
 }

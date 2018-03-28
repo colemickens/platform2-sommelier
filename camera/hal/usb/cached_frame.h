@@ -71,6 +71,8 @@ class CachedFrame {
 
   // Cache YU12 decoded results.
   std::unique_ptr<AllocatedFrameBuffer> yu12_frame_;
+
+  std::unique_ptr<ImageProcessor> image_processor_;
 };
 
 }  // namespace cros

@@ -10,6 +10,7 @@
 #include <time.h>
 #include <vector>
 
+#include <base/memory/ptr_util.h>
 #include <cros-camera/exif_utils.h>
 #include <cros-camera/jpeg_compressor.h>
 #include <hardware/camera3.h>
@@ -61,15 +62,17 @@ namespace cros {
  *                                 -> NM12 / YV12 (video encoder)
  */
 
-static bool ConvertToJpeg(const android::CameraMetadata& metadata,
-                          const FrameBuffer& in_frame,
-                          FrameBuffer* out_frame);
 static bool SetExifTags(const android::CameraMetadata& metadata,
                         const FrameBuffer& in_frame,
                         ExifUtils* utils);
 
 // How precise the float-to-rational conversion for EXIF tags would be.
 static const int kRationalPrecision = 10000;
+
+ImageProcessor::ImageProcessor() :
+    jpeg_encoder_(nullptr), jpeg_encoder_started_(false) {}
+
+ImageProcessor::~ImageProcessor() {}
 
 size_t ImageProcessor::GetConvertedSize(const FrameBuffer& frame) {
   if ((frame.GetWidth() % 2) || (frame.GetHeight() % 2)) {
@@ -339,9 +342,9 @@ int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
   return ret;
 }
 
-static bool ConvertToJpeg(const android::CameraMetadata& metadata,
-                          const FrameBuffer& in_frame,
-                          FrameBuffer* out_frame) {
+bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
+                                   const FrameBuffer& in_frame,
+                                   FrameBuffer* out_frame) {
   ExifUtils utils;
   if (!utils.Initialize()) {
     LOGF(ERROR) << "ExifUtils initialization failed.";
@@ -401,6 +404,54 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
   if (!utils.GenerateApp1(thumbnail.data(), thumbnail.size())) {
     LOGF(ERROR) << "Generating APP1 segment failed.";
     return false;
+  }
+
+  if (!jpeg_encoder_) {
+    jpeg_encoder_ = JpegEncodeAccelerator::CreateInstance();
+    jpeg_encoder_started_ = jpeg_encoder_->Start();
+  }
+
+  if (jpeg_encoder_ && jpeg_encoder_started_) {
+    // Create SharedMemory for output buffer.
+    std::unique_ptr<base::SharedMemory> output_shm =
+        base::WrapUnique(new base::SharedMemory);
+    if (!output_shm->CreateAndMapAnonymous(out_frame->GetBufferSize())) {
+      LOGF(WARNING) << "CreateAndMapAnonymous for output buffer failed, size="
+          << out_frame->GetBufferSize();
+      return false;
+    }
+
+    // Utilize HW Jpeg encode through IPC.
+    uint32_t encoded_data_size = 0;
+    int status = jpeg_encoder_->EncodeSync(
+        in_frame.GetFd(), in_frame.GetDataSize(),
+        in_frame.GetWidth(), in_frame.GetHeight(),
+        utils.GetApp1Buffer(), utils.GetApp1Length(),
+        output_shm->handle().fd, out_frame->GetBufferSize(),
+        &encoded_data_size);
+    if (status == JpegEncodeAccelerator::TRY_START_AGAIN) {
+      // There might be some mojo errors. We will give a second try.
+      // But if it fails again, we will fall back to SW encode.
+      LOG(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
+      jpeg_encoder_started_ = jpeg_encoder_->Start();
+      if (jpeg_encoder_started_) {
+        status = jpeg_encoder_->EncodeSync(
+            in_frame.GetFd(), in_frame.GetDataSize(),
+            in_frame.GetWidth(), in_frame.GetHeight(),
+            utils.GetApp1Buffer(), utils.GetApp1Length(),
+            output_shm->handle().fd, out_frame->GetBufferSize(),
+            &encoded_data_size);
+      } else {
+        LOG(ERROR) << "JPEG encode accelerator can't be started.";
+      }
+    }
+    if (status == JpegEncodeAccelerator::ENCODE_OK) {
+      memcpy(out_frame->GetData(), output_shm->memory(), encoded_data_size);
+      out_frame->SetDataSize(encoded_data_size);
+      return true;
+    }
+
+    LOG(ERROR) << "JEA returns " << status << ". Fall back to SW encode.";
   }
 
   uint32_t jpeg_data_size = 0;

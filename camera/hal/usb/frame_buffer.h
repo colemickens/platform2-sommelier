@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <base/memory/shared_memory.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
 #include <cros-camera/camera_buffer_manager.h>
@@ -50,6 +51,7 @@ class FrameBuffer {
 
   virtual void SetFourcc(uint32_t fourcc);
   virtual int SetDataSize(size_t data_size);
+  virtual int GetFd() const { return -1; }
 
  protected:
   std::vector<uint8_t*> data_;
@@ -87,11 +89,15 @@ class AllocatedFrameBuffer : public FrameBuffer {
   void SetHeight(uint32_t height);
   void SetFourcc(uint32_t fourcc) override;
   int SetDataSize(size_t data_size) override;
+  int GetFd() const override {
+    return base::SharedMemory::GetFdFromSharedMemoryHandle(
+        shm_buffer_->handle());
+  }
 
  private:
   void SetData();
   void SetStride();
-  std::unique_ptr<uint8_t[]> buffer_;
+  std::unique_ptr<base::SharedMemory> shm_buffer_;
 };
 
 // V4L2FrameBuffer is used for the buffer from V4L2CameraDevice. Maps the fd
@@ -108,7 +114,7 @@ class V4L2FrameBuffer : public FrameBuffer {
 
   int Map() override;
   int Unmap() override;
-  const int GetFd() const { return fd_.get(); }
+  int GetFd() const override { return fd_.get(); }
 
  private:
   // File descriptor of V4L2 frame buffer.

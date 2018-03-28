@@ -15,7 +15,8 @@ namespace cros {
 CachedFrame::CachedFrame()
     : source_frame_(nullptr),
       rotated_frame_(new AllocatedFrameBuffer(0)),
-      yu12_frame_(new AllocatedFrameBuffer(0)) {}
+      yu12_frame_(new AllocatedFrameBuffer(0)),
+      image_processor_(new ImageProcessor()) {}
 
 CachedFrame::~CachedFrame() {
   UnsetSource();
@@ -74,7 +75,8 @@ int CachedFrame::Convert(const android::CameraMetadata& metadata,
   if (video_hack && out_frame->GetFourcc() == V4L2_PIX_FMT_YVU420) {
     out_frame->SetFourcc(V4L2_PIX_FMT_YUV420);
   }
-  return ImageProcessor::ConvertFormat(metadata, *yu12_frame_.get(), out_frame);
+  return image_processor_->ConvertFormat(
+      metadata, *yu12_frame_.get(), out_frame);
 }
 
 int CachedFrame::ConvertToYU12(bool test_pattern) {
@@ -83,8 +85,8 @@ int CachedFrame::ConvertToYU12(bool test_pattern) {
   yu12_frame_->SetHeight(source_frame_->GetHeight());
 
   if (test_pattern == false) {
-    int ret = ImageProcessor::ConvertFormat(android::CameraMetadata(),
-                                            *source_frame_, yu12_frame_.get());
+    int ret = image_processor_->ConvertFormat(android::CameraMetadata(),
+                                             *source_frame_, yu12_frame_.get());
     if (ret) {
       LOGF(ERROR) << "Convert from "
                   << FormatToString(source_frame_->GetFourcc())
@@ -134,8 +136,8 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   rotated_frame_->SetWidth(cropped_height);
   rotated_frame_->SetHeight(cropped_width);
 
-  int ret = ImageProcessor::CropAndRotate(*yu12_frame_.get(),
-                                          rotated_frame_.get(), rotate_degree);
+  int ret = image_processor_->CropAndRotate(*yu12_frame_.get(),
+                                           rotated_frame_.get(), rotate_degree);
   if (ret) {
     LOGF(ERROR) << "Crop and Rotate " << rotate_degree << " degree fails.";
     return ret;
@@ -153,7 +155,7 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   //                           ---------------------
   //
 
-  ret = ImageProcessor::Scale(*rotated_frame_.get(), yu12_frame_.get());
+  ret = image_processor_->Scale(*rotated_frame_.get(), yu12_frame_.get());
   LOGF_IF(ERROR, ret) << "Scale failed: " << ret;
   return ret;
 }
