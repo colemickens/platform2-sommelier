@@ -13,12 +13,12 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/process_delegate.h>
 
 #include "common/camera_algorithm_callback_ops_impl.h"
 #include "common/camera_algorithm_ops_impl.h"
 #include "cros-camera/camera_algorithm.h"
 #include "cros-camera/camera_algorithm_bridge.h"
+#include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 
 namespace cros {
@@ -26,8 +26,7 @@ namespace cros {
 // This is the implementation of CameraAlgorithmBridge interface. It is used
 // by the camera HAL process.
 
-class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
-                                  public mojo::edk::ProcessDelegate {
+class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
  public:
   CameraAlgorithmBridgeImpl();
 
@@ -46,9 +45,6 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
 
   // Deregisters buffers to the camera algorithm library.
   void DeregisterBuffers(const std::vector<int32_t>& buffer_handles);
-
-  // Handle IPC shutdown completion
-  void OnShutdownComplete() {}
 
  private:
   void PreInitializeOnIpcThread(base::Callback<void(void)> cb);
@@ -71,6 +67,10 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
 
   // Return callback registered by HAL
   const camera_algorithm_callback_ops_t* callback_ops_;
+
+  // Camera Mojo channel manager.
+  // We use it to get CameraAlgorithmOpsPtr.
+  CameraMojoChannelManager* mojo_channel_manager_;
 
   // Pointer to local proxy of remote CameraAlgorithmOps interface
   // implementation.

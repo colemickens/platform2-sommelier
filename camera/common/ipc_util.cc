@@ -12,7 +12,11 @@
 #include <sys/un.h>
 
 #include <base/files/file_util.h>
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/platform_channel_pair.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
+#include <mojo/edk/embedder/platform_handle_vector.h>
+#include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "cros-camera/common.h"
 
@@ -164,7 +168,7 @@ base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path) {
   return fd;
 }
 
-MojoResult CreateMojoChannelByUnixDomainSocket(
+MojoResult CreateMojoChannelToParentByUnixDomainSocket(
     const base::FilePath& socket_path,
     mojo::ScopedMessagePipeHandle* child_pipe) {
   base::ScopedFD client_socket_fd = CreateClientUnixDomainSocket(socket_path);
@@ -208,6 +212,37 @@ MojoResult CreateMojoChannelByUnixDomainSocket(
   *child_pipe =
       mojo::edk::CreateChildMessagePipe(std::string(token, kTokenSize));
 
+  return MOJO_RESULT_OK;
+}
+
+MojoResult CreateMojoChannelToChildByUnixDomainSocket(
+    const base::FilePath& socket_path,
+    mojo::ScopedMessagePipeHandle* parent_pipe) {
+  base::ScopedFD client_socket_fd = CreateClientUnixDomainSocket(socket_path);
+  if (!client_socket_fd.is_valid()) {
+    LOGF(WARNING) << "Failed to connect to " << socket_path.value();
+    return MOJO_RESULT_INTERNAL;
+  }
+
+  VLOGF(1) << "Setting up message pipe";
+  mojo::edk::PlatformChannelPair channel_pair;
+  const int kUnusedProcessHandle = 0;
+  mojo::edk::ChildProcessLaunched(kUnusedProcessHandle,
+                                  channel_pair.PassServerHandle());
+  mojo::edk::ScopedPlatformHandleVectorPtr handles(
+      new mojo::edk::PlatformHandleVector(
+          {channel_pair.PassClientHandle().release()}));
+  std::string token = mojo::edk::GenerateRandomToken();
+  VLOGF(1) << "Generated token: " << token;
+  struct iovec iov = {const_cast<char*>(token.c_str()), token.length()};
+  if (mojo::edk::PlatformChannelSendmsgWithHandles(
+          mojo::edk::PlatformHandle(client_socket_fd.get()), &iov, 1,
+          handles->data(), handles->size()) == -1) {
+    LOGF(ERROR) << "Failed to send token and handle: " << strerror(errno);
+    return MOJO_RESULT_INTERNAL;
+  }
+
+  *parent_pipe = mojo::edk::CreateParentMessagePipe(token);
   return MOJO_RESULT_OK;
 }
 

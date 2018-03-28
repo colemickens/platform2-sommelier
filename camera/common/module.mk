@@ -46,8 +46,7 @@ clean: CLEAN(common/libcbm.so)
 common/libcbm: CXX_LIBRARY(common/libcbm.so)
 
 cros_camera_algo_PC_DEPS := \
-	libcamera_common libcamera_ipc libchrome-$(BASE_VER) \
-	libmojo-$(BASE_VER)
+	libcamera_ipc libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 cros_camera_algo_CPPFLAGS := $(call get_pc_cflags,$(cros_camera_algo_PC_DEPS))
 cros_camera_algo_LDLIBS := $(call get_pc_libs,$(cros_camera_algo_PC_DEPS)) -ldl
 cros_camera_algo_OBJS = \
@@ -58,7 +57,7 @@ CXX_BINARY(common/cros_camera_algo): $(cros_camera_algo_OBJS)
 CXX_BINARY(common/cros_camera_algo): CPPFLAGS += $(cros_camera_algo_CPPFLAGS)
 CXX_BINARY(common/cros_camera_algo): LDLIBS += $(cros_camera_algo_LDLIBS)
 libcab_PC_DEPS := \
-	libcamera_common libcamera_ipc libchrome-$(BASE_VER) libmojo-$(BASE_VER)
+	libcamera_ipc libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 libcab_CPPFLAGS := $(call get_pc_cflags,$(libcab_PC_DEPS))
 libcab_LDLIBS := $(call get_pc_libs,$(libcab_PC_DEPS))
 libcab_OBJS = \
@@ -80,8 +79,7 @@ CXX_LIBRARY(common/libcam_algo.so): $(fake_libcam_algo_OBJS)
 CXX_LIBRARY(common/libcam_algo.so): CPPFLAGS += $(fake_libcam_algo_CPPFLAGS)
 CXX_LIBRARY(common/libcam_algo.so): LDLIBS += $(fake_libcam_algo_LDLIBS)
 libcab_test_PC_DEPS := \
-	libcab libcamera_common libcamera_ipc libchrome-$(BASE_VER) \
-	libmojo-$(BASE_VER)
+	libcab libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 libcab_test_CPPFLAGS := $(call get_pc_cflags,$(libcab_test_PC_DEPS))
 libcab_test_LDLIBS := $(call get_pc_libs,$(libcab_test_PC_DEPS)) -Wl,-Bstatic \
 	-lgtest -Wl,-Bdynamic -lrt -pthread

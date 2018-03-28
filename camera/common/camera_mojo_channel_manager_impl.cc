@@ -69,6 +69,30 @@ void CameraMojoChannelManagerImpl::CreateJpegDecodeAccelerator(
           base::Unretained(this), base::Passed(std::move(request))));
 }
 
+mojom::CameraAlgorithmOpsPtr
+CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr() {
+  VLOGF_ENTER();
+
+  mojo::ScopedMessagePipeHandle parent_pipe;
+  mojom::CameraAlgorithmOpsPtr algorithm_ops;
+
+  base::FilePath socket_path(constants::kCrosCameraAlgoSocketPathString);
+  MojoResult result = cros::CreateMojoChannelToChildByUnixDomainSocket(
+      socket_path, &parent_pipe);
+  if (result != MOJO_RESULT_OK) {
+    LOGF(WARNING) << "Failed to create Mojo Channel to" << socket_path.value();
+    return nullptr;
+  }
+
+  algorithm_ops.Bind(
+      mojom::CameraAlgorithmOpsPtrInfo(std::move(parent_pipe), 0u));
+
+  LOGF(INFO) << "Connected to CameraAlgorithmOps";
+
+  VLOGF_EXIT();
+  return algorithm_ops;
+}
+
 void CameraMojoChannelManagerImpl::CreateJpegDecodeAcceleratorOnIpcThread(
     mojom::JpegDecodeAcceleratorRequest request) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
@@ -89,11 +113,11 @@ void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
 
   mojo::ScopedMessagePipeHandle child_pipe;
 
-  MojoResult result = cros::CreateMojoChannelByUnixDomainSocket(
-      constants::kCrosCameraSocketPath, &child_pipe);
+  base::FilePath socket_path(constants::kCrosCameraSocketPathString);
+  MojoResult result = cros::CreateMojoChannelToParentByUnixDomainSocket(
+      socket_path, &child_pipe);
   if (result != MOJO_RESULT_OK) {
-    LOGF(WARNING) << "Failed to create Mojo Channel to"
-                  << constants::kCrosCameraSocketPath.value();
+    LOGF(WARNING) << "Failed to create Mojo Channel to" << socket_path.value();
     return;
   }
 

@@ -10,7 +10,8 @@ namespace cros {
 
 namespace constants {
 
-const base::FilePath kCrosCameraSocketPath("/var/run/camera/camera3.sock");
+const char kCrosCameraAlgoSocketPathString[] = "/run/camera/camera-algo.sock";
+const char kCrosCameraSocketPathString[] = "/var/run/camera/camera3.sock";
 
 }  // namespace constants
 }  // namespace cros

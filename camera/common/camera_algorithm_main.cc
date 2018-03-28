@@ -17,8 +17,8 @@
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 
 #include "common/camera_algorithm_adapter.h"
-#include "common/camera_algorithm_internal.h"
 #include "cros-camera/common.h"
+#include "cros-camera/constants.h"
 #include "cros-camera/ipc_util.h"
 
 int main(int argc, char** argv) {
@@ -32,7 +32,8 @@ int main(int argc, char** argv) {
 
   // Socket file is in the root directory after minijail chroot
   std::string socket_name("/");
-  socket_name.append(basename(cros::kArcCameraAlgoSocketPath));
+  socket_name.append(
+      basename(cros::constants::kCrosCameraAlgoSocketPathString));
   base::FilePath socket_path(socket_name);
   // Creat unix socket to receive the adapter token and connection handle
   int fd = -1;
@@ -52,7 +53,7 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  VLOGF(1) << "Waiting for incoming connection";
+  VLOGF(1) << "Waiting for incoming connection for " << socket_path.value();
   base::ScopedFD connection_fd(accept(socket_fd.get(), NULL, 0));
   if (!connection_fd.is_valid()) {
     LOGF(ERROR) << "Failed to accept client connect request";

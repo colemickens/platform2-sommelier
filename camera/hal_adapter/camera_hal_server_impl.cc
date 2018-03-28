@@ -61,15 +61,15 @@ bool CameraHalServerImpl::Start() {
   }
   mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
 
-  if (!watcher_.Watch(constants::kCrosCameraSocketPath, false,
+  base::FilePath socket_path(constants::kCrosCameraSocketPathString);
+  if (!watcher_.Watch(socket_path, false,
                       base::Bind(&CameraHalServerImpl::OnSocketFileStatusChange,
                                  base::Unretained(this)))) {
     LOGF(ERROR) << "Failed to watch socket path";
     return false;
   }
-  if (base::PathExists(constants::kCrosCameraSocketPath)) {
-    CameraHalServerImpl::OnSocketFileStatusChange(
-        constants::kCrosCameraSocketPath, false);
+  if (base::PathExists(socket_path)) {
+    CameraHalServerImpl::OnSocketFileStatusChange(socket_path, false);
   }
   return true;
 }
@@ -103,11 +103,10 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
 
   VLOG(1) << "Got socket: " << socket_path.value() << " error: " << error;
   mojo::ScopedMessagePipeHandle child_pipe;
-  MojoResult result = CreateMojoChannelByUnixDomainSocket(
-      constants::kCrosCameraSocketPath, &child_pipe);
+  MojoResult result =
+      CreateMojoChannelToParentByUnixDomainSocket(socket_path, &child_pipe);
   if (result != MOJO_RESULT_OK) {
-    LOGF(WARNING) << "Failed to create Mojo Channel to"
-                  << constants::kCrosCameraSocketPath.value();
+    LOGF(WARNING) << "Failed to create Mojo Channel to" << socket_path.value();
     return;
   }
 

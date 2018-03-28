@@ -25,8 +25,16 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
 
   bool Start();
 
+  // Creates a new JpegDecodeAccelerator.
+  // This API uses CameraHalDispatcher to pass |request| to another process to
+  // create Mojo channel.
   void CreateJpegDecodeAccelerator(
       mojom::JpegDecodeAcceleratorRequest request) final;
+
+  // Create a new CameraAlgorithmOpsPtr.
+  // This API uses domain socket to connect to the Algo adapter as a parent to
+  // create Mojo channel, and then return mojom::CameraAlgorithmOpsPtr.
+  mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() final;
 
   // Handle IPC shutdown completion
   void OnShutdownComplete() final {}

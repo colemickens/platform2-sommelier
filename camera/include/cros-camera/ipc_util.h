@@ -25,9 +25,13 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket);
 
 base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path);
 
-MojoResult CreateMojoChannelByUnixDomainSocket(
+MojoResult CreateMojoChannelToParentByUnixDomainSocket(
     const base::FilePath& socket_path,
     mojo::ScopedMessagePipeHandle* child_pipe);
+
+MojoResult CreateMojoChannelToChildByUnixDomainSocket(
+    const base::FilePath& socket_path,
+    mojo::ScopedMessagePipeHandle* parent_pipe);
 
 mojo::ScopedHandle WrapPlatformHandle(int handle);
 int UnwrapPlatformHandle(mojo::ScopedHandle handle);

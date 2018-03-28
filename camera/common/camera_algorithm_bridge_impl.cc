@@ -19,15 +19,11 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
 #include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
-#include <mojo/edk/embedder/platform_handle_vector.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
 
-#include "common/camera_algorithm_internal.h"
 #include "cros-camera/common.h"
 
+#include "cros-camera/constants.h"
 namespace cros {
 
 // static
@@ -38,7 +34,9 @@ std::unique_ptr<CameraAlgorithmBridge> CameraAlgorithmBridge::CreateInstance() {
 }
 
 CameraAlgorithmBridgeImpl::CameraAlgorithmBridgeImpl()
-    : callback_ops_(nullptr), ipc_thread_("IPC thread") {}
+    : callback_ops_(nullptr), ipc_thread_("IPC thread") {
+  mojo_channel_manager_ = CameraMojoChannelManager::GetInstance();
+}
 
 CameraAlgorithmBridgeImpl::~CameraAlgorithmBridgeImpl() {
   VLOGF_ENTER();
@@ -52,8 +50,7 @@ CameraAlgorithmBridgeImpl::~CameraAlgorithmBridgeImpl() {
 int32_t CameraAlgorithmBridgeImpl::Initialize(
     const camera_algorithm_callback_ops_t* callback_ops) {
   VLOGF_ENTER();
-  if (!ipc_thread_.StartWithOptions(
-          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
+  if (!ipc_thread_.Start()) {
     LOGF(ERROR) << "Failed to start IPC thread";
     return -EFAULT;
   }
@@ -148,51 +145,7 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
     DestroyOnIpcThread();
   }
 
-  // Creat unix socket to send the adapter token and connection handle
-  int fd = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (fd < 0) {
-    LOGF(ERROR) << "Failed to create communication socket";
-    cb.Run(-EAGAIN);
-    return;
-  }
-  base::ScopedFD socket_fd(fd);
-  struct sockaddr_un srv_addr = {};
-  srv_addr.sun_family = AF_UNIX;
-  strncpy(srv_addr.sun_path, kArcCameraAlgoSocketPath,
-          sizeof(srv_addr.sun_path));
-  if (HANDLE_EINTR(connect(socket_fd.get(), (struct sockaddr*)&srv_addr,
-                           strlen(kArcCameraAlgoSocketPath) +
-                               offsetof(struct sockaddr_un, sun_path))) == -1) {
-    LOGF(ERROR) << "Failed to connect to the server";
-    cb.Run(-EAGAIN);
-    return;
-  }
-
-  VLOGF(1) << "Setting up message pipe";
-  mojo::edk::PlatformChannelPair channel_pair;
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
-  const int kUnusedProcessHandle = 0;
-  mojo::edk::ChildProcessLaunched(kUnusedProcessHandle,
-                                  channel_pair.PassServerHandle());
-  mojo::edk::ScopedPlatformHandleVectorPtr handles(
-      new mojo::edk::PlatformHandleVector(
-          {channel_pair.PassClientHandle().release()}));
-  std::string token = mojo::edk::GenerateRandomToken();
-  VLOGF(1) << "Generated token: " << token;
-  mojo::ScopedMessagePipeHandle parent_pipe =
-      mojo::edk::CreateParentMessagePipe(token);
-  struct iovec iov = {const_cast<char*>(token.c_str()), token.length()};
-  if (mojo::edk::PlatformChannelSendmsgWithHandles(
-          mojo::edk::PlatformHandle(socket_fd.get()), &iov, 1, handles->data(),
-          handles->size()) == -1) {
-    LOGF(ERROR) << "Failed to send token and handle: " << strerror(errno);
-    cb.Run(-EAGAIN);
-    mojo::edk::ShutdownIPCSupport();
-    return;
-  }
-  interface_ptr_.Bind(
-      mojom::CameraAlgorithmOpsPtrInfo(std::move(parent_pipe), 0u));
+  interface_ptr_ = mojo_channel_manager_->CreateCameraAlgorithmOpsPtr();
   interface_ptr_.set_connection_error_handler(
       base::Bind(&CameraAlgorithmBridgeImpl::OnConnectionErrorOnIpcThread,
                  base::Unretained(this)));
@@ -221,7 +174,6 @@ void CameraAlgorithmBridgeImpl::DestroyOnIpcThread() {
   if (interface_ptr_.is_bound()) {
     cb_impl_.reset();
     interface_ptr_.reset();
-    mojo::edk::ShutdownIPCSupport();
   }
   VLOGF_EXIT();
 }

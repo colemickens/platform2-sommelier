@@ -7,6 +7,7 @@
 #ifndef INCLUDE_CROS_CAMERA_CAMERA_MOJO_CHANNEL_MANAGER_H_
 #define INCLUDE_CROS_CAMERA_CAMERA_MOJO_CHANNEL_MANAGER_H_
 
+#include "mojo/algorithm/camera_algorithm.mojom.h"
 #include "mojo/jda/jpeg_decode_accelerator.mojom.h"
 
 namespace cros {
@@ -25,7 +26,8 @@ class CameraMojoChannelManager {
   virtual void CreateJpegDecodeAccelerator(
       mojom::JpegDecodeAcceleratorRequest request) = 0;
 
-  // TODO(mojahsu): Add CreateCameraAlgorithmOps API
+  // Create a new CameraAlgorithmOpsPtr.
+  virtual mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() = 0;
 };
 
 }  // namespace cros

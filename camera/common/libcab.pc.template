@@ -4,6 +4,6 @@ lib_dir=@LIB_DIR@
 Name: libcab
 Description: Camera algorithm bridge
 Version: 0
-Requires.private: libmojo-@LIBCHROME_VERS@
+Requires: libcamera_ipc libmojo-@LIBCHROME_VERS@
 Cflags: -I${include_dir}
-Libs: -L${lib_dir} -lcab.pic -lcamera_ipc.pic -lcamera_common.pic
+Libs: -L${lib_dir} -lcab.pic
