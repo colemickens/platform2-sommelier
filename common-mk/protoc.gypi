@@ -6,7 +6,6 @@
     'proto_in_dir%': '.',
     'protoc': '<!(which protoc)',
     'grpc_cpp_plugin': '<!(which grpc_cpp_plugin)',
-    'gen_bidl%': 0,
     'gen_go%': 0,
     'gen_grpc%': 0,
     'gen_python%': 0,
@@ -19,18 +18,6 @@
         '<(protoc)',
       ],
       'conditions': [
-        ['gen_bidl==1', {
-          'variables': {
-            'out_args': ['--bidl_out', '<(cc_dir)'],
-          },
-          'outputs': [
-            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.cc',
-            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.h',
-            # gen_bidl generates bidl code in addition to normal protobuffers.
-            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
-            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
-          ],
-        }],
         ['gen_go==1', {
           'variables': {
             'out_args': ['--go_out', '<(go_dir)'],
@@ -62,7 +49,7 @@
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
           ],
         }],
-        ['gen_bidl==0 and gen_grpc==0 and gen_go==0 and gen_python==0', {
+        ['gen_grpc==0 and gen_go==0 and gen_python==0', {
           'outputs': [
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
