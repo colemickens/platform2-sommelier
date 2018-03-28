@@ -37,6 +37,11 @@ class ObjectManagerInterfaceMultiplexerTest : public ::testing::Test {
     EXPECT_CALL(*bus_, GetDBusTaskRunner())
         .WillRepeatedly(Return(message_loop_.task_runner().get()));
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
+    EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
+    // For this test purposes it's okay to mock dbus::Bus::Connect() to return
+    // false. This will make MockObjectManager fail its initialization but we
+    // don't care about it in this test.
+    EXPECT_CALL(*bus_, Connect()).WillRepeatedly(Return(false));
 
     dbus::ObjectPath root_service_path(kTestRootServicePath);
     object_proxy1_ = new dbus::MockObjectProxy(bus_.get(), kTestServiceName1,
@@ -51,6 +56,10 @@ class ObjectManagerInterfaceMultiplexerTest : public ::testing::Test {
         bus_.get(), kTestServiceName1, root_service_path);
     object_manager2_ = new dbus::MockObjectManager(
         bus_.get(), kTestServiceName2, root_service_path);
+    // Forces MessageLoop to run all pending tasks as an effect of instantiating
+    // MockObjectManager. This is needed to avoid memory leak as pending tasks
+    // hold pointers.
+    message_loop_.RunUntilIdle();
 
     interface_multiplexer_ =
         std::make_unique<MockObjectManagerInterfaceMultiplexer>(
