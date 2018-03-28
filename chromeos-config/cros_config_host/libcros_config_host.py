@@ -1326,8 +1326,9 @@ def CrosConfig(fname=None, config_format=None,
     if compare_results == COMPARE_ALWAYS:
       raise ValueError('Cannot compare results from stdin')
     infile = sys.stdin
-  elif compare_results:
-    return CrosConfigBoth(fname, compare_results)
+  # TODO(shapiroc): Re-enable once YAML refactor is complete
+  # elif compare_results:
+  #  return CrosConfigBoth(fname, compare_results)
   else:
     infile = open(fname)
 
