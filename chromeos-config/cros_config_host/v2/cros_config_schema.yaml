@@ -56,7 +56,6 @@ properties:
                     cras-config-dir:
                       description: Subdirectory for model-specific configuration.
                       type: string
-                      pattern: "^[_a-z0-9]*$"
                     disable-profile:
                       description: Optional --disable_profile parameter for CRAS deamon.
                       type: string
