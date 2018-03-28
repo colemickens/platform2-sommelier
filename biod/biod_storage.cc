@@ -33,7 +33,7 @@ const char kBiod[] = "biod";
 const char kLabel[] = "label";
 const char kRecordId[] = "record_id";
 const char kData[] = "data";
-}
+}  // namespace
 
 BiodStorage::BiodStorage(const std::string& biometrics_manager_name,
                          const ReadRecordsCallback& load_record)
@@ -97,8 +97,7 @@ bool BiodStorage::ReadRecords(const std::unordered_set<std::string>& user_ids) {
 bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
   FilePath biod_path =
       root_path_.Append(user_id).Append(kBiod).Append(biometrics_manager_name_);
-  base::FileEnumerator enum_records(biod_path,
-                                    false,
+  base::FileEnumerator enum_records(biod_path, false,
                                     base::FileEnumerator::FILES,
                                     FILE_PATH_LITERAL("Record*"));
   bool read_all_records_successfully = true;
@@ -120,9 +119,9 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
         json_deserializer.Deserialize(&error_code, &error_message));
 
     if (!record_value) {
-      LOG_IF(ERROR, error_code) << "Error in deserializing JSON from path "
-                                << record_path.value() << " with code "
-                                << error_code << ".";
+      LOG_IF(ERROR, error_code)
+          << "Error in deserializing JSON from path " << record_path.value()
+          << " with code " << error_code << ".";
       LOG_IF(ERROR, !error_message.empty())
           << "JSON error message: " << error_message << ".";
       read_all_records_successfully = false;

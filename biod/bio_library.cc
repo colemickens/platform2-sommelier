@@ -216,11 +216,8 @@ BioSensor& BioSensor::operator=(BioSensor&& rhs) {
 }
 
 bool BioSensor::SetModel(const Model& model) {
-  int ret = lib_->sensor_set_model_(sensor_,
-                                    model.vendor_id,
-                                    model.product_id,
-                                    model.model_id,
-                                    model.version);
+  int ret = lib_->sensor_set_model_(sensor_, model.vendor_id, model.product_id,
+                                    model.model_id, model.version);
   if (ret)
     LOG(ERROR) << "Failed to set sensor model: " << ret;
   return ret == 0;

@@ -56,7 +56,7 @@ namespace biod {
 // Empty request or response for the EcCommand template below.
 struct EmptyParam {};
 // empty struct is one byte in C++, get the size we want instead.
-template<typename T>
+template <typename T>
 constexpr size_t realsizeof() {
   return std::is_empty<T>::value ? 0 : sizeof(T);
 }
@@ -67,13 +67,11 @@ class EcCommand {
  public:
   explicit EcCommand(uint32_t cmd, uint32_t ver = 0, const O& req = {})
       : data_({
-            .cmd = {
-                .version = ver,
-                .command = cmd,
-                .result = 0xff,
-                .outsize = realsizeof<O>(),
-                .insize = realsizeof<I>(),
-            },
+            .cmd = {.version = ver,
+                    .command = cmd,
+                    .result = 0xff,
+                    .outsize = realsizeof<O>(),
+                    .insize = realsizeof<I>()},
             .req = req,
         }) {}
 
@@ -233,10 +231,10 @@ bool CrosFpBiometricsManager::CrosFpDevice::FpFrame(
       EC_CMD_FP_FRAME);
 
   uint32_t offset = index << FP_FRAME_INDEX_SHIFT;
-  uint8_t *payload = cmd.Resp()[0];
+  uint8_t* payload = cmd.Resp()[0];
   auto pos = frame->begin();
   while (pos < frame->end()) {
-    uint32_t len = std::min(max_read_size_, frame->end()-pos);
+    uint32_t len = std::min(max_read_size_, frame->end() - pos);
     cmd.SetReq({.offset = offset, .size = len});
     cmd.SetRespSize(len);
     if (!cmd.Run(cros_fd_.get())) {

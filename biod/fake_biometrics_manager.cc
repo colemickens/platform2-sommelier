@@ -46,8 +46,7 @@ bool FakeBiometricsManager::Record::SetLabel(std::string label) {
     internal->label = std::move(label);
     // Set label by overwriting records in file.
     return biometrics_manager_->biod_storage_.WriteRecord(
-        *this,
-        std::make_unique<base::Value>("Hello, world!"));
+        *this, std::make_unique<base::Value>("Hello, world!"));
   }
   LOG(ERROR) << "Attempt to set label for invalid BiometricsManager Record";
   return false;
@@ -94,11 +93,8 @@ FakeBiometricsManager::FakeBiometricsManager()
       FROM_HERE);
 
   CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
-      fake_input_.get(),
-      true,
-      base::MessageLoopForIO::WATCH_READ,
-      fd_watcher_.get(),
-      this))
+      fake_input_.get(), true, base::MessageLoopForIO::WATCH_READ,
+      fd_watcher_.get(), this))
       << "Failed to watch FakeBiometricsManager input";
 }
 
@@ -128,9 +124,7 @@ std::vector<std::unique_ptr<BiometricsManager::Record>>
 FakeBiometricsManager::GetRecords() {
   std::vector<std::unique_ptr<BiometricsManager::Record>> records(
       records_.size());
-  std::transform(records_.begin(),
-                 records_.end(),
-                 records.begin(),
+  std::transform(records_.begin(), records_.end(), records.begin(),
                  [this](decltype(records_)::value_type& record) {
                    return std::unique_ptr<BiometricsManager::Record>(
                        new Record(weak_factory_.GetWeakPtr(), record.first));

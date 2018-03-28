@@ -149,8 +149,8 @@ bool FpcBiometricsManager::SensorLibrary::Init(int fd) {
   needs_close_ = true;
 
   BioSensor::Model model;
-  ret = get_model_(
-      &model.vendor_id, &model.product_id, &model.model_id, &model.version);
+  ret = get_model_(&model.vendor_id, &model.product_id, &model.model_id,
+                   &model.version);
   if (ret) {
     LOG(ERROR) << "Failed to get sensor model: " << ret;
     return false;
@@ -234,8 +234,8 @@ bool FpcBiometricsManager::Record::SetLabel(std::string label) {
     (i->second.tmpl).Serialize(&serialized_tmpl);
   })) << ": Attempted to reset label for invalid BiometricsManager Record";
 
-  if (!biometrics_manager_->WriteRecord(
-          *this, serialized_tmpl.data(), serialized_tmpl.size())) {
+  if (!biometrics_manager_->WriteRecord(*this, serialized_tmpl.data(),
+                                        serialized_tmpl.size())) {
     CHECK(WithInternal(
         [&](RecordIterator i) { i->second.label = std::move(old_label); }));
     return false;
@@ -279,14 +279,11 @@ BiometricsManager::EnrollSession FpcBiometricsManager::StartEnrollSession(
   bool task_will_run = sensor_thread_.task_runner()->PostTaskAndReply(
       FROM_HERE,
       base::Bind(&FpcBiometricsManager::DoEnrollSessionTask,
-                 base::Unretained(this),
-                 base::ThreadTaskRunnerHandle::Get(),
+                 base::Unretained(this), base::ThreadTaskRunnerHandle::Get(),
                  tmpl),
       base::Bind(&FpcBiometricsManager::OnEnrollSessionComplete,
-                 weak_factory_.GetWeakPtr(),
-                 std::move(user_id),
-                 std::move(label),
-                 tmpl));
+                 weak_factory_.GetWeakPtr(), std::move(user_id),
+                 std::move(label), tmpl));
 
   if (!task_will_run) {
     LOG(ERROR) << "Failed to schedule EnrollSession task";
@@ -312,12 +309,10 @@ BiometricsManager::AuthSession FpcBiometricsManager::StartAuthSession() {
   bool task_will_run = sensor_thread_.task_runner()->PostTaskAndReply(
       FROM_HERE,
       base::Bind(&FpcBiometricsManager::DoAuthSessionTask,
-                 base::Unretained(this),
-                 base::ThreadTaskRunnerHandle::Get(),
+                 base::Unretained(this), base::ThreadTaskRunnerHandle::Get(),
                  updated_record_ids),
       base::Bind(&FpcBiometricsManager::OnAuthSessionComplete,
-                 weak_factory_.GetWeakPtr(),
-                 updated_record_ids));
+                 weak_factory_.GetWeakPtr(), updated_record_ids));
 
   if (!task_will_run) {
     LOG(ERROR) << "Failed to schedule AuthSession task";
@@ -337,9 +332,7 @@ FpcBiometricsManager::GetRecords() {
   base::AutoLock guard(records_lock_);
   std::vector<std::unique_ptr<BiometricsManager::Record>> records(
       records_.size());
-  std::transform(records_.begin(),
-                 records_.end(),
-                 records.begin(),
+  std::transform(records_.begin(), records_.end(), records.begin(),
                  [this](decltype(records_)::value_type& record) {
                    return std::unique_ptr<BiometricsManager::Record>(
                        new Record(weak_factory_.GetWeakPtr(), record.first));
@@ -568,9 +561,7 @@ void FpcBiometricsManager::DoEnrollSessionTask(
       bool task_will_run = task_runner->PostTask(
           FROM_HERE,
           base::Bind(&FpcBiometricsManager::OnEnrollScanDone,
-                     base::Unretained(this),
-                     scan_result,
-                     enroll_status));
+                     base::Unretained(this), scan_result, enroll_status));
       if (!task_will_run) {
         LOG(ERROR) << "Failed to schedule EnrollScanDone callback";
         return;
@@ -604,14 +595,13 @@ void FpcBiometricsManager::OnEnrollSessionComplete(
   std::string record_id(biod_storage_.GenerateNewRecordId());
   {
     base::AutoLock guard(records_lock_);
-    records_.emplace(
-        record_id,
-        InternalRecord{
-            std::move(user_id), std::move(label), std::move(*tmpl.get())});
+    records_.emplace(record_id,
+                     InternalRecord{std::move(user_id), std::move(label),
+                                    std::move(*tmpl.get())});
   }
   Record current_record(weak_factory_.GetWeakPtr(), record_id);
-  if (!WriteRecord(
-          current_record, serialized_tmpl.data(), serialized_tmpl.size())) {
+  if (!WriteRecord(current_record, serialized_tmpl.data(),
+                   serialized_tmpl.size())) {
     {
       base::AutoLock guard(records_lock_);
       records_.erase(record_id);
@@ -681,12 +671,10 @@ void FpcBiometricsManager::DoAuthSessionTask(
     if (!matches.empty())
       result = ScanResult::SCAN_RESULT_SUCCESS;
 
-    bool task_will_run =
-        task_runner->PostTask(FROM_HERE,
-                              base::Bind(&FpcBiometricsManager::OnAuthScanDone,
-                                         base::Unretained(this),
-                                         result,
-                                         std::move(matches)));
+    bool task_will_run = task_runner->PostTask(
+        FROM_HERE,
+        base::Bind(&FpcBiometricsManager::OnAuthScanDone,
+                   base::Unretained(this), result, std::move(matches)));
     if (!task_will_run) {
       LOG(ERROR) << "Failed to schedule AuthScanDone callback";
       return;
@@ -715,8 +703,8 @@ void FpcBiometricsManager::OnAuthSessionComplete(
     }
 
     Record current_record(weak_factory_.GetWeakPtr(), record_id);
-    if (!WriteRecord(
-            current_record, serialized_tmpl.data(), serialized_tmpl.size())) {
+    if (!WriteRecord(current_record, serialized_tmpl.data(),
+                     serialized_tmpl.size())) {
       LOG(ERROR) << "Cannot update record " << record_id
                  << " in storage during AuthSession because writing failed.";
     }
@@ -761,8 +749,8 @@ bool FpcBiometricsManager::WriteRecord(const BiometricsManager::Record& record,
   std::string tmpl_base64;
   base::Base64Encode(tmpl_sp, &tmpl_base64);
 
-  return biod_storage_.WriteRecord(
-      record, std::make_unique<base::Value>(tmpl_base64));
+  return biod_storage_.WriteRecord(record,
+                                   std::make_unique<base::Value>(tmpl_base64));
 }
 
 }  // namespace biod

@@ -32,13 +32,13 @@ namespace dbus_constants {
 const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 const char kSessionStateStarted[] = "started";
 const char kSessionStateStopping[] = "stopping";
-}
+}  // namespace dbus_constants
 
 namespace errors {
 const char kDomain[] = "biod";
 const char kInternalError[] = "internal_error";
 const char kInvalidArguments[] = "invalid_arguments";
-}
+}  // namespace errors
 
 void LogOnSignalConnected(const std::string& interface_name,
                           const std::string& signal_name,
@@ -70,8 +70,7 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
   dbus::ObjectProxy* bus_proxy = object_manager->GetBus()->GetObjectProxy(
       dbus::kDBusServiceName, dbus::ObjectPath(dbus::kDBusServicePath));
   bus_proxy->ConnectToSignal(
-      dbus::kDBusInterface,
-      "NameOwnerChanged",
+      dbus::kDBusInterface, "NameOwnerChanged",
       base::Bind(&BiometricsManagerWrapper::OnNameOwnerChanged,
                  base::Unretained(this)),
       base::Bind(&LogOnSignalConnected));
@@ -132,10 +131,9 @@ BiometricsManagerWrapper::RecordWrapper::~RecordWrapper() {
 bool BiometricsManagerWrapper::RecordWrapper::SetLabel(
     brillo::ErrorPtr* error, const std::string& new_label) {
   if (!record_->SetLabel(new_label)) {
-    *error = brillo::Error::Create(FROM_HERE,
-                                   errors::kDomain,
-                                   errors::kInternalError,
-                                   "Failed to set label");
+    *error =
+        brillo::Error::Create(FROM_HERE, errors::kDomain,
+                              errors::kInternalError, "Failed to set label");
     return false;
   }
   property_label_.SetValue(new_label);
@@ -144,8 +142,7 @@ bool BiometricsManagerWrapper::RecordWrapper::SetLabel(
 
 bool BiometricsManagerWrapper::RecordWrapper::Remove(brillo::ErrorPtr* error) {
   if (!record_->Remove()) {
-    *error = brillo::Error::Create(FROM_HERE,
-                                   errors::kDomain,
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,
                                    "Failed to remove record");
     return false;
@@ -243,8 +240,7 @@ void BiometricsManagerWrapper::OnAuthScanDone(
     entry_writer.AppendString(match.first);
     std::vector<ObjectPath> record_object_paths;
     record_object_paths.resize(match.second.size());
-    std::transform(match.second.begin(),
-                   match.second.end(),
+    std::transform(match.second.begin(), match.second.end(),
                    record_object_paths.begin(),
                    [this](const std::string& record_id) {
                      return ObjectPath(object_path_.value() +
@@ -281,8 +277,7 @@ bool BiometricsManagerWrapper::StartEnrollSession(
   BiometricsManager::EnrollSession enroll_session =
       biometrics_manager_->StartEnrollSession(user_id, label);
   if (!enroll_session) {
-    *error = brillo::Error::Create(FROM_HERE,
-                                   errors::kDomain,
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,
                                    "Failed to start EnrollSession");
     return false;
@@ -316,8 +311,7 @@ bool BiometricsManagerWrapper::GetRecordsForUser(brillo::ErrorPtr* error,
 
 bool BiometricsManagerWrapper::DestroyAllRecords(brillo::ErrorPtr* error) {
   if (!biometrics_manager_->DestroyAllRecords()) {
-    *error = brillo::Error::Create(FROM_HERE,
-                                   errors::kDomain,
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,
                                    "Failed to destroy all records");
     return false;
@@ -332,8 +326,7 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
   BiometricsManager::AuthSession auth_session =
       biometrics_manager_->StartAuthSession();
   if (!auth_session) {
-    *error = brillo::Error::Create(FROM_HERE,
-                                   errors::kDomain,
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,
                                    "Failed to start AuthSession");
     return false;
@@ -358,8 +351,7 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
 bool BiometricsManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
   if (!enroll_session_) {
     LOG(WARNING) << "DBus client attempted to cancel null EnrollSession";
-    *error = brillo::Error::Create(FROM_HERE,
-                                   errors::kDomain,
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInvalidArguments,
                                    "EnrollSession object was null");
     return false;
@@ -378,8 +370,7 @@ bool BiometricsManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
 bool BiometricsManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
   if (!auth_session_) {
     LOG(WARNING) << "DBus client attempted to cancel null AuthSession";
-    *error = brillo::Error::Create(FROM_HERE,
-                                   errors::kDomain,
+    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInvalidArguments,
                                    "AuthSession object was null");
     return false;
@@ -405,8 +396,8 @@ void BiometricsManagerWrapper::RefreshRecordObjects() {
 
   for (std::unique_ptr<BiometricsManager::Record>& record : records) {
     ObjectPath record_path(records_root_path + record->GetId());
-    records_.emplace_back(new RecordWrapper(
-        this, std::move(record), object_manager, record_path));
+    records_.emplace_back(new RecordWrapper(this, std::move(record),
+                                            object_manager, record_path));
   }
 }
 
@@ -426,8 +417,7 @@ BiometricsDaemon::BiometricsDaemon() {
   ObjectPath fake_bio_path = ObjectPath(base::StringPrintf(
       "%s/%s", kBiodServicePath, kFakeBiometricsManagerName));
   biometrics_managers_.emplace_back(std::make_unique<BiometricsManagerWrapper>(
-      std::make_unique<FakeBiometricsManager>(),
-      object_manager_.get(),
+      std::make_unique<FakeBiometricsManager>(), object_manager_.get(),
       fake_bio_path,
       sequencer->GetHandler("Failed to register FakeBiometricsManager object",
                             true)));

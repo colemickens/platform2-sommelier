@@ -20,26 +20,22 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(fake_input,
-                "/tmp/fake_biometric",
+  DEFINE_string(fake_input, "/tmp/fake_biometric",
                 "FIFO special file used to poke the fake biometric device");
-  DEFINE_bool(
-      failure, false, "signal a general failure of the biometric device");
+  DEFINE_bool(failure, false,
+              "signal a general failure of the biometric device");
   DEFINE_int32(scan, -1, "signal a scan with the given scan result code");
-  DEFINE_bool(scan_done,
-              false,
+  DEFINE_bool(scan_done, false,
               "when used with --scan, also causes the device to indicate "
               "scanning is done");
-  DEFINE_int32(attempt,
-               -1,
+  DEFINE_int32(attempt, -1,
                "signal an authentication attempt with the given scan result "
                "code; user IDs and associated record IDs are specified with "
                "the remaining arguments and each user ID/record ID set is "
                "delimited with '-', for example '0001 Record1 - 0002 Record2 "
                "Record3'.");
 
-  brillo::FlagHelper::Init(argc,
-                           argv,
+  brillo::FlagHelper::Init(argc, argv,
                            "fake_biometric_tool, used to poke the fake "
                            "biometric device embedded in biod.");
 
@@ -66,8 +62,7 @@ int main(int argc, char* argv[]) {
     // range.
     CHECK_LT(FLAGS_scan,
              static_cast<int32_t>(biod::ScanResult::SCAN_RESULT_MAX));
-    uint8_t cmd[] = {FAKE_BIOMETRIC_MAGIC_BYTES,
-                     'S',
+    uint8_t cmd[] = {FAKE_BIOMETRIC_MAGIC_BYTES, 'S',
                      static_cast<uint8_t>(FLAGS_scan),
                      static_cast<uint8_t>(FLAGS_scan_done)};
     CHECK(write(fake_input.get(), &cmd, sizeof(cmd)) == sizeof(cmd));
@@ -116,8 +111,7 @@ int main(int argc, char* argv[]) {
         record_ids->back().resize(UINT8_MAX);
       }
     }
-    std::vector<uint8_t> cmd = {FAKE_BIOMETRIC_MAGIC_BYTES,
-                                'A',
+    std::vector<uint8_t> cmd = {FAKE_BIOMETRIC_MAGIC_BYTES, 'A',
                                 static_cast<uint8_t>(FLAGS_attempt),
                                 static_cast<uint8_t>(matches.size())};
     for (const auto& match : matches) {

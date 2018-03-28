@@ -389,8 +389,8 @@ class BiodProxy {
         CHECK(interface_entry_reader.PopArray(&pset_reader));
         if (interface_name == biod::kBiometricsManagerInterface) {
           biometrics_managers_.emplace_back(
-              std::make_unique<BiometricsManagerProxy>(
-                  bus_, object_path, &pset_reader));
+              std::make_unique<BiometricsManagerProxy>(bus_, object_path,
+                                                       &pset_reader));
         }
       }
     }
@@ -405,8 +405,8 @@ class BiodProxy {
       const std::string& biometrics_manager_path =
           biometrics_manager->path().value();
       if (short_path) {
-        if (base::EndsWith(
-                biometrics_manager_path, path, base::CompareCase::SENSITIVE)) {
+        if (base::EndsWith(biometrics_manager_path, path,
+                           base::CompareCase::SENSITIVE)) {
           return biometrics_manager->GetWeakPtr();
         }
       } else if (biometrics_manager_path == path) {
@@ -510,8 +510,7 @@ int DoList(BiodProxy* biod, const std::string& user_id) {
   for (const auto& biometrics_manager : biod->biometrics_managers()) {
     base::StringPiece biometrics_manager_path =
         biometrics_manager->path().value();
-    if (base::StartsWith(biometrics_manager_path,
-                         biod::kBiodServicePath,
+    if (base::StartsWith(biometrics_manager_path, biod::kBiodServicePath,
                          base::CompareCase::SENSITIVE)) {
       biometrics_manager_path =
           biometrics_manager_path.substr(sizeof(biod::kBiodServicePath));
@@ -528,8 +527,7 @@ int DoList(BiodProxy* biod, const std::string& user_id) {
     for (const RecordProxy& record :
          biometrics_manager->GetRecordsForUser(user_id)) {
       base::StringPiece record_path(record.path().value());
-      if (base::StartsWith(record_path,
-                           biometrics_manager_path,
+      if (base::StartsWith(record_path, biometrics_manager_path,
                            base::CompareCase::SENSITIVE)) {
         record_path = record_path.substr(biometrics_manager_path.size() + 1);
       }

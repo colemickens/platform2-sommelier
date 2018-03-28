@@ -53,8 +53,8 @@ int main(int argc, char* argv[]) {
 
   DEFINE_string(log_dir, "/var/log/", "Directory where logs are written.");
 
-  brillo::FlagHelper::Init(
-      argc, argv, "biod, the Chromium OS biometrics daemon.");
+  brillo::FlagHelper::Init(argc, argv,
+                           "biod, the Chromium OS biometrics daemon.");
 
   const base::FilePath log_file =
       base::FilePath(FLAGS_log_dir)
