@@ -69,6 +69,14 @@ BRILLO_EXPORT BRILLO_DISABLE_ASAN void* SecureMemset(void* v, int c, size_t n);
 // [n] and not on the relationship of the match between [s1] and [s2].
 BRILLO_EXPORT int SecureMemcmp(const void* s1, const void* s2, size_t n);
 
+// Conversion of SecureBlob data to/from SecureBlob hex. This is useful
+// for sensitive data like encryption keys, that should, in the ideal case never
+// be exposed as strings in the first place. In case the existing data or hex
+// string is already exposed as a std::string, it is preferable to use the
+// BlobToString variant.
+BRILLO_EXPORT SecureBlob SecureBlobToSecureHex(const SecureBlob& blob);
+BRILLO_EXPORT SecureBlob SecureHexToSecureBlob(const SecureBlob& hex);
+
 }  // namespace brillo
 
 #endif  // LIBBRILLO_BRILLO_SECURE_BLOB_H_

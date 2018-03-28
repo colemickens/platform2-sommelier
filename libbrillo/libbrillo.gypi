@@ -110,6 +110,15 @@
       'sources': [
         'brillo/blkdev_utils/loop_device.cc',
       ],
+      'conditions': [
+        ['USE_device_mapper == 1', {
+          'variables': { 'deps': ['devmapper'] },
+          'sources': [
+            'brillo/blkdev_utils/device_mapper.cc',
+            'brillo/blkdev_utils/device_mapper_task.cc',
+          ]
+        }],
+      ],
     },
     {
       'target_name': 'libbrillo-http-<(libbase_ver)',
@@ -195,6 +204,13 @@
         'brillo/unittest_utils.cc',
       ],
       'includes': ['../common-mk/deps.gypi'],
+      'conditions': [
+        ['USE_device_mapper == 1', {
+          'sources': [
+            'brillo/blkdev_utils/device_mapper_fake.cc',
+          ]
+        }],
+      ],
     },
     {
       'target_name': 'libbrillo-cryptohome-<(libbase_ver)',
@@ -435,6 +451,11 @@
                 'brillo/variant_dictionary_test.cc',
                 '<(proto_in_dir)/test.proto',
               ],
+            }],
+            ['USE_device_mapper == 1', {
+              'sources': [
+                'brillo/blkdev_utils/device_mapper_test.cc',
+              ]
             }],
           ],
         },
