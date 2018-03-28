@@ -558,10 +558,16 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  if (vms_.find(request.name()) != vms_.end()) {
-    LOG(ERROR) << "VM with requested name is already running";
+  auto iter = vms_.find(request.name());
+  if (iter != vms_.end()) {
+    LOG(INFO) << "VM with requested name is already running";
+    auto& vm = iter->second;
+    VmInfo* vm_info = response.mutable_vm_info();
+    vm_info->set_ipv4_address(vm->IPv4Address());
+    vm_info->set_pid(vm->pid());
+    vm_info->set_cid(vm->cid());
 
-    response.set_failure_reason("VM name is taken");
+    response.set_success(true);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
