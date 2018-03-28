@@ -71,6 +71,9 @@
     {
       'target_name': 'virtwl_guest_proxy',
       'type': 'executable',
+      'ldflags': [
+        '-pthread',
+      ],
       'sources': [
         'virtwl_guest_proxy/main.c',
       ],

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +10,9 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <poll.h>
+#include <pthread.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -27,7 +30,77 @@
 // of concurrent wayland applications that can be running per machine.
 #define MAX_CHILD_COUNT 128
 
-static int handle_server_in(int server_fd, int client_fd) {
+// No matter what kind of virtwl fd we are given, a zero-sized ioctl send should
+// succeed. This property is used to determine if the given fd is a virtwl fd.
+static bool is_virtwl_fd(int fd) {
+  struct virtwl_ioctl_txn ioctl_send;
+  for (int fd_idx = 0; fd_idx < VIRTWL_SEND_MAX_ALLOCS; fd_idx++)
+    ioctl_send.fds[fd_idx] = -1;
+  ioctl_send.len = 0;
+  return ioctl(fd, VIRTWL_IOCTL_SEND, &ioctl_send) == 0;
+}
+
+static void *pipe_proxy_routine(void *args) {
+  int *fds = (int *)args;
+  int in_pipe = fds[0];
+  int out_pipe = fds[1];
+  free(fds);
+
+  uint8_t buf[PIPE_BUF];
+  for (;;) {
+    int ret = read(in_pipe, buf, sizeof(buf));
+    if (ret == -1) {
+      syslog(LOG_USER | LOG_ERR, "error reading from input pipe: %m");
+      break;
+    }
+
+    // Check for hangup.
+    if (ret == 0)
+      break;
+
+    size_t count = ret;
+    ret = write(out_pipe, buf, count);
+    if (ret == -1) {
+      syslog(LOG_USER | LOG_ERR, "error writing to output pipe: %m");
+      break;
+    }
+
+    // Check for hangup
+    if (ret != count){
+      syslog(LOG_USER | LOG_ERR, "incomplete write to output pipe %d",
+             out_pipe);
+      break;
+    }
+  }
+
+  close(in_pipe);
+  close(out_pipe);
+  return NULL;
+}
+
+static int launch_pipe_proxy(int in_fd, int out_fd) {
+  int *fds = calloc(2, sizeof(int));
+  if (!fds)
+    return ENOMEM;
+
+  fds[0] = in_fd;
+  fds[1] = out_fd;
+
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+  pthread_t thread;
+  int ret = pthread_create(&thread, &attr, pipe_proxy_routine, fds);
+  if (ret) {
+    free(fds);
+    syslog(LOG_USER | LOG_DEBUG, "failed to create pipe proxy thread: %m");
+    return ret;
+  }
+
+  return 0;
+}
+
+static int handle_server_in(int wl0_fd, int server_fd, int client_fd) {
   uint8_t ioctl_buf[4096];
   struct virtwl_ioctl_txn* ioctl_recv = (struct virtwl_ioctl_txn*)ioctl_buf;
   void* recv_data = ioctl_buf + sizeof(struct virtwl_ioctl_txn);
@@ -84,12 +157,13 @@ static int handle_server_in(int server_fd, int client_fd) {
   return 0;
 }
 
-static int handle_client_in(int server_fd, int client_fd) {
+static int handle_client_in(int wl0_fd, int server_fd, int client_fd) {
   uint8_t ioctl_buf[4096];
   struct virtwl_ioctl_txn* ioctl_send = (struct virtwl_ioctl_txn*)ioctl_buf;
   void* send_data = ioctl_buf + sizeof(struct virtwl_ioctl_txn);
   size_t max_send_size = sizeof(ioctl_buf) - sizeof(struct virtwl_ioctl_txn);
   char fd_buf[CMSG_LEN(sizeof(int) * VIRTWL_SEND_MAX_ALLOCS)];
+  uint8_t retain_fds[VIRTWL_SEND_MAX_ALLOCS] = {0};
 
   struct iovec buffer_iov;
   buffer_iov.iov_base = send_data;
@@ -132,6 +206,57 @@ static int handle_client_in(int server_fd, int client_fd) {
     fd_idx += cmsg_fd_count;
   }
 
+  for (int fd_idx = 0; fd_idx < VIRTWL_SEND_MAX_ALLOCS; fd_idx++) {
+    int fd = ioctl_send->fds[fd_idx];
+    if (fd < 0)
+      break;
+    if (is_virtwl_fd(fd))
+      continue;
+
+    // If the client sends us a non-virtwl FD, it's likely some kind of pipe
+    // that we can manually proxy in another thread.
+    struct virtwl_ioctl_new new_pipe = {
+      .type = 0,
+      .fd = -1,
+      .flags = 0,
+      .size = 0,
+    };
+
+    int flags = fcntl(fd, F_GETFL) & O_ACCMODE;
+    switch (flags) {
+    case O_RDONLY:
+      new_pipe.type = VIRTWL_IOCTL_NEW_PIPE_WRITE;
+      break;
+    case O_WRONLY:
+    // virtwl does not support read/write pipes but pipes sent from the client
+    // are likely intended to be written to by the remote end.
+    case O_RDWR:
+      new_pipe.type = VIRTWL_IOCTL_NEW_PIPE_READ;
+      break;
+    default:
+      continue;
+    }
+
+    int ret = ioctl(wl0_fd, VIRTWL_IOCTL_NEW, &new_pipe);
+    if (ret) {
+      syslog(LOG_USER | LOG_ERR, "failed to create virtwl pipe: %m");
+      return -1;
+    }
+
+    if (flags == O_RDONLY)
+      ret = launch_pipe_proxy(fd, new_pipe.fd);
+    else
+      ret = launch_pipe_proxy(new_pipe.fd, fd);
+
+    if (ret) {
+      close(new_pipe.fd);
+      return -1;
+    } else {
+      ioctl_send->fds[fd_idx] = new_pipe.fd;
+      retain_fds[fd_idx] = 1;
+    }
+  }
+
   // The FDs and data were extracted from the recvmsg call into the ioctl_send
   // structure which we now pass along to the kernel.
   ioctl_send->len = read_size;
@@ -141,7 +266,7 @@ static int handle_client_in(int server_fd, int client_fd) {
 
   for (int fd_idx = 0; fd_idx < VIRTWL_SEND_MAX_ALLOCS; fd_idx++) {
     int fd = ioctl_send->fds[fd_idx];
-    if (fd >= 0)
+    if (fd >= 0 && !retain_fds[fd_idx])
       close(fd);
   }
 
@@ -151,8 +276,8 @@ static int handle_client_in(int server_fd, int client_fd) {
   return 0;
 }
 
-static int proxy_main(int wl_fd, int client_socket) {
-  int (*handlers[2])(int, int) = {handle_client_in, handle_server_in};
+static int proxy_main(int wl0_fd, int wl_fd, int client_socket) {
+  int (*handlers[2])(int, int, int) = {handle_client_in, handle_server_in};
   struct pollfd fds[2];
 
   fds[0].fd = client_socket;
@@ -163,16 +288,21 @@ static int proxy_main(int wl_fd, int client_socket) {
   int ret = 0;
   while ((ret = poll(fds, 2, -1)) != -1) {
     for (int i = 0; i < 2; i++) {
-      if ((fds[i].revents & POLLIN) == 0)
-        continue;
+      if ((fds[i].revents & POLLIN) == 0) {
+        if ((fds[i].revents & POLLHUP) == 0)
+          continue;
+        else
+          goto end;
+      }
 
-      ret = handlers[i](wl_fd, client_socket);
+      ret = handlers[i](wl0_fd, wl_fd, client_socket);
       if (ret)
         goto end;
     }
   }
 
 end:
+  close(wl0_fd);
   close(wl_fd);
   close(client_socket);
 
@@ -183,6 +313,9 @@ static void empty_handler(int signum) {
 }
 
 int main(int argc, char** argv) {
+  // Handle broken pipes without signals that kill the entire process.
+  signal(SIGPIPE, SIG_IGN);
+
   struct sockaddr_un addr;
   addr.sun_family = AF_UNIX;
   snprintf(addr.sun_path,
@@ -291,13 +424,12 @@ int main(int argc, char** argv) {
       };
 
       ret = ioctl(wl_fd, VIRTWL_IOCTL_NEW, &new_ctx);
-      close(wl_fd);
       if (ret) {
         syslog(LOG_USER | LOG_ERR, "failed to create new wayland context: %m");
         return 1;
       }
 
-      return proxy_main(new_ctx.fd, client_socket);
+      return proxy_main(wl_fd, new_ctx.fd, client_socket);
     } else if (ret == -1) {
       syslog(LOG_USER | LOG_ERR, "failed to fork client handler: %m");
     }
