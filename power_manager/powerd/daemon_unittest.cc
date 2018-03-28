@@ -322,6 +322,16 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(cause, proto.cause());
   }
 
+  // Send the appropriate events to put StateController into docked mode.
+  void EnterDockedMode() {
+    dbus::MethodCall call(kPowerManagerInterface, kSetIsProjectingMethod);
+    dbus::MessageWriter(&call).AppendBool(true /* is_projecting */);
+    ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+
+    input_watcher_->set_lid_state(LidState::CLOSED);
+    input_watcher_->NotifyObserversAboutLidState();
+  }
+
   // Returns the command that Daemon should execute to shut down for a given
   // reason.
   std::string GetShutdownCommand(ShutdownReason reason) {
@@ -329,6 +339,14 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
                               kSetuidHelperPath,
                               ShutdownReasonToString(reason).c_str());
   }
+
+  // Commands for forcing the lid open or stopping forcing it open.
+  const std::string kForceLidOpenCommand =
+      std::string(kSetuidHelperPath) +
+      " --action=set_force_lid_open --force_lid_open";
+  const std::string kNoForceLidOpenCommand =
+      std::string(kSetuidHelperPath) +
+      " --action=set_force_lid_open --noforce_lid_open";
 
   // Stub objects to be transferred by Create* methods.
   std::unique_ptr<FakePrefs> passed_prefs_;
@@ -791,6 +809,7 @@ TEST_F(DaemonTest, ShutDownForLowBattery) {
 
 TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   Init();
+  async_commands_.clear();
 
   // The system should stay up if a lockfile exists.
   lockfile_checker_->set_files_to_return(
@@ -813,6 +832,42 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
 
   // The timer should've been stopped.
   EXPECT_FALSE(daemon_->TriggerRetryShutdownTimerForTesting());
+}
+
+TEST_F(DaemonTest, ForceLidOpenForDockedModeReboot) {
+  // During initialization, we should always stop forcing the lid open to undo
+  // a force request that might've been sent earlier.
+  prefs_->SetInt64(kAllowDockedModePref, 1);
+  Init();
+  ASSERT_EQ(1, async_commands_.size());
+  EXPECT_EQ(kNoForceLidOpenCommand, async_commands_[0]);
+
+  // We should synchronously force the lid open before rebooting.
+  async_commands_.clear();
+  EnterDockedMode();
+  dbus::MethodCall call(kPowerManagerInterface, kRequestRestartMethod);
+  ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+  ASSERT_EQ(1, sync_commands_.size());
+  EXPECT_EQ(kForceLidOpenCommand, sync_commands_[0]);
+}
+
+TEST_F(DaemonTest, DontForceLidOpenForDockedModeShutdown) {
+  // When shutting down in docked mode, we shouldn't force the lid open.
+  prefs_->SetInt64(kAllowDockedModePref, 1);
+  Init();
+  async_commands_.clear();
+  EnterDockedMode();
+  dbus::MethodCall call(kPowerManagerInterface, kRequestShutdownMethod);
+  ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+  EXPECT_EQ(0, sync_commands_.size());
+}
+
+TEST_F(DaemonTest, DontForceLidOpenForNormalReboot) {
+  // When rebooting outside of docked mode, we shouldn't force the lid open.
+  Init();
+  dbus::MethodCall call(kPowerManagerInterface, kRequestRestartMethod);
+  ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+  EXPECT_EQ(0, sync_commands_.size());
 }
 
 TEST_F(DaemonTest, FactoryMode) {

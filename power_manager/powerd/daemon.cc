@@ -424,6 +424,10 @@ void Daemon::Init() {
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
       base::FilePath(kPowerOverrideLockfileDir), {});
 
+  // Asynchronously undo the previous force-lid-open request to the EC (if there
+  // was one).
+  RunSetuidHelper("set_force_lid_open", "--noforce_lid_open", false);
+
   // This needs to happen *after* all D-Bus methods are exported:
   // https://crbug.com/331431
   CHECK(dbus_wrapper_->PublishService()) << "Failed to publish D-Bus service";
@@ -1574,6 +1578,11 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
       RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str, false);
       break;
     case ShutdownMode::REBOOT:
+      if (state_controller_->in_docked_mode()) {
+        LOG(INFO) << "In docked mode, so telling EC to force lid open to avoid "
+                  << "shutting down after reboot";
+        RunSetuidHelper("set_force_lid_open", "--force_lid_open", true);
+      }
       LOG(INFO) << "Restarting, reason: " << reason_str;
       RunSetuidHelper("reboot", "--shutdown_reason=" + reason_str, false);
       break;

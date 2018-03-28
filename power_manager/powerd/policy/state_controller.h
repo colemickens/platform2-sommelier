@@ -147,6 +147,13 @@ class StateController : public PrefsObserver {
     return last_user_activity_time_;
   }
 
+  // Is the system currently in "docked mode", where it remains awake while
+  // the lid is closed because an external display is connected?
+  bool in_docked_mode() {
+    return allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
+           lid_state_ == LidState::CLOSED;
+  }
+
   // Ownership of |delegate| and |prefs| remains with the caller.
   void Init(Delegate* delegate,
             PrefsInterface* prefs,
@@ -223,13 +230,6 @@ class StateController : public PrefsObserver {
   // already be initialized with default settings.
   static void MergeDelaysFromPolicy(
       const PowerManagementPolicy::Delays& policy_delays, Delays* delays_out);
-
-  // Is the system currently in "docked mode", where it remains awake while
-  // the lid is closed because an external display is connected?
-  bool in_docked_mode() {
-    return allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
-           lid_state_ == LidState::CLOSED;
-  }
 
   // Is StateController currently waiting for the display mode and policy to be
   // received for the first time after Init() was called?

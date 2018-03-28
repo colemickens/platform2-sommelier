@@ -53,9 +53,12 @@ void RunCommand(const char* command, const char* arg, ...) {
 
 int main(int argc, char* argv[]) {
   DEFINE_string(action, "",
-                "Action to perform.  Must be one of "
-                "\"mosys_eventlog\", \"reboot\", \"set_wifi_transmit_power\", "
-                "\"shut_down\", and \"suspend\".");
+                "Action to perform.  Must be one of \"mosys_eventlog\", "
+                "\"reboot\", \"set_force_lid_open\", "
+                "\"set_wifi_transmit_power\", \"shut_down\", and \"suspend\".");
+  DEFINE_bool(force_lid_open, false,
+              "Whether lid should be forced open or not for "
+              "\"set_force_lid_open\" action.");
   DEFINE_string(mosys_eventlog_code, "",
                 "Hexadecimal byte, e.g. \"0xa7\", "
                 "describing the event being logged.");
@@ -101,6 +104,9 @@ int main(int argc, char* argv[]) {
         std::string("RUNLEVEL=") + (FLAGS_action == "reboot" ? "6" : "0");
     RunCommand("initctl", "emit", "--no-wait", "runlevel", runlevel_arg.c_str(),
                (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
+  } else if (FLAGS_action == "set_force_lid_open") {
+    const char* state = FLAGS_force_lid_open ? "1" : "0";
+    RunCommand("ectool", "forcelidopen", state, NULL);
   } else if (FLAGS_action == "set_wifi_transmit_power") {
     const char* tablet =
         FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
