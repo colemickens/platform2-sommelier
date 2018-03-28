@@ -39,7 +39,9 @@ chromeos:
                 $card: 'bxtda7219max'
                 cras-config-dir: '{{$name}}'
                 ucm-suffix: '{{$name}}'
-                volume: "cras-config/{{cras-config-dir}}/{{$card}}"
+                files:
+                  - source: "cras-config/{{cras-config-dir}}/{{$card}}"
+                    destination: "/etc/cras/{{cras-config-dir}}/{{$card}}"
             brand-code: '{{$brand-code}}'
             identity:
               platform-name: "Reef"
@@ -117,7 +119,7 @@ class ValidateConfigSchemaTests(unittest.TestCase):
       self.assertIn('cras-config-dir', err.__str__())
 
   def testReferencedNonExistentTemplateVariable(self):
-    config = re.sub(r" *cras-config-dir: .*", "", BASIC_CONFIG)
+    config = re.sub(r" *$card: .*", "", BASIC_CONFIG)
     try:
       cros_config_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))

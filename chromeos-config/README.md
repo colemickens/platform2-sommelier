@@ -830,11 +830,16 @@ chromeos {
 ### main
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| card | string |  | False | Name of the card. |
 | cras-config-dir | string |  | True | Subdirectory for model-specific configuration. |
 | disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
-| topology-bin | string |  | False | Optional topology firmware filename. |
+| files | array - [files](#files) |  | False |  |
 | ucm-suffix | string |  | False | Optional UCM suffix used to determine model specific config. |
+
+### files
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system. |
 
 ### firmware
 | Attribute | Type   | RegEx     | Required | Description |

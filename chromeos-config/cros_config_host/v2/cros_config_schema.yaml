@@ -10,6 +10,16 @@ typeDefs:
     type: string
     description: Build target that will be considered dirty when building/testing
       locally.
+  system-file: &system_file
+    type: object
+    properties:
+      source:
+        description: Source of the file relative to the build system.
+        type: string
+      destination:
+        description: Installation path for the file on the system image.
+        type: string
+    additionalProperties: false
   touch-firmware: &touch_firmware
     type: object
     properties:
@@ -50,9 +60,6 @@ properties:
                 main:
                   type: object
                   properties:
-                    card:
-                      description: Name of the card.
-                      type: string
                     cras-config-dir:
                       description: Subdirectory for model-specific configuration.
                       type: string
@@ -63,10 +70,10 @@ properties:
                       description: Optional UCM suffix used to determine model specific
                         config.
                       type: string
-                    topology-bin:
-                      description: Optional topology firmware filename.
-                      type: string
-                  additionalProperties: true
+                    files:
+                      type: array
+                      items: *system_file
+                  additionalProperties: false
                   required:
                   - cras-config-dir
               additionalProperties: false

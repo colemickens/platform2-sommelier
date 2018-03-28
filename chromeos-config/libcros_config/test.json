@@ -12,13 +12,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.reef.ELECTRO/bxtda7219max.reef.ELECTRO.conf", 
             "cras-config-dir": "reef/ELECTRO", 
-            "dsp-ini": "cras-config/reef/ELECTRO/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.reef.ELECTRO/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-reef-8-tplg.bin", 
-            "ucm-suffix": "reef.ELECTRO", 
-            "volume": "cras-config/reef/ELECTRO/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/reef/ELECTRO/bxtda7219max", 
+                "source": "cras-config/reef/ELECTRO/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/reef/ELECTRO/dsp.ini", 
+                "source": "cras-config/reef/ELECTRO/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.reef.ELECTRO/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.reef.ELECTRO/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.reef.ELECTRO/bxtda7219max.reef.ELECTRO.conf", 
+                "source": "ucm-config/bxtda7219max.reef.ELECTRO/bxtda7219max.reef.ELECTRO.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-reef-8-tplg.bin", 
+                "source": "topology/5a98-reef-reef-8-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "reef.ELECTRO"
           }
         }, 
         "brand-code": "ACBB", 
@@ -72,13 +89,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.reef.BASKING/bxtda7219max.reef.BASKING.conf", 
             "cras-config-dir": "reef/BASKING", 
-            "dsp-ini": "cras-config/reef/BASKING/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.reef.BASKING/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-reef-0-tplg.bin", 
-            "ucm-suffix": "reef.BASKING", 
-            "volume": "cras-config/reef/BASKING/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/reef/BASKING/bxtda7219max", 
+                "source": "cras-config/reef/BASKING/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/reef/BASKING/dsp.ini", 
+                "source": "cras-config/reef/BASKING/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.reef.BASKING/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.reef.BASKING/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.reef.BASKING/bxtda7219max.reef.BASKING.conf", 
+                "source": "ucm-config/bxtda7219max.reef.BASKING/bxtda7219max.reef.BASKING.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-reef-0-tplg.bin", 
+                "source": "topology/5a98-reef-reef-0-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "reef.BASKING"
           }
         }, 
         "brand-code": "ASUN", 
@@ -136,13 +170,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf", 
             "cras-config-dir": "pyro", 
-            "dsp-ini": "cras-config/pyro/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.pyro/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-reef-8-tplg.bin", 
-            "ucm-suffix": "pyro", 
-            "volume": "cras-config/pyro/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/pyro/bxtda7219max", 
+                "source": "cras-config/pyro/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/pyro/dsp.ini", 
+                "source": "cras-config/pyro/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.{{$name}}/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.{{$name}}/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.{{$name}}/bxtda7219max.{{$name}}.conf", 
+                "source": "ucm-config/bxtda7219max.{{$name}}/bxtda7219max.{{$name}}.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-reef-8-tplg.bin", 
+                "source": "topology/5a98-reef-reef-8-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "pyro"
           }
         }, 
         "brand-code": "LEAN", 
@@ -188,13 +239,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.sand/bxtda7219max.sand.conf", 
             "cras-config-dir": "sand", 
-            "dsp-ini": "cras-config/sand/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.sand/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-sand-8-tplg.bin", 
-            "ucm-suffix": "sand", 
-            "volume": "cras-config/sand/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/sand/bxtda7219max", 
+                "source": "cras-config/sand/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/sand/dsp.ini", 
+                "source": "cras-config/sand/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.{{$name}}/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.{{$name}}/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.{{$name}}/bxtda7219max.{{$name}}.conf", 
+                "source": "ucm-config/bxtda7219max.{{$name}}/bxtda7219max.{{$name}}.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-sand-8-tplg.bin", 
+                "source": "topology/5a98-reef-sand-8-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "sand"
           }
         }, 
         "brand-code": "ACBD", 
@@ -239,13 +307,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.snappy.SNAPPY/bxtda7219max.snappy.SNAPPY.conf", 
             "cras-config-dir": "snappy/SNAPPY", 
-            "dsp-ini": "cras-config/snappy/SNAPPY/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.snappy.SNAPPY/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-snappy-8-tplg.bin", 
-            "ucm-suffix": "snappy.SNAPPY", 
-            "volume": "cras-config/snappy/SNAPPY/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/snappy/SNAPPY/bxtda7219max", 
+                "source": "cras-config/snappy/SNAPPY/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/snappy/SNAPPY/dsp.ini", 
+                "source": "cras-config/snappy/SNAPPY/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.SNAPPY/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.SNAPPY/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.SNAPPY/bxtda7219max.snappy.SNAPPY.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.SNAPPY/bxtda7219max.snappy.SNAPPY.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-snappy-8-tplg.bin", 
+                "source": "topology/5a98-reef-snappy-8-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "snappy.SNAPPY"
           }
         }, 
         "brand-code": "HPZO", 
@@ -303,13 +388,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.snappy.ALAN/bxtda7219max.snappy.ALAN.conf", 
             "cras-config-dir": "snappy/ALAN", 
-            "dsp-ini": "cras-config/snappy/ALAN/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.snappy.ALAN/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-snappy-7-tplg.bin", 
-            "ucm-suffix": "snappy.ALAN", 
-            "volume": "cras-config/snappy/ALAN/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/snappy/ALAN/bxtda7219max", 
+                "source": "cras-config/snappy/ALAN/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/snappy/ALAN/dsp.ini", 
+                "source": "cras-config/snappy/ALAN/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.ALAN/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.ALAN/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.ALAN/bxtda7219max.snappy.ALAN.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.ALAN/bxtda7219max.snappy.ALAN.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-snappy-7-tplg.bin", 
+                "source": "topology/5a98-reef-snappy-7-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "snappy.ALAN"
           }
         }, 
         "brand-code": "CLSF", 
@@ -367,13 +469,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.snappy.BIGDADDY/bxtda7219max.snappy.BIGDADDY.conf", 
             "cras-config-dir": "snappy/BIGDADDY", 
-            "dsp-ini": "cras-config/snappy/BIGDADDY/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.snappy.BIGDADDY/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-snappy-2-tplg.bin", 
-            "ucm-suffix": "snappy.BIGDADDY", 
-            "volume": "cras-config/snappy/BIGDADDY/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/snappy/BIGDADDY/bxtda7219max", 
+                "source": "cras-config/snappy/BIGDADDY/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/snappy/BIGDADDY/dsp.ini", 
+                "source": "cras-config/snappy/BIGDADDY/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.BIGDADDY/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.BIGDADDY/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.BIGDADDY/bxtda7219max.snappy.BIGDADDY.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.BIGDADDY/bxtda7219max.snappy.BIGDADDY.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-snappy-2-tplg.bin", 
+                "source": "topology/5a98-reef-snappy-2-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "snappy.BIGDADDY"
           }
         }, 
         "brand-code": "FQZI", 
@@ -431,13 +550,30 @@
         }, 
         "audio": {
           "main": {
-            "alsa-conf": "ucm-config/bxtda7219max.snappy.BIGDADDY/bxtda7219max.snappy.BIGDADDY.conf", 
             "cras-config-dir": "snappy/BIGDADDY", 
-            "dsp-ini": "cras-config/snappy/BIGDADDY/dsp.ini", 
-            "hifi-conf": "ucm-config/bxtda7219max.snappy.BIGDADDY/HiFi.conf", 
-            "topology-bin": "topology/5a98-reef-snappy-5-tplg.bin", 
-            "ucm-suffix": "snappy.BIGDADDY", 
-            "volume": "cras-config/snappy/BIGDADDY/bxtda7219max"
+            "files": [
+              {
+                "destination": "/etc/cras/snappy/BIGDADDY/bxtda7219max", 
+                "source": "cras-config/snappy/BIGDADDY/bxtda7219max"
+              }, 
+              {
+                "destination": "/etc/cras/snappy/BIGDADDY/dsp.ini", 
+                "source": "cras-config/snappy/BIGDADDY/dsp.ini"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.BIGDADDY/HiFi.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.BIGDADDY/HiFi.conf"
+              }, 
+              {
+                "destination": "/usr/share/alsa/ucm/bxtda7219max.snappy.BIGDADDY/bxtda7219max.snappy.BIGDADDY.conf", 
+                "source": "ucm-config/bxtda7219max.snappy.BIGDADDY/bxtda7219max.snappy.BIGDADDY.conf"
+              }, 
+              {
+                "destination": "/lib/firmware/5a98-reef-snappy-5-tplg.bin", 
+                "source": "topology/5a98-reef-snappy-5-tplg.bin"
+              }
+            ], 
+            "ucm-suffix": "snappy.BIGDADDY"
           }
         }, 
         "brand-code": "FQZI", 

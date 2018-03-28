@@ -27,11 +27,8 @@ SKUS = 'skus'
 CONFIG = 'config'
 BUILD_ONLY_ELEMENTS = [
     '/firmware',
-    '/audio/main/card',
-    '/audio/main/cras-config-dir',
     '/audio/main/files'
 ]
-CRAS_CONFIG_DIR = '/etc/cras'
 TEMPLATE_PATTERN = re.compile("{{([^}]*)}}")
 
 def GetNamedTuple(mapping):
@@ -110,6 +107,45 @@ def _SetTemplateVars(template_input, template_vars):
   for val in to_walk:
     _SetTemplateVars(val, template_vars)
 
+def _GetVarTemplateValue(val, template_input, template_vars):
+  """Applies the templating scheme to a single value.
+
+  Args:
+    val: The single val to evaluate.
+    template_input: Input that will be updated based on the templating schema.
+    template_vars: A mapping of all the variables values available.
+
+  Returns:
+    The variable value with templating applied.
+  """
+  for template_var in TEMPLATE_PATTERN.findall(val):
+    replace_string = "{{%s}}" % template_var
+    if template_var not in template_vars:
+      raise ValidationError(
+          "Referenced template variable '%s' doesn't "
+          "exist string '%s'.\nInput: %s\nVariables:%s"
+          % (template_var, val, template_input, template_vars))
+    var_value = template_vars[template_var]
+
+    # This is an ugly side effect of templating with primitive values.
+    # The template is a string, but the target value needs to be int.
+    # This is sort of a hack for now, but if the problem gets worse, we
+    # can come up with a more scaleable solution.
+    #
+    # Guessing this problem won't continue though beyond the use of 'sku-id'
+    # since that tends to be the only strongly typed value due to its use
+    # for identity detection.
+    is_int = isinstance(var_value, int)
+    if is_int:
+      var_value = str(var_value)
+
+    # If the caller only had one value and it was a template variable that
+    # was an int, assume the caller wanted the string to be an int.
+    if is_int and val == replace_string:
+      val = template_vars[template_var]
+    else:
+      val = val.replace(replace_string, var_value)
+  return val
 
 def _ApplyTemplateVars(template_input, template_vars):
   """Evals the input and applies the templating schema using the provided vars.
@@ -123,35 +159,18 @@ def _ApplyTemplateVars(template_input, template_vars):
     val = template_input[key]
     if isinstance(val, collections.Mapping):
       to_walk.append(val)
+    elif isinstance(val, list):
+      index = 0
+      for list_val in val:
+        if isinstance(list_val, collections.Mapping):
+          to_walk.append(list_val)
+        elif isinstance(list_val, basestring):
+          val[index] = _GetVarTemplateValue(
+              list_val, template_input, template_vars)
+        index += 1
     elif isinstance(val, basestring):
-      for template_var in TEMPLATE_PATTERN.findall(val):
-        replace_string = "{{%s}}" % template_var
-        if template_var not in template_vars:
-          raise ValidationError(
-              "Referenced template variable '%s' doesn't "
-              "exist string '%s'.\nInput: %s\nVariables:%s"
-              % (template_var, val, template_input, template_vars))
-        var_value = template_vars[template_var]
-
-        # This is an ugly side effect of templating with primitive values.
-        # The template is a string, but the target value needs to be int.
-        # This is sort of a hack for now, but if the problem gets worse, we
-        # can come up with a more scaleable solution.
-        #
-        # Guessing this problem won't continue though beyond the use of 'sku-id'
-        # since that tends to be the only strongly typed value due to its use
-        # for identity detection.
-        is_int = isinstance(var_value, int)
-        if is_int:
-          var_value = str(var_value)
-
-        # If the caller only had one value and it was a template variable that
-        # was an int, assume the caller wanted the string to be an int.
-        if is_int and val == replace_string:
-          val = template_vars[template_var]
-        else:
-          val = val.replace(replace_string, var_value)
-      template_input[key] = val
+      template_input[key] = _GetVarTemplateValue(
+          val, template_input, template_vars)
 
   # Do this last so all variables from the parent are in scope first.
   for value in to_walk:
