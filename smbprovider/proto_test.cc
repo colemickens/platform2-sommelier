@@ -119,6 +119,10 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
   GetSharesOptionsProto get_shares_proto =
       CreateGetSharesOptionsProto("smb://192.168.0.1");
   EXPECT_TRUE(IsValidOptions(get_shares_proto));
+
+  RemountOptionsProto remount_proto =
+      CreateRemountOptionsProto("smb://testShare/", 3 /* mount_id */);
+  EXPECT_TRUE(IsValidOptions(remount_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -167,6 +171,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   GetDeleteListOptionsProto get_delete_list_proto_blank;
   EXPECT_FALSE(IsValidOptions(get_delete_list_proto_blank));
+
+  RemountOptionsProto remount_proto_blank;
+  EXPECT_FALSE(IsValidOptions(remount_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.
@@ -277,6 +284,7 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kCopyEntryMethod, CopyEntryOptionsProto());
   CheckMethodName(kGetDeleteListMethod, GetDeleteListOptionsProto());
   CheckMethodName(kGetSharesMethod, GetSharesOptionsProto());
+  CheckMethodName(kRemountMethod, RemountOptionsProto());
 }
 
 // DirectoryEntryCtor initializes a DirectoryEntry correctly.

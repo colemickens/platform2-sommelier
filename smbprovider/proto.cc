@@ -84,6 +84,10 @@ bool IsValidOptions(const GetSharesOptionsProto& options) {
   return options.has_server_url();
 }
 
+bool IsValidOptions(const RemountOptionsProto& options) {
+  return options.has_path() && options.has_mount_id();
+}
+
 std::string GetEntryPath(const ReadDirectoryOptionsProto& options) {
   return options.directory_path();
 }
@@ -198,6 +202,10 @@ const char* GetMethodName(const GetDeleteListOptionsProto& unused) {
 
 const char* GetMethodName(const GetSharesOptionsProto& unused) {
   return kGetSharesMethod;
+}
+
+const char* GetMethodName(const RemountOptionsProto& unused) {
+  return kRemountMethod;
 }
 
 template <>

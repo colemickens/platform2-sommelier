@@ -68,6 +68,9 @@ GetDeleteListOptionsProto CreateGetDeleteListOptionsProto(
 GetSharesOptionsProto CreateGetSharesOptionsProto(
     const std::string& server_url);
 
+RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
+                                              int32_t mount_id);
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
 ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id);
@@ -121,6 +124,8 @@ ProtoBlob CreateGetDeleteListOptionsBlob(int32_t mount_id,
                                          const std::string& entry_path);
 
 ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url);
+
+ProtoBlob CreateRemountOptionsBlob(const std::string& path, int32_t mount_id);
 
 // FakeSamba URL helper methods
 inline std::string GetDefaultServer() {

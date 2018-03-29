@@ -45,6 +45,7 @@ bool IsValidOptions(const MoveEntryOptionsProto& options);
 bool IsValidOptions(const CopyEntryOptionsProto& options);
 bool IsValidOptions(const GetDeleteListOptionsProto& options);
 bool IsValidOptions(const GetSharesOptionsProto& options);
+bool IsValidOptions(const RemountOptionsProto& options);
 
 // Helper method to get the entry path from a proto.
 std::string GetEntryPath(const ReadDirectoryOptionsProto& options);
@@ -79,6 +80,7 @@ const char* GetMethodName(const MoveEntryOptionsProto& unused);
 const char* GetMethodName(const CopyEntryOptionsProto& unused);
 const char* GetMethodName(const GetDeleteListOptionsProto& unused);
 const char* GetMethodName(const GetSharesOptionsProto& unused);
+const char* GetMethodName(const RemountOptionsProto& unused);
 
 template <typename Proto>
 int32_t GetMountId(const Proto& options) {
