@@ -1,11 +1,4 @@
 {
-  'target_defaults': {
-    'variables': {
-      'deps': [
-        'libchrome-<(libbase_ver)',
-      ],
-    },
-  },
   'targets': [
     {
       'target_name': 'common-protos',
@@ -122,6 +115,11 @@
     {
       'target_name': 'libvsh',
       'type': 'static_library',
+      'variables': {
+        'deps': [
+          'libchrome-<(libbase_ver)',
+        ],
+      },
       'sources': [
         'vsh/utils.cc',
       ],

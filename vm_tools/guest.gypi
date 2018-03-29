@@ -1,4 +1,11 @@
 {
+  'target_defaults': {
+    'variables': {
+      'deps': [
+        'libchrome-<(libbase_ver)',
+      ],
+    },
+  },
   'targets': [
     {
       'target_name': 'libmaitred',
