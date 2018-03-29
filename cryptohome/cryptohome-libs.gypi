@@ -45,10 +45,19 @@
       'variables': {
         'proto_in_dir': '.',
         'proto_out_dir': 'include',
+        'exported_deps': [
+          'protobuf',
+        ],
+        'deps': ['<@(exported_deps)'],
       },
       'dependencies': [
         'cryptohome-proto-external',
       ],
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
+      },
       'sources': [
         '<(proto_in_dir)/attestation.proto',
         '<(proto_in_dir)/boot_lockbox_key.proto',
@@ -77,6 +86,14 @@
         'dbus_glib_prefix': 'cryptohome',
         'dbus_glib_header_stem': 'cryptohome',
       },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            'dbus-glib-1',
+            'glib-2.0',
+          ],
+        },
+      },
       'sources': [
         'dbus_bindings/org.chromium.CryptohomeInterface.xml',
       ],
@@ -90,6 +107,14 @@
         'dbus_glib_out_dir': 'include/bindings',
         'dbus_glib_prefix': 'cryptohome',
         'dbus_glib_header_stem': 'cryptohome',
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            'dbus-glib-1',
+            'glib-2.0',
+          ],
+        },
       },
       'sources': [
         'dbus_bindings/org.chromium.CryptohomeInterface.xml',
@@ -250,6 +275,14 @@
       'variables': {
         'dbus_adaptors_out_dir': 'include/dbus_adaptors',
         'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            'libbrillo-<(libbase_ver)',
+            'libchrome-<(libbase_ver)',
+          ],
+        },
       },
       'sources': [
         'dbus_adaptors/org.chromium.BootLockboxInterface.xml',

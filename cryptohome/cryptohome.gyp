@@ -266,6 +266,15 @@
           'variables': {
             'proto_in_dir': './cert',
             'proto_out_dir': 'include/cert',
+            'exported_deps': [
+              'protobuf',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'all_dependent_settings': {
+            'variables': {
+              'deps': ['<@(exported_deps)'],
+            },
           },
           'sources': [
             'cert/cert_provision.proto',
