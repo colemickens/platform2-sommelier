@@ -36,12 +36,6 @@ extern "C" {
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 
-// Included last because they both have conflicting defines :(
-extern "C" {
-#include <ecryptfs.h>
-#include <keyutils.h>
-}
-
 using base::FilePath;
 using brillo::SecureBlob;
 

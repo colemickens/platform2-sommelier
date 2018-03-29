@@ -19,10 +19,6 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
-extern "C" {
-#include <scrypt/crypto_scrypt.h>
-#include <scrypt/scryptenc.h>
-}
 
 #include "cryptohome/platform.h"
 
