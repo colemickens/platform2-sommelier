@@ -5,6 +5,9 @@
 #ifndef LIBBRILLO_BRILLO_DBUS_FILE_DESCRIPTOR_H_
 #define LIBBRILLO_BRILLO_DBUS_FILE_DESCRIPTOR_H_
 
+#include <base/files/scoped_file.h>
+#include <base/macros.h>
+
 namespace brillo {
 namespace dbus_utils {
 
@@ -12,16 +15,32 @@ namespace dbus_utils {
 // Implicit conversions are provided because this should be as transparent
 // a wrapper as possible to match the libchrome bindings below when this
 // class is used by chromeos-dbus-bindings.
+//
+// Because we might pass these around and the calling code neither passes
+// ownership nor knows when this will be destroyed, it actually dups the FD
+// so that the calling code and binding code both have a clear handle on the
+// lifetimes of their respective copies of the FD.
 struct FileDescriptor {
-  FileDescriptor() : fd(-1) {}
-  FileDescriptor(int fd) : fd(fd) {}
+  FileDescriptor() = default;
+  FileDescriptor(int fd) : fd(dup(fd)) {}
+  FileDescriptor(FileDescriptor&& other) : fd(std::move(other.fd)) {}
 
   inline FileDescriptor& operator=(int new_fd) {
-    fd = new_fd;
+    fd.reset(dup(new_fd));
     return *this;
   }
 
-  int fd;
+  FileDescriptor& operator=(FileDescriptor&& other) {
+    fd = std::move(other.fd);
+    return *this;
+  }
+
+  int get() const { return fd.get(); }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FileDescriptor);
+
+  base::ScopedFD fd;
 };
 
 }  // namespace dbus_utils

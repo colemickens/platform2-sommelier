@@ -68,7 +68,7 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
 
 void AppendValueToWriter(dbus::MessageWriter* writer,
                          const FileDescriptor& value) {
-  writer->AppendFileDescriptor(value.fd);
+  writer->AppendFileDescriptor(value.get());
 }
 
 void AppendValueToWriter(dbus::MessageWriter* writer,

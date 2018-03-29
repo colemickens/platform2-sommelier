@@ -165,6 +165,9 @@ inline dbus::FileDescriptor HackMove(const dbus::FileDescriptor& val) {
 inline base::ScopedFD HackMove(const base::ScopedFD& val) {
   return std::move(const_cast<base::ScopedFD&>(val));
 }
+inline FileDescriptor HackMove(const FileDescriptor& val) {
+  return std::move(const_cast<FileDescriptor&>(val));
+}
 }  // namespace internal
 
 // Extracts the parameters of |ResultTypes...| types from the message reader
