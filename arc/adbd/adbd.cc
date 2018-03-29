@@ -415,14 +415,6 @@ int main(int argc, char** argv) {
 
   const base::FilePath runtime_path(kRuntimePath);
 
-  const std::string udc_driver_name = GetUDCDriver();
-  if (udc_driver_name.empty()) {
-    LOG(INFO)
-        << "Unable to find any registered UDC drivers in /sys/class/udc/. "
-        << "This device does not support ADB using GadgetFS.";
-    return 0;
-  }
-
   AdbdConfiguration config;
   if (!GetConfiguration(&config)) {
     LOG(INFO) << "Unable to find the configuration for this service. "
@@ -472,6 +464,13 @@ int main(int argc, char** argv) {
     if (!configured) {
       if (!SetupKernelModules(config.kernel_modules)) {
         LOG(ERROR) << "Failed to load kernel modules";
+        return 1;
+      }
+      const std::string udc_driver_name = GetUDCDriver();
+      if (udc_driver_name.empty()) {
+        LOG(ERROR)
+            << "Unable to find any registered UDC drivers in /sys/class/udc/. "
+            << "This device does not support ADB using GadgetFS.";
         return 1;
       }
       if (!SetupConfigFS(FLAGS_serialnumber, config.usb_product_id, board)) {

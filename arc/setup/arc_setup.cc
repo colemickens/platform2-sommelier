@@ -1532,8 +1532,8 @@ void ArcSetup::MaybeStartAdbdProxy(bool is_dev_mode,
                                    const std::string& serialnumber) {
   if (!is_dev_mode || is_inside_vm)
     return;
-  const base::FilePath udc_drivers_directory("/sys/class/udc");
-  if (!base::DirectoryExists(udc_drivers_directory))
+  const base::FilePath adbd_config_path("/etc/arc/adbd.json");
+  if (!base::PathExists(adbd_config_path))
     return;
 
   // Now that we have identified that the system is capable of continuing, touch
