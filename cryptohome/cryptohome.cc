@@ -215,6 +215,8 @@ namespace switches {
   static const char kAttrNameSwitch[] = "name";
   static const char kAttrValueSwitch[] = "value";
   static const char kFileSwitch[] = "file";
+  static const char kInputFileSwitch[] = "input";
+  static const char kOutputFileSwitch[] = "output";
   static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
   static const char kCrosCoreSwitch[] = "cros_core";
   static const char kProtobufSwitch[] = "protobuf";
@@ -322,11 +324,33 @@ bool GetPassword(const brillo::dbus::Proxy& proxy,
   return true;
 }
 
+bool IsMixingOldAndNewFileSwitches(const base::CommandLine* cl) {
+  return cl->HasSwitch(switches::kFileSwitch) &&
+         (cl->HasSwitch(switches::kInputFileSwitch) ||
+          cl->HasSwitch(switches::kOutputFileSwitch));
+}
+
 FilePath GetFile(const base::CommandLine* cl) {
   const char kDefaultFilePath[] = "/tmp/__cryptohome";
   FilePath file_path(cl->GetSwitchValueASCII(switches::kFileSwitch));
   if (file_path.empty()) {
     return FilePath(kDefaultFilePath);
+  }
+  return file_path;
+}
+
+FilePath GetInputFile(const base::CommandLine* cl) {
+  FilePath file_path(cl->GetSwitchValueASCII(switches::kInputFileSwitch));
+  if (file_path.empty()) {
+    return GetFile(cl);
+  }
+  return file_path;
+}
+
+FilePath GetOutputFile(const base::CommandLine* cl) {
+  FilePath file_path(cl->GetSwitchValueASCII(switches::kOutputFileSwitch));
+  if (file_path.empty()) {
+    return GetFile(cl);
   }
   return file_path;
 }
@@ -681,6 +705,13 @@ int main(int argc, char **argv) {
     }
   } else {
     va_type = cryptohome::Attestation::kDefaultVA;
+  }
+
+  if (IsMixingOldAndNewFileSwitches(cl)) {
+    printf("Use either --%s and --%s together, or --%s only.\n",
+           switches::kInputFileSwitch, switches::kOutputFileSwitch,
+           switches::kFileSwitch);
+    return 1;
   }
 
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
@@ -1842,12 +1873,13 @@ int main(int argc, char **argv) {
         response_data = client_loop.get_return_data();
       }
     }
-    base::WriteFile(GetFile(cl), response_data.data(), response_data.length());
+    base::WriteFile(GetOutputFile(cl), response_data.data(),
+                    response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_ENROLL],
       action.c_str())) {
     std::string contents;
-    if (!base::ReadFileToString(GetFile(cl), &contents)) {
+    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
       printf("Failed to read input file.\n");
       return 1;
     }
@@ -1947,7 +1979,8 @@ int main(int argc, char **argv) {
         response_data = client_loop.get_return_data();
       }
     }
-    base::WriteFile(GetFile(cl), response_data.data(), response_data.length());
+    base::WriteFile(GetOutputFile(cl), response_data.data(),
+                    response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
       action.c_str())) {
@@ -1959,7 +1992,7 @@ int main(int argc, char **argv) {
       return 1;
     }
     std::string contents;
-    if (!base::ReadFileToString(GetFile(cl), &contents)) {
+    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
       printf("Failed to read input file.\n");
       return 1;
     }
@@ -2010,7 +2043,7 @@ int main(int argc, char **argv) {
       printf("Attestation certificate request failed.\n");
       return 1;
     }
-    base::WriteFile(GetFile(cl), cert_data.data(), cert_data.length());
+    base::WriteFile(GetOutputFile(cl), cert_data.data(), cert_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
       action.c_str())) {
@@ -2110,8 +2143,9 @@ int main(int argc, char **argv) {
     }
     gboolean is_user_specific = !account_id.empty();
     std::string contents;
-    if (!base::ReadFileToString(GetFile(cl), &contents)) {
-      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
+      printf("Failed to read input file: %s\n",
+             GetInputFile(cl).value().c_str());
       return 1;
     }
     brillo::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
@@ -2236,14 +2270,15 @@ int main(int argc, char **argv) {
       printf("Failed to get identity reset request.\n");
       return 1;
     }
-    base::WriteFile(GetFile(cl), reset_request->data, reset_request->len);
+    base::WriteFile(GetOutputFile(cl), reset_request->data, reset_request->len);
   } else if (!strcmp(
       switches::kActions[
           switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT],
       action.c_str())) {
     std::string contents;
-    if (!base::ReadFileToString(GetFile(cl), &contents)) {
-      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
+      printf("Failed to read input file: %s\n",
+             GetInputFile(cl).value().c_str());
       return 1;
     }
     cryptohome::AttestationResetResponse response;
@@ -2275,8 +2310,9 @@ int main(int argc, char **argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_SIGN_LOCKBOX],
                      action.c_str())) {
     std::string data;
-    if (!base::ReadFileToString(GetFile(cl), &data)) {
-      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+    if (!base::ReadFileToString(GetInputFile(cl), &data)) {
+      printf("Failed to read input file: %s\n",
+             GetInputFile(cl).value().c_str());
       return 1;
     }
 
@@ -2296,19 +2332,19 @@ int main(int argc, char **argv) {
     }
     std::string signature =
         reply.GetExtension(cryptohome::SignBootLockboxReply::reply).signature();
-    base::WriteFile(GetFile(cl).AddExtension("signature"),
-                    signature.data(),
-                    signature.size());
+    base::WriteFile(GetOutputFile(cl).AddExtension("signature"),
+                    signature.data(), signature.size());
     printf("SignBootLockbox success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_VERIFY_LOCKBOX],
                      action.c_str())) {
     std::string data;
-    if (!base::ReadFileToString(GetFile(cl), &data)) {
-      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+    if (!base::ReadFileToString(GetInputFile(cl), &data)) {
+      printf("Failed to read input file: %s\n",
+             GetInputFile(cl).value().c_str());
       return 1;
     }
     std::string signature;
-    FilePath signature_file = GetFile(cl).AddExtension("signature");
+    FilePath signature_file = GetInputFile(cl).AddExtension("signature");
     if (!base::ReadFileToString(signature_file, &signature)) {
       printf("Failed to read input file: %s\n", signature_file.value().c_str());
       return 1;
