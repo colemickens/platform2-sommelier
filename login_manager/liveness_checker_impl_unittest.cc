@@ -9,7 +9,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/fake_message_loop.h>
-#include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

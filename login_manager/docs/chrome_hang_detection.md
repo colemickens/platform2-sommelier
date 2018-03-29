@@ -10,11 +10,11 @@ that the UI thread is blocked.
 `session_manager`'s portion of the implementation lives in
 [liveness_checker_impl.h] and [liveness_checker_impl.cc]. By default,
 `session_manager` makes an asynchronous `CheckLiveness` D-Bus method call to
-`org.chromium.LibCrosService` every 60 seconds. If a response hasn't been
+`org.chromium.LivenessService` every 60 seconds. If a response hasn't been
 received for the previous call at this point, `session_manager` sends a
 `SIGABRT` signal to Chrome's browser process.
 
-Chrome exports the `org.chromium.LibCrosService` D-Bus service and replies
+Chrome exports the `org.chromium.LivenessService` D-Bus service and replies
 immediately to `CheckLiveness` method calls.
 
 On developer systems (as indicated by the `is_developer_end_user` command),
@@ -64,10 +64,9 @@ briefly disabled in 2013 and before being reenabled ([issue 221008]) and updated
 to send `SIGFPE` rather than SIGABRT (to make it easier to distinguish between
 hangs and `CHECK`s or `LOG(FATAL)`s within Chrome). In 2015, `session_manager`
 was updated to send `SIGABRT` rather than `SIGFPE` ([issue 284601]). The
-`CheckLiveness` D-Bus method is partially moved from
-`org.chromium.LibCrosService` into a new `org.chromium.LivenessService` service
-also provided by Chrome, but as of December 2017, `session_manager` hasn't yet
-been updated to call the new service ([issue 644322]).
+`CheckLiveness` D-Bus method was moved from `org.chromium.LibCrosService` into a
+new `org.chromium.LivenessService` service also provided by Chrome ([issue
+644322]).
 
 [liveness_checker_impl.h]: ../liveness_checker_impl.h
 [liveness_checker_impl.cc]: ../liveness_checker_impl.cc

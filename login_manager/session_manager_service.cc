@@ -168,7 +168,10 @@ bool SessionManagerService::Initialize() {
       bus_->GetObjectProxy(InitDaemonControllerImpl::kServiceName,
                            dbus::ObjectPath(InitDaemonControllerImpl::kPath));
 
-  liveness_checker_.reset(new LivenessCheckerImpl(this, chrome_dbus_proxy_,
+  dbus::ObjectProxy* liveness_proxy =
+      bus_->GetObjectProxy(chromeos::kLivenessServiceName,
+                           dbus::ObjectPath(chromeos::kLivenessServicePath));
+  liveness_checker_.reset(new LivenessCheckerImpl(this, liveness_proxy,
                                                   enable_browser_abort_on_hang_,
                                                   liveness_checking_interval_));
 

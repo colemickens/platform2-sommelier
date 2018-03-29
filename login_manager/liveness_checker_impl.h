@@ -21,15 +21,16 @@ class Response;
 namespace login_manager {
 class ProcessManagerServiceInterface;
 
-// An implementation of LivenessChecker that pings the browser over DBus,
-// and expects the response to a ping to come in reliably before the next
-// ping is sent.  If not, it may ask |manager| to abort the browser process.
+// An implementation of LivenessChecker that pings a service (owned by Chrome)
+// over D-Bus, and expects the response to a ping to come in reliably before the
+// next ping is sent.  If not, it may ask |manager| to abort the browser
+// process.
 //
 // Actual aborting behavior is controlled by the enable_aborting flag.
 class LivenessCheckerImpl : public LivenessChecker {
  public:
   LivenessCheckerImpl(ProcessManagerServiceInterface* manager,
-                      dbus::ObjectProxy* chrome_dbus_proxy,
+                      dbus::ObjectProxy* dbus_proxy,
                       bool enable_aborting,
                       base::TimeDelta interval);
   ~LivenessCheckerImpl() override;
@@ -55,7 +56,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   void HandleAck(dbus::Response* response);
 
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
-  dbus::ObjectProxy* chrome_dbus_proxy_;     // Owned by the caller.
+  dbus::ObjectProxy* dbus_proxy_;            // Owned by the caller.
 
   const bool enable_aborting_;
   const base::TimeDelta interval_;

@@ -25,11 +25,11 @@ namespace login_manager {
 
 LivenessCheckerImpl::LivenessCheckerImpl(
     ProcessManagerServiceInterface* manager,
-    dbus::ObjectProxy* chrome_dbus_proxy,
+    dbus::ObjectProxy* dbus_proxy,
     bool enable_aborting,
     base::TimeDelta interval)
     : manager_(manager),
-      chrome_dbus_proxy_(chrome_dbus_proxy),
+      dbus_proxy_(dbus_proxy),
       enable_aborting_(enable_aborting),
       interval_(interval),
       last_ping_acked_(true),
@@ -76,11 +76,11 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
 
   DVLOG(1) << "Sending a liveness ping to the browser.";
   last_ping_acked_ = false;
-  dbus::MethodCall ping(chromeos::kLibCrosServiceInterface,
-                        chromeos::kCheckLiveness);
-  chrome_dbus_proxy_->CallMethod(&ping, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                                 base::Bind(&LivenessCheckerImpl::HandleAck,
-                                            weak_ptr_factory_.GetWeakPtr()));
+  dbus::MethodCall ping(chromeos::kLivenessServiceInterface,
+                        chromeos::kLivenessServiceCheckLivenessMethod);
+  dbus_proxy_->CallMethod(&ping, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                          base::Bind(&LivenessCheckerImpl::HandleAck,
+                                     weak_ptr_factory_.GetWeakPtr()));
 
   DVLOG(1) << "Scheduling liveness check in " << interval.InSeconds() << "s.";
   liveness_check_.Reset(
