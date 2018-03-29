@@ -28,17 +28,22 @@ def ListModels(config):
   for model_name in config.GetModelList():
     print(model_name)
 
-def GetProperty(model, path, prop):
+def GetProperty(device, path, prop):
   """Prints a property from the config tree for all models in the list models.
 
   Args:
-    model: List of CrosConfig.Model for which to print the given property.
-    path: The path (relative to a model) for the node containing the property.
+    device: DeviceConfig instance for the lookup.
+    path: The path (relative to a device) for the node containing the property.
     prop: The property to get (by name).
   """
-  config_prop = model.PathProperty(path, prop)
+  config_prop = device.PathProperty(path, prop)
   print(config_prop.value if config_prop else '')
-
+  # TODO(shapiroc): Refactor to support both impls
+  #properties = device.GetProperties(path)
+  #if properties and prop in properties:
+  #  print(properties[prop])
+  #else:
+  #  print('')
 
 def GetFirmwareUris(config):
   """Prints space-separated firmware uris for all models in models.
@@ -319,7 +324,9 @@ def main(argv=None):
   # Get all models we are invoking on (if any).
   model = None
   if opts.model:
-    model = config.models.get(opts.model)
+    for device in config.GetDeviceConfigs():
+      if device.GetName() == opts.model:
+        model = device
     if not model:
       print("Unknown model '%s'" % opts.model, file=sys.stderr)
       return

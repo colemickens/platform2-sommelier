@@ -177,6 +177,10 @@ class DeviceConfig(object):
     """
     pass
 
+  def GetFirmwareConfig(self):
+    """Returns a map hierarchy of the firmware config."""
+    pass
+
   def GetFirmwareUris(self):
     """Returns a list of (string) firmware URIs.
 
@@ -186,7 +190,31 @@ class DeviceConfig(object):
     Returns:
       A list of (string) full firmware URIs, or an empty list on failure.
     """
-    pass
+    firmware = self.GetFirmwareConfig()
+    if not firmware:
+      return []
+
+    if 'bcs-overlay' not in firmware:
+      return []
+    # Strip "overlay-" from bcs_overlay
+    bcs_overlay = firmware['bcs-overlay'][8:]
+    ebuild_name = bcs_overlay.split('-')[0]
+    valid_images = [
+      p for n, p in firmware.iteritems()
+      if n.endswith('-image') and p.startswith('bcs://')
+    ]
+    # Strip "bcs://" from bcs_from images (to get the file names only)
+    file_names = [p[6:] for p in valid_images]
+    uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
+                  'chromeos-base/chromeos-firmware-{ebuild_name}/{fname}')
+    uris = [
+      uri_format.format(
+          bcs=bcs_overlay,
+          model=self.name,
+          fname=fname,
+          ebuild_name=ebuild_name) for fname in file_names
+    ]
+    return sorted(uris)
 
   def GetTouchFirmwareFiles(self):
     """Get a list of unique touch firmware files
@@ -850,33 +878,12 @@ class CrosConfigDeviceTreeImpl(CrosConfigBaseImpl):
         return None
       return submodel.PathProperty(relative_path, property_name)
 
-    def GetFirmwareUris(self):
+    def GetFirmwareConfig(self):
+      """Returns a map hierarchy of the firmware config."""
       firmware = self.PathNode('/firmware')
       if not firmware or firmware.GetBool('no-firmware'):
-        return []
-      props = self.GetMergedProperties(firmware, 'shares')
-
-      if 'bcs-overlay' not in props:
-        return []
-      # Strip "overlay-" from bcs_overlay
-      bcs_overlay = props['bcs-overlay'][8:]
-      ebuild_name = bcs_overlay.split('-')[0]
-      valid_images = [
-          p for n, p in props.iteritems()
-          if n.endswith('-image') and p.startswith('bcs://')
-      ]
-      # Strip "bcs://" from bcs_from images (to get the file names only)
-      file_names = [p[6:] for p in valid_images]
-      uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
-                    'chromeos-base/chromeos-firmware-{ebuild_name}/{fname}')
-      uris = [
-          uri_format.format(
-              bcs=bcs_overlay,
-              model=self.name,
-              fname=fname,
-              ebuild_name=ebuild_name) for fname in file_names
-      ]
-      return sorted(uris)
+        return {}
+      return self.GetMergedProperties(firmware, 'shares')
 
     def SetupModelProps(self, props):
       props['model'] = self.name
