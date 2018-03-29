@@ -18,7 +18,6 @@ import unittest
 from . import fdt_util
 from .libcros_config_host import BaseFile, CrosConfig, TouchFile, FirmwareInfo
 from .libcros_config_host import FORMAT_FDT, FORMAT_YAML
-from .libcros_config_host import COMPARE_ALWAYS, COMPARE_NEVER
 
 
 DTS_FILE = '../libcros_config/test.dts'
@@ -104,7 +103,7 @@ def MakeTests(pathname):
         self.assertEqual(name, model.name)
 
     def testProperties(self):
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       pyro = config.models['pyro']
       self.assertEqual(pyro.properties['wallpaper'].value, 'default')
       self.assertEqual(pyro.Property('wallpaper').value, 'default')
@@ -167,38 +166,38 @@ def MakeTests(pathname):
 
       os.environ['DISTDIR'] = 'distdir'
       os.environ['FILESDIR'] = 'files'
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       touch_files = config.models['pyro'].GetTouchFirmwareFiles()
       self.assertEqual(
           touch_files,
-          {'stylus': TouchFile('files/wacom/4209.hex',
-                               TOUCH_FIRMWARE + 'wacom/4209.hex',
-                               LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-           'touchscreen': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                    TOUCH_FIRMWARE + '0a97_1012.bin',
-                                    TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                                    LIB_FIRMWARE + 'elants_i2c_0a97.bin')})
+          [TouchFile('files/wacom/4209.hex',
+                     TOUCH_FIRMWARE + 'wacom/4209.hex',
+                     LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
+           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                     TOUCH_FIRMWARE + '0a97_1012.bin',
+                     TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
+                     LIB_FIRMWARE + 'elants_i2c_0a97.bin')])
       touch_files = config.models['reef'].GetTouchFirmwareFiles()
 
       # This checks that duplicate processing works correct, since both models
       # have the same wacom firmware
       self.assertEqual(
           touch_files,
-          {'stylus': TouchFile('files/wacom/4209.hex',
-                               TOUCH_FIRMWARE + 'wacom/4209.hex',
-                               LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
-           'touchpad': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                 TOUCH_FIRMWARE + '97.0_6.0.bin',
-                                 TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
-                                 LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
-           'touchscreen@0': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                      TOUCH_FIRMWARE + '3062_5602.bin',
-                                      TOUCH_FIRMWARE + 'elan/3062_5602.bin',
-                                      LIB_FIRMWARE + 'elants_i2c_3062.bin'),
-           'touchscreen@1': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                      TOUCH_FIRMWARE + '306e_5611.bin',
-                                      TOUCH_FIRMWARE + 'elan/306e_5611.bin',
-                                      LIB_FIRMWARE + 'elants_i2c_306e.bin')})
+          [TouchFile('files/wacom/4209.hex',
+                     TOUCH_FIRMWARE + 'wacom/4209.hex',
+                     LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
+           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                     TOUCH_FIRMWARE + '97.0_6.0.bin',
+                     TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
+                     LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
+           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                     TOUCH_FIRMWARE + '3062_5602.bin',
+                     TOUCH_FIRMWARE + 'elan/3062_5602.bin',
+                     LIB_FIRMWARE + 'elants_i2c_3062.bin'),
+           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                     TOUCH_FIRMWARE + '306e_5611.bin',
+                     TOUCH_FIRMWARE + 'elan/306e_5611.bin',
+                     LIB_FIRMWARE + 'elants_i2c_306e.bin')])
       touch_files = config.GetTouchFirmwareFiles()
       expected = set([
           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
@@ -243,14 +242,13 @@ def MakeTests(pathname):
       touch_files = config.models['pyro'].GetTouchFirmwareFiles()
       self.assertEqual(
           touch_files,
-          {'stylus': TouchFile('test/wacom/4209.hex',
-                               TOUCH_FIRMWARE + 'wacom/4209.hex',
-                               LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-           'touchscreen': TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                                    TOUCH_FIRMWARE + '0a97_1012.bin',
-                                    TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                                    LIB_FIRMWARE + 'elants_i2c_0a97.bin')})
-      touch_files = config.models['reef'].GetTouchFirmwareFiles()
+          [TouchFile('test/wacom/4209.hex',
+                     TOUCH_FIRMWARE + 'wacom/4209.hex',
+                     LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
+           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
+                     TOUCH_FIRMWARE + '0a97_1012.bin',
+                     TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
+                     LIB_FIRMWARE + 'elants_i2c_0a97.bin')])
 
     def testGetMergedPropertiesPyro(self):
       config = CrosConfig(self.filepath)
@@ -281,7 +279,7 @@ def MakeTests(pathname):
       """Test that the 'default' property is used when collecting properties"""
       if self.config_format != FORMAT_FDT:
         return
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       caroline = config.models['caroline']
       audio = caroline.PathNode('/audio/main')
       props = caroline.GetMergedProperties(audio, 'audio-type')
@@ -308,7 +306,7 @@ def MakeTests(pathname):
                     'hardware_features')])
 
     def testGetAudioFiles(self):
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       audio_files = config.GetAudioFiles()
       expected = [
           BaseFile('cras-config/1mic/bxtda7219max',
@@ -420,7 +418,7 @@ def MakeTests(pathname):
       """Test that we can obtain a file tree"""
       os.environ['DISTDIR'] = 'distdir'
       os.environ['FILESDIR'] = 'files'
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       node = config.GetFileTree()
       self.assertEqual(node.name, '')
       self.assertEqual(sorted(node.children.keys()),
@@ -435,7 +433,7 @@ def MakeTests(pathname):
 
     def testShowTree(self):
       """Test that we can show a file tree"""
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       tree = config.GetFileTree()
       with capture_sys_output() as (stdout, stderr):
         config.ShowTree('/', tree)
@@ -462,7 +460,7 @@ def MakeTests(pathname):
       """Test the 'default' property"""
       if self.config_format != FORMAT_FDT:
         return
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       caroline = config.models['caroline']
 
       # These are defined by caroline itself
@@ -508,8 +506,7 @@ def MakeTests(pathname):
 
       os.environ['SYSROOT'] = 'fred'
       with self.assertRaises(IOError) as e:
-        CrosConfig(config_format=self.config_format,
-                   compare_results=COMPARE_NEVER)
+        CrosConfig(config_format=self.config_format)
       ext = 'dtb' if self.config_format == FORMAT_FDT else 'yaml'
       self.assertIn('fred/usr/share/chromeos-config/config.%s' % ext,
                     str(e.exception))
@@ -523,7 +520,7 @@ def MakeTests(pathname):
 
     def testFirmware(self):
       """Test access to firmware information"""
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       self.assertEqual('updater4.sh', config.GetFirmwareScript())
 
       # YAML does not support naming of the target node so far as I can see.
@@ -583,7 +580,7 @@ def MakeTests(pathname):
 
     def testFimwareBuildCombinations(self):
       """Test generating a dict of firmware build combinations."""
-      config = CrosConfig(self.filepath, compare_results=COMPARE_NEVER)
+      config = CrosConfig(self.filepath)
       expected = OrderedDict([
           ('caroline', ['caroline', 'caroline']),
           ('pyro', ['pyro', 'pyro']),
@@ -605,38 +602,6 @@ def MakeTests(pathname):
           'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
           'chromeos-base/chromeos-touch-firmware-reef/'
           'chromeos-touch-firmware-reef-1.0-r9.tbz2'])
-
-    def testCompareResults(self):
-      """Test that CrosConfig can compare config results for the two formats"""
-      config = CrosConfig(self.filepath)
-      caroline = config.models['caroline']
-      self.assertEqual(caroline.properties['wallpaper'].value, 'caroline')
-
-      config.models['pyro'].GetFirmwareUris()
-
-      pyro = config.models['pyro']
-      stylus = pyro.PathNode('touch/stylus')
-      pyro.GetMergedProperties(stylus, 'touch-type')
-
-    # TODO(shapiroc): Re-enable once YAML refactor is complete
-    def ignoreCompareResultsBad(self):
-      """Test that mismatches are detected"""
-      config = CrosConfig(self.filepath_bad_compare,
-                          compare_results=COMPARE_ALWAYS)
-      caroline = config.models['caroline']
-      with self.assertRaisesRegexp(ValueError, 'results differ.*not-caroline'):
-        self.assertEqual(caroline.PathProperty('/', 'wallpaper').value,
-                         'caroline')
-
-      with self.assertRaisesRegexp(ValueError,
-                                   'results differ.*notpyro-private'):
-        config.models['pyro'].GetFirmwareUris()
-
-      pyro = config.models['pyro']
-      stylus = pyro.PathNode('touch/stylus')
-      with self.assertRaisesRegexp(ValueError,
-                                   'Properties.*differ.*4209.*4210'):
-        pyro.GetMergedProperties(stylus, 'touch-type')
 
     def testGetWallpaper(self):
       """Test that we can access the wallpaper information"""

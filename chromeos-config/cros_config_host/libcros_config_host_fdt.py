@@ -15,7 +15,7 @@ from collections import OrderedDict
 from . import fdt
 import libcros_config_host
 
-class CrosConfigFdt(libcros_config_host.CrosConfigImpl):
+class CrosConfigFdt(libcros_config_host.CrosConfigDeviceTreeImpl):
   """Flat Device Tree implementation of CrosConfig.
 
   This uses a device-tree file to hold this config. This provides efficient
@@ -23,10 +23,11 @@ class CrosConfigFdt(libcros_config_host.CrosConfigImpl):
   supports links from one node to another, reducing redundancy in the config.
 
   Properties:
-    phandle_to_node: Map of phandles to the assocated CrosConfigImpl.Node:
+    phandle_to_node:
+        Map of phandles to the assocated CrosConfigDeviceTreeImpl.Node:
         key: Integer phandle value (>= 1)
-        value: Associated CrosConfigImpl.Node object
-    family: Family node (CrosConigImpl.Node object)
+        value: Associated CrosConfigDeviceTreeImpl.Node object
+    family: Family node (CrosConfigDeviceTreeImpl.Node object)
   """
   def __init__(self, infile):
     super(CrosConfigFdt, self).__init__(infile)
@@ -59,7 +60,7 @@ class CrosConfigFdt(libcros_config_host.CrosConfigImpl):
     node.ScanSubnodes()
     return node
 
-  class Node(libcros_config_host.CrosConfigImpl.Node):
+  class Node(libcros_config_host.CrosConfigDeviceTreeImpl.Node):
     """FDT implementation of a node"""
     def __init__(self, cros_config, fdt_node):
       super(CrosConfigFdt.Node, self).__init__(cros_config)
@@ -91,7 +92,7 @@ class CrosConfigFdt(libcros_config_host.CrosConfigImpl):
         return None
       return self.cros_config.phandle_to_node[prop.GetPhandle()]
 
-  class Property(libcros_config_host.CrosConfigImpl.Property):
+  class Property(libcros_config_host.CrosConfigDeviceTreeImpl.Property):
     """FDT implementation of a property
 
     Properties:

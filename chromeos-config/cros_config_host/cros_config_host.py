@@ -15,7 +15,7 @@ from __future__ import print_function
 import argparse
 import sys
 
-from .libcros_config_host import CrosConfig, CrosConfigImpl
+from .libcros_config_host import CrosConfig, CrosConfigDeviceTreeImpl
 from .libcros_config_host import FORMAT_YAML
 
 def ListModels(config):
@@ -177,7 +177,7 @@ def GetFirmwareBuildCombinations(config, targets):
 
 def WriteTargetDirectories():
   """Writes out a file containing the directory target info"""
-  target_dirs = CrosConfigImpl.GetTargetDirectories()
+  target_dirs = CrosConfigDeviceTreeImpl.GetTargetDirectories()
   print('''/*
  * This is a generated file, DO NOT EDIT!'
  *
@@ -199,7 +199,7 @@ def WriteTargetDirectories():
 
 def WritePhandleProperties():
   """Writes out a file containing the directory target info"""
-  phandle_props = CrosConfigImpl.GetPhandleProperties()
+  phandle_props = CrosConfigDeviceTreeImpl.GetPhandleProperties()
   quoted = ['"%s"' % prop for prop in sorted(phandle_props)]
   print('''/*
  * This is a generated file, DO NOT EDIT!'
@@ -243,9 +243,6 @@ def GetParser(description):
   parser.add_argument('-c', '--config',
                       help='Override the master config file path. Use - for '
                            'stdin.')
-  parser.add_argument('--nocompare-formats', action='store_false',
-                      help="Don't compare FDT result against YAML result when "
-                           'both files are present.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on.')
   parser.add_argument('-y', '--yaml', action='store_true',
@@ -358,9 +355,7 @@ def main(argv=None):
   elif opts.subcommand == 'write-phandle-properties':
     WritePhandleProperties()
     return
-  # We cannot compare stdin since we don't have the other format.
-  config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None,
-                      not opts.nocompare_formats and opts.config != '-')
+  config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None)
   # Get all models we are invoking on (if any).
   model = None
   if opts.model:

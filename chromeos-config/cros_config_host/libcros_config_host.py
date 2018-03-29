@@ -1,7 +1,6 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Chrome OS Configuration access library.
 
 Provides build-time access to the master configuration on the host. It is used
@@ -56,23 +55,16 @@ BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 #       same as the model, since that is what we use for signature ID. But for
 #       zero-touch whitelabel this is 'sig-id-in-customization-id' since we do
 #       not know the signature ID until we look up in VPD.
-FirmwareInfo = namedtuple(
-    'FirmwareInfo',
-    ['model', 'shared_model', 'key_id', 'have_image',
-     'bios_build_target', 'ec_build_target', 'main_image_uri',
-     'main_rw_image_uri', 'ec_image_uri', 'pd_image_uri',
-     'extra', 'create_bios_rw_image', 'tools', 'sig_id'])
+FirmwareInfo = namedtuple('FirmwareInfo', [
+    'model', 'shared_model', 'key_id', 'have_image', 'bios_build_target',
+    'ec_build_target', 'main_image_uri', 'main_rw_image_uri', 'ec_image_uri',
+    'pd_image_uri', 'extra', 'create_bios_rw_image', 'tools', 'sig_id'
+])
 
 UNIBOARD_DTB_INSTALL_DIR = 'usr/share/chromeos-config'
 
 # We support two configuration file format
 (FORMAT_FDT, FORMAT_YAML) = range(2)
-
-# We allow comparing two different config formats:
-# - Never compare (just use the config format provided)
-# - Compare if we can find a config file for the other format
-# - Require that both formats are present
-(COMPARE_NEVER, COMPARE_IF_PRESENT, COMPARE_ALWAYS) = range(3)
 
 class PathComponent(object):
   """A component in a directory/file tree
@@ -83,6 +75,7 @@ class PathComponent(object):
       key: Name of child
       value: PathComponent object for child
   """
+
   def __init__(self, name):
     self.name = name
     self.children = dict()
@@ -138,9 +131,10 @@ def GetFilename(node_path, props, fname_template):
   try:
     return template.format(props, **props)
   except KeyError as e:
-    raise ValueError(("node '%s': Format string '%s' has properties '%s' " +
-                      "but lacks '%s'") %
-                     (node_path, template, props.keys(), e.message))
+    raise ValueError(
+        ("node '%s': Format string '%s' has properties '%s' " + "but lacks '%s'"
+        ) % (node_path, template, props.keys(), e.message))
+
 
 def GetPropFilename(node_path, props, fname_prop):
   """Create a filename based on the given template and properties
@@ -157,25 +151,400 @@ def GetPropFilename(node_path, props, fname_prop):
   return GetFilename(node_path, props, template)
 
 
-class CrosConfigImpl(object):
-  """The ChromeOS Configuration API for the host.
+class DeviceConfig(object):
+  """Configuration for a unique Device/SKU/Product combination.
 
-  CrosConfigImpl is the top level API for accessing ChromeOS Configs from the
-  host.
+  Provides an abstraction layer between DTS/JSON for accessing config for a
+  unique Device/SKU/Product instance.
+  """
+
+  def GetName(self):
+    """Returns the name of the config.
+
+    Returns:
+      Name of he config
+    """
+    pass
+
+  def GetProperties(self, path):
+    """Returns a map of properties at the given config path.
+
+    Args:
+      path: Path to the config desired.
+
+    Returns:
+      A map of properties at the given config path.
+    """
+    pass
+
+  def GetFirmwareUris(self):
+    """Returns a list of (string) firmware URIs.
+
+    Generates and returns a list of firmeware URIs for this device. These URIs
+    can be used to pull down remote firmware packages.
+
+    Returns:
+      A list of (string) full firmware URIs, or an empty list on failure.
+    """
+    pass
+
+  def GetTouchFirmwareFiles(self):
+    """Get a list of unique touch firmware files
+
+    Returns:
+      List of TouchFile objects representing the touch firmware referenced
+        by this model
+    """
+    pass
+
+  def GetBspTarFiles(self):
+    """Get a list of tarfiles needed by the BSP ebuild for this device.
+
+    Returns:
+      List of tarfile filenames.
+    """
+    pass
+
+  def GetArcFiles(self):
+    """Get a list of arc++ files for this device
+
+    Returns:
+      List of BaseFile objects representing the arc++ files needed.
+    """
+    pass
+
+  def GetAudioFiles(self):
+    """Get a list of audio files
+
+    Returns:
+      List of BaseFile objects representing the audio files referenced
+      by this device.
+    """
+    pass
+
+  def GetThermalFiles(self):
+    """Get a list of thermal files
+
+    Returns:
+      List of BaseFile objects representing the thermal files referenced
+      by this device.
+    """
+    pass
+
+  def GetFirmwareInfo(self):
+    """Gets the FirmewareInfo instance for a given device.
+
+    Returns:
+      Returns the FirmwareInfo instance.
+    """
+    pass
+
+  def GetTouchBspUris(self):
+    """Get a list of URIs needed by the BSP ebuild for this model
+
+    Returns:
+      List of URIs needed.
+    """
+    pass
+
+  def GetWallpaperFiles(self):
+    """Get a set of wallpaper files used for this model"""
+    pass
+
+
+class CrosConfigBaseImpl(object):
+  """The ChromeOS Configuration API for the host."""
+
+  def GetDeviceConfigs(self):
+    """Returns a list of (DeviceConfig) instances.
+
+    Returns:
+      A list of (DeviceConfig) instances.
+    """
+    pass
+
+  def GetFirmwareUris(self):
+    """Returns a list of (string) firmware URIs.
+
+    Generates and returns a list of firmeware URIs for all device. These URIs
+    can be used to pull down remote firmware packages.
+
+    Returns:
+      A list of (string) full firmware URIs, or an empty list on failure.
+    """
+    uris = set()
+    for device in self.GetDeviceConfigs():
+      uris.update(set(device.GetFirmwareUris()))
+    return sorted(list(uris))
+
+  def GetTouchFirmwareFiles(self):
+    """Get a list of unique touch firmware files for all devices
+
+    These files may come from ${FILESDIR} or from a tar file in BCS.
+
+    Returns:
+      List of TouchFile objects representing all the touch firmware referenced
+      by all devices
+    """
+    file_set = set()
+    for device in self.GetDeviceConfigs():
+      for files in device.GetTouchFirmwareFiles():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
+
+  def GetBcsUri(self, overlay, path):
+    """Form a valid BCS URI for downloading files.
+
+    Args:
+      overlay: Name of overlay (e.g. 'reef-private')
+      path: Path to file in overlay (e.g. 'chromeos-base/'
+        'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2')
+
+    Returns:
+      Valid BCS URI to download from
+    """
+    if not overlay.startswith('overlay'):
+      return None
+    # Strip "overlay-" from bcs_overlay.
+    bcs_overlay = overlay[8:]
+    return (
+        'gs://chromeos-binaries/HOME/bcs-%(bcs)s/overlay-%(bcs)s/%(path)s' % {
+            'bcs': bcs_overlay,
+            'path': path
+        })
+
+  def GetBspTarFiles(self):
+    """Get a list of tarfiles needed by the BSP ebuild
+
+    It is possible to upload tarfiles to BCS which contain firmware used by the
+    BSP ebuild. These need to be unpacked so that the files are available to be
+    installed by the BSP ebuild.
+
+    The files are stored in distdir by portage, so we can locate them there.
+
+    Returns:
+      List of tarfile filenames, each a string
+    """
+    tarfile_set = set()
+    for device in self.GetDeviceConfigs():
+      for fname in device.GetBspTarFiles():
+        tarfile_set.add(fname)
+
+    return sorted(tarfile_set)
+
+  def GetArcFiles(self):
+    """Get a list of unique Arc++ files for all devices
+
+    Returns:
+      List of BaseFile objects representing all the arc++ files referenced
+      by all devices
+    """
+    file_set = set()
+    for device in self.GetDeviceConfigs():
+      for files in device.GetArcFiles():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
+
+  def GetAudioFiles(self):
+    """Get a list of unique audio files for all models
+
+    Returns:
+      List of BaseFile objects representing all the audio files referenced
+      by all models
+    """
+    file_set = set()
+    for device in self.GetDeviceConfigs():
+      for files in device.GetAudioFiles():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
+
+  def GetFirmwareBuildTargets(self, target_type):
+    """Returns a list of all firmware build-targets of the given target type.
+
+    Args:
+      target_type: A string type for the build-targets to return
+
+    Returns:
+      A list of all build-targets of the given type, for all models.
+    """
+    firmware_filter = os.getenv('FW_NAME')
+    build_targets = []
+    for device in self.GetDeviceConfigs():
+      device_targets = device.GetProperties('/firmware/build-targets')
+      # Skip nodes with no build targets
+      if not device_targets:
+        continue
+
+      # TODO(teravest): Add a name field and use here instead of coreboot.
+      key = device_targets['coreboot']
+      if firmware_filter and key != firmware_filter:
+        continue
+      if target_type in device_targets:
+        build_targets.append(device_targets[target_type])
+      if target_type == 'ec':
+        if 'cr50' in device_targets:
+          build_targets.append(device_targets['cr50'])
+    return sorted(set(build_targets))
+
+  def GetFirmwareBuildCombinations(self, components):
+    """Get named firmware build combinations for all devices.
+
+    Args:
+      components: List of firmware components to get target combinations for.
+
+    Returns:
+      OrderedDict containing firmware combinations
+        key: combination name
+        value: list of firmware targets for specified types
+
+    Raises:
+      ValueError if a collision is encountered for named combinations.
+    """
+    firmware_filter = os.getenv('FW_NAME')
+
+    combos = OrderedDict()
+    for device in self.GetDeviceConfigs():
+      device_targets = device.GetProperties('/firmware/build-targets')
+      # Skip device_targetss with no build targets
+      if not device_targets:
+        continue
+      targets = [device_targets[c] for c in components]
+
+      # Always name firmware combinations after the 'coreboot' name.
+      # TODO(teravest): Add a 'name' field.
+      key = device_targets['coreboot']
+      if firmware_filter and key != firmware_filter:
+        continue
+
+      if key in combos and targets != combos[key]:
+        raise ValueError('Colliding firmware combinations found for key %s: '
+                         '%s, %s' % (key, targets, combos[key]))
+      combos[key] = targets
+    return OrderedDict(sorted(combos.iteritems()))
+
+  def GetThermalFiles(self):
+    """Get a list of unique thermal files for all models
+
+    Returns:
+      List of BaseFile objects representing all the audio files referenced
+      by all devices
+    """
+    file_set = set()
+    for device in self.GetDeviceConfigs():
+      for files in device.GetThermalFiles():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
+
+  def ShowTree(self, base_path, tree):
+    print('%-10s%s' % ('Size', 'Path'))
+    tree.ShowTree(base_path)
+
+  def GetFileTree(self):
+    """Get a tree of all files installed by the config
+
+    This looks at all available config that installs files in the root and
+    returns them as a tree structure. This can be passed to ShowTree(), which
+    is the only feature currently implemented which uses this tree.
+
+    Returns:
+        PathComponent object containin the root component
+    """
+    paths = set()
+    for item in self.GetAudioFiles():
+      paths.add(item.dest)
+    for item in self.GetTouchFirmwareFiles():
+      paths.add(item.dest)
+      paths.add(item.symlink)
+    root = PathComponent('')
+    for path in paths:
+      root.AddPath(path[1:])
+
+    return root
+
+  def GetModelList(self):
+    """Return a list of models
+
+    Returns:
+      List of model names, each a string
+    """
+    return sorted(set([device.GetName() for device in self.GetDeviceConfigs()]))
+
+  def GetFirmwareScript(self):
+    """Obtain the packer script to use. Always updater4.sh
+
+    Returns:
+      Filename of packer script to use (e.g. 'updater4.sh')
+    """
+    return 'updater4.sh'
+
+  def GetFirmwareInfo(self):
+    firmware_info = OrderedDict()
+    for name in self.GetModelList():
+      for device in self.GetDeviceConfigs():
+        if device.GetName() == name:
+          firmware_info.update(device.GetFirmwareInfo())
+    return firmware_info
+
+  def GetTouchBspUris(self):
+    """Get the touch firmware BSP file URI
+
+    Returns:
+      URI of touch firmware file to use, or None if none
+    """
+    file_set = set()
+    for device in self.GetDeviceConfigs():
+      for files in device.GetTouchBspUris():
+        file_set.add(files)
+
+    return file_set
+
+  def GetBspUris(self):
+    """Gets a list of URIs containing files required by the BSP
+
+    This looks through the subsystems which support BCS (Binary Component
+    Server) storage and returns a list of URIs that the config needs. Each is
+    a tar file which is downloaded from BCS using the SRC_URI mechanism in the
+    ebuild. Once it is downloaded, individual files within the archive can
+    be accessed and installed.
+
+    Returns:
+      List of URIs found (which may be empty)
+    """
+    return list(self.GetTouchBspUris())
+
+  def GetWallpaperFiles(self):
+    """Get a list of wallpaper files used for all models"""
+    wallpapers = set()
+    for device in self.GetDeviceConfigs():
+      wallpapers |= device.GetWallpaperFiles()
+    return sorted(wallpapers)
+
+
+class CrosConfigDeviceTreeImpl(CrosConfigBaseImpl):
+  """Device tree specific impl of the CrosConfigInterface.
 
   Properties:
-    models: All models in the CrosConfigImpl tree, in the form of a dictionary:
-            <model name: string, model: CrosConfigImpl.Node>
+    models: All models in the CrosConfigDeviceTreeImpl tree, in the form of a
+            dictionary:
+            <model name: string, model: CrosConfigDeviceTreeImpl.Node>
     phandle_props: Set of properties which can be phandles (i.e. point to
         another part of the config)
     root: Root node (CrosConigImpl.Node object)
     validator: Validator for the config (CrosConfigValidator object)
   """
+
   def __init__(self, infile):
     self.infile = infile
     self.models = OrderedDict()
     self.validator = validate_config.GetValidator()
     self.phandle_props = self.validator.GetPhandleProps()
+
+  def GetDeviceConfigs(self):
+    return self.models.values()
 
   def _GetProperty(self, absolute_path, property_name):
     """Internal function to read a property from anywhere in the tree
@@ -215,207 +584,6 @@ class CrosConfigImpl(object):
     """
     return self.family.PathProperty(relative_path, property_name)
 
-  def GetFirmwareUris(self):
-    """Returns a list of (string) firmware URIs.
-
-    Generates and returns a list of firmeware URIs for all model. These URIs
-    can be used to pull down remote firmware packages.
-
-    Returns:
-      A list of (string) full firmware URIs, or an empty list on failure.
-    """
-    uris = set()
-    for model in self.models.values():
-      uris.update(set(model.GetFirmwareUris()))
-    return sorted(list(uris))
-
-  def GetTouchFirmwareFiles(self):
-    """Get a list of unique touch firmware files for all models
-
-    These files may come from ${FILESDIR} or from a tar file in BCS.
-
-    Returns:
-      List of TouchFile objects representing all the touch firmware referenced
-      by all models
-    """
-    file_set = set()
-    for model in self.models.values():
-      for files in model.GetTouchFirmwareFiles().values():
-        file_set.add(files)
-
-    return sorted(file_set, key=lambda files: files.source)
-
-  def GetBcsUri(self, overlay, path):
-    """Form a valid BCS URI for downloading files.
-
-    Args:
-      overlay: Name of overlay (e.g. 'reef-private')
-      path: Path to file in overlay (e.g. 'chromeos-base/'
-        'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2')
-
-    Returns:
-      Valid BCS URI to download from
-    """
-    if not overlay.startswith('overlay'):
-      return None
-    # Strip "overlay-" from bcs_overlay.
-    bcs_overlay = overlay[8:]
-    return ('gs://chromeos-binaries/HOME/bcs-%(bcs)s/overlay-%(bcs)s/%(path)s' %
-            {'bcs': bcs_overlay, 'path': path})
-
-  def GetBspTarFiles(self):
-    """Get a list of tarfiles needed by the BSP ebuild
-
-    It is possible to upload tarfiles to BCS which contain firmware used by the
-    BSP ebuild. These need to be unpacked so that the files are available to be
-    installed by the BSP ebuild.
-
-    The files are stored in distdir by portage, so we can locate them there.
-
-    Returns:
-      List of tarfile filenames, each a string
-    """
-    tarfile_set = set()
-    for model in self.models.values():
-      for fname in model.GetBspTarFiles().values():
-        tarfile_set.add(fname)
-
-    return sorted(tarfile_set)
-
-  def GetArcFiles(self):
-    """Get a list of unique Arc++ files for all models
-
-    Returns:
-      List of BaseFile objects representing all the arc++ files referenced
-      by all models
-    """
-    file_set = set()
-    for model in self.models.values():
-      for files in model.GetArcFiles().values():
-        file_set.add(files)
-
-    return sorted(file_set, key=lambda files: files.source)
-
-  def GetAudioFiles(self):
-    """Get a list of unique audio files for all models
-
-    Returns:
-      List of BaseFile objects representing all the audio files referenced
-      by all models
-    """
-    file_set = set()
-    for model in self.models.values():
-      for files in model.GetAudioFiles().values():
-        file_set.add(files)
-
-    return sorted(file_set, key=lambda files: files.source)
-
-  def GetFirmwareBuildTargets(self, target_type):
-    """Returns a list of all firmware build-targets of the given target type.
-
-    Args:
-      target_type: A string type for the build-targets to return
-
-    Returns:
-      A list of all build-targets of the given type, for all models.
-    """
-    firmware_filter = os.getenv('FW_NAME')
-    build_targets = []
-    for model in self.models.itervalues():
-      node = model.PathNode('/firmware/build-targets')
-      # Skip nodes with no build targets
-      if not node:
-        continue
-
-      # TODO(teravest): Add a name field and use here instead of coreboot.
-      key = node.GetStr('coreboot')
-      if firmware_filter and key != firmware_filter:
-        continue
-      target = node.GetStr(target_type)
-      if target:
-        build_targets.append(target)
-      if target_type == 'ec':
-        target = node.GetStr('cr50')
-        if target:
-          build_targets.append(target)
-    return sorted(set(build_targets))
-
-  def GetFirmwareBuildCombinations(self, components):
-    """Get named firmware build combinations for all models.
-
-    Args:
-      components: List of firmware components to get target combinations for.
-
-    Returns:
-      OrderedDict containing firmware combinations
-        key: combination name
-        value: list of firmware targets for specified types
-
-    Raises:
-      ValueError if a collision is encountered for named combinations.
-    """
-    firmware_filter = os.getenv('FW_NAME')
-
-    combos = OrderedDict()
-    for model in self.models.itervalues():
-      node = model.PathNode('/firmware/build-targets')
-      # Skip nodes with no build targets
-      if not node:
-        continue
-      targets = [node.properties.get(c).value for c in components]
-
-      # Always name firmware combinations after the 'coreboot' name.
-      # TODO(teravest): Add a 'name' field.
-      key = node.GetStr('coreboot')
-      if firmware_filter and key != firmware_filter:
-        continue
-
-      if key in combos and targets != combos[key]:
-        raise ValueError('Colliding firmware combinations found for key %s: '
-                         '%s, %s' % (key, targets, combos[key]))
-      combos[key] = targets
-    return OrderedDict(sorted(combos.iteritems()))
-
-  def GetThermalFiles(self):
-    """Get a list of unique thermal files for all models
-
-    Returns:
-      List of BaseFile objects representing all the audio files referenced
-      by all models
-    """
-    file_set = set()
-    for model in self.models.values():
-      for files in model.GetThermalFiles().values():
-        file_set.add(files)
-
-    return sorted(file_set, key=lambda files: files.source)
-
-  def ShowTree(self, base_path, tree):
-    print('%-10s%s' % ('Size', 'Path'))
-    tree.ShowTree(base_path)
-
-  def GetFileTree(self):
-    """Get a tree of all files installed by the config
-
-    This looks at all available config that installs files in the root and
-    returns them as a tree structure. This can be passed to ShowTree(), which
-    is the only feature currently implemented which uses this tree.
-
-    Returns:
-        PathComponent object containin the root component
-    """
-    paths = set()
-    for item in self.GetAudioFiles():
-      paths.add(item.dest)
-    for item in self.GetTouchFirmwareFiles():
-      paths.add(item.dest)
-      paths.add(item.symlink)
-    root = PathComponent('')
-    for path in paths:
-      root.AddPath(path[1:])
-
-    return root
-
   @staticmethod
   def GetTargetDirectories():
     """Gets a dict of directory targets for each PropFile property
@@ -440,63 +608,7 @@ class CrosConfigImpl(object):
     validator = validate_config.GetValidator()
     return validator.GetPhandleProps()
 
-  def GetModelList(self):
-    """Return a list of models
-
-    Returns:
-      List of model names, each a string
-    """
-    return sorted(self.models.keys())
-
-  def GetFirmwareScript(self):
-    """Obtain the packer script to use for this family
-
-    Returns:
-      Filename of packer script to use (e.g. 'updater4.sh')
-    """
-    return self.GetFamilyProperty('/firmware', 'script').value
-
-  def GetFirmwareInfo(self):
-    firmware_info = OrderedDict()
-    for name in self.GetModelList():
-      firmware_info.update(self.models[name].GetFirmwareInfo())
-    return firmware_info
-
-  def GetTouchBspUris(self):
-    """Get the touch firmware BSP file URI
-
-    Returns:
-      URI of touch firmware file to use, or None if none
-    """
-    file_set = set()
-    for model in self.models.values():
-      for files in model.GetTouchBspUris().values():
-        file_set.add(files)
-
-    return file_set
-
-  def GetBspUris(self):
-    """Gets a list of URIs containing files required by the BSP
-
-    This looks through the subsystems which support BCS (Binary Component
-    Server) storage and returns a list of URIs that the config needs. Each is
-    a tar file which is downloaded from BCS using the SRC_URI mechanism in the
-    ebuild. Once it is downloaded, individual files within the archive can
-    be accessed and installed.
-
-    Returns:
-      List of URIs found (which may be empty)
-    """
-    return list(self.GetTouchBspUris())
-
-  def GetWallpaperFiles(self):
-    """Get a list of wallpaper files used for all models"""
-    wallpapers = set()
-    for model in self.models.values():
-      wallpapers |= model.GetWallpaperFiles()
-    return sorted(wallpapers)
-
-  class Node(object):
+  class Node(DeviceConfig):
     """Represents a single node in the CrosConfig tree, including Model.
 
     A node can have several subnodes nodes, as well as several properties. Both
@@ -506,16 +618,29 @@ class CrosConfigImpl(object):
     Properties:
       name: The name of the this node.
       subnodes: Child nodes, in the form of a dictionary:
-                <node name: string, child node: CrosConfigImpl.Node>
+                <node name: string, child node: CrosConfigDeviceTreeImpl.Node>
       properties: All properties attached to this node in the form of a
-                  dictionary: <name: string, property: CrosConfigImpl.Property>
+                  dictionary: <name: string,
+                  property: CrosConfigDeviceTreeImpl.Property>
     """
+
     def __init__(self, cros_config):
       self.cros_config = cros_config
       self.subnodes = OrderedDict()
       self.properties = OrderedDict()
       self.default = None
       self.submodels = {}
+
+    def GetName(self):
+      return self.name
+
+    def GetProperties(self, path):
+      result = {}
+      node = self.PathNode(path)
+      if node and node.properties:
+        for prop in node.properties.values():
+          result[prop.name] = prop.value
+      return result
 
     def GetPath(self):
       """Get the full path to a node, implemented by subclasses.
@@ -544,14 +669,16 @@ class CrosConfigImpl(object):
       # name of the phandle, but at some point this will move to merging the
       # target node's properties with this node, so this whole function will
       # become unnecessary.
-      share_prop = [i for i in self.cros_config.phandle_props
-                    if i in self.properties or i in self.subnodes]
+      share_prop = [
+          i for i in self.cros_config.phandle_props
+          if i in self.properties or i in self.subnodes
+      ]
       if share_prop:
         return self.FollowPhandle(share_prop[0])
       return None
 
     def PathNode(self, relative_path):
-      """Returns the CrosConfigImpl.Node at the relative path.
+      """Returns the CrosConfigDeviceTreeImpl.Node at the relative path.
 
       This method is useful for accessing a nested child object at a relative
       path from a Node (or Model). The path must be separated with '/'
@@ -561,7 +688,7 @@ class CrosConfigImpl(object):
         relative_path: A relative path string separated by '/', '/thermal'
 
       Returns:
-        A CrosConfigImpl.Node at the path, or None if it doesn't exist.
+        A CrosConfigDeviceTreeImpl.Node at the path, or None if it doesn't exist
       """
       if not relative_path:
         return self
@@ -592,7 +719,7 @@ class CrosConfigImpl(object):
         property_name: Name of property to find
 
       Returns:
-        CrosConfigImpl.Property object that waws found, or None if none
+        CrosConfigDeviceTreeImpl.Property object that was found, or None if none
       """
       return self.properties.get(property_name)
 
@@ -751,14 +878,6 @@ class CrosConfigImpl(object):
       return submodel.PathProperty(relative_path, property_name)
 
     def GetFirmwareUris(self):
-      """Returns a list of (string) firmware URIs.
-
-      Generates and returns a list of firmeware URIs for this model. These URIs
-      can be used to pull down remote firmware packages.
-
-      Returns:
-        A list of (string) full firmware URIs, or an empty list on failure.
-      """
       firmware = self.PathNode('/firmware')
       if not firmware or firmware.GetBool('no-firmware'):
         return []
@@ -769,15 +888,21 @@ class CrosConfigImpl(object):
       # Strip "overlay-" from bcs_overlay
       bcs_overlay = props['bcs-overlay'][8:]
       ebuild_name = bcs_overlay.split('-')[0]
-      valid_images = [p for n, p in props.iteritems()
-                      if n.endswith('-image') and p.startswith('bcs://')]
+      valid_images = [
+          p for n, p in props.iteritems()
+          if n.endswith('-image') and p.startswith('bcs://')
+      ]
       # Strip "bcs://" from bcs_from images (to get the file names only)
       file_names = [p[6:] for p in valid_images]
       uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
                     'chromeos-base/chromeos-firmware-{ebuild_name}/{fname}')
-      uris = [uri_format.format(bcs=bcs_overlay, model=self.name, fname=fname,
-                                ebuild_name=ebuild_name)
-              for fname in file_names]
+      uris = [
+          uri_format.format(
+              bcs=bcs_overlay,
+              model=self.name,
+              fname=fname,
+              ebuild_name=ebuild_name) for fname in file_names
+      ]
       return sorted(uris)
 
     def SetupModelProps(self, props):
@@ -785,12 +910,6 @@ class CrosConfigImpl(object):
       props['MODEL'] = self.name.upper()
 
     def GetTouchFirmwareFiles(self):
-      """Get a list of unique touch firmware files
-
-      Returns:
-        List of TouchFile objects representing the touch firmware referenced
-          by this model
-      """
       files = {}
       for device_name, props, dirname, tarball in self.GetTouchBspInfo():
         # Add a special property for the capitalised model name
@@ -800,14 +919,14 @@ class CrosConfigImpl(object):
             '/touch/ANY', fw_prop_name)
         if not fw_target_dir:
           raise ValueError(("node '%s': Property '%s' does not have a " +
-                            "target directory (internal error)") %
+                            'target directory (internal error)') %
                            (device_name, fw_prop_name))
         sym_prop_name = 'firmware-sym'
         sym_target_dir = self.cros_config.validator.GetModelTargetDir(
             '/touch/ANY', 'firmware-symlink')
         if not sym_target_dir:
           raise ValueError(("node '%s': Property '%s' does not have a " +
-                            "target directory (internal error)") %
+                            'target directory (internal error)') %
                            (device_name, sym_prop_name))
         src = GetPropFilename(self.GetPath(), props, fw_prop_name)
         dest = src
@@ -819,12 +938,10 @@ class CrosConfigImpl(object):
         else:
           src_dir = dirname
           src = os.path.join(src_dir, src)
-        files[device_name] = TouchFile(
-            src,
-            os.path.join(fw_target_dir, dest),
-            os.path.join(sym_target_dir, sym_fname))
+        files[device_name] = TouchFile(src, os.path.join(fw_target_dir, dest),
+                                       os.path.join(sym_target_dir, sym_fname))
 
-      return files
+      return files.values()
 
     def GetTouchBspInfo(self, need_filesdir=True):
       distdir = os.getenv('DISTDIR')
@@ -849,34 +966,20 @@ class CrosConfigImpl(object):
             yield [device.name, props, filesdir, None]
 
     def GetBspTarFiles(self):
-      """Get a dict of tarfiles needed by the BSP ebuild for this model
-
-      Returns:
-        Dict of tarfile filenames:
-          key: touch device which needs this tarfile
-          value: filename of tarfile
-      """
       files = {}
       for device_name, _, distdir, tarball in self.GetTouchBspInfo(False):
         if tarball:
           fname = os.path.join(distdir, os.path.basename(tarball))
           files[device_name] = fname
-      return files
+      return files.values()
 
     def GetTouchBspUris(self):
-      """Get a dict of URIs needed by the BSP ebuild for this model
-
-      Returns:
-        Dict of URIs:
-          key: touch device which needs this URI
-          value: URI (string)
-      """
       files = {}
       for device_name, props, _, tarball in self.GetTouchBspInfo(False):
         if tarball:
-          files[device_name] = self.cros_config.GetBcsUri(props['overlay'],
-                                                          tarball)
-      return files
+          files[device_name] = self.cros_config.GetBcsUri(
+              props['overlay'], tarball)
+      return files.values()
 
     def AllPathNodes(self, relative_path, whitelabel=False):
       """List all path nodes which match the relative path (including submodels)
@@ -909,14 +1012,6 @@ class CrosConfigImpl(object):
       return path_nodes
 
     def GetArcFiles(self):
-      """Get a dict of arc++ files
-
-      Returns:
-        Dict of BaseFile objects representing the arc++ files referenced
-        by this model:
-          key: property
-          value: BaseFile object
-      """
       files = {}
       prop = 'hw-features'
       arc = self.PathNode('/arc')
@@ -925,19 +1020,12 @@ class CrosConfigImpl(object):
         files['base'] = BaseFile(
             arc.properties[prop].value,
             os.path.join(target_dir, arc.properties[prop].value))
-      return files
+      return files.values()
 
     def GetAudioFiles(self):
-      """Get a list of audio files
-
-      Returns:
-        Dict of BaseFile objects representing the audio files referenced
-        by this model:
-          key: (model, property)
-          value: BaseFile object
-      """
       card = None  # To keep pylint happy since we use it in this function:
       name = ''
+
       def _AddAudioFile(prop_name, dest_template, dirname=''):
         """Helper to add a single audio file
 
@@ -948,15 +1036,13 @@ class CrosConfigImpl(object):
           target_dir = self.cros_config.validator.GetModelTargetDir(
               '/audio/ANY', prop_name)
           if not target_dir:
-            raise ValueError(("node '%s': Property '%s' does not have a " +
-                              "target directory (internal error)") %
-                             (card.name, prop_name))
+            raise ValueError(
+                ("node '%s': Property '%s' does not have a " +
+                 'target directory (internal error)') % (card.name, prop_name))
           files[name, prop_name] = BaseFile(
               GetPropFilename(self.GetPath(), props, prop_name),
-              os.path.join(
-                  target_dir,
-                  dirname,
-                  GetFilename(self.GetPath(), props, dest_template)))
+              os.path.join(target_dir, dirname,
+                           GetFilename(self.GetPath(), props, dest_template)))
 
       files = {}
       audio_nodes = self.AllPathNodes('/audio')
@@ -968,15 +1054,16 @@ class CrosConfigImpl(object):
 
           cras_dir = props.get('cras-config-dir')
           if not cras_dir:
-            raise ValueError(("node '%s': Should have a cras-config-dir") %
-                             (card.GetPath()))
+            raise ValueError(
+                ("node '%s': Should have a cras-config-dir") % (card.GetPath()))
           _AddAudioFile('volume', '{card}', cras_dir)
           _AddAudioFile('dsp-ini', 'dsp.ini', cras_dir)
 
           # Allow renaming this file to something other than HiFi.conf
-          _AddAudioFile('hifi-conf',
-                        os.path.join('{card}.{ucm-suffix}',
-                                     os.path.basename(props['hifi-conf'])))
+          _AddAudioFile(
+              'hifi-conf',
+              os.path.join('{card}.{ucm-suffix}',
+                           os.path.basename(props['hifi-conf'])))
           _AddAudioFile('alsa-conf',
                         '{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf')
 
@@ -986,26 +1073,18 @@ class CrosConfigImpl(object):
             _AddAudioFile('topology-bin',
                           os.path.basename(props.get('topology-bin')))
 
-      return files
+      return files.values()
 
     def GetThermalFiles(self):
-      """Get a dict of thermal files
-
-      Returns:
-        Dict of BaseFile objects representing the thermal files referenced
-        by this model:
-          key: property
-          value: BaseFile object
-      """
       files = {}
       prop = 'dptf-dv'
       for name, thermal in self.AllPathNodes('/thermal').iteritems():
-        target_dir = self.cros_config.validator.GetModelTargetDir('/thermal',
-                                                                  prop)
+        target_dir = self.cros_config.validator.GetModelTargetDir(
+            '/thermal', prop)
         files[name] = BaseFile(
             thermal.properties[prop].value,
             os.path.join(target_dir, thermal.properties[prop].value))
-      return files
+      return files.values()
 
     def GetFirmwareInfo(self):
       whitelabel = self.FollowPhandle('whitelabel')
@@ -1070,11 +1149,10 @@ class CrosConfigImpl(object):
       else:
         sig_id = self.name
 
-      info = FirmwareInfo(
-          self.name, shared_model, key_id, have_image,
-          bios_build_target, ec_build_target,
-          main_image_uri, main_rw_image_uri, ec_image_uri,
-          pd_image_uri, extra, create_bios_rw_image, tools, sig_id)
+      info = FirmwareInfo(self.name, shared_model, key_id, have_image,
+                          bios_build_target, ec_build_target, main_image_uri,
+                          main_rw_image_uri, ec_image_uri, pd_image_uri, extra,
+                          create_bios_rw_image, tools, sig_id)
 
       # Handle the alternative schema, where whitelabels are in a single model
       # and have whitelabel tags to distinguish them.
@@ -1087,7 +1165,9 @@ class CrosConfigImpl(object):
           key_id = whitelabel.GetStr('key-id')
           whitelabel_name = '%s-%s' % (base_model.name, whitelabel.name)
           result[whitelabel_name] = info._replace(
-              model=whitelabel_name, key_id=key_id, have_image=False,
+              model=whitelabel_name,
+              key_id=key_id,
+              have_image=False,
               sig_id=whitelabel_name)
       return result
 
@@ -1102,6 +1182,7 @@ class CrosConfigImpl(object):
 
   class Property(object):
     """Represents a single property in a ChromeOS Configuration."""
+
     def __init__(self):
       pass
 
@@ -1117,190 +1198,10 @@ class CrosConfigImpl(object):
 import libcros_config_host_fdt
 import v2.libcros_config_host_json
 
-class CrosConfigBoth(object):
-  """A class that compares the results of FDT and YAML formats
 
-  This handles checking that calling API methods on both FDT and YAML formats
-  return the same results. If not, or if one of the formats is not available,
-  an error can be raised, depending on the value of compare_results.
-  """
-  def __init__(self, fname, compare_results):
-    """Constructor for the class
-
-    Properties:
-      _method_name: Method to call when _DoMethod() is called. This is updated
-          whenever a new API function is requested.
-
-    Args:
-      fname: Filename of one of the formats (the filename of the other is
-          figured out by replacing the filename extension)
-      compare_results: Type of config-format comparison to use (COMPARE_...)
-    """
-    self._method_name = None
-    self._compare_results = compare_results
-    base, _ = os.path.splitext(fname)
-    fdt_file = base + '.dtb'
-    yaml_file = base + '.yaml'
-    self.fdt = None
-    self.yaml = None
-    if os.path.exists(fdt_file):
-      with open(fdt_file) as infile:
-        self.fdt = libcros_config_host_fdt.CrosConfigFdt(infile)
-    if os.path.exists(yaml_file):
-      with open(yaml_file) as infile:
-        self.yaml = v2.libcros_config_host_json.CrosConfigJson(infile)
-
-    # If we have to have both files, check that now.
-    if compare_results == COMPARE_ALWAYS:
-      both_files_present = self.fdt and self.yaml
-      if not both_files_present:
-        raise ValueError('Warning: Could not load both FDT and YAML files (' +
-                         "'%s' and '%s')" % (fdt_file, yaml_file))
-
-  def _DoMethod(self, *args):
-    """Called to perform an API call into the FDT and YAML implementations
-
-    This calls both FDT and YAML API functions and checks that they return the
-    same result. If not, an error is raised.
-
-    Args:
-      args: That arguments to pass to the API call
-
-    Returns:
-      Result of calling the API function
-
-    Raises:
-      ValueError if we don't get the same result from FDT and YAML
-    """
-    fdt_result, yaml_result = None, None
-    if self.fdt:
-      fdt_method = getattr(self.fdt, self._method_name)
-      fdt_result = fdt_method(*args)
-    if self.yaml:
-      yaml_method = getattr(self.yaml, self._method_name)
-      yaml_result = yaml_method(*args)
-    # We don't need to worry about one of the results being missing, since if
-    # we care about that it was checked above (see 'both_files_present'). We
-    # assume that the methods never return None.
-    if fdt_result is not None and yaml_result is not None:
-      # We never return Node or Property from any API function, since it is an
-      # internal data structure. So we don't need to check equality here. When
-      # we do actually return some data, it will be checked.
-      result_is_primitive = (
-          not isinstance(fdt_result, CrosConfigImpl.Node) and
-          not isinstance(fdt_result, CrosConfigImpl.Property))
-      if result_is_primitive and fdt_result != yaml_result:
-        raise ValueError("Method '%s' results differ: fdt='%s', yaml='%s'",
-                         self._method_name, fdt_result, yaml_result)
-    # It doesn't matter which we return, since they are equivalent.
-    return fdt_result or yaml_result
-
-  def __getattr__(self, name):
-    """Returns an object which can be called to execute an API function
-
-    Args:
-      name: Name of API function to call
-
-    Returns:
-      A method which can be called to execute an API function
-    """
-    # Handle node.models as a special case. This collects a dict of models to
-    # return.
-    if name == 'models':
-      return {model: NodeBoth(self, '/chromeos/models/' + model)
-              for model in self.fdt.models}
-    self._method_name = name
-    return self._DoMethod
-
-
-class NodeBoth(object):
-  """Models a Node object which has both FDT and yaml versions
-
-  This class internally creates both types of Node and checks that the values
-  match.
-  """
-  def __init__(self, cros_config, path):
-    self._path = path
-    self._cros_config = cros_config
-    self._method_name = None
-    self.fdt_node = self._cros_config.fdt.GetNode(self._path)
-    self.yaml_node = self._cros_config.yaml.GetNode(self._path)
-
-  def _DoMethod(self, *args):
-    """Called to perform an API call into the FDT and YAML implementations
-
-    This calls both FDT and YAML API functions (at the Node level) and checks
-    that they return the same result. If not, an error is raised.
-
-    Args:
-      args: That arguments to pass to the API call
-
-    Returns:
-      Result of calling the API function
-
-    Raises:
-      ValueError if we don't get the same result from FDT and YAML
-    """
-    fdt_method = getattr(self.fdt_node, self._method_name)
-    fdt_result = fdt_method(*args)
-
-    yaml_method = getattr(self.yaml_node, self._method_name)
-    yaml_result = yaml_method(*args)
-    # We don't need to worry about one of the results being missing, since if
-    # we care about that, it was checked above (see 'both_files_present'). We
-    # assume that the methods never return None.
-    # We don't need to compare unless we have two results
-    if fdt_result is not None and yaml_result is not None:
-      fdt_compare, yaml_compare = fdt_result, yaml_result
-      # For properties, we want to compare just the value, not the Property
-      # object.
-      if isinstance(fdt_compare, CrosConfigImpl.Property):
-        fdt_compare = fdt_result.value
-        yaml_compare = yaml_result.value
-      # If it's a Node, we need to return both types of Node (fdt, yaml)
-      if isinstance(fdt_result, CrosConfigImpl.Node):
-        return NodeBoth(self._cros_config, fdt_result.GetPath())
-      elif fdt_compare != yaml_compare:
-        raise ValueError("Method '%s' results differ: fdt='%s', yaml='%s'",
-                         self._method_name, fdt_compare, yaml_compare)
-    # Once we decide that the results are the same, we can return either one
-    return fdt_result or yaml_result
-
-  def __getattr__(self, name):
-    """Handles accessing a Node method or member
-
-    Args:
-      name: Name of API function to call
-
-    Returns:
-      Either
-        - A method which can be called to execute an API function
-        - For members, the value of that member (either a name or a dict of
-            properties and their values)
-    """
-    # Handle node.name (for yaml) and node.properties as a special case
-    if name == 'name':
-      return os.path.basename(self._path)
-    elif name == 'properties':
-      fdt_props = self.fdt_node.properties
-      yaml_props = self.yaml_node.properties
-      ignore_props = self._cros_config.fdt.phandle_props | set(
-          ['default', 'linux,phandle', 'phandle', 'name'])
-      fdt_prop_values = {name: fdt_props[name].value
-                         for name in fdt_props if name not in ignore_props}
-      yaml_prop_values = {name: yaml_props[name].value
-                          for name in yaml_props if name not in ignore_props}
-      if fdt_prop_values != yaml_prop_values:
-        raise ValueError("Properties for '%s' differ: fdt='%s', yaml='%s'",
-                         self._path, fdt_prop_values, yaml_prop_values)
-      return fdt_props
-    self._method_name = name
-    return self._DoMethod
-
-
-def CrosConfig(fname=None, config_format=None,
-               compare_results=COMPARE_IF_PRESENT):
-  """Create a new CrosConfigImpl object
+def CrosConfig(fname=None,
+               config_format=None):
+  """Create a new CrosConfigBaseImpl object
 
   This is in a separate function to allow us to (in the future) support YAML,
   which will have a different means of creating the impl class.
@@ -1308,7 +1209,6 @@ def CrosConfig(fname=None, config_format=None,
   Args:
     fname: Filename of config file
     config_format: Configuration format to use (FORMAT_...)
-    compare_results: Type of config-format comparison to use (COMPARE_...)
   """
   if config_format is None:
     if fname and ('.yaml' in fname or '.json' in fname):
@@ -1323,12 +1223,7 @@ def CrosConfig(fname=None, config_format=None,
         os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_DIR,
         'config.' + ('dtb' if config_format == FORMAT_FDT else 'yaml'))
   if fname == '-':
-    if compare_results == COMPARE_ALWAYS:
-      raise ValueError('Cannot compare results from stdin')
     infile = sys.stdin
-  # TODO(shapiroc): Re-enable once YAML refactor is complete
-  # elif compare_results:
-  #  return CrosConfigBoth(fname, compare_results)
   else:
     infile = open(fname)
 
