@@ -595,7 +595,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 }
 
 bool SessionManagerImpl::SaveLoginPassword(
-    brillo::ErrorPtr* error, const dbus::FileDescriptor& in_password_fd) {
+    brillo::ErrorPtr* error, const base::ScopedFD& in_password_fd) {
   if (!device_policy_->InstallAttributesEnterpriseMode()) {
     // We only allow passwords to be saved for enterprise enrolled devices.
     LOG(ERROR) << "Attempting to save user password for non-enterprise "
@@ -604,7 +604,7 @@ bool SessionManagerImpl::SaveLoginPassword(
   }
 
   size_t data_size = 0;
-  if (!base::ReadFromFD(in_password_fd.value(),
+  if (!base::ReadFromFD(in_password_fd.get(),
                         reinterpret_cast<char*>(&data_size), sizeof(size_t))) {
     PLOG(ERROR) << "Could not read password size from file.";
     return false;
@@ -617,7 +617,7 @@ bool SessionManagerImpl::SaveLoginPassword(
   }
 
   auto password = password_provider::Password::CreateFromFileDescriptor(
-      in_password_fd.value(), data_size);
+      in_password_fd.get(), data_size);
 
   if (!password) {
     LOG(ERROR) << "Could not create Password from file descriptor.";
@@ -861,11 +861,11 @@ void SessionManagerImpl::HandleLockScreenDismissed() {
 }
 
 bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
-                                    const dbus::FileDescriptor& in_cred_fd,
+                                    const base::ScopedFD& in_cred_fd,
                                     const std::vector<std::string>& in_argv) {
   struct ucred ucred = {0};
   socklen_t len = sizeof(struct ucred);
-  if (!in_cred_fd.is_valid() || getsockopt(in_cred_fd.value(), SOL_SOCKET,
+  if (!in_cred_fd.is_valid() || getsockopt(in_cred_fd.get(), SOL_SOCKET,
                                            SO_PEERCRED, &ucred, &len) == -1) {
     PLOG(ERROR) << "Can't get peer creds";
     *error = CreateError("GetPeerCredsFailed", strerror(errno));
@@ -1057,7 +1057,7 @@ bool SessionManagerImpl::StartArcInstance(
     brillo::ErrorPtr* error,
     const std::vector<uint8_t>& in_request,
     std::string* out_container_instance_id,
-    dbus::FileDescriptor* out_fd) {
+    brillo::dbus_utils::FileDescriptor* out_fd) {
 #if USE_CHEETS
   // Stop the existing instance if it fails to continue to boot an existing
   // container. Using Unretained() is okay because the closure will be called
@@ -1089,10 +1089,9 @@ bool SessionManagerImpl::StartArcInstance(
     // There is nothing to do here, but since passing an invalid handle is not
     // allowed by the dbus binding, open /dev/null and return a handle to the
     // file.
-    dbus::FileDescriptor server_socket;
-    server_socket.PutValue(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
-    server_socket.CheckValidity();
-    *out_fd = std::move(server_socket);
+    base::ScopedFD server_socket(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
+    DCHECK(server_socket.is_valid());
+    *out_fd = server_socket.get();
 
     ignore_result(scoped_runner.Release());
     return true;
@@ -1142,7 +1141,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
 bool SessionManagerImpl::UpgradeArcContainer(
     brillo::ErrorPtr* error,
     const std::vector<uint8_t>& in_request,
-    dbus::FileDescriptor* out_fd) {
+    brillo::dbus_utils::FileDescriptor* out_fd) {
 #if USE_CHEETS
   // Stop the existing instance if it fails to continue to boot an existing
   // container. Using Unretained() is okay because the closure will be called
@@ -1545,7 +1544,7 @@ void SessionManagerImpl::StorePolicyInternalEx(
 }
 
 #if USE_CHEETS
-bool SessionManagerImpl::CreateArcServerSocket(dbus::FileDescriptor* out_fd,
+bool SessionManagerImpl::CreateArcServerSocket(base::ScopedFD* out_fd,
                                                brillo::ErrorPtr* error) {
   ScopedPlatformHandle socket_fd(
       system_->CreateServerHandle(NamedPlatformHandle(kArcBridgeSocketPath)));
@@ -1581,7 +1580,7 @@ bool SessionManagerImpl::CreateArcServerSocket(dbus::FileDescriptor* out_fd,
     return false;
   }
 
-  out_fd->PutValue(socket_fd.release());
+  out_fd->reset(socket_fd.release());
   return true;
 }
 
@@ -1672,7 +1671,7 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
 
 bool SessionManagerImpl::UpgradeArcContainerInternal(
     const UpgradeArcContainerRequest& request,
-    dbus::FileDescriptor* fd_out,
+    brillo::dbus_utils::FileDescriptor* fd_out,
     brillo::ErrorPtr* error_out) {
   pid_t pid = 0;
   if (!android_container_->GetContainerPID(&pid)) {
@@ -1682,12 +1681,12 @@ bool SessionManagerImpl::UpgradeArcContainerInternal(
     return false;
   }
   LOG(INFO) << "Container is running with PID " << pid;
-  dbus::FileDescriptor server_socket;
+  base::ScopedFD server_socket;
   if (!CreateArcServerSocket(&server_socket, error_out)) {
     DCHECK(*error_out);
     return false;
   }
-  server_socket.CheckValidity();
+  DCHECK(server_socket.is_valid());
 
   // |arc_start_time_| is initialized when the container is upgraded (rather
   // than when the mini-container starts) since we are interested in measuring
@@ -1769,7 +1768,7 @@ bool SessionManagerImpl::UpgradeArcContainerInternal(
 
   login_metrics_->StartTrackingArcUseTime();
 
-  *fd_out = std::move(server_socket);
+  *fd_out = server_socket.get();
   return true;
 }
 

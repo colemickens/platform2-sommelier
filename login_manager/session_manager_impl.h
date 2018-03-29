@@ -195,7 +195,7 @@ class SessionManagerImpl
       const std::vector<std::string>& in_extra_environment_variables,
       std::string* out_filepath) override;
   bool SaveLoginPassword(brillo::ErrorPtr* error,
-                         const dbus::FileDescriptor& in_password_fd) override;
+                         const base::ScopedFD& in_password_fd) override;
   bool StartSession(brillo::ErrorPtr* error,
                     const std::string& in_account_id,
                     const std::string& in_unique_identifier) override;
@@ -268,7 +268,7 @@ class SessionManagerImpl
   void HandleLockScreenDismissed() override;
 
   bool RestartJob(brillo::ErrorPtr* error,
-                  const dbus::FileDescriptor& in_cred_fd,
+                  const base::ScopedFD& in_cred_fd,
                   const std::vector<std::string>& in_argv) override;
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
@@ -286,13 +286,13 @@ class SessionManagerImpl
   bool StartArcInstance(brillo::ErrorPtr* error,
                         const std::vector<uint8_t>& in_request,
                         std::string* out_container_instance_id,
-                        dbus::FileDescriptor* out_fd) override;
+                        brillo::dbus_utils::FileDescriptor* out_fd) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
                              const std::vector<uint8_t>& in_request,
                              std::string* out_container_instance_id) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,
                            const std::vector<uint8_t>& in_request,
-                           dbus::FileDescriptor* out_fd) override;
+                           brillo::dbus_utils::FileDescriptor* out_fd) override;
   bool StopArcInstance(brillo::ErrorPtr* error) override;
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
                             uint32_t in_restriction_state) override;
@@ -390,8 +390,7 @@ class SessionManagerImpl
 
 #if USE_CHEETS
   // Creates a server socket for ARC and stores the descriptor in |out_fd|.
-  bool CreateArcServerSocket(dbus::FileDescriptor* out_fd,
-                             brillo::ErrorPtr* error);
+  bool CreateArcServerSocket(base::ScopedFD* out_fd, brillo::ErrorPtr* error);
 
   // Core implementation of StartArcMiniContainer().
   bool StartArcMiniContainerInternal(
@@ -415,7 +414,7 @@ class SessionManagerImpl
 
   // Core implementation of UpgradeArcContainer().
   bool UpgradeArcContainerInternal(const UpgradeArcContainerRequest& request,
-                                   dbus::FileDescriptor* fd_out,
+                                   brillo::dbus_utils::FileDescriptor* fd_out,
                                    brillo::ErrorPtr* error_out);
 
   // Sends an init signal to turn the container from the one for login screen

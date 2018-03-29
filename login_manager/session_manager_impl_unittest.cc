@@ -271,12 +271,10 @@ std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
 // Create a file descriptor pointing to a pipe that contains the given data.
 // The data size (of type size_t) will be inserted into the pipe first, followed
 // by the actual data.
-dbus::FileDescriptor WriteSizeAndDataToPipe(const std::string& data) {
+base::ScopedFD WriteSizeAndDataToPipe(const std::string& data) {
   int fds[2];
   EXPECT_TRUE(base::CreateLocalNonBlockingPipe(fds));
-  dbus::FileDescriptor read_dbus_fd;
-  read_dbus_fd.PutValue(fds[0]);
-  read_dbus_fd.CheckValidity();
+  base::ScopedFD read_dbus_fd(fds[0]);
   base::ScopedFD write_scoped_fd(fds[1]);
 
   size_t size = data.size();
@@ -1024,7 +1022,7 @@ TEST_F(SessionManagerImplTest, SaveLoginPasswordForEnterpriseCustomer) {
       .WillOnce(Return(true));
 
   const string kPassword("thepassword");
-  dbus::FileDescriptor password_fd = WriteSizeAndDataToPipe(kPassword);
+  base::ScopedFD password_fd = WriteSizeAndDataToPipe(kPassword);
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->SaveLoginPassword(&error, password_fd));
   EXPECT_FALSE(error.get());
@@ -1039,7 +1037,7 @@ TEST_F(SessionManagerImplTest, SaveLoginPasswordForNonEnterpriseCustomer) {
       .WillOnce(Return(false));
 
   const string kPassword("thepassword");
-  dbus::FileDescriptor password_fd = WriteSizeAndDataToPipe(kPassword);
+  base::ScopedFD password_fd = WriteSizeAndDataToPipe(kPassword);
 
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->SaveLoginPassword(&error, password_fd));
@@ -1770,7 +1768,7 @@ TEST_F(SessionManagerImplTest, IsGuestSessionActive) {
 
 TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->RestartJob(&error, dbus::FileDescriptor(), {}));
+  EXPECT_FALSE(impl_->RestartJob(&error, base::ScopedFD(), {}));
   ASSERT_TRUE(error.get());
   EXPECT_EQ("GetPeerCredsFailed", error->GetCode());
 }
@@ -1779,9 +1777,7 @@ TEST_F(SessionManagerImplTest, RestartJobBadPid) {
   int sockets[2] = {-1, -1};
   ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
   base::ScopedFD fd0_closer(sockets[0]);
-  dbus::FileDescriptor fd1;
-  fd1.PutValue(sockets[1]);
-  fd1.CheckValidity();
+  base::ScopedFD fd1(sockets[1]);
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(false));
   brillo::ErrorPtr error;
@@ -1794,9 +1790,7 @@ TEST_F(SessionManagerImplTest, RestartJobSuccess) {
   int sockets[2] = {-1, -1};
   ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
   base::ScopedFD fd0_closer(sockets[0]);
-  dbus::FileDescriptor fd1;
-  fd1.PutValue(sockets[1]);
-  fd1.CheckValidity();
+  base::ScopedFD fd1(sockets[1]);
 
   const std::vector<std::string> kArgv = {
       "program",
@@ -2125,15 +2119,14 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
                                      InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
-  dbus::FileDescriptor server_socket_fd;
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_scan_vendor_priv_app(true);
   ExpectUpgradeArcContainer();
-  dbus::FileDescriptor server_socket_fd_for_upgrade;
+  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
   EXPECT_TRUE(impl_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(server_socket_fd_for_upgrade.is_valid());
+  EXPECT_LE(0, server_socket_fd_for_upgrade.get());
   EXPECT_TRUE(android_container_.running());
   {
     brillo::ErrorPtr error;
@@ -2227,12 +2220,11 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
                                      InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
-  dbus::FileDescriptor server_socket_fd;
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_scan_vendor_priv_app(true);
   upgrade_request.set_packages_cache_mode(GetParam());
   ExpectUpgradeArcContainer();
-  dbus::FileDescriptor server_socket_fd_for_upgrade;
+  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
   EXPECT_TRUE(impl_->UpgradeArcContainer(
       &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
   EXPECT_TRUE(android_container_.running());
@@ -2274,12 +2266,12 @@ TEST_F(SessionManagerImplTest, ArcNoSession) {
   ExpectUpgradeArcContainer();
   brillo::ErrorPtr error;
   UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
-  dbus::FileDescriptor server_socket_fd;
+  brillo::dbus_utils::FileDescriptor server_socket_fd;
   EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
                                           &server_socket_fd));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
-  EXPECT_FALSE(server_socket_fd.is_valid());
+  EXPECT_GT(0, server_socket_fd.get());
 }
 
 TEST_F(SessionManagerImplTest, ArcLowDisk) {
@@ -2291,12 +2283,12 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
   brillo::ErrorPtr error;
   ExpectUpgradeArcContainer();
   UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
-  dbus::FileDescriptor server_socket_fd;
+  brillo::dbus_utils::FileDescriptor server_socket_fd;
   EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
                                           &server_socket_fd));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kLowFreeDisk, error->GetCode());
-  EXPECT_FALSE(server_socket_fd.is_valid());
+  EXPECT_GT(0, server_socket_fd.get());
 }
 
 TEST_F(SessionManagerImplTest, ArcSetupFailure) {
@@ -2390,11 +2382,11 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
     brillo::ErrorPtr error;
     UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
     ExpectUpgradeArcContainer();
-    dbus::FileDescriptor server_socket_fd;
+    brillo::dbus_utils::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
                                            &server_socket_fd));
     EXPECT_FALSE(error.get());
-    EXPECT_TRUE(server_socket_fd.is_valid());
+    EXPECT_LE(0, server_socket_fd.get());
   }
   EXPECT_TRUE(android_container_.running());
 
@@ -2605,11 +2597,11 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
     brillo::ErrorPtr error;
     UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
     ExpectUpgradeArcContainer();
-    dbus::FileDescriptor server_socket_fd;
+    brillo::dbus_utils::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
                                            &server_socket_fd));
     EXPECT_FALSE(error.get());
-    EXPECT_TRUE(server_socket_fd.is_valid());
+    EXPECT_LE(0, server_socket_fd.get());
   }
   {
     brillo::ErrorPtr error;
@@ -2657,11 +2649,11 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
     brillo::ErrorPtr error;
     UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
     ExpectUpgradeArcContainer();
-    dbus::FileDescriptor server_socket_fd;
+    brillo::dbus_utils::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
                                            &server_socket_fd));
     EXPECT_FALSE(error.get());
-    EXPECT_TRUE(server_socket_fd.is_valid());
+    EXPECT_LE(0, server_socket_fd.get());
   }
 
   EXPECT_CALL(*init_controller_,
