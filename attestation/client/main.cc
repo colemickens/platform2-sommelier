@@ -60,8 +60,7 @@ const char kGetEnrollmentId[] = "get_enrollment_id";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
-  create_and_certify [--attestation-server=default|test] [--user=<email>]
-          [--label=<keylabel>]
+  create_and_certify [--user=<email>] [--label=<keylabel>]
       Creates a key and requests certification by the Google Attestation CA.
       This is the default command.
   create [--user=<email>] [--label=<keylabel>] [--usage=sign|decrypt]
@@ -353,9 +352,10 @@ class ClientLoop : public ClientLoopBase {
           &ClientLoop::CallFinishEnroll, weak_factory_.GetWeakPtr(),
           input);
     } else if (args.front() == kCreateCertRequestCommand) {
-      if (command_line->HasSwitch("attestation-server")) {
-        LOG(WARNING) << "Cert request will be made for the CA the device is"
-                     << " enrolled with.";
+      ACAType aca_type;
+      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
+      if (status != EX_OK) {
+        return status;
       }
       std::string profile_str = command_line->GetSwitchValueASCII("profile");
       CertificateProfile profile;
@@ -383,6 +383,7 @@ class ClientLoop : public ClientLoopBase {
       }
       task = base::Bind(
           &ClientLoop::CallCreateCertRequest, weak_factory_.GetWeakPtr(),
+          aca_type,
           profile,
           command_line->GetSwitchValueASCII("user"),
           command_line->GetSwitchValueASCII("origin"));
@@ -773,10 +774,12 @@ class ClientLoop : public ClientLoopBase {
         weak_factory_.GetWeakPtr()));
   }
 
-  void CallCreateCertRequest(CertificateProfile profile,
+  void CallCreateCertRequest(ACAType aca_type,
+                             CertificateProfile profile,
                              const std::string& username,
                              const std::string& origin) {
     CreateCertificateRequestRequest request;
+    request.set_aca_type(aca_type);
     request.set_certificate_profile(profile);
     request.set_username(username);
     request.set_request_origin(origin);

@@ -267,6 +267,8 @@ message CreateCertificateRequestRequest {
   // Some certificate requests require information about the origin
   // of the request.  If no origin is needed, this can be empty.
   optional string request_origin = 3;
+  // What kind of ACA to use.
+  optional ACAType aca_type = 4;
 }
 
 message CreateCertificateRequestReply {
