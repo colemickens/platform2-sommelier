@@ -28,6 +28,7 @@ CONFIG = 'config'
 BUILD_ONLY_ELEMENTS = [
     '/firmware',
     '/audio/main/files'
+    '/touch/files'
 ]
 TEMPLATE_PATTERN = re.compile("{{([^}]*)}}")
 

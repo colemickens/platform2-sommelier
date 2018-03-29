@@ -873,63 +873,16 @@ chromeos {
 ### touch
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| files | array - [files](#files) |  | False |  |
 | present | string |  | False | Whether touch is present or needs to be probed for. |
 | probe-regex | string |  | False | If probe is set, the regex used to look for touch. |
-| stylus | [stylus](#stylus) |  | False |  |
-| touchpad | [touchpad](#touchpad) |  | False |  |
-| touchscreen | [touchscreen](#touchscreen) |  | False |  |
-| touchscreen@0 | [touchscreen@0](#touchscreen@0) |  | False |  |
-| touchscreen@1 | [touchscreen@1](#touchscreen@1) |  | False |  |
 
-### stylus
+### files
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | False | Name of the firmware symlink file. |
-| overlay | string |  | False | Name of overlay to download from |
-| package | string |  | False | Package subdirectory to download from |
-| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
-
-### touchpad
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | False | Name of the firmware symlink file. |
-| overlay | string |  | False | Name of overlay to download from |
-| package | string |  | False | Package subdirectory to download from |
-| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
-
-### touchscreen
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | False | Name of the firmware symlink file. |
-| overlay | string |  | False | Name of overlay to download from |
-| package | string |  | False | Package subdirectory to download from |
-| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
-
-### touchscreen@0
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | False | Name of the firmware symlink file. |
-| overlay | string |  | False | Name of overlay to download from |
-| package | string |  | False | Package subdirectory to download from |
-| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
-
-### touchscreen@1
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| ebuild-version | string |  | False | Tarfile version to download. This corresponds to the ebuild version prior to unibuild, but can be any suitable string. |
-| firmware-bin | string |  | False | Path to the firmware binary for the touch firmware. |
-| firmware-symlink | string |  | False | Name of the firmware symlink file. |
-| overlay | string |  | False | Name of overlay to download from |
-| package | string |  | False | Package subdirectory to download from |
-| tarball | string |  | False | Template for tarball to download. This can maybe one day include {package} and {version}. |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system ${FILESDIR} |
+| symlink | string |  | False | Symlink file that will be installed pointing to the destination. |
 
 
 [](end_definitions)

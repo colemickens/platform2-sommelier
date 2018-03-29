@@ -10,6 +10,13 @@ reef-build-targets: &reef_build_targets
   depthcharge: "reef"
   libpayload: "reef"
 
+touch: &touch
+  present: "probe"
+  probe-regex: "[Tt]ouchscreen|WCOMNTN2"
+
+  $fw_root: "/lib/firmware"
+  $fw_dest: "/opt/google/touch/firmware"
+
 audio_common: &audio_common
   $cras_root: "/etc/cras"
   $ucm_root: "/usr/share/alsa/ucm"
@@ -109,24 +116,25 @@ snappy_config: &snappy_config
   test-label: "snappy"
   wallpaper: "snappy"
   touch:
-    present: "probe"
-    probe-regex: "[Tt]ouchscreen|WCOMNTN2"
+    <<: *touch
+    $wacom: "wacom/wacom_1606.hex"
+    $elan_0: "elan/158.0_2.0.bin"
+    $elan_1: "elan/2be2_5603.bin"
+    $weida: "weida/01017401_2083_0133ec86.bin"
 
-    stylus:
-      firmware-bin: "wacom/wacom_1606.hex"
-      firmware-symlink: "wacom_firmware_SNAPPY.hex"
-
-    touchpad:
-      firmware-bin: "elan/158.0_2.0.bin"
-      firmware-symlink: "elan_i2c_158.0.bin"
-
-    touchscreen@0:
-      firmware-bin: "elan/2be2_5603.bin"
-      firmware-symlink: "elants_i2c_2be2.bin"
-
-    touchscreen@1:
-      firmware-bin: "weida/01017401_2083_0133ec86.bin"
-      firmware-symlink: "wdt87xx.bin"
+    files:
+      - source: "{{$wacom}}"
+        destination: "{{$fw_dest}}/{{$wacom}}"
+        symlink: "{{$fw_root}}/wacom_firmware_SNAPPY.hex"
+      - source: "{{$elan_0}}"
+        destination: "{{$fw_dest}}/{{$elan_0}}"
+        symlink: "{{$fw_root}}/elan_i2c_158.0.bin"
+      - source: "{{$elan_1}}"
+        destination: "{{$fw_dest}}/{{$elan_1}}"
+        symlink: "{{$fw_root}}/elants_i2c_2be2.bin"
+      - source: "{{$weida}}"
+        destination: "{{$fw_dest}}/{{$weida}}"
+        symlink: "{{$fw_root}}/wdt87xx.bin"
 
 chromeos:
   devices:
@@ -141,20 +149,21 @@ chromeos:
           config:
             <<: *reef_config
             touch:
-              present: "probe"
-              probe-regex: "[Tt]ouchscreen|WCOMNTN2"
+              <<: *touch
+              $wacom: "wacom/wacom_1636.hex"
+              $elan_0: "elan/154.0_2.0.bin"
+              $elan_1: "1cd2_5603.bin"
 
-              stylus:
-                firmware-bin: "wacom/wacom_1636.hex"
-                firmware-symlink: "wacom_firmware_ELECTRO.hex"
-
-              touchpad:
-                firmware-bin: "elan/154.0_2.0.bin"
-                firmware-symlink: "elan_i2c_154.0.bin"
-
-              touchscreen:
-                firmware-bin: "elan/1cd2_5603.bin"
-                firmware-symlink: "elants_i2c_1cd2.bin"
+              files:
+                - source: "{{$wacom}}"
+                  destination: "{{$fw_dest}}/{{$wacom}}"
+                  symlink: "{{$fw_root}}/wacom_firmware_ELECTRO.hex"
+                - source: "{{$elan_0}}"
+                  destination: "{{$fw_dest}}/{{$elan_0}}"
+                  symlink: "{{$fw_root}}/elan_i2c_154.0.bin"
+                - source: "{{$elan_1}}"
+                  destination: "{{$fw_dest}}/{{$elan_1}}"
+                  symlink: "{{$fw_root}}/elants_i2c_1cd2.bin"
 
     - $name: "basking"
       products:
@@ -167,24 +176,25 @@ chromeos:
           config:
             <<: *reef_config
             touch:
-              present: "probe"
-              probe-regex: "[Tt]ouchscreen|WCOMNTN2"
+              <<: *touch
+              $wacom: "wacom/wacom_4209.hex"
+              $elan_0: "elan/97.0_6.0.bin"
+              $elan_1: "elan/3062_5602.bin"
+              $elan_2: "elan/306e_5611.bin"
 
-              stylus:
-                firmware-bin: "wacom/wacom_4209.hex"
-                firmware-symlink: "wacom_firmware_BASKING.hex"
-
-              touchpad:
-                firmware-bin: "elan/97.0_6.0.bin"
-                firmware-symlink: "elan_i2c_97.0.bin"
-
-              touchscreen@0:
-                firmware-bin: "elan/3062_5602.bin"
-                firmware-symlink: "elants_i2c_3062.bin"
-
-              touchscreen@1:
-                firmware-bin: "elan/306e_5611.bin"
-                firmware-symlink: "elants_i2c_306e.bin"
+              files:
+                - source: "{{$wacom}}"
+                  destination: "{{$fw_dest}}/{{$wacom}}"
+                  symlink: "{{$fw_root}}/wacom_firmware_BASKING.hex"
+                - source: "{{$elan_0}}"
+                  destination: "{{$fw_dest}}/{{$elan_0}}"
+                  symlink: "{{$fw_root}}/elan_i2c_97.0.bin"
+                - source: "{{$elan_1}}"
+                  destination: "{{$fw_dest}}/{{$elan_1}}"
+                  symlink: "{{$fw_root}}/elants_i2c_3062.bin"
+                - source: "{{$elan_2}}"
+                  destination: "{{$fw_dest}}/{{$elan_2}}"
+                  symlink: "{{$fw_root}}/elants_i2c_306e.bin"
 
     - $name: "pyro"
       products:
@@ -213,16 +223,17 @@ chromeos:
 
               build-targets: *reef_build_targets
             touch:
-              present: "probe"
-              probe-regex: "[Tt]ouchscreen|WCOMNTN2"
+              <<: *touch
+              $wacom: "wacom/wacom_769.hex"
+              $elan_0: "elan/155.0_2.0.bin"
 
-              touchpad:
-                firmware-bin: "elan/155.0_2.0.bin"
-                firmware-symlink: "elan_i2c_155.0.bin"
-
-              touchscreen:
-                firmware-bin: "wacom/wacom_769.hex"
-                firmware-symlink: "wacom_firmware_PYRO.hex"
+              files:
+                - source: "{{$wacom}}"
+                  destination: "{{$fw_dest}}/{{$wacom}}"
+                  symlink: "{{$fw_root}}/wacom_firmware_PYRO.hex"
+                - source: "{{$elan_0}}"
+                  destination: "{{$fw_dest}}/{{$elan_0}}"
+                  symlink: "{{$fw_root}}/elan_i2c_155.0.bin"
 
     - $name: "sand"
       products:
@@ -248,16 +259,17 @@ chromeos:
               no-firmware: true
               build-targets: *reef_build_targets
             touch:
-              present: "probe"
-              probe-regex: "[Tt]ouchscreen|WCOMNTN2"
+              <<: *touch
+              $raydium: "raydium/raydium_0xa2001023_1.1.bin"
+              $elan: "elan/85.0_11.0.bin"
 
-              touchpad:
-                firmware-bin: "elan/85.0_11.0.bin"
-                firmware-symlink: "elan_i2c_85.0.bin"
-
-              touchscreen:
-                firmware-bin: "raydium/raydium_0xa2001023_1.1.bin"
-                firmware-symlink: "raydium.fw"
+              files:
+                - source: "{{$raydium}}"
+                  destination: "{{$fw_dest}}/{{$raydium}}"
+                  symlink: "{{$fw_root}}/raydium.fw"
+                - source: "{{$elan}}"
+                  destination: "{{$fw_dest}}/{{$elan}}"
+                  symlink: "{{$fw_root}}/elan_i2c_85.0.bin"
 
     - $name: "snappy"
       products:

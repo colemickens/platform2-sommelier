@@ -20,30 +20,19 @@ typeDefs:
         description: Installation path for the file on the system image.
         type: string
     additionalProperties: false
-  touch-firmware: &touch_firmware
+  firmware-file: &firmware_file
     type: object
     properties:
-      overlay:
-        description: Name of overlay to download from
+      source:
+        description: Source of the file relative to the build system ${FILESDIR}
         type: string
-      package:
-        description: Package subdirectory to download from
+      destination:
+        description: Installation path for the file on the system image.
         type: string
-      ebuild-version:
-        description: 'Tarfile version to download. This corresponds to the ebuild
-          version prior to unibuild, but can be any suitable string.'
+      symlink:
+        description: Symlink file that will be installed pointing to the destination.
         type: string
-      tarball:
-        description: 'Template for tarball to download. This can maybe one day
-          include {package} and {version}.'
-        type: string
-      firmware-bin:
-        description: Path to the firmware binary for the touch firmware.
-        type: string
-      firmware-symlink:
-        description: Name of the firmware symlink file.
-        type: string
-    additionalProperties: true
+    additionalProperties: false
 type: object
 properties:
   chromeos:
@@ -159,11 +148,9 @@ properties:
                 probe-regex:
                   description: If probe is set, the regex used to look for touch.
                   type: string
-                stylus: *touch_firmware
-                touchpad: *touch_firmware
-                touchscreen: *touch_firmware
-                touchscreen@0: *touch_firmware
-                touchscreen@1: *touch_firmware
+                files:
+                  type: array
+                  items: *firmware_file
               additionalProperties: false
           additionalProperties: true
           required:

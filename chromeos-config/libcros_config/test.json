@@ -62,20 +62,25 @@
         "powerd-prefs": "reef", 
         "test-label": "reef", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/wacom/wacom_1636.hex", 
+              "source": "wacom/wacom_1636.hex", 
+              "symlink": "/lib/firmware/wacom_firmware_ELECTRO.hex"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/154.0_2.0.bin", 
+              "source": "elan/154.0_2.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_154.0.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/1cd2_5603.bin", 
+              "source": "1cd2_5603.bin", 
+              "symlink": "/lib/firmware/elants_i2c_1cd2.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "stylus": {
-            "firmware-bin": "wacom/wacom_1636.hex", 
-            "firmware-symlink": "wacom_firmware_ELECTRO.hex"
-          }, 
-          "touchpad": {
-            "firmware-bin": "elan/154.0_2.0.bin", 
-            "firmware-symlink": "elan_i2c_154.0.bin"
-          }, 
-          "touchscreen": {
-            "firmware-bin": "elan/1cd2_5603.bin", 
-            "firmware-symlink": "elants_i2c_1cd2.bin"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }
       }, 
       {
@@ -139,24 +144,30 @@
         "powerd-prefs": "reef", 
         "test-label": "reef", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/wacom/wacom_4209.hex", 
+              "source": "wacom/wacom_4209.hex", 
+              "symlink": "/lib/firmware/wacom_firmware_BASKING.hex"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/97.0_6.0.bin", 
+              "source": "elan/97.0_6.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_97.0.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/3062_5602.bin", 
+              "source": "elan/3062_5602.bin", 
+              "symlink": "/lib/firmware/elants_i2c_3062.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/306e_5611.bin", 
+              "source": "elan/306e_5611.bin", 
+              "symlink": "/lib/firmware/elants_i2c_306e.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "stylus": {
-            "firmware-bin": "wacom/wacom_4209.hex", 
-            "firmware-symlink": "wacom_firmware_BASKING.hex"
-          }, 
-          "touchpad": {
-            "firmware-bin": "elan/97.0_6.0.bin", 
-            "firmware-symlink": "elan_i2c_97.0.bin"
-          }, 
-          "touchscreen@0": {
-            "firmware-bin": "elan/3062_5602.bin", 
-            "firmware-symlink": "elants_i2c_3062.bin"
-          }, 
-          "touchscreen@1": {
-            "firmware-bin": "elan/306e_5611.bin", 
-            "firmware-symlink": "elants_i2c_306e.bin"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }
       }, 
       {
@@ -216,16 +227,20 @@
         }, 
         "name": "pyro", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/wacom/wacom_769.hex", 
+              "source": "wacom/wacom_769.hex", 
+              "symlink": "/lib/firmware/wacom_firmware_PYRO.hex"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/155.0_2.0.bin", 
+              "source": "elan/155.0_2.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_155.0.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "touchpad": {
-            "firmware-bin": "elan/155.0_2.0.bin", 
-            "firmware-symlink": "elan_i2c_155.0.bin"
-          }, 
-          "touchscreen": {
-            "firmware-bin": "wacom/wacom_769.hex", 
-            "firmware-symlink": "wacom_firmware_PYRO.hex"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }
       }, 
       {
@@ -284,16 +299,20 @@
         }, 
         "name": "sand", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/raydium/raydium_0xa2001023_1.1.bin", 
+              "source": "raydium/raydium_0xa2001023_1.1.bin", 
+              "symlink": "/lib/firmware/raydium.fw"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/85.0_11.0.bin", 
+              "source": "elan/85.0_11.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_85.0.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "touchpad": {
-            "firmware-bin": "elan/85.0_11.0.bin", 
-            "firmware-symlink": "elan_i2c_85.0.bin"
-          }, 
-          "touchscreen": {
-            "firmware-bin": "raydium/raydium_0xa2001023_1.1.bin", 
-            "firmware-symlink": "raydium.fw"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }
       }, 
       {
@@ -356,24 +375,30 @@
         "powerd-prefs": "snappy", 
         "test-label": "snappy", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/wacom/wacom_1606.hex", 
+              "source": "wacom/wacom_1606.hex", 
+              "symlink": "/lib/firmware/wacom_firmware_SNAPPY.hex"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/158.0_2.0.bin", 
+              "source": "elan/158.0_2.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_158.0.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/2be2_5603.bin", 
+              "source": "elan/2be2_5603.bin", 
+              "symlink": "/lib/firmware/elants_i2c_2be2.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/weida/01017401_2083_0133ec86.bin", 
+              "source": "weida/01017401_2083_0133ec86.bin", 
+              "symlink": "/lib/firmware/wdt87xx.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "stylus": {
-            "firmware-bin": "wacom/wacom_1606.hex", 
-            "firmware-symlink": "wacom_firmware_SNAPPY.hex"
-          }, 
-          "touchpad": {
-            "firmware-bin": "elan/158.0_2.0.bin", 
-            "firmware-symlink": "elan_i2c_158.0.bin"
-          }, 
-          "touchscreen@0": {
-            "firmware-bin": "elan/2be2_5603.bin", 
-            "firmware-symlink": "elants_i2c_2be2.bin"
-          }, 
-          "touchscreen@1": {
-            "firmware-bin": "weida/01017401_2083_0133ec86.bin", 
-            "firmware-symlink": "wdt87xx.bin"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }, 
         "wallpaper": "snappy"
       }, 
@@ -437,24 +462,30 @@
         "powerd-prefs": "snappy", 
         "test-label": "snappy", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/wacom/wacom_1606.hex", 
+              "source": "wacom/wacom_1606.hex", 
+              "symlink": "/lib/firmware/wacom_firmware_SNAPPY.hex"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/158.0_2.0.bin", 
+              "source": "elan/158.0_2.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_158.0.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/2be2_5603.bin", 
+              "source": "elan/2be2_5603.bin", 
+              "symlink": "/lib/firmware/elants_i2c_2be2.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/weida/01017401_2083_0133ec86.bin", 
+              "source": "weida/01017401_2083_0133ec86.bin", 
+              "symlink": "/lib/firmware/wdt87xx.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "stylus": {
-            "firmware-bin": "wacom/wacom_1606.hex", 
-            "firmware-symlink": "wacom_firmware_SNAPPY.hex"
-          }, 
-          "touchpad": {
-            "firmware-bin": "elan/158.0_2.0.bin", 
-            "firmware-symlink": "elan_i2c_158.0.bin"
-          }, 
-          "touchscreen@0": {
-            "firmware-bin": "elan/2be2_5603.bin", 
-            "firmware-symlink": "elants_i2c_2be2.bin"
-          }, 
-          "touchscreen@1": {
-            "firmware-bin": "weida/01017401_2083_0133ec86.bin", 
-            "firmware-symlink": "wdt87xx.bin"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }, 
         "wallpaper": "snappy"
       }, 
@@ -518,24 +549,30 @@
         "powerd-prefs": "snappy", 
         "test-label": "snappy", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/wacom/wacom_1606.hex", 
+              "source": "wacom/wacom_1606.hex", 
+              "symlink": "/lib/firmware/wacom_firmware_SNAPPY.hex"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/158.0_2.0.bin", 
+              "source": "elan/158.0_2.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_158.0.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/2be2_5603.bin", 
+              "source": "elan/2be2_5603.bin", 
+              "symlink": "/lib/firmware/elants_i2c_2be2.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/weida/01017401_2083_0133ec86.bin", 
+              "source": "weida/01017401_2083_0133ec86.bin", 
+              "symlink": "/lib/firmware/wdt87xx.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "stylus": {
-            "firmware-bin": "wacom/wacom_1606.hex", 
-            "firmware-symlink": "wacom_firmware_SNAPPY.hex"
-          }, 
-          "touchpad": {
-            "firmware-bin": "elan/158.0_2.0.bin", 
-            "firmware-symlink": "elan_i2c_158.0.bin"
-          }, 
-          "touchscreen@0": {
-            "firmware-bin": "elan/2be2_5603.bin", 
-            "firmware-symlink": "elants_i2c_2be2.bin"
-          }, 
-          "touchscreen@1": {
-            "firmware-bin": "weida/01017401_2083_0133ec86.bin", 
-            "firmware-symlink": "wdt87xx.bin"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }, 
         "wallpaper": "snappy"
       }, 
@@ -599,24 +636,30 @@
         "powerd-prefs": "snappy", 
         "test-label": "snappy", 
         "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/wacom/wacom_1606.hex", 
+              "source": "wacom/wacom_1606.hex", 
+              "symlink": "/lib/firmware/wacom_firmware_SNAPPY.hex"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/158.0_2.0.bin", 
+              "source": "elan/158.0_2.0.bin", 
+              "symlink": "/lib/firmware/elan_i2c_158.0.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/elan/2be2_5603.bin", 
+              "source": "elan/2be2_5603.bin", 
+              "symlink": "/lib/firmware/elants_i2c_2be2.bin"
+            }, 
+            {
+              "destination": "/opt/google/touch/firmware/weida/01017401_2083_0133ec86.bin", 
+              "source": "weida/01017401_2083_0133ec86.bin", 
+              "symlink": "/lib/firmware/wdt87xx.bin"
+            }
+          ], 
           "present": "probe", 
-          "probe-regex": "[Tt]ouchscreen|WCOMNTN2", 
-          "stylus": {
-            "firmware-bin": "wacom/wacom_1606.hex", 
-            "firmware-symlink": "wacom_firmware_SNAPPY.hex"
-          }, 
-          "touchpad": {
-            "firmware-bin": "elan/158.0_2.0.bin", 
-            "firmware-symlink": "elan_i2c_158.0.bin"
-          }, 
-          "touchscreen@0": {
-            "firmware-bin": "elan/2be2_5603.bin", 
-            "firmware-symlink": "elants_i2c_2be2.bin"
-          }, 
-          "touchscreen@1": {
-            "firmware-bin": "weida/01017401_2083_0133ec86.bin", 
-            "firmware-symlink": "wdt87xx.bin"
-          }
+          "probe-regex": "[Tt]ouchscreen|WCOMNTN2"
         }, 
         "wallpaper": "snappy"
       }
