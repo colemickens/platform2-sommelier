@@ -109,6 +109,7 @@ constexpr char kPassthroughImage[] =
     "/usr/share/mount-passthrough/rootfs.squashfs";
 constexpr char kPlatformXmlFileRelative[] = "etc/permissions/platform.xml";
 constexpr char kRestoreconWhitelistSync[] = "/sys/kernel/debug/sync";
+constexpr char kSdcardConfigfsDirectory[] = "/sys/kernel/config/sdcardfs";
 constexpr char kSdcardMountDirectory[] = "/run/arc/sdcard";
 constexpr char kSdcardRootfsDirectory[] =
     "/opt/google/containers/arc-sdcard/mountpoints/container-root";
@@ -339,6 +340,7 @@ struct ArcPaths {
   const base::FilePath obb_rootfs_directory{kObbRootfsDirectory};
   const base::FilePath oem_mount_directory{kOemMountDirectory};
   const base::FilePath platform_xml_file_relative{kPlatformXmlFileRelative};
+  const base::FilePath sdcard_configfs_directory{kSdcardConfigfsDirectory};
   const base::FilePath sdcard_mount_directory{kSdcardMountDirectory};
   const base::FilePath sdcard_rootfs_directory{kSdcardRootfsDirectory};
   const base::FilePath shared_mount_directory{kSharedMountDirectory};
@@ -1122,6 +1124,17 @@ void ArcSetup::SetUpSharedMountPoints() {
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
   EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->shared_mount_directory));
+}
+
+void ArcSetup::SetUpOwnershipForSdcardConfigfs() {
+  // Make sure <configfs>/sdcardfs/ and <configfs>/sdcardfs/extensions} are
+  // owned by android-root.
+  const base::FilePath extensions_dir =
+      arc_paths_->sdcard_configfs_directory.Append("extensions");
+  if (base::PathExists(extensions_dir)) {
+    EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->sdcard_configfs_directory));
+    EXIT_IF(!Chown(kRootUid, kRootGid, extensions_dir));
+  }
 }
 
 void ArcSetup::RestoreContext() {
@@ -1922,6 +1935,9 @@ void ArcSetup::OnStop() {
 void ArcSetup::OnOnetimeSetup() {
   EnsureContainerDirectories();
   MountOnOnetimeSetup();
+
+  // Setup ownership for <configfs>/sdcard, if the directory exists.
+  SetUpOwnershipForSdcardConfigfs();
 
   // Build properties are needed to finish booting the container, so we need
   // to set them up here instead of in the per-board setup.

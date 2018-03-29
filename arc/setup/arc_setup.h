@@ -185,6 +185,10 @@ class ArcSetup {
   // container.
   void SetUpSharedMountPoints();
 
+  // Sets up the correct ownership for <configfs>/sdcardfs, if the directory
+  // exists.
+  void SetUpOwnershipForSdcardConfigfs();
+
   // Restores the labels of files and directories. This has to be called before
   // MakeMountpointsReadOnly() makes the directories read-only.
   void RestoreContext();
