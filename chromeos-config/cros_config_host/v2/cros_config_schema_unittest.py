@@ -52,7 +52,7 @@ chromeos:
               <<: *reef-9042-fw
               key-id: '{{$key-id}}'
             powerd-prefs: 'reef'
-            test-alias: 'reef'
+            test-label: 'reef'
 """
 
 this_dir = os.path.dirname(__file__)

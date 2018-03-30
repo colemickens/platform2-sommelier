@@ -61,10 +61,12 @@ audio_with_customization_id: &audio_with_customization_id
 
 base_config: &base_config
   arc:
+    files:
+      - source: "hardware_features.xml"
+        destination: "/etc/hardware_features.xml"
     build-properties:
-      arc-properties-type:
-        device: "reef_cheets"
-        marketing-name: "{{$marketing-name}}"
+      device: "reef_cheets"
+      marketing-name: "{{$marketing-name}}"
   brand-code: "{{$brand-code}}"
   name: "{{$name}}"
 

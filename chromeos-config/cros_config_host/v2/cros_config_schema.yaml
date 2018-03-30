@@ -43,6 +43,52 @@ properties:
         items:
           type: object
           properties:
+            arc:
+              type: object
+              properties:
+                build-properties:
+                  type: object
+                  properties:
+                    product:
+                      description: |
+                        Product name to report in 'ro.product.name'.
+                        This may be the model name, or it can be something else, to allow
+                        several models to be grouped into one product.
+                      type: string
+                    device:
+                      description: |
+                        Device name to report in 'ro.product.device'. This
+                        is often '{product}_cheets' but it can be something else if
+                        desired.
+                      type: string
+                    oem:
+                      description: |
+                        Original Equipment Manufacturer for this model. This
+                        generally means the OEM name printed on the device.
+                      type: string
+                    marketing-name:
+                      description: |
+                        Name of this model as it is called in the
+                        market, reported in 'ro.product.model'. This often starts
+                        with '{oem}'.
+                      type: string
+                    metrics-tag:
+                      description: |
+                        Tag to use to track metrics for this model.
+                        The tag can be shared across many models if desired, but
+                        this will result in larger granularity for metrics
+                        reporting.  Ideally the metrics system should support
+                        collation of metrics with different tags into groups, but if
+                        this is not supported, this tag can be used to achieve the
+                        same end.  This is reported in 'ro.product.metrics.tag'.
+                      type: string
+                  additionalProperties: false
+                files:
+                  type: array
+                  items: *system_file
+              additionalProperties: false
+              required:
+              - build-properties
             audio:
               type: object
               properties:
@@ -102,7 +148,17 @@ properties:
                   pattern: "^[A-Z|_|0-9]*$"
                 main-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
-              additionalProperties: true
+                no-firmware:
+                  description: |
+                    If present this indicates that this model has no firmware at present.
+                    This means that it will be omitted from the firmware updater
+                    (chromeos-firmware- ebuild) and it will not be included in the signer
+                    instructions file sent to the signer.
+                    This option is often useful when a model is first added,
+                    since it may not have firmware at that point.
+                  type: boolean
+                  pattern: "^[A-Z|_|0-9]*$"
+              additionalProperties: false
             identity:
               type: object
               properties:
@@ -130,7 +186,7 @@ properties:
             powerd-prefs:
               description: Powerd config that should be used.
               type: string
-            test-alias:
+            test-label:
               description: Test alias (model) label that will be applied in Autotest and
                 reported for test results.
               type: string
@@ -152,7 +208,11 @@ properties:
                   type: array
                   items: *firmware_file
               additionalProperties: false
-          additionalProperties: true
+            wallpaper:
+              description: |
+                Base filename of the default wallpaper to show on this device.
+              type: string
+          additionalProperties: false
           required:
           - firmware
           - name

@@ -27,8 +27,9 @@ SKUS = 'skus'
 CONFIG = 'config'
 BUILD_ONLY_ELEMENTS = [
     '/firmware',
-    '/audio/main/files'
-    '/touch/files'
+    '/audio/main/files',
+    '/touch/files',
+    '/arc/files'
 ]
 TEMPLATE_PATTERN = re.compile("{{([^}]*)}}")
 

@@ -4,11 +4,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "Acer Chromebook Spin 11 (R751T)"
+            "device": "reef_cheets", 
+            "marketing-name": "Acer Chromebook Spin 11 (R751T)"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {
@@ -86,11 +90,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "ASUS Chromebook C213NA"
+            "device": "reef_cheets", 
+            "marketing-name": "ASUS Chromebook C213NA"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {
@@ -173,11 +181,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "Lenovo Thinkpad 11e Chromebook (4th Gen)/Lenovo Thinkpad Yoga 11e Chromebook (4th Gen)"
+            "device": "reef_cheets", 
+            "marketing-name": "Lenovo Thinkpad 11e Chromebook (4th Gen)/Lenovo Thinkpad Yoga 11e Chromebook (4th Gen)"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {
@@ -246,11 +258,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "Chromebook 15 CB515-1HT/1H"
+            "device": "reef_cheets", 
+            "marketing-name": "Chromebook 15 CB515-1HT/1H"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {
@@ -318,11 +334,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "HP Chromebook x360 11 G1 EE"
+            "device": "reef_cheets", 
+            "marketing-name": "HP Chromebook x360 11 G1 EE"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {
@@ -405,11 +425,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "HP Chromebook 11 G6 EE"
+            "device": "reef_cheets", 
+            "marketing-name": "HP Chromebook 11 G6 EE"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {
@@ -492,11 +516,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "HP Chromebook 14 G5"
+            "device": "reef_cheets", 
+            "marketing-name": "HP Chromebook 14 G5"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {
@@ -579,11 +607,15 @@
       {
         "arc": {
           "build-properties": {
-            "arc-properties-type": {
-              "device": "reef_cheets", 
-              "marketing-name": "HP Chromebook 14 G5"
+            "device": "reef_cheets", 
+            "marketing-name": "HP Chromebook 14 G5"
+          }, 
+          "files": [
+            {
+              "destination": "/etc/hardware_features.xml", 
+              "source": "hardware_features.xml"
             }
-          }
+          ]
         }, 
         "audio": {
           "main": {

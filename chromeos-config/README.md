@@ -21,8 +21,8 @@ or during a build.
 ## CLI Usage
 
 There are two CLIs built for Chrome OS configuration access, cros_config for use
-on the target, and cros_config_host for use on the host/during building. See
-the --help for each tool respectively for help on usage.
+on the target, and cros_config_host for use on the host/during building. See the
+--help for each tool respectively for help on usage.
 
 ## Debugging
 
@@ -48,46 +48,44 @@ properties.
     models in the family.
 
     *   `audio` (optional): Contains information about audio devices used by
-            this family. Each subnode is defined as a phandle that can be
-            referenced from the model-specific configuration using the
-            `audio-type` property.
+        this family. Each subnode is defined as a phandle that can be referenced
+        from the model-specific configuration using the `audio-type` property.
         *   `<audio-type>`: Node containing the audio config for one device
-                type. All filenames referenced are in relation to the
-                ${FILERDIR} directory of the ebuild containing them.
-            *   `cras-config-dir`: Directory to pass to cras for the location
-                    of its config files
+            type. All filenames referenced are in relation to the ${FILERDIR}
+            directory of the ebuild containing them.
+            *   `cras-config-dir`: Directory to pass to cras for the location of
+                its config files
             *   `ucm-suffix`: Internal UCM suffix to pass to cras
-            *   `topology-name` (optional): Name of the topology firmware to
-                    use
+            *   `topology-name` (optional): Name of the topology firmware to use
             *   `card`: Name of the audio 'card'
             *   `volume`: Template filename of volume curve file
             *   `dsp-ini`: Template filename of dsp.ini file
             *   `hifi-conf`: Template filename of the HiFi.conf file
             *   `alsa-conf`: Template filename of the card configuration file
             *   `topology-bin` (optional): Template filename of the topology
-                    firmware file
-        Template filenames may include the following fields, enclosed in
-        `{...}` defined by the audio node: `card`, `cras-config-dir`,
-        `topology-name`, `ucm-suffix` as well as `model` for the model name.
-        The expansion / interpretation happens in cros_config_host. Other users
-        should not attempt to implement this. The purpose is to avoid having to
-        repeat the filename in each model that uses a particular manufacturer's
-        card, since the naming convention is typically consistent for that
-        manufacturer.
-    *   `arc` (optional): Contains information for the Android container
-        used by this family.
+                firmware file Template filenames may include the following
+                fields, enclosed in `{...}` defined by the audio node: `card`,
+                `cras-config-dir`, `topology-name`, `ucm-suffix` as well as
+                `model` for the model name. The expansion / interpretation
+                happens in cros_config_host. Other users should not attempt to
+                implement this. The purpose is to avoid having to repeat the
+                filename in each model that uses a particular manufacturer's
+                card, since the naming convention is typically consistent for
+                that manufacturer.
+    *   `arc` (optional): Contains information for the Android container used by
+        this family.
 
-        *    `build-properties` (optional): Contains information that will be
-             set into the Android property system inside the container.  Each
-             subnode is defined as a phandle that can be referenced from the
-             model-specific configuration using the `arc-properties-type`
-             property. The information here is not to be used for Chrome OS
-             itself. It is purely for the container environment.
+        *   `build-properties` (optional): Contains information that will be set
+            into the Android property system inside the container. Each subnode
+            is defined as a phandle that can be referenced from the
+            model-specific configuration using the `arc-properties-type`
+            property. The information here is not to be used for Chrome OS
+            itself. It is purely for the container environment.
 
-             The Android build fingerprint is generated from these properties.
-             Currently the fingerprint is:
+            The Android build fingerprint is generated from these properties.
+            Currently the fingerprint is:
 
-             `google/{product}/{device}:{version_rel}/{id}/{version_inc}:{type}/{tags}`
+            `google/{product}/{device}:{version_rel}/{id}/{version_inc}:{type}/{tags}`
 
             Of these, the first three fields come from the properties here. The
             rest are defined by the build system.
@@ -104,53 +102,55 @@ properties.
                     generally means the OEM name printed on the device.
                 *   `marketing-name`: Name of this model as it is called in the
                     market, reported in `ro.product.model`. This often starts
-                    with `{oem} `.
+                    with `{oem}`.
                 *   `metrics-tag`: Tag to use to track metrics for this model.
                     The tag can be shared across many models if desired, but
                     this will result in larger granularity for metrics
-                    reporting.  Ideally the metrics system should support
+                    reporting. Ideally the metrics system should support
                     collation of metrics with different tags into groups, but if
                     this is not supported, this tag can be used to achieve the
-                    same end.  This is reported in `ro.product.metrics.tag`.
+                    same end. This is reported in `ro.product.metrics.tag`.
 
     *   `power` (optional): Contains information about power devices used by
-            this family. Each subnode is defined as a phandle that can be
-            referenced from the model-specific configuration using the
-            `power-type` property.
+        this family. Each subnode is defined as a phandle that can be referenced
+        from the model-specific configuration using the `power-type` property.
+
         *   `<power-type>`: Node containing the power config for one device
-                type. Each property corresponds to a power_manager preference,
-                more completely documented in
-                [power_manager](https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h).
+            type. Each property corresponds to a power_manager preference, more
+            completely documented in
+            [power_manager](https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h).
             *   `charging-ports`: String describing charging port positions.
             *   `keyboard-backlight-no-als-brightness`: Initial brightness for
-                    the keyboard backlight for systems without ambient light
-                    sensors, in the range [0.0, 100.0].
+                the keyboard backlight for systems without ambient light
+                sensors, in the range [0.0, 100.0].
             *   `low-battery-shutdown-percent`: Battery percentage threshold at
-                    which the system should shut down automatically, in the
-                    range [0.0, 100.0].
+                which the system should shut down automatically, in the range
+                [0.0, 100.0].
             *   `power-supply-full-factor`: Fraction of the battery's total
-                    charge at which it should be reported as full in the UI, in
-                    the range (0.0, 1.0].
+                charge at which it should be reported as full in the UI, in the
+                range (0.0, 1.0].
             *   `set-wifi-transmit-power-for-tablet-mode`: If true (1), update
-                    wifi transmit power when in tablet vs. clamshell mode.
+                wifi transmit power when in tablet vs. clamshell mode.
             *   `suspend-to-idle`: If true (1), suspend to idle by writing
-                    freeze to /sys/power/state.
+                freeze to /sys/power/state.
 
     *   `bcs` (optional): Provides a set of BCS (Binary Cloud Storage) sources
-            which can be used to download files needed by the build system.
-            Each subnode is defined as a phandle that can be referenced from
-            a node which needs access to BCS.
+        which can be used to download files needed by the build system. Each
+        subnode is defined as a phandle that can be referenced from a node which
+        needs access to BCS.
+
         *   `<bcs-type>`: Node containing information about one BCS tarfile:
             *   `overlay`: Name of overlay to download from
             *   `package`: Package subdirectory to download from
             *   `ebuild-version`: Tarfile version to download. This corresponds
-                    to the ebuild version prior to unibuild, but can be any
-                    suitable string.
+                to the ebuild version prior to unibuild, but can be any suitable
+                string.
             *   `tarball`: Template for tarball to download. This can include
                 `{package}` and `{version}`.
 
     *   `firmware` (optional) : Contains information about firmware versions and
         files
+
         *   `script`: Updater script to use. See [the pack_dist
             directory](https://cs.corp.google.com/chromeos_public/src/platform/firmware/pack_dist)
             for the scripts. The options are:
@@ -243,47 +243,48 @@ properties.
                 point.
 
     *   `mapping`: (optional): Used to determine the model/sub-model for a
-        particular device. There can be any number of mappings. At present
-        only a `sku-map` is allowed.
-        *   `sku-map`: Provides a mapping from SKU ID to model/sub-model.
-            One of `simple-sku-map` or `single-sku` must be provided.
-            `smbios-name-match` is needed only if the family supports
-            models which have SKU ID conflicts and needs the SMBIOS name to
-            disambiguate them. This is common when migrating legacy boards
-            to unified builds, but may also occur if the SKU ID mapping is
-            not used for some reason.
-            *   `platform-name`: Indicates the platform name for this
-                platform. This is reported by 'mosys platform name'. It is
-                typically the family name with the first letter capitalized.
-            *   `smbios-name-match` (optional) Indicates the smbios name
-                that this table mapping relates to. This map will be
-                ignored on models which don't have a matching smbios name.
-            *   `simple-sku-map` (optional): Provides a simple mapping from
-                SKU (an integer value) to model / sub-model. Each entry
-                consists of a sku value (typically 0-255) and a phandle
-                pointing to the model or sub-model.
-            *   `single-sku` (optional): Used in cases where only a single
-                model is supported by this mapping. In other words, if the
-                SMBIOS name matches, this is the model to use. The value is
-                a phandle pointing to the model (it cannot point to a
-                sub-model).
+        particular device. There can be any number of mappings. At present only
+        a `sku-map` is allowed.
+
+        *   `sku-map`: Provides a mapping from SKU ID to model/sub-model. One of
+            `simple-sku-map` or `single-sku` must be provided.
+            `smbios-name-match` is needed only if the family supports models
+            which have SKU ID conflicts and needs the SMBIOS name to
+            disambiguate them. This is common when migrating legacy boards to
+            unified builds, but may also occur if the SKU ID mapping is not used
+            for some reason.
+            *   `platform-name`: Indicates the platform name for this platform.
+                This is reported by 'mosys platform name'. It is typically the
+                family name with the first letter capitalized.
+            *   `smbios-name-match` (optional) Indicates the smbios name that
+                this table mapping relates to. This map will be ignored on
+                models which don't have a matching smbios name.
+            *   `simple-sku-map` (optional): Provides a simple mapping from SKU
+                (an integer value) to model / sub-model. Each entry consists of
+                a sku value (typically 0-255) and a phandle pointing to the
+                model or sub-model.
+            *   `single-sku` (optional): Used in cases where only a single model
+                is supported by this mapping. In other words, if the SMBIOS name
+                matches, this is the model to use. The value is a phandle
+                pointing to the model (it cannot point to a sub-model).
 
     *   `touch` (optional): Contains information about touch devices used by
         this family. Each node is defined as a Phandle that can be referenced
         from the model-specific configuration using the `touch-type` property.
+
         *   `vendor`: Name of vendor.
         *   `firmware-bin`: Template filename to use for vendor firmware binary.
             The file is installed into `/opt/google/touch`.
         *   `firmware-symlink`: Template filename to use for the /lib/firmware
             symlink to the firmware file in `/opt/google/touch`. The
             `/lib/firmware` part is assumed.
-        *   `bcs-type` (optional): phandle pointing to the BCS node to use to obtain
-                a tarfile containing the firmware.
+        *   `bcs-type` (optional): phandle pointing to the BCS node to use to
+            obtain a tarfile containing the firmware.
 
-        Template filenames may include the following fields, enclosed in
-        `{...}` defined by the touch node: `vendor`, `pid`, `version` as well
-        as `model` for the model name. The expansion / interpretation happens
-        in cros_config. Other users should not attempt to implement this. The
+        Template filenames may include the following fields, enclosed in `{...}`
+        defined by the touch node: `vendor`, `pid`, `version` as well as `model`
+        for the model name. The expansion / interpretation happens in
+        cros_config. Other users should not attempt to implement this. The
         purpose is to avoid having to repeat the filename in each model that
         uses a particular manufacturer's touchscreen, since the naming
         convention is typically consistent for that manufacturer.
@@ -292,20 +293,23 @@ properties.
 
     *   `<model name>`: actual name of the model being defined, e.g. `reef` or
         `pyro`
+
         *   `arc` (optional): Contains arc++ configuration information
             *   `hw-features`: Script filename that configures the Arc++
-                    hardware features (by probing or hard-coding) for a model.
+                hardware features (by probing or hard-coding) for a model.
             *   `build-properties` (optional): Contains information for the
                 Android container system properties used by this model.
                 Properties here are the same as in the family node above, with
                 one addition to provide common values:
                 *   `arc-properties-type`: Phandle pointing to a subnode of the
                     family arc build-properties configuration.
-        *   `audio` (optional): Contains information about audio devices
-                used by this model.
-            *   `<audio_system>`: Contains information about a particular
-                audio device used by this model. Valid values for the package
-                name are:
+        *   `audio` (optional): Contains information about audio devices used by
+            this model.
+
+            *   `<audio_system>`: Contains information about a particular audio
+                device used by this model. Valid values for the package name
+                are:
+
                 *   `main`: The main audio system
 
                 For each of these:
@@ -326,17 +330,20 @@ properties.
             of this model should default to the same as another model. The value
             is a phandle pointing to the model. It is not possible to 'remove'
             nodes / properties defined by the other model. It is only possible
-            to change properties or add new ones.
-            Note: This is an experimental feature which will be evaluated in
-            December 2017 to determine its usefulness versus the potential
-            confusion it can cause.
+            to change properties or add new ones. Note: This is an experimental
+            feature which will be evaluated in December 2017 to determine its
+            usefulness versus the potential confusion it can cause.
+
         *   `thermal`(optional): Contains information about thermal properties
             and settings.
+
             *   `dptf-dv`: Filename of the .dv file containing DPTF (Dynamic
                 Platform and Thermal Framework) settings, relative to the
                 ebuild's FILESDIR.
-        *   `touch` (optional): Contains information about touch devices such
-            as touchscreens, touchpads, stylus.
+
+        *   `touch` (optional): Contains information about touch devices such as
+            touchscreens, touchpads, stylus.
+
             *   `present` (optional): Indicates whether this model has a
                 touchscreen. This is used by the ARC++ system to pass
                 information to Android, for example. Valid values are:
@@ -352,12 +359,14 @@ properties.
                 device then the touchscreen is assumed to exist.
             *   `<device_type>` (optional): Contains information about touch
                 firmware packages. Valid values for package_name are:
-                * `stylus` - a pen-like device with a sensor on or behind the
+
+                *   `stylus` - a pen-like device with a sensor on or behind the
                     display which together provide absolute positions with
                     respect to the display
-                * `touchpad` - a touch surface separate from the display
-                * `touchscreen` - a transparent touch surface on a display which
-                    provides absolute positions with respect to the display
+                *   `touchpad` - a touch surface separate from the display
+                *   `touchscreen` - a transparent touch surface on a display
+                    which provides absolute positions with respect to the
+                    display
 
                 You can use unit values (`touchscreen@0`, `touchscreen@1`) to
                 allow multiple devices of the same type on a model.
@@ -382,6 +391,7 @@ properties.
             two files in the `/usr/share/chromeos-assets/wallpaper/<wallpaper>`
             directory: `/[filename]_[small|large].jpg`. If these files are
             missing or the property does not exist, "default" is used.
+
         *   `whitelabel` (optional): Sometimes models are so similar that we do
             not want to have separate settings. This happens in particular with
             'white-label' devices, where the same device is shipped by several
@@ -389,14 +399,16 @@ properties.
             model whose configuration is shared. All settings (except for a very
             few exceptions) will then come from the shares node. Currently if
             this properly is used, then only the `firmware { key-id }`,
-            `brand-code` and  `wallpaper` propertles can be provided. All other
+            `brand-code` and `wallpaper` propertles can be provided. All other
             properties will come from the shared model.
+
         *   `firmware` (optional) : Contains information about firmware versions
             and files. The properties and nodes inside this node are exactly the
             same as family/firmware/shared. By convention, tools looking for
             firmware properties for a model will fallback to the family-level
             firmware/shared configuration if the node or property is not found
             at the model level.
+
             *   `shares`(optional): Phandle pointing to the firmware to use for
                 this model. This is a list with a single phandle, pointing to
                 the firmware node of another model. The presence of this
@@ -405,33 +417,34 @@ properties.
                 used to share firmware across multiple models where hardware
                 differences are small and we can detect the model from board ID
                 pins. At this time, only a phandle reference to a subnode of
-                family/firmware is supported. There are no restrictions on
-                the phandle target node naming. Note that this
-                property cannot be provided if the model configuration is shared
-                at the model level (the `whitelabel` property under
-                `<model_name>`).
-            *   `key-id` (optional): Unique ID that matches which key
-                will be used in for firmware signing as part of vboot.
-                For context, see go/cros-unibuild-signing
+                family/firmware is supported. There are no restrictions on the
+                phandle target node naming. Note that this property cannot be
+                provided if the model configuration is shared at the model level
+                (the `whitelabel` property under `<model_name>`).
+            *   `key-id` (optional): Unique ID that matches which key will be
+                used in for firmware signing as part of vboot. For context, see
+                go/cros-unibuild-signing
             *   `sig-id-in-customization-id` (optional): Indicates that this
                 model cannot be decoded by the mapping table. Instead the model
                 is stored in the VPD (Vital Product Data) region in the
-                customization_id property. This allows us to determine the
-                model to use in the factory during the finalization stage. Note
-                that if the VPD is wiped then the model will be lost. This may
-                mean that the device will revert back to a generic model, or
-                may not work. It is not possible in general to test whether the
-                model in the VPD is correct at run-time. We simply assume that
-                it is. The advantage of using this property is that no hardware
-                changes are needed to change one model into another. For example
-                we can create 20 different whitelabel boards, all with the same
+                customization_id property. This allows us to determine the model
+                to use in the factory during the finalization stage. Note that
+                if the VPD is wiped then the model will be lost. This may mean
+                that the device will revert back to a generic model, or may not
+                work. It is not possible in general to test whether the model in
+                the VPD is correct at run-time. We simply assume that it is. The
+                advantage of using this property is that no hardware changes are
+                needed to change one model into another. For example we can
+                create 20 different whitelabel boards, all with the same
                 hardware, just by changing the customization_id that is written
                 into SPI flash.
+
         *   `powerd-prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
-        *   `test-label` (optional): Test label applied to DUTs in the lab.
-            In Autotest, this will be the model label.  By allowing an alternate
+
+        *   `test-label` (optional): Test label applied to DUTs in the lab. In
+            Autotest, this will be the model label. By allowing an alternate
             label, different models can be shared for testing purposes.
 
 ### Example for reef
@@ -807,20 +820,63 @@ chromeos {
     };
 };
 ```
+
 [](begin_definitions)
 
 ## CrOS Config Type Definitions (v2)
 ### model
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
+| arc | [arc](#arc) |  | False |  |
 | audio | [audio](#audio) |  | False |  |
 | brand-code | string | ```^[A-Z]{4}$``` | False | Brand code of the model (also called RLZ code). |
 | firmware | [firmware](#firmware) |  | True |  |
 | identity | [identity](#identity) |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
 | powerd-prefs | string |  | False | Powerd config that should be used. |
-| test-alias | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
+| test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | touch | [touch](#touch) |  | False |  |
+| wallpaper | string |  | False | Base filename of the default wallpaper to show on this device.
+ |
+
+### arc
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| build-properties | [build-properties](#build-properties) |  | True |  |
+| files | array - [files](#files) |  | False |  |
+
+### build-properties
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| device | string |  | False | Device name to report in 'ro.product.device'. This
+is often '{product}_cheets' but it can be something else if
+desired.
+ |
+| marketing-name | string |  | False | Name of this model as it is called in the
+market, reported in 'ro.product.model'. This often starts
+with '{oem}'.
+ |
+| metrics-tag | string |  | False | Tag to use to track metrics for this model.
+The tag can be shared across many models if desired, but
+this will result in larger granularity for metrics
+reporting.  Ideally the metrics system should support
+collation of metrics with different tags into groups, but if
+this is not supported, this tag can be used to achieve the
+same end.  This is reported in 'ro.product.metrics.tag'.
+ |
+| oem | string |  | False | Original Equipment Manufacturer for this model. This
+generally means the OEM name printed on the device.
+ |
+| product | string |  | False | Product name to report in 'ro.product.name'.
+This may be the model name, or it can be something else, to allow
+several models to be grouped into one product.
+ |
+
+### files
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system. |
 
 ### audio
 | Attribute | Type   | RegEx     | Required | Description |
@@ -851,6 +907,13 @@ chromeos {
 | key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |
 | main-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+| no-firmware | boolean | ```^[A-Z|_|0-9]*$``` | False | If present this indicates that this model has no firmware at present.
+This means that it will be omitted from the firmware updater
+(chromeos-firmware- ebuild) and it will not be included in the signer
+instructions file sent to the signer.
+This option is often useful when a model is first added,
+since it may not have firmware at that point.
+ |
 | pd-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 
 ### build-targets
@@ -886,55 +949,41 @@ chromeos {
 
 
 [](end_definitions)
+
 ## Usage Instructions
 
 ### Pinning Firmware Versions for Specific Models
 
-In order to pin firmware for a single model, change the main-image and
-ec-image properties in that image. See `snappy` above as an example.
+In order to pin firmware for a single model, change the main-image and ec-image
+properties in that image. See `snappy` above as an example.
 
-In order to pin firmware versions for several models and avoid entering the
-same information twice, create a new firmware instance pointing to the pinned
-rev and then update the repective model's shares phandle to point to the
-pinned revision.
+In order to pin firmware versions for several models and avoid entering the same
+information twice, create a new firmware instance pointing to the pinned rev and
+then update the repective model's shares phandle to point to the pinned
+revision.
 
-In the example above, this is shown using sand (a model) referencing
-the pinned firmware.
+In the example above, this is shown using sand (a model) referencing the pinned
+firmware.
 
-This pinned firmware can then be shared as normal (e.g. electro in
-the example).
+This pinned firmware can then be shared as normal (e.g. electro in the example).
 
-This will cause the different version to get installed under a
-different models sub-directory in the shellball.
-Which achieves the same effect of having 2 separate revisions
-(in a slightly round about way) installed in the shellball.
+This will cause the different version to get installed under a different models
+sub-directory in the shellball. Which achieves the same effect of having 2
+separate revisions (in a slightly round about way) installed in the shellball.
 
-The shellball generated will contain the following (based on
-the example above) for the firmware pinning case:
-* models/
-  * reef/
-    * bios.bin
-    * ec.bin
-    * setvars.sh
-  * basking/
-    * setvars.sh (points to models/reef/...)
-  * sand/
-    * bios.bin (a different version)
-    * ec.bin (a different version)
-    * setvars.sh
-  * electro/
-    * setvars.sh (points to models/sand/...)
-
+The shellball generated will contain the following (based on the example above)
+for the firmware pinning case: * models/ * reef/ * bios.bin * ec.bin *
+setvars.sh * basking/ * setvars.sh (points to models/reef/...) * sand/ *
+bios.bin (a different version) * ec.bin (a different version) * setvars.sh *
+electro/ * setvars.sh (points to models/sand/...)
 
 ### Creating touch settings
 
-To enable touch on a Chromebook you need to set up the touch firmware
-correctly.
+To enable touch on a Chromebook you need to set up the touch firmware correctly.
 
-First, create a `touch` node in your family. Add to that subnodes for each
-type of touch device you have, e.g. elan-touchpad, wacom-stylus. Each node
-should specify the firmware-bin and firmware-symlink filename patterns for that
-device.
+First, create a `touch` node in your family. Add to that subnodes for each type
+of touch device you have, e.g. elan-touchpad, wacom-stylus. Each node should
+specify the firmware-bin and firmware-symlink filename patterns for that device.
 
 Once you have done that you can add a `touch` node in your model. This should
 reference the touch firmware node using the `touch-type` property. It should
@@ -950,7 +999,7 @@ what other models have done.
 
 To test your changes (e.g. for coral):
 
-   emerge-coral chromeos-config-bsp chromeos-config chromeos-bsp-coral-private
+emerge-coral chromeos-config-bsp chromeos-config chromeos-bsp-coral-private
 
 You should see it install each of the touch files. If not, or you get an error,
 check your configuration.
@@ -965,8 +1014,8 @@ To introduce a new property, first add its definition to this file and to
 cros_config_host/validate_config.py. Then to generate the new version of the
 utility familiar with the new property run
 
-  $ cros_workon --host start chromeos-config-host
-  $ sudo emerge chromeos-config-host
+$ cros_workon --host start chromeos-config-host $ sudo emerge
+chromeos-config-host
 
 Next add the new property and its value to the approritate dtsi file(s) in the
 board's private overlay, in src/private-overlays. Either in
@@ -981,22 +1030,22 @@ in case multiple models' configurations are described in a single file.
 
 To compile the new database run
 
- $ cros_workon-${BOARD} start chromeos-config-bsp
- $ emerge-${BOARD} chromeos-config-bsp
+$ cros_workon-${BOARD} start chromeos-config-bsp $ emerge-${BOARD}
+chromeos-config-bsp
 
 and then to install the database into the board file system run
 
- $ emerge-${BOARD} chromeos-config
+$ emerge-${BOARD} chromeos-config
 
 At this point the new compiled database is installed in
 /build/${BOARD}/usr/share/chromeos-config/config.dtb.
 
 To query your new item run the test command in the chroot:
 
- $ cros_config_host -c /build/${BOARD}/usr/share/chromeos-config/config.dtb \
-    -m <MODEL> get </path/to/property> <property name>
+$ cros_config_host -c /build/${BOARD}/usr/share/chromeos-config/config.dtb \
+-m <MODEL> get </path/to/property> <property name>
 
 for instance:
 
- $ cros_config_host -c /build/coral/usr/share/chromeos-config/config.dtb \
-    -m robo360 get /firmware key-id
+$ cros_config_host -c /build/coral/usr/share/chromeos-config/config.dtb \
+-m robo360 get /firmware key-id
