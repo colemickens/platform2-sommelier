@@ -79,9 +79,7 @@ void Service::SendReadRequest(const std::string& id,
   writer.AppendString(id);
   writer.AppendInt64(offset);
   writer.AppendInt64(size);
-  dbus::FileDescriptor dbus_fd(fd.get());
-  dbus_fd.CheckValidity();
-  writer.AppendFileDescriptor(dbus_fd);
+  writer.AppendFileDescriptor(fd.get());
   request_handler_proxy_->CallMethod(
       &method_call,
       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
@@ -134,9 +132,7 @@ void Service::OpenFile(dbus::MethodCall* method_call,
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   writer.AppendString(id);
-  dbus::FileDescriptor dbus_fd(fd.get());
-  dbus_fd.CheckValidity();
-  writer.AppendFileDescriptor(dbus_fd);
+  writer.AppendFileDescriptor(fd.get());
   response_sender.Run(std::move(response));
 }
 
