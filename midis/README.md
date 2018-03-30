@@ -107,4 +107,44 @@ TODO(pmalani)
 
 ### Data flow
 
-TODO(pmalani)
+The data flow to and from H/W devices and clients is best illustrated with the
+help of flow diagrams.
+
+#### H/W device to client
+
+    H/W device
+       |
+       |
+      \|/
+    SeqHandler -------------------> DeviceTracker
+                                      |
+                                      |
+                                     \|/
+                                    Device
+                                      |
+                                      |
+                                     \|/
+                          write to all client FDs registered
+                              for that subdevice.           --------> Client
+                             (SubDeviceClientFDHolder)
+
+
+#### Client to H/W device
+
+             Client
+        (writes data to FD)
+               |
+               |
+              \|/
+             Device
+     (WriteClientDataToDevice)
+               |
+               |
+              \|/
+             OutPort --------------> SeqHandler
+                                   (SendMidiData)
+                                         |
+                                         |
+                                        \|/
+                                    H/W device
+
