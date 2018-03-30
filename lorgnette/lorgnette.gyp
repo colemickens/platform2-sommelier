@@ -21,6 +21,7 @@
       'type': 'none',
       'variables': {
         'dbus_adaptors_out_dir': 'include/lorgnette/dbus_adaptors',
+        'new_fd_bindings': 1,
       },
       'sources': [
         'dbus_bindings/org.chromium.lorgnette.Manager.xml',

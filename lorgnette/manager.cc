@@ -105,7 +105,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
 
 bool Manager::ScanImage(brillo::ErrorPtr* error,
                         const string& device_name,
-                        const dbus::FileDescriptor& outfd,
+                        const base::ScopedFD& outfd,
                         const brillo::VariantDictionary& scan_properties) {
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
@@ -121,11 +121,10 @@ bool Manager::ScanImage(brillo::ErrorPtr* error,
   brillo::ProcessImpl scan_process;
   brillo::ProcessImpl convert_process;
 
-  // Since the FileDescriptor object retains ownership of this file descriptor,
-  // make a local copy.
-  int out_fd = dup(outfd.value());
+  // Duplicate |outfd| since we need a file descriptor that the brillo::Process
+  // can close after binding to the child.
   RunScanImageProcess(device_name,
-                      out_fd,
+                      dup(outfd.get()),
                       &pipe_fd_input,
                       &pipe_fd_output,
                       scan_properties,

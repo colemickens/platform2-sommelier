@@ -50,7 +50,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                     ScannerInfo* scanner_list) override;
   bool ScanImage(brillo::ErrorPtr* error,
                  const std::string& device_name,
-                 const dbus::FileDescriptor& outfd,
+                 const base::ScopedFD& outfd,
                  const brillo::VariantDictionary& scan_properties) override;
 
  private:
