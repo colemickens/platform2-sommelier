@@ -1059,18 +1059,11 @@ bool SessionManagerImpl::StartArcInstance(
     std::string* out_container_instance_id,
     dbus::FileDescriptor* out_fd) {
 #if USE_CHEETS
-  pid_t pid = 0;
-  android_container_->GetContainerPID(&pid);
-
-  base::ScopedClosureRunner scoped_runner;
-  if (pid > 0) {
-    LOG(INFO) << "Container is running with PID " << pid;
-    // Stop the existing instance if it fails to continue to boot an exsiting
-    // container. Using Unretained() is okay because the closure will be called
-    // when exiting this function.
-    scoped_runner.Reset(base::Bind(&SessionManagerImpl::OnContinueArcBootFailed,
-                                   base::Unretained(this)));
-  }
+  // Stop the existing instance if it fails to continue to boot an existing
+  // container. Using Unretained() is okay because the closure will be called
+  // before this function returns. If container was not running, this is no op.
+  base::ScopedClosureRunner scoped_runner(base::Bind(
+      &SessionManagerImpl::OnContinueArcBootFailed, base::Unretained(this)));
 
   StartArcInstanceRequest request;
   if (!request.ParseFromArray(in_request.data(), in_request.size())) {
@@ -1083,30 +1076,43 @@ bool SessionManagerImpl::StartArcInstance(
     return false;
   }
 
-  dbus::FileDescriptor server_socket;
-  if (!request.for_login_screen()) {
-    // Create a server socket unless the request is for starting an instance
-    // for login screen.
-    if (!CreateArcServerSocket(&server_socket, error)) {
+  if (request.for_login_screen()) {
+    // Redirect to Mini Container start.
+    StartArcMiniContainerRequest mini_container_request;
+    mini_container_request.set_native_bridge_experiment(
+        request.native_bridge_experiment());
+    if (!StartArcMiniContainerInternal(mini_container_request,
+                                       out_container_instance_id, error)) {
       DCHECK(*error);
       return false;
     }
-  } else {
     // There is nothing to do here, but since passing an invalid handle is not
     // allowed by the dbus binding, open /dev/null and return a handle to the
     // file.
+    dbus::FileDescriptor server_socket;
     server_socket.PutValue(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
-  }
-  server_socket.CheckValidity();
+    server_socket.CheckValidity();
+    *out_fd = std::move(server_socket);
 
-  if (!StartArcInstanceInternal(error, request, pid,
-                                out_container_instance_id)) {
+    ignore_result(scoped_runner.Release());
+    return true;
+  }
+
+  // Redirect to Container Upgrade.
+  UpgradeArcContainerRequest upgrade_request;
+  upgrade_request.set_account_id(request.account_id());
+  upgrade_request.set_skip_boot_completed_broadcast(
+      request.skip_boot_completed_broadcast());
+  upgrade_request.set_scan_vendor_priv_app(request.scan_vendor_priv_app());
+  upgrade_request.set_packages_cache_mode(
+      static_cast<UpgradeArcContainerRequest::PackageCacheMode>(
+          request.packages_cache_mode()));
+  if (!UpgradeArcContainerInternal(upgrade_request, out_fd, error)) {
     DCHECK(*error);
     return false;
   }
-  auto closure_unused = scoped_runner.Release();
 
-  *out_fd = std::move(server_socket);
+  ignore_result(scoped_runner.Release());
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1125,20 +1131,8 @@ bool SessionManagerImpl::StartArcMiniContainer(
                          "StartArcMiniContainerRequest parsing failed.");
     return false;
   }
-  std::vector<std::string> keyvals = {
-      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
-      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
-      base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
-                         request.native_bridge_experiment())};
-
-  std::string container_instance_id =
-      StartArcContainer(kStartArcInstanceForLoginScreenImpulse, keyvals, error);
-  if (container_instance_id.empty()) {
-    DCHECK(*error);
-    return false;
-  }
-  *out_container_instance_id = std::move(container_instance_id);
-  return true;
+  return StartArcMiniContainerInternal(request, out_container_instance_id,
+                                       error);
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
   return false;
@@ -1150,114 +1144,24 @@ bool SessionManagerImpl::UpgradeArcContainer(
     const std::vector<uint8_t>& in_request,
     dbus::FileDescriptor* out_fd) {
 #if USE_CHEETS
-  pid_t pid = 0;
-  if (!android_container_->GetContainerPID(&pid)) {
-    constexpr char kMessage[] = "Failed to find mini-container for upgrade.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kArcContainerNotFound, kMessage);
-    return false;
-  }
-  LOG(INFO) << "Container is running with PID " << pid;
   // Stop the existing instance if it fails to continue to boot an existing
   // container. Using Unretained() is okay because the closure will be called
-  // before this function returns.
+  // before this function returns. If container was not running, this is no op.
   base::ScopedClosureRunner scoped_runner(base::Bind(
       &SessionManagerImpl::OnContinueArcBootFailed, base::Unretained(this)));
+
   UpgradeArcContainerRequest request;
   if (!request.ParseFromArray(in_request.data(), in_request.size())) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS,
                          "UpgradeArcContainerRequest parsing failed.");
     return false;
   }
-  dbus::FileDescriptor server_socket;
-  if (!CreateArcServerSocket(&server_socket, error)) {
+  if (!UpgradeArcContainerInternal(request, out_fd, error)) {
     DCHECK(*error);
     return false;
   }
-  server_socket.CheckValidity();
-
-  // |arc_start_time_| is initialized when the container is upgraded (rather
-  // than when the mini-container starts) since we are interested in measuring
-  // time from when the user logs in until the system is ready to be interacted
-  // with.
-  arc_start_time_ = base::TimeTicks::Now();
-
-  // To upgrade the ARC mini-container, a certain amount of disk space is
-  // needed under /home. We first check it.
-  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
-      kArcCriticalDiskFreeBytes) {
-    constexpr char kMessage[] = "Low free disk under /home";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kLowFreeDisk, kMessage);
-    return false;
-  }
-
-  std::string account_id;
-  if (!NormalizeAccountId(request.account_id(), &account_id, error)) {
-    DCHECK(*error);
-    return false;
-  }
-  if (user_sessions_.count(account_id) == 0) {
-    // This path can be taken if a forged D-Bus message for starting a full
-    // (stateful) container is sent to session_manager before the actual
-    // user's session has started. Do not remove the |account_id| check to
-    // prevent such a container from starting on login screen.
-    constexpr char kMessage[] = "Provided user ID does not have a session.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
-    return false;
-  }
-
-  android_container_->SetStatefulMode(StatefulMode::STATEFUL);
-  std::vector<std::string> keyvals = {
-      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
-      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
-      "ANDROID_DATA_DIR=" + GetAndroidDataDirForUser(account_id).value(),
-      "ANDROID_DATA_OLD_DIR=" + GetAndroidDataOldDirForUser(account_id).value(),
-      "CHROMEOS_USER=" + account_id,
-      base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
-                         request.skip_boot_completed_broadcast()),
-      base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
-                         request.scan_vendor_priv_app()),
-      base::StringPrintf("CONTAINER_PID=%d", pid)};
-
-  switch (request.packages_cache_mode()) {
-    case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
-      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
-      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
-      break;
-    case UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
-      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
-      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
-      break;
-    case UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
-      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
-      keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
-      break;
-    default:
-      NOTREACHED() << "Wrong packages cache mode: "
-                   << request.packages_cache_mode() << ".";
-  }
-
-  if (!init_controller_->TriggerImpulse(
-          kContinueArcBootImpulse, keyvals,
-          InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] = "Emitting continue-arc-boot impulse failed.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kEmitFailed, kMessage);
-    return false;
-  }
-
-  init_controller_->TriggerImpulse(
-      kStartArcNetworkImpulse,
-      {base::StringPrintf("CONTAINER_NAME=%s", kArcContainerName),
-       base::StringPrintf("CONTAINER_PID=%d", pid)},
-      InitDaemonController::TriggerMode::ASYNC);
-
-  login_metrics_->StartTrackingArcUseTime();
 
   ignore_result(scoped_runner.Release());
-  *out_fd = std::move(server_socket);
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1681,132 +1585,23 @@ bool SessionManagerImpl::CreateArcServerSocket(dbus::FileDescriptor* out_fd,
   return true;
 }
 
-// TODO(cmtm): This one is deprecated, remove it b/65548422.
-bool SessionManagerImpl::StartArcInstanceInternal(
-    brillo::ErrorPtr* error,
-    const StartArcInstanceRequest& in_request,
-    pid_t container_pid,
-    std::string* out_container_instance_id) {
-  // Set up impulse params.
+bool SessionManagerImpl::StartArcMiniContainerInternal(
+    const StartArcMiniContainerRequest& request,
+    std::string* container_instance_id_out,
+    brillo::ErrorPtr* error_out) {
   std::vector<std::string> keyvals = {
-      "CHROMEOS_DEV_MODE=" + std::to_string(IsDevMode(system_)),
-      "CHROMEOS_INSIDE_VM=" + std::to_string(IsInsideVm(system_)),
-      "NATIVE_BRIDGE_EXPERIMENT=" +
-          std::to_string(in_request.native_bridge_experiment()),
-  };
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
+      base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
+                         request.native_bridge_experiment())};
 
-#if USE_ANDROID_MASTER_CONTAINER
-  // This feature is only available in NYC branch.
-  keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
-  keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
-#else
-  switch (in_request.packages_cache_mode()) {
-    case StartArcInstanceRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
-      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
-      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
-      break;
-    case StartArcInstanceRequest_PackageCacheMode_COPY_ON_INIT:
-      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
-      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
-      break;
-    case StartArcInstanceRequest_PackageCacheMode_DEFAULT:
-      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
-      keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
-      break;
-    default:
-      NOTREACHED() << "Wrong packages cache mode: "
-                   << in_request.packages_cache_mode() << ".";
+  std::string container_instance_id = StartArcContainer(
+      kStartArcInstanceForLoginScreenImpulse, keyvals, error_out);
+  if (container_instance_id.empty()) {
+    DCHECK(*error_out);
+    return false;
   }
-#endif
-
-  const bool continue_boot = container_pid > 0;
-  android_container_->SetStatefulMode(in_request.for_login_screen()
-                                          ? StatefulMode::STATELESS
-                                          : StatefulMode::STATEFUL);
-  if (!in_request.for_login_screen()) {
-    arc_start_time_ = base::TimeTicks::Now();
-
-    // To boot or continue booting ARC instance, certain amount of disk space is
-    // needed under the home. We first check it.
-    // Note that this check is unnecessary for login screen case, because it
-    // runs on tmpfs.
-    if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
-        kArcCriticalDiskFreeBytes) {
-      constexpr char kMessage[] = "Low free disk under /home";
-      LOG(ERROR) << kMessage;
-      *error = CreateError(dbus_error::kLowFreeDisk, kMessage);
-      return false;
-    }
-
-    std::string account_id;
-    if (!NormalizeAccountId(in_request.account_id(), &account_id, error)) {
-      DCHECK(*error);
-      return false;
-    }
-    if (user_sessions_.count(account_id) == 0) {
-      // This path can be taken if a forged D-Bus message for starting a full
-      // (stateful) container is sent to session_manager before the actual
-      // user's session has started. Do not remove the |account_id| check to
-      // prevent such a container from starting on login screen.
-      constexpr char kMessage[] = "Provided user ID does not have a session.";
-      LOG(ERROR) << kMessage;
-      *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
-      return false;
-    }
-
-    std::vector<std::string> extra_keyvals = {
-        "ANDROID_DATA_DIR=" + GetAndroidDataDirForUser(account_id).value(),
-        "ANDROID_DATA_OLD_DIR=" +
-            GetAndroidDataOldDirForUser(account_id).value(),
-        "CHROMEOS_USER=" + account_id,
-        "DISABLE_BOOT_COMPLETED_BROADCAST=" +
-            std::to_string(in_request.skip_boot_completed_broadcast()),
-        "ENABLE_VENDOR_PRIVILEGED=" +
-            std::to_string(in_request.scan_vendor_priv_app()),
-    };
-    keyvals.insert(keyvals.end(),
-                   std::make_move_iterator(extra_keyvals.begin()),
-                   std::make_move_iterator(extra_keyvals.end()));
-    if (continue_boot)
-      keyvals.emplace_back("CONTAINER_PID=" + std::to_string(container_pid));
-  }
-
-  std::string container_instance_id;
-  if (!continue_boot) {
-    // Start the container.
-    const char* init_signal = in_request.for_login_screen()
-                                  ? kStartArcInstanceForLoginScreenImpulse
-                                  : kStartArcInstanceImpulse;
-    container_instance_id = StartArcContainer(init_signal, keyvals, error);
-    if (container_instance_id.empty()) {
-      DCHECK(*error);
-      return false;
-    }
-  } else {
-    // Continue booting the existing container.
-    if (!ContinueArcBoot(keyvals, error)) {
-      DCHECK(*error);
-      return false;
-    }
-  }
-
-  if (!in_request.for_login_screen()) {
-    // In addition, start ARC network service, if this is not for login screen.
-    if (!StartArcNetwork(error)) {
-      DCHECK(*error);
-      if (continue_boot)
-        return false;  // the caller shuts down the container.
-      // Asking the container to exit will result in
-      // OnAndroidContainerStopped() being called, which will handle any
-      // necessary cleanup.
-      android_container_->RequestJobExit("network startup failed");
-      android_container_->EnsureJobExit(kContainerTimeout);
-      return false;
-    }
-    login_metrics_->StartTrackingArcUseTime();
-  }
-
-  *out_container_instance_id = std::move(container_instance_id);
+  *container_instance_id_out = std::move(container_instance_id);
   return true;
 }
 
@@ -1872,6 +1667,109 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
       {"CONTAINER_NAME=" + std::string(kArcContainerName),
        "CONTAINER_PID=" + std::to_string(pid)},
       InitDaemonController::TriggerMode::ASYNC);
+  return true;
+}
+
+bool SessionManagerImpl::UpgradeArcContainerInternal(
+    const UpgradeArcContainerRequest& request,
+    dbus::FileDescriptor* fd_out,
+    brillo::ErrorPtr* error_out) {
+  pid_t pid = 0;
+  if (!android_container_->GetContainerPID(&pid)) {
+    constexpr char kMessage[] = "Failed to find mini-container for upgrade.";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kArcContainerNotFound, kMessage);
+    return false;
+  }
+  LOG(INFO) << "Container is running with PID " << pid;
+  dbus::FileDescriptor server_socket;
+  if (!CreateArcServerSocket(&server_socket, error_out)) {
+    DCHECK(*error_out);
+    return false;
+  }
+  server_socket.CheckValidity();
+
+  // |arc_start_time_| is initialized when the container is upgraded (rather
+  // than when the mini-container starts) since we are interested in measuring
+  // time from when the user logs in until the system is ready to be interacted
+  // with.
+  arc_start_time_ = base::TimeTicks::Now();
+
+  // To upgrade the ARC mini-container, a certain amount of disk space is
+  // needed under /home. We first check it.
+  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
+      kArcCriticalDiskFreeBytes) {
+    constexpr char kMessage[] = "Low free disk under /home";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kLowFreeDisk, kMessage);
+    return false;
+  }
+
+  std::string account_id;
+  if (!NormalizeAccountId(request.account_id(), &account_id, error_out)) {
+    DCHECK(*error_out);
+    return false;
+  }
+  if (user_sessions_.count(account_id) == 0) {
+    // This path can be taken if a forged D-Bus message for starting a full
+    // (stateful) container is sent to session_manager before the actual
+    // user's session has started. Do not remove the |account_id| check to
+    // prevent such a container from starting on login screen.
+    constexpr char kMessage[] = "Provided user ID does not have a session.";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+    return false;
+  }
+
+  android_container_->SetStatefulMode(StatefulMode::STATEFUL);
+  std::vector<std::string> keyvals = {
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
+      "ANDROID_DATA_DIR=" + GetAndroidDataDirForUser(account_id).value(),
+      "ANDROID_DATA_OLD_DIR=" + GetAndroidDataOldDirForUser(account_id).value(),
+      "CHROMEOS_USER=" + account_id,
+      base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
+                         request.skip_boot_completed_broadcast()),
+      base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
+                         request.scan_vendor_priv_app()),
+      base::StringPrintf("CONTAINER_PID=%d", pid)};
+
+  switch (request.packages_cache_mode()) {
+    case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
+      break;
+    case UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=1");
+      break;
+    case UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
+      keyvals.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
+      keyvals.emplace_back("COPY_PACKAGES_CACHE=0");
+      break;
+    default:
+      NOTREACHED() << "Wrong packages cache mode: "
+                   << request.packages_cache_mode() << ".";
+  }
+
+  if (!init_controller_->TriggerImpulse(
+          kContinueArcBootImpulse, keyvals,
+          InitDaemonController::TriggerMode::SYNC)) {
+    constexpr char kMessage[] = "Emitting continue-arc-boot impulse failed.";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kEmitFailed, kMessage);
+    return false;
+  }
+
+  init_controller_->TriggerImpulse(
+      kStartArcNetworkImpulse,
+      {base::StringPrintf("CONTAINER_NAME=%s", kArcContainerName),
+       base::StringPrintf("CONTAINER_PID=%d", pid)},
+      InitDaemonController::TriggerMode::ASYNC);
+
+  login_metrics_->StartTrackingArcUseTime();
+
+  *fd_out = std::move(server_socket);
   return true;
 }
 

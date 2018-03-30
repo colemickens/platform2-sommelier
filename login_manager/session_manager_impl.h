@@ -50,6 +50,8 @@ class PolicyDescriptor;
 class PolicyKey;
 class ProcessManagerServiceInterface;
 class StartArcInstanceRequest;
+class StartArcMiniContainerRequest;
+class UpgradeArcContainerRequest;
 class SystemUtils;
 class UserPolicyServiceFactory;
 class VpdProcess;
@@ -391,13 +393,11 @@ class SessionManagerImpl
   bool CreateArcServerSocket(dbus::FileDescriptor* out_fd,
                              brillo::ErrorPtr* error);
 
-  // Implementation of StartArcInstance, except parsing blob to protobuf.
-  // When |container_pid| is greater than 0, the function tries to continue to
-  // boot the existing container rather than starting a new one from scratch.
-  bool StartArcInstanceInternal(brillo::ErrorPtr* error,
-                                const StartArcInstanceRequest& in_request,
-                                pid_t container_pid,
-                                std::string* out_container_instance_id);
+  // Core implementation of StartArcMiniContainer().
+  bool StartArcMiniContainerInternal(
+      const StartArcMiniContainerRequest& request,
+      std::string* container_instance_id_out,
+      brillo::ErrorPtr* error_out);
 
   // Starts the Android container for ARC. If the container has started,
   // container_instance_id will be returned. Otherwise, an empty string
@@ -413,10 +413,10 @@ class SessionManagerImpl
   // instance is set to |error_out|.
   bool StartArcNetwork(brillo::ErrorPtr* error_out);
 
-  // Called when the Android container is stopped.
-  void OnAndroidContainerStopped(const std::string& container_instance_id,
-                                 pid_t pid,
-                                 bool clean);
+  // Core implementation of UpgradeArcContainer().
+  bool UpgradeArcContainerInternal(const UpgradeArcContainerRequest& request,
+                                   dbus::FileDescriptor* fd_out,
+                                   brillo::ErrorPtr* error_out);
 
   // Sends an init signal to turn the container from the one for login screen
   // into a fully featured one. If that succeeds, this function also sends an
@@ -427,6 +427,11 @@ class SessionManagerImpl
 
   // Called when the container fails to continue booting.
   void OnContinueArcBootFailed();
+
+  // Called when the Android container is stopped.
+  void OnAndroidContainerStopped(const std::string& container_instance_id,
+                                 pid_t pid,
+                                 bool clean);
 
   // Renames android-data/ in the user's home directory to android-data-old/,
   // then recursively removes the renamed directory. Returns false when it
