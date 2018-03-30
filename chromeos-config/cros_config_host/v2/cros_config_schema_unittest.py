@@ -75,6 +75,20 @@ class GetNamedTupleTests(unittest.TestCase):
     self.assertEqual(val['a-b'], val_tuple.a_b)
 
 
+class MergeDictionaries(unittest.TestCase):
+  def testBaseKeyMerge(self):
+    primary = {'a': {'b': 1, 'c': 2}}
+    overlay = {'a': {'c': 3}, 'b': 4}
+    cros_config_schema.MergeDictionaries(primary, overlay)
+    self.assertEqual({'a': {'b': 1, 'c': 3}, 'b': 4}, primary)
+
+  def testBaseListAppend(self):
+    primary = {'a': {'b': 1, 'c': [1, 2]}}
+    overlay = {'a': {'c': [3, 4]}}
+    cros_config_schema.MergeDictionaries(primary, overlay)
+    self.assertEqual({'a': {'b': 1, 'c': [1, 2, 3, 4]}}, primary)
+
+
 class ParseArgsTests(unittest.TestCase):
   def testParseArgs(self):
     argv = ['-s', 'schema', '-c', 'config', '-o', 'output', '-f' 'True']
@@ -83,6 +97,12 @@ class ParseArgsTests(unittest.TestCase):
     self.assertEqual(args.config, 'config')
     self.assertEqual(args.output, 'output')
     self.assertTrue(args.filter)
+
+  def testParseArgsForMerge(self):
+    argv = ['-o', 'output', '-m' 'm1' 'm2' 'm3']
+    args = cros_config_schema.ParseArgs(argv)
+    self.assertEqual(args.output, 'output')
+    self.assertEqual(args.merge, ['m1' 'm2' 'm3'])
 
 
 class TransformConfigTests(unittest.TestCase):

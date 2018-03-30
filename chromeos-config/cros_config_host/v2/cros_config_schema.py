@@ -54,6 +54,28 @@ def GetNamedTuple(mapping):
       new_mapping[k.replace('-', '_').replace('@', '_')] = GetNamedTuple(v)
   return collections.namedtuple('Config', new_mapping.iterkeys())(**new_mapping)
 
+def MergeDictionaries(primary, overlay):
+  """Merges the overlay dictionary onto the primary dictionary.
+
+  If an element doesn't exist, it's added.
+  If the element is a list, they are appended to each other.
+  Otherwise, the overlay value takes precedent.
+
+  Args:
+    primary: Primary dictionary
+    overlay: Overlay dictionary
+  """
+  for overlay_key in overlay.keys():
+    overlay_value = overlay[overlay_key]
+    if not overlay_key in primary:
+      primary[overlay_key] = overlay_value
+    elif isinstance(overlay_value, collections.Mapping):
+      MergeDictionaries(primary[overlay_key], overlay_value)
+    elif type(overlay_value) is list:
+      primary[overlay_key].extend(overlay_value)
+    else:
+      primary[overlay_key] = overlay_value
+
 def ParseArgs(argv):
   """Parse the available arguments.
 
@@ -88,6 +110,12 @@ def ParseArgs(argv):
       type=bool,
       default=False,
       help='Filter build specific elements from the output JSON')
+  parser.add_argument(
+      '-m',
+      '--merge',
+      nargs='+',
+      type=str,
+      help='Merges a list of YAML files together into a single file in order.')
   return parser.parse_args(argv)
 
 def _SetTemplateVars(template_input, template_vars):
@@ -372,7 +400,31 @@ def main(_argv=None):
         sys.argv (but at present this is unused)
   """
   args = ParseArgs(sys.argv[1:])
-  Main(args.schema, args.config, args.output, args.filter)
+  if args.merge:
+    yaml_files = []
+    for yaml_file in args.merge:
+      with open(yaml_file, 'r') as yaml_stream:
+        # Dropping anchors as part of the merge to keep it simplified.
+        json_from_yaml = json.dumps(
+            yaml.load(yaml_stream.read()), sort_keys=True, indent=2)
+        yaml_files.append(json.loads(json_from_yaml))
+
+    result_yaml = {}
+    if yaml_files:
+      result_yaml = yaml_files[0]
+      to_merge = yaml_files[1:]
+      if to_merge:
+        for overlay_yaml in to_merge:
+          MergeDictionaries(result_yaml, overlay_yaml)
+
+    yaml_transform = json.dumps(result_yaml, sort_keys=True, indent=2)
+    if args.output:
+      with open(args.output, 'w') as output_stream:
+        output_stream.write(yaml_transform)
+    else:
+      print (yaml_transform)
+  else:
+    Main(args.schema, args.config, args.output, args.filter)
 
 if __name__ == "__main__":
   main()
