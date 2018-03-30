@@ -65,9 +65,6 @@ bool IsFile(const struct stat& stat_info);
 // Helper method to check if the entry is an SMB share.
 bool IsSmbShare(uint32_t smbc_type);
 
-// Helper method to get a valid DBus FileDescriptor |dbus_fd| from a scoped
-// file descriptor |fd|.
-void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd);
 void LogAndSetError(const char* operation_name,
                     int32_t mount_id,
                     ErrorType error_received,
@@ -117,7 +114,7 @@ bool IsValidOpenFileFlags(int32_t flags);
 // and will fail if it doesn't read that amount. Returns true on success and
 // |error| is set on failure.
 bool ReadFromFD(const WriteFileOptionsProto& options,
-                const dbus::FileDescriptor& fd,
+                const base::ScopedFD& fd,
                 int32_t* error,
                 std::vector<uint8_t>* buffer);
 

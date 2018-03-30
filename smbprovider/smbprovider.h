@@ -75,14 +75,14 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   void ReadFile(const ProtoBlob& options_blob,
                 int32_t* error_code,
-                dbus::FileDescriptor* temp_fd) override;
+                brillo::dbus_utils::FileDescriptor* temp_fd) override;
 
   int32_t CreateFile(const ProtoBlob& options_blob) override;
 
   int32_t Truncate(const ProtoBlob& options_blob) override;
 
   int32_t WriteFile(const ProtoBlob& options_blob,
-                    const dbus::FileDescriptor& temp_fd) override;
+                    const base::ScopedFD& temp_fd) override;
 
   int32_t CreateDirectory(const ProtoBlob& options_blob) override;
 
@@ -92,7 +92,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   void GetDeleteList(const ProtoBlob& options,
                      int32_t* error_code,
-                     dbus::FileDescriptor* temp_fd,
+                     brillo::dbus_utils::FileDescriptor* temp_fd,
                      int32_t* bytes_written) override;
 
   void GetShares(const ProtoBlob& options_blob,
@@ -172,7 +172,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   bool WriteTempFile(const Proto& options,
                      const std::vector<uint8_t>& buffer,
                      int32_t* error_code,
-                     dbus::FileDescriptor* temp_fd);
+                     brillo::dbus_utils::FileDescriptor* temp_fd);
 
   // Writes |delete_list| to a temporary file and outputs the resulting file
   // descriptor into |temp_fd|. Sets |bytes_written| to the number of bytes
@@ -181,7 +181,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   bool WriteDeleteListToTempFile(const GetDeleteListOptionsProto& options,
                                  const DeleteListProto& delete_list,
                                  int32_t* error_code,
-                                 dbus::FileDescriptor* temp_fd,
+                                 brillo::dbus_utils::FileDescriptor* temp_fd,
                                  int32_t* bytes_written);
 
   // Helper method to write data from a |buffer| into a file specified by

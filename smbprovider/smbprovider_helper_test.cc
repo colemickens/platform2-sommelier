@@ -177,7 +177,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDErrorOnInvalidFd) {
       0 /* mount_id */, 0 /* file_id */, 0 /* offset */, 0 /* length */);
 
   // Create a file descriptor that is invalid.
-  dbus::FileDescriptor invalid_fd;
+  base::ScopedFD invalid_fd;
   EXPECT_FALSE(invalid_fd.is_valid());
 
   // Should return an error when passing in an invalid file descriptor.
@@ -194,8 +194,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDFailsWithLengthLargerThanData) {
   int32_t error;
 
   // Ensure that the fd created is valid.
-  dbus::FileDescriptor fd(temp_file_manager_.CreateTempFile(data).release());
-  fd.CheckValidity();
+  base::ScopedFD fd(temp_file_manager_.CreateTempFile(data).release());
   EXPECT_TRUE(fd.is_valid());
 
   // Should fail since it can't read that much data.
@@ -213,8 +212,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithLengthSmallerThanData) {
   int32_t error;
 
   // Ensure that the fd created is valid.
-  dbus::FileDescriptor fd(temp_file_manager_.CreateTempFile(data).release());
-  fd.CheckValidity();
+  base::ScopedFD fd(temp_file_manager_.CreateTempFile(data).release());
   EXPECT_TRUE(fd.is_valid());
 
   // Should be OK.
@@ -235,8 +233,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithExactSize) {
   int32_t error;
 
   // Ensure that the fd created is valid.
-  dbus::FileDescriptor fd(temp_file_manager_.CreateTempFile(data).release());
-  fd.CheckValidity();
+  base::ScopedFD fd(temp_file_manager_.CreateTempFile(data).release());
   EXPECT_TRUE(fd.is_valid());
 
   // Should be OK.

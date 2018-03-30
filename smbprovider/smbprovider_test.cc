@@ -31,26 +31,25 @@ ErrorType CastError(int error) {
   return static_cast<ErrorType>(error);
 }
 
-void ValidateFDContent(const dbus::FileDescriptor& fd,
+void ValidateFDContent(int fd,
                        int32_t length_to_read,
                        std::vector<uint8_t>::const_iterator data_start_iterator,
                        std::vector<uint8_t>::const_iterator data_end_iterator) {
   EXPECT_EQ(length_to_read,
             std::distance(data_start_iterator, data_end_iterator));
   std::vector<uint8_t> buffer(length_to_read);
-  EXPECT_TRUE(base::ReadFromFD(
-      fd.value(), reinterpret_cast<char*>(buffer.data()), buffer.size()));
+  EXPECT_TRUE(base::ReadFromFD(fd, reinterpret_cast<char*>(buffer.data()),
+                               buffer.size()));
   EXPECT_TRUE(std::equal(data_start_iterator, data_end_iterator, buffer.begin(),
                          buffer.end()));
 }
 
 // Reads the temp file |fd| into a buffer, then parses the buffer into a
 // DeleteListProto.
-DeleteListProto GetDeleteListProtoFromFD(const dbus::FileDescriptor& fd,
-                                         int32_t length_to_read) {
+DeleteListProto GetDeleteListProtoFromFD(int fd, int32_t length_to_read) {
   std::vector<uint8_t> buffer(length_to_read);
-  EXPECT_TRUE(base::ReadFromFD(
-      fd.value(), reinterpret_cast<char*>(buffer.data()), buffer.size()));
+  EXPECT_TRUE(base::ReadFromFD(fd, reinterpret_cast<char*>(buffer.data()),
+                               buffer.size()));
 
   DeleteListProto delete_list;
   EXPECT_TRUE(delete_list.ParseFromArray(buffer.data(), buffer.size()));
@@ -178,7 +177,7 @@ class SmbProviderTest : public testing::Test {
                 int32_t file_id,
                 int64_t offset,
                 int32_t length,
-                dbus::FileDescriptor* fd) {
+                brillo::dbus_utils::FileDescriptor* fd) {
     int32_t err;
     ProtoBlob read_file_blob =
         CreateReadFileOptionsBlob(mount_id, file_id, offset, length);
@@ -187,11 +186,10 @@ class SmbProviderTest : public testing::Test {
   }
 
   void WriteToTempFileWithData(const std::vector<uint8_t>& data,
-                               dbus::FileDescriptor* fd) {
-    EXPECT_FALSE(fd->is_valid());
-    fd->PutValue(temp_file_manager_.CreateTempFile(data).release());
-    fd->CheckValidity();
-    EXPECT_TRUE(fd->is_valid());
+                               base::ScopedFD* fd) {
+    EXPECT_GT(0, fd->get());
+    fd->reset(temp_file_manager_.CreateTempFile(data).release());
+    EXPECT_LE(0, fd->get());
   }
 
   scoped_refptr<dbus::MockBus> mock_bus_ =
@@ -1015,12 +1013,12 @@ TEST_F(SmbProviderTest, DeleteEntryFailsWhenADirectoryCannotBeOpened) {
 TEST_F(SmbProviderTest, ReadFileFailsWithInvalidProto) {
   int32_t err;
   ProtoBlob empty_blob;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
 
   smbprovider_->ReadFile(empty_blob, &err, &fd);
 
   EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
-  EXPECT_FALSE(fd.is_valid());
+  EXPECT_GE(0, fd.get());
 }
 
 // ReadFile fails when passed an invalid file descriptor.
@@ -1028,11 +1026,11 @@ TEST_F(SmbProviderTest, ReadFileFailsWithBadFD) {
   int32_t err;
   ProtoBlob blob = CreateReadFileOptionsBlob(0 /* mount_id */, -1 /* file_id */,
                                              0 /* offset */, 1 /* length */);
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_FALSE(fd.is_valid());
+  EXPECT_GE(0, fd.get());
 }
 
 // ReadFile fails when passed an unopened file descriptor.
@@ -1040,11 +1038,11 @@ TEST_F(SmbProviderTest, ReadFileFailsWithUnopenedFD) {
   int32_t err;
   ProtoBlob blob = CreateReadFileOptionsBlob(
       0 /* mount_id */, 100 /* file_id */, 0 /* offset */, 1 /* length */);
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_FALSE(fd.is_valid());
+  EXPECT_GE(0, fd.get());
 }
 
 // ReadFile fails when passed a negative offset.
@@ -1056,11 +1054,11 @@ TEST_F(SmbProviderTest, ReadFileFailsWithNegativeOffset) {
   int32_t err;
   ProtoBlob blob = CreateReadFileOptionsBlob(mount_id, file_id, -1 /* offset */,
                                              1 /* length */);
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_FALSE(fd.is_valid());
+  EXPECT_GE(0, fd.get());
 }
 
 // ReadFile fails when passed a negative length.
@@ -1072,11 +1070,11 @@ TEST_F(SmbProviderTest, ReadFileFailsWithNegativeLength) {
   int32_t err;
   ProtoBlob blob = CreateReadFileOptionsBlob(mount_id, file_id, 0 /* offset */,
                                              -1 /* length */);
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_FALSE(fd.is_valid());
+  EXPECT_GE(0, fd.get());
 }
 
 // ReadFile returns a valid file descriptor on success.
@@ -1085,11 +1083,10 @@ TEST_F(SmbProviderTest, ReadFileReturnsValidFileDescriptor) {
   const int32_t mount_id = PrepareSingleFileMountWithData(file_data);
   const int32_t file_id = OpenAddedFile(mount_id);
 
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   ReadFile(mount_id, file_id, 0 /* offset */, file_data.size(), &fd);
 
-  EXPECT_TRUE(fd.is_valid());
-  EXPECT_GE(fd.value(), 0);
+  EXPECT_LT(0, fd.get());
   CloseFileHelper(mount_id, file_id);
 }
 
@@ -1107,7 +1104,7 @@ TEST_F(SmbProviderTest, ReadFileSeeksToOffset) {
 
   EXPECT_EQ(0, fake_samba_->GetFileOffset(file_id));
 
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   ReadFile(mount_id, file_id, offset, length_to_read, &fd);
 
   EXPECT_EQ(offset + length_to_read, fake_samba_->GetFileOffset(file_id));
@@ -1123,11 +1120,11 @@ TEST_F(SmbProviderTest, ReadFileWritesTemporaryFile) {
   const int64_t offset = 3;
   const int32_t length_to_read = 2;
 
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   ReadFile(mount_id, file_id, offset, length_to_read, &fd);
 
   // Compare the written value to the expected value.
-  ValidateFDContent(fd, length_to_read, file_data.begin() + offset,
+  ValidateFDContent(fd.get(), length_to_read, file_data.begin() + offset,
                     file_data.begin() + offset + length_to_read);
   CloseFileHelper(mount_id, file_id);
 }
@@ -1151,17 +1148,17 @@ TEST_F(SmbProviderTest, ReadFileReadsCorrectFile) {
   const int32_t file_id2 = OpenAddedFile(mount_id, file_path);
   EXPECT_NE(file_id1, file_id2);
 
-  dbus::FileDescriptor fd1;
+  brillo::dbus_utils::FileDescriptor fd1;
   ReadFile(mount_id, file_id1, 0 /* offset */, file_data1.size(), &fd1);
 
-  dbus::FileDescriptor fd2;
+  brillo::dbus_utils::FileDescriptor fd2;
   ReadFile(mount_id, file_id2, 0 /* offset */, file_data2.size(), &fd2);
 
   // Compare the written values to the expected values.
-  ValidateFDContent(fd1, file_data1.size(), file_data1.begin(),
+  ValidateFDContent(fd1.get(), file_data1.size(), file_data1.begin(),
                     file_data1.end());
 
-  ValidateFDContent(fd2, file_data2.size(), file_data2.begin(),
+  ValidateFDContent(fd2.get(), file_data2.size(), file_data2.begin(),
                     file_data2.end());
 
   // Close files.
@@ -1415,8 +1412,8 @@ TEST_F(SmbProviderTest, TruncateSucceedsWithSameLength) {
 
 TEST_F(SmbProviderTest, WriteFileFailsWithEmptyProto) {
   ProtoBlob empty_blob;
-  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
-                                         empty_blob, dbus::FileDescriptor())));
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->WriteFile(empty_blob, base::ScopedFD())));
 }
 
 TEST_F(SmbProviderTest, WriteFileFailsWithNegativeOffset) {
@@ -1426,8 +1423,8 @@ TEST_F(SmbProviderTest, WriteFileFailsWithNegativeOffset) {
 
   ProtoBlob write_blob = CreateWriteFileOptionsBlob(
       mount_id, file_id, -1 /* offset */, 0 /* length */);
-  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
-                                         write_blob, dbus::FileDescriptor())));
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->WriteFile(write_blob, base::ScopedFD())));
 
   CloseFileHelper(mount_id, file_id);
 }
@@ -1440,8 +1437,8 @@ TEST_F(SmbProviderTest, WriteFileFailsWithNegativeLength) {
   ProtoBlob write_blob = CreateWriteFileOptionsBlob(
       mount_id, file_id, 0 /* offset */, -1 /* length */);
 
-  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
-                                         write_blob, dbus::FileDescriptor())));
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->WriteFile(write_blob, base::ScopedFD())));
 
   CloseFileHelper(mount_id, file_id);
 }
@@ -1453,8 +1450,8 @@ TEST_F(SmbProviderTest, WriteFileFailsWithFileIdThatDoesntExist) {
   ProtoBlob write_blob = CreateWriteFileOptionsBlob(
       mount_id, 999 /* file_id */, 0 /* offset */, 0 /* length */);
 
-  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(smbprovider_->WriteFile(
-                                         write_blob, dbus::FileDescriptor())));
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
+            CastError(smbprovider_->WriteFile(write_blob, base::ScopedFD())));
 }
 
 TEST_F(SmbProviderTest, WriteFileFailsWithInvalidFileDescriptor) {
@@ -1467,7 +1464,7 @@ TEST_F(SmbProviderTest, WriteFileFailsWithInvalidFileDescriptor) {
       mount_id, file_id, 0 /* offset */, 0 /* length */);
 
   // Create an invalid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   EXPECT_FALSE(fd.is_valid());
 
   EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
@@ -1481,7 +1478,7 @@ TEST_F(SmbProviderTest, WriteFileFailsWithDirectoryId) {
 
   // Create a temporary file with a valid file descriptor.
   const std::vector<uint8_t> data = {0, 1, 2, 3};
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(data, &fd);
 
   const int32_t dir_id = OpenAddedDirectory(GetAddedFullDirectoryPath());
@@ -1501,7 +1498,7 @@ TEST_F(SmbProviderTest, WriteFileFailsWithLengthTooLarge) {
   const std::vector<uint8_t> data = {0, 1, 2, 3};
 
   // Create a temporary file with a valid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(data, &fd);
 
   // Attempt to read size() + 1 bytes.
@@ -1521,7 +1518,7 @@ TEST_F(SmbProviderTest, WriteFileSucceedsWithShorterLength) {
   const std::vector<uint8_t> data = {0, 1, 2, 3};
 
   // Create a temporary file with a valid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(data, &fd);
 
   // Attempt to read size() - 1 bytes.
@@ -1541,7 +1538,7 @@ TEST_F(SmbProviderTest, WriteFileSucceedsWithExactLength) {
   const std::vector<uint8_t> data = {0, 1, 2, 3};
 
   // Create a temporary file with a valid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(data, &fd);
 
   // Attempt to read size() bytes.
@@ -1563,7 +1560,7 @@ TEST_F(SmbProviderTest, WriteFileFailsWithReadOnlyFile) {
       OpenAddedFile(mount_id, GetDefaultFilePath(), false /* writeable */);
 
   // Create a temporary file with a valid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(data, &fd);
 
   ProtoBlob write_blob = CreateWriteFileOptionsBlob(
@@ -1586,7 +1583,7 @@ TEST_F(SmbProviderTest, WriteFileCorrectlyWritesToFileInSamba) {
   EXPECT_FALSE(fake_samba_->IsFileDataEqual(GetAddedFullFilePath(), data));
 
   // Create a temporary file with a valid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(data, &fd);
   ProtoBlob write_blob = CreateWriteFileOptionsBlob(
       mount_id, file_id, 0 /* offset */, data.size());
@@ -1609,7 +1606,7 @@ TEST_F(SmbProviderTest, WriteFileCorrectlyWritesFromOffset) {
 
   // Create a temporary file with a valid file descriptor.
   const int64_t offset = 1;
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(new_data, &fd);
   ProtoBlob write_blob =
       CreateWriteFileOptionsBlob(mount_id, file_id, offset, new_data.size());
@@ -1635,7 +1632,7 @@ TEST_F(SmbProviderTest, WriteFileFailsWithOffsetBiggerThanSize) {
   const std::vector<uint8_t> new_data = {'a'};
 
   // Create a temporary file with a valid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(new_data, &fd);
 
   // Attempt to write with offset size() + 1.
@@ -1656,7 +1653,7 @@ TEST_F(SmbProviderTest, WriteFileCorrectlyWritesTwice) {
   const std::vector<uint8_t> data = {0, 1, 2, 3};
 
   // Create a temporary file with a valid file descriptor.
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(data, &fd);
   ProtoBlob write_blob = CreateWriteFileOptionsBlob(
       mount_id, file_id, 0 /* offset */, data.size());
@@ -1669,7 +1666,7 @@ TEST_F(SmbProviderTest, WriteFileCorrectlyWritesTwice) {
 
   // Create another temporary file with a valid file descriptor.
   const std::vector<uint8_t> new_data = {4, 5, 6, 7};
-  dbus::FileDescriptor fd2;
+  base::ScopedFD fd2;
   WriteToTempFileWithData(new_data, &fd2);
 
   // Write starting at the end of the first written data.
@@ -1702,7 +1699,7 @@ TEST_F(SmbProviderTest, WriteFileCorrectlyWritesToCorrectFile) {
 
   // Create a temporary file with a valid file descriptor.
   const std::vector<uint8_t> new_data = {'a', 'b'};
-  dbus::FileDescriptor fd;
+  base::ScopedFD fd;
   WriteToTempFileWithData(new_data, &fd);
 
   // Write to the file1.
@@ -2140,13 +2137,14 @@ TEST_F(SmbProviderTest, GetDeleteListSucceedsOnEmptyDirecotry) {
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/dogs");
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
 
-  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  DeleteListProto delete_list =
+      GetDeleteListProtoFromFD(fd.get(), bytes_written);
   EXPECT_EQ(1, delete_list.entries_size());
 
   EXPECT_EQ("/dogs", delete_list.entries(0));
@@ -2164,13 +2162,14 @@ TEST_F(SmbProviderTest, GetDeleteListSucceedsOnADirOfFiles) {
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path");
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
 
-  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  DeleteListProto delete_list =
+      GetDeleteListProtoFromFD(fd.get(), bytes_written);
   EXPECT_EQ(4, delete_list.entries_size());
 
   EXPECT_EQ("/path/1.jpg", delete_list.entries(0));
@@ -2193,13 +2192,14 @@ TEST_F(SmbProviderTest, GetDeleteListSucceedsOnNestedEmptyDirectories) {
       CreateGetDeleteListOptionsBlob(mount_id, GetDefaultDirectoryPath());
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
 
-  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  DeleteListProto delete_list =
+      GetDeleteListProtoFromFD(fd.get(), bytes_written);
   EXPECT_EQ(5, delete_list.entries_size());
 
   EXPECT_EQ("/path/dogs/lab", delete_list.entries(0));
@@ -2221,13 +2221,14 @@ TEST_F(SmbProviderTest, GetDeleteListSucceedsDirWithAfileAndNonEmptyDir) {
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path");
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
 
-  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  DeleteListProto delete_list =
+      GetDeleteListProtoFromFD(fd.get(), bytes_written);
   EXPECT_EQ(4, delete_list.entries_size());
 
   EXPECT_EQ("/path/dogs/1.jpg", delete_list.entries(0));
@@ -2247,7 +2248,7 @@ TEST_F(SmbProviderTest, GetDeleteListFailsWhenADirectoryCannotBeOpened) {
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path");
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
@@ -2264,13 +2265,14 @@ TEST_F(SmbProviderTest, GetDeleteListSucceedsOnAFile) {
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path/1.jpg");
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
   EXPECT_EQ(ERROR_OK, CastError(error_code));
 
-  DeleteListProto delete_list = GetDeleteListProtoFromFD(fd, bytes_written);
+  DeleteListProto delete_list =
+      GetDeleteListProtoFromFD(fd.get(), bytes_written);
   EXPECT_EQ(1, delete_list.entries_size());
   EXPECT_EQ("/path/1.jpg", delete_list.entries(0));
 }
@@ -2286,7 +2288,7 @@ TEST_F(SmbProviderTest, GetDeleteListFailsOnNonFileNonDirectory) {
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/path/cannon.cn");
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 
@@ -2300,7 +2302,7 @@ TEST_F(SmbProviderTest, GetDeleteListFailsOnNonExistantEntry) {
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/non-existent");
 
   int32_t error_code;
-  dbus::FileDescriptor fd;
+  brillo::dbus_utils::FileDescriptor fd;
   int32_t bytes_written;
   smbprovider_->GetDeleteList(blob, &error_code, &fd, &bytes_written);
 

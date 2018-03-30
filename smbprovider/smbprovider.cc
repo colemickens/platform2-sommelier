@@ -218,7 +218,7 @@ int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
 
 void SmbProvider::ReadFile(const ProtoBlob& options_blob,
                            int32_t* error_code,
-                           dbus::FileDescriptor* temp_fd) {
+                           brillo::dbus_utils::FileDescriptor* temp_fd) {
   DCHECK(error_code);
   DCHECK(temp_fd);
 
@@ -279,7 +279,7 @@ int32_t SmbProvider::Truncate(const ProtoBlob& options_blob) {
 }
 
 int32_t SmbProvider::WriteFile(const ProtoBlob& options_blob,
-                               const dbus::FileDescriptor& temp_fd) {
+                               const base::ScopedFD& temp_fd) {
   int32_t error_code;
   WriteFileOptionsProto options;
   std::vector<uint8_t> buffer;
@@ -516,14 +516,14 @@ template <typename Proto>
 bool SmbProvider::WriteTempFile(const Proto& options,
                                 const std::vector<uint8_t>& buffer,
                                 int32_t* error_code,
-                                dbus::FileDescriptor* temp_fd) {
+                                brillo::dbus_utils::FileDescriptor* temp_fd) {
   base::ScopedFD scoped_fd = temp_file_manager_.CreateTempFile(buffer);
   if (!scoped_fd.is_valid()) {
     LogAndSetError(options, ERROR_IO, error_code);
     return false;
   }
 
-  GetValidDBusFD(&scoped_fd, temp_fd);
+  *temp_fd = scoped_fd.get();
   return true;
 }
 
@@ -827,7 +827,7 @@ bool SmbProvider::ReadToBuffer(const Proto& options,
 
 void SmbProvider::GetDeleteList(const ProtoBlob& options_blob,
                                 int32_t* error_code,
-                                dbus::FileDescriptor* temp_fd,
+                                brillo::dbus_utils::FileDescriptor* temp_fd,
                                 int32_t* bytes_written) {
   DCHECK(error_code);
   DCHECK(temp_fd);
@@ -862,7 +862,7 @@ bool SmbProvider::WriteDeleteListToTempFile(
     const GetDeleteListOptionsProto& options,
     const DeleteListProto& delete_list,
     int32_t* error_code,
-    dbus::FileDescriptor* temp_fd,
+    brillo::dbus_utils::FileDescriptor* temp_fd,
     int32_t* bytes_written) {
   DCHECK(error_code);
   DCHECK(temp_fd);

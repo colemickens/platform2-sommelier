@@ -120,15 +120,6 @@ bool IsFile(const struct stat& stat_info) {
   return S_ISREG(stat_info.st_mode);
 }
 
-void GetValidDBusFD(base::ScopedFD* fd, dbus::FileDescriptor* dbus_fd) {
-  DCHECK(dbus_fd);
-  DCHECK(fd);
-  DCHECK(fd->is_valid());
-  dbus_fd->PutValue(fd->release());
-  dbus_fd->CheckValidity();
-  DCHECK(dbus_fd->is_valid());
-}
-
 void LogAndSetError(const char* operation_name,
                     int32_t mount_id,
                     ErrorType error_received,
@@ -169,7 +160,7 @@ bool IsValidOpenFileFlags(int32_t flags) {
 }
 
 bool ReadFromFD(const WriteFileOptionsProto& options,
-                const dbus::FileDescriptor& fd,
+                const base::ScopedFD& fd,
                 int32_t* error,
                 std::vector<uint8_t>* buffer) {
   DCHECK(buffer);
@@ -181,7 +172,7 @@ bool ReadFromFD(const WriteFileOptionsProto& options,
   }
 
   buffer->resize(options.length());
-  if (!base::ReadFromFD(fd.value(), reinterpret_cast<char*>(buffer->data()),
+  if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(buffer->data()),
                         buffer->size())) {
     LogAndSetError(options, ERROR_IO, error);
     return false;
