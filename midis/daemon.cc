@@ -69,27 +69,25 @@ void Daemon::BootstrapMojoConnection(
     return;
   }
 
-  dbus::FileDescriptor file_handle;
+  base::ScopedFD file_handle;
   dbus::MessageReader reader(method_call);
 
   if (!reader.PopFileDescriptor(&file_handle)) {
     LOG(ERROR) << "Couldn't extract Mojo IPC handle.";
     return;
   }
-  file_handle.CheckValidity();
-  base::ScopedFD fd(file_handle.TakeValue());
 
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "Couldn't copy file handle sent over D-Bus.";
+  if (!file_handle.is_valid()) {
+    LOG(ERROR) << "Couldn't get file handle sent over D-Bus.";
     return;
   }
 
-  if (!base::SetCloseOnExec(fd.get())) {
+  if (!base::SetCloseOnExec(file_handle.get())) {
     PLOG(ERROR) << "Failed setting FD_CLOEXEC on fd.";
     return;
   }
 
-  client_tracker_->AcceptProxyConnection(std::move(fd));
+  client_tracker_->AcceptProxyConnection(std::move(file_handle));
   LOG(INFO) << "MojoBridger connection established.";
   std::unique_ptr<dbus::Response> response =
       dbus::Response::FromMethodCall(method_call);
