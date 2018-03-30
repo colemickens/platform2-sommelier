@@ -81,6 +81,7 @@
         'concierge/startup_listener_impl.cc',
         'concierge/subnet_pool.cc',
         'concierge/virtual_machine.cc',
+        'concierge/vsock_cid_pool.cc',
       ],
     },
     {

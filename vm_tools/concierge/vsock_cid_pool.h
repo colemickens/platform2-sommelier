@@ -18,14 +18,11 @@ class VsockCidPool {
   VsockCidPool() = default;
   ~VsockCidPool() = default;
 
-  // Allocates and returns a vsock context id.
-  uint32_t Allocate() { return next_cid_++; }
+  // Allocates and returns a vsock context id.  Returns 0 if it is unable to
+  // allocate a cid because 0 is a reserved cid.
+  uint32_t Allocate();
 
  private:
-  // The next context id to hand out.  Cids 0 and 1 are reserved while cid 2 is
-  // always the host system.  Guest cids start at 3.
-  uint32_t next_cid_{3};
-
   DISALLOW_COPY_AND_ASSIGN(VsockCidPool);
 };
 

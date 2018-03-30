@@ -668,6 +668,13 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
+  if (vsock_cid == 0) {
+    LOG(ERROR) << "Unable to allocate vsock context id";
+
+    response.set_failure_reason("Unable to allocate vsock cid");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
   // Associate a WaitableEvent with this VM.  This needs to happen before
   // starting the VM to avoid a race where the VM reports that it's ready
