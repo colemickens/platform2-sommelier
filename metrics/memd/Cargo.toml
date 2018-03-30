@@ -1,0 +1,16 @@
+[package]
+name = "memd"
+version = "0.1.0"
+authors = ["The Chromium OS Authors"]
+
+[dependencies]
+chrono = "0.4.2"
+dbus = "0.6.1"
+env_logger = "0.5.10"
+libc = "0.2.39"
+log = "0.4.1"
+time = "0.1.39"
+
+[profile.release]
+lto = true
+panic = 'abort'
