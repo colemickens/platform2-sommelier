@@ -214,17 +214,17 @@ class MainTests(unittest.TestCase):
     output = tempfile.mktemp()
     cros_config_schema.Main(
         None,
-        os.path.join(this_dir, '../../libcros_config/test.yaml'),
+        os.path.join(this_dir, '../libcros_config/test.yaml'),
         output)
     with open(output, 'r') as output_stream:
       with open(
-          os.path.join(this_dir, '../../libcros_config/test.json')
+          os.path.join(this_dir, '../libcros_config/test.json')
       ) as expected_stream:
         self.assertEqual(
             expected_stream.read(),
             output_stream.read(),
             ('To regenerate the expected output, run:\n'
-             '\tpython -m cros_config_host.v2.cros_config_schema '
+             '\tpython -m cros_config_host.cros_config_schema '
              '-c libcros_config/test.yaml '
              '-o libcros_config/test.json'))
 

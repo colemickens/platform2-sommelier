@@ -30,7 +30,7 @@ def ParseArgs(argv):
   parser.add_argument(
       '-s',
       '--schema',
-      default='cros_config_host/v2/cros_config_schema.yaml',
+      default='cros_config_host/cros_config_schema.yaml',
       type=str,
       help='Schema file that is processed')
   parser.add_argument(

@@ -14,7 +14,7 @@ from __future__ import print_function
 import json
 
 from .cros_config_schema import TransformConfig
-from ..libcros_config_host import CrosConfigBaseImpl
+from .libcros_config_host import CrosConfigBaseImpl
 
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
 

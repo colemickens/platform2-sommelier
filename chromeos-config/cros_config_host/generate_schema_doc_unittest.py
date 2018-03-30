@@ -25,7 +25,7 @@ class SchemaTests(unittest.TestCase):
         output)
     with open(output, 'r') as output_stream:
       output_lines = output_stream.readlines()
-      with open(os.path.join(this_dir, '../../README.md')) as readme_stream:
+      with open(os.path.join(this_dir, '../README.md')) as readme_stream:
         readme_lines = readme_stream.readlines()
         readme_schema_lines = []
         in_section = False
@@ -43,7 +43,7 @@ class SchemaTests(unittest.TestCase):
             output_lines,
             readme_schema_lines,
             'Schema does not match README.\n'
-            'Please run: python -m cros_config_host.v2.generate_schema_doc '
+            'Please run: python -m cros_config_host.generate_schema_doc '
             '-o README.md')
 
     os.remove(output)

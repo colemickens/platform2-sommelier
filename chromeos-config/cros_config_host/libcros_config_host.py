@@ -1138,7 +1138,7 @@ class CrosConfigDeviceTreeImpl(CrosConfigBaseImpl):
 
 
 import libcros_config_host_fdt
-import v2.libcros_config_host_json
+import libcros_config_host_json
 
 
 def CrosConfig(fname=None,
@@ -1172,6 +1172,6 @@ def CrosConfig(fname=None,
   if config_format == FORMAT_FDT:
     return libcros_config_host_fdt.CrosConfigFdt(infile)
   elif config_format == FORMAT_YAML:
-    return v2.libcros_config_host_json.CrosConfigJson(infile)
+    return libcros_config_host_json.CrosConfigJson(infile)
   else:
     raise ValueError("Invalid config format '%s' requested" % config_format)
