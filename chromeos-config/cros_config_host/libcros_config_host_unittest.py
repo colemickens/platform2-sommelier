@@ -164,17 +164,14 @@ def MakeTests(pathname):
         return TouchFile(source, TOUCH_FIRMWARE + source,
                          LIB_FIRMWARE + symlink)
 
-      os.environ['DISTDIR'] = 'distdir'
-      os.environ['FILESDIR'] = 'files'
       config = CrosConfig(self.filepath)
       touch_files = config.models['pyro'].GetTouchFirmwareFiles()
       self.assertEqual(
           touch_files,
-          [TouchFile('files/wacom/4209.hex',
+          [TouchFile('wacom/4209.hex',
                      TOUCH_FIRMWARE + 'wacom/4209.hex',
                      LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                     TOUCH_FIRMWARE + '0a97_1012.bin',
+           TouchFile('elan/0a97_1012.bin',
                      TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
                      LIB_FIRMWARE + 'elants_i2c_0a97.bin')])
       touch_files = config.models['reef'].GetTouchFirmwareFiles()
@@ -183,72 +180,50 @@ def MakeTests(pathname):
       # have the same wacom firmware
       self.assertEqual(
           touch_files,
-          [TouchFile('files/wacom/4209.hex',
+          [TouchFile('wacom/4209.hex',
                      TOUCH_FIRMWARE + 'wacom/4209.hex',
                      LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
-           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                     TOUCH_FIRMWARE + '97.0_6.0.bin',
+           TouchFile('elan/97.0_6.0.bin',
                      TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
                      LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
-           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                     TOUCH_FIRMWARE + '3062_5602.bin',
+           TouchFile('elan/3062_5602.bin',
                      TOUCH_FIRMWARE + 'elan/3062_5602.bin',
                      LIB_FIRMWARE + 'elants_i2c_3062.bin'),
-           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                     TOUCH_FIRMWARE + '306e_5611.bin',
+           TouchFile('elan/306e_5611.bin',
                      TOUCH_FIRMWARE + 'elan/306e_5611.bin',
                      LIB_FIRMWARE + 'elants_i2c_306e.bin')])
       touch_files = config.GetTouchFirmwareFiles()
       expected = set([
-          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                    TOUCH_FIRMWARE + '0a97_1012.bin',
+          TouchFile('elan/0a97_1012.bin',
                     TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
                     LIB_FIRMWARE + 'elants_i2c_0a97.bin'),
-          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                    TOUCH_FIRMWARE + '3062_5602.bin',
+          TouchFile('elan/3062_5602.bin',
                     TOUCH_FIRMWARE + 'elan/3062_5602.bin',
                     LIB_FIRMWARE + 'elants_i2c_3062.bin'),
-          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                    TOUCH_FIRMWARE + '306e_5611.bin',
+          TouchFile('elan/306e_5611.bin',
                     TOUCH_FIRMWARE + 'elan/306e_5611.bin',
                     LIB_FIRMWARE + 'elants_i2c_306e.bin'),
-          TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                    TOUCH_FIRMWARE + '97.0_6.0.bin',
+          TouchFile('elan/97.0_6.0.bin',
                     TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
                     LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
-          TouchFile('files/wacom/4209.hex',
+          TouchFile('wacom/4209.hex',
                     TOUCH_FIRMWARE + 'wacom/4209.hex',
                     LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-          TouchFile('files/wacom/4209.hex',
+          TouchFile('wacom/4209.hex',
                     TOUCH_FIRMWARE + 'wacom/4209.hex',
                     LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
-          TouchFile('files/wacom/4209.hex',
+          TouchFile('wacom/4209.hex',
                     TOUCH_FIRMWARE + 'wacom/4209.hex',
                     LIB_FIRMWARE + 'wacom_firmware_REEF.bin')])
       if self.config_format == FORMAT_FDT:
         expected |= set([
-            TouchFile('files/wacom/4209.hex',
+            TouchFile('wacom/4209.hex',
                       TOUCH_FIRMWARE + 'wacom/4209.hex',
                       LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
-            TouchFile('files/wacom/4209.hex',
+            TouchFile('wacom/4209.hex',
                       TOUCH_FIRMWARE + 'wacom/4209.hex',
                       LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')])
       self.assertEqual(set(touch_files), expected)
-
-    def testGetTouchFirmwareFilesTar(self):
-      """Test unpacking from a tarfile or reading from ${FILESDIR}"""
-      os.environ['FILESDIR'] = 'test'
-      config = CrosConfig(self.filepath)
-      touch_files = config.models['pyro'].GetTouchFirmwareFiles()
-      self.assertEqual(
-          touch_files,
-          [TouchFile('test/wacom/4209.hex',
-                     TOUCH_FIRMWARE + 'wacom/4209.hex',
-                     LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-           TouchFile('chromeos-touch-firmware-reef-1.0-r9' +
-                     TOUCH_FIRMWARE + '0a97_1012.bin',
-                     TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                     LIB_FIRMWARE + 'elants_i2c_0a97.bin')])
 
     def testGetMergedPropertiesPyro(self):
       config = CrosConfig(self.filepath)
@@ -593,15 +568,6 @@ def MakeTests(pathname):
       result = config.GetFirmwareBuildCombinations(['coreboot', 'depthcharge'])
       self.assertEqual(result, expected)
       del os.environ['FW_NAME']
-
-    def testGetBspUris(self):
-      """Test access to the BSP URIs"""
-      config = CrosConfig(self.filepath)
-      uris = config.GetBspUris()
-      self.assertSequenceEqual(uris, [
-          'gs://chromeos-binaries/HOME/bcs-reef-private/overlay-reef-private/'
-          'chromeos-base/chromeos-touch-firmware-reef/'
-          'chromeos-touch-firmware-reef-1.0-r9.tbz2'])
 
     def testGetWallpaper(self):
       """Test that we can access the wallpaper information"""

@@ -197,14 +197,6 @@ class DeviceConfig(object):
     """
     pass
 
-  def GetBspTarFiles(self):
-    """Get a list of tarfiles needed by the BSP ebuild for this device.
-
-    Returns:
-      List of tarfile filenames.
-    """
-    pass
-
   def GetArcFiles(self):
     """Get a list of arc++ files for this device
 
@@ -313,25 +305,6 @@ class CrosConfigBaseImpl(object):
             'bcs': bcs_overlay,
             'path': path
         })
-
-  def GetBspTarFiles(self):
-    """Get a list of tarfiles needed by the BSP ebuild
-
-    It is possible to upload tarfiles to BCS which contain firmware used by the
-    BSP ebuild. These need to be unpacked so that the files are available to be
-    installed by the BSP ebuild.
-
-    The files are stored in distdir by portage, so we can locate them there.
-
-    Returns:
-      List of tarfile filenames, each a string
-    """
-    tarfile_set = set()
-    for device in self.GetDeviceConfigs():
-      for fname in device.GetBspTarFiles():
-        tarfile_set.add(fname)
-
-    return sorted(tarfile_set)
 
   def GetArcFiles(self):
     """Get a list of unique Arc++ files for all devices
@@ -911,7 +884,7 @@ class CrosConfigDeviceTreeImpl(CrosConfigBaseImpl):
 
     def GetTouchFirmwareFiles(self):
       files = {}
-      for device_name, props, dirname, tarball in self.GetTouchBspInfo():
+      for device_name, props in self.GetTouchBspInfo():
         # Add a special property for the capitalised model name
         self.SetupModelProps(props)
         fw_prop_name = 'firmware-bin'
@@ -931,55 +904,17 @@ class CrosConfigDeviceTreeImpl(CrosConfigBaseImpl):
         src = GetPropFilename(self.GetPath(), props, fw_prop_name)
         dest = src
         sym_fname = GetPropFilename(self.GetPath(), props, 'firmware-symlink')
-        if tarball:
-          root, _ = os.path.splitext(os.path.basename(tarball))
-          src_dir = os.path.join(root, fw_target_dir[1:])
-          src = os.path.join(src_dir, os.path.basename(src))
-        else:
-          src_dir = dirname
-          src = os.path.join(src_dir, src)
         files[device_name] = TouchFile(src, os.path.join(fw_target_dir, dest),
                                        os.path.join(sym_target_dir, sym_fname))
 
       return files.values()
 
-    def GetTouchBspInfo(self, need_filesdir=True):
-      distdir = os.getenv('DISTDIR')
-      if not distdir:
-        raise ValueError('Cannot locate tar files unless DISTDIR is defined')
-      filesdir = os.getenv('FILESDIR')
-      if not filesdir and need_filesdir:
-        raise ValueError('Cannot locate BSP files unless FILESDIR is defined')
+    def GetTouchBspInfo(self):
       touch = self.PathNode('/touch')
       if touch:
         for device in touch.subnodes.values():
           props = self.GetMergedProperties(device, 'touch-type')
-          touch_type = device.FollowPhandle('touch-type')
-          bcs = device.FollowPhandle('bcs-type')
-          if not bcs and touch_type:
-            bcs = touch_type.FollowPhandle('bcs-type')
-          if bcs:
-            self.MergeProperties(props, bcs)
-            tarball = GetPropFilename(touch.GetPath(), props, 'tarball')
-            yield [device.name, props, distdir, tarball]
-          elif filesdir:
-            yield [device.name, props, filesdir, None]
-
-    def GetBspTarFiles(self):
-      files = {}
-      for device_name, _, distdir, tarball in self.GetTouchBspInfo(False):
-        if tarball:
-          fname = os.path.join(distdir, os.path.basename(tarball))
-          files[device_name] = fname
-      return files.values()
-
-    def GetTouchBspUris(self):
-      files = {}
-      for device_name, props, _, tarball in self.GetTouchBspInfo(False):
-        if tarball:
-          files[device_name] = self.cros_config.GetBcsUri(
-              props['overlay'], tarball)
-      return files.values()
+          yield [device.name, props]
 
     def AllPathNodes(self, relative_path, whitelabel=False):
       """List all path nodes which match the relative path (including submodels)

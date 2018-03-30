@@ -133,35 +133,6 @@ def FileTree(config, root):
   tree = config.GetFileTree()
   config.ShowTree(tree, root)
 
-def GetBspUris(config):
-  """Get the URIs needed for the BSP
-
-  Boards have a BSP (Board Supprt Package) ebuild which installs a set of files.
-  Some of these come from BCS (Binary Cloud Storage) since they are too large
-  to put in the git repo. This returns a list of these URIs, which should be
-  downloaded before the BSP ebuild can work.
-
-  Prints a list of URIs, each a string (e.g. 'gs://chromeos-binaries/HOME/'
-        'bcs-reef-private/overlay-reef-private/chromeos-base/'
-        'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2')
-
-  Args:
-    config: A CrosConfig instance
-  """
-  print(' '.join(config.GetBspUris()))
-
-def GetBspTarFiles(config):
-  """Get the tarfiles needed for the BSP
-
-  Args:
-    config: A CrosConfig instance
-
-  Returns:
-    List of tarfile filenames inside DISTDIR, each a string
-  """
-  for fname in config.GetBspTarFiles():
-    print(fname)
-
 def GetFirmwareBuildCombinations(config, targets):
   """Print the firmware build combinations for requested targets
 
@@ -306,17 +277,6 @@ def GetParser(description):
   subparsers.add_parser(
       'write-target-dirs',
       help='Writes out a list of target directories for each PropFile element')
-  # Parser: get-bsp-uris
-  subparsers.add_parser(
-      'get-bsp-uris',
-      help='Writes out a list of URIs needed to obtain the BSP files. Note '
-           'that this does not include AP firmware URIs, as used by the '
-           'chromeos-firmware-xxx ebuilds. Future work will relationalise this '
-           'command with get-firmware-uris.')
-  # Parser: get-bsp-tar-files
-  subparsers.add_parser(
-      'get-bsp-tar-files',
-      help='Writes out a list of tarfiles needed to obtain the BSP files.')
   # Parser: write-phandle-properties
   subparsers.add_parser(
       'write-phandle-properties',
@@ -386,10 +346,6 @@ def main(argv=None):
     GetThermalFiles(config)
   elif opts.subcommand == 'file-tree':
     FileTree(config, opts.root)
-  elif opts.subcommand == 'get-bsp-tar-files':
-    GetBspTarFiles(config)
-  elif opts.subcommand == 'get-bsp-uris':
-    GetBspUris(config)
   elif opts.subcommand == 'get-firmware-build-combinations':
     GetFirmwareBuildCombinations(config, opts.components.split(','))
   elif opts.subcommand == 'get-wallpaper-files':
