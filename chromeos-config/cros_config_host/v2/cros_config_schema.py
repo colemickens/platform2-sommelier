@@ -27,6 +27,7 @@ SKUS = 'skus'
 CONFIG = 'config'
 BUILD_ONLY_ELEMENTS = [
     '/firmware',
+    '/firmware-signing',
     '/audio/main/files',
     '/touch/files',
     '/arc/files',

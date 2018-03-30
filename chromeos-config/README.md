@@ -831,6 +831,7 @@ chromeos {
 | audio | [audio](#audio) |  | False |  |
 | brand-code | string | ```^[A-Z]{4}$``` | False | Brand code of the model (also called RLZ code). |
 | firmware | [firmware](#firmware) |  | True |  |
+| firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |
 | identity | [identity](#identity) |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
 | powerd-prefs | string |  | False | Powerd config that should be used. |
@@ -902,7 +903,6 @@ several models to be grouped into one product.
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
 | bcs-overlay | string |  | False | BCS overlay path used to determine BCS file path for binary firmware downloads. |
-| bcs-uris | array - string |  | False | Fully qualified paths to all of the BCS files for download |
 | build-targets | [build-targets](#build-targets) |  | False |  |
 | ec-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 | key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |
@@ -925,6 +925,25 @@ since it may not have firmware at that point.
 | depthcharge | string |  | False | Build target that will be considered dirty when building/testing locally. |
 | ec | string |  | False | Build target that will be considered dirty when building/testing locally. |
 | libpayload | string |  | False | Build target that will be considered dirty when building/testing locally. |
+
+### firmware-signing
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |
+| sig-id-in-customization-id | boolean |  | False | Indicates that this model cannot be decoded by the mapping table.
+Instead the model is stored in the VPD (Vital Product Data) region in the
+customization_id property. This allows us to determine the
+model to use in the factory during the finalization stage. Note
+that if the VPD is wiped then the model will be lost. This may
+mean that the device will revert back to a generic model, or
+may not work. It is not possible in general to test whether the
+model in the VPD is correct at run-time. We simply assume that
+it is. The advantage of using this property is that no hardware
+changes are needed to change one model into another. For example
+we can create 20 different whitelabel boards, all with the same
+hardware, just by changing the customization_id that is written
+into SPI flash.
+ |
 
 ### identity
 | Attribute | Type   | RegEx     | Required | Description |

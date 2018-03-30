@@ -88,7 +88,7 @@ reef_config: &reef_config
     ec-image: "bcs://Reef_EC.9042.87.1.tbz2"
     main-image: "bcs://Reef.9042.87.1.tbz2"
     main-rw-image: "bcs://Reef.9042.110.0.tbz2"
-
+  firmware-signing:
     key-id: "{{$key-id}}"
   powerd-prefs: "reef"
   test-label: "reef"
@@ -113,6 +113,7 @@ snappy_config: &snappy_config
     # TODO(shapiroc): snappy's keys haven't yet been merged
     # into reef. Later, this should be "SNAPPY".
     no-firmware: true
+  firmware-signing:
     key-id: "{{$key-id}}"
   powerd-prefs: "snappy"
   test-label: "snappy"

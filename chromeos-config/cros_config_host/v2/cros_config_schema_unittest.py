@@ -48,8 +48,8 @@ chromeos:
               smbios-name-match: "Reef"
               sku-id: "{{$sku-id}}"
             name: '{{$name}}'
-            firmware:
-              <<: *reef-9042-fw
+            firmware: *reef-9042-fw
+            firmware-signing:
               key-id: '{{$key-id}}'
             powerd-prefs: 'reef'
             test-label: 'reef'
@@ -176,8 +176,8 @@ chromeos:
                 cras-config-dir: '{{$name}}'
                 ucm-suffix: '{{$name}}'
             name: '{{$name}}'
-            firmware:
-              <<: *reef-9042-fw
+            firmware: *reef-9042-fw
+            firmware-signing:
               key-id: '{{$key-id}}'
     - $name: 'astronaut'
       products:

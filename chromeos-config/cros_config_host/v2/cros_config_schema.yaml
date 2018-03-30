@@ -125,11 +125,6 @@ properties:
                   description: BCS overlay path used to determine BCS file path for binary
                     firmware downloads.
                   type: string
-                bcs-uris:
-                  description: Fully qualified paths to all of the BCS files for download
-                  type: array
-                  items:
-                    type: string
                 build-targets:
                   type: object
                   properties:
@@ -158,6 +153,31 @@ properties:
                     since it may not have firmware at that point.
                   type: boolean
                   pattern: "^[A-Z|_|0-9]*$"
+              additionalProperties: false
+            firmware-signing:
+              type: object
+              properties:
+                key-id:
+                  description: Key ID from the signer key set that is used to sign the
+                    given firmware image.
+                  type: string
+                  pattern: "^[A-Z|_|0-9]*$"
+                sig-id-in-customization-id:
+                  description: |
+                    Indicates that this model cannot be decoded by the mapping table.
+                    Instead the model is stored in the VPD (Vital Product Data) region in the
+                    customization_id property. This allows us to determine the
+                    model to use in the factory during the finalization stage. Note
+                    that if the VPD is wiped then the model will be lost. This may
+                    mean that the device will revert back to a generic model, or
+                    may not work. It is not possible in general to test whether the
+                    model in the VPD is correct at run-time. We simply assume that
+                    it is. The advantage of using this property is that no hardware
+                    changes are needed to change one model into another. For example
+                    we can create 20 different whitelabel boards, all with the same
+                    hardware, just by changing the customization_id that is written
+                    into SPI flash.
+                  type: boolean
               additionalProperties: false
             identity:
               type: object

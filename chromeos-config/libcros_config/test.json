@@ -53,9 +53,11 @@
             "libpayload": "reef"
           }, 
           "ec-image": "bcs://Reef_EC.9042.87.1.tbz2", 
-          "key-id": "PARMA", 
           "main-image": "bcs://Reef.9042.87.1.tbz2", 
           "main-rw-image": "bcs://Reef.9042.110.0.tbz2"
+        }, 
+        "firmware-signing": {
+          "key-id": "PARMA"
         }, 
         "identity": {
           "platform-name": "Reef", 
@@ -139,9 +141,11 @@
             "libpayload": "reef"
           }, 
           "ec-image": "bcs://Reef_EC.9042.87.1.tbz2", 
-          "key-id": "OEM2", 
           "main-image": "bcs://Reef.9042.87.1.tbz2", 
           "main-rw-image": "bcs://Reef.9042.110.0.tbz2"
+        }, 
+        "firmware-signing": {
+          "key-id": "OEM2"
         }, 
         "identity": {
           "platform-name": "Reef", 
@@ -382,9 +386,11 @@
             "libpayload": "reef"
           }, 
           "ec-image": "bcs://Snappy_EC.9042.178.0.tbz2", 
-          "key-id": "SNAPPY", 
           "main-image": "bcs://Snappy.9042.178.0.tbz2", 
           "no-firmware": true
+        }, 
+        "firmware-signing": {
+          "key-id": "SNAPPY"
         }, 
         "identity": {
           "platform-name": "Snappy", 
@@ -473,9 +479,11 @@
             "libpayload": "reef"
           }, 
           "ec-image": "bcs://Snappy_EC.9042.178.0.tbz2", 
-          "key-id": "ALAN", 
           "main-image": "bcs://Snappy.9042.178.0.tbz2", 
           "no-firmware": true
+        }, 
+        "firmware-signing": {
+          "key-id": "ALAN"
         }, 
         "identity": {
           "platform-name": "Snappy", 
@@ -564,9 +572,11 @@
             "libpayload": "reef"
           }, 
           "ec-image": "bcs://Snappy_EC.9042.178.0.tbz2", 
-          "key-id": "BIGDADDY", 
           "main-image": "bcs://Snappy.9042.178.0.tbz2", 
           "no-firmware": true
+        }, 
+        "firmware-signing": {
+          "key-id": "BIGDADDY"
         }, 
         "identity": {
           "platform-name": "Snappy", 
@@ -655,9 +665,11 @@
             "libpayload": "reef"
           }, 
           "ec-image": "bcs://Snappy_EC.9042.178.0.tbz2", 
-          "key-id": "BIGDADDY", 
           "main-image": "bcs://Snappy.9042.178.0.tbz2", 
           "no-firmware": true
+        }, 
+        "firmware-signing": {
+          "key-id": "BIGDADDY"
         }, 
         "identity": {
           "platform-name": "Snappy", 
