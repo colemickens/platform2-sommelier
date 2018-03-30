@@ -190,6 +190,15 @@ properties:
               description: Test alias (model) label that will be applied in Autotest and
                 reported for test results.
               type: string
+            thermal:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items: *system_file
+              additionalProperties: false
+              required:
+              - files
             touch:
               type: object
               properties:

@@ -835,6 +835,7 @@ chromeos {
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
 | powerd-prefs | string |  | False | Powerd config that should be used. |
 | test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
+| thermal | [thermal](#thermal) |  | False |  |
 | touch | [touch](#touch) |  | False |  |
 | wallpaper | string |  | False | Base filename of the default wallpaper to show on this device.
  |
@@ -932,6 +933,17 @@ since it may not have firmware at that point.
 | platform-name | string |  | False | Indicates the platform name for this platform. This is reported by 'mosys platform name'. It is typically the family name with the first letter capitalized. |
 | sku-id | integer |  | False | SKU/Board strapping pins configured during board manufacturing. |
 | smbios-name-match | string |  | False | Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
+
+### thermal
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| files | array - [files](#files) |  | True |  |
+
+### files
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system. |
 
 ### touch
 | Attribute | Type   | RegEx     | Required | Description |

@@ -29,7 +29,8 @@ BUILD_ONLY_ELEMENTS = [
     '/firmware',
     '/audio/main/files',
     '/touch/files',
-    '/arc/files'
+    '/arc/files',
+    '/thermal'
 ]
 TEMPLATE_PATTERN = re.compile("{{([^}]*)}}")
 
