@@ -33,7 +33,6 @@ enum class Status {
 enum PCAType {
   kDefaultPCA = 0,    // The Google-operated Privacy CA.
   kTestPCA = 1,       // The test instance of the Google-operated Privacy CA.
-  kAlternatePCA = 2,  // An alternate Privacy CA specified by enterprise policy.
 };
 
 // Attestation certificate profiles. These values match CertificateProfile
