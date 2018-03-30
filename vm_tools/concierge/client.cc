@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -26,6 +27,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <crosvm/qcow_utils.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
@@ -41,6 +43,7 @@ constexpr int kDefaultTimeoutMs = 30 * 1000;
 constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";
 constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
+constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
 
@@ -527,6 +530,30 @@ int ListDiskImages(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int CreateExternalDiskImage(string removable_media, string name,
+                            uint64_t disk_size) {
+  if (disk_size < kMinimumDiskSize) {
+    LOG(ERROR) << "Disk size must be greater than one megabyte";
+    return -1;
+  }
+  if (removable_media.empty() || name.empty()) {
+    LOG(ERROR) << "Both --removable_media and --name are required.";
+    return -1;
+  }
+
+  base::FilePath media_path = base::FilePath(kRemovableMediaRoot)
+                                .Append(removable_media);
+  base::FilePath disk_path = media_path.Append(name);
+
+  if (disk_path.ReferencesParent() ||
+      !base::DirectoryExists(media_path)) {
+    LOG(ERROR) << "Invalid Removable Media path";
+    return -1;
+  }
+
+  return create_qcow_with_size(disk_path.value().c_str(), disk_size);
+}
+
 int StartTerminaVm(dbus::ObjectProxy* proxy,
                    string name,
                    string cryptohome_id) {
@@ -732,6 +759,8 @@ int main(int argc, char** argv) {
   DEFINE_bool(stop_all, false, "Stop all running VMs");
   DEFINE_bool(get_vm_info, false, "Get info for the given VM");
   DEFINE_bool(create_disk, false, "Create a disk image");
+  DEFINE_bool(create_external_disk, false,
+              "Create a disk image on removable media");
   DEFINE_bool(destroy_disk, false, "Destroy a disk image");
   DEFINE_bool(list_disks, false, "List disk images");
   DEFINE_bool(start_termina_vm, false,
@@ -748,6 +777,7 @@ int main(int argc, char** argv) {
                 "Additional disk images to be mounted inside the VM");
   DEFINE_string(container_name, "", "Name of the container within the VM");
   DEFINE_string(application, "", "Name of the application to launch");
+  DEFINE_string(removable_media, "", "Name of the removable media to use");
 
   // create_disk parameters.
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
@@ -784,13 +814,14 @@ int main(int argc, char** argv) {
   // false => 0 and true => 1.
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
-      FLAGS_create_disk + FLAGS_start_termina_vm + FLAGS_destroy_disk +
-      FLAGS_list_disks + FLAGS_start_container +
+      FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
+      FLAGS_destroy_disk + FLAGS_list_disks + FLAGS_start_container +
       FLAGS_launch_application != 1) {
     // clang-format on
-    LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info,"
-               << "--create_disk, --destroy_disk, --list_disks, "
-               << "--start_termina_vm, --start_container, --launch_application "
+    LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
+               << "--create_disk, --create_external_disk --destroy_disk, "
+               << "--list_disks, --start_termina_vm, --start_container, "
+               << "or --launch_application "
                << "must be provided";
     return -1;
   }
@@ -809,6 +840,10 @@ int main(int argc, char** argv) {
                            std::move(FLAGS_disk_path), FLAGS_disk_size,
                            std::move(FLAGS_image_type),
                            std::move(FLAGS_storage_location), nullptr);
+  } else if (FLAGS_create_external_disk) {
+    return CreateExternalDiskImage(std::move(FLAGS_removable_media),
+                                   std::move(FLAGS_name),
+                                   std::move(FLAGS_disk_size));
   } else if (FLAGS_destroy_disk) {
     return DestroyDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                             std::move(FLAGS_name),

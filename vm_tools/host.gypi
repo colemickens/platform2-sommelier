@@ -99,6 +99,7 @@
       'type': 'executable',
       'variables': {
         'deps': [
+          'libqcow_utils',
           'protobuf',
           'system_api',
         ],
