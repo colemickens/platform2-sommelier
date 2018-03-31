@@ -14,7 +14,7 @@ import unittest
 import re
 import tempfile
 
-from . import cros_config_schema
+import cros_config_schema
 
 BASIC_CONFIG = """
 reef-9042-fw: &reef-9042-fw

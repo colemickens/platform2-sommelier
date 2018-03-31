@@ -11,7 +11,7 @@ import os
 import unittest
 import tempfile
 
-from . import generate_schema_doc
+import generate_schema_doc
 
 this_dir = os.path.dirname(__file__)
 

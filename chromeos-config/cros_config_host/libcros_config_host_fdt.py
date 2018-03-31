@@ -12,7 +12,7 @@ from __future__ import print_function
 
 from collections import OrderedDict
 
-from . import fdt
+import fdt
 import libcros_config_host
 
 class CrosConfigFdt(libcros_config_host.CrosConfigDeviceTreeImpl):

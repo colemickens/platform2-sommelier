@@ -12,7 +12,7 @@ import struct
 
 import libfdt
 
-from . import fdt_util
+import fdt_util
 
 # This deals with a device tree, presenting it as an assortment of Node and
 # Prop objects, representing nodes and properties, respectively. This file

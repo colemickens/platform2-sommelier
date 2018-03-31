@@ -15,8 +15,8 @@ from __future__ import print_function
 import argparse
 import sys
 
-from .libcros_config_host import CrosConfig, CrosConfigDeviceTreeImpl
-from .libcros_config_host import FORMAT_YAML
+from libcros_config_host import CrosConfig, CrosConfigDeviceTreeImpl
+from libcros_config_host import FORMAT_YAML
 
 def ListModels(config):
   """Prints all models in a config to stdout, one per line.

@@ -12,7 +12,7 @@ import re
 import subprocess
 import unittest
 
-from . import fdt_util
+import fdt_util
 
 CLI_FILE = 'python -m cros_config_host.cros_config_host'
 DTS_FILE = '../libcros_config/test.dts'
