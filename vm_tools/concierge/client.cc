@@ -556,28 +556,11 @@ int CreateExternalDiskImage(string removable_media, string name,
 
 int StartTerminaVm(dbus::ObjectProxy* proxy,
                    string name,
-                   string cryptohome_id) {
+                   string cryptohome_id,
+                   string removable_media,
+                   string image_name) {
   if (name.empty()) {
     LOG(ERROR) << "--name is required";
-    return -1;
-  }
-
-  if (cryptohome_id.empty()) {
-    LOG(ERROR) << "--cryptohome_id is required";
-    return -1;
-  }
-
-  int64_t disk_size =
-      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
-  disk_size = (disk_size * 9) / 10;
-
-  if (disk_size < kMinimumDiskSize)
-    disk_size = kMinimumDiskSize;
-
-  string disk_path;
-  if (CreateDiskImage(proxy, std::move(cryptohome_id), name,
-                      disk_size, kImageTypeQcow2, kStorageCryptohomeRoot,
-                      &disk_path) != 0) {
     return -1;
   }
 
@@ -588,17 +571,62 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::StartVmRequest request;
-  request.set_name(std::move(name));
   request.set_start_termina(true);
 
-  vm_tools::concierge::DiskImage* disk_image = request.add_disks();
-  disk_image->set_path(std::move(disk_path));
-  disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
-  disk_image->set_writable(true);
-  disk_image->set_do_mount(false);
+  if (!cryptohome_id.empty()) {
+    int64_t disk_size =
+      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
+    disk_size = (disk_size * 9) / 10;
 
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
+    if (disk_size < kMinimumDiskSize)
+      disk_size = kMinimumDiskSize;
+
+    string disk_path;
+    if (CreateDiskImage(proxy, std::move(cryptohome_id), name,
+                        disk_size, kImageTypeQcow2, kStorageCryptohomeRoot,
+                        &disk_path) != 0) {
+      return -1;
+    }
+
+    vm_tools::concierge::DiskImage* disk_image = request.add_disks();
+    disk_image->set_path(std::move(disk_path));
+    disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
+    disk_image->set_writable(true);
+    disk_image->set_do_mount(false);
+
+    request.set_name(std::move(name));
+    if (!writer.AppendProtoAsArrayOfBytes(request)) {
+      LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
+      return -1;
+    }
+  } else if (!removable_media.empty()) {
+    if (image_name.empty()) {
+      LOG(ERROR) << "start: --image_name is required with --removable_media";
+      return -1;
+    }
+    base::FilePath disk_path = base::FilePath(kRemovableMediaRoot)
+      .Append(removable_media)
+      .Append(image_name);
+    if (disk_path.ReferencesParent()) {
+      LOG(ERROR) << "Invalid removable_vm_path";
+      return -1;
+    }
+    base::ScopedFD disk_fd(HANDLE_EINTR(open(disk_path.value().c_str(),
+                                             O_RDWR | O_NOFOLLOW)));
+    if (!disk_fd.is_valid()) {
+      LOG(ERROR) << "Failed opening VM disk state";
+      return -1;
+    }
+
+    request.set_name(std::move(name));
+    request.set_use_fd_for_storage(true);
+    if (!writer.AppendProtoAsArrayOfBytes(request)) {
+      LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
+      return -1;
+    }
+    writer.AppendFileDescriptor(disk_fd.get());
+  } else {
+    LOG(ERROR) << "either --removable_vm_path or --cryptohome_id is required";
     return -1;
   }
 
@@ -778,6 +806,7 @@ int main(int argc, char** argv) {
   DEFINE_string(container_name, "", "Name of the container within the VM");
   DEFINE_string(application, "", "Name of the application to launch");
   DEFINE_string(removable_media, "", "Name of the removable media to use");
+  DEFINE_string(image_name, "", "Name of the file on removable media to use");
 
   // create_disk parameters.
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
@@ -853,7 +882,9 @@ int main(int argc, char** argv) {
                           std::move(FLAGS_storage_location));
   } else if (FLAGS_start_termina_vm) {
     return StartTerminaVm(proxy, std::move(FLAGS_name),
-                          std::move(FLAGS_cryptohome_id));
+                          std::move(FLAGS_cryptohome_id),
+                          std::move(FLAGS_removable_media),
+                          std::move(FLAGS_image_name));
   } else if (FLAGS_start_container) {
     return StartContainer(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_container_name));

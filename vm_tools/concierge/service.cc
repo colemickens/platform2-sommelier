@@ -36,6 +36,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/ptr_util.h>
 #include <base/single_thread_task_runner.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
@@ -101,6 +102,9 @@ constexpr char kQcowImageExtension[] = ".qcow2";
 
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
+
+// Path to process file descriptors.
+constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 
 // Common environment for all LXD functionality.
 const std::map<string, string> kLxdEnv = {
@@ -680,6 +684,44 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   std::vector<VirtualMachine::Disk> disks;
+  base::ScopedFD storage_fd;
+  // Check if an opened storage image was passed over D-BUS.
+  if (request.use_fd_for_storage()) {
+    if (!reader.PopFileDescriptor(&storage_fd)) {
+      LOG(ERROR) << "use_fd_for_storage is set but no fd found";
+
+      response.set_failure_reason( "use_fd_for_storage is set but no fd found");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    // Clear close-on-exec as this FD needs to be passed to crosvm.
+    int raw_fd = storage_fd.get();
+    int flags = fcntl(raw_fd, F_GETFD);
+    if (flags == -1) {
+      LOG(ERROR) << "Failed to get flags for passed fd";
+
+      response.set_failure_reason("Failed to get flags for passed fd");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    flags &= ~FD_CLOEXEC;
+    if (fcntl(raw_fd, F_SETFD, flags) == -1) {
+      LOG(ERROR) << "Failed to clear close-on-exec flag for fd";
+
+      response.set_failure_reason("Failed to clear close-on-exec flag for fd");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    base::FilePath fd_path = base::FilePath(kProcFileDescriptorsPath)
+              .Append(base::IntToString(raw_fd));
+    disks.emplace_back(VirtualMachine::Disk {
+        .path = std::move(fd_path),
+        .writable = true,
+        .image_type = VirtualMachine::DiskImageType::QCOW2,
+    });
+  }
+
   for (const auto& disk : request.disks()) {
     if (!base::PathExists(base::FilePath(disk.path()))) {
       LOG(ERROR) << "Missing disk path: " << disk.path();
