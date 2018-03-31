@@ -16,8 +16,9 @@ import sys
 import unittest
 
 from . import fdt_util
-from .libcros_config_host import BaseFile, CrosConfig, TouchFile, FirmwareInfo
+from .libcros_config_host import CrosConfig
 from .libcros_config_host import FORMAT_FDT, FORMAT_YAML
+from .libcros_config_host_base import BaseFile, TouchFile, FirmwareInfo
 
 
 DTS_FILE = '../libcros_config/test.dts'

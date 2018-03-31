@@ -15,7 +15,8 @@ from __future__ import print_function
 import argparse
 import sys
 
-from libcros_config_host import CrosConfig, CrosConfigDeviceTreeImpl
+from libcros_config_host import CrosConfig
+from libcros_config_host_fdt import CrosConfigFdt
 from libcros_config_host import FORMAT_YAML
 
 def ListModels(config):
@@ -146,7 +147,7 @@ def GetFirmwareBuildCombinations(config, targets):
 
 def WriteTargetDirectories():
   """Writes out a file containing the directory target info"""
-  target_dirs = CrosConfigDeviceTreeImpl.GetTargetDirectories()
+  target_dirs = CrosConfigFdt.GetTargetDirectories()
   print('''/*
  * This is a generated file, DO NOT EDIT!'
  *
@@ -168,7 +169,7 @@ def WriteTargetDirectories():
 
 def WritePhandleProperties():
   """Writes out a file containing the directory target info"""
-  phandle_props = CrosConfigDeviceTreeImpl.GetPhandleProperties()
+  phandle_props = CrosConfigFdt.GetPhandleProperties()
   quoted = ['"%s"' % prop for prop in sorted(phandle_props)]
   print('''/*
  * This is a generated file, DO NOT EDIT!'
