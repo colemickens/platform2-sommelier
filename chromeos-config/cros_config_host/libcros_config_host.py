@@ -293,6 +293,10 @@ class CrosConfigDeviceTreeImpl(CrosConfigBaseImpl):
       """
       return property_name in self.properties
 
+    def GetProperty(self, path, property):
+      result = self.PathProperty(path, property)
+      return result.value if result else ''
+
     def PathProperty(self, relative_path, property_name):
       """Returns the value of a property relatative to this node
 

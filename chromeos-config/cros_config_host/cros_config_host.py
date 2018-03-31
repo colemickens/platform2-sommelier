@@ -36,14 +36,7 @@ def GetProperty(device, path, prop):
     path: The path (relative to a device) for the node containing the property.
     prop: The property to get (by name).
   """
-  config_prop = device.PathProperty(path, prop)
-  print(config_prop.value if config_prop else '')
-  # TODO(shapiroc): Refactor to support both impls
-  #properties = device.GetProperties(path)
-  #if properties and prop in properties:
-  #  print(properties[prop])
-  #else:
-  #  print('')
+  print(device.GetProperty(path, prop))
 
 def GetFirmwareUris(config):
   """Prints space-separated firmware uris for all models in models.

@@ -42,6 +42,12 @@ class DeviceConfigJson(DeviceConfig):
         return {}
     return result
 
+  def GetProperty(self, path, property):
+    props = self.GetProperties(path)
+    if props and property in props:
+      return props[property]
+    return ''
+
   def _GetValue(self, source, name):
     if name in source:
       return source[name]

@@ -129,6 +129,18 @@ class DeviceConfig(object):
     """
     pass
 
+  def GetProperty(self, path, property):
+    """Returns the property value at a given path.
+
+    Args:
+      path: Path to the config desired.
+      property: Property desired.
+
+    Returns:
+      Requested value or empty string if not present.
+    """
+    pass
+
   def GetFirmwareConfig(self):
     """Returns a map hierarchy of the firmware config."""
     pass
