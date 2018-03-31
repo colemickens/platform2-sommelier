@@ -308,6 +308,8 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       weak_ptr_factory_(this) {}
 
 Daemon::~Daemon() {
+  if (dbus_wrapper_)
+    dbus_wrapper_->RemoveObserver(this);
   for (auto controller : all_backlight_controllers_)
     controller->RemoveObserver(this);
   if (audio_client_)
@@ -776,6 +778,22 @@ void Daemon::OnAudioStateChange(bool active) {
   state_controller_->HandleAudioStateChange(active);
 }
 
+void Daemon::OnDBusNameOwnerChanged(const std::string& name,
+                                    const std::string& old_owner,
+                                    const std::string& new_owner) {
+  if (name == login_manager::kSessionManagerServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
+    HandleSessionManagerAvailableOrRestarted(true);
+  } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
+    HandleCrasAvailableOrRestarted(true);
+  } else if (name == chromeos::kDisplayServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
+    HandleDisplayServiceAvailableOrRestarted(true);
+  }
+  suspender_->HandleDBusNameOwnerChanged(name, old_owner, new_owner);
+}
+
 void Daemon::OnPowerStatusUpdate() {
   const system::PowerStatus status = power_supply_->GetPowerStatus();
   if (status.battery_is_present)
@@ -812,6 +830,7 @@ void Daemon::OnPowerStatusUpdate() {
 
 void Daemon::InitDBus() {
   dbus_wrapper_ = delegate_->CreateDBusWrapper();
+  dbus_wrapper_->AddObserver(this);
 
   dbus::ObjectProxy* display_service_proxy = dbus_wrapper_->GetObjectProxy(
       chromeos::kDisplayServiceName, chromeos::kDisplayServicePath);
@@ -924,19 +943,6 @@ void Daemon::InitDBus() {
                              base::Bind(it.second, base::Unretained(this))));
   }
 
-  // Listen for NameOwnerChanged signals from the bus itself. Register for all
-  // of these signals instead of calling individual proxies'
-  // SetNameOwnerChangedCallback() methods so that Suspender can get notified
-  // when clients with suspend delays for which Daemon doesn't have proxies
-  // disconnect. Note that RegisterForServiceAvailability() only notifies us
-  // when the service becomes initially available.
-  dbus::ObjectProxy* proxy =
-      dbus_wrapper_->GetObjectProxy(kBusServiceName, kBusServicePath);
-  dbus_wrapper_->RegisterForSignal(
-      proxy, kBusInterface, kBusNameOwnerChangedSignal,
-      base::Bind(&Daemon::HandleDBusNameOwnerChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
-
 #if USE_BUFFET
   // There's no underlying dbus::Bus object when we're being tested.
   dbus::Bus* bus = dbus_wrapper_->GetBus();
@@ -1030,28 +1036,6 @@ void Daemon::HandleCryptohomedAvailable(bool available) {
     tpm_status_timer_.Start(FROM_HERE, tpm_status_interval_, this,
                             &Daemon::RequestTpmStatus);
   }
-}
-
-void Daemon::HandleDBusNameOwnerChanged(dbus::Signal* signal) {
-  dbus::MessageReader reader(signal);
-  std::string name, old_owner, new_owner;
-  if (!reader.PopString(&name) || !reader.PopString(&old_owner) ||
-      !reader.PopString(&new_owner)) {
-    LOG(ERROR) << "Unable to parse NameOwnerChanged signal";
-    return;
-  }
-
-  if (name == login_manager::kSessionManagerServiceName && !new_owner.empty()) {
-    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    HandleSessionManagerAvailableOrRestarted(true);
-  } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
-    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    HandleCrasAvailableOrRestarted(true);
-  } else if (name == chromeos::kDisplayServiceName && !new_owner.empty()) {
-    LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    HandleDisplayServiceAvailableOrRestarted(true);
-  }
-  suspender_->HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
 
 void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {

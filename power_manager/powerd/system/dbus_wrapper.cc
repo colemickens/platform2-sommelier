@@ -14,6 +14,8 @@
 #include <dbus/message.h>
 #include <google/protobuf/message_lite.h>
 
+#include "power_manager/common/power_constants.h"
+
 namespace power_manager {
 namespace system {
 namespace {
@@ -31,10 +33,20 @@ void HandleSignalConnected(const std::string& interface,
 
 DBusWrapper::DBusWrapper(scoped_refptr<dbus::Bus> bus,
                          dbus::ExportedObject* exported_object)
-    : bus_(bus), exported_object_(exported_object) {}
+    : bus_(bus), exported_object_(exported_object), weak_ptr_factory_(this) {
+  // Listen for NameOwnerChanged signals from the bus itself.
+  dbus::ObjectProxy* bus_proxy =
+      bus->GetObjectProxy(kBusServiceName, dbus::ObjectPath(kBusServicePath));
+  bus_proxy->ConnectToSignal(
+      kBusInterface, kBusNameOwnerChangedSignal,
+      base::Bind(&DBusWrapper::HandleNameOwnerChangedSignal,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&HandleSignalConnected));
+}
 
-DBusWrapper::~DBusWrapper() {}
+DBusWrapper::~DBusWrapper() = default;
 
+// static
 std::unique_ptr<DBusWrapper> DBusWrapper::Create() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -43,13 +55,25 @@ std::unique_ptr<DBusWrapper> DBusWrapper::Create() {
     LOG(ERROR) << "Failed to connect to system bus";
     return nullptr;
   }
+
   dbus::ExportedObject* exported_object =
       bus->GetExportedObject(dbus::ObjectPath(kPowerManagerServicePath));
   if (!exported_object) {
     LOG(ERROR) << "Failed to export " << kPowerManagerServicePath << " object";
     return nullptr;
   }
+
   return base::WrapUnique(new DBusWrapper(bus, exported_object));
+}
+
+void DBusWrapper::AddObserver(Observer* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void DBusWrapper::RemoveObserver(Observer* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
 }
 
 dbus::Bus* DBusWrapper::GetBus() {
@@ -128,6 +152,21 @@ void DBusWrapper::CallMethodAsync(
   DCHECK(proxy);
   DCHECK(method_call);
   proxy->CallMethod(method_call, timeout.InMilliseconds(), callback);
+}
+
+void DBusWrapper::HandleNameOwnerChangedSignal(dbus::Signal* signal) {
+  DCHECK(signal);
+
+  dbus::MessageReader reader(signal);
+  std::string name, old_owner, new_owner;
+  if (!reader.PopString(&name) || !reader.PopString(&old_owner) ||
+      !reader.PopString(&new_owner)) {
+    LOG(ERROR) << "Unable to parse " << kBusNameOwnerChangedSignal << " signal";
+    return;
+  }
+
+  for (DBusWrapper::Observer& observer : observers_)
+    observer.OnDBusNameOwnerChanged(name, old_owner, new_owner);
 }
 
 }  // namespace system

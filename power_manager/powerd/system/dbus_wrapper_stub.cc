@@ -108,6 +108,23 @@ void DBusWrapperStub::EmitRegisteredSignal(dbus::ObjectProxy* proxy,
   signal_handlers_[info].Run(signal);
 }
 
+void DBusWrapperStub::NotifyNameOwnerChanged(const std::string& service_name,
+                                             const std::string& old_owner,
+                                             const std::string& new_owner) {
+  for (DBusWrapperInterface::Observer& observer : observers_)
+    observer.OnDBusNameOwnerChanged(service_name, old_owner, new_owner);
+}
+
+void DBusWrapperStub::AddObserver(Observer* observer) {
+  CHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void DBusWrapperStub::RemoveObserver(Observer* observer) {
+  CHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
 dbus::Bus* DBusWrapperStub::GetBus() {
   return nullptr;
 }

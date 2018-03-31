@@ -290,21 +290,6 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return response;
   }
 
-  // Emits a signal announcing that the owner of a D-Bus service name has
-  // changed.
-  void EmitNameOwnerChangedSignal(const std::string& name,
-                                  const std::string& old_owner,
-                                  const std::string& new_owner) {
-    dbus::Signal signal(kBusInterface, kBusNameOwnerChangedSignal);
-    dbus::MessageWriter writer(&signal);
-    writer.AppendString(name);
-    writer.AppendString(old_owner);
-    writer.AppendString(new_owner);
-    dbus_wrapper_->EmitRegisteredSignal(
-        dbus_wrapper_->GetObjectProxy(kBusServiceName, kBusServicePath),
-        &signal);
-  }
-
   // Checks that the D-Bus signal at |index| has name |signal_name| and
   // describes a brightness change to |brightness_percent| for |cause|.
   void CheckBrightnessChangedSignal(size_t index,
@@ -533,13 +518,15 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
             keyboard_backlight_controller_->session_state_changes()[0]);
 
   // Chrome restarts.
-  EmitNameOwnerChangedSignal(chromeos::kDisplayServiceName, "old", "new");
-  EmitNameOwnerChangedSignal(chromeos::kDisplayServiceName, "new", "newer");
+  dbus_wrapper_->NotifyNameOwnerChanged(chromeos::kDisplayServiceName, "old",
+                                        "new");
+  dbus_wrapper_->NotifyNameOwnerChanged(chromeos::kDisplayServiceName, "new",
+                                        "newer");
   EXPECT_EQ(2, internal_backlight_controller_->display_service_starts());
   EXPECT_EQ(2, keyboard_backlight_controller_->display_service_starts());
 
   // CRAS restarts and signals.
-  EmitNameOwnerChangedSignal(cras::kCrasServiceName, "old", "new");
+  dbus_wrapper_->NotifyNameOwnerChanged(cras::kCrasServiceName, "old", "new");
   dbus::ObjectProxy* cras_proxy = dbus_wrapper_->GetObjectProxy(
       cras::kCrasServiceName, cras::kCrasServicePath);
   dbus::Signal cras_nodes_signal(cras::kCrasControlInterface,

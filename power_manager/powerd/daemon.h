@@ -25,6 +25,7 @@
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
@@ -58,7 +59,6 @@ class AmbientLightSensorInterface;
 class AudioClientInterface;
 class BacklightInterface;
 class DarkResumeInterface;
-class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
 class EcWakeupHelperInterface;
@@ -77,6 +77,7 @@ class Daemon : public policy::BacklightControllerObserver,
                public policy::Suspender::Delegate,
                public policy::WifiController::Delegate,
                public system::AudioObserver,
+               public system::DBusWrapperInterface::Observer,
                public system::PowerSupplyObserver {
  public:
   Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir);
@@ -140,6 +141,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;
 
+  // Overridden from system::DBusWrapperInterface::Observer:
+  void OnDBusNameOwnerChanged(const std::string& name,
+                              const std::string& old_owner,
+                              const std::string& new_owner) override;
+
   // Overridden from system::PowerSupplyObserver:
   void OnPowerStatusUpdate() override;
 
@@ -197,9 +203,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // restarts are ignored).
   void HandleUpdateEngineAvailable(bool available);
   void HandleCryptohomedAvailable(bool available);
-
-  // Handles changes to D-Bus name ownership.
-  void HandleDBusNameOwnerChanged(dbus::Signal* signal);
 
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
@@ -285,7 +288,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // ObjectProxy objects are owned by |dbus_wrapper_|.
   dbus::ObjectProxy* session_manager_dbus_proxy_ = nullptr;
-  // May be null if |kUseCrasPref| is false.
   dbus::ObjectProxy* update_engine_dbus_proxy_ = nullptr;
   // May be null if the TPM status is not needed.
   dbus::ObjectProxy* cryptohomed_dbus_proxy_ = nullptr;

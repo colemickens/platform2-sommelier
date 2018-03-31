@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <base/observer_list.h>
 #include <dbus/message.h>
 #include <google/protobuf/message_lite.h>
 
@@ -63,7 +64,14 @@ class DBusWrapperStub : public DBusWrapperInterface {
   // registered via RegisterForSignal().
   void EmitRegisteredSignal(dbus::ObjectProxy* proxy, dbus::Signal* signal);
 
+  // Calls |observers_|' OnDBusNameOwnerChanged methods.
+  void NotifyNameOwnerChanged(const std::string& service_name,
+                              const std::string& old_owner,
+                              const std::string& new_owner);
+
   // DBusWrapperInterface overrides:
+  void AddObserver(Observer* observer) override;
+  void RemoveObserver(Observer* observer) override;
   dbus::Bus* GetBus() override;
   dbus::ObjectProxy* GetObjectProxy(const std::string& service_name,
                                     const std::string& object_path) override;
@@ -107,6 +115,8 @@ class DBusWrapperStub : public DBusWrapperInterface {
 
     bool operator<(const RegisteredSignalInfo& o) const;
   };
+
+  base::ObserverList<Observer> observers_;
 
   // Has PublishService() been called?
   bool service_published_;

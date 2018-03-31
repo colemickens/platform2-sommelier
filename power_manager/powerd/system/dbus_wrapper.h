@@ -11,8 +11,12 @@
 #include <base/compiler_specific.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
+
+#include "power_manager/common/power_constants.h"
 
 namespace dbus {
 class Bus;
@@ -32,7 +36,22 @@ namespace system {
 // D-Bus.
 class DBusWrapperInterface {
  public:
+  class Observer {
+   public:
+    // Called when the ownership of a D-Bus service name changes. |old_owner| or
+    // |new_owner| may be empty if the service just started or stopped.
+    virtual void OnDBusNameOwnerChanged(const std::string& service_name,
+                                        const std::string& old_owner,
+                                        const std::string& new_owner) {}
+
+    virtual ~Observer() {}
+  };
+
   virtual ~DBusWrapperInterface() {}
+
+  // Adds or removes an observer.
+  virtual void AddObserver(Observer* observer) = 0;
+  virtual void RemoveObserver(Observer* observer) = 0;
 
   // Returns the underlying object representing the bus. This will be null in
   // test situations.
@@ -46,7 +65,8 @@ class DBusWrapperInterface {
                                             const std::string& object_path) = 0;
 
   // Registers to be notified when a service identified by |proxy| becomes
-  // available or is restarted.
+  // initially available. If the service is already available, the callback will
+  // be run asynchronously immediately. The callback will only be called once.
   virtual void RegisterForServiceAvailability(
       dbus::ObjectProxy* proxy,
       dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) = 0;
@@ -108,6 +128,8 @@ class DBusWrapper : public DBusWrapperInterface {
   static std::unique_ptr<DBusWrapper> Create();
 
   // DBusWrapperInterface overrides:
+  void AddObserver(Observer* observer) override;
+  void RemoveObserver(Observer* observer) override;
   dbus::Bus* GetBus() override;
   dbus::ObjectProxy* GetObjectProxy(const std::string& service_name,
                                     const std::string& object_path) override;
@@ -140,12 +162,19 @@ class DBusWrapper : public DBusWrapperInterface {
   DBusWrapper(scoped_refptr<dbus::Bus> bus,
               dbus::ExportedObject* exported_object);
 
+  // Handles NameOwnerChanged signals emitted by dbus-daemon.
+  void HandleNameOwnerChangedSignal(dbus::Signal* signal);
+
   // Connection to the D-Bus system bus.
   scoped_refptr<dbus::Bus> bus_;
 
   // Exported object permitting powerd to emit signals and other processes to
   // make method calls to it. Owned by |bus_|.
   dbus::ExportedObject* exported_object_;
+
+  base::ObserverList<Observer> observers_;
+
+  base::WeakPtrFactory<DBusWrapper> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusWrapper);
 };
