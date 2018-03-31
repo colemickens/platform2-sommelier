@@ -31,8 +31,7 @@ Camera3DeviceImpl::Camera3DeviceImpl(int cam_id)
       cam_device_(NULL),
       cam_stream_idx_(0),
       gralloc_(Camera3TestGralloc::GetInstance()),
-      request_frame_number_(kInitialFrameNumber),
-      result_frame_number_(kInitialFrameNumber) {
+      request_frame_number_(kInitialFrameNumber) {
   thread_checker_.DetachFromThread();
 }
 
@@ -455,6 +454,10 @@ void Camera3DeviceImpl::ProcessCaptureRequestOnThread(
     capture_request_map_[request_frame_number_] = *request;
     capture_request_map_[request_frame_number_].frame_number =
         request_frame_number_;
+    for (uint32_t i = 0; i < request->num_output_buffers; i++) {
+      stream_output_buffer_map_[request->output_buffers[i].stream].push_back(
+          *request->output_buffers[i].buffer);
+    }
   }
   *result = cam_device_->ops->process_capture_request(
       cam_device_,
@@ -529,7 +532,12 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
     ASSERT_EQ(-1, stream_buffer.acquire_fence)
         << "Capture result buffer fence error";
 
-    // TODO(hywu): check buffers for a given streams are returned in order
+    // Check buffers for a given streams are returned in order
+    ASSERT_FALSE(stream_output_buffer_map_[stream_buffer.stream].empty());
+    ASSERT_EQ(stream_output_buffer_map_[stream_buffer.stream].front(),
+              stream_buffer.buffer_handle)
+        << "Buffers of the same stream are delivered out of order";
+    stream_output_buffer_map_[stream_buffer.stream].pop_front();
     if (stream_buffer.release_fence != -1) {
       ASSERT_EQ(0, sync_wait(stream_buffer.release_fence, 1000))
           << "Error waiting on buffer acquire fence";
@@ -573,9 +581,6 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
       process_partial_metadata_cb_.Run(&partial_metadata);
     }
 
-    ASSERT_EQ(result->frame_number, result_frame_number_)
-        << "Capture result is out of order";
-    result_frame_number_++;
     capture_request_map_.erase(result->frame_number);
     capture_result_info_map_.erase(result->frame_number);
 

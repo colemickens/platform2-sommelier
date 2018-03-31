@@ -493,12 +493,15 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
       return;
     }
     output_stream_buffers_[i][kPreviewOutputStreamIdx] = output_buffers.front();
-    capture_requests_[i] = {
-        .frame_number = UINT32_MAX,  // Will be overwritten with correct value
-        .settings = repeating_preview_metadata_.get(),
-        .input_buffer = NULL,
-        .num_output_buffers = 1,
-        .output_buffers = output_stream_buffers_[i].data()};
+    capture_requests_[i] = std::make_pair(
+        camera3_capture_request_t{
+            .frame_number =
+                UINT32_MAX,  // Will be overwritten with correct value
+            .settings = repeating_preview_metadata_.get(),
+            .input_buffer = NULL,
+            .num_output_buffers = 1,
+            .output_buffers = output_stream_buffers_[i].data()},
+        false);
     ProcessPreviewRequestOnServiceThread();
   }
   preview_state_ = PREVIEW_STARTING;
@@ -634,7 +637,18 @@ void Camera3Service::Camera3DeviceService::StopRecordingOnServiceThread(
 void Camera3Service::Camera3DeviceService::
     ProcessPreviewRequestOnServiceThread() {
   DCHECK(service_thread_.IsCurrentThread());
-  camera3_capture_request_t* request = &capture_requests_[capture_request_idx_];
+  size_t capture_request_idx = 0;
+  for (; capture_request_idx < capture_requests_.size();
+       capture_request_idx++) {
+    if (!capture_requests_[capture_request_idx].second) {
+      break;
+    }
+  }
+  ASSERT_NE(capture_request_idx, capture_requests_.size())
+      << "Out of captures requests";
+  capture_requests_[capture_request_idx].second = true;
+  camera3_capture_request_t* request =
+      &capture_requests_[capture_request_idx].first;
   // Initially there is preview stream only
   request->num_output_buffers = 1;
   if (recording_metadata_) {
@@ -655,7 +669,7 @@ void Camera3Service::Camera3DeviceService::
         0, cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers))
         << "Failed to allocate output buffer";
     request->settings = still_capture_metadata_;
-    output_stream_buffers_[capture_request_idx_][request->num_output_buffers] =
+    output_stream_buffers_[capture_request_idx][request->num_output_buffers] =
         output_buffers.front();
     ++request->num_output_buffers;
   }
@@ -670,7 +684,7 @@ void Camera3Service::Camera3DeviceService::
   ++number_of_in_flight_requests_;
   VLOGF(1) << "Capture request";
   VLOGF(1) << "  Frame " << request->frame_number;
-  VLOGF(1) << "  Index " << capture_request_idx_;
+  VLOGF(1) << "  Index " << capture_request_idx;
   for (size_t i = 0; i < request->num_output_buffers; i++) {
     VLOGF(1) << "  Buffer " << *request->output_buffers[i].buffer
              << " (format:" << request->output_buffers[i].stream->format << ","
@@ -685,7 +699,6 @@ void Camera3Service::Camera3DeviceService::
              oneshot_preview_metadata_.get()) {
     oneshot_preview_metadata_.reset(nullptr);
   }
-  INCREASE_INDEX(capture_request_idx_);
 }
 
 void Camera3Service::Camera3DeviceService::
@@ -698,10 +711,13 @@ void Camera3Service::Camera3DeviceService::
   size_t capture_request_idx = 0;
   for (; capture_request_idx < capture_requests_.size();
        capture_request_idx++) {
-    if (capture_requests_[capture_request_idx].frame_number == frame_number) {
+    if (capture_requests_[capture_request_idx].first.frame_number ==
+        frame_number) {
       break;
     }
   }
+  ASSERT_NE(capture_request_idx, capture_requests_.size())
+      << "Failed to find frame " << frame_number << " in the requests";
   VLOGF(1) << "Capture result";
   VLOGF(1) << "  Frame " << frame_number;
   VLOGF(1) << "  Index " << capture_request_idx;
@@ -782,12 +798,12 @@ void Camera3Service::Camera3DeviceService::
              << " requests in flight";
     if (number_of_in_flight_requests_ == 0) {
       preview_state_ = PREVIEW_STOPPED;
-      capture_request_idx_ = 0;
       stop_preview_cb_.Run();
       stop_preview_cb_.Reset();
     }
     return;
   }
+  capture_requests_[capture_request_idx].second = false;
   ProcessPreviewRequestOnServiceThread();
 }
 

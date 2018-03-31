@@ -11,6 +11,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "camera3_test/camera3_device_fixture.h"
@@ -137,7 +138,6 @@ class Camera3Service::Camera3DeviceService {
         process_recording_result_cb_(recording_cb),
         preview_state_(PREVIEW_STOPPED),
         number_of_capture_requests_(0),
-        capture_request_idx_(0),
         number_of_in_flight_requests_(0),
         still_capture_metadata_(nullptr),
         recording_metadata_(nullptr) {}
@@ -257,16 +257,13 @@ class Camera3Service::Camera3DeviceService {
 
   uint32_t number_of_capture_requests_;
 
-  // Keep |number_of_capture_requests_| number of capture request
-  std::vector<camera3_capture_request_t> capture_requests_;
+  // Keep |number_of_capture_requests_| number of capture request and a boolean
+  // indicating whether it is used (in the pipeline) or not
+  std::vector<std::pair<camera3_capture_request_t, bool>> capture_requests_;
 
   // Keep track of two stream buffers for each capture request. The preview
   // buffer is at index 0 while still capture one at index 1.
   std::vector<std::vector<camera3_stream_buffer_t>> output_stream_buffers_;
-
-  // The index of capture request that is going to have its corresponding
-  // capture result returned
-  size_t capture_request_idx_;
 
   // Number of capture requests that are being processed by HAL
   size_t number_of_in_flight_requests_;

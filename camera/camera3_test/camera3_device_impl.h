@@ -7,6 +7,7 @@
 
 #include <semaphore.h>
 
+#include <deque>
 #include <memory>
 #include <set>
 #include <string>
@@ -196,14 +197,17 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   uint32_t request_frame_number_;
 
-  uint32_t result_frame_number_;
-
   // Store created capture requests with frame number as the key
   std::unordered_map<uint32_t, camera3_capture_request_t> capture_request_map_;
 
   // Store the frame numbers of capture requests that HAL has finished
   // processing
   std::set<uint32_t> completed_request_set_;
+
+  // Store the capture output buffers with streams as the key to verify that
+  // buffers of the same stream are delivered in capture order
+  std::unordered_map<const camera3_stream_t*, std::deque<buffer_handle_t>>
+      stream_output_buffer_map_;
 
   class CaptureResultInfo {
    public:
