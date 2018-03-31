@@ -99,6 +99,7 @@ void Camera3BasicRecordingTest::ValidateRecordingFrameRate(
 }
 
 TEST_P(Camera3BasicRecordingTest, BasicRecording) {
+#define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
   ResolutionInfo preview_resolution =
       cam_service_.GetStaticInfo(cam_id_)
           ->GetSortedOutputResolutions(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
@@ -107,10 +108,15 @@ TEST_P(Camera3BasicRecordingTest, BasicRecording) {
   cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
                             recording_resolution_);
 
-  auto recording_metadata = cam_service_.ConstructDefaultRequestSettings(
-      cam_id_, CAMERA3_TEMPLATE_VIDEO_RECORD);
-  ASSERT_NE(nullptr, recording_metadata);
-  cam_service_.StartRecording(cam_id_, recording_metadata);
+  CameraMetadataUniquePtr recording_metadata(
+      clone_camera_metadata(cam_service_.ConstructDefaultRequestSettings(
+          cam_id_, CAMERA3_TEMPLATE_VIDEO_RECORD)));
+  ASSERT_NE(nullptr, recording_metadata.get());
+  int32_t fps_range[] = {static_cast<int32_t>(recording_frame_rate_),
+                         static_cast<int32_t>(recording_frame_rate_)};
+  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fps_range,
+                              ARRAY_SIZE(fps_range), &recording_metadata));
+  cam_service_.StartRecording(cam_id_, recording_metadata.get());
   usleep(kRecordingDurationMs * 1000);
   cam_service_.StopRecording(cam_id_);
   float frame_duration_ms = 1000.0 / recording_frame_rate_;
