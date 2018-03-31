@@ -222,7 +222,7 @@ bool VirtualMachine::Start(base::FilePath kernel,
       if (disk.image_type == VirtualMachine::DiskImageType::RAW)
         args.emplace_back("--disk");
       else
-        args.emplace_back("--rwqcow");
+        args.emplace_back("--qcow");
     }
 
     args.emplace_back(disk.path.value());
