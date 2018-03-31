@@ -14,6 +14,9 @@
     {
       'target_name': 'libgarcon',
       'type': 'static_library',
+      'dependencies': [
+        'container-rpcs',
+      ],
       'sources': [
         'garcon/desktop_file.cc',
         'garcon/service_impl.cc',
@@ -51,7 +54,6 @@
       'target_name': 'garcon',
       'type': 'executable',
       'dependencies': [
-        'container-rpcs',
         'libgarcon',
       ],
       'sources': [
