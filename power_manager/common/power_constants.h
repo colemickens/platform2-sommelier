@@ -277,16 +277,6 @@ enum class SessionState {
   STARTED,
 };
 
-// Current status of update engine, the system updater.
-enum class UpdaterState {
-  // No update is currently being applied.
-  IDLE,
-  // An update is being downloaded, verified, or applied.
-  UPDATING,
-  // An update has been successfully applied and will be used after a reboot.
-  UPDATED,
-};
-
 enum class DisplayMode {
   NORMAL,
   PRESENTATION,
@@ -324,7 +314,6 @@ std::string PowerSourceToString(PowerSource source);
 std::string LidStateToString(LidState state);
 std::string TabletModeToString(TabletMode mode);
 std::string SessionStateToString(SessionState state);
-std::string UpdaterStateToString(UpdaterState state);
 std::string DisplayModeToString(DisplayMode mode);
 std::string ButtonStateToString(ButtonState state);
 std::string ShutdownReasonToString(ShutdownReason reason);

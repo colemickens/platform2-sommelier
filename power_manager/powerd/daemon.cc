@@ -101,7 +101,6 @@ constexpr base::TimeDelta kShutdownLockfileRetryInterval =
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
 const int kSessionManagerDBusTimeoutMs = 3000;
-const int kUpdateEngineDBusTimeoutMs = 3000;
 const int kCryptohomedDBusTimeoutMs = 2 * 60 * 1000;  // Two minutes.
 
 // Interval between log messages while user, audio, or video activity is
@@ -229,31 +228,6 @@ class Daemon::StateControllerDelegate
 
   void UpdatePanelForDockedMode(bool docked) override {
     daemon_->SetBacklightsDocked(docked);
-  }
-
-  void EmitScreenIdleStateChanged(bool dimmed, bool off) override {
-    ScreenIdleState proto;
-    proto.set_dimmed(dimmed);
-    proto.set_off(off);
-    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
-        kScreenIdleStateChangedSignal, proto);
-  }
-
-  void EmitInactivityDelaysChanged(
-      const PowerManagementPolicy::Delays& delays) override {
-    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
-        kInactivityDelaysChangedSignal, delays);
-  }
-
-  void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
-    IdleActionImminent proto;
-    proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
-    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
-        kIdleActionImminentSignal, proto);
-  }
-
-  void EmitIdleActionDeferred() override {
-    daemon_->dbus_wrapper_->EmitBareSignal(kIdleActionDeferredSignal);
   }
 
   void ReportUserActivityMetrics() override {
@@ -404,7 +378,7 @@ void Daemon::Init() {
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
-                          power_source, lid_state);
+                          dbus_wrapper_.get(), power_source, lid_state);
 
   if (BoolPrefIsTrue(kUseCrasPref)) {
     audio_client_ = delegate_->CreateAudioClient(dbus_wrapper_.get());
@@ -800,19 +774,6 @@ void Daemon::InitDBus() {
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  update_engine_dbus_proxy_ =
-      dbus_wrapper_->GetObjectProxy(update_engine::kUpdateEngineServiceName,
-                                    update_engine::kUpdateEngineServicePath);
-  dbus_wrapper_->RegisterForServiceAvailability(
-      update_engine_dbus_proxy_,
-      base::Bind(&Daemon::HandleUpdateEngineAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper_->RegisterForSignal(
-      update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
-      update_engine::kStatusUpdate,
-      base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
-                 weak_ptr_factory_.GetWeakPtr()));
-
   int64_t tpm_threshold = 0;
   prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
   if (tpm_threshold > 0) {
@@ -842,7 +803,6 @@ void Daemon::InitDBus() {
        &Daemon::HandleSetBacklightsForcedOffMethod},
       {kGetBacklightsForcedOffMethod,
        &Daemon::HandleGetBacklightsForcedOffMethod},
-      {kGetInactivityDelaysMethod, &Daemon::HandleGetInactivityDelaysMethod},
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
@@ -905,32 +865,6 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
   OnSessionStateChange(state);
 }
 
-void Daemon::HandleUpdateEngineAvailable(bool available) {
-  if (!available) {
-    LOG(ERROR) << "Failed waiting for update engine to become available";
-    return;
-  }
-
-  dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
-                               update_engine::kGetStatus);
-  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      update_engine_dbus_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kUpdateEngineDBusTimeoutMs));
-  if (!response)
-    return;
-
-  dbus::MessageReader reader(response.get());
-  int64_t last_checked_time = 0;
-  double progress = 0.0;
-  std::string operation;
-  if (!reader.PopInt64(&last_checked_time) || !reader.PopDouble(&progress) ||
-      !reader.PopString(&operation)) {
-    LOG(ERROR) << "Unable to read " << update_engine::kGetStatus << " args";
-    return;
-  }
-  OnUpdateOperation(operation);
-}
-
 void Daemon::HandleCryptohomedAvailable(bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for cryptohomed to become available";
@@ -955,19 +889,6 @@ void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {
     LOG(ERROR) << "Unable to read " << login_manager::kSessionStateChangedSignal
                << " args";
   }
-}
-
-void Daemon::HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal) {
-  dbus::MessageReader reader(signal);
-  int64_t last_checked_time = 0;
-  double progress = 0.0;
-  std::string operation;
-  if (!reader.PopInt64(&last_checked_time) || !reader.PopDouble(&progress) ||
-      !reader.PopString(&operation)) {
-    LOG(ERROR) << "Unable to read " << update_engine::kStatusUpdate << " args";
-    return;
-  }
-  OnUpdateOperation(operation);
 }
 
 void Daemon::HandleGetTpmStatusResponse(dbus::Response* response) {
@@ -1182,15 +1103,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetBacklightsForcedOffMethod(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Daemon::HandleGetInactivityDelaysMethod(
-    dbus::MethodCall* method_call) {
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendProtoAsArrayOfBytes(state_controller_->GetInactivityDelays());
-  return response;
-}
-
 void Daemon::OnSessionStateChange(const std::string& state_str) {
   SessionState state = (state_str == kSessionStarted) ? SessionState::STARTED
                                                       : SessionState::STOPPED;
@@ -1203,19 +1115,6 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
   state_controller_->HandleSessionStateChange(state);
   for (auto controller : all_backlight_controllers_)
     controller->HandleSessionStateChange(state);
-}
-
-void Daemon::OnUpdateOperation(const std::string& operation) {
-  LOG(INFO) << "Update operation is " << operation;
-  UpdaterState state = UpdaterState::IDLE;
-  if (operation == update_engine::kUpdateStatusDownloading ||
-      operation == update_engine::kUpdateStatusVerifying ||
-      operation == update_engine::kUpdateStatusFinalizing) {
-    state = UpdaterState::UPDATING;
-  } else if (operation == update_engine::kUpdateStatusUpdatedNeedReboot) {
-    state = UpdaterState::UPDATED;
-  }
-  state_controller_->HandleUpdaterStateChange(state);
 }
 
 void Daemon::RequestTpmStatus() {

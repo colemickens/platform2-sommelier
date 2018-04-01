@@ -41,6 +41,10 @@ class DBusWrapperStub : public DBusWrapperInterface {
   bool service_published() const { return service_published_; }
   size_t num_sent_signals() const { return sent_signals_.size(); }
 
+  // Returns the name of the signal at position |index| in |sent_signals_|.
+  // Crashes if |index| is out of range.
+  std::string GetSentSignalName(size_t index);
+
   // Copies the signal at position |index| in |sent_signals_| (that is, the
   // |index|th-sent signal) to |protobuf_out|, which should be a concrete
   // protocol buffer, and |signal_out|. false is returned if the index is

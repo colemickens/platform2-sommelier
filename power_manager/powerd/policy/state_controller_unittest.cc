@@ -6,17 +6,25 @@
 
 #include <stdint.h>
 
+#include <vector>
+
 #include <base/compiler_specific.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/proto_bindings/idle.pb.h"
+#include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
 namespace policy {
@@ -36,33 +44,11 @@ const char kStopSession[] = "logout";
 const char kShutDown[] = "shut_down";
 const char kDocked[] = "docked";
 const char kUndocked[] = "undocked";
-const char kIdleDeferred[] = "idle_deferred";
-const char kScreenIdleStateDimmedOff[] = "screen_idle(dim,off)";
-const char kScreenIdleStateDimmedOn[] = "screen_idle(dim,on)";
-const char kScreenIdleStateUndimmedOff[] = "screen_idle(undim,off)";
-const char kScreenIdleStateUndimmedOn[] = "screen_idle(undim,on)";
 const char kReportUserActivityMetrics[] = "metrics";
 
 // String returned by TestDelegate::GetActions() if no actions were
 // requested.
 const char kNoActions[] = "";
-
-std::string GetIdleImminentAction(base::TimeDelta time_until_idle_action) {
-  return base::StringPrintf("idle_imminent(%" PRId64 ")",
-                            time_until_idle_action.InMilliseconds());
-}
-
-std::string GetInactivityDelaysChangedAction(base::TimeDelta idle,
-                                             base::TimeDelta idle_warning,
-                                             base::TimeDelta screen_off,
-                                             base::TimeDelta screen_dim,
-                                             base::TimeDelta screen_lock) {
-  return base::StringPrintf(
-      "delays(%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ")",
-      idle.InMilliseconds(), idle_warning.InMilliseconds(),
-      screen_off.InMilliseconds(), screen_dim.InMilliseconds(),
-      screen_lock.InMilliseconds());
-}
 
 // StateController::Delegate implementation that records requested actions.
 class TestDelegate : public StateController::Delegate, public ActionRecorder {
@@ -72,12 +58,6 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
 
   void set_record_metrics_actions(bool record) {
     record_metrics_actions_ = record;
-  }
-  void set_record_screen_idle_state_actions(bool record) {
-    record_screen_idle_state_actions_ = record;
-  }
-  void set_record_inactivity_delays_changed_actions(bool record) {
-    record_inactivity_delays_changed_actions_ = record;
   }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
@@ -117,42 +97,15 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   void UpdatePanelForDockedMode(bool docked) override {
     AppendAction(docked ? kDocked : kUndocked);
   }
-  void EmitScreenIdleStateChanged(bool dimmed, bool off) override {
-    if (!record_screen_idle_state_actions_)
-      return;
-    if (dimmed) {
-      AppendAction(off ? kScreenIdleStateDimmedOff : kScreenIdleStateDimmedOn);
-    } else {
-      AppendAction(off ? kScreenIdleStateUndimmedOff
-                       : kScreenIdleStateUndimmedOn);
-    }
-  }
-  void EmitInactivityDelaysChanged(
-      const PowerManagementPolicy::Delays& delays) override {
-    if (record_inactivity_delays_changed_actions_) {
-      AppendAction(GetInactivityDelaysChangedAction(
-          base::TimeDelta::FromMilliseconds(delays.idle_ms()),
-          base::TimeDelta::FromMilliseconds(delays.idle_warning_ms()),
-          base::TimeDelta::FromMilliseconds(delays.screen_off_ms()),
-          base::TimeDelta::FromMilliseconds(delays.screen_dim_ms()),
-          base::TimeDelta::FromMilliseconds(delays.screen_lock_ms())));
-    }
-  }
-  void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
-    AppendAction(GetIdleImminentAction(time_until_idle_action));
-  }
-  void EmitIdleActionDeferred() override { AppendAction(kIdleDeferred); }
   void ReportUserActivityMetrics() override {
     if (record_metrics_actions_)
       AppendAction(kReportUserActivityMetrics);
   }
 
  private:
-  // Should calls to various methods be recorded in |actions_|? These are noisy,
-  // so by default, they aren't recorded.
+  // Should calls to ReportUserActivityMetrics be recorded in |actions_|? These
+  // are noisy, so by default, they aren't recorded.
   bool record_metrics_actions_ = false;
-  bool record_screen_idle_state_actions_ = false;
-  bool record_inactivity_delays_changed_actions_ = false;
 
   // Should IsUsbInputDeviceConnected() return true?
   bool usb_input_device_connected_ = false;
@@ -172,12 +125,53 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };
 
+// Fills an update_engine message used either for a GetStatus response or a
+// StatusUpdate signal.
+void FillUpdateMessage(dbus::Message* message, const std::string& operation) {
+  dbus::MessageWriter writer(message);
+  writer.AppendInt64(1 /* last_checked_time; arbitrary */);
+  writer.AppendDouble(0.0 /* progress; arbitrary */);
+  writer.AppendString(operation);
+}
+
+// Returns a string representation of an IdleActionImminent D-Bus signal. See
+// StateControllerTest::GetDBusSignals().
+std::string GetIdleActionImminentString(base::TimeDelta time_until_idle) {
+  return base::StringPrintf("%s(%" PRId64 ")", kIdleActionImminentSignal,
+                            time_until_idle.InMilliseconds());
+}
+
+// Returns a string representation of an InactivityDelaysChanged D-Bus signal.
+// See StateControllerTest::GetDBusSignals().
+std::string GetInactivityDelaysChangedString(base::TimeDelta idle,
+                                             base::TimeDelta idle_warning,
+                                             base::TimeDelta screen_off,
+                                             base::TimeDelta screen_dim,
+                                             base::TimeDelta screen_lock) {
+  return base::StringPrintf(
+      "%s(%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ")",
+      kInactivityDelaysChangedSignal, idle.InMilliseconds(),
+      idle_warning.InMilliseconds(), screen_off.InMilliseconds(),
+      screen_dim.InMilliseconds(), screen_lock.InMilliseconds());
+}
+
+// Returns a string representation of a ScreenIdleStateChanged D-Bus signal. See
+// StateControllerTest::GetDBusSignals().
+std::string GetScreenIdleStateChangedString(bool dimmed, bool off) {
+  return base::StringPrintf("%s(%s,%s)", kScreenIdleStateChangedSignal,
+                            std::to_string(dimmed).c_str(),
+                            std::to_string(off).c_str());
+}
+
 }  // namespace
 
 class StateControllerTest : public testing::Test {
  public:
   StateControllerTest()
       : test_api_(&controller_),
+        update_engine_proxy_(dbus_wrapper_.GetObjectProxy(
+            update_engine::kUpdateEngineServiceName,
+            update_engine::kUpdateEngineServicePath)),
         now_(base::TimeTicks::FromInternalValue(1000)),
         default_ac_suspend_delay_(base::TimeDelta::FromSeconds(120)),
         default_ac_screen_off_delay_(base::TimeDelta::FromSeconds(100)),
@@ -195,7 +189,11 @@ class StateControllerTest : public testing::Test {
         initial_lid_state_(LidState::OPEN),
         initial_display_mode_(DisplayMode::NORMAL),
         send_initial_display_mode_(true),
-        send_initial_policy_(true) {}
+        send_initial_policy_(true),
+        update_engine_operation_(update_engine::kUpdateStatusIdle) {
+    dbus_wrapper_.SetMethodCallback(base::Bind(
+        &StateControllerTest::HandleDBusMethodCall, base::Unretained(this)));
+  }
 
  protected:
   void SetMillisecondPref(const std::string& name, base::TimeDelta value) {
@@ -221,7 +219,7 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.clock()->set_current_time_for_testing(now_);
-    controller_.Init(&delegate_, &prefs_, initial_power_source_,
+    controller_.Init(&delegate_, &prefs_, &dbus_wrapper_, initial_power_source_,
                      initial_lid_state_);
 
     if (send_initial_display_mode_)
@@ -289,10 +287,88 @@ class StateControllerTest : public testing::Test {
            StepTimeAndTriggerTimeout(default_ac_suspend_delay_);
   }
 
+  // Emits a StatusUpdate D-Bus signal on behalf of update_engine.
+  void EmitStatusUpdateSignal(const std::string& operation) {
+    dbus::Signal signal(update_engine::kUpdateEngineInterface,
+                        update_engine::kStatusUpdate);
+    FillUpdateMessage(&signal, operation);
+    dbus_wrapper_.EmitRegisteredSignal(update_engine_proxy_, &signal);
+  }
+
+  // Generates responses for D-Bus method calls to other processes sent via
+  // |dbus_wrapper_|.
+  std::unique_ptr<dbus::Response> HandleDBusMethodCall(dbus::ObjectProxy* proxy,
+                                                       dbus::MethodCall* call) {
+    if (proxy == update_engine_proxy_ &&
+        call->GetInterface() == update_engine::kUpdateEngineInterface &&
+        call->GetMember() == update_engine::kGetStatus) {
+      std::unique_ptr<dbus::Response> response =
+          dbus::Response::FromMethodCall(call);
+      FillUpdateMessage(response.get(), update_engine_operation_);
+      return response;
+    }
+
+    ADD_FAILURE() << "Got unexpected D-Bus method call to "
+                  << call->GetInterface() << "." << call->GetMember()
+                  << " on proxy " << proxy;
+    return std::unique_ptr<dbus::Response>();
+  }
+
+  // SignalType is passed to GetDBusSignals() to describe which types of signals
+  // to return.
+  enum class SignalType {
+    // Return all emitted signals.
+    ALL,
+    // Return only IdleActionImminent and IdleActionDeferred signals.
+    ACTIONS,
+  };
+
+  // Returns a comma-separated string describing D-Bus signals emitted by
+  // |dbus_wrapper_| and matched by |signal_type|. Also clears all recorded
+  // signals (regardless of whether they're matched or not).
+  std::string GetDBusSignals(SignalType signal_type) {
+    std::vector<std::string> signals;
+    for (size_t i = 0; i < dbus_wrapper_.num_sent_signals(); ++i) {
+      const std::string name = dbus_wrapper_.GetSentSignalName(i);
+      if (signal_type == SignalType::ACTIONS &&
+          (name != kIdleActionImminentSignal &&
+           name != kIdleActionDeferredSignal))
+        continue;
+
+      if (name == kIdleActionImminentSignal) {
+        IdleActionImminent proto;
+        EXPECT_TRUE(dbus_wrapper_.GetSentSignal(i, name, &proto, nullptr));
+        signals.push_back(
+            GetIdleActionImminentString(base::TimeDelta::FromInternalValue(
+                proto.time_until_idle_action())));
+      } else if (name == kInactivityDelaysChangedSignal) {
+        PowerManagementPolicy::Delays proto;
+        EXPECT_TRUE(dbus_wrapper_.GetSentSignal(i, name, &proto, nullptr));
+        signals.push_back(GetInactivityDelaysChangedString(
+            base::TimeDelta::FromMilliseconds(proto.idle_ms()),
+            base::TimeDelta::FromMilliseconds(proto.idle_warning_ms()),
+            base::TimeDelta::FromMilliseconds(proto.screen_off_ms()),
+            base::TimeDelta::FromMilliseconds(proto.screen_dim_ms()),
+            base::TimeDelta::FromMilliseconds(proto.screen_lock_ms())));
+      } else if (name == kScreenIdleStateChangedSignal) {
+        ScreenIdleState proto;
+        EXPECT_TRUE(dbus_wrapper_.GetSentSignal(i, name, &proto, nullptr));
+        signals.push_back(
+            GetScreenIdleStateChangedString(proto.dimmed(), proto.off()));
+      } else {
+        signals.push_back(name);
+      }
+    }
+    dbus_wrapper_.ClearSentSignals();
+    return base::JoinString(signals, ",");
+  }
+
   FakePrefs prefs_;
   TestDelegate delegate_;
+  system::DBusWrapperStub dbus_wrapper_;
   StateController controller_;
   StateController::TestApi test_api_;
+  dbus::ObjectProxy* update_engine_proxy_;  // owned by |dbus_wrapper_|
 
   base::TimeTicks now_;
 
@@ -324,42 +400,52 @@ class StateControllerTest : public testing::Test {
   // Initial policy to send in Init().
   PowerManagementPolicy initial_policy_;
   bool send_initial_policy_;
+
+  // Operation for update_engine to return in response to GetStatus calls.
+  std::string update_engine_operation_;
+
+  DISALLOW_COPY_AND_ASSIGN(StateControllerTest);
 };
 
 // Tests the basic operation of the different delays.
 TEST_F(StateControllerTest, BasicDelays) {
-  delegate_.set_record_screen_idle_state_actions(true);
-  delegate_.set_record_inactivity_delays_changed_actions(true);
   Init();
 
   // Initial messages describing the inactivity delays and reporting that the
   // screen is undimmed and turned on should be sent at startup.
   EXPECT_EQ(
       JoinActions(
-          GetInactivityDelaysChangedAction(
+          GetInactivityDelaysChangedString(
               default_ac_suspend_delay_, base::TimeDelta() /* idle_warning */,
               default_ac_screen_off_delay_, default_ac_screen_dim_delay_,
               base::TimeDelta() /* lock */)
               .c_str(),
-          kScreenIdleStateUndimmedOn, nullptr),
-      delegate_.GetActions());
+          GetScreenIdleStateChangedString(false, false).c_str(), nullptr),
+      GetDBusSignals(SignalType::ALL));
 
   // The screen should be dimmed after the configured interval and then undimmed
   // in response to user activity.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenIdleStateDimmedOn, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, nullptr), delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(true, false).c_str(),
+            GetDBusSignals(SignalType::ALL));
+
   controller_.HandleUserActivity();
-  EXPECT_EQ(JoinActions(kScreenUndim, kScreenIdleStateUndimmedOn, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(false, false).c_str(),
+            GetDBusSignals(SignalType::ALL));
 
   // The system should eventually suspend if the user is inactive.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenIdleStateDimmedOn, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(true, false).c_str(),
+            GetDBusSignals(SignalType::ALL));
+
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(JoinActions(kScreenOff, kScreenIdleStateDimmedOff, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(true, true).c_str(),
+            GetDBusSignals(SignalType::ALL));
+
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspendIdle, delegate_.GetActions());
 
@@ -369,14 +455,16 @@ TEST_F(StateControllerTest, BasicDelays) {
   // When the system resumes, the screen should be undimmed and turned back
   // on.
   controller_.HandleResume();
-  EXPECT_EQ(
-      JoinActions(kScreenUndim, kScreenOn, kScreenIdleStateUndimmedOn, nullptr),
-      delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
+            delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(false, false).c_str(),
+            GetDBusSignals(SignalType::ALL));
 
   // The screen should be dimmed again after the screen-dim delay.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenIdleStateDimmedOn, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(true, false).c_str(),
+            GetDBusSignals(SignalType::ALL));
 }
 
 // Tests that the screen isn't dimmed while video is detected.
@@ -529,8 +617,8 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledWarnDelay));
-  EXPECT_EQ(GetIdleImminentAction(kScaledIdleDelay - kScaledWarnDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kScaledIdleDelay - kScaledWarnDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -544,8 +632,8 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarnDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarnDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kWarnDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 }
@@ -1071,21 +1159,23 @@ TEST_F(StateControllerTest, LidNotPresent) {
 TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   Init();
 
-  // Inform the controller that an update is being applied.  The screen
-  // should dim and be turned off, but the system should stay on.
-  controller_.HandleUpdaterStateChange(UpdaterState::UPDATING);
+  // When update_engine comes up, make it report that an update is being
+  // applied.  The screen should dim and be turned off, but the system should
+  // stay awake.
+  update_engine_operation_ = update_engine::kUpdateStatusDownloading;
+  dbus_wrapper_.NotifyServiceAvailable(update_engine_proxy_, true);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // When the update has been applied, the system should suspend immediately.
-  controller_.HandleUpdaterStateChange(UpdaterState::UPDATED);
+  EmitStatusUpdateSignal(update_engine::kUpdateStatusUpdatedNeedReboot);
   EXPECT_EQ(kSuspendIdle, delegate_.GetActions());
 
   // Resume the system and announce another update.
   controller_.HandleResume();
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  controller_.HandleUpdaterStateChange(UpdaterState::UPDATING);
+  EmitStatusUpdateSignal(update_engine::kUpdateStatusFinalizing);
 
   // Closing the lid should still suspend.
   controller_.HandleLidStateChange(LidState::CLOSED);
@@ -1100,7 +1190,7 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
 
   // The system should also suspend immediately after transitioning from
   // the "updating" state back to "idle" (i.e. the update was unsuccessful).
-  controller_.HandleUpdaterStateChange(UpdaterState::IDLE);
+  EmitStatusUpdateSignal(update_engine::kUpdateStatusIdle);
   EXPECT_EQ(kSuspendIdle, delegate_.GetActions());
   controller_.HandleResume();
   controller_.HandleUserActivity();
@@ -1112,7 +1202,7 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   PowerManagementPolicy policy;
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  controller_.HandleUpdaterStateChange(UpdaterState::UPDATING);
+  EmitStatusUpdateSignal(update_engine::kUpdateStatusDownloading);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kStopSession, NULL),
             delegate_.GetActions());
@@ -1139,8 +1229,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // The idle-action-imminent notification should be sent at the requested
   // time.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1153,31 +1243,32 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // performed, an idle-action-deferred notification should be sent.
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   AdvanceTime(kHalfInterval);
   controller_.HandleUserActivity();
-  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  EXPECT_EQ(kIdleActionDeferredSignal, GetDBusSignals(SignalType::ACTIONS));
 
   // Let the warning fire again.
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
 
   // Increase the warning delay and check that the deferred notification is
   // sent.
   policy.mutable_ac_delays()->set_idle_warning_ms(
       (kIdleWarningDelay + kHalfInterval).InMilliseconds());
+  EXPECT_EQ("", GetDBusSignals(SignalType::ACTIONS));
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  EXPECT_EQ(kIdleActionDeferredSignal, GetDBusSignals(SignalType::ACTIONS));
 
   // The warning should be sent again when its new delay is reached, and
   // the idle action should be performed at the usual time.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
-  EXPECT_EQ(
-      GetIdleImminentAction(kIdleDelay - (kIdleWarningDelay + kHalfInterval)),
-      delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay -
+                                        (kIdleWarningDelay + kHalfInterval)),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1190,22 +1281,22 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleUserActivity();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   policy.mutable_ac_delays()->set_idle_warning_ms(0);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  EXPECT_EQ(kIdleActionDeferredSignal, GetDBusSignals(SignalType::ACTIONS));
 
   // The same signals should be sent again if the delay is added and removed
   // without the time advancing.
   policy.mutable_ac_delays()->set_idle_warning_ms(
       kIdleWarningDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   policy.mutable_ac_delays()->set_idle_warning_ms(0);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  EXPECT_EQ(kIdleActionDeferredSignal, GetDBusSignals(SignalType::ACTIONS));
 
   // Setting the idle action to "do nothing" should send an idle-deferred
   // message if idle-imminent was already sent.
@@ -1216,22 +1307,23 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   policy.set_ac_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  EXPECT_EQ(kIdleActionDeferredSignal, GetDBusSignals(SignalType::ACTIONS));
 
   // Setting the idle action back to "stop session" should cause
   // idle-imminent to get sent again.
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   policy.set_ac_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  EXPECT_EQ(kIdleActionDeferredSignal, GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ("", GetDBusSignals(SignalType::ACTIONS));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // The idle-imminent message shouldn't get sent in the first place when
@@ -1254,9 +1346,9 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(JoinActions(GetIdleImminentAction(base::TimeDelta()).c_str(),
-                        kStopSession, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(base::TimeDelta()),
+            GetDBusSignals(SignalType::ACTIONS));
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
 
   // Let idle-imminent get sent and then increase the idle delay. idle-imminent
   // should be sent again immediately with an updated time-until-idle-action.
@@ -1264,12 +1356,12 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   policy.mutable_ac_delays()->set_idle_ms(2 * kIdleDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(GetIdleImminentAction(2 * kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(2 * kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
 }
 
 // Tests that wake locks reported via policy messages defer actions
@@ -1426,8 +1518,8 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kLockDelay - kOffDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleWarningDelay - kLockDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kIdleWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kIdleWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay - kIdleWarningDelay));
   EXPECT_EQ(kSuspendIdle, delegate_.GetActions());
 
@@ -1653,8 +1745,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1672,8 +1764,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   ResetLastStepDelay();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1687,8 +1779,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   ResetLastStepDelay();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1700,10 +1792,10 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   controller_.HandleSessionStateChange(SessionState::STOPPED);
   controller_.HandleSessionStateChange(SessionState::STARTED);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
-  EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
-            delegate_.GetActions());
+  EXPECT_EQ(GetIdleActionImminentString(kIdleDelay - kWarningDelay),
+            GetDBusSignals(SignalType::ACTIONS));
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  EXPECT_EQ(kIdleActionDeferredSignal, GetDBusSignals(SignalType::ACTIONS));
 
   // |wait| should have no effect when no session is ongoing.
   controller_.HandleSessionStateChange(SessionState::STOPPED);
@@ -1772,7 +1864,7 @@ TEST_F(StateControllerTest, SuspendInsteadOfShuttingDownForTpmCounter) {
 TEST_F(StateControllerTest, ReportInactivityDelays) {
   send_initial_policy_ = false;
   Init();
-  delegate_.set_record_inactivity_delays_changed_actions(true);
+  dbus_wrapper_.ClearSentSignals();
 
   constexpr base::TimeDelta kIdle = base::TimeDelta::FromSeconds(300);
   constexpr base::TimeDelta kIdleWarn = base::TimeDelta::FromSeconds(270);
@@ -1790,43 +1882,49 @@ TEST_F(StateControllerTest, ReportInactivityDelays) {
   policy.mutable_ac_delays()->set_screen_lock_ms(kScreenLock.InMilliseconds());
   policy.set_presentation_screen_dim_delay_factor(kScreenDimFactor);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(GetInactivityDelaysChangedAction(kIdle, kIdleWarn, kScreenOff,
-                                             kScreenDim, kScreenLock)
-                .c_str(),
-            delegate_.GetActions());
+
+  PowerManagementPolicy::Delays delays;
+  EXPECT_EQ(GetInactivityDelaysChangedString(kIdle, kIdleWarn, kScreenOff,
+                                             kScreenDim, kScreenLock),
+            GetDBusSignals(SignalType::ALL));
 
   // Nothing should be announced if the policy didn't change.
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_EQ("", GetDBusSignals(SignalType::ALL));
 
   // Clear a few fields and check that an update is sent.
   policy.mutable_ac_delays()->clear_idle_warning_ms();
   policy.mutable_ac_delays()->clear_screen_lock_ms();
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(GetInactivityDelaysChangedAction(
-                kIdle, base::TimeDelta() /* idle_warn */, kScreenOff,
-                kScreenDim, base::TimeDelta() /* screen_lock */)
-                .c_str(),
-            delegate_.GetActions());
 
-  // GetInactivityDelays() should return the correct values as well.
-  PowerManagementPolicy::Delays delays = controller_.GetInactivityDelays();
-  EXPECT_EQ(kIdle.InMilliseconds(), delays.idle_ms());
-  EXPECT_FALSE(delays.has_idle_warning_ms());
-  EXPECT_EQ(kScreenOff.InMilliseconds(), delays.screen_off_ms());
-  EXPECT_EQ(kScreenDim.InMilliseconds(), delays.screen_dim_ms());
-  EXPECT_FALSE(delays.has_screen_lock_ms());
+  EXPECT_EQ(
+      GetInactivityDelaysChangedString(kIdle, base::TimeDelta(), kScreenOff,
+                                       kScreenDim, base::TimeDelta()),
+      GetDBusSignals(SignalType::ALL));
+
+  // GetInactivityDelays D-Bus calls should return the correct values as well.
+  dbus::MethodCall method_call(kPowerManagerInterface,
+                               kGetInactivityDelaysMethod);
+  std::unique_ptr<dbus::Response> response =
+      dbus_wrapper_.CallExportedMethodSync(&method_call);
+  ASSERT_TRUE(response);
+  PowerManagementPolicy::Delays proto;
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(kIdle.InMilliseconds(), proto.idle_ms());
+  EXPECT_FALSE(proto.has_idle_warning_ms());
+  EXPECT_EQ(kScreenOff.InMilliseconds(), proto.screen_off_ms());
+  EXPECT_EQ(kScreenDim.InMilliseconds(), proto.screen_dim_ms());
+  EXPECT_FALSE(proto.has_screen_lock_ms());
 
   // Enter presentation mode and check that the reported delays are adjusted.
   const base::TimeDelta kScaledScreenDim = kScreenDim * kScreenDimFactor;
   const base::TimeDelta kDelayDiff = kScaledScreenDim - kScreenDim;
   controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
-  EXPECT_EQ(GetInactivityDelaysChangedAction(
-                kIdle + kDelayDiff, base::TimeDelta() /* idle_warning */,
-                kScreenOff + kDelayDiff, kScaledScreenDim,
-                base::TimeDelta() /* screen_lock */)
-                .c_str(),
-            delegate_.GetActions());
+  EXPECT_EQ(GetInactivityDelaysChangedString(
+                kIdle + kDelayDiff, base::TimeDelta(), kScreenOff + kDelayDiff,
+                kScaledScreenDim, base::TimeDelta()),
+            GetDBusSignals(SignalType::ALL));
 }
 
 }  // namespace policy

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -16,20 +17,28 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
+#include "power_manager/proto_bindings/idle.pb.h"
 
 namespace power_manager {
 namespace policy {
 
 namespace {
 
-// Time in milliseconds to wait for the display mode and policy after Init() is
-// called.
-const int kInitialStateTimeoutMs = 10000;
+// Time to wait for the display mode and policy after Init() is called.
+constexpr base::TimeDelta kInitialStateTimeout =
+    base::TimeDelta::FromSeconds(10);
+
+// Time to wait for responses to D-Bus method calls to update_engine.
+constexpr base::TimeDelta kUpdateEngineDBusTimeout =
+    base::TimeDelta::FromSeconds(3);
 
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
@@ -271,11 +280,12 @@ std::string StateController::GetPolicyDebugString(
 }
 
 StateController::StateController()
-    : clock_(new Clock()),
-      audio_activity_(new ActivityInfo()),
-      screen_wake_lock_(new ActivityInfo()),
-      dim_wake_lock_(new ActivityInfo()),
-      system_wake_lock_(new ActivityInfo()) {}
+    : clock_(std::make_unique<Clock>()),
+      audio_activity_(std::make_unique<ActivityInfo>()),
+      screen_wake_lock_(std::make_unique<ActivityInfo>()),
+      dim_wake_lock_(std::make_unique<ActivityInfo>()),
+      system_wake_lock_(std::make_unique<ActivityInfo>()),
+      weak_ptr_factory_(this) {}
 
 StateController::~StateController() {
   if (prefs_)
@@ -284,6 +294,7 @@ StateController::~StateController() {
 
 void StateController::Init(Delegate* delegate,
                            PrefsInterface* prefs,
+                           system::DBusWrapperInterface* dbus_wrapper,
                            PowerSource power_source,
                            LidState lid_state) {
   delegate_ = delegate;
@@ -291,19 +302,37 @@ void StateController::Init(Delegate* delegate,
   prefs_->AddObserver(this);
   LoadPrefs();
 
+  dbus_wrapper_ = dbus_wrapper;
+  dbus_wrapper->ExportMethod(
+      kGetInactivityDelaysMethod,
+      base::Bind(&StateController::HandleGetInactivityDelaysMethodCall,
+                 weak_ptr_factory_.GetWeakPtr()));
+
+  update_engine_dbus_proxy_ =
+      dbus_wrapper_->GetObjectProxy(update_engine::kUpdateEngineServiceName,
+                                    update_engine::kUpdateEngineServicePath);
+  dbus_wrapper_->RegisterForServiceAvailability(
+      update_engine_dbus_proxy_,
+      base::Bind(&StateController::HandleUpdateEngineAvailable,
+                 weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->RegisterForSignal(
+      update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
+      update_engine::kStatusUpdate,
+      base::Bind(&StateController::HandleUpdateEngineStatusUpdateSignal,
+                 weak_ptr_factory_.GetWeakPtr()));
+
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
   lid_state_ = lid_state;
 
-  initial_state_timer_.Start(
-      FROM_HERE, base::TimeDelta::FromMilliseconds(kInitialStateTimeoutMs),
-      this, &StateController::HandleInitialStateTimeout);
+  initial_state_timer_.Start(FROM_HERE, kInitialStateTimeout, this,
+                             &StateController::HandleInitialStateTimeout);
 
   UpdateSettingsAndState();
 
   // Emit the current screen-idle state in case powerd restarted while the
   // screen was dimmed or turned off.
-  delegate_->EmitScreenIdleStateChanged(screen_dimmed_, screen_turned_off_);
+  EmitScreenIdleStateChanged(screen_dimmed_, screen_turned_off_);
 
   initialized_ = true;
 }
@@ -346,15 +375,6 @@ void StateController::HandleSessionStateChange(SessionState state) {
   saw_user_activity_soon_after_screen_dim_or_off_ = false;
   saw_user_activity_during_current_session_ = false;
   UpdateLastUserActivityTime();
-  UpdateSettingsAndState();
-}
-
-void StateController::HandleUpdaterStateChange(UpdaterState state) {
-  CHECK(initialized_);
-  if (state == updater_state_)
-    return;
-
-  updater_state_ = state;
   UpdateSettingsAndState();
 }
 
@@ -475,7 +495,8 @@ void StateController::HandleTpmStatus(int dictionary_attack_count) {
   UpdateSettingsAndState();
 }
 
-PowerManagementPolicy::Delays StateController::GetInactivityDelays() const {
+PowerManagementPolicy::Delays StateController::CreateInactivityDelaysProto()
+    const {
   PowerManagementPolicy::Delays proto;
   if (!delays_.idle.is_zero())
     proto.set_idle_ms(delays_.idle.InMilliseconds());
@@ -856,8 +877,10 @@ void StateController::UpdateSettingsAndState() {
 
   LogSettings();
 
-  if (delays_ != old_delays)
-    delegate_->EmitInactivityDelaysChanged(GetInactivityDelays());
+  if (delays_ != old_delays) {
+    dbus_wrapper_->EmitSignalWithProtocolBuffer(kInactivityDelaysChangedSignal,
+                                                CreateInactivityDelaysProto());
+  }
 
   UpdateState();
 }
@@ -946,7 +969,7 @@ void StateController::UpdateState() {
 
   if (screen_dimmed_ != screen_was_dimmed ||
       screen_turned_off_ != screen_was_turned_off) {
-    delegate_->EmitScreenIdleStateChanged(screen_dimmed_, screen_turned_off_);
+    EmitScreenIdleStateChanged(screen_dimmed_, screen_turned_off_);
   }
 
   // The idle-imminent signal is only emitted if an idle action is set.
@@ -958,7 +981,10 @@ void StateController::UpdateState() {
       LOG(INFO) << "Emitting idle-imminent signal with "
                 << util::TimeDeltaToString(time_until_idle) << " after "
                 << util::TimeDeltaToString(idle_duration);
-      delegate_->EmitIdleActionImminent(time_until_idle);
+      IdleActionImminent proto;
+      proto.set_time_until_idle_action(time_until_idle.ToInternalValue());
+      dbus_wrapper_->EmitSignalWithProtocolBuffer(kIdleActionImminentSignal,
+                                                  proto);
       sent_idle_warning_ = true;
     }
   } else if (sent_idle_warning_) {
@@ -968,7 +994,7 @@ void StateController::UpdateState() {
     // no-op action.
     if (!idle_action_performed_ || idle_action_ == Action::DO_NOTHING) {
       LOG(INFO) << "Emitting idle-deferred signal";
-      delegate_->EmitIdleActionDeferred();
+      dbus_wrapper_->EmitBareSignal(kIdleActionDeferredSignal);
     }
   }
   resend_idle_warning_ = false;
@@ -1091,6 +1117,74 @@ void StateController::HandleInitialStateTimeout() {
             << "policy; using " << DisplayModeToString(display_mode_)
             << " display mode";
   UpdateState();
+}
+
+void StateController::HandleGetInactivityDelaysMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendProtoAsArrayOfBytes(CreateInactivityDelaysProto());
+  response_sender.Run(std::move(response));
+}
+
+void StateController::HandleUpdateEngineAvailable(bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for update engine to become available";
+    return;
+  }
+
+  dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
+                               update_engine::kGetStatus);
+  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
+      update_engine_dbus_proxy_, &method_call, kUpdateEngineDBusTimeout);
+  if (!response)
+    return;
+
+  HandleUpdateEngineStatusMessage(response.get());
+}
+
+void StateController::HandleUpdateEngineStatusUpdateSignal(
+    dbus::Signal* signal) {
+  HandleUpdateEngineStatusMessage(signal);
+}
+
+void StateController::HandleUpdateEngineStatusMessage(dbus::Message* message) {
+  DCHECK(message);
+  dbus::MessageReader reader(message);
+  int64_t last_checked_time = 0;
+  double progress = 0.0;
+  std::string operation;
+  if (!reader.PopInt64(&last_checked_time) || !reader.PopDouble(&progress) ||
+      !reader.PopString(&operation)) {
+    LOG(ERROR) << "Unable to read update status args";
+    return;
+  }
+
+  LOG(INFO) << "Update operation is " << operation;
+  UpdaterState state = UpdaterState::IDLE;
+  if (operation == update_engine::kUpdateStatusDownloading ||
+      operation == update_engine::kUpdateStatusVerifying ||
+      operation == update_engine::kUpdateStatusFinalizing) {
+    state = UpdaterState::UPDATING;
+  } else if (operation == update_engine::kUpdateStatusUpdatedNeedReboot) {
+    state = UpdaterState::UPDATED;
+  }
+
+  if (state == updater_state_)
+    return;
+
+  updater_state_ = state;
+  UpdateSettingsAndState();
+}
+
+void StateController::EmitScreenIdleStateChanged(bool dimmed, bool off) {
+  ScreenIdleState proto;
+  proto.set_dimmed(dimmed);
+  proto.set_off(off);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kScreenIdleStateChangedSignal,
+                                              proto);
 }
 
 }  // namespace policy

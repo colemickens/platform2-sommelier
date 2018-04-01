@@ -50,6 +50,11 @@ DBusWrapperStub::DBusWrapperStub() = default;
 
 DBusWrapperStub::~DBusWrapperStub() = default;
 
+std::string DBusWrapperStub::GetSentSignalName(size_t index) {
+  CHECK_LT(index, sent_signals_.size());
+  return sent_signals_[index].signal_name;
+}
+
 bool DBusWrapperStub::GetSentSignal(size_t index,
                                     const std::string& expected_signal_name,
                                     google::protobuf::MessageLite* protobuf_out,

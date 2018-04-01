@@ -724,17 +724,12 @@ TEST_F(DaemonTest, FactoryMode) {
 }
 
 // TODO(derat): More tests. Namely:
-// - Registering for D-Bus service availability
 // - PrepareToSuspend / UndoPrepareToSuspend
 // - Creating and deleting suspend_announced file
-// - Handling D-Bus RequestSuspend and SetPowerSource method calls
+// - Handling D-Bus RequestSuspend method calls
 // - Reading wakeup_count
-// - Fetching update state from update_engine
 // - Fetching TPM counter status from cryptohome
-// - Emitting IdleActionImminent and IdleActionDeferred D-Bus signals
 // - Generating suspend IDs
-// - Notifying policy::Suspender about services exiting
-// - StateControllerDelegate implementation
 // - Probably other stuff :-/
 
 }  // namespace power_manager

@@ -148,19 +148,6 @@ std::string SessionStateToString(SessionState state) {
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
-std::string UpdaterStateToString(UpdaterState state) {
-  switch (state) {
-    case UpdaterState::IDLE:
-      return "idle";
-    case UpdaterState::UPDATING:
-      return "updating";
-    case UpdaterState::UPDATED:
-      return "updated";
-  }
-  NOTREACHED() << "Unhandled updater state " << static_cast<int>(state);
-  return base::StringPrintf("unknown (%d)", static_cast<int>(state));
-}
-
 std::string DisplayModeToString(DisplayMode mode) {
   switch (mode) {
     case DisplayMode::NORMAL:

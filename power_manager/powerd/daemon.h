@@ -182,12 +182,10 @@ class Daemon : public policy::InputEventHandler::Delegate,
 
   // Handles other D-Bus services just becoming initially available (i.e.
   // restarts are ignored).
-  void HandleUpdateEngineAvailable(bool available);
   void HandleCryptohomedAvailable(bool available);
 
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
-  void HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal);
   void HandleGetTpmStatusResponse(dbus::Response* response);
   std::unique_ptr<dbus::Response> HandleRequestShutdownMethod(
       dbus::MethodCall* method_call);
@@ -207,14 +205,9 @@ class Daemon : public policy::InputEventHandler::Delegate,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleGetBacklightsForcedOffMethod(
       dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleGetInactivityDelaysMethod(
-      dbus::MethodCall* method_call);
 
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
-
-  // Handles the "operation" field from an update engine status message.
-  void OnUpdateOperation(const std::string& operation);
 
   // Asynchronously asks |cryptohomed_dbus_proxy| (which must be non-null) to
   // return the TPM status, which is handled by HandleGetTpmStatusResponse().
@@ -244,7 +237,6 @@ class Daemon : public policy::InputEventHandler::Delegate,
 
   // ObjectProxy objects are owned by |dbus_wrapper_|.
   dbus::ObjectProxy* session_manager_dbus_proxy_ = nullptr;
-  dbus::ObjectProxy* update_engine_dbus_proxy_ = nullptr;
   // May be null if the TPM status is not needed.
   dbus::ObjectProxy* cryptohomed_dbus_proxy_ = nullptr;
 

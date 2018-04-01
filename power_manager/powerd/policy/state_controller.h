@@ -10,17 +10,30 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
+#include <dbus/exported_object.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
+namespace dbus {
+class Message;
+class MethodCall;
+class ObjectProxy;
+class Signal;
+}  // namespace dbus
+
 namespace power_manager {
 
 class Clock;
 class PrefsInterface;
+
+namespace system {
+class DBusWrapperInterface;
+}  // namespace system
 
 namespace policy {
 
@@ -87,23 +100,6 @@ class StateController : public PrefsObserver {
     // mode" and on if the system isn't in docked mode.
     virtual void UpdatePanelForDockedMode(bool docked) = 0;
 
-    // Announces that the screen's dimmed- or off-for-inactivity state has
-    // changed.
-    virtual void EmitScreenIdleStateChanged(bool dimmed, bool off) = 0;
-
-    // Announces that the currently-used inactivity delays have changed.
-    virtual void EmitInactivityDelaysChanged(
-        const PowerManagementPolicy::Delays& delays) = 0;
-
-    // Announces that the idle action will be performed after
-    // |time_until_idle_action|.
-    virtual void EmitIdleActionImminent(
-        base::TimeDelta time_until_idle_action) = 0;
-
-    // Called after EmitIdleActionImminent() if the system left the idle
-    // state before the idle action was performed.
-    virtual void EmitIdleActionDeferred() = 0;
-
     // Reports metrics in response to user activity.
     virtual void ReportUserActivityMetrics() = 0;
   };
@@ -154,9 +150,11 @@ class StateController : public PrefsObserver {
            lid_state_ == LidState::CLOSED;
   }
 
-  // Ownership of |delegate| and |prefs| remains with the caller.
+  // Ownership of |delegate|, |dbus_wrapper|, and |prefs| remains with the
+  // caller.
   void Init(Delegate* delegate,
             PrefsInterface* prefs,
+            system::DBusWrapperInterface* dbus_wrapper,
             PowerSource power_source,
             LidState lid_state);
 
@@ -165,7 +163,6 @@ class StateController : public PrefsObserver {
   void HandleLidStateChange(LidState state);
   void HandleTabletModeChange(TabletMode mode);
   void HandleSessionStateChange(SessionState state);
-  void HandleUpdaterStateChange(UpdaterState state);
   void HandleDisplayModeChange(DisplayMode mode);
   void HandleResume();
   void HandlePolicyChange(const PowerManagementPolicy& policy);
@@ -179,10 +176,6 @@ class StateController : public PrefsObserver {
 
   // Handles updates to the TPM status.
   void HandleTpmStatus(int dictionary_attack_count);
-
-  // Constructs a PowerManagementPolicy::Delays protocol message containing the
-  // currently-active inactivity delays.
-  PowerManagementPolicy::Delays GetInactivityDelays() const;
 
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
@@ -215,6 +208,16 @@ class StateController : public PrefsObserver {
   // Converts an Action enum value from a PowerManagementPolicy protocol buffer
   // to the corresponding StateController::Action value.
   static Action ProtoActionToAction(PowerManagementPolicy_Action proto_action);
+
+  // Current status of update_engine, the system updater.
+  enum class UpdaterState {
+    // No update is currently being applied.
+    IDLE,
+    // An update is being downloaded, verified, or applied.
+    UPDATING,
+    // An update has been successfully applied and will be used after a reboot.
+    UPDATED,
+  };
 
   // Scales the |screen_dim| delay within |delays| by
   // |screen_dim_scale_factor| and lengthens the other delays to maintain
@@ -308,9 +311,37 @@ class StateController : public PrefsObserver {
   // weren't received in a reasonable amount of time after Init() was called.
   void HandleInitialStateTimeout();
 
-  Delegate* delegate_ = nullptr;  // not owned
+  // Constructs a protocol message containing the currently-active inactivity
+  // delays.
+  PowerManagementPolicy::Delays CreateInactivityDelaysProto() const;
 
-  PrefsInterface* prefs_ = nullptr;  // not owned
+  // Replies to GetInactivityDelays D-Bus method calls.
+  void HandleGetInactivityDelaysMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  // Handles the update_engine D-Bus service becoming initially available.
+  void HandleUpdateEngineAvailable(bool available);
+
+  // Hadles StatusUpdate D-Bus signals from update_engine.
+  void HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal);
+
+  // Handles status updates from update_engine. This is a helper used by both
+  // HandleUpdateEngineStatusUpdateSignal() and HandleUpdateEngineAvailable(),
+  // and |message| can be either a StatusUpdate D-Bus signal or the response to
+  // a GetStatus D-Bus method call; both have the same arguments.
+  void HandleUpdateEngineStatusMessage(dbus::Message* message);
+
+  // Announces that the screen's dimmed- or off-for-inactivity state has
+  // changed.
+  void EmitScreenIdleStateChanged(bool dimmed, bool off);
+
+  Delegate* delegate_ = nullptr;                          // not owned
+  PrefsInterface* prefs_ = nullptr;                       // not owned
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // not owned
+
+  // Owned by |dbus_wrapper_|.
+  dbus::ObjectProxy* update_engine_dbus_proxy_ = nullptr;
 
   std::unique_ptr<Clock> clock_;
 
@@ -442,6 +473,8 @@ class StateController : public PrefsObserver {
   // by UpdateSettingsAndState() and logged by UpdateState() when the action
   // would actually be performed.
   std::string reason_for_ignoring_idle_action_;
+
+  base::WeakPtrFactory<StateController> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(StateController);
 };
