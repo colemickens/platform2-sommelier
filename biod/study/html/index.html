@@ -77,32 +77,47 @@
       <button id="set_fingerid">OK</button>
     </div>
 
-    <!-- Screen 3 - User kicks off image capture for finger X -->
+    <!-- Screen 3 - User kicks off enrollment image capture for finger X -->
     <div id="kickoff" hidden>
-      <h1>Capture image for finger
+      <h1>Capture enrollment image for finger
         <span id="fingerid0">0</span> for participant <span id="pid0">000</span>
       </h1>
       <h1> Click OK to start the capture </h1>
       <button id="kickoff_finger">OK</button>
     </div>
 
-    <!-- Screen 4 - User is asked to place finger on sensor to capture image -->
+    <!-- Screen 4 - User is asked to place finger on sensor to capture image.
+         This screen is shared by both enrollment and verification phases.
+    -->
     <div id="finger" hidden>
-      <h1>Place finger <span id="fingerid1">0</span> on the sensor</h1>
+      <h1>Lift, then touch finger <span id="fingerid1">0</span></h1>
+      <h1>Keep lifting your finger to add the different parts of your fingerprint</h1>
       <div class="progress">
         <div id = "bar" class="progress-bar" role="progressbar">
          <span id="completion">0% completed</span>
         </div>
+      </div>
+      <div id="fingerprint-icon">
+        <img src="static/fingerprint.svg" height="100" width="100">
       </div>
       <div id="error" class="text-danger" hidden>
         <b>Please try again by <span id="error_message">DEADBEEF</span></b>
       </div>
     </div>
 
-    <!-- Screen 5 - Image capture for finger X complete. -->
+    <!-- Screen 5 - User kicks off verification image capture for finger X -->
+    <div id="enroll-complete" hidden>
+        <h1>Capture verification image for finger
+          <span id="fingerid2">0</span> for participant <span id="pid1">000</span>
+        </h1>
+        <h1> Click OK to start the capture </h1>
+      <button id="start_verification">OK</button>
+    </div>
+
+    <!-- Screen 6 - Image capture for finger X complete. -->
     <div id="complete" hidden>
       <div id="sameUser">
-        <h1>Image capture for finger <span id="fingerid2">0</span> complete</h1>
+        <h1>Image capture for finger <span id="fingerid3">0</span> complete</h1>
         <h1>To start next capture, click OK </h1>
       </div>
       <div id="nextUser" hidden>
@@ -136,6 +151,10 @@
   // The finger ID to capture, this is specified by the operator.
   var finger_id = 0;
 
+  // Indicate which phase the UI is currently in. Backend is not aware of this
+  // and will get the same request.
+  var in_enroll_phase = true;
+
   // --- Websocket handling / communication with server
 
   var socket = null;
@@ -153,7 +172,7 @@
     };
 
     socket.onerror = function(evt) {
-    console.error("socket on error");
+      console.error("socket on error");
       document.getElementById("server-error").hidden = false;
     };
   }
@@ -244,9 +263,13 @@
   }
 
   function show_Progress(result) {
-    var progress = Math.round((picture_num / touches_count) * 100);
-    document.getElementById("completion").textContent = progress + "% completed";
-    document.getElementById("bar").style.width = progress+"%";
+    if (result === 'ok') {
+      var progress = Math.round((in_enroll_phase === true ?
+          picture_num / enrollment_count
+          : (picture_num - enrollment_count) / verification_count) * 100);
+      document.getElementById("completion").textContent = progress + "% completed";
+      document.getElementById("bar").style.width = progress+"%";
+    }
     document.getElementById("error_message").textContent = result;
     document.getElementById("error").style.display = result === 'ok' ? 'none' : 'block';
   }
@@ -254,6 +277,7 @@
   function do_KickOffFinger() {
     // Start new acquisition series from the beginning
     picture_num = 0;
+    in_enroll_phase = true;
     // Reset progress bar
     show_Progress('ok');
 
@@ -268,15 +292,25 @@
       picture_num++;
     }
     show_Progress(result);
-    if (picture_num >= touches_count) {
+    if (picture_num === enrollment_count && in_enroll_phase === true) {
+      in_enroll_phase = false;
+      do_CompleteEnroll();
+    } else if (picture_num >= touches_count) {
       do_CompleteFinger();
     } else {
       sendNextFingerInfo();
     }
   }
 
-  function do_CompleteFinger() {
+  function do_CompleteEnroll() {
     setFingerId("fingerid2");
+    setParticipantId("pid1");
+    switchDiv('finger', 'enroll-complete');
+    document.getElementById('start_verification').focus();
+  }
+
+  function do_CompleteFinger() {
+    setFingerId("fingerid3");
     setParticipantId("pid2");
     if (finger_num + 1 == finger_count) {
       switchDiv('sameUser', 'nextUser');
@@ -301,6 +335,15 @@
     }
   }
 
+  function do_StartVerification() {
+    // Reset progress bar
+    show_Progress('ok');
+
+    setFingerId("fingerid1");
+    switchDiv('enroll-complete', 'finger');
+    sendNextFingerInfo();
+  }
+
   // --- Plug UI events
   document.addEventListener('DOMContentLoaded', event => {
     connectSocket();
@@ -309,6 +352,7 @@
     document.getElementById('set_fingerid').addEventListener('click', do_SetFingerId);
     document.getElementById('kickoff_finger').addEventListener('click', do_KickOffFinger);
     document.getElementById('next_finger').addEventListener('click', do_NextFinger);
+    document.getElementById('start_verification').addEventListener('click', do_StartVerification);
     document.getElementById('pid').focus();
   });
 
