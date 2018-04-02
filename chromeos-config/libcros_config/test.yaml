@@ -4,40 +4,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-reef-build-targets: &reef_build_targets
-  coreboot: "reef"
-  ec: "reef"
-  depthcharge: "reef"
-  libpayload: "reef"
-
 touch: &touch
-  present: "probe"
-  probe-regex: "[Tt]ouchscreen|WCOMNTN2"
-
   $fw_root: "/lib/firmware"
   $fw_dest: "/opt/google/touch/firmware"
 
-audio_common: &audio_common
-  $cras_root: "/etc/cras"
-  $ucm_root: "/usr/share/alsa/ucm"
-  $fw_root: "/lib/firmware"
-  $card: "bxtda7219max"
-
-  files:
-    - source: "cras-config/{{$volume}}"
-      destination: "{{$cras_root}}/{{$volume}}"
-    - source: "cras-config/{{$dsp-ini}}"
-      destination: "{{$cras_root}}/{{$dsp-ini}}"
-    - source: "ucm-config/{{$hifi-conf}}"
-      destination: "{{$ucm_root}}/{{$hifi-conf}}"
-    - source: "ucm-config/{{$alsa-conf}}"
-      destination: "{{$ucm_root}}/{{$alsa-conf}}"
-    - source: "topology/{{$topology-bin}}"
-      destination: "{{$fw_root}}/{{$topology-bin}}"
-
 audio: &audio
   main:
-    <<: *audio_common
+    $cras_root: "/etc/cras"
+    $ucm_root: "/usr/share/alsa/ucm"
+    $fw_root: "/lib/firmware"
+    $card: "a-card"
+
     cras-config-dir: "{{$name}}"
     ucm-suffix: "{{$name}}"
 
@@ -45,265 +22,160 @@ audio: &audio
     $dsp-ini: "{{cras-config-dir}}/dsp.ini"
     $hifi-conf: "{{$card}}.{{ucm-suffix}}/HiFi.conf"
     $alsa-conf: "{{$card}}.{{ucm-suffix}}/{{$card}}.{{ucm-suffix}}.conf"
-    $topology-bin: "5a98-reef-{{$topology-name}}-{{$sku-id}}-tplg.bin"
+    $topology-bin: "topology/{{$topology-name}}-tplg.bin"
 
-audio_with_customization_id: &audio_with_customization_id
-  main:
-    <<: *audio_common
-    cras-config-dir: "{{$topology-name}}/{{$customization-id}}"
-    ucm-suffix: "{{$topology-name}}.{{$customization-id}}"
-
-    $volume: "{{$topology-name}}/{{$customization-id}}/{{$card}}"
-    $dsp-ini: "{{$topology-name}}/{{$customization-id}}/dsp.ini"
-    $hifi-conf: "{{$card}}.{{$topology-name}}.{{$customization-id}}/HiFi.conf"
-    $alsa-conf: "{{$card}}.{{$topology-name}}.{{$customization-id}}/{{$card}}.{{$topology-name}}.{{$customization-id}}.conf"
-    $topology-bin: "5a98-reef-{{$topology-name}}-{{$sku-id}}-tplg.bin"
-
-base_config: &base_config
-  arc:
     files:
-      - source: "hardware_features.xml"
-        destination: "/etc/hardware_features.xml"
-    build-properties:
-      device: "reef_cheets"
-      marketing-name: "{{$marketing-name}}"
-  brand-code: "{{$brand-code}}"
+      - source: "cras-config/{{$volume}}"
+        destination: "{{$cras_root}}/{{$volume}}"
+      - source: "cras-config/{{$dsp-ini}}"
+        destination: "{{$cras_root}}/{{$dsp-ini}}"
+      - source: "ucm-config/{{$hifi-conf}}"
+        destination: "{{$ucm_root}}/{{$hifi-conf}}"
+      - source: "ucm-config/{{$alsa-conf}}"
+        destination: "{{$ucm_root}}/{{$alsa-conf}}"
+      - source: "topology/{{$topology-bin}}"
+        destination: "{{$fw_root}}/{{$topology-bin}}"
+
+some_base_config: &some_base_config
   name: "{{$name}}"
-
-reef_config: &reef_config
-  <<: *base_config
   audio:
-    <<: *audio_with_customization_id
-    $topology-name: "reef"
-  identity:
-    platform-name: "Reef"
-    smbios-name-match: "Reef"
-    sku-id: "{{$sku-id}}"
+    <<: *audio
+    $topology-name: "some"
   firmware:
-    bcs-overlay: "overlay-reef-private"
+    bcs-overlay: "overlay-some-private"
     build-targets:
-      <<: *reef_build_targets
-      cr50: "cr50"
+      coreboot: "some"
+      ec: "some"
+      depthcharge: "some"
+      libpayload: "some"
 
-    ec-image: "bcs://Reef_EC.9042.87.1.tbz2"
-    main-image: "bcs://Reef.9042.87.1.tbz2"
-    main-rw-image: "bcs://Reef.9042.110.0.tbz2"
+    ec-image: "bcs://Some_EC.1111.11.1.tbz2"
+    main-image: "bcs://Some.1111.11.1.tbz2"
+    main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
   firmware-signing:
     key-id: "{{$key-id}}"
-  powerd-prefs: "reef"
-  test-label: "reef"
 
-snappy_config: &snappy_config
-  <<: *base_config
-  audio:
-    <<: *audio_with_customization_id
-    $topology-name: "snappy"
+some_config: &some_config
+  <<: *some_base_config
   identity:
-    platform-name: "Snappy"
-    smbios-name-match: "Snappy"
+    platform-name: "Some"
+    smbios-name-match: "Some"
     sku-id: "{{$sku-id}}"
-  firmware:
-    bcs-overlay: "overlay-snappy-private"
-    build-targets: *reef_build_targets
 
-    bcs-overlay: "overlay-snappy-private"
-    ec-image: "bcs://Snappy_EC.9042.178.0.tbz2"
-    main-image: "bcs://Snappy.9042.178.0.tbz2"
+some_whitelabel_config: &some_whitelabel_config
+  <<: *some_base_config
+  identity:
+    platform-name: "Some"
+    smbios-name-match: "Some"
+    sku-id: "{{$sku-id}}"
+    customization-id: "{{$customization-id}}"
 
-    # TODO(shapiroc): snappy's keys haven't yet been merged
-    # into reef. Later, this should be "SNAPPY".
-    no-firmware: true
-  firmware-signing:
-    key-id: "{{$key-id}}"
-  powerd-prefs: "snappy"
-  test-label: "snappy"
-  wallpaper: "snappy"
-  touch:
-    <<: *touch
-    $wacom: "wacom/wacom_1606.hex"
-    $elan_0: "elan/158.0_2.0.bin"
-    $elan_1: "elan/2be2_5603.bin"
-    $weida: "weida/01017401_2083_0133ec86.bin"
+some_touch_config: &some_touch_config
+  <<: *touch
+  $some_stylus: "some_stylus_vendor/some_version.hex"
+  $some_touchscreen: "some_touch_vendor/some_pid_some_version.bin"
+  $some_other_touchscreen: "some_touch_vendor/some_other_pid_some_other_version.bin"
 
-    files:
-      - source: "{{$wacom}}"
-        destination: "{{$fw_dest}}/{{$wacom}}"
-        symlink: "{{$fw_root}}/wacom_firmware_SNAPPY.hex"
-      - source: "{{$elan_0}}"
-        destination: "{{$fw_dest}}/{{$elan_0}}"
-        symlink: "{{$fw_root}}/elan_i2c_158.0.bin"
-      - source: "{{$elan_1}}"
-        destination: "{{$fw_dest}}/{{$elan_1}}"
-        symlink: "{{$fw_root}}/elants_i2c_2be2.bin"
-      - source: "{{$weida}}"
-        destination: "{{$fw_dest}}/{{$weida}}"
-        symlink: "{{$fw_root}}/wdt87xx.bin"
+  files:
+    - source: "{{$some_stylus}}"
+      destination: "{{$fw_dest}}/{{$some_stylus}}"
+      symlink: "{{$fw_root}}/some_stylus_vendor_firmware_SOME.hex"
+    - source: "{{$some_touchscreen}}"
+      destination: "{{$fw_dest}}/{{$some_touchscreen}}"
+      symlink: "{{$fw_root}}/some_touchscreen_vendorts_i2c_some_pid.bin"
+    - source: "{{$some_other_touchscreen}}"
+      destination: "{{$fw_dest}}/{{$some_other_touchscreen}}"
+      symlink: "{{$fw_root}}/some_touchscreen_vendorts_i2c_some_other_pid.bin"
 
 chromeos:
   devices:
-    - $name: "electro"
+    - $name: "some"
       products:
-        - $marketing-name: "Acer Chromebook Spin 11 (R751T)"
-          $brand-code: "ACBB"
-          $key-id: "PARMA"
-          $customization-id: "ELECTRO"
-      skus:
-        - $sku-id: 8
-          config:
-            <<: *reef_config
-            touch:
-              <<: *touch
-              $wacom: "wacom/wacom_1636.hex"
-              $elan_0: "elan/154.0_2.0.bin"
-              $elan_1: "1cd2_5603.bin"
-
-              files:
-                - source: "{{$wacom}}"
-                  destination: "{{$fw_dest}}/{{$wacom}}"
-                  symlink: "{{$fw_root}}/wacom_firmware_ELECTRO.hex"
-                - source: "{{$elan_0}}"
-                  destination: "{{$fw_dest}}/{{$elan_0}}"
-                  symlink: "{{$fw_root}}/elan_i2c_154.0.bin"
-                - source: "{{$elan_1}}"
-                  destination: "{{$fw_dest}}/{{$elan_1}}"
-                  symlink: "{{$fw_root}}/elants_i2c_1cd2.bin"
-
-    - $name: "basking"
-      products:
-        - $marketing-name: "ASUS Chromebook C213NA"
-          $brand-code: "ASUN"
-          $key-id: "OEM2"
-          $customization-id: "BASKING"
+        - $key-id: "SOME"
       skus:
         - $sku-id: 0
           config:
-            <<: *reef_config
+            <<: *some_config
+            touch:
+              <<: *some_touch_config
+              present: "probe"
+              probe-regex: "some-prob-regex"
+            thermal:
+              files:
+                - source: "some_touch/dptf.dv"
+                  destination: "/etc/dptf/some_touch/dptf.dv"
+        - $sku-id: 1
+          config:
+            <<: *some_config
+            touch:
+              <<: *some_touch_config
+              present: "no"
+            thermal:
+              files:
+                - source: "some_notouch/dptf.dv"
+                  destination: "/etc/dptf/some_notouch/dptf.dv"
+    - $name: "another"
+      products:
+        - $key-id: "ANOTHER"
+      skus:
+        - config:
+            name: "{{$name}}"
+            audio:
+              <<: *audio
+              $topology-name: "another"
+            identity:
+              platform-name: "Another"
+              smbios-name-match: "Another"
+            firmware:
+              bcs-overlay: "overlay-another-private"
+
+              ec-image: "bcs://Another_EC.1111.11.1.tbz2"
+              main-image: "bcs://Another.1111.11.1.tbz2"
+              main-rw-image: "bcs://Another_RW.1111.11.1.tbz2"
+              build-targets:
+                coreboot: "some"
+                ec: "some"
+                depthcharge: "some"
+                libpayload: "some"
             touch:
               <<: *touch
-              $wacom: "wacom/wacom_4209.hex"
-              $elan_0: "elan/97.0_6.0.bin"
-              $elan_1: "elan/3062_5602.bin"
-              $elan_2: "elan/306e_5611.bin"
+              present: "probe"
+              probe-regex: "another-prob-regex"
+
+              $some_stylus: "some_stylus_vendor/another_version.hex"
+              $some_touchscreen: "some_touch_vendor/some_pid_some_version.bin"
 
               files:
-                - source: "{{$wacom}}"
-                  destination: "{{$fw_dest}}/{{$wacom}}"
-                  symlink: "{{$fw_root}}/wacom_firmware_BASKING.hex"
-                - source: "{{$elan_0}}"
-                  destination: "{{$fw_dest}}/{{$elan_0}}"
-                  symlink: "{{$fw_root}}/elan_i2c_97.0.bin"
-                - source: "{{$elan_1}}"
-                  destination: "{{$fw_dest}}/{{$elan_1}}"
-                  symlink: "{{$fw_root}}/elants_i2c_3062.bin"
-                - source: "{{$elan_2}}"
-                  destination: "{{$fw_dest}}/{{$elan_2}}"
-                  symlink: "{{$fw_root}}/elants_i2c_306e.bin"
-
-    - $name: "pyro"
+                - source: "{{$some_stylus}}"
+                  destination: "{{$fw_dest}}/{{$some_stylus}}"
+                  symlink: "{{$fw_root}}/some_stylus_vendor_firmware_SOME.hex"
+                - source: "{{$some_touchscreen}}"
+                  destination: "{{$fw_dest}}/{{$some_touchscreen}}"
+                  symlink: "{{$fw_root}}/some_touchscreen_vendorts_i2c_some_pid.bin"
+    - $name: "whitelabel"
       products:
-        - $brand-code: "LEAN"
-          $marketing-name: "Lenovo Thinkpad 11e Chromebook (4th Gen)/Lenovo Thinkpad Yoga 11e Chromebook (4th Gen)"
-          $key-id: "PYRO"
+        - $brand-code: "WLBA"
+          $key-id: "WHITELABEL1"
+          $wallpaper: "wallpaper-wl1"
+          $customization-id: "WHITELABELA"
+        - $brand-code: "WLBB"
+          $key-id: "WHITELABEL2"
+          $wallpaper: "wallpaper-wl2"
+          $customization-id: "WHITELABELB"
       skus:
         - $sku-id: 8
           config:
-            <<: *base_config
-            audio:
-              <<: *audio
-              $topology-name: "reef"
-            identity:
-              platform-name: "Pyro"
-              smbios-name-match: "Pyro"
-            firmware:
-              bcs-overlay: "overlay-pyro-private"
-
-              ec-image: "bcs://Pyro_EC.9042.87.1.tbz2"
-              main-image: "bcs://Pyro.9042.87.1.tbz2"
-              main-rw-image: "bcs://Pyro.9042.110.0.tbz2"
-              # TODO(shapiroc): pyro's keys haven't yet been merged into
-              # reef. Later, this should be "PYRO".
-              no-firmware: true
-
-              build-targets: *reef_build_targets
+            <<: *some_whitelabel_config
+            wallpaper: "{{$wallpaper}}"
             touch:
-              <<: *touch
-              $wacom: "wacom/wacom_769.hex"
-              $elan_0: "elan/155.0_2.0.bin"
-
-              files:
-                - source: "{{$wacom}}"
-                  destination: "{{$fw_dest}}/{{$wacom}}"
-                  symlink: "{{$fw_root}}/wacom_firmware_PYRO.hex"
-                - source: "{{$elan_0}}"
-                  destination: "{{$fw_dest}}/{{$elan_0}}"
-                  symlink: "{{$fw_root}}/elan_i2c_155.0.bin"
-
-    - $name: "sand"
-      products:
-        - $marketing-name: "Chromebook 15 CB515-1HT/1H"
-          $brand-code: "ACBD"
-          $key-id: "SAND"
-      skus:
-        - $sku-id: 8
+              <<: *some_touch_config
+              present: "yes"
+              probe-regex: "some-prob-regex"
+        - $sku-id: 9
           config:
-            <<: *base_config
-            audio:
-              <<: *audio
-              $topology-name: "sand"
-            identity:
-              platform-name: "Sand"
-              smbios-name-match: "Sand"
-            firmware:
-              bcs-overlay: "overlay-sand-private"
-              ec-image: "bcs://Sand_EC.9042.178.0.tbz2"
-              main-image: "bcs://Sand.9042.178.0.tbz2"
-              # TODO(shapiroc): sands's keys haven't yet been merged into
-              # reef. Later, this should be "SAND".
-              no-firmware: true
-              build-targets: *reef_build_targets
+            <<: *some_whitelabel_config
+            wallpaper: "{{$wallpaper}}"
             touch:
-              <<: *touch
-              $raydium: "raydium/raydium_0xa2001023_1.1.bin"
-              $elan: "elan/85.0_11.0.bin"
-
-              files:
-                - source: "{{$raydium}}"
-                  destination: "{{$fw_dest}}/{{$raydium}}"
-                  symlink: "{{$fw_root}}/raydium.fw"
-                - source: "{{$elan}}"
-                  destination: "{{$fw_dest}}/{{$elan}}"
-                  symlink: "{{$fw_root}}/elan_i2c_85.0.bin"
-
-    - $name: "snappy"
-      products:
-        - $brand-code: "HPZO"
-          $marketing-name: "HP Chromebook x360 11 G1 EE"
-          $customization-id: "SNAPPY"
-          $key-id: "SNAPPY"
-      skus:
-        - $sku-id: 8
-          config: *snappy_config
-
-    - $name: "alan"
-      products:
-        - $brand-code: "CLSF"
-          $marketing-name: "HP Chromebook 11 G6 EE"
-          $customization-id: "ALAN"
-          $key-id: "ALAN"
-      skus:
-        - $sku-id: 7
-          config: *snappy_config
-
-    - $name: "bigdaddy"
-      products:
-        - $brand-code: "FQZI"
-          $marketing-name: "HP Chromebook 14 G5"
-          $customization-id: "BIGDADDY"
-          $key-id: "BIGDADDY"
-      skus:
-        - $sku-id: 2
-          config: *snappy_config
-
-        - $sku-id: 5
-          config: *snappy_config
+              <<: *some_touch_config
+              present: "no"
 

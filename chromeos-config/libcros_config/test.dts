@@ -84,6 +84,7 @@
 			hw-features = "some/hardware_features";
 		};
 		firmware {
+			key-id = "SOME";
 			shares = <&shared>;
 		};
 		submodels {
@@ -154,6 +155,7 @@
 			ec-image = "bcs://Another_EC.1111.11.1.tbz2";
 			main-image = "bcs://Another.1111.11.1.tbz2";
 			main-rw-image = "bcs://Another_RW.1111.11.1.tbz2";
+			key-id = "ANOTHER";
 			build-targets {
 				coreboot = "another";
 				ec = "another";

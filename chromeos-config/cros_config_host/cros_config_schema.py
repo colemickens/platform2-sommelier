@@ -226,6 +226,18 @@ def _DeleteTemplateOnlyVars(template_input):
   for key in to_delete:
     del template_input[key]
 
+def _HasTemplateVariables(template_vars):
+  """Checks if there are any unevaluated template variables.
+
+  Args:
+    template_vars: A mapping of all the variables values available.
+
+  Returns:
+    True if they are still unevaluated template variables.
+  """
+  for val in template_vars.values():
+    if isinstance(val, basestring) and len(TEMPLATE_PATTERN.findall(val)) > 0:
+      return True
 
 def TransformConfig(config):
   """Transforms the source config (YAML) to the target system format (JSON)
@@ -251,11 +263,11 @@ def TransformConfig(config):
         _SetTemplateVars(product, template_vars)
         for sku in device[SKUS]:
           _SetTemplateVars(sku, template_vars)
-          # Allow variables to template themselves.  For now, only allowing
-          # 1 level deep, but could make indefinite if necessary.
-          _ApplyTemplateVars(template_vars, template_vars)
-          _ApplyTemplateVars(sku, template_vars)
-          config = copy.deepcopy(sku[CONFIG])
+          while (_HasTemplateVariables(template_vars)):
+            _ApplyTemplateVars(template_vars, template_vars)
+          sku_clone = copy.deepcopy(sku)
+          _ApplyTemplateVars(sku_clone, template_vars)
+          config = sku_clone[CONFIG]
           _DeleteTemplateOnlyVars(config)
           configs.append(config)
   else:

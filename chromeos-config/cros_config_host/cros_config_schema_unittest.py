@@ -39,9 +39,10 @@ chromeos:
                 $card: 'bxtda7219max'
                 cras-config-dir: '{{$name}}'
                 ucm-suffix: '{{$name}}'
+                $dsp-ini: "{{cras-config-dir}}/dsp.ini"
                 files:
-                  - source: "cras-config/{{cras-config-dir}}/{{$card}}"
-                    destination: "/etc/cras/{{cras-config-dir}}/{{$card}}"
+                  - source: "{{$dsp-ini}}"
+                    destination: "/etc/cras/{{$dsp-ini}}"
             brand-code: '{{$brand-code}}'
             identity:
               platform-name: "Reef"
@@ -117,6 +118,10 @@ class TransformConfigTests(unittest.TestCase):
         'basking',
         model.name)
     self.assertEqual('basking', model.audio.main.cras_config_dir)
+    # Check multi-level template variable evaluation
+    self.assertEqual(
+        '/etc/cras/basking/dsp.ini',
+        model.audio.main.files[0].destination)
 
 class ValidateConfigSchemaTests(unittest.TestCase):
   def setUp(self):
