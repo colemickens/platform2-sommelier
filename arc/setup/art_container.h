@@ -19,11 +19,11 @@ class FilePath;
 
 namespace arc {
 
-// The location where the relocated/compliled code is stored.
-// Must be synced with ART_DALVIK_CACHE_DIR in
-// chromeos-cheets-scripts-9999.ebuild
-constexpr char kArtContainerDataDirectory[] =
-    "/mnt/stateful_partition/unencrypted/art-data";
+// The location where the relocated/compiled code is stored.
+// Must be synced with dalvik-cache directory in
+// container-bundle/*/config.json.
+constexpr char kArtDalvikCacheDirectory[] =
+    "/mnt/stateful_partition/unencrypted/art-data/dalvik-cache";
 constexpr char kFrameworkPath[] =
     "/opt/google/containers/android/rootfs/root/system/framework";
 

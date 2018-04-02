@@ -51,9 +51,9 @@ constexpr char kVendorImage[] = "/opt/google/containers/android/vendor.raw.img";
 constexpr uid_t kHostRootUid = 0;
 constexpr gid_t kHostRootGid = 0;
 
-// Creates kArtContainerDataDirectory directory if not exists.
+// Creates subdirectories under dalvik-cache directory if not exists.
 bool CreateArtContainerDataDirectory(
-    base::FilePath art_dalvik_cache_directory) {
+    const base::FilePath& art_dalvik_cache_directory) {
   for (const std::string& isa : ArtContainer::GetIsas()) {
     base::FilePath isa_directory = art_dalvik_cache_directory.Append(isa);
     if (!InstallDirectory(0755, kHostRootUid, kHostRootGid, isa_directory)) {
@@ -153,7 +153,7 @@ int32_t ChooseRelocationOffsetDelta(int32_t min_delta,
 }  // namespace
 
 struct ArtContainerPaths {
-  const base::FilePath art_data_directory{kArtContainerDataDirectory};
+  const base::FilePath art_dalvik_cache_directory{kArtDalvikCacheDirectory};
   const base::FilePath art_dev_rootfs_directory{kArtDevRootfsDirectory};
   const base::FilePath art_rootfs_directory{kArtRootfsDirectory};
   const base::FilePath vendor_directory{kAndroidVendor};
@@ -164,9 +164,8 @@ std::unique_ptr<ArtContainer> ArtContainer::CreateContainer(
     ArcMounter* mounter) {
   auto art_paths = std::make_unique<ArtContainerPaths>();
   // Make sure the data directory exits.
-  const base::FilePath art_dalvik_cache_dir =
-      art_paths->art_data_directory.Append("dalvik-cache");
-  if (!arc::CreateArtContainerDataDirectory(art_dalvik_cache_dir))
+  if (!arc::CreateArtContainerDataDirectory(
+          art_paths->art_dalvik_cache_directory))
     return nullptr;
 
   return std::unique_ptr<ArtContainer>(
@@ -176,7 +175,7 @@ std::unique_ptr<ArtContainer> ArtContainer::CreateContainer(
 // static
 bool ArtContainer::CreateArtContainerDataDirectory() {
   return arc::CreateArtContainerDataDirectory(
-      ArtContainerPaths().art_data_directory.Append("dalvik-cache"));
+      ArtContainerPaths().art_dalvik_cache_directory);
 }
 
 // static
@@ -268,7 +267,7 @@ bool ArtContainer::PatchImageChild(uint64_t offset_seed) {
   if (!ashmem)
     return false;
   std::unique_ptr<ScopedMount> art_data = ScopedMount::CreateScopedBindMount(
-      mounter_, art_paths_->art_data_directory,
+      mounter_, art_paths_->art_dalvik_cache_directory.DirName(),
       art_paths_->art_rootfs_directory.Append("data"));
   if (!art_data)
     return false;
@@ -281,11 +280,10 @@ bool ArtContainer::PatchImageChild(uint64_t offset_seed) {
 }
 
 bool ArtContainer::PatchImage(const std::string& isa, uint64_t offset_seed) {
-  // Remove outdated files in kArtContainerDataDirectory.
-  if (!DeleteFilesInDir(
-          art_paths_->art_data_directory.Append("dalvik-cache").Append(isa))) {
+  // Remove outdated files in dalvik-cache directory.
+  if (!DeleteFilesInDir(art_paths_->art_dalvik_cache_directory.Append(isa))) {
     LOG(ERROR) << "Failed to delete existing images in "
-               << kArtContainerDataDirectory;
+               << kArtDalvikCacheDirectory;
     return false;
   }
 
@@ -321,7 +319,10 @@ bool ArtContainer::PatchImage(const std::string& isa, uint64_t offset_seed) {
     return false;
   }
 
-  ret = minijail_bind(art_jail.get(), kArtContainerDataDirectory, "/data", 1);
+  const base::FilePath art_container_data_directory =
+      base::FilePath(kArtDalvikCacheDirectory).DirName();
+  ret = minijail_bind(art_jail.get(),
+                      art_container_data_directory.value().c_str(), "/data", 1);
   if (ret != 0) {
     LOG(ERROR) << "Failed to mount container data dir: " << strerror(-ret);
     return false;

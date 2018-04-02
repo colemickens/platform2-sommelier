@@ -251,7 +251,7 @@ struct ArcPaths {
   const base::FilePath arc_bridge_socket_path{kArcBridgeSocketPath};
   const base::FilePath old_apk_cache_dir{kOldApkCacheDir};
   const base::FilePath apk_cache_dir{kApkCacheDir};
-  const base::FilePath art_container_data_directory{kArtContainerDataDirectory};
+  const base::FilePath art_dalvik_cache_directory{kArtDalvikCacheDirectory};
   const base::FilePath binfmt_misc_directory{kBinFmtMiscDirectory};
   const base::FilePath camera_profile_dir{kCameraProfileDir};
   const base::FilePath cras_socket_directory{kCrasSocketDirectory};
@@ -572,8 +572,8 @@ void ArcSetup::SetUpDalvikCacheInternal(
 }
 
 void ArcSetup::SetUpDalvikCache() {
-  const base::FilePath dalvik_cache_directory =
-      arc_paths_->art_container_data_directory.Append("dalvik-cache");
+  const base::FilePath& dalvik_cache_directory =
+      arc_paths_->art_dalvik_cache_directory;
   if (!base::PathExists(dalvik_cache_directory)) {
     LOG(INFO) << dalvik_cache_directory.value() << " does not exist.";
     return;
@@ -861,8 +861,7 @@ bool ArcSetup::InstallLinksToHostSideCodeInternal(
 bool ArcSetup::InstallLinksToHostSideCode() {
   bool result = true;
   base::ElapsedTimer timer;
-  const base::FilePath src_directory =
-      arc_paths_->art_container_data_directory.Append("dalvik-cache");
+  const base::FilePath& src_directory = arc_paths_->art_dalvik_cache_directory;
   const base::FilePath dest_directory =
       arc_paths_->android_data_directory.Append("data/dalvik-cache");
 
@@ -1709,10 +1708,8 @@ void ArcSetup::OnSetup() {
   // directories are empty and read-only which is the best for security.
 
   // Unconditionally generate host-side code here.
-  const base::FilePath art_dalvik_cache_directory =
-      arc_paths_->art_container_data_directory.Append("dalvik-cache");
   base::ElapsedTimer timer;
-  GenerateHostSideCode(art_dalvik_cache_directory);
+  GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory);
 
   // For now, integrity checking time is the time needed to relocate
   // boot*.art files because of b/67912719. Once TPM is enabled, this will

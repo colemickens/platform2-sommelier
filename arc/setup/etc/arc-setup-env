@@ -32,7 +32,7 @@ export ARC_GATEWAY_IPV4_ADDRESS=100.115.92.1
 export DELETE_DATA_APP_EXECUTABLES=0
 
 # ------------------------------------------------------------------------------
-# ALL variables below are regexp-matched by chromeos-cheets-scripts-*.ebuild.
+# ALL variables below are regexp-matched by ebuild.
 # Be careful when editing. Variables are lexicographically sorted.
 export ARC_LCD_DENSITY=-1
 export ARC_UI_SCALE=-1
