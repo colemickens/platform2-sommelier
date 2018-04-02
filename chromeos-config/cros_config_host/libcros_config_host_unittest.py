@@ -262,34 +262,34 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
                    TOUCH_FIRMWARE + 'elan/306e_5611.bin',
                    LIB_FIRMWARE + 'elants_i2c_306e.bin')])
     touch_files = config.GetTouchFirmwareFiles()
-    expected = set([
-      TouchFile('elan/0a97_1012.bin',
-                TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
-                LIB_FIRMWARE + 'elants_i2c_0a97.bin'),
-      TouchFile('elan/3062_5602.bin',
-                TOUCH_FIRMWARE + 'elan/3062_5602.bin',
-                LIB_FIRMWARE + 'elants_i2c_3062.bin'),
-      TouchFile('elan/306e_5611.bin',
-                TOUCH_FIRMWARE + 'elan/306e_5611.bin',
-                LIB_FIRMWARE + 'elants_i2c_306e.bin'),
-      TouchFile('elan/97.0_6.0.bin',
-                TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
-                LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
-      TouchFile('wacom/4209.hex',
-                TOUCH_FIRMWARE + 'wacom/4209.hex',
-                LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
-      TouchFile('wacom/4209.hex',
-                TOUCH_FIRMWARE + 'wacom/4209.hex',
-                LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
-      TouchFile('wacom/4209.hex',
-                TOUCH_FIRMWARE + 'wacom/4209.hex',
-                LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
-      TouchFile('wacom/4209.hex',
-                TOUCH_FIRMWARE + 'wacom/4209.hex',
-                LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
-      TouchFile('wacom/4209.hex',
-                TOUCH_FIRMWARE + 'wacom/4209.hex',
-                LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')])
+    expected = set(
+        [TouchFile('elan/0a97_1012.bin',
+                   TOUCH_FIRMWARE + 'elan/0a97_1012.bin',
+                   LIB_FIRMWARE + 'elants_i2c_0a97.bin'),
+         TouchFile('elan/3062_5602.bin',
+                   TOUCH_FIRMWARE + 'elan/3062_5602.bin',
+                   LIB_FIRMWARE + 'elants_i2c_3062.bin'),
+         TouchFile('elan/306e_5611.bin',
+                   TOUCH_FIRMWARE + 'elan/306e_5611.bin',
+                   LIB_FIRMWARE + 'elants_i2c_306e.bin'),
+         TouchFile('elan/97.0_6.0.bin',
+                   TOUCH_FIRMWARE + 'elan/97.0_6.0.bin',
+                   LIB_FIRMWARE + 'elan_i2c_97.0.bin'),
+         TouchFile('wacom/4209.hex',
+                   TOUCH_FIRMWARE + 'wacom/4209.hex',
+                   LIB_FIRMWARE + 'wacom_firmware_PYRO.bin'),
+         TouchFile('wacom/4209.hex',
+                   TOUCH_FIRMWARE + 'wacom/4209.hex',
+                   LIB_FIRMWARE + 'wacom_firmware_WHITETIP.bin'),
+         TouchFile('wacom/4209.hex',
+                   TOUCH_FIRMWARE + 'wacom/4209.hex',
+                   LIB_FIRMWARE + 'wacom_firmware_REEF.bin'),
+         TouchFile('wacom/4209.hex',
+                   TOUCH_FIRMWARE + 'wacom/4209.hex',
+                   LIB_FIRMWARE + 'wacom_firmware_WHITETIP1.bin'),
+         TouchFile('wacom/4209.hex',
+                   TOUCH_FIRMWARE + 'wacom/4209.hex',
+                   LIB_FIRMWARE + 'wacom_firmware_WHITETIP2.bin')])
     self.assertEqual(set(touch_files), expected)
 
   def testGetMergedPropertiesPyro(self):
@@ -339,53 +339,53 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
   def testGetAudioFiles(self):
     config = CrosConfig(self.filepath)
     audio_files = config.GetAudioFiles()
-    expected = [
-      BaseFile('cras-config/1mic/bxtda7219max',
-               '/etc/cras/1mic/bxtda7219max'),
-      BaseFile('cras-config/1mic/dsp.ini', '/etc/cras/1mic/dsp.ini'),
-      BaseFile('cras-config/2mic/bxtda7219max',
-               '/etc/cras/2mic/bxtda7219max'),
-      BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
-      BaseFile('cras-config/pyro/bxtda7219max',
-               '/etc/cras/pyro/bxtda7219max'),
-      BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
-      BaseFile('cras-config/reefcras/bxtda7219max',
-               '/etc/cras/reefcras/bxtda7219max'),
-      BaseFile('cras-config/reefcras/dsp.ini',
-               '/etc/cras/reefcras/dsp.ini'),
+    expected = \
+      [BaseFile('cras-config/1mic/bxtda7219max',
+                '/etc/cras/1mic/bxtda7219max'),
+       BaseFile('cras-config/1mic/dsp.ini', '/etc/cras/1mic/dsp.ini'),
+       BaseFile('cras-config/2mic/bxtda7219max',
+                '/etc/cras/2mic/bxtda7219max'),
+       BaseFile('cras-config/2mic/dsp.ini', '/etc/cras/2mic/dsp.ini'),
+       BaseFile('cras-config/pyro/bxtda7219max',
+                '/etc/cras/pyro/bxtda7219max'),
+       BaseFile('cras-config/pyro/dsp.ini', '/etc/cras/pyro/dsp.ini'),
+       BaseFile('cras-config/reefcras/bxtda7219max',
+                '/etc/cras/reefcras/bxtda7219max'),
+       BaseFile('cras-config/reefcras/dsp.ini',
+                '/etc/cras/reefcras/dsp.ini'),
 
-      BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
-               LIB_FIRMWARE + '5a98-reef-1mic-8-tplg.bin'),
-      BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
-               LIB_FIRMWARE + '5a98-reef-pyro-8-tplg.bin'),
-      BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
-               LIB_FIRMWARE + '5a98-reef-reeftop-8-tplg.bin'),
+       BaseFile('topology/5a98-reef-1mic-8-tplg.bin',
+                LIB_FIRMWARE + '5a98-reef-1mic-8-tplg.bin'),
+       BaseFile('topology/5a98-reef-pyro-8-tplg.bin',
+                LIB_FIRMWARE + '5a98-reef-pyro-8-tplg.bin'),
+       BaseFile('topology/5a98-reef-reeftop-8-tplg.bin',
+                LIB_FIRMWARE + '5a98-reef-reeftop-8-tplg.bin'),
 
-      BaseFile('ucm-config/1mic/HiFi.conf',
-               '/usr/share/alsa/ucm/bxtda7219max.1mic/HiFi.conf'),
-      BaseFile('ucm-config/1mic/bxtda7219max.conf',
-               '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
-               '.conf'),
-      BaseFile('ucm-config/2mic/Wibble',
-               '/usr/share/alsa/ucm/bxtda7219max.2mic/Wibble'),
-      BaseFile('ucm-config/2mic/bxtda7219max.conf',
-               '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
-               '.conf'),
-      BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
-               '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
-      BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
-               '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
-               '.conf'),
-      BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
-               '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
-      BaseFile('ucm-config/bxtda7219max.reefucm/bxtda7219max.reefucm' +
-               '.conf',
-               '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
-               '.reefucm.conf'),
-      BaseFile('cras-config/caroline/bxtda7219max',
-               '/etc/cras/caroline/bxtda7219max'),
-      BaseFile('cras-config/caroline/dsp.ini',
-               '/etc/cras/caroline/dsp.ini')]
+       BaseFile('ucm-config/1mic/HiFi.conf',
+                '/usr/share/alsa/ucm/bxtda7219max.1mic/HiFi.conf'),
+       BaseFile('ucm-config/1mic/bxtda7219max.conf',
+                '/usr/share/alsa/ucm/bxtda7219max.1mic/bxtda7219max.1mic'
+                '.conf'),
+       BaseFile('ucm-config/2mic/Wibble',
+                '/usr/share/alsa/ucm/bxtda7219max.2mic/Wibble'),
+       BaseFile('ucm-config/2mic/bxtda7219max.conf',
+                '/usr/share/alsa/ucm/bxtda7219max.2mic/bxtda7219max.2mic'
+                '.conf'),
+       BaseFile('ucm-config/bxtda7219max.pyro/HiFi.conf',
+                '/usr/share/alsa/ucm/bxtda7219max.pyro/HiFi.conf'),
+       BaseFile('ucm-config/bxtda7219max.pyro/bxtda7219max.pyro.conf',
+                '/usr/share/alsa/ucm/bxtda7219max.pyro/bxtda7219max.pyro' +
+                '.conf'),
+       BaseFile('ucm-config/bxtda7219max.reefucm/HiFi.conf',
+                '/usr/share/alsa/ucm/bxtda7219max.reefucm/HiFi.conf'),
+       BaseFile('ucm-config/bxtda7219max.reefucm/bxtda7219max.reefucm' +
+                '.conf',
+                '/usr/share/alsa/ucm/bxtda7219max.reefucm/bxtda7219max' +
+                '.reefucm.conf'),
+       BaseFile('cras-config/caroline/bxtda7219max',
+                '/etc/cras/caroline/bxtda7219max'),
+       BaseFile('cras-config/caroline/dsp.ini',
+                '/etc/cras/caroline/dsp.ini')]
 
     self.assertEqual(audio_files, sorted(expected))
 
@@ -504,41 +504,40 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
         ec_image_uri='bcs://Caroline_EC.2017.21.1.tbz2',
         pd_image_uri='bcs://Caroline_PD.2017.21.1.tbz2',
         extra=[], create_bios_rw_image=False, tools=[], sig_id='')
-    expected = OrderedDict([
-      ('blacktip', caroline._replace(model='blacktip',
-                                     sig_id='sig-id-in-customization-id')),
-      ('blacktip-blacktip1', caroline._replace(
-          model='blacktip-blacktip1', key_id='BLACKTIP1', have_image=False,
-          sig_id='blacktip-blacktip1')),
-      ('blacktip-blacktip2', caroline._replace(
-          model='blacktip-blacktip2', key_id='BLACKTIP2', have_image=False,
-          sig_id='blacktip-blacktip2')),
-      ('blacktip-blacktip3', caroline._replace(
-          model='blacktip-blacktip3', key_id='BLACKTIP3', have_image=False,
-          sig_id='blacktip-blacktip3')),
-      ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
-      ('pyro', FirmwareInfo(
-          model='pyro', shared_model=None, key_id='', have_image=True,
-          bios_build_target='pyro', ec_build_target='pyro',
-          main_image_uri='bcs://Pyro.9042.87.1.tbz2',
-          main_rw_image_uri='bcs://Pyro.9042.110.0.tbz2',
-          ec_image_uri='bcs://Pyro_EC.9042.87.1.tbz2',
-          pd_image_uri='bcs://Pyro_PD.9042.87.1.tbz2',
-          extra=[], create_bios_rw_image=False, tools=[], sig_id='pyro')),
-      ('reef', FirmwareInfo(
-          model='reef', shared_model=None, key_id='', have_image=True,
-          bios_build_target='pyro', ec_build_target='pyro',
-          main_image_uri='bcs://Reef.9042.87.1.tbz2',
-          main_rw_image_uri='bcs://Reef.9042.110.0.tbz2',
-          ec_image_uri='bcs://Reef_EC.9042.87.1.tbz2', pd_image_uri='',
-          extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
-      ('whitetip', caroline._replace(model='whitetip',
-                                     sig_id='sig-id-in-customization-id')),
-      ('whitetip2', caroline._replace(model='whitetip2',
-                                      key_id='WHITETIP2',
-                                      have_image=False,
-                                      sig_id='whitetip2'))
-    ])
+    expected = OrderedDict(
+        [('blacktip', caroline._replace(model='blacktip',
+                                        sig_id='sig-id-in-customization-id')),
+         ('blacktip-blacktip1', caroline._replace(
+             model='blacktip-blacktip1', key_id='BLACKTIP1', have_image=False,
+             sig_id='blacktip-blacktip1')),
+         ('blacktip-blacktip2', caroline._replace(
+             model='blacktip-blacktip2', key_id='BLACKTIP2', have_image=False,
+             sig_id='blacktip-blacktip2')),
+         ('blacktip-blacktip3', caroline._replace(
+             model='blacktip-blacktip3', key_id='BLACKTIP3', have_image=False,
+             sig_id='blacktip-blacktip3')),
+         ('caroline', caroline._replace(model='caroline', sig_id='caroline')),
+         ('pyro', FirmwareInfo(
+             model='pyro', shared_model=None, key_id='', have_image=True,
+             bios_build_target='pyro', ec_build_target='pyro',
+             main_image_uri='bcs://Pyro.9042.87.1.tbz2',
+             main_rw_image_uri='bcs://Pyro.9042.110.0.tbz2',
+             ec_image_uri='bcs://Pyro_EC.9042.87.1.tbz2',
+             pd_image_uri='bcs://Pyro_PD.9042.87.1.tbz2',
+             extra=[], create_bios_rw_image=False, tools=[], sig_id='pyro')),
+         ('reef', FirmwareInfo(
+             model='reef', shared_model=None, key_id='', have_image=True,
+             bios_build_target='pyro', ec_build_target='pyro',
+             main_image_uri='bcs://Reef.9042.87.1.tbz2',
+             main_rw_image_uri='bcs://Reef.9042.110.0.tbz2',
+             ec_image_uri='bcs://Reef_EC.9042.87.1.tbz2', pd_image_uri='',
+             extra=[], create_bios_rw_image=False, tools=[], sig_id='reef')),
+         ('whitetip', caroline._replace(model='whitetip',
+                                        sig_id='sig-id-in-customization-id')),
+         ('whitetip2', caroline._replace(model='whitetip2',
+                                         key_id='WHITETIP2',
+                                         have_image=False,
+                                         sig_id='whitetip2'))])
     result = config.GetFirmwareInfo()
     self.assertEqual(result, expected)
 

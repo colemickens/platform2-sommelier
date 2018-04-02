@@ -11,10 +11,10 @@ for CLI access to this library.
 from __future__ import print_function
 
 import json
-import sys
 
 from cros_config_schema import TransformConfig
-from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig, FirmwareInfo, TouchFile
+from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
+from libcros_config_host_base import FirmwareInfo, TouchFile
 
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
 
@@ -28,7 +28,7 @@ class DeviceConfigJson(DeviceConfig):
 
   def __init__(self, config):
     self._config = config
-    self._firmware_info = None
+    self.firmware_info = None
 
   def GetName(self):
     return self._config['name']
@@ -42,13 +42,13 @@ class DeviceConfigJson(DeviceConfig):
         return {}
     return result
 
-  def GetProperty(self, path, property):
+  def GetProperty(self, path, name):
     props = self.GetProperties(path)
-    if props and property in props:
-      return props[property]
+    if props and name in props:
+      return props[name]
     return ''
 
-  def _GetValue(self, source, name):
+  def GetValue(self, source, name):
     if name in source:
       return source[name]
     return None
@@ -63,12 +63,12 @@ class DeviceConfigJson(DeviceConfig):
 
   def GetFirmwareConfig(self):
     firmware = self.GetProperties('/firmware')
-    if not firmware or self._GetValue(firmware, 'no-firmware'):
+    if not firmware or self.GetValue(firmware, 'no-firmware'):
       return {}
     return firmware
 
   def GetFirmwareInfo(self):
-    return self._firmware_info
+    return self.firmware_info
 
   def GetTouchFirmwareFiles(self):
     result = []
@@ -91,8 +91,7 @@ class DeviceConfigJson(DeviceConfig):
 
   def GetWallpaperFiles(self):
     result = set()
-    print(str(self._config), file=sys.stderr)
-    wallpaper = self._GetValue(self._config, 'wallpaper')
+    wallpaper = self.GetValue(self._config, 'wallpaper')
     if wallpaper:
       result.add(wallpaper)
     return result
@@ -130,9 +129,9 @@ class CrosConfigJson(CrosConfigBaseImpl):
           fw_by_model[fw_str] = config.GetName()
 
         fw_signer_config = config.GetPropeties('/firmware-signing')
-        key_id = config._GetValue(fw_signer_config, 'key-id')
-        sig_in_customization_id = config._GetValue(
-            fw_signer_config, 'sig-id-in-customization-id')
+        key_id = config.GetValue(fw_signer_config, 'key-id')
+        sig_in_customization_id = config.GetValue(fw_signer_config,
+                                                  'sig-id-in-customization-id')
         have_image = True
         name = config.GetName()
         if sig_in_customization_id:
@@ -140,12 +139,11 @@ class CrosConfigJson(CrosConfigBaseImpl):
           sig_id = name
         else:
           sig_id = 'sig-id-in-customization-id'
-          name = "%s-%s" % (name, name)
+          name = '%s-%s' % (name, name)
           index = 0
           while name in names:
-            name = "%s%s" % (name, str(index))
+            name = '%s%s' % (name, str(index))
           names.add(name)
-
 
         build_config = config.GetProperties('/firmware/build-targets')
         if build_config:
@@ -155,29 +153,18 @@ class CrosConfigJson(CrosConfigBaseImpl):
           bios_build_target, ec_build_target = None, None
         create_bios_rw_image = False
 
-        main_image_uri = config._GetValue(fw, 'main-image')
-        main_rw_image_uri = config._GetValue(fw, 'main-rw-image')
-        ec_image_uri = config._GetValue(fw, 'ec-image')
-        pd_image_uri = config._GetValue(fw, 'pd-image')
-        extra = config._GetValue(fw, 'extra')
-        tools = config._GetValue(fw, 'tools')
+        main_image_uri = config.GetValue(fw, 'main-image')
+        main_rw_image_uri = config.GetValue(fw, 'main-rw-image')
+        ec_image_uri = config.GetValue(fw, 'ec-image')
+        pd_image_uri = config.GetValue(fw, 'pd-image')
+        extra = config.GetValue(fw, 'extra')
+        tools = config.GetValue(fw, 'tools')
 
-        info = FirmwareInfo(
-            name,
-            shared_model,
-            key_id,
-            have_image,
-            bios_build_target,
-            ec_build_target,
-            main_image_uri,
-            main_rw_image_uri,
-            ec_image_uri,
-            pd_image_uri,
-            extra,
-            create_bios_rw_image,
-            tools,
-            sig_id)
-        config._firmware_info = {name: info}
+        info = FirmwareInfo(name, shared_model, key_id, have_image,
+                            bios_build_target, ec_build_target, main_image_uri,
+                            main_rw_image_uri, ec_image_uri, pd_image_uri,
+                            extra, create_bios_rw_image, tools, sig_id)
+        config.firmware_info = {name: info}
 
   def GetDeviceConfigs(self):
     return self._configs

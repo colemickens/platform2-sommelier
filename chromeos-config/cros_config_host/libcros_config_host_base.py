@@ -129,12 +129,12 @@ class DeviceConfig(object):
     """
     pass
 
-  def GetProperty(self, path, property):
-    """Returns the property value at a given path.
+  def GetProperty(self, path, name):
+    """Returns the name value at a given path.
 
     Args:
       path: Path to the config desired.
-      property: Property desired.
+      name: Property desired.
 
     Returns:
       Requested value or empty string if not present.
@@ -163,21 +163,17 @@ class DeviceConfig(object):
     # Strip "overlay-" from bcs_overlay
     bcs_overlay = firmware['bcs-overlay'][8:]
     ebuild_name = bcs_overlay.split('-')[0]
-    valid_images = [
-      p for n, p in firmware.iteritems()
-      if n.endswith('-image') and p.startswith('bcs://')
-    ]
+    valid_images = [p for n, p in firmware.iteritems()
+                    if n.endswith('-image') and p.startswith('bcs://')]
     # Strip "bcs://" from bcs_from images (to get the file names only)
     file_names = [p[6:] for p in valid_images]
     uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
                   'chromeos-base/chromeos-firmware-{ebuild_name}/{fname}')
-    uris = [
-      uri_format.format(
-          bcs=bcs_overlay,
-          model=self.name,
-          fname=fname,
-          ebuild_name=ebuild_name) for fname in file_names
-    ]
+    uris = [uri_format.format(
+        bcs=bcs_overlay,
+        model=self.name,
+        fname=fname,
+        ebuild_name=ebuild_name) for fname in file_names]
     return sorted(uris)
 
   def GetTouchFirmwareFiles(self):
@@ -471,4 +467,3 @@ class CrosConfigBaseImpl(object):
     for device in self.GetDeviceConfigs():
       wallpapers |= device.GetWallpaperFiles()
     return sorted(wallpapers)
-

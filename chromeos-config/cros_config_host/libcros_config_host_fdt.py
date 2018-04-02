@@ -16,7 +16,8 @@ import os
 import fdt
 import validate_config
 
-from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig, FirmwareInfo, TouchFile
+from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
+from libcros_config_host_base import FirmwareInfo, TouchFile
 
 def GetFilename(node_path, props, fname_template):
   """Create a filename based on the given template and properties
@@ -33,9 +34,9 @@ def GetFilename(node_path, props, fname_template):
   try:
     return template.format(props, **props)
   except KeyError as e:
-    raise ValueError(
-        ("node '%s': Format string '%s' has properties '%s' " + "but lacks '%s'"
-         ) % (node_path, template, props.keys(), e.message))
+    raise ValueError(("node '%s': Format string '%s' has properties '%s' "
+                      "but lacks '%s'")
+                     % (node_path, template, props.keys(), e.message))
 
 
 def GetPropFilename(node_path, props, fname_prop):
@@ -230,10 +231,8 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       # name of the phandle, but at some point this will move to merging the
       # target node's properties with this node, so this whole function will
       # become unnecessary.
-      share_prop = [
-        i for i in self.cros_config.phandle_props
-        if i in self.properties or i in self.subnodes
-      ]
+      share_prop = [i for i in self.cros_config.phandle_props
+                    if i in self.properties or i in self.subnodes]
       if share_prop:
         return self.FollowPhandle(share_prop[0])
       return None
@@ -322,8 +321,8 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       """
       return property_name in self.properties
 
-    def GetProperty(self, path, property):
-      result = self.PathProperty(path, property)
+    def GetProperty(self, path, name):
+      result = self.PathProperty(path, name)
       return result.value if result else ''
 
     def PathProperty(self, relative_path, property_name):
