@@ -19,322 +19,192 @@
 &family {
 	audio {
 		audio_type: audio-type {
-			card = "bxtda7219max";
+			card = "a-card";
 			volume = "cras-config/{cras-config-dir}/{card}";
 			dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
 			hifi-conf = "ucm-config/{card}.{ucm-suffix}/HiFi.conf";
 			alsa-conf = "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf";
-			topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
-		};
-		audio_type_1mic: audio-type-1mic {
-			card = "bxtda7219max";
-			volume = "cras-config/{cras-config-dir}/{card}";
-			dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
-			hifi-conf = "ucm-config/1mic/HiFi.conf";
-			alsa-conf = "ucm-config/1mic/{card}.conf";
-			topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
-		};
-
-		audio_type_2mic: audio-type-2mic {
-			card = "bxtda7219max";
-			cras-config-dir = "2mic";
-			ucm-suffix = "2mic";
-			topology-name = "2mic";
-			volume = "cras-config/{cras-config-dir}/{card}";
-			dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
-			hifi-conf = "ucm-config/2mic/Wibble";
-			alsa-conf = "ucm-config/2mic/{card}.conf";
-		};
-	};
-	power {
-		power_type_clamshell: power-type-clamshell {
-			charging-ports = "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT";
-			power-supply-full-factor = "0.12";
-			suspend-to-idle = "1";
-		};
-		power_type_convertible: power-type-convertible {
-			charging-ports = "CROS_USB_PD_CHARGER0 LEFT";
-			power-supply-full-factor = "0.12";
+			topology-bin = "topology/{topology-name}-tplg.bin";
 		};
 	};
 	firmware {
 		script = "updater4.sh";
-		shared: caroline {
-			bcs-overlay = "overlay-reef-private";
-			ec-image = "bcs://Caroline_EC.2017.21.1.tbz2";
-			pd-image = "bcs://Caroline_PD.2017.21.1.tbz2";
-			main-image = "bcs://Caroline.2017.21.1.tbz2";
-			main-rw-image = "bcs://Caroline.2017.41.0.tbz2";
+		shared: some {
+			bcs-overlay = "overlay-some-private";
+			ec-image = "bcs://Some_EC.1111.11.1.tbz2";
+			main-image = "bcs://Some.1111.11.1.tbz2";
+			main-rw-image = "bcs://Some_RW.1111.11.1.tbz2";
 			build-targets {
-				coreboot = "caroline";
-				ec = "caroline";
-				depthcharge = "caroline";
-				libpayload = "caroline";
+				coreboot = "some";
+				ec = "some";
+				depthcharge = "some";
+				libpayload = "some";
 			};
 		};
 	};
 	mapping {
 		sku-map@0 {
-			platform-name = "Reef";
-			smbios-name-match = "Reef";
+			platform-name = "Some";
+			smbios-name-match = "Some";
 			/*
 			 * This is an example! It does not match any real
 			 * family.
 			 */
 			simple-sku-map = <
-				4 &reef_touch
-				5 &reef_notouch
-				8 &whitetip
-				9 &whitetip1
-				10 &blacktip
-				11 &blacktip_touch
-				12 &blacktip_notouch
-				20 &caroline
-				21 &broken>;
+				0 &some_touch
+				1 &some_notouch
+				8 &some_whitelabel_touch
+				9 &some_whitelabel_notouch>;
 		};
 		sku-map@1 {
-			platform-name = "Pyro";
-			smbios-name-match = "Pyro";
-			single-sku = <&pyro>;
+			platform-name = "Another";
+			smbios-name-match = "Another";
+			single-sku = <&another>;
 		};
 	};
 	touch {
 		/* Example of how to put firmware in BCS */
-		elan_touchscreen: elan-touchscreen {
-			vendor = "elan";
+		some_touchscreen: some-touchscreen {
+			vendor = "some_touch_vendor";
 			firmware-bin = "{vendor}/{pid}_{version}.bin";
 			firmware-symlink = "{vendor}ts_i2c_{pid}.bin";
 		};
-		elan_touchpad: elan-touchpad {
-			vendor = "elan";
-			firmware-bin = "{vendor}/{pid}_{version}.bin";
-			firmware-symlink = "{vendor}_i2c_{pid}.bin";
-		};
-		wacom_stylus: wacom-stylus {
-			vendor = "wacom";
-			firmware-bin = "wacom/{version}.hex";
-			firmware-symlink = "wacom_firmware_{MODEL}.bin";
+		some_stylus: some-stylus {
+			vendor = "some_stylus_vendor";
+			firmware-bin = "{vendor}/{version}.hex";
+			firmware-symlink = "{vendor}_firmware_{MODEL}.bin";
 		};
 	};
 };
 
 &models {
-	pyro: pyro {
-		wallpaper = "default";
-		string-list = "default", "more";
-		bool-prop;
-		audio {
-			main {
-				audio-type = <&audio_type>;
-				cras-config-dir = "pyro";
-				ucm-suffix = "pyro";
-				topology-name = "pyro";
-			};
-		};
-		power {
-			power-type = <&power_type_clamshell>;
-			power-supply-full-factor = "0.20";
-		};
-		firmware {
-			bcs-overlay = "overlay-pyro-private";
-			ec-image = "bcs://Pyro_EC.9042.87.1.tbz2";
-			pd-image = "bcs://Pyro_PD.9042.87.1.tbz2";
-			main-image = "bcs://Pyro.9042.87.1.tbz2";
-			main-rw-image = "bcs://Pyro.9042.110.0.tbz2";
-			build-targets {
-				coreboot = "pyro";
-				ec = "pyro";
-				depthcharge = "pyro";
-				libpayload = "pyro";
-			};
-		};
-		thermal {
-			dptf-dv = "pyro/dptf.dv";
-		};
-		touch {
-			present = "probe";
-			probe-regex = "[Tt]ouchscreen|WCOMNTN2";
-			stylus {
-				touch-type = <&wacom_stylus>;
-				version = "4209";
-			};
-			touchscreen {
-				touch-type = <&elan_touchscreen>;
-				pid = "0a97";
-				version = "1012";
-			};
-		};
-	};
-	caroline: caroline {
-		default = <&pyro>;
-		wallpaper = "caroline";
-		audio {
-			main {
-				cras-config-dir = "caroline";
-			};
-		};
-		firmware {
-			shares = < &shared >;
-		};
-	};
-	reef {
-		wallpaper = "epic";
+	some {
+		wallpaper = "some";
 		arc {
-			hw-features = "reef/arc++/hardware_features";
-		};
-		power {
-			power-type = <&power_type_clamshell>;
-			set-wifi-transmit-power-for-tablet-mode = <1>;
+			hw-features = "some/hardware_features";
 		};
 		firmware {
-			bcs-overlay = "overlay-reef-private";
-			ec-image = "bcs://Reef_EC.9042.87.1.tbz2";
-			main-image = "bcs://Reef.9042.87.1.tbz2";
-			main-rw-image = "bcs://Reef.9042.110.0.tbz2";
-			build-targets {
-				coreboot = "pyro";
-				ec = "pyro";
-				depthcharge = "pyro";
-				libpayload = "pyro";
-			};
+			shares = <&shared>;
 		};
 		submodels {
-			reef_touch: touch {
+			some_touch: touch {
 				touch {
 					present = "yes";
 				};
 				audio {
 					main {
-						audio-type = <&audio_type_1mic>;
-						cras-config-dir = "1mic";
-						ucm-suffix = "1mic";
-						topology-name = "1mic";
+						audio-type = <&audio_type>;
+						cras-config-dir = "some";
+						ucm-suffix = "some";
+						topology-name = "some";
 					};
 				};
 				thermal {
-					dptf-dv = "reef_touch/dptf.dv";
+					dptf-dv = "some_touch/dptf.dv";
 				};
 			};
-			reef_notouch: notouch {
+			some_notouch: notouch {
 				touch {
 					present = "no";
 				};
 				audio {
 					main {
-						audio-type = <&audio_type_2mic>;
+						audio-type = <&audio_type>;
+						cras-config-dir = "some";
+						ucm-suffix = "some";
+						topology-name = "some";
 					};
 				};
 				thermal {
-					dptf-dv = "reef_notouch/dptf.dv";
+					dptf-dv = "some_notouch/dptf.dv";
 				};
 			};
 		};
 		touch {
 			stylus {
-				touch-type = <&wacom_stylus>;
-				version = "4209";
+				touch-type = <&some_stylus>;
+				version = "some_version";
 			};
 			touchpad {
-				touch-type = <&elan_touchpad>;
-				pid = "97.0";
-				version = "6.0";
+				touch-type = <&some_touchscreen>;
+				pid = "some_pid";
+				version = "some_version";
 			};
 			touchscreen@0 {
-				touch-type = <&elan_touchscreen>;
-				pid = "3062";
-				version = "5602";
-			};
-			touchscreen@1 {
-				touch-type = <&elan_touchscreen>;
-				pid = "306e";
-				version = "5611";
+				touch-type = <&some_touchscreen>;
+				pid = "some_other_pid";
+				version = "some_other_version";
 			};
 		};
 	};
-	broken: broken {
-		default = <&caroline>;
-		firmware {
-			bcs-overlay = "overlay-reef-private";
-			main-image = "bcs://Reef.9042.87.1.tbz2";
-			no-firmware;
-		};
-	};
-
-	/* Whitelabel model */
-	whitetip: whitetip {
-		powerd-prefs = "whitetip";
-		firmware {
-			sig-id-in-customization-id;
-			shares = <&shared>;
-		};
+	another: another {
+		string-list = "default", "more";
+		bool-prop;
+		wallpaper = "default";
 		audio {
 			main {
 				audio-type = <&audio_type>;
-				cras-config-dir = "reefcras";
-				ucm-suffix = "reefucm";
-				topology-name = "reeftop";
+				cras-config-dir = "another";
+				ucm-suffix = "another";
+				topology-name = "another";
 			};
+		};
+		firmware {
+			bcs-overlay = "overlay-another-private";
+			ec-image = "bcs://Another_EC.1111.11.1.tbz2";
+			main-image = "bcs://Another.1111.11.1.tbz2";
+			main-rw-image = "bcs://Another_RW.1111.11.1.tbz2";
+			build-targets {
+				coreboot = "another";
+				ec = "another";
+				depthcharge = "another";
+				libpayload = "another";
+			};
+		};
+		thermal {
+			dptf-dv = "another/dptf.dv";
 		};
 		touch {
-			present = "yes";
+			present = "probe";
+			probe-regex = "another-probe-regex";
+			touchscreen {
+				touch-type = <&some_touchscreen>;
+				pid = "some-pid";
+				version = "some-version";
+			};
 			stylus {
-				touch-type = <&wacom_stylus>;
-				version = "4209";
+				touch-type = <&some_stylus>;
+				version = "another-version";
 			};
 		};
 	};
 
-	whitetip1: whitetip1 {
-		whitelabel = <&whitetip>;
-		wallpaper = "shark";
-		brand-code = "SHAR";
-		firmware {
-			key-id = "WHITETIP1";
-                        no-firmware;
-		};
-	};
-
-	whitetip2 {
-		whitelabel = <&whitetip>;
-		wallpaper = "more_shark";
-		brand-code = "SHAQ";
-		firmware {
-			key-id = "WHITETIP2";
-		};
-	};
-
-	/* Whitelabel model */
-	blacktip: blacktip {
+	whitelabel: whitelabel {
 		firmware {
 			shares = <&shared>;
 		};
 		submodels {
-			blacktip_touch: touch {
+			some_whitelabel_touch: touch {
 				touch {
 					present = "yes";
 				};
 			};
-			blacktip_notouch: notouch {
+			some_whitelabel_notouch: notouch {
 				touch {
 					present = "no";
 				};
 			};
 		};
 		whitelabels {
-			blacktip1 {
-				wallpaper = "dark";
-				brand-code = "HBBN";
-				key-id = "BLACKTIP1";
+			whitelabel1 {
+				wallpaper = "wallpaper-wl1";
+				brand-code = "WLBA";
+				key-id = "WHITELABEL1";
 			};
-			blacktip2 {
-				wallpaper = "darker";
-				brand-code = "HBBO";
-				key-id = "BLACKTIP2";
-			};
-			blacktip3 {
-				wallpaper = "shark";
-				brand-code = "HBBR";
-				key-id = "BLACKTIP3";
+			whitelabel2 {
+				wallpaper = "wallpaper-wl2";
+				brand-code = "WLBB";
+				key-id = "WHITELABEL2";
 			};
 		};
 	};

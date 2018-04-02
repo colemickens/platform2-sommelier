@@ -307,4 +307,3 @@ chromeos:
         - $sku-id: 5
           config: *snappy_config
 
-

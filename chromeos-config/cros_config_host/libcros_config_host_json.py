@@ -35,7 +35,7 @@ class DeviceConfigJson(DeviceConfig):
 
   def GetProperties(self, path):
     result = self._config
-    for path_token in path[1:]:  # Burn the first '/' char
+    for path_token in path[1:].split('/'):  # Burn the first '/' char
       if path_token in result:
         result = result[path_token]
       else:
@@ -84,7 +84,7 @@ class DeviceConfigJson(DeviceConfig):
     return self._GetFiles('/arc')
 
   def GetAudioFiles(self):
-    return self._GetFiles('/audio')
+    return self._GetFiles('/audio/main')
 
   def GetThermalFiles(self):
     return self._GetFiles('/thermal')
@@ -128,7 +128,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
         else:
           fw_by_model[fw_str] = config.GetName()
 
-        fw_signer_config = config.GetPropeties('/firmware-signing')
+        fw_signer_config = config.GetProperties('/firmware-signing')
         key_id = config.GetValue(fw_signer_config, 'key-id')
         sig_in_customization_id = config.GetValue(fw_signer_config,
                                                   'sig-id-in-customization-id')

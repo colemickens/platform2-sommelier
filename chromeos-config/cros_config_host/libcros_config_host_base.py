@@ -423,7 +423,7 @@ class CrosConfigBaseImpl(object):
     is the only feature currently implemented which uses this tree.
 
     Returns:
-        PathComponent object containin the root component
+        PathComponent object containing the root component
     """
     paths = set()
     for item in self.GetAudioFiles():

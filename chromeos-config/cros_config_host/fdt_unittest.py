@@ -13,8 +13,8 @@ import unittest
 from . import fdt, fdt_util
 
 DTS_FILE = '../libcros_config/test.dts'
-PYRO_FIRMWARE_NAMES = ['bcs-overlay', 'ec-image', 'pd-image', 'main-image',
-                       'main-rw-image']
+ANOTHER_FIRMWARE_NAMES = ['bcs-overlay', 'ec-image', 'main-image',
+                          'main-rw-image']
 
 
 class FdtLibTest(unittest.TestCase):
@@ -37,38 +37,36 @@ class FdtLibTest(unittest.TestCase):
   def testGetModels(self):
     models_node = self.test_fdt.GetNode('/chromeos/models')
     models = [m.name for m in models_node.subnodes.values()]
-    self.assertSequenceEqual(models, ['pyro', 'caroline', 'reef', 'broken',
-                                      'whitetip', 'whitetip1', 'whitetip2',
-                                      'blacktip'])
+    self.assertSequenceEqual(models, ['some', 'another', 'whitelabel'])
 
   def testPropertyOrder(self):
-    firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
+    firmware = self.test_fdt.GetNode('/chromeos/models/another/firmware')
 
-    self.assertSequenceEqual(firmware.props.keys(), PYRO_FIRMWARE_NAMES)
+    self.assertSequenceEqual(firmware.props.keys(), ANOTHER_FIRMWARE_NAMES)
 
   def testGetStringProperty(self):
-    firmware = self.test_fdt.GetNode('/chromeos/models/pyro/firmware')
+    firmware = self.test_fdt.GetNode('/chromeos/models/another/firmware')
     bcs_overlay = firmware.props['bcs-overlay'].value
-    self.assertEqual(bcs_overlay, 'overlay-pyro-private')
-    firmware = self.test_fdt.GetNode('/chromeos/models/pyro')
+    self.assertEqual(bcs_overlay, 'overlay-another-private')
+    firmware = self.test_fdt.GetNode('/chromeos/models/another')
     value = firmware.props['wallpaper'].value
     self.assertEqual(value, 'default')
 
   def testLookupPhandle(self):
-    firmware = self.test_fdt.GetNode('/chromeos/models/caroline/firmware')
-    shared = self.test_fdt.GetNode('/chromeos/family/firmware/caroline')
+    firmware = self.test_fdt.GetNode('/chromeos/models/some/firmware')
+    shared = self.test_fdt.GetNode('/chromeos/family/firmware/some')
     self.assertEqual(shared, firmware.props['shares'].LookupPhandle())
 
     # Phandles are sequentially allocated integers > 0, so 0 is invalid
     self.assertEqual(None, self.test_fdt.LookupPhandle(0))
 
   def testGetStringListProperty(self):
-    firmware = self.test_fdt.GetNode('/chromeos/models/pyro')
+    firmware = self.test_fdt.GetNode('/chromeos/models/another')
     str_list = firmware.props['string-list'].value
     self.assertEqual(str_list, ['default', 'more'])
 
   def testGetBoolProperty(self):
-    firmware = self.test_fdt.GetNode('/chromeos/models/pyro')
+    firmware = self.test_fdt.GetNode('/chromeos/models/another')
     present = firmware.props['bool-prop'].value
     self.assertEqual(present, True)
 

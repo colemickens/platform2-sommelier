@@ -33,7 +33,7 @@ std::vector<std::string> GetCrosConfigCommand(
 #else
       "--test_database=test_config.json",
 #endif
-      "--test_name=Pyro"};
+      "--test_name=Another"};
   cmd.insert(cmd.end(), params.begin(), params.end());
   return cmd;
 }
@@ -66,23 +66,23 @@ TEST(CrosConfigTest, GetAbsPath) {
   bool success =
       base::GetAppOutput(GetCrosConfigCommand({"/thermal", "dptf-dv"}), &val);
   EXPECT_TRUE(success);
-  EXPECT_EQ("pyro/dptf.dv", val);
+  EXPECT_EQ("another/dptf.dv", val);
 
   success = base::GetAppOutput(
       GetCrosConfigCommand({"--abspath", "/thermal", "dptf-dv"}), &val);
   EXPECT_TRUE(success);
-  EXPECT_EQ("/etc/dptf/pyro/dptf.dv", val);
+  EXPECT_EQ("/etc/dptf/another/dptf.dv", val);
 
   success = base::GetAppOutput(
       GetCrosConfigCommand({"/audio/main", "cras-config-dir"}), &val);
   EXPECT_TRUE(success);
-  EXPECT_EQ("pyro", val);
+  EXPECT_EQ("another", val);
 
   success = base::GetAppOutput(
       GetCrosConfigCommand({"--abspath", "/audio/main", "cras-config-dir"}),
       &val);
   EXPECT_TRUE(success);
-  EXPECT_EQ("/etc/cras/pyro", val);
+  EXPECT_EQ("/etc/cras/another", val);
 
   // We are not allowed to request an absolute path on something that is not
   // a PropFile.

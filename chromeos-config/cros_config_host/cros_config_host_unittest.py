@@ -44,10 +44,10 @@ class CommonTests(object):
     call_args = '{} -c {} list-models'.format(
         CLI_FILE, self.conf_file).split()
     output = subprocess.check_output(call_args)
-    self.CheckManyLinesWithoutSpaces(output)
+    self.CheckManyLinesWithoutSpaces(output, lines=2)
 
   def testGetPropSingle(self):
-    call_args = '{} -c {} --model=pyro get / wallpaper'.format(
+    call_args = '{} -c {} --model=another get / wallpaper'.format(
         CLI_FILE, self.conf_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, 'default' + os.linesep)
@@ -60,19 +60,19 @@ class CommonTests(object):
     self.assertEqual(output, '')
 
   def testGetPropSingleWrongPath(self):
-    call_args = '{} -c {} --model=pyro get /dne wallpaper'.format(
+    call_args = '{} -c {} --model=another get /dne wallpaper'.format(
         CLI_FILE, self.conf_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, os.linesep)
 
   def testGetPropSingleWrongProp(self):
-    call_args = '{} -c {} --model=pyro get / dne'.format(
+    call_args = '{} -c {} --model=another get / dne'.format(
         CLI_FILE, self.conf_file).split()
     output = subprocess.check_output(call_args)
     self.assertEqual(output, os.linesep)
 
   def testGetFirmwareUris(self):
-    call_args = '{} -c {} --model=pyro get-firmware-uris'.format(
+    call_args = '{} -c {} --model=another get-firmware-uris'.format(
         CLI_FILE, self.conf_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output)
@@ -114,7 +114,7 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
   def testReadStdin(self):
     call_args = '{} -c - list-models < {}'.format(CLI_FILE, self.conf_file)
     output = subprocess.check_output(call_args, shell=True)
-    self.CheckManyLinesWithoutSpaces(output)
+    self.CheckManyLinesWithoutSpaces(output, lines=2)
 
   def testListModelsInvalid(self):
     call_args = '{} -c invalid.dtb list-models'.format(CLI_FILE).split()

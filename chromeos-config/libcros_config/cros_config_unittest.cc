@@ -22,7 +22,7 @@
 
 class CrosConfigTest : public testing::Test {
  protected:
-  void InitConfig(const std::string name = "Pyro",
+  void InitConfig(const std::string name = "Another",
                   int sku_id = -1,
                   std::string whitelabel_name = "",
                   bool use_yaml = true) {
@@ -31,14 +31,13 @@ class CrosConfigTest : public testing::Test {
         cros_config_.InitForTest(filepath, name, sku_id, whitelabel_name,
                                  use_yaml));
   }
-  void CheckWhiteLabelAlternateSku(int sku_id);
 
   brillo::CrosConfig cros_config_;
 };
 
 TEST_F(CrosConfigTest, CheckMissingFile) {
   base::FilePath filepath("invalid-file");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1, ""));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
@@ -94,176 +93,86 @@ TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
 #ifndef USE_JSON
 TEST_F(CrosConfigTest, CheckBadFile) {
   base::FilePath filepath("test.dts");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Pyro", -1, ""));
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckBadStruct) {
   base::FilePath filepath("test_bad_struct.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "pyto", -1, ""));
-}
-
-TEST_F(CrosConfigTest, CheckWhiteLabel) {
-  // These mirror the tests in libcros_config_host_unittest testWhitelabel()
-  InitConfig("Reef", 9, "", false);
-  std::string val;
-
-  // These are defined by whitetip1 itself.
-  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("shark", val);
-  ASSERT_TRUE(cros_config_.GetString("/firmware", "key-id", &val));
-  ASSERT_EQ("WHITETIP1", val);
-
-  // This is in a subnode defined by whitetip.
-  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
-  ASSERT_EQ("yes", val);
-
-  // This is in the main node, but defined by whitetip
-  ASSERT_TRUE(cros_config_.GetString("/", "powerd-prefs", &val));
-  ASSERT_EQ("whitetip", val);
-
-  // This is defined by whitetip's shared firmware. We don't have access to this
-  // at run-time since we don't follow the 'shares' phandles.
-  ASSERT_FALSE(
-      cros_config_.GetString("/firmware/build-targets", "coreboot", &val));
-
-  // We should get the same result using the base whitetip and a whitelabel tag.
-  InitConfig("Reef", 8, "whitetip1", false);
-  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("shark", val);
+  ASSERT_FALSE(cros_config_.InitForTest(filepath, "not_another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckAbsPath) {
-  InitConfig("Pyro");
+  InitConfig("Another");
   std::string val;
 
   ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("/etc/dptf/pyro/dptf.dv", val);
+  ASSERT_EQ("/etc/dptf/another/dptf.dv", val);
 
   // This is not a PropFile.
   ASSERT_FALSE(cros_config_.GetAbsPath("/", "wallpaper", &val));
 
   // GetString() should still return the raw value.
   ASSERT_TRUE(cros_config_.GetString("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("pyro/dptf.dv", val);
+  ASSERT_EQ("another/dptf.dv", val);
 
-  InitConfig("Reef", 4, "", false);
+  InitConfig("Some", 0, "", false);
   ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("/etc/dptf/reef_touch/dptf.dv", val);
+  ASSERT_EQ("/etc/dptf/some_touch/dptf.dv", val);
 
-  InitConfig("Reef", 5, "", false);
+  InitConfig("Some", 1, "", false);
   ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("/etc/dptf/reef_notouch/dptf.dv", val);
-}
-
-TEST_F(CrosConfigTest, CheckDefault) {
-  // These mirror the tests in libcros_config_host_unittest testWhitelabel()
-  InitConfig("Reef", 20, "", false);
-  std::string val;
-
-  // These are defined by caroline itself.
-  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("caroline", val);
-  ASSERT_TRUE(cros_config_.GetString("/audio/main", "cras-config-dir", &val));
-  ASSERT_EQ("caroline", val);
-
-  // This relies on a default property
-  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
-  ASSERT_EQ("pyro", val);
-
-  // This relies on a 'default' property in 'broken' pointing to 'caroline',
-  // which itself has a 'default' property.
-  InitConfig("Reef", 21, "", false);
-  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
-  ASSERT_EQ("pyro", val);
-
-  // Check it detects a circular 'default'.
-  base::FilePath filepath("test_bad_default.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Reef", 22, ""));
+  ASSERT_EQ("/etc/dptf/some_notouch/dptf.dv", val);
 }
 
 TEST_F(CrosConfigTest, CheckSubmodel) {
-  InitConfig("Reef", 4, "", false);
+  InitConfig("Some", 0, "", false);
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
   ASSERT_EQ("yes", val);
-  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
-  ASSERT_EQ("1mic", val);
 
-  InitConfig("Reef", 5, "", false);
+  InitConfig("Some", 1, "", false);
   ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
   ASSERT_EQ("no", val);
-  ASSERT_TRUE(cros_config_.GetString("/audio/main", "ucm-suffix", &val));
-  ASSERT_EQ("2mic", val);
 
   std::vector<std::string> log_msgs;
   ASSERT_FALSE(cros_config_.GetString("/touch", "presents", &val, &log_msgs));
   ASSERT_EQ(2, log_msgs.size());
   ASSERT_EQ(
       "Cannot get path /touch property presents: full path "
-      "/chromeos/models/reef/touch: FDT_ERR_NOTFOUND",
+      "/chromeos/models/some/touch: FDT_ERR_NOTFOUND",
       log_msgs[0]);
   ASSERT_EQ(
       "Cannot get path /touch property presents: full path "
-      "/chromeos/models/reef/submodels/notouch/touch: FDT_ERR_NOTFOUND",
+      "/chromeos/models/some/submodels/notouch/touch: FDT_ERR_NOTFOUND",
       log_msgs[1]);
 }
 
 TEST_F(CrosConfigTest, CheckFollowPhandle) {
-  InitConfig("Pyro");
+  InitConfig("Another");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/audio/main", "card", &val));
-  ASSERT_EQ("bxtda7219max", val);
-  ASSERT_TRUE(cros_config_.GetString("/power", "suspend-to-idle", &val));
-  ASSERT_EQ("1", val);
+  ASSERT_EQ("a-card", val);
 }
 
-// Check a particular SKU ID can return information from the whitelabels {} node
-// @sku_id: SKU ID to check
-void CrosConfigTest::CheckWhiteLabelAlternateSku(int sku_id) {
-  // Check values defined by blacktop1.
-  InitConfig("Reef", sku_id, "blacktip1", false);
+TEST_F(CrosConfigTest, CheckWhiteLabel) {
+  // Check values defined by whitelabel1.
+  InitConfig("Some", 8, "whitelabel1", false);
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("dark", val);
+  ASSERT_EQ("wallpaper-wl1", val);
   ASSERT_TRUE(cros_config_.GetString("/firmware", "key-id", &val));
-  ASSERT_EQ("BLACKTIP1", val);
+  ASSERT_EQ("WHITELABEL1", val);
   ASSERT_TRUE(cros_config_.GetString("/", "brand-code", &val));
-  ASSERT_EQ("HBBN", val);
+  ASSERT_EQ("WLBA", val);
 
-  // Check values defined by blacktop2.
-  InitConfig("Reef", sku_id, "blacktip2", false);
+  // Check values defined by whitelabel2.
+  InitConfig("Some", 9, "whitelabel2", false);
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("darker", val);
+  ASSERT_EQ("wallpaper-wl2", val);
   ASSERT_TRUE(cros_config_.GetString("/firmware", "key-id", &val));
-  ASSERT_EQ("BLACKTIP2", val);
+  ASSERT_EQ("WHITELABEL2", val);
   ASSERT_TRUE(cros_config_.GetString("/", "brand-code", &val));
-  ASSERT_EQ("HBBO", val);
-}
-
-TEST_F(CrosConfigTest, CheckWhiteLabelAlternate) {
-  InitConfig("Reef", 10, "", false);
-  std::string val;
-
-  // Check values defined by blacktop itself.
-  ASSERT_FALSE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_FALSE(cros_config_.GetString("/firmware", "key-id", &val));
-
-  // Check that we can find whitelabel values using the model.
-  CheckWhiteLabelAlternateSku(10);
-
-  // Check the same thing with the two submodels. This should work since they
-  // are orthogonal to the information in the whitelabels node.
-  CheckWhiteLabelAlternateSku(11);
-  CheckWhiteLabelAlternateSku(12);
-
-  // Check that submodel values are unaffected by the alternative schema.
-  InitConfig("Reef", 11, "blacktip1", false);
-  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
-  ASSERT_EQ("yes", val);
-
-  InitConfig("Reef", 12, "blacktip1", false);
-  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
-  ASSERT_EQ("no", val);
+  ASSERT_EQ("WLBB", val);
 }
 #endif /* !USE_JSON */
 

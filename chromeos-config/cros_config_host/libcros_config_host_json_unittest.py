@@ -21,5 +21,6 @@ class CrosConfigHostJsonTests(unittest.TestCase):
     with open(source, 'r') as source_stream:
       libcros_config_host_json.CrosConfigJson(source_stream)
 
+
 if __name__ == '__main__':
   unittest.main()
