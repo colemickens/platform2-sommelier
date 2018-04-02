@@ -239,6 +239,17 @@ class DeviceConfig(object):
 class CrosConfigBaseImpl(object):
   """The ChromeOS Configuration API for the host."""
 
+  def GetConfig(self, name):
+    """Gets a (DeviceConfig) instance by name.
+
+    Returns:
+      (DeviceConfig) instance if found, else None
+    """
+    for device in self.GetDeviceConfigs():
+      if device.GetName() == name:
+        return device
+    return None
+
   def GetDeviceConfigs(self):
     """Returns a list of (DeviceConfig) instances.
 
