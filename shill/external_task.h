@@ -84,6 +84,22 @@ class ExternalTask : public RPCTaskDelegate {
                      const std::map<std::string, std::string>& environment,
                      bool terminate_with_parent,
                      Error* error);
+
+  // Forks off a process to run |program|, with the command-line arguments
+  // |arguments|. Takes RPC identifiers that would be passed as environment
+  // variables and passes them on the command line instead, since minijail does
+  // not support the setting of custom environment variables for a spawned
+  // program.
+  //
+  // On success, returns true, and leaves |error| unmodified.
+  // On failure, returns false, and sets |error|.
+  virtual bool StartInMinijail(const base::FilePath& program,
+                               std::vector<std::string>& arguments,
+                               const std::string user,
+                               const std::string group,
+                               uint64_t mask,
+                               Error* error);
+
   virtual void Stop();
 
  private:

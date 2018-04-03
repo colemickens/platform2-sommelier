@@ -88,6 +88,58 @@ bool ExternalTask::Start(const FilePath& program,
   return true;
 }
 
+bool ExternalTask::StartInMinijail(const FilePath& program,
+                                   vector<string>& arguments,
+                                   const string user,
+                                   const string group,
+                                   uint64_t mask,
+                                   Error* error) {
+  // Checks will fail if Start or StartInMinijailWithRPCIdentifiers has already
+  // been called on this object.
+  CHECK(!pid_);
+  CHECK(!rpc_task_);
+
+  // Passes the connection identifiers on the command line instead of through
+  // environment variables.
+  auto local_rpc_task = std::make_unique<RPCTask>(control_, this);
+  map<string, string> env = local_rpc_task->GetEnvironment();
+  map<string, string>::iterator task_service_variable =
+                                env.find(kRPCTaskServiceVariable);
+  map<string, string>::iterator task_path_variable =
+                                env.find(kRPCTaskPathVariable);
+  // Fails without the necessary environment variables.
+  if (task_service_variable == env.end() || task_path_variable == env.end()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
+                          string("Invalid environment variables for: ") +
+                          program.value().c_str());
+    return false;
+  }
+  arguments.push_back(base::StringPrintf("--shill_task_service=%s",
+                      task_service_variable->second.c_str()));
+  arguments.push_back(base::StringPrintf("--shill_task_path=%s",
+                      task_path_variable->second.c_str()));
+
+  pid_t pid =
+      process_manager_->StartProcessInMinijail(FROM_HERE,
+                                     program,
+                                     arguments,
+                                     user,
+                                     group,
+                                     mask,
+                                     base::Bind(&ExternalTask::OnTaskDied,
+                                                base::Unretained(this)));
+
+  if (pid < 0) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
+                          string("Unable to spawn: ") +
+                          program.value().c_str() + string(" in a minijail."));
+    return false;
+  }
+  pid_ = pid;
+  rpc_task_ = std::move(local_rpc_task);
+  return true;
+}
+
 void ExternalTask::Stop() {
   if (pid_) {
     process_manager_->StopProcess(pid_);
