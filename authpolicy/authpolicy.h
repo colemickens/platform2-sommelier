@@ -69,7 +69,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   // |auth_user_request_blob| is a serialized AuthenticateUserRequest protobuf.
   // |account_info_blob| is a serialized ActiveDirectoryAccountInfo protobuf.
   void AuthenticateUser(const std::vector<uint8_t>& auth_user_request_blob,
-                        const dbus::FileDescriptor& password_fd,
+                        const base::ScopedFD& password_fd,
                         int32_t* error,
                         std::vector<uint8_t>* account_info_blob) override;
 
@@ -86,7 +86,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   // |join_domain_request_blob| is a serialized JoinDomainRequest protobuf.
   void JoinADDomain(const std::vector<uint8_t>& join_domain_request_blob,
-                    const dbus::FileDescriptor& password_fd,
+                    const base::ScopedFD& password_fd,
                     int32_t* error,
                     std::string* joined_domain) override;
 

@@ -188,7 +188,7 @@ void AuthPolicy::RegisterAsync(
 
 void AuthPolicy::AuthenticateUser(
     const std::vector<uint8_t>& auth_user_request_blob,
-    const dbus::FileDescriptor& password_fd,
+    const base::ScopedFD& password_fd,
     int32_t* int_error,
     std::vector<uint8_t>* account_info_blob) {
   LOG(INFO) << kColorRequest << "Received 'AuthenticateUser' request"
@@ -200,7 +200,7 @@ void AuthPolicy::AuthenticateUser(
   ActiveDirectoryAccountInfo account_info;
   if (error == ERROR_NONE) {
     error = samba_.AuthenticateUser(request.user_principal_name(),
-                                    request.account_id(), password_fd.value(),
+                                    request.account_id(), password_fd.get(),
                                     &account_info);
   }
   if (error == ERROR_NONE)
@@ -253,7 +253,7 @@ void AuthPolicy::GetUserKerberosFiles(
 
 void AuthPolicy::JoinADDomain(
     const std::vector<uint8_t>& join_domain_request_blob,
-    const dbus::FileDescriptor& password_fd,
+    const base::ScopedFD& password_fd,
     int32_t* int_error,
     std::string* joined_domain) {
   LOG(INFO) << kColorRequest << "Received 'JoinADDomain' request"
@@ -270,7 +270,7 @@ void AuthPolicy::JoinADDomain(
     error = samba_.JoinMachine(request.machine_name(), request.machine_domain(),
                                machine_ou, request.user_principal_name(),
                                request.kerberos_encryption_types(),
-                               password_fd.value(), joined_domain);
+                               password_fd.get(), joined_domain);
   }
 
   PrintError("JoinADDomain", error);

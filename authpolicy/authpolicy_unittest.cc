@@ -114,21 +114,19 @@ WARN_UNUSED_RESULT ErrorType CastError(int error) {
 }
 
 // Create a file descriptor pointing to a pipe that contains the given data.
-dbus::FileDescriptor MakeFileDescriptor(const char* data) {
+base::ScopedFD MakeFileDescriptor(const char* data) {
   int fds[2];
   EXPECT_TRUE(base::CreateLocalNonBlockingPipe(fds));
-  dbus::FileDescriptor read_dbus_fd;
-  read_dbus_fd.PutValue(fds[0]);
-  read_dbus_fd.CheckValidity();
+  base::ScopedFD read_scoped_fd(fds[0]);
   base::ScopedFD write_scoped_fd(fds[1]);
   EXPECT_TRUE(
       base::WriteFileDescriptor(write_scoped_fd.get(), data, strlen(data)));
-  return read_dbus_fd;
+  return read_scoped_fd;
 }
 
 // Shortcut to create a file descriptor from a valid password (valid in the
 // sense that the stub executables won't trigger any error behavior).
-dbus::FileDescriptor MakePasswordFd() {
+base::ScopedFD MakePasswordFd() {
   return MakeFileDescriptor(kPassword);
 }
 
@@ -458,7 +456,7 @@ class AuthPolicyTest : public testing::Test {
   // Joins a (stub) Active Directory domain. Returns the error code.
   ErrorType Join(const std::string& machine_name,
                  const std::string& user_principal,
-                 dbus::FileDescriptor password_fd) WARN_UNUSED_RESULT {
+                 base::ScopedFD password_fd) WARN_UNUSED_RESULT {
     JoinDomainRequest request;
     request.set_machine_name(machine_name);
     request.set_user_principal_name(user_principal);
@@ -477,7 +475,7 @@ class AuthPolicyTest : public testing::Test {
 
   // Extended Join() that takes a full JoinDomainRequest proto.
   ErrorType JoinEx(const JoinDomainRequest& request,
-                   dbus::FileDescriptor password_fd,
+                   base::ScopedFD password_fd,
                    std::string* joined_domain) WARN_UNUSED_RESULT {
     expected_error_reports[ERROR_OF_JOIN_AD_DOMAIN]++;
     std::vector<uint8_t> blob(request.ByteSizeLong());
@@ -492,7 +490,7 @@ class AuthPolicyTest : public testing::Test {
   // |account_info| if a non-nullptr is provided.
   ErrorType Auth(const std::string& user_principal,
                  const std::string& account_id,
-                 dbus::FileDescriptor password_fd,
+                 base::ScopedFD password_fd,
                  ActiveDirectoryAccountInfo* account_info = nullptr)
       WARN_UNUSED_RESULT {
     int32_t error = ERROR_NONE;
