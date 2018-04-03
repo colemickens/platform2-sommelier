@@ -146,6 +146,11 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
   }
 
   interface_ptr_ = mojo_channel_manager_->CreateCameraAlgorithmOpsPtr();
+  if (!interface_ptr_) {
+    LOGF(ERROR) << "Failed to connect to the server";
+    cb.Run(-EAGAIN);
+    return;
+  }
   interface_ptr_.set_connection_error_handler(
       base::Bind(&CameraAlgorithmBridgeImpl::OnConnectionErrorOnIpcThread,
                  base::Unretained(this)));
