@@ -719,7 +719,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     if (!cros_dev_->GetDirtyMap(&dirty_bitmap))
       LOG(ERROR) << "Failed to get updated templates map";
     // Create a list of modified template indexes from the bitmap.
-    dirty_list.resize(dirty_bitmap.count());
+    dirty_list.reserve(dirty_bitmap.count());
     for (int i = 0; dirty_bitmap.any() && i < dirty_bitmap.size(); i++)
       if (dirty_bitmap[i]) {
         dirty_list.emplace_back(i);
