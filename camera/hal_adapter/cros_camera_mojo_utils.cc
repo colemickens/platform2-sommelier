@@ -97,8 +97,7 @@ int DeserializeStreamBuffer(
     LOGF(ERROR) << "Invalid buffer id: " << ptr->buffer_id;
     return -EINVAL;
   }
-  *out_buffer->buffer =
-      reinterpret_cast<buffer_handle_t>(buffer_handle->second.get());
+  out_buffer->buffer = &buffer_handle->second->self;
 
   out_buffer->status = static_cast<int>(ptr->status);
 

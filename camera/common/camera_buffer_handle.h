@@ -47,6 +47,9 @@ typedef struct camera_buffer_handle {
   uint32_t offsets[kMaxPlanes];
   // The state of the buffer; must be one of |BufferState|.
   int state;
+  // For passing the buffer handle in camera3_stream_buffer_t to the HAL since
+  // it requires a buffer_handle_t*.
+  buffer_handle_t self;
 
   camera_buffer_handle()
       : magic(kCameraBufferMagic),
@@ -58,7 +61,8 @@ typedef struct camera_buffer_handle {
         height(0),
         strides{},
         offsets{},
-        state(kRegistered) {
+        state(kRegistered),
+        self(reinterpret_cast<buffer_handle_t>(this)) {
     for (size_t i = 0; i < kMaxPlanes; ++i) {
       fds[i] = -1;
     }

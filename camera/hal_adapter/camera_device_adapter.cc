@@ -201,14 +201,11 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
   DCHECK(!request->output_buffers.is_null());
   std::vector<camera3_stream_buffer_t> output_buffers(num_output_buffers);
-  std::vector<buffer_handle_t> output_buffer_handles(num_output_buffers);
   {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     for (size_t i = 0; i < num_output_buffers; ++i) {
       mojom::Camera3StreamBufferPtr& out_buf_ptr = request->output_buffers[i];
-      output_buffers.at(i).buffer =
-          const_cast<const native_handle_t**>(&output_buffer_handles.at(i));
       internal::DeserializeStreamBuffer(out_buf_ptr, streams_, buffer_handles_,
                                         &output_buffers.at(i));
     }
