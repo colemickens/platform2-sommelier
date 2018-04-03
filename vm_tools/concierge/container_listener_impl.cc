@@ -107,5 +107,63 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::UpdateApplicationList(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::UpdateApplicationListRequest* request,
+    vm_tools::EmptyMessage* response) {
+  std::string peer_address = ctx->peer();
+  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
+  if (ip == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing IPv4 address for ContainerListener");
+  }
+  vm_tools::apps::ApplicationList app_list;
+  // vm_name and container_name are set in the UpdateApplicationList call but we
+  // need to copy everything else out of the incoming protobuf here.
+  for (const auto& app_in : request->application()) {
+    auto app_out = app_list.add_apps();
+    // Set the non-repeating fields first.
+    app_out->set_desktop_file_id(app_in.desktop_file_id());
+    app_out->set_no_display(app_in.no_display());
+    app_out->set_startup_wm_class(app_in.startup_wm_class());
+    // Set the mime types.
+    for (const auto& mime_type : app_in.mime_types()) {
+      app_out->add_mime_types(mime_type);
+    }
+    // Set the names & comments.
+    if (app_in.has_name()) {
+      auto name_out = app_out->mutable_name();
+      for (const auto& names : app_in.name().values()) {
+        auto curr_name = name_out->add_values();
+        curr_name->set_locale(names.locale());
+        curr_name->set_value(names.value());
+      }
+    }
+    if (app_in.has_comment()) {
+      auto comment_out = app_out->mutable_comment();
+      for (const auto& comments : app_in.comment().values()) {
+        auto curr_comment = comment_out->add_values();
+        curr_comment->set_locale(comments.locale());
+        curr_comment->set_value(comments.value());
+      }
+    }
+  }
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::concierge::Service::UpdateApplicationList, service_,
+                 request->token(), ip, &app_list, &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure updating application list from ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in UpdateApplicationList");
+  }
+
+  return grpc::Status::OK;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

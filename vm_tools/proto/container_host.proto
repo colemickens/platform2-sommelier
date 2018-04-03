@@ -24,6 +24,39 @@ message ContainerShutdownInfo {
   string token = 1;
 }
 
+// Corresponds to a .desktop file from the Desktop Entry Spec:
+// https://www.freedesktop.org/wiki/Specifications/desktop-entry-spec/
+message Application {
+  // A "localestring". Entries with a provided locale should set the |locale|
+  // field to the value inside the [] and default entries should leave it empty.
+  message LocalizedString {
+    message StringWithLocale {
+      string locale = 1;
+      string value = 2;
+    }
+    repeated StringWithLocale values = 1;
+  }
+
+  // This is the 'key' for the application and used in other requests such as
+  // launching the application or retrieving its icon.
+  string desktop_file_id = 1;
+
+  // These fields map directly to keys from the Desktop Entry spec.
+  LocalizedString name = 2;
+  LocalizedString comment = 3;
+  repeated string mime_types = 4;
+  bool no_display = 5;
+  string startup_wm_class = 6;
+}
+
+// Request protobuf for nothing the host of our list of installed applications.
+message UpdateApplicationListRequest {
+  // The security token the container was given.
+  string token = 1;
+  // The list of all the installed applications.
+  repeated Application application = 2;
+}
+
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
@@ -33,4 +66,9 @@ service ContainerListener {
   // Called by each container before it shuts down to indicate it should no
   // longer be sent incoming requests.
   rpc ContainerShutdown(ContainerShutdownInfo) returns (EmptyMessage);
+
+  // Called by a container to update the list of applications installed within
+  // the container.
+  rpc UpdateApplicationList(UpdateApplicationListRequest)
+      returns (EmptyMessage);
 }

@@ -11,6 +11,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/sequenced_task_runner.h>
 #include <grpc++/grpc++.h>
+#include <vm_applications/proto_bindings/apps.pb.h>
 
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
 
@@ -36,6 +37,10 @@ class ContainerListenerImpl final
   grpc::Status ContainerShutdown(
       grpc::ServerContext* ctx,
       const vm_tools::container::ContainerShutdownInfo* request,
+      vm_tools::EmptyMessage* response) override;
+  grpc::Status UpdateApplicationList(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::UpdateApplicationListRequest* request,
       vm_tools::EmptyMessage* response) override;
 
  private:

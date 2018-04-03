@@ -32,6 +32,12 @@
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 namespace vm_tools {
+namespace apps {
+class ApplicationList;
+}  // namespace apps
+}  // namespace vm_tools
+
+namespace vm_tools {
 namespace concierge {
 
 // VM Launcher Service responsible for responding to DBus method calls for
@@ -64,6 +70,19 @@ class Service final : public base::MessageLoopForIO::Watcher {
                          const uint32_t container_ip,
                          bool* result,
                          base::WaitableEvent* event);
+
+  // This will send a D-Bus message to Chrome to inform it of the current
+  // installed application list for a container. It will use |container_ip| to
+  // resolve the request to a VM and then |container_token| to resolve it to a
+  // container. |app_list| should be populated with the list of installed
+  // applications but the vm & container names should be left blank; it must
+  // remain valid for the lifetime of this call. |result| is set to true on
+  // success, false otherwise. Signals |event| when done.
+  void UpdateApplicationList(const std::string& container_token,
+                             const uint32_t container_ip,
+                             vm_tools::apps::ApplicationList* app_list,
+                             bool* result,
+                             base::WaitableEvent* event);
 
  private:
   explicit Service(base::Closure quit_closure);
@@ -136,6 +155,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;  // Owned by |bus_|.
+  dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
 
   // The StartupListener service.
   StartupListenerImpl startup_listener_;

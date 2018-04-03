@@ -42,6 +42,8 @@
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crosvm/qcow_utils.h>
+#include <dbus/object_proxy.h>
+#include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/constants.h"
@@ -383,6 +385,50 @@ void Service::ContainerShutdown(const std::string& container_token,
   event->Signal();
 }
 
+void Service::UpdateApplicationList(const std::string& container_token,
+                                    const uint32_t container_ip,
+                                    vm_tools::apps::ApplicationList* app_list,
+                                    bool* result,
+                                    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(app_list);
+  CHECK(result);
+  *result = false;
+  std::string vm_name;
+  VirtualMachine* vm;
+  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &vm_name)) {
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (container_name.empty()) {
+    event->Signal();
+    return;
+  }
+  app_list->set_vm_name(vm_name);
+  app_list->set_container_name(container_name);
+  dbus::MethodCall method_call(
+      vm_tools::apps::kVmApplicationsServiceInterface,
+      vm_tools::apps::kVmApplicationsServiceUpdateApplicationListMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  if (!writer.AppendProtoAsArrayOfBytes(*app_list)) {
+    LOG(ERROR) << "Failed to encode ApplicationList protobuf";
+    event->Signal();
+    return;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      vm_applications_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to crostini app registry";
+  } else {
+    *result = true;
+  }
+  event->Signal();
+}
+
 bool Service::Init() {
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
@@ -428,6 +474,16 @@ bool Service::Init() {
   if (!bus_->RequestOwnershipAndBlock(kVmConciergeServiceName,
                                       dbus::Bus::REQUIRE_PRIMARY)) {
     LOG(ERROR) << "Failed to take ownership of " << kVmConciergeServiceName;
+    return false;
+  }
+
+  // Get the D-Bus proxy for communicating with the crostini registry in Chrome.
+  vm_applications_service_proxy_ = bus_->GetObjectProxy(
+      vm_tools::apps::kVmApplicationsServiceName,
+      dbus::ObjectPath(vm_tools::apps::kVmApplicationsServicePath));
+  if (!vm_applications_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << vm_tools::apps::kVmApplicationsServiceName;
     return false;
   }
 
