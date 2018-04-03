@@ -7,18 +7,21 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <dbus/bus.h>
 
 namespace debugd {
 
 class DebugLogsTool {
  public:
-  DebugLogsTool() = default;
+  explicit DebugLogsTool(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
   ~DebugLogsTool() = default;
 
   void GetDebugLogs(bool is_compressed,
                     const base::ScopedFD& fd);
 
  private:
+  scoped_refptr<dbus::Bus> bus_;
+
   DISALLOW_COPY_AND_ASSIGN(DebugLogsTool);
 };
 

@@ -32,7 +32,12 @@ const char kUsage[] =
   "Developer helper tool for getting extended debug logs from the system."
   "\n"
   "\n"
-  "This calls back into debugd using the DumpDebugLogs dbus end point.";
+  "This calls back into debugd using the DumpDebugLogs dbus end point."
+  "\n"
+  "\n"
+  "WARNING: The exact contents of the generated output may vary depending on"
+  "\n"
+  "developers' whims.";
 
 // Returns a dynamic file name with datestamps in it.
 std::string LogName(bool compress) {

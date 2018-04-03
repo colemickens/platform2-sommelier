@@ -422,6 +422,15 @@ LogTool::LogMap LogTool::GetAllLogs() {
   return result;
 }
 
+LogTool::LogMap LogTool::GetAllDebugLogs() {
+  CreateConnectivityReport();
+  LogMap result;
+  GetLogsFrom(kCommandLogs, &result);
+  GetLogsFrom(kExtraLogs, &result);
+  GetLogsFrom(kBigFeedbackLogs, &result);
+  return result;
+}
+
 LogTool::LogMap LogTool::GetFeedbackLogs() {
   CreateConnectivityReport();
   LogMap result;

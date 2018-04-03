@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include "debugd/src/debug_logs_tool.h"
+#include "debugd/src/log_tool.h"
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -13,36 +16,36 @@ namespace debugd {
 
 namespace {
 
-constexpr char kCat[] = "/bin/cat";
-constexpr char kArcBugreportPipe[] = "/run/arc/bugreport/pipe";
-constexpr char kArcBugreportFile[] = "arc-bugreport.txt";
+constexpr char kFeedbackLogsDir[] = "feedback";
 
 constexpr char kTar[] = "/bin/tar";
 constexpr char kSystemLogs[] = "/var/log";
-
-// Executes 'bugreport' command in the container through the pipe, then writes
-// the output to |arc_bugreport_file|. When the container is not running,
-// the function returns immediately without writing anything.
-void WriteArcBugreport(const base::FilePath& arc_bugreport_file) {
-  brillo::ProcessImpl p;
-  p.AddArg(kCat);
-  p.AddArg(kArcBugreportPipe);
-  p.RedirectOutput(arc_bugreport_file.value());
-  p.Run();
-}
 
 }  // namespace
 
 void DebugLogsTool::GetDebugLogs(bool is_compressed,
                                  const base::ScopedFD& fd) {
-  base::ScopedTempDir arc_temp_dir;
+  base::ScopedTempDir temp_dir;
+  if (!temp_dir.CreateUniqueTempDir()) {
+    PLOG(WARNING) << "Failed to create a temporary directory";
+    return;
+  }
 
-  // Create a temporary file and write ARC log to the file if ARC is running.
-  if (base::PathExists(base::FilePath(kArcBugreportPipe))) {
-    if (arc_temp_dir.CreateUniqueTempDir())
-      WriteArcBugreport(arc_temp_dir.GetPath().Append(kArcBugreportFile));
-    else
-      PLOG(WARNING) << "Failed to create a temporary directory";
+  base::FilePath logs_path = temp_dir.GetPath().Append(kFeedbackLogsDir);
+  if (!base::CreateDirectory(logs_path)) {
+    PLOG(WARNING) << "Failed to create dir: " << logs_path.value();
+    return;
+  }
+
+  LogTool log_tool(bus_);
+  LogTool::LogMap logs = log_tool.GetAllDebugLogs();
+  for (const auto& l : logs) {
+    const std::string& name = l.first;
+    const std::string& contents = l.second;
+    if (base::WriteFile(logs_path.Append(name), contents.data(),
+        contents.size()) < 0) {
+      PLOG(WARNING) << "Failed to write file: " << name;
+    }
   }
 
   brillo::ProcessImpl p;
@@ -50,12 +53,9 @@ void DebugLogsTool::GetDebugLogs(bool is_compressed,
   p.AddArg("-c");
   if (is_compressed)
     p.AddArg("-z");
-
-  if (arc_temp_dir.IsValid()) {
-    p.AddArg("-C");
-    p.AddArg(arc_temp_dir.GetPath().value());
-    p.AddArg(kArcBugreportFile);
-  }
+  p.AddArg("-C");
+  p.AddArg(temp_dir.GetPath().value());
+  p.AddArg(kFeedbackLogsDir);
   p.AddArg(kSystemLogs);
   p.BindFd(fd.get(), STDOUT_FILENO);
   p.Run();

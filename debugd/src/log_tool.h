@@ -26,6 +26,7 @@ class LogTool {
 
   std::string GetLog(const std::string& name);
   LogMap GetAllLogs();
+  LogMap GetAllDebugLogs();
   LogMap GetFeedbackLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd);
   LogMap GetUserLogFiles();

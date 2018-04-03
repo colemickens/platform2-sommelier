@@ -39,7 +39,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
   cups_tool_ = std::make_unique<CupsTool>();
-  debug_logs_tool_ = std::make_unique<DebugLogsTool>();
+  debug_logs_tool_ = std::make_unique<DebugLogsTool>(bus);
   debug_mode_tool_ = std::make_unique<DebugModeTool>(bus);
   dev_features_tool_wrapper_ =
       std::make_unique<RestrictedToolWrapper<DevFeaturesTool>>(bus);
