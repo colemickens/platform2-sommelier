@@ -337,8 +337,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     // TODO(jdufault): Remove this once quick unlock launches on all boards.
     builder->AddFeatureEnableOverride("QuickUnlockPin");
   }
-  if (builder->UseFlagIsSet("veyron_minnie"))
-    builder->AddArg("--enable-hardware-overlays=single-fullscreen");
 
   // Chromebox for meetings devices need to start with this flag till
   // crbug.com/653531 gets fixed. TODO(pbos): Remove this once this feature is
