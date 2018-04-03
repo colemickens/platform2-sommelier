@@ -41,6 +41,13 @@ class ContainerManagerInterface : public JobManagerInterface {
   virtual bool StartContainer(const std::vector<std::string>& env,
                               const ExitCallback& exit_callback) = 0;
 
+  // Ask the managed job to exit. |reason| is a human-readable string that may
+  // be logged to describe the reason for the request.
+  virtual void RequestJobExit(const std::string& reason) = 0;
+
+  // The job must be destroyed within the timeout.
+  virtual void EnsureJobExit(base::TimeDelta timeout) = 0;
+
   // Gets the container's statefulness state.
   virtual StatefulMode GetStatefulMode() const = 0;
 

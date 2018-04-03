@@ -15,6 +15,9 @@
 namespace login_manager {
 
 // An interface for classes that manage background processes.
+// TODO(hidehiko): This is no longer the interface to manage job, but the
+// interface to handle exit of the child jobs. Rename to reflect its
+// responsibility.
 class JobManagerInterface {
  public:
   virtual ~JobManagerInterface() {}
@@ -24,13 +27,6 @@ class JobManagerInterface {
 
   // The job managed by this object exited, with |status|.
   virtual void HandleExit(const siginfo_t& status) = 0;
-
-  // Ask the managed job to exit. |reason| is a human-readable string that may
-  // be logged to describe the reason for the request.
-  virtual void RequestJobExit(const std::string& reason) = 0;
-
-  // The job must be destroyed within the timeout.
-  virtual void EnsureJobExit(base::TimeDelta timeout) = 0;
 };
 }  // namespace login_manager
 

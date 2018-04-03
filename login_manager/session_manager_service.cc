@@ -328,16 +328,6 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   }
 }
 
-void SessionManagerService::RequestJobExit(const std::string& reason) {
-  if (browser_->CurrentPid() > 0)
-    browser_->Kill(SIGTERM, reason);
-}
-
-void SessionManagerService::EnsureJobExit(base::TimeDelta timeout) {
-  if (browser_->CurrentPid() > 0)
-    browser_->WaitAndAbort(timeout);
-}
-
 DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
@@ -490,10 +480,10 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
 
 void SessionManagerService::CleanupChildren(base::TimeDelta timeout,
                                             const std::string& reason) {
-  RequestJobExit(reason);
+  browser_->Kill(SIGTERM, reason);
   key_gen_.RequestJobExit(reason);
   android_container_->RequestJobExit(reason);
-  EnsureJobExit(timeout);
+  browser_->WaitAndAbort(timeout);
   key_gen_.EnsureJobExit(timeout);
 }
 

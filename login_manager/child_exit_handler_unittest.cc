@@ -39,8 +39,6 @@ class FakeJobManager : public JobManagerInterface {
     last_status_ = s;
     brillo::MessageLoop::current()->BreakLoop();
   }
-  void RequestJobExit(const std::string& reason) override {}
-  void EnsureJobExit(base::TimeDelta timeout) override {}
 
  private:
   siginfo_t last_status_;

@@ -43,11 +43,16 @@ class KeyGenerator : public JobManagerInterface {
   // generated public key are stored internally until Reset() is called.
   virtual bool Start(const std::string& username);
 
+  // Ask the managed job to exit. |reason| is a human-readable string that may
+  // be logged to describe the reason for the request.
+  void RequestJobExit(const std::string& reason);
+
+  // The job must be destroyed within the timeout.
+  void EnsureJobExit(base::TimeDelta timeout);
+
   // Implementation of JobManagerInterface.
   bool IsManagedJob(pid_t pid) override;
   void HandleExit(const siginfo_t& status) override;
-  void RequestJobExit(const std::string& reason) override;
-  void EnsureJobExit(base::TimeDelta timeout) override;
 
   void InjectJobFactory(std::unique_ptr<GeneratorJobFactoryInterface> factory);
 

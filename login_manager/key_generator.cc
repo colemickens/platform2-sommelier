@@ -61,6 +61,16 @@ bool KeyGenerator::Start(const string& username) {
   return true;
 }
 
+void KeyGenerator::RequestJobExit(const std::string& reason) {
+  if (keygen_job_ && keygen_job_->CurrentPid() > 0)
+    keygen_job_->Kill(SIGTERM, "");
+}
+
+void KeyGenerator::EnsureJobExit(base::TimeDelta timeout) {
+  if (keygen_job_ && keygen_job_->CurrentPid() > 0)
+    keygen_job_->WaitAndAbort(timeout);
+}
+
 bool KeyGenerator::IsManagedJob(pid_t pid) {
   return (keygen_job_ && keygen_job_->CurrentPid() > 0 &&
           keygen_job_->CurrentPid() == pid);
@@ -75,16 +85,6 @@ void KeyGenerator::HandleExit(const siginfo_t& info) {
     DLOG(WARNING) << "Key generation failed with " << info.si_status;
   }
   Reset();
-}
-
-void KeyGenerator::RequestJobExit(const std::string& reason) {
-  if (keygen_job_ && keygen_job_->CurrentPid() > 0)
-    keygen_job_->Kill(SIGTERM, "");
-}
-
-void KeyGenerator::EnsureJobExit(base::TimeDelta timeout) {
-  if (keygen_job_ && keygen_job_->CurrentPid() > 0)
-    keygen_job_->WaitAndAbort(timeout);
 }
 
 void KeyGenerator::InjectJobFactory(

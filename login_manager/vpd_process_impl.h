@@ -23,6 +23,13 @@ class VpdProcessImpl : public VpdProcess, public JobManagerInterface {
  public:
   explicit VpdProcessImpl(SystemUtils* system_utils);
 
+  // Ask the managed job to exit. |reason| is a human-readable string that may
+  // be logged to describe the reason for the request.
+  void RequestJobExit(const std::string& reason);
+
+  // The job must be destroyed within the timeout.
+  void EnsureJobExit(base::TimeDelta timeout);
+
   // Implementation of VpdProcess.
   bool RunInBackground(const KeyValuePairs& updates,
                        bool sync_cache,
@@ -31,8 +38,6 @@ class VpdProcessImpl : public VpdProcess, public JobManagerInterface {
   // Implementation of JobManagerInterface.
   bool IsManagedJob(pid_t pid) override;
   void HandleExit(const siginfo_t& status) override;
-  void RequestJobExit(const std::string& reason) override;
-  void EnsureJobExit(base::TimeDelta timeout) override;
 
  private:
   // The subprocess tracked by this job.

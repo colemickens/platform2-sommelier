@@ -25,6 +25,22 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
   DCHECK(system_utils_);
 }
 
+void VpdProcessImpl::RequestJobExit(const std::string& reason) {
+  if (subprocess_ && subprocess_->GetPid() > 0)
+    subprocess_->Kill(SIGTERM);
+}
+
+void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
+  if (subprocess_) {
+    if (subprocess_->GetPid() < 0)
+      return;
+    if (!system_utils_->ProcessGroupIsGone(subprocess_->GetPid(), timeout)) {
+      subprocess_->KillEverything(SIGABRT);
+      DLOG(INFO) << "Child process was killed.";
+    }
+  }
+}
+
 bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
                                      bool ignore_cache,
                                      const CompletionCallback& completion) {
@@ -54,22 +70,6 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
 bool VpdProcessImpl::IsManagedJob(pid_t pid) {
   return subprocess_ && subprocess_->GetPid() > 0 &&
          subprocess_->GetPid() == pid;
-}
-
-void VpdProcessImpl::RequestJobExit(const std::string& reason) {
-  if (subprocess_ && subprocess_->GetPid() > 0)
-    subprocess_->Kill(SIGTERM);
-}
-
-void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
-  if (subprocess_) {
-    if (subprocess_->GetPid() < 0)
-      return;
-    if (!system_utils_->ProcessGroupIsGone(subprocess_->GetPid(), timeout)) {
-      subprocess_->KillEverything(SIGABRT);
-      DLOG(INFO) << "Child process was killed.";
-    }
-  }
 }
 
 void VpdProcessImpl::HandleExit(const siginfo_t& info) {

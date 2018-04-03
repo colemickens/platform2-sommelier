@@ -160,10 +160,6 @@ class SessionManagerService
   //  The child indicates that it should not run anymore, or
   //  ShouldRunBrowser() indicates the browser should not run anymore.
   void HandleExit(const siginfo_t& info) override;
-  // Request that browser_ exit.
-  void RequestJobExit(const std::string& reason) override;
-  // Ensure that browser_ is gone.
-  void EnsureJobExit(base::TimeDelta timeout) override;
 
   // Set all changed signal handlers back to the default behavior.
   static void RevertHandlers();
