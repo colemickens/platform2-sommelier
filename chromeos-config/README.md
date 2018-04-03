@@ -844,7 +844,7 @@ chromeos {
 ### arc
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| build-properties | [build-properties](#build-properties) |  | True |  |
+| build-properties | [build-properties](#build-properties) |  | False |  |
 | files | array - [files](#files) |  | False |  |
 
 ### build-properties

@@ -151,9 +151,7 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
     self.assertTrue(len(props) > 5)
 
 
-# TODO(shapiroc): Enabled tests once YAML impl is complete
-# class CrosConfigHostTestYaml(unittest.TestCase, CommonTests):
-class CrosConfigHostTestYaml(unittest.TestCase):
+class CrosConfigHostTestYaml(unittest.TestCase, CommonTests):
   """Tests for master configuration in yaml format"""
   def setUp(self):
     self.conf_file = os.path.join(os.path.dirname(__file__), YAML_FILE)
@@ -161,8 +159,7 @@ class CrosConfigHostTestYaml(unittest.TestCase):
   def testReadStdin(self):
     call_args = '{} -y -c - list-models < {}'.format(CLI_FILE, self.conf_file)
     output = subprocess.check_output(call_args, shell=True)
-    # TODO(shapiroc): Enabled after inheritance enabled.
-    # self.CheckManyLinesWithoutSpaces(output)
+    self.CheckManyLinesWithoutSpaces(output, lines=2)
 
 
 if __name__ == '__main__':

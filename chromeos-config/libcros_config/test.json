@@ -2,6 +2,14 @@
   "chromeos": {
     "models": [
       {
+        "arc": {
+          "files": [
+            {
+              "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
+              "source": "some/hardware_features"
+            }
+          ]
+        }, 
         "audio": {
           "main": {
             "cras-config-dir": "some", 
@@ -23,8 +31,8 @@
                 "source": "ucm-config/a-card.some/a-card.some.conf"
               }, 
               {
-                "destination": "/lib/firmware/topology/some-tplg.bin", 
-                "source": "topology/topology/some-tplg.bin"
+                "destination": "/lib/firmware/some-tplg.bin", 
+                "source": "topology/some-tplg.bin"
               }
             ], 
             "ucm-suffix": "some"
@@ -62,26 +70,35 @@
         "touch": {
           "files": [
             {
-              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some_version.hex", 
-              "source": "some_stylus_vendor/some_version.hex", 
-              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.hex"
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex", 
+              "source": "some_stylus_vendor/some-version.hex", 
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin", 
-              "source": "some_touch_vendor/some_pid_some_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin", 
+              "source": "some_touch_vendor/some-pid_some-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "source": "some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_other_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
             }
           ], 
           "present": "probe", 
           "probe-regex": "some-prob-regex"
-        }
+        }, 
+        "wallpaper": "some"
       }, 
       {
+        "arc": {
+          "files": [
+            {
+              "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
+              "source": "some/hardware_features"
+            }
+          ]
+        }, 
         "audio": {
           "main": {
             "cras-config-dir": "some", 
@@ -103,8 +120,8 @@
                 "source": "ucm-config/a-card.some/a-card.some.conf"
               }, 
               {
-                "destination": "/lib/firmware/topology/some-tplg.bin", 
-                "source": "topology/topology/some-tplg.bin"
+                "destination": "/lib/firmware/some-tplg.bin", 
+                "source": "topology/some-tplg.bin"
               }
             ], 
             "ucm-suffix": "some"
@@ -142,23 +159,24 @@
         "touch": {
           "files": [
             {
-              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some_version.hex", 
-              "source": "some_stylus_vendor/some_version.hex", 
-              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.hex"
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex", 
+              "source": "some_stylus_vendor/some-version.hex", 
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin", 
-              "source": "some_touch_vendor/some_pid_some_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin", 
+              "source": "some_touch_vendor/some-pid_some-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "source": "some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_other_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
             }
           ], 
           "present": "no"
-        }
+        }, 
+        "wallpaper": "some"
       }, 
       {
         "audio": {
@@ -182,8 +200,8 @@
                 "source": "ucm-config/a-card.another/a-card.another.conf"
               }, 
               {
-                "destination": "/lib/firmware/topology/another-tplg.bin", 
-                "source": "topology/topology/another-tplg.bin"
+                "destination": "/lib/firmware/another-tplg.bin", 
+                "source": "topology/another-tplg.bin"
               }
             ], 
             "ucm-suffix": "another"
@@ -192,65 +210,57 @@
         "firmware": {
           "bcs-overlay": "overlay-another-private", 
           "build-targets": {
-            "coreboot": "some", 
-            "depthcharge": "some", 
-            "ec": "some", 
-            "libpayload": "some"
+            "coreboot": "another", 
+            "depthcharge": "another", 
+            "ec": "another", 
+            "libpayload": "another"
           }, 
           "ec-image": "bcs://Another_EC.1111.11.1.tbz2", 
           "main-image": "bcs://Another.1111.11.1.tbz2", 
           "main-rw-image": "bcs://Another_RW.1111.11.1.tbz2"
+        }, 
+        "firmware-signing": {
+          "key-id": "ANOTHER"
         }, 
         "identity": {
           "platform-name": "Another", 
           "smbios-name-match": "Another"
         }, 
         "name": "another", 
+        "thermal": {
+          "files": [
+            {
+              "destination": "/etc/dptf/another/dptf.dv", 
+              "source": "another/dptf.dv"
+            }
+          ]
+        }, 
         "touch": {
           "files": [
             {
-              "destination": "/opt/google/touch/firmware/some_stylus_vendor/another_version.hex", 
-              "source": "some_stylus_vendor/another_version.hex", 
-              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.hex"
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/another-version.hex", 
+              "source": "some_stylus_vendor/another-version.hex", 
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin", 
-              "source": "some_touch_vendor/some_pid_some_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin", 
+              "source": "some_touch_vendor/some-pid_some-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
             }
           ], 
           "present": "probe", 
           "probe-regex": "another-prob-regex"
-        }
+        }, 
+        "wallpaper": "default"
       }, 
       {
-        "audio": {
-          "main": {
-            "cras-config-dir": "whitelabel", 
-            "files": [
-              {
-                "destination": "/etc/cras/whitelabel/a-card", 
-                "source": "cras-config/whitelabel/a-card"
-              }, 
-              {
-                "destination": "/etc/cras/whitelabel/dsp.ini", 
-                "source": "cras-config/whitelabel/dsp.ini"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/HiFi.conf", 
-                "source": "ucm-config/a-card.whitelabel/HiFi.conf"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/a-card.whitelabel.conf", 
-                "source": "ucm-config/a-card.whitelabel/a-card.whitelabel.conf"
-              }, 
-              {
-                "destination": "/lib/firmware/topology/some-tplg.bin", 
-                "source": "topology/topology/some-tplg.bin"
-              }
-            ], 
-            "ucm-suffix": "whitelabel"
-          }
+        "arc": {
+          "files": [
+            {
+              "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
+              "source": "some/hardware_features"
+            }
+          ]
         }, 
         "firmware": {
           "bcs-overlay": "overlay-some-private", 
@@ -277,19 +287,19 @@
         "touch": {
           "files": [
             {
-              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some_version.hex", 
-              "source": "some_stylus_vendor/some_version.hex", 
-              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.hex"
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex", 
+              "source": "some_stylus_vendor/some-version.hex", 
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin", 
-              "source": "some_touch_vendor/some_pid_some_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin", 
+              "source": "some_touch_vendor/some-pid_some-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "source": "some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_other_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
             }
           ], 
           "present": "yes", 
@@ -298,33 +308,13 @@
         "wallpaper": "wallpaper-wl1"
       }, 
       {
-        "audio": {
-          "main": {
-            "cras-config-dir": "whitelabel", 
-            "files": [
-              {
-                "destination": "/etc/cras/whitelabel/a-card", 
-                "source": "cras-config/whitelabel/a-card"
-              }, 
-              {
-                "destination": "/etc/cras/whitelabel/dsp.ini", 
-                "source": "cras-config/whitelabel/dsp.ini"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/HiFi.conf", 
-                "source": "ucm-config/a-card.whitelabel/HiFi.conf"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/a-card.whitelabel.conf", 
-                "source": "ucm-config/a-card.whitelabel/a-card.whitelabel.conf"
-              }, 
-              {
-                "destination": "/lib/firmware/topology/some-tplg.bin", 
-                "source": "topology/topology/some-tplg.bin"
-              }
-            ], 
-            "ucm-suffix": "whitelabel"
-          }
+        "arc": {
+          "files": [
+            {
+              "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
+              "source": "some/hardware_features"
+            }
+          ]
         }, 
         "firmware": {
           "bcs-overlay": "overlay-some-private", 
@@ -351,19 +341,19 @@
         "touch": {
           "files": [
             {
-              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some_version.hex", 
-              "source": "some_stylus_vendor/some_version.hex", 
-              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.hex"
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex", 
+              "source": "some_stylus_vendor/some-version.hex", 
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin", 
-              "source": "some_touch_vendor/some_pid_some_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin", 
+              "source": "some_touch_vendor/some-pid_some-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "source": "some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_other_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
             }
           ], 
           "present": "no"
@@ -371,33 +361,13 @@
         "wallpaper": "wallpaper-wl1"
       }, 
       {
-        "audio": {
-          "main": {
-            "cras-config-dir": "whitelabel", 
-            "files": [
-              {
-                "destination": "/etc/cras/whitelabel/a-card", 
-                "source": "cras-config/whitelabel/a-card"
-              }, 
-              {
-                "destination": "/etc/cras/whitelabel/dsp.ini", 
-                "source": "cras-config/whitelabel/dsp.ini"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/HiFi.conf", 
-                "source": "ucm-config/a-card.whitelabel/HiFi.conf"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/a-card.whitelabel.conf", 
-                "source": "ucm-config/a-card.whitelabel/a-card.whitelabel.conf"
-              }, 
-              {
-                "destination": "/lib/firmware/topology/some-tplg.bin", 
-                "source": "topology/topology/some-tplg.bin"
-              }
-            ], 
-            "ucm-suffix": "whitelabel"
-          }
+        "arc": {
+          "files": [
+            {
+              "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
+              "source": "some/hardware_features"
+            }
+          ]
         }, 
         "firmware": {
           "bcs-overlay": "overlay-some-private", 
@@ -424,19 +394,19 @@
         "touch": {
           "files": [
             {
-              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some_version.hex", 
-              "source": "some_stylus_vendor/some_version.hex", 
-              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.hex"
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex", 
+              "source": "some_stylus_vendor/some-version.hex", 
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin", 
-              "source": "some_touch_vendor/some_pid_some_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin", 
+              "source": "some_touch_vendor/some-pid_some-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "source": "some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_other_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
             }
           ], 
           "present": "yes", 
@@ -445,33 +415,13 @@
         "wallpaper": "wallpaper-wl2"
       }, 
       {
-        "audio": {
-          "main": {
-            "cras-config-dir": "whitelabel", 
-            "files": [
-              {
-                "destination": "/etc/cras/whitelabel/a-card", 
-                "source": "cras-config/whitelabel/a-card"
-              }, 
-              {
-                "destination": "/etc/cras/whitelabel/dsp.ini", 
-                "source": "cras-config/whitelabel/dsp.ini"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/HiFi.conf", 
-                "source": "ucm-config/a-card.whitelabel/HiFi.conf"
-              }, 
-              {
-                "destination": "/usr/share/alsa/ucm/a-card.whitelabel/a-card.whitelabel.conf", 
-                "source": "ucm-config/a-card.whitelabel/a-card.whitelabel.conf"
-              }, 
-              {
-                "destination": "/lib/firmware/topology/some-tplg.bin", 
-                "source": "topology/topology/some-tplg.bin"
-              }
-            ], 
-            "ucm-suffix": "whitelabel"
-          }
+        "arc": {
+          "files": [
+            {
+              "destination": "/usr/share/chromeos-config/sbin/some/hardware_features", 
+              "source": "some/hardware_features"
+            }
+          ]
         }, 
         "firmware": {
           "bcs-overlay": "overlay-some-private", 
@@ -498,19 +448,19 @@
         "touch": {
           "files": [
             {
-              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some_version.hex", 
-              "source": "some_stylus_vendor/some_version.hex", 
-              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.hex"
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex", 
+              "source": "some_stylus_vendor/some-version.hex", 
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin", 
-              "source": "some_touch_vendor/some_pid_some_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin", 
+              "source": "some_touch_vendor/some-pid_some-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
             }, 
             {
-              "destination": "/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "source": "some_touch_vendor/some_other_pid_some_other_version.bin", 
-              "symlink": "/lib/firmware/some_touchscreen_vendorts_i2c_some_other_pid.bin"
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin", 
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
             }
           ], 
           "present": "no"

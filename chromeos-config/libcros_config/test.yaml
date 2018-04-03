@@ -22,7 +22,7 @@ audio: &audio
     $dsp-ini: "{{cras-config-dir}}/dsp.ini"
     $hifi-conf: "{{$card}}.{{ucm-suffix}}/HiFi.conf"
     $alsa-conf: "{{$card}}.{{ucm-suffix}}/{{$card}}.{{ucm-suffix}}.conf"
-    $topology-bin: "topology/{{$topology-name}}-tplg.bin"
+    $topology-bin: "{{$topology-name}}-tplg.bin"
 
     files:
       - source: "cras-config/{{$volume}}"
@@ -38,9 +38,10 @@ audio: &audio
 
 some_base_config: &some_base_config
   name: "{{$name}}"
-  audio:
-    <<: *audio
-    $topology-name: "some"
+  arc:
+    files:
+      - source: "some/hardware_features"
+        destination: "/usr/share/chromeos-config/sbin/some/hardware_features"
   firmware:
     bcs-overlay: "overlay-some-private"
     build-targets:
@@ -57,10 +58,14 @@ some_base_config: &some_base_config
 
 some_config: &some_config
   <<: *some_base_config
+  audio:
+    <<: *audio
+    $topology-name: "some"
   identity:
     platform-name: "Some"
     smbios-name-match: "Some"
     sku-id: "{{$sku-id}}"
+  wallpaper: "some"
 
 some_whitelabel_config: &some_whitelabel_config
   <<: *some_base_config
@@ -72,20 +77,20 @@ some_whitelabel_config: &some_whitelabel_config
 
 some_touch_config: &some_touch_config
   <<: *touch
-  $some_stylus: "some_stylus_vendor/some_version.hex"
-  $some_touchscreen: "some_touch_vendor/some_pid_some_version.bin"
-  $some_other_touchscreen: "some_touch_vendor/some_other_pid_some_other_version.bin"
+  $some_stylus: "some_stylus_vendor/some-version.hex"
+  $some_touchscreen: "some_touch_vendor/some-pid_some-version.bin"
+  $some_other_touchscreen: "some_touch_vendor/some-other-pid_some-other-version.bin"
 
   files:
     - source: "{{$some_stylus}}"
       destination: "{{$fw_dest}}/{{$some_stylus}}"
-      symlink: "{{$fw_root}}/some_stylus_vendor_firmware_SOME.hex"
+      symlink: "{{$fw_root}}/some_stylus_vendor_firmware_SOME.bin"
     - source: "{{$some_touchscreen}}"
       destination: "{{$fw_dest}}/{{$some_touchscreen}}"
-      symlink: "{{$fw_root}}/some_touchscreen_vendorts_i2c_some_pid.bin"
+      symlink: "{{$fw_root}}/some_touch_vendorts_i2c_some-pid.bin"
     - source: "{{$some_other_touchscreen}}"
       destination: "{{$fw_dest}}/{{$some_other_touchscreen}}"
-      symlink: "{{$fw_root}}/some_touchscreen_vendorts_i2c_some_other_pid.bin"
+      symlink: "{{$fw_root}}/some_touch_vendorts_i2c_some-other-pid.bin"
 
 chromeos:
   devices:
@@ -133,25 +138,32 @@ chromeos:
               main-image: "bcs://Another.1111.11.1.tbz2"
               main-rw-image: "bcs://Another_RW.1111.11.1.tbz2"
               build-targets:
-                coreboot: "some"
-                ec: "some"
-                depthcharge: "some"
-                libpayload: "some"
+                coreboot: "another"
+                ec: "another"
+                depthcharge: "another"
+                libpayload: "another"
+            firmware-signing:
+              key-id: "{{$key-id}}"
             touch:
               <<: *touch
               present: "probe"
               probe-regex: "another-prob-regex"
 
-              $some_stylus: "some_stylus_vendor/another_version.hex"
-              $some_touchscreen: "some_touch_vendor/some_pid_some_version.bin"
+              $some_stylus: "some_stylus_vendor/another-version.hex"
+              $some_touchscreen: "some_touch_vendor/some-pid_some-version.bin"
 
               files:
                 - source: "{{$some_stylus}}"
                   destination: "{{$fw_dest}}/{{$some_stylus}}"
-                  symlink: "{{$fw_root}}/some_stylus_vendor_firmware_SOME.hex"
+                  symlink: "{{$fw_root}}/some_stylus_vendor_firmware_ANOTHER.bin"
                 - source: "{{$some_touchscreen}}"
                   destination: "{{$fw_dest}}/{{$some_touchscreen}}"
-                  symlink: "{{$fw_root}}/some_touchscreen_vendorts_i2c_some_pid.bin"
+                  symlink: "{{$fw_root}}/some_touch_vendorts_i2c_some-pid.bin"
+            thermal:
+              files:
+                - source: "another/dptf.dv"
+                  destination: "/etc/dptf/another/dptf.dv"
+            wallpaper: "default"
     - $name: "whitelabel"
       products:
         - $brand-code: "WLBA"

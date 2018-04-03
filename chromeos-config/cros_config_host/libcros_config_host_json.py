@@ -31,25 +31,29 @@ class DeviceConfigJson(DeviceConfig):
     self.firmware_info = None
 
   def GetName(self):
-    return self._config['name']
+    return str(self._config['name'])
 
   def GetProperties(self, path):
     result = self._config
-    for path_token in path[1:].split('/'):  # Burn the first '/' char
-      if path_token in result:
-        result = result[path_token]
-      else:
-        return {}
+    if path != '/':
+      for path_token in path[1:].split('/'):  # Burn the first '/' char
+        if path_token in result:
+          result = result[path_token]
+        else:
+          return {}
     return result
 
   def GetProperty(self, path, name):
     props = self.GetProperties(path)
     if props and name in props:
-      return props[name]
+      return str(props[name])
     return ''
 
   def GetValue(self, source, name):
     if name in source:
+      val = source[name]
+      if isinstance(val, basestring):
+        return str(val)
       return source[name]
     return None
 
@@ -135,20 +139,20 @@ class CrosConfigJson(CrosConfigBaseImpl):
         have_image = True
         name = config.GetName()
         if sig_in_customization_id:
-          have_image = False
-          sig_id = name
-        else:
           sig_id = 'sig-id-in-customization-id'
           name = '%s-%s' % (name, name)
           index = 0
           while name in names:
             name = '%s%s' % (name, str(index))
           names.add(name)
+          have_image = False
+        else:
+          sig_id = name
 
         build_config = config.GetProperties('/firmware/build-targets')
         if build_config:
-          bios_build_target = build_config['coreboot']
-          ec_build_target = build_config['ec']
+          bios_build_target = config.GetValue(build_config, 'coreboot')
+          ec_build_target = config.GetValue(build_config, 'ec')
         else:
           bios_build_target, ec_build_target = None, None
         create_bios_rw_image = False
@@ -157,13 +161,24 @@ class CrosConfigJson(CrosConfigBaseImpl):
         main_rw_image_uri = config.GetValue(fw, 'main-rw-image')
         ec_image_uri = config.GetValue(fw, 'ec-image')
         pd_image_uri = config.GetValue(fw, 'pd-image')
-        extra = config.GetValue(fw, 'extra')
-        tools = config.GetValue(fw, 'tools')
+        extra = config.GetValue(fw, 'extra') or []
+        tools = config.GetValue(fw, 'tools') or []
 
-        info = FirmwareInfo(name, shared_model, key_id, have_image,
-                            bios_build_target, ec_build_target, main_image_uri,
-                            main_rw_image_uri, ec_image_uri, pd_image_uri,
-                            extra, create_bios_rw_image, tools, sig_id)
+        info = FirmwareInfo(
+            name,
+            shared_model,
+            key_id,
+            have_image,
+            bios_build_target,
+            ec_build_target,
+            main_image_uri,
+            main_rw_image_uri,
+            ec_image_uri,
+            pd_image_uri,
+            extra,
+            create_bios_rw_image,
+            tools,
+            sig_id)
         config.firmware_info = {name: info}
 
   def GetDeviceConfigs(self):

@@ -87,8 +87,6 @@ properties:
                   type: array
                   items: *system_file
               additionalProperties: false
-              required:
-              - build-properties
             audio:
               type: object
               properties:

@@ -124,17 +124,17 @@
 		touch {
 			stylus {
 				touch-type = <&some_stylus>;
-				version = "some_version";
+				version = "some-version";
 			};
 			touchpad {
 				touch-type = <&some_touchscreen>;
-				pid = "some_pid";
-				version = "some_version";
+				pid = "some-pid";
+				version = "some-version";
 			};
 			touchscreen@0 {
 				touch-type = <&some_touchscreen>;
-				pid = "some_other_pid";
-				version = "some_other_version";
+				pid = "some-other-pid";
+				version = "some-other-version";
 			};
 		};
 	};

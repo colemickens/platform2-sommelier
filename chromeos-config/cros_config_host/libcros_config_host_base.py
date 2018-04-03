@@ -171,7 +171,7 @@ class DeviceConfig(object):
                   'chromeos-base/chromeos-firmware-{ebuild_name}/{fname}')
     uris = [uri_format.format(
         bcs=bcs_overlay,
-        model=self.name,
+        model=self.GetName(),
         fname=fname,
         ebuild_name=ebuild_name) for fname in file_names]
     return sorted(uris)

@@ -54,6 +54,12 @@ def capture_sys_output():
 class CommonTests(object):
   """Shared tests between the YAML and FDT implementations."""
 
+  def testGetProperty(self):
+    config = CrosConfig(self.filepath)
+    another = config.GetConfig('another')
+    self.assertEqual(another.GetProperty('/', 'wallpaper'), 'default')
+    self.assertFalse(another.GetProperty('/', 'missing'))
+
   def testModels(self):
     config = CrosConfig(self.filepath)
     self.assertSequenceEqual(config.GetModelList(), MODELS)
@@ -160,6 +166,89 @@ class CommonTests(object):
                        'wallpaper-wl2'],
                       wallpaper)
 
+  def testGetTouchFirmwareFiles(self):
+    def _GetFile(source, symlink):
+      """Helper to return a suitable TouchFile"""
+      return TouchFile(source, TOUCH_FIRMWARE + source,
+                       LIB_FIRMWARE + symlink)
+
+    config = CrosConfig(self.filepath)
+    touch_files = config.GetConfig('another').GetTouchFirmwareFiles()
+    # pylint: disable=line-too-long
+    self.assertEqual(
+        touch_files,
+        [TouchFile(source='some_stylus_vendor/another-version.hex',
+                   dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
+                   symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
+         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
+                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
+    touch_files = config.GetConfig('some').GetTouchFirmwareFiles()
+
+    # This checks that duplicate processing works correct, since both models
+    # have the same wacom firmware
+    self.assertEqual(
+        touch_files,
+        [TouchFile(source='some_stylus_vendor/some-version.hex',
+                   dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
+                   symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
+         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
+                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
+         TouchFile(source='some_touch_vendor/some-other-pid_some-other-version.bin',
+                   dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
+                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin')])
+    touch_files = config.GetTouchFirmwareFiles()
+    expected = set(
+        [TouchFile(
+            source='some_stylus_vendor/another-version.hex',
+            dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
+            symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
+          TouchFile(
+              source='some_stylus_vendor/some-version.hex',
+              dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
+              symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
+          TouchFile(
+              source='some_touch_vendor/some-pid_some-version.bin',
+              dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+              symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
+          TouchFile(
+              source='some_touch_vendor/some-other-pid_some-other-version.bin',
+              dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
+              symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin'),
+          TouchFile(
+              source='some_touch_vendor/some-pid_some-version.bin',
+              dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+              symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
+    self.assertEqual(set(touch_files), expected)
+
+  def testGetAudioFiles(self):
+    config = CrosConfig(self.filepath)
+    audio_files = config.GetAudioFiles()
+    expected = \
+      [BaseFile(source='cras-config/another/dsp.ini',
+                dest='/etc/cras/another/dsp.ini'),
+       BaseFile(source='cras-config/another/a-card',
+                dest='/etc/cras/another/a-card'),
+       BaseFile(source='cras-config/some/dsp.ini',
+                dest='/etc/cras/some/dsp.ini'),
+       BaseFile(source='cras-config/some/a-card',
+                dest='/etc/cras/some/a-card'),
+       BaseFile(source='topology/another-tplg.bin',
+                dest='/lib/firmware/another-tplg.bin'),
+       BaseFile(source='topology/some-tplg.bin',
+                dest='/lib/firmware/some-tplg.bin'),
+       BaseFile(source='ucm-config/a-card.another/HiFi.conf',
+                dest='/usr/share/alsa/ucm/a-card.another/HiFi.conf'),
+       BaseFile(source='ucm-config/a-card.another/a-card.another.conf',
+                dest='/usr/share/alsa/ucm/a-card.another/a-card.another.conf'),
+       BaseFile(source='ucm-config/a-card.some/HiFi.conf',
+                dest='/usr/share/alsa/ucm/a-card.some/HiFi.conf'),
+       BaseFile(source='ucm-config/a-card.some/a-card.some.conf',
+                dest='/usr/share/alsa/ucm/a-card.some/a-card.some.conf')]
+
+    self.assertEqual(audio_files, sorted(expected))
+
 
 class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
   """Tests for master configuration in device tree format"""
@@ -177,13 +266,6 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
     config = CrosConfig(self.filepath)
     for name, model in config.models.iteritems():
       self.assertEqual(name, model.name)
-
-  def testProperties(self):
-    config = CrosConfig(self.filepath)
-    another = config.models['another']
-    self.assertEqual(another.properties['wallpaper'].value, 'default')
-    self.assertEqual(another.Property('wallpaper').value, 'default')
-    self.assertIsNone(another.Property('missing'))
 
   def testPathNode(self):
     config = CrosConfig(self.filepath)
@@ -217,46 +299,6 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
     target = another.PathProperty('/firmware/build-targets', 'coreboot')
     self.assertEqual(target.value, 'another')
 
-  def testGetTouchFirmwareFiles(self):
-    def _GetFile(source, symlink):
-      """Helper to return a suitable TouchFile"""
-      return TouchFile(source, TOUCH_FIRMWARE + source,
-                       LIB_FIRMWARE + symlink)
-
-    config = CrosConfig(self.filepath)
-    touch_files = config.GetConfig('another').GetTouchFirmwareFiles()
-    # pylint: disable=line-too-long
-    self.assertEqual(
-        touch_files,
-        [TouchFile(source='some_stylus_vendor/another-version.hex',
-                   dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
-                   symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
-         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
-    touch_files = config.GetConfig('some').GetTouchFirmwareFiles()
-
-    # This checks that duplicate processing works correct, since both models
-    # have the same wacom firmware
-    self.assertEqual(
-        touch_files,
-        [TouchFile(source='some_stylus_vendor/some_version.hex',
-                   dest='/opt/google/touch/firmware/some_stylus_vendor/some_version.hex',
-                   symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
-         TouchFile(source='some_touch_vendor/some_pid_some_version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some_pid.bin'),
-         TouchFile(source='some_touch_vendor/some_other_pid_some_other_version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some_other_pid.bin')])
-    touch_files = config.GetTouchFirmwareFiles()
-    expected = set([TouchFile(source='some_stylus_vendor/another-version.hex', dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex', symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
-                    TouchFile(source='some_stylus_vendor/some_version.hex', dest='/opt/google/touch/firmware/some_stylus_vendor/some_version.hex', symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
-                    TouchFile(source='some_touch_vendor/some-pid_some-version.bin', dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin', symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
-                    TouchFile(source='some_touch_vendor/some_other_pid_some_other_version.bin', dest='/opt/google/touch/firmware/some_touch_vendor/some_other_pid_some_other_version.bin', symlink='/lib/firmware/some_touch_vendorts_i2c_some_other_pid.bin'),
-                    TouchFile(source='some_touch_vendor/some_pid_some_version.bin', dest='/opt/google/touch/firmware/some_touch_vendor/some_pid_some_version.bin', symlink='/lib/firmware/some_touch_vendorts_i2c_some_pid.bin')])
-    self.assertEqual(set(touch_files), expected)
-
   def testGetMergedPropertiesAnother(self):
     config = CrosConfig(self.filepath)
     another = config.models['another']
@@ -276,8 +318,8 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
     props = some.GetMergedProperties(touchscreen, 'touch-type')
     self.assertEqual(
         props,
-        {'pid': 'some_other_pid',
-         'version': 'some_other_version',
+        {'pid': 'some-other-pid',
+         'version': 'some-other-version',
          'vendor': 'some_touch_vendor',
          'firmware-bin': '{vendor}/{pid}_{version}.bin',
          'firmware-symlink': '{vendor}ts_i2c_{pid}.bin'})
@@ -300,33 +342,6 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
          'alsa-conf': 'ucm-config/{card}.{ucm-suffix}/{card}.' +
                       '{ucm-suffix}.conf',
          'topology-bin': 'topology/{topology-name}-tplg.bin'})
-
-  def testGetAudioFiles(self):
-    config = CrosConfig(self.filepath)
-    audio_files = config.GetAudioFiles()
-    expected = \
-      [BaseFile(source='cras-config/another/dsp.ini',
-                dest='/etc/cras/another/dsp.ini'),
-       BaseFile(source='cras-config/another/a-card',
-                dest='/etc/cras/another/a-card'),
-       BaseFile(source='cras-config/some/dsp.ini',
-                dest='/etc/cras/some/dsp.ini'),
-       BaseFile(source='cras-config/some/a-card',
-                dest='/etc/cras/some/a-card'),
-       BaseFile(source='topology/another-tplg.bin',
-                dest='/lib/firmware/another-tplg.bin'),
-       BaseFile(source='topology/some-tplg.bin',
-                dest='/lib/firmware/some-tplg.bin'),
-       BaseFile(source='ucm-config/a-card.another/HiFi.conf',
-                dest='/usr/share/alsa/ucm/a-card.another/HiFi.conf'),
-       BaseFile(source='ucm-config/a-card.another/a-card.another.conf',
-                dest='/usr/share/alsa/ucm/a-card.another/a-card.another.conf'),
-       BaseFile(source='ucm-config/a-card.some/HiFi.conf',
-                dest='/usr/share/alsa/ucm/a-card.some/HiFi.conf'),
-       BaseFile(source='ucm-config/a-card.some/a-card.some.conf',
-                dest='/usr/share/alsa/ucm/a-card.some/a-card.some.conf')]
-
-    self.assertEqual(audio_files, sorted(expected))
 
   def testWriteTargetDirectories(self):
     """Test that we can write out a list of file paths"""
@@ -461,11 +476,10 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
     self.assertEqual(result, expected)
 
 
-# TODO(shapiroc): Enable when YAML impl is complete
-#class CrosConfigHostTestYaml(unittest.TestCase, CommonTests):
-#  """Tests for master configuration in yaml format"""
-#  def setUp(self):
-#    self.filepath = os.path.join(os.path.dirname(__file__), YAML_FILE)
+class CrosConfigHostTestYaml(unittest.TestCase, CommonTests):
+  """Tests for master configuration in yaml format"""
+  def setUp(self):
+    self.filepath = os.path.join(os.path.dirname(__file__), YAML_FILE)
 
 
 if __name__ == '__main__':
