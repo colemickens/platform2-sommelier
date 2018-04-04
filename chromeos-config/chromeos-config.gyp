@@ -56,8 +56,39 @@
           ],
         },
         {
+          'target_name': 'cros_config_json_unittest',
+          'type': 'executable',
+          'defines': [
+            'USE_JSON',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'include_dirs': [
+            'libcros_config',
+          ],
+          'dependencies': [
+            'libcros_config',
+          ],
+          'sources': [
+            'libcros_config/cros_config_unittest.cc',
+          ],
+        },
+        {
           'target_name': 'cros_config_main_unittest',
           'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            'cros_config',
+          ],
+          'sources': [
+            'cros_config_main_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'cros_config_main_json_unittest',
+          'type': 'executable',
+          'defines': [
+            'USE_JSON',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'cros_config',
