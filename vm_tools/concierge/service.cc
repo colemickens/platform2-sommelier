@@ -314,6 +314,17 @@ void Service::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
 }
 
+void Service::SignalContainerReady(const std::string& vm_name,
+                                   const std::string& container_name) {
+  // Send the D-Bus signal out to indicate the container is ready.
+  dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
+  ContainerStartedSignal proto;
+  proto.set_vm_name(vm_name);
+  proto.set_container_name(container_name);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+}
+
 void Service::ContainerStartupCompleted(const std::string& container_token,
                                         const uint32_t container_ip,
                                         bool* result,
@@ -348,12 +359,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
             << string_ip << " for VM " << vm_name << " completed.";
 
   // Send the D-Bus signal out to indicate the container is ready.
-  dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
-  ContainerStartedSignal proto;
-  proto.set_vm_name(vm_name);
-  proto.set_container_name(container_name);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
+  SignalContainerReady(vm_name, container_name);
   *result = true;
   event->Signal();
 }
@@ -1296,12 +1302,30 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
     return dbus_response;
   }
 
-  // This executes the run_container.sh script in the VM which will startup
-  // a container. We need to construct the command for that with the proper
-  // parameters.
   std::string container_name = request.container_name().empty()
                                    ? kDefaultContainerName
                                    : request.container_name();
+  LOG(INFO) << "Checking if container " << container_name << " is running";
+  if (iter->second->IsContainerRunning(container_name)) {
+    // No need to run_container again. We can return, and also send a signal if
+    // the request is async
+    LOG(INFO) << "Container " << container_name << " is already running.";
+    response.set_success(true);
+    writer.AppendProtoAsArrayOfBytes(response);
+    if (request.async()) {
+      // For async requests, generate the signal. Garcon only signals on
+      // startup, so we need to send it ourselves if Garcon is already running.
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
+          FROM_HERE,
+          base::Bind(&Service::SignalContainerReady, base::Unretained(this),
+                     request.vm_name(), container_name));
+    }
+    return dbus_response;
+  }
+  // This executes the run_container.sh script in the VM which will startup
+  // a container. We need to construct the command for that with the proper
+  // parameters.
+
   std::vector<std::string> container_args = {
       "run_container.sh",
       "--container_name",

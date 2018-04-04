@@ -189,6 +189,10 @@ class VirtualMachine {
                                   const std::string& desktop_file_id,
                                   std::string* out_error);
 
+  // Returns whether there is a connected stub to Garcon running inside the
+  // named |container_name| within this VM.
+  bool IsContainerRunning(const std::string& container_name);
+
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
       std::unique_ptr<SubnetPool::Subnet> subnet,
@@ -244,6 +248,11 @@ class VirtualMachine {
   // process inside the container.
   std::map<std::string, std::unique_ptr<vm_tools::container::Garcon::Stub>>
       container_name_to_garcon_stub_;
+
+  // Mapping of container names to a grpc Channel to the garcon process inside
+  // the container, which we can test for connectedness.
+  std::map<std::string, std::shared_ptr<grpc::Channel>>
+      container_name_to_garcon_channel_;
 
   // Runtime directory for this VM.
   base::ScopedTempDir runtime_dir_;

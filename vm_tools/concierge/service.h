@@ -140,6 +140,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                        VirtualMachine** vm_out,
                                        std::string* name_out);
 
+  // Send a Dbus signal that a container is ready. Can be triggered by a
+  // notification from Garcon, or we can send it if a container was already
+  // running when we called StartContainer in async mode.
+  void SignalContainerReady(const std::string& vm_name,
+                            const std::string& container_name);
+
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;
   SubnetPool subnet_pool_;

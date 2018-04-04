@@ -500,11 +500,12 @@ bool VirtualMachine::RegisterContainerIp(const std::string& container_token,
       return false;
     }
   }
+  auto channel = grpc::CreateChannel(
+      base::StringPrintf("%s:%u", container_ip.c_str(), vm_tools::kGarconPort),
+      grpc::InsecureChannelCredentials());
+  container_name_to_garcon_channel_[container_name] = channel;
   container_name_to_garcon_stub_[container_name] =
-      std::make_unique<vm_tools::container::Garcon::Stub>(
-          grpc::CreateChannel(base::StringPrintf("%s:%u", container_ip.c_str(),
-                                                 vm_tools::kGarconPort),
-                              grpc::InsecureChannelCredentials()));
+      std::make_unique<vm_tools::container::Garcon::Stub>(channel);
   return true;
 }
 
@@ -515,8 +516,11 @@ bool VirtualMachine::UnregisterContainerIp(const std::string& container_token) {
   }
   auto name_iter = container_name_to_garcon_stub_.find(token_iter->second);
   DCHECK(name_iter != container_name_to_garcon_stub_.end());
+  auto chan_iter = container_name_to_garcon_channel_.find(token_iter->second);
+  DCHECK(chan_iter != container_name_to_garcon_channel_.end());
   container_token_to_name_.erase(token_iter);
   container_name_to_garcon_stub_.erase(name_iter);
+  container_name_to_garcon_channel_.erase(chan_iter);
   return true;
 }
 
@@ -591,6 +595,18 @@ std::unique_ptr<VirtualMachine> VirtualMachine::CreateForTesting(
   vm->set_stub_for_testing(std::move(stub));
 
   return vm;
+}
+
+bool VirtualMachine::IsContainerRunning(const std::string& container_name) {
+  auto iter = container_name_to_garcon_channel_.find(container_name);
+  if (iter == container_name_to_garcon_channel_.end() || !iter->second) {
+    LOG(INFO) << "No such container: " << container_name;
+    return false;
+  }
+  auto channel_state = iter->second->GetState(true);
+  return channel_state == GRPC_CHANNEL_IDLE ||
+         channel_state == GRPC_CHANNEL_CONNECTING ||
+         channel_state == GRPC_CHANNEL_READY;
 }
 
 }  // namespace concierge
