@@ -19,6 +19,7 @@
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
+#include <chromeos/dbus/service_constants.h>
 #include <libpasswordprovider/password_provider.h>
 
 #include "login_manager/container_manager_interface.h"
@@ -412,6 +413,7 @@ class SessionManagerImpl
 
   // Core implementation of UpgradeArcContainer().
   bool UpgradeArcContainerInternal(const UpgradeArcContainerRequest& request,
+                                   base::ScopedClosureRunner* scoped_runner,
                                    brillo::dbus_utils::FileDescriptor* fd_out,
                                    brillo::ErrorPtr* error_out);
 
@@ -425,10 +427,13 @@ class SessionManagerImpl
   // Called when the container fails to continue booting.
   void OnContinueArcBootFailed();
 
+  // Stops the ARC container with the given |reason|.
+  bool StopArcInstanceInternal(ArcContainerStopReason reason);
+
   // Called when the Android container is stopped.
   void OnAndroidContainerStopped(const std::string& container_instance_id,
                                  pid_t pid,
-                                 bool clean);
+                                 ArcContainerStopReason reason);
 
   // Renames android-data/ in the user's home directory to android-data-old/,
   // then recursively removes the renamed directory. Returns false when it

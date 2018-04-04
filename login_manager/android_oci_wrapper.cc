@@ -35,7 +35,7 @@ AndroidOciWrapper::AndroidOciWrapper(SystemUtils* system_utils,
     : container_pid_(0),
       system_utils_(system_utils),
       containers_directory_(containers_directory),
-      clean_exit_(false),
+      exit_reason_(ArcContainerStopReason::CRASH),
       stateful_mode_(StatefulMode::STATELESS) {
   DCHECK(system_utils_);
   DCHECK(!containers_directory_.empty());
@@ -55,11 +55,11 @@ void AndroidOciWrapper::HandleExit(const siginfo_t& status) {
   CleanUpContainer();
 }
 
-void AndroidOciWrapper::RequestJobExit(const std::string& reason) {
+void AndroidOciWrapper::RequestJobExit(ArcContainerStopReason reason) {
   if (!container_pid_)
     return;
 
-  clean_exit_ = true;
+  exit_reason_ = reason;
 
   if (stateful_mode_ != StatefulMode::STATELESS && RequestTermination())
     return;
@@ -177,7 +177,9 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
   LOG(INFO) << "Container PID: " << container_pid_;
 
   exit_callback_ = exit_callback;
-  clean_exit_ = false;
+  // Set CRASH initially. So if ARC is stopped without RequestJobExit() call,
+  // it will be handled as CRASH.
+  exit_reason_ = ArcContainerStopReason::CRASH;
 
   return true;
 }
@@ -251,9 +253,6 @@ void AndroidOciWrapper::CleanUpContainer() {
   if (!GetContainerPID(&pid))
     return;
 
-  // Save temporary values until everything is cleaned up.
-  ExitCallback old_callback;
-
   std::vector<std::string> argv = {kRunOciPath, kRunOciDestroyCommand,
                                    kContainerId};
 
@@ -265,12 +264,13 @@ void AndroidOciWrapper::CleanUpContainer() {
                << "\"";
   }
 
+  // Save temporary values until everything is cleaned up.
+  ExitCallback old_callback;
   std::swap(old_callback, exit_callback_);
-
   container_pid_ = 0;
 
   if (!old_callback.is_null())
-    old_callback.Run(pid, clean_exit_);
+    old_callback.Run(pid, exit_reason_);
 }
 
 bool AndroidOciWrapper::CloseOpenedFiles() {

@@ -457,7 +457,8 @@ void SessionManagerImpl::Finalize() {
 
   // We want to stop all running containers and VMs.  Containers and VMs are
   // per-session and cannot persist across sessions.
-  android_container_->RequestJobExit("session_manager exiting");
+  android_container_->RequestJobExit(
+      ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN);
   android_container_->EnsureJobExit(kContainerTimeout);
 }
 
@@ -1104,7 +1105,8 @@ bool SessionManagerImpl::StartArcInstance(
   upgrade_request.set_packages_cache_mode(
       static_cast<UpgradeArcContainerRequest::PackageCacheMode>(
           request.packages_cache_mode()));
-  if (!UpgradeArcContainerInternal(upgrade_request, out_fd, error)) {
+  if (!UpgradeArcContainerInternal(upgrade_request, &scoped_runner, out_fd,
+                                   error)) {
     DCHECK(*error);
     return false;
   }
@@ -1153,7 +1155,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
                          "UpgradeArcContainerRequest parsing failed.");
     return false;
   }
-  if (!UpgradeArcContainerInternal(request, out_fd, error)) {
+  if (!UpgradeArcContainerInternal(request, &scoped_runner, out_fd, error)) {
     DCHECK(*error);
     return false;
   }
@@ -1168,16 +1170,13 @@ bool SessionManagerImpl::UpgradeArcContainer(
 
 bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error) {
 #if USE_CHEETS
-  pid_t pid;
-  if (!android_container_->GetContainerPID(&pid)) {
+  if (!StopArcInstanceInternal(ArcContainerStopReason::USER_REQUEST)) {
     constexpr char kMessage[] = "Error getting Android container pid.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kContainerShutdownFail, kMessage);
     return false;
   }
 
-  android_container_->RequestJobExit("stopping ARC instance");
-  android_container_->EnsureJobExit(kContainerTimeout);
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1659,6 +1658,7 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
 
 bool SessionManagerImpl::UpgradeArcContainerInternal(
     const UpgradeArcContainerRequest& request,
+    base::ScopedClosureRunner* scoped_runner,
     brillo::dbus_utils::FileDescriptor* fd_out,
     brillo::ErrorPtr* error_out) {
   pid_t pid = 0;
@@ -1689,6 +1689,8 @@ bool SessionManagerImpl::UpgradeArcContainerInternal(
     constexpr char kMessage[] = "Low free disk under /home";
     LOG(ERROR) << kMessage;
     *error_out = CreateError(dbus_error::kLowFreeDisk, kMessage);
+    StopArcInstanceInternal(ArcContainerStopReason::LOW_DISK_SPACE);
+    ignore_result(scoped_runner->Release());
     return false;
   }
 
@@ -1775,16 +1777,28 @@ bool SessionManagerImpl::ContinueArcBoot(
 
 void SessionManagerImpl::OnContinueArcBootFailed() {
   LOG(ERROR) << "Failed to continue ARC boot. Stopping the container.";
-  brillo::ErrorPtr error_ptr;
-  StopArcInstance(&error_ptr);
+  StopArcInstanceInternal(ArcContainerStopReason::UPGRADE_FAILURE);
+}
+
+bool SessionManagerImpl::StopArcInstanceInternal(
+    ArcContainerStopReason reason) {
+  pid_t pid;
+  if (!android_container_->GetContainerPID(&pid))
+    return false;
+
+  android_container_->RequestJobExit(reason);
+  android_container_->EnsureJobExit(kContainerTimeout);
+  return true;
 }
 
 void SessionManagerImpl::OnAndroidContainerStopped(
-    const std::string& container_instance_id, pid_t pid, bool clean) {
-  if (clean) {
-    LOG(INFO) << "Android Container with pid " << pid << " stopped";
-  } else {
+    const std::string& container_instance_id,
+    pid_t pid,
+    ArcContainerStopReason reason) {
+  if (reason == ArcContainerStopReason::CRASH) {
     LOG(ERROR) << "Android Container with pid " << pid << " crashed";
+  } else {
+    LOG(INFO) << "Android Container with pid " << pid << " stopped";
   }
 
   login_metrics_->StopTrackingArcUseTime();
@@ -1800,7 +1814,8 @@ void SessionManagerImpl::OnAndroidContainerStopped(
     LOG(ERROR) << "Emitting stop-arc-network impulse failed.";
   }
 
-  adaptor_.SendArcInstanceStoppedSignal(clean, container_instance_id);
+  adaptor_.SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason),
+                                        container_instance_id);
 }
 #endif  // USE_CHEETS
 

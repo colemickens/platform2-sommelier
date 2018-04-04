@@ -30,12 +30,12 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   // JobManagerInterface:
   bool IsManagedJob(pid_t pid) override;
   void HandleExit(const siginfo_t& status) override;
-  void RequestJobExit(const std::string& reason) override;
-  void EnsureJobExit(base::TimeDelta timeout) override;
 
   // ContainerManagerInterface:
   bool StartContainer(const std::vector<std::string>& env,
                       const ExitCallback& exit_callback) override;
+  void RequestJobExit(ArcContainerStopReason reason) override;
+  void EnsureJobExit(base::TimeDelta timeout) override;
   bool GetContainerPID(pid_t* pid_out) const override;
   StatefulMode GetStatefulMode() const override;
   void SetStatefulMode(StatefulMode mode) override;
@@ -99,8 +99,8 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   // Callback that will get invoked when the process exits.
   ExitCallback exit_callback_;
 
-  // True if RequestJobExit was called before the container process exits.
-  bool clean_exit_;
+  // Keeps the reason why this container is (being) stopped.
+  login_manager::ArcContainerStopReason exit_reason_;
 
   // Whether container is stateful or stateless.
   StatefulMode stateful_mode_;

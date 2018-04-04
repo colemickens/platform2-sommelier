@@ -24,7 +24,7 @@ class FakeContainerManager : public ContainerManagerInterface {
 
   bool IsManagedJob(pid_t pid) override;
   void HandleExit(const siginfo_t& status) override;
-  void RequestJobExit(const std::string& reason) override;
+  void RequestJobExit(ArcContainerStopReason reason) override;
   void EnsureJobExit(base::TimeDelta timeout) override;
 
   bool StartContainer(const std::vector<std::string>& env,

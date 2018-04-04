@@ -158,6 +158,18 @@ struct PayloadStorage<const char*> {
   std::string value;
 };
 
+#if USE_CHEETS
+template <>
+struct PayloadStorage<ArcContainerStopReason> {
+  uint32_t value;
+};
+
+// Overloading for easier payload test in MATCHERs.
+bool operator==(ArcContainerStopReason payload, uint32_t value) {
+  return static_cast<uint32_t>(payload) == value;
+}
+#endif
+
 // Matcher for SessionManagerInterface's signal.
 MATCHER_P(SignalEq, method_name, "") {
   return arg->GetMember() == method_name;
@@ -2044,7 +2056,8 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
                                      InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*exported_object(),
-              SendSignal(SignalEq(login_manager::kArcInstanceStopped, true,
+              SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                                  ArcContainerStopReason::USER_REQUEST,
                                   container_instance_id)))
       .Times(1);
   {
@@ -2137,7 +2150,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
   }
   // The ID for the container for login screen is passed to the dbus call.
   EXPECT_CALL(*exported_object(),
-              SendSignal(SignalEq(login_manager::kArcInstanceStopped, true,
+              SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                                  ArcContainerStopReason::USER_REQUEST,
                                   container_instance_id)))
       .Times(1);
 
@@ -2276,12 +2290,19 @@ TEST_F(SessionManagerImplTest, ArcNoSession) {
 
 TEST_F(SessionManagerImplTest, ArcLowDisk) {
   ExpectAndRunStartSession(kSaneEmail);
-  SetUpArcMiniContainer();
+  std::string container_instance_id = SetUpArcMiniContainer();
   // Emulate no free disk space.
   ON_CALL(utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(0));
 
   brillo::ErrorPtr error;
   ExpectUpgradeArcContainer();
+
+  EXPECT_CALL(*exported_object(),
+              SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                                  ArcContainerStopReason::LOW_DISK_SPACE,
+                                  container_instance_id)))
+      .Times(1);
+
   UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
   brillo::dbus_utils::FileDescriptor server_socket_fd;
   EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
@@ -2362,7 +2383,8 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   EXPECT_TRUE(android_container_.running());
 
   EXPECT_CALL(*exported_object(),
-              SendSignal(SignalEq(login_manager::kArcInstanceStopped, false,
+              SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                                  ArcContainerStopReason::CRASH,
                                   container_instance_id)))
       .Times(1);
 
@@ -2638,7 +2660,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
                                      InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*exported_object(),
-              SendSignal(SignalEq(login_manager::kArcInstanceStopped, true,
+              SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                                  ArcContainerStopReason::USER_REQUEST,
                                   container_instance_id)))
       .Times(1);
   {

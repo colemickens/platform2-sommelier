@@ -14,10 +14,10 @@ bool FakeContainerManager::IsManagedJob(pid_t pid) {
 
 void FakeContainerManager::HandleExit(const siginfo_t& status) {}
 
-void FakeContainerManager::RequestJobExit(const std::string& reason) {
+void FakeContainerManager::RequestJobExit(ArcContainerStopReason reason) {
   LOG_IF(FATAL, !running_) << "Trying to stop an already stopped container";
   running_ = false;
-  exit_callback_.Run(pid_, true);
+  exit_callback_.Run(pid_, reason);
 }
 
 void FakeContainerManager::EnsureJobExit(base::TimeDelta timeout) {}
@@ -48,7 +48,7 @@ bool FakeContainerManager::GetContainerPID(pid_t* pid_out) const {
 void FakeContainerManager::SimulateCrash() {
   LOG_IF(FATAL, !running_) << "Trying to crash an already stopped container";
   running_ = false;
-  exit_callback_.Run(pid_, false);
+  exit_callback_.Run(pid_, ArcContainerStopReason::CRASH);
 }
 
 }  // namespace login_manager

@@ -302,7 +302,7 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   browser_->ClearPid();
 
   // Also ensure all containers are gone.
-  android_container_->RequestJobExit("browser exited");
+  android_container_->RequestJobExit(ArcContainerStopReason::BROWSER_SHUTDOWN);
   android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 
   // Do nothing if already shutting down.
@@ -470,7 +470,7 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
 
   child_exit_handler_.Reset();
   liveness_checker_->Stop();
-  CleanupChildren(GetKillTimeout(), ExitCodeToString(code));
+  CleanupChildren(GetKillTimeout(), code);
   impl_->AnnounceSessionStopped();
 
   brillo::MessageLoop::current()->PostTask(
@@ -480,10 +480,14 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
 }
 
 void SessionManagerService::CleanupChildren(base::TimeDelta timeout,
-                                            const std::string& reason) {
+                                            ExitCode code) {
+  std::string reason = ExitCodeToString(code);
   browser_->Kill(SIGTERM, reason);
   key_gen_.RequestJobExit(reason);
-  android_container_->RequestJobExit(reason);
+  android_container_->RequestJobExit(
+      code == ExitCode::SUCCESS
+          ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
+          : ArcContainerStopReason::BROWSER_SHUTDOWN);
   browser_->WaitAndAbort(timeout);
   key_gen_.EnsureJobExit(timeout);
 }

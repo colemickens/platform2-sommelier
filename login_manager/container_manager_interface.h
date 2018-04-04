@@ -12,6 +12,7 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/job_manager.h"
 
@@ -27,8 +28,8 @@ enum class StatefulMode {
 // Containers can only be run from the verified rootfs.
 class ContainerManagerInterface : public JobManagerInterface {
  public:
-  // |clean| is true if the container was shut down through RequestJobExit.
-  using ExitCallback = base::Callback<void(pid_t, bool clean)>;
+  using ExitCallback =
+      base::Callback<void(pid_t, ArcContainerStopReason reason)>;
 
   // The path to the location of containers.
   constexpr static const char kContainerRunPath[] = "/run/containers";
@@ -41,9 +42,9 @@ class ContainerManagerInterface : public JobManagerInterface {
   virtual bool StartContainer(const std::vector<std::string>& env,
                               const ExitCallback& exit_callback) = 0;
 
-  // Ask the managed job to exit. |reason| is a human-readable string that may
-  // be logged to describe the reason for the request.
-  virtual void RequestJobExit(const std::string& reason) = 0;
+  // Requests to stop the container. |reason| will be propagated into
+  // the arg of |exit_callback| passed to StartContainer.
+  virtual void RequestJobExit(ArcContainerStopReason reason) = 0;
 
   // The job must be destroyed within the timeout.
   virtual void EnsureJobExit(base::TimeDelta timeout) = 0;

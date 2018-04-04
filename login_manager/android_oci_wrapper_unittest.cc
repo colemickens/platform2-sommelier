@@ -92,11 +92,11 @@ class AndroidOciWrapperTest : public ::testing::Test {
         .WillOnce(DoAll(SetArgPointee<1>(exit_code), Return(true)));
   }
 
-  void ExitCallback(pid_t pid, bool clean) {
+  void ExitCallback(pid_t pid, ArcContainerStopReason reason) {
     ASSERT_EQ(pid, container_pid_);
 
     callback_called_ = true;
-    clean_exit_ = clean;
+    exit_reason_ = reason;
   }
 
   MockSystemUtils system_utils_;
@@ -108,7 +108,7 @@ class AndroidOciWrapperTest : public ::testing::Test {
   pid_t container_pid_ = 0;
 
   bool callback_called_ = false;
-  bool clean_exit_ = false;
+  ArcContainerStopReason exit_reason_ = ArcContainerStopReason::CRASH;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AndroidOciWrapperTest);
@@ -145,7 +145,7 @@ TEST_F(AndroidOciWrapperTest, GetContainerPID) {
 }
 
 TEST_F(AndroidOciWrapperTest, CleanUpOnExit) {
-  clean_exit_ = true;
+  exit_reason_ = ArcContainerStopReason::USER_REQUEST;
 
   StartContainerAsParent();
 
@@ -155,7 +155,7 @@ TEST_F(AndroidOciWrapperTest, CleanUpOnExit) {
   impl_->HandleExit(status);
 
   EXPECT_TRUE(callback_called_);
-  EXPECT_FALSE(clean_exit_);
+  EXPECT_EQ(ArcContainerStopReason::CRASH, exit_reason_);
 }
 
 TEST_F(AndroidOciWrapperTest, ForcefulStatelessShutdownOnRequest) {
@@ -163,7 +163,7 @@ TEST_F(AndroidOciWrapperTest, ForcefulStatelessShutdownOnRequest) {
 
   ExpectKill(true /* forceful */, 0 /* exit_code */);
 
-  impl_->RequestJobExit("");
+  impl_->RequestJobExit(ArcContainerStopReason::USER_REQUEST);
 }
 
 TEST_F(AndroidOciWrapperTest, GracefulStatefulShutdownOnRequest) {
@@ -172,7 +172,7 @@ TEST_F(AndroidOciWrapperTest, GracefulStatefulShutdownOnRequest) {
 
   ExpectKill(false /* forceful */, 0 /* exit_code */);
 
-  impl_->RequestJobExit("");
+  impl_->RequestJobExit(ArcContainerStopReason::USER_REQUEST);
 }
 
 TEST_F(AndroidOciWrapperTest, ForcefulShutdownAfterGracefulShutdownFailed) {
@@ -182,7 +182,7 @@ TEST_F(AndroidOciWrapperTest, ForcefulShutdownAfterGracefulShutdownFailed) {
   ExpectKill(false /* forceful */, -1 /* exit_code */);
   ExpectKill(true /* forceful */, 0 /* exit_code */);
 
-  impl_->RequestJobExit("");
+  impl_->RequestJobExit(ArcContainerStopReason::USER_REQUEST);
 }
 
 TEST_F(AndroidOciWrapperTest, KillJobOnEnsure) {
@@ -209,7 +209,7 @@ TEST_F(AndroidOciWrapperTest, CleanExitAfterRequest) {
 
   ExpectKill(true /* forceful */, 0 /* exit_code */);
 
-  impl_->RequestJobExit("");
+  impl_->RequestJobExit(ArcContainerStopReason::USER_REQUEST);
 
   base::TimeDelta delta = base::TimeDelta::FromSeconds(11);
   EXPECT_CALL(system_utils_, ProcessIsGone(container_pid_, delta))
@@ -220,7 +220,7 @@ TEST_F(AndroidOciWrapperTest, CleanExitAfterRequest) {
   impl_->EnsureJobExit(delta);
 
   EXPECT_TRUE(callback_called_);
-  EXPECT_TRUE(clean_exit_);
+  EXPECT_EQ(ArcContainerStopReason::USER_REQUEST, exit_reason_);
 }
 
 TEST_F(AndroidOciWrapperTest, StartContainerChildProcess) {

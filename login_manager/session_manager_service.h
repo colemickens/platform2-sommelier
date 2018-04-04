@@ -97,7 +97,7 @@ class SessionManagerService
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout_sec) {
       session_manager_service_->CleanupChildren(
-          base::TimeDelta::FromSeconds(timeout_sec), "");
+          base::TimeDelta::FromSeconds(timeout_sec), ExitCode::SUCCESS);
     }
 
     // Cause handling of faked-out exit of a child process.
@@ -204,7 +204,7 @@ class SessionManagerService
   void SetExitAndScheduleShutdown(ExitCode code);
 
   // Terminate all children, with increasing prejudice.
-  void CleanupChildren(base::TimeDelta timeout, const std::string& reason);
+  void CleanupChildren(base::TimeDelta timeout, ExitCode code);
 
   // Callback when receiving a termination signal.
   bool OnTerminationSignal(const struct signalfd_siginfo& info);

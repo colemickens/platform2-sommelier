@@ -627,6 +627,10 @@
         Upgrades an existing ARC mini-container to a fully featured container.
         This method is only available if the board supports ARC.  This method
         gets invoked by Chrome.
+
+        This reports an error if Upgrade is somehow failed. If ARC mini
+        container is already running, the ArcInstanceStopped signal will be
+        delivered with error info.
     -->
     <method name="UpgradeArcContainer">
       <arg type="ay" name="request" direction="in" />
@@ -646,15 +650,15 @@
 
     <!--
         ArcInstanceStopped:
-        @clean: True if the stopping instance is initiated intentionally. False
-                otherwise, like unexpected instance crash.
+        @reason: The value of ArcContainerStopReason.
         @container_instance_id: opaque identifier of the stopped container.
                 See also StartArcInstance.
 
-        Sent when ARC instance is stopped. Maybe clean shutdown, or crash.
+        Sent when ARC instance is stopped. Maybe clean shutdown, upgrade
+        failure, or crash.
     -->
     <signal name="ArcInstanceStopped">
-      <arg type="b" name="clean" />
+      <arg type="u" name="reason" />
       <arg type="s" name="container_instance_id" />
     </signal>
 
