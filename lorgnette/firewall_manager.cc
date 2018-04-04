@@ -130,12 +130,10 @@ void FirewallManager::RequestUdpPortAccess(uint16_t port) {
   bool allowed = false;
   // Pass the read end of the pipe to permission_broker, for it to monitor this
   // process.
-  dbus::FileDescriptor fd(lifeline_read_fd_);
-  fd.CheckValidity();
   brillo::ErrorPtr error;
   if (!permission_broker_proxy_->RequestUdpPortAccess(port,
                                                       interface_,
-                                                      fd,
+                                                      lifeline_read_fd_,
                                                       &allowed,
                                                       &error)) {
     LOG(ERROR) << "Failed to request UDP port access: "

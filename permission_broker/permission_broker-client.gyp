@@ -11,6 +11,7 @@
             'proxy_output_file': 'include/permission_broker/dbus-proxies.h',
             'mock_output_file': 'include/permission_broker/dbus-proxy-mocks.h',
             'proxy_path_in_mocks': 'permission_broker/dbus-proxies.h',
+            'new_fd_bindings': 1,
           },
           'sources': [
             'dbus_bindings/org.chromium.PermissionBroker.xml',
