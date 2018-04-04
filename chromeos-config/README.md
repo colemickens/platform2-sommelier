@@ -948,7 +948,7 @@ into SPI flash.
 ### identity
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| customization-id | string | ```^[A-Z|_]*$``` | False | Customization ID set in the VPD during manufacturing. |
+| customization-id | string | ```^[a-z|A-Z|_|0-9]*$``` | False | Customization ID set in the VPD during manufacturing. |
 | platform-name | string |  | False | Indicates the platform name for this platform. This is reported by 'mosys platform name'. It is typically the family name with the first letter capitalized. |
 | sku-id | integer |  | False | SKU/Board strapping pins configured during board manufacturing. |
 | smbios-name-match | string |  | False | Firmware name built into the firmware and reflected back out in the SMBIOS tables. |

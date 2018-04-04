@@ -10,6 +10,7 @@ for CLI access to this library.
 
 from __future__ import print_function
 
+from collections import OrderedDict
 import json
 
 from cros_config_schema import TransformConfig
@@ -28,7 +29,7 @@ class DeviceConfigJson(DeviceConfig):
 
   def __init__(self, config):
     self._config = config
-    self.firmware_info = None
+    self.firmware_info = OrderedDict()
 
   def GetName(self):
     return str(self._config['name'])
@@ -121,33 +122,17 @@ class CrosConfigJson(CrosConfigBaseImpl):
     # side to cleanup, but for now, we're sticking with it in order to
     # finish migration to YAML.
     fw_by_model = {}
-    names = set()
+    processed = set()
     for config in self._configs:
       fw = config.GetFirmwareConfig()
-      if fw:
+      identity = str(config.GetProperties('/identity'))
+      if fw and identity not in processed:
         fw_str = str(fw)
         shared_model = None
         if fw_str in fw_by_model:
           shared_model = fw_by_model[fw_str]
         else:
           fw_by_model[fw_str] = config.GetName()
-
-        fw_signer_config = config.GetProperties('/firmware-signing')
-        key_id = config.GetValue(fw_signer_config, 'key-id')
-        sig_in_customization_id = config.GetValue(fw_signer_config,
-                                                  'sig-id-in-customization-id')
-        have_image = True
-        name = config.GetName()
-        if sig_in_customization_id:
-          sig_id = 'sig-id-in-customization-id'
-          name = '%s-%s' % (name, name)
-          index = 0
-          while name in names:
-            name = '%s%s' % (name, str(index))
-          names.add(name)
-          have_image = False
-        else:
-          sig_id = name
 
         build_config = config.GetProperties('/firmware/build-targets')
         if build_config:
@@ -160,9 +145,24 @@ class CrosConfigJson(CrosConfigBaseImpl):
         main_image_uri = config.GetValue(fw, 'main-image')
         main_rw_image_uri = config.GetValue(fw, 'main-rw-image')
         ec_image_uri = config.GetValue(fw, 'ec-image')
-        pd_image_uri = config.GetValue(fw, 'pd-image')
+        pd_image_uri = config.GetValue(fw, 'pd-image') or ''
         extra = config.GetValue(fw, 'extra') or []
         tools = config.GetValue(fw, 'tools') or []
+
+        fw_signer_config = config.GetProperties('/firmware-signing')
+        key_id = config.GetValue(fw_signer_config, 'key-id')
+        sig_in_customization_id = config.GetValue(fw_signer_config,
+                                                  'sig-id-in-customization-id')
+
+        have_image = True
+        name = config.GetName()
+
+        if sig_in_customization_id:
+          key_id = ''
+          sig_id = 'sig-id-in-customization-id'
+        else:
+          sig_id = name
+          processed.add(identity)
 
         info = FirmwareInfo(
             name,
@@ -179,7 +179,22 @@ class CrosConfigJson(CrosConfigBaseImpl):
             create_bios_rw_image,
             tools,
             sig_id)
-        config.firmware_info = {name: info}
+        config.firmware_info[name] = info
+
+        if sig_in_customization_id:
+          for config in self._configs:
+            if config.GetName() == name:
+              identity = str(config.GetProperties('/identity'))
+              processed.add(identity)
+              fw_signer_config = config.GetProperties('/firmware-signing')
+              key_id = config.GetValue(fw_signer_config, 'key-id')
+              whitelabel_name = '%s-%s' % (name, config.GetProperty(
+                  '/identity', 'customization-id'))
+              config.firmware_info[whitelabel_name] = info._replace(
+                  model=whitelabel_name,
+                  key_id=key_id,
+                  have_image=False,
+                  sig_id=whitelabel_name)
 
   def GetDeviceConfigs(self):
     return self._configs

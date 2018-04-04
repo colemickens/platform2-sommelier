@@ -53,14 +53,14 @@ some_base_config: &some_base_config
     ec-image: "bcs://Some_EC.1111.11.1.tbz2"
     main-image: "bcs://Some.1111.11.1.tbz2"
     main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
-  firmware-signing:
-    key-id: "{{$key-id}}"
 
 some_config: &some_config
   <<: *some_base_config
   audio:
     <<: *audio
     $topology-name: "some"
+  firmware-signing:
+    key-id: "{{$key-id}}"
   identity:
     platform-name: "Some"
     smbios-name-match: "Some"
@@ -74,6 +74,9 @@ some_whitelabel_config: &some_whitelabel_config
     smbios-name-match: "Some"
     sku-id: "{{$sku-id}}"
     customization-id: "{{$customization-id}}"
+  firmware-signing:
+    key-id: "{{$key-id}}"
+    sig-id-in-customization-id: True
 
 some_touch_config: &some_touch_config
   <<: *touch
@@ -169,11 +172,11 @@ chromeos:
         - $brand-code: "WLBA"
           $key-id: "WHITELABEL1"
           $wallpaper: "wallpaper-wl1"
-          $customization-id: "WHITELABELA"
+          $customization-id: "whitelabel1"
         - $brand-code: "WLBB"
           $key-id: "WHITELABEL2"
           $wallpaper: "wallpaper-wl2"
-          $customization-id: "WHITELABELB"
+          $customization-id: "whitelabel2"
       skus:
         - $sku-id: 8
           config:

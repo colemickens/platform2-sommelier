@@ -275,10 +275,11 @@
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         }, 
         "firmware-signing": {
-          "key-id": "WHITELABEL1"
+          "key-id": "WHITELABEL1", 
+          "sig-id-in-customization-id": true
         }, 
         "identity": {
-          "customization-id": "WHITELABELA", 
+          "customization-id": "whitelabel1", 
           "platform-name": "Some", 
           "sku-id": 8, 
           "smbios-name-match": "Some"
@@ -329,10 +330,11 @@
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         }, 
         "firmware-signing": {
-          "key-id": "WHITELABEL1"
+          "key-id": "WHITELABEL1", 
+          "sig-id-in-customization-id": true
         }, 
         "identity": {
-          "customization-id": "WHITELABELA", 
+          "customization-id": "whitelabel1", 
           "platform-name": "Some", 
           "sku-id": 9, 
           "smbios-name-match": "Some"
@@ -382,10 +384,11 @@
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         }, 
         "firmware-signing": {
-          "key-id": "WHITELABEL2"
+          "key-id": "WHITELABEL2", 
+          "sig-id-in-customization-id": true
         }, 
         "identity": {
-          "customization-id": "WHITELABELB", 
+          "customization-id": "whitelabel2", 
           "platform-name": "Some", 
           "sku-id": 8, 
           "smbios-name-match": "Some"
@@ -436,10 +439,11 @@
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         }, 
         "firmware-signing": {
-          "key-id": "WHITELABEL2"
+          "key-id": "WHITELABEL2", 
+          "sig-id-in-customization-id": true
         }, 
         "identity": {
-          "customization-id": "WHITELABELB", 
+          "customization-id": "whitelabel2", 
           "platform-name": "Some", 
           "sku-id": 9, 
           "smbios-name-match": "Some"

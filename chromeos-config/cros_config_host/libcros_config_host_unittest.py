@@ -200,26 +200,21 @@ class CommonTests(object):
                    symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin')])
     touch_files = config.GetTouchFirmwareFiles()
     expected = set(
-        [TouchFile(
-            source='some_stylus_vendor/another-version.hex',
-            dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
-            symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
-          TouchFile(
-              source='some_stylus_vendor/some-version.hex',
-              dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
-              symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
-          TouchFile(
-              source='some_touch_vendor/some-pid_some-version.bin',
-              dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
-              symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
-          TouchFile(
-              source='some_touch_vendor/some-other-pid_some-other-version.bin',
-              dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
-              symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin'),
-          TouchFile(
-              source='some_touch_vendor/some-pid_some-version.bin',
-              dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
-              symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
+        [TouchFile(source='some_stylus_vendor/another-version.hex',
+                   dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
+                   symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
+         TouchFile(source='some_stylus_vendor/some-version.hex',
+                   dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
+                   symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
+         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
+                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
+         TouchFile(source='some_touch_vendor/some-other-pid_some-other-version.bin',
+                   dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
+                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin'),
+         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
+                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
     self.assertEqual(set(touch_files), expected)
 
   def testGetAudioFiles(self):
@@ -248,6 +243,90 @@ class CommonTests(object):
                 dest='/usr/share/alsa/ucm/a-card.some/a-card.some.conf')]
 
     self.assertEqual(audio_files, sorted(expected))
+
+  def testFirmware(self):
+    """Test access to firmware information"""
+    config = CrosConfig(self.filepath)
+    self.assertEqual('updater4.sh', config.GetFirmwareScript())
+
+    expected = OrderedDict(
+        [('another',
+          FirmwareInfo(model='another',
+                       shared_model=None,
+                       key_id='ANOTHER',
+                       have_image=True,
+                       bios_build_target='another',
+                       ec_build_target='another',
+                       main_image_uri='bcs://Another.1111.11.1.tbz2',
+                       main_rw_image_uri='bcs://Another_RW.1111.11.1.tbz2',
+                       ec_image_uri='bcs://Another_EC.1111.11.1.tbz2',
+                       pd_image_uri='',
+                       extra=[],
+                       create_bios_rw_image=False,
+                       tools=[],
+                       sig_id='another')),
+         ('some',
+          FirmwareInfo(model='some',
+                       shared_model='some',
+                       key_id='SOME',
+                       have_image=True,
+                       bios_build_target='some',
+                       ec_build_target='some',
+                       main_image_uri='bcs://Some.1111.11.1.tbz2',
+                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
+                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
+                       pd_image_uri='',
+                       extra=[],
+                       create_bios_rw_image=False,
+                       tools=[],
+                       sig_id='some')),
+         ('whitelabel',
+          FirmwareInfo(model='whitelabel',
+                       shared_model='some',
+                       key_id='',
+                       have_image=True,
+                       bios_build_target='some',
+                       ec_build_target='some',
+                       main_image_uri='bcs://Some.1111.11.1.tbz2',
+                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
+                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
+                       pd_image_uri='',
+                       extra=[],
+                       create_bios_rw_image=False,
+                       tools=[],
+                       sig_id='sig-id-in-customization-id')),
+         ('whitelabel-whitelabel1',
+          FirmwareInfo(model='whitelabel-whitelabel1',
+                       shared_model='some',
+                       key_id='WHITELABEL1',
+                       have_image=False,
+                       bios_build_target='some',
+                       ec_build_target='some',
+                       main_image_uri='bcs://Some.1111.11.1.tbz2',
+                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
+                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
+                       pd_image_uri='',
+                       extra=[],
+                       create_bios_rw_image=False,
+                       tools=[],
+                       sig_id='whitelabel-whitelabel1')),
+         ('whitelabel-whitelabel2',
+          FirmwareInfo(model='whitelabel-whitelabel2',
+                       shared_model='some',
+                       key_id='WHITELABEL2',
+                       have_image=False,
+                       bios_build_target='some',
+                       ec_build_target='some',
+                       main_image_uri='bcs://Some.1111.11.1.tbz2',
+                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
+                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
+                       pd_image_uri='',
+                       extra=[],
+                       create_bios_rw_image=False,
+                       tools=[],
+                       sig_id='whitelabel-whitelabel2'))])
+    result = config.GetFirmwareInfo()
+    self.assertEqual(result, expected)
 
 
 class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
@@ -390,90 +469,6 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
       CrosConfig(config_format=FORMAT_FDT)
     self.assertIn('fred/usr/share/chromeos-config/config.dtb',
                   str(e.exception))
-
-  def testFirmware(self):
-    """Test access to firmware information"""
-    config = CrosConfig(self.filepath)
-    self.assertEqual('updater4.sh', config.GetFirmwareScript())
-
-    expected = OrderedDict(
-        [('another',
-          FirmwareInfo(model='another',
-                       shared_model=None,
-                       key_id='ANOTHER',
-                       have_image=True,
-                       bios_build_target='another',
-                       ec_build_target='another',
-                       main_image_uri='bcs://Another.1111.11.1.tbz2',
-                       main_rw_image_uri='bcs://Another_RW.1111.11.1.tbz2',
-                       ec_image_uri='bcs://Another_EC.1111.11.1.tbz2',
-                       pd_image_uri='',
-                       extra=[],
-                       create_bios_rw_image=False,
-                       tools=[],
-                       sig_id='another')),
-         ('some',
-          FirmwareInfo(model='some',
-                       shared_model='some',
-                       key_id='SOME',
-                       have_image=True,
-                       bios_build_target='some',
-                       ec_build_target='some',
-                       main_image_uri='bcs://Some.1111.11.1.tbz2',
-                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
-                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
-                       pd_image_uri='',
-                       extra=[],
-                       create_bios_rw_image=False,
-                       tools=[],
-                       sig_id='some')),
-         ('whitelabel',
-          FirmwareInfo(model='whitelabel',
-                       shared_model='some',
-                       key_id='',
-                       have_image=True,
-                       bios_build_target='some',
-                       ec_build_target='some',
-                       main_image_uri='bcs://Some.1111.11.1.tbz2',
-                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
-                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
-                       pd_image_uri='',
-                       extra=[],
-                       create_bios_rw_image=False,
-                       tools=[],
-                       sig_id='sig-id-in-customization-id')),
-         ('whitelabel-whitelabel1',
-          FirmwareInfo(model='whitelabel-whitelabel1',
-                       shared_model='some',
-                       key_id='WHITELABEL1',
-                       have_image=False,
-                       bios_build_target='some',
-                       ec_build_target='some',
-                       main_image_uri='bcs://Some.1111.11.1.tbz2',
-                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
-                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
-                       pd_image_uri='',
-                       extra=[],
-                       create_bios_rw_image=False,
-                       tools=[],
-                       sig_id='whitelabel-whitelabel1')),
-         ('whitelabel-whitelabel2',
-          FirmwareInfo(model='whitelabel-whitelabel2',
-                       shared_model='some',
-                       key_id='WHITELABEL2',
-                       have_image=False,
-                       bios_build_target='some',
-                       ec_build_target='some',
-                       main_image_uri='bcs://Some.1111.11.1.tbz2',
-                       main_rw_image_uri='bcs://Some_RW.1111.11.1.tbz2',
-                       ec_image_uri='bcs://Some_EC.1111.11.1.tbz2',
-                       pd_image_uri='',
-                       extra=[],
-                       create_bios_rw_image=False,
-                       tools=[],
-                       sig_id='whitelabel-whitelabel2'))])
-    result = config.GetFirmwareInfo()
-    self.assertEqual(result, expected)
 
 
 class CrosConfigHostTestYaml(unittest.TestCase, CommonTests):
