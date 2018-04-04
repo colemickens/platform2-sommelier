@@ -46,6 +46,10 @@ const char kCrosFpPath[] = "/dev/cros_fp";
 
 const int kLastTemplate = -1;
 
+// Align template transfers on 128-bit boundary, so it's easier/faster for
+// crypto.
+const uint32_t kTemplateChunkAlignMask = ~((128 / 8) - 1);
+
 // Upper bound of the host command packet transfer size.
 const int kMaxPacketSize = 544;
 
@@ -234,7 +238,8 @@ bool CrosFpBiometricsManager::CrosFpDevice::FpFrame(
   uint8_t* payload = cmd.Resp()[0];
   auto pos = frame->begin();
   while (pos < frame->end()) {
-    uint32_t len = std::min(max_read_size_, frame->end() - pos);
+    uint32_t len =
+        std::min(max_read_size_, frame->end() - pos) & kTemplateChunkAlignMask;
     cmd.SetReq({.offset = offset, .size = len});
     cmd.SetRespSize(len);
     if (!cmd.Run(cros_fd_.get())) {
@@ -290,6 +295,12 @@ bool CrosFpBiometricsManager::CrosFpDevice::Init() {
   LOG(INFO) << "  Template Data Size    : " << info_.template_size;
   LOG(INFO) << "  Max number of fingers : " << info_.template_max;
 
+  if (info_.template_size & ~kTemplateChunkAlignMask) {
+    LOG(ERROR) << "The template size (" << info_.template_size
+               << ") is not aligned on a proper boundary.";
+    return false;
+  }
+
   if (!MessageLoopForIO::current()->WatchFileDescriptor(
           cros_fd_.get(), true, MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
           this)) {
@@ -343,7 +354,7 @@ bool CrosFpBiometricsManager::CrosFpDevice::UploadTemplate(
   auto pos = tmpl.begin();
   while (pos < tmpl.end()) {
     size_t remaining = tmpl.end() - pos;
-    uint32_t tlen = std::min(max_chunk, remaining);
+    uint32_t tlen = std::min(max_chunk, remaining) & kTemplateChunkAlignMask;
     req->offset = pos - tmpl.begin();
     req->size = tlen | (remaining == tlen ? FP_TEMPLATE_COMMIT : 0);
     std::copy(pos, pos + tlen, req->data);
