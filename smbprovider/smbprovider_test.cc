@@ -1018,7 +1018,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithInvalidProto) {
   smbprovider_->ReadFile(empty_blob, &err, &fd);
 
   EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
-  EXPECT_GE(0, fd.get());
+  EXPECT_LE(0, fd.get());
 }
 
 // ReadFile fails when passed an invalid file descriptor.
@@ -1030,7 +1030,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithBadFD) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_GE(0, fd.get());
+  EXPECT_LE(0, fd.get());
 }
 
 // ReadFile fails when passed an unopened file descriptor.
@@ -1042,7 +1042,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithUnopenedFD) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_GE(0, fd.get());
+  EXPECT_LE(0, fd.get());
 }
 
 // ReadFile fails when passed a negative offset.
@@ -1058,7 +1058,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithNegativeOffset) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_GE(0, fd.get());
+  EXPECT_LE(0, fd.get());
 }
 
 // ReadFile fails when passed a negative length.
@@ -1074,7 +1074,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithNegativeLength) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_GE(0, fd.get());
+  EXPECT_LE(0, fd.get());
 }
 
 // ReadFile returns a valid file descriptor on success.
@@ -1086,7 +1086,7 @@ TEST_F(SmbProviderTest, ReadFileReturnsValidFileDescriptor) {
   brillo::dbus_utils::FileDescriptor fd;
   ReadFile(mount_id, file_id, 0 /* offset */, file_data.size(), &fd);
 
-  EXPECT_LT(0, fd.get());
+  EXPECT_LE(0, fd.get());
   CloseFileHelper(mount_id, file_id);
 }
 

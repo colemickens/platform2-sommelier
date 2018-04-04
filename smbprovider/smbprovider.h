@@ -341,6 +341,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                              bool is_directory,
                              DeleteListProto* delete_list);
 
+  // Generates an empty file with a file descriptor for transport over D-Bus.
+  // This is needed since FileDescriptor causes a crash while being transported
+  // if it is not valid.
+  brillo::dbus_utils::FileDescriptor GenerateEmptyFile();
+
   // Returns the relative path to |entry_path| by removing the server path
   // associated with |mount_id|.
   std::string GetRelativePath(int32_t mount_id, const std::string& entry_path);

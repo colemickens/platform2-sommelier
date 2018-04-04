@@ -23,6 +23,10 @@ class TempFileManager {
   // Returns the path of the temporary directory.
   const base::FilePath& GetTempDirectoryPath() const;
 
+  // Creates a temporary file in temp_dir_ path. This also calls unlink() on the
+  // created file. Returns a file descriptor which will be invalid on failure.
+  base::ScopedFD CreateTempFile();
+
   // Creates a temporary file in temp_dir_ path and writes in |data|. Before
   // returning, this seeks to the beginning of the file in preparation for
   // reading. This also calls unlink() on the created file. Returns a file
@@ -30,10 +34,6 @@ class TempFileManager {
   base::ScopedFD CreateTempFile(const std::vector<uint8_t>& data);
 
  private:
-  // Creates a temporary file in temp_dir_ path. This also calls unlink() on the
-  // created file. Returns a file descriptor which will be invalid on failure.
-  base::ScopedFD CreateTempFile();
-
   // Scoped class that handles deletion of the temporary directory.
   base::ScopedTempDir temp_dir_;
 

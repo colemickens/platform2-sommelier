@@ -246,10 +246,14 @@ void SmbProvider::ReadFile(const ProtoBlob& options_blob,
 
   // The functions below will set the error if they fail.
   *error_code = static_cast<int32_t>(ERROR_OK);
-  ParseOptionsProto(options_blob, &options, error_code) &&
-      Seek(options, error_code) &&
-      ReadFileIntoBuffer(options, error_code, &buffer) &&
-      WriteTempFile(options, buffer, error_code, temp_fd);
+  bool success = ParseOptionsProto(options_blob, &options, error_code) &&
+                 Seek(options, error_code) &&
+                 ReadFileIntoBuffer(options, error_code, &buffer) &&
+                 WriteTempFile(options, buffer, error_code, temp_fd);
+
+  if (!success) {
+    *temp_fd = GenerateEmptyFile();
+  }
 }
 
 int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
@@ -854,6 +858,7 @@ void SmbProvider::GetDeleteList(const ProtoBlob& options_blob,
   std::string full_path;
   GetDeleteListOptionsProto options;
   if (!ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
+    *temp_fd = GenerateEmptyFile();
     return;
   }
 
@@ -861,6 +866,7 @@ void SmbProvider::GetDeleteList(const ProtoBlob& options_blob,
   int32_t get_type_result;
   if (!GetEntryType(full_path, &get_type_result, &is_directory)) {
     LogAndSetError(options, GetErrorFromErrno(get_type_result), error_code);
+    *temp_fd = GenerateEmptyFile();
     return;
   }
 
@@ -869,6 +875,7 @@ void SmbProvider::GetDeleteList(const ProtoBlob& options_blob,
       GenerateDeleteList(options, full_path, is_directory, &delete_list);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    *temp_fd = GenerateEmptyFile();
     return;
   }
 
@@ -890,6 +897,7 @@ bool SmbProvider::WriteDeleteListToTempFile(
   *error_code =
       static_cast<int32_t>(SerializeProtoToBlob(delete_list, &buffer));
   if (*error_code != ERROR_OK) {
+    *temp_fd = GenerateEmptyFile();
     return false;
   }
 
@@ -928,6 +936,13 @@ int32_t SmbProvider::GenerateDeleteList(
   // while-loop is only exited from if there's an iterator error.
   DCHECK_NE(0, it_result);
   return it_result;
+}
+
+brillo::dbus_utils::FileDescriptor SmbProvider::GenerateEmptyFile() {
+  base::ScopedFD temp_fd = temp_file_manager_.CreateTempFile();
+  DCHECK(temp_fd.is_valid());
+
+  return temp_fd.release();
 }
 
 std::string SmbProvider::GetRelativePath(int32_t mount_id,
