@@ -55,6 +55,12 @@ namespace {
 // looked up.
 constexpr char kCrosConfigPropertiesPath[] = "/arc/build-properties";
 
+// Version element prefix in packages.xml and packages_cache.xml files.
+constexpr char kElementVersion[] = "<version ";
+
+// Fingerprint attribute prefix in packages.xml and packages_cache.xml files.
+constexpr char kAttributeFingerprint[] = " fingerprint=\"";
+
 // Maximum length of an Android property value.
 constexpr int kAndroidMaxPropertyLength = 91;
 
@@ -123,11 +129,9 @@ bool FindProperty(const std::string& line_prefix_to_find,
 // with a volumeUuid attribute which means that the line is for an external
 // storage. What we need is a fingerprint for an internal storage.
 bool FindFingerprint(const std::string& line, std::string* out_fingerprint) {
-  constexpr char kElementVersion[] = "<version ";
   constexpr char kAttributeVolumeUuid[] = " volumeUuid=\"";
   constexpr char kAttributeSdkVersion[] = " sdkVersion=\"";
   constexpr char kAttributeDatabaseVersion[] = " databaseVersion=\"";
-  constexpr char kAttributeFingerprint[] = " fingerprint=\"";
 
   // Parsing an XML this way is not very clean but in this case, it works (and
   // fast.) Android's packages.xml is written in com.android.server.pm.Settings'
@@ -978,6 +982,41 @@ bool ExpandPropertyContents(const std::string& content,
 
   *expanded_content = new_properties;
   return true;
+}
+
+void SetFingerprintsForPackagesCache(const std::string& content,
+                                     const std::string& fingerprint,
+                                     std::string* new_content) {
+  new_content->clear();
+
+  const std::vector<std::string> lines = base::SplitString(
+      content, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  int update_count = 0;
+  for (std::string line : lines) {
+    if (line.find(kElementVersion) == std::string::npos) {
+      *new_content += line + "\n";
+      continue;
+    }
+    size_t pos = line.find(kAttributeFingerprint);
+    CHECK_NE(std::string::npos, pos) << line;
+    pos += strlen(kAttributeFingerprint);
+    const size_t end_pos = line.find("\"", pos);
+    CHECK_NE(std::string::npos, end_pos) << line;
+
+    const std::string old_fingerprint = line.substr(pos, end_pos - pos);
+
+    LOG(INFO) << "Updated fingerprint " << old_fingerprint << " -> "
+              << fingerprint;
+    *new_content += line.substr(0, pos);
+    *new_content += fingerprint;
+    *new_content += line.substr(end_pos);
+    *new_content += "\n";
+    ++update_count;
+  }
+  // Two <version> elements in packages xml
+  CHECK_EQ(2, update_count) << content;
 }
 
 std::string TruncateAndroidProperty(const std::string& line) {

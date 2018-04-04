@@ -944,4 +944,32 @@ TEST(ArcSetupUtil, TestCopyWithAttributes) {
   EXPECT_FALSE(CopyWithAttributes(from_fifo, from_sub_dir1.Append("fifo2")));
 }
 
+TEST(ArcSetupUtil, TestSetFingerprintForPackagesCache) {
+  constexpr char kFingerintBefore[] =
+      "<packages>\n"
+      "    <version sdkVersion=\"25\" databaseVersion=\"3\" "
+      "fingerprint=\"google/coral/{product}_cheets:7.1.1/R67-10545.0.0/"
+      "4697494:user/release-keys\" />\n"
+      "    <version volumeUuid=\"primary_physical\" sdkVersion=\"25\" "
+      "databaseVersion=\"3\" fingerprint=\"google/coral/{product}_cheets:"
+      "7.1.1/R67-10545.0.0/4697494:user/release-keys\" />\n"
+      "</packages>\n";
+  constexpr char kFingerintAfter[] =
+      "<packages>\n"
+      "    <version sdkVersion=\"25\" databaseVersion=\"3\" "
+      "fingerprint=\"google/coral/coral_cheets:7.1.1/R67-10545.0.0/"
+      "4697494:user/release-keys\" />\n"
+      "    <version volumeUuid=\"primary_physical\" sdkVersion=\"25\" "
+      "databaseVersion=\"3\" fingerprint=\"google/coral/coral_cheets:"
+      "7.1.1/R67-10545.0.0/4697494:user/release-keys\" />\n"
+      "</packages>\n";
+  std::string new_content;
+  SetFingerprintsForPackagesCache(
+      kFingerintBefore,
+      "google/coral/coral_cheets:7.1.1/R67-10545.0.0/4697494:user/release-keys",
+      &new_content);
+  EXPECT_EQ(strlen(kFingerintAfter), new_content.length());
+  EXPECT_EQ(kFingerintAfter, new_content);
+}
+
 }  // namespace arc

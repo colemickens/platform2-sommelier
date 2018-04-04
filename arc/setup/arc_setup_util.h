@@ -275,6 +275,11 @@ bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
                             std::string* expanded_content);
 
+// Replaces fingerprint in packages cache xml file.
+void SetFingerprintsForPackagesCache(const std::string& content,
+                                     const std::string& fingerprint,
+                                     std::string* new_content);
+
 // Truncates the value side of an Android key=val property line, including
 // handling the special case of build fingerprint.
 std::string TruncateAndroidProperty(const std::string& line);

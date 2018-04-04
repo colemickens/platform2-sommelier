@@ -479,7 +479,17 @@ bool ArcSetup::SetUpPackagesCache() {
 
   EXIT_IF(!InstallDirectory(0775, kSystemUid, kSystemGid,
                             packages_cache.DirName()));
-  EXIT_IF(!base::CopyFile(source_cache, packages_cache));
+
+  // To support non-unibuild boards replace fingeprint in cache with current
+  // system fingerprint.
+  std::string content;
+  std::string new_content;
+  EXIT_IF(!base::ReadFileToString(source_cache, &content));
+  SetFingerprintsForPackagesCache(content, GetSystemImageFingerprint(),
+                                  &new_content);
+
+  EXIT_IF(!base::WriteFile(packages_cache, new_content.c_str(),
+                           new_content.length()));
   EXIT_IF(!Chown(kSystemUid, kSystemGid, packages_cache));
   EXIT_IF(!base::SetPosixFilePermissions(packages_cache, 0660));
 
