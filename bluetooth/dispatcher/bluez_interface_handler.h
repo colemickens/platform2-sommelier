@@ -19,8 +19,8 @@ class BluezInterfaceHandler : public InterfaceHandler {
  public:
   BluezInterfaceHandler() = default;
 
-  PropertyFactoryMap* GetPropertyFactoryMap() override {
-    return &property_factory_map_;
+  const PropertyFactoryMap& GetPropertyFactoryMap() const override {
+    return property_factory_map_;
   }
 
  protected:

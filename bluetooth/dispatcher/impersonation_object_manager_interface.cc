@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/stl_util.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/dbus.h>
@@ -52,13 +53,11 @@ namespace bluetooth {
 
 ImpersonationObjectManagerInterface::ImpersonationObjectManagerInterface(
     const scoped_refptr<dbus::Bus>& bus,
-    dbus::ObjectManager* object_manager,
     ExportedObjectManagerWrapper* exported_object_manager_wrapper,
     std::unique_ptr<InterfaceHandler> interface_handler,
     const std::string& interface_name)
     : ObjectManagerInterfaceMultiplexer(interface_name),
       bus_(bus),
-      object_manager_(object_manager),
       exported_object_manager_wrapper_(exported_object_manager_wrapper),
       interface_handler_(std::move(interface_handler)),
       weak_ptr_factory_(this) {
@@ -82,7 +81,7 @@ dbus::PropertySet* ImpersonationObjectManagerInterface::CreateProperties(
                  weak_ptr_factory_.GetWeakPtr(), service_name, object_path,
                  interface_name));
 
-  for (const auto& kv : *interface_handler_->GetPropertyFactoryMap())
+  for (const auto& kv : interface_handler_->GetPropertyFactoryMap())
     property_set->RegisterProperty(kv.first, kv.second->CreateProperty());
 
   // When CreateProperties is called that means the source service exports
@@ -125,6 +124,14 @@ void ImpersonationObjectManagerInterface::ObjectRemoved(
                                                             interface_name);
 }
 
+dbus::ObjectManager* ImpersonationObjectManagerInterface::GetObjectManager(
+    const std::string& service_name) {
+  auto it = object_managers().find(service_name);
+  CHECK(it != object_managers().end())
+      << "ObjectManager of service " << service_name << " doesn't exist";
+  return it->second;
+}
+
 void ImpersonationObjectManagerInterface::OnPropertyChanged(
     const std::string& service_name,
     const dbus::ObjectPath& object_path,
@@ -135,7 +142,7 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
 
   PropertyFactoryBase* property_factory =
       interface_handler_->GetPropertyFactoryMap()
-          ->find(property_name)
+          .find(property_name)
           ->second.get();
 
   // When property value change is detected from the impersonated service,
@@ -146,7 +153,8 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
       ->CopyPropertyToExportedProperty(
           property_name,
           static_cast<PropertySet*>(
-              object_manager_->GetProperties(object_path, interface_name))
+              GetObjectManager(service_name)
+                  ->GetProperties(object_path, interface_name))
               ->GetProperty(property_name),
           property_factory);
 }
@@ -158,6 +166,7 @@ void ImpersonationObjectManagerInterface::HandlePropertiesChanged(
 }
 
 void ImpersonationObjectManagerInterface::HandleForwardMessage(
+    scoped_refptr<dbus::Bus> bus,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   // Here we forward a D-Bus message to another service.
@@ -166,9 +175,14 @@ void ImpersonationObjectManagerInterface::HandleForwardMessage(
   std::unique_ptr<dbus::MethodCall> method_call_copy(
       dbus::MethodCall::FromRawMessage(
           dbus_message_copy(method_call->raw_message())));
+  // Since we don't do any real multiplexing yet, we assume that there is only
+  // one service to impersonate, so we get the service name by taking the first
+  // and only one.
+  CHECK(!object_managers().empty()) << "There is no service to impersonate";
+  std::string service_name = object_managers().begin()->first;
   // TODO(sonnysasaka): Migrate to CallMethodWithErrorResponse after libchrome
   // is uprevved.
-  object_manager_->GetObjectProxy(method_call->GetPath())
+  bus->GetObjectProxy(service_name, method_call->GetPath())
       ->CallMethodWithErrorCallback(
           method_call_copy.get(), dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
           base::Bind(&OnMessageForwardResponse, method_call, response_sender),
@@ -186,8 +200,9 @@ void ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers(
       dbus::kPropertiesGet, base::Unretained(property_set),
       &brillo::dbus_utils::ExportedPropertySet::HandleGet);
   prop_interface->AddRawMethodHandler(
-      dbus::kPropertiesSet, weak_ptr_factory_.GetWeakPtr(),
-      &ImpersonationObjectManagerInterface::HandleForwardMessage);
+      dbus::kPropertiesSet,
+      base::Bind(&ImpersonationObjectManagerInterface::HandleForwardMessage,
+                 weak_ptr_factory_.GetWeakPtr(), bus_));
 
   // Suppresses unhandled method warning by installing a no-op handler for
   // PropertiesChanged signals.

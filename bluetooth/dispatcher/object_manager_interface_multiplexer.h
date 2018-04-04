@@ -58,8 +58,17 @@ class ObjectManagerInterfaceMultiplexer {
   explicit ObjectManagerInterfaceMultiplexer(const std::string& interface_name);
   virtual ~ObjectManagerInterfaceMultiplexer() = default;
 
+  // Starts listening to ObjectManager events from |object_manager|.
+  // |object_manager| is not owned and callers should make sure it outlives
+  // this object.
   void RegisterToObjectManager(dbus::ObjectManager* object_manager,
                                const std::string& service_name);
+
+  // Returns a map of service name -> dbus::ObjectManager* that have been
+  // registered via |RegisterToObjectManager|.
+  const std::map<std::string, dbus::ObjectManager*>& object_managers() const {
+    return object_managers_;
+  }
 
   // CreateProperties, ObjectAdded, and ObjectRemoved are like
   // dbus::ObjectManager::Interface methods, but also accepts |service_name|
@@ -88,6 +97,9 @@ class ObjectManagerInterfaceMultiplexer {
   // The dbus::ObjectManager::Interface forwarders.
   std::map<std::string, std::unique_ptr<ForwardingObjectManagerInterface>>
       object_manager_interfaces_;
+
+  // The list of dbus::ObjectManager* corresponding to their service name.
+  std::map<std::string, dbus::ObjectManager*> object_managers_;
 
   DISALLOW_COPY_AND_ASSIGN(ObjectManagerInterfaceMultiplexer);
 };

@@ -35,7 +35,7 @@ class InterfaceHandler {
   // that describes what properties this interface has and what type for each
   // of the properties.
   // The returned pointer is owned by this object, not owned by clients.
-  virtual PropertyFactoryMap* GetPropertyFactoryMap() = 0;
+  virtual const PropertyFactoryMap& GetPropertyFactoryMap() const = 0;
 };
 
 // Impersonates other services' object manager interface to another exported
@@ -49,7 +49,6 @@ class ImpersonationObjectManagerInterface
   // clients should make sure that those pointers outlive this object.
   ImpersonationObjectManagerInterface(
       const scoped_refptr<dbus::Bus>& bus,
-      dbus::ObjectManager* object_manager,
       ExportedObjectManagerWrapper* exported_object_manager_wrapper,
       std::unique_ptr<InterfaceHandler> interface_handler,
       const std::string& interface_name);
@@ -71,6 +70,10 @@ class ImpersonationObjectManagerInterface
                      const std::string& interface_name) override;
 
  private:
+  // Returns the ObjectManager of the service |service_name|. The returned
+  // pointer is owned by |bus_|.
+  dbus::ObjectManager* GetObjectManager(const std::string& service_name);
+
   // Called when there is a value change of a property on the impersonated
   // interface.
   void OnPropertyChanged(const std::string& service_name,
@@ -85,6 +88,7 @@ class ImpersonationObjectManagerInterface
 
   // Forwards any message to the impersonated service.
   void HandleForwardMessage(
+      scoped_refptr<dbus::Bus> bus,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
@@ -95,8 +99,6 @@ class ImpersonationObjectManagerInterface
 
   scoped_refptr<dbus::Bus> bus_;
 
-  // The source object manager to be impersonated.
-  dbus::ObjectManager* object_manager_;
   // The destination object manager that impersonates the source.
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
 

@@ -59,8 +59,8 @@ class TestInterfaceHandler : public InterfaceHandler {
     property_factory_map_[kBoolPropertyName] =
         std::make_unique<PropertyFactory<bool>>();
   }
-  PropertyFactoryMap* GetPropertyFactoryMap() override {
-    return &property_factory_map_;
+  const PropertyFactoryMap& GetPropertyFactoryMap() const override {
+    return property_factory_map_;
   }
 
  private:
@@ -144,7 +144,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
   std::map<std::string, std::unique_ptr<ExportedObject>> exported_objects;
   auto impersonation_om_interface =
       std::make_unique<ImpersonationObjectManagerInterface>(
-          bus_, object_manager_.get(), exported_object_manager_wrapper_.get(),
+          bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
 
   scoped_refptr<dbus::MockExportedObject> exported_object1 =
@@ -245,11 +245,11 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
   std::map<std::string, std::unique_ptr<ExportedObject>> exported_objects;
   auto impersonation_om_interface1 =
       std::make_unique<ImpersonationObjectManagerInterface>(
-          bus_, object_manager_.get(), exported_object_manager_wrapper_.get(),
+          bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
   auto impersonation_om_interface2 =
       std::make_unique<ImpersonationObjectManagerInterface>(
-          bus_, object_manager_.get(), exported_object_manager_wrapper_.get(),
+          bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName2);
 
   // D-Bus properties methods should be exported.
@@ -335,7 +335,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
   std::map<std::string, std::unique_ptr<ExportedObject>> exported_objects;
   auto impersonation_om_interface =
       std::make_unique<ImpersonationObjectManagerInterface>(
-          bus_, object_manager_.get(), exported_object_manager_wrapper_.get(),
+          bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
 
   // ObjectAdded event happens before CreateProperties. This shouldn't happen.
@@ -405,8 +405,10 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
 
   auto impersonation_om_interface =
       std::make_unique<ImpersonationObjectManagerInterface>(
-          bus_, object_manager_.get(), exported_object_manager_wrapper_.get(),
+          bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
+  impersonation_om_interface->RegisterToObjectManager(object_manager_.get(),
+                                                      kTestServiceName);
 
   dbus::ExportedObject::MethodCallCallback set_method_handler;
 
@@ -440,7 +442,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
   // service and forward the response back to the caller.
   scoped_refptr<dbus::MockObjectProxy> object_proxy1 =
       new dbus::MockObjectProxy(bus_.get(), kTestServiceName, object_path1);
-  EXPECT_CALL(*object_manager_, GetObjectProxy(object_path1))
+  EXPECT_CALL(*bus_, GetObjectProxy(kTestServiceName, object_path1))
       .WillOnce(Return(object_proxy1.get()));
   dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                dbus::kPropertiesSet);

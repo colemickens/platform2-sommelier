@@ -70,9 +70,8 @@ void Dispatcher::Init() {
   for (auto& kv : interface_handlers) {
     std::string interface_name = kv.first;
     auto interface = std::make_unique<ImpersonationObjectManagerInterface>(
-        bus_.get(), bluez_object_manager_,
-        exported_object_manager_wrapper_.get(), std::move(kv.second),
-        interface_name);
+        bus_.get(), exported_object_manager_wrapper_.get(),
+        std::move(kv.second), interface_name);
     interface->RegisterToObjectManager(
         bluez_object_manager_,
         bluez_object_manager::kBluezObjectManagerServiceName);
