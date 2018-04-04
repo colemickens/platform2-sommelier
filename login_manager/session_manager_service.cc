@@ -118,7 +118,7 @@ SessionManagerService::SessionManagerService(
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
-      chrome_dbus_proxy_(nullptr),
+      screen_lock_dbus_proxy_(nullptr),
       powerd_dbus_proxy_(nullptr),
       login_metrics_(metrics),
       system_(utils),
@@ -147,9 +147,9 @@ bool SessionManagerService::Initialize() {
   LOG(INFO) << "SessionManagerService starting";
   InitializeDBus();
 
-  chrome_dbus_proxy_ =
-      bus_->GetObjectProxy(chromeos::kLibCrosServiceName,
-                           dbus::ObjectPath(chromeos::kLibCrosServicePath));
+  screen_lock_dbus_proxy_ =
+      bus_->GetObjectProxy(chromeos::kScreenLockServiceName,
+                           dbus::ObjectPath(chromeos::kScreenLockServicePath));
 
   powerd_dbus_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
@@ -203,10 +203,11 @@ void SessionManagerService::Finalize() {
 }
 
 void SessionManagerService::LockScreen() {
-  dbus::MethodCall call(chromeos::kLibCrosServiceInterface,
-                        chromeos::kLockScreen);
-  chrome_dbus_proxy_->CallMethod(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                                 dbus::ObjectProxy::EmptyResponseCallback());
+  dbus::MethodCall call(chromeos::kScreenLockServiceInterface,
+                        chromeos::kScreenLockServiceShowLockScreenMethod);
+  screen_lock_dbus_proxy_->CallMethod(
+      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      dbus::ObjectProxy::EmptyResponseCallback());
 }
 
 void SessionManagerService::RestartDevice(const std::string& description) {

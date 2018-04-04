@@ -63,9 +63,10 @@ logged in:
 
 To do this, these processes call `session_manager`'s `LockScreen` D-Bus method.
 `session_manager` records the locked state internally and calls Chrome's
-`LockScreen` D-Bus method. Once Chrome has successfully displayed the lock
-screen, it calls `session_manager`'s `HandleLockScreenShown` D-Bus method.
-`session_manager` then emits a `ScreenIsLocked` D-Bus signal.
+`ShowLockScreen` D-Bus method via `org.chromium.ScreenLockService`. Once Chrome
+has successfully displayed the lock screen, it calls `session_manager`'s
+`HandleLockScreenShown` D-Bus method. `session_manager` then emits a
+`ScreenIsLocked` D-Bus signal.
 
 After the user successfully types their password to unlock the screen, Chrome
 calls `session_manager`'s `HandleLockScreenDismissed` D-Bus method.

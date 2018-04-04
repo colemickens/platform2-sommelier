@@ -215,8 +215,8 @@ class SessionManagerService
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
-  dbus::ObjectProxy* chrome_dbus_proxy_;  // Owned by |bus_|.
-  dbus::ObjectProxy* powerd_dbus_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* screen_lock_dbus_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* powerd_dbus_proxy_;       // Owned by |bus_|.
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;          // Owned by the caller.
