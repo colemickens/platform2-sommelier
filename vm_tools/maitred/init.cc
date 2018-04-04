@@ -1509,14 +1509,6 @@ bool Init::Setup() {
           .wait_for_exit = false,
       },
       {
-          .doc = "Wayland (virtwl) proxy",
-          .argv = {"virtwl_guest_proxy"},
-          .env = {{"XDG_RUNTIME_DIR", "/run"}},
-          .respawn = true,
-          .use_console = false,
-          .wait_for_exit = false,
-      },
-      {
           .doc = "vsock remote shell daemon",
           .argv = {"vshd"},
           .env = {},
