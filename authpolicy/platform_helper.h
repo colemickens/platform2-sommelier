@@ -69,6 +69,7 @@ bool SetSavedUserAndDropCaps(uid_t saved_uid);
 // Helper class that swaps the real/effective UID with the saved UID in its
 // scope. The real and effective UIDs have to match, so that the real/effective
 // UID can be restored from the saved UID. Dies on error.
+// This is usually used to run stuff as authpolicyd-exec user.
 class ScopedSwitchToSavedUid {
  public:
   ScopedSwitchToSavedUid();

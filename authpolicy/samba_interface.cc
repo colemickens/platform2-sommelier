@@ -40,6 +40,7 @@ const char kSmbConfData[] =
     "\tworkgroup = %s\n"
     "\trealm = %s\n"
     "\tlock directory = %s\n"
+    "\tinclude system krb5 conf = false\n"
     "\tcache directory = %s\n"
     "\tstate directory = %s\n"
     "\tprivate directory = %s\n"
@@ -49,7 +50,6 @@ const char kSmbConfData[] =
     // TODO(ljusten): Remove this line once crbug.com/662440 is resolved.
     "\tclient max protocol = SMB3\n"
     "\tclient ipc min protocol = SMB2\n"
-    "\tclient schannel = yes\n"
     "\tclient ldap sasl wrapping = sign\n";
 
 const int kFileMode_rwr = base::FILE_PERMISSION_READ_BY_USER |
@@ -67,13 +67,16 @@ const int kFileMode_rwxrwx =
 // access to read smb.conf and krb5.conf and to access SAMBA_DIR, but no write
 // access. The Samba directories need full group rwx access since Samba reads
 // and writes files there.
-const std::pair<Path, int> kDirsAndMode[] = {
-    {Path::TEMP_DIR, kFileMode_rwxrx},
-    {Path::SAMBA_DIR, kFileMode_rwxrwx},
-    {Path::SAMBA_LOCK_DIR, kFileMode_rwxrwx},
-    {Path::SAMBA_CACHE_DIR, kFileMode_rwxrwx},
-    {Path::SAMBA_STATE_DIR, kFileMode_rwxrwx},
-    {Path::SAMBA_PRIVATE_DIR, kFileMode_rwxrwx}};
+constexpr struct CreateDirectories {
+  Path path;
+  int mode;
+  bool owned_by_authpolicyd_exec;
+} kDirsToCreate[] = {{Path::TEMP_DIR, kFileMode_rwxrx, false},
+                     {Path::SAMBA_DIR, kFileMode_rwxrwx, false},
+                     {Path::SAMBA_LOCK_DIR, kFileMode_rwxrwx, true},
+                     {Path::SAMBA_CACHE_DIR, kFileMode_rwxrwx, true},
+                     {Path::SAMBA_STATE_DIR, kFileMode_rwxrwx, true},
+                     {Path::SAMBA_PRIVATE_DIR, kFileMode_rwxrwx, true}};
 
 // Directory / filenames for user and device policy.
 const char kPRegUserDir[] = "User";
@@ -94,13 +97,17 @@ const int kPasswordChangeCheckRateMinutes = 120;
 // Keys for interpreting net output.
 const char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
 const char kKeyInvalidMachineName[] = "Improperly formed account name";
+const char kKeyInvalidMachineName2[] =
+    "The name provided is not a properly formed account name";
 const char kKeyMachineNameTooLong[] = "Our netbios name can be at most";
 const char kKeyUserHitJoinQuota[] =
     "Insufficient quota exists to complete the operation";
 const char kKeyJoinFailedToFindDC[] = "failed to find DC";
 const char kKeyNoLogonServers[] = "No logon servers";
 const char kKeyJoinLogonFailure[] = "Logon failure";
+const char kKeyJoinLogonFailure2[] = "The attempted logon is invalid";
 const char kKeyJoinMustChangePassword[] = "Must change password";
+const char kKeyJoinMustChangePassword2[] = "password must be changed";
 // Setting OU during domain join failed. More specific errors below.
 const char kKeyBadOuCommon[] = "failed to precreate account in ou";
 // The domain join createcomputer argument specified a non-existent OU.
@@ -181,11 +188,13 @@ WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
     LOG(ERROR) << error_msg << "network problem";
     return ERROR_NETWORK_PROBLEM;
   }
-  if (Contains(net_out, kKeyJoinLogonFailure)) {
+  if (Contains(net_out, kKeyJoinLogonFailure) ||
+      Contains(net_out, kKeyJoinLogonFailure2)) {
     LOG(ERROR) << error_msg << "logon failure";
     return ERROR_BAD_PASSWORD;
   }
-  if (Contains(net_out, kKeyJoinMustChangePassword)) {
+  if (Contains(net_out, kKeyJoinMustChangePassword) ||
+      Contains(net_out, kKeyJoinMustChangePassword2)) {
     LOG(ERROR) << error_msg << "must change password";
     return ERROR_PASSWORD_EXPIRED;
   }
@@ -193,7 +202,8 @@ WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
     LOG(ERROR) << error_msg << "user is not permitted to join the domain";
     return ERROR_JOIN_ACCESS_DENIED;
   }
-  if (Contains(net_out, kKeyInvalidMachineName)) {
+  if (Contains(net_out, kKeyInvalidMachineName) ||
+      Contains(net_out, kKeyInvalidMachineName2)) {
     LOG(ERROR) << error_msg << "invalid machine name";
     return ERROR_INVALID_MACHINE_NAME;
   }
@@ -426,15 +436,21 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
   ReloadDebugFlags();
 
   ErrorType error = ERROR_NONE;
-  for (const auto& dir_and_mode : kDirsAndMode) {
-    const base::FilePath dir(paths_->Get(dir_and_mode.first));
-    const int mode = dir_and_mode.second;
-    error = ::authpolicy::CreateDirectory(dir);
-    if (error != ERROR_NONE)
-      return error;
-    error = SetFilePermissions(dir, mode);
-    if (error != ERROR_NONE)
-      return error;
+  {
+    // Note: From 4.8.0 on Samba performs a strict ownership check on some
+    // directories, so they have to be owned by authpolicyd-exec.
+    for (const auto& dir : kDirsToCreate) {
+      std::unique_ptr<ScopedSwitchToSavedUid> switch_scope;
+      if (dir.owned_by_authpolicyd_exec)
+        switch_scope = std::make_unique<ScopedSwitchToSavedUid>();
+      const base::FilePath path(paths_->Get(dir.path));
+      error = ::authpolicy::CreateDirectory(path);
+      if (error != ERROR_NONE)
+        return error;
+      error = SetFilePermissions(path, dir.mode);
+      if (error != ERROR_NONE)
+        return error;
+    }
   }
 
   if (expect_config) {
@@ -839,7 +855,7 @@ ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
                                        kConfigParam, smb_conf_path, kDebugParam,
-                                       flags_.net_log_level(), kKerberosParam});
+                                       flags_.net_log_level()});
   // Replace a few values immediately in the net_cmd output, see
   // SearchAccountInfo for an explanation.
   anonymizer_->ReplaceSearchArg(kKeyKdcServer, kIpAddressPlaceholder);
@@ -890,7 +906,7 @@ ErrorType SambaInterface::UpdateDcName(AccountData* account) const {
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "lookup",
                                        kConfigParam, smb_conf_path, kDebugParam,
-                                       flags_.net_log_level(), kKerberosParam});
+                                       flags_.net_log_level()});
   // Replace a few values immediately in the net_cmd output, see
   // SearchAccountInfo for an explanation.
   anonymizer_->ReplaceSearchArg(kKeyForest, kForestPlaceholder);
@@ -990,7 +1006,7 @@ ErrorType SambaInterface::UpdateWorkgroup(AccountData* account) {
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup",
                            kConfigParam, smb_conf_path, kDebugParam,
-                           flags_.net_log_level(), kKerberosParam});
+                           flags_.net_log_level()});
   // Parse workgroup from the net_cmd output immediately, see SearchAccountInfo
   // for an explanation. Also replace a bunch of other server names.
   anonymizer_->ReplaceSearchArg(kKeyWorkgroup, kWorkgroupPlaceholder);
@@ -1487,7 +1503,7 @@ ErrorType SambaInterface::DownloadGpos(
     // Set group rwx permissions recursively, so that smbclient can write GPOs
     // there and the parser tool can read the GPOs later.
     error = SetFilePermissionsRecursive(
-        linux_dir_fp, base::FilePath(paths_->Get(Path::SAMBA_DIR)),
+        linux_dir_fp, base::FilePath(paths_->Get(Path::SAMBA_CACHE_DIR)),
         kFileMode_rwxrwx);
     if (error != ERROR_NONE)
       return error;

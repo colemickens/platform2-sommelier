@@ -17,6 +17,7 @@ epoll_wait: 1
 execve: 1
 exit: 1
 exit_group: 1
+fallocate: 1
 fchmod: 1
 fcntl: 1
 fdatasync: 1
@@ -41,6 +42,7 @@ getuid: 1
 ioctl: arg1 == 0x5401 || arg1 == 0x5402 || arg1 == 0x5404 || arg1 == 0x541b || arg1 == 0x5421 || arg1 == 0x8933 || arg1 == 0x8946
 lseek: 1
 lstat: 1
+kill: 1
 mkdir: 1
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
