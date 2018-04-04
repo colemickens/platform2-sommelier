@@ -45,6 +45,13 @@ namespace cryptohome {
 static const char* kTestPath = "/tmp/attestation_test.epb";
 static const char* kTestUser = "test_user";
 
+static const char kABEData[] =
+    "2eac34fa74994262b907c15a3a1462e349e5108ca0d0e807f4b1a3ee741a5594";
+static const char kDEN[] =
+    "865cc962ffe14b3638b2d1f860e77b531644a3aba67e52e49e1f6c0a31d81daf";
+static const char kEID[] =
+    "809c6c9f425c59b86e551f4e8fdccd5a2200b08fe3250c4971f40d8bbcf7820a";
+
 class AttestationTest : public testing::Test {
  public:
   AttestationTest() : crypto_(&platform_),
@@ -57,7 +64,7 @@ class AttestationTest : public testing::Test {
       RSA_free(rsa_);
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     attestation_.set_database_path(kTestPath);
     attestation_.set_key_store(&key_store_);
     http_transport_ = std::make_shared<brillo::http::fake::Transport>();
@@ -87,6 +94,7 @@ class AttestationTest : public testing::Test {
     serialized_db_.assign(db);
     return true;
   }
+
   virtual bool ReadDB(std::string* db) {
     if (serialized_db_.empty()) {
       return false;
@@ -94,19 +102,22 @@ class AttestationTest : public testing::Test {
     db->assign(serialized_db_);
     return true;
   }
+
   virtual bool ComputeEnterpriseEnrollmentId(brillo::SecureBlob* blob) {
     return attestation_.ComputeEnterpriseEnrollmentId(blob);
   }
+
   virtual std::string GetValidEndorsementKey() {
     const std::string hex_ek =
-        "3082010A0282010100D3EE9D14FAC4C42B35FEDC87363CC29807A3F39D3E45D249586F"
-        "620C6425CE981E8619DCE50D964E934A1F1FD2C1066418DD75D8916D85DD9E82C27C82"
-        "A8C2C9BC76BA914B5A43F7535AEAA2F7BD985F46A46C92334643C89F5598ABD191AA54"
-        "39088778774DB3B07FD08F019997893BEC1A87571AC95F66ADE2F3631A2C9CF8EF0B94"
-        "D2CA62E81F1FF9CC71339838E229E63CA59E0BB64D2134C3AF705BCF0F614E58DF8488"
-        "97454FFA2FA42073F80174C1D3D0C54D5BDC45747FE662D6D321AEA5375F0AE489DF6A"
-        "BB018D5D11707E546E8487641290F9F9B3CC3A1F8631FB0F3486A875F6005D3539A582"
-        "3F7618B007779FB31CFB7FE36A1C2D9DEFD8F5030203010001";
+        "3082010A0282010100D3EE9D14FAC4C42B35FEDC87363CC29807A3F39D3E45D2"
+        "49586F620C6425CE981E8619DCE50D964E934A1F1FD2C1066418DD75D8916D85"
+        "DD9E82C27C82A8C2C9BC76BA914B5A43F7535AEAA2F7BD985F46A46C92334643"
+        "C89F5598ABD191AA5439088778774DB3B07FD08F019997893BEC1A87571AC95F"
+        "66ADE2F3631A2C9CF8EF0B94D2CA62E81F1FF9CC71339838E229E63CA59E0BB6"
+        "4D2134C3AF705BCF0F614E58DF848897454FFA2FA42073F80174C1D3D0C54D5B"
+        "DC45747FE662D6D321AEA5375F0AE489DF6ABB018D5D11707E546E8487641290"
+        "F9F9B3CC3A1F8631FB0F3486A875F6005D3539A5823F7618B007779FB31CFB7F"
+        "E36A1C2D9DEFD8F5030203010001";
     std::vector<uint8_t> ek_bytes;
     base::HexStringToBytes(hex_ek, &ek_bytes);
     return std::string(ek_bytes.begin(), ek_bytes.end());
@@ -357,18 +368,34 @@ class AttestationTest : public testing::Test {
   }
 };
 
-struct AbeDataParam {
-  const char *data;
-  const char *enterprise_enrollment_nonce;
+class AttestationEnrollmentIdTest : public AttestationTest {
+ public:
+  void Initialize() override {
+    SecureBlob abe_data;
+    EXPECT_TRUE(base::HexStringToBytes(kABEData, &abe_data));
+    attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+                            &install_attributes_, abe_data,
+                            false /* retain_endorsement_data */);
+  }
+};
 
-  AbeDataParam(const char* data, const char *enterprise_enrollment_nonce) :
-    data(data),
-    enterprise_enrollment_nonce(enterprise_enrollment_nonce) {}
+struct AbeDataParam {
+  const char* data;
+  const char* enterprise_enrollment_nonce;
+  const char* enterprise_enrollment_id;
+
+  AbeDataParam(const char* data,
+               const char* enterprise_enrollment_nonce,
+               const char* enterprise_enrollment_id)
+      : data(data),
+        enterprise_enrollment_nonce(enterprise_enrollment_nonce),
+        enterprise_enrollment_id(enterprise_enrollment_id) {}
 };
 
 class AttestationWithAbeDataTest : public AttestationTest,
     public testing::WithParamInterface<AbeDataParam> {
-  virtual void Initialize() {
+ public:
+  void Initialize() override {
     SecureBlob abe_data;
     const char *data = GetParam().data;
     if (data != NULL) {
@@ -468,13 +495,50 @@ TEST_P(AttestationWithAbeDataTest, Enroll) {
   EXPECT_TRUE(attestation_.IsEnrolled());
 }
 
-TEST_P(AttestationWithAbeDataTest, GetEnterpriseEnrollmentId) {
-  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, brillo::SecureBlob("abe_data"),
-      false /* retain_endorsement_data */);
+TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentId) {
+  brillo::SecureBlob pubek(GetValidEndorsementKey());
+  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
+      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(true)));
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_EQ(kEID,
+            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+}
+
+TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdHasDelegate) {
+  // Simulate a login.
+  attestation_.PrepareForEnrollment();
+  // Make sure that we can compute the EID with the delegate.
   brillo::SecureBlob pubek(GetValidEndorsementKey());
   EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
       .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(true)));
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_EQ(kEID,
+            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+}
+
+TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdEmptyEkm) {
+  brillo::SecureBlob pubek("");
+  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek), Return(true)));
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_EQ("", base::HexEncode(blob.data(), blob.size()));
+}
+
+TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdFailGetEkm) {
+  brillo::SecureBlob pubek("ek");
+  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
+      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(false)));
+  brillo::SecureBlob blob;
+  EXPECT_FALSE(ComputeEnterpriseEnrollmentId(&blob));
+}
+
+TEST_P(AttestationWithAbeDataTest, GetEnterpriseEnrollmentId) {
+  brillo::SecureBlob pubek(GetValidEndorsementKey());
+  EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek), Return(true)));
   attestation_.PrepareForEnrollment();
   SecureBlob enroll_blob;
   EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
@@ -484,71 +548,11 @@ TEST_P(AttestationWithAbeDataTest, GetEnterpriseEnrollmentId) {
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
       &install_attributes_, brillo::SecureBlob("new_abe_data"),
       false /* retain_endorsement_data */);
-  // GetEnterpriseEnrollmentId should return a cached eid.
+  // GetEnterpriseEnrollmentId should return a cached EID.
   brillo::SecureBlob blob;
   EXPECT_TRUE(attestation_.GetEnterpriseEnrollmentId(&blob));
-  EXPECT_EQ("91dfb3cf15bac6876d643e17e140dcdb61c3a0275390c188b7f4506b803403b2",
+  EXPECT_EQ(GetParam().enterprise_enrollment_id,
             base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
-}
-
-TEST_F(AttestationTest, ComputeEnterpriseEnrollmentId) {
-  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, brillo::SecureBlob("abe_data"),
-      false /* retain_endorsement_data */);
-  brillo::SecureBlob pubek(GetValidEndorsementKey());
-  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(true)));
-  brillo::SecureBlob blob;
-  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
-  EXPECT_EQ("91dfb3cf15bac6876d643e17e140dcdb61c3a0275390c188b7f4506b803403b2",
-            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
-}
-
-TEST_F(AttestationTest, ComputeEnterpriseEnrollmentIdHasDelegate) {
-  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, brillo::SecureBlob("abe_data"),
-      false /* retain_endorsement_data */);
-
-  attestation_.PrepareForEnrollment();
-  brillo::SecureBlob pubek(GetValidEndorsementKey());
-  EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(true)));
-  brillo::SecureBlob blob;
-  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
-  EXPECT_EQ("91dfb3cf15bac6876d643e17e140dcdb61c3a0275390c188b7f4506b803403b2",
-            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
-}
-
-TEST_F(AttestationTest, ComputeEnterpriseEnrollmentIdEmptyAbeData) {
-  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, brillo::SecureBlob(""),
-      false /* retain_endorsement_data */);
-  brillo::SecureBlob blob;
-  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
-  EXPECT_EQ("", base::HexEncode(blob.data(), blob.size()));
-}
-
-TEST_F(AttestationTest, ComputeEnterpriseEnrollmentIdEmptyEk) {
-  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, brillo::SecureBlob("abe_data"),
-      false /* retain_endorsement_data */);
-  brillo::SecureBlob pubek("");
-  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(true)));
-  brillo::SecureBlob blob;
-  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
-  EXPECT_EQ("", base::HexEncode(blob.data(), blob.size()));
-}
-
-TEST_F(AttestationTest, ComputeEnterpriseEnrollmentIdFailGetEk) {
-  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, brillo::SecureBlob("abe_data"),
-      false /* retain_endorsement_data */);
-  brillo::SecureBlob pubek("ek");
-  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(false)));
-  brillo::SecureBlob blob;
-  EXPECT_FALSE(ComputeEnterpriseEnrollmentId(&blob));
 }
 
 TEST_F(AttestationTest, CertRequest) {
@@ -1002,7 +1006,7 @@ TEST_F(AttestationTest, PCARequestWithServerError) {
 // An AttestationTest class which does not initialize the Attestation instance.
 class AttestationTestNoInitialize : public AttestationTest {
  public:
-  virtual void Initialize() {}
+  void Initialize() override {}
 };
 
 TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
@@ -1036,11 +1040,7 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1NoHwID) {
 INSTANTIATE_TEST_CASE_P(
     AbeData,
     AttestationWithAbeDataTest,
-    ::testing::Values(
-        AbeDataParam(nullptr, nullptr),
-        AbeDataParam(
-            "2eac34fa74994262b907c15a3a1462e349e5108ca0d0e807f4b1a3ee741a5594",
-            "865cc962ffe14b3638b2d1f860e77b53" /* continued for formatting */
-                "1644a3aba67e52e49e1f6c0a31d81daf")));
+    ::testing::Values(AbeDataParam(nullptr, nullptr, ""),
+                      AbeDataParam(kABEData, kDEN, kEID)));
 
 }  // namespace cryptohome

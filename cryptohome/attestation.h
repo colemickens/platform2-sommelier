@@ -756,6 +756,8 @@ class Attestation : public base::PlatformThread::Delegate,
   void set_tpm_init(TpmInit* value) { tpm_init_ = value; }
 
   friend class AttestationTest;
+  FRIEND_TEST(AttestationEnrollmentIdTest,
+              ComputeEnterpriseEnrollmentIdHasDelegate);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

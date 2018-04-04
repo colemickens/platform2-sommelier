@@ -2463,8 +2463,9 @@ bool Attestation::ComputeEnterpriseEnrollmentId(
       return false;
     }
   } else {
-    if (!tpm_->GetEndorsementPublicKey(&pubek))
+    if (!tpm_->GetEndorsementPublicKey(&pubek)) {
       return false;
+    }
   }
 
   if (pubek.empty()) {
