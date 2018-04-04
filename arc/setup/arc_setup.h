@@ -11,6 +11,7 @@
 
 #include <base/macros.h>
 
+#include "arc/setup/android_sdk_version.h"
 #include "arc/setup/arc_setup_util.h"
 
 namespace base {
@@ -50,11 +51,6 @@ enum class ArcBinaryTranslationType {
   NDK_TRANSLATION = 2,
 };
 
-enum class AndroidSdkVersion {
-  UNKNOWN = 0,
-  ANDROID_N_MR1 = 25,
-  ANDROID_P = 28,
-};
 
 // A class that does the actual setup (and stop) operations.
 class ArcSetup {

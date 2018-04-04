@@ -772,7 +772,7 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     const base::FilePath& host_dalvik_cache_directory) {
   base::ElapsedTimer timer;
   std::unique_ptr<ArtContainer> art_container =
-      ArtContainer::CreateContainer(arc_mounter_.get());
+      ArtContainer::CreateContainer(arc_mounter_.get(), sdk_version());
   if (!art_container) {
     LOG(ERROR) << "Failed to create art container";
     return false;

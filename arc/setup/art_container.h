@@ -11,6 +11,7 @@
 
 #include <base/macros.h>
 
+#include "arc/setup/android_sdk_version.h"
 #include "arc/setup/arc_setup_util.h"
 
 namespace base {
@@ -33,7 +34,8 @@ struct ArtContainerPaths;
 class ArtContainer {
  public:
   // Creates an ART container.
-  static std::unique_ptr<ArtContainer> CreateContainer(ArcMounter* mounter);
+  static std::unique_ptr<ArtContainer> CreateContainer(
+      ArcMounter* mounter, AndroidSdkVersion sdk_version);
 
   ~ArtContainer();
 
@@ -55,7 +57,8 @@ class ArtContainer {
 
  private:
   ArtContainer(ArcMounter* mounter,
-               std::unique_ptr<ArtContainerPaths> arc_paths);
+               std::unique_ptr<ArtContainerPaths> arc_paths,
+               AndroidSdkVersion sdk_version);
 
   // Starts ART container in a mount namespace.
   bool PatchImageChild(uint64_t offset_seed);
@@ -66,8 +69,11 @@ class ArtContainer {
   // Owned by caller.
   ArcMounter* const mounter_;
 
-  // Container path
+  // Container path.
   std::unique_ptr<ArtContainerPaths> art_paths_;
+
+  // Android Sdk version.
+  const AndroidSdkVersion sdk_version_;
 
   DISALLOW_COPY_AND_ASSIGN(ArtContainer);
 };

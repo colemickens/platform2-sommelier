@@ -161,7 +161,7 @@ struct ArtContainerPaths {
 
 // static
 std::unique_ptr<ArtContainer> ArtContainer::CreateContainer(
-    ArcMounter* mounter) {
+    ArcMounter* mounter, AndroidSdkVersion sdk_version) {
   auto art_paths = std::make_unique<ArtContainerPaths>();
   // Make sure the data directory exits.
   if (!arc::CreateArtContainerDataDirectory(
@@ -169,7 +169,7 @@ std::unique_ptr<ArtContainer> ArtContainer::CreateContainer(
     return nullptr;
 
   return std::unique_ptr<ArtContainer>(
-      new ArtContainer(mounter, std::move(art_paths)));
+      new ArtContainer(mounter, std::move(art_paths), sdk_version));
 }
 
 // static
@@ -189,8 +189,11 @@ std::vector<std::string> ArtContainer::GetIsas() {
 }
 
 ArtContainer::ArtContainer(ArcMounter* mounter,
-                           std::unique_ptr<ArtContainerPaths> art_paths)
-    : mounter_(mounter), art_paths_(std::move(art_paths)) {}
+                           std::unique_ptr<ArtContainerPaths> art_paths,
+                           AndroidSdkVersion sdk_version)
+    : mounter_(mounter),
+      art_paths_(std::move(art_paths)),
+      sdk_version_(sdk_version) {}
 
 ArtContainer::~ArtContainer() = default;
 
@@ -339,22 +342,38 @@ bool ArtContainer::PatchImage(const std::string& isa, uint64_t offset_seed) {
       kArtBaseAddressMinDelta, kArtBaseAddressMaxDelta, offset_seed);
   std::string input_image_location_arg =
       "--input-image-location=/system/framework/boot.art";
-  std::string output_image_file_arg = base::StringPrintf(
-      "--output-image-file=/data/dalvik-cache/%s/system@framework@boot.art",
-      isa.c_str());
+  // Use different output arg for N and P.
+  std::string output_arg;
+
+  switch (sdk_version_) {
+    case AndroidSdkVersion::UNKNOWN:
+      LOG(ERROR) << "Unknown Android sdk version.";
+      return false;
+    case AndroidSdkVersion::ANDROID_N_MR1:
+      output_arg = base::StringPrintf(
+          "--output-image-file=/data/dalvik-cache/%s/system@framework@boot.art",
+          isa.c_str());
+      break;
+    // For Android P and after, use --output-image-directory.
+    default:
+      output_arg = base::StringPrintf(
+          "--output-image-directory=/data/dalvik-cache/%s", isa.c_str());
+      break;
+  }
+
   std::string instructionset_arg =
       base::StringPrintf("--instruction-set=%s", isa.c_str());
   std::string base_offset_arg =
       base::StringPrintf("--base-offset-delta=%d", offset);
 
   LOG(INFO) << "Relocate images: " << kPatchOat << " "
-            << input_image_location_arg << " " << output_image_file_arg << " "
+            << input_image_location_arg << " " << output_arg << " "
             << instructionset_arg << " "
             << "--base-offset-delta=0x******* ";
 
   const char* argv[] = {kPatchOat,
                         input_image_location_arg.c_str(),
-                        output_image_file_arg.c_str(),
+                        output_arg.c_str(),
                         instructionset_arg.c_str(),
                         base_offset_arg.c_str(),
                         nullptr};
