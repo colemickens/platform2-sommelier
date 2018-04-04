@@ -374,14 +374,6 @@ ArcBinaryTranslationType ArcSetup::IdentifyBinaryTranslationType() {
   bool is_houdini_available = kUseHoudini;
   bool is_ndk_translation_available = kUseNdkTranslation;
 
-  // TODO(yusukes): Remove this hack once b/70732332 is fixed.
-  if (is_houdini_available && sdk_version() == AndroidSdkVersion::ANDROID_P) {
-    // arc-setup is built with USE=houdini, but the image is P's. Disable
-    // Houdini since b/70732332 hasn't been fixed yet.
-    LOG(WARNING) << "Force disabling Houdini on P";
-    is_houdini_available = false;
-  }
-
   if (!base::PathExists(arc_paths_->android_rootfs_directory.Append(
           "system/lib/libndk_translation.so"))) {
     // Allow developers to use custom android build
