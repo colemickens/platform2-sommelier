@@ -9,7 +9,6 @@
 #include <base/bits.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_piece.h>
-#include <dbus/file_descriptor.h>
 #include <libsmbclient.h>
 
 #include "smbprovider/constants.h"

@@ -4,7 +4,6 @@
 
 #include <vector>
 
-#include <dbus/file_descriptor.h>
 #include <gtest/gtest.h>
 #include <libsmbclient.h>
 
