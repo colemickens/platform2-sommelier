@@ -11,6 +11,7 @@
 
 #include <memory>
 
+#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -56,6 +57,15 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(compress, true, "Compress the tarball");
   DEFINE_string(output, "", "Where to write the output");
   brillo::FlagHelper::Init(argc, argv, kUsage);
+
+  // Excess arguments may be left around.
+  auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
+  if (!args.empty()) {
+    LOG(ERROR) << "Unexpected arguments (try rerunning with --help):";
+    for (const auto& arg : args)
+      LOG(ERROR) << arg;
+    return EXIT_FAILURE;
+  }
 
   base::FilePath output(FLAGS_output);
   if (output.empty())
