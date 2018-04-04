@@ -20,14 +20,14 @@
 namespace brillo {
 
 // References a node in the configuration
-// This allows us to reference a node whether it is device tree or yaml.
+// This allows us to reference a node whether it is device tree or json.
 class ConfigNode {
  public:
   ConfigNode();
   // Constructor which uses a device-tree offset
   explicit ConfigNode(int offset);
 
-  // Constructor which uses a yaml dict
+  // Constructor which uses a json dict
   explicit ConfigNode(const base::DictionaryValue* dict);
 
   // @return true if this node reference is valid (points to an actual node)
@@ -36,7 +36,7 @@ class ConfigNode {
   // @return offset of the device-tree node, or -1 if not valid
   int GetOffset() const;
 
-  // @return yaml dict for a node, or 0 if not valid
+  // @return json dict for a node, or 0 if not valid
   const base::DictionaryValue* GetDict() const;
 
   // Test equality for two ConfigNode objectcs
@@ -44,7 +44,7 @@ class ConfigNode {
 
  private:
   int node_offset_;  // Device-tree node offset
-  const base::DictionaryValue* dict_;   // Yaml dictionary for this node
+  const base::DictionaryValue* dict_;   // Json dictionary for this node
   bool valid_;       // true if we have a valid node reference
 };
 

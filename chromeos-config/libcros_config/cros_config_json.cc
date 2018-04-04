@@ -5,7 +5,7 @@
 // Libary to provide access to the Chrome OS master configuration in YAML / JSON
 // format
 
-#include "chromeos-config/libcros_config/cros_config_yaml.h"
+#include "chromeos-config/libcros_config/cros_config_json.h"
 
 #include <iostream>
 #include <sstream>
@@ -25,16 +25,16 @@
 
 namespace brillo {
 
-CrosConfigYaml::CrosConfigYaml() {}
+CrosConfigJson::CrosConfigJson() {}
 
-CrosConfigYaml::~CrosConfigYaml() {}
+CrosConfigJson::~CrosConfigJson() {}
 
-std::string CrosConfigYaml::GetFullPath(ConfigNode node) {
+std::string CrosConfigJson::GetFullPath(ConfigNode node) {
   // TODO(sjg@chromium.org): Figure out how to get the path to a node
   return "TODO";
 }
 
-ConfigNode CrosConfigYaml::GetPathNode(ConfigNode base_node,
+ConfigNode CrosConfigJson::GetPathNode(ConfigNode base_node,
                                        const std::string& path) {
   const base::DictionaryValue* attr_dict = base_node.GetDict();
 
@@ -54,7 +54,7 @@ ConfigNode CrosConfigYaml::GetPathNode(ConfigNode base_node,
   return ConfigNode(attr_dict);
 }
 
-bool CrosConfigYaml::LookupPhandle(ConfigNode node,
+bool CrosConfigJson::LookupPhandle(ConfigNode node,
                                    const std::string& prop_name,
                                    ConfigNode* node_out) {
   const base::DictionaryValue* target = nullptr;
@@ -65,7 +65,7 @@ bool CrosConfigYaml::LookupPhandle(ConfigNode node,
   return true;
 }
 
-bool CrosConfigYaml::SelectModelConfigByIDs(
+bool CrosConfigJson::SelectModelConfigByIDs(
     const std::string& find_name,
     int find_sku_id,
     const std::string& find_whitelabel_name) {
@@ -131,7 +131,7 @@ bool CrosConfigYaml::SelectModelConfigByIDs(
   return true;
 }
 
-int CrosConfigYaml::GetProp(const ConfigNode& node,
+int CrosConfigJson::GetProp(const ConfigNode& node,
                             std::string name,
                             std::string* value_out) {
   CROS_CONFIG_LOG(INFO) << "lookup dict" << model_node_.GetDict();
@@ -143,7 +143,7 @@ int CrosConfigYaml::GetProp(const ConfigNode& node,
   return -1;
 }
 
-bool CrosConfigYaml::ReadConfigFile(const base::FilePath& filepath) {
+bool CrosConfigJson::ReadConfigFile(const base::FilePath& filepath) {
   std::string json_data;
   if (!base::ReadFileToString(filepath, &json_data)) {
     CROS_CONFIG_LOG(ERROR) << "Could not read file " << filepath.MaybeAsASCII();
@@ -168,7 +168,7 @@ bool CrosConfigYaml::ReadConfigFile(const base::FilePath& filepath) {
   target_dirs_["topology-bin"] = "/lib/firmware";
   target_dirs_["volume"] = "/etc/cras";
 
-  // TODO(sjg): These should not be needed once we adjust the yaml to pull in
+  // TODO(sjg): These should not be needed once we adjust the json to pull in
   // references with <<< or similar.
   phandle_props_.push_back("arc-properties-type");
   phandle_props_.push_back("audio-type");

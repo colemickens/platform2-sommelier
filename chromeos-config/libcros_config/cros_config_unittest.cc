@@ -25,11 +25,11 @@ class CrosConfigTest : public testing::Test {
   void InitConfig(const std::string name = "Another",
                   int sku_id = -1,
                   std::string whitelabel_name = "",
-                  bool use_yaml = true) {
+                  bool use_json = true) {
     base::FilePath filepath(TEST_FILE);
     ASSERT_TRUE(
         cros_config_.InitForTest(filepath, name, sku_id, whitelabel_name,
-                                 use_yaml));
+                                 use_json));
   }
 
   brillo::CrosConfig cros_config_;

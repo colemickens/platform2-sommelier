@@ -28,7 +28,7 @@ class FilePath;
 namespace brillo {
 
 class CrosConfigFdt;
-class CrosConfigYaml;
+class CrosConfigJson;
 class ConfigNode;
 
 struct SmbiosTable;
@@ -53,14 +53,14 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @name: Platform name as returned by 'mosys platform id'.
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
   // @customization_id: VPD customization ID from 'mosys platform customization'
-  // @use_yaml: true to require a yaml file and to compare device-tree and yaml
+  // @use_json: true to require a json file and to compare device-tree and json
   //   results for every query
   // @return true if OK, false on error.
   bool InitForTest(const base::FilePath& filepath,
                    const std::string& name,
                    int sku_id,
                    const std::string& customization_id,
-                   bool use_yaml = true);
+                   bool use_json = true);
 
   // Internal function to obtain a property value and return a list of log
   // messages on failure. Public for tests.
@@ -90,12 +90,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @smbios_file: File containing memory to scan (typically this is /dev/mem)
   // @vpd_file: File containing the customization_id from VPD. Typically this
   //     is '/sys/firmware/vpd/ro/customization_id'.
-  // @use_yaml: true to require a yaml file and to compare device-tree and yaml
+  // @use_json: true to require a json file and to compare device-tree and json
   //   results for every query
   bool InitCommon(const base::FilePath& filepath,
                   const base::FilePath& smbios_file,
                   const base::FilePath& vpd_file,
-                  bool use_yaml);
+                  bool use_json);
 
   // Internal function to obtain a property value based on a node
   // This looks up a property for a path, relative to a given base node.
@@ -112,12 +112,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  std::vector<std::string>* log_msgs_out);
 
   bool CompareResults(bool fdt_ok, const std::string& fdt_val,
-                      bool yaml_ok, const std::string& yaml_val,
+                      bool json_ok, const std::string& json_val,
                       std::string* val_out);
 
   CrosConfigFdt* cros_config_fdt_;
-  CrosConfigYaml* cros_config_yaml_;
-  bool use_yaml_;
+  CrosConfigJson* cros_config_json_;
+  bool use_json_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };

@@ -14,10 +14,10 @@
 
 namespace brillo {
 
-class CrosConfigYaml : public CrosConfigImpl {
+class CrosConfigJson : public CrosConfigImpl {
  public:
-  CrosConfigYaml();
-  virtual ~CrosConfigYaml();
+  CrosConfigJson();
+  virtual ~CrosConfigJson();
 
  protected:
   // CrosConfigImpl:
