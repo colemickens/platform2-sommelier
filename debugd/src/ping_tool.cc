@@ -24,7 +24,7 @@ const char kPingToolErrorString[] = "org.chromium.debugd.error.Ping";
 
 }  // namespace
 
-bool PingTool::Start(const dbus::FileDescriptor& outfd,
+bool PingTool::Start(const base::ScopedFD& outfd,
                      const std::string& destination,
                      const brillo::VariantDictionary& options,
                      std::string* out_id,
@@ -56,8 +56,8 @@ bool PingTool::Start(const dbus::FileDescriptor& outfd,
     return false;
 
   p->AddArg(destination);
-  p->BindFd(outfd.value(), STDOUT_FILENO);
-  p->BindFd(outfd.value(), STDERR_FILENO);
+  p->BindFd(outfd.get(), STDOUT_FILENO);
+  p->BindFd(outfd.get(), STDERR_FILENO);
   LOG(INFO) << "ping: running process id: " << p->id();
   p->Start();
   *out_id = p->id();

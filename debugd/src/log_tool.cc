@@ -368,12 +368,12 @@ void GetLogsInDictionary(const struct Log* logs,
 // Serializes the |dictionary| into the file with the given |fd| in a JSON
 // format.
 void SerializeLogsAsJSON(const base::DictionaryValue& dictionary,
-                         const dbus::FileDescriptor& fd) {
+                         const base::ScopedFD& fd) {
   string logs_json;
   base::JSONWriter::WriteWithOptions(dictionary,
                                      base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &logs_json);
-  base::WriteFileDescriptor(fd.value(), logs_json.c_str(), logs_json.size());
+  base::WriteFileDescriptor(fd.get(), logs_json.c_str(), logs_json.size());
 }
 
 bool GetNamedLogFrom(const string& name, const struct Log* logs,
@@ -434,7 +434,7 @@ LogTool::LogMap LogTool::GetFeedbackLogs() {
   return result;
 }
 
-void LogTool::GetBigFeedbackLogs(const dbus::FileDescriptor& fd) {
+void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   CreateConnectivityReport();
   base::DictionaryValue dictionary;
   GetLogsInDictionary(kCommandLogs, &anonymizer_, &dictionary);

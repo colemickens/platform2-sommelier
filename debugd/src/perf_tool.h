@@ -11,9 +11,9 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <brillo/errors/error.h>
-#include <dbus/file_descriptor.h>
 
 namespace debugd {
 
@@ -37,7 +37,7 @@ class PerfTool {
   // error.
   bool GetPerfOutputFd(uint32_t duration_secs,
                        const std::vector<std::string>& perf_args,
-                       const dbus::FileDescriptor& stdout_fd,
+                       const base::ScopedFD& stdout_fd,
                        brillo::ErrorPtr* error);
 
  private:

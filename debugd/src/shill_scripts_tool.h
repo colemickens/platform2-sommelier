@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <brillo/errors/error.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -21,7 +21,7 @@ class ShillScriptsTool : public SubprocessTool {
   ShillScriptsTool() = default;
   ~ShillScriptsTool() override = default;
 
-  bool Run(const dbus::FileDescriptor& outfd,
+  bool Run(const base::ScopedFD& outfd,
            const std::string& script,
            const std::vector<std::string>& script_args,
            std::string* out_id,

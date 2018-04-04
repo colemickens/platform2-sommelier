@@ -21,7 +21,7 @@ class PingTool : public SubprocessTool {
   PingTool() = default;
   ~PingTool() override = default;
 
-  bool Start(const dbus::FileDescriptor& outfd,
+  bool Start(const base::ScopedFD& outfd,
              const std::string& destination,
              const brillo::VariantDictionary& options,
              std::string* out_id,

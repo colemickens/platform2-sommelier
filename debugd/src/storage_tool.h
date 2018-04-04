@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -22,7 +22,7 @@ class StorageTool : public SubprocessTool {
   ~StorageTool() override = default;
 
   std::string Smartctl(const std::string& option);
-  std::string Start(const dbus::FileDescriptor& outfd);
+  std::string Start(const base::ScopedFD& outfd);
   const base::FilePath GetDevice(const base::FilePath& filesystem,
                                  const base::FilePath& mountsFile);
   bool IsSupported(const base::FilePath typeFile,

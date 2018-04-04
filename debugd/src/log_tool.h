@@ -8,10 +8,10 @@
 #include <map>
 #include <string>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/src/anonymizer_tool.h"
 
@@ -27,7 +27,7 @@ class LogTool {
   std::string GetLog(const std::string& name);
   LogMap GetAllLogs();
   LogMap GetFeedbackLogs();
-  void GetBigFeedbackLogs(const dbus::FileDescriptor& fd);
+  void GetBigFeedbackLogs(const base::ScopedFD& fd);
   LogMap GetUserLogFiles();
 
  private:

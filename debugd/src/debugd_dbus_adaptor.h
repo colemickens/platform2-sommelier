@@ -17,7 +17,6 @@
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "debugd/src/battery_tool.h"
@@ -67,19 +66,19 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   // org::chromium::debugdInterface overrides; D-Bus methods.
   std::string BatteryFirmware(const std::string& option) override;
   bool PingStart(brillo::ErrorPtr* error,
-                 const dbus::FileDescriptor& outfd,
+                 const base::ScopedFD& outfd,
                  const std::string& dest,
                  const brillo::VariantDictionary& options,
                  std::string* handle) override;
   bool PingStop(brillo::ErrorPtr* error,
                 const std::string& handle) override;
-  std::string TracePathStart(const dbus::FileDescriptor& outfd,
+  std::string TracePathStart(const base::ScopedFD& outfd,
                              const std::string& destination,
                              const brillo::VariantDictionary& options) override;
   bool TracePathStop(brillo::ErrorPtr* error,
                      const std::string& handle) override;
   void SystraceStart(const std::string& categories) override;
-  void SystraceStop(const dbus::FileDescriptor& outfd) override;
+  void SystraceStop(const base::ScopedFD& outfd) override;
   std::string SystraceStatus() override;
   std::vector<std::string> GetRoutes(
       const brillo::VariantDictionary& options) override;
@@ -96,14 +95,14 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool GetPerfOutputFd(brillo::ErrorPtr* error,
                        uint32_t duration_sec,
                        const std::vector<std::string>& perf_args,
-                       const dbus::FileDescriptor& stdout_fd) override;
+                       const base::ScopedFD& stdout_fd) override;
   void DumpDebugLogs(bool is_compressed,
-                     const dbus::FileDescriptor& fd) override;
+                     const base::ScopedFD& fd) override;
   void SetDebugMode(const std::string& subsystem) override;
   std::string GetLog(const std::string& name) override;
   std::map<std::string, std::string> GetAllLogs() override;
   std::map<std::string, std::string> GetFeedbackLogs() override;
-  void GetBigFeedbackLogs(const dbus::FileDescriptor& fd) override;
+  void GetBigFeedbackLogs(const base::ScopedFD& fd) override;
   std::map<std::string, std::string> GetUserLogFiles() override;
   std::string GetExample() override;
   int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
@@ -120,16 +119,16 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       const std::string& host,
       const std::map<std::string, std::string>& options) override;
   std::string Smartctl(const std::string& option) override;
-  std::string MemtesterStart(const dbus::FileDescriptor& outfd,
+  std::string MemtesterStart(const base::ScopedFD& outfd,
                              uint32_t memory) override;
   bool MemtesterStop(brillo::ErrorPtr* error,
                      const std::string& handle) override;
-  std::string BadblocksStart(const dbus::FileDescriptor& outfd) override;
+  std::string BadblocksStart(const base::ScopedFD& outfd) override;
   bool BadblocksStop(brillo::ErrorPtr* error,
                      const std::string& handle) override;
   bool PacketCaptureStart(brillo::ErrorPtr* error,
-                          const dbus::FileDescriptor& statfd,
-                          const dbus::FileDescriptor& outfd,
+                          const base::ScopedFD& statfd,
+                          const base::ScopedFD& outfd,
                           const brillo::VariantDictionary& options,
                           std::string* handle) override;
   bool PacketCaptureStop(brillo::ErrorPtr* error,
@@ -161,7 +160,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string SetWifiPowerSave(bool enable) override;
   std::string GetWifiPowerSave() override;
   bool RunShillScriptStart(brillo::ErrorPtr* error,
-                           const dbus::FileDescriptor& outfd,
+                           const base::ScopedFD& outfd,
                            const std::string& script,
                            const std::vector<std::string>& script_args,
                            std::string* handle) override;

@@ -48,7 +48,7 @@ std::string SystraceTool::Start(const std::string& categories) {
   return out;
 }
 
-void SystraceTool::Stop(const dbus::FileDescriptor& outfd) {
+void SystraceTool::Stop(const base::ScopedFD& outfd) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
     return;
@@ -59,7 +59,7 @@ void SystraceTool::Stop(const dbus::FileDescriptor& outfd) {
   p.AddArg(path);
   p.AddArg("stop");
   // trace data is sent to stdout and not across dbus
-  p.BindFd(outfd.value(), STDOUT_FILENO);
+  p.BindFd(outfd.get(), STDOUT_FILENO);
   p.Run();
 }
 

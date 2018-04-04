@@ -85,7 +85,7 @@ std::string DebugdDBusAdaptor::SetOomScoreAdj(
 }
 
 bool DebugdDBusAdaptor::PingStart(brillo::ErrorPtr* error,
-                                  const dbus::FileDescriptor& outfd,
+                                  const base::ScopedFD& outfd,
                                   const std::string& destination,
                                   const brillo::VariantDictionary& options,
                                   std::string* handle) {
@@ -98,7 +98,7 @@ bool DebugdDBusAdaptor::PingStop(brillo::ErrorPtr* error,
 }
 
 std::string DebugdDBusAdaptor::TracePathStart(
-    const dbus::FileDescriptor& outfd,
+    const base::ScopedFD& outfd,
     const std::string& destination,
     const brillo::VariantDictionary& options) {
   return tracepath_tool_->Start(outfd, destination, options);
@@ -113,7 +113,7 @@ void DebugdDBusAdaptor::SystraceStart(const std::string& categories) {
   (void) systrace_tool_->Start(categories);
 }
 
-void DebugdDBusAdaptor::SystraceStop(const dbus::FileDescriptor& outfd) {
+void DebugdDBusAdaptor::SystraceStop(const base::ScopedFD& outfd) {
   systrace_tool_->Stop(outfd);
 }
 
@@ -157,13 +157,13 @@ bool DebugdDBusAdaptor::GetPerfOutputFd(
     brillo::ErrorPtr* error,
     uint32_t duration_sec,
     const std::vector<std::string>& perf_args,
-    const dbus::FileDescriptor& stdout_fd) {
+    const base::ScopedFD& stdout_fd) {
   return perf_tool_->GetPerfOutputFd(
       duration_sec, perf_args, stdout_fd, error);
 }
 
 void DebugdDBusAdaptor::DumpDebugLogs(bool is_compressed,
-                                      const dbus::FileDescriptor& fd) {
+                                      const base::ScopedFD& fd) {
   debug_logs_tool_->GetDebugLogs(is_compressed, fd);
 }
 
@@ -183,7 +183,7 @@ std::map<std::string, std::string> DebugdDBusAdaptor::GetFeedbackLogs() {
   return log_tool_->GetFeedbackLogs();
 }
 
-void DebugdDBusAdaptor::GetBigFeedbackLogs(const dbus::FileDescriptor& fd) {
+void DebugdDBusAdaptor::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   log_tool_->GetBigFeedbackLogs(fd);
 }
 
@@ -239,7 +239,7 @@ std::string DebugdDBusAdaptor::Smartctl(const std::string& option) {
   return storage_tool_->Smartctl(option);
 }
 
-std::string DebugdDBusAdaptor::MemtesterStart(const dbus::FileDescriptor& outfd,
+std::string DebugdDBusAdaptor::MemtesterStart(const base::ScopedFD& outfd,
                                               uint32_t memory) {
   return memory_tool_->Start(outfd, memory);
 }
@@ -250,7 +250,7 @@ bool DebugdDBusAdaptor::MemtesterStop(brillo::ErrorPtr* error,
 }
 
 std::string DebugdDBusAdaptor::BadblocksStart(
-    const dbus::FileDescriptor& outfd) {
+    const base::ScopedFD& outfd) {
   return storage_tool_->Start(outfd);
 }
 
@@ -261,8 +261,8 @@ bool DebugdDBusAdaptor::BadblocksStop(brillo::ErrorPtr* error,
 
 bool DebugdDBusAdaptor::PacketCaptureStart(
     brillo::ErrorPtr* error,
-    const dbus::FileDescriptor& statfd,
-    const dbus::FileDescriptor& outfd,
+    const base::ScopedFD& statfd,
+    const base::ScopedFD& outfd,
     const brillo::VariantDictionary& options,
     std::string* handle) {
   return packet_capture_tool_->Start(statfd, outfd, options, handle, error);
@@ -407,7 +407,7 @@ std::string DebugdDBusAdaptor::GetWifiPowerSave() {
 
 bool DebugdDBusAdaptor::RunShillScriptStart(
     brillo::ErrorPtr* error,
-    const dbus::FileDescriptor& outfd,
+    const base::ScopedFD& outfd,
     const std::string& script,
     const std::vector<std::string>& script_args,
     std::string* handle) {

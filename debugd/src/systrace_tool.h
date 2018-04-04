@@ -7,8 +7,8 @@
 
 #include <string>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -20,7 +20,7 @@ class SystraceTool {
   ~SystraceTool() = default;
 
   std::string Start(const std::string& categories);
-  void Stop(const dbus::FileDescriptor& outfd);
+  void Stop(const base::ScopedFD& outfd);
   std::string Status();
 
  private:

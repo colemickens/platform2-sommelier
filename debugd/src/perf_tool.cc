@@ -126,7 +126,7 @@ bool PerfTool::GetPerfOutput(uint32_t duration_secs,
 
 bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
                                const std::vector<std::string>& perf_args,
-                               const dbus::FileDescriptor& stdout_fd,
+                               const base::ScopedFD& stdout_fd,
                                brillo::ErrorPtr* error) {
   PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
   if (subcommand == PERF_COMMAND_UNSUPPORTED) {
@@ -145,7 +145,7 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
   AddQuipperArguments(&process, duration_secs, perf_args);
 
   process.SetPreExecCallback(base::Bind(Orphan));
-  process.BindFd(stdout_fd.value(), 1);
+  process.BindFd(stdout_fd.get(), 1);
 
   if (process.Run() != 0) {
     DEBUGD_ADD_ERROR(error, kProcessErrorName, "Process start failure.");

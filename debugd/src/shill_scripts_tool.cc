@@ -58,7 +58,7 @@ bool WhitelistedScript(const std::string& script, brillo::ErrorPtr* error) {
 
 }  // namespace
 
-bool ShillScriptsTool::Run(const dbus::FileDescriptor& outfd,
+bool ShillScriptsTool::Run(const base::ScopedFD& outfd,
                            const std::string& script,
                            const std::vector<std::string>& script_args,
                            std::string* out_id,
@@ -76,8 +76,8 @@ bool ShillScriptsTool::Run(const dbus::FileDescriptor& outfd,
   for (const auto& arg : script_args)
     p->AddArg(arg);
 
-  p->BindFd(outfd.value(), STDOUT_FILENO);
-  p->BindFd(outfd.value(), STDERR_FILENO);
+  p->BindFd(outfd.get(), STDOUT_FILENO);
+  p->BindFd(outfd.get(), STDERR_FILENO);
   *out_id = p->id();
   p->Start();
 

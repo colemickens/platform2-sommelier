@@ -20,7 +20,6 @@
 #include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
-#include <dbus/file_descriptor.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -77,10 +76,8 @@ int main(int argc, char* argv[]) {
       debugd::kDebugdInterface,
       debugd::kDumpDebugLogs);
   dbus::MessageWriter writer(&method_call);
-  dbus::FileDescriptor stdout_fd(fileno(fp.get()));
-  stdout_fd.CheckValidity();
   writer.AppendBool(FLAGS_compress);
-  writer.AppendFileDescriptor(stdout_fd);
+  writer.AppendFileDescriptor(fileno(fp.get()));
 
   // Wait for the response and process the result.
   LOG(INFO) << "Gathering logs, please wait";

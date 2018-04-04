@@ -57,8 +57,8 @@ bool AddValidatedStringOption(debugd::ProcessWithId* p,
 namespace debugd {
 
 bool PacketCaptureTool::Start(
-    const dbus::FileDescriptor& status_fd,
-    const dbus::FileDescriptor& output_fd,
+    const base::ScopedFD& status_fd,
+    const base::ScopedFD& output_fd,
     const brillo::VariantDictionary& options,
     std::string* out_id,
     brillo::ErrorPtr* error) {
@@ -93,10 +93,10 @@ bool PacketCaptureTool::Start(
   int child_output_fd = STDERR_FILENO + 1;
   p->AddStringOption("--output-file",
                      base::StringPrintf("/dev/fd/%d", child_output_fd));
-  p->BindFd(output_fd.value(), child_output_fd);
+  p->BindFd(output_fd.get(), child_output_fd);
 
-  p->BindFd(status_fd.value(), STDOUT_FILENO);
-  p->BindFd(status_fd.value(), STDERR_FILENO);
+  p->BindFd(status_fd.get(), STDOUT_FILENO);
+  p->BindFd(status_fd.get(), STDERR_FILENO);
   LOG(INFO) << "packet_capture: running process id: " << p->id();
   p->Start();
   *out_id = p->id();

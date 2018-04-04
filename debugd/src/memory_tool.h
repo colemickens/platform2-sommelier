@@ -7,8 +7,8 @@
 
 #include <string>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -19,7 +19,7 @@ class MemtesterTool : public SubprocessTool {
   MemtesterTool() = default;
   ~MemtesterTool() override = default;
 
-  std::string Start(const dbus::FileDescriptor& outfd,
+  std::string Start(const base::ScopedFD& outfd,
                     const uint32_t& memory);
 
  private:

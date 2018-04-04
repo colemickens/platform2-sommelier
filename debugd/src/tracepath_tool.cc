@@ -16,7 +16,7 @@ const char kTracepath6[] = "/usr/sbin/tracepath6";
 }  // namespace
 
 std::string TracePathTool::Start(
-    const dbus::FileDescriptor& outfd,
+    const base::ScopedFD& outfd,
     const std::string& destination,
     const brillo::VariantDictionary& options) {
   ProcessWithId* p = CreateProcess();
@@ -32,8 +32,8 @@ std::string TracePathTool::Start(
     p->AddArg("-n");
 
   p->AddArg(destination);
-  p->BindFd(outfd.value(), STDOUT_FILENO);
-  p->BindFd(outfd.value(), STDERR_FILENO);
+  p->BindFd(outfd.get(), STDOUT_FILENO);
+  p->BindFd(outfd.get(), STDERR_FILENO);
   LOG(INFO) << "tracepath: running process id: " << p->id();
   p->Start();
   return p->id();

@@ -11,7 +11,6 @@
 #include <base/macros.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -24,8 +23,8 @@ class PacketCaptureTool : public SubprocessTool {
   PacketCaptureTool() = default;
   ~PacketCaptureTool() override = default;
 
-  bool Start(const dbus::FileDescriptor& status_fd,
-             const dbus::FileDescriptor& output_fd,
+  bool Start(const base::ScopedFD& status_fd,
+             const base::ScopedFD& output_fd,
              const brillo::VariantDictionary& options,
              std::string* out_id,
              brillo::ErrorPtr* error);

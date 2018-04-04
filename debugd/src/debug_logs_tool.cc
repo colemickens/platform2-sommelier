@@ -34,7 +34,7 @@ void WriteArcBugreport(const base::FilePath& arc_bugreport_file) {
 }  // namespace
 
 void DebugLogsTool::GetDebugLogs(bool is_compressed,
-                                 const dbus::FileDescriptor& fd) {
+                                 const base::ScopedFD& fd) {
   base::ScopedTempDir arc_temp_dir;
 
   // Create a temporary file and write ARC log to the file if ARC is running.
@@ -57,7 +57,7 @@ void DebugLogsTool::GetDebugLogs(bool is_compressed,
     p.AddArg(kArcBugreportFile);
   }
   p.AddArg(kSystemLogs);
-  p.BindFd(fd.value(), STDOUT_FILENO);
+  p.BindFd(fd.get(), STDOUT_FILENO);
   p.Run();
 }
 

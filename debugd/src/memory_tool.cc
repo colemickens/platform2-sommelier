@@ -14,7 +14,7 @@ const char kMemtesterpath[] = "/usr/sbin/memtester";
 
 }  // namespace
 
-std::string MemtesterTool::Start(const dbus::FileDescriptor& outfd,
+std::string MemtesterTool::Start(const base::ScopedFD& outfd,
                                  const uint32_t& memory) {
   ProcessWithId* p = CreateProcess(false);
   if (!p)
@@ -23,8 +23,8 @@ std::string MemtesterTool::Start(const dbus::FileDescriptor& outfd,
   p->AddArg(kMemtesterpath);
   p->AddArg(base::StringPrintf("%u", memory));
   p->AddArg("1");
-  p->BindFd(outfd.value(), STDOUT_FILENO);
-  p->BindFd(outfd.value(), STDERR_FILENO);
+  p->BindFd(outfd.get(), STDOUT_FILENO);
+  p->BindFd(outfd.get(), STDERR_FILENO);
   LOG(INFO) << "memtester: running process id: " << p->id();
   p->Start();
   return p->id();

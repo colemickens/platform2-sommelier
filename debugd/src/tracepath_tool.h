@@ -10,7 +10,6 @@
 
 #include <base/macros.h>
 #include <brillo/variant_dictionary.h>
-#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -21,7 +20,7 @@ class TracePathTool : public SubprocessTool {
   TracePathTool() = default;
   ~TracePathTool() override = default;
 
-  std::string Start(const dbus::FileDescriptor& outfd,
+  std::string Start(const base::ScopedFD& outfd,
                     const std::string& destination,
                     const brillo::VariantDictionary& options);
 
