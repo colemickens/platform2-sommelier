@@ -68,11 +68,10 @@ bool PermissionBrokerDBusProxy::RequestUdpPortAccess(const string& interface,
 
   // Pass the read end of the pipe to permission_broker, to allow it to
   // monitor on this process.
-  dbus::FileDescriptor fd(lifeline_read_fd_);
-  fd.CheckValidity();
   bool allowed = false;
   brillo::ErrorPtr error;
-  if (!proxy_->RequestUdpPortAccess(port, interface, fd, &allowed, &error)) {
+  if (!proxy_->RequestUdpPortAccess(port, interface, lifeline_read_fd_,
+                                    &allowed, &error)) {
     LOG(ERROR) << "Failed to request UDP port access: "
                << error->GetCode() << " " << error->GetMessage();
     return false;
