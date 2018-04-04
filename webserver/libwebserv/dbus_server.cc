@@ -38,7 +38,7 @@ class DBusServer::RequestHandler final
       const std::vector<std::tuple<bool, std::string, std::string>>& in_params,
       const std::vector<std::tuple<int32_t, std::string, std::string,
                                    std::string, std::string>>& in_files,
-      const dbus::FileDescriptor& in_body) override;
+      const base::ScopedFD& in_body) override;
 
  private:
   DBusServer* server_{nullptr};
@@ -53,7 +53,7 @@ bool DBusServer::RequestHandler::ProcessRequest(
     const std::vector<std::tuple<bool, std::string, std::string>>& in_params,
     const std::vector<std::tuple<int32_t, std::string, std::string, std::string,
                                  std::string>>& in_files,
-    const dbus::FileDescriptor& in_body) {
+    const base::ScopedFD& in_body) {
   std::string protocol_handler_id = std::get<0>(in_request_info);
   std::string request_handler_id = std::get<1>(in_request_info);
   std::string request_id = std::get<2>(in_request_info);
@@ -94,7 +94,7 @@ bool DBusServer::RequestHandler::ProcessRequest(
             std::get<4>(tuple)}});  // transfer_encoding
   }
 
-  request->raw_data_fd_ = base::File(dup(in_body.value()));
+  request->raw_data_fd_ = base::File(dup(in_body.get()));
   CHECK(request->raw_data_fd_.IsValid());
 
   return protocol_handler->ProcessRequest(protocol_handler_id,

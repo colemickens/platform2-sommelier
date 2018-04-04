@@ -51,10 +51,8 @@ void PermissionBrokerFirewall::PunchTcpHoleAsync(
     const std::string& interface_name,
     const base::Callback<void(bool)>& success_cb,
     const base::Callback<void(brillo::Error*)>& failure_cb) {
-  dbus::FileDescriptor dbus_fd{lifeline_read_fd_};
-  dbus_fd.CheckValidity();
-  proxy_->RequestTcpPortAccessAsync(port, interface_name, dbus_fd, success_cb,
-                                    failure_cb);
+  proxy_->RequestTcpPortAccessAsync(port, interface_name, lifeline_read_fd_,
+                                    success_cb, failure_cb);
 }
 
 void PermissionBrokerFirewall::OnPermissionBrokerOnline(

@@ -40,8 +40,8 @@ void IgnoreDBusError(brillo::Error* /* error */) {}
 // Copies the data from |src_stream| to the destination stream represented
 // by a file descriptor |fd|.
 void WriteResponseData(brillo::StreamPtr src_stream,
-                       const dbus::FileDescriptor& fd) {
-  int dupfd = dup(fd.value());
+                       const base::ScopedFD& fd) {
+  int dupfd = dup(fd.get());
   auto dest_stream =
       brillo::FileStream::FromFileDescriptor(dupfd, true, nullptr);
   CHECK(dest_stream);
@@ -276,11 +276,11 @@ void DBusProtocolHandler::GetFileData(
   callbacks->on_success = success_callback;
   callbacks->on_error = error_callback;
 
-  auto on_success = [callbacks](const dbus::FileDescriptor& fd) {
+  auto on_success = [callbacks](const base::ScopedFD& fd) {
     brillo::ErrorPtr error;
     // Unfortunately there is no way to take ownership of the file descriptor
     // since |fd| is a const reference, so duplicate the descriptor.
-    int dupfd = dup(fd.value());
+    int dupfd = dup(fd.get());
     auto stream = brillo::FileStream::FromFileDescriptor(dupfd, true, &error);
     if (!stream)
       return callbacks->on_error.Run(error.get());

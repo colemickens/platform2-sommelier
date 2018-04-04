@@ -71,10 +71,11 @@ class DBusProtocolHandler final
   bool RemoveRequestHandler(brillo::ErrorPtr* error,
                             const std::string& in_request_handler_id) override;
 
-  bool GetRequestFileData(brillo::ErrorPtr* error,
-                          const std::string& in_request_id,
-                          int32_t in_file_id,
-                          dbus::FileDescriptor* out_contents) override;
+  bool GetRequestFileData(
+      brillo::ErrorPtr* error,
+      const std::string& in_request_id,
+      int32_t in_file_id,
+      brillo::dbus_utils::FileDescriptor* out_contents) override;
 
   bool CompleteRequest(
       brillo::ErrorPtr* error,
@@ -82,7 +83,7 @@ class DBusProtocolHandler final
       int32_t in_status_code,
       const std::vector<std::tuple<std::string, std::string>>& in_headers,
       int64_t in_data_size,
-      dbus::FileDescriptor* out_response_stream) override;
+      brillo::dbus_utils::FileDescriptor* out_response_stream) override;
 
  private:
   using RequestHandlerProxy = org::chromium::WebServer::RequestHandlerProxy;

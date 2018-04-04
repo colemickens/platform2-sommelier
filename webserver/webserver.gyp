@@ -19,6 +19,7 @@
         'dbus_service_config': '',
         'dbus_adaptors_out_dir': 'include/dbus_bindings',
         'dbus_xml_extension': 'dbus-xml',
+        'new_fd_bindings': 1,
       },
       # This static library is used in libwebserv shared library, which means
       # we must generate position-independent code for the files comprising
@@ -64,6 +65,7 @@
             'dbus_service_config': '<(platform2_root)/permission_broker/dbus_bindings/dbus-service-config.json',
             'mock_output_file': 'include/permission_broker/dbus-mocks.h',
             'proxy_output_file': 'include/permission_broker/dbus-proxies.h',
+            'new_fd_bindings': 1,
             'dbus_adaptors_out_dir': '',
           },
           'sources': [
@@ -85,6 +87,7 @@
         'dbus_adaptors_out_dir': 'include/dbus_bindings',
         'dbus_service_config': 'webservd/dbus_bindings/dbus-service-config.json',
         'dbus_xml_extension': 'dbus-xml',
+        'new_fd_bindings': 1,
       },
       'all_dependent_settings': {
         'variables': {
@@ -120,6 +123,7 @@
             'dbus_service_config': '',
             'mock_output_file': 'include/libwebserv/dbus-mocks.h',
             'proxy_output_file': 'include/libwebserv/dbus-proxies.h',
+            'new_fd_bindings': 1,
           },
           'sources': [
             'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml',

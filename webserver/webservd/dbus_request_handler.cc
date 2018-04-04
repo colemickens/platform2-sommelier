@@ -101,11 +101,9 @@ void DBusRequestHandler::HandleRequest(Request* request,
                                     request->GetURL(),
                                     request->GetMethod());
 
-  dbus::FileDescriptor body_data_pipe;
-  body_data_pipe.PutValue(request->GetBodyDataFileDescriptor());
-  body_data_pipe.CheckValidity();
+  base::ScopedFD body_data_pipe(request->GetBodyDataFileDescriptor());
   handler_proxy_->ProcessRequestAsync(
-      request_id, headers, params, files, body_data_pipe,
+      request_id, headers, params, files, body_data_pipe.get(),
       base::Bind(&base::DoNothing), error_callback, kDbusTimeoutInMsec);
 }
 

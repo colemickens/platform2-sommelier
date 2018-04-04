@@ -157,15 +157,14 @@ bool DBusProtocolHandler::GetRequestFileData(
     brillo::ErrorPtr* error,
     const std::string& in_request_id,
     int32_t in_file_id,
-    dbus::FileDescriptor* out_contents) {
+    brillo::dbus_utils::FileDescriptor* out_contents) {
   auto request = GetRequest(in_request_id, error);
   if (!request)
     return false;
 
   base::File file = request->GetFileData(in_file_id);
   if (file.IsValid()) {
-    out_contents->PutValue(file.TakePlatformFile());
-    out_contents->CheckValidity();
+    *out_contents = file.GetPlatformFile();
     return true;
   }
 
@@ -184,15 +183,14 @@ bool DBusProtocolHandler::CompleteRequest(
     int32_t in_status_code,
     const std::vector<std::tuple<std::string, std::string>>& in_headers,
     int64_t in_data_size,
-    dbus::FileDescriptor* out_response_stream) {
+    brillo::dbus_utils::FileDescriptor* out_response_stream) {
   auto request = GetRequest(in_request_id, error);
   if (!request)
     return false;
 
   base::File file = request->Complete(in_status_code, in_headers, in_data_size);
   if (file.IsValid()) {
-    out_response_stream->PutValue(file.TakePlatformFile());
-    out_response_stream->CheckValidity();
+    *out_response_stream = file.GetPlatformFile();
     return true;
   }
   brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
