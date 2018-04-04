@@ -46,6 +46,7 @@ rmdir: 1
 unlink: 1
 umask: 1
 gettimeofday: 1
+getrlimit: 1
 getuid: 1
 getgid: 1
 geteuid: 1
@@ -61,6 +62,7 @@ arch_prctl: 1
 mount: 1
 time: 1
 futex: 1
+set_tid_address: 1
 exit_group: 1
 tgkill: 1
 openat: 1

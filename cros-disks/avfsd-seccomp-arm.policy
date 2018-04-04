@@ -37,6 +37,7 @@ writev: 1
 poll: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
+ugetrlimit: 1
 mmap2: 1
 stat64: 1
 lstat64: 1
@@ -54,6 +55,7 @@ madvise: 1
 fcntl64: 1
 futex: 1
 exit_group: 1
+set_tid_address: 1
 statfs64: 1
 tgkill: 1
 socketpair: 1
