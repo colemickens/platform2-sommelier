@@ -276,7 +276,8 @@ void DBusProtocolHandler::GetFileData(
   callbacks->on_success = success_callback;
   callbacks->on_error = error_callback;
 
-  auto on_success = [callbacks](const base::ScopedFD& fd) {
+  auto on_success = [](std::shared_ptr<Callbacks> callbacks,
+                       const base::ScopedFD& fd) {
     brillo::ErrorPtr error;
     // Unfortunately there is no way to take ownership of the file descriptor
     // since |fd| is a const reference, so duplicate the descriptor.
@@ -286,12 +287,14 @@ void DBusProtocolHandler::GetFileData(
       return callbacks->on_error.Run(error.get());
     callbacks->on_success.Run(std::move(stream));
   };
-  auto on_error = [callbacks](brillo::Error* error) {
+  auto on_error = [](std::shared_ptr<Callbacks> callbacks,
+                     brillo::Error* error) {
     callbacks->on_error.Run(error);
   };
 
-  proxy->GetRequestFileDataAsync(request_id, file_id, base::Bind(on_success),
-                                 base::Bind(on_error));
+  proxy->GetRequestFileDataAsync(request_id, file_id,
+                                 base::Bind(on_success, callbacks),
+                                 base::Bind(on_error, callbacks));
 }
 
 DBusProtocolHandler::ProtocolHandlerProxyInterface*
