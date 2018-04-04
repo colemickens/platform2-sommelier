@@ -143,6 +143,13 @@ dev_gather_logs() {
   rm "${lab_preserve_logs}"
 }
 
+# Keep this list in sync with the var_overlay elements in the DIRLIST
+# found in chromeos-install from chromeos-base/chromeos-installer.
+MOUNTDIRS="
+  db/pkg
+  lib/portage
+"
+
 # Mount stateful partition for dev packages.
 dev_mount_packages() {
   # Set up the logging dir that ASAN compiled programs will write to.  We want
@@ -164,7 +171,6 @@ dev_mount_packages() {
   mount_or_fail --bind ${STATEFUL_PARTITION}/dev_image /usr/local
   mount -n -o remount,exec,suid /usr/local
 
-
   if [ ! -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
     # Add exceptions to allow symlink traversal and opening of FIFOs in the
     # dev_image subtree.
@@ -179,22 +185,34 @@ dev_mount_packages() {
   # things here (crosbug.com/14091).
   local base="${STATEFUL_PARTITION}/var_overlay"
   if [ -d "${base}" ]; then
-    # Keep this list in sync with the var_overlay elements in the DIRLIST
-    # found in chromeos-install from chromeos-base/chromeos-installer.
-    local dir dest parent
-    local dirlist="
-      db/pkg
-      lib/portage
-    "
-    for dir in ${dirlist}; do
-      if [ ! -d "${base}/${dir}" ]; then
-        continue
+    local dest
+    echo "${MOUNTDIRS}" | while read dir ; do
+      if [ ! -z "${dir}" ]; then
+        if [ ! -d "${base}/${dir}" ]; then
+          continue
+        fi
+        dest="/var/${dir}"
+        # Previous versions of this script created a symlink instead of setting
+        # up a bind mount, so get rid of the symlink if it exists.
+        (rm -f "${dest}" && mkdir -p "${dest}") || :
+        mount_or_fail --bind "${base}/${dir}" "${dest}"
       fi
-      dest="/var/${dir}"
-      # Previous versions of this script created a symlink instead of setting up
-      # a bind mount, so get rid of the symlink if it exists.
-      (rm -f "${dest}" && mkdir -p "${dest}") || :
-      mount_or_fail --bind "${base}/${dir}" "${dest}"
+    done
+  fi
+}
+
+# Unmount stateful partition for dev packages.
+dev_unmount_packages() {
+  # Unmount bind mounts for /var elements needed by gmerge.
+  local base="/var"
+  if [ -d "${base}" ]; then
+    echo "${MOUNTDIRS}" | while read dir ; do
+      if [ ! -z "${dir}" ]; then
+        if [ ! -d "${base}/${dir}" ]; then
+          continue
+        fi
+        umount -n "${base}/${dir}"
+      fi
     done
   fi
 }

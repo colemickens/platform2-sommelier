@@ -29,6 +29,12 @@ crash_reporter --clean_shutdown
 crossystem "cros_debug?1"
 CROS_DEBUG=$((! $?))
 
+dev_unmount_packages() { true; }
+
+if [ "${CROS_DEBUG}" -eq 1 ]; then
+  . /usr/share/cros/dev_utils.sh
+fi
+
 STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
 
 if [ "$CROS_DEBUG" = "1" -a -f "$STATEFUL_UPDATE" ] ; then
@@ -67,6 +73,10 @@ sync
 # of the steps failed.
 (
 set -x
+
+# Unmount stateful partition for dev packages. Will be a NOP unless we're in
+# dev mode.
+dev_unmount_packages
 
 # Unmount /var/run and /var/lock, which were bind mounted to /run and /run/lock
 # respectively to enable backwards compatibility for accessing /run (tmpfs for
