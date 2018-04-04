@@ -25,47 +25,11 @@
 
 namespace brillo {
 
-CrosConfigJson::CrosConfigJson() {}
+CrosConfigJson::CrosConfigJson() : model_dict_(nullptr) {}
 
 CrosConfigJson::~CrosConfigJson() {}
 
-std::string CrosConfigJson::GetFullPath(ConfigNode node) {
-  // TODO(sjg@chromium.org): Figure out how to get the path to a node
-  return "TODO";
-}
-
-ConfigNode CrosConfigJson::GetPathNode(ConfigNode base_node,
-                                       const std::string& path) {
-  const base::DictionaryValue* attr_dict = base_node.GetDict();
-
-  std::vector<std::string> path_tokens = base::SplitString(
-      path.substr(1), "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  bool valid_path = true;
-  for (std::string& path : path_tokens) {
-    valid_path = attr_dict->GetDictionary(path, &attr_dict);
-    if (!valid_path) {
-      break;
-    }
-  }
-
-  if (!valid_path) {
-    return ConfigNode();
-  }
-  return ConfigNode(attr_dict);
-}
-
-bool CrosConfigJson::LookupPhandle(ConfigNode node,
-                                   const std::string& prop_name,
-                                   ConfigNode* node_out) {
-  const base::DictionaryValue* target = nullptr;
-  if (!node.GetDict()->GetDictionary(prop_name, &target)) {
-    return false;
-  }
-  *node_out = ConfigNode(target);
-  return true;
-}
-
-bool CrosConfigJson::SelectModelConfigByIDs(
+bool CrosConfigJson::SelectConfigByIDs(
     const std::string& find_name,
     int find_sku_id,
     const std::string& find_whitelabel_name) {
@@ -119,28 +83,50 @@ bool CrosConfigJson::SelectModelConfigByIDs(
                            << " sku_id: " << find_sku_id
                            << " customization_id: " << find_whitelabel_name;
     return false;
-  } else if (!model_dict_->GetString("name", &model_name_)) {
-    CROS_CONFIG_LOG(ERROR) << "Mode does not have a name";
-    return false;
   }
-  model_node_ = ConfigNode(model_dict_);
-  std::string wallpaper;
-  bool ok = model_dict_->GetString("wallpaper", &wallpaper);
-  CROS_CONFIG_LOG(INFO) << "wallpaper" << ok << wallpaper;
-  CROS_CONFIG_LOG(INFO) << "init dict" << model_node_.GetDict();
+  inited_ = true;
   return true;
 }
 
-int CrosConfigJson::GetProp(const ConfigNode& node,
-                            std::string name,
-                            std::string* value_out) {
-  CROS_CONFIG_LOG(INFO) << "lookup dict" << model_node_.GetDict();
-  if (node.GetDict()->GetString(name, value_out)) {
-    CROS_CONFIG_LOG(INFO) << "got value for '" << name
-                          << "' :'" << *value_out << "'";
-    return value_out->size();
+bool CrosConfigJson::GetString(const std::string& path,
+                               const std::string& prop,
+                               std::string* val_out,
+                               std::vector<std::string>* log_msgs_out) {
+  if (!InitCheck()) {
+    return false;
   }
-  return -1;
+
+  if (path.empty()) {
+    LOG(ERROR) << "Path must be specified";
+    return false;
+  }
+
+  if (path[0] != '/') {
+    LOG(ERROR) << "Path must start with / specifying the root node";
+    return false;
+  }
+
+  bool valid_path = true;
+  const base::DictionaryValue* attr_dict = model_dict_;
+
+  if (path.length() > 1) {
+    std::vector<std::string> path_tokens = base::SplitString(
+        path.substr(1), "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    for (const std::string& path : path_tokens) {
+      valid_path = attr_dict->GetDictionary(path, &attr_dict);
+      if (!valid_path) {
+        CROS_CONFIG_LOG(ERROR) << "Failed to find path: " << path;
+        break;
+      }
+    }
+  }
+
+  std::string value;
+  if (valid_path && attr_dict->GetString(prop, &value)) {
+    val_out->assign(value);
+    return true;
+  }
+  return false;
 }
 
 bool CrosConfigJson::ReadConfigFile(const base::FilePath& filepath) {
@@ -167,17 +153,6 @@ bool CrosConfigJson::ReadConfigFile(const base::FilePath& filepath) {
   target_dirs_["hifi-conf"] = "/usr/share/alsa/ucm";
   target_dirs_["topology-bin"] = "/lib/firmware";
   target_dirs_["volume"] = "/etc/cras";
-
-  // TODO(sjg): These should not be needed once we adjust the json to pull in
-  // references with <<< or similar.
-  phandle_props_.push_back("arc-properties-type");
-  phandle_props_.push_back("audio-type");
-  phandle_props_.push_back("bcs-type");
-  phandle_props_.push_back("power-type");
-  phandle_props_.push_back("shares");
-  phandle_props_.push_back("single-sku");
-  phandle_props_.push_back("touch-type");
-  phandle_props_.push_back("whitelabel");
 
   return true;
 }

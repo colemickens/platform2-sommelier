@@ -24,12 +24,10 @@ class CrosConfigTest : public testing::Test {
  protected:
   void InitConfig(const std::string name = "Another",
                   int sku_id = -1,
-                  std::string whitelabel_name = "",
-                  bool use_json = true) {
+                  std::string whitelabel_name = "") {
     base::FilePath filepath(TEST_FILE);
     ASSERT_TRUE(
-        cros_config_.InitForTest(filepath, name, sku_id, whitelabel_name,
-                                 use_json));
+        cros_config_.InitForTest(filepath, name, sku_id, whitelabel_name));
   }
 
   brillo::CrosConfig cros_config_;
@@ -90,6 +88,15 @@ TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
   ASSERT_EQ("", val);
 }
 
+TEST_F(CrosConfigTest, CheckAbsPath) {
+  InitConfig("Another");
+  std::string val;
+
+  ASSERT_TRUE(cros_config_.GetAbsPath("/audio/main", "cras-config-dir", &val));
+  ASSERT_EQ("/etc/cras/another", val);
+}
+
+
 #ifndef USE_JSON
 TEST_F(CrosConfigTest, CheckBadFile) {
   base::FilePath filepath("test.dts");
@@ -101,36 +108,13 @@ TEST_F(CrosConfigTest, CheckBadStruct) {
   ASSERT_FALSE(cros_config_.InitForTest(filepath, "not_another", -1, ""));
 }
 
-TEST_F(CrosConfigTest, CheckAbsPath) {
-  InitConfig("Another");
-  std::string val;
-
-  ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("/etc/dptf/another/dptf.dv", val);
-
-  // This is not a PropFile.
-  ASSERT_FALSE(cros_config_.GetAbsPath("/", "wallpaper", &val));
-
-  // GetString() should still return the raw value.
-  ASSERT_TRUE(cros_config_.GetString("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("another/dptf.dv", val);
-
-  InitConfig("Some", 0, "", false);
-  ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("/etc/dptf/some_touch/dptf.dv", val);
-
-  InitConfig("Some", 1, "", false);
-  ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("/etc/dptf/some_notouch/dptf.dv", val);
-}
-
 TEST_F(CrosConfigTest, CheckSubmodel) {
-  InitConfig("Some", 0, "", false);
+  InitConfig("Some", 0, "");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
   ASSERT_EQ("yes", val);
 
-  InitConfig("Some", 1, "", false);
+  InitConfig("Some", 1, "");
   ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
   ASSERT_EQ("no", val);
 
@@ -156,7 +140,7 @@ TEST_F(CrosConfigTest, CheckFollowPhandle) {
 
 TEST_F(CrosConfigTest, CheckWhiteLabel) {
   // Check values defined by whitelabel1.
-  InitConfig("Some", 8, "whitelabel1", false);
+  InitConfig("Some", 8, "whitelabel1");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("wallpaper-wl1", val);
@@ -166,7 +150,7 @@ TEST_F(CrosConfigTest, CheckWhiteLabel) {
   ASSERT_EQ("WLBA", val);
 
   // Check values defined by whitelabel2.
-  InitConfig("Some", 9, "whitelabel2", false);
+  InitConfig("Some", 9, "whitelabel2");
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("wallpaper-wl2", val);
   ASSERT_TRUE(cros_config_.GetString("/firmware", "key-id", &val));

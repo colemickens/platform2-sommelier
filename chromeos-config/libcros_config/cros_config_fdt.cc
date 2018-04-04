@@ -16,6 +16,7 @@ extern "C" {
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -30,11 +31,32 @@ const char kPhandleProperties[] = "phandle-properties";
 
 namespace brillo {
 
+ConfigNode::ConfigNode() : valid_(false), node_offset_(-1) {}
+
+ConfigNode::ConfigNode(int offset) {
+  valid_ = true;
+  node_offset_ = offset;
+}
+
+int ConfigNode::GetOffset() const {
+  if (!valid_) {
+    return -1;
+  }
+  return node_offset_;
+}
+
+bool ConfigNode::operator==(const ConfigNode& other) const {
+  if (valid_ != other.valid_) {
+    return false;
+  }
+  return node_offset_ == other.node_offset_;
+}
+
 CrosConfigFdt::CrosConfigFdt() {}
 
 CrosConfigFdt::~CrosConfigFdt() {}
 
-std::string CrosConfigFdt::GetFullPath(ConfigNode node) {
+std::string CrosConfigFdt::GetFullPath(const ConfigNode& node) {
   const void* blob = blob_.c_str();
   char buf[256];
   int err;
@@ -48,7 +70,7 @@ std::string CrosConfigFdt::GetFullPath(ConfigNode node) {
   return std::string(buf);
 }
 
-ConfigNode CrosConfigFdt::GetPathNode(ConfigNode base_node,
+ConfigNode CrosConfigFdt::GetPathNode(const ConfigNode& base_node,
                                       const std::string& path) {
   const void* blob = blob_.c_str();
   auto parts = base::SplitString(path.substr(1), "/", base::KEEP_WHITESPACE,
@@ -63,7 +85,7 @@ ConfigNode CrosConfigFdt::GetPathNode(ConfigNode base_node,
   return ConfigNode(node);
 }
 
-bool CrosConfigFdt::LookupPhandle(ConfigNode node,
+bool CrosConfigFdt::LookupPhandle(const ConfigNode& node,
                                   const std::string& prop_name,
                                   ConfigNode* node_out) {
   const void* blob = blob_.c_str();
@@ -228,10 +250,9 @@ int CrosConfigFdt::FollowPhandle(int phandle, int* target_out) {
   return model_node;
 }
 
-bool CrosConfigFdt::SelectModelConfigByIDs(
-    const std::string& find_name,
-    int find_sku_id,
-    const std::string& find_whitelabel_name) {
+bool CrosConfigFdt::SelectConfigByIDs(const std::string& find_name,
+                                      int find_sku_id,
+                                      const std::string& find_whitelabel_name) {
   const void* blob = blob_.c_str();
   CROS_CONFIG_LOG(INFO) << "Looking up name " << find_name << ", SKU ID "
                         << find_sku_id;
@@ -297,6 +318,33 @@ bool CrosConfigFdt::SelectModelConfigByIDs(
     }
   }
 
+  // See if there is a whitelabel config for this model.
+  if (!whitelabel_node_.IsValid()) {
+    LookupPhandle(model_node_, "whitelabel", &whitelabel_node_);
+  }
+  ConfigNode next_node;
+  default_nodes_.clear();
+  for (ConfigNode node = model_node_;
+       LookupPhandle(node, "default", &next_node); node = next_node) {
+    if (std::find(default_nodes_.begin(), default_nodes_.end(), next_node) !=
+        default_nodes_.end()) {
+      CROS_CONFIG_LOG(ERROR) << "Circular default at " << GetFullPath(node);
+      return false;
+    }
+    default_nodes_.push_back(next_node);
+  }
+
+  CROS_CONFIG_LOG(INFO) << "Using master configuration for model "
+                        << model_name_ << ", submodel "
+                        << (submodel_name_.empty() ? "(none)" : submodel_name_);
+  if (whitelabel_node_.IsValid()) {
+    CROS_CONFIG_LOG(INFO) << "Whitelabel of  " << GetFullPath(whitelabel_node_);
+  } else if (whitelabel_tag_node_.IsValid()) {
+    CROS_CONFIG_LOG(INFO) << "Whitelabel tag "
+                          << GetFullPath(whitelabel_tag_node_);
+  }
+  inited_ = true;
+
   return true;
 }
 
@@ -358,6 +406,122 @@ bool CrosConfigFdt::ReadConfigFile(const base::FilePath& filepath) {
   } else if (schema_offset < 0) {
     CROS_CONFIG_LOG(WARNING) << "Cannot find " << kSchemaPath
                              << " node: " << fdt_strerror(schema_offset);
+  }
+  return true;
+}
+
+bool CrosConfigFdt::GetStringByNode(const ConfigNode& base_node,
+                                    const std::string& path,
+                                    const std::string& prop,
+                                    std::string* val_out,
+                                    std::vector<std::string>* log_msgs_out) {
+  ConfigNode subnode = GetPathNode(base_node, path);
+  ConfigNode wl_subnode;
+  if (whitelabel_node_.IsValid()) {
+    wl_subnode = GetPathNode(whitelabel_node_, path);
+    if (!subnode.IsValid() && wl_subnode.IsValid()) {
+      CROS_CONFIG_LOG(INFO)
+          << "The path " << GetFullPath(base_node) << path
+          << " does not exist. Falling back to whitelabel path";
+      subnode = wl_subnode;
+    }
+  }
+  if (!subnode.IsValid()) {
+    log_msgs_out->push_back("The path " + GetFullPath(base_node) + path +
+                            " does not exist.");
+    return false;
+  }
+
+  std::string value;
+  int len = GetProp(subnode, prop, &value);
+  if (len < 0 && wl_subnode.IsValid()) {
+    len = GetProp(wl_subnode, prop, &value);
+    CROS_CONFIG_LOG(INFO) << "The property " << prop
+                          << " does not exist. Falling back to "
+                          << "whitelabel property";
+  }
+  if (len < 0) {
+    ConfigNode target_node;
+    for (int i = 0; i < phandle_props_.size(); i++) {
+      LookupPhandle(subnode, phandle_props_[i], &target_node);
+      if (target_node.IsValid()) {
+        len = GetProp(target_node, prop, &value);
+        if (len < 0) {
+          CROS_CONFIG_LOG(INFO)
+              << "Followed " << phandle_props_[i] << " phandle";
+          break;
+        }
+      }
+    }
+  }
+
+  if (len < 0) {
+    log_msgs_out->push_back("Cannot get path " + path + " property " + prop +
+                            ": " + "full path " + GetFullPath(subnode) + ": " +
+                            fdt_strerror(len));
+    return false;
+  }
+
+  // We must have a normally terminated string. This guards against a string
+  // list being used, or perhaps a property that does not contain a valid
+  // string at all.
+  if (!len || value.size() != len) {
+    log_msgs_out->push_back("String at path " + path + " property " + prop +
+                            " is invalid");
+    return false;
+  }
+
+  val_out->assign(value);
+
+  return true;
+}
+
+bool CrosConfigFdt::GetString(const std::string& path,
+                              const std::string& prop,
+                              std::string* val_out,
+                              std::vector<std::string>* log_msgs_out) {
+  if (!InitCheck()) {
+    return false;
+  }
+
+  if (!model_node_.IsValid()) {
+    log_msgs_out->push_back("Please specify the model to access.");
+    return false;
+  }
+
+  if (path.empty()) {
+    log_msgs_out->push_back("Path must be specified");
+    return false;
+  }
+
+  if (path[0] != '/') {
+    log_msgs_out->push_back("Path must start with / specifying the root node");
+    return false;
+  }
+
+  if (whitelabel_tag_node_.IsValid()) {
+    if (path == "/" && GetStringByNode(whitelabel_tag_node_, "/", prop, val_out,
+                                       log_msgs_out)) {
+      return true;
+    }
+    // TODO(sjg@chromium.org): We are considering moving the key-id to the root
+    // of the model schema. If we do, we can drop this special case.
+    if (path == "/firmware" && prop == "key-id" &&
+        GetStringByNode(whitelabel_tag_node_, "/", prop, val_out,
+                        log_msgs_out)) {
+      return true;
+    }
+  }
+  if (!GetStringByNode(model_node_, path, prop, val_out, log_msgs_out)) {
+    if (submodel_node_.IsValid() &&
+        GetStringByNode(submodel_node_, path, prop, val_out, log_msgs_out)) {
+      return true;
+    }
+    for (ConfigNode node : default_nodes_) {
+      if (GetStringByNode(node, path, prop, val_out, log_msgs_out))
+        return true;
+    }
+    return false;
   }
   return true;
 }

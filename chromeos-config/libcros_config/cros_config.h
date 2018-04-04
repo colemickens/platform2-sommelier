@@ -7,7 +7,7 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 
-#include "chromeos-config/libcros_config/cros_config_interface.h"
+#include "chromeos-config/libcros_config/cros_config_impl.h"
 
 #include <map>
 #include <memory>
@@ -27,10 +27,6 @@ class FilePath;
 
 namespace brillo {
 
-class CrosConfigFdt;
-class CrosConfigJson;
-class ConfigNode;
-
 struct SmbiosTable;
 class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
  public:
@@ -49,18 +45,15 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // Prepare the configuration system for testing.
   // This reads in the given configuration file and selects the supplied
   // model name.
-  // @filepath: Path to configuration .dtb file.
+  // @filepath: Path to configuration .dtb|.json file.
   // @name: Platform name as returned by 'mosys platform id'.
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
   // @customization_id: VPD customization ID from 'mosys platform customization'
-  // @use_json: true to require a json file and to compare device-tree and json
-  //   results for every query
   // @return true if OK, false on error.
   bool InitForTest(const base::FilePath& filepath,
                    const std::string& name,
                    int sku_id,
-                   const std::string& customization_id,
-                   bool use_json = true);
+                   const std::string& customization_id);
 
   // Internal function to obtain a property value and return a list of log
   // messages on failure. Public for tests.
@@ -86,38 +79,21 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
  private:
   // Common init function for both production and test code.
-  // @filepath: path to configuration .dtb file.
+  // @filepath: path to configuration .dtb|.json file.
   // @smbios_file: File containing memory to scan (typically this is /dev/mem)
   // @vpd_file: File containing the customization_id from VPD. Typically this
   //     is '/sys/firmware/vpd/ro/customization_id'.
-  // @use_json: true to require a json file and to compare device-tree and json
   //   results for every query
   bool InitCommon(const base::FilePath& filepath,
                   const base::FilePath& smbios_file,
-                  const base::FilePath& vpd_file,
-                  bool use_json);
+                  const base::FilePath& vpd_file);
 
-  // Internal function to obtain a property value based on a node
-  // This looks up a property for a path, relative to a given base node.
-  // @base_node: base node for the search.
-  // @path: Path to locate (relative to @base). Must start with "/".
-  // @prop: Property name to look up
-  // @val_out: returns the string value found, if any
-  // @log_msgs_out: returns a list of error messages if this function fails
-  // @return true if found, false if not found
-  bool GetString(const ConfigNode& base_node,
-                 const std::string& path,
-                 const std::string& prop,
-                 std::string* val_out,
-                 std::vector<std::string>* log_msgs_out);
+  std::unique_ptr<CrosConfigImpl> cros_config_;
 
-  bool CompareResults(bool fdt_ok, const std::string& fdt_val,
-                      bool json_ok, const std::string& json_val,
-                      std::string* val_out);
-
-  CrosConfigFdt* cros_config_fdt_;
-  CrosConfigJson* cros_config_json_;
-  bool use_json_;
+ private:
+  // Runs a quick init check and prints an error to stderr if it fails.
+  // @return true if OK, false on error.
+  bool InitCheck() const;
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };

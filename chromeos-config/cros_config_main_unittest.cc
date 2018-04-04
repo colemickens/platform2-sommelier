@@ -31,7 +31,7 @@ std::vector<std::string> GetCrosConfigCommand(
 #ifndef USE_JSON
       "--test_database=test.dtb",
 #else
-      "--test_database=test_config.json",
+      "--test_database=test.json",
 #endif
       "--test_name=Another"};
   cmd.insert(cmd.end(), params.begin(), params.end());
@@ -60,20 +60,10 @@ TEST(CrosConfigTest, GetStringNonRoot) {
   EXPECT_EQ("probe", val);
 }
 
-#ifndef USE_JSON
 TEST(CrosConfigTest, GetAbsPath) {
   std::string val;
-  bool success =
-      base::GetAppOutput(GetCrosConfigCommand({"/thermal", "dptf-dv"}), &val);
-  EXPECT_TRUE(success);
-  EXPECT_EQ("another/dptf.dv", val);
 
-  success = base::GetAppOutput(
-      GetCrosConfigCommand({"--abspath", "/thermal", "dptf-dv"}), &val);
-  EXPECT_TRUE(success);
-  EXPECT_EQ("/etc/dptf/another/dptf.dv", val);
-
-  success = base::GetAppOutput(
+  bool success = base::GetAppOutput(
       GetCrosConfigCommand({"/audio/main", "cras-config-dir"}), &val);
   EXPECT_TRUE(success);
   EXPECT_EQ("another", val);
@@ -91,7 +81,6 @@ TEST(CrosConfigTest, GetAbsPath) {
   EXPECT_FALSE(success);
   EXPECT_EQ("", val);
 }
-#endif /* !USE_JSON */
 
 int main(int argc, char** argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
