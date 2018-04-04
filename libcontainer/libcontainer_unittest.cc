@@ -166,6 +166,7 @@ struct MockMinijailState {
   int cgroups_called_count;
   int wait_called_count;
   int reset_signal_mask_called_count;
+  int reset_signal_handlers_called_count;
   int pid;
   std::map<minijail_hook_event_t, std::vector<MinijailHookCallback>> hooks;
 };
@@ -391,6 +392,7 @@ TEST_F(ContainerTest, TestMountTmpStart) {
   EXPECT_EQ(0, container_wait(container_->get()));
   EXPECT_EQ(1, g_mock_minijail_state->wait_called_count);
   EXPECT_EQ(1, g_mock_minijail_state->reset_signal_mask_called_count);
+  EXPECT_EQ(1, g_mock_minijail_state->reset_signal_handlers_called_count);
 }
 
 TEST_F(ContainerTest, TestKillContainer) {
@@ -661,6 +663,10 @@ int minijail_add_to_cgroup(struct minijail* j, const char* cg_path) {
 
 void minijail_reset_signal_mask(struct minijail* j) {
   ++libcontainer::g_mock_minijail_state->reset_signal_mask_called_count;
+}
+
+void minijail_reset_signal_handlers(struct minijail* j) {
+  ++libcontainer::g_mock_minijail_state->reset_signal_handlers_called_count;
 }
 
 void minijail_skip_remount_private(struct minijail* j) {}
