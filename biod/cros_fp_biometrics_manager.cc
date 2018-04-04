@@ -375,7 +375,8 @@ bool CrosFpBiometricsManager::CrosFpDevice::SetContext(std::string user_hex) {
   if (!user_hex.empty()) {
     std::vector<uint8_t> user_id;
     if (base::HexStringToBytes(user_hex, &user_id))
-      std::copy(user_id.begin(), user_id.end(), ctxt.userid);
+      memcpy(ctxt.userid, user_id.data(),
+             std::min(user_id.size(), sizeof(ctxt.userid)));
   }
 
   crypto::RandBytes(ctxt.nonce, sizeof(ctxt.nonce));
@@ -515,6 +516,13 @@ void CrosFpBiometricsManager::RemoveRecordsFromMemory() {
 
 bool CrosFpBiometricsManager::ReadRecords(
     const std::unordered_set<std::string>& user_ids) {
+  // TODO(vpalatin): as per b/77568272, proper multi-user support
+  // for now, arbitrarily use the first one in the set.
+  std::string current_user;
+  if (user_ids.size())
+    current_user = *user_ids.begin();
+  cros_dev_->SetContext(current_user);
+
   return biod_storage_.ReadRecords(user_ids);
 }
 
