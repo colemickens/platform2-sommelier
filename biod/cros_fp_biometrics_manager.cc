@@ -457,6 +457,7 @@ BiometricType CrosFpBiometricsManager::GetType() {
 
 BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
     std::string user_id, std::string label) {
+  LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
   if (!next_session_action_.is_null())
     return BiometricsManager::EnrollSession();
@@ -474,6 +475,7 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
 }
 
 BiometricsManager::AuthSession CrosFpBiometricsManager::StartAuthSession() {
+  LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
   if (!next_session_action_.is_null())
     return BiometricsManager::AuthSession();
@@ -530,10 +532,12 @@ void CrosFpBiometricsManager::SetSessionFailedHandler(
 }
 
 void CrosFpBiometricsManager::EndEnrollSession() {
+  LOG(INFO) << __func__;
   KillMcuSession();
 }
 
 void CrosFpBiometricsManager::EndAuthSession() {
+  LOG(INFO) << __func__;
   KillMcuSession();
 }
 
@@ -624,6 +628,7 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
   }
 
   int image_result = EC_MKBP_FP_ERRCODE(event);
+  LOG(INFO) << __func__ << " result: " << image_result;
   ScanResult scan_result;
   switch (image_result) {
     case EC_MKBP_FP_ERR_ENROLL_OK:
@@ -741,6 +746,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   BiometricsManager::AttemptMatches matches;
   std::vector<std::string> records;
 
+  LOG(INFO) << __func__ << " result: " << match_result;
   switch (match_result) {
     case EC_MKBP_FP_ERR_MATCH_NO:
       // This is the API: empty matches but still SCAN_RESULT_SUCCESS.
