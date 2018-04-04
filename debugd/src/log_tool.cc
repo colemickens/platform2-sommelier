@@ -82,6 +82,8 @@ const Log kCommandLogs[] = {
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
+  { "cros_fp",
+    "/bin/cat /var/log/cros_fp.previous /var/log/cros_fp.log 2> /dev/null" },
   { "dmesg", "/bin/dmesg" },
   { "ec_info", "/bin/cat /var/log/ec_info.txt" },
   // The sed command replaces the EDID serial number (4 bytes at position 12)
