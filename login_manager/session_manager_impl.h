@@ -19,7 +19,6 @@
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
-#include <dbus/file_descriptor.h>
 #include <libpasswordprovider/password_provider.h>
 
 #include "login_manager/container_manager_interface.h"
