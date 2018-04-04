@@ -10,6 +10,9 @@
     <allow own="org.chromium.Chaps"/>
     <allow send_destination="org.chromium.Chaps"/>
   </policy>
+  <policy user="shill">
+    <allow send_destination="org.chromium.Chaps"/>
+  </policy>
   <policy user="arc-oemcrypto">
     <allow send_destination="org.chromium.Chaps"/>
   </policy>
