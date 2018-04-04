@@ -27,6 +27,7 @@ namespace cros_disks {
 
 class DiskManager;
 class FormatManager;
+class FUSEMountManager;
 class MountManager;
 class Platform;
 class RenameManager;
@@ -68,8 +69,8 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   // the operation succeeded or failed using a RenameErrorType enum value.
   void Rename(const std::string& path, const std::string& volume_name) override;
 
-  // Mounts a path when invoked.
-  void Mount(const std::string& path,
+  // Mounts a source when invoked.
+  void Mount(const std::string& source,
              const std::string& filesystem_type,
              const std::vector<std::string>& options) override;
 

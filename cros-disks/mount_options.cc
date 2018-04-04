@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include <base/strings/string_util.h>
+#include <base/stl_util.h>
 
 using std::pair;
 using std::string;
@@ -27,6 +28,19 @@ const char MountOptions::kOptionReadWrite[] = "rw";
 const char MountOptions::kOptionRemount[] = "remount";
 const char MountOptions::kOptionSynchronous[] = "sync";
 const char MountOptions::kOptionUtf8[] = "utf8";
+
+namespace {
+const char kOptionUidPrefix[] = "uid=";
+const char kOptionGidPrefix[] = "gid=";
+const char kOptionShortNamePrefix[] = "shortname=";
+}  // namespace
+
+MountOptions::MountOptions()
+    : whitelist_exact_({kOptionBind, kOptionDirSync, kOptionFlush,
+                        kOptionSynchronous, kOptionUtf8}),
+      whitelist_prefix_({kOptionShortNamePrefix}) {}
+
+MountOptions::~MountOptions() = default;
 
 void MountOptions::Initialize(const vector<string>& options,
                               bool set_user_and_group_id,
@@ -52,21 +66,25 @@ void MountOptions::Initialize(const vector<string>& options,
       option_read_write = true;
     } else if (option == kOptionRemount) {
       option_remount = true;
-    } else if (base::StartsWith(option,
-                                "uid=", base::CompareCase::INSENSITIVE_ASCII)) {
+    } else if (base::StartsWith(option, kOptionUidPrefix,
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       option_user_id = option;
-    } else if (base::StartsWith(option,
-                                "gid=", base::CompareCase::INSENSITIVE_ASCII)) {
+    } else if (base::StartsWith(option, kOptionGidPrefix,
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       option_group_id = option;
     } else if (option == kOptionNoDev || option == kOptionNoExec ||
                option == kOptionNoSuid) {
       // We'll add these options unconditionally below.
       continue;
-    } else if (option == kOptionBind || option == kOptionDirSync ||
-               option == kOptionFlush || option == kOptionSynchronous ||
-               option == kOptionUtf8 ||
-               base::StartsWith(option, "shortname=",
-                                base::CompareCase::INSENSITIVE_ASCII)) {
+    } else if (base::ContainsValue(whitelist_exact_, option)) {
+      // Only add options in the whitelist.
+      options_.push_back(option);
+    } else if (std::find_if(whitelist_prefix_.begin(), whitelist_prefix_.end(),
+                            [option](const auto& s) {
+                              return base::StartsWith(
+                                  option, s,
+                                  base::CompareCase::INSENSITIVE_ASCII);
+                            }) != whitelist_prefix_.end()) {
       // Only add options in the whitelist.
       options_.push_back(option);
     } else {
@@ -89,13 +107,13 @@ void MountOptions::Initialize(const vector<string>& options,
     if (!option_user_id.empty()) {
       options_.push_back(option_user_id);
     } else if (!default_user_id.empty()) {
-      options_.push_back("uid=" + default_user_id);
+      options_.push_back(kOptionUidPrefix + default_user_id);
     }
 
     if (!option_group_id.empty()) {
       options_.push_back(option_group_id);
     } else if (!default_group_id.empty()) {
-      options_.push_back("gid=" + default_group_id);
+      options_.push_back(kOptionGidPrefix + default_group_id);
     }
   }
 
@@ -157,6 +175,14 @@ pair<MountOptions::Flags, string> MountOptions::ToMountFlagsAndData() const {
 
 string MountOptions::ToString() const {
   return options_.empty() ? kOptionReadOnly : base::JoinString(options_, ",");
+}
+
+void MountOptions::WhitelistOption(const string& option) {
+  whitelist_exact_.push_back(option);
+}
+
+void MountOptions::WhitelistOptionPrefix(const string& prefix) {
+  whitelist_prefix_.push_back(prefix);
 }
 
 }  // namespace cros_disks

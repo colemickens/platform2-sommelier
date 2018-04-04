@@ -50,6 +50,18 @@ bool Platform::GetRealPath(const string& path, string* real_path) const {
   return true;
 }
 
+bool Platform::PathExists(const std::string& path) const {
+  return base::PathExists(FilePath(path));
+}
+
+bool Platform::DirectoryExists(const std::string& path) const {
+  return base::DirectoryExists(FilePath(path));
+}
+
+bool Platform::IsDirectoryEmpty(const std::string& dir) const {
+  return base::IsDirectoryEmpty(FilePath(dir));
+}
+
 bool Platform::CreateDirectory(const string& path) const {
   if (!base::CreateDirectory(FilePath(path))) {
     LOG(ERROR) << "Failed to create directory '" << path << "'";

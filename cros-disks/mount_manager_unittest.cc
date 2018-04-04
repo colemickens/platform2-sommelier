@@ -1280,4 +1280,25 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
   EXPECT_FALSE(manager_.IsMountPathReserved(kTestMountPath));
 }
 
+// Verifies that IsUri correctly distinguishes URI from non-URI.
+TEST_F(MountManagerTest, IsUri) {
+  EXPECT_TRUE(MountManager::IsUri("foo://path"));
+  EXPECT_TRUE(MountManager::IsUri("foo.bar://path"));
+  EXPECT_TRUE(MountManager::IsUri("foo-bar://path"));
+  EXPECT_TRUE(MountManager::IsUri("foo+bar://path"));
+  EXPECT_TRUE(MountManager::IsUri("foo://"));
+
+  EXPECT_FALSE(MountManager::IsUri("foo:/path"));
+  EXPECT_FALSE(MountManager::IsUri("foo//path"));
+  EXPECT_FALSE(MountManager::IsUri("foo/path"));
+  EXPECT_FALSE(MountManager::IsUri("://path"));
+
+  EXPECT_FALSE(MountManager::IsUri("foo_bar://path"));
+  EXPECT_FALSE(MountManager::IsUri("foo=bar://path"));
+  EXPECT_FALSE(MountManager::IsUri("foo@bar://path"));
+  EXPECT_FALSE(MountManager::IsUri(".bar://path"));
+  EXPECT_FALSE(MountManager::IsUri("-bar://path"));
+  EXPECT_FALSE(MountManager::IsUri("+bar://path"));
+}
+
 }  // namespace cros_disks

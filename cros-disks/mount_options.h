@@ -28,8 +28,14 @@ class MountOptions {
   static const char kOptionSynchronous[];
   static const char kOptionUtf8[];
 
-  MountOptions() = default;
-  ~MountOptions() = default;
+  MountOptions();
+  ~MountOptions();
+
+  // Whitelists additional options for particular mount invocations.
+  // Some filesystems have required uncommon options. Must be set up before
+  // options are initialized.
+  void WhitelistOption(const std::string& option);
+  void WhitelistOptionPrefix(const std::string& prefix);
 
   // Initializes the mount options with a list of option strings.
   //
@@ -58,6 +64,10 @@ class MountOptions {
   std::string ToString() const;
 
  private:
+  // Whitelisted mount options.
+  std::vector<std::string> whitelist_exact_;
+  std::vector<std::string> whitelist_prefix_;
+
   // List of mount options.
   std::vector<std::string> options_;
 };

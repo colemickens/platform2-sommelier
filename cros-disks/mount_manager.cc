@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
@@ -86,8 +87,15 @@ MountErrorType MountManager::Mount(const string& source_path,
                                    const string& filesystem_type,
                                    const vector<string>& options,
                                    string* mount_path) {
-  if (source_path.empty()) {
-    LOG(ERROR) << "Failed to mount an empty path";
+  // Source is not necessary a path, but if it is let's resolve it to
+  // some real underlying object.
+  string real_path;
+  if (IsUri(source_path) || !platform_->GetRealPath(source_path, &real_path)) {
+    real_path = source_path;
+  }
+
+  if (real_path.empty()) {
+    LOG(ERROR) << "Failed to mount an invalid path";
     return MOUNT_ERROR_INVALID_ARGUMENT;
   }
   if (!mount_path) {
@@ -97,9 +105,9 @@ MountErrorType MountManager::Mount(const string& source_path,
 
   if (find(options.begin(), options.end(), kMountOptionRemount) ==
       options.end()) {
-    return MountNewSource(source_path, filesystem_type, options, mount_path);
+    return MountNewSource(real_path, filesystem_type, options, mount_path);
   } else {
-    return Remount(source_path, filesystem_type, options, mount_path);
+    return Remount(real_path, filesystem_type, options, mount_path);
   }
 }
 
@@ -448,6 +456,20 @@ bool MountManager::IsPathImmediateChildOfParent(const string& path,
 
 bool MountManager::IsValidMountPath(const std::string& mount_path) const {
   return IsPathImmediateChildOfParent(mount_path, mount_root_);
+}
+
+bool MountManager::IsUri(const string& s) {
+  size_t pos = s.find("://");
+  if (pos == string::npos || pos == 0)
+    return false;
+  // RFC 3986, section 3.1
+  if (!isalpha(s[0]))
+    return false;
+  for (auto c : s.substr(0, pos)) {
+    if (!isalnum(c) && c != '-' && c != '+' && c != '.')
+      return false;
+  }
+  return true;
 }
 
 }  // namespace cros_disks

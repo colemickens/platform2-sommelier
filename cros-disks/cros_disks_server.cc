@@ -102,27 +102,23 @@ MountManager* CrosDisksServer::FindMounter(const string& source_path) const {
   return nullptr;
 }
 
-void CrosDisksServer::Mount(const string& path,
+void CrosDisksServer::Mount(const string& source,
                             const string& filesystem_type,
                             const vector<string>& options) {
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   MountSourceType source_type = MOUNT_SOURCE_INVALID;
-  string source_path;
   string mount_path;
 
-  if (platform_->GetRealPath(path, &source_path)) {
-    MountManager* mounter = FindMounter(source_path);
-    if (mounter) {
-      source_type = mounter->GetMountSourceType();
-      error_type =
-          mounter->Mount(source_path, filesystem_type, options, &mount_path);
-    }
+  MountManager* mounter = FindMounter(source);
+  if (mounter) {
+    source_type = mounter->GetMountSourceType();
+    error_type = mounter->Mount(source, filesystem_type, options, &mount_path);
   }
 
   if (error_type != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to mount '" << path << "'";
+    LOG(ERROR) << "Failed to mount '" << source << "'";
   }
-  SendMountCompletedSignal(error_type, path, source_type, mount_path);
+  SendMountCompletedSignal(error_type, source, source_type, mount_path);
 }
 
 bool CrosDisksServer::Unmount(brillo::ErrorPtr* error,

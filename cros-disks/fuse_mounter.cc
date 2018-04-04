@@ -44,22 +44,32 @@ MountErrorType FUSEMounter::MountImpl() {
     return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
 
-  SandboxedProcess mount_process;
-
   uid_t mount_user_id;
   gid_t mount_group_id;
+  if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
+                                    &mount_group_id)) {
+    return MOUNT_ERROR_INTERNAL;
+  }
+
   // To perform a non-privileged mount via the FUSE mount program, change the
   // group of the source and target path to the group of the non-privileged
   // user, but keep the user of the source and target path unchanged. Also set
   // appropriate group permissions on the source and target path.
-  if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
-                                    &mount_group_id) ||
-      !platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
-      !platform_->SetPermissions(source_path(), kSourcePathPermissions) ||
-      !platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||
+  if (!platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||
       !platform_->SetPermissions(target_path(), kTargetPathPermissions)) {
     return MOUNT_ERROR_INTERNAL;
   }
+
+  // Source might be an URI. Only try to re-own source if it looks like
+  // an existing path.
+  if (base::PathExists(FilePath(source_path()))) {
+    if (!platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
+        !platform_->SetPermissions(source_path(), kSourcePathPermissions)) {
+      return MOUNT_ERROR_INTERNAL;
+    }
+  }
+
+  SandboxedProcess mount_process;
   mount_process.SetUserId(mount_user_id);
   mount_process.SetGroupId(mount_group_id);
   mount_process.SetNoNewPrivileges();
