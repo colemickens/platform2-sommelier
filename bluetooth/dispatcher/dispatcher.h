@@ -40,13 +40,11 @@ class Dispatcher {
   // Connects to BlueZ's object manager. Owned by |bus_|.
   dbus::ObjectManager* bluez_object_manager_;
 
-  // Stores the information of the exported objects that are impersonation of
-  // BlueZ's objects.
-  std::map<std::string, std::unique_ptr<ExportedObject>> exported_objects_;
-
   // Impersonates BlueZ's objects on various interfaces.
   std::map<std::string, std::unique_ptr<ImpersonationObjectManagerInterface>>
       impersonation_object_manager_interfaces_;
+
+  std::unique_ptr<DBusConnectionFactory> dbus_connection_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Dispatcher);
 };

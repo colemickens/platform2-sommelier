@@ -55,11 +55,13 @@ ImpersonationObjectManagerInterface::ImpersonationObjectManagerInterface(
     const scoped_refptr<dbus::Bus>& bus,
     ExportedObjectManagerWrapper* exported_object_manager_wrapper,
     std::unique_ptr<InterfaceHandler> interface_handler,
-    const std::string& interface_name)
+    const std::string& interface_name,
+    DBusConnectionFactory* dbus_connection_factory)
     : ObjectManagerInterfaceMultiplexer(interface_name),
       bus_(bus),
       exported_object_manager_wrapper_(exported_object_manager_wrapper),
       interface_handler_(std::move(interface_handler)),
+      dbus_connection_factory_(dbus_connection_factory),
       weak_ptr_factory_(this) {
   exported_object_manager_wrapper_->SetPropertyHandlerSetupCallback(base::Bind(
       &ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers,
@@ -107,6 +109,16 @@ void ImpersonationObjectManagerInterface::ObjectAdded(
                                                              interface_name);
   if (!exported_interface)
     return;
+
+  // Exports the methods that are defined by |interface_handler_|.
+  // Any method call will be forwarded the the impersonated service via a
+  // specific per-client D-Bus connection.
+  for (const std::string& method_name : interface_handler_->GetMethodNames())
+    exported_interface->AddRawMethodHandler(
+        method_name, base::Bind(&ImpersonationObjectManagerInterface::
+                                    HandleForwardMessageWithClientConnection,
+                                weak_ptr_factory_.GetWeakPtr()));
+
   exported_interface->ExportAsync(
       base::Bind(&OnInterfaceExported, object_path.value(), interface_name));
 }
@@ -189,6 +201,18 @@ void ImpersonationObjectManagerInterface::HandleForwardMessage(
           base::Bind(&OnMessageForwardError, method_call, response_sender));
 }
 
+void ImpersonationObjectManagerInterface::
+    HandleForwardMessageWithClientConnection(
+        dbus::MethodCall* method_call,
+        dbus::ExportedObject::ResponseSender response_sender) {
+  VLOG(1) << "Method " << method_call->GetMember() << " called by "
+          << method_call->GetSender();
+  std::string client_address = method_call->GetSender();
+  DispatcherClient* client = EnsureClientAdded(client_address);
+  VLOG(1) << "client = " << client;
+  HandleForwardMessage(client->GetClientBus(), method_call, response_sender);
+}
+
 void ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers(
     brillo::dbus_utils::DBusInterface* prop_interface,
     brillo::dbus_utils::ExportedPropertySet* property_set) {
@@ -209,6 +233,30 @@ void ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers(
   prop_interface->AddRawMethodHandler(
       dbus::kPropertiesChanged, weak_ptr_factory_.GetWeakPtr(),
       &ImpersonationObjectManagerInterface::HandlePropertiesChanged);
+}
+
+DispatcherClient* ImpersonationObjectManagerInterface::EnsureClientAdded(
+    const std::string& client_address) {
+  if (base::ContainsKey(clients_, client_address))
+    return clients_[client_address].get();
+
+  VLOG(1) << "Adding new client " << client_address;
+  auto client = std::make_unique<DispatcherClient>(bus_, client_address,
+                                                   dbus_connection_factory_);
+  client->WatchClientUnavailable(
+      base::Bind(&ImpersonationObjectManagerInterface::OnClientUnavailable,
+                 weak_ptr_factory_.GetWeakPtr(), client_address));
+  clients_[client_address] = std::move(client);
+  return clients_[client_address].get();
+}
+
+void ImpersonationObjectManagerInterface::OnClientUnavailable(
+    const std::string& client_address) {
+  VLOG(1) << "Client " << client_address << " becomes unavailable";
+  if (base::ContainsKey(clients_, client_address)) {
+    VLOG(1) << "Removing client " << client_address;
+    clients_.erase(client_address);
+  }
 }
 
 }  // namespace bluetooth

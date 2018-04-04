@@ -15,6 +15,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_manager.h>
 
+#include "bluetooth/dispatcher/dispatcher_client.h"
 #include "bluetooth/dispatcher/exported_object_manager_wrapper.h"
 #include "bluetooth/dispatcher/object_manager_interface_multiplexer.h"
 #include "bluetooth/dispatcher/property.h"
@@ -30,12 +31,14 @@ class InterfaceHandler {
       std::map<std::string, std::unique_ptr<PropertyFactoryBase>>;
   virtual ~InterfaceHandler() = default;
 
-  // Returns a pointer of a map of
+  // Returns a map of
   // (std::string property_name, PropertyFactory<T> property_factory)
   // that describes what properties this interface has and what type for each
   // of the properties.
-  // The returned pointer is owned by this object, not owned by clients.
   virtual const PropertyFactoryMap& GetPropertyFactoryMap() const = 0;
+
+  // Returns a list of method names that this interface exposes.
+  virtual const std::set<std::string>& GetMethodNames() const = 0;
 };
 
 // Impersonates other services' object manager interface to another exported
@@ -47,11 +50,13 @@ class ImpersonationObjectManagerInterface
  public:
   // Doesn't own |object_manager| and |exported_object_manager_wrapper|, so
   // clients should make sure that those pointers outlive this object.
+  // |dbus_connection_factory| is not owned, must outlive this object.
   ImpersonationObjectManagerInterface(
       const scoped_refptr<dbus::Bus>& bus,
       ExportedObjectManagerWrapper* exported_object_manager_wrapper,
       std::unique_ptr<InterfaceHandler> interface_handler,
-      const std::string& interface_name);
+      const std::string& interface_name,
+      DBusConnectionFactory* dbus_connection_factory);
 
   // CreateProperties, ObjectAdded, and ObjectRemoved are
   // ObjectManagerInterfaceMultiplexer overrides.
@@ -92,10 +97,23 @@ class ImpersonationObjectManagerInterface
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
+  // Forwards any message to the impersonated service, but uses a different
+  // D-Bus connection specific per client (based on the sender address of
+  // |method_call|).
+  void HandleForwardMessageWithClientConnection(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
   // Registers our custom GetAll/Get/Set method handlers.
   void SetupPropertyMethodHandlers(
       brillo::dbus_utils::DBusInterface* prop_interface,
       brillo::dbus_utils::ExportedPropertySet* property_set);
+
+  // Adds a new DispatcherClient for address |client_address| if not yet added.
+  DispatcherClient* EnsureClientAdded(const std::string& client_address);
+
+  // Called when a client is disconnected from D-Bus.
+  void OnClientUnavailable(const std::string& client_address);
 
   scoped_refptr<dbus::Bus> bus_;
 
@@ -104,6 +122,13 @@ class ImpersonationObjectManagerInterface
 
   // Defines what properties are to be impersonated.
   std::unique_ptr<InterfaceHandler> interface_handler_;
+
+  // Keeps which clients called the exposed methods. A client will be removed
+  // from this list when it's disconnected from D-Bus.
+  // It's a map of DispatcherClient objects indexed by their D-Bus addresses.
+  std::map<std::string, std::unique_ptr<DispatcherClient>> clients_;
+
+  DBusConnectionFactory* dbus_connection_factory_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

@@ -7,9 +7,9 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "bluetooth/dispatcher/impersonation_object_manager_interface.h"
 
@@ -23,6 +23,10 @@ class BluezInterfaceHandler : public InterfaceHandler {
     return property_factory_map_;
   }
 
+  const std::set<std::string>& GetMethodNames() const override {
+    return method_names_;
+  }
+
  protected:
   template <typename T>
   void AddPropertyFactory(const std::string& property_name) {
@@ -30,8 +34,13 @@ class BluezInterfaceHandler : public InterfaceHandler {
                                   std::make_unique<PropertyFactory<T>>());
   }
 
+  void AddMethodName(const std::string& method_name) {
+    method_names_.insert(method_name);
+  }
+
  private:
   InterfaceHandler::PropertyFactoryMap property_factory_map_;
+  std::set<std::string> method_names_;
 
   DISALLOW_COPY_AND_ASSIGN(BluezInterfaceHandler);
 };

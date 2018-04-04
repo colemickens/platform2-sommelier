@@ -27,6 +27,15 @@ BluezAdapterInterfaceHandler::BluezAdapterInterfaceHandler() {
   AddPropertyFactory<std::vector<std::string>>(
       bluetooth_adapter::kUUIDsProperty);
   AddPropertyFactory<std::string>(bluetooth_adapter::kModaliasProperty);
+
+  AddMethodName(bluetooth_adapter::kStartDiscovery);
+  AddMethodName(bluetooth_adapter::kSetDiscoveryFilter);
+  AddMethodName(bluetooth_adapter::kStopDiscovery);
+  AddMethodName(bluetooth_adapter::kPauseDiscovery);
+  AddMethodName(bluetooth_adapter::kUnpauseDiscovery);
+  AddMethodName(bluetooth_adapter::kRemoveDevice);
+  AddMethodName(bluetooth_adapter::kCreateServiceRecord);
+  AddMethodName(bluetooth_adapter::kRemoveServiceRecord);
 }
 
 BluezDeviceInterfaceHandler::BluezDeviceInterfaceHandler() {
@@ -55,6 +64,14 @@ BluezDeviceInterfaceHandler::BluezDeviceInterfaceHandler() {
   AddPropertyFactory<bool>(bluetooth_device::kServicesResolvedProperty);
   AddPropertyFactory<std::vector<uint8_t>>(
       bluetooth_device::kAdvertisingDataFlagsProperty);
+
+  AddMethodName(bluetooth_device::kConnect);
+  AddMethodName(bluetooth_device::kDisconnect);
+  AddMethodName(bluetooth_device::kConnectProfile);
+  AddMethodName(bluetooth_device::kDisconnectProfile);
+  AddMethodName(bluetooth_device::kPair);
+  AddMethodName(bluetooth_device::kCancelPairing);
+  AddMethodName(bluetooth_device::kGetServiceRecords);
 }
 
 BluezGattCharacteristicInterfaceHandler::
@@ -67,6 +84,11 @@ BluezGattCharacteristicInterfaceHandler::
   AddPropertyFactory<bool>(bluetooth_gatt_characteristic::kNotifyingProperty);
   AddPropertyFactory<std::vector<std::string>>(
       bluetooth_gatt_characteristic::kFlagsProperty);
+
+  AddMethodName(bluetooth_gatt_characteristic::kReadValue);
+  AddMethodName(bluetooth_gatt_characteristic::kWriteValue);
+  AddMethodName(bluetooth_gatt_characteristic::kStartNotify);
+  AddMethodName(bluetooth_gatt_characteristic::kStopNotify);
 }
 
 BluezInputInterfaceHandler::BluezInputInterfaceHandler() {
@@ -87,6 +109,9 @@ BluezGattDescriptorInterfaceHandler::BluezGattDescriptorInterfaceHandler() {
       bluetooth_gatt_descriptor::kCharacteristicProperty);
   AddPropertyFactory<std::vector<uint8_t>>(
       bluetooth_gatt_descriptor::kValueProperty);
+
+  AddMethodName(bluetooth_gatt_descriptor::kReadValue);
+  AddMethodName(bluetooth_gatt_descriptor::kWriteValue);
 }
 
 BluezMediaTransportInterfaceHandler::BluezMediaTransportInterfaceHandler() {

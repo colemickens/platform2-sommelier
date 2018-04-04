@@ -10,10 +10,13 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bluetooth/dispatcher/bluez_interface_handler.h"
+#include "bluetooth/dispatcher/dbus_connection_factory.h"
 
 namespace bluetooth {
 
-Dispatcher::Dispatcher(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
+Dispatcher::Dispatcher(scoped_refptr<dbus::Bus> bus)
+    : bus_(bus),
+      dbus_connection_factory_(std::make_unique<DBusConnectionFactory>()) {}
 
 Dispatcher::~Dispatcher() = default;
 
@@ -71,7 +74,7 @@ void Dispatcher::Init() {
     std::string interface_name = kv.first;
     auto interface = std::make_unique<ImpersonationObjectManagerInterface>(
         bus_.get(), exported_object_manager_wrapper_.get(),
-        std::move(kv.second), interface_name);
+        std::move(kv.second), interface_name, dbus_connection_factory_.get());
     interface->RegisterToObjectManager(
         bluez_object_manager_,
         bluez_object_manager::kBluezObjectManagerServiceName);

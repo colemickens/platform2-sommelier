@@ -54,6 +54,14 @@ void ExportedInterface::Unexport() {
   dbus_object_->RemoveInterface(interface_name_);
 }
 
+void ExportedInterface::AddRawMethodHandler(
+    const std::string& method_name,
+    const base::Callback<void(dbus::MethodCall*,
+                              dbus::ExportedObject::ResponseSender)>& handler) {
+  dbus_object_->AddOrGetInterface(interface_name_)
+      ->AddRawMethodHandler(method_name, handler);
+}
+
 void ExportedInterface::CopyPropertyToExportedProperty(
     const std::string& property_name,
     dbus::PropertyBase* property_base,

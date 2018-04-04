@@ -9,7 +9,6 @@
 
 #include <base/message_loop/message_loop.h>
 #include <brillo/bind_lambda.h>
-#include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
@@ -18,6 +17,9 @@
 #include <brillo/dbus/mock_exported_object_manager.h>
 #include <dbus/property.h>
 #include <gtest/gtest.h>
+
+#include "bluetooth/dispatcher/mock_dbus_connection_factory.h"
+#include "bluetooth/dispatcher/more_mock_bus.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -35,6 +37,8 @@ constexpr char kTestObjectPath1[] = "/org/example/Object1";
 constexpr char kTestObjectPath2[] = "/org/example/Object2";
 constexpr char kTestObjectManagerPath[] = "/";
 constexpr char kTestServiceName[] = "org.example.Default";
+constexpr char kTestMethodName1[] = "Method1";
+constexpr char kTestMethodName2[] = "Method2";
 
 constexpr char kStringPropertyName[] = "SomeString";
 constexpr char kIntPropertyName[] = "SomeInt";
@@ -58,19 +62,28 @@ class TestInterfaceHandler : public InterfaceHandler {
         std::make_unique<PropertyFactory<int>>();
     property_factory_map_[kBoolPropertyName] =
         std::make_unique<PropertyFactory<bool>>();
+
+    method_names_.insert(kTestMethodName1);
+    method_names_.insert(kTestMethodName2);
   }
   const PropertyFactoryMap& GetPropertyFactoryMap() const override {
     return property_factory_map_;
   }
 
+  const std::set<std::string>& GetMethodNames() const override {
+    return method_names_;
+  }
+
  private:
   InterfaceHandler::PropertyFactoryMap property_factory_map_;
+  std::set<std::string> method_names_;
 };
 
 class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
  public:
-  void SetUp() {
-    bus_ = new dbus::MockBus(dbus::Bus::Options());
+  void SetUp() override {
+    bus_ = new MoreMockBus(dbus::Bus::Options());
+    dbus_connection_factory_ = std::make_unique<MockDBusConnectionFactory>();
     EXPECT_CALL(*bus_, GetDBusTaskRunner())
         .Times(1)
         .WillOnce(Return(message_loop_.task_runner().get()));
@@ -101,21 +114,34 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
         bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath1));
   }
 
-  void StubHandlePropertiesSet(
-      dbus::MethodCall* method_call,
-      int timeout_ms,
-      dbus::ObjectProxy::ResponseCallback callback,
-      dbus::ObjectProxy::ErrorCallback error_callback) {
-    // This stub doesn't handle method calls other than Properties.Set
-    if (method_call->GetInterface() != dbus::kPropertiesInterface ||
-        method_call->GetMember() != dbus::kPropertiesSet)
+  // The mocked dbus::ExportedObject::ExportMethod needs to call its callback.
+  void StubExportMethod(
+      const std::string& interface_name,
+      const std::string& method_name,
+      dbus::ExportedObject::MethodCallCallback method_call_callback,
+      dbus::ExportedObject::OnExportedCallback on_exported_callback) {
+    on_exported_callback.Run(interface_name, method_name, true /* success */);
+  }
+
+  // A fake D-Bus method handler. What it does is reply with a test response
+  // message if the MethodCall is as expected.
+  void StubHandleMethod(const std::string& expected_interface_name,
+                        const std::string& expected_method_name,
+                        const std::string& expected_payload,
+                        dbus::MethodCall* method_call,
+                        int timeout_ms,
+                        dbus::ObjectProxy::ResponseCallback callback,
+                        dbus::ObjectProxy::ErrorCallback error_callback) {
+    // This stub doesn't handle method calls other than expected method.
+    if (method_call->GetInterface() != expected_interface_name ||
+        method_call->GetMember() != expected_method_name)
       return;
 
     dbus::MessageReader reader(method_call);
     std::string method_call_string;
     reader.PopString(&method_call_string);
-    // This stub only accepts the right payload.
-    if (method_call_string != kTestMethodCallString)
+    // This stub only accepts the expected test payload.
+    if (method_call_string != expected_payload)
       return;
 
     method_call->SetSerial(kTestSerial);
@@ -126,15 +152,151 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     callback.Run(response.get());
   }
 
+  void StubHandlePropertiesSet(
+      dbus::MethodCall* method_call,
+      int timeout_ms,
+      dbus::ObjectProxy::ResponseCallback callback,
+      dbus::ObjectProxy::ErrorCallback error_callback) {
+    StubHandleMethod(dbus::kPropertiesInterface, dbus::kPropertiesSet,
+                     kTestMethodCallString, method_call, timeout_ms, callback,
+                     error_callback);
+  }
+
+  void StubHandleTestMethod1(dbus::MethodCall* method_call,
+                             int timeout_ms,
+                             dbus::ObjectProxy::ResponseCallback callback,
+                             dbus::ObjectProxy::ErrorCallback error_callback) {
+    StubHandleMethod(kTestInterfaceName1, kTestMethodName1,
+                     kTestMethodCallString, method_call, timeout_ms, callback,
+                     error_callback);
+  }
+
+  void StubHandleTestMethod2(dbus::MethodCall* method_call,
+                             int timeout_ms,
+                             dbus::ObjectProxy::ResponseCallback callback,
+                             dbus::ObjectProxy::ErrorCallback error_callback) {
+    StubHandleMethod(kTestInterfaceName1, kTestMethodName2,
+                     kTestMethodCallString, method_call, timeout_ms, callback,
+                     error_callback);
+  }
+
  protected:
+  // Expects that |exported_object| exports the standard methods:
+  // Get/Set/GetAll/PropertiesChanged.
+  // Optionally the Set handler will be assigned if |set_method_handler| is
+  // provided.
+  void ExpectExportPropertiesMethods(
+      dbus::MockExportedObject* exported_object,
+      dbus::ExportedObject::MethodCallCallback* set_method_handler = nullptr) {
+    EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
+                                               dbus::kPropertiesGet, _, _))
+        .WillOnce(Invoke(
+            this, &ImpersonationObjectManagerInterfaceTest::StubExportMethod));
+
+    EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
+                                               dbus::kPropertiesGetAll, _, _))
+        .WillOnce(Invoke(
+            this, &ImpersonationObjectManagerInterfaceTest::StubExportMethod));
+
+    EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
+                                               dbus::kPropertiesChanged, _, _))
+        .WillOnce(Invoke(
+            this, &ImpersonationObjectManagerInterfaceTest::StubExportMethod));
+
+    if (set_method_handler == nullptr)
+      set_method_handler = &dummy_method_handler_;
+    EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
+                                               dbus::kPropertiesSet, _, _))
+        .WillOnce(DoAll(
+            SaveArg<2>(set_method_handler),
+            Invoke(
+                this,
+                &ImpersonationObjectManagerInterfaceTest::StubExportMethod)));
+  }
+
+  void TestMethodForwarding(
+      const std::string& interface_name,
+      const std::string& method_name,
+      const dbus::ObjectPath object_path,
+      scoped_refptr<MoreMockBus> forwarding_bus,
+      dbus::ExportedObject::MethodCallCallback* tested_method_handler,
+      void (ImpersonationObjectManagerInterfaceTest::*stub_method_handler)(
+          dbus::MethodCall*,
+          int,
+          dbus::ObjectProxy::ResponseCallback,
+          dbus::ObjectProxy::ErrorCallback)) {
+    scoped_refptr<dbus::MockObjectProxy> object_proxy1 =
+        new dbus::MockObjectProxy(forwarding_bus.get(), kTestServiceName,
+                                  object_path);
+    EXPECT_CALL(*forwarding_bus, GetObjectProxy(kTestServiceName, object_path))
+        .WillOnce(Return(object_proxy1.get()));
+    EXPECT_CALL(*forwarding_bus, Connect()).WillRepeatedly(Return(true));
+    dbus::MethodCall method_call(interface_name, method_name);
+    method_call.SetPath(object_path);
+    method_call.SetSender(kTestSender);
+    method_call.SetSerial(kTestSerial);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendString(kTestMethodCallString);
+    EXPECT_CALL(*object_proxy1, CallMethodWithErrorCallback(_, _, _, _))
+        .WillOnce(Invoke(this, stub_method_handler));
+    std::unique_ptr<dbus::Response> saved_response;
+    tested_method_handler->Run(
+        &method_call, base::Bind(
+                          [](std::unique_ptr<dbus::Response>* saved_response,
+                             std::unique_ptr<dbus::Response> response) {
+                            *saved_response = std::move(response);
+                          },
+                          &saved_response));
+    EXPECT_TRUE(saved_response.get() != nullptr);
+    std::string saved_response_string;
+    dbus::MessageReader reader(saved_response.get());
+    reader.PopString(&saved_response_string);
+    // Checks that the response is the forwarded response of the stub method
+    // handler.
+    EXPECT_EQ(kTestSender, saved_response->GetDestination());
+    EXPECT_EQ(kTestSerial, saved_response->GetReplySerial());
+    EXPECT_EQ(kTestResponseString, saved_response_string);
+  }
+
+  // Expects that |exported_object| exports the test methods.
+  // Optionally the method handlers will be assigned if |method1_handler| or
+  // |method2_handler| is not null.
+  void ExpectExportTestMethods(
+      dbus::MockExportedObject* exported_object,
+      const std::string& interface_name,
+      dbus::ExportedObject::MethodCallCallback* method1_handler = nullptr,
+      dbus::ExportedObject::MethodCallCallback* method2_handler = nullptr) {
+    if (method1_handler == nullptr)
+      method1_handler = &dummy_method_handler_;
+    EXPECT_CALL(*exported_object,
+                ExportMethod(interface_name, kTestMethodName1, _, _))
+        .WillOnce(DoAll(
+            SaveArg<2>(method1_handler),
+            Invoke(
+                this,
+                &ImpersonationObjectManagerInterfaceTest::StubExportMethod)));
+
+    if (method2_handler == nullptr)
+      method2_handler = &dummy_method_handler_;
+    EXPECT_CALL(*exported_object,
+                ExportMethod(interface_name, kTestMethodName2, _, _))
+        .WillOnce(DoAll(
+            SaveArg<2>(method2_handler),
+            Invoke(
+                this,
+                &ImpersonationObjectManagerInterfaceTest::StubExportMethod)));
+  }
+
   base::MessageLoop message_loop_;
-  scoped_refptr<dbus::MockBus> bus_;
+  scoped_refptr<MoreMockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> object_manager_object_proxy_;
   scoped_refptr<dbus::MockObjectProxy> object_proxy_;
   scoped_refptr<dbus::MockObjectManager> object_manager_;
   std::unique_ptr<ExportedObjectManagerWrapper>
       exported_object_manager_wrapper_;
   brillo::dbus_utils::MockExportedObjectManager* exported_object_manager_;
+  std::unique_ptr<MockDBusConnectionFactory> dbus_connection_factory_;
+  dbus::ExportedObject::MethodCallCallback dummy_method_handler_;
 };
 
 TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
@@ -145,7 +307,8 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
   auto impersonation_om_interface =
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
-          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
+          dbus_connection_factory_.get());
 
   scoped_refptr<dbus::MockExportedObject> exported_object1 =
       new dbus::MockExportedObject(bus_.get(), object_path1);
@@ -157,19 +320,11 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
       .WillOnce(Return(exported_object2.get()));
 
   // D-Bus properties methods should be exported.
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesGet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesSet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesGetAll, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesChanged, _, _))
-      .Times(1);
+  ExpectExportPropertiesMethods(exported_object1.get());
   // CreateProperties called for an object.
+  EXPECT_CALL(*exported_object_manager_,
+              ClaimInterface(object_path1, dbus::kPropertiesInterface, _))
+      .Times(1);
   std::unique_ptr<dbus::PropertySet> dbus_property_set1(
       impersonation_om_interface->CreateProperties(
           kTestServiceName, object_proxy_.get(), object_path1,
@@ -182,19 +337,11 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
   ASSERT_NE(nullptr, property_set1->GetProperty(kBoolPropertyName));
 
   // D-Bus properties methods should be exported.
-  EXPECT_CALL(*exported_object2, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesGet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object2, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesSet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object2, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesGetAll, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object2, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesChanged, _, _))
-      .Times(1);
+  ExpectExportPropertiesMethods(exported_object2.get());
   // CreateProperties called for another object.
+  EXPECT_CALL(*exported_object_manager_,
+              ClaimInterface(object_path2, dbus::kPropertiesInterface, _))
+      .Times(1);
   std::unique_ptr<dbus::PropertySet> dbus_property_set2(
       impersonation_om_interface->CreateProperties(
           kTestServiceName, object_proxy_.get(), object_path2,
@@ -208,6 +355,8 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
   ASSERT_NE(nullptr, property_set2->GetProperty(kBoolPropertyName));
 
   // ObjectAdded events
+  ExpectExportTestMethods(exported_object1.get(), kTestInterfaceName1);
+  ExpectExportTestMethods(exported_object2.get(), kTestInterfaceName1);
   EXPECT_CALL(*exported_object_manager_,
               ClaimInterface(object_path1, kTestInterfaceName1, _))
       .Times(1);
@@ -221,11 +370,17 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
 
   // ObjectRemoved events
   EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path1, dbus::kPropertiesInterface))
+      .Times(1);
+  EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path1, kTestInterfaceName1))
       .Times(1);
   EXPECT_CALL(*exported_object1, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName, object_path1,
                                             kTestInterfaceName1);
+  EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path2, dbus::kPropertiesInterface))
+      .Times(1);
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path2, kTestInterfaceName1))
       .Times(1);
@@ -246,26 +401,20 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
   auto impersonation_om_interface1 =
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
-          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
+          dbus_connection_factory_.get());
   auto impersonation_om_interface2 =
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
-          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName2);
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName2,
+          dbus_connection_factory_.get());
 
   // D-Bus properties methods should be exported.
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesGet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesSet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesGetAll, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesChanged, _, _))
-      .Times(1);
+  ExpectExportPropertiesMethods(exported_object.get());
   // CreateProperties called for an object.
+  EXPECT_CALL(*exported_object_manager_,
+              ClaimInterface(object_path, dbus::kPropertiesInterface, _))
+      .Times(1);
   std::unique_ptr<dbus::PropertySet> dbus_property_set1(
       impersonation_om_interface1->CreateProperties(
           kTestServiceName, object_proxy_.get(), object_path,
@@ -289,6 +438,8 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
   ASSERT_NE(nullptr, property_set2->GetProperty(kBoolPropertyName));
 
   // ObjectAdded events
+  ExpectExportTestMethods(exported_object.get(), kTestInterfaceName1);
+  ExpectExportTestMethods(exported_object.get(), kTestInterfaceName2);
   EXPECT_CALL(*exported_object_manager_,
               ClaimInterface(object_path, kTestInterfaceName1, _))
       .Times(1);
@@ -310,6 +461,9 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
   impersonation_om_interface1->ObjectRemoved(kTestServiceName, object_path,
                                              kTestInterfaceName1);
 
+  EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path, dbus::kPropertiesInterface))
+      .Times(1);
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path, kTestInterfaceName2))
       .Times(1);
@@ -336,10 +490,14 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
   auto impersonation_om_interface =
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
-          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
+          dbus_connection_factory_.get());
 
   // ObjectAdded event happens before CreateProperties. This shouldn't happen.
   // Makes sure we only ignore the event and don't crash if this happens.
+  EXPECT_CALL(*exported_object_manager_,
+              ClaimInterface(object_path, dbus::kPropertiesInterface, _))
+      .Times(1);
   EXPECT_CALL(*exported_object_manager_,
               ClaimInterface(object_path, kTestInterfaceName1, _))
       .Times(0);
@@ -349,6 +507,9 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
   // ObjectRemoved event happens before CreateProperties. This shouldn't happen.
   // Makes sure we only ignore the event and don't crash if this happens.
   EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path, dbus::kPropertiesInterface))
+      .Times(0);
+  EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path, kTestInterfaceName1))
       .Times(0);
   EXPECT_CALL(*exported_object, Unregister()).Times(0);
@@ -356,18 +517,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
                                             kTestInterfaceName1);
 
   // D-Bus properties methods should be exported.
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesGet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesSet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesGetAll, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                             dbus::kPropertiesChanged, _, _))
-      .Times(1);
+  ExpectExportPropertiesMethods(exported_object.get());
   // CreateProperties called for an object.
   std::unique_ptr<dbus::PropertySet> dbus_property_set(
       impersonation_om_interface->CreateProperties(
@@ -383,6 +533,9 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
 
   // ObjectRemoved event happens before ObjectAdded. This shouldn't happen.
   // Makes sure we still handle this gracefully.
+  EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path, dbus::kPropertiesInterface))
+      .Times(1);
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path, kTestInterfaceName1))
       .Times(0);
@@ -406,32 +559,27 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
   auto impersonation_om_interface =
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
-          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1);
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
+          dbus_connection_factory_.get());
+  EXPECT_CALL(*object_manager_, RegisterInterface(kTestInterfaceName1, _));
   impersonation_om_interface->RegisterToObjectManager(object_manager_.get(),
                                                       kTestServiceName);
 
   dbus::ExportedObject::MethodCallCallback set_method_handler;
 
   // D-Bus properties methods should be exported.
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesGet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesSet, _, _))
-      .WillOnce(SaveArg<2>(&set_method_handler));
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesGetAll, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_object1, ExportMethod(dbus::kPropertiesInterface,
-                                              dbus::kPropertiesChanged, _, _))
-      .Times(1);
+  ExpectExportPropertiesMethods(exported_object1.get(), &set_method_handler);
   // CreateProperties called for another object.
+  EXPECT_CALL(*exported_object_manager_,
+              ClaimInterface(object_path1, dbus::kPropertiesInterface, _))
+      .Times(1);
   std::unique_ptr<dbus::PropertySet> dbus_property_set1(
       impersonation_om_interface->CreateProperties(
           kTestServiceName, object_proxy_.get(), object_path1,
           kTestInterfaceName1));
   PropertySet* property_set1 =
       static_cast<PropertySet*>(dbus_property_set1.get());
+  ASSERT_FALSE(set_method_handler.is_null());
 
   // The properties should all be registered.
   ASSERT_TRUE(property_set1->GetProperty(kStringPropertyName) != nullptr);
@@ -440,40 +588,79 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
 
   // Tests that Properties.Set handler should forward the message to the source
   // service and forward the response back to the caller.
-  scoped_refptr<dbus::MockObjectProxy> object_proxy1 =
-      new dbus::MockObjectProxy(bus_.get(), kTestServiceName, object_path1);
-  EXPECT_CALL(*bus_, GetObjectProxy(kTestServiceName, object_path1))
-      .WillOnce(Return(object_proxy1.get()));
-  dbus::MethodCall method_call(dbus::kPropertiesInterface,
-                               dbus::kPropertiesSet);
-  method_call.SetPath(object_path1);
-  method_call.SetSender(kTestSender);
-  method_call.SetSerial(kTestSerial);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(kTestMethodCallString);
-  EXPECT_CALL(*object_proxy1, CallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(Invoke(
-          this,
-          &ImpersonationObjectManagerInterfaceTest::StubHandlePropertiesSet));
-  std::unique_ptr<dbus::Response> saved_response;
-  set_method_handler.Run(&method_call,
-                         base::Bind(
-                             [](std::unique_ptr<dbus::Response>* saved_response,
-                                std::unique_ptr<dbus::Response> response) {
-                               *saved_response = std::move(response);
-                             },
-                             &saved_response));
-  EXPECT_TRUE(saved_response.get() != nullptr);
-  std::string saved_response_string;
-  dbus::MessageReader reader(saved_response.get());
-  reader.PopString(&saved_response_string);
-  // Checks that the response is the forwarded response of
-  // StubHandlePropertiesSet.
-  EXPECT_EQ(kTestSender, saved_response->GetDestination());
-  EXPECT_EQ(kTestSerial, saved_response->GetReplySerial());
-  EXPECT_EQ(kTestResponseString, saved_response_string);
+  TestMethodForwarding(
+      dbus::kPropertiesInterface, dbus::kPropertiesSet, object_path1, bus_,
+      &set_method_handler,
+      &ImpersonationObjectManagerInterfaceTest::StubHandlePropertiesSet);
 
   // ObjectRemoved events
+  EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path1, dbus::kPropertiesInterface))
+      .Times(1);
+  EXPECT_CALL(*exported_object1, Unregister()).Times(1);
+  impersonation_om_interface->ObjectRemoved(kTestServiceName, object_path1,
+                                            kTestInterfaceName1);
+}
+
+TEST_F(ImpersonationObjectManagerInterfaceTest, MethodHandler) {
+  dbus::ObjectPath object_path1(kTestObjectPath1);
+
+  scoped_refptr<dbus::MockExportedObject> exported_object1 =
+      new dbus::MockExportedObject(bus_.get(), object_path1);
+  EXPECT_CALL(*bus_, GetExportedObject(object_path1))
+      .WillOnce(Return(exported_object1.get()));
+
+  auto impersonation_om_interface =
+      std::make_unique<ImpersonationObjectManagerInterface>(
+          bus_, exported_object_manager_wrapper_.get(),
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
+          dbus_connection_factory_.get());
+  EXPECT_CALL(*object_manager_, RegisterInterface(kTestInterfaceName1, _));
+  impersonation_om_interface->RegisterToObjectManager(object_manager_.get(),
+                                                      kTestServiceName);
+
+  // D-Bus properties methods should be exported.
+  ExpectExportPropertiesMethods(exported_object1.get());
+  // CreateProperties called for another object.
+  EXPECT_CALL(*exported_object_manager_,
+              ClaimInterface(object_path1, dbus::kPropertiesInterface, _))
+      .Times(1);
+  std::unique_ptr<dbus::PropertySet> dbus_property_set1(
+      impersonation_om_interface->CreateProperties(
+          kTestServiceName, object_proxy_.get(), object_path1,
+          kTestInterfaceName1));
+
+  // Method forwarding
+  dbus::ExportedObject::MethodCallCallback method1_handler;
+  dbus::ExportedObject::MethodCallCallback method2_handler;
+  ExpectExportTestMethods(exported_object1.get(), kTestInterfaceName1,
+                          &method1_handler, &method2_handler);
+  EXPECT_CALL(*exported_object_manager_,
+              ClaimInterface(object_path1, kTestInterfaceName1, _))
+      .Times(1);
+  impersonation_om_interface->ObjectAdded(kTestServiceName, object_path1,
+                                          kTestInterfaceName1);
+  scoped_refptr<MoreMockBus> client_bus = new MoreMockBus(dbus::Bus::Options());
+  EXPECT_CALL(*dbus_connection_factory_, GetNewBus())
+      .WillOnce(Return(client_bus));
+  // Tests that method call should be forwarding to the source service via
+  // |client_bus|.
+  TestMethodForwarding(
+      kTestInterfaceName1, kTestMethodName1, object_path1, client_bus,
+      &method1_handler,
+      &ImpersonationObjectManagerInterfaceTest::StubHandleTestMethod1);
+  TestMethodForwarding(
+      kTestInterfaceName1, kTestMethodName2, object_path1, client_bus,
+      &method2_handler,
+      &ImpersonationObjectManagerInterfaceTest::StubHandleTestMethod2);
+
+  // ObjectRemoved events
+  EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path1, dbus::kPropertiesInterface))
+      .Times(1);
+  EXPECT_CALL(*exported_object_manager_,
+              ReleaseInterface(object_path1, kTestInterfaceName1))
+      .Times(1);
   EXPECT_CALL(*exported_object1, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName, object_path1,
                                             kTestInterfaceName1);

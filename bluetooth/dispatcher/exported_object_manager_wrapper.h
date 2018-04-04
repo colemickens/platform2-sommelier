@@ -34,6 +34,12 @@ class ExportedInterface {
   // Unexports the interface and all its exported properties.
   void Unexport();
 
+  // Adds a method handler for |method_name| in this interface.
+  void AddRawMethodHandler(
+      const std::string& method_name,
+      const base::Callback<void(
+          dbus::MethodCall*, dbus::ExportedObject::ResponseSender)>& handler);
+
   // Copies the value of the property having name |property_name| to the
   // corresponding exported property. Doesn't own |property_base| and
   // |property_factory| and doesn't keep them.
