@@ -20,7 +20,9 @@
       'sources': [
         'dispatcher/bluez_interface_handler.cc',
         'dispatcher/daemon.cc',
+        'dispatcher/dbus_connection_factory.cc',
         'dispatcher/dispatcher.cc',
+        'dispatcher/dispatcher_client.cc',
         'dispatcher/exported_object_manager_wrapper.cc',
         'dispatcher/impersonation_object_manager_interface.cc',
         'dispatcher/object_manager_interface_multiplexer.cc',
@@ -53,6 +55,7 @@
             ],
           },
           'sources': [
+            'dispatcher/dispatcher_client_unittest.cc',
             'dispatcher/dispatcher_unittest.cc',
             'dispatcher/exported_object_manager_wrapper_unittest.cc',
             'dispatcher/impersonation_object_manager_interface_unittest.cc',
