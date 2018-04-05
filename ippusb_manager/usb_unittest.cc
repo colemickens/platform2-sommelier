@@ -11,15 +11,15 @@ namespace ippusb_manager {
 TEST(UsbTest, GetUsbInfoValidInput) {
   uint16_t vid = 0;
   uint16_t pid = 0;
-  EXPECT_EQ(true, GetUsbInfo("03f0 7c12", &vid, &pid));
+  EXPECT_EQ(true, GetUsbInfo("03f0_7c12", &vid, &pid));
   EXPECT_EQ(0x03f0, vid);
   EXPECT_EQ(0x7c12, pid);
 
-  EXPECT_EQ(true, GetUsbInfo("03f 7c12", &vid, &pid));
+  EXPECT_EQ(true, GetUsbInfo("03f_7c12", &vid, &pid));
   EXPECT_EQ(0x03f, vid);
   EXPECT_EQ(0x7c12, pid);
 
-  EXPECT_EQ(true, GetUsbInfo("03f0 7c1", &vid, &pid));
+  EXPECT_EQ(true, GetUsbInfo("03f0_7c1", &vid, &pid));
   EXPECT_EQ(0x03f0, vid);
   EXPECT_EQ(0x7c1, pid);
 }
@@ -27,7 +27,7 @@ TEST(UsbTest, GetUsbInfoValidInput) {
 TEST(UsbTest, GetUsbInfoInvalidInput) {
   uint16_t vid = 0;
   uint16_t pid = 0;
-  EXPECT_EQ(false, GetUsbInfo("123g 1111", &vid, &pid));
+  EXPECT_EQ(false, GetUsbInfo("123g_1111", &vid, &pid));
   EXPECT_EQ(0, vid);
   EXPECT_EQ(0, pid);
 }
@@ -51,7 +51,7 @@ TEST(UsbTest, GetUsbInfoSingleValue) {
 TEST(UsbTest, GetUsbInfoTooManyValues) {
   uint16_t vid = 0;
   uint16_t pid = 0;
-  EXPECT_EQ(false, GetUsbInfo("03f0 7c12 1234", &vid, &pid));
+  EXPECT_EQ(false, GetUsbInfo("03f0_7c12_1234", &vid, &pid));
   EXPECT_EQ(0, vid);
   EXPECT_EQ(0, pid);
 }
