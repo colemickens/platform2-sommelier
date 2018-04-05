@@ -647,6 +647,7 @@ const char* GetSubjectTag(const std::string& type) {
   static const std::unordered_map<std::string, const char*> kTags = {
       {"data_app_native_crash", "native app crash"},
       {"system_app_anr", "ANR"},
+      {"data_app_anr", "app ANR"},
       {"system_server_watchdog", "system server watchdog"}};
 
   const auto it = kTags.find(type);
