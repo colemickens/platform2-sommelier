@@ -219,6 +219,13 @@ bool VaultKeyset::Load(const FilePath& filename) {
   if (loaded_) {
     encrypted_ = true;
     source_file_ = filename;
+    // For LECredentials, set the key policy appropriately.
+    // TODO(crbug.com/832398): get rid of having two ways to identify an
+    // LECredential: LE_CREDENTIAL and key_data.policy.low_entropy_credential.
+    if (serialized_.flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
+      serialized_.mutable_key_data()->mutable_policy()
+          ->set_low_entropy_credential(true);
+    }
   }
   return loaded_;
 }
@@ -232,6 +239,15 @@ bool VaultKeyset::Decrypt(const SecureBlob& key) {
   if (!ok && error == Crypto::CE_TPM_COMM_ERROR)
     ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL, &error, this);
 
+  if (!ok && IsLECredential() && error == Crypto::CE_TPM_DEFEND_LOCK) {
+    // For LE credentials, if decrypting the keyset failed due to too many
+    // attempts, set auth_locked=true in the keyset. Then save it for future
+    // callers who can Load it w/o Decrypt'ing to check that flag.
+    serialized_.mutable_key_data()->mutable_policy()->set_auth_locked(true);
+    if (!Save(source_file())) {
+      LOG(WARNING) << "Failed to set auth_locked in VaultKeyset on disk.";
+    }
+  }
   return ok;
 }
 

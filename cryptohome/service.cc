@@ -1966,6 +1966,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     if (user_mount->AreSameUser(credentials) &&
         user_mount->AreValid(credentials)) {
       SendReply(context, reply);
+      homedirs_->ResetLECredentials(credentials);
       return;
     }
     // If the Mount has invalid credentials (repopulated from system state)
@@ -1974,6 +1975,8 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     if (!user_mount->AreValid(credentials) &&
         !homedirs_->AreCredentialsValid(credentials)) {
       reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+    } else {
+      homedirs_->ResetLECredentials(credentials);
     }
     SendReply(context, reply);
     return;
@@ -2010,6 +2013,9 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   }
   if (code == MOUNT_ERROR_RECREATED) {
     mount_reply->set_recreated(true);
+  }
+  if (status) {
+    homedirs_->ResetLECredentials(credentials);
   }
 
   SendReply(context, reply);

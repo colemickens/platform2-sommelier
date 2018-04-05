@@ -173,6 +173,15 @@ class Crypto {
                            const brillo::SecureBlob& aes_key,
                            brillo::SecureBlob* data) const;
 
+  // Attempts to reset an LE credential, specified by |serialized_reset|
+  // with an unencrypted key represented by |vk|.
+  // Returns true on success.
+  // On failure, false is returned and |error| is set with the appropriate
+  // error.
+  bool ResetLECredential(const SerializedVaultKeyset& serialized_reset,
+                         CryptoError* error,
+                         const VaultKeyset& vk) const;
+
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's

@@ -1265,6 +1265,8 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   }
   for (auto key_index : key_indices) {
     // Load the encrypted keyset
+    // TODO(crbug.com/832395): get rid of direct operations on keyset files
+    // in class Mount.
     if (!LoadVaultKeysetForUser(obfuscated_username, key_index, serialized)) {
       LOG(ERROR) << "Could not parse keyset " << key_index
                  << " for " << obfuscated_username;
@@ -1291,8 +1293,16 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
             StringPrintf("%s%d", kKeyLegacyPrefix, key_index))
           continue;
       }
+    } else if (serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
+      // If no label was specified, we should skip all LE credentials.
+      continue;
     }
 
+    // Reconstruct the policy for LECredentials.
+    if (serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
+      serialized->mutable_key_data()->mutable_policy()
+          ->set_low_entropy_credential(true);
+    }
     // Attempt decrypt the master key with the passkey
     crypt_flags = 0;
     crypto_error = Crypto::CE_NONE;
@@ -1316,6 +1326,15 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
           return false;
         case Crypto::CE_TPM_DEFEND_LOCK:
           *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
+          // We should update LE key policy and persist it to disk.
+          if (serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
+            serialized->mutable_key_data()->mutable_policy()->set_auth_locked(
+                true);
+            if (!StoreVaultKeysetForUser(obfuscated_username, key_index,
+                                         *serialized)) {
+              LOG(ERROR) << "Failed to update LE cred Keyset.";
+            }
+          }
           return false;
         case Crypto::CE_TPM_REBOOT:
           *error = MOUNT_ERROR_TPM_NEEDS_REBOOT;

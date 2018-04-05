@@ -246,6 +246,11 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
         creds.key_data().label() !=
           base::StringPrintf("%s%d", kKeyLegacyPrefix, index))
       continue;
+    // Skip LE Credentials if not explicitly identified by a label, since we
+    // don't want unnecessary wrong attempts.
+    if (creds.key_data().label().empty() &&
+        (vk->serialized().flags() & SerializedVaultKeyset::LE_CREDENTIAL))
+      continue;
     if (vk->Decrypt(passkey))
       return true;
   }
@@ -1365,6 +1370,46 @@ bool HomeDirs::NeedsDircryptoMigration(const Credentials& credentials) const {
   const FilePath user_ecryptfs_vault_dir =
       shadow_root_.Append(obfuscated).Append(kVaultDir);
   return platform_->DirectoryExists(user_ecryptfs_vault_dir);
+}
+
+void HomeDirs::ResetLECredentials(const Credentials& creds) {
+  std::unique_ptr<VaultKeyset> vk(
+      vault_keyset_factory()->New(platform_, crypto_));
+  // Make sure the credential can actually be used for sign-in.
+  // It is also the easiest way to get a valid keyset.
+  if (!GetValidKeyset(creds, vk.get())) {
+    LOG(WARNING) << "The provided credentials are incorrect or invalid"
+      " for LE credential reset, reset skipped.";
+    return;
+  }
+
+  std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
+  std::vector<int> key_indices;
+  if (!GetVaultKeysets(obfuscated, &key_indices)) {
+    LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
+    return;
+  }
+
+  std::unique_ptr<VaultKeyset> vk_reset(
+      vault_keyset_factory()->New(platform_, crypto_));
+  for (int index : key_indices) {
+    if (!vk_reset->Load(GetVaultKeysetPath(obfuscated, index)))
+      continue;
+    // Skip non-LE Credentials.
+    if (!vk_reset->IsLECredential())
+      continue;
+
+    Crypto::CryptoError err;
+    if (!crypto_->ResetLECredential(vk_reset->serialized(), &err, *vk)) {
+      LOG(WARNING) << "Failed to reset an LE credential: " << err;
+    } else {
+      vk_reset->mutable_serialized()->mutable_key_data()->mutable_policy()
+          ->set_auth_locked(true);
+      if (!vk_reset->Save(vk_reset->source_file())) {
+        LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
+      }
+    }
+  }
 }
 
 }  // namespace cryptohome

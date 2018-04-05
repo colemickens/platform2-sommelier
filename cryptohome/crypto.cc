@@ -696,12 +696,6 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
     keyset->set_chaps_key(unwrapped_chaps_key);
   }
 
-  // Set the key policy appropriately.
-  keyset->mutable_serialized()
-      ->mutable_key_data()
-      ->mutable_policy()
-      ->set_low_entropy_credential(true);
-
   return true;
 }
 
@@ -1009,6 +1003,7 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   if (ret == LE_CRED_SUCCESS) {
     serialized->set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
     serialized->set_le_label(label);
+    serialized->mutable_key_data()->mutable_policy()->set_auth_locked(false);
     return true;
   }
 
@@ -1234,6 +1229,46 @@ bool Crypto::DecryptData(const std::string& encrypted_data,
                                              CryptoLib::kCbc,
                                              data)) {
     LOG(ERROR) << "Failed to decrypt encrypted data.";
+    return false;
+  }
+  return true;
+}
+
+bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
+                               CryptoError* error,
+                               const VaultKeyset& vk) const {
+  if (!use_tpm_ || !tpm_)
+    return false;
+
+  // Bail immediately if we don't have a valid LECredentialManager.
+  if (!le_manager_) {
+    if (error)
+      *error = CE_LE_NOT_SUPPORTED;
+    return false;
+  }
+
+  CHECK(serialized_reset.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  SecureBlob local_reset_seed(vk.reset_seed().begin(), vk.reset_seed().end());
+  SecureBlob reset_salt(serialized_reset.reset_salt().begin(),
+                        serialized_reset.reset_salt().end());
+  if (local_reset_seed.empty() || reset_salt.empty()) {
+    LOG(ERROR) << "Reset seed/salt is empty, can't reset LE credential.";
+    if (error)
+      *error = CE_OTHER_FATAL;
+    return false;
+  }
+
+  SecureBlob reset_secret = CryptoLib::HmacSha256(reset_salt, local_reset_seed);
+  int ret =
+      le_manager_->ResetCredential(serialized_reset.le_label(), reset_secret);
+  if (ret != LE_CRED_SUCCESS) {
+    if (error) {
+      if (ret == LE_CRED_ERROR_INVALID_RESET_SECRET) {
+        *error = CE_LE_INVALID_SECRET;
+      } else {
+        *error = CE_OTHER_FATAL;
+      }
+    }
     return false;
   }
   return true;

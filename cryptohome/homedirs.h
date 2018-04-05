@@ -79,6 +79,7 @@ class HomeDirs {
 
   // Returns a list of present keyset indices for an obfuscated username.
   // There is no guarantee the keysets are valid.
+  // NOTE: The returned keysets DO NOT include LE Credential Keysets.
   virtual bool GetVaultKeysets(const std::string& obfuscated,
                                std::vector<int>* keysets) const;
 
@@ -191,6 +192,10 @@ class HomeDirs {
   // Returns true if the cryptohome for the Credentials (username) should
   // migrate to dircrypto.
   virtual bool NeedsDircryptoMigration(const Credentials& credentials) const;
+
+  // Attempts to reset all LE credentials associated with a username, given
+  // a credential |cred|.
+  virtual void ResetLECredentials(const Credentials& creds);
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
