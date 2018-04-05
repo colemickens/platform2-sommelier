@@ -72,7 +72,7 @@ static void InitPerfLog() {
     camera_info info;
     ASSERT_EQ(0, camera_module.GetCameraInfo(i, &info));
     ASSERT_LE(0, info.facing);
-    ASSERT_LT(info.facing, std::size(facing_names));
+    ASSERT_LT(info.facing, arraysize(facing_names));
     name_map[i] = facing_names[info.facing];
   }
   camera3_test::Camera3PerfLog::GetInstance()->SetCameraNameMap(name_map);

@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include "cros-camera/export.h"
+
 namespace cros {
 
 enum class PowerLineFrequency {
@@ -22,11 +24,11 @@ enum class PowerLineFrequency {
 // Checks the system timezone and turns it into a two-character ASCII country
 // code. This may fail (for example, it will always fail on Android), in which
 // case it will return an empty string.
-std::string CountryCodeForCurrentTimezone();
+CROS_CAMERA_EXPORT std::string CountryCodeForCurrentTimezone();
 
 // Queries timezone to know the country to decide power frequency to do
 // anti-banding.
-PowerLineFrequency GetPowerLineFrequencyForLocation();
+CROS_CAMERA_EXPORT PowerLineFrequency GetPowerLineFrequencyForLocation();
 
 }  // namespace cros
 

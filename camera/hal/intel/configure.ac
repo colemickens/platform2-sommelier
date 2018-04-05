@@ -55,17 +55,18 @@ PKG_CHECK_MODULES([EXPAT],[expat],[],
     AC_CHECK_LIB([expat],[XML_ParserCreate],[],[AC_MSG_ERROR([Expat library required by GCSS  not found])])
     EXPAT_LIBS="-lexpat"])
 
-PKG_CHECK_MODULES([LIBCHROME], [libchrome-$BASEVER])
 PKG_CHECK_MODULES([CROS_CAMERA_ANDROID_HEADERS], [cros-camera-android-headers])
-PKG_CHECK_MODULES([LIBCAMERA_METADATA], [libcamera_metadata])
+PKG_CHECK_MODULES([LIBCAB], [libcab])
 PKG_CHECK_MODULES([LIBCAMERA_CLIENT], [libcamera_client])
+PKG_CHECK_MODULES([LIBCAMERA_COMMON], [libcamera_common])
+PKG_CHECK_MODULES([LIBCAMERA_JPEG], [libcamera_jpeg])
+PKG_CHECK_MODULES([LIBCAMERA_METADATA], [libcamera_metadata])
 PKG_CHECK_MODULES([LIBCAMERA_V4L2_DEVICE], [libcamera_v4l2_device])
 PKG_CHECK_MODULES([LIBCBM], [libcbm])
+PKG_CHECK_MODULES([LIBCHROME], [libchrome-$BASEVER])
+PKG_CHECK_MODULES([LIBMOJO], [libmojo-$BASEVER])
 PKG_CHECK_MODULES([LIBSYNC], [libsync])
 PKG_CHECK_MODULES([LIBYUV], [libyuv])
-PKG_CHECK_MODULES([IA_IMAGING], [ia_imaging])
-PKG_CHECK_MODULES([LIBCAMERA_JPEG], [libcamera_jpeg])
-PKG_CHECK_MODULES([LIBCAMERA_COMMON], [libcamera_common])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h stdint.h stdlib.h string.h sys/ioctl.h unistd.h])

@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <system/window.h>
 
+#include "cros-camera/export.h"
+
 // A V4L2 extension format which represents 32bit RGBX-8-8-8-8 format. This
 // corresponds to DRM_FORMAT_XBGR8888 which is used as the underlying format for
 // the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
@@ -19,8 +21,6 @@
 // usage flag is only valid when allocating HAL_PIXEL_FORMAT_YCbCr_420_888
 // flexible YUV buffers.
 const uint32_t GRALLOC_USAGE_FORCE_I420 = 0x10000000U;
-
-#define EXPORTED __attribute__((__visibility__("default")))
 
 namespace cros {
 
@@ -68,7 +68,7 @@ enum BufferType {
 //  manager->Unlock(buffer_handle);
 //  manager->Free(buffer_handle);
 
-class EXPORTED CameraBufferManager {
+class CROS_CAMERA_EXPORT CameraBufferManager {
  public:
   // Gets the singleton instance.  Returns nullptr if any error occurrs during
   // instance creation.

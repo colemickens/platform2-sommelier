@@ -64,14 +64,8 @@ PSLSRC += \
     psl/rkisp1/ipc/IPCCommon.cpp \
     psl/rkisp1/ipc/IPCAiq.cpp
 
-libcamerahal_la_LDFLAGS += -lcab.pic
-libcamerahal_la_LDFLAGS += -lcamera_ipc.pic
-libcamerahal_la_LDFLAGS += -lcamera_common.pic
-libcamerahal_la_LDFLAGS += -lrt
 libcamerahal_la_LDFLAGS += -ldl
-libcamerahal_la_LDFLAGS += -lbase-$(BASE_VER)
-libcamerahal_la_LDFLAGS += -lbase-core-$(BASE_VER)
-libcamerahal_la_LDFLAGS += -lmojo-$(BASE_VER).pic
+libcamerahal_la_LDFLAGS += -lrt
 endif
 
 if !REMOTE_3A_SERVER
@@ -110,11 +104,9 @@ libcam_algo_la_CPPFLAGS += -DUSING_DECLARED_NAMESPACE=using\ namespace\ android:
 
 libcam_algo_la_LDFLAGS = \
     -lrk_aiq \
+    $(LIBCHROME_LIBS) \
+    $(LIBMOJO_LIBS) \
     $(LIBUTILS_LIBS)
-
-libcam_algo_la_LDFLAGS += -lbase-$(BASE_VER)
-libcam_algo_la_LDFLAGS += -lbase-core-$(BASE_VER)
-libcam_algo_la_LDFLAGS += -lmojo-$(BASE_VER).pic
 
 endif
 

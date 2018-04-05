@@ -6,5 +6,6 @@ lib_dir=@LIB_DIR@
 Name: libcamera_client
 Description: Android libcamera_client
 Version: 0
+Requires.private: libcamera_metadata
 Cflags: -I${include_dir}
-Libs: -L${lib_dir} -lcamera_client.pic
+Libs: -L${lib_dir} -lcamera_client

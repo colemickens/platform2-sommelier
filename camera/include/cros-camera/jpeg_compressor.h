@@ -17,11 +17,13 @@ extern "C" {
 #include <jpeglib.h>
 }
 
+#include "cros-camera/export.h"
+
 namespace cros {
 
 // Encapsulates a converter from YU12 to JPEG format. This class is not
 // thread-safe.
-class JpegCompressor {
+class CROS_CAMERA_EXPORT JpegCompressor {
  public:
   JpegCompressor();
   ~JpegCompressor();

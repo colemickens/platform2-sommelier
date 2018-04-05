@@ -158,11 +158,19 @@ endif
 libcamerahal_la_CPPFLAGS += $(ALLINCLUDES)
 
 # libs
-EXTERNAL_LIBS = -ljpeg -lexpat -lpthread $(LIBCBM_LIBS) $(LIBCHROME_LIBS) $(LIBYUV_LIBS) $(LIBCAMERA_JPEG_LIBS)
+EXTERNAL_LIBS = \
+    $(LIBCAMERA_CLIENT_LIBS) \
+    $(LIBCAMERA_COMMON_LIBS) \
+    $(LIBCAMERA_JPEG_LIBS) \
+    $(LIBCAMERA_METADATA_LIBS) \
+    $(LIBCBM_LIBS) \
+    $(LIBCHROME_LIBS) \
+    $(LIBSYNC_LIBS) \
+    -lexpat \
+    -ljpeg \
+    -lpthread
 UTIL_LIBS =  $(PSLLIBS)
-STATIC_LIBS = $(LIBCAMERA_CLIENT_LIBS) \
-              $(LIBCAMERA_METADATA_LIBS) \
-              $(LIBSYNC_LIBS)
+STATIC_LIBS = $(LIBCAB_LIBS) $(LIBYUV_LIBS)
 OTHER_LIBS = -ldl
 libcamerahal_la_LIBADD = $(EXTERNAL_LIBS) $(UTIL_LIBS) $(STATIC_LIBS) $(OTHER_LIBS)
 

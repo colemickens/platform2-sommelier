@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "cros-camera/camera_algorithm.h"
+#include "cros-camera/export.h"
 
 namespace cros {
 
@@ -33,7 +34,7 @@ namespace cros {
 //  /* |return_callback_fn| is called to return buffer */
 //  algo->Deregister(handles);
 
-class CameraAlgorithmBridge {
+class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
  public:
   // This method creates and returns the CameraAlgorithmBridge instance.
   //

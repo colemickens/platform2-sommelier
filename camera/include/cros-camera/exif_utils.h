@@ -17,7 +17,7 @@ extern "C" {
 #include <libexif/exif-data.h>
 }
 
-#define EXPORTED __attribute__((__visibility__("default")))
+#include "cros-camera/export.h"
 
 namespace cros {
 
@@ -35,7 +35,7 @@ namespace cros {
 //  unsigned int app1Length = utils.GetApp1Length();
 //  uint8_t* app1Buffer = new uint8_t[app1Length];
 //  memcpy(app1Buffer, utils.GetApp1Buffer(), app1Length);
-class EXPORTED ExifUtils {
+class CROS_CAMERA_EXPORT ExifUtils {
  public:
   ExifUtils();
   ~ExifUtils();

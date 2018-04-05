@@ -10,13 +10,15 @@
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 
+#include "cros-camera/export.h"
+
 namespace cros {
 
 class CancellationRelay;
 
 namespace internal {
 
-class FutureLock {
+class CROS_CAMERA_EXPORT FutureLock {
  public:
   explicit FutureLock(CancellationRelay* relay);
 

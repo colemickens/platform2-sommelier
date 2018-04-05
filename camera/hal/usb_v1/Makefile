@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 include common.mk
-include ../../pc_utils.mk
+include pc_utils.mk
 
 CXXFLAGS += -std=c++11 -Wall -Wpointer-arith
 

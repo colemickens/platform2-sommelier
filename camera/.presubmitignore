@@ -1,4 +1,3 @@
-android/include/*
-android/src/*
-presubmit/upstream-git-clang-format
+android/*
 hal/intel/*
+hal/rockchip/*

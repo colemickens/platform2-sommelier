@@ -6,4 +6,4 @@ Description: Time zone util for Chrome OS camera HAL
 Version: 0
 Requires.private: libchrome-@LIBCHROME_VERS@
 Cflags: -I${include_dir}
-Libs: -L${lib_dir} -lcamera_timezone.pic
+Libs: -L${lib_dir} -lcamera_timezone

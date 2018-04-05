@@ -79,14 +79,8 @@ PSLSRC += \
     psl/ipu3/ipc/IPCExc.cpp \
     psl/ipu3/ipc/IPCMkn.cpp
 
-libcamerahal_la_LDFLAGS += -lcab.pic
-libcamerahal_la_LDFLAGS += -lcamera_ipc.pic
-libcamerahal_la_LDFLAGS += -lcamera_common.pic
 libcamerahal_la_LDFLAGS += -lrt
 libcamerahal_la_LDFLAGS += -ldl
-libcamerahal_la_LDFLAGS += -lbase-$(BASE_VER)
-libcamerahal_la_LDFLAGS += -lbase-core-$(BASE_VER)
-libcamerahal_la_LDFLAGS += -lmojo-$(BASE_VER).pic
 endif
 
 if !REMOTE_3A_SERVER
@@ -150,11 +144,9 @@ libcam_algo_la_LDFLAGS = \
     -lia_mkn \
     -lia_log \
     -lia_coordinate \
+    $(LIBCHROME_LIBS) \
+    $(LIBMOJO_LIBS) \
     $(LIBUTILS_LIBS)
-
-libcam_algo_la_LDFLAGS += -lbase-$(BASE_VER)
-libcam_algo_la_LDFLAGS += -lbase-core-$(BASE_VER)
-libcam_algo_la_LDFLAGS += -lmojo-$(BASE_VER).pic
 
 endif
 

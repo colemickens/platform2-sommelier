@@ -19,7 +19,7 @@
 
 namespace cros {
 
-class CancellationRelay {
+class CROS_CAMERA_EXPORT CancellationRelay {
  public:
   CancellationRelay();
 
@@ -144,7 +144,7 @@ base::Callback<void(T)> GetFutureCallback(
   return base::Bind(&FutureCallback<T>, future);
 }
 
-base::Callback<void()> GetFutureCallback(
+CROS_CAMERA_EXPORT base::Callback<void()> GetFutureCallback(
     const scoped_refptr<Future<void>>& future);
 
 }  // namespace cros

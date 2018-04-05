@@ -31,13 +31,15 @@
 
 #include <base/synchronization/lock.h>
 
+#include "cros-camera/export.h"
+
 namespace cros {
 
 /*
  * Wrapper for v4l2_buffer to provide compatible
  * interfaces for multi-plane buffers.
  */
-class V4L2Buffer {
+class CROS_CAMERA_EXPORT V4L2Buffer {
  public:
   V4L2Buffer();
   explicit V4L2Buffer(const V4L2Buffer& buf);
@@ -87,7 +89,7 @@ class V4L2Buffer {
  * Wrapper for v4l2_format to provide compatible
  * interfaces for multi-plane buffers.
  */
-class V4L2Format {
+class CROS_CAMERA_EXPORT V4L2Format {
  public:
   V4L2Format() { v4l2_fmt_ = {}; }
   explicit V4L2Format(const struct v4l2_format& fmt) { v4l2_fmt_ = fmt; }
@@ -123,7 +125,7 @@ class V4L2Format {
  * - Name
  * - File descriptor
  */
-class V4L2Device {
+class CROS_CAMERA_EXPORT V4L2Device {
  public:
   friend class V4L2DevicePoller;
 
@@ -238,7 +240,7 @@ class V4L2Device {
   int fd_; /*!< file descriptor obtained when device is open */
 };
 
-class V4L2DevicePoller {
+class CROS_CAMERA_EXPORT V4L2DevicePoller {
  public:
   // |flush_fd|: file descriptor of the pipe device that will be used to return
   // from Poll() in case of flush request, i.e., to abort poll before timeout
@@ -278,7 +280,7 @@ class V4L2DevicePoller {
  * with the device.
  * This class introduces new methods specific to control video device nodes.
  */
-class V4L2VideoNode final : public V4L2Device {
+class CROS_CAMERA_EXPORT V4L2VideoNode final : public V4L2Device {
  public:
   explicit V4L2VideoNode(const std::string name);
 
@@ -458,7 +460,7 @@ class V4L2VideoNode final : public V4L2Device {
  * Sub-devices are control points to the new V4L2 media controller
  * architecture.
  */
-class V4L2Subdevice final : public V4L2Device {
+class CROS_CAMERA_EXPORT V4L2Subdevice final : public V4L2Device {
  public:
   explicit V4L2Subdevice(const std::string name);
 

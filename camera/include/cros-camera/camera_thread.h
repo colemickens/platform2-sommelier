@@ -13,11 +13,12 @@
 #include <base/threading/thread.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/export.h"
 #include "cros-camera/future.h"
 
 namespace cros {
 
-class CameraThread {
+class CROS_CAMERA_EXPORT CameraThread {
  public:
   explicit CameraThread(std::string name) : thread_(name) {}
 
