@@ -3,7 +3,7 @@
     'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(dbus_adaptors_out_dir)',
     'dbus_service_config%': '',
     'dbus_xml_extension%': 'xml',
-    'new_fd_bindings%': 0,
+    'new_fd_bindings%': 1,
     'generator': '<!(which generate-chromeos-dbus-bindings)',
   },
   'rules': [

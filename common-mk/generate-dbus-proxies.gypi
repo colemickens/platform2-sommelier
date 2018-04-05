@@ -4,7 +4,7 @@
     'proxy_output_file%': '',
     'mock_output_file%': '',
     'proxy_path_in_mocks%': '',
-    'new_fd_bindings%': 0,
+    'new_fd_bindings%': 1,
     'generator': '<!(which generate-chromeos-dbus-bindings)',
   },
   'inputs': [
