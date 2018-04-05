@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/macros.h>
+#include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -145,6 +146,7 @@ TEST_F(AudioClientTest, AudioState) {
   TestObserver observer(&audio_client_);
   num_output_streams_ = 1;
   dbus_wrapper_.NotifyServiceAvailable(cras_proxy_, true);
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(observer.audio_active());
   EXPECT_EQ(1, observer.num_changes());
 
@@ -153,18 +155,21 @@ TEST_F(AudioClientTest, AudioState) {
   dbus::Signal signal(cras::kCrasControlInterface,
                       cras::kNumberOfActiveStreamsChanged);
   dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &signal);
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(observer.audio_active());
   EXPECT_EQ(1, observer.num_changes());
 
   // It should hear about audio stopping entirely, though.
   num_output_streams_ = 0;
   dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &signal);
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(observer.audio_active());
   EXPECT_EQ(2, observer.num_changes());
 
   // The stream count should be requeried if CRAS restarts, too.
   num_output_streams_ = 1;
   dbus_wrapper_.NotifyNameOwnerChanged(cras::kCrasServiceName, "", ":0");
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(observer.audio_active());
   EXPECT_EQ(3, observer.num_changes());
 }
@@ -172,6 +177,7 @@ TEST_F(AudioClientTest, AudioState) {
 TEST_F(AudioClientTest, GetNodes) {
   // With no connected nodes, nothing should be reported.
   dbus_wrapper_.NotifyNameOwnerChanged(cras::kCrasServiceName, "", ":0");
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(audio_client_.GetHeadphoneJackPlugged());
   EXPECT_FALSE(audio_client_.GetHdmiActive());
 
@@ -180,6 +186,7 @@ TEST_F(AudioClientTest, GetNodes) {
   dbus::Signal nodes_changed_signal(cras::kCrasControlInterface,
                                     cras::kNodesChanged);
   dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &nodes_changed_signal);
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(audio_client_.GetHeadphoneJackPlugged());
   EXPECT_FALSE(audio_client_.GetHdmiActive());
 
@@ -187,6 +194,7 @@ TEST_F(AudioClientTest, GetNodes) {
   nodes_.clear();
   nodes_.push_back(Node{AudioClient::kHeadphoneNodeType, false});
   dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &nodes_changed_signal);
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(audio_client_.GetHeadphoneJackPlugged());
   EXPECT_FALSE(audio_client_.GetHdmiActive());
 
@@ -194,6 +202,7 @@ TEST_F(AudioClientTest, GetNodes) {
   nodes_[0].active = true;
   nodes_.push_back(Node{AudioClient::kHdmiNodeType, false});
   dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &nodes_changed_signal);
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(audio_client_.GetHeadphoneJackPlugged());
   EXPECT_FALSE(audio_client_.GetHdmiActive());
 
@@ -203,6 +212,7 @@ TEST_F(AudioClientTest, GetNodes) {
   dbus::Signal active_node_signal(cras::kCrasControlInterface,
                                   cras::kActiveOutputNodeChanged);
   dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &active_node_signal);
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(audio_client_.GetHeadphoneJackPlugged());
   EXPECT_TRUE(audio_client_.GetHdmiActive());
 }

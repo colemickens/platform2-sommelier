@@ -5,8 +5,8 @@
 #include "power_manager/powerd/system/audio_client.h"
 
 #include <algorithm>
+#include <map>
 #include <memory>
-#include <string>
 
 #include <base/bind.h>
 #include <base/time/time.h>
@@ -48,19 +48,20 @@ void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
   dbus_wrapper_->RegisterForServiceAvailability(
       cras_proxy_, base::Bind(&AudioClient::HandleCrasAvailableOrRestarted,
                               weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper_->RegisterForSignal(
-      cras_proxy_, cras::kCrasControlInterface, cras::kNodesChanged,
-      base::Bind(&AudioClient::HandleNodesChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper_->RegisterForSignal(
-      cras_proxy_, cras::kCrasControlInterface, cras::kActiveOutputNodeChanged,
-      base::Bind(&AudioClient::HandleActiveOutputNodeChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper_->RegisterForSignal(
-      cras_proxy_, cras::kCrasControlInterface,
-      cras::kNumberOfActiveStreamsChanged,
-      base::Bind(&AudioClient::HandleNumberOfActiveStreamsChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
+
+  typedef void (AudioClient::*SignalMethod)(dbus::Signal*);
+  const std::map<const char*, SignalMethod> kSignalMethods = {
+      {cras::kNodesChanged, &AudioClient::HandleNodesChangedSignal},
+      {cras::kActiveOutputNodeChanged,
+       &AudioClient::HandleActiveOutputNodeChangedSignal},
+      {cras::kNumberOfActiveStreamsChanged,
+       &AudioClient::HandleNumberOfActiveStreamsChangedSignal},
+  };
+  for (const auto& it : kSignalMethods) {
+    dbus_wrapper_->RegisterForSignal(
+        cras_proxy_, cras::kCrasControlInterface, it.first,
+        base::Bind(it.second, weak_ptr_factory_.GetWeakPtr()));
+  }
 }
 
 bool AudioClient::GetHeadphoneJackPlugged() const {
@@ -99,28 +100,33 @@ void AudioClient::OnDBusNameOwnerChanged(const std::string& service_name,
   }
 }
 
-void AudioClient::UpdateDevices() {
+void AudioClient::CallGetNodes() {
+  dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
+  dbus_wrapper_->CallMethodAsync(
+      cras_proxy_, &method_call, kCrasDBusTimeout,
+      base::Bind(&AudioClient::HandleGetNodesResponse,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
+
+void AudioClient::HandleGetNodesResponse(dbus::Response* response) {
+  if (!response)
+    return;
+
   const bool old_headphone_jack_plugged = headphone_jack_plugged_;
   const bool old_hdmi_active = hdmi_active_;
 
   headphone_jack_plugged_ = false;
   hdmi_active_ = false;
 
-  dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
-  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call, kCrasDBusTimeout);
-  if (!response)
-    return;
-
   // At the outer level, there's a dictionary corresponding to each audio node.
-  dbus::MessageReader response_reader(response.get());
-  dbus::MessageReader node_reader(NULL);
+  dbus::MessageReader response_reader(response);
+  dbus::MessageReader node_reader(nullptr);
   while (response_reader.PopArray(&node_reader)) {
     std::string type;
     bool active = false;
 
     // Iterate over the dictionary's entries.
-    dbus::MessageReader property_reader(NULL);
+    dbus::MessageReader property_reader(nullptr);
     while (node_reader.PopDictEntry(&property_reader)) {
       std::string key;
       if (!property_reader.PopString(&key)) {
@@ -153,19 +159,25 @@ void AudioClient::UpdateDevices() {
   }
 }
 
-void AudioClient::UpdateNumOutputStreams() {
+void AudioClient::CallGetNumberOfActiveOutputStreams() {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
                                cras::kGetNumberOfActiveOutputStreams);
-  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call, kCrasDBusTimeout);
+  dbus_wrapper_->CallMethodAsync(
+      cras_proxy_, &method_call, kCrasDBusTimeout,
+      base::Bind(&AudioClient::HandleGetNumberOfActiveOutputStreamsResponse,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
+
+void AudioClient::HandleGetNumberOfActiveOutputStreamsResponse(
+    dbus::Response* response) {
+  if (!response)
+    return;
+
   int num_streams = 0;
-  if (response) {
-    dbus::MessageReader reader(response.get());
-    if (!reader.PopInt32(&num_streams))
-      LOG(WARNING) << "Unable to read " << cras::kGetNumberOfActiveOutputStreams
-                   << " args";
-  } else {
-    LOG(WARNING) << cras::kGetNumberOfActiveOutputStreams << " call failed";
+  if (!dbus::MessageReader(response).PopInt32(&num_streams)) {
+    LOG(WARNING) << "Unable to read " << cras::kGetNumberOfActiveOutputStreams
+                 << " args";
+    return;
   }
 
   const int old_num_streams = num_output_streams_;
@@ -187,20 +199,23 @@ void AudioClient::HandleCrasAvailableOrRestarted(bool available) {
     LOG(ERROR) << "Failed waiting for CRAS to become available";
     return;
   }
-  UpdateDevices();
-  UpdateNumOutputStreams();
+  CallGetNodes();
+  CallGetNumberOfActiveOutputStreams();
 }
 
 void AudioClient::HandleNodesChangedSignal(dbus::Signal* signal) {
-  UpdateDevices();
+  CallGetNodes();
 }
 
 void AudioClient::HandleActiveOutputNodeChangedSignal(dbus::Signal* signal) {
-  UpdateDevices();
+  CallGetNodes();
 }
 
-void AudioClient::HandleNumberOfActiveStreamsChanged(dbus::Signal* signal) {
-  UpdateNumOutputStreams();
+void AudioClient::HandleNumberOfActiveStreamsChangedSignal(
+    dbus::Signal* signal) {
+  // The signal only contains the total count of streams (i.e. both input and
+  // output), so we need to call the method to get the output stream count.
+  CallGetNumberOfActiveOutputStreams();
 }
 
 }  // namespace system

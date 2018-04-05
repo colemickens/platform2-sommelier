@@ -17,6 +17,8 @@
 
 namespace dbus {
 class ObjectProxy;
+class Response;
+class Signal;
 }  // namespace dbus
 
 namespace power_manager {
@@ -55,23 +57,25 @@ class AudioClient : public AudioClientInterface,
                               const std::string& new_owner) override;
 
  private:
-  // Updates connected audio devices.
-  void UpdateDevices();
+  // Asynchronously updates |headphone_jack_plugged_| and |hdmi_active_|.
+  void CallGetNodes();
+  void HandleGetNodesResponse(dbus::Response* response);
 
-  // Updates the the number of active audio output streams and notifies
-  // observers if the state changed.
-  void UpdateNumOutputStreams();
+  // Asynchronously updates |num_output_streams_| and notifies observers if the
+  // state changed.
+  void CallGetNumberOfActiveOutputStreams();
+  void HandleGetNumberOfActiveOutputStreamsResponse(dbus::Response* response);
 
   // Handles various events announced over D-Bus.
   void HandleCrasAvailableOrRestarted(bool available);
   void HandleNodesChangedSignal(dbus::Signal* signal);
   void HandleActiveOutputNodeChangedSignal(dbus::Signal* signal);
-  void HandleNumberOfActiveStreamsChanged(dbus::Signal* signal);
+  void HandleNumberOfActiveStreamsChangedSignal(dbus::Signal* signal);
 
   DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
   dbus::ObjectProxy* cras_proxy_ = nullptr;       // weak
 
-  // Number of audio output streams currently active.
+  // Number of audio output streams currently open.
   int num_output_streams_ = 0;
 
   // Is something plugged in to a headphone jack?

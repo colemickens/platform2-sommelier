@@ -7,8 +7,10 @@
 #include <memory>
 #include <tuple>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/message_loop/message_loop.h>
 #include <dbus/dbus.h>
 
 namespace power_manager {
@@ -20,6 +22,12 @@ namespace {
 std::unique_ptr<dbus::Signal> DuplicateSignal(dbus::Signal* signal) {
   return base::WrapUnique(
       dbus::Signal::FromRawMessage(dbus_message_copy(signal->raw_message())));
+}
+
+// Callback for CallMethodAsync() to pass |response| to |callback|.
+void RunResponseCallback(dbus::ObjectProxy::ResponseCallback callback,
+                         std::unique_ptr<dbus::Response> response) {
+  callback.Run(response.get());
 }
 
 }  // namespace
@@ -236,14 +244,11 @@ void DBusWrapperStub::CallMethodAsync(
     dbus::MethodCall* method_call,
     base::TimeDelta timeout,
     dbus::ObjectProxy::ResponseCallback callback) {
-  DCHECK(proxy);
-  DCHECK(method_call);
-  DCHECK(!method_callback_.is_null());
-
-  // libdbus asserts that the serial number is set. Prevent tests from needing
-  // to bother setting it.
-  method_call->SetSerial(1);
-  // TODO(derat): Invoke callback with canned response.
+  // Call the method handler now and post |callback| to run later.
+  base::MessageLoop::current()->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&RunResponseCallback, callback,
+                 base::Passed(CallMethodSync(proxy, method_call, timeout))));
 }
 
 }  // namespace system
