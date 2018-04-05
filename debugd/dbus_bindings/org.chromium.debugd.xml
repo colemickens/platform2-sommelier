@@ -917,7 +917,8 @@
     </method>
     <method name="SetRlzPingSent">
       <tp:docstring>
-        Sets should_send_rlz_ping in RW_VPD to 0.
+        Sets should_send_rlz_ping in RW_VPD to 0. Upon success, proceeds to
+        remove rlz_embargo_end_date in RW_VPD.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>

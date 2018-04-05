@@ -28,6 +28,8 @@ const char kDevCoredumpDBusErrorString[] =
 
 const char kShouldSendRlzPingKey[] = "should_send_rlz_ping";
 
+const char kRlzEmbargoEndDateKey[] = "rlz_embargo_end_date";
+
 }  // namespace
 
 DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
@@ -436,12 +438,29 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
       &stderr, error);
   if (result != EXIT_SUCCESS) {
     std::string error_string =
-        "Failed to set vpd key for " + std::string(kShouldSendRlzPingKey) +
+        "Failed to set vpd key: " + std::string(kShouldSendRlzPingKey) +
         " with exit code: " + std::to_string(result) + " with error: " + stderr;
     DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
     PLOG(ERROR) << error_string;
     return false;
   }
+  // Remove |kRlzEmbargoEndDateKey|, which is no longer useful after
+  // |kShouldSendRlzPingKey| is updated.
+  result = ProcessWithOutput::RunProcess(
+      "vpd", {"-i", "RW_VPD", "-d", std::string(kRlzEmbargoEndDateKey)},
+      true,      // requires root
+      nullptr,   // stdin
+      nullptr,   // stdout
+      &stderr, error);
+  if (result != EXIT_SUCCESS) {
+    std::string error_string =
+        "Failed to delete vpd key: " + std::string(kRlzEmbargoEndDateKey) +
+        " with exit code: " + std::to_string(result) + " with error: " + stderr;
+    DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
+    PLOG(ERROR) << error_string;
+  }
+  // The client only cares if updating |kShouldSendRlzPingKey| is successful, so
+  // returns true regardless of the result of removing |kRlzEmbargoEndDateKey|.
   return true;
 }
 
