@@ -4,6 +4,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libpasswordprovider',
         'smbclient',
         # system_api depends on protobuf (or protobuf-lite). It must
         # appear before protobuf or the linker flags won't be in the right
@@ -36,6 +37,8 @@
       'sources': [
         'constants.cc',
         'constants.h',
+        'credential_store.cc',
+        'credential_store.h',
         'iterator/depth_first_iterator.cc',
         'iterator/depth_first_iterator.h',
         'iterator/directory_iterator.cc',
