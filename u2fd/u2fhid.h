@@ -34,6 +34,7 @@ class U2fHid {
       int64_t in_timeout_internal, brillo::ErrorPtr* error, int timeout)>;
 
   U2fHid(std::unique_ptr<HidInterface> hid,
+         const std::string& vendor_sysinfo,
          const TransmitApduCallback& transmit_func,
          const IgnoreButtonCallback& ignore_button_func);
   ~U2fHid();
@@ -53,6 +54,7 @@ class U2fHid {
   int CmdLock(std::string* resp);
   int CmdMsg(std::string* resp);
   int CmdPing(std::string* resp);
+  int CmdSysInfo(std::string* resp);
   int CmdWink(std::string* resp);
 
   // Fully resets the state of the possibly on-going U2FHID transaction.
@@ -92,6 +94,8 @@ class U2fHid {
   uint32_t free_cid_;
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;
+
+  std::string vendor_sysinfo_;
 
   class HidPacket;
   class HidMessage;

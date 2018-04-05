@@ -50,6 +50,10 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   // Returns the TPM response code.
   int GetU2fVersion(std::string* version_out);
 
+  // Queries the TPM firmware if it has vendor system information available
+  // for the U2F feature and returns it in |sysinfo_out| if it does.
+  void GetVendorSysInfo(std::string* sysinfo_out);
+
  private:
   // Sends the TPM command with vendor-specific command code |cc| and the
   // payload in |input|, get the reply in |output|. Returns the TPM response

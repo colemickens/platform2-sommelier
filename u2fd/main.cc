@@ -117,6 +117,10 @@ class U2fDaemon : public brillo::Daemon {
     }
     LOG(INFO) << "version " << version;
 
+    std::string vendor_sysinfo;
+    if (u2f_mode_ == U2fMode::kU2fExtended)
+      tpm_proxy_.GetVendorSysInfo(&vendor_sysinfo);
+
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::Bus(options);
@@ -129,6 +133,7 @@ class U2fDaemon : public brillo::Daemon {
     u2fhid_ = std::make_unique<u2f::U2fHid>(
         std::make_unique<u2f::UHidDevice>(
             vendor_id_, product_id_, kDeviceName, "u2fd-tpm-cr50"),
+        vendor_sysinfo,
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fApdu,
                    base::Unretained(&tpm_proxy_)),
         base::Bind(

@@ -78,6 +78,7 @@ enum class U2fHid::U2fHidCommand : uint8_t {
   kPing = 1,
   kMsg = 3,
   kLock = 4,
+  kVendorSysInfo = 5,
   kInit = 6,
   kWink = 8,
   kError = 0x3f,
@@ -234,13 +235,15 @@ struct U2fHid::Transaction {
 };
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
+               const std::string& vendor_sysinfo,
                const TransmitApduCallback& transmit_func,
                const IgnoreButtonCallback& ignore_func)
     : hid_(std::move(hid)),
       transmit_apdu_(transmit_func),
       ignore_button_(ignore_func),
       free_cid_(1),
-      locked_cid_(0) {
+      locked_cid_(0),
+      vendor_sysinfo_(vendor_sysinfo) {
   transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
       base::Bind(&U2fHid::ProcessReport, base::Unretained(this)));
@@ -419,6 +422,18 @@ int U2fHid::CmdWink(std::string* resp) {
   return 0;
 }
 
+int U2fHid::CmdSysInfo(std::string* resp) {
+  if (vendor_sysinfo_.empty()) {
+    LOG(WARNING) << "No vendor system info available";
+    ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
+    return -EINVAL;
+  }
+
+  VLOG(1) << "SYSINFO len=" << vendor_sysinfo_.length();
+  *resp = vendor_sysinfo_;
+  return vendor_sysinfo_.length();
+}
+
 int U2fHid::CmdMsg(std::string* resp) {
   ScanApdu(transaction_->payload);
   return transmit_apdu_.Run(transaction_->payload, resp);
@@ -441,6 +456,9 @@ void U2fHid::ExecuteCmd() {
       break;
     case U2fHidCommand::kWink:
       rc = CmdWink(&resp);
+      break;
+    case U2fHidCommand::kVendorSysInfo:
+      rc = CmdSysInfo(&resp);
       break;
     default:
       LOG(WARNING) << "Unknown command " << std::hex
