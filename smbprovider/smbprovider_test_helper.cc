@@ -4,9 +4,12 @@
 
 #include "smbprovider/smbprovider_test_helper.h"
 
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
+#include "smbprovider/temp_file_manager.h"
 
 namespace smbprovider {
 namespace {
@@ -286,6 +289,21 @@ ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url) {
 ProtoBlob CreateRemountOptionsBlob(const std::string& path, int32_t mount_id) {
   return SerializeProtoToBlobAndCheck(
       CreateRemountOptionsProto(path, mount_id));
+}
+
+base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
+                                   const std::string& password) {
+  const size_t password_size = password.size();
+  std::vector<uint8_t> password_data(sizeof(password_size) + password.size());
+
+  // Write the password length in the first sizeof(size_t) bytes of the buffer.
+  std::memcpy(password_data.data(), &password_size, sizeof(password_size));
+
+  // Append |password| starting at the end of password_size.
+  std::memcpy(password_data.data() + sizeof(password_size), password.c_str(),
+              password.size());
+
+  return temp_manager->CreateTempFile(password_data);
 }
 
 }  // namespace smbprovider

@@ -18,6 +18,12 @@ class Password;
 
 namespace smbprovider {
 
+// Gets a password_provider::Password object from |password_fd|. The data has to
+// be in the format of "{password_length}{password}". If the read fails, this
+// returns an empty unique_ptr.
+std::unique_ptr<password_provider::Password> GetPassword(
+    const base::ScopedFD& password_fd);
+
 struct SmbCredentials {
   std::string workgroup;
   std::string username;

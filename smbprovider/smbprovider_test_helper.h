@@ -7,10 +7,14 @@
 
 #include <string>
 
+#include <base/files/file_util.h>
+
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 
 namespace smbprovider {
+
+class TempFileManager;
 
 MountOptionsProto CreateMountOptionsProto(const std::string& path,
                                           const std::string& workgroup,
@@ -161,6 +165,11 @@ inline std::string GetAddedFullDirectoryPath() {
 inline std::string GetAddedFullFilePath() {
   return GetDefaultMountRoot() + GetDefaultFilePath();
 }
+
+// Writes |password| into a file using |temp_manager| with the format of
+// "{password_length}{password}".
+base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
+                                   const std::string& password);
 
 }  // namespace smbprovider
 

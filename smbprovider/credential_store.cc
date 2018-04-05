@@ -95,6 +95,28 @@ void PopulateCredentials(const SmbCredentials& credentials,
 
 }  // namespace
 
+std::unique_ptr<password_provider::Password> GetPassword(
+    const base::ScopedFD& password_fd) {
+  size_t password_length = 0;
+
+  // Read sizeof(size_t) bytes from the file to get the password length.
+  bool success = base::ReadFromFD(password_fd.get(),
+                                  reinterpret_cast<char*>(&password_length),
+                                  sizeof(password_length));
+  if (!success) {
+    LOG(ERROR) << "Could not read password from file.";
+    return std::unique_ptr<password_provider::Password>();
+  }
+
+  if (password_length == 0) {
+    // Return empty password since there is no password.
+    return std::unique_ptr<password_provider::Password>();
+  }
+
+  return password_provider::Password::CreateFromFileDescriptor(
+      password_fd.get(), password_length);
+}
+
 CredentialStore::CredentialStore() = default;
 CredentialStore::~CredentialStore() = default;
 
