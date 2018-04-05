@@ -47,6 +47,18 @@
       'includes': ['../common-mk/protoc.gypi'],
     },
     {
+      'target_name': 'pinweaver_proto',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '.',
+        'proto_out_dir': 'include/trunks',
+      },
+      'sources': [
+        '<(proto_in_dir)/pinweaver.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
       'target_name': 'trunks',
       'type': 'shared_library',
       'sources': [
@@ -60,6 +72,7 @@
         'session_manager_impl.cc',
         'scoped_key_handle.cc',
         'tpm_generated.cc',
+        'tpm_pinweaver.cc',
         'tpm_state_impl.cc',
         'tpm_utility_impl.cc',
         'trunks_factory_impl.cc',
@@ -67,6 +80,7 @@
       ],
       'dependencies': [
         'interface_proto',
+        'pinweaver_proto',
       ],
       'conditions': [
         ['USE_ftdi_tpm == 1', {
@@ -83,6 +97,17 @@
             ],
           },
         ],
+      ],
+    },
+    {
+      'target_name': 'pinweaver_client',
+      'type': 'executable',
+      'sources': [
+        'pinweaver_client.cc',
+      ],
+      'dependencies': [
+        'trunks',
+        'pinweaver_proto',
       ],
     },
     {

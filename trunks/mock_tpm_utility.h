@@ -17,6 +17,7 @@
 #ifndef TRUNKS_MOCK_TPM_UTILITY_H_
 #define TRUNKS_MOCK_TPM_UTILITY_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -169,6 +170,58 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD0(DeclareTpmFirmwareStable, TPM_RC());
   MOCK_METHOD1(GetPublicRSAEndorsementKeyModulus, TPM_RC(std::string*));
   MOCK_METHOD1(ManageCCDPwd, TPM_RC(bool));
+  MOCK_METHOD0(PinWeaverIsSupported, TPM_RC());
+  MOCK_METHOD4(PinWeaverResetTree,
+               TPM_RC(uint8_t, uint8_t, uint32_t*, std::string*));
+  MOCK_METHOD10(PinWeaverInsertLeaf,
+                TPM_RC(uint64_t,
+                       const std::string&,
+                       const brillo::SecureBlob&,
+                       const brillo::SecureBlob&,
+                       const brillo::SecureBlob&,
+                       const std::map<uint32_t, uint32_t>&,
+                       uint32_t*,
+                       std::string*,
+                       std::string*,
+                       std::string*));
+  MOCK_METHOD5(PinWeaverRemoveLeaf,
+               TPM_RC(uint64_t,
+                      const std::string&,
+                      const std::string&,
+                      uint32_t*,
+                      std::string*));
+  MOCK_METHOD9(PinWeaverTryAuth,
+               TPM_RC(const brillo::SecureBlob&,
+                      const std::string&,
+                      const std::string&,
+                      uint32_t*,
+                      std::string*,
+                      uint32_t*,
+                      brillo::SecureBlob*,
+                      std::string*,
+                      std::string*));
+  MOCK_METHOD8(PinWeaverResetAuth,
+               TPM_RC(const brillo::SecureBlob&,
+                      const std::string&,
+                      const std::string&,
+                      uint32_t*,
+                      std::string*,
+                      brillo::SecureBlob*,
+                      std::string*,
+                      std::string*));
+  MOCK_METHOD4(PinWeaverGetLog,
+               TPM_RC(const std::string&,
+                      uint32_t*,
+                      std::string*,
+                      std::vector<trunks::PinWeaverLogEntry>*));
+  MOCK_METHOD7(PinWeaverLogReplay,
+               TPM_RC(const std::string&,
+                      const std::string&,
+                      const std::string&,
+                      uint32_t*,
+                      std::string*,
+                      std::string*,
+                      std::string*));
 };
 
 }  // namespace trunks

@@ -19,12 +19,14 @@
 
 #include "trunks/tpm_utility.h"
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
 #include "trunks/scoped_key_handle.h"
@@ -179,6 +181,39 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC GetPublicRSAEndorsementKeyModulus(std::string* ekm) override;
   TPM_RC ManageCCDPwd(bool allow_pwd) override;
   TPM_RC GetAlertsData(TpmAlertsData* alerts) override;
+  TPM_RC PinWeaverIsSupported() override;
+  TPM_RC PinWeaverResetTree(uint8_t bits_per_level, uint8_t height,
+                            uint32_t* result_code,
+                            std::string* root_hash) override;
+  TPM_RC PinWeaverInsertLeaf(
+      uint64_t label, const std::string& h_aux,
+      const brillo::SecureBlob& le_secret, const brillo::SecureBlob& he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const std::map<uint32_t, uint32_t>& delay_schedule,
+      uint32_t* result_code, std::string* root_hash, std::string* cred_metadata,
+      std::string* mac) override;
+  TPM_RC PinWeaverRemoveLeaf(
+      uint64_t label, const std::string& h_aux, const std::string& mac,
+      uint32_t* result_code, std::string* root_hash) override;
+  TPM_RC PinWeaverTryAuth(
+      const brillo::SecureBlob& le_secret, const std::string& h_aux,
+      const std::string& cred_metadata, uint32_t* result_code,
+      std::string* root_hash, uint32_t* seconds_to_wait,
+      brillo::SecureBlob* he_secret, std::string* cred_metadata_out,
+      std::string* mac_out) override;
+  TPM_RC PinWeaverResetAuth(
+      const brillo::SecureBlob& reset_secret, const std::string& h_aux,
+      const std::string& cred_metadata, uint32_t* result_code,
+      std::string* root_hash, brillo::SecureBlob* he_secret,
+      std::string* cred_metadata_out, std::string* mac_out) override;
+  TPM_RC PinWeaverGetLog(
+      const std::string& root, uint32_t* result_code, std::string* root_hash,
+      std::vector<trunks::PinWeaverLogEntry>* log) override;
+  TPM_RC PinWeaverLogReplay(
+      const std::string& log_root, const std::string& h_aux,
+      const std::string& cred_metadata, uint32_t* result_code,
+      std::string* root_hash, std::string* cred_metadata_out,
+      std::string* mac_out) override;
 
  private:
   friend class TpmUtilityTest;
@@ -296,6 +331,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // parsed, returns the error code received from the TPM.
   TPM_RC ParseResponse_Cr50Vendor(const std::string& response,
                                   std::string* response_payload);
+
+  // Helper function for PinWeaver vendor specific commands.
+  template <typename S, typename P> TPM_RC PinWeaverCommand(
+      const std::string& tag, S serialize, P parse);
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };

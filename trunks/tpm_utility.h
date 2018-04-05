@@ -17,12 +17,15 @@
 #ifndef TRUNKS_TPM_UTILITY_H_
 #define TRUNKS_TPM_UTILITY_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
+#include <brillo/secure_blob.h>
 
 #include "trunks/hmac_session.h"
+#include "trunks/pinweaver.pb.h"
 #include "trunks/tpm_alerts.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
@@ -396,6 +399,186 @@ class TRUNKS_EXPORT TpmUtility {
   // this operation is not supported by the chip.
   // Returns TPM_RC_SUCCESS on success.
   virtual TPM_RC GetAlertsData(TpmAlertsData* alerts) = 0;
+
+  // Returns TPM_RC_SUCCESS if PinWeaver is supported.
+  virtual TPM_RC PinWeaverIsSupported() = 0;
+
+  // Create an empty Merkle tree with the given parameters.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the root hash of the empty tree with the given
+  //       parameters.
+  // On failure:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the root hash of the empty tree with the given.
+  //       parameters.
+  virtual TPM_RC PinWeaverResetTree(uint8_t bits_per_level, uint8_t height,
+                                    uint32_t* result_code,
+                                    std::string* root_hash) = 0;
+
+  // Insert a leaf to the Merkle tree where:
+  //   |label| is the location of the leaf in the tree.
+  //   |h_aux| is the auxiliary hashes started from the bottom of the tree
+  //       working toward the root in index order.
+  //   |le_secret| is the low entropy secret that is limited by the delay
+  //       schedule.
+  //   |he_secret| is the high entropy secret that is protected by Cr50 and
+  //       returned on successful authentication.
+  //   |reset_secret| is the high entropy secret used to reset the attempt
+  //       counters and authenticate without following the delay schedule.
+  //   |delay_schedule| is constructed of (attempt_count, time_delay) with at
+  //       most PW_SCHED_COUNT entries.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the updated root hash of the tree.
+  //   |cred_metadata| is set to the wrapped leaf data.
+  //   |mac| is set to the HMAC used in the Merkle tree calculations.
+  // On failure:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |cred_metadata| and |mac| are both empty.
+  virtual TPM_RC PinWeaverInsertLeaf(
+      uint64_t label, const std::string& h_aux,
+      const brillo::SecureBlob& le_secret, const brillo::SecureBlob& he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const std::map<uint32_t, uint32_t>& delay_schedule,
+      uint32_t* result_code, std::string* root_hash, std::string* cred_metadata,
+      std::string* mac) = 0;
+
+  // Remove a leaf from the Merkle tree where:
+  //   |label| is the location of the leaf in the tree.
+  //   |h_aux| is the auxiliary hashes started from the bottom of the tree
+  //           working toward the root in index order.
+  //   |mac| is set to the HMAC used in the Merkle tree calculations.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the updated root hash of the tree.
+  // On failure:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  virtual TPM_RC PinWeaverRemoveLeaf(
+      uint64_t label, const std::string& h_aux, const std::string& mac,
+      uint32_t* result_code, std::string* root_hash) = 0;
+
+  // Attempts to authenticate a leaf from the Merkle tree where:
+  //   |le_secret| is the low entropy secret that is limited by the delay
+  //       schedule.
+  //   |h_aux| is the auxiliary hashes started from the bottom of the tree
+  //       working toward the root in index order.
+  //   |cred_metadata| is set to the wrapped leaf data.
+  // On auth success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the updated root hash of the tree.
+  //   |he_secret| is the high entropy secret that is protected by Cr50 and
+  //       returned on successful authentication.
+  //   |cred_metadata_out| is set to the updated wrapped leaf data.
+  //   |mac_out| is set to the updated HMAC used in the Merkle tree
+  //       calculations.
+  //   |seconds_to_wait| is 0
+  // On auth fail:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to PW_ERR_LOWENT_AUTH_FAILED.
+  //   |root_hash| is set to the updated root hash of the tree.
+  //   |cred_metadata_out| is set to the updated wrapped leaf data.
+  //   |mac_out| is set to the updated HMAC used in the Merkle tree
+  //        calculations.
+  //   |seconds_to_wait| is 0
+  //   |he_secret| is empty.
+  // On rate limited:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to PW_ERR_RATE_LIMIT_REACHED.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |seconds_to_wait| is set to the seconds required before an authentication
+  //        attempt can be made.
+  //   |he_secret|, |cred_metadata_out|, and |mac| are all empty.
+  // On error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |seconds_to_wait| is 0
+  //   |he_secret|, |cred_metadata_out|, and |mac| are all empty.
+  //
+  // Note that for the invalid fields |seconds_to_wait| will be zero and the
+  // rest will be cleared (e.g. zero length), so it isn't necessary to check
+  // |result_code| to determine if fields are valid or not.
+  virtual TPM_RC PinWeaverTryAuth(
+      const brillo::SecureBlob& le_secret, const std::string& h_aux,
+      const std::string& cred_metadata, uint32_t* result_code,
+      std::string* root_hash, uint32_t* seconds_to_wait,
+      brillo::SecureBlob* he_secret, std::string* cred_metadata_out,
+      std::string* mac_out) = 0;
+
+  // Attempts to reset a leaf from the Merkle tree where:
+  //   |reset_secret| is the high entropy secret used to reset the attempt
+  //       counters and authenticate without following the delay schedule.
+  //   |h_aux| is the auxiliary hashes started from the bottom of the tree
+  //       working toward the root in index order.
+  //   |cred_metadata| is set to the wrapped leaf data.
+  // On auth success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the updated root hash of the tree.
+  //   |he_secret| is the high entropy secret that is protected by Cr50 and
+  //       returned on successful authentication.
+  //   |cred_metadata_out| is set to the updated wrapped leaf data.
+  //   |mac_out| is set to the updated HMAC used in the Merkle tree
+  //       calculations.
+  // On auth fail or error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |he_secret|, |cred_metadata_out|, and |mac| are all empty.
+  virtual TPM_RC PinWeaverResetAuth(
+      const brillo::SecureBlob& reset_secret, const std::string& h_aux,
+      const std::string& cred_metadata, uint32_t* result_code,
+      std::string* root_hash, brillo::SecureBlob* he_secret,
+      std::string* cred_metadata_out, std::string* mac_out) = 0;
+
+  // Retrieves the log of recent operations where:
+  //   |root| is the last known root hash.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |log| is set to operations since |root| (inclusive) or the entire log if
+  //       |root| isn't found.
+  // On error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |log| is empty.
+  virtual TPM_RC PinWeaverGetLog(
+      const std::string& root, uint32_t* result_code, std::string* root_hash,
+      std::vector<trunks::PinWeaverLogEntry>* log) = 0;
+
+  // Attempts to replay a previous transaction from the PinWeaver log where:
+  //   |log_root| is the root hash of the log entry to be replayed.
+  //   |h_aux| is the auxiliary hashes started from the bottom of the tree
+  //       working toward the root in index order.
+  //   |cred_metadata| is set to the wrapped leaf data.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |cred_metadata_out| is set to the updated wrapped leaf data.
+  //   |mac_out| is set to the updated HMAC used in the Merkle tree
+  //       calculations.
+  // On error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  virtual TPM_RC PinWeaverLogReplay(
+      const std::string& log_root, const std::string& h_aux,
+      const std::string& cred_metadata, uint32_t* result_code,
+      std::string* root_hash, std::string* cred_metadata_out,
+      std::string* mac_out) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);
