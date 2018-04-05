@@ -109,7 +109,7 @@ if [ $? -ne 0 ] ; then
   mv /tmp/umount-encrypted.log /mnt/stateful_partition/
   (
     set -x
-    mount
+    cat /proc/$$/mountinfo
     dmsetup info
     lsof -n
   ) > /mnt/stateful_partition/shutdown_stateful_umount_failure 2>&1
