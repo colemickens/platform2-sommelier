@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <arpa/inet.h>
+#include <signal.h>
+#include <sys/signalfd.h>
 
 #include <map>
 #include <set>
@@ -69,39 +71,44 @@ namespace vm_tools {
 namespace garcon {
 
 // static
-std::unique_ptr<HostNotifier> HostNotifier::Create() {
-  auto notifier = base::WrapUnique(new HostNotifier());
+std::unique_ptr<HostNotifier> HostNotifier::Create(
+    std::shared_ptr<grpc::Server> grpc_server, base::Closure shutdown_closure) {
+  auto notifier = base::WrapUnique(
+      new HostNotifier(std::move(grpc_server), std::move(shutdown_closure)));
   if (!notifier->Init()) {
     notifier.reset();
   }
   return notifier;
 }
 
-// static
-bool HostNotifier::NotifyHostOfContainerShutdown() {
-  // Notify the host system that we are ready.
-  std::string host_ip = GetHostIp();
-  std::string token = GetSecurityToken();
-  if (token.empty() || host_ip.empty()) {
-    return false;
-  }
-  vm_tools::container::ContainerListener::Stub stub(grpc::CreateChannel(
-      base::StringPrintf("%s:%u", host_ip.c_str(), vm_tools::kGarconPort),
-      grpc::InsecureChannelCredentials()));
-  grpc::ClientContext ctx;
-  vm_tools::container::ContainerShutdownInfo shutdown_info;
-  shutdown_info.set_token(token);
-  vm_tools::EmptyMessage empty;
-  grpc::Status status = stub.ContainerShutdown(&ctx, shutdown_info, &empty);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to notify host system that container is shutting "
-                 << "down: " << status.error_message();
-    return false;
-  }
-  return true;
+HostNotifier::HostNotifier(std::shared_ptr<grpc::Server> grpc_server,
+                           base::Closure shutdown_closure)
+    : shutdown_closure_(std::move(shutdown_closure)),
+      grpc_server_(std::move(grpc_server)),
+      signal_controller_(FROM_HERE),
+      weak_ptr_factory_(this) {}
+
+HostNotifier::~HostNotifier() {
+  grpc_server_->Shutdown();
 }
 
-HostNotifier::HostNotifier() : weak_ptr_factory_(this) {}
+void HostNotifier::OnFileCanReadWithoutBlocking(int fd) {
+  DCHECK_EQ(fd, signal_fd_.get());
+  signalfd_siginfo info;
+  if (read(signal_fd_.get(), &info, sizeof(info)) != sizeof(info)) {
+    PLOG(ERROR) << "Failed to read from signalfd";
+  }
+  DCHECK_EQ(info.ssi_signo, SIGTERM);
+  // Notify the host we are shutting down, then inform our run loop to terminate
+  // which should then shut us down, deallocate us and then also terminate the
+  // gRPC thread.
+  NotifyHostOfContainerShutdown();
+  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, shutdown_closure_);
+}
+
+void HostNotifier::OnFileCanWriteWithoutBlocking(int fd) {
+  NOTREACHED();
+}
 
 bool HostNotifier::Init() {
   std::string host_ip = GetHostIp();
@@ -117,6 +124,31 @@ bool HostNotifier::Init() {
     return false;
   }
 
+  // Start listening for SIGTERM.
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGTERM);
+
+  signal_fd_.reset(signalfd(-1, &mask, SFD_CLOEXEC | SFD_NONBLOCK));
+  if (!signal_fd_.is_valid()) {
+    PLOG(ERROR) << "Unable to create signalfd";
+    return false;
+  }
+  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+          signal_fd_.get(), true /*persistent*/,
+          base::MessageLoopForIO::WATCH_READ, &signal_controller_, this)) {
+    LOG(ERROR) << "Failed to watch signal file descriptor";
+    return false;
+  }
+
+  // Block the standard SIGTERM handler since we will be getting it via the
+  // signalfd. We have to do this before we setup the file path watcher
+  // because that will end up spawning another thread for each watcher.
+  if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
+    PLOG(ERROR) << "Failed blocking standard SIGTERM handler";
+    return false;
+  }
+
   // Setup all of our watchers for changes to any of the paths where .desktop
   // files may reside.
   std::vector<base::FilePath> watch_paths =
@@ -129,14 +161,16 @@ bool HostNotifier::Init() {
                                    weak_ptr_factory_.GetWeakPtr()))) {
       LOG(ERROR) << "Failed setting up filesystem path watcher for dir: "
                  << path.value();
-      return false;
+      // Probably better to just watch the dirs we can rather than terminate
+      // garcon altogether.
+      continue;
     }
     watchers_.emplace_back(std::move(watcher));
   }
 
-  if (!SendAppListToHost()) {
-    return false;
-  }
+  // If this fails, don't terminate ourself, this could be some kind of
+  // transient failure.
+  SendAppListToHost();
 
   return true;
 }
@@ -156,7 +190,20 @@ bool HostNotifier::NotifyHostGarconIsReady() {
   return true;
 }
 
-bool HostNotifier::SendAppListToHost() {
+void HostNotifier::NotifyHostOfContainerShutdown() {
+  // Notify the host system that we are shutting down.
+  grpc::ClientContext ctx;
+  vm_tools::container::ContainerShutdownInfo shutdown_info;
+  shutdown_info.set_token(token_);
+  vm_tools::EmptyMessage empty;
+  grpc::Status status = stub_->ContainerShutdown(&ctx, shutdown_info, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to notify host system that container is shutting "
+                 << "down: " << status.error_message();
+  }
+}
+
+void HostNotifier::SendAppListToHost() {
   // Generate the protobufs for the list of all the installed applications and
   // make the gRPC call to the host to update them.
 
@@ -236,13 +283,7 @@ bool HostNotifier::SendAppListToHost() {
   if (!status.ok()) {
     LOG(WARNING) << "Failed to notify host of the application list: "
                  << status.error_message();
-    return false;
   }
-  return true;
-}
-
-void HostNotifier::SendAppListToHostNoStatus() {
-  SendAppListToHost();
 }
 
 void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
@@ -264,7 +305,7 @@ void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
   }
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&HostNotifier::SendAppListToHostNoStatus,
+      base::Bind(&HostNotifier::SendAppListToHost,
                  weak_ptr_factory_.GetWeakPtr()),
       kFilesystemChangeCoalesceTime);
   update_app_list_posted_ = true;

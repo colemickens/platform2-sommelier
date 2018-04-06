@@ -43,7 +43,6 @@ const int kSyslogCritical = LOG_CRIT;
 constexpr char kLogPrefix[] = "garcon: ";
 constexpr char kServerSwitch[] = "server";
 constexpr char kClientSwitch[] = "client";
-constexpr char kShutdownSwitch[] = "shutdown";
 
 bool LogToSyslog(logging::LogSeverity severity,
                  const char* /* file */,
@@ -74,8 +73,13 @@ bool LogToSyslog(logging::LogSeverity severity,
 
 void RunGarconService(base::WaitableEvent* event,
                       std::shared_ptr<grpc::Server>* server_copy) {
-  // Build the server.
+  // We don't want to receive SIGTERM on this thread.
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGTERM);
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
 
+  // Build the server.
   grpc::ServerBuilder builder;
   builder.AddListeningPort(base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
                            grpc::InsecureServerCredentials());
@@ -101,8 +105,7 @@ void PrintUsage() {
             << "Mode Switches (must use one):\n"
             << "  --server: run in background as daemon\n"
             << "  --client: run as client and send one message to host\n"
-            << "Client Switches (only with --client):\n"
-            << "  --shutdown: inform the host the container is shutting down\n";
+            << "Client Switches (only with --client):\n";
 }
 
 int main(int argc, char** argv) {
@@ -125,16 +128,11 @@ int main(int argc, char** argv) {
   }
 
   if (clientMode) {
-    if (cl->HasSwitch(kShutdownSwitch)) {
-      if (!vm_tools::garcon::HostNotifier::NotifyHostOfContainerShutdown()) {
-        return -1;
-      }
-    } else {
-      LOG(ERROR) << "Missing client switch for client mode.";
-      PrintUsage();
-      return -1;
-    }
-    return 0;
+    // TODO(jkardatzke): We will be adding a client option shortly, so don't
+    // remove this code yet.
+    LOG(ERROR) << "Missing client switch for client mode.";
+    PrintUsage();
+    return -1;
   }
 
   // Set up logging to syslog for server mode.
@@ -178,7 +176,8 @@ int main(int argc, char** argv) {
   base::RunLoop run_loop;
 
   std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
-      vm_tools::garcon::HostNotifier::Create();
+      vm_tools::garcon::HostNotifier::Create(server_copy,
+                                             run_loop.QuitClosure());
   if (!host_notifier) {
     LOG(ERROR) << "Failure setting up the HostNotifier";
     return -1;
