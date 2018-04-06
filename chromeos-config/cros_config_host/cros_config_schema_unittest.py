@@ -226,18 +226,29 @@ class FilterBuildElements(unittest.TestCase):
 
 class MainTests(unittest.TestCase):
 
-  def testMainWithExampleWithBuild(self):
+  def testMainWithExampleWithBuildAndCBindings(self):
     output = tempfile.mktemp()
+    c_output = tempfile.mktemp()
     cros_config_schema.Main(
-        None, os.path.join(this_dir, '../libcros_config/test.yaml'), output)
+        None,
+        os.path.join(this_dir, '../libcros_config/test.yaml'),
+        output,
+        gen_c_bindings_output=c_output)
+    regen_cmd = ('To regenerate the expected output, run:\n'
+                 '\tpython -m cros_config_host.cros_config_schema '
+                 '-c libcros_config/test.yaml '
+                 '-o libcros_config/test_build.json'
+                 '-g libcros_config/test.c')
     with open(output, 'r') as output_stream:
       with open(os.path.join(
           this_dir, '../libcros_config/test_build.json')) as expected_stream:
         self.assertEqual(expected_stream.read(), output_stream.read(),
-                         ('To regenerate the expected output, run:\n'
-                          '\tpython -m cros_config_host.cros_config_schema '
-                          '-c libcros_config/test.yaml '
-                          '-o libcros_config/test_build.json'))
+                         regen_cmd)
+    with open(c_output, 'r') as output_stream:
+      with open(os.path.join(this_dir,
+                             '../libcros_config/test.c')) as expected_stream:
+        self.assertEqual(expected_stream.read(), output_stream.read(),
+                         regen_cmd)
 
   def testMainWithExampleWithoutBuild(self):
     output = tempfile.mktemp()
