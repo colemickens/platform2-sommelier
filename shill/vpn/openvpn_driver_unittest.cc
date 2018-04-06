@@ -1200,9 +1200,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_CALL(manager_, IsConnected()).Times(2).WillRepeatedly(Return(false));
 
   const int kPID = 234678;
-  const map<string, string> expected_env{
-    {"IV_PLAT", "Chromium OS"},
-    {"IV_PLAT_REL", "2202.0"}};
+  const map<string, string> expected_env; // No env vars passed.
   EXPECT_CALL(process_manager_, StartProcess(_, _, _, expected_env, _, _))
       .WillOnce(Return(-1))
       .WillOnce(Return(kPID));
@@ -1322,15 +1320,23 @@ TEST_F(OpenVPNDriverTest, PassphraseRequired) {
   EXPECT_FALSE(props.ContainsString(kOpenVPNTokenProperty));
 }
 
-TEST_F(OpenVPNDriverTest, GetEnvironment) {
+TEST_F(OpenVPNDriverTest, GetCommandLineArgs) {
   SetupLSBRelease();
-  const map<string, string> expected{
-    {"IV_PLAT", "Chromium OS"},
-    {"IV_PLAT_REL", "2202.0"}};
-  ASSERT_EQ(expected, driver_->GetEnvironment());
+
+  const vector<string> actual = driver_->GetCommandLineArgs();
+  ASSERT_EQ("--config", actual[0]);
+  // Config file path will be empty since SpawnOpenVPN() hasn't been called.
+  ASSERT_EQ("", actual[1]);
+  ASSERT_EQ("--setenv", actual[2]);
+  ASSERT_EQ("UV_PLAT", actual[3]);
+  ASSERT_EQ("Chromium OS", actual[4]);
+  ASSERT_EQ("--setenv", actual[5]);
+  ASSERT_EQ("UV_PLAT_REL", actual[6]);
+  ASSERT_EQ("2202.0", actual[7]);
 
   EXPECT_EQ(0, base::WriteFile(lsb_release_file_, "", 0));
-  EXPECT_EQ(0, driver_->GetEnvironment().size());
+  // Still returns --config arg and path value.
+  EXPECT_EQ(2, driver_->GetCommandLineArgs().size());
 }
 
 TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {

@@ -61,8 +61,6 @@ namespace {
 
 const char kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
 const char kChromeOSReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
-const char kOpenVPNEnvVarPlatformName[] = "IV_PLAT";
-const char kOpenVPNEnvVarPlatformVersion[] = "IV_PLAT_REL";
 const char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
 const char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
 const char kOpenVPNIfconfigLocal[] = "ifconfig_local";
@@ -327,10 +325,14 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   // TODO(quiche): This should be migrated to use ExternalTask.
   // (crbug.com/246263).
   CHECK(!pid_);
+
+  vector<string> args = GetCommandLineArgs();
+  LOG(INFO) << "OpenVPN command line args: " << base::JoinString(args, " ");
+
   pid_t pid = process_manager_->StartProcess(
       FROM_HERE, FilePath(kOpenVPNPath),
-      vector<string>{"--config", openvpn_config_file_.value()},
-      GetEnvironment(),
+      args,
+      map<string, string>(), // No env vars passed.
       false,  // Do not terminate with parent.
       base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
   if (pid < 0) {
@@ -1049,14 +1051,15 @@ KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
   return props;
 }
 
-map<string, string> OpenVPNDriver::GetEnvironment() {
+vector<string> OpenVPNDriver::GetCommandLineArgs() {
   SLOG(this, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
-  map<string, string> environment;
+  vector<string> args =
+                 vector<string>{"--config", openvpn_config_file_.value()};
   string contents;
   if (!base::ReadFileToString(lsb_release_file_, &contents)) {
     LOG(ERROR) << "Unable to read the lsb-release file: "
                << lsb_release_file_.value();
-    return environment;
+    return args;
   }
   vector<string> lines = SplitString(contents, "\n", base::TRIM_WHITESPACE,
                                      base::SPLIT_WANT_ALL);
@@ -1068,13 +1071,17 @@ map<string, string> OpenVPNDriver::GetEnvironment() {
     const string key = line.substr(0, assign);
     const string value = line.substr(assign + 1);
     if (key == kChromeOSReleaseName) {
-      environment[kOpenVPNEnvVarPlatformName] = value;
+      args.push_back("--setenv");
+      args.push_back("UV_PLAT");
+      args.push_back(value);
     } else if (key == kChromeOSReleaseVersion) {
-      environment[kOpenVPNEnvVarPlatformVersion] = value;
+      args.push_back("--setenv");
+      args.push_back("UV_PLAT_REL");
+      args.push_back(value);
     }
     // Other LSB release values are irrelevant.
   }
-  return environment;
+  return args;
 }
 
 void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr& service) {

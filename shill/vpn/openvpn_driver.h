@@ -135,7 +135,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Connect);
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
-  FRIEND_TEST(OpenVPNDriverTest, GetEnvironment);
+  FRIEND_TEST(OpenVPNDriverTest, GetCommandLineArgs);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitCAOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitCertificateVerifyOptions);
@@ -214,7 +214,7 @@ class OpenVPNDriver : public VPNDriver,
       std::vector<std::vector<std::string>>* options, Error* error);
   void InitLoggingOptions(std::vector<std::vector<std::string>>* options);
 
-  std::map<std::string, std::string> GetEnvironment();
+  std::vector<std::string> GetCommandLineArgs();
   void ParseIPConfiguration(
       const std::map<std::string, std::string>& configuration,
       IPConfig::Properties* properties) const;
