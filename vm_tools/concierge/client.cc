@@ -704,14 +704,29 @@ int StartContainer(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  if (!response.success()) {
-    LOG(ERROR) << "Failed to start container: " << response.failure_reason();
-    return -1;
+  int ret = -1;
+  std::string status;
+  switch (response.status()) {
+    case vm_tools::concierge::CONTAINER_STATUS_RUNNING:
+      status = "Running";
+      ret = 0;
+      break;
+    case vm_tools::concierge::CONTAINER_STATUS_STARTING:
+      status = "Starting";
+      ret = 0;
+      break;
+    case vm_tools::concierge::CONTAINER_STATUS_FAILURE:
+      status = "Failure";
+      break;
+    default:
+      status = "Unknown";
+      break;
   }
 
-  LOG(INFO) << "Started container '" << name << ":" << container_name << "'";
+  LOG(INFO) << "Container state for '" << name << ":" << container_name << "'"
+            << " is now " << status;
 
-  return 0;
+  return ret;
 }
 
 int LaunchApplication(dbus::ObjectProxy* proxy,
