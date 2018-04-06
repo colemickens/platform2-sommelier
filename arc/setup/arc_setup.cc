@@ -1353,16 +1353,18 @@ void ArcSetup::RemoveAndroidKmsgFifo() {
 }
 
 std::string ArcSetup::GetSystemImageFingerprint() {
+  if (!system_fingerprint_.empty())
+    return system_fingerprint_;
+
   constexpr char kFingerprintProp[] = "ro.build.fingerprint";
 
   const base::FilePath build_prop =
       arc_paths_->android_rootfs_directory.Append("system/build.prop");
 
-  std::string system_fingerprint;
   EXIT_IF(
-      !GetPropertyFromFile(build_prop, kFingerprintProp, &system_fingerprint));
-  EXIT_IF(system_fingerprint.empty());
-  return system_fingerprint;
+      !GetPropertyFromFile(build_prop, kFingerprintProp, &system_fingerprint_));
+  EXIT_IF(system_fingerprint_.empty());
+  return system_fingerprint_;
 }
 
 ArcBootType ArcSetup::GetBootType() {

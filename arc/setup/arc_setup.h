@@ -322,6 +322,9 @@ class ArcSetup {
   std::unique_ptr<ArcPaths> arc_paths_;
   std::unique_ptr<ArcSetupMetrics> arc_setup_metrics_;
   const AndroidSdkVersion sdk_version_;
+  // Used to prevent multiple recalculation of system fingerprint. Once
+  // system fingerprint is calculated it is cached in |system_fingerprint_|.
+  std::string system_fingerprint_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcSetup);
 };
