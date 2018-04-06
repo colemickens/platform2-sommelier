@@ -36,8 +36,7 @@
 //               |     (UVW...)    |  std::tuple<U,V,W,...>
 //   DICT        |       a{KV}     |  std::map<K,V>
 //   VARIANT     |        v        |  brillo::Any
-//   UNIX_FD     |        h        |  dbus::FileDescriptor (deprecated)
-//               |                 |  brillo::dbus_utils::FileDescriptor (write)
+//   UNIX_FD     |        h        |  brillo::dbus_utils::FileDescriptor (write)
 //               |                 |  base::ScopedFD (read)
 //   SIGNATURE   |        g        |  (unsupported)
 //
@@ -411,27 +410,6 @@ struct DBusType<dbus::ObjectPath> {
   }
   inline static bool Read(dbus::MessageReader* reader,
                           dbus::ObjectPath* value) {
-    return PopValueFromReader(reader, value);
-  }
-};
-
-// dbus::FileDescriptor -------------------------------------------------------
-BRILLO_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
-                                         const dbus::FileDescriptor& value);
-BRILLO_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
-                                        dbus::FileDescriptor* value);
-
-template<>
-struct DBusType<dbus::FileDescriptor> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_UNIX_FD_AS_STRING;
-  }
-  inline static void Write(dbus::MessageWriter* writer,
-                           const dbus::FileDescriptor& value) {
-    AppendValueToWriter(writer, value);
-  }
-  inline static bool Read(dbus::MessageReader* reader,
-                          dbus::FileDescriptor* value) {
     return PopValueFromReader(reader, value);
   }
 };

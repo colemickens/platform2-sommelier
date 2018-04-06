@@ -144,7 +144,7 @@ inline std::unique_ptr<dbus::Response> CallMethodAndBlock(
 }
 
 namespace internal {
-// In order to support non-copyable dbus::FileDescriptor, we have this
+// In order to support non-copyable file descriptor types, we have this
 // internal::HackMove() helper function that does really nothing for normal
 // types but uses Pass() for file descriptors so we can move them out from
 // the temporaries created inside DBusParamReader<...>::Invoke().
@@ -159,9 +159,6 @@ inline const T& HackMove(const T& val) {
 // inside DBusParamReader<...>::Invoke() and is temporary in nature, so it is
 // safe to move the file descriptor out of |val|. That's why we are doing
 // const_cast here. It is a bit hacky, but there is no negative side effects.
-inline dbus::FileDescriptor HackMove(const dbus::FileDescriptor& val) {
-  return std::move(const_cast<dbus::FileDescriptor&>(val));
-}
 inline base::ScopedFD HackMove(const base::ScopedFD& val) {
   return std::move(const_cast<base::ScopedFD&>(val));
 }

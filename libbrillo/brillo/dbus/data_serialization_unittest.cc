@@ -32,7 +32,6 @@ TEST(DBusUtils, Supported_BasicTypes) {
   EXPECT_TRUE(IsTypeSupported<double>::value);
   EXPECT_TRUE(IsTypeSupported<std::string>::value);
   EXPECT_TRUE(IsTypeSupported<ObjectPath>::value);
-  EXPECT_TRUE(IsTypeSupported<dbus::FileDescriptor>::value);
   EXPECT_TRUE(IsTypeSupported<FileDescriptor>::value);
   EXPECT_TRUE(IsTypeSupported<base::ScopedFD>::value);
   EXPECT_TRUE(IsTypeSupported<Any>::value);
@@ -90,7 +89,6 @@ TEST(DBusUtils, Signatures_BasicTypes) {
   EXPECT_EQ("d", GetDBusSignature<double>());
   EXPECT_EQ("s", GetDBusSignature<std::string>());
   EXPECT_EQ("o", GetDBusSignature<ObjectPath>());
-  EXPECT_EQ("h", GetDBusSignature<dbus::FileDescriptor>());
   EXPECT_EQ("h", GetDBusSignature<FileDescriptor>());
   EXPECT_EQ("h", GetDBusSignature<base::ScopedFD>());
   EXPECT_EQ("v", GetDBusSignature<Any>());
@@ -108,7 +106,6 @@ TEST(DBusUtils, Signatures_Arrays) {
   EXPECT_EQ("ad", GetDBusSignature<std::vector<double>>());
   EXPECT_EQ("as", GetDBusSignature<std::vector<std::string>>());
   EXPECT_EQ("ao", GetDBusSignature<std::vector<ObjectPath>>());
-  EXPECT_EQ("ah", GetDBusSignature<std::vector<dbus::FileDescriptor>>());
   EXPECT_EQ("ah", GetDBusSignature<std::vector<FileDescriptor>>());
   EXPECT_EQ("ah", GetDBusSignature<std::vector<base::ScopedFD>>());
   EXPECT_EQ("av", GetDBusSignature<std::vector<Any>>());
@@ -230,38 +227,6 @@ TEST(DBusUtils, AppendAndPopBasicDataTypes) {
   EXPECT_DOUBLE_EQ(8.0, double_value);
   EXPECT_EQ("string", string_value);
   EXPECT_EQ(ObjectPath{"/object/path"}, object_path_value);
-}
-
-// Check all basic types can be properly written and read.
-TEST(DBusUtils, AppendAndPopFileDescriptor_Deprecated) {
-  if (!dbus::IsDBusTypeUnixFdSupported()) {
-    LOG(WARNING) << "FD passing is not supported";
-    return;
-  }
-
-  std::unique_ptr<Response> message = Response::CreateEmpty();
-  MessageWriter writer(message.get());
-
-  // Append stdout.
-  dbus::FileDescriptor temp(1);
-  // Descriptor should not be valid until checked.
-  EXPECT_FALSE(temp.is_valid());
-  // NB: thread IO requirements not relevant for unit tests.
-  temp.CheckValidity();
-  EXPECT_TRUE(temp.is_valid());
-  AppendValueToWriter(&writer, temp);
-
-  EXPECT_EQ("h", message->GetSignature());
-
-  dbus::FileDescriptor fd_value;
-
-  MessageReader reader(message.get());
-  EXPECT_TRUE(reader.HasMoreData());
-  EXPECT_TRUE(PopValueFromReader(&reader, &fd_value));
-  EXPECT_FALSE(reader.HasMoreData());
-  // Descriptor is automatically checked for validity as part of
-  // PopValueFromReader() call.
-  EXPECT_TRUE(fd_value.is_valid());
 }
 
 // Check all basic types can be properly written and read.
