@@ -52,7 +52,6 @@ class DBusType {
 class DBusSignature {
  public:
   DBusSignature();
-  explicit DBusSignature(bool new_fd_bindings);
   virtual ~DBusSignature() = default;
 
   // Returns a DBusType corresponding to the D-Bus signature given in
@@ -97,11 +96,6 @@ class DBusSignature {
       std::string::const_iterator signature,
       std::string::const_iterator end,
       std::string::const_iterator* next);
-
-  // True if we are creating bindings using the new-style file descriptor
-  // types.
-  // TODO(crbug/824839): remove this after migration
-  const bool new_fd_bindings_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusSignature);
 };

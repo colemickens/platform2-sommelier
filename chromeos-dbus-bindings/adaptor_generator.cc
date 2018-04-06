@@ -23,8 +23,7 @@ using std::vector;
 
 namespace chromeos_dbus_bindings {
 
-AdaptorGenerator::AdaptorGenerator(bool new_fd_bindings)
-    : new_fd_bindings_(new_fd_bindings) {}
+AdaptorGenerator::AdaptorGenerator() = default;
 
 bool AdaptorGenerator::GenerateAdaptors(
     const std::vector<Interface>& interfaces,
@@ -246,7 +245,7 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
 void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
                                            IndentedText *text) {
   IndentedText block;
-  DBusSignature signature{new_fd_bindings_};
+  DBusSignature signature;
   if (!interface.methods.empty())
     block.AddBlankLine();
 
@@ -338,7 +337,7 @@ void AdaptorGenerator::AddSendSignalMethods(
     const Interface& interface,
     IndentedText *text) {
   IndentedText block;
-  DBusSignature signature{new_fd_bindings_};
+  DBusSignature signature;
 
   if (!interface.signals.empty())
     block.AddBlankLine();
@@ -390,7 +389,7 @@ void AdaptorGenerator::AddSendSignalMethods(
 void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
                                             IndentedText *text) {
   IndentedText block;
-  DBusSignature signature{new_fd_bindings_};
+  DBusSignature signature;
 
   for (const auto& signal : interface.signals) {
     string signal_type_name = StringPrintf("Signal%sType", signal.name.c_str());
@@ -429,7 +428,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     const Interface& interface,
     IndentedText *text) {
   IndentedText block;
-  DBusSignature signature{new_fd_bindings_};
+  DBusSignature signature;
 
   for (const auto& property : interface.properties) {
     block.AddBlankLine();
@@ -492,7 +491,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
 void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
                                               IndentedText *text) {
   IndentedText block;
-  DBusSignature signature{new_fd_bindings_};
+  DBusSignature signature;
 
   for (const auto& property : interface.properties) {
     auto parsed_type = signature.Parse(property.type);

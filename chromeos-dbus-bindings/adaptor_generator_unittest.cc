@@ -375,7 +375,7 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
   interface2.methods.back().include_dbus_message = true;
 
   base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
-  AdaptorGenerator gen{false};
+  AdaptorGenerator gen;
   EXPECT_TRUE(gen.GenerateAdaptors({interface, interface2}, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
@@ -397,7 +397,7 @@ TEST_F(AdaptorGeneratorTest, NewFileDescriptors) {
       vector<Interface::Argument>{{"", kDBusTypeFileDescriptor}});
 
   base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
-  AdaptorGenerator gen{true};
+  AdaptorGenerator gen;
   EXPECT_TRUE(gen.GenerateAdaptors({interface}, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));

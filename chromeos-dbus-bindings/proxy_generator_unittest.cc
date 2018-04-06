@@ -1654,7 +1654,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
   vector<Interface> interfaces{interface, interface2};
   base::FilePath output_path = temp_dir_.GetPath().Append("output.h");
   ServiceConfig config;
-  ProxyGenerator gen{false};
+  ProxyGenerator gen;
   EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
@@ -1674,7 +1674,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithServiceName) {
   base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
   ServiceConfig config;
   config.service_name = "org.chromium.Test";
-  ProxyGenerator gen{false};
+  ProxyGenerator gen;
   EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
@@ -1693,7 +1693,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithProperties) {
   base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
   ServiceConfig config;
   config.service_name = "org.chromium.Test";
-  ProxyGenerator gen{false};
+  ProxyGenerator gen;
   EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
@@ -1716,7 +1716,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
   ServiceConfig config;
   config.object_manager.name = "org.chromium.ObjectManager";
   config.object_manager.object_path = "/org/chromium/Test";
-  ProxyGenerator gen{false};
+  ProxyGenerator gen;
   EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
@@ -1739,7 +1739,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManagerAndServiceName) {
   config.service_name = "org.chromium.Test";
   config.object_manager.name = "org.chromium.ObjectManager";
   config.object_manager.object_path = "/org/chromium/Test";
-  ProxyGenerator gen{false};
+  ProxyGenerator gen;
   EXPECT_TRUE(gen.GenerateProxies(config, interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
@@ -1762,7 +1762,7 @@ TEST_F(ProxyGeneratorTest, NewFileDescriptors) {
       vector<Interface::Argument>{{"", "h"}});
   base::FilePath output_path = temp_dir_.GetPath().Append("output2.h");
   ServiceConfig config;
-  ProxyGenerator gen{true};
+  ProxyGenerator gen;
   EXPECT_TRUE(gen.GenerateProxies(config, {interface}, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));

@@ -228,10 +228,7 @@ class Struct : public NonScalar {
 
 }  // namespace
 
-DBusSignature::DBusSignature() : new_fd_bindings_(false) {}
-
-DBusSignature::DBusSignature(bool new_fd_bindings)
-    : new_fd_bindings_(new_fd_bindings) {}
+DBusSignature::DBusSignature() = default;
 
 std::unique_ptr<DBusType> DBusSignature::Parse(const string& signature) {
   string::const_iterator end;
@@ -295,12 +292,7 @@ std::unique_ptr<DBusType> DBusSignature::GetTypenameForSignature(
       type = std::make_unique<SimpleNonScalar>(SimpleNonScalar::Type::kString);
       break;
     case DBUS_TYPE_UNIX_FD:
-      if (new_fd_bindings_) {
-        type = std::make_unique<FileDescriptor>();
-      } else {
-        type = std::make_unique<SimpleNonScalar>(
-            SimpleNonScalar::Type::kDeprecatedFileDescriptor);
-      }
+      type = std::make_unique<FileDescriptor>();
       break;
     case DBUS_TYPE_UINT16:
       type = std::make_unique<Scalar>(Scalar::Type::kUint16);

@@ -27,7 +27,7 @@ struct Interface;
 
 class ProxyGenerator {
  public:
-  explicit ProxyGenerator(bool new_fd_bindings);
+  ProxyGenerator();
 
   bool GenerateProxies(const ServiceConfig& config,
                        const std::vector<Interface>& interfaces,
@@ -195,9 +195,6 @@ class ProxyGenerator {
   };
   // Generates the signal handler name for a given signal name.
   std::string GetHandlerNameForSignal(const std::string& signal);
-
-  // True if we should be generating new-style bindings for file descriptors.
-  const bool new_fd_bindings_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyGenerator);
 };

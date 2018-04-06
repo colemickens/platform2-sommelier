@@ -25,7 +25,7 @@ struct Interface;
 
 class AdaptorGenerator {
  public:
-  explicit AdaptorGenerator(bool new_fd_bindings);
+  AdaptorGenerator();
 
   bool GenerateAdaptors(const std::vector<Interface>& interfaces,
                         const base::FilePath& output_file);
@@ -67,9 +67,6 @@ class AdaptorGenerator {
 
   // Generate ExportProperty data members for the properties.
   void AddPropertyDataMembers(const Interface& interface, IndentedText* text);
-
-  // True if we should be generating new-style bindings for file descriptors.
-  const bool new_fd_bindings_;
 
   DISALLOW_COPY_AND_ASSIGN(AdaptorGenerator);
 };

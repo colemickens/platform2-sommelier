@@ -241,7 +241,7 @@ TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
   base::FilePath proxy_path = temp_dir_.GetPath().Append("proxies.h");
   ServiceConfig config;
   config.object_manager.name = "ObjectManager";
-  ProxyGenerator gen{false};
+  ProxyGenerator gen;
   EXPECT_TRUE(
       gen.GenerateMocks(config, interfaces, output_path, proxy_path, false));
   string contents;
