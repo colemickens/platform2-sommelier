@@ -195,6 +195,7 @@
 			]
 		},
 		{
+			"_comment": "Note that arc_setup.cc is supposed to mount /run/arc/debugfs/tracing/ into Android only in dev mode",
 			"destination": "/sys/kernel/debug",
 			"type": "bind",
 			"source": "/run/arc/debugfs",

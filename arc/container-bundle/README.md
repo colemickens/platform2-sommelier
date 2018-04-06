@@ -181,6 +181,9 @@ ignore all other flags).
 * `/sys/kernel/debug/sync`: The permissions of this directory in the host are
   relaxed so that `android-root` can access it, and bind-mounted in the
   container.
+* `/sys/kernel/debug/tracing`: This is bind-mounted from the host's
+  /run/arc/debugfs/tracing, only in dev mode. Note that the group id is mapped
+  into the container to allow access from inside by DAC.
 * `/proc`: A normal `proc` fs. This is mounted in the container mount namespace,
   which is associated with the container user+pid namespaces to display the
   correct PID mappings.
