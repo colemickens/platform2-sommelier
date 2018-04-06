@@ -421,8 +421,8 @@ class SignatureSealedSecretTestCase final {
   }
 
  private:
-  static constexpr int kPcrIndexToExtend = 16;  // The Debug PCR.
-  const std::set<int> kPcrIndexes{0, kPcrIndexToExtend};
+  static constexpr uint32_t kPcrIndexToExtend = 16;  // The Debug PCR.
+  const std::set<uint32_t> kPcrIndexes{0, kPcrIndexToExtend};
   static constexpr uint8_t kDelegateFamilyLabel = 100;
   static constexpr uint8_t kDelegateLabel = 101;
 
@@ -465,11 +465,9 @@ class SignatureSealedSecretTestCase final {
       return true;
     const ScopedTpmOwnerPasswordSetter scoped_tpm_owner_password_setter(
         owner_password_);
-    // TODO(emaxx): Remove conversion into std::set<uint32_t>.
-    return tpm()->CreateDelegate(
-        std::set<uint32_t>(kPcrIndexes.begin(), kPcrIndexes.end()),
-        kDelegateFamilyLabel, kDelegateLabel, &delegate_blob_,
-        &delegate_secret_);
+    return tpm()->CreateDelegate(kPcrIndexes, kDelegateFamilyLabel,
+                                 kDelegateLabel, &delegate_blob_,
+                                 &delegate_secret_);
   }
 
   // Deletes the TPM 1.2 delegate and family from the TPM's NVRAM. Not doing
@@ -553,7 +551,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CreateSecret(SignatureSealedData* sealed_secret_data) {
-    std::map<int, SecureBlob> pcr_values;
+    std::map<uint32_t, SecureBlob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
       return false;
@@ -568,7 +566,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckSecretCreationFails() {
-    std::map<int, SecureBlob> pcr_values;
+    std::map<uint32_t, SecureBlob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
       return false;
@@ -583,7 +581,7 @@ class SignatureSealedSecretTestCase final {
     return true;
   }
 
-  bool GetCurrentPcrValues(std::map<int, SecureBlob>* pcr_values) {
+  bool GetCurrentPcrValues(std::map<uint32_t, SecureBlob>* pcr_values) {
     for (auto pcr_index : kPcrIndexes) {
       if (!tpm()->ReadPCR(pcr_index, &(*pcr_values)[pcr_index])) {
         LOG(ERROR) << "Error reading PCR value " << pcr_index;
@@ -598,9 +596,9 @@ class SignatureSealedSecretTestCase final {
               SecureBlob* challenge_signature,
               SecureBlob* unsealed_value) {
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
+                                          param_.supported_algorithms,
+                                          delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
@@ -635,9 +633,9 @@ class SignatureSealedSecretTestCase final {
       const SignatureSealedData& sealed_secret_data,
       const SecureBlob& challenge_signature) {
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
+                                          param_.supported_algorithms,
+                                          delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
@@ -654,9 +652,9 @@ class SignatureSealedSecretTestCase final {
   bool CheckUnsealingFailsWithBadAlgorithmSignature(
       const SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
+                                          param_.supported_algorithms,
+                                          delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
@@ -680,9 +678,9 @@ class SignatureSealedSecretTestCase final {
   bool CheckUnsealingFailsWithBadSignature(
       const SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
+                                          param_.supported_algorithms,
+                                          delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
@@ -709,8 +707,8 @@ class SignatureSealedSecretTestCase final {
             ? Algorithm::kRsassaPkcs1V15Sha256
             : Algorithm::kRsassaPkcs1V15Sha1;
     if (backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          {wrong_algorithm}, kPcrIndexes,
-                                          delegate_blob_, delegate_secret_)) {
+                                          {wrong_algorithm}, delegate_blob_,
+                                          delegate_secret_)) {
       LOG(ERROR) << "Error: unsealing session creation completed with a "
                     "wrong algorithm";
       return false;
@@ -729,7 +727,7 @@ class SignatureSealedSecretTestCase final {
     }
     if (backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_)) {
+            delegate_blob_, delegate_secret_)) {
       LOG(ERROR)
           << "Error: unsealing session creation completed with a wrong key";
       return false;
@@ -745,9 +743,9 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes, delegate_blob_, delegate_secret_));
+        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
+                                          param_.supported_algorithms,
+                                          delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;

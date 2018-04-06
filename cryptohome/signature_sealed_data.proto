@@ -24,6 +24,11 @@ message SignatureSealedData {
     // The signature hash algorithm (TPM_ALG_ID) that should be used for
     // unsealing.
     optional int32 hash_alg = 4;
+
+    // Indexes of Platform Configuration Registers that should be used for
+    // constructing the TPM policy for unsealing. Note that the order of items
+    // is relevant.
+    repeated uint32 bound_pcr = 5;
   }
 
   // The union containing the data depending on the sealing method.

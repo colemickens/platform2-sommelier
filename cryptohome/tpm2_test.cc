@@ -1210,7 +1210,7 @@ class Tpm2RsaSignatureSecretSealingTest
  protected:
   const int kKeySizeBits = 2048;
   const int kKeyPublicExponent = 65537;
-  const std::vector<int> kPcrIndexes{0, 5};
+  const std::vector<uint32_t> kPcrIndexes{0, 5};
   const std::string kSecretValue = std::string(32, '\1');
   const trunks::TPM_HANDLE kKeyHandle = trunks::TPM_RH_FIRST;
   const std::string kKeyName = std::string("fake key");
@@ -1260,8 +1260,8 @@ class Tpm2RsaSignatureSecretSealingTest
 
 TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   const std::string kTrialPolicyDigest("fake trial digest");
-  std::map<int, SecureBlob> pcr_values;
-  for (int pcr_index : kPcrIndexes)
+  std::map<uint32_t, SecureBlob> pcr_values;
+  for (uint32_t pcr_index : kPcrIndexes)
     pcr_values[pcr_index] = SecureBlob("fake PCR");
 
   // Set up mock expectations for the secret creation.
@@ -1330,6 +1330,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   sealed_data_contents->set_srk_wrapped_secret(kSealedSecretValue);
   sealed_data_contents->set_scheme(chosen_scheme());
   sealed_data_contents->set_hash_alg(chosen_hash_alg());
+  for (uint32_t pcr_index : kPcrIndexes)
+    sealed_data_contents->add_bound_pcr(pcr_index);
 
   // Set up mock expectations for the challenge generation.
   EXPECT_CALL(mock_policy_session_, GetDelegate())
@@ -1341,7 +1343,6 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session(
       signature_sealing_backend()->CreateUnsealingSession(
           sealed_data, SecureBlob(key_spki_der_), supported_algorithms(),
-          std::set<int>(std::begin(kPcrIndexes), std::end(kPcrIndexes)),
           SecureBlob() /* delegate_blob */,
           SecureBlob() /* delegate_secret */));
   ASSERT_TRUE(unsealing_session);
@@ -1357,7 +1358,7 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
       .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
       .WillOnce(DoAll(SetArgPointee<1>(kKeyName), Return(TPM_RC_SUCCESS)));
-  for (int pcr_index : kPcrIndexes) {
+  for (uint32_t pcr_index : kPcrIndexes) {
     EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_index, "" /* pcr_value */))
         .WillOnce(Return(TPM_RC_SUCCESS));
   }

@@ -4,6 +4,8 @@
 
 #include "cryptohome/signature_sealing_backend_tpm2_impl.h"
 
+#include <stdint.h>
+
 #include <cstring>
 #include <string>
 #include <utility>
@@ -50,7 +52,7 @@ class UnsealingSessionTpm2Impl final
       Algorithm algorithm,
       TPM_ALG_ID scheme,
       TPM_ALG_ID hash_alg,
-      const std::set<int>& bound_pcrs,
+      const std::vector<uint32_t>& bound_pcrs,
       std::unique_ptr<trunks::PolicySession> policy_session,
       const SecureBlob& policy_session_tpm_nonce);
   ~UnsealingSessionTpm2Impl() override;
@@ -71,7 +73,7 @@ class UnsealingSessionTpm2Impl final
   const Algorithm algorithm_;
   const TPM_ALG_ID scheme_;
   const TPM_ALG_ID hash_alg_;
-  const std::set<int> bound_pcrs_;
+  const std::vector<uint32_t> bound_pcrs_;
   const std::unique_ptr<trunks::PolicySession> policy_session_;
   const SecureBlob policy_session_tpm_nonce_;
   base::ThreadChecker thread_checker_;
@@ -116,7 +118,7 @@ UnsealingSessionTpm2Impl::UnsealingSessionTpm2Impl(
     Algorithm algorithm,
     TPM_ALG_ID scheme,
     TPM_ALG_ID hash_alg,
-    const std::set<int>& bound_pcrs,
+    const std::vector<uint32_t>& bound_pcrs,
     std::unique_ptr<trunks::PolicySession> policy_session,
     const SecureBlob& policy_session_tpm_nonce)
     : tpm_(tpm),
@@ -174,7 +176,7 @@ bool UnsealingSessionTpm2Impl::Unseal(const SecureBlob& signed_challenge_value,
   // Update the policy with restricting to selected PCRs.
   // TODO(emaxx): Replace the loop with a single call to PolicyPCR() once the
   // trunks API is changed to support that.
-  for (int pcr_index : bound_pcrs_) {
+  for (uint32_t pcr_index : bound_pcrs_) {
     tpm_result = policy_session_->PolicyPCR(pcr_index, "" /* pcr_value */);
     if (tpm_result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error restricting policy to PCR: "
@@ -228,7 +230,7 @@ SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const SecureBlob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
-    const std::map<int, SecureBlob>& pcr_values,
+    const std::map<uint32_t, SecureBlob>& pcr_values,
     const SecureBlob& /* delegate_blob */,
     const SecureBlob& /* delegate_secret */,
     SignatureSealedData* sealed_secret_data) {
@@ -345,6 +347,8 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   sealed_data_contents->set_srk_wrapped_secret(sealed_value);
   sealed_data_contents->set_scheme(scheme);
   sealed_data_contents->set_hash_alg(hash_alg);
+  for (const auto& pcr_index_and_value : pcr_values)
+    sealed_data_contents->add_bound_pcr(pcr_index_and_value.first);
   return true;
 }
 
@@ -353,7 +357,6 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
     const SecureBlob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
-    const std::set<int>& bound_pcrs,
     const SecureBlob& /* delegate_blob */,
     const SecureBlob& /* delegate_secret */) {
   // Validate the parameters.
@@ -388,7 +391,7 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     TPM_ALG_ID current_hash_alg = TPM_ALG_NULL;
     if (GetAlgIdsByAlgorithm(algorithm, &current_scheme, &current_hash_alg) &&
         current_scheme == scheme && current_hash_alg == hash_alg) {
-      chosen_algorithm = base::MakeUnique<Algorithm>(algorithm);
+      chosen_algorithm = std::make_unique<Algorithm>(algorithm);
       break;
     }
   }
@@ -416,7 +419,11 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     LOG(ERROR) << "Error obtaining TPM nonce";
     return nullptr;
   }
-  return base::MakeUnique<UnsealingSessionTpm2Impl>(
+  // Create the unsealing session that will keep the required state.
+  std::vector<uint32_t> bound_pcrs;
+  for (int index = 0; index < sealed_data_contents.bound_pcr_size(); ++index)
+    bound_pcrs.push_back(sealed_data_contents.bound_pcr(index));
+  return std::make_unique<UnsealingSessionTpm2Impl>(
       tpm_, trunks, SecureBlob(sealed_data_contents.srk_wrapped_secret()),
       public_key_spki_der, *chosen_algorithm, scheme, hash_alg, bound_pcrs,
       std::move(policy_session), SecureBlob(tpm_nonce));

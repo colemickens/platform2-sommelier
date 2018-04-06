@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_SIGNATURE_SEALING_BACKEND_H_
 #define CRYPTOHOME_SIGNATURE_SEALING_BACKEND_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
 #include <set>
@@ -81,7 +83,7 @@ class SignatureSealingBackend {
   virtual bool CreateSealedSecret(
       const brillo::SecureBlob& public_key_spki_der,
       const std::vector<Algorithm>& key_algorithms,
-      const std::map<int, brillo::SecureBlob>& pcr_values,
+      const std::map<uint32_t, brillo::SecureBlob>& pcr_values,
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret,
       SignatureSealedData* sealed_secret_data) = 0;
@@ -99,14 +101,12 @@ class SignatureSealingBackend {
   //                    Listed in the order of preference (starting from the
   //                    most preferred); however, the implementation is
   //                    permitted to ignore this order.
-  //   bound_pcrs - The set of PCR indexes to which the secret was bound.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
   virtual std::unique_ptr<UnsealingSession> CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
       const brillo::SecureBlob& public_key_spki_der,
       const std::vector<Algorithm>& key_algorithms,
-      const std::set<int>& bound_pcrs,
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) = 0;
 };
