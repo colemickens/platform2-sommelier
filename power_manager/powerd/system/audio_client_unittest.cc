@@ -68,6 +68,9 @@ class AudioClientTest : public testing::Test {
   // Number of output streams to report from GetNumberOfActiveOutputStreams.
   int num_output_streams_ = 0;
 
+  // State to return from IsAudioOutputActive.
+  bool output_active_ = false;
+
   // Audio nodes to be returned by GetNodes.
   struct Node {
     std::string type;
@@ -100,6 +103,8 @@ class AudioClientTest : public testing::Test {
       WriteNodes(response.get());
     } else if (member == cras::kGetNumberOfActiveOutputStreams) {
       dbus::MessageWriter(response.get()).AppendInt32(num_output_streams_);
+    } else if (member == cras::kIsAudioOutputActive) {
+      dbus::MessageWriter(response.get()).AppendInt32(output_active_);
     } else if (member == cras::kSetSuspendAudio) {
       if (!dbus::MessageReader(method_call).PopBool(&audio_suspended_))
         ADD_FAILURE() << "Couldn't read " << cras::kSetSuspendAudio << " arg";
@@ -145,6 +150,7 @@ TEST_F(AudioClientTest, AudioState) {
   // CRAS should be queried when it first becomes available.
   TestObserver observer(&audio_client_);
   num_output_streams_ = 1;
+  output_active_ = true;
   dbus_wrapper_.NotifyServiceAvailable(cras_proxy_, true);
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(observer.audio_active());
@@ -152,16 +158,16 @@ TEST_F(AudioClientTest, AudioState) {
 
   // The observer shouldn't be notified if the stream count just increases.
   num_output_streams_ = 2;
-  dbus::Signal signal(cras::kCrasControlInterface,
-                      cras::kNumberOfActiveStreamsChanged);
-  dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &signal);
+  dbus::Signal stream_signal(cras::kCrasControlInterface,
+                             cras::kNumberOfActiveStreamsChanged);
+  dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &stream_signal);
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(observer.audio_active());
   EXPECT_EQ(1, observer.num_changes());
 
   // It should hear about audio stopping entirely, though.
   num_output_streams_ = 0;
-  dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &signal);
+  dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &stream_signal);
   base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(observer.audio_active());
   EXPECT_EQ(2, observer.num_changes());
@@ -172,6 +178,15 @@ TEST_F(AudioClientTest, AudioState) {
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(observer.audio_active());
   EXPECT_EQ(3, observer.num_changes());
+
+  // If a stream is held open but nothing is being written to it, the observer
+  // should be told that activity stopped.
+  dbus::Signal active_signal(cras::kCrasControlInterface,
+                             cras::kAudioOutputActiveStateChanged);
+  dbus::MessageWriter(&active_signal).AppendBool(false);
+  dbus_wrapper_.EmitRegisteredSignal(cras_proxy_, &active_signal);
+  EXPECT_FALSE(observer.audio_active());
+  EXPECT_EQ(4, observer.num_changes());
 }
 
 TEST_F(AudioClientTest, GetNodes) {

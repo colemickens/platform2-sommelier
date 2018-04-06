@@ -57,26 +57,44 @@ class AudioClient : public AudioClientInterface,
                               const std::string& new_owner) override;
 
  private:
+  // Computes the overall audio-active state based on |num_output_streams_| and
+  // |output_active_|.
+  bool IsAudioActive() const;
+
   // Asynchronously updates |headphone_jack_plugged_| and |hdmi_active_|.
   void CallGetNodes();
   void HandleGetNodesResponse(dbus::Response* response);
 
-  // Asynchronously updates |num_output_streams_| and notifies observers if the
-  // state changed.
+  // Asynchronously updates |num_output_streams_| and notifies observers.
   void CallGetNumberOfActiveOutputStreams();
   void HandleGetNumberOfActiveOutputStreamsResponse(dbus::Response* response);
+
+  // Asynchronously updates |output_active_| and notifies observers.
+  void CallIsAudioOutputActive();
+  void HandleIsAudioOutputActiveResponse(dbus::Response* response);
 
   // Handles various events announced over D-Bus.
   void HandleCrasAvailableOrRestarted(bool available);
   void HandleNodesChangedSignal(dbus::Signal* signal);
   void HandleActiveOutputNodeChangedSignal(dbus::Signal* signal);
   void HandleNumberOfActiveStreamsChangedSignal(dbus::Signal* signal);
+  void HandleAudioOutputActiveStateChangedSignal(dbus::Signal* signal);
+
+  // Helper method used to set |num_output_streams_| and |output_active_| and
+  // notify |observers_| if the overall audio-active state changed.
+  void UpdateAudioState(int num_output_streams, bool output_active);
 
   DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
   dbus::ObjectProxy* cras_proxy_ = nullptr;       // weak
 
   // Number of audio output streams currently open.
   int num_output_streams_ = 0;
+
+  // True if there's at least one output stream that's receiving nonempty audio
+  // data. Note that the CRAS-reported status may remain active for the order of
+  // tens of seconds after output has actually ceased in order to reduce
+  // spamminess and CPU utilization: https://crbug.com/753596
+  bool output_active_ = false;
 
   // Is something plugged in to a headphone jack?
   bool headphone_jack_plugged_ = false;

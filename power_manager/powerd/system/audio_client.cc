@@ -56,6 +56,8 @@ void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
        &AudioClient::HandleActiveOutputNodeChangedSignal},
       {cras::kNumberOfActiveStreamsChanged,
        &AudioClient::HandleNumberOfActiveStreamsChangedSignal},
+      {cras::kAudioOutputActiveStateChanged,
+       &AudioClient::HandleAudioOutputActiveStateChangedSignal},
   };
   for (const auto& it : kSignalMethods) {
     dbus_wrapper_->RegisterForSignal(
@@ -98,6 +100,10 @@ void AudioClient::OnDBusNameOwnerChanged(const std::string& service_name,
               << new_owner;
     HandleCrasAvailableOrRestarted(true);
   }
+}
+
+bool AudioClient::IsAudioActive() const {
+  return num_output_streams_ > 0 && output_active_;
 }
 
 void AudioClient::CallGetNodes() {
@@ -173,25 +179,38 @@ void AudioClient::HandleGetNumberOfActiveOutputStreamsResponse(
   if (!response)
     return;
 
-  int num_streams = 0;
-  if (!dbus::MessageReader(response).PopInt32(&num_streams)) {
+  int num_output_streams = 0;
+  if (!dbus::MessageReader(response).PopInt32(&num_output_streams)) {
     LOG(WARNING) << "Unable to read " << cras::kGetNumberOfActiveOutputStreams
                  << " args";
     return;
   }
 
-  const int old_num_streams = num_output_streams_;
-  num_output_streams_ = std::max(num_streams, 0);
+  VLOG(1) << "Output stream count changed to " << num_output_streams;
+  UpdateAudioState(num_output_streams, output_active_);
+}
 
-  if (num_output_streams_ && !old_num_streams) {
-    VLOG(1) << "Audio playback started";
-    for (AudioObserver& observer : observers_)
-      observer.OnAudioStateChange(true);
-  } else if (!num_output_streams_ && old_num_streams) {
-    VLOG(1) << "Audio playback stopped";
-    for (AudioObserver& observer : observers_)
-      observer.OnAudioStateChange(false);
+void AudioClient::CallIsAudioOutputActive() {
+  dbus::MethodCall method_call(cras::kCrasControlInterface,
+                               cras::kIsAudioOutputActive);
+  dbus_wrapper_->CallMethodAsync(
+      cras_proxy_, &method_call, kCrasDBusTimeout,
+      base::Bind(&AudioClient::HandleIsAudioOutputActiveResponse,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
+
+void AudioClient::HandleIsAudioOutputActiveResponse(dbus::Response* response) {
+  if (!response)
+    return;
+
+  int32_t output_active = 0;
+  if (!dbus::MessageReader(response).PopInt32(&output_active)) {
+    LOG(WARNING) << "Unable to read " << cras::kIsAudioOutputActive << " args";
+    return;
   }
+
+  VLOG(1) << "Output-active state is " << output_active;
+  UpdateAudioState(num_output_streams_, output_active > 0);
 }
 
 void AudioClient::HandleCrasAvailableOrRestarted(bool available) {
@@ -201,6 +220,7 @@ void AudioClient::HandleCrasAvailableOrRestarted(bool available) {
   }
   CallGetNodes();
   CallGetNumberOfActiveOutputStreams();
+  CallIsAudioOutputActive();
 }
 
 void AudioClient::HandleNodesChangedSignal(dbus::Signal* signal) {
@@ -216,6 +236,31 @@ void AudioClient::HandleNumberOfActiveStreamsChangedSignal(
   // The signal only contains the total count of streams (i.e. both input and
   // output), so we need to call the method to get the output stream count.
   CallGetNumberOfActiveOutputStreams();
+}
+
+void AudioClient::HandleAudioOutputActiveStateChangedSignal(
+    dbus::Signal* signal) {
+  bool output_active = false;
+  if (!dbus::MessageReader(signal).PopBool(&output_active)) {
+    LOG(WARNING) << "Failed to read " << cras::kAudioOutputActiveStateChanged
+                 << " args";
+    return;
+  }
+
+  VLOG(1) << "Output-active state changed to " << output_active;
+  UpdateAudioState(num_output_streams_, output_active);
+}
+
+void AudioClient::UpdateAudioState(int num_output_streams, bool output_active) {
+  const bool was_active = IsAudioActive();
+  num_output_streams_ = num_output_streams;
+  output_active_ = output_active;
+  const bool is_active = IsAudioActive();
+
+  if (is_active != was_active) {
+    for (AudioObserver& observer : observers_)
+      observer.OnAudioStateChange(is_active);
+  }
 }
 
 }  // namespace system
