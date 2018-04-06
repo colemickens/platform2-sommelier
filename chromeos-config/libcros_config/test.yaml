@@ -61,6 +61,7 @@ some_config: &some_config
     $topology-name: "some"
   firmware-signing:
     key-id: "{{$key-id}}"
+    signature-id: "{{$name}}"
   identity:
     platform-name: "Some"
     smbios-name-match: "Some"
@@ -76,6 +77,7 @@ some_whitelabel_config: &some_whitelabel_config
     customization-id: "{{$customization-id}}"
   firmware-signing:
     key-id: "{{$key-id}}"
+    signature-id: "{{$name}}-{{$customization-id}}"
     sig-id-in-customization-id: True
 
 some_touch_config: &some_touch_config
@@ -147,6 +149,7 @@ chromeos:
                 libpayload: "another"
             firmware-signing:
               key-id: "{{$key-id}}"
+              signature-id: "{{$name}}"
             touch:
               <<: *touch
               present: "probe"

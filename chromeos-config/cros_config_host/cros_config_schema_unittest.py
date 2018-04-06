@@ -52,13 +52,16 @@ chromeos:
             firmware: *reef-9042-fw
             firmware-signing:
               key-id: '{{$key-id}}'
+              signature-id: '{{$name}}'
             powerd-prefs: 'reef'
             test-label: 'reef'
 """
 
 this_dir = os.path.dirname(__file__)
 
+
 class GetNamedTupleTests(unittest.TestCase):
+
   def testRecursiveDicts(self):
     val = {'a': {'b': 1, 'c': 2}}
     val_tuple = cros_config_schema.GetNamedTuple(val)
@@ -77,6 +80,7 @@ class GetNamedTupleTests(unittest.TestCase):
 
 
 class MergeDictionaries(unittest.TestCase):
+
   def testBaseKeyMerge(self):
     primary = {'a': {'b': 1, 'c': 2}}
     overlay = {'a': {'c': 3}, 'b': 4}
@@ -91,6 +95,7 @@ class MergeDictionaries(unittest.TestCase):
 
 
 class ParseArgsTests(unittest.TestCase):
+
   def testParseArgs(self):
     argv = ['-s', 'schema', '-c', 'config', '-o', 'output', '-f' 'True']
     args = cros_config_schema.ParseArgs(argv)
@@ -107,6 +112,7 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class TransformConfigTests(unittest.TestCase):
+
   def testBasicTransform(self):
     result = cros_config_schema.TransformConfig(BASIC_CONFIG)
     json_dict = json.loads(result)
@@ -114,19 +120,18 @@ class TransformConfigTests(unittest.TestCase):
     json_obj = cros_config_schema.GetNamedTuple(json_dict)
     self.assertEqual(1, len(json_obj.chromeos.models))
     model = json_obj.chromeos.models[0]
-    self.assertEqual(
-        'basking',
-        model.name)
+    self.assertEqual('basking', model.name)
     self.assertEqual('basking', model.audio.main.cras_config_dir)
     # Check multi-level template variable evaluation
-    self.assertEqual(
-        '/etc/cras/basking/dsp.ini',
-        model.audio.main.files[0].destination)
+    self.assertEqual('/etc/cras/basking/dsp.ini',
+                     model.audio.main.files[0].destination)
+
 
 class ValidateConfigSchemaTests(unittest.TestCase):
+
   def setUp(self):
-    with open(
-        os.path.join(this_dir, 'cros_config_schema.yaml')) as schema_stream:
+    with open(os.path.join(this_dir,
+                           'cros_config_schema.yaml')) as schema_stream:
       self._schema = schema_stream.read()
 
   def testBasicSchemaValidation(self):
@@ -134,8 +139,8 @@ class ValidateConfigSchemaTests(unittest.TestCase):
         self._schema, cros_config_schema.TransformConfig(BASIC_CONFIG))
 
   def testMissingRequiredElement(self):
-    config = re.sub(r" *cras-config-dir: .*", "", BASIC_CONFIG)
-    config = re.sub(r" *volume: .*", "", BASIC_CONFIG)
+    config = re.sub(r' *cras-config-dir: .*', '', BASIC_CONFIG)
+    config = re.sub(r' *volume: .*', '', BASIC_CONFIG)
     try:
       cros_config_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))
@@ -144,7 +149,7 @@ class ValidateConfigSchemaTests(unittest.TestCase):
       self.assertIn('cras-config-dir', err.__str__())
 
   def testReferencedNonExistentTemplateVariable(self):
-    config = re.sub(r" *$card: .*", "", BASIC_CONFIG)
+    config = re.sub(r' *$card: .*', '', BASIC_CONFIG)
     try:
       cros_config_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))
@@ -154,6 +159,7 @@ class ValidateConfigSchemaTests(unittest.TestCase):
 
 
 class ValidateConfigTests(unittest.TestCase):
+
   def testBasicValidation(self):
     cros_config_schema.ValidateConfig(
         cros_config_schema.TransformConfig(BASIC_CONFIG))
@@ -184,6 +190,7 @@ chromeos:
             firmware: *reef-9042-fw
             firmware-signing:
               key-id: '{{$key-id}}'
+              signature-id: '{{$name}}'
     - $name: 'astronaut'
       products:
         - $key-id: 'OEM2'
@@ -196,9 +203,10 @@ chromeos:
                 cras-config-dir: '{{$name}}'
                 ucm-suffix: '{{$name}}'
             name: '{{$name}}'
-            firmware:
-              <<: *reef-9042-fw
+            firmware: *reef-9042-fw
+            firmware-signing:
               key-id: '{{$key-id}}'
+              signature-id: '{{$name}}'
 """
     try:
       cros_config_schema.ValidateConfig(
@@ -208,30 +216,28 @@ chromeos:
 
 
 class FilterBuildElements(unittest.TestCase):
+
   def testBasicFilterBuildElements(self):
-    json_dict = json.loads(cros_config_schema.FilterBuildElements(
-        cros_config_schema.TransformConfig(BASIC_CONFIG)))
+    json_dict = json.loads(
+        cros_config_schema.FilterBuildElements(
+            cros_config_schema.TransformConfig(BASIC_CONFIG)))
     self.assertNotIn('firmware', json_dict['chromeos']['models'][0])
 
 
 class MainTests(unittest.TestCase):
+
   def testMainWithExampleWithBuild(self):
     output = tempfile.mktemp()
     cros_config_schema.Main(
-        None,
-        os.path.join(this_dir, '../libcros_config/test.yaml'),
-        output)
+        None, os.path.join(this_dir, '../libcros_config/test.yaml'), output)
     with open(output, 'r') as output_stream:
-      with open(
-          os.path.join(this_dir, '../libcros_config/test_build.json')
-      ) as expected_stream:
-        self.assertEqual(
-            expected_stream.read(),
-            output_stream.read(),
-            ('To regenerate the expected output, run:\n'
-             '\tpython -m cros_config_host.cros_config_schema '
-             '-c libcros_config/test.yaml '
-             '-o libcros_config/test_build.json'))
+      with open(os.path.join(
+          this_dir, '../libcros_config/test_build.json')) as expected_stream:
+        self.assertEqual(expected_stream.read(), output_stream.read(),
+                         ('To regenerate the expected output, run:\n'
+                          '\tpython -m cros_config_host.cros_config_schema '
+                          '-c libcros_config/test.yaml '
+                          '-o libcros_config/test_build.json'))
 
   def testMainWithExampleWithoutBuild(self):
     output = tempfile.mktemp()
@@ -241,17 +247,14 @@ class MainTests(unittest.TestCase):
         output,
         filter_build_details=True)
     with open(output, 'r') as output_stream:
-      with open(
-          os.path.join(this_dir, '../libcros_config/test.json')
-      ) as expected_stream:
-        self.assertEqual(
-            expected_stream.read(),
-            output_stream.read(),
-            ('To regenerate the expected output, run:\n'
-             '\tpython -m cros_config_host.cros_config_schema '
-             '-f True '
-             '-c libcros_config/test.yaml '
-             '-o libcros_config/test.json'))
+      with open(os.path.join(this_dir,
+                             '../libcros_config/test.json')) as expected_stream:
+        self.assertEqual(expected_stream.read(), output_stream.read(),
+                         ('To regenerate the expected output, run:\n'
+                          '\tpython -m cros_config_host.cros_config_schema '
+                          '-f True '
+                          '-c libcros_config/test.yaml '
+                          '-o libcros_config/test.json'))
 
     os.remove(output)
 

@@ -929,7 +929,7 @@ since it may not have firmware at that point.
 ### firmware-signing
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |
+| key-id | string | ```^[A-Z|_|0-9]*$``` | True | Key ID from the signer key set that is used to sign the given firmware image. |
 | sig-id-in-customization-id | boolean |  | False | Indicates that this model cannot be decoded by the mapping table.
 Instead the model is stored in the VPD (Vital Product Data) region in the
 customization_id property. This allows us to determine the
@@ -944,6 +944,7 @@ we can create 20 different whitelabel boards, all with the same
 hardware, just by changing the customization_id that is written
 into SPI flash.
  |
+| signature-id | string |  | True | ID used to generate keys/keyblocks in the firmware signing output.  This is also the value provided to mosys platform signature for the updater4.sh script. |
 
 ### identity
 | Attribute | Type   | RegEx     | Required | Description |

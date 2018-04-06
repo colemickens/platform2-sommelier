@@ -161,24 +161,13 @@ class CrosConfigJson(CrosConfigBaseImpl):
           key_id = ''
           sig_id = 'sig-id-in-customization-id'
         else:
-          sig_id = name
+          sig_id = config.GetValue(fw_signer_config, 'signature-id')
           processed.add(identity)
 
-        info = FirmwareInfo(
-            name,
-            shared_model,
-            key_id,
-            have_image,
-            bios_build_target,
-            ec_build_target,
-            main_image_uri,
-            main_rw_image_uri,
-            ec_image_uri,
-            pd_image_uri,
-            extra,
-            create_bios_rw_image,
-            tools,
-            sig_id)
+        info = FirmwareInfo(name, shared_model, key_id, have_image,
+                            bios_build_target, ec_build_target, main_image_uri,
+                            main_rw_image_uri, ec_image_uri, pd_image_uri,
+                            extra, create_bios_rw_image, tools, sig_id)
         config.firmware_info[name] = info
 
         if sig_in_customization_id:
@@ -188,13 +177,9 @@ class CrosConfigJson(CrosConfigBaseImpl):
               processed.add(identity)
               fw_signer_config = config.GetProperties('/firmware-signing')
               key_id = config.GetValue(fw_signer_config, 'key-id')
-              whitelabel_name = '%s-%s' % (name, config.GetProperty(
-                  '/identity', 'customization-id'))
-              config.firmware_info[whitelabel_name] = info._replace(
-                  model=whitelabel_name,
-                  key_id=key_id,
-                  have_image=False,
-                  sig_id=whitelabel_name)
+              sig_id = config.GetValue(fw_signer_config, 'signature-id')
+              config.firmware_info[sig_id] = info._replace(
+                  model=sig_id, key_id=key_id, have_image=False, sig_id=sig_id)
 
   def GetDeviceConfigs(self):
     return self._configs

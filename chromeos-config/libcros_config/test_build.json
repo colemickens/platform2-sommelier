@@ -51,7 +51,8 @@
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         }, 
         "firmware-signing": {
-          "key-id": "SOME"
+          "key-id": "SOME", 
+          "signature-id": "some"
         }, 
         "identity": {
           "platform-name": "Some", 
@@ -140,7 +141,8 @@
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         }, 
         "firmware-signing": {
-          "key-id": "SOME"
+          "key-id": "SOME", 
+          "signature-id": "some"
         }, 
         "identity": {
           "platform-name": "Some", 
@@ -220,7 +222,8 @@
           "main-rw-image": "bcs://Another_RW.1111.11.1.tbz2"
         }, 
         "firmware-signing": {
-          "key-id": "ANOTHER"
+          "key-id": "ANOTHER", 
+          "signature-id": "another"
         }, 
         "identity": {
           "platform-name": "Another", 
@@ -276,7 +279,8 @@
         }, 
         "firmware-signing": {
           "key-id": "WHITELABEL1", 
-          "sig-id-in-customization-id": true
+          "sig-id-in-customization-id": true, 
+          "signature-id": "whitelabel-whitelabel1"
         }, 
         "identity": {
           "customization-id": "whitelabel1", 
@@ -331,7 +335,8 @@
         }, 
         "firmware-signing": {
           "key-id": "WHITELABEL1", 
-          "sig-id-in-customization-id": true
+          "sig-id-in-customization-id": true, 
+          "signature-id": "whitelabel-whitelabel1"
         }, 
         "identity": {
           "customization-id": "whitelabel1", 
@@ -385,7 +390,8 @@
         }, 
         "firmware-signing": {
           "key-id": "WHITELABEL2", 
-          "sig-id-in-customization-id": true
+          "sig-id-in-customization-id": true, 
+          "signature-id": "whitelabel-whitelabel2"
         }, 
         "identity": {
           "customization-id": "whitelabel2", 
@@ -440,7 +446,8 @@
         }, 
         "firmware-signing": {
           "key-id": "WHITELABEL2", 
-          "sig-id-in-customization-id": true
+          "sig-id-in-customization-id": true, 
+          "signature-id": "whitelabel-whitelabel2"
         }, 
         "identity": {
           "customization-id": "whitelabel2", 
