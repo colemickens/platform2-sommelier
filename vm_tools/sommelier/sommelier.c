@@ -642,6 +642,8 @@ enum {
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
+#define UNUSED(x) ((void)(x))
+
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
 #endif
@@ -1367,6 +1369,7 @@ static void xwl_data_transfer_create(struct wl_event_loop *event_loop,
   flags = fcntl(write_fd, F_GETFL, 0);
   rv = fcntl(write_fd, F_SETFL, flags | O_NONBLOCK);
   assert(!rv);
+  UNUSED(rv);
 
   transfer = malloc(sizeof(*transfer));
   assert(transfer);
@@ -1481,6 +1484,7 @@ static void xwl_host_surface_attach(struct wl_client *client,
 
         rv = ioctl(host->xwl->virtwl_fd, VIRTWL_IOCTL_NEW, &new_alloc);
         assert(rv == 0);
+        UNUSED(rv);
 
         pool = wl_shm_create_pool(host->xwl->shm->internal, new_alloc.fd, size);
         host->current_buffer->internal = wl_shm_pool_create_buffer(
@@ -5691,6 +5695,7 @@ static void xwl_internal_data_source_send(void *data,
     flags = fcntl(fd, F_GETFL, 0);
     rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
     assert(!rv);
+    UNUSED(rv);
 
     xwl->selection_data_source_send_fd = fd;
   } else {
@@ -6050,6 +6055,7 @@ static void xwl_connect(struct xwl *xwl) {
   composite_extension =
       xcb_get_extension_data(xwl->connection, &xcb_composite_id);
   assert(composite_extension->present);
+  UNUSED(composite_extension);
 
   redirect_subwindows_cookie = xcb_composite_redirect_subwindows_checked(
       xwl->connection, xwl->screen->root, XCB_COMPOSITE_REDIRECT_MANUAL);
@@ -6206,6 +6212,7 @@ static void xwl_sd_notify(const char *state) {
 
   rv = sendmsg(fd, &msghdr, MSG_NOSIGNAL);
   assert(rv != -1);
+  UNUSED(rv);
 }
 
 static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
@@ -6415,6 +6422,7 @@ static int xwl_handle_virtwl_ctx_event(int fd, uint32_t mask, void *data) {
 
   bytes = sendmsg(xwl->virtwl_socket_fd, &msg, MSG_NOSIGNAL);
   assert(bytes == ioctl_recv->len);
+  UNUSED(bytes);
 
   while (fd_count--)
     close(ioctl_recv->fds[fd_count]);
@@ -6475,6 +6483,7 @@ static int xwl_handle_virtwl_socket_event(int fd, uint32_t mask, void *data) {
   ioctl_send->len = bytes;
   rv = ioctl(xwl->virtwl_ctx_fd, VIRTWL_IOCTL_SEND, ioctl_send);
   assert(!rv);
+  UNUSED(rv);
 
   while (fd_count--)
     close(ioctl_send->fds[fd_count]);
