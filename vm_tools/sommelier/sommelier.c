@@ -2327,6 +2327,8 @@ static void xwl_output_mode(void *data, struct wl_output *output,
 static void xwl_output_done(void *data, struct wl_output *output) {
   struct xwl_host_output *host = wl_output_get_user_data(output);
   int scale_factor;
+  int physical_width;
+  int physical_height;
   double scale;
 
   // Early out if current scale is expected but not yet know.
@@ -2342,15 +2344,18 @@ static void xwl_output_done(void *data, struct wl_output *output) {
 
     scale_factor = 1;
     scale = (host->output->xwl->scale * current_scale) / max_scale_factor;
+    physical_width = host->physical_width * current_scale;
+    physical_height = host->physical_height * current_scale;
   } else {
     scale_factor = ceil(host->scale_factor / host->output->xwl->scale);
     scale = (host->output->xwl->scale * scale_factor) / host->scale_factor;
+    physical_width = host->physical_width;
+    physical_height = host->physical_height;
   }
 
-  wl_output_send_geometry(host->resource, host->x, host->y,
-                          host->physical_width * scale,
-                          host->physical_height * scale, host->subpixel,
-                          host->make, host->model, host->transform);
+  wl_output_send_geometry(host->resource, host->x, host->y, physical_width,
+                          physical_height, host->subpixel, host->make,
+                          host->model, host->transform);
   wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
                       host->width * scale, host->height * scale, host->refresh);
   wl_output_send_scale(host->resource, scale_factor);
