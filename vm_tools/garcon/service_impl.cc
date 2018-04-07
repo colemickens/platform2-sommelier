@@ -461,5 +461,16 @@ grpc::Status ServiceImpl::LaunchApplication(
   return grpc::Status::OK;
 }
 
+grpc::Status ServiceImpl::GetIcon(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::IconRequest* request,
+    vm_tools::container::IconResponse* response) {
+  LOG(INFO) << "Received request to get application icons in container";
+
+  // TODO(timzheng): Implement the icon theme specification icon lookup.
+
+  return grpc::Status::OK;
+}
+
 }  // namespace garcon
 }  // namespace vm_tools

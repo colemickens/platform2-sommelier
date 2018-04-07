@@ -492,6 +492,7 @@ bool Service::Init() {
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kStartContainerMethod, &Service::StartContainer},
       {kLaunchContainerApplicationMethod, &Service::LaunchContainerApplication},
+      {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -1453,6 +1454,64 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
                                        : request.container_name(),
       request.desktop_file_id(), &error_msg));
   response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received GetContainerAppIcon request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ContainerAppIconRequest request;
+  ContainerAppIconResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ContainerAppIconRequest from message";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = vms_.find(request.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.desktop_file_ids().size() == 0) {
+    LOG(ERROR) << "ContainerAppIconRequest had an empty desktop_file_ids";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::vector<std::string> desktop_file_ids;
+  for (std::string& id : *request.mutable_desktop_file_ids()) {
+    desktop_file_ids.emplace_back(std::move(id));
+  }
+
+  std::vector<VirtualMachine::Icon> icons;
+  icons.reserve(desktop_file_ids.size());
+
+  if (!iter->second->GetContainerAppIcon(
+          request.container_name().empty() ? kDefaultContainerName
+                                           : request.container_name(),
+          std::move(desktop_file_ids), request.size(), request.scale(),
+          &icons)) {
+    LOG(ERROR) << "GetContainerAppIcon failed";
+  }
+
+  for (auto& container_icon : icons) {
+    auto* icon = response.add_icons();
+    *icon->mutable_desktop_file_id() =
+        std::move(container_icon.desktop_file_id);
+    *icon->mutable_icon() = std::move(container_icon.content);
+  }
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

@@ -80,6 +80,12 @@ class VirtualMachine {
     DiskImageType image_type;
   };
 
+  // Linux application ID and its icon content.
+  struct Icon {
+    std::string desktop_file_id;
+    std::string content;
+  };
+
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
   // failed to start for any reason.
   static std::unique_ptr<VirtualMachine> Create(
@@ -192,6 +198,16 @@ class VirtualMachine {
   // Returns whether there is a connected stub to Garcon running inside the
   // named |container_name| within this VM.
   bool IsContainerRunning(const std::string& container_name);
+
+  // Gets icons of those applications with their desktop file IDs specified
+  // by |desktop_file_ids| from the container named |container_name| within
+  // this VM. The icons should have size of |icon_size| and designed scale of
+  // |scale|. The icons are returned through the paramenter |icons|.
+  bool GetContainerAppIcon(const std::string& container_name,
+                           std::vector<std::string> desktop_file_ids,
+                           uint32_t icon_size,
+                           uint32_t scale,
+                           std::vector<Icon>* icons);
 
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,

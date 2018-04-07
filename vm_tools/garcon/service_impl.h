@@ -29,6 +29,10 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::LaunchApplicationRequest* request,
       vm_tools::container::LaunchApplicationResponse* response) override;
 
+  grpc::Status GetIcon(grpc::ServerContext* ctx,
+                       const vm_tools::container::IconRequest* request,
+                       vm_tools::container::IconResponse* response) override;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };

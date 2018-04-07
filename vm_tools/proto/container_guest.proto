@@ -28,9 +28,39 @@ message LaunchApplicationResponse {
   string failure_reason = 2;
 }
 
+// Request proto for getting an application icon from the container.
+message IconRequest {
+  // The IDs of the applications to get icons for. These should correspond to
+  // identifiers for .desktop files available in the container.
+  repeated string desktop_file_ids = 1;
+
+  //  The size of the icon is icon_size by icon_size.
+  int32 icon_size = 2;
+
+  // The target scale of this icon. This is the scale at which this icon is
+  // designed to be used.
+  int32 scale = 3;
+}
+
+// One desktop file ID and the icon found for it.
+message DesktopIcon {
+  string desktop_file_id = 1;
+
+  // Icon data in png format.
+  bytes icon = 2;
+}
+
+// Response proto for getting an application icon.
+message IconResponse {
+  repeated DesktopIcon desktop_icons = 1;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
   rpc LaunchApplication(LaunchApplicationRequest)
       returns (LaunchApplicationResponse);
+
+  // Get an application icon from the container.
+  rpc GetIcon(IconRequest) returns (IconResponse);
 }

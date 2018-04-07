@@ -577,6 +577,53 @@ bool VirtualMachine::LaunchContainerApplication(
   return container_response.success();
 }
 
+bool VirtualMachine::GetContainerAppIcon(
+    const std::string& container_name,
+    std::vector<std::string> desktop_file_ids,
+    uint32_t icon_size,
+    uint32_t scale,
+    std::vector<Icon>* icons) {
+  CHECK(icons);
+
+  // Get the gRPC stub for communicating with the container.
+  auto iter = container_name_to_garcon_stub_.find(container_name);
+  if (iter == container_name_to_garcon_stub_.end()) {
+    LOG(ERROR) << "Requested container " << container_name
+               << " is not registered with the corresponding VM";
+    return false;
+  }
+
+  vm_tools::container::IconRequest container_request;
+  vm_tools::container::IconResponse container_response;
+
+  google::protobuf::RepeatedPtrField<std::string> ids(
+      std::make_move_iterator(desktop_file_ids.begin()),
+      std::make_move_iterator(desktop_file_ids.end()));
+  container_request.mutable_desktop_file_ids()->Swap(&ids);
+  container_request.set_icon_size(icon_size);
+  container_request.set_scale(scale);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      iter->second->GetIcon(&ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to get icons in container " << container_name << ": "
+               << status.error_message();
+    return false;
+  }
+
+  for (auto& icon : *container_response.mutable_desktop_icons()) {
+    icons->emplace_back(
+        Icon{.desktop_file_id = std::move(*icon.mutable_desktop_file_id()),
+             .content = std::move(*icon.mutable_icon())});
+  }
+  return true;
+}
+
 void VirtualMachine::set_stub_for_testing(
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
   stub_ = std::move(stub);
