@@ -509,6 +509,7 @@ struct xwl {
   struct wl_event_source *display_event_source;
   struct wl_event_source *display_ready_event_source;
   struct wl_event_source *sigchld_event_source;
+  struct wl_array dpi;
   int shm_driver;
   int data_driver;
   int wm_fd;
@@ -641,6 +642,11 @@ enum {
 
 #define MIN_SCALE 0.1
 #define MAX_SCALE 10.0
+
+#define INCH_IN_MM 25.4
+
+#define MIN_DPI 72
+#define MAX_DPI 9600
 
 #define MIN_SIZE (INT_MIN / 10)
 #define MAX_SIZE (INT_MAX / 10)
@@ -2373,6 +2379,25 @@ static void xwl_output_done(void *data, struct wl_output *output) {
 
   host->adjusted_width = host->width * scale;
   host->adjusted_height = host->height * scale;
+
+  if (host->output->xwl->dpi.size) {
+    int dpi =
+        (host->adjusted_width * INCH_IN_MM) / host->adjusted_physical_width;
+    int adjusted_dpi = *((int*)host->output->xwl->dpi.data);
+    double mmpd;
+    int* p;
+
+    wl_array_for_each(p, &host->output->xwl->dpi) {
+      if (*p > dpi)
+        break;
+
+      adjusted_dpi = *p;
+    }
+
+    mmpd = INCH_IN_MM / adjusted_dpi;
+    host->adjusted_physical_width = host->adjusted_width * mmpd + 0.5;
+    host->adjusted_physical_height = host->adjusted_height * mmpd + 0.5;
+  }
 
   xwl_send_host_output_state(host);
 
@@ -6566,28 +6591,30 @@ static int xwl_parse_cmd_prefix(char *str, int argc, char **argv) {
 }
 
 static void xwl_print_usage() {
-  printf("usage: sommelier [options] [program] [args...]\n\n"
-         "options:\n"
-         "  -h, --help\t\t\tPrint this help\n"
-         "  -X\t\t\t\tEnable X11 forwarding\n"
-         "  --master\t\t\tRun as master and spawn child processes\n"
-         "  --socket=SOCKET\t\tName of socket to listen on\n"
-         "  --display=DISPLAY\t\tWayland display to connect to\n"
-         "  --shm-driver=DRIVER\t\tSHM driver to use (noop, dmabuf, virtwl)\n"
-         "  --data-driver=DRIVER\t\tData driver to use (noop, virtwl)\n"
-         "  --scale=SCALE\t\t\tScale factor for contents\n"
-         "  --peer-cmd-prefix=PREFIX\tPeer process command line prefix\n"
-         "  --accelerators=ACCELERATORS\tList of keyboard accelerators\n"
-         "  --app-id=ID\t\t\tForced application ID for X11 clients\n"
-         "  --x-display=DISPLAY\t\tX11 display to listen on\n"
-         "  --xwayland-path=PATH\t\tPath to Xwayland executable\n"
-         "  --xwayland-cmd-prefix=PREFIX\tXwayland command line prefix\n"
-         "  --no-exit-with-child\t\tKeep process alive after child exists\n"
-         "  --no-clipboard-manager\tDisable X11 clipboard manager\n"
-         "  --frame-color=COLOR\t\tWindow frame color for X11 clients\n"
-         "  --virtwl-device=DEVICE\tVirtWL device to use\n"
-         "  --drm-device=DEVICE\t\tDRM device to use\n"
-         "  --glamor\t\t\tUse glamor to accelerate X11 clients\n");
+  printf(
+      "usage: sommelier [options] [program] [args...]\n\n"
+      "options:\n"
+      "  -h, --help\t\t\tPrint this help\n"
+      "  -X\t\t\t\tEnable X11 forwarding\n"
+      "  --master\t\t\tRun as master and spawn child processes\n"
+      "  --socket=SOCKET\t\tName of socket to listen on\n"
+      "  --display=DISPLAY\t\tWayland display to connect to\n"
+      "  --shm-driver=DRIVER\t\tSHM driver to use (noop, dmabuf, virtwl)\n"
+      "  --data-driver=DRIVER\t\tData driver to use (noop, virtwl)\n"
+      "  --scale=SCALE\t\t\tScale factor for contents\n"
+      "  --dpi=[DPI[,DPI...]]\t\tDPI buckets\n"
+      "  --peer-cmd-prefix=PREFIX\tPeer process command line prefix\n"
+      "  --accelerators=ACCELERATORS\tList of keyboard accelerators\n"
+      "  --app-id=ID\t\t\tForced application ID for X11 clients\n"
+      "  --x-display=DISPLAY\t\tX11 display to listen on\n"
+      "  --xwayland-path=PATH\t\tPath to Xwayland executable\n"
+      "  --xwayland-cmd-prefix=PREFIX\tXwayland command line prefix\n"
+      "  --no-exit-with-child\t\tKeep process alive after child exists\n"
+      "  --no-clipboard-manager\tDisable X11 clipboard manager\n"
+      "  --frame-color=COLOR\t\tWindow frame color for X11 clients\n"
+      "  --virtwl-device=DEVICE\tVirtWL device to use\n"
+      "  --drm-device=DEVICE\t\tDRM device to use\n"
+      "  --glamor\t\t\tUse glamor to accelerate X11 clients\n");
 }
 
 int main(int argc, char **argv) {
@@ -6690,6 +6717,7 @@ int main(int argc, char **argv) {
       .colormaps = {0}};
   const char *display = getenv("SOMMELIER_DISPLAY");
   const char *scale = getenv("SOMMELIER_SCALE");
+  const char* dpi = getenv("SOMMELIER_DPI");
   const char *clipboard_manager = getenv("SOMMELIER_CLIPBOARD_MANAGER");
   const char *frame_color = getenv("SOMMELIER_FRAME_COLOR");
   const char *show_window_title = getenv("SOMMELIER_SHOW_WINDOW_TITLE");
@@ -6765,6 +6793,10 @@ int main(int argc, char **argv) {
       const char *s = strchr(arg, '=');
       ++s;
       scale = s;
+    } else if (strstr(arg, "--dpi") == arg) {
+      const char* s = strchr(arg, '=');
+      ++s;
+      dpi = s;
     } else if (strstr(arg, "--accelerators") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
@@ -7077,6 +7109,25 @@ int main(int argc, char **argv) {
     }
   } else if (xwl.virtwl_fd != -1) {
     xwl.data_driver = DATA_DRIVER_VIRTWL;
+  }
+
+  // Use well known values for DPI by default with Xwayland.
+  if (!dpi && xwl.xwayland)
+    dpi = "72,96,160,240,320,480";
+
+  wl_array_init(&xwl.dpi);
+  if (dpi) {
+    char* str = strdup(dpi);
+    char* token = strtok(str, ",");
+    int* p;
+
+    while (token) {
+      p = wl_array_add(&xwl.dpi, sizeof *p);
+      assert(p);
+      *p = MAX(MIN_DPI, MIN(atoi(token), MAX_DPI));
+      token = strtok(NULL, ",");
+    }
+    free(str);
   }
 
   if (xwl.runprog || xwl.xwayland) {
