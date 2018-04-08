@@ -193,6 +193,12 @@ struct xwl_host_output {
   int scale_factor;
   int current_scale;
   int max_scale;
+  int adjusted_physical_width;
+  int adjusted_physical_height;
+  int adjusted_width;
+  int adjusted_height;
+  int adjusted_scale_factor;
+  struct wl_list link;
 };
 
 struct xwl_output {
@@ -521,6 +527,7 @@ struct xwl {
   struct wl_list accelerators;
   struct wl_list registries;
   struct wl_list globals;
+  struct wl_list host_outputs;
   int next_global_id;
   xcb_connection_t *connection;
   struct wl_event_source *connection_event_source;
@@ -2324,11 +2331,20 @@ static void xwl_output_mode(void *data, struct wl_output *output,
   host->refresh = refresh;
 }
 
+static void xwl_send_host_output_state(struct xwl_host_output* host) {
+  wl_output_send_geometry(host->resource, host->x, host->y,
+                          host->adjusted_physical_width,
+                          host->adjusted_physical_height, host->subpixel,
+                          host->make, host->model, host->transform);
+  wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
+                      host->adjusted_width, host->adjusted_height,
+                      host->refresh);
+  wl_output_send_scale(host->resource, host->adjusted_scale_factor);
+  wl_output_send_done(host->resource);
+}
+
 static void xwl_output_done(void *data, struct wl_output *output) {
   struct xwl_host_output *host = wl_output_get_user_data(output);
-  int scale_factor;
-  int physical_width;
-  int physical_height;
   double scale;
 
   // Early out if current scale is expected but not yet know.
@@ -2342,24 +2358,23 @@ static void xwl_output_done(void *data, struct wl_output *output) {
     double current_scale = host->current_scale / 1000.0;
     int max_scale_factor = host->max_scale / 1000.0;
 
-    scale_factor = 1;
+    host->adjusted_scale_factor = 1;
+    host->adjusted_physical_width = host->physical_width * current_scale;
+    host->adjusted_physical_height = host->physical_height * current_scale;
     scale = (host->output->xwl->scale * current_scale) / max_scale_factor;
-    physical_width = host->physical_width * current_scale;
-    physical_height = host->physical_height * current_scale;
   } else {
-    scale_factor = ceil(host->scale_factor / host->output->xwl->scale);
+    int scale_factor = ceil(host->scale_factor / host->output->xwl->scale);
+
+    host->adjusted_scale_factor = scale_factor;
+    host->adjusted_physical_width = host->physical_width;
+    host->adjusted_physical_height = host->physical_height;
     scale = (host->output->xwl->scale * scale_factor) / host->scale_factor;
-    physical_width = host->physical_width;
-    physical_height = host->physical_height;
   }
 
-  wl_output_send_geometry(host->resource, host->x, host->y, physical_width,
-                          physical_height, host->subpixel, host->make,
-                          host->model, host->transform);
-  wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
-                      host->width * scale, host->height * scale, host->refresh);
-  wl_output_send_scale(host->resource, scale_factor);
-  wl_output_send_done(host->resource);
+  host->adjusted_width = host->width * scale;
+  host->adjusted_height = host->height * scale;
+
+  xwl_send_host_output_state(host);
 
   // Reset current scale.
   host->current_scale = 1000;
@@ -2422,6 +2437,7 @@ static void xwl_destroy_host_output(struct wl_resource *resource) {
     wl_output_destroy(host->proxy);
   }
   wl_resource_set_user_data(resource, NULL);
+  wl_list_remove(&host->link);
   free(host->make);
   free(host->model);
   free(host);
@@ -2461,6 +2477,12 @@ static void xwl_bind_host_output(struct wl_client *client, void *data,
   host->scale_factor = 1;
   host->current_scale = 1000;
   host->max_scale = 1000;
+  host->adjusted_physical_width = 0;
+  host->adjusted_physical_height = 0;
+  host->adjusted_width = 1024;
+  host->adjusted_height = 768;
+  host->adjusted_scale_factor = 1;
+  wl_list_insert(&xwl->host_outputs, &host->link);
   if (xwl->aura_shell &&
       (xwl->aura_shell->version >= ZAURA_SHELL_GET_AURA_OUTPUT_SINCE_VERSION)) {
     host->current_scale = 0;
@@ -6222,6 +6244,7 @@ static void xwl_sd_notify(const char *state) {
 
 static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
   struct xwl *xwl = (struct xwl *)data;
+  struct xwl_host_output* host_output;
   char display_name[9];
   int bytes_read = 0;
   pid_t pid;
@@ -6252,6 +6275,12 @@ static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
   wl_event_source_remove(xwl->display_ready_event_source);
   xwl->display_ready_event_source = NULL;
   close(fd);
+
+  // We need to update each output after Xwayland has been initialized for
+  // DPI to be set correctly. TODO(reveman): Remove when fixed in Xwayland.
+  wl_list_for_each(host_output, &xwl->host_outputs, link)
+      xwl_send_host_output_state(host_output);
+  wl_display_flush_clients(xwl->host_display);
 
   if (xwl->sd_notify)
     xwl_sd_notify(xwl->sd_notify);
@@ -7084,6 +7113,7 @@ int main(int argc, char **argv) {
   wl_list_init(&xwl.seats);
   wl_list_init(&xwl.windows);
   wl_list_init(&xwl.unpaired_windows);
+  wl_list_init(&xwl.host_outputs);
 
   // Parse the list of accelerators that should be reserved by the
   // compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a
