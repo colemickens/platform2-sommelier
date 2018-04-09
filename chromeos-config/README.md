@@ -905,7 +905,7 @@ several models to be grouped into one product.
 | bcs-overlay | string |  | False | BCS overlay path used to determine BCS file path for binary firmware downloads. |
 | build-targets | [build-targets](#build-targets) |  | False |  |
 | ec-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-| key-id | string | ```^[A-Z|_|0-9]*$``` | False | Key ID from the signer key set that is used to sign the given firmware image. |
+| key-id | string |  | False | Key ID from the signer key set that is used to sign the given firmware image. |
 | main-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
 | no-firmware | boolean | ```^[A-Z|_|0-9]*$``` | False | If present this indicates that this model has no firmware at present.
@@ -929,7 +929,7 @@ since it may not have firmware at that point.
 ### firmware-signing
 | Attribute | Type   | RegEx     | Required | Description |
 | --------- | ------ | --------- | -------- | ----------- |
-| key-id | string | ```^[A-Z|_|0-9]*$``` | True | Key ID from the signer key set that is used to sign the given firmware image. |
+| key-id | string |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
 | sig-id-in-customization-id | boolean |  | False | Indicates that this model cannot be decoded by the mapping table.
 Instead the model is stored in the VPD (Vital Product Data) region in the
 customization_id property. This allows us to determine the

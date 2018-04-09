@@ -138,7 +138,6 @@ properties:
                   description: Key ID from the signer key set that is used to sign the
                     given firmware image.
                   type: string
-                  pattern: "^[A-Z|_|0-9]*$"
                 main-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
                 no-firmware:
@@ -159,7 +158,6 @@ properties:
                   description: Key ID from the signer key set that is used to sign the
                     given firmware image.
                   type: string
-                  pattern: "^[A-Z|_|0-9]*$"
                 signature-id:
                   description: ID used to generate keys/keyblocks in the firmware
                     signing output.  This is also the value provided to mosys platform
