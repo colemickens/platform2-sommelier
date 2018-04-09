@@ -98,6 +98,7 @@ struct xwl_host_surface {
   int32_t contents_scale;
   struct xwl_mmap *contents_shm_mmap;
   int is_cursor;
+  int has_output;
   uint32_t last_event_serial;
   struct xwl_output_buffer *current_buffer;
   struct wl_list released_buffers;
@@ -647,6 +648,8 @@ enum {
 
 #define MIN_DPI 72
 #define MAX_DPI 9600
+
+#define XCURSOR_SIZE_BASE 24
 
 #define MIN_SIZE (INT_MIN / 10)
 #define MAX_SIZE (INT_MAX / 10)
@@ -1802,6 +1805,28 @@ static void xwl_destroy_host_surface(struct wl_resource *resource) {
   free(host);
 }
 
+static void xwl_surface_enter(void* data,
+                              struct wl_surface* surface,
+                              struct wl_output* output) {
+  struct xwl_host_surface* host = wl_surface_get_user_data(surface);
+  struct xwl_host_output* host_output = wl_output_get_user_data(output);
+
+  wl_surface_send_enter(host->resource, host_output->resource);
+  host->has_output = 1;
+}
+
+static void xwl_surface_leave(void* data,
+                              struct wl_surface* surface,
+                              struct wl_output* output) {
+  struct xwl_host_surface* host = wl_surface_get_user_data(surface);
+  struct xwl_host_output* host_output = wl_output_get_user_data(output);
+
+  wl_surface_send_leave(host->resource, host_output->resource);
+}
+
+static const struct wl_surface_listener xwl_surface_listener = {
+    xwl_surface_enter, xwl_surface_leave};
+
 static void xwl_region_destroy(struct wl_client *client,
                                struct wl_resource *resource) {
   wl_resource_destroy(resource);
@@ -1864,6 +1889,7 @@ static void xwl_compositor_create_host_surface(struct wl_client *client,
   host_surface->contents_scale = 1;
   host_surface->contents_shm_mmap = NULL;
   host_surface->is_cursor = 0;
+  host_surface->has_output = 0;
   host_surface->last_event_serial = 0;
   host_surface->current_buffer = NULL;
   wl_list_init(&host_surface->released_buffers);
@@ -1875,6 +1901,8 @@ static void xwl_compositor_create_host_surface(struct wl_client *client,
                                  xwl_destroy_host_surface);
   host_surface->proxy = wl_compositor_create_surface(host->proxy);
   wl_surface_set_user_data(host_surface->proxy, host_surface);
+  wl_surface_add_listener(host_surface->proxy, &xwl_surface_listener,
+                          host_surface);
   host_surface->viewport = NULL;
   if (host_surface->xwl->viewporter) {
     host_surface->viewport = wp_viewporter_get_viewport(
@@ -2507,7 +2535,7 @@ static void xwl_bind_host_output(struct wl_client *client, void *data,
   host->adjusted_width = 1024;
   host->adjusted_height = 768;
   host->adjusted_scale_factor = 1;
-  wl_list_insert(&xwl->host_outputs, &host->link);
+  wl_list_insert(xwl->host_outputs.prev, &host->link);
   if (xwl->aura_shell &&
       (xwl->aura_shell->version >= ZAURA_SHELL_GET_AURA_OUTPUT_SINCE_VERSION)) {
     host->current_scale = 0;
@@ -2636,8 +2664,22 @@ static void xwl_host_pointer_set_cursor(struct wl_client *client,
   if (surface_resource) {
     host_surface = wl_resource_get_user_data(surface_resource);
     host_surface->is_cursor = 1;
-    if (host_surface->contents_width && host_surface->contents_height)
+    if (host_surface->contents_width && host_surface->contents_height) {
+      // GTK determines the cursor size/scale based on the output the surface
+      // has entered. If the surface has not entered any output, then have it
+      // enter the first output. TODO(reveman): Remove this when surface-output
+      // tracking has been implemented in Chrome.
+      if (!host_surface->has_output &&
+          !wl_list_empty(&host->seat->xwl->host_outputs)) {
+        struct xwl_host_output* output;
+
+        output =
+            wl_container_of(host->seat->xwl->host_outputs.next, output, link);
+        wl_surface_send_enter(host_surface->resource, output->resource);
+        host_surface->has_output = 1;
+      }
       wl_surface_commit(host_surface->proxy);
+    }
   }
 
   wl_pointer_set_cursor(host->proxy, serial,
@@ -6271,6 +6313,7 @@ static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
   struct xwl *xwl = (struct xwl *)data;
   struct xwl_host_output* host_output;
   char display_name[9];
+  char xcursor_size_str[8];
   int bytes_read = 0;
   pid_t pid;
 
@@ -6294,6 +6337,10 @@ static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
 
   display_name[bytes_read] = '\0';
   setenv("DISPLAY", display_name, 1);
+
+  snprintf(xcursor_size_str, sizeof(xcursor_size_str), "%d",
+           (int)(XCURSOR_SIZE_BASE * xwl->scale + 0.5));
+  setenv("XCURSOR_SIZE", xcursor_size_str, 1);
 
   xwl_connect(xwl);
 
