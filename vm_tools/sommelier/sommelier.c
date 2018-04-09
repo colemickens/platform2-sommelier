@@ -2909,8 +2909,10 @@ static void xwl_keyboard_enter(void *data, struct wl_keyboard *keyboard,
 static void xwl_keyboard_leave(void *data, struct wl_keyboard *keyboard,
                                uint32_t serial, struct wl_surface *surface) {
   struct xwl_host_keyboard *host = wl_keyboard_get_user_data(keyboard);
+  struct wl_array array;
 
-  xwl_keyboard_set_focus(host, serial, NULL, NULL);
+  wl_array_init(&array);
+  xwl_keyboard_set_focus(host, serial, NULL, &array);
 }
 
 static void xwl_keyboard_key(void *data, struct wl_keyboard *keyboard,
@@ -3152,9 +3154,11 @@ static void xwl_destroy_host_keyboard(struct wl_resource *resource) {
 static void xwl_keyboard_focus_resource_destroyed(struct wl_listener *listener,
                                                   void *data) {
   struct xwl_host_keyboard *host;
+  struct wl_array array;
 
   host = wl_container_of(listener, host, focus_resource_listener);
-  xwl_keyboard_set_focus(host, host->focus_serial, NULL, NULL);
+  wl_array_init(&array);
+  xwl_keyboard_set_focus(host, host->focus_serial, NULL, &array);
 }
 
 static void xwl_host_seat_get_host_keyboard(struct wl_client *client,
