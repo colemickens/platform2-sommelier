@@ -44,6 +44,24 @@ powerd animates to the requested level and stops making further
 ambient-light-triggered or power-source-triggered automated adjustments until
 the system is rebooted.
 
+With the better ambient light sensor in Pixelbook, auto-brightness levels are
+more finely-tuned and consist of 7 levels as follows:
+
+|Situation          |Lux Step Down|Lux Step Up|Brightness UI|Brightness Linear|
+|-------------------|------------:|----------:|------------:|----------------:|
+|Low light          |   *N/A*     |      90   |   36.14%    |      10.75%     |
+|Indoor - normal    |      40     |     250   |   47.62%    |      20.00%     |
+|Indoor - bright    |     180     |     360   |   60.57%    |      34.00%     |
+|Outdoor - dark     |     250     |     500   |   71.65%    |      49.00%     |
+|Outdoor - overcast |     350     |    1700   |   85.83%    |      72.24%     |
+|Outdoor - clear sky|    1100     |    7000   |   93.27%    |      86.25%     |
+|Direct sunlight    |    5000     |   *N/A*   |  100.00%    |     100.00%     |
+
+Also, as of M66 Pixelbook performs simple exponential smoothing to raw values
+read from the ambient light sensor as a low-pass filter to remove noise from
+the data to avoid adjusting the brightness too frequently in some lighting
+conditions such as an overhead source of warm white LED lighting. [issue 826968]
+
 A single user-configured brightness is tracked for both AC and battery power;
 once the user has adjusted the brightness via the brightness keys, the
 brightness remains at that level until the next time the system boots. (Prior to
@@ -82,3 +100,4 @@ As of M35, Chromeboxes' brightness keys (or F6 and F7 keys) attempt to use
 [issue 360042]: https://crbug.com/360042
 [DDC/CI]: https://en.wikipedia.org/wiki/Display_Data_Channel#DDC.2FCI
 [issue 315371]: https://crbug.com/315371
+[issue 826968]: https://crbug.com/826968
