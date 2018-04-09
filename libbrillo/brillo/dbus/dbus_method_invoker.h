@@ -75,7 +75,6 @@
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/brillo_export.h>
-#include <dbus/file_descriptor.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
