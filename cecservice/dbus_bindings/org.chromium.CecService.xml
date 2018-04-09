@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/CecService"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.CecService">
+    <method name="SendStandByToAllDevices">
+      <tp:docstring>
+        Attempt to put all HDMI CEC compatible devices in stand-by.
+
+        This is not guaranteed to have any effect on the connected displays.
+        Displays that do not support HDMI CEC will not be affected.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="SendWakeUpToAllDevices">
+      <tp:docstring>
+        Attempt to wake the display and announce ourselves as active source.
+
+        This will attempt to wake up displays (by sending “Image View On”
+        request) and announce this device as the active input source towards all
+        HDMI CEC enabled displays connected.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+  </interface>
+</node>
