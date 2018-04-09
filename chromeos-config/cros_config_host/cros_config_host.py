@@ -13,18 +13,28 @@ system to access configuration details for for a Chrome OS device.
 from __future__ import print_function
 
 import argparse
+import json
 import sys
 
 from libcros_config_host import CrosConfig
 from libcros_config_host_fdt import CrosConfigFdt
 from libcros_config_host import FORMAT_YAML
 
+def DumpConfig(config):
+  """Dumps all of the config to stdout
+
+  Args:
+    config: A CrosConfig instance
+  """
+  result = config.GetFullConfig()
+  output = json.dumps(result, sort_keys=True, indent=2)
+  print(output)
+
 def ListModels(config):
   """Prints all models in a config to stdout, one per line.
 
   Args:
     config: A CrosConfig instance
-    whitelabels: True to include whitelabel devices in the list
   """
   for model_name in config.GetModelList():
     print(model_name)
@@ -218,6 +228,9 @@ def GetParser(description):
   parser.add_argument('-y', '--yaml', action='store_true',
                       help='Use YAML format instead of DTB.')
   subparsers = parser.add_subparsers(dest='subcommand')
+  subparsers.add_parser(
+      'dump-config',
+      help='Dumps all of the config via the respective API calls to stdout.')
   # Parser: list-models
   subparsers.add_parser(
       'list-models',
@@ -327,6 +340,8 @@ def main(argv=None):
   # Main command branch
   if opts.subcommand == 'list-models':
     ListModels(config)
+  elif opts.subcommand == 'dump-config':
+    DumpConfig(config)
   elif opts.subcommand == 'get':
     if not model:
       print('You must specify --model for this command. See --help for more '

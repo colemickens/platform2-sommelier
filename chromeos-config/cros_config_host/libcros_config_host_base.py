@@ -219,14 +219,6 @@ class DeviceConfig(object):
     """
     pass
 
-  def GetTouchBspUris(self):
-    """Get a list of URIs needed by the BSP ebuild for this model
-
-    Returns:
-      List of URIs needed.
-    """
-    pass
-
   def GetWallpaperFiles(self):
     """Get a set of wallpaper files used for this model"""
     pass
@@ -253,6 +245,23 @@ class CrosConfigBaseImpl(object):
       A list of (DeviceConfig) instances.
     """
     pass
+
+  def GetFullConfig(self):
+    """Returns a full dict of every config returned from every API.
+
+    Returns:
+      Dictionary that maps method call onto return config.
+    """
+    result = {}
+    result['GetFirmwareUris'] = self.GetFirmwareUris()
+    result['GetTouchFirmwareFiles'] = self.GetTouchFirmwareFiles()
+    result['GetArcFiles'] = self.GetArcFiles()
+    result['GetAudioFiles'] = self.GetAudioFiles()
+    result['GetThermalFiles'] = self.GetThermalFiles()
+    result['GetFirmwareInfo'] = self.GetFirmwareInfo()
+    result['GetWallpaperFiles'] = self.GetWallpaperFiles()
+    return result
+
 
   def GetFirmwareUris(self):
     """Returns a list of (string) firmware URIs.
