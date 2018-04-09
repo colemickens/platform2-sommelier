@@ -12,6 +12,24 @@
   },
   'targets': [
     {
+      'target_name': 'cecservice',
+      'type': 'executable',
+      'dependencies': [
+        'cecservice-adaptors',
+        'libcecservice',
+      ],
+      'sources': [
+        'main.cc',
+      ],
+    },
+    {
+      'target_name': 'libcecservice',
+      'type': 'static_library',
+      'sources': [
+        'cecservice_dbus_adaptor.cc',
+      ],
+    },
+    {
       'target_name': 'cecservice-adaptors',
       'type': 'none',
       'variables': {
