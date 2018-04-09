@@ -208,7 +208,8 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 
 void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
                                  const base::Closure& callback) {
-  base::MessageLoopForIO::current()->PostTask(from_here, callback);
+  base::MessageLoopForIO::current()->task_runner()->PostTask(
+      from_here, callback);
 }
 
 RequestID Transport::StartAsyncTransfer(http::Connection* connection,
@@ -361,7 +362,8 @@ int Transport::MultiSocketCallback(CURL* easy,
     poll_data->GetWatcher()->StopWatchingFileDescriptor();
     // This method can be called indirectly from SocketPollData::OnSocketReady,
     // so delay destruction of SocketPollData object till the next loop cycle.
-    base::MessageLoopForIO::current()->DeleteSoon(FROM_HERE, poll_data);
+    base::MessageLoopForIO::current()->task_runner()->DeleteSoon(
+        FROM_HERE, poll_data);
     return 0;
   }
 
@@ -404,7 +406,7 @@ int Transport::MultiTimerCallback(CURLM* /* multi */,
   // Cancel any previous timer callbacks.
   transport->weak_ptr_factory_for_timer_.InvalidateWeakPtrs();
   if (timeout_ms >= 0) {
-    base::MessageLoopForIO::current()->PostDelayedTask(
+    base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&Transport::OnTimer,
                  transport->weak_ptr_factory_for_timer_.GetWeakPtr()),
