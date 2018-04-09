@@ -33,9 +33,6 @@ namespace {
 // |module_delegates_| and |callbacks_delegates_| maps.
 const uint32_t kIdAll = 0xFFFFFFFF;
 
-constexpr base::TimeDelta kInitializationRetryDelay =
-    base::TimeDelta::FromSeconds(3);
-
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(std::vector<camera_module_t*> camera_modules)
@@ -309,17 +306,6 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
 
     int n = m->get_number_of_cameras();
     LOGF(INFO) << "Camera module " << module_id << " has " << n << " cameras";
-
-    // TODO(shik): We may need to remove this check in the future to support
-    // external cameras.  The initialization error shuold be detected in HAL,
-    // not here.
-    if (n == 0) {
-      LOGF(WARNING) << "Number of cameras is zero. "
-                    << "Assuming camera isn't initialized yet";
-      sleep(kInitializationRetryDelay.InSeconds());
-      callback.Run(false);
-      return;
-    }
 
     camera_id_inverse_map_[module_id].resize(n);
 

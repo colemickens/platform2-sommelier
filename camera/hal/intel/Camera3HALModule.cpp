@@ -194,15 +194,40 @@ static int hal_dev_close(hw_device_t* device)
     return 0;
 }
 
-#ifdef CAMERA_MODULE_API_VERSION_2_4
-static int hal_set_torch_mode (const char* camera_id, bool enabled){
+static int hal_open_legacy(
+    const struct hw_module_t* module,
+    const char* id,
+    uint32_t halVersion,
+    struct hw_device_t** device)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
+    UNUSED(module);
+    UNUSED(id);
+    UNUSED(halVersion);
+    UNUSED(device);
+    return -ENOSYS;
+}
+
+static int hal_set_torch_mode(const char* camera_id, bool enabled)
+{
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
     UNUSED(camera_id);
     UNUSED(enabled);
     return -ENOSYS;
 }
-#endif
+
+static int hal_init()
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
+    if (PlatformData::numberOfCameras() == 0) {
+        LOGE("Init failed bacause no camera device was found.");
+        return -ENODEV;
+    }
+    return 0;
+}
 
 static struct hw_module_methods_t hal_module_methods = {
     NAMED_FIELD_INITIALIZER(open) hal_dev_open
@@ -211,7 +236,7 @@ static struct hw_module_methods_t hal_module_methods = {
 camera_module_t VISIBILITY_PUBLIC HAL_MODULE_INFO_SYM = {
     NAMED_FIELD_INITIALIZER(common) {
         NAMED_FIELD_INITIALIZER(tag) HARDWARE_MODULE_TAG,
-        NAMED_FIELD_INITIALIZER(module_api_version) CAMERA_MODULE_API_VERSION_2_3,
+        NAMED_FIELD_INITIALIZER(module_api_version) CAMERA_MODULE_API_VERSION_2_4,
         NAMED_FIELD_INITIALIZER(hal_api_version) 0,
         NAMED_FIELD_INITIALIZER(id) CAMERA_HARDWARE_MODULE_ID,
         NAMED_FIELD_INITIALIZER(name) "Intel Camera3HAL Module",
@@ -223,11 +248,9 @@ camera_module_t VISIBILITY_PUBLIC HAL_MODULE_INFO_SYM = {
     NAMED_FIELD_INITIALIZER(get_number_of_cameras) hal_get_number_of_cameras,
     NAMED_FIELD_INITIALIZER(get_camera_info) hal_get_camera_info,
     NAMED_FIELD_INITIALIZER(set_callbacks) hal_set_callbacks,
-    NAMED_FIELD_INITIALIZER(open_legacy) nullptr,
-#ifdef CAMERA_MODULE_API_VERSION_2_4
+    NAMED_FIELD_INITIALIZER(open_legacy) hal_open_legacy,
     NAMED_FIELD_INITIALIZER(set_torch_mode) hal_set_torch_mode,
-    NAMED_FIELD_INITIALIZER(init) nullptr,
-#endif
+    NAMED_FIELD_INITIALIZER(init) hal_init,
     NAMED_FIELD_INITIALIZER(reserved) {0}
 };
 

@@ -40,6 +40,7 @@ class CameraHal {
   // version <= 2.3.
   int GetCameraInfo(int id, camera_info* info);
   int SetCallbacks(const camera_module_callbacks_t* callbacks);
+  int Init();
 
   // Runs on device ops thread. Post a task to the thread which is used for
   // OpenDevice.

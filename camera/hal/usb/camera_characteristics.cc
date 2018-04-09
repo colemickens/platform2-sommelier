@@ -88,8 +88,14 @@ CameraCharacteristics::CameraCharacteristics() {}
 
 CameraCharacteristics::~CameraCharacteristics() {}
 
+// static
 DeviceInfo CameraCharacteristics::GetDefaultDeviceInfo() {
   return kDefaultCharacteristics;
+}
+
+// static
+bool CameraCharacteristics::ConfigFileExists() {
+  return base::PathExists(base::FilePath(kCameraCharacteristicsConfigFile));
 }
 
 const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(

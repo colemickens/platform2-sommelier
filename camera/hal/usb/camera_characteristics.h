@@ -42,6 +42,7 @@ class CameraCharacteristics {
   ~CameraCharacteristics();
 
   static DeviceInfo GetDefaultDeviceInfo();
+  static bool ConfigFileExists();
 
   // Parses /etc/camera/camera_characteristics.conf.
   // Returns DeviceInfos with default characteristics if the config file doesn't

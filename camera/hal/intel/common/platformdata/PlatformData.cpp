@@ -42,13 +42,6 @@
 NAMESPACE_DECLARATION {
 using std::string;
 
-#define KERNEL_MODULE_LOAD_DELAY 200000
-#ifdef MEDIA_CTRL_INIT_DELAYED
-#define RETRY_COUNTER 20
-#else
-#define RETRY_COUNTER 0
-#endif
-
 bool PlatformData::mInitialized = false;
 
 CameraProfiles* PlatformData::mInstance = nullptr;
@@ -882,14 +875,6 @@ status_t CameraHWInfo::initDriverList()
     // check whether we are in a platform that supports media controller (mc)
     // or in one where a main device (md) can enumerate the sensors
     struct stat sb;
-
-    for (int retryTimes = RETRY_COUNTER; retryTimes >= 0; retryTimes--) {
-        if (retryTimes > 0) {
-            // Because module loading is delayed also need to delay HAL initialization
-            usleep(KERNEL_MODULE_LOAD_DELAY);
-        }
-    }
-
     int mcExist = stat(mMediaControllerPathName.c_str(), &sb);
 
     if (mcExist == 0) {

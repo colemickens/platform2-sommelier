@@ -9,6 +9,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "cros-camera/common.h"
+#include "hal/usb/camera_characteristics.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/metadata_handler.h"
 #include "hal/usb/stream_format.h"
@@ -107,6 +108,14 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
   return 0;
 }
 
+int CameraHal::Init() {
+  if (device_infos_.empty() && CameraCharacteristics::ConfigFileExists()) {
+    // We expect to find at least one camera if config file exists.
+    return -ENODEV;
+  }
+  return 0;
+}
+
 void CameraHal::CloseDeviceOnOpsThread(int id) {
   DCHECK(task_runner_);
   auto future = cros::Future<void>::Create(nullptr);
@@ -163,6 +172,24 @@ static int set_callbacks(const camera_module_callbacks_t* callbacks) {
   return CameraHal::GetInstance().SetCallbacks(callbacks);
 }
 
+static void get_vendor_tag_ops(vendor_tag_ops_t* /*ops*/) {
+  // no-op
+}
+
+static int open_legacy(const struct hw_module_t* /*module*/, const char* /*id*/,
+                       uint32_t /*halVersion*/,
+                       struct hw_device_t** /*device*/) {
+  return -ENOSYS;
+}
+
+static int set_torch_mode(const char* /*camera_id*/, bool /*enabled*/) {
+  return -ENOSYS;
+}
+
+static int init() {
+  return CameraHal::GetInstance().Init();
+}
+
 int camera_device_close(struct hw_device_t* hw_device) {
   camera3_device_t* cam_dev = reinterpret_cast<camera3_device_t*>(hw_device);
   CameraClient* cam = static_cast<CameraClient*>(cam_dev->priv);
@@ -184,7 +211,7 @@ static hw_module_methods_t gCameraModuleMethods = {
 camera_module_t HAL_MODULE_INFO_SYM
     __attribute__((__visibility__("default"))) = {
         .common = {.tag = HARDWARE_MODULE_TAG,
-                   .module_api_version = CAMERA_MODULE_API_VERSION_2_2,
+                   .module_api_version = CAMERA_MODULE_API_VERSION_2_4,
                    .hal_api_version = HARDWARE_HAL_API_VERSION,
                    .id = CAMERA_HARDWARE_MODULE_ID,
                    .name = "V4L2 Camera HAL v3",
@@ -195,8 +222,8 @@ camera_module_t HAL_MODULE_INFO_SYM
         .get_number_of_cameras = cros::get_number_of_cameras,
         .get_camera_info = cros::get_camera_info,
         .set_callbacks = cros::set_callbacks,
-        .get_vendor_tag_ops = NULL,
-        .open_legacy = NULL,
-        .set_torch_mode = NULL,
-        .init = NULL,
+        .get_vendor_tag_ops = cros::get_vendor_tag_ops,
+        .open_legacy = cros::open_legacy,
+        .set_torch_mode = cros::set_torch_mode,
+        .init = cros::init,
         .reserved = {0}};
