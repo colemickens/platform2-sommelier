@@ -1359,7 +1359,7 @@ std::string ArcSetup::GetSystemImageFingerprint() {
   constexpr char kFingerprintProp[] = "ro.build.fingerprint";
 
   const base::FilePath build_prop =
-      arc_paths_->android_rootfs_directory.Append("system/build.prop");
+      arc_paths_->android_generated_properties_directory.Append("build.prop");
 
   EXIT_IF(
       !GetPropertyFromFile(build_prop, kFingerprintProp, &system_fingerprint_));
