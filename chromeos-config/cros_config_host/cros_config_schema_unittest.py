@@ -237,7 +237,7 @@ class MainTests(unittest.TestCase):
     regen_cmd = ('To regenerate the expected output, run:\n'
                  '\tpython -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test.yaml '
-                 '-o libcros_config/test_build.json'
+                 '-o libcros_config/test_build.json '
                  '-g libcros_config/test.c')
     with open(output, 'r') as output_stream:
       with open(os.path.join(

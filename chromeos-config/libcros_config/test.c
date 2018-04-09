@@ -1,6 +1,6 @@
 #include "lib/cros_config_struct.h"
 
-struct config_map all_configs[] = {
+static struct config_map all_configs[] = {
     {.platform_name = "Some",
      .smbios_match_name = "Some",
      .sku_id = 0,
@@ -65,4 +65,7 @@ struct config_map all_configs[] = {
               .signature_id = "whitelabel-whitelabel2"}}
 };
 
-struct config_map **cros_config_get_config_map(void) { return &all_configs; }
+const struct config_map *cros_config_get_config_map(int *num_entries) {
+  *num_entries = 7;
+  return &all_configs[0];
+}

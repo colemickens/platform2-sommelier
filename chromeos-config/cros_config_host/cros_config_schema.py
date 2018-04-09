@@ -320,13 +320,16 @@ def GenerateCBindings(config):
   file_format = '''\
 #include "lib/cros_config_struct.h"
 
-struct config_map all_configs[] = {%s
+static struct config_map all_configs[] = {%s
 };
 
-struct config_map **cros_config_get_config_map(void) { return &all_configs; }
+const struct config_map *cros_config_get_config_map(int *num_entries) {
+  *num_entries = %s;
+  return &all_configs[0];
+}
 '''
 
-  return file_format % ',\n'.join(structs)
+  return file_format % (',\n'.join(structs), len(structs))
 
 
 def _GetFirmwareUris(model_dict):
