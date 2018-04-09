@@ -46,4 +46,27 @@
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
   ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'cecservice_testrunner',
+          'type': 'executable',
+          'dependencies': [
+            'libcecservice',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'cec_device_unittest.cc',
+            'cec_manager_unittest.cc',
+          ],
+        },
+      ],
+    }],
+  ],
 }
