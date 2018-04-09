@@ -9,6 +9,10 @@
 
 #include <vector>
 
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+
 #include "installer/inst_util.h"
 
 using std::string;
@@ -145,11 +149,30 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
   return result;
 }
 
+bool UpdateEfiBootloaders(const InstallConfig& install_config) {
+  bool result = true;
+  const base::FilePath src_dir =
+      base::FilePath(install_config.root.mount()).Append("boot/efi/boot");
+  const base::FilePath dest_dir =
+      base::FilePath(install_config.boot.mount()).Append("efi/boot");
+  base::FileEnumerator file_enum(src_dir, false, base::FileEnumerator::FILES,
+                                 "*.efi");
+  for (auto src = file_enum.Next(); !src.empty(); src = file_enum.Next()) {
+    const base::FilePath dest = dest_dir.Append(src.BaseName());
+    if (!base::CopyFile(src, dest))
+      result = false;
+  }
+  return result;
+}
+
 bool RunEfiPostInstall(const InstallConfig& install_config) {
   printf("Running EfiPostInstall\n");
 
   // Update the kernel we are about to use.
   if (!UpdateLegacyKernel(install_config))
+    return false;
+
+  if (!UpdateEfiBootloaders(install_config))
     return false;
 
   // Of the form: PARTUUID=XXX-YYY-ZZZ
