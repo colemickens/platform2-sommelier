@@ -10,6 +10,9 @@
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
+#include "cecservice/cec_device.h"
+#include "cecservice/cec_fd.h"
+#include "cecservice/cec_manager.h"
 #include "cecservice/dbus_adaptors/org.chromium.CecService.h"
 
 namespace cecservice {
@@ -29,6 +32,9 @@ class CecServiceDBusAdaptor : public org::chromium::CecServiceAdaptor,
   bool SendWakeUpToAllDevices(brillo::ErrorPtr* error) override;
 
  private:
+  CecFdOpenerImpl cec_fd_opener_;
+  CecDeviceFactoryImpl cec_device_factory_;
+  CecManager cec_;
   brillo::dbus_utils::DBusObject dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(CecServiceDBusAdaptor);

@@ -26,7 +26,11 @@
       'target_name': 'libcecservice',
       'type': 'static_library',
       'sources': [
+        'cec_device.cc',
+        'cec_fd.cc',
+        'cec_manager.cc',
         'cecservice_dbus_adaptor.cc',
+        'udev.cc',
       ],
     },
     {
