@@ -79,11 +79,6 @@ class Device {
   void RemoveClientFromDevice(uint32_t client_id);
 
  private:
-  friend class ClientTest;
-  friend class DeviceTest;
-  FRIEND_TEST(ClientTest, AddClientAndReceiveMessages);
-  FRIEND_TEST(DeviceTest, TestDevicePortCreation);
-
   // This function initializes subscriptions for all the listed ports.
   // As the ports are initialized, they get stored in |in_ports_| and
   // |out_ports_| respectively.

@@ -40,8 +40,6 @@ class FileHandler {
   void WriteData(const uint8_t* buffer, size_t buf_len);
 
  private:
-  friend class DeviceTest;
-  FRIEND_TEST(DeviceTest, TestHandleDeviceRead);
   // Callback used to process incoming MIDI data from h/w.
   // This function in turn calls a user supplied callback which determines what
   // is to be done with the read data (send it to clients, print it out, etc.).

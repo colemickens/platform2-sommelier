@@ -86,9 +86,7 @@ class DeviceTracker {
   // Private helper to retrieve a Device pointer if it exists.
   Device* FindDevice(uint32_t card_id, uint32_t device_id) const;
 
-  friend class ClientTest;
   friend class DeviceTrackerTest;
-  FRIEND_TEST(ClientTest, AddClientAndReceiveMessages);
   FRIEND_TEST(DeviceTrackerTest, Add2DevicesPositive);
   FRIEND_TEST(DeviceTrackerTest, AddRemoveDevicePositive);
   FRIEND_TEST(DeviceTrackerTest, AddDeviceRemoveNegative);
