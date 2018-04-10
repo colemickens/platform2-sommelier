@@ -298,8 +298,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
                                   table_id_);
 
   if (properties.blackhole_ipv6) {
-    routing_table_->CreateBlackholeRoute(interface_index_,
-                                         IPAddress::kFamilyIPv6,
+    routing_table_->CreateBlackholeRoute(IPAddress::kFamilyIPv6,
                                          kDefaultMetric,
                                          table_id_);
   }

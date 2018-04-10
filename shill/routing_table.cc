@@ -586,14 +586,12 @@ bool RoutingTable::RequestRouteToHost(const IPAddress& address,
   return true;
 }
 
-bool RoutingTable::CreateBlackholeRoute(int interface_index,
-                                        IPAddress::Family family,
+bool RoutingTable::CreateBlackholeRoute(IPAddress::Family family,
                                         uint32_t metric,
                                         uint8_t table_id) {
   SLOG(this, 2) << base::StringPrintf(
-      "%s: index %d family %s metric %d",
-      __func__, interface_index,
-      IPAddress::GetAddressFamilyName(family).c_str(), metric);
+      "%s: family %s metric %d",
+      __func__, IPAddress::GetAddressFamilyName(family).c_str(), metric);
 
   RTNLMessage message(
       RTNLMessage::kTypeRoute,
@@ -615,8 +613,6 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
 
   message.SetAttribute(RTA_PRIORITY,
                        ByteString::CreateFromCPUUInt32(metric));
-  message.SetAttribute(RTA_OIF,
-                       ByteString::CreateFromCPUUInt32(interface_index));
 
   return rtnl_handler_->SendMessage(&message);
 }

@@ -44,8 +44,7 @@ class MockRoutingTable : public RoutingTable {
                                      const IPConfigRefPtr& ipconfig,
                                      uint32_t metric,
                                      uint8_t table));
-  MOCK_METHOD4(CreateBlackholeRoute, bool(int interface_index,
-                                          IPAddress::Family family,
+  MOCK_METHOD3(CreateBlackholeRoute, bool(IPAddress::Family family,
                                           uint32_t metric,
                                           uint8_t table));
   MOCK_METHOD4(CreateLinkRoute, bool(int interface_index,

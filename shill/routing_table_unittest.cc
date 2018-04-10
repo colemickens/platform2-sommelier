@@ -183,10 +183,9 @@ const uint8_t RoutingTableTest::kTestTableId = 0xa5;
 
 namespace {
 
-MATCHER_P3(IsBlackholeRoutingPacket, index, family, metric, "") {
+MATCHER_P2(IsBlackholeRoutingPacket, family, metric, "") {
   const RTNLMessage::RouteStatus& status = arg->route_status();
 
-  uint32_t oif;
   uint32_t priority;
 
   return
@@ -200,8 +199,6 @@ MATCHER_P3(IsBlackholeRoutingPacket, index, family, metric, "") {
       !arg->HasAttribute(RTA_DST) &&
       !arg->HasAttribute(RTA_SRC) &&
       !arg->HasAttribute(RTA_GATEWAY) &&
-      arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) &&
-      oif == index &&
       arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
       priority == metric;
 }
@@ -1041,12 +1038,10 @@ TEST_F(RoutingTableTest, CancelQueryCallback) {
 TEST_F(RoutingTableTest, CreateBlackholeRoute) {
   const uint32_t kMetric = 2;
   EXPECT_CALL(rtnl_handler_,
-              SendMessage(IsBlackholeRoutingPacket(kTestDeviceIndex0,
-                                                   IPAddress::kFamilyIPv6,
+              SendMessage(IsBlackholeRoutingPacket(IPAddress::kFamilyIPv6,
                                                    kMetric)))
       .Times(1);
-  EXPECT_TRUE(routing_table_->CreateBlackholeRoute(kTestDeviceIndex0,
-                                                   IPAddress::kFamilyIPv6,
+  EXPECT_TRUE(routing_table_->CreateBlackholeRoute(IPAddress::kFamilyIPv6,
                                                    kMetric,
                                                    kTestTableId));
 }
