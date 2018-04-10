@@ -9390,6 +9390,21 @@ mno {
 
 mno {
   data {
+    uuid : "df55f01c-553d-436a-9533-a55afba15a1b"
+    country : "nl"
+    localized_name {
+      name : "Ziggo"
+    }
+    mccmnc : "20415"
+    mccmnc : "20418"
+    mobile_apn {
+      apn : "internet.ziggo.nl"
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "014e3ffb-1560-4c03-83b7-2742a4532a8b"
     country : "nl"
     localized_name {
