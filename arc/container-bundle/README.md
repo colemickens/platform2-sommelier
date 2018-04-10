@@ -268,10 +268,18 @@ intermediate mount namespace.
 
 In order to avoid paying the price of creating several processes and switching
 back and forth between namespaces (which added several milliseconds to the boot
-time when done naïvely), we have consolidated all of the hook execution to a
-single pre-chroot hook that invokes
+time when done naïvely), we have consolidated all of the hook execution to two
+hooks: pre-create and pre-chroot.
+
+The pre-create hook invokes
 [`arc-setup`](https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/setup/)
-with the `--pre-chroot` flag. This performs several operations:
+with the `--setup` flag via its wrapper script, `/usr/sbin/arc_setup_wrapper.sh`
+and creates host-side files and directories that will be bind-mounted to the
+container via `config.json`.
+
+The pre-chroot hook invokes
+[`arc-setup`](https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/setup/)
+with the `--pre-chroot` flag and performs several operations:
 
 * Set up
   [`binfmt_misc`](https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html)

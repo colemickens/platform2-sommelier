@@ -16,19 +16,23 @@ dump_var_log android.kmsg
 dump_var_log arc-adbd.log
 dump_var_log arc-boot-continue.log
 dump_var_log arc-camera.log
+dump_var_log arc-lifetime.log
 dump_var_log arc-network.log
 dump_var_log arc-obb-mounter.log
 dump_var_log arc-removable-media.log
 dump_var_log arc-sdcard.log
 dump_var_log arc-sensor.log
 dump_var_log arc-setfattr.log
-dump_var_log arc-setup-for-login-screen.log
+dump_var_log arc-setup.log
 dump_var_log arc-stale-directory-remover.log
 dump_var_log arc-start-sysctl.log
 dump_var_log arc-stop-sysctl.log
 dump_var_log arc-system-mount.log
-dump_var_log arc-ureadahead.log
 dump_var_log arc-ureadahead-trace.log
+dump_var_log arc-ureadahead.log
+
+# TODO(yusukes): Remove this in M70.
+rm -f /var/log/arc-setup-for-login-screen.log
 
 if [ -d /var/log/android ] ; then
   # Dump only the last 3 log files.

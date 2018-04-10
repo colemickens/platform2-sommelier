@@ -488,6 +488,15 @@
 		}
 	],
 	"hooks": {
+		"precreate": [
+			{
+				"path": "/usr/sbin/arc_setup_wrapper.sh",
+				"args": [
+					"arc_setup_wrapper.sh"
+				],
+				"timeout": 20
+			}
+		],
 		"prechroot": [
 			{
 				"path": "/usr/sbin/arc-setup",
