@@ -800,6 +800,12 @@ bool ParseHooks(const base::DictionaryValue& config_root_dict,
   }
 
   const base::ListValue* hooks_list;
+  if (hooks_config_dict->GetList("precreate", &hooks_list)) {
+    if (!ParseHooksList(*hooks_list, &config_out->pre_create_hooks,
+                        "precreate")) {
+      return false;
+    }
+  }
   if (hooks_config_dict->GetList("prechroot", &hooks_list)) {
     if (!ParseHooksList(*hooks_list, &config_out->pre_chroot_hooks,
                         "prechroot")) {

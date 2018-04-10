@@ -159,6 +159,11 @@ const char kBasicJsonData[] = R"json(
             }
         ],
         "hooks" : {
+            "precreate": [
+                {
+                    "path": "/usr/bin/setup-mounts"
+                }
+            ],
             "prestart": [
                 {
                     "path": "/usr/bin/fix-mounts",
@@ -519,6 +524,10 @@ TEST(OciConfigParserTest, TestBasicConfig) {
             (1ull << CAP_AUDIT_WRITE) | (1ull << CAP_KILL) |
                 (1ull << CAP_NET_BIND_SERVICE));
   // hooks
+  std::vector<OciHook>* pre_create_hooks = &basic_config->pre_create_hooks;
+  ASSERT_EQ(pre_create_hooks->size(), 1);
+  EXPECT_EQ((*pre_create_hooks)[0].path,
+            base::FilePath("/usr/bin/setup-mounts"));
   std::vector<OciHook>* pre_start_hooks = &basic_config->pre_start_hooks;
   EXPECT_EQ(pre_start_hooks->size(), 2);
   EXPECT_EQ((*pre_start_hooks)[0].path, base::FilePath("/usr/bin/fix-mounts"));

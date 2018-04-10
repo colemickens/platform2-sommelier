@@ -163,6 +163,7 @@ struct OciConfig {
   OciProcess process;
   std::string hostname;                   // Optional
   std::vector<OciMount> mounts;           // Optional
+  std::vector<OciHook> pre_create_hooks;  // Optional, Chrome OS extension.
   std::vector<OciHook> pre_chroot_hooks;  // Optional, Chrome OS extension.
   std::vector<OciHook> pre_start_hooks;   // Optional
   std::vector<OciHook> post_start_hooks;  // Optional

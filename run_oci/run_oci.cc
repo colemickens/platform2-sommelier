@@ -457,7 +457,7 @@ bool RunHooks(const std::vector<OciHook>& hooks,
               const base::FilePath& container_dir,
               const std::string& hook_stage,
               const std::string& status) {
-  if (*child_pid == -1) {
+  if (*child_pid == -1 && hook_stage != "precreate") {
     // If the child PID is not present, that means that the container failed to
     // run at least to a point where there was a PID at all. Hooks do not need
     // to be run in that case.
@@ -552,6 +552,16 @@ int RunOci(const base::FilePath& bundle_dir,
   OciConfigPtr oci_config(new OciConfig());
   if (!OciConfigFromFile(container_config_file, oci_config))
     return -1;
+
+  pid_t child_pid = -1;
+  if (!oci_config->pre_create_hooks.empty()) {
+    // Run the precreate hooks now.
+    if (!RunHooks(oci_config->pre_create_hooks, &child_pid, container_id,
+                  bundle_dir, container_dir, "precreate", "creating")) {
+      LOG(ERROR) << "Error running precreate hooks";
+      return -1;
+    }
+  }
 
   // Inject options passed in from the commandline.
   if (oci_config->linux_config.cgroupsPath.empty()) {
@@ -731,7 +741,6 @@ int RunOci(const base::FilePath& bundle_dir,
   // container_pid() will populate the value, and RunHooks() will simply refuse
   // to run if |child_pid| is -1, so we will always do the right thing.
   // The callback is run in the same stack, so base::ConstRef() is safe.
-  pid_t child_pid = -1;
   base::ScopedClosureRunner post_stop_hooks(base::Bind(
       base::IgnoreResult(&RunHooks),
       base::ConstRef(oci_config->post_stop_hooks), base::Unretained(&child_pid),

@@ -28,6 +28,10 @@ The
 [**`hooks`**](https://github.com/opencontainers/runtime-spec/blob/master/config.md#posix-platform-hooks)
 object has been extended to also contain the following:
 
+* **`precreate`**: *(array of objects, OPTIONAL)* - is an array of pre-create
+  hooks. Entries in the array have the same schema as pre-start entries, and are
+  run in the outer namespace before the container process is created.
+
 * **`prechroot`**: *(array of objects, OPTIONAL)* - is an array of pre-chroot
   hooks. Entries in the array have the same schema as pre-start entries, and are
   run in the outer namespace after all the entries in [**`mounts`**](https://github.com/opencontainers/runtime-spec/blob/master/config.md#mounts)
@@ -37,6 +41,12 @@ object has been extended to also contain the following:
 
     {
         "hooks": {
+            "precreate": [
+                {
+                    "path": "/usr/sbin/arc-setup",
+                    "args": ["arc-setup", "--setup"]
+                }
+            ],
             "prechroot": [
                 {
                     "path": "/usr/sbin/arc-setup",
