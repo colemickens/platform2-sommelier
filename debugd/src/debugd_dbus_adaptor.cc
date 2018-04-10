@@ -431,7 +431,8 @@ void DebugdDBusAdaptor::StopVmConcierge() {
 bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
   std::string stderr;
   int result = ProcessWithOutput::RunProcess(
-      "vpd", {"-i", "RW_VPD", "-s", std::string(kShouldSendRlzPingKey) + "=0"},
+      "/usr/sbin/vpd", {"-i", "RW_VPD", "-s", std::string(kShouldSendRlzPingKey)
+      + "=0"},
       true,      // requires root
       nullptr,   // stdin
       nullptr,   // stdout
@@ -447,7 +448,8 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
   // Remove |kRlzEmbargoEndDateKey|, which is no longer useful after
   // |kShouldSendRlzPingKey| is updated.
   result = ProcessWithOutput::RunProcess(
-      "vpd", {"-i", "RW_VPD", "-d", std::string(kRlzEmbargoEndDateKey)},
+      "/usr/sbin/vpd", {"-i", "RW_VPD", "-d",
+      std::string(kRlzEmbargoEndDateKey)},
       true,      // requires root
       nullptr,   // stdin
       nullptr,   // stdout
@@ -459,8 +461,23 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
     DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
     PLOG(ERROR) << error_string;
   }
+  // Regenerate the vpd cache log.
+  result = ProcessWithOutput::RunProcess(
+      "/usr/sbin/dump_vpd_log", {"--force"},
+      true,      // requires root
+      nullptr,   // stdin
+      nullptr,   // stdout
+      &stderr, error);
+  if (result != EXIT_SUCCESS) {
+    std::string error_string =
+        "Failed to dump vpd log with exit code: " + std::to_string(result) +
+        " with error: " + stderr;
+    DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
+    PLOG(ERROR) << error_string;
+  }
   // The client only cares if updating |kShouldSendRlzPingKey| is successful, so
-  // returns true regardless of the result of removing |kRlzEmbargoEndDateKey|.
+  // returns true regardless of the result of removing |kRlzEmbargoEndDateKey|
+  // or the cache log update.
   return true;
 }
 
