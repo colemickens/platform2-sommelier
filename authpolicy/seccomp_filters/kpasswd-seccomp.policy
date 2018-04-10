@@ -18,11 +18,11 @@ getrandom: 1
 getsockname: 1
 getsockopt: 1
 getuid: 1
-# ioctl: arg1 == FIONBIO || arg1 == TCGETS || arg1 == SNDCTL_TMR_START or TCSETS
+# ioctl: arg1 == FIONREAD || arg1 == FIONBIO || arg1 == TCGETS || arg1 == SNDCTL_TMR_START or TCSETS
 # Not completely sure what 'or' means. The last 2 bits always match for all
 # alternatives. Since SNDCTL is soundcard-related stuff, which kpasswd likely
 # doesn't touch, it's probably not it. These values work.
-ioctl: arg1 == 0x5421 || arg1 == 0x5401 || arg1 == 0x5402
+ioctl: arg1 == 0x541b || arg1 == 0x5421 || arg1 == 0x5401 || arg1 == 0x5402
 lseek: 1
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
