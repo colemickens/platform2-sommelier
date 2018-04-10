@@ -189,7 +189,6 @@ properties:
                 customization-id:
                   description: Customization ID set in the VPD during manufacturing.
                   type: string
-                  pattern: "^[a-z|A-Z|_|0-9]*$"
                 sku-id:
                   description: SKU/Board strapping pins configured during board manufacturing.
                   type: integer
