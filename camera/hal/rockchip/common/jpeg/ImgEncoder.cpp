@@ -45,6 +45,7 @@ std::shared_ptr<CommonBuffer> ImgEncoder::createCommonBuffer(std::shared_ptr<Cam
         props.stride = cBuffer->stride();
         props.format = cBuffer->v4l2Fmt();
         props.type   = BMT_HEAP;
+        props.size   = cBuffer->size();
 
         jBuffer = std::make_shared<CommonBuffer>(props, cBuffer->data());
     }
