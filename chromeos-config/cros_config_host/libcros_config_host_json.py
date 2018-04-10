@@ -142,9 +142,9 @@ class CrosConfigJson(CrosConfigBaseImpl):
           bios_build_target, ec_build_target = None, None
         create_bios_rw_image = False
 
-        main_image_uri = config.GetValue(fw, 'main-image')
-        main_rw_image_uri = config.GetValue(fw, 'main-rw-image')
-        ec_image_uri = config.GetValue(fw, 'ec-image')
+        main_image_uri = config.GetValue(fw, 'main-image') or ''
+        main_rw_image_uri = config.GetValue(fw, 'main-rw-image') or ''
+        ec_image_uri = config.GetValue(fw, 'ec-image') or ''
         pd_image_uri = config.GetValue(fw, 'pd-image') or ''
         extra = config.GetValue(fw, 'extra') or []
         tools = config.GetValue(fw, 'tools') or []
