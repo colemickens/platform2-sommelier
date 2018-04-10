@@ -14,6 +14,32 @@
 
 #include "label_detect.h"
 
+static bool is_blacklisted_driver(
+    const char* vendor_string, VAProfile profile, VAEntrypoint entrypoint) {
+  if (strstr(vendor_string, "AMD STONEY") != NULL) {
+    // HW JPEG Decoding.
+    // TODO(hiroh): Remove this once https://crbug.com/828119 is fixed.
+    if (entrypoint == VAEntrypointVLD) {
+      return profile == VAProfileJPEGBaseline;
+    }
+    // HW H264 Encoding.
+    // TODO(hiroh): Remove this once https://crbug.com/828482 is fixed.
+    if (entrypoint == VAEntrypointEncSlice) {
+      int i;
+      VAProfile blacklisted_profiles[] = {
+          VAProfileH264Baseline, VAProfileH264Main,
+          VAProfileH264High, VAProfileH264ConstrainedBaseline,
+          VAProfileNone};
+      for (i = 0; blacklisted_profiles[i] != VAProfileNone; i++) {
+        if (profile == blacklisted_profiles[i]) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 /* Returns true if given VA profile |va_profile| has |entrypoint| and the entry
  * point supports given raw |format|.
  */
@@ -59,10 +85,14 @@ static bool match_vaapi_capabilities(VADisplay va_display,
     TRACE("vaQueryConfigProfiles failed (%d)\n", va_res);
     return false;
   }
+  const char* vendor_string = vaQueryVendorString(va_display);
   for (i = 0; i < num_supported_profiles; i++) {
     int j;
     VAProfile profile = profiles[i];
     TRACE("supported profile: %d\n", profile);
+    if (is_blacklisted_driver(vendor_string, profile, entrypoint)) {
+      continue;
+    }
     for (j = 0; required_profiles[j] != VAProfileNone; j++) {
       if (required_profiles[j] == profile &&
           has_vaapi_entrypoint(va_display, profile, entrypoint, format)) {
