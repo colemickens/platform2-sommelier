@@ -14,3 +14,4 @@ const char Crossystem::kCheckEnrollment[] = "check_enrollment";
 const char Crossystem::kNvramCleared[] = "nvram_cleared";
 const char Crossystem::kMainfwType[] = "mainfw_type";
 const char Crossystem::kMainfwTypeNonchrome[] = "nonchrome";
+const char Crossystem::kClearTpmOwnerRequest[] = "clear_tpm_owner_request";

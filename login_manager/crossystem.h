@@ -34,6 +34,10 @@ class Crossystem {
   // Firmware type string returned when there is no Chrome OS firmware present.
   static const char kMainfwTypeNonchrome[];
 
+  // Name of the flag that signals a request to clear the TPM owner on next
+  // reboot.
+  static const char kClearTpmOwnerRequest[];
+
   // Reads a system property integer.
   //
   // Returns the property value, or -1 if error.

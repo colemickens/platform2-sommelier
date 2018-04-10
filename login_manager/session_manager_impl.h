@@ -82,6 +82,10 @@ class SessionManagerImpl
   // Flag file indicating a request to update TPM firmware after reboot.
   static const char kTPMFirmwareUpdateRequestFlagFile[];
 
+  // Flag file that signals to mount_encrypted that we're requesting it to
+  // preserve the encrypted stateful file system across a TPM reset.
+  static const char kStatefulPreservationRequestFile[];
+
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
 
@@ -368,13 +372,9 @@ class SessionManagerImpl
       SignatureCheck signature_check,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
 
-  // Completion handler that gets invoked after writing the TPM firmware
-  // mode to VPD. Checks |success| of the VPD operation, triggers a device reset
-  // appropriate for |update_mode| and replies to the DBus call via |response|.
-  void OnTPMFirmwareUpdateModeUpdated(
-      const std::string& update_mode,
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      bool success);
+  // Requests a reboot. Formats the actual reason string to name session_manager
+  // as the source of the request.
+  void RestartDevice(const std::string& reason);
 
 #if USE_CHEETS
   // Creates a server socket for ARC and stores the descriptor in |out_fd|.

@@ -2763,8 +2763,17 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     if (expected_error_.empty()) {
       EXPECT_TRUE(result);
       EXPECT_FALSE(error);
-      EXPECT_TRUE(file_contents_.count(
-          SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile));
+      const auto& contents = file_contents_.find(
+          SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile);
+      ASSERT_NE(contents, file_contents_.end());
+      EXPECT_EQ(update_mode_, contents->second);
+
+      if (update_mode_ == "preserve_stateful") {
+        EXPECT_EQ(1, file_contents_.count(
+                         SessionManagerImpl::kStatefulPreservationRequestFile));
+        EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
+                         Crossystem::kClearTpmOwnerRequest));
+      }
     } else {
       EXPECT_FALSE(result);
       ASSERT_TRUE(error);
@@ -2823,18 +2832,36 @@ TEST_F(StartTPMFirmwareUpdateTest, BadUpdateMode) {
   ExpectError(dbus_error::kInvalidParameter);
 }
 
-TEST_F(StartTPMFirmwareUpdateTest, EnterpriseNotSet) {
+TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootNotSet) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(true));
   ExpectError(dbus_error::kNotAvailable);
 }
 
-TEST_F(StartTPMFirmwareUpdateTest, EnterpriseAllowed) {
+TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootAllowed) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(true));
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_powerwash(true);
+  SetDevicePolicy(settings);
+  ExpectDeviceRestart();
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulNotSet) {
+  SetUpdateMode("preserve_stateful");
+  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(true));
+  ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulAllowed) {
+  SetUpdateMode("preserve_stateful");
+  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(true));
+  em::ChromeDeviceSettingsProto settings;
+  settings.mutable_tpm_firmware_update_settings()
+      ->set_allow_user_initiated_preserve_device_state(true);
   SetDevicePolicy(settings);
   ExpectDeviceRestart();
 }
@@ -2852,6 +2879,11 @@ TEST_F(StartTPMFirmwareUpdateTest, NoUpdateAvailable) {
 TEST_F(StartTPMFirmwareUpdateTest, RequestFileWriteFailure) {
   file_write_status_ = false;
   ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, PreserveStateful) {
+  update_mode_ = "preserve_stateful";
+  ExpectDeviceRestart();
 }
 
 }  // namespace login_manager

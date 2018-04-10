@@ -16,6 +16,7 @@
 #include <iterator>
 #include <locale>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -87,6 +88,8 @@ constexpr char SessionManagerImpl::kTPMFirmwareUpdateLocationFile[] =
     "/run/tpm_firmware_update_location";
 constexpr char SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile[] =
     "/mnt/stateful_partition/unencrypted/preserve/tpm_firmware_update_request";
+constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
+    "/mnt/stateful_partition/preservation_request";
 
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
@@ -159,6 +162,7 @@ constexpr base::TimeDelta kSystemClockLastSyncInfoRetryDelay =
 
 // TPM firmware update modes.
 constexpr char kTPMFirmwareUpdateModeFirstBoot[] = "first_boot";
+constexpr char kTPMFirmwareUpdateModePreserveStateful[] = "preserve_stateful";
 
 // Policy storage constants.
 constexpr char kEmptyAccountId[] = "";
@@ -883,7 +887,8 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
 bool SessionManagerImpl::StartTPMFirmwareUpdate(
     brillo::ErrorPtr* error, const std::string& update_mode) {
   // Make sure |update_mode| is supported.
-  if (update_mode != kTPMFirmwareUpdateModeFirstBoot) {
+  if (update_mode != kTPMFirmwareUpdateModeFirstBoot &&
+      update_mode != kTPMFirmwareUpdateModePreserveStateful) {
     constexpr char kMessage[] = "Bad update mode.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kInvalidParameter, kMessage);
@@ -903,7 +908,15 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
   if (device_policy_->InstallAttributesEnterpriseMode()) {
     const enterprise_management::TPMFirmwareUpdateSettingsProto& settings =
         device_policy_->GetSettings().tpm_firmware_update_settings();
-    if (!settings.allow_user_initiated_powerwash()) {
+    std::set<std::string> allowed_modes;
+    if (settings.allow_user_initiated_powerwash()) {
+      allowed_modes.insert(kTPMFirmwareUpdateModeFirstBoot);
+    }
+    if (settings.allow_user_initiated_preserve_device_state()) {
+      allowed_modes.insert(kTPMFirmwareUpdateModePreserveStateful);
+    }
+
+    if (allowed_modes.count(update_mode) == 0) {
       *error = CreateError(dbus_error::kNotAvailable,
                            "Policy doesn't allow TPM firmware update.");
       return false;
@@ -923,14 +936,36 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
 
   // Put the update request into place.
   if (!system_->AtomicFileWrite(
-          base::FilePath(kTPMFirmwareUpdateRequestFlagFile), std::string())) {
+          base::FilePath(kTPMFirmwareUpdateRequestFlagFile), update_mode)) {
     constexpr char kMessage[] = "Failed to persist update request.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kNotAvailable, kMessage);
     return false;
   }
 
-  InitiateDeviceWipe("session_manager_tpm_firmware_update");
+  if (update_mode == kTPMFirmwareUpdateModeFirstBoot) {
+    InitiateDeviceWipe("tpm_firmware_update_" + update_mode);
+  } else {
+    // This flag file indicates that encrypted stateful should be preserved.
+    if (!system_->AtomicFileWrite(
+            base::FilePath(kStatefulPreservationRequestFile), update_mode)) {
+      constexpr char kMessage[] = "Failed to request stateful preservation.";
+      LOG(ERROR) << kMessage;
+      *error = CreateError(dbus_error::kNotAvailable, kMessage);
+      return false;
+    }
+
+    if (crossystem_->VbSetSystemPropertyInt(Crossystem::kClearTpmOwnerRequest,
+                                            1) != 0) {
+      constexpr char kMessage[] = "Failed to request TPM clear.";
+      LOG(ERROR) << kMessage;
+      *error = CreateError(dbus_error::kNotAvailable, kMessage);
+      return false;
+    }
+
+    RestartDevice("tpm_firmware_update " + update_mode);
+  }
+
   return true;
 }
 
@@ -1296,7 +1331,7 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   const base::FilePath reset_path(kResetFile);
   system_->AtomicFileWrite(reset_path,
                            "fast safe keepimg reason=" + sanitized_reason);
-  delegate_->RestartDevice("session_manager (" + reason + ")");
+  RestartDevice(sanitized_reason);
 }
 
 // static
@@ -1442,6 +1477,10 @@ void SessionManagerImpl::StorePolicyInternalEx(
   policy_service->Store(ns, policy_blob, key_flags, signature_check,
                         dbus_service_->CreatePolicyServiceCompletionCallback(
                             std::move(response)));
+}
+
+void SessionManagerImpl::RestartDevice(const std::string& reason) {
+  delegate_->RestartDevice("session_manager (" + reason + ")");
 }
 
 #if USE_CHEETS
