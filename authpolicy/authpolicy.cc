@@ -37,6 +37,21 @@ const char kChromeExtensionPolicyType[] = "google/chrome/extension";
 
 namespace {
 
+// Returns true if the given |domain| is expected to be associated with a
+// component id in PolicyDescriptor, e.g. an extension id for
+// POLICY_DOMAIN_EXTENSIONS.
+bool DomainRequiresComponentId(login_manager::PolicyDomain domain) {
+  switch (domain) {
+    case login_manager::POLICY_DOMAIN_CHROME:
+      return false;
+    case login_manager::POLICY_DOMAIN_EXTENSIONS:
+    case login_manager::POLICY_DOMAIN_SIGNIN_EXTENSIONS:
+      // The component id is the extension id.
+      return true;
+  }
+  NOTREACHED() << "Invalid domain";
+}
+
 void PrintError(const char* msg, ErrorType error) {
   if (error == ERROR_NONE)
     LOG(INFO) << msg << " succeeded";
@@ -429,8 +444,15 @@ void AuthPolicy::StoreSinglePolicy(
     DCHECK(descriptor.account_type() == login_manager::ACCOUNT_TYPE_DEVICE);
     policy_data.set_device_id(samba_.machine_name());
   }
+  // TODO(crbug.com/831995): Use timer that can never run backwards and enable
+  // timestamp validation in the Chromium Active Directory policy manager.
   policy_data.set_timestamp(base::Time::Now().ToJavaTime());
   policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
+  policy_data.set_machine_name(samba_.machine_name());
+  if (DomainRequiresComponentId(descriptor.domain())) {
+    DCHECK(!descriptor.component_id().empty());
+    policy_data.set_settings_entity_id(descriptor.component_id());
+  }
 
   // Note: No signature required here, Active Directory policy is unsigned!
 

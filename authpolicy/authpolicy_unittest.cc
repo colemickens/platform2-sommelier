@@ -645,7 +645,7 @@ class AuthPolicyTest : public testing::Test {
       }
     } else if (policy_data.policy_type() == kChromeExtensionPolicyType) {
       EXPECT_EQ(descriptor.domain(), login_manager::POLICY_DOMAIN_EXTENSIONS);
-      EXPECT_FALSE(descriptor.component_id().empty());
+      EXPECT_EQ(descriptor.component_id(), policy_data.settings_entity_id());
       if (validate_extension_policy_) {
         // policy_value() is the raw JSON string here.
         validate_extension_policy_(descriptor.component_id(),
