@@ -248,6 +248,23 @@ properties:
               description: |
                 Base filename of the default wallpaper to show on this device.
               type: string
+            ui:
+              type: object
+              properties:
+                power-button:
+                  type: object
+                  properties:
+                    edge:
+                      type: string
+                      enum:
+                      - left
+                      - right
+                      - top
+                      - bottom
+                    position:
+                      type: string
+                  additionalProperties: false
+              additionalProperties: false
           additionalProperties: false
           required:
           - firmware

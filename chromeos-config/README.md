@@ -450,6 +450,28 @@ properties.
             Autotest, this will be the model label. By allowing an alternate
             label, different models can be shared for testing purposes.
 
+        *   `ui` (optional): Config related to operation of the UI on this
+            model.
+
+            *   `power-button` (optional): Defines the position on the screen
+                where the power-button menu appears after a long press of the
+                power button on a tablet device. The position is defined
+                according to the 'landscape-primary' orientation, so that if
+                the device is rotated, the button position on the screen will
+                follow the rotation.
+
+                *   `edge`: Indicates which edge the power button is anchored
+                    to. Can be "left", "right", "top", "bottom". For example,
+                    "left" means that the menu will appear on the left side of
+                    the screen, with the distance along that edge (top to
+                    bottom) defined by the next property.
+                *   `position': Indicates the position of the menu along that
+                    edge, as a fraction, measured from the top or left of
+                    the screen. For example, "0.3"  means that the menu will be
+                    30% of the way from the origin (which is the left or top of
+                    the screen).
+
+
 ### Example for reef
 
 ```
@@ -761,6 +783,12 @@ chromeos {
             power {
               power-type = <&power_type>;
             };
+            ui {
+                power-button {
+                    edge = "left";
+                    position = "0.3";
+                };
+            };
         };
 
         electro: electro {
@@ -841,6 +869,7 @@ chromeos {
 | test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  |
 | touch | [touch](#touch) |  | False |  |
+| ui | [ui](#ui) |  | False |  |
 | wallpaper | string |  | False | Base filename of the default wallpaper to show on this device.
  |
 
@@ -983,6 +1012,17 @@ into SPI flash.
 | destination | string |  | False | Installation path for the file on the system image. |
 | source | string |  | False | Source of the file relative to the build system ${FILESDIR} |
 | symlink | string |  | False | Symlink file that will be installed pointing to the destination. |
+
+### ui
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| power-button | [power-button](#power-button) |  | False |  |
+
+### power-button
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| edge | string |  | False |  |
+| position | string |  | False |  |
 
 
 [](end_definitions)

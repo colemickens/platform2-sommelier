@@ -160,6 +160,15 @@ TEST_F(CrosConfigTest, CheckWhiteLabel) {
 }
 #endif /* !USE_JSON */
 
+TEST_F(CrosConfigTest, CheckUiPowerPosition) {
+  InitConfig("Some", 1);
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/ui/power-button", "edge", &val));
+  ASSERT_EQ("left", val);
+  ASSERT_TRUE(cros_config_.GetString("/ui/power-button", "position", &val));
+  ASSERT_EQ("0.3", val);
+}
+
 int main(int argc, char** argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)

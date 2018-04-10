@@ -55,6 +55,10 @@ some_base_config: &some_base_config
     ec-image: "bcs://Some_EC.1111.11.1.tbz2"
     main-image: "bcs://Some.1111.11.1.tbz2"
     main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
+  ui:
+    power-button:
+      edge: "left"
+      position: "0.3"
 
 some_config: &some_config
   <<: *some_base_config

@@ -642,6 +642,12 @@ SCHEMA = NodeDesc('/', True, [
                         PropString('key-id', False, '[A-Z][A-Z0-9]+'),
                     ]),
                 ], conditional_props=NOT_WL),
+                NodeDesc('ui', False, [
+                    NodeDesc('power-button', False, [
+                        PropString('edge', True, 'left|right|top|bottom'),
+                        PropFloat('position', True, (0, 1)),
+                    ]),
+                ], conditional_props=NOT_WL),
             ])
         ]),
         NodeDesc('schema', False, [

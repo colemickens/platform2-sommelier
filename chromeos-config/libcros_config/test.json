@@ -23,6 +23,12 @@
           "present": "probe", 
           "probe-regex": "some-prob-regex"
         }, 
+        "ui": {
+          "power-button": {
+            "edge": "left", 
+            "position": "0.3"
+          }
+        }, 
         "wallpaper": "some"
       }, 
       {
@@ -45,6 +51,12 @@
         "name": "some", 
         "touch": {
           "present": "no"
+        }, 
+        "ui": {
+          "power-button": {
+            "edge": "left", 
+            "position": "0.3"
+          }
         }, 
         "wallpaper": "some"
       }, 
@@ -83,6 +95,12 @@
           "present": "yes", 
           "probe-regex": "some-prob-regex"
         }, 
+        "ui": {
+          "power-button": {
+            "edge": "left", 
+            "position": "0.3"
+          }
+        }, 
         "wallpaper": "wallpaper-wl1"
       }, 
       {
@@ -100,6 +118,12 @@
         "name": "whitelabel", 
         "touch": {
           "present": "no"
+        }, 
+        "ui": {
+          "power-button": {
+            "edge": "left", 
+            "position": "0.3"
+          }
         }, 
         "wallpaper": "wallpaper-wl1"
       }, 
@@ -120,6 +144,12 @@
           "present": "yes", 
           "probe-regex": "some-prob-regex"
         }, 
+        "ui": {
+          "power-button": {
+            "edge": "left", 
+            "position": "0.3"
+          }
+        }, 
         "wallpaper": "wallpaper-wl2"
       }, 
       {
@@ -137,6 +167,12 @@
         "name": "whitelabel", 
         "touch": {
           "present": "no"
+        }, 
+        "ui": {
+          "power-button": {
+            "edge": "left", 
+            "position": "0.3"
+          }
         }, 
         "wallpaper": "wallpaper-wl2"
       }

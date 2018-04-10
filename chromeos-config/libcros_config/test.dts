@@ -137,6 +137,12 @@
 				version = "some-other-version";
 			};
 		};
+		ui {
+			power-button {
+				edge = "left";
+				position = "0.3";
+			};
+		};
 	};
 	another: another {
 		string-list = "default", "more";
