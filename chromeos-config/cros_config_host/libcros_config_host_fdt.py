@@ -510,7 +510,7 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       prop = 'hw-features'
       arc = self.PathNode('/arc')
       target_dir = self.cros_config.validator.GetModelTargetDir('/arc', prop)
-      if arc:
+      if arc and prop in arc.properties:
         files['base'] = BaseFile(
             arc.properties[prop].value,
             os.path.join(target_dir, arc.properties[prop].value))
