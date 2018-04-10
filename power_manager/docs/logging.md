@@ -87,7 +87,7 @@ date/time and file/line prefixes omitted):
     activity").
 
 *   `Updated settings: dim=0s screen_off=0s lock=0s idle_warn=0s idle=10m
-    (no-op) lid_closed=suspend use_audio=1 use_video=1`
+    (no-op) lid_closed=suspend use_audio=1 use_video=1 wake_locks=screen`
 
     This line describes the actual settings that powerd is currently using.
     These are based on the external policy described above, but also take into

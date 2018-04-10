@@ -283,6 +283,10 @@ class StateController : public PrefsObserver {
   // |pref_*| and then applies externally-provided settings from |policy_|.
   void UpdateSettingsAndState();
 
+  // Logs the current settings (as updated by UpdateSettingsAndState()) to aid
+  // in debugging.
+  void LogSettings();
+
   // Instructs |delegate_| to perform |action| for |reason|.
   void PerformAction(Action action, ActionReason reason);
 

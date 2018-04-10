@@ -8,11 +8,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "power_manager/common/clock.h"
@@ -852,6 +854,25 @@ void StateController::UpdateSettingsAndState() {
                          delays_.idle_warning != base::TimeDelta() &&
                          delays_.idle != old_delays.idle;
 
+  LogSettings();
+
+  if (delays_ != old_delays)
+    delegate_->EmitInactivityDelaysChanged(GetInactivityDelays());
+
+  UpdateState();
+}
+
+void StateController::LogSettings() {
+  // TODO(derat): Switch to base::StringPiece once we have libchrome >= r452432.
+  std::vector<std::string> wake_locks;
+  wake_locks.reserve(3);
+  if (screen_wake_lock_->active())
+    wake_locks.emplace_back("screen");
+  if (dim_wake_lock_->active())
+    wake_locks.emplace_back("dim");
+  if (system_wake_lock_->active())
+    wake_locks.emplace_back("system");
+
   LOG(INFO) << "Updated settings:"
             << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
             << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
@@ -861,22 +882,13 @@ void StateController::UpdateSettingsAndState() {
             << ActionToString(idle_action_) << ")"
             << " lid_closed=" << ActionToString(lid_closed_action_)
             << " use_audio=" << use_audio_activity_
-            << " use_video=" << use_video_activity_;
-  if (screen_wake_lock_->active() || dim_wake_lock_->active() ||
-      system_wake_lock_->active()) {
-    LOG(INFO) << "Wake locks:" << (screen_wake_lock_->active() ? " screen" : "")
-              << (dim_wake_lock_->active() ? " dim" : "")
-              << (system_wake_lock_->active() ? " system" : "");
-  }
+            << " use_video=" << use_video_activity_
+            << " wake_locks=" << base::JoinString(wake_locks, ",");
+
   if (wait_for_initial_user_activity_) {
     LOG(INFO) << "Deferring inactivity-triggered actions until user activity "
               << "is observed each time a session starts";
   }
-
-  if (delays_ != old_delays)
-    delegate_->EmitInactivityDelaysChanged(GetInactivityDelays());
-
-  UpdateState();
 }
 
 void StateController::PerformAction(Action action, ActionReason reason) {
