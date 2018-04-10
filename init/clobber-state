@@ -60,6 +60,12 @@ redirect_log_stop() {
 preserve_files() {
   # Preserve these files in safe mode. (Please request a privacy review before
   # adding files.)
+  #
+  # - unencrypted/preserve/update_engine/prefs/rollback-happened: Contains a
+  #   boolean value indicating whether a rollback has happened since the last
+  #   update check where device policy was available. Needed to avoid forced
+  #   updates after rollbacks (device policy is not yet loaded at this time).
+  #
   # TODO(tnagel): Drop install_attributes.pb after AUE of the last remaining
   # boards that don't support programmatic TPM reset (lumpy and stumpy).
   if [ "$SAFE_WIPE" = "safe" ]; then
@@ -68,6 +74,7 @@ preserve_files() {
       unencrypted/preserve/local_tpm_data
       unencrypted/preserve/powerwash_count
       unencrypted/preserve/tpm_firmware_update_request
+      unencrypted/preserve/update_engine/prefs/rollback-happened
       unencrypted/preserve/update_engine/prefs/rollback-version
       home/.shadow/install_attributes.pb
     "
