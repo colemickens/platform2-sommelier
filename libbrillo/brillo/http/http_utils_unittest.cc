@@ -69,13 +69,14 @@ TEST(HttpUtils, SendRequestAsync_BinaryData) {
   // Test binary data round-tripping.
   std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
   auto success_callback =
-      [&custom_data](RequestID /* id */,
-                     std::unique_ptr<http::Response> response) {
+      base::Bind([](const std::vector<uint8_t>& custom_data,
+                    RequestID /* id */,
+                    std::unique_ptr<http::Response> response) {
     EXPECT_TRUE(response->IsSuccessful());
     EXPECT_EQ(brillo::mime::application::kOctet_stream,
               response->GetContentType());
     EXPECT_EQ(custom_data, response->ExtractData());
-  };
+  }, custom_data);
   auto error_callback = [](RequestID /* id */, const Error* /* error */) {
     FAIL() << "This callback shouldn't have been called";
   };
@@ -86,7 +87,7 @@ TEST(HttpUtils, SendRequestAsync_BinaryData) {
                     brillo::mime::application::kOctet_stream,
                     {},
                     transport,
-                    base::Bind(success_callback),
+                    success_callback,
                     base::Bind(error_callback));
 }
 
@@ -300,20 +301,22 @@ TEST(HttpUtils, PostBinary) {
 
 TEST(HttpUtils, PostText) {
   std::string fake_data = "Some data";
-  auto PostHandler = [fake_data](const fake::ServerRequest& request,
-                                 fake::ServerResponse* response) {
+  auto post_handler = base::Bind([](const std::string& data,
+                                    const fake::ServerRequest& request,
+                                    fake::ServerResponse* response) {
     EXPECT_EQ(request_type::kPost, request.GetMethod());
-    EXPECT_EQ(fake_data.size(),
+    EXPECT_EQ(data.size(),
               std::stoul(request.GetHeader(request_header::kContentLength)));
     EXPECT_EQ(brillo::mime::text::kPlain,
               request.GetHeader(request_header::kContentType));
     response->ReplyText(status_code::Ok,
                         request.GetDataAsString(),
                         brillo::mime::text::kPlain);
-  };
+  }, fake_data);
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(PostHandler));
+  transport->AddHandler(
+      kFakeUrl, request_type::kPost, base::Bind(post_handler));
 
   auto response = http::PostTextAndBlock(kFakeUrl,
                                          fake_data,

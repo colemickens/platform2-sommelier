@@ -235,12 +235,13 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
 
   // Success/error callback needed to report the result of an async operation.
   int success_call_count = 0;
-  auto success_callback = [&success_call_count, &run_loop](
+  auto success_callback = base::Bind([](
+      int* success_call_count, const base::Closure& quit_closure,
       RequestID /* request_id */, std::unique_ptr<http::Response> /* resp */) {
     base::MessageLoop::current()->task_runner()->PostTask(
-        FROM_HERE, run_loop.QuitClosure());
-    success_call_count++;
-  };
+        FROM_HERE, quit_closure);
+    (*success_call_count)++;
+  }, &success_call_count, run_loop.QuitClosure());
 
   auto error_callback = [](RequestID /* request_id */,
                            const Error* /* error */) {
@@ -265,7 +266,7 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
       .WillOnce(Return(CURLM_OK));
 
   EXPECT_EQ(1, transport_->StartAsyncTransfer(connection.get(),
-                                              base::Bind(success_callback),
+                                              success_callback,
                                               base::Bind(error_callback)));
   EXPECT_EQ(0, success_call_count);
 

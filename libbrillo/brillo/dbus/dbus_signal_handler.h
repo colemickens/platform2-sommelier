@@ -5,6 +5,7 @@
 #ifndef LIBBRILLO_BRILLO_DBUS_DBUS_SIGNAL_HANDLER_H_
 #define LIBBRILLO_BRILLO_DBUS_DBUS_SIGNAL_HANDLER_H_
 
+#include <functional>
 #include <string>
 
 #include <brillo/bind_lambda.h>
@@ -49,17 +50,18 @@ void ConnectToSignal(
   // from |signal| message buffer and redirects the call to
   // |signal_callback_wrapper| which, in turn, would call the user-provided
   // |signal_callback|.
-  auto dbus_signal_callback = [signal_callback_wrapper](dbus::Signal* signal) {
+  auto dbus_signal_callback = [](std::function<void(const Args&...)> callback,
+                                 dbus::Signal* signal) {
     dbus::MessageReader reader(signal);
-    DBusParamReader<false, Args...>::Invoke(
-        signal_callback_wrapper, &reader, nullptr);
+    DBusParamReader<false, Args...>::Invoke(callback, &reader, nullptr);
   };
 
   // Register our stub handler with D-Bus ObjectProxy.
-  object_proxy->ConnectToSignal(interface_name,
-                                signal_name,
-                                base::Bind(dbus_signal_callback),
-                                on_connected_callback);
+  object_proxy->ConnectToSignal(
+      interface_name,
+      signal_name,
+      base::Bind(dbus_signal_callback, signal_callback_wrapper),
+      on_connected_callback);
 }
 
 }  // namespace dbus_utils

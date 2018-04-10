@@ -121,11 +121,14 @@ void Transport::AddSimpleReplyHandler(const std::string& url,
                                       int status_code,
                                       const std::string& reply_text,
                                       const std::string& mime_type) {
-  auto handler = [status_code, reply_text, mime_type](
-      const ServerRequest& /* request */, ServerResponse* response) {
+  auto handler = [](
+      int status_code, const std::string& reply_text,
+      const std::string& mime_type, const ServerRequest& /* request */,
+      ServerResponse* response) {
     response->ReplyText(status_code, reply_text, mime_type);
   };
-  AddHandler(url, method, base::Bind(handler));
+  AddHandler(url, method,
+             base::Bind(handler, status_code, reply_text, mime_type));
 }
 
 Transport::HandlerCallback Transport::GetHandler(

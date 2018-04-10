@@ -42,7 +42,7 @@ TEST_F(GlibMessageLoopTest, WatchFileDescriptorTriggersWhenEmpty) {
   int called = 0;
   TaskId task_id = loop_->WatchFileDescriptor(
       FROM_HERE, fd, MessageLoop::kWatchRead, true,
-      Bind([&called] { called++; }));
+      Bind([](int* called) { (*called)++; }, &called));
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
   EXPECT_NE(0, MessageLoopRunMaxIterations(loop_.get(), 10));
   EXPECT_LT(2, called);
@@ -55,11 +55,11 @@ TEST_F(GlibMessageLoopTest, WatchFileDescriptorTriggersWhenInvalid) {
   int called = 0;
   TaskId task_id = loop_->WatchFileDescriptor(
       FROM_HERE, fd, MessageLoop::kWatchRead, true,
-      Bind([&called, fd] {
-        if (!called)
+      Bind([] (int* called, int fd) {
+        if (!*called)
           IGNORE_EINTR(close(fd));
-        called++;
-      }));
+        (*called)++;
+      }, &called, fd));
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
   EXPECT_NE(0, MessageLoopRunMaxIterations(loop_.get(), 10));
   EXPECT_LT(2, called);
