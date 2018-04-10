@@ -65,7 +65,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
 }  // namespace
 
-int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   enter_vfs_namespace();
