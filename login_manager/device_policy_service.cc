@@ -325,21 +325,40 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
     }
   }
 
+  // A enterprise-managed DeviceLoginScreenSitePerProcess policy which is set
+  // to false, or an enterprise-managed DeviceLoginScreenIsolateOrigins policy
+  // which is set to an empty string are treated as explicitly disabling the
+  // respective site isolation feature.
+  // To ensure this is the case, a flag will be added to also disable site
+  // isolation trials.
+  bool disable_site_isolation_trials = false;
+
   // Respect DeviceLoginScreenSitePerProcess policy for the sign-in screen.
   if (policy.has_device_login_screen_site_per_process()) {
     const em::DeviceLoginScreenSitePerProcessProto& proto =
         policy.device_login_screen_site_per_process();
-    if (proto.has_site_per_process())
-      policy_args.push_back("--site-per-process");
+    if (proto.has_site_per_process()) {
+      if (proto.site_per_process())
+        policy_args.push_back("--site-per-process");
+      else
+        disable_site_isolation_trials = true;
+    }
   }
 
   // Respect DeviceLoginScreenIsolateOrigins for the sign-in screen.
   if (policy.has_device_login_screen_isolate_origins()) {
     const em::DeviceLoginScreenIsolateOriginsProto& proto =
         policy.device_login_screen_isolate_origins();
-    if (proto.has_isolate_origins())
-      policy_args.push_back("--isolate-origins=" + proto.isolate_origins());
+    if (proto.has_isolate_origins()) {
+      if (!proto.isolate_origins().empty())
+        policy_args.push_back("--isolate-origins=" + proto.isolate_origins());
+      else
+        disable_site_isolation_trials = true;
+    }
   }
+
+  if (disable_site_isolation_trials)
+    policy_args.push_back("--disable-site-isolation-trials");
 
   // Add sentinel values to mark which flags were filled from policy and should
   // not apply to user sessions.
