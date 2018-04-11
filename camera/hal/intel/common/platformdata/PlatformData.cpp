@@ -46,10 +46,7 @@ bool PlatformData::mInitialized = false;
 
 CameraProfiles* PlatformData::mInstance = nullptr;
 CameraHWInfo* PlatformData::mCameraHWInfo = nullptr;
-
-#ifdef REMOTE_3A_SERVER
 Intel3AClient* PlatformData::mIntel3AClient = nullptr;
-#endif
 
 /**
  * index to this array is the camera id
@@ -173,14 +170,12 @@ void PlatformData::init()
         return;
     }
 
-#ifdef REMOTE_3A_SERVER
     mIntel3AClient = new Intel3AClient;
     if (mIntel3AClient->isInitialized() == false) {
         LOGE("@%s, mIntel3AClient->isInitialized() returns false", __FUNCTION__);
         deinit();
         return;
     }
-#endif
 
     /**
      * This number currently comes from the number if sections in the XML
@@ -252,12 +247,10 @@ void PlatformData::deinit() {
         mInstance = nullptr;
     }
 
-#ifdef REMOTE_3A_SERVER
     if (mIntel3AClient) {
         delete mIntel3AClient;
         mIntel3AClient = nullptr;
     }
-#endif
 
     mInitialized = false;
 }

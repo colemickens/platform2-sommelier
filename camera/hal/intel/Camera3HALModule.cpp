@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (C) 2013-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -133,13 +133,11 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
     LOG1("%s, camera id: %s", __FUNCTION__, name);
     camera_id = atoi(name);
 
-#ifdef REMOTE_3A_SERVER
     if (PlatformData::getIntel3AClient()
         && !PlatformData::getIntel3AClient()->isIPCFine()) {
         PlatformData::deinit();
         LOGW("@%s, remote 3A IPC fails", __FUNCTION__);
     }
-#endif
 
     if (!PlatformData::isInitialized()) {
         PlatformData::init(); // try to init the PlatformData again.

@@ -61,12 +61,7 @@ PSLCPPFLAGS = \
     -DHAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F \
     -DMACRO_KBL_AIC
 
-if !REMOTE_3A_SERVER
-PSLSRC += \
-    psl/ipu3/SkyCamLocalProxy.cpp
-else
 PSLCPPFLAGS += \
-    -DREMOTE_3A_SERVER \
     -I$(top_srcdir)/psl/ipu3/ipc
 
 PSLSRC += \
@@ -81,21 +76,8 @@ PSLSRC += \
 
 libcamerahal_la_LDFLAGS += -lrt
 libcamerahal_la_LDFLAGS += -ldl
-endif
 
-if !REMOTE_3A_SERVER
-# libmfldadvci shared libraries
-libcamerahal_la_LDFLAGS += \
-    -lia_cmc_parser \
-    -lia_aiq \
-    -lia_exc \
-    -lia_log \
-    -lia_mkn \
-    -lia_coordinate \
-    -lSkyCamAICKBL
-endif
 
-if REMOTE_3A_SERVER
 lib_LTLIBRARIES += libcam_algo.la
 libcam_algo_la_SOURCES = \
     psl/ipu3/IPU3ISPPipe.cpp \
@@ -128,8 +110,7 @@ libcam_algo_la_CPPFLAGS = \
     $(IA_IMAGING_CFLAGS) \
     -D__USE_ANDROID_METADATA__ \
     -DMACRO_KBL_AIC \
-    -DCAMERA_HAL_DEBUG \
-    -DREMOTE_3A_SERVER
+    -DCAMERA_HAL_DEBUG
 
 libcam_algo_la_CPPFLAGS += -DNAMESPACE_DECLARATION=namespace\ android\ {\namespace\ camera2
 libcam_algo_la_CPPFLAGS += -DNAMESPACE_DECLARATION_END=}
@@ -147,6 +128,3 @@ libcam_algo_la_LDFLAGS = \
     $(LIBCHROME_LIBS) \
     $(LIBMOJO_LIBS) \
     $(LIBUTILS_LIBS)
-
-endif
-

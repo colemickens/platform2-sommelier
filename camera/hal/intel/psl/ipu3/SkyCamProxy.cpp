@@ -24,12 +24,7 @@
 
 #include "LogHelper.h"
 #include "SkyCamProxy.h"
-#ifdef REMOTE_3A_SERVER
 #include "ipc/client/SkyCamMojoProxy.h"
-#else
-#include "SkyCamLocalProxy.h"
-#endif
-
 
 namespace android {
 namespace camera2 {
@@ -37,7 +32,6 @@ namespace camera2 {
 SkyCamProxy::SkyCamProxy()
 {
     // TODO Auto-generated constructor stub
-
 }
 
 SkyCamProxy::~SkyCamProxy()
@@ -52,13 +46,8 @@ std::shared_ptr<SkyCamProxy> SkyCamProxy::createProxy(int cameraId, IPU3ISPPipe 
 
     std::shared_ptr<SkyCamProxy> proxyObject = nullptr;
 
-#ifdef REMOTE_3A_SERVER
     LOGD("Use IPC implementation");
     proxyObject = std::make_shared<SkyCamMojoProxy>();
-#else
-    LOGD("Use local implementation");
-    proxyObject = std::make_shared<SkyCamLocalProxy>();
-#endif
 
     status_t ret = proxyObject->init(cameraId, pipes, numPipes, cmcParsed, aiqb, runtimeParams,
                     dumpAicParameters, testFrameworkDump);

@@ -26,9 +26,7 @@
 #include "CameraWindow.h"
 #include "GraphConfigManager.h"
 #include "Metadata.h"
-#ifdef REMOTE_3A_SERVER
 #include "ipc/client/Intel3AClient.h"
-#endif
 
 #define DEFAULT_ENTRY_CAP 256
 #define DEFAULT_DATA_CAP 2048
@@ -315,16 +313,12 @@ private:
     static CpfStore* sKnownCPFConfigurations[MAX_CPF_CACHED];
     static GcssKeyMap* mGcssKeyMap;
 
-#ifdef REMOTE_3A_SERVER
     static Intel3AClient* mIntel3AClient;
-#endif
 public:
 
     static bool isInitialized() { return mInitialized; }
 
-#ifdef REMOTE_3A_SERVER
     static Intel3AClient* getIntel3AClient() { return mIntel3AClient; }
-#endif
 
     static GcssKeyMap* getGcssKeyMap();
 
