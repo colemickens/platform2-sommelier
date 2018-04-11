@@ -783,10 +783,23 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   if (dual_role_port && line_status != kLinePowerStatusCharging)
     return;
 
+  // We don't support (or expect) multiple online line power sources, but an
+  // extra "Mains" source can be reported if a system supports both Type-C and
+  // barrel jack charging and is using the ACPI driver. Favor the non-Mains
+  // source in this case.
   if (!status->line_power_path.empty()) {
-    LOG(WARNING) << "Skipping additional line power source at " << path.value()
-                 << " (previously saw " << status->line_power_path << ")";
-    return;
+    if (port->type == PowerSupply::kMainsType)
+      return;
+
+    if (status->line_power_type != PowerSupply::kMainsType) {
+      LOG(WARNING) << "Skipping additional line power source at "
+                   << path.value() << " (previously saw "
+                   << status->line_power_path << ")";
+      return;
+    }
+
+    // If we get here, then we're replacing an already-seen Mains source with
+    // this new non-Mains source.
   }
 
   status->line_power_on = true;

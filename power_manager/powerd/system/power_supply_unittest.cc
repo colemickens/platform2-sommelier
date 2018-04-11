@@ -428,6 +428,39 @@ TEST_F(PowerSupplyTest, NonMainsLinePower) {
   EXPECT_FALSE(power_status.supports_dual_role_devices);
 }
 
+// Tests that when multiple line power sources are reported (e.g. because both
+// the PD and ACPI drivers are present), powerd favors the non-Mains source.
+TEST_F(PowerSupplyTest, MultipleLinePowerSources) {
+  const char kId1[] = "line1";
+  const base::FilePath kDir1 = temp_dir_.GetPath().Append(kId1);
+  ASSERT_TRUE(base::CreateDirectory(kDir1));
+  WriteValue(kDir1, "type", kMainsType);
+  WriteValue(kDir1, "online", "1");
+  WriteValue(kDir1, "status", kCharging);
+
+  const char kId2[] = "line2";
+  const base::FilePath kDir2 = temp_dir_.GetPath().Append(kId2);
+  ASSERT_TRUE(base::CreateDirectory(kDir2));
+  WriteValue(kDir2, "type", kUsbPdDrpType);
+  WriteValue(kDir2, "online", "1");
+  WriteValue(kDir2, "status", kCharging);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(kId2, status.external_power_source_id);
+
+  // base::FileEnumerator reads directory entries in an arbitrary but usually
+  // stable order. Swap the supplies' roles to make sure that we do the right
+  // thing when we see them in the opposite order.
+  WriteValue(kDir1, "type", kUsbPdDrpType);
+  WriteValue(kDir2, "type", kMainsType);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(kId1, status.external_power_source_id);
+}
+
 TEST_F(PowerSupplyTest, DualRolePowerSources) {
   // Delete the AC power supply and report two line power sources, both
   // initially offline.
