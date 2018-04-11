@@ -17,6 +17,8 @@
 #ifndef ATTESTATION_COMMON_TPM_UTILITY_V2_H_
 #define ATTESTATION_COMMON_TPM_UTILITY_V2_H_
 
+#include <stdint.h>
+
 #include "attestation/common/tpm_utility.h"
 
 #include <map>
@@ -82,14 +84,14 @@ class TpmUtilityV2 : public TpmUtility {
                            KeyUsage key_usage,
                            std::string* public_key,
                            std::string* private_key_blob) override;
-  bool QuotePCR(int pcr_index,
+  bool QuotePCR(uint32_t pcr_index,
                 const std::string& key_blob,
                 std::string* quoted_pcr_value,
                 std::string* quoted_data,
                 std::string* quote) override;
-  bool IsQuoteForPCR(const std::string& quote, int pcr_index) const override;
-  bool ReadPCR(int pcr_index,
-               std::string* pcr_value) const override;
+  bool IsQuoteForPCR(const std::string& quote,
+                     uint32_t pcr_index) const override;
+  bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const override;
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der) override;
   bool RemoveOwnerDependency() override;

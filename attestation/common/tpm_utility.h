@@ -17,6 +17,8 @@
 #ifndef ATTESTATION_COMMON_TPM_UTILITY_H_
 #define ATTESTATION_COMMON_TPM_UTILITY_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include "attestation/common/interface.pb.h"
@@ -133,7 +135,7 @@ class TpmUtility {
   //   |quoted_pcr_value| - The value of the register at the time it was quoted.
   //   |quoted_data| - The exact serialized data that was signed.
   //   |quote| - The signature.
-  virtual bool QuotePCR(int pcr_index,
+  virtual bool QuotePCR(uint32_t pcr_index,
                         const std::string& key_blob,
                         std::string* quoted_pcr_value,
                         std::string* quoted_data,
@@ -141,12 +143,12 @@ class TpmUtility {
 
   // Checks if the provided |quote| is a valid quote for a single PCR specified
   // by |pcr_index|.
-  virtual bool IsQuoteForPCR(const std::string& quote, int pcr_index) const = 0;
+  virtual bool IsQuoteForPCR(const std::string& quote,
+                             uint32_t pcr_index) const = 0;
 
   // Reads a PCR specified by |pcr_index|. On success returns true and
   // populates |_pcr_value|.
-  virtual bool ReadPCR(int pcr_index,
-                       std::string* pcr_value) const = 0;
+  virtual bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const = 0;
 
   // Convert a |tpm_public_key_object|, that is, a serialized TPM_PUBKEY for
   // TPM 1.2 or serialized TPMT_PUBLIC for TPM 2.0, to a DER encoded PKCS #1

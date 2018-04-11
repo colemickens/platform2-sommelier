@@ -501,7 +501,7 @@ bool TpmUtilityV1::CreateRestrictedKey(KeyType key_type,
   return false;
 }
 
-bool TpmUtilityV1::QuotePCR(int pcr_index,
+bool TpmUtilityV1::QuotePCR(uint32_t pcr_index,
                             const std::string& key_blob,
                             std::string* quoted_pcr_value,
                             std::string* quoted_data,
@@ -511,13 +511,12 @@ bool TpmUtilityV1::QuotePCR(int pcr_index,
 }
 
 bool TpmUtilityV1::IsQuoteForPCR(const std::string& quote,
-                                 int pcr_index) const {
+                                 uint32_t pcr_index) const {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
-bool TpmUtilityV1::ReadPCR(int pcr_index,
-                           std::string* pcr_value) const {
+bool TpmUtilityV1::ReadPCR(uint32_t pcr_index, std::string* pcr_value) const {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }

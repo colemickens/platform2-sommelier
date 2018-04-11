@@ -629,7 +629,7 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
   return true;
 }
 
-bool TpmUtilityV2::QuotePCR(int pcr_index,
+bool TpmUtilityV2::QuotePCR(uint32_t pcr_index,
                             const std::string& key_blob,
                             std::string* quoted_pcr_value,
                             std::string* quoted_data,
@@ -690,7 +690,7 @@ bool TpmUtilityV2::QuotePCR(int pcr_index,
 }
 
 bool TpmUtilityV2::IsQuoteForPCR(const std::string& quote,
-                                 int pcr_index) const {
+                                 uint32_t pcr_index) const {
   std::string buffer = quote;
   trunks::TPMS_ATTEST parsed_quote;
   TPM_RC result = trunks::Parse_TPMS_ATTEST(&buffer, &parsed_quote, nullptr);
@@ -713,7 +713,7 @@ bool TpmUtilityV2::IsQuoteForPCR(const std::string& quote,
     LOG(ERROR) << __func__ << ": PCR selection count=" << pcr_select->count;
     return false;
   }
-  int pcr_select_byte = pcr_index / 8;
+  uint32_t pcr_select_byte = pcr_index / 8;
   trunks::BYTE pcr_select_mask = 1 << (pcr_index % 8);
   trunks::TPMS_PCR_SELECTION* pcr_selection = pcr_select->pcr_selections;
   if (pcr_selection->sizeof_select <= pcr_select_byte) {
@@ -739,8 +739,7 @@ bool TpmUtilityV2::IsQuoteForPCR(const std::string& quote,
   return true;
 }
 
-bool TpmUtilityV2::ReadPCR(int pcr_index,
-                           std::string* pcr_value) const {
+bool TpmUtilityV2::ReadPCR(uint32_t pcr_index, std::string* pcr_value) const {
   TPM_RC result = trunks_utility_->ReadPCR(pcr_index, pcr_value);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to read PCR " << pcr_index << ": "

@@ -19,6 +19,8 @@
 
 #include "attestation/common/attestation_interface.h"
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -479,7 +481,7 @@ class AttestationService : public AttestationInterface {
   // aik_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
   bool VerifyQuoteSignature(const std::string& aik_public_key_info,
                             const Quote& quote,
-                            int pcr_index);
+                            uint32_t pcr_index);
 
   // Verifies PCR0 quote.
   // aik_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.

@@ -1496,7 +1496,7 @@ bool AttestationService::VerifyIdentityBinding(
 bool AttestationService::VerifyQuoteSignature(
     const std::string& aik_public_key_info,
     const Quote& quote,
-    int pcr_index) {
+    uint32_t pcr_index) {
   if (!crypto_utility_->VerifySignature(aik_public_key_info,
                                         quote.quoted_data(),
                                         quote.quote())) {

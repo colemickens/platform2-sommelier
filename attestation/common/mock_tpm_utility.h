@@ -19,6 +19,8 @@
 
 #include "attestation/common/tpm_utility.h"
 
+#include <stdint.h>
+
 #include <string>
 
 #include <gmock/gmock.h>
@@ -78,13 +80,14 @@ class MockTpmUtility : public TpmUtility {
                     KeyUsage,
                     std::string*,
                     std::string*));
-  MOCK_METHOD5(QuotePCR, bool(int,
-                        const std::string&,
-                        std::string*,
-                        std::string*,
-                        std::string*));
-  MOCK_CONST_METHOD2(IsQuoteForPCR, bool(const std::string&, int));
-  MOCK_CONST_METHOD2(ReadPCR, bool(int, std::string*));
+  MOCK_METHOD5(QuotePCR,
+               bool(uint32_t,
+                    const std::string&,
+                    std::string*,
+                    std::string*,
+                    std::string*));
+  MOCK_CONST_METHOD2(IsQuoteForPCR, bool(const std::string&, uint32_t));
+  MOCK_CONST_METHOD2(ReadPCR, bool(uint32_t, std::string*));
   MOCK_METHOD2(GetRSAPublicKeyFromTpmPublicKey,
                bool(const std::string&, std::string*));
   MOCK_METHOD0(RemoveOwnerDependency, bool());
