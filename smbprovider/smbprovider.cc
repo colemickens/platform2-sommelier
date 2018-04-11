@@ -68,6 +68,7 @@ void SmbProvider::RegisterAsync(
 }
 
 void SmbProvider::Mount(const ProtoBlob& options_blob,
+                        const base::ScopedFD& password_fd,
                         int32_t* error_code,
                         int32_t* mount_id) {
   DCHECK(error_code);

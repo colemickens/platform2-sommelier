@@ -52,6 +52,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
   void Mount(const ProtoBlob& options_blob,
+             const base::ScopedFD& password_fd,
              int32_t* error_code,
              int32_t* mount_id) override;
 
