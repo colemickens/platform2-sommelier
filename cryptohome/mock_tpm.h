@@ -7,6 +7,8 @@
 
 #include "cryptohome/tpm.h"
 
+#include <stdint.h>
+
 #include <set>
 
 #include <base/logging.h>
@@ -65,12 +67,13 @@ class MockTpm : public Tpm {
                                   brillo::SecureBlob*,
                                   brillo::SecureBlob*,
                                   brillo::SecureBlob*));
-  MOCK_METHOD6(QuotePCR, bool(int,
-                              const brillo::SecureBlob&,
-                              const brillo::SecureBlob&,
-                              brillo::SecureBlob*,
-                              brillo::SecureBlob*,
-                              brillo::SecureBlob*));
+  MOCK_METHOD6(QuotePCR,
+               bool(uint32_t,
+                    const brillo::SecureBlob&,
+                    const brillo::SecureBlob&,
+                    brillo::SecureBlob*,
+                    brillo::SecureBlob*,
+                    brillo::SecureBlob*));
   MOCK_METHOD2(SealToPCR0, bool(const brillo::Blob&, brillo::Blob*));
   MOCK_METHOD2(Unseal, bool(const brillo::Blob&, brillo::Blob*));
   MOCK_METHOD7(CreateCertifiedKey, bool(const brillo::SecureBlob&,
@@ -92,21 +95,24 @@ class MockTpm : public Tpm {
                                       const brillo::SecureBlob&,
                                       const brillo::SecureBlob&,
                                       brillo::SecureBlob*));
-  MOCK_METHOD4(Sign, bool(const brillo::SecureBlob&,
-                          const brillo::SecureBlob&,
-                          int,
-                          brillo::SecureBlob*));
-  MOCK_METHOD5(CreatePCRBoundKey, bool(int,
-                                       const brillo::SecureBlob&,
-                                       brillo::SecureBlob*,
-                                       brillo::SecureBlob*,
-                                       brillo::SecureBlob*));
-  MOCK_METHOD4(VerifyPCRBoundKey, bool(int,
-                                       const brillo::SecureBlob&,
-                                       const brillo::SecureBlob&,
-                                       const brillo::SecureBlob&));
-  MOCK_METHOD2(ExtendPCR, bool(int, const brillo::SecureBlob&));
-  MOCK_METHOD2(ReadPCR, bool(int, brillo::SecureBlob*));
+  MOCK_METHOD4(Sign,
+               bool(const brillo::SecureBlob&,
+                    const brillo::SecureBlob&,
+                    uint32_t,
+                    brillo::SecureBlob*));
+  MOCK_METHOD5(CreatePCRBoundKey,
+               bool(uint32_t,
+                    const brillo::SecureBlob&,
+                    brillo::SecureBlob*,
+                    brillo::SecureBlob*,
+                    brillo::SecureBlob*));
+  MOCK_METHOD4(VerifyPCRBoundKey,
+               bool(uint32_t,
+                    const brillo::SecureBlob&,
+                    const brillo::SecureBlob&,
+                    const brillo::SecureBlob&));
+  MOCK_METHOD2(ExtendPCR, bool(uint32_t, const brillo::SecureBlob&));
+  MOCK_METHOD2(ReadPCR, bool(uint32_t, brillo::SecureBlob*));
   MOCK_METHOD0(IsEndorsementKeyAvailable, bool());
   MOCK_METHOD0(CreateEndorsementKey, bool());
   MOCK_METHOD2(TakeOwnership, bool(int, const brillo::SecureBlob&));
@@ -156,17 +162,17 @@ class MockTpm : public Tpm {
     return true;
   }
 
-  bool FakeExtendPCR(int index, const brillo::SecureBlob& value) {
+  bool FakeExtendPCR(uint32_t index, const brillo::SecureBlob& value) {
     extended_pcrs_.insert(index);
     return true;
   }
 
-  bool FakeReadPCR(int index, brillo::SecureBlob* value) {
+  bool FakeReadPCR(uint32_t index, brillo::SecureBlob* value) {
     value->assign(20, extended_pcrs_.count(index) ? 0xAA : 0);
     return true;
   }
 
-  std::set<int> extended_pcrs_;
+  std::set<uint32_t> extended_pcrs_;
 };
 }  // namespace cryptohome
 

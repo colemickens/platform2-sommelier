@@ -548,7 +548,7 @@ bool Tpm2Impl::MakeIdentity(SecureBlob* identity_public_key_der,
   return false;
 }
 
-bool Tpm2Impl::QuotePCR(int pcr_index,
+bool Tpm2Impl::QuotePCR(uint32_t pcr_index,
                         const SecureBlob& identity_key_blob,
                         const SecureBlob& external_data,
                         SecureBlob* pcr_value,
@@ -681,7 +681,7 @@ bool Tpm2Impl::TestTpmAuth(const SecureBlob& owner_password) {
 
 bool Tpm2Impl::Sign(const SecureBlob& key_blob,
                     const SecureBlob& input,
-                    int bound_pcr_index,
+                    uint32_t bound_pcr_index,
                     SecureBlob* signature) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -691,7 +691,7 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   std::unique_ptr<trunks::PolicySession> policy_session;
   std::unique_ptr<trunks::HmacSession> hmac_session;
   TPM_RC result;
-  if (bound_pcr_index >= 0) {
+  if (bound_pcr_index != kNotBoundToPCR) {
     policy_session = trunks->factory->GetPolicySession();
     result = policy_session->StartUnboundSession(false);
     if (result != TPM_RC_SUCCESS) {
@@ -733,7 +733,7 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   return true;
 }
 
-bool Tpm2Impl::CreatePCRBoundKey(int pcr_index,
+bool Tpm2Impl::CreatePCRBoundKey(uint32_t pcr_index,
                                  const SecureBlob& pcr_value,
                                  SecureBlob* key_blob,
                                  SecureBlob* public_key_der,
@@ -785,7 +785,7 @@ bool Tpm2Impl::CreatePCRBoundKey(int pcr_index,
   return true;
 }
 
-bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
+bool Tpm2Impl::VerifyPCRBoundKey(uint32_t pcr_index,
                                  const SecureBlob& pcr_value,
                                  const SecureBlob& key_blob,
                                  const SecureBlob& creation_blob) {
@@ -883,7 +883,7 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
   return true;
 }
 
-bool Tpm2Impl::ExtendPCR(int pcr_index, const SecureBlob& extension) {
+bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const SecureBlob& extension) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
     return false;
@@ -899,7 +899,7 @@ bool Tpm2Impl::ExtendPCR(int pcr_index, const SecureBlob& extension) {
   return true;
 }
 
-bool Tpm2Impl::ReadPCR(int pcr_index, SecureBlob* pcr_value) {
+bool Tpm2Impl::ReadPCR(uint32_t pcr_index, SecureBlob* pcr_value) {
   CHECK(pcr_value);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {

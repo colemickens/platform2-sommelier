@@ -1473,7 +1473,7 @@ bool Attestation::VerifyPCR1Quote(const SecureBlob& aik_public_key,
 
 bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
                                        const Quote& quote,
-                                       int pcr_index) {
+                                       uint32_t pcr_index) {
   if (!VerifySignature(aik_public_key,
                        SecureBlob(quote.quoted_data()),
                        SecureBlob(quote.quote()))) {

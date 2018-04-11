@@ -6,6 +6,8 @@
 
 #include "cryptohome/tpm2_impl.h"
 
+#include <stdint.h>
+
 #include <iterator>
 #include <map>
 #include <set>
@@ -480,7 +482,7 @@ TEST_F(Tpm2Test, UnsealFailure) {
 }
 
 TEST_F(Tpm2Test, SignPolicySuccess) {
-  int pcr_index = 5;
+  uint32_t pcr_index = 5;
   EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_index, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_policy_session_, GetDelegate())
@@ -504,8 +506,8 @@ TEST_F(Tpm2Test, SignHmacSuccess) {
       .WillOnce(DoAll(SetArgPointee<6>(tpm_signature), Return(TPM_RC_SUCCESS)));
 
   SecureBlob signature;
-  EXPECT_TRUE(
-      tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"), -1, &signature));
+  EXPECT_TRUE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"),
+                         kNotBoundToPCR, &signature));
   EXPECT_EQ(signature.to_string(), tpm_signature);
 }
 
@@ -514,8 +516,8 @@ TEST_F(Tpm2Test, SignLoadFailure) {
       .WillRepeatedly(Return(TPM_RC_FAILURE));
 
   SecureBlob signature;
-  EXPECT_FALSE(
-      tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"), -1, &signature));
+  EXPECT_FALSE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"),
+                          kNotBoundToPCR, &signature));
 }
 
 TEST_F(Tpm2Test, SignFailure) {
@@ -526,12 +528,12 @@ TEST_F(Tpm2Test, SignFailure) {
       .WillOnce(Return(TPM_RC_FAILURE));
 
   SecureBlob signature;
-  EXPECT_FALSE(
-      tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"), -1, &signature));
+  EXPECT_FALSE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"),
+                          kNotBoundToPCR, &signature));
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -545,7 +547,7 @@ TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -556,7 +558,7 @@ TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyFailure) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -567,7 +569,7 @@ TEST_F(Tpm2Test, CreatePCRBoundKeyFailure) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -601,7 +603,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationBlob) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -612,7 +614,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationBlob) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationDataCount) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -626,7 +628,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationDataCount) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRBank) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -643,7 +645,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRBank) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCR) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -661,7 +663,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCR) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -681,7 +683,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -704,7 +706,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -727,7 +729,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -750,7 +752,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -773,7 +775,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -803,7 +805,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
-  int index = 2;
+  uint32_t index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
@@ -835,7 +837,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
 }
 
 TEST_F(Tpm2Test, ExtendPCRSuccess) {
-  int index = 5;
+  uint32_t index = 5;
   SecureBlob extension("extension");
   std::string pcr_value;
   EXPECT_CALL(mock_tpm_utility_, ExtendPCR(index, _, _))
@@ -845,7 +847,7 @@ TEST_F(Tpm2Test, ExtendPCRSuccess) {
 }
 
 TEST_F(Tpm2Test, ExtendPCRFailure) {
-  int index = 5;
+  uint32_t index = 5;
   SecureBlob extension("extension");
   EXPECT_CALL(mock_tpm_utility_, ExtendPCR(index, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
@@ -853,7 +855,7 @@ TEST_F(Tpm2Test, ExtendPCRFailure) {
 }
 
 TEST_F(Tpm2Test, ReadPCRSuccess) {
-  int index = 5;
+  uint32_t index = 5;
   SecureBlob pcr_value;
   std::string pcr_digest("digest");
   EXPECT_CALL(mock_tpm_utility_, ReadPCR(index, _))
@@ -863,7 +865,7 @@ TEST_F(Tpm2Test, ReadPCRSuccess) {
 }
 
 TEST_F(Tpm2Test, ReadPCRFailure) {
-  int index = 5;
+  uint32_t index = 5;
   SecureBlob pcr_value;
   EXPECT_CALL(mock_tpm_utility_, ReadPCR(index, _))
       .WillOnce(Return(TPM_RC_FAILURE));

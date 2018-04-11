@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_STUB_TPM_H_
 #define CRYPTOHOME_STUB_TPM_H_
 
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -83,12 +84,14 @@ class StubTpm : public Tpm {
                     SecureBlob* platform_credential,
                     SecureBlob* conformance_credential) override
     { return false; }
-  bool QuotePCR(int pcr_index,
+  bool QuotePCR(uint32_t pcr_index,
                 const SecureBlob& identity_key_blob,
                 const SecureBlob& external_data,
                 SecureBlob* pcr_value,
                 SecureBlob* quoted_data,
-                SecureBlob* quote) override { return false; }
+                SecureBlob* quote) override {
+    return false;
+  }
   bool SealToPCR0(const brillo::Blob& value,
                   brillo::Blob* sealed_value) override { return false; }
   bool Unseal(const brillo::Blob& sealed_value,
@@ -117,21 +120,29 @@ class StubTpm : public Tpm {
     { return false; }
   bool Sign(const SecureBlob& key_blob,
             const SecureBlob& der_encoded_input,
-            int bound_pcr_index,
-            SecureBlob* signature) override { return false; }
-  bool CreatePCRBoundKey(int pcr_index,
+            uint32_t bound_pcr_index,
+            SecureBlob* signature) override {
+    return false;
+  }
+  bool CreatePCRBoundKey(uint32_t pcr_index,
                          const SecureBlob& pcr_value,
                          SecureBlob* key_blob,
                          SecureBlob* public_key_der,
-                         SecureBlob* creation_blob) override { return false; }
-  bool VerifyPCRBoundKey(int pcr_index,
+                         SecureBlob* creation_blob) override {
+    return false;
+  }
+  bool VerifyPCRBoundKey(uint32_t pcr_index,
                          const SecureBlob& pcr_value,
                          const SecureBlob& key_blob,
-                         const SecureBlob& creation_blob) override
-    { return false; }
-  bool ExtendPCR(int pcr_index, const SecureBlob& extension) override
-    { return false; }
-  bool ReadPCR(int pcr_index, SecureBlob* pcr_value) override { return false; }
+                         const SecureBlob& creation_blob) override {
+    return false;
+  }
+  bool ExtendPCR(uint32_t pcr_index, const SecureBlob& extension) override {
+    return false;
+  }
+  bool ReadPCR(uint32_t pcr_index, SecureBlob* pcr_value) override {
+    return false;
+  }
   bool IsEndorsementKeyAvailable() override { return false; }
   bool CreateEndorsementKey() override { return false; }
   bool TakeOwnership(int max_timeout_tries,

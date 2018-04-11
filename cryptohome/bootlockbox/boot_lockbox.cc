@@ -4,6 +4,7 @@
 
 #include "cryptohome/bootlockbox/boot_lockbox.h"
 
+#include <stdint.h>
 #include <sys/types.h>
 
 #include <memory>
@@ -24,7 +25,7 @@ using brillo::SecureBlob;
 
 namespace {
 
-const int kPCRIndex = 15;
+const uint32_t kPCRIndex = 15;
 
 // This is an arbitrary value, our only goal is for the PCR to be non-zero.
 const char kPCRExtension[] = "CROS_PCR15_845A4A757B94";

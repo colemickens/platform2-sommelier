@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_ATTESTATION_H_
 #define CRYPTOHOME_ATTESTATION_H_
 
+#include <stdint.h>
 #include <sys/types.h>
 
 #include <map>
@@ -585,7 +586,7 @@ class Attestation : public base::PlatformThread::Delegate,
   // Verifies that a quote signature is valid and matches the quoted data.
   bool VerifyQuoteSignature(const brillo::SecureBlob& aik_public_key,
                             const Quote& quote,
-                            int pcr_index);
+                            uint32_t pcr_index);
 
   // Verifies a certified key.
   bool VerifyCertifiedKey(const brillo::SecureBlob& aik_public_key,

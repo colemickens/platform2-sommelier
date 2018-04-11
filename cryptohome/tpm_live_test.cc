@@ -97,7 +97,7 @@ bool TpmLiveTest::RunLiveTests(SecureBlob owner_password) {
 
 bool TpmLiveTest::PCRKeyTest() {
   LOG(INFO) << "PCRKeyTest started";
-  int index = 5;
+  uint32_t index = 5;
   SecureBlob pcr_data;
   if (!tpm_->ReadPCR(index, &pcr_data)) {
     LOG(ERROR) << "Error reading pcr value from TPM.";

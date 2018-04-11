@@ -114,7 +114,7 @@ const unsigned int kDefaultDiscardableWrapPasswordLength = 32;
 const char* kWellKnownSrkTmp = "1234567890";
 const unsigned int kTpmConnectRetries = 10;
 const unsigned int kTpmConnectIntervalMs = 100;
-const unsigned int kTpmBootPCR = 0;
+const uint32_t kTpmBootPCR = 0;
 const unsigned int kTpmPCRLocality = 1;
 const int kDelegateSecretSize = 20;
 const size_t kPCRExtensionSize = 20;  // SHA-1 digest size.
@@ -1870,7 +1870,7 @@ bool TpmImpl::MakeIdentity(SecureBlob* identity_public_key_der,
   return true;
 }
 
-bool TpmImpl::QuotePCR(int pcr_index,
+bool TpmImpl::QuotePCR(uint32_t pcr_index,
                        const SecureBlob& identity_key_blob,
                        const SecureBlob& external_data,
                        SecureBlob* pcr_value,
@@ -2396,7 +2396,7 @@ bool TpmImpl::ActivateIdentity(const SecureBlob& delegate_blob,
 
 bool TpmImpl::Sign(const SecureBlob& key_blob,
                    const SecureBlob& input,
-                   int bound_pcr_index,
+                   uint32_t bound_pcr_index,
                    SecureBlob* signature) {
   CHECK(signature);
   ScopedTssContext context_handle;
@@ -2468,7 +2468,7 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   return true;
 }
 
-bool TpmImpl::CreatePCRBoundKey(int pcr_index,
+bool TpmImpl::CreatePCRBoundKey(uint32_t pcr_index,
                                 const brillo::SecureBlob& pcr_value,
                                 brillo::SecureBlob* key_blob,
                                 brillo::SecureBlob* public_key_der,
@@ -2559,7 +2559,7 @@ bool TpmImpl::CreatePCRBoundKey(int pcr_index,
   return true;
 }
 
-bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
+bool TpmImpl::VerifyPCRBoundKey(uint32_t pcr_index,
                                 const brillo::SecureBlob& pcr_value,
                                 const brillo::SecureBlob& key_blob,
                                 const brillo::SecureBlob& creation_blob) {
@@ -2662,7 +2662,8 @@ bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
   return true;
 }
 
-bool TpmImpl::ExtendPCR(int pcr_index, const brillo::SecureBlob& extension) {
+bool TpmImpl::ExtendPCR(uint32_t pcr_index,
+                        const brillo::SecureBlob& extension) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2688,7 +2689,7 @@ bool TpmImpl::ExtendPCR(int pcr_index, const brillo::SecureBlob& extension) {
   return true;
 }
 
-bool TpmImpl::ReadPCR(int pcr_index, brillo::SecureBlob* pcr_value) {
+bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::SecureBlob* pcr_value) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {

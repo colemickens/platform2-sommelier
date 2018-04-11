@@ -10,6 +10,8 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
+#include <stdint.h>
+
 #include <memory>
 #include <set>
 
@@ -71,7 +73,7 @@ class TpmImpl : public Tpm {
                     brillo::SecureBlob* endorsement_credential,
                     brillo::SecureBlob* platform_credential,
                     brillo::SecureBlob* conformance_credential) override;
-  bool QuotePCR(int pcr_index,
+  bool QuotePCR(uint32_t pcr_index,
                 const brillo::SecureBlob& identity_key_blob,
                 const brillo::SecureBlob& external_data,
                 brillo::SecureBlob* pcr_value,
@@ -102,19 +104,20 @@ class TpmImpl : public Tpm {
                         brillo::SecureBlob* identity_credential) override;
   bool Sign(const brillo::SecureBlob& key_blob,
             const brillo::SecureBlob& input,
-            int bound_pcr_index,
+            uint32_t bound_pcr_index,
             brillo::SecureBlob* signature) override;
-  bool CreatePCRBoundKey(int pcr_index,
+  bool CreatePCRBoundKey(uint32_t pcr_index,
                          const brillo::SecureBlob& pcr_value,
                          brillo::SecureBlob* key_blob,
                          brillo::SecureBlob* public_key_der,
                          brillo::SecureBlob* creation_blob) override;
-  bool VerifyPCRBoundKey(int pcr_index,
+  bool VerifyPCRBoundKey(uint32_t pcr_index,
                          const brillo::SecureBlob& pcr_value,
                          const brillo::SecureBlob& key_blob,
                          const brillo::SecureBlob& creation_blob) override;
-  bool ExtendPCR(int pcr_index, const brillo::SecureBlob& extension) override;
-  bool ReadPCR(int pcr_index, brillo::SecureBlob* pcr_value) override;
+  bool ExtendPCR(uint32_t pcr_index,
+                 const brillo::SecureBlob& extension) override;
+  bool ReadPCR(uint32_t pcr_index, brillo::SecureBlob* pcr_value) override;
   bool IsEndorsementKeyAvailable() override;
   bool CreateEndorsementKey() override;
   bool TakeOwnership(int max_timeout_tries,
