@@ -74,25 +74,25 @@ D-Bus methods, signals and properties have [type signatures]. When generating
 bindings, `chromeos-dbus-bindings` will map D-Bus types to C++ types like
 so:
 
-| D-Bus type signature | C++ type                      |
-| -------------------- | ----------------------------- |
-| `y`                  | `uint8_t`                     |
-| `b`                  | `bool`                        |
-| `n`                  | `int16_t`                     |
-| `q`                  | `uint16_t`                    |
-| `i`                  | `int32_t`                     |
-| `u`                  | `uint32_t`                    |
-| `x`                  | `int64_t`                     |
-| `t`                  | `uint64_t`                    |
-| `d`                  | `double`                      |
-| `s`                  | `std::string`                 |
-| `h`                  | [dbus::FileDescriptor]        |
-| `o`                  | [dbus::ObjectPath]            |
-| `v` (variant)        | [brillo::Any]                 |
-| `(TU...)`            | `std::tuple<T, U, ...>`       |
-| `aT`                 | `std::vector<T>`              |
-| `a{TU}`              | `std::map<T, U>`              |
-| `a{sv}`              | [brillo::VariantDictionary]   |
+| D-Bus type signature | C++ type                                               |
+| -------------------- | ------------------------------------------------------ |
+| `y`                  | `uint8_t`                                              |
+| `b`                  | `bool`                                                 |
+| `n`                  | `int16_t`                                              |
+| `q`                  | `uint16_t`                                             |
+| `i`                  | `int32_t`                                              |
+| `u`                  | `uint32_t`                                             |
+| `x`                  | `int64_t`                                              |
+| `t`                  | `uint64_t`                                             |
+| `d`                  | `double`                                               |
+| `s`                  | `std::string`                                          |
+| `h`                  | [brillo::dbus_utils::FileDescriptor], [base::ScopedFD] |
+| `o`                  | [dbus::ObjectPath]                                     |
+| `v` (variant)        | [brillo::Any]                                          |
+| `(TU...)`            | `std::tuple<T, U, ...>`                                |
+| `aT`                 | `std::vector<T>`                                       |
+| `a{TU}`              | `std::map<T, U>`                                       |
+| `a{sv}`              | [brillo::VariantDictionary]                            |
 
 This type mapping is also recursive, i.e. an argument of
 type `a{s(io)}` will be mapped to
@@ -308,7 +308,8 @@ client.
 [the introspection API]: https://dbus.freedesktop.org/doc/dbus-specification.html#introspection-format
 [best practices]: https://chromium.googlesource.com/chromiumos/docs/+/master/dbus_best_practices.md
 [type signatures]: https://dbus.freedesktop.org/doc/dbus-specification.html#type-system
-[dbus::FileDescriptor]: https://chromium.googlesource.com/aosp/platform/external/libchrome/+/7b88bc885b9d8dc551beab840b853a79fa06494d/dbus/file_descriptor.h
+[brillo::dbus_utils::FileDescriptor]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/master/brillo/dbus/file_descriptor.h
+[base::ScopedFD]: https://chromium.googlesource.com/aosp/platform/external/libchrome/+/master/base/files/scoped_file.h
 [dbus::ObjectPath]: https://chromium.googlesource.com/aosp/platform/external/libchrome/+/master/dbus/object_path.h
 [brillo::Any]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/master/brillo/any.h
 [brillo::VariantDictionary]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/master/brillo/variant_dictionary.h

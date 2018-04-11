@@ -106,7 +106,6 @@ class NonScalar : public DBusType {
 class SimpleNonScalar : public NonScalar {
  public:
   enum class Type {
-    kDeprecatedFileDescriptor,
     kObjectPath,
     kString,
     kVariant,
@@ -115,17 +114,10 @@ class SimpleNonScalar : public NonScalar {
 
   explicit SimpleNonScalar(Type type) : type_(type) {}
 
-  bool IsValidPropertyType() const override {
-    // FDs might be lurking inside variants, but they've already been
-    // copied into a brillo::Any as the relevant type, so we can't do
-    // much about that.
-    return type_ != Type::kDeprecatedFileDescriptor;
-  }
+  bool IsValidPropertyType() const override { return true; }
 
   std::string GetBaseType(Direction direction) const override {
     switch (type_) {
-      case Type::kDeprecatedFileDescriptor:
-        return "dbus::FileDescriptor";
       case Type::kObjectPath:
         return "dbus::ObjectPath";
       case Type::kString:
