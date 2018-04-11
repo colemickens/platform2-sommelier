@@ -5,7 +5,7 @@
 #ifndef ML_DAEMON_H_
 #define ML_DAEMON_H_
 
-#include <brillo/daemons/daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
 
 namespace dbus {
@@ -14,7 +14,7 @@ class MethodCall;
 
 namespace ml {
 
-class Daemon : public brillo::Daemon {
+class Daemon : public brillo::DBusDaemon {
  public:
   Daemon();
   ~Daemon() override;
@@ -30,12 +30,13 @@ class Daemon : public brillo::Daemon {
   // initialization should be the last thing that happens in Daemon::OnInit().
   void InitDBus();
 
-  // Handles BootstrapMojoConnection D-Bus method calls.
+  // Handles org.chromium.BootstrapMojoConnection D-Bus method calls.
   void BootstrapMojoConnection(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
-  DISALLOW_COPY_AND_ASSIGN(Daemon);
+  // Must be last class member.
+  base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
 
 }  // namespace ml
