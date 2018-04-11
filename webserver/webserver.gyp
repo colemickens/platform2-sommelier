@@ -4,6 +4,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libpermission_broker-client',
       ],
     },
     'include_dirs': ['.'],
@@ -56,20 +57,6 @@
           'sources': [
             'webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.dbus-xml',
             'webservd/dbus_bindings/org.chromium.WebServer.Server.dbus-xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-        {
-          'action_name': 'generate-permission_broker-proxies',
-          'variables': {
-            'dbus_service_config': '<(platform2_root)/permission_broker/dbus_bindings/dbus-service-config.json',
-            'mock_output_file': 'include/permission_broker/dbus-mocks.h',
-            'proxy_output_file': 'include/permission_broker/dbus-proxies.h',
-            'new_fd_bindings': 1,
-            'dbus_adaptors_out_dir': '',
-          },
-          'sources': [
-            '<(platform2_root)/permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
