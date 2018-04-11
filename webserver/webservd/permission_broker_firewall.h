@@ -41,17 +41,16 @@ class PermissionBrokerFirewall : public FirewallInterface {
       const base::Callback<void(brillo::Error*)>& failure_cb) override;
 
  private:
-  void OnPermissionBrokerOnline(
-      org::chromium::PermissionBrokerProxyInterface* proxy);
+  // Callbacks to register to see when permission_broker starts or
+  // restarts.
+  void OnPermissionBrokerAvailable(bool available);
+  void OnPermissionBrokerNameOwnerChanged(const std::string& old_owner,
+                                          const std::string& new_owner);
 
-  std::unique_ptr<org::chromium::PermissionBroker::ObjectManagerProxy>
-      object_manager_;
+  std::unique_ptr<org::chromium::PermissionBrokerProxy> proxy_;
 
-  // Proxy to the firewall DBus service. Owned by the DBus bindings module.
-  org::chromium::PermissionBrokerProxyInterface* proxy_;
-
-  // Callback to use when firewall service comes online.
-  base::Closure service_online_cb_;
+  // Callback to use when firewall service starts or restarts.
+  base::Closure service_started_cb_;
 
   // File descriptors for the two ends of the pipe used for communicating with
   // remote firewall server (permission_broker), where the remote firewall

@@ -38,11 +38,13 @@ PermissionBrokerFirewall::~PermissionBrokerFirewall() {
 void PermissionBrokerFirewall::WaitForServiceAsync(
     scoped_refptr<dbus::Bus> bus,
     const base::Closure& callback) {
-  service_online_cb_ = callback;
-  object_manager_.reset(
-      new org::chromium::PermissionBroker::ObjectManagerProxy{bus});
-  object_manager_->SetPermissionBrokerAddedCallback(
-      base::Bind(&PermissionBrokerFirewall::OnPermissionBrokerOnline,
+  service_started_cb_ = callback;
+  proxy_ = std::make_unique<org::chromium::PermissionBrokerProxy>(bus);
+  proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+      base::Bind(&PermissionBrokerFirewall::OnPermissionBrokerAvailable,
+                 weak_ptr_factory_.GetWeakPtr()));
+  proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
+      base::Bind(&PermissionBrokerFirewall::OnPermissionBrokerNameOwnerChanged,
                  weak_ptr_factory_.GetWeakPtr()));
 }
 
@@ -55,10 +57,16 @@ void PermissionBrokerFirewall::PunchTcpHoleAsync(
                                     success_cb, failure_cb);
 }
 
-void PermissionBrokerFirewall::OnPermissionBrokerOnline(
-    org::chromium::PermissionBrokerProxyInterface* proxy) {
-  proxy_ = proxy;
-  service_online_cb_.Run();
+void PermissionBrokerFirewall::OnPermissionBrokerAvailable(bool available) {
+  if (available)
+    service_started_cb_.Run();
+}
+
+void PermissionBrokerFirewall::OnPermissionBrokerNameOwnerChanged(
+    const std::string& old_owner,
+    const std::string& new_owner) {
+  if (!new_owner.empty())
+    service_started_cb_.Run();
 }
 
 }  // namespace webservd
