@@ -5,6 +5,7 @@
 #include "arc/setup/arc_setup.h"
 
 #include <fcntl.h>
+#include <inttypes.h>
 #include <linux/magic.h>
 #include <sched.h>
 #include <selinux/selinux.h>
@@ -12,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -929,6 +931,16 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
   }
   LOG(INFO) << "native_bridge is \"" << native_bridge << "\"";
 
+  // Get the CLOCK_BOOTTIME offset and send it to the container as the at which
+  // the container "booted". Given that there is no way to namespace time in
+  // Linux, we need to communicate this in a userspace-only way.
+  //
+  // For the time being, the only component that uses this is bootstat. It uses
+  // it to timeshift all readings from CLOCK_BOOTTIME and be able to more
+  // accurately report the time against "Android boot".
+  struct timespec ts;
+  EXIT_IF(clock_gettime(CLOCK_BOOTTIME, &ts) != 0);
+
   // Note that we are intentionally not setting the ro.kernel.qemu property
   // since that is tied to running the Android emulator, which has a few key
   // differences:
@@ -950,11 +962,13 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       "androidboot.gateway_ipv4_address=%s "
       "androidboot.partial_boot=1 "
       "androidboot.native_bridge=%s "
-      "androidboot.chromeos_channel=%s\n",
+      "androidboot.chromeos_channel=%s "
+      "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
       is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density.c_str(),
       arc_ui_scale.c_str(), arc_container_ipv4_address.c_str(),
       arc_gateway_ipv4_address.c_str(), native_bridge.c_str(),
-      chromeos_channel.c_str());
+      chromeos_channel.c_str(),
+      ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
   // TODO(yusukes): Stop using ro.boot.partial_boot in the container and
   // remove "androidboot.partial_boot=1".
