@@ -11,6 +11,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider.h"
@@ -69,8 +70,8 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
       exit(EXIT_FAILURE);
     }
 
-    std::unique_ptr<MountManager> mount_manager =
-        std::make_unique<MountManager>();
+    auto mount_manager = std::make_unique<MountManager>(
+        std::make_unique<InMemoryCredentialStore>());
     smb_provider_ = std::make_unique<SmbProvider>(
         std::make_unique<brillo::dbus_utils::DBusObject>(
             nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath()),

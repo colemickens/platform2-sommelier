@@ -84,8 +84,13 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
     return;
   }
 
-  *mount_id = mount_manager_->AddMount(options.path());
-  *error_code = static_cast<int32_t>(ERROR_OK);
+  // Attempt to mount the path. AddMount() will return false if the path
+  // specified is already mounted.
+  bool success =
+      mount_manager_->AddMount(options.path(), options.workgroup(),
+                               options.username(), password_fd, mount_id);
+  *error_code = success ? static_cast<int32_t>(ERROR_OK)
+                        : static_cast<int32_t>(ERROR_EXISTS);
 }
 
 int32_t SmbProvider::Remount(const ProtoBlob& options_blob) {
@@ -100,8 +105,11 @@ int32_t SmbProvider::Remount(const ProtoBlob& options_blob) {
     return error_code;
   }
 
-  mount_manager_->Remount(options.path(), options.mount_id());
-  error_code = static_cast<int32_t>(ERROR_OK);
+  // Attempt to mount the path. Remount will return false if the path specified
+  // is already mounted.
+  bool success = mount_manager_->Remount(options.path(), options.mount_id());
+  error_code = success ? static_cast<int32_t>(ERROR_OK)
+                       : static_cast<int32_t>(ERROR_EXISTS);
 
   return error_code;
 }

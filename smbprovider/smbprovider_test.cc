@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "smbprovider/fake_samba_interface.h"
+#include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -151,8 +152,8 @@ class SmbProviderTest : public testing::Test {
     std::unique_ptr<FakeSambaInterface> fake_ptr =
         std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
-    std::unique_ptr<MountManager> mount_manager_ptr =
-        std::make_unique<MountManager>();
+    auto mount_manager_ptr = std::make_unique<MountManager>(
+        std::make_unique<InMemoryCredentialStore>());
     mount_manager_ = mount_manager_ptr.get();
     const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(

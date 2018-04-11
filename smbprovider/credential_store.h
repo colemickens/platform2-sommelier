@@ -11,10 +11,7 @@
 
 #include <base/files/file_util.h>
 #include <base/macros.h>
-
-namespace password_provider {
-class Password;
-}  // namespace password_provider
+#include <libpasswordprovider/password.h>
 
 namespace smbprovider {
 
