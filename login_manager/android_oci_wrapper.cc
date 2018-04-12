@@ -122,7 +122,7 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
 
   int status = -1;
   pid_t result =
-      system_utils_->Wait(pid, base::TimeDelta::FromSeconds(10), &status);
+      system_utils_->Wait(pid, base::TimeDelta::FromSeconds(30), &status);
   if (result != pid) {
     if (result)
       PLOG(ERROR) << "Failed to wait on run_oci exit";
