@@ -10,6 +10,7 @@
 
 #include <base/at_exit.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -64,7 +65,12 @@ class MetricsDaemonTest : public testing::Test {
     CreateUint64ValueFile(base::FilePath(kFakeCpuinfoMaxFreqPath), 10000000);
     CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath), 10000000);
 
-    chromeos_metrics::PersistentInteger::SetTestingMode(true);
+    CHECK(test_dir_.CreateUniqueTempDir());
+    std::string test_dir_name = test_dir_.path().MaybeAsASCII() + "/";
+    CHECK(!test_dir_name.empty());
+    PersistentInteger::SetTestingMode(test_dir_name);
+    chromeos_metrics::PersistentInteger::SetTestingMode(test_dir_name);
+
     daemon_.Init(true,
                  false,
                  &metrics_lib_,
@@ -183,6 +189,8 @@ class MetricsDaemonTest : public testing::Test {
 
   // The MetricsDaemon under test.
   MetricsDaemon daemon_;
+  // Directory for temp files.
+  base::ScopedTempDir test_dir_;
 
   // Mocks. They are strict mock so that all unexpected
   // calls are marked as failures.

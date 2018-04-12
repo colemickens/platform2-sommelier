@@ -42,13 +42,15 @@ class UploadServiceTest : public testing::Test {
 
   virtual void SetUp() {
     CHECK(dir_.CreateUniqueTempDir());
+    std::string dirname = dir_.path().MaybeAsASCII() + "/";
+    CHECK(!dirname.empty());
     upload_service_.GatherHistograms();
     upload_service_.Reset();
     sender_->Reset();
 
-    chromeos_metrics::PersistentInteger::SetTestingMode(true);
-    cache_.session_id_.reset(new chromeos_metrics::PersistentInteger(
-        dir_.GetPath().Append("session_id").value()));
+    chromeos_metrics::PersistentInteger::SetTestingMode(dirname);
+    cache_.session_id_.reset(
+        new chromeos_metrics::PersistentInteger("session_id"));
   }
 
   std::unique_ptr<metrics::MetricSample> Crash(const std::string& name) {
@@ -203,8 +205,8 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
   std::unique_ptr<metrics::MetricSample> histogram =
       metrics::MetricSample::SparseHistogramSample("myhistogram", 1);
   SystemProfileCache* local_cache_ = new SystemProfileCache(true, "/");
-  local_cache_->session_id_.reset(new chromeos_metrics::PersistentInteger(
-      dir_.GetPath().Append("session_id").value()));
+  local_cache_->session_id_.reset(
+      new chromeos_metrics::PersistentInteger("session_id"));
 
   upload_service_.system_profile_setter_.reset(local_cache_);
   // Reset to create the new log with the profile setter.

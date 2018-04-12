@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <base/macros.h>
+
 namespace chromeos_metrics {
 
 // PersistentIntegers is a named 64-bit integer value backed by a file.
@@ -38,10 +40,10 @@ class PersistentInteger {
   // Virtual only because of mock.
   virtual void Add(int64_t x);
 
-  // After calling with |testing| = true, changes some behavior for the purpose
-  // of testing.  For instance: instances created while testing use the current
-  // directory for the backing files.
-  static void SetTestingMode(bool testing);
+  // Changes some behavior for the purpose of testing, including using
+  // |backing_file_dir_path| as the directory where the persistent integer
+  // backing files are stored.
+  static void SetTestingMode(const std::string& backing_files_dir);
 
  private:
   static const int kVersion = 1001;
@@ -54,12 +56,23 @@ class PersistentInteger {
   // a valid backing file as a side effect.
   bool Read();
 
+  // Returns the name of the backing files directory.
+  static std::string GetBackingFilesDirectory();
+  // If |dir_name| is not empty, sets the backing file directory name to
+  // |dir_name|.  In all cases returns the backing files directory name.  It is
+  // an error to attempt to set the name when not testing.
+  static std::string GetAndMaybeSetBackingFilesDirectory(
+      const std::string& dir_name);
+
   int64_t value_;
   int32_t version_;
   std::string name_;
   std::string backing_file_name_;
   bool synced_;
+
   static bool testing_;
+
+  DISALLOW_COPY_AND_ASSIGN(PersistentInteger);
 };
 
 }  // namespace chromeos_metrics
