@@ -128,11 +128,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_FLASH_MODE, &flash_mode, 1);
 
   // android.jpeg
-  const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 240, 180};
-  UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpeg_available_thumbnail_sizes,
-         ARRAY_SIZE(jpeg_available_thumbnail_sizes));
-  UPDATE(ANDROID_JPEG_THUMBNAIL_SIZE, &jpeg_available_thumbnail_sizes[2], 2);
-
   const int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
   UPDATE(ANDROID_JPEG_MAX_SIZE, jpeg_max_size, ARRAY_SIZE(jpeg_max_size));
 
@@ -407,6 +402,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   std::vector<int32_t> stream_configurations;
   std::vector<int64_t> min_frame_durations;
   std::vector<int64_t> stall_durations;
+
   int64_t max_frame_duration = std::numeric_limits<int64_t>::min();
   int32_t max_fps = std::numeric_limits<int32_t>::min();
   int32_t min_fps = std::numeric_limits<int32_t>::max();
@@ -482,6 +478,14 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 
   UPDATE(ANDROID_SCALER_AVAILABLE_STALL_DURATIONS, stall_durations.data(),
          stall_durations.size());
+
+  std::vector<int32_t> jpeg_available_thumbnail_sizes =
+      GetJpegAvailableThumbnailSizes(supported_formats);
+  UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
+         jpeg_available_thumbnail_sizes.data(),
+         jpeg_available_thumbnail_sizes.size());
+  UPDATE(ANDROID_JPEG_THUMBNAIL_SIZE,
+         &jpeg_available_thumbnail_sizes.back() - 1, 2);
 
   UPDATE(ANDROID_SENSOR_INFO_MAX_FRAME_DURATION, &max_frame_duration, 1);
 

@@ -72,6 +72,18 @@ struct Size {
   Size(uint32_t w, uint32_t h) : width(w), height(h) {}
   uint32_t width;
   uint32_t height;
+  uint64_t Area() const { return static_cast<uint64_t>(width) * height; }
+  bool operator<(const Size& rhs) const {
+    if (Area() != rhs.Area()) {
+      return Area() < rhs.Area();
+    }
+    // No need to compare by height even if widths are same, because we compare
+    // by area first.
+    return width < rhs.width;
+  }
+  bool operator==(const Size& rhs) const {
+    return width == rhs.width && height == rhs.height;
+  }
 };
 
 }  // namespace cros

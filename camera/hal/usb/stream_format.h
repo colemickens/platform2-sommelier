@@ -22,6 +22,13 @@ const SupportedFormat* FindFormatByResolution(const SupportedFormats& formats,
 // Get the largest resolution from |supported_formats|.
 SupportedFormat GetMaximumFormat(const SupportedFormats& supported_formats);
 
+// Get all supported JPEG thumbnail sizes.  See the requirements in
+// https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics.html#JPEG_AVAILABLE_THUMBNAIL_SIZES
+// Return flattened sizes [width_0, height_0, width_1, height_1, ...] for
+// filling as camera metadata.
+std::vector<int32_t> GetJpegAvailableThumbnailSizes(
+    const SupportedFormats& supported_formats);
+
 // Find all formats in preference order.
 // The resolutions in returned SupportedFormats vector are unique.
 SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats);

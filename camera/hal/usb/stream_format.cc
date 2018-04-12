@@ -6,6 +6,8 @@
 #include "hal/usb/stream_format.h"
 
 #include <algorithm>
+#include <cmath>
+#include <tuple>
 
 #include <linux/videodev2.h>
 #include <system/graphics.h>
@@ -49,6 +51,58 @@ SupportedFormat GetMaximumFormat(const SupportedFormats& supported_formats) {
     }
   }
   return max_format;
+}
+
+std::vector<int32_t> GetJpegAvailableThumbnailSizes(
+    const SupportedFormats& supported_formats) {
+  // This list will include at least one non-zero resolution, plus (0,0) for
+  // indicating no thumbnail should be generated.
+  std::vector<Size> sizes = {{0, 0}};
+
+  // Each output JPEG size in android.scaler.availableStreamConfigurations will
+  // have at least one corresponding size that has the same aspect ratio in
+  // availableThumbnailSizes, and vice versa.
+  for (auto& supported_format : supported_formats) {
+    double aspect_ratio =
+        static_cast<double>(supported_format.width) / supported_format.height;
+
+    // Note that we only support to generate thumbnails with (width % 8 == 0)
+    // and (height % 2 == 0) for now, so set width as multiple of 32 is good for
+    // the two common ratios 4:3 and 16:9. When width is 192, the thumbnail
+    // sizes would be 192x144 and 192x108 respectively.
+    uint32_t thumbnail_width = 192;
+    uint32_t thumbnail_height = round(thumbnail_width / aspect_ratio);
+    sizes.push_back({thumbnail_width, thumbnail_height});
+  }
+
+  // The sizes will be sorted by increasing pixel area (width x height). If
+  // several resolutions have the same area, they will be sorted by increasing
+  // width.
+  std::sort(sizes.begin(), sizes.end());
+  sizes.erase(std::unique(sizes.begin(), sizes.end()), sizes.end());
+
+  // The aspect ratio of the largest thumbnail size will be same as the aspect
+  // ratio of largest JPEG output size in
+  // android.scaler.availableStreamConfigurations. The largest size is defined
+  // as the size that has the largest pixel area in a given size list.
+  auto max_format = GetMaximumFormat(supported_formats);
+  double aspect_ratio =
+      static_cast<double>(max_format.width) / max_format.height;
+  for (uint32_t thumbnail_width = 224; true; thumbnail_width += 32) {
+    uint32_t thumbnail_height = round(thumbnail_width / aspect_ratio);
+    Size size(thumbnail_width, thumbnail_height);
+    if (sizes.back() < size) {
+      sizes.push_back(size);
+      break;
+    }
+  }
+
+  std::vector<int32_t> ret;
+  for (auto& size : sizes) {
+    ret.push_back(size.width);
+    ret.push_back(size.height);
+  }
+  return ret;
 }
 
 SupportedFormats GetQualifiedFormats(

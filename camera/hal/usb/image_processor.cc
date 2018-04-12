@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <libyuv.h>
 #include <time.h>
+#include <vector>
 
 #include <cros-camera/exif_utils.h>
 #include <cros-camera/jpeg_compressor.h>
@@ -367,32 +368,37 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
     thumbnail_jpeg_quality = jpeg_quality;
   }
 
+  JpegCompressor compressor;
+
   // Generate thumbnail
-  int thumbnail_width = 0, thumbnail_height = 0;
+  std::vector<uint8_t> thumbnail;
   if (metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
     entry = metadata.find(ANDROID_JPEG_THUMBNAIL_SIZE);
     if (entry.count < 2) {
       LOGF(ERROR) << "Thumbnail size in metadata is not complete.";
       return false;
     }
-    thumbnail_width = entry.data.i32[0];
-    thumbnail_height = entry.data.i32[1];
+    int thumbnail_width = entry.data.i32[0];
+    int thumbnail_height = entry.data.i32[1];
+    if (thumbnail_width == 0 && thumbnail_height == 0) {
+      LOGF(INFO) << "Thumbnail size = (0, 0), nothing will be generated";
+    } else {
+      uint32_t thumbnail_data_size = 0;
+      thumbnail.resize(thumbnail_width * thumbnail_height * 1.5);
+      if (compressor.GenerateThumbnail(
+              in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
+              thumbnail_width, thumbnail_height, thumbnail_jpeg_quality,
+              thumbnail.size(), thumbnail.data(), &thumbnail_data_size)) {
+        thumbnail.resize(thumbnail_data_size);
+      } else {
+        LOGF(WARNING) << "Generate JPEG thumbnail failed";
+        thumbnail.clear();
+      }
+    }
   }
 
-  JpegCompressor compressor;
-  AllocatedFrameBuffer thumbnail(thumbnail_width * thumbnail_height * 1.5);
-  uint32_t thumbnail_data_size = 0;
-  if (!compressor.GenerateThumbnail(
-          in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
-          thumbnail_width, thumbnail_height, thumbnail_jpeg_quality,
-          thumbnail.GetBufferSize(), thumbnail.GetData(),
-          &thumbnail_data_size)) {
-    LOGF(WARNING) << "Generate JPEG thumbnail failed";
-    thumbnail.SetDataSize(0);
-  } else {
-    thumbnail.SetDataSize(thumbnail_data_size);
-  }
-  if (!utils.GenerateApp1(thumbnail.GetData(), thumbnail.GetDataSize())) {
+  // TODO(shik): Regenerate if thumbnail is too large.
+  if (!utils.GenerateApp1(thumbnail.data(), thumbnail.size())) {
     LOGF(ERROR) << "Generating APP1 segment failed.";
     return false;
   }
