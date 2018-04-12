@@ -41,6 +41,7 @@
  * Limited by streams buffers number
  */
 #define MAX_REQUEST_IN_PROCESS_NUM 10
+#define SETTINGS_POOL_SIZE (MAX_REQUEST_IN_PROCESS_NUM * 2)
 
 /**
  * Fake HAL pixel format that we define to use it as index in the table

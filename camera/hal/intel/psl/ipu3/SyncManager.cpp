@@ -27,6 +27,7 @@
 namespace android {
 namespace camera2 {
 
+#define MAX_SETTINGS_QUEUE_SIZE (SETTINGS_POOL_SIZE / 2)
 
 SyncManager::SyncManager(int32_t cameraId,
                          std::shared_ptr<MediaController> mediaCtl,
@@ -411,6 +412,9 @@ status_t SyncManager::handleSetParams(std::shared_ptr<CaptureUnitSettings> setti
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     mQueuedSettings.push_back(std::move(settings));
+    if(mQueuedSettings.size() > MAX_SETTINGS_QUEUE_SIZE) {
+        mQueuedSettings.erase(mQueuedSettings.begin());
+    }
     return OK;
 }
 

@@ -33,8 +33,6 @@
 #include "Metadata.h"
 #include "AAARunner.h"
 
-static const int SETTINGS_POOL_SIZE = MAX_REQUEST_IN_PROCESS_NUM * 2;
-
 namespace android {
 namespace camera2 {
 
