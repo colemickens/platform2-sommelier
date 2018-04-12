@@ -62,16 +62,6 @@ struct PowerStatus {
       // them from userspace.
     };
 
-    Port();
-    Port(const std::string& id,
-         PowerSupplyProperties::PowerSource::Port location,
-         Connection connection,
-         const std::string& manufacturer_id,
-         const std::string& model_id,
-         double max_power,
-         bool active_by_default);
-    ~Port();
-
     // Tests for |o| having a matching ID and connection type.
     bool operator==(const Port& o) const;
 
@@ -96,9 +86,6 @@ struct PowerStatus {
     // (e.g. a dedicated charger).
     bool active_by_default = false;
   };
-
-  PowerStatus();
-  ~PowerStatus();
 
   // Is a non-battery power source connected?
   bool line_power_on = false;

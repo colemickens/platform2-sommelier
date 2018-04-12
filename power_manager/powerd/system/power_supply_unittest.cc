@@ -1522,22 +1522,22 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   const char kChargerManufacturerId[] = "ab4e";
   const char kChargerModelId[] = "0f31";
   const double kChargerMaxPower = 60.0;
-  status.ports.emplace_back(kChargerId, kChargerPort,
-                            Connection::DEDICATED_SOURCE,
-                            kChargerManufacturerId, kChargerModelId,
-                            kChargerMaxPower, true /* active_by_default */);
+  status.ports.push_back({kChargerId, kChargerPort,
+                          Connection::DEDICATED_SOURCE, kChargerManufacturerId,
+                          kChargerModelId, kChargerMaxPower,
+                          true /* active_by_default */});
   const char kPhoneId[] = "PORT2";
   const PowerSupplyProperties::PowerSource::Port kPhonePort =
       PowerSupplyProperties_PowerSource_Port_RIGHT;
   const char kPhoneManufacturerId[] = "468b";
   const char kPhoneModelId[] = "0429";
   const double kPhoneMaxPower = 7.5;
-  status.ports.emplace_back(kPhoneId, kPhonePort, Connection::DUAL_ROLE,
-                            kPhoneManufacturerId, kPhoneModelId, kPhoneMaxPower,
-                            false /* active_by_default */);
-  status.ports.emplace_back(
-      "PORT3", PowerSupplyProperties_PowerSource_Port_FRONT, Connection::NONE,
-      "", "", 0.0, false /* active_by_default */);
+  status.ports.push_back({kPhoneId, kPhonePort, Connection::DUAL_ROLE,
+                          kPhoneManufacturerId, kPhoneModelId, kPhoneMaxPower,
+                          false /* active_by_default */});
+  status.ports.push_back({"PORT3", PowerSupplyProperties_PowerSource_Port_FRONT,
+                          Connection::NONE, "", "", 0.0,
+                          false /* active_by_default */});
   status.external_power_source_id = kChargerId;
   status.supports_dual_role_devices = true;
 

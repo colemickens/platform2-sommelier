@@ -299,25 +299,6 @@ metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
     return metrics::PowerSupplyType::OTHER;
 }
 
-PowerStatus::Port::Port() = default;
-
-PowerStatus::Port::Port(const std::string& id,
-                        PowerSupplyProperties::PowerSource::Port location,
-                        Connection connection,
-                        const std::string& manufacturer_id,
-                        const std::string& model_id,
-                        double max_power,
-                        bool active_by_default)
-    : id(id),
-      location(location),
-      connection(connection),
-      manufacturer_id(manufacturer_id),
-      model_id(model_id),
-      max_power(max_power),
-      active_by_default(active_by_default) {}
-
-PowerStatus::Port::~Port() = default;
-
 bool PowerStatus::Port::operator==(const Port& o) const {
   return id == o.id && connection == o.connection &&
          manufacturer_id == o.manufacturer_id && model_id == o.model_id &&
@@ -355,9 +336,6 @@ bool PowerSupply::ConnectedSourcesAreEqual(const PowerStatus& a,
   }
   NOTREACHED();
 }
-
-PowerStatus::PowerStatus() = default;
-PowerStatus::~PowerStatus() = default;
 
 base::TimeTicks PowerSupply::TestApi::GetCurrentTime() const {
   return power_supply_->clock_->GetCurrentTime();
