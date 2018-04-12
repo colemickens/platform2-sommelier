@@ -282,6 +282,8 @@ Service::Service(base::Closure quit_closure)
     : watcher_(FROM_HERE),
       quit_closure_(std::move(quit_closure)),
       weak_ptr_factory_(this) {
+  startup_listener_ =
+      std::make_unique<StartupListenerImpl>(weak_ptr_factory_.GetWeakPtr());
   container_listener_ =
       std::make_unique<ContainerListenerImpl>(weak_ptr_factory_.GetWeakPtr());
 }
@@ -360,6 +362,34 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   exported_object_->SendSignal(&signal);
   *result = true;
   event->Signal();
+}
+
+void Service::ContainerStartupFailed(const std::string& container_name,
+                                     const uint32_t cid) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  std::string vm_name;
+  for (auto& vm : vms_) {
+    if (vm.second->cid() == cid) {
+      vm_name = vm.first;
+      break;
+    }
+  }
+  if (vm_name.empty()) {
+    LOG(ERROR) << "Received indication container startup failed but could not "
+               << "match to VM cid: " << cid;
+    return;
+  }
+
+  LOG(ERROR) << "Startup of container " << container_name << " for VM "
+             << vm_name << " failed.";
+
+  // Send the D-Bus signal out to indicate the container startup failed.
+  dbus::Signal signal(kVmConciergeInterface, kContainerStartupFailedSignal);
+  ContainerStartedSignal proto;
+  proto.set_vm_name(vm_name);
+  proto.set_container_name(container_name);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
 }
 
 void Service::ContainerShutdown(const std::string& container_token,
@@ -492,7 +522,7 @@ bool Service::Init() {
   }
 
   // Setup & start the gRPC listener services.
-  if (!SetupListenerService(&grpc_thread_vm_, &startup_listener_,
+  if (!SetupListenerService(&grpc_thread_vm_, startup_listener_.get(),
                             base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
                                                vm_tools::kStartupListenerPort),
                             &grpc_server_vm_)) {
@@ -779,7 +809,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // before it gets added as a pending VM.
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
-  startup_listener_.AddPendingVm(vsock_cid, &event);
+  startup_listener_->AddPendingVm(vsock_cid, &event);
 
   // Start the VM and build the response.
   auto vm = VirtualMachine::Create(std::move(kernel), std::move(rootfs),
@@ -789,7 +819,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
-    startup_listener_.RemovePendingVm(vsock_cid);
+    startup_listener_->RemovePendingVm(vsock_cid);
     response.set_failure_reason("Unable to start VM");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -801,7 +831,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "VM failed to start in " << kVmStartupTimeout.InSeconds()
                << " seconds";
 
-    startup_listener_.RemovePendingVm(vsock_cid);
+    startup_listener_->RemovePendingVm(vsock_cid);
     response.set_failure_reason("VM failed to start in time");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;

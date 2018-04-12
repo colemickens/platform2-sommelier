@@ -62,6 +62,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                  bool* result,
                                  base::WaitableEvent* event);
 
+  // Notifies the service that a container with |container_name| and VSOCK
+  // |cid| has failed startup.
+  void ContainerStartupFailed(const std::string& container_name,
+                              const uint32_t cid);
+
   // Notifies the service that a container with |container_token| and IP of
   // |container_ip| is shutting down. Sets |result| to true if this maps to
   // a subnet inside a currently running VM and |container_token| matches a
@@ -158,7 +163,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
 
   // The StartupListener service.
-  StartupListenerImpl startup_listener_;
+  std::unique_ptr<StartupListenerImpl> startup_listener_;
 
   // The ContainerListener service.
   std::unique_ptr<ContainerListenerImpl> container_listener_;
