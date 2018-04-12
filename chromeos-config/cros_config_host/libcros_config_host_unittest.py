@@ -466,7 +466,7 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
 
     os.environ['SYSROOT'] = 'fred'
     with self.assertRaises(IOError) as e:
-      CrosConfig(config_format=FORMAT_FDT)
+      CrosConfig()
     self.assertIn('fred/usr/share/chromeos-config/config.dtb',
                   str(e.exception))
 

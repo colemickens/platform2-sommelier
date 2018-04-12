@@ -225,8 +225,6 @@ def GetParser(description):
                            'stdin.')
   parser.add_argument('-m', '--model', type=str,
                       help='Which model to run the subcommand on.')
-  parser.add_argument('-y', '--yaml', action='store_true',
-                      help='Use YAML format instead of DTB.')
   subparsers = parser.add_subparsers(dest='subcommand')
   subparsers.add_parser(
       'dump-config',
@@ -327,7 +325,7 @@ def main(argv=None):
   elif opts.subcommand == 'write-phandle-properties':
     WritePhandleProperties()
     return
-  config = CrosConfig(opts.config, opts.yaml and FORMAT_YAML or None)
+  config = CrosConfig(opts.config)
   # Get all models we are invoking on (if any).
   model = None
   if opts.model:

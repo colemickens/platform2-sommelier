@@ -156,11 +156,6 @@ class CrosConfigHostTestYaml(unittest.TestCase, CommonTests):
   def setUp(self):
     self.conf_file = os.path.join(os.path.dirname(__file__), YAML_FILE)
 
-  def testReadStdin(self):
-    call_args = '{} -y -c - list-models < {}'.format(CLI_FILE, self.conf_file)
-    output = subprocess.check_output(call_args, shell=True)
-    self.CheckManyLinesWithoutSpaces(output, lines=2)
-
 
 if __name__ == '__main__':
   unittest.main()

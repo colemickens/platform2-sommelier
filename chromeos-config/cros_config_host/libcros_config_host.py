@@ -16,13 +16,12 @@ import sys
 import libcros_config_host_fdt
 import libcros_config_host_json
 
-UNIBOARD_DTB_INSTALL_DIR = 'usr/share/chromeos-config'
+UNIBOARD_CONFIG_INSTALL_DIR = 'usr/share/chromeos-config'
 
 # We support two configuration file format
 (FORMAT_FDT, FORMAT_YAML) = range(2)
 
-def CrosConfig(fname=None,
-               config_format=None):
+def CrosConfig(fname=None):
   """Create a new CrosConfigBaseImpl object
 
   This is in a separate function to allow us to (in the future) support YAML,
@@ -30,20 +29,26 @@ def CrosConfig(fname=None,
 
   Args:
     fname: Filename of config file
-    config_format: Configuration format to use (FORMAT_...)
   """
-  if config_format is None:
-    if fname and ('.yaml' in fname or '.json' in fname):
-      config_format = FORMAT_YAML
-    else:
-      config_format = FORMAT_FDT
+  if fname and ('.yaml' in fname or '.json' in fname):
+    config_format = FORMAT_YAML
+  else:
+    config_format = FORMAT_FDT
   if not fname:
     if 'SYSROOT' not in os.environ:
       raise ValueError('No master configuration is available outside the '
                        'ebuild environemnt. You must specify one')
     fname = os.path.join(
-        os.environ['SYSROOT'], UNIBOARD_DTB_INSTALL_DIR,
-        'config.' + ('dtb' if config_format == FORMAT_FDT else 'yaml'))
+        os.environ['SYSROOT'],
+        UNIBOARD_CONFIG_INSTALL_DIR,
+        'yaml',
+        'config.yaml')
+    if os.path.exists(fname):
+      config_format = FORMAT_YAML
+    else:
+      fname = os.path.join(
+          os.environ['SYSROOT'], UNIBOARD_CONFIG_INSTALL_DIR, 'config.dtb')
+      config_format = FORMAT_FDT
   if fname == '-':
     infile = sys.stdin
   else:
