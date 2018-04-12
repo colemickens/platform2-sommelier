@@ -73,7 +73,7 @@ constexpr struct TimestampTestCase {
             .tm_hour = 23,
             .tm_mday = 17,
             .tm_mon = 0,
-            .tm_year = 155,
+            .tm_year = 125,
         },
         // clang-format on
         .result = "Jan 17 23:54:11",
