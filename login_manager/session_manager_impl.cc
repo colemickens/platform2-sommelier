@@ -99,8 +99,6 @@ constexpr char SessionManagerImpl::kArcBridgeSocketGroup[] = "arc-bridge";
 // ARC related impulse (systemd unit start or Upstart signal).
 constexpr char SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse[] =
     "start-arc-instance-for-login-screen";
-constexpr char SessionManagerImpl::kStartArcInstanceImpulse[] =
-    "start-arc-instance";
 constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
     "stop-arc-instance";
 constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
