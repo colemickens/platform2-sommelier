@@ -77,7 +77,8 @@ struct PowerStatus {
     // The role of the device that's connected to the port.
     Role role = Role::NONE;
 
-    // Values read from the |manufacturer| and |model_name| sysfs nodes.
+    // Values read from |type|, |manufacturer|, and |model_name| sysfs nodes.
+    std::string type;
     std::string manufacturer_id;
     std::string model_id;
 

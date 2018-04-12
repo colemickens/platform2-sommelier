@@ -158,6 +158,26 @@ PowerSupplyProperties::PowerSource::Port GetPortLocationFromString(
     return PowerSupplyProperties_PowerSource_Port_UNKNOWN;
 }
 
+// Maps names read from power supply |type| sysfs nodes to the corresponding
+// PowerSupplyProperties::PowerSource::Type values.
+PowerSupplyProperties::PowerSource::Type GetPowerSourceTypeFromString(
+    const std::string& type) {
+  if (type == PowerSupply::kMainsType) {
+    return PowerSupplyProperties_PowerSource_Type_MAINS;
+  } else if (type == PowerSupply::kUsbCType ||
+             type == PowerSupply::kUsbPdType ||
+             type == PowerSupply::kUsbPdDrpType ||
+             type == PowerSupply::kBrickIdType) {
+    return PowerSupplyProperties_PowerSource_Type_USB_C;
+  } else if (type == PowerSupply::kUsbType ||
+             type == PowerSupply::kUsbAcaType ||
+             type == PowerSupply::kUsbCdpType ||
+             type == PowerSupply::kUsbDcpType) {
+    return PowerSupplyProperties_PowerSource_Type_USB_BC_1_2;
+  }
+  return PowerSupplyProperties_PowerSource_Type_OTHER;
+}
+
 }  // namespace
 
 void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
@@ -197,6 +217,7 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
         proto->add_available_external_power_source();
     source->set_id(port.id);
     source->set_port(port.location);
+    source->set_type(GetPowerSourceTypeFromString(port.type));
     source->set_manufacturer_id(port.manufacturer_id);
     source->set_model_id(port.model_id);
     source->set_max_power(port.max_power);
@@ -300,8 +321,9 @@ metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
 }
 
 bool PowerStatus::Port::operator==(const Port& o) const {
-  return id == o.id && role == o.role && manufacturer_id == o.manufacturer_id &&
-         model_id == o.model_id && active_by_default == o.active_by_default;
+  return id == o.id && role == o.role && type == o.type &&
+         manufacturer_id == o.manufacturer_id && model_id == o.model_id &&
+         active_by_default == o.active_by_default;
 }
 
 // static
@@ -720,11 +742,10 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
     status->supports_dual_role_devices = true;
 
   // An "Unknown" type indicates a sink-only device that can't supply power.
-  std::string type;
-  ReadAndTrimString(path, "type", &type);
-  if (type == kUnknownType)
+  ReadAndTrimString(path, "type", &port->type);
+  if (port->type == kUnknownType)
     return;
-  const bool dual_role_connected = IsDualRoleType(type);
+  const bool dual_role_connected = IsDualRoleType(port->type);
 
   // If "online" is 0, nothing is connected unless it is USB_PD_DRP, in which
   // case a value of 0 indicates we're connected to a dual-role device but not
@@ -770,7 +791,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   status->line_power_on = true;
   status->line_power_path = path.value();
-  status->line_power_type = type;
+  status->line_power_type = port->type;
   status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
   status->line_power_max_voltage = max_voltage;
   status->line_power_current = ReadScaledDouble(path, "current_now");
@@ -781,7 +802,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   const bool max_power_is_less_than_ac_min =
       port->max_power > 0.0 && port->max_power < usb_min_ac_watts_;
 
-  if (!dual_role_port && IsLowPowerUsbChargerType(type)) {
+  if (!dual_role_port && IsLowPowerUsbChargerType(port->type)) {
     // On spring, report all non-official chargers (which are reported as type
     // USB* rather than Mains) as being low-power.
     status->external_power = PowerSupplyProperties_ExternalPower_USB;

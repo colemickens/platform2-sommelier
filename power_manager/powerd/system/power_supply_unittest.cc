@@ -326,6 +326,14 @@ TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
   b.ports[0].role = Role::DUAL_ROLE;
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // Ditto for |type| values.
+  a.ports[0].type = kMainsType;
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+  b.ports[0].type = kMainsType;
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 }
 
 // Test system without power supply sysfs (e.g. virtual machine).
@@ -468,8 +476,10 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
   EXPECT_EQ(Role::NONE, status.ports[0].role);
+  EXPECT_EQ(kUsbType, status.ports[0].type);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
   EXPECT_EQ(Role::NONE, status.ports[1].role);
+  EXPECT_EQ(kUnknownType, status.ports[1].type);
   EXPECT_EQ("", status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
@@ -487,12 +497,14 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
   EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[0].type);
   EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
   EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
   EXPECT_FALSE(status.ports[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
   EXPECT_EQ(Role::NONE, status.ports[1].role);
+  EXPECT_EQ(kUnknownType, status.ports[1].type);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
@@ -514,8 +526,10 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
   EXPECT_EQ(Role::NONE, status.ports[0].role);
+  EXPECT_EQ(kUsbType, status.ports[0].type);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
   EXPECT_EQ(Role::DUAL_ROLE, status.ports[1].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[1].type);
   EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
   EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
@@ -536,12 +550,14 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
   EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[0].type);
   EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
   EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
   EXPECT_FALSE(status.ports[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
   EXPECT_EQ(Role::DUAL_ROLE, status.ports[1].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[1].type);
   EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
   EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
@@ -584,8 +600,10 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
   EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdDrpType, status.ports[0].type);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
   EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
+  EXPECT_EQ(kMainsType, status.ports[1].type);
   EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
@@ -604,6 +622,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
     EXPECT_EQ(kLine2Id, status.ports[1].id);
     EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
     EXPECT_TRUE(status.ports[1].active_by_default);
+    EXPECT_EQ(kType, status.ports[1].type);
     EXPECT_EQ(kLine2Id, status.external_power_source_id);
   }
 
@@ -1523,7 +1542,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   const char kChargerModelId[] = "0f31";
   const double kChargerMaxPower = 60.0;
   status.ports.push_back({kChargerId, kChargerPort, Role::DEDICATED_SOURCE,
-                          kChargerManufacturerId, kChargerModelId,
+                          kMainsType, kChargerManufacturerId, kChargerModelId,
                           kChargerMaxPower, true /* active_by_default */});
   const char kPhoneId[] = "PORT2";
   const PowerSupplyProperties::PowerSource::Port kPhonePort =
@@ -1531,11 +1550,11 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   const char kPhoneManufacturerId[] = "468b";
   const char kPhoneModelId[] = "0429";
   const double kPhoneMaxPower = 7.5;
-  status.ports.push_back({kPhoneId, kPhonePort, Role::DUAL_ROLE,
+  status.ports.push_back({kPhoneId, kPhonePort, Role::DUAL_ROLE, kUsbPdDrpType,
                           kPhoneManufacturerId, kPhoneModelId, kPhoneMaxPower,
                           false /* active_by_default */});
   status.ports.push_back({"PORT3", PowerSupplyProperties_PowerSource_Port_FRONT,
-                          Role::NONE, "", "", 0.0,
+                          Role::NONE, kUnknownType, "", "", 0.0,
                           false /* active_by_default */});
   status.external_power_source_id = kChargerId;
   status.supports_dual_role_devices = true;
@@ -1546,6 +1565,8 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   ASSERT_EQ(2u, proto.available_external_power_source_size());
   EXPECT_EQ(kChargerId, proto.available_external_power_source(0).id());
   EXPECT_EQ(kChargerPort, proto.available_external_power_source(0).port());
+  EXPECT_EQ(PowerSupplyProperties_PowerSource_Type_MAINS,
+            proto.available_external_power_source(0).type());
   EXPECT_EQ(kChargerManufacturerId,
             proto.available_external_power_source(0).manufacturer_id());
   EXPECT_EQ(kChargerModelId,
@@ -1555,6 +1576,8 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_TRUE(proto.available_external_power_source(0).active_by_default());
   EXPECT_EQ(kPhoneId, proto.available_external_power_source(1).id());
   EXPECT_EQ(kPhonePort, proto.available_external_power_source(1).port());
+  EXPECT_EQ(PowerSupplyProperties_PowerSource_Type_USB_C,
+            proto.available_external_power_source(1).type());
   EXPECT_EQ(kPhoneManufacturerId,
             proto.available_external_power_source(1).manufacturer_id());
   EXPECT_EQ(kPhoneModelId, proto.available_external_power_source(1).model_id());
