@@ -36,9 +36,9 @@ bool ChargingPortConnected(const PowerStatus& status, size_t index) {
   if (index >= status.ports.size())
     return false;
 
-  const PowerStatus::Port::Connection conn = status.ports[index].connection;
-  return conn == PowerStatus::Port::Connection::DEDICATED_SOURCE ||
-         conn == PowerStatus::Port::Connection::DUAL_ROLE;
+  const PowerStatus::Port::Role role = status.ports[index].role;
+  return role == PowerStatus::Port::Role::DEDICATED_SOURCE ||
+         role == PowerStatus::Port::Role::DUAL_ROLE;
 }
 
 // Returns a value describing which power ports are connected.

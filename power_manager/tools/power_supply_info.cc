@@ -131,8 +131,8 @@ int main(int argc, char** argv) {
   display.PrintStringValue("active source", status.external_power_source_id);
   std::vector<std::string> sources;
   for (const auto& port : status.ports) {
-    if (port.connection == PowerStatus::Port::Connection::DEDICATED_SOURCE ||
-        port.connection == PowerStatus::Port::Connection::DUAL_ROLE) {
+    if (port.role == PowerStatus::Port::Role::DEDICATED_SOURCE ||
+        port.role == PowerStatus::Port::Role::DUAL_ROLE) {
       sources.push_back(base::StringPrintf(
           "%s%s [%s/%s]", port.id.c_str(), port.active_by_default ? "*" : "",
           port.manufacturer_id.c_str(), port.model_id.c_str()));

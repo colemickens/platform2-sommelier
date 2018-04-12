@@ -119,8 +119,8 @@ const char* ExternalPowerToString(PowerSupplyProperties::ExternalPower type) {
 // Returns true if |port| is connected to a dedicated power source or dual-role
 // device.
 bool PortHasSourceOrDualRole(const PowerStatus::Port& port) {
-  return port.connection == PowerStatus::Port::Connection::DEDICATED_SOURCE ||
-         port.connection == PowerStatus::Port::Connection::DUAL_ROLE;
+  return port.role == PowerStatus::Port::Role::DEDICATED_SOURCE ||
+         port.role == PowerStatus::Port::Role::DUAL_ROLE;
 }
 
 // Less-than comparator for PowerStatus::Port structs.
@@ -300,9 +300,8 @@ metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
 }
 
 bool PowerStatus::Port::operator==(const Port& o) const {
-  return id == o.id && connection == o.connection &&
-         manufacturer_id == o.manufacturer_id && model_id == o.model_id &&
-         active_by_default == o.active_by_default;
+  return id == o.id && role == o.role && manufacturer_id == o.manufacturer_id &&
+         model_id == o.model_id && active_by_default == o.active_by_default;
 }
 
 // static
@@ -736,9 +735,8 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   // If we've made it this far, there's a dedicated source or dual-role device
   // connected.
-  port->connection = dual_role_connected
-                         ? PowerStatus::Port::Connection::DUAL_ROLE
-                         : PowerStatus::Port::Connection::DEDICATED_SOURCE;
+  port->role = dual_role_connected ? PowerStatus::Port::Role::DUAL_ROLE
+                                   : PowerStatus::Port::Role::DEDICATED_SOURCE;
 
   // Chargers connected to non-dual-role Chromebook systems are always active by
   // default. The USB PD kernel driver will report "USB_PD_DRP" for dual-role

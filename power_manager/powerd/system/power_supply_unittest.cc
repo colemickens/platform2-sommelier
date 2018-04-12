@@ -28,7 +28,7 @@ namespace system {
 
 namespace {
 
-using Connection = PowerStatus::Port::Connection;
+using Role = PowerStatus::Port::Role;
 
 const char* const kMainsType = PowerSupply::kMainsType;
 const char* const kBatteryType = PowerSupply::kBatteryType;
@@ -279,7 +279,7 @@ TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
 
   // After the port is connected, |a| and |b|'s connected sources no longer
   // match.
-  a.ports[0].connection = Connection::DEDICATED_SOURCE;
+  a.ports[0].role = Role::DEDICATED_SOURCE;
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 
@@ -290,7 +290,7 @@ TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 
   // Once |b|'s port is connected, the statuses should match again.
-  b.ports[0].connection = Connection::DEDICATED_SOURCE;
+  b.ports[0].role = Role::DEDICATED_SOURCE;
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 
@@ -303,7 +303,7 @@ TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 
   // If the new port is connected, the statuses should be unequal again.
-  a.ports[0].connection = Connection::DEDICATED_SOURCE;
+  a.ports[0].role = Role::DEDICATED_SOURCE;
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 
@@ -312,18 +312,18 @@ TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
   constexpr char kId0B[] = "ID0B";
   b.ports.insert(b.ports.begin(), PowerStatus::Port());
   b.ports[0].id = kId0B;
-  b.ports[0].connection = Connection::DEDICATED_SOURCE;
+  b.ports[0].role = Role::DEDICATED_SOURCE;
 
   // Now update the ID and check that they're equal again.
   b.ports[0].id = kId0;
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 
-  // The ports' connection types also need to match.
-  a.ports[0].connection = Connection::DUAL_ROLE;
+  // The ports' role types also need to match.
+  a.ports[0].role = Role::DUAL_ROLE;
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
-  b.ports[0].connection = Connection::DUAL_ROLE;
+  b.ports[0].role = Role::DUAL_ROLE;
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 }
@@ -467,9 +467,9 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.battery_state);
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
-  EXPECT_EQ(Connection::NONE, status.ports[0].connection);
+  EXPECT_EQ(Role::NONE, status.ports[0].role);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
-  EXPECT_EQ(Connection::NONE, status.ports[1].connection);
+  EXPECT_EQ(Role::NONE, status.ports[1].role);
   EXPECT_EQ("", status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
@@ -486,13 +486,13 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
-  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[0].connection);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
   EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
   EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
   EXPECT_FALSE(status.ports[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
-  EXPECT_EQ(Connection::NONE, status.ports[1].connection);
+  EXPECT_EQ(Role::NONE, status.ports[1].role);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
@@ -513,9 +513,9 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
-  EXPECT_EQ(Connection::NONE, status.ports[0].connection);
+  EXPECT_EQ(Role::NONE, status.ports[0].role);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
-  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[1].connection);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[1].role);
   EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
   EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
@@ -535,13 +535,13 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
-  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[0].connection);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
   EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
   EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
   EXPECT_FALSE(status.ports[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
-  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[1].connection);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[1].role);
   EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
   EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
@@ -583,9 +583,9 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
   ASSERT_EQ(2u, status.ports.size());
   EXPECT_EQ(kLine1Id, status.ports[0].id);
-  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[0].connection);
+  EXPECT_EQ(Role::DUAL_ROLE, status.ports[0].role);
   EXPECT_EQ(kLine2Id, status.ports[1].id);
-  EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
   EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
@@ -602,7 +602,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
     EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
     ASSERT_EQ(2u, status.ports.size());
     EXPECT_EQ(kLine2Id, status.ports[1].id);
-    EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+    EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
     EXPECT_TRUE(status.ports[1].active_by_default);
     EXPECT_EQ(kLine2Id, status.external_power_source_id);
   }
@@ -613,7 +613,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
   ASSERT_EQ(2u, status.ports.size());
-  EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
   EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
@@ -623,7 +623,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
   ASSERT_EQ(2u, status.ports.size());
-  EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
   EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 }
@@ -1522,21 +1522,20 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   const char kChargerManufacturerId[] = "ab4e";
   const char kChargerModelId[] = "0f31";
   const double kChargerMaxPower = 60.0;
-  status.ports.push_back({kChargerId, kChargerPort,
-                          Connection::DEDICATED_SOURCE, kChargerManufacturerId,
-                          kChargerModelId, kChargerMaxPower,
-                          true /* active_by_default */});
+  status.ports.push_back({kChargerId, kChargerPort, Role::DEDICATED_SOURCE,
+                          kChargerManufacturerId, kChargerModelId,
+                          kChargerMaxPower, true /* active_by_default */});
   const char kPhoneId[] = "PORT2";
   const PowerSupplyProperties::PowerSource::Port kPhonePort =
       PowerSupplyProperties_PowerSource_Port_RIGHT;
   const char kPhoneManufacturerId[] = "468b";
   const char kPhoneModelId[] = "0429";
   const double kPhoneMaxPower = 7.5;
-  status.ports.push_back({kPhoneId, kPhonePort, Connection::DUAL_ROLE,
+  status.ports.push_back({kPhoneId, kPhonePort, Role::DUAL_ROLE,
                           kPhoneManufacturerId, kPhoneModelId, kPhoneMaxPower,
                           false /* active_by_default */});
   status.ports.push_back({"PORT3", PowerSupplyProperties_PowerSource_Port_FRONT,
-                          Connection::NONE, "", "", 0.0,
+                          Role::NONE, "", "", 0.0,
                           false /* active_by_default */});
   status.external_power_source_id = kChargerId;
   status.supports_dual_role_devices = true;

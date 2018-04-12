@@ -53,10 +53,12 @@ metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type);
 struct PowerStatus {
   // Details about a charging port.
   struct Port {
-    // Different types of connected devices.
-    enum class Connection {
+    // Different roles of connected devices.
+    enum class Role {
       NONE,
+      // A device that only provides power.
       DEDICATED_SOURCE,
+      // A device that can either provide or consume power (source or sink).
       DUAL_ROLE,
       // TODO(derat): Report non-PD sinks if we ever get the ability to detect
       // them from userspace.
@@ -72,10 +74,10 @@ struct PowerStatus {
     PowerSupplyProperties::PowerSource::Port location =
         PowerSupplyProperties_PowerSource_Port_UNKNOWN;
 
-    // What's connected to the port.
-    Connection connection = Connection::NONE;
+    // The role of the device that's connected to the port.
+    Role role = Role::NONE;
 
-    // Values read from |manufacturer| and |model_name|.
+    // Values read from the |manufacturer| and |model_name| sysfs nodes.
     std::string manufacturer_id;
     std::string model_id;
 

@@ -686,8 +686,8 @@ TEST_F(MetricsCollectorTest, ConnectedChargingPorts) {
   collector_.HandlePowerStatusUpdate(power_status_);
 
   // Connect the port to a dedicated charger.
-  power_status_.ports[0].connection =
-      system::PowerStatus::Port::Connection::DEDICATED_SOURCE;
+  power_status_.ports[0].role =
+      system::PowerStatus::Port::Role::DEDICATED_SOURCE;
   ExpectEnumMetric(kConnectedChargingPortsName,
                    static_cast<int>(ConnectedChargingPorts::PORT1),
                    static_cast<int>(ConnectedChargingPorts::MAX));
@@ -701,16 +701,14 @@ TEST_F(MetricsCollectorTest, ConnectedChargingPorts) {
   collector_.HandlePowerStatusUpdate(power_status_);
 
   // Connect the second port to a dual-role device.
-  power_status_.ports[1].connection =
-      system::PowerStatus::Port::Connection::DUAL_ROLE;
+  power_status_.ports[1].role = system::PowerStatus::Port::Role::DUAL_ROLE;
   ExpectEnumMetric(kConnectedChargingPortsName,
                    static_cast<int>(ConnectedChargingPorts::PORT1_PORT2),
                    static_cast<int>(ConnectedChargingPorts::MAX));
   collector_.HandlePowerStatusUpdate(power_status_);
 
   // Disconnect the first port.
-  power_status_.ports[0].connection =
-      system::PowerStatus::Port::Connection::NONE;
+  power_status_.ports[0].role = system::PowerStatus::Port::Role::NONE;
   ExpectEnumMetric(kConnectedChargingPortsName,
                    static_cast<int>(ConnectedChargingPorts::PORT2),
                    static_cast<int>(ConnectedChargingPorts::MAX));
