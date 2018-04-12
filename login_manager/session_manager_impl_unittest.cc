@@ -582,7 +582,7 @@ class SessionManagerImplTest : public ::testing::Test,
                     SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                                 "NATIVE_BRIDGE_EXPERIMENT=0"),
-                    InitDaemonController::TriggerMode::SYNC))
+                    InitDaemonController::TriggerMode::ASYNC))
         .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
     brillo::ErrorPtr error;
@@ -2006,7 +2006,7 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
                   SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::SYNC))
+                  InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
@@ -2065,7 +2065,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
                   SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::SYNC))
+                  InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
@@ -2158,7 +2158,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
                   SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::SYNC))
+                  InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
@@ -2247,7 +2247,7 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
                   SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=1"),
-                  InitDaemonController::TriggerMode::SYNC))
+                  InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
@@ -2291,35 +2291,6 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
   EXPECT_GT(0, server_socket_fd.get());
 }
 
-TEST_F(SessionManagerImplTest, ArcSetupFailure) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(Return(nullptr));
-  // After a failure, the StopArcInstance impulse must be sent to clean up the
-  // system's state.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-
-  brillo::ErrorPtr error;
-  std::string container_instance_id;
-  EXPECT_FALSE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
-
-  ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kEmitFailed, error->GetCode());
-  EXPECT_TRUE(container_instance_id.empty());
-}
-
 TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   ExpectAndRunStartSession(kSaneEmail);
 
@@ -2332,7 +2303,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
                   SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::SYNC))
+                  InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2539,7 +2510,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateless) {
                   SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::SYNC))
+                  InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   {
     brillo::ErrorPtr error;
