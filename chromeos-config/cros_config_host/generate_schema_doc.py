@@ -2,7 +2,6 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Generates markdown from the JSON schema."""
 
 from __future__ import print_function
@@ -34,10 +33,7 @@ def ParseArgs(argv):
       type=str,
       help='Schema file that is processed')
   parser.add_argument(
-      '-o',
-      '--output',
-      type=str,
-      help='Output file that will be generated')
+      '-o', '--output', type=str, help='Output file that will be generated')
   return parser.parse_args(argv)
 
 
@@ -54,10 +50,8 @@ def PopulateTypeDef(name, type_def, ref_types, output):
       sorted(type_def.get('properties', {}).items()))
   child_types = collections.OrderedDict()
   output.append('### %s' % name)
-  output.append(
-      '| Attribute | Type   | RegEx     | Required | Description |')
-  output.append(
-      '| --------- | ------ | --------- | -------- | ----------- |')
+  output.append('| Attribute | Type   | RegEx     | Required | Description |')
+  output.append('| --------- | ------ | --------- | -------- | ----------- |')
   for attr in attrs:
     attr_name = attr
     type_attrs = attrs[attr]
@@ -70,6 +64,7 @@ def PopulateTypeDef(name, type_def, ref_types, output):
       # Regex need escaping for markdown
       regex = '```%s```' % regex
     description = type_attrs.get('description', '')
+    description = description.replace('\n', ' ')
     required_list = type_def.get('required', [])
     required = attr in required_list
     if type_attrs['type'] == 'object':
@@ -101,9 +96,7 @@ def Main(schema, output):
     schema_yaml = yaml.load(schema_stream.read())
     ref_types = {}
     for type_def in schema_yaml['typeDefs']:
-      ref_types[
-          '#/typeDefs/%s' %
-          type_def] = schema_yaml['typeDefs'][type_def]
+      ref_types['#/typeDefs/%s' % type_def] = schema_yaml['typeDefs'][type_def]
 
     type_def_outputs = []
     type_def_outputs.append('[](begin_definitions)')
@@ -112,8 +105,7 @@ def Main(schema, output):
     PopulateTypeDef(
         'model',
         schema_yaml['properties']['chromeos']['properties']['models']['items'],
-        ref_types,
-        type_def_outputs)
+        ref_types, type_def_outputs)
     type_def_outputs.append('')
     type_def_outputs.append('[](end_definitions)')
     type_def_outputs.append('')
@@ -151,6 +143,7 @@ def Main(schema, output):
     else:
       print('\n'.join(type_def_outputs))
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
   args = ParseArgs(sys.argv[1:])
   Main(args.schema, args.output)

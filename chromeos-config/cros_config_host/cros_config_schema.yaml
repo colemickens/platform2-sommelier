@@ -50,31 +50,26 @@ properties:
                   type: object
                   properties:
                     product:
-                      description: |
-                        Product name to report in 'ro.product.name'.
+                      description: Product name to report in 'ro.product.name'.
                         This may be the model name, or it can be something else, to allow
                         several models to be grouped into one product.
                       type: string
                     device:
-                      description: |
-                        Device name to report in 'ro.product.device'. This
+                      description: Device name to report in 'ro.product.device'. This
                         is often '{product}_cheets' but it can be something else if
                         desired.
                       type: string
                     oem:
-                      description: |
-                        Original Equipment Manufacturer for this model. This
+                      description: Original Equipment Manufacturer for this model. This
                         generally means the OEM name printed on the device.
                       type: string
                     marketing-name:
-                      description: |
-                        Name of this model as it is called in the
+                      description: Name of this model as it is called in the
                         market, reported in 'ro.product.model'. This often starts
                         with '{oem}'.
                       type: string
                     metrics-tag:
-                      description: |
-                        Tag to use to track metrics for this model.
+                      description: Tag to use to track metrics for this model.
                         The tag can be shared across many models if desired, but
                         this will result in larger granularity for metrics
                         reporting.  Ideally the metrics system should support
@@ -145,15 +140,13 @@ properties:
                 main-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
                 no-firmware:
-                  description: |
-                    If present this indicates that this model has no firmware at present.
+                  description: If present this indicates that this model has no firmware at present.
                     This means that it will be omitted from the firmware updater
                     (chromeos-firmware- ebuild) and it will not be included in the signer
                     instructions file sent to the signer.
                     This option is often useful when a model is first added,
                     since it may not have firmware at that point.
                   type: boolean
-                  pattern: "^[A-Z|_|0-9]*$"
               additionalProperties: false
             firmware-signing:
               type: object
@@ -168,8 +161,7 @@ properties:
                     signature for the updater4.sh script.
                   type: string
                 sig-id-in-customization-id:
-                  description: |
-                    Indicates that this model cannot be decoded by the mapping table.
+                  description: Indicates that this model cannot be decoded by the mapping table.
                     Instead the model is stored in the VPD (Vital Product Data) region in the
                     customization_id property. This allows us to determine the
                     model to use in the factory during the finalization stage. Note
@@ -245,8 +237,7 @@ properties:
                   items: *firmware_file
               additionalProperties: false
             wallpaper:
-              description: |
-                Base filename of the default wallpaper to show on this device.
+              description: Base filename of the default wallpaper to show on this device.
               type: string
             ui:
               type: object

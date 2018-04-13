@@ -30,19 +30,329 @@ libcros_config will emit a lot of debugging log messages if you set the
 CROS_CONFIG_DEBUG environment variable to a non-empty value before calling into
 the library.
 
-## Binding
+## Config Schema
 
-This section describes the binding for the master configuration. This defines
-the structure of the configuration and the nodes and properties that are
-permitted.
+Chrome OS config is now YAML based. If you're still using the File Device Tree
+(FDT) based implementation, see the v1 schema description below.
 
-In Chromium OS, the word 'model' is used to distinguish different hardware or
-products for which we want to build software. A model shares the same hardware
-and the same brand. Typically two different models are distinguished by hardware
-variations (e.g. different screen size) or branch variations (a different OEM).
+The following components make up the YAML based chromeos-config support:
 
-Note: In the description below, entries with children are nodes and leaves are
-properties.
+### YAML Source
+
+The YAML source is designed for human maintainability. It allows for easy config
+sharing across many different devices (via anchors).
+
+For background on YAML, see: [Learn YAML in 10
+minutes](https://learnxinyminutes.com/docs/yaml/)
+
+The source is generally located at:
+overlay-${BOARD}/chromeos-base/chromeos-config-bsp/files/model.yaml
+
+Beyond the normal features of YAML, there are two custom features supported that
+allow for even better re-use and expressiveness in the YAML config.
+
+1.  Templating - Templating allows config to be shared by letting callers
+    reference variables in the config, which are then evaluated on a per
+    device/sku/product basis.
+
+    The basic syntax is:
+
+    ```yaml
+    some-element: "{{some-template-variable}}"
+    ```
+
+    Valid template variables are any YAML element that's currently in scope.
+    When generating config, scope is evaluated in the following order:
+
+    1.  device
+    2.  product
+    3.  sku
+    4.  config (this is recursive ... any variable at any level can be
+        referenced)
+
+2.  Local Variables - These are variables that are only used for templating and
+    are ignored when generating the final JSON output. Variables starting with
+    '$' are considered local and are ignored after template evaluation. The
+    basic syntax is:
+
+    ```yaml
+    config:
+      $some-local-variable: "some-value"
+      some-element: "{{$some-local-variable}}"
+    ```
+
+The following provides a simple example of a config using both core YAML
+features and the custom features described above.
+
+```yaml
+common_config: &common_config
+  name: "{{$device-name}}"
+  brand-code: "{{$brand-code}}"
+  identity:
+    platform-name: "SomePlatform"
+    smbios-name-match: "SomePlatform"
+    sku-id: "{{$sku-id}}"
+  firmware-signing:
+    key-id: "{{$key-id}}"
+    signature-id: "{{$device-name}}"
+chromeos:
+  devices:
+    - $device-name: "SomeDevice"
+      products:
+        - $brand-code: "YYYY"
+          $key-id: "SOME-KEY-ID"
+      skus:
+        - $sku-id: 0
+          config:
+            <<: *common_config
+            wallpaper: "some-wallpaper"
+        - $sku-id: 1
+          config: *common_config
+```
+
+When this YAML is evaluated, it will fully expand out as the following:
+
+```yaml
+chromeos:
+  models:
+    - name: "SomeDevice"
+      brand-code: "YYYY"
+      identity:
+        platform-name: "SomePlatform"
+        smbios-name-match: "SomePlatform"
+        sku-id: 0
+      firmware-signing:
+        key-id: "SOME-KEY-ID"
+        signature-id: "SomeDevice"
+      wallpaper: "some-wallpaper"
+    - name: "SomeDevice"
+      brand-code: "YYYY"
+      identity:
+        platform-name: "SomePlatform"
+        smbios-name-match: "SomePlatform"
+        sku-id: 1
+      firmware-signing:
+        key-id: "SOME-KEY-ID"
+        signature-id: "SomeDevice"
+```
+
+### YAML Transform (to JSON)
+
+In addition to the templating evaluation discussed above, the YAML is converted
+to JSON before it's actually used in chromeos-config. This fully
+evaluated/de-normalized form accomplishes a couple things:
+
+1.  It provides a great diffable format so it's obvious what changes are
+    actually applied if, for example, a shared config element was changed.
+2.  It keeps the consumer code very simple (host and runtime). The code just
+    matches the identity attributes and then uses the respective config. It
+    never has to care about re-use or config sharing.
+
+### Schema Validation
+
+The config is evaluated against a http://json-schema.org/ schema located at:
+chromeos-config/cros_config_host/cros_config_schema.yaml
+
+NOTE: The schema is managed in YAML because it's a bit easier to edit than JSON.
+
+Only the post transformed JSON is actually evaluated against the schema. Authors
+can do whatever makes sense in the YAML (from a sharing perspective) as long as
+it generates compliant JSON passes the schema validation.
+
+The schema documentation is auto-generated (and put into this README.md file)
+via: python -m cros_config_host.generate_schema_doc -o README.md
+
+The schema definition is below:
+
+[](begin_definitions)
+
+## CrOS Config Type Definitions (v2)
+### model
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| arc | [arc](#arc) |  | False |  |
+| audio | [audio](#audio) |  | False |  |
+| brand-code | string | ```^[A-Z]{4}$``` | False | Brand code of the model (also called RLZ code). |
+| firmware | [firmware](#firmware) |  | True |  |
+| firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |
+| identity | [identity](#identity) |  | False |  |
+| name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
+| powerd-prefs | string |  | False | Powerd config that should be used. |
+| test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
+| thermal | [thermal](#thermal) |  | False |  |
+| touch | [touch](#touch) |  | False |  |
+| ui | [ui](#ui) |  | False |  |
+| wallpaper | string |  | False | Base filename of the default wallpaper to show on this device. |
+
+### arc
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| build-properties | [build-properties](#build-properties) |  | False |  |
+| files | array - [files](#files) |  | False |  |
+
+### build-properties
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| device | string |  | False | Device name to report in 'ro.product.device'. This is often '{product}_cheets' but it can be something else if desired. |
+| first-api-level | string |  | False | The first Android API level that this model shipped with.  |
+| marketing-name | string |  | False | Name of this model as it is called in the market, reported in 'ro.product.model'. This often starts with '{oem}'. |
+| metrics-tag | string |  | False | Tag to use to track metrics for this model. The tag can be shared across many models if desired, but this will result in larger granularity for metrics reporting.  Ideally the metrics system should support collation of metrics with different tags into groups, but if this is not supported, this tag can be used to achieve the same end.  This is reported in 'ro.product.metrics.tag'. |
+| oem | string |  | False | Original Equipment Manufacturer for this model. This generally means the OEM name printed on the device. |
+| product | string |  | False | Product name to report in 'ro.product.name'. This may be the model name, or it can be something else, to allow several models to be grouped into one product. |
+
+### files
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system. |
+
+### audio
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| main | [main](#main) |  | True |  |
+
+### main
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| cras-config-dir | string |  | True | Subdirectory for model-specific configuration. |
+| disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
+| files | array - [files](#files) |  | False |  |
+| ucm-suffix | string |  | False | Optional UCM suffix used to determine model specific config. |
+
+### files
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system. |
+
+### firmware
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| bcs-overlay | string |  | False | BCS overlay path used to determine BCS file path for binary firmware downloads. |
+| build-targets | [build-targets](#build-targets) |  | False |  |
+| ec-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+| key-id | string |  | False | Key ID from the signer key set that is used to sign the given firmware image. |
+| main-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+| main-rw-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+| no-firmware | boolean |  | False | If present this indicates that this model has no firmware at present. This means that it will be omitted from the firmware updater (chromeos-firmware- ebuild) and it will not be included in the signer instructions file sent to the signer. This option is often useful when a model is first added, since it may not have firmware at that point. |
+| pd-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+
+### build-targets
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| coreboot | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| cr50 | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| depthcharge | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| ec | string |  | False | Build target that will be considered dirty when building/testing locally. |
+| libpayload | string |  | False | Build target that will be considered dirty when building/testing locally. |
+
+### firmware-signing
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| key-id | string |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
+| sig-id-in-customization-id | boolean |  | False | Indicates that this model cannot be decoded by the mapping table. Instead the model is stored in the VPD (Vital Product Data) region in the customization_id property. This allows us to determine the model to use in the factory during the finalization stage. Note that if the VPD is wiped then the model will be lost. This may mean that the device will revert back to a generic model, or may not work. It is not possible in general to test whether the model in the VPD is correct at run-time. We simply assume that it is. The advantage of using this property is that no hardware changes are needed to change one model into another. For example we can create 20 different whitelabel boards, all with the same hardware, just by changing the customization_id that is written into SPI flash. |
+| signature-id | string |  | True | ID used to generate keys/keyblocks in the firmware signing output.  This is also the value provided to mosys platform signature for the updater4.sh script. |
+
+### identity
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| customization-id | string |  | False | Customization ID set in the VPD during manufacturing. |
+| platform-name | string |  | False | Indicates the platform name for this platform. This is reported by 'mosys platform name'. It is typically the family name with the first letter capitalized. |
+| sku-id | integer |  | False | SKU/Board strapping pins configured during board manufacturing. |
+| smbios-name-match | string |  | False | Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
+
+### thermal
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| files | array - [files](#files) |  | True |  |
+
+### files
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system. |
+
+### touch
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| files | array - [files](#files) |  | False |  |
+| present | string |  | False | Whether touch is present or needs to be probed for. |
+| probe-regex | string |  | False | If probe is set, the regex used to look for touch. |
+
+### files
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| destination | string |  | False | Installation path for the file on the system image. |
+| source | string |  | False | Source of the file relative to the build system ${FILESDIR} |
+| symlink | string |  | False | Symlink file that will be installed pointing to the destination. |
+
+### ui
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| power-button | [power-button](#power-button) |  | False |  |
+
+### power-button
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| edge | string |  | False |  |
+| position | string |  | False |  |
+
+
+[](end_definitions)
+
+## Usage Instructions
+
+## Adding and testing new properties
+
+Before starting, cros_workon the following:
+
+*   cros_workon --host start chromeos-config-host
+*   cros_workon --board=BOARD start chromeos-config-bsp chromeos-config
+
+To introduce a new property, first add its definition to the schema:
+
+*   chromeos-config/cros_config_host/cros_config_schema.yaml
+
+Then update the README.md automatically via (unit tests will check this):
+
+*   python -m cros_config_host.generate_schema_doc -o README.md
+
+To install the updated schema, run:
+
+*   sudo emerge chromeos-config-host
+
+To use the new property, update your respective YAML source file. E.g.
+overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.yaml
+
+Next add the new property and its value to the appropriate yaml file(s) in the
+board's overlay. E.g.
+overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.yaml
+
+To install the changes, run:
+
+*   emerge-${BOARD} chromeos-config-bsp chromeos-config
+
+At this point the updated config is located at:
+
+*   /build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml
+
+To query your new item run the test command in the chroot:
+
+*   cros_config_host -c
+    /build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml -m <MODEL> get
+    </path/to/property> <property name>
+
+For instance:
+
+*   cros_config_host -c /build/coral/usr/share/chromeos-config/yaml/config.yaml
+    \
+    -m robo360 get /firmware key-id
+
+## Device Tree - Schema (v1)
+
+Some initial devices were launched under version 1 for chromeos-config. For
+these cases, the v1 schema (below) is still used; however, all new devices
+should be using the v2 schema (YAML based).
 
 *   `family`: Provides family-level configuration settings, which apply to all
     models in the family.
@@ -456,9 +766,9 @@ properties.
             *   `power-button` (optional): Defines the position on the screen
                 where the power-button menu appears after a long press of the
                 power button on a tablet device. The position is defined
-                according to the 'landscape-primary' orientation, so that if
-                the device is rotated, the button position on the screen will
-                follow the rotation.
+                according to the 'landscape-primary' orientation, so that if the
+                device is rotated, the button position on the screen will follow
+                the rotation.
 
                 *   `edge`: Indicates which edge the power button is anchored
                     to. Can be "left", "right", "top", "bottom". For example,
@@ -466,663 +776,7 @@ properties.
                     the screen, with the distance along that edge (top to
                     bottom) defined by the next property.
                 *   `position': Indicates the position of the menu along that
-                    edge, as a fraction, measured from the top or left of
-                    the screen. For example, "0.3"  means that the menu will be
-                    30% of the way from the origin (which is the left or top of
-                    the screen).
-
-
-### Example for reef
-
-```
-chromeos {
-    family {
-        audio {
-            audio_type: audio-type {
-                card = "bxtda7219max";
-                volume = "cras-config/{cras-config-dir}/{card}";
-                dsp-ini = "cras-config/{cras-config-dir}/dsp.ini";
-                hifi-conf = "ucm-config/{card}.{ucm-suffix}/HiFi.conf";
-                alsa-conf = "ucm-config/{card}.{ucm-suffix}/{card}.{ucm-suffix}.conf";
-                topology-bin = "topology/5a98-reef-{topology-name}-8-tplg.bin";
-            };
-        };
-        bcs {
-            touch_bcs: touch-bcs {
-                overlay = "overlay-reef-private";
-                package = "chromeos-touch-firmware-reef";
-                tarball = "chromeos-base/{package}/{package}-{ebuild-version}.tbz2";
-                ebuild-version = "1.0-r9";
-            };
-        };
-        firmware {
-            script = "updater4.sh";
-            shared: reef {
-                bcs-overlay = "overlay-reef-private";
-                main-image = "bcs://Reef.9042.50.0.tbz2";
-                ec-image = "bcs://Reef-EC.9042.43.0.tbz2";
-                extra = "${FILESDIR}/extra",
-                    "${SYSROOT}/usr/sbin/ectool",
-                    "bcs://Reef.something.tbz2";
-                build-targets {
-                    coreboot = "reef";
-                    ec = "reef";
-                    depthcharge = "reef";
-                    libpayload = "reef";
-                    cr50 = "cr50";
-                };
-            };
-            pinned_version: sand {
-                bcs-overlay = "overlay-reef-private";
-                main-image = "bcs://Reef.9041.50.0.tbz2";
-                ec-image = "bcs://Reef-EC.9041.43.0.tbz2";
-                extra = "${FILESDIR}/extra",
-                    "${SYSROOT}/usr/sbin/ectool",
-                    "bcs://Reef.something.tbz2";
-                build-targets {
-                    coreboot = "reef";
-                    ec = "reef";
-                    depthcharge = "reef";
-                    libpayload = "reef";
-                };
-            };
-        };
-        power {
-          power_type: power-type {
-            charging-ports = "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT";
-            low-battery-shutdown-percent = "4.0";
-            power-supply-full-factor = "0.94";
-            suspend-to-idle = "1";
-          };
-        };
-
-        mapping {
-            sku-map@0 {
-                platform-name = "Reef";
-                smbios-name-match = "reef";
-                /* This is an example! It does not match any real family */
-                simple-sku-map = <
-                   0 &basking
-                   4 &reef_4
-                   5 &reef_5
-                   8 &electro>;
-            };
-            sku-map@1 {
-                platform-name = "Pyro";
-                smbios-name-match = "pyro";
-                single-sku = <&pyro>;
-            };
-            sku-map@2 {
-                platform-name = "Snappy";
-                smbios-name-match = "snappy";
-                single-sku = <&snappy>;
-            };
-            sku-map@3 {
-                platform-name = "Sand";
-                smbios-name-match = "sand";
-                single-sku = <&sand>;
-            };
-        };
-
-        touch {
-            elan_touchscreen: elan-touchscreen {
-                bcs-type = <&touch_bcs>;
-                vendor = "elan";
-                firmware-bin = "{vendor}/{pid}_{version}.bin";
-                firmware-symlink = "{vendor}ts_i2c_{pid}.bin";
-            };
-            elan_touchpad: elan-touchpad {
-                bcs-type = <&touch_bcs>;
-                vendor = "elan";
-                firmware-bin = "{vendor}/{pid}_{version}.bin";
-                firmware-symlink = "{vendor}_i2c_{pid}.bin";
-            };
-            wacom_stylus: wacom-stylus {
-                /* This uses ${FILESDIR}, not BCS */
-                vendor = "wacom";
-                firmware-bin = "wacom/wacom_{version}.hex";
-                firmware-symlink = "wacom_firmware_{model}.bin";
-            };
-            weida_touchscreen: weida-touchscreen {
-                /* This uses ${FILESDIR}, not BCS */
-                vendor = "weida";
-                firmware-bin = "weida/{pid}_{version}_{date-code}.bin";
-                firmware-symlink = "wdt87xx.bin";
-            };
-        };
-
-        arc {
-            build-properties {
-                arc_properties_type: arc-properties-type {
-                    device = "{product}_cheets";
-                };
-            };
-        };
-    };
-
-    models {
-        reef: reef {
-            powerd-prefs = "reef";
-            wallpaper = "seaside_life";
-            brand-code = "ABCD";
-            arc {
-                hw-features = "reef/arc++/hardware_features";
-                build-properties {
-                    arc-properties-type = <&arc_properties_type>;
-                    product = "robo";
-                    oem = "Whyhub";
-                    marketing-name = "{oem} Chromebook 23";
-                    metrics-tag = "robo";
-                };
-            };
-            firmware {
-                shares = <&shared>;
-                key-id = "REEF";
-            };
-            power {
-              power-type = <&power_type>;
-              set-wifi-transmit-power-for-tablet-mode = "1";
-            };
-            thermal {
-                dptf-dv = "reef/dptf.dv";
-            };
-            submodels {
-                reef_4: reef-touchscreen {
-                    touch {
-                        present = "yes";
-                    };
-                    audio {
-                        main {
-                            audio-type = <&audio_type>;
-                            cras-config-dir = "front";
-                            ucm-suffix = "front";
-                            topology-name = "front";
-                        };
-                    };
-                };
-                reef_5: reef-notouch {
-                    touch {
-                        present = "no";
-                    };
-                    audio {
-                        main {
-                            audio-type = <&audio_type>;
-                            cras-config-dir = "rear";
-                            ucm-suffix = "rear";
-                            topology-name = "rear";
-                        };
-                    };
-                };
-            };
-            touch {
-                present = "probe";
-                probe-regex = "[Tt]ouchscreen|WCOMNTN2";
-                touchscreen {
-                    touch-type = <&elan_touchscreen>;
-                    pid = "0a97";
-                    version = "1012";
-                };
-            };
-        };
-
-        pyro: pyro {
-            powerd-prefs = "pyro_snappy";
-            wallpaper = "alien_invasion";
-            brand-code = "ABCE";
-            audio {
-                main {
-                    audio-type = <&audio_type>;
-                    cras-config-dir = "pyro";
-                    ucm-suffix = "pyro";
-                    topology-name = "pyro";
-                };
-            };
-            firmware {
-                bcs-overlay = "overlay-pyro-private";
-                main-image = "bcs://Pyro.9042.41.0.tbz2";
-                ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
-                key-id = "PYRO";
-                build-targets {
-                    coreboot = "pyro";
-                    ec = "pyro";
-                    depthcharge = "pyro";
-                    libpayload = "reef";
-                };
-            };
-            power {
-              power-type = <&power_type>;
-            };
-            thermal {
-                dptf-dv = "pyro/dptf.dv";
-            };
-        };
-
-        snappy: snappy {
-            powerd-prefs = "pyro_snappy";
-            wallpaper = "chocolate";
-            brand-code = "ABCF";
-            audio {
-                main {
-                    audio-type = <&audio_type>;
-                    cras-config-dir = "snappy";
-                    ucm-suffix = "snappy";
-                    topology-name = "snappy";
-                };
-            };
-            firmware {
-                bcs-overlay = "overlay-snappy-private";
-                main-image = "bcs://Snappy.9042.43.0.tbz2";
-                ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
-                key-id = "SNAPPY";
-                build-targets {
-                    coreboot = "snappy";
-                    ec = "snappy";
-                    depthcharge = "snappy";
-                    libpayload = "reef";
-                };
-            };
-            power {
-              power-type = <&power_type>;
-              keyboard-backlight-no-als-brightness = "10.0";
-            };
-        };
-
-        basking: basking {
-            powerd-prefs = "reef";
-            test-label = "reef";
-            wallpaper = "coffee";
-            brand-code = "ABCG";
-            firmware {
-                shares = <&shared>;
-                key-id = "BASKING";
-            };
-            power {
-              power-type = <&power_type>;
-            };
-            touch {
-                present = "yes";
-                stylus {
-                    touch-type = <&wacom_stylus>;
-                    version = "4209";
-                };
-                touchpad {
-                    touch-type = <&elan_touchpad>;
-                    pid = "97.0";
-                    version = "6.0";
-                };
-                touchscreen@0 {
-                    touch-type = <&elan_touchscreen>;
-                    pid = "3062";
-                    version = "5602";
-                };
-                touchscreen@1 {
-                    touch-type = <&weida_touchscreen>;
-                    pid = "01017401";
-                    version = "2082";
-                    date-code = "0133c65b";
-                };
-            };
-        };
-
-        sand: sand {
-            powerd-prefs = "reef";
-            wallpaper = "coffee";
-            brand-code = "ABCH";
-            audio {
-                main {
-                    audio-type = <&audio_type>;
-                    cras-config-dir = "sand";
-                    ucm-suffix = "sand";
-                    topology-name = "sand";
-                };
-            };
-            firmware {
-                shares = <&pinned_version>;
-                key-id = "SAND";
-            };
-            power {
-              power-type = <&power_type>;
-            };
-            ui {
-                power-button {
-                    edge = "left";
-                    position = "0.3";
-                };
-            };
-        };
-
-        electro: electro {
-            powerd-prefs = "reef";
-            test-label = "reef";
-            wallpaper = "coffee";
-            brand-code = "ABCI";
-            firmware {
-                shares = <&pinned_version>;
-                key-id = "ELECTRO";
-                no-firmware;
-            };
-            power {
-              power-type = <&power_type>;
-            };
-        };
-
-        /* Whitelabel model */
-        whitetip: whitetip {
-            firmware {
-                shares = <&shared>;
-            };
-        };
-
-        whitetip1 {
-            whitelabel = <&whitetip>;
-            wallpaper = "shark";
-            brand-code = "SHAR";
-            firmware {
-                key-id = "WHITELABEL1";
-            };
-        };
-
-        whitetip2 {
-            whitelabel = <&whitetip>;
-            wallpaper = "more_shark";
-            brand-code = "SHAQ";
-            firmware {
-                key-id = "WHITELABEL2";
-            };
-        };
-        zt_whitelabel: zero-touch-whitelabel {
-            firmware {
-                sig-id-in-customization-id;
-                shares = <&shared>;
-            };
-        };
-        zt1 {
-            whitelabel = <&zt_whitelabel>;
-            firmware {
-                key-id = "ZT1";
-            };
-        };
-        zt2 {
-            whitelabel = <&zt_whitelabel>;
-            firmware {
-                key-id = "ZT2";
-            };
-        };
-    };
-};
-```
-
-[](begin_definitions)
-
-## CrOS Config Type Definitions (v2)
-### model
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| arc | [arc](#arc) |  | False |  |
-| audio | [audio](#audio) |  | False |  |
-| brand-code | string | ```^[A-Z]{4}$``` | False | Brand code of the model (also called RLZ code). |
-| firmware | [firmware](#firmware) |  | True |  |
-| firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |
-| identity | [identity](#identity) |  | False |  |
-| name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
-| powerd-prefs | string |  | False | Powerd config that should be used. |
-| test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
-| thermal | [thermal](#thermal) |  | False |  |
-| touch | [touch](#touch) |  | False |  |
-| ui | [ui](#ui) |  | False |  |
-| wallpaper | string |  | False | Base filename of the default wallpaper to show on this device.
- |
-
-### arc
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| build-properties | [build-properties](#build-properties) |  | False |  |
-| files | array - [files](#files) |  | False |  |
-
-### build-properties
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| device | string |  | False | Device name to report in 'ro.product.device'. This
-is often '{product}_cheets' but it can be something else if
-desired.
- |
-| first-api-level | string |  | False | The first Android API level that this model shipped with.
- |
-| marketing-name | string |  | False | Name of this model as it is called in the
-market, reported in 'ro.product.model'. This often starts
-with '{oem}'.
- |
-| metrics-tag | string |  | False | Tag to use to track metrics for this model.
-The tag can be shared across many models if desired, but
-this will result in larger granularity for metrics
-reporting.  Ideally the metrics system should support
-collation of metrics with different tags into groups, but if
-this is not supported, this tag can be used to achieve the
-same end.  This is reported in 'ro.product.metrics.tag'.
- |
-| oem | string |  | False | Original Equipment Manufacturer for this model. This
-generally means the OEM name printed on the device.
- |
-| product | string |  | False | Product name to report in 'ro.product.name'.
-This may be the model name, or it can be something else, to allow
-several models to be grouped into one product.
- |
-
-### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system. |
-
-### audio
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| main | [main](#main) |  | True |  |
-
-### main
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| cras-config-dir | string |  | True | Subdirectory for model-specific configuration. |
-| disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
-| files | array - [files](#files) |  | False |  |
-| ucm-suffix | string |  | False | Optional UCM suffix used to determine model specific config. |
-
-### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system. |
-
-### firmware
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| bcs-overlay | string |  | False | BCS overlay path used to determine BCS file path for binary firmware downloads. |
-| build-targets | [build-targets](#build-targets) |  | False |  |
-| ec-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-| key-id | string |  | False | Key ID from the signer key set that is used to sign the given firmware image. |
-| main-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-| main-rw-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-| no-firmware | boolean | ```^[A-Z|_|0-9]*$``` | False | If present this indicates that this model has no firmware at present.
-This means that it will be omitted from the firmware updater
-(chromeos-firmware- ebuild) and it will not be included in the signer
-instructions file sent to the signer.
-This option is often useful when a model is first added,
-since it may not have firmware at that point.
- |
-| pd-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-
-### build-targets
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| coreboot | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| cr50 | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| depthcharge | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| ec | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| libpayload | string |  | False | Build target that will be considered dirty when building/testing locally. |
-
-### firmware-signing
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| key-id | string |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
-| sig-id-in-customization-id | boolean |  | False | Indicates that this model cannot be decoded by the mapping table.
-Instead the model is stored in the VPD (Vital Product Data) region in the
-customization_id property. This allows us to determine the
-model to use in the factory during the finalization stage. Note
-that if the VPD is wiped then the model will be lost. This may
-mean that the device will revert back to a generic model, or
-may not work. It is not possible in general to test whether the
-model in the VPD is correct at run-time. We simply assume that
-it is. The advantage of using this property is that no hardware
-changes are needed to change one model into another. For example
-we can create 20 different whitelabel boards, all with the same
-hardware, just by changing the customization_id that is written
-into SPI flash.
- |
-| signature-id | string |  | True | ID used to generate keys/keyblocks in the firmware signing output.  This is also the value provided to mosys platform signature for the updater4.sh script. |
-
-### identity
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| customization-id | string |  | False | Customization ID set in the VPD during manufacturing. |
-| platform-name | string |  | False | Indicates the platform name for this platform. This is reported by 'mosys platform name'. It is typically the family name with the first letter capitalized. |
-| sku-id | integer |  | False | SKU/Board strapping pins configured during board manufacturing. |
-| smbios-name-match | string |  | False | Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
-
-### thermal
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| files | array - [files](#files) |  | True |  |
-
-### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system. |
-
-### touch
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| files | array - [files](#files) |  | False |  |
-| present | string |  | False | Whether touch is present or needs to be probed for. |
-| probe-regex | string |  | False | If probe is set, the regex used to look for touch. |
-
-### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system ${FILESDIR} |
-| symlink | string |  | False | Symlink file that will be installed pointing to the destination. |
-
-### ui
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| power-button | [power-button](#power-button) |  | False |  |
-
-### power-button
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| edge | string |  | False |  |
-| position | string |  | False |  |
-
-
-[](end_definitions)
-
-## Usage Instructions
-
-### Pinning Firmware Versions for Specific Models
-
-In order to pin firmware for a single model, change the main-image and ec-image
-properties in that image. See `snappy` above as an example.
-
-In order to pin firmware versions for several models and avoid entering the same
-information twice, create a new firmware instance pointing to the pinned rev and
-then update the repective model's shares phandle to point to the pinned
-revision.
-
-In the example above, this is shown using sand (a model) referencing the pinned
-firmware.
-
-This pinned firmware can then be shared as normal (e.g. electro in the example).
-
-This will cause the different version to get installed under a different models
-sub-directory in the shellball. Which achieves the same effect of having 2
-separate revisions (in a slightly round about way) installed in the shellball.
-
-The shellball generated will contain the following (based on the example above)
-for the firmware pinning case: * models/ * reef/ * bios.bin * ec.bin *
-setvars.sh * basking/ * setvars.sh (points to models/reef/...) * sand/ *
-bios.bin (a different version) * ec.bin (a different version) * setvars.sh *
-electro/ * setvars.sh (points to models/sand/...)
-
-### Creating touch settings
-
-To enable touch on a Chromebook you need to set up the touch firmware correctly.
-
-First, create a `touch` node in your family. Add to that subnodes for each type
-of touch device you have, e.g. elan-touchpad, wacom-stylus. Each node should
-specify the firmware-bin and firmware-symlink filename patterns for that device.
-
-Once you have done that you can add a `touch` node in your model. This should
-reference the touch firmware node using the `touch-type` property. It should
-also define things needed to identify the firmware, typically `pid` and
-`version`.
-
-Make sure that the ebuild which installs your BSP files (e.g.
-`chromeos-bsp-coral-private`) calls the `install_touch_files` function from the
-`cros-unibuild`. Check that your ebuild inherits `cros-unibuild` too.
-
-If you are adding touch support for a new model in the family, take a look at
-what other models have done.
-
-To test your changes (e.g. for coral):
-
-emerge-coral chromeos-config-bsp chromeos-config chromeos-bsp-coral-private
-
-You should see it install each of the touch files. If not, or you get an error,
-check your configuration.
-
-To test at run-time, build a new image and write it to your device. Check that
-the firmware files are installed in /lib/firmware and loaded correctly by your
-kernel driver.
-
-## Adding and testing new properties
-
-To introduce a new property, first add its definition to this file and to
-cros_config_host/validate_config.py. Then to generate the new version of the
-utility familiar with the new property run
-
-$ cros_workon --host start chromeos-config-host $ sudo emerge
-chromeos-config-host
-
-Next add the new property and its value to the approritate dtsi file(s) in the
-board's private overlay, in src/private-overlays. Either in
-
-overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/<MODEL>/model.dtsi
-
-if each model has its own configuration file or in
-
-overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.dtsi
-
-in case multiple models' configurations are described in a single file.
-
-To compile the new database run
-
-$ cros_workon-${BOARD} start chromeos-config-bsp $ emerge-${BOARD}
-chromeos-config-bsp
-
-and then to install the database into the board file system run
-
-$ emerge-${BOARD} chromeos-config
-
-At this point the new compiled database is installed in
-/build/${BOARD}/usr/share/chromeos-config/config.dtb.
-
-To query your new item run the test command in the chroot:
-
-$ cros_config_host -c /build/${BOARD}/usr/share/chromeos-config/config.dtb \
--m <MODEL> get </path/to/property> <property name>
-
-for instance:
-
-$ cros_config_host -c /build/coral/usr/share/chromeos-config/config.dtb \
--m robo360 get /firmware key-id
+                    edge, as a fraction, measured from the top or left of the
+                    screen. For example, "0.3" means that the menu will be 30%
+                    of the way from the origin (which is the left or top of the
+                    screen).
