@@ -10,12 +10,15 @@
 
 #include <base/files/file_util.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 
 #include "smbprovider/credential_store.h"
 
 namespace smbprovider {
 
-class InMemoryCredentialStore : public CredentialStore {
+class InMemoryCredentialStore
+    : public CredentialStore,
+      public base::SupportsWeakPtr<InMemoryCredentialStore> {
  public:
   InMemoryCredentialStore();
   ~InMemoryCredentialStore() override;

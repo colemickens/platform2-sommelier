@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
 
@@ -14,18 +15,49 @@
 
 namespace smbprovider {
 
-std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create() {
+namespace {
+
+// Returns the mount root by appending 'smb://' to |server| and |share|.
+std::string GetMountRoot(const char* server, const char* share) {
+  DCHECK(server);
+  DCHECK(share);
+
+  return std::string(kSmbUrlScheme) + server + "/" + share;
+}
+
+}  // namespace
+
+template <typename T>
+std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
+    T auth_callback) {
   SMBCCTX* context = smbc_new_context();
   if (!context) {
     LOG(ERROR) << "Could not create smbc context";
     return nullptr;
   }
+
   if (!smbc_init_context(context)) {
     smbc_free_context(context, 0);
     LOG(ERROR) << "Could not initialize smbc context";
     return nullptr;
   }
+
   smbc_set_context(context);
+
+  // Change auth_callback to a static pointer.
+  static uint8_t static_auth_callback_memory[sizeof(T)];
+  static T* static_auth_callback =
+      new (static_auth_callback_memory) T(std::move(auth_callback));
+
+  // Use static_auth_callback as a C function pointer by converting it to a
+  // lambda.
+  smbc_setFunctionAuthData(
+      context, +[](const char* srv, const char* shr, char* wg, int32_t wglen,
+                   char* un, int32_t unlen, char* pw, int32_t pwlen) {
+        static_auth_callback->Run(GetMountRoot(srv, shr), wg, wglen, un, unlen,
+                                  pw, pwlen);
+      });
+
   return std::unique_ptr<SambaInterfaceImpl>(new SambaInterfaceImpl(context));
 }
 
@@ -141,5 +173,9 @@ SambaInterfaceImpl::~SambaInterfaceImpl() {
 }
 
 SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {}
+
+// This is required to explicitly instantiate the template function.
+template std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create<
+    SambaInterfaceImpl::AuthCallback>(SambaInterfaceImpl::AuthCallback);
 
 }  // namespace smbprovider

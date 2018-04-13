@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
@@ -63,15 +64,18 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
+    auto credential_store = std::make_unique<InMemoryCredentialStore>();
     std::unique_ptr<SambaInterfaceImpl> samba_interface =
-        SambaInterfaceImpl::Create();
+        SambaInterfaceImpl::Create(base::Bind(
+            base::IgnoreResult(&InMemoryCredentialStore::GetAuthentication),
+            credential_store->AsWeakPtr()));
     if (!samba_interface) {
       LOG(ERROR) << "SambaInterface failed to initialize";
       exit(EXIT_FAILURE);
     }
 
-    auto mount_manager = std::make_unique<MountManager>(
-        std::make_unique<InMemoryCredentialStore>());
+    auto mount_manager =
+        std::make_unique<MountManager>(std::move(credential_store));
     smb_provider_ = std::make_unique<SmbProvider>(
         std::make_unique<brillo::dbus_utils::DBusObject>(
             nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath()),

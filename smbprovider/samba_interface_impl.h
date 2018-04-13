@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/samba_interface.h"
@@ -17,10 +18,20 @@ namespace smbprovider {
 // Implements SambaInterface and calls libsmbclient's smbc_* methods 1:1.
 class SambaInterfaceImpl : public SambaInterface {
  public:
+  // SMB authentication callback.
+  using AuthCallback = base::Callback<void(const std::string& share_path,
+                                           char* workgroup,
+                                           int32_t workgroup_length,
+                                           char* username,
+                                           int32_t username_length,
+                                           char* password,
+                                           int32_t password_length)>;
+
   ~SambaInterfaceImpl() override;
 
   // This should be called instead of constructor.
-  static std::unique_ptr<SambaInterfaceImpl> Create();
+  template <typename T = SambaInterfaceImpl::AuthCallback>
+  static std::unique_ptr<SambaInterfaceImpl> Create(T auth_callback);
 
   int32_t OpenFile(const std::string& file_path,
                    int32_t flags,
