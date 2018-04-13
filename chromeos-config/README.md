@@ -177,6 +177,7 @@ The schema definition is below:
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |
 | identity | [identity](#identity) |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
+| power | [power](#power) |  | False | Contains power_manager device settings.  This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Each property corresponds to a power_manager preference defined in https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h |
 | powerd-prefs | string |  | False | Powerd config that should be used. |
 | test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  |
@@ -260,6 +261,16 @@ The schema definition is below:
 | platform-name | string |  | False | Indicates the platform name for this platform. This is reported by 'mosys platform name'. It is typically the family name with the first letter capitalized. |
 | sku-id | integer |  | False | SKU/Board strapping pins configured during board manufacturing. |
 | smbios-name-match | string |  | False | Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
+
+### power
+| Attribute | Type   | RegEx     | Required | Description |
+| --------- | ------ | --------- | -------- | ----------- |
+| charging-ports | string |  | False | String describing charging port positions. |
+| keyboard-backlight-no-als-brightness | string | ```^[0-9]{1,3}.[0-9]?``` | False | Initial brightness for the keyboard backlight for systems without ambient light sensors, in the range [0.0, 100.0]. |
+| low-battery-shutdown-percent | string | ```^[0-9]{1,3}.[0-9]?``` | False | Battery percentage threshold at which the system should shut down automatically, in the range [0.0, 100.0]. |
+| power-supply-full-factor | string | ```^[0-1].[0-9]?``` | False | Fraction of the battery's total charge at which it should be reported as full in the UI, in the range (0.0, 1.0]. |
+| set-wifi-transmit-power-for-tablet-mode | string | ```^[0-1]$``` | False | If true (1), update wifi transmit power when in tablet vs. clamshell mode. |
+| suspend-to-idle | string | ```^[0-1]$``` | False | If true (1), suspend to idle by writing freeze to /sys/power/state. |
 
 ### thermal
 | Attribute | Type   | RegEx     | Required | Description |

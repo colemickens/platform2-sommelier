@@ -55,6 +55,12 @@ some_base_config: &some_base_config
     ec-image: "bcs://Some_EC.1111.11.1.tbz2"
     main-image: "bcs://Some.1111.11.1.tbz2"
     main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
+  power:
+    keyboard-backlight-no-als-brightness: "98.7"
+    low-battery-shutdown-percent: "100.0"
+    power-supply-full-factor: "0.0"
+    set-wifi-transmit-power-for-tablet-mode: "1"
+    suspend-to-idle: "0"
   ui:
     power-button:
       edge: "left"

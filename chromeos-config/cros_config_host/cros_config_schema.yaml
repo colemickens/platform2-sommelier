@@ -202,6 +202,41 @@ properties:
               type: string
               pattern: "^[_a-zA-Z0-9]{3,}"
               description: Unique name for the given model.
+            power:
+              description: Contains power_manager device settings.  This is the new mechanism used
+                in lieu of the previous file based implementation (via powerd-prefs).
+                Each property corresponds to a power_manager preference defined in
+                https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h
+              type: object
+              properties:
+                charging-ports:
+                  description: String describing charging port positions.
+                  type: string
+                keyboard-backlight-no-als-brightness:
+                  description: Initial brightness for the keyboard backlight for systems without
+                    ambient light sensors, in the range [0.0, 100.0].
+                  type: string
+                  pattern: "^[0-9]{1,3}.[0-9]?"
+                low-battery-shutdown-percent:
+                  description: Battery percentage threshold at which the system should shut down
+                    automatically, in the range [0.0, 100.0].
+                  type: string
+                  pattern: "^[0-9]{1,3}.[0-9]?"
+                power-supply-full-factor:
+                  description: Fraction of the battery's total charge at which it should
+                    be reported as full in the UI, in the range (0.0, 1.0].
+                  type: string
+                  pattern: "^[0-1].[0-9]?"
+                set-wifi-transmit-power-for-tablet-mode:
+                  description: If true (1), update wifi transmit power when in tablet vs. clamshell
+                    mode.
+                  type: string
+                  pattern: "^[0-1]$"
+                suspend-to-idle:
+                  description: If true (1), suspend to idle by writing freeze to /sys/power/state.
+                  type: string
+                  pattern: "^[0-1]$"
+              additionalProperties: false
             powerd-prefs:
               description: Powerd config that should be used.
               type: string

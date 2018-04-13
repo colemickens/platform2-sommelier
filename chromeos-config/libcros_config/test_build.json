@@ -63,6 +63,13 @@
           "smbios-name-match": "Some"
         }, 
         "name": "some", 
+        "power": {
+          "keyboard-backlight-no-als-brightness": "98.7", 
+          "low-battery-shutdown-percent": "100.0", 
+          "power-supply-full-factor": "0.0", 
+          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "suspend-to-idle": "0"
+        }, 
         "thermal": {
           "files": [
             {
@@ -162,6 +169,13 @@
           "smbios-name-match": "Some"
         }, 
         "name": "some", 
+        "power": {
+          "keyboard-backlight-no-als-brightness": "98.7", 
+          "low-battery-shutdown-percent": "100.0", 
+          "power-supply-full-factor": "0.0", 
+          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "suspend-to-idle": "0"
+        }, 
         "thermal": {
           "files": [
             {
@@ -310,6 +324,13 @@
           "smbios-name-match": "Some"
         }, 
         "name": "whitelabel", 
+        "power": {
+          "keyboard-backlight-no-als-brightness": "98.7", 
+          "low-battery-shutdown-percent": "100.0", 
+          "power-supply-full-factor": "0.0", 
+          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "suspend-to-idle": "0"
+        }, 
         "touch": {
           "files": [
             {
@@ -375,6 +396,13 @@
           "smbios-name-match": "Some"
         }, 
         "name": "whitelabel", 
+        "power": {
+          "keyboard-backlight-no-als-brightness": "98.7", 
+          "low-battery-shutdown-percent": "100.0", 
+          "power-supply-full-factor": "0.0", 
+          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "suspend-to-idle": "0"
+        }, 
         "touch": {
           "files": [
             {
@@ -439,6 +467,13 @@
           "smbios-name-match": "Some"
         }, 
         "name": "whitelabel", 
+        "power": {
+          "keyboard-backlight-no-als-brightness": "98.7", 
+          "low-battery-shutdown-percent": "100.0", 
+          "power-supply-full-factor": "0.0", 
+          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "suspend-to-idle": "0"
+        }, 
         "touch": {
           "files": [
             {
@@ -504,6 +539,13 @@
           "smbios-name-match": "Some"
         }, 
         "name": "whitelabel", 
+        "power": {
+          "keyboard-backlight-no-als-brightness": "98.7", 
+          "low-battery-shutdown-percent": "100.0", 
+          "power-supply-full-factor": "0.0", 
+          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "suspend-to-idle": "0"
+        }, 
         "touch": {
           "files": [
             {
