@@ -38,9 +38,12 @@ getuid: 1
 ioctl: arg1 == 0x5401 || arg1 == 0x5404 || arg1 == 0x541b || arg1 == 0x5421 || arg1 == 0x8933 || arg1 == 0x8946
 lseek: 1
 lstat: 1
+madvise: 1
 mkdir: 1
+mlock: 1
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+munlock: 1
 munmap: 1
 open: 1
 pipe2: 1
