@@ -294,6 +294,16 @@ properties:
                       type: string
                   additionalProperties: false
               additionalProperties: false
+            oem-id:
+              description: |
+                Some projects store SKU ID, OEM ID and Board Revision in an
+                EEPROM and only SKU ID can be updated in the factory and RMA
+                flow but others should be pre-flashed in the chip level. In
+                this case, we would like to validate whether oem-id here from
+                the updated SKU ID matches the one in the EEPROM so we can
+                prevent this device from being updated to another OEM's models.
+              type: string
+              pattern: "[0-9]+"
           additionalProperties: false
           required:
           - firmware

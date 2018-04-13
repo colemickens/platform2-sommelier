@@ -185,6 +185,7 @@ The schema definition is below:
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |
 | identity | [identity](#identity) |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
+| oem-id | string | ```[0-9]+``` | False | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's models.  |
 | power | [power](#power) |  | False | Contains power_manager device settings.  This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Each property corresponds to a power_manager preference defined in https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h |
 | powerd-prefs | string |  | False | Powerd config that should be used. |
 | test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
@@ -800,3 +801,10 @@ features for overlays that have already been migrated.
                     screen. For example, "0.3" means that the menu will be 30%
                     of the way from the origin (which is the left or top of the
                     screen).
+
+        *   `oem-id` (optional): Some projects store SKU ID, OEM ID and Board
+            Revision in an EEPROM and only SKU ID can be updated in the factory
+            and RMA flow but others should be pre-flashed in the chip level. In
+            this case, we would like to validate whether oem-id here from the
+            updated SKU ID matches the one in the EEPROM so we can prevent this
+            device from being updated to another OEM's models.

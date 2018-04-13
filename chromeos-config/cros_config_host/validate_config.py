@@ -584,6 +584,7 @@ SCHEMA = NodeDesc('/', True, [
                 PropString('powerd-prefs', conditional_props=NOT_WL),
                 PropString('test-label', False, '[a-z0-9_]+'),
                 PropString('wallpaper', False, '[a-z_]+'),
+                PropString('oem-id', False, '[0-9]+'),
                 NodeDesc('audio', False, copy.deepcopy(BASE_AUDIO_NODE),
                          conditional_props=NOT_WL),
                 NodeDesc('arc', False, [

@@ -80,6 +80,7 @@
 &models {
 	some {
 		wallpaper = "some";
+		oem-id = "0";
 		arc {
 			hw-features = "some/hardware_features";
 		};
@@ -188,6 +189,7 @@
 	};
 
 	whitelabel: whitelabel {
+		oem-id = "1";
 		firmware {
 			shares = <&shared>;
 		};
