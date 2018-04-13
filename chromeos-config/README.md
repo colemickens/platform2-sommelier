@@ -32,7 +32,7 @@ the library.
 
 ## Config Schema
 
-Chrome OS config is now YAML based. If you're still using the File Device Tree
+Chrome OS config is now YAML based. If you're still using the Flat Device Tree
 (FDT) based implementation, see the v1 schema description below.
 
 The following components make up the YAML based chromeos-config support:
@@ -61,7 +61,7 @@ allow for even better re-use and expressiveness in the YAML config.
     some-element: "{{some-template-variable}}"
     ```
 
-    Valid template variables are any YAML element that's currently in scope.
+    Valid template variables are any YAML elements that are currently in scope.
     When generating config, scope is evaluated in the following order:
 
     1.  device
@@ -71,15 +71,23 @@ allow for even better re-use and expressiveness in the YAML config.
         referenced)
 
 2.  Local Variables - These are variables that are only used for templating and
-    are ignored when generating the final JSON output. Variables starting with
-    '$' are considered local and are ignored after template evaluation. The
-    basic syntax is:
+    are dropped in the final JSON output. Variables starting with '$' are
+    considered local and are ignored after template evaluation. The basic syntax
+    is:
 
     ```yaml
     config:
       $some-local-variable: "some-value"
       some-element: "{{$some-local-variable}}"
     ```
+
+    This supports the following:
+
+    1.  Defining local variables that are re-used in multiple places (e.g. file
+        paths).
+    2.  Re-using common config (e.g. 'identity') where the variable value isn't
+        known until the device/product/sku variables come into scope (e.g.
+        $sku-id).
 
 The following provides a simple example of a config using both core YAML
 features and the custom features described above.
@@ -94,7 +102,7 @@ common_config: &common_config
     sku-id: "{{$sku-id}}"
   firmware-signing:
     key-id: "{{$key-id}}"
-    signature-id: "{{$device-name}}"
+    signature-id: "{{name}}"
 chromeos:
   devices:
     - $device-name: "SomeDevice"
@@ -153,11 +161,11 @@ evaluated/de-normalized form accomplishes a couple things:
 The config is evaluated against a http://json-schema.org/ schema located at:
 chromeos-config/cros_config_host/cros_config_schema.yaml
 
-NOTE: The schema is managed in YAML because it's a bit easier to edit than JSON.
+NOTE: The schema is managed in YAML because it's easier to edit than JSON.
 
-Only the post transformed JSON is actually evaluated against the schema. Authors
-can do whatever makes sense in the YAML (from a sharing perspective) as long as
-it generates compliant JSON passes the schema validation.
+Only the transformed JSON is actually evaluated against the schema. Authors can
+do whatever makes sense in the YAML (from a sharing perspective) as long as it
+generates compliant JSON that passes the schema validation.
 
 The schema documentation is auto-generated (and put into this README.md file)
 via: python -m cros_config_host.generate_schema_doc -o README.md
@@ -167,147 +175,347 @@ The schema definition is below:
 [](begin_definitions)
 
 ## CrOS Config Type Definitions (v2)
+
 ### model
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| arc | [arc](#arc) |  | False |  |
-| audio | [audio](#audio) |  | False |  |
-| brand-code | string | ```^[A-Z]{4}$``` | False | Brand code of the model (also called RLZ code). |
-| firmware | [firmware](#firmware) |  | True |  |
-| firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |
-| identity | [identity](#identity) |  | False |  |
-| name | string | ```^[_a-zA-Z0-9]{3,}``` | True | Unique name for the given model. |
-| power | [power](#power) |  | False | Contains power_manager device settings.  This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Each property corresponds to a power_manager preference defined in https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h |
-| powerd-prefs | string |  | False | Powerd config that should be used. |
-| test-label | string |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
-| thermal | [thermal](#thermal) |  | False |  |
-| touch | [touch](#touch) |  | False |  |
-| ui | [ui](#ui) |  | False |  |
-| wallpaper | string |  | False | Base filename of the default wallpaper to show on this device. |
+
+Attribute        | Type                                  | RegEx               | Required | Description
+---------------- | ------------------------------------- | ------------------- | -------- | -----------
+arc              | [arc](#arc)                           |                     | False    |
+audio            | [audio](#audio)                       |                     | False    |
+brand-code       | string                                | `^[A-Z]{4}$`        | False    | Brand code of the model (also called RLZ code).
+firmware         | [firmware](#firmware)                 |                     | True     |
+firmware-signing | [firmware-signing](#firmware-signing) |                     | False    |
+identity         | [identity](#identity)                 |                     | False    |
+name             | string                                | `^[_a-zA-Z0-9]{3,}` | True     | Unique name for the given model.
+power            | [power](#power)                       |                     | False    | Contains power_manager device settings. This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Each property corresponds to a power_manager preference defined in https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h
+powerd-prefs     | string                                |                     | False    | Powerd config that should be used.
+test-label       | string                                |                     | False    | Test alias (model) label that will be applied in Autotest and reported for test results.
+thermal          | [thermal](#thermal)                   |                     | False    |
+touch            | [touch](#touch)                       |                     | False    |
+ui               | [ui](#ui)                             |                     | False    |
+wallpaper        | string                                |                     | False    | Base filename of the default wallpaper to show on this device.
 
 ### arc
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| build-properties | [build-properties](#build-properties) |  | False |  |
-| files | array - [files](#files) |  | False |  |
+
+Attribute        | Type                                  | RegEx | Required | Description
+---------------- | ------------------------------------- | ----- | -------- | -----------
+build-properties | [build-properties](#build-properties) |       | False    |
+files            | array - [files](#files)               |       | False    |
 
 ### build-properties
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| device | string |  | False | Device name to report in 'ro.product.device'. This is often '{product}_cheets' but it can be something else if desired. |
-| first-api-level | string |  | False | The first Android API level that this model shipped with.  |
-| marketing-name | string |  | False | Name of this model as it is called in the market, reported in 'ro.product.model'. This often starts with '{oem}'. |
-| metrics-tag | string |  | False | Tag to use to track metrics for this model. The tag can be shared across many models if desired, but this will result in larger granularity for metrics reporting.  Ideally the metrics system should support collation of metrics with different tags into groups, but if this is not supported, this tag can be used to achieve the same end.  This is reported in 'ro.product.metrics.tag'. |
-| oem | string |  | False | Original Equipment Manufacturer for this model. This generally means the OEM name printed on the device. |
-| product | string |  | False | Product name to report in 'ro.product.name'. This may be the model name, or it can be something else, to allow several models to be grouped into one product. |
+
+| Attribute       | Type   | RegEx | Required | Description               |
+| --------------- | ------ | ----- | -------- | ------------------------- |
+| device          | string |       | False    | Device name to report in  |
+:                 :        :       :          : 'ro.product.device'. This :
+:                 :        :       :          : is often                  :
+:                 :        :       :          : '{product}_cheets' but it :
+:                 :        :       :          : can be something else if  :
+:                 :        :       :          : desired.                  :
+| first-api-level | string |       | False    | The first Android API     |
+:                 :        :       :          : level that this model     :
+:                 :        :       :          : shipped with.             :
+| marketing-name  | string |       | False    | Name of this model as it  |
+:                 :        :       :          : is called in the market,  :
+:                 :        :       :          : reported in               :
+:                 :        :       :          : 'ro.product.model'. This  :
+:                 :        :       :          : often starts with         :
+:                 :        :       :          : '{oem}'.                  :
+| metrics-tag     | string |       | False    | Tag to use to track       |
+:                 :        :       :          : metrics for this model.   :
+:                 :        :       :          : The tag can be shared     :
+:                 :        :       :          : across many models if     :
+:                 :        :       :          : desired, but this will    :
+:                 :        :       :          : result in larger          :
+:                 :        :       :          : granularity for metrics   :
+:                 :        :       :          : reporting. Ideally the    :
+:                 :        :       :          : metrics system should     :
+:                 :        :       :          : support collation of      :
+:                 :        :       :          : metrics with different    :
+:                 :        :       :          : tags into groups, but if  :
+:                 :        :       :          : this is not supported,    :
+:                 :        :       :          : this tag can be used to   :
+:                 :        :       :          : achieve the same end.     :
+:                 :        :       :          : This is reported in       :
+:                 :        :       :          : 'ro.product.metrics.tag'. :
+| oem             | string |       | False    | Original Equipment        |
+:                 :        :       :          : Manufacturer for this     :
+:                 :        :       :          : model. This generally     :
+:                 :        :       :          : means the OEM name        :
+:                 :        :       :          : printed on the device.    :
+| product         | string |       | False    | Product name to report in |
+:                 :        :       :          : 'ro.product.name'. This   :
+:                 :        :       :          : may be the model name, or :
+:                 :        :       :          : it can be something else, :
+:                 :        :       :          : to allow several models   :
+:                 :        :       :          : to be grouped into one    :
+:                 :        :       :          : product.                  :
 
 ### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system. |
+
+| Attribute   | Type   | RegEx | Required | Description                        |
+| ----------- | ------ | ----- | -------- | ---------------------------------- |
+| destination | string |       | False    | Installation path for the file on  |
+:             :        :       :          : the system image.                  :
+| source      | string |       | False    | Source of the file relative to the |
+:             :        :       :          : build system.                      :
 
 ### audio
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| main | [main](#main) |  | True |  |
+
+Attribute | Type          | RegEx | Required | Description
+--------- | ------------- | ----- | -------- | -----------
+main      | [main](#main) |       | True     |
 
 ### main
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| cras-config-dir | string |  | True | Subdirectory for model-specific configuration. |
-| disable-profile | string |  | False | Optional --disable_profile parameter for CRAS deamon. |
-| files | array - [files](#files) |  | False |  |
-| ucm-suffix | string |  | False | Optional UCM suffix used to determine model specific config. |
+
+| Attribute       | Type            | RegEx | Required | Description       |
+| --------------- | --------------- | ----- | -------- | ----------------- |
+| cras-config-dir | string          |       | True     | Subdirectory for  |
+:                 :                 :       :          : model-specific    :
+:                 :                 :       :          : configuration.    :
+| disable-profile | string          |       | False    | Optional          |
+:                 :                 :       :          : --disable_profile :
+:                 :                 :       :          : parameter for     :
+:                 :                 :       :          : CRAS deamon.      :
+| files           | array -         |       | False    |                   |
+:                 : [files](#files) :       :          :                   :
+| ucm-suffix      | string          |       | False    | Optional UCM      |
+:                 :                 :       :          : suffix used to    :
+:                 :                 :       :          : determine model   :
+:                 :                 :       :          : specific config.  :
 
 ### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system. |
+
+| Attribute   | Type   | RegEx | Required | Description                        |
+| ----------- | ------ | ----- | -------- | ---------------------------------- |
+| destination | string |       | False    | Installation path for the file on  |
+:             :        :       :          : the system image.                  :
+| source      | string |       | False    | Source of the file relative to the |
+:             :        :       :          : build system.                      :
 
 ### firmware
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| bcs-overlay | string |  | False | BCS overlay path used to determine BCS file path for binary firmware downloads. |
-| build-targets | [build-targets](#build-targets) |  | False |  |
-| ec-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-| key-id | string |  | False | Key ID from the signer key set that is used to sign the given firmware image. |
-| main-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-| main-rw-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
-| no-firmware | boolean |  | False | If present this indicates that this model has no firmware at present. This means that it will be omitted from the firmware updater (chromeos-firmware- ebuild) and it will not be included in the signer instructions file sent to the signer. This option is often useful when a model is first added, since it may not have firmware at that point. |
-| pd-image | string |  | False | Name of the file located in BCS under the respective bcs-overlay. |
+
+Attribute     | Type                            | RegEx | Required | Description
+------------- | ------------------------------- | ----- | -------- | -----------
+bcs-overlay   | string                          |       | False    | BCS overlay path used to determine BCS file path for binary firmware downloads.
+build-targets | [build-targets](#build-targets) |       | False    |
+ec-image      | string                          |       | False    | Name of the file located in BCS under the respective bcs-overlay.
+key-id        | string                          |       | False    | Key ID from the signer key set that is used to sign the given firmware image.
+main-image    | string                          |       | False    | Name of the file located in BCS under the respective bcs-overlay.
+main-rw-image | string                          |       | False    | Name of the file located in BCS under the respective bcs-overlay.
+no-firmware   | boolean                         |       | False    | If present this indicates that this model has no firmware at present. This means that it will be omitted from the firmware updater (chromeos-firmware- ebuild) and it will not be included in the signer instructions file sent to the signer. This option is often useful when a model is first added, since it may not have firmware at that point.
+pd-image      | string                          |       | False    | Name of the file located in BCS under the respective bcs-overlay.
 
 ### build-targets
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| coreboot | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| cr50 | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| depthcharge | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| ec | string |  | False | Build target that will be considered dirty when building/testing locally. |
-| libpayload | string |  | False | Build target that will be considered dirty when building/testing locally. |
+
+| Attribute   | Type   | RegEx | Required | Description      |
+| ----------- | ------ | ----- | -------- | ---------------- |
+| coreboot    | string |       | False    | Build target     |
+:             :        :       :          : that will be     :
+:             :        :       :          : considered dirty :
+:             :        :       :          : when             :
+:             :        :       :          : building/testing :
+:             :        :       :          : locally.         :
+| cr50        | string |       | False    | Build target     |
+:             :        :       :          : that will be     :
+:             :        :       :          : considered dirty :
+:             :        :       :          : when             :
+:             :        :       :          : building/testing :
+:             :        :       :          : locally.         :
+| depthcharge | string |       | False    | Build target     |
+:             :        :       :          : that will be     :
+:             :        :       :          : considered dirty :
+:             :        :       :          : when             :
+:             :        :       :          : building/testing :
+:             :        :       :          : locally.         :
+| ec          | string |       | False    | Build target     |
+:             :        :       :          : that will be     :
+:             :        :       :          : considered dirty :
+:             :        :       :          : when             :
+:             :        :       :          : building/testing :
+:             :        :       :          : locally.         :
+| libpayload  | string |       | False    | Build target     |
+:             :        :       :          : that will be     :
+:             :        :       :          : considered dirty :
+:             :        :       :          : when             :
+:             :        :       :          : building/testing :
+:             :        :       :          : locally.         :
 
 ### firmware-signing
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| key-id | string |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
-| sig-id-in-customization-id | boolean |  | False | Indicates that this model cannot be decoded by the mapping table. Instead the model is stored in the VPD (Vital Product Data) region in the customization_id property. This allows us to determine the model to use in the factory during the finalization stage. Note that if the VPD is wiped then the model will be lost. This may mean that the device will revert back to a generic model, or may not work. It is not possible in general to test whether the model in the VPD is correct at run-time. We simply assume that it is. The advantage of using this property is that no hardware changes are needed to change one model into another. For example we can create 20 different whitelabel boards, all with the same hardware, just by changing the customization_id that is written into SPI flash. |
-| signature-id | string |  | True | ID used to generate keys/keyblocks in the firmware signing output.  This is also the value provided to mosys platform signature for the updater4.sh script. |
+
+| Attribute                  | Type    | RegEx | Required | Description      |
+| -------------------------- | ------- | ----- | -------- | ---------------- |
+| key-id                     | string  |       | True     | Key ID from the  |
+:                            :         :       :          : signer key set   :
+:                            :         :       :          : that is used to  :
+:                            :         :       :          : sign the given   :
+:                            :         :       :          : firmware image.  :
+| sig-id-in-customization-id | boolean |       | False    | Indicates that   |
+:                            :         :       :          : this model       :
+:                            :         :       :          : cannot be        :
+:                            :         :       :          : decoded by the   :
+:                            :         :       :          : mapping table.   :
+:                            :         :       :          : Instead the      :
+:                            :         :       :          : model is stored  :
+:                            :         :       :          : in the VPD       :
+:                            :         :       :          : (Vital Product   :
+:                            :         :       :          : Data) region in  :
+:                            :         :       :          : the              :
+:                            :         :       :          : customization_id :
+:                            :         :       :          : property. This   :
+:                            :         :       :          : allows us to     :
+:                            :         :       :          : determine the    :
+:                            :         :       :          : model to use in  :
+:                            :         :       :          : the factory      :
+:                            :         :       :          : during the       :
+:                            :         :       :          : finalization     :
+:                            :         :       :          : stage. Note that :
+:                            :         :       :          : if the VPD is    :
+:                            :         :       :          : wiped then the   :
+:                            :         :       :          : model will be    :
+:                            :         :       :          : lost. This may   :
+:                            :         :       :          : mean that the    :
+:                            :         :       :          : device will      :
+:                            :         :       :          : revert back to a :
+:                            :         :       :          : generic model,   :
+:                            :         :       :          : or may not work. :
+:                            :         :       :          : It is not        :
+:                            :         :       :          : possible in      :
+:                            :         :       :          : general to test  :
+:                            :         :       :          : whether the      :
+:                            :         :       :          : model in the VPD :
+:                            :         :       :          : is correct at    :
+:                            :         :       :          : run-time. We     :
+:                            :         :       :          : simply assume    :
+:                            :         :       :          : that it is. The  :
+:                            :         :       :          : advantage of     :
+:                            :         :       :          : using this       :
+:                            :         :       :          : property is that :
+:                            :         :       :          : no hardware      :
+:                            :         :       :          : changes are      :
+:                            :         :       :          : needed to change :
+:                            :         :       :          : one model into   :
+:                            :         :       :          : another. For     :
+:                            :         :       :          : example we can   :
+:                            :         :       :          : create 20        :
+:                            :         :       :          : different        :
+:                            :         :       :          : whitelabel       :
+:                            :         :       :          : boards, all with :
+:                            :         :       :          : the same         :
+:                            :         :       :          : hardware, just   :
+:                            :         :       :          : by changing the  :
+:                            :         :       :          : customization_id :
+:                            :         :       :          : that is written  :
+:                            :         :       :          : into SPI flash.  :
+| signature-id               | string  |       | True     | ID used to       |
+:                            :         :       :          : generate         :
+:                            :         :       :          : keys/keyblocks   :
+:                            :         :       :          : in the firmware  :
+:                            :         :       :          : signing output.  :
+:                            :         :       :          : This is also the :
+:                            :         :       :          : value provided   :
+:                            :         :       :          : to mosys         :
+:                            :         :       :          : platform         :
+:                            :         :       :          : signature for    :
+:                            :         :       :          : the updater4.sh  :
+:                            :         :       :          : script.          :
 
 ### identity
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| customization-id | string |  | False | Customization ID set in the VPD during manufacturing. |
-| platform-name | string |  | False | Indicates the platform name for this platform. This is reported by 'mosys platform name'. It is typically the family name with the first letter capitalized. |
-| sku-id | integer |  | False | SKU/Board strapping pins configured during board manufacturing. |
-| smbios-name-match | string |  | False | Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
+
+| Attribute         | Type    | RegEx | Required | Description    |
+| ----------------- | ------- | ----- | -------- | -------------- |
+| customization-id  | string  |       | False    | Customization  |
+:                   :         :       :          : ID set in the  :
+:                   :         :       :          : VPD during     :
+:                   :         :       :          : manufacturing. :
+| platform-name     | string  |       | False    | Indicates the  |
+:                   :         :       :          : platform name  :
+:                   :         :       :          : for this       :
+:                   :         :       :          : platform. This :
+:                   :         :       :          : is reported by :
+:                   :         :       :          : 'mosys         :
+:                   :         :       :          : platform       :
+:                   :         :       :          : name'. It is   :
+:                   :         :       :          : typically the  :
+:                   :         :       :          : family name    :
+:                   :         :       :          : with the first :
+:                   :         :       :          : letter         :
+:                   :         :       :          : capitalized.   :
+| sku-id            | integer |       | False    | SKU/Board      |
+:                   :         :       :          : strapping pins :
+:                   :         :       :          : configured     :
+:                   :         :       :          : during board   :
+:                   :         :       :          : manufacturing. :
+| smbios-name-match | string  |       | False    | Firmware name  |
+:                   :         :       :          : built into the :
+:                   :         :       :          : firmware and   :
+:                   :         :       :          : reflected back :
+:                   :         :       :          : out in the     :
+:                   :         :       :          : SMBIOS tables. :
 
 ### power
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| charging-ports | string |  | False | String describing charging port positions. |
-| keyboard-backlight-no-als-brightness | string | ```^[0-9]{1,3}.[0-9]?``` | False | Initial brightness for the keyboard backlight for systems without ambient light sensors, in the range [0.0, 100.0]. |
-| low-battery-shutdown-percent | string | ```^[0-9]{1,3}.[0-9]?``` | False | Battery percentage threshold at which the system should shut down automatically, in the range [0.0, 100.0]. |
-| power-supply-full-factor | string | ```^[0-1].[0-9]?``` | False | Fraction of the battery's total charge at which it should be reported as full in the UI, in the range (0.0, 1.0]. |
-| set-wifi-transmit-power-for-tablet-mode | string | ```^[0-1]$``` | False | If true (1), update wifi transmit power when in tablet vs. clamshell mode. |
-| suspend-to-idle | string | ```^[0-1]$``` | False | If true (1), suspend to idle by writing freeze to /sys/power/state. |
+
+Attribute                               | Type   | RegEx                | Required | Description
+--------------------------------------- | ------ | -------------------- | -------- | -----------
+charging-ports                          | string |                      | False    | String describing charging port positions.
+keyboard-backlight-no-als-brightness    | string | `^[0-9]{1,3}.[0-9]?` | False    | Initial brightness for the keyboard backlight for systems without ambient light sensors, in the range [0.0, 100.0].
+low-battery-shutdown-percent            | string | `^[0-9]{1,3}.[0-9]?` | False    | Battery percentage threshold at which the system should shut down automatically, in the range [0.0, 100.0].
+power-supply-full-factor                | string | `^[0-1].[0-9]?`      | False    | Fraction of the battery's total charge at which it should be reported as full in the UI, in the range (0.0, 1.0].
+set-wifi-transmit-power-for-tablet-mode | string | `^[0-1]$`            | False    | If true (1), update wifi transmit power when in tablet vs. clamshell mode.
+suspend-to-idle                         | string | `^[0-1]$`            | False    | If true (1), suspend to idle by writing freeze to /sys/power/state.
 
 ### thermal
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| files | array - [files](#files) |  | True |  |
+
+Attribute | Type                    | RegEx | Required | Description
+--------- | ----------------------- | ----- | -------- | -----------
+files     | array - [files](#files) |       | True     |
 
 ### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system. |
+
+| Attribute   | Type   | RegEx | Required | Description                        |
+| ----------- | ------ | ----- | -------- | ---------------------------------- |
+| destination | string |       | False    | Installation path for the file on  |
+:             :        :       :          : the system image.                  :
+| source      | string |       | False    | Source of the file relative to the |
+:             :        :       :          : build system.                      :
 
 ### touch
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| files | array - [files](#files) |  | False |  |
-| present | string |  | False | Whether touch is present or needs to be probed for. |
-| probe-regex | string |  | False | If probe is set, the regex used to look for touch. |
+
+| Attribute   | Type            | RegEx | Required | Description              |
+| ----------- | --------------- | ----- | -------- | ------------------------ |
+| files       | array -         |       | False    |                          |
+:             : [files](#files) :       :          :                          :
+| present     | string          |       | False    | Whether touch is present |
+:             :                 :       :          : or needs to be probed    :
+:             :                 :       :          : for.                     :
+| probe-regex | string          |       | False    | If probe is set, the     |
+:             :                 :       :          : regex used to look for   :
+:             :                 :       :          : touch.                   :
 
 ### files
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| destination | string |  | False | Installation path for the file on the system image. |
-| source | string |  | False | Source of the file relative to the build system ${FILESDIR} |
-| symlink | string |  | False | Symlink file that will be installed pointing to the destination. |
+
+| Attribute   | Type   | RegEx | Required | Description                        |
+| ----------- | ------ | ----- | -------- | ---------------------------------- |
+| destination | string |       | False    | Installation path for the file on  |
+:             :        :       :          : the system image.                  :
+| source      | string |       | False    | Source of the file relative to the |
+:             :        :       :          : build system ${FILESDIR}           :
+| symlink     | string |       | False    | Symlink file that will be          |
+:             :        :       :          : installed pointing to the          :
+:             :        :       :          : destination.                       :
 
 ### ui
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| power-button | [power-button](#power-button) |  | False |  |
+
+Attribute    | Type                          | RegEx | Required | Description
+------------ | ----------------------------- | ----- | -------- | -----------
+power-button | [power-button](#power-button) |       | False    |
 
 ### power-button
-| Attribute | Type   | RegEx     | Required | Description |
-| --------- | ------ | --------- | -------- | ----------- |
-| edge | string |  | False |  |
-| position | string |  | False |  |
 
+Attribute | Type   | RegEx | Required | Description
+--------- | ------ | ----- | -------- | -----------
+edge      | string |       | False    |
+position  | string |       | False    |
 
 [](end_definitions)
 
@@ -330,13 +538,9 @@ Then update the README.md automatically via (unit tests will check this):
 
 To install the updated schema, run:
 
-*   sudo emerge chromeos-config-host
+*   FEATURES=test sudo -E emerge chromeos-config-host
 
 To use the new property, update your respective YAML source file. E.g.
-overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.yaml
-
-Next add the new property and its value to the appropriate yaml file(s) in the
-board's overlay. E.g.
 overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.yaml
 
 To install the changes, run:
@@ -356,14 +560,19 @@ To query your new item run the test command in the chroot:
 For instance:
 
 *   cros_config_host -c /build/coral/usr/share/chromeos-config/yaml/config.yaml
-    \
     -m robo360 get /firmware key-id
+*   cros_config_host -c /build/coral/usr/share/chromeos-config/yaml/config.yaml
+    get-models
 
 ## Device Tree - Schema (v1)
 
-Some initial devices were launched under version 1 for chromeos-config. For
+The 2017 unibuild devices were launched under version 1 for chromeos-config. For
 these cases, the v1 schema (below) is still used; however, all new devices
 should be using the v2 schema (YAML based).
+
+We plan to migrate all overlays to v2 as soon as possible. Please do not create
+any new device tree based configs or update the device tree implementation with
+features for overlays that have already been migrated.
 
 *   `family`: Provides family-level configuration settings, which apply to all
     models in the family.
