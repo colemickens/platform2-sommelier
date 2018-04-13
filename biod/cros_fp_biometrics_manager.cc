@@ -150,7 +150,8 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
 
 CrosFpBiometricsManager::CrosFpDevice::~CrosFpDevice() {
   // Current session is gone, clean-up temporary state in the FP MCU.
-  ResetContext();
+  if (cros_fd_.is_valid())
+    ResetContext();
 }
 
 std::unique_ptr<CrosFpBiometricsManager::CrosFpDevice>
