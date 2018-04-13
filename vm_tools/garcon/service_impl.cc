@@ -24,9 +24,11 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 
 #include "vm_tools/garcon/desktop_file.h"
+#include "vm_tools/garcon/icon_finder.h"
 
 namespace vm_tools {
 namespace garcon {
@@ -467,7 +469,22 @@ grpc::Status ServiceImpl::GetIcon(
     vm_tools::container::IconResponse* response) {
   LOG(INFO) << "Received request to get application icons in container";
 
-  // TODO(timzheng): Implement the icon theme specification icon lookup.
+  for (const std::string& desktop_file_id : request->desktop_file_ids()) {
+    std::string icon_data;
+    base::FilePath icon_filepath =
+        LocateIconFile(desktop_file_id, request->icon_size(), request->scale());
+    if (icon_filepath.empty()) {
+      continue;
+    }
+    // 65536 is a big enough size that normal icon should fall under the limit.
+    if (!base::ReadFileToStringWithMaxSize(icon_filepath, &icon_data, 65536)) {
+      LOG(ERROR) << "Failed to read icon data file " << icon_filepath.value();
+      continue;
+    }
+    container::DesktopIcon* desktop_icon = response->add_desktop_icons();
+    desktop_icon->set_desktop_file_id(desktop_file_id);
+    desktop_icon->set_icon(icon_data);
+  }
 
   return grpc::Status::OK;
 }

@@ -27,6 +27,7 @@
       'sources': [
         'garcon/desktop_file.cc',
         'garcon/host_notifier.cc',
+        'garcon/icon_finder.cc',
         'garcon/service_impl.cc',
       ],
     },
