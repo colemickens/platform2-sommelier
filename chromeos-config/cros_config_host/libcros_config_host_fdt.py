@@ -575,9 +575,10 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       for name, thermal in self.AllPathNodes('/thermal').iteritems():
         target_dir = self.cros_config.validator.GetModelTargetDir(
             '/thermal', prop)
-        files[name] = BaseFile(
-            thermal.properties[prop].value,
-            os.path.join(target_dir, thermal.properties[prop].value))
+        if prop in thermal.properties:
+          files[name] = BaseFile(
+              thermal.properties[prop].value,
+              os.path.join(target_dir, thermal.properties[prop].value))
       return files.values()
 
     def GetFirmwareInfo(self):
