@@ -227,8 +227,6 @@ class Daemon : public policy::BacklightControllerObserver,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleGetPowerSupplyPropertiesMethod(
       dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleGetSwitchStatesMethod(
-      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleVideoActivityMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleUserActivityMethod(
@@ -242,10 +240,6 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<dbus::Response> HandleSetBacklightsForcedOffMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleGetBacklightsForcedOffMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandlePowerButtonAcknowledgment(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleIgnoreNextPowerButtonPressMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleGetInactivityDelaysMethod(
       dbus::MethodCall* method_call);

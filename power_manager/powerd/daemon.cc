@@ -54,7 +54,6 @@
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
-#include "power_manager/proto_bindings/switch_states.pb.h"
 
 #if USE_BUFFET
 namespace dbus {
@@ -897,7 +896,6 @@ void Daemon::InitDBus() {
        &Daemon::HandleIncreaseKeyboardBrightnessMethod},
       {kGetPowerSupplyPropertiesMethod,
        &Daemon::HandleGetPowerSupplyPropertiesMethod},
-      {kGetSwitchStatesMethod, &Daemon::HandleGetSwitchStatesMethod},
       {kHandleVideoActivityMethod, &Daemon::HandleVideoActivityMethod},
       {kHandleUserActivityMethod, &Daemon::HandleUserActivityMethod},
       {kSetIsProjectingMethod, &Daemon::HandleSetIsProjectingMethod},
@@ -907,10 +905,6 @@ void Daemon::InitDBus() {
        &Daemon::HandleSetBacklightsForcedOffMethod},
       {kGetBacklightsForcedOffMethod,
        &Daemon::HandleGetBacklightsForcedOffMethod},
-      {kHandlePowerButtonAcknowledgmentMethod,
-       &Daemon::HandlePowerButtonAcknowledgment},
-      {kIgnoreNextPowerButtonPressMethod,
-       &Daemon::HandleIgnoreNextPowerButtonPressMethod},
       {kGetInactivityDelaysMethod, &Daemon::HandleGetInactivityDelaysMethod},
   };
   for (const auto& it : kDaemonMethods) {
@@ -1252,39 +1246,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Daemon::HandleGetSwitchStatesMethod(
-    dbus::MethodCall* method_call) {
-  SwitchStates protobuf;
-  switch (input_watcher_->GetTabletMode()) {
-    case TabletMode::ON:
-      protobuf.set_tablet_mode(SwitchStates_TabletMode_ON);
-      break;
-    case TabletMode::OFF:
-      protobuf.set_tablet_mode(SwitchStates_TabletMode_OFF);
-      break;
-    case TabletMode::UNSUPPORTED:
-      protobuf.set_tablet_mode(SwitchStates_TabletMode_UNSUPPORTED);
-      break;
-  }
-  switch (input_watcher_->QueryLidState()) {
-    case LidState::OPEN:
-      protobuf.set_lid_state(SwitchStates_LidState_OPEN);
-      break;
-    case LidState::CLOSED:
-      protobuf.set_lid_state(SwitchStates_LidState_CLOSED);
-      break;
-    case LidState::NOT_PRESENT:
-      protobuf.set_lid_state(SwitchStates_LidState_NOT_PRESENT);
-      break;
-  }
-
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendProtoAsArrayOfBytes(protobuf);
-  return response;
-}
-
 std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {
   bool fullscreen = false;
@@ -1397,34 +1358,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetBacklightsForcedOffMethod(
                         : all_backlight_controllers_.front()->GetForcedOff();
   dbus::MessageWriter(response.get()).AppendBool(forced_off);
   return response;
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
-    dbus::MethodCall* method_call) {
-  int64_t timestamp_internal = 0;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopInt64(&timestamp_internal)) {
-    LOG(ERROR) << "Unable to parse " << kHandlePowerButtonAcknowledgmentMethod
-               << " request";
-    return CreateInvalidArgsError(method_call, "Expected int64_t timestamp");
-  }
-  input_event_handler_->HandlePowerButtonAcknowledgment(
-      base::TimeTicks::FromInternalValue(timestamp_internal));
-  return std::unique_ptr<dbus::Response>();
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleIgnoreNextPowerButtonPressMethod(
-    dbus::MethodCall* method_call) {
-  int64_t timeout_internal = 0;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopInt64(&timeout_internal)) {
-    LOG(ERROR) << "Unable to parse " << kIgnoreNextPowerButtonPressMethod
-               << " request";
-    return CreateInvalidArgsError(method_call, "Expected int64_t timestamp");
-  }
-  input_event_handler_->IgnoreNextPowerButtonPress(
-      base::TimeDelta::FromInternalValue(timeout_internal));
-  return std::unique_ptr<dbus::Response>();
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleGetInactivityDelaysMethod(

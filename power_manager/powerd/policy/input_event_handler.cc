@@ -4,8 +4,11 @@
 
 #include "power_manager/powerd/policy/input_event_handler.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
@@ -15,21 +18,13 @@
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
+#include "power_manager/proto_bindings/switch_states.pb.h"
 
 namespace power_manager {
 namespace policy {
 
 InputEventHandler::InputEventHandler()
-    : input_watcher_(NULL),
-      delegate_(NULL),
-      display_watcher_(NULL),
-      dbus_wrapper_(NULL),
-      clock_(new Clock),
-      only_has_external_display_(false),
-      factory_mode_(false),
-      lid_state_(LidState::NOT_PRESENT),
-      tablet_mode_(TabletMode::UNSUPPORTED),
-      power_button_down_ignored_(false) {}
+    : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
 
 InputEventHandler::~InputEventHandler() {
   if (input_watcher_)
@@ -45,7 +40,21 @@ void InputEventHandler::Init(system::InputWatcherInterface* input_watcher,
   input_watcher_->AddObserver(this);
   delegate_ = delegate;
   display_watcher_ = display_watcher;
+
   dbus_wrapper_ = dbus_wrapper;
+  dbus_wrapper_->ExportMethod(
+      kHandlePowerButtonAcknowledgmentMethod,
+      base::Bind(
+          &InputEventHandler::OnHandlePowerButtonAcknowledgmentMethodCall,
+          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->ExportMethod(
+      kIgnoreNextPowerButtonPressMethod,
+      base::Bind(&InputEventHandler::OnIgnoreNextPowerButtonPressMethodCall,
+                 weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->ExportMethod(
+      kGetSwitchStatesMethod,
+      base::Bind(&InputEventHandler::OnGetSwitchStatesMethodCall,
+                 weak_ptr_factory_.GetWeakPtr()));
 
   prefs->GetBool(kExternalDisplayOnlyPref, &only_has_external_display_);
   prefs->GetBool(kFactoryModePref, &factory_mode_);
@@ -62,35 +71,8 @@ bool InputEventHandler::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
     return false;
 
   power_button_acknowledgment_timer_.Stop();
-  HandlePowerButtonAcknowledgmentTimeout();
+  OnPowerButtonAcknowledgmentTimeout();
   return true;
-}
-
-void InputEventHandler::HandlePowerButtonAcknowledgment(
-    const base::TimeTicks& timestamp) {
-  VLOG(1) << "Received acknowledgment of power button press at "
-          << timestamp.ToInternalValue() << "; expected "
-          << expected_power_button_acknowledgment_timestamp_.ToInternalValue();
-  if (timestamp == expected_power_button_acknowledgment_timestamp_) {
-    delegate_->ReportPowerButtonAcknowledgmentDelay(
-        clock_->GetCurrentTime() -
-        expected_power_button_acknowledgment_timestamp_);
-    expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
-    power_button_acknowledgment_timer_.Stop();
-  }
-}
-
-void InputEventHandler::IgnoreNextPowerButtonPress(
-    const base::TimeDelta& timeout) {
-  if (timeout.is_zero()) {
-    VLOG(1) << "Cancel power button press discarding";
-    ignore_power_button_deadline_ = base::TimeTicks();
-    power_button_down_ignored_ = false;
-  } else {
-    VLOG(1) << "Ignoring power button for " << timeout.InMilliseconds()
-            << " ms";
-    ignore_power_button_deadline_ = clock_->GetCurrentTime() + timeout;
-  }
 }
 
 void InputEventHandler::OnLidEvent(LidState state) {
@@ -166,10 +148,8 @@ void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
     if (state == ButtonState::DOWN) {
       expected_power_button_acknowledgment_timestamp_ = now;
       power_button_acknowledgment_timer_.Start(
-          FROM_HERE,
-          base::TimeDelta::FromMilliseconds(
-              kPowerButtonAcknowledgmentTimeoutMs),
-          this, &InputEventHandler::HandlePowerButtonAcknowledgmentTimeout);
+          FROM_HERE, kPowerButtonAcknowledgmentTimeout, this,
+          &InputEventHandler::OnPowerButtonAcknowledgmentTimeout);
     } else {
       expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
       power_button_acknowledgment_timer_.Stop();
@@ -183,11 +163,103 @@ void InputEventHandler::OnHoverStateChange(bool hovering) {
   delegate_->HandleHoverStateChange(hovering);
 }
 
-void InputEventHandler::HandlePowerButtonAcknowledgmentTimeout() {
+void InputEventHandler::IgnoreNextPowerButtonPress(
+    const base::TimeDelta& timeout) {
+  if (timeout.is_zero()) {
+    VLOG(1) << "Cancel power button press discarding";
+    ignore_power_button_deadline_ = base::TimeTicks();
+    power_button_down_ignored_ = false;
+  } else {
+    VLOG(1) << "Ignoring power button for " << timeout.InMilliseconds()
+            << " ms";
+    ignore_power_button_deadline_ = clock_->GetCurrentTime() + timeout;
+  }
+}
+
+void InputEventHandler::OnPowerButtonAcknowledgmentTimeout() {
   delegate_->ReportPowerButtonAcknowledgmentDelay(
-      base::TimeDelta::FromMilliseconds(kPowerButtonAcknowledgmentTimeoutMs));
+      kPowerButtonAcknowledgmentTimeout);
   delegate_->HandleMissingPowerButtonAcknowledgment();
   expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
+}
+
+void InputEventHandler::OnHandlePowerButtonAcknowledgmentMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  int64_t timestamp_internal = 0;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopInt64(&timestamp_internal)) {
+    LOG(ERROR) << "Unable to parse " << kHandlePowerButtonAcknowledgmentMethod
+               << " request";
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_INVALID_ARGS, "Expected int64_t timestamp"));
+    return;
+  }
+
+  const auto timestamp = base::TimeTicks::FromInternalValue(timestamp_internal);
+  VLOG(1) << "Received acknowledgment of power button press at "
+          << timestamp.ToInternalValue() << "; expected "
+          << expected_power_button_acknowledgment_timestamp_.ToInternalValue();
+  if (timestamp == expected_power_button_acknowledgment_timestamp_) {
+    delegate_->ReportPowerButtonAcknowledgmentDelay(
+        clock_->GetCurrentTime() -
+        expected_power_button_acknowledgment_timestamp_);
+    expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
+    power_button_acknowledgment_timer_.Stop();
+  }
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
+}
+
+void InputEventHandler::OnIgnoreNextPowerButtonPressMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  int64_t timeout_internal = 0;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopInt64(&timeout_internal)) {
+    LOG(ERROR) << "Unable to parse " << kIgnoreNextPowerButtonPressMethod
+               << " request";
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_INVALID_ARGS, "Expected int64_t timestamp"));
+    return;
+  }
+
+  IgnoreNextPowerButtonPress(
+      base::TimeDelta::FromInternalValue(timeout_internal));
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
+}
+
+void InputEventHandler::OnGetSwitchStatesMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  SwitchStates protobuf;
+  switch (input_watcher_->GetTabletMode()) {
+    case TabletMode::ON:
+      protobuf.set_tablet_mode(SwitchStates_TabletMode_ON);
+      break;
+    case TabletMode::OFF:
+      protobuf.set_tablet_mode(SwitchStates_TabletMode_OFF);
+      break;
+    case TabletMode::UNSUPPORTED:
+      protobuf.set_tablet_mode(SwitchStates_TabletMode_UNSUPPORTED);
+      break;
+  }
+  switch (input_watcher_->QueryLidState()) {
+    case LidState::OPEN:
+      protobuf.set_lid_state(SwitchStates_LidState_OPEN);
+      break;
+    case LidState::CLOSED:
+      protobuf.set_lid_state(SwitchStates_LidState_CLOSED);
+      break;
+    case LidState::NOT_PRESENT:
+      protobuf.set_lid_state(SwitchStates_LidState_NOT_PRESENT);
+      break;
+  }
+
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendProtoAsArrayOfBytes(protobuf);
+  response_sender.Run(std::move(response));
 }
 
 }  // namespace policy

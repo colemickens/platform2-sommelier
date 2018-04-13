@@ -12,6 +12,7 @@
 #include <base/format_macros.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/action_recorder.h"
@@ -23,6 +24,7 @@
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
+#include "power_manager/proto_bindings/switch_states.pb.h"
 
 namespace power_manager {
 namespace policy {
@@ -154,6 +156,22 @@ class InputEventHandlerTest : public ::testing::Test {
                                                                interval);
   }
 
+  // Makes an IgnoreNextPowerButtonPress D-Bus method call.
+  void CallIgnoreNextPowerButtonPress(const base::TimeDelta& timeout) {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kIgnoreNextPowerButtonPressMethod);
+    dbus::MessageWriter(&method_call).AppendInt64(timeout.ToInternalValue());
+    ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
+  }
+
+  // Makes an HandlePowerButtonAcknowledgment D-Bus method call.
+  void CallHandlePowerButtonAcknowledgment(const base::TimeTicks& timestamp) {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kHandlePowerButtonAcknowledgmentMethod);
+    dbus::MessageWriter(&method_call).AppendInt64(timestamp.ToInternalValue());
+    ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
+  }
+
   FakePrefs prefs_;
   system::InputWatcherStub input_watcher_;
   system::DisplayWatcherStub display_watcher_;
@@ -246,7 +264,7 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
   const base::TimeDelta kIgnoreTimeout = base::TimeDelta::FromSeconds(3);
 
   // Ignore the power button events.
-  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  CallIgnoreNextPowerButtonPress(kIgnoreTimeout);
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_TRUE(delegate_.GetActions().empty());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
@@ -270,7 +288,7 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
   dbus_wrapper_.ClearSentSignals();
 
   // Ignore again the power button events.
-  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  CallIgnoreNextPowerButtonPress(kIgnoreTimeout);
   // Expire the timeout.
   AdvanceTime(kIgnoreTimeout + base::TimeDelta::FromMilliseconds(500));
   // The next press is going through.
@@ -281,9 +299,9 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 
   // Ignore again the power button events.
-  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  CallIgnoreNextPowerButtonPress(kIgnoreTimeout);
   // Cancel the timeout.
-  handler_.IgnoreNextPowerButtonPress(base::TimeDelta());
+  CallIgnoreNextPowerButtonPress(base::TimeDelta());
   // The next press is going through.
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
@@ -298,7 +316,7 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
   AdvanceTime(kShortDelay);
   // Then the daemon receives the request to ignore the physical presence on
   // the power button.
-  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  CallIgnoreNextPowerButtonPress(kIgnoreTimeout);
   // The user release the button but the release needs to go through else we
   // have a press without a release (which becomes a long press).
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
@@ -309,15 +327,15 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   Init();
 
   const base::TimeDelta kShortDelay = base::TimeDelta::FromMilliseconds(100);
-  const base::TimeDelta kTimeout = base::TimeDelta::FromMilliseconds(
-      InputEventHandler::kPowerButtonAcknowledgmentTimeoutMs);
+  const base::TimeDelta kTimeout =
+      InputEventHandler::kPowerButtonAcknowledgmentTimeout;
 
   // Press the power button, acknowledge the event nearly immediately, and check
   // that no further actions are performed and that the timeout is stopped.
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   AdvanceTime(kShortDelay);
-  handler_.HandlePowerButtonAcknowledgment(
+  CallHandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp()));
   EXPECT_EQ(GetAcknowledgmentDelayAction(kShortDelay), delegate_.GetActions());
   ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
@@ -352,7 +370,7 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   dbus_wrapper_.ClearSentSignals();
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
-  handler_.HandlePowerButtonAcknowledgment(
+  CallHandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp() - 100));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
@@ -362,6 +380,39 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
+}
+
+TEST_F(InputEventHandlerTest, GetSwitchStates) {
+  Init();
+  input_watcher_.set_tablet_mode(TabletMode::ON);
+  input_watcher_.set_lid_state(LidState::OPEN);
+  dbus::MethodCall method_call(kPowerManagerInterface, kGetSwitchStatesMethod);
+  std::unique_ptr<dbus::Response> response =
+      dbus_wrapper_.CallExportedMethodSync(&method_call);
+  ASSERT_TRUE(response.get());
+  SwitchStates proto;
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(SwitchStates_TabletMode_ON, proto.tablet_mode());
+  EXPECT_EQ(SwitchStates_LidState_OPEN, proto.lid_state());
+
+  input_watcher_.set_tablet_mode(TabletMode::OFF);
+  input_watcher_.set_lid_state(LidState::CLOSED);
+  response = dbus_wrapper_.CallExportedMethodSync(&method_call);
+  ASSERT_TRUE(response.get());
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(SwitchStates_TabletMode_OFF, proto.tablet_mode());
+  EXPECT_EQ(SwitchStates_LidState_CLOSED, proto.lid_state());
+
+  input_watcher_.set_tablet_mode(TabletMode::UNSUPPORTED);
+  input_watcher_.set_lid_state(LidState::NOT_PRESENT);
+  response = dbus_wrapper_.CallExportedMethodSync(&method_call);
+  ASSERT_TRUE(response.get());
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(SwitchStates_TabletMode_UNSUPPORTED, proto.tablet_mode());
+  EXPECT_EQ(SwitchStates_LidState_NOT_PRESENT, proto.lid_state());
 }
 
 TEST_F(InputEventHandlerTest, FactoryMode) {

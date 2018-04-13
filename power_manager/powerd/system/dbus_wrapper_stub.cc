@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <tuple>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -22,6 +23,13 @@ namespace {
 std::unique_ptr<dbus::Signal> DuplicateSignal(dbus::Signal* signal) {
   return base::WrapUnique(
       dbus::Signal::FromRawMessage(dbus_message_copy(signal->raw_message())));
+}
+
+// Transfers |src_response| to |dest_response|. Passed as a response callback to
+// exported methods.
+void MoveResponse(std::unique_ptr<dbus::Response>* dest_response,
+                  std::unique_ptr<dbus::Response> src_response) {
+  *dest_response = std::move(src_response);
 }
 
 // Callback for CallMethodAsync() to pass |response| to |callback|.
@@ -103,6 +111,13 @@ void DBusWrapperStub::CallExportedMethod(
   const std::string name = method_call->GetMember();
   CHECK(exported_methods_.count(name)) << "Method " << name << " not exported";
   exported_methods_[name].Run(method_call, response_cb);
+}
+
+std::unique_ptr<dbus::Response> DBusWrapperStub::CallExportedMethodSync(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> response;
+  CallExportedMethod(method_call, base::Bind(&MoveResponse, &response));
+  return response;
 }
 
 void DBusWrapperStub::EmitRegisteredSignal(dbus::ObjectProxy* proxy,

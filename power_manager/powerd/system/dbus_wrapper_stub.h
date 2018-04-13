@@ -59,6 +59,8 @@ class DBusWrapperStub : public DBusWrapperInterface {
   // Invokes a method previously exported with ExportedMethod().
   void CallExportedMethod(dbus::MethodCall* method_call,
                           dbus::ExportedObject::ResponseSender response_cb);
+  std::unique_ptr<dbus::Response> CallExportedMethodSync(
+      dbus::MethodCall* method_call);
 
   // Acts as if |proxy| emitted |signal|. A handler must have previously been
   // registered via RegisterForSignal().

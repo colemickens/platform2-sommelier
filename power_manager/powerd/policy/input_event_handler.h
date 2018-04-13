@@ -10,11 +10,17 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/time/time.h>
+#include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
+#include <base/time/time.h>
+#include <dbus/exported_object.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_observer.h"
+
+namespace dbus {
+class MethodCall;
+}
 
 namespace power_manager {
 
@@ -69,9 +75,9 @@ class InputEventHandler : public system::InputObserver {
         base::TimeDelta delay) = 0;
   };
 
-  // Amount of time to wait for Chrome to acknowledge power button presses, in
-  // milliseconds.
-  static const int kPowerButtonAcknowledgmentTimeoutMs = 2000;
+  // Amount of time to wait for Chrome to acknowledge power button presses.
+  static constexpr base::TimeDelta kPowerButtonAcknowledgmentTimeout =
+      base::TimeDelta::FromSeconds(2);
 
   InputEventHandler();
   ~InputEventHandler() override;
@@ -89,15 +95,6 @@ class InputEventHandler : public system::InputObserver {
   // |power_button_acknowledgment_timer_| isn't running.
   bool TriggerPowerButtonAcknowledgmentTimeoutForTesting();
 
-  // Handles acknowledgment from that a power button press was handled.
-  // |timestamp| is the timestamp from the original event.
-  void HandlePowerButtonAcknowledgment(const base::TimeTicks& timestamp);
-
-  // Discards all power button actions until |timeout| has elapsed
-  // or a power button release was detected.
-  // Set |timeout| to 0 to cancel it.
-  void IgnoreNextPowerButtonPress(const base::TimeDelta& timeout);
-
   // system::InputObserver implementation:
   void OnLidEvent(LidState state) override;
   void OnTabletModeEvent(TabletMode mode) override;
@@ -105,38 +102,56 @@ class InputEventHandler : public system::InputObserver {
   void OnHoverStateChange(bool hovering) override;
 
  private:
+  // Discards all power button actions until |timeout| has elapsed
+  // or a power button release was detected. Set |timeout| to 0 to cancel it.
+  void IgnoreNextPowerButtonPress(const base::TimeDelta& timeout);
+
   // Tells |delegate_| when Chrome hasn't acknowledged a power button press
   // quickly enough.
-  void HandlePowerButtonAcknowledgmentTimeout();
+  void OnPowerButtonAcknowledgmentTimeout();
 
-  system::InputWatcherInterface* input_watcher_;      // weak
-  Delegate* delegate_;                                // weak
-  system::DisplayWatcherInterface* display_watcher_;  // weak
-  system::DBusWrapperInterface* dbus_wrapper_;        // weak
+  // Handlers for D-Bus method calls.
+  void OnHandlePowerButtonAcknowledgmentMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void OnIgnoreNextPowerButtonPressMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void OnGetSwitchStatesMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  // None of these objects are owned by this class.
+  system::InputWatcherInterface* input_watcher_ = nullptr;
+  Delegate* delegate_ = nullptr;
+  system::DisplayWatcherInterface* display_watcher_ = nullptr;
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
 
   std::unique_ptr<Clock> clock_;
 
   // True if the device doesn't have an internal display.
-  bool only_has_external_display_;
+  bool only_has_external_display_ = false;
 
   // True if kFactoryModePref is set to true.
-  bool factory_mode_;
+  bool factory_mode_ = false;
 
-  LidState lid_state_;
-  TabletMode tablet_mode_;
+  LidState lid_state_ = LidState::NOT_PRESENT;
+  TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
 
   // Timestamp from the most recent power-button-down event that Chrome is
   // expected to acknowledge. Unset when the power button isn't pressed or if
   // Chrome has already acknowledged the event.
   base::TimeTicks expected_power_button_acknowledgment_timestamp_;
 
-  // Calls HandlePowerButtonAcknowledgmentTimeout().
+  // Calls OnPowerButtonAcknowledgmentTimeout().
   base::OneShotTimer power_button_acknowledgment_timer_;
 
   // Timestamp until when we are ignoring actions on the power button.
   base::TimeTicks ignore_power_button_deadline_;
   // The last key down event on the power button was ignored.
-  bool power_button_down_ignored_;
+  bool power_button_down_ignored_ = false;
+
+  base::WeakPtrFactory<InputEventHandler> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(InputEventHandler);
 };

@@ -45,16 +45,6 @@
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
 namespace power_manager {
-namespace {
-
-// Transfers |src_response| to |dest_response|. Passed as a response callback to
-// exported methods.
-void MoveDBusResponse(std::unique_ptr<dbus::Response>* dest_response,
-                      std::unique_ptr<dbus::Response> src_response) {
-  *dest_response = std::move(src_response);
-}
-
-}  // namespace
 
 class DaemonTest : public ::testing::Test, public DaemonDelegate {
  public:
@@ -280,16 +270,6 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   }
 
  protected:
-  // Calls a synchronous D-Bus previously exported by |daemon_| and returns its
-  // response.
-  std::unique_ptr<dbus::Response> CallSyncDBusMethod(
-      dbus::MethodCall* method_call) {
-    std::unique_ptr<dbus::Response> response;
-    dbus_wrapper_->CallExportedMethod(method_call,
-                                      base::Bind(&MoveDBusResponse, &response));
-    return response;
-  }
-
   // Checks that the D-Bus signal at |index| has name |signal_name| and
   // describes a brightness change to |brightness_percent| for |cause|.
   void CheckBrightnessChangedSignal(size_t index,
@@ -311,7 +291,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   void EnterDockedMode() {
     dbus::MethodCall call(kPowerManagerInterface, kSetIsProjectingMethod);
     dbus::MessageWriter(&call).AppendBool(true /* is_projecting */);
-    ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+    ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&call).get());
 
     input_watcher_->set_lid_state(LidState::CLOSED);
     input_watcher_->NotifyObserversAboutLidState();
@@ -457,7 +437,7 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   dbus::MethodCall user_call(kPowerManagerInterface, kHandleUserActivityMethod);
   dbus::MessageWriter(&user_call)
       .AppendInt32(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS);
-  ASSERT_TRUE(CallSyncDBusMethod(&user_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&user_call).get());
   ASSERT_EQ(1, internal_backlight_controller_->user_activity_reports().size());
   EXPECT_EQ(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS,
             internal_backlight_controller_->user_activity_reports()[0]);
@@ -469,7 +449,7 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   dbus::MethodCall video_call(kPowerManagerInterface,
                               kHandleVideoActivityMethod);
   dbus::MessageWriter(&video_call).AppendBool(true /* fullscreen */);
-  ASSERT_TRUE(CallSyncDBusMethod(&video_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&video_call).get());
   ASSERT_EQ(1, internal_backlight_controller_->video_activity_reports().size());
   EXPECT_EQ(true, internal_backlight_controller_->video_activity_reports()[0]);
   ASSERT_EQ(1, keyboard_backlight_controller_->video_activity_reports().size());
@@ -478,7 +458,7 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   // Display mode / projecting changes.
   dbus::MethodCall display_call(kPowerManagerInterface, kSetIsProjectingMethod);
   dbus::MessageWriter(&display_call).AppendBool(true /* is_projecting */);
-  ASSERT_TRUE(CallSyncDBusMethod(&display_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&display_call).get());
   ASSERT_EQ(1, internal_backlight_controller_->display_mode_changes().size());
   EXPECT_EQ(DisplayMode::PRESENTATION,
             internal_backlight_controller_->display_mode_changes()[0]);
@@ -492,7 +472,7 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   const char kPolicyReason[] = "foo";
   policy.set_reason(kPolicyReason);
   dbus::MessageWriter(&policy_call).AppendProtoAsArrayOfBytes(policy);
-  ASSERT_TRUE(CallSyncDBusMethod(&policy_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&policy_call).get());
   ASSERT_EQ(1, internal_backlight_controller_->policy_changes().size());
   EXPECT_EQ(kPolicyReason,
             internal_backlight_controller_->policy_changes()[0].reason());
@@ -536,39 +516,6 @@ TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
   EXPECT_EQ(0, keyboard_backlight_controller_->tablet_mode_changes().size());
 }
 
-TEST_F(DaemonTest, GetSwitchStates) {
-  input_watcher_->set_tablet_mode(TabletMode::ON);
-  input_watcher_->set_lid_state(LidState::OPEN);
-  Init();
-
-  dbus::MethodCall method_call(kPowerManagerInterface, kGetSwitchStatesMethod);
-  auto response = CallSyncDBusMethod(&method_call);
-  ASSERT_TRUE(response.get());
-  SwitchStates proto;
-  ASSERT_TRUE(
-      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
-  EXPECT_EQ(SwitchStates_TabletMode_ON, proto.tablet_mode());
-  EXPECT_EQ(SwitchStates_LidState_OPEN, proto.lid_state());
-
-  input_watcher_->set_tablet_mode(TabletMode::OFF);
-  input_watcher_->set_lid_state(LidState::CLOSED);
-  response = CallSyncDBusMethod(&method_call);
-  ASSERT_TRUE(response.get());
-  ASSERT_TRUE(
-      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
-  EXPECT_EQ(SwitchStates_TabletMode_OFF, proto.tablet_mode());
-  EXPECT_EQ(SwitchStates_LidState_CLOSED, proto.lid_state());
-
-  input_watcher_->set_tablet_mode(TabletMode::UNSUPPORTED);
-  input_watcher_->set_lid_state(LidState::NOT_PRESENT);
-  response = CallSyncDBusMethod(&method_call);
-  ASSERT_TRUE(response.get());
-  ASSERT_TRUE(
-      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
-  EXPECT_EQ(SwitchStates_TabletMode_UNSUPPORTED, proto.tablet_mode());
-  EXPECT_EQ(SwitchStates_LidState_NOT_PRESENT, proto.lid_state());
-}
-
 TEST_F(DaemonTest, GetBacklightBrightness) {
   Init();
   const double kBrightnessPercent = 55.0;
@@ -576,7 +523,7 @@ TEST_F(DaemonTest, GetBacklightBrightness) {
 
   dbus::MethodCall method_call(kPowerManagerInterface,
                                kGetScreenBrightnessPercentMethod);
-  auto response = CallSyncDBusMethod(&method_call);
+  auto response = dbus_wrapper_->CallExportedMethodSync(&method_call);
   ASSERT_TRUE(response.get());
   dbus::MessageReader reader(response.get());
   double percent = 0;
@@ -594,31 +541,31 @@ TEST_F(DaemonTest, ChangeBacklightBrightness) {
   dbus::MessageWriter set_writer(&set_call);
   set_writer.AppendDouble(kSetBrightnessPercent);
   set_writer.AppendInt32(kBrightnessTransitionGradual);
-  ASSERT_TRUE(CallSyncDBusMethod(&set_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&set_call).get());
   EXPECT_DOUBLE_EQ(kSetBrightnessPercent,
                    internal_backlight_controller_->user_brightness_percent());
 
   dbus::MethodCall increase_call(kPowerManagerInterface,
                                  kIncreaseScreenBrightnessMethod);
-  ASSERT_TRUE(CallSyncDBusMethod(&increase_call).get());
-  ASSERT_TRUE(CallSyncDBusMethod(&increase_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_call).get());
   EXPECT_EQ(2, internal_backlight_controller_->num_user_brightness_increases());
 
   dbus::MethodCall decrease_call(kPowerManagerInterface,
                                  kDecreaseScreenBrightnessMethod);
   dbus::MessageWriter(&decrease_call).AppendBool(true);
-  ASSERT_TRUE(CallSyncDBusMethod(&decrease_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&decrease_call).get());
   EXPECT_EQ(1, internal_backlight_controller_->num_user_brightness_decreases());
 
   dbus::MethodCall increase_key_call(kPowerManagerInterface,
                                      kIncreaseKeyboardBrightnessMethod);
-  ASSERT_TRUE(CallSyncDBusMethod(&increase_key_call).get());
-  ASSERT_TRUE(CallSyncDBusMethod(&increase_key_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_key_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_key_call).get());
   EXPECT_EQ(2, keyboard_backlight_controller_->num_user_brightness_increases());
 
   dbus::MethodCall decrease_key_call(kPowerManagerInterface,
                                      kDecreaseKeyboardBrightnessMethod);
-  ASSERT_TRUE(CallSyncDBusMethod(&decrease_key_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&decrease_key_call).get());
   EXPECT_EQ(1, keyboard_backlight_controller_->num_user_brightness_decreases());
 }
 
@@ -630,13 +577,13 @@ TEST_F(DaemonTest, ForceBacklightsOff) {
   dbus::MethodCall set_off_call(kPowerManagerInterface,
                                 kSetBacklightsForcedOffMethod);
   dbus::MessageWriter(&set_off_call).AppendBool(true);
-  ASSERT_TRUE(CallSyncDBusMethod(&set_off_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&set_off_call).get());
   EXPECT_TRUE(internal_backlight_controller_->forced_off());
   EXPECT_TRUE(keyboard_backlight_controller_->forced_off());
 
   dbus::MethodCall get_call(kPowerManagerInterface,
                             kGetBacklightsForcedOffMethod);
-  auto response = CallSyncDBusMethod(&get_call);
+  auto response = dbus_wrapper_->CallExportedMethodSync(&get_call);
   ASSERT_TRUE(response.get());
   bool forced_off = false;
   ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&forced_off));
@@ -646,11 +593,11 @@ TEST_F(DaemonTest, ForceBacklightsOff) {
   dbus::MethodCall set_on_call(kPowerManagerInterface,
                                kSetBacklightsForcedOffMethod);
   dbus::MessageWriter(&set_on_call).AppendBool(false);
-  ASSERT_TRUE(CallSyncDBusMethod(&set_on_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&set_on_call).get());
   EXPECT_FALSE(internal_backlight_controller_->forced_off());
   EXPECT_FALSE(keyboard_backlight_controller_->forced_off());
 
-  response = CallSyncDBusMethod(&get_call);
+  response = dbus_wrapper_->CallExportedMethodSync(&get_call);
   ASSERT_TRUE(response.get());
   ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&forced_off));
   EXPECT_FALSE(forced_off);
@@ -715,7 +662,7 @@ TEST_F(DaemonTest, RequestShutdown) {
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestShutdownMethod);
   dbus::MessageWriter message_writer(&method_call);
   message_writer.AppendInt32(REQUEST_SHUTDOWN_FOR_USER);
-  ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&method_call).get());
 
   EXPECT_TRUE(internal_backlight_controller_->shutting_down());
   EXPECT_TRUE(keyboard_backlight_controller_->shutting_down());
@@ -727,7 +674,7 @@ TEST_F(DaemonTest, RequestShutdown) {
 
   // Sending another request shouldn't do anything.
   async_commands_.clear();
-  ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&method_call).get());
   EXPECT_EQ(0, async_commands_.size());
 }
 
@@ -738,7 +685,7 @@ TEST_F(DaemonTest, RequestRestart) {
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestRestartMethod);
   dbus::MessageWriter message_writer(&method_call);
   message_writer.AppendInt32(REQUEST_RESTART_FOR_UPDATE);
-  ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&method_call).get());
 
   ASSERT_EQ(1, async_commands_.size());
   EXPECT_EQ(base::StringPrintf(
@@ -783,7 +730,7 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   lockfile_checker_->set_files_to_return(
       {temp_dir_.GetPath().Append("lockfile")});
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestShutdownMethod);
-  ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&method_call).get());
   EXPECT_EQ(0, async_commands_.size());
 
   // It should still be up after the retry timer fires.
@@ -814,7 +761,7 @@ TEST_F(DaemonTest, ForceLidOpenForDockedModeReboot) {
   async_commands_.clear();
   EnterDockedMode();
   dbus::MethodCall call(kPowerManagerInterface, kRequestRestartMethod);
-  ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&call).get());
   ASSERT_EQ(1, sync_commands_.size());
   EXPECT_EQ(kForceLidOpenCommand, sync_commands_[0]);
 }
@@ -826,7 +773,7 @@ TEST_F(DaemonTest, DontForceLidOpenForDockedModeShutdown) {
   async_commands_.clear();
   EnterDockedMode();
   dbus::MethodCall call(kPowerManagerInterface, kRequestShutdownMethod);
-  ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&call).get());
   EXPECT_EQ(0, sync_commands_.size());
 }
 
@@ -834,7 +781,7 @@ TEST_F(DaemonTest, DontForceLidOpenForNormalReboot) {
   // When rebooting outside of docked mode, we shouldn't force the lid open.
   Init();
   dbus::MethodCall call(kPowerManagerInterface, kRequestRestartMethod);
-  ASSERT_TRUE(CallSyncDBusMethod(&call).get());
+  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&call).get());
   EXPECT_EQ(0, sync_commands_.size());
 }
 
@@ -858,14 +805,16 @@ TEST_F(DaemonTest, FactoryMode) {
   // Display-backlight-related D-Bus calls should return errors.
   dbus::MethodCall screen_call(kPowerManagerInterface,
                                kGetScreenBrightnessPercentMethod);
-  EXPECT_EQ(dbus::Message::MESSAGE_ERROR,
-            CallSyncDBusMethod(&screen_call)->GetMessageType());
+  EXPECT_EQ(
+      dbus::Message::MESSAGE_ERROR,
+      dbus_wrapper_->CallExportedMethodSync(&screen_call)->GetMessageType());
 
   // Keyboard-backlight-related calls silently do nothing.
   dbus::MethodCall keyboard_call(kPowerManagerInterface,
                                  kIncreaseKeyboardBrightnessMethod);
-  EXPECT_EQ(dbus::Message::MESSAGE_METHOD_RETURN,
-            CallSyncDBusMethod(&keyboard_call)->GetMessageType());
+  EXPECT_EQ(
+      dbus::Message::MESSAGE_METHOD_RETURN,
+      dbus_wrapper_->CallExportedMethodSync(&keyboard_call)->GetMessageType());
 
   // powerd shouldn't shut the system down in response to a low battery charge.
   system::PowerStatus status;
