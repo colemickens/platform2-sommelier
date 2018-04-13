@@ -96,6 +96,7 @@ constexpr char kFakeMmapRndBits[] = "/run/arc/fake_mmap_rnd_bits";
 constexpr char kFakeMmapRndCompatBits[] = "/run/arc/fake_mmap_rnd_compat_bits";
 constexpr char kHostSideDalvikCacheDirectoryInContainer[] =
     "/var/run/arc/dalvik-cache";
+constexpr char kHostDownloadsDirectory[] = "/home/chronos/user/Downloads";
 constexpr char kMediaDestDirectory[] = "/run/arc/media/removable";
 constexpr char kMediaMountDirectory[] = "/run/arc/media";
 constexpr char kMediaProfileFile[] = "media_profiles.xml";
@@ -130,6 +131,9 @@ constexpr const char* kBinFmtMiscEntryNames[] = {"arm_dyn", "arm_exe",
 
 constexpr uid_t kHostRootUid = 0;
 constexpr gid_t kHostRootGid = 0;
+
+constexpr uid_t kHostChronosUid = 1000;
+constexpr gid_t kHostChronosGid = 1000;
 
 constexpr uid_t kShiftUid = 655360;
 constexpr gid_t kShiftGid = 655360;
@@ -366,6 +370,10 @@ constexpr std::array<EsdfsMount, 3> kEsdfsMounts{{
 //
 // ns_fd         : Namespace file descriptor used to set the base namespace for
 //                 the esdfs mount, similar to the  argument to setns(2).
+//
+// dl_uid, dl_gid: Downloads integration uid/gid.
+//
+// dl_loc        : The Android download directory acts as an overlay on dl_loc.
 
 std::string CreateEsdfsMountOpts(uid_t fsuid,
                                  gid_t fsgid,
@@ -375,8 +383,9 @@ std::string CreateEsdfsMountOpts(uid_t fsuid,
                                  int container_userns_fd) {
   std::string opts = base::StringPrintf(
       "fsuid=%d,fsgid=%d,derive_gid,default_normal,mask=%d,multiuser,"
-      "gid=%d,ns_fd=%d",
-      fsuid, fsgid, mask, gid, container_userns_fd);
+      "gid=%d,dl_loc=%s,dl_uid=%d,dl_gid=%d,ns_fd=%d",
+      fsuid, fsgid, mask, gid, kHostDownloadsDirectory, kHostChronosUid,
+      kHostChronosGid, container_userns_fd);
   LOG(INFO) << "Esdfs mount options: " << opts;
   return opts;
 }
