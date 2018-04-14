@@ -38,20 +38,11 @@ std::unique_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(name);
   writer.AppendArrayOfStrings(args_keyvals);
-  writer.AppendBool(true);
-
-  switch (mode) {
-    case TriggerMode::SYNC:
-      return upstart_dbus_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-    case TriggerMode::ASYNC:
-      upstart_dbus_proxy_->CallMethod(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          dbus::ObjectProxy::EmptyResponseCallback());
-      return nullptr;
-  }
-  NOTREACHED() << "Invalid trigger mode " << mode;
-  return nullptr;
+  // When this boolean is true, Upstart waits until all side-effects of the
+  // event have completed instead of just returning after it's queued.
+  writer.AppendBool(mode == TriggerMode::SYNC);
+  return upstart_dbus_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
 }  // namespace login_manager
