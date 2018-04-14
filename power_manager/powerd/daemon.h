@@ -225,8 +225,6 @@ class Daemon : public policy::BacklightControllerObserver,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleIncreaseKeyboardBrightnessMethod(
       dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleGetPowerSupplyPropertiesMethod(
-      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleVideoActivityMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleUserActivityMethod(
@@ -234,8 +232,6 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<dbus::Response> HandleSetIsProjectingMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleSetPolicyMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleSetPowerSourceMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleSetBacklightsForcedOffMethod(
       dbus::MethodCall* method_call);

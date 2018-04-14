@@ -115,7 +115,8 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::PowerSupplyInterface> CreatePowerSupply(
       const base::FilePath& power_supply_path,
       PrefsInterface* prefs,
-      system::UdevInterface* udev) = 0;
+      system::UdevInterface* udev,
+      system::DBusWrapperInterface* dbus_wrapper) = 0;
 
   virtual std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       system::PowerSupplyInterface* power_supply,

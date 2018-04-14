@@ -12,14 +12,17 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
@@ -118,7 +121,9 @@ class PowerSupplyTest : public ::testing::Test {
 
  protected:
   // Initializes |power_supply_|.
-  void Init() { power_supply_->Init(temp_dir_.GetPath(), &prefs_, &udev_); }
+  void Init() {
+    power_supply_->Init(temp_dir_.GetPath(), &prefs_, &udev_, &dbus_wrapper_);
+  }
 
   // Sets the time so that |power_supply_| will believe that the current
   // has stabilized.
@@ -255,12 +260,24 @@ class PowerSupplyTest : public ::testing::Test {
                                     UdevEvent::Action::CHANGE});
   }
 
+  // Makes a SetPowerSource D-Bus method call and returns true if the call was
+  // successful or false if it failed.
+  bool CallSetPowerSource(const std::string& id) WARN_UNUSED_RESULT {
+    dbus::MethodCall method_call(kPowerManagerInterface, kSetPowerSourceMethod);
+    dbus::MessageWriter(&method_call).AppendString(id);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_.CallExportedMethodSync(&method_call);
+    return response &&
+           response->GetMessageType() != dbus::Message::MESSAGE_ERROR;
+  }
+
   FakePrefs prefs_;
   base::ScopedTempDir temp_dir_;
   base::FilePath ac_dir_;
   base::FilePath battery_dir_;
   base::FilePath second_battery_dir_;
   UdevStub udev_;
+  DBusWrapperStub dbus_wrapper_;
   std::unique_ptr<PowerSupply> power_supply_;
   std::unique_ptr<PowerSupply::TestApi> test_api_;
 };
@@ -599,31 +616,31 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // Request switching to the first power source.
-  EXPECT_TRUE(power_supply_->SetPowerSource(kLine1Id));
+  EXPECT_TRUE(CallSetPowerSource(kLine1Id));
   std::string value;
   EXPECT_TRUE(base::ReadFileToString(
       line1_dir.Append(PowerSupply::kChargeControlLimitMaxFile), &value));
   EXPECT_EQ("0", value);
 
   // Now switch to the second one.
-  EXPECT_TRUE(power_supply_->SetPowerSource(kLine2Id));
+  EXPECT_TRUE(CallSetPowerSource(kLine2Id));
   EXPECT_TRUE(base::ReadFileToString(
       line2_dir.Append(PowerSupply::kChargeControlLimitMaxFile), &value));
   EXPECT_EQ("0", value);
 
   // Passing an empty ID should result in -1 getting written to the active power
   // source's limit file (resulting in a switch to the battery).
-  EXPECT_TRUE(power_supply_->SetPowerSource(""));
+  EXPECT_TRUE(CallSetPowerSource(""));
   EXPECT_TRUE(base::ReadFileToString(
       line2_dir.Append(PowerSupply::kChargeControlLimitMaxFile), &value));
   EXPECT_EQ("-1", value);
 
   // Ignore invalid IDs.
-  EXPECT_FALSE(power_supply_->SetPowerSource("bogus"));
-  EXPECT_FALSE(power_supply_->SetPowerSource("."));
-  EXPECT_FALSE(power_supply_->SetPowerSource(".."));
-  EXPECT_FALSE(power_supply_->SetPowerSource("../"));
-  EXPECT_FALSE(power_supply_->SetPowerSource(line1_dir.value()));
+  EXPECT_FALSE(CallSetPowerSource("bogus"));
+  EXPECT_FALSE(CallSetPowerSource("."));
+  EXPECT_FALSE(CallSetPowerSource(".."));
+  EXPECT_FALSE(CallSetPowerSource("../"));
+  EXPECT_FALSE(CallSetPowerSource(line1_dir.value()));
 
   // If the kernel reports a dedicated charger by using the "Mains" type rather
   // than "USB_PD_DRP", powerd should report it as being active by default.
@@ -1539,6 +1556,39 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+}
+
+TEST_F(PowerSupplyTest, SendPowerStatusOverDBus) {
+  WriteDefaultValues(PowerSource::AC);
+  Init();
+
+  // On refresh, a PowerSupplyPoll signal should be emitted.
+  ASSERT_TRUE(power_supply_->RefreshImmediately());
+  PowerSupplyProperties proto;
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, proto.external_power());
+
+  WriteValue(ac_dir_, "online", "0");
+  dbus_wrapper_.ClearSentSignals();
+  ASSERT_TRUE(power_supply_->RefreshImmediately());
+  proto.Clear();
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            proto.external_power());
+
+  // The latest properties should be sent when requested.
+  dbus::MethodCall method_call(kPowerManagerInterface,
+                               kGetPowerSupplyPropertiesMethod);
+  std::unique_ptr<dbus::Response> response =
+      dbus_wrapper_.CallExportedMethodSync(&method_call);
+  ASSERT_TRUE(response);
+  proto.Clear();
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            proto.external_power());
 }
 
 TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {

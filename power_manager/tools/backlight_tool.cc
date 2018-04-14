@@ -26,6 +26,7 @@
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -39,6 +40,7 @@ using power_manager::policy::InternalBacklightController;
 using power_manager::policy::KeyboardBacklightController;
 using power_manager::system::AmbientLightSensorStub;
 using power_manager::system::BacklightStub;
+using power_manager::system::DBusWrapperStub;
 using power_manager::system::DisplayPowerSetterStub;
 using power_manager::system::InternalBacklight;
 using power_manager::system::PowerSupply;
@@ -94,9 +96,10 @@ class Converter {
     PowerSource power_source = PowerSource::BATTERY;
     if (!force_battery) {
       UdevStub udev;
+      DBusWrapperStub dbus_wrapper;
       PowerSupply power_supply;
       power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
-                        &prefs_, &udev);
+                        &prefs_, &udev, &dbus_wrapper);
       if (!power_supply.RefreshImmediately()) {
         LOG(ERROR) << "Failed to read power supply information; using battery";
       } else {

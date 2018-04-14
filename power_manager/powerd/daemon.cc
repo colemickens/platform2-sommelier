@@ -53,7 +53,6 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
-#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 #if USE_BUFFET
 namespace dbus {
@@ -386,7 +385,8 @@ void Daemon::Init() {
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
   power_supply_ = delegate_->CreatePowerSupply(base::FilePath(kPowerStatusPath),
-                                               prefs_.get(), udev_.get());
+                                               prefs_.get(), udev_.get(),
+                                               dbus_wrapper_.get());
   power_supply_->AddObserver(this);
   if (!power_supply_->RefreshImmediately())
     LOG(ERROR) << "Initial power supply refresh failed; brace for weirdness";
@@ -818,10 +818,6 @@ void Daemon::OnPowerStatusUpdate() {
       ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::LOW_BATTERY);
     }
   }
-
-  PowerSupplyProperties protobuf;
-  system::CopyPowerStatusToProtocolBuffer(status, &protobuf);
-  dbus_wrapper_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
 }
 
 void Daemon::InitDBus() {
@@ -894,13 +890,10 @@ void Daemon::InitDBus() {
        &Daemon::HandleDecreaseKeyboardBrightnessMethod},
       {kIncreaseKeyboardBrightnessMethod,
        &Daemon::HandleIncreaseKeyboardBrightnessMethod},
-      {kGetPowerSupplyPropertiesMethod,
-       &Daemon::HandleGetPowerSupplyPropertiesMethod},
       {kHandleVideoActivityMethod, &Daemon::HandleVideoActivityMethod},
       {kHandleUserActivityMethod, &Daemon::HandleUserActivityMethod},
       {kSetIsProjectingMethod, &Daemon::HandleSetIsProjectingMethod},
       {kSetPolicyMethod, &Daemon::HandleSetPolicyMethod},
-      {kSetPowerSourceMethod, &Daemon::HandleSetPowerSourceMethod},
       {kSetBacklightsForcedOffMethod,
        &Daemon::HandleSetBacklightsForcedOffMethod},
       {kGetBacklightsForcedOffMethod,
@@ -1234,17 +1227,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
   return std::unique_ptr<dbus::Response>();
 }
 
-std::unique_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
-    dbus::MethodCall* method_call) {
-  PowerSupplyProperties protobuf;
-  system::CopyPowerStatusToProtocolBuffer(power_supply_->GetPowerStatus(),
-                                          &protobuf);
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendProtoAsArrayOfBytes(protobuf);
-  return response;
-}
 
 std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {
@@ -1313,23 +1295,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
   state_controller_->HandlePolicyChange(policy);
   for (auto controller : all_backlight_controllers_)
     controller->HandlePolicyChange(policy);
-  return std::unique_ptr<dbus::Response>();
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleSetPowerSourceMethod(
-    dbus::MethodCall* method_call) {
-  std::string id;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopString(&id)) {
-    LOG(ERROR) << "Unable to read " << kSetPowerSourceMethod << " args";
-    return CreateInvalidArgsError(method_call, "Expected string");
-  }
-
-  LOG(INFO) << "Received request to switch to power source " << id;
-  if (!power_supply_->SetPowerSource(id)) {
-    return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED, "Couldn't set power source"));
-  }
   return std::unique_ptr<dbus::Response>();
 }
 

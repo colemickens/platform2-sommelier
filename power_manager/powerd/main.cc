@@ -189,9 +189,10 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::PowerSupplyInterface> CreatePowerSupply(
       const base::FilePath& power_supply_path,
       PrefsInterface* prefs,
-      system::UdevInterface* udev) override {
+      system::UdevInterface* udev,
+      system::DBusWrapperInterface* dbus_wrapper) override {
     auto supply = base::WrapUnique(new system::PowerSupply());
-    supply->Init(power_supply_path, prefs, udev);
+    supply->Init(power_supply_path, prefs, udev, dbus_wrapper);
     return std::move(supply);
   }
 

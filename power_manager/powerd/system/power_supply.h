@@ -14,14 +14,20 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
+#include <dbus/exported_object.h>
 
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
+
+namespace dbus {
+class MethodCall;
+}
 
 namespace power_manager {
 
@@ -35,6 +41,7 @@ enum class PowerSupplyType;
 
 namespace system {
 
+class DBusWrapperInterface;
 struct PowerStatus;
 struct UdevEvent;
 class UdevInterface;
@@ -213,10 +220,6 @@ class PowerSupplyInterface {
   // notifies observers asynchronously, and schedules a poll for the near
   // future.
   virtual void SetSuspended(bool suspended) = 0;
-
-  // Handles a request to use the PowerStatus::Source described by |id|,
-  // returning true on success.
-  virtual bool SetPowerSource(const std::string& id) = 0;
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
@@ -241,7 +244,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
     // Advances the time by |interval|.
     void AdvanceTime(base::TimeDelta interval);
 
-    // If |poll_timer_| was running, calls HandlePollTimeout() and returns true.
+    // If |poll_timer_| was running, calls OnPollTimeout() and returns true.
     // Returns false otherwise.
     bool TriggerPollTimeout() WARN_UNUSED_RESULT;
 
@@ -310,11 +313,12 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
     return battery_stabilized_timestamp_;
   }
 
-  // Initializes the object and begins polling. Ownership of |prefs| remains
-  // with the caller.
+  // Initializes the object and begins polling. Ownership of raw pointers
+  // remains with the caller.
   void Init(const base::FilePath& power_supply_path,
             PrefsInterface* prefs,
-            UdevInterface* udev);
+            UdevInterface* udev,
+            DBusWrapperInterface* dbus_wrapper);
 
   // PowerSupplyInterface implementation:
   void AddObserver(PowerSupplyObserver* observer) override;
@@ -322,7 +326,6 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   PowerStatus GetPowerStatus() const override;
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
-  bool SetPowerSource(const std::string& id) override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -408,18 +411,31 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // according to |notify_policy| on success.
   bool PerformUpdate(UpdatePolicy update_policy, NotifyPolicy notify_policy);
 
-  // Schedules |poll_timer_| to call HandlePollTimeout().
+  // Schedules |poll_timer_| to call OnPollTimeout().
   void SchedulePoll();
 
   // Handles |poll_timer_| firing. Updates |power_status_| and reschedules the
   // timer.
-  void HandlePollTimeout();
+  void OnPollTimeout();
 
   // Notifies |observers_| that |power_status_| has been updated.
   void NotifyObservers();
 
-  PrefsInterface* prefs_ = nullptr;  // non-owned
-  UdevInterface* udev_ = nullptr;    // non-owned
+  // Handles D-Bus method calls.
+  void OnGetPowerSupplyPropertiesMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void OnSetPowerSourceMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  // Handles a request to use the PowerStatus::Source described by |id|,
+  // returning true on success.
+  bool SetPowerSource(const std::string& id);
+
+  PrefsInterface* prefs_ = nullptr;               // non-owned
+  UdevInterface* udev_ = nullptr;                 // non-owned
+  DBusWrapperInterface* dbus_wrapper_ = nullptr;  // non-owned
 
   std::unique_ptr<Clock> clock_;
 
@@ -504,6 +520,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // "CROS_USB_PD_CHARGER0") to enum values describing the corresponding
   // charging ports' locations. Loaded from kChargingPortsPref.
   std::map<std::string, PowerSupplyProperties::PowerSource::Port> port_names_;
+
+  base::WeakPtrFactory<PowerSupply> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);
 };

@@ -36,9 +36,5 @@ bool PowerSupplyStub::RefreshImmediately() {
 
 void PowerSupplyStub::SetSuspended(bool suspended) {}
 
-bool PowerSupplyStub::SetPowerSource(const std::string& id) {
-  return true;
-}
-
 }  // namespace system
 }  // namespace power_manager

@@ -19,12 +19,15 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
@@ -376,7 +379,7 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
     return false;
 
   power_supply_->poll_timer_.Stop();
-  power_supply_->HandlePollTimeout();
+  power_supply_->OnPollTimeout();
   return true;
 }
 
@@ -406,7 +409,8 @@ const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 
-PowerSupply::PowerSupply() : clock_(std::make_unique<Clock>()) {}
+PowerSupply::PowerSupply()
+    : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
 
 PowerSupply::~PowerSupply() {
   if (udev_)
@@ -415,12 +419,23 @@ PowerSupply::~PowerSupply() {
 
 void PowerSupply::Init(const base::FilePath& power_supply_path,
                        PrefsInterface* prefs,
-                       UdevInterface* udev) {
+                       UdevInterface* udev,
+                       system::DBusWrapperInterface* dbus_wrapper) {
   udev_ = udev;
   udev_->AddSubsystemObserver(kUdevSubsystem, this);
 
   prefs_ = prefs;
   power_supply_path_ = power_supply_path;
+
+  dbus_wrapper_ = dbus_wrapper;
+  dbus_wrapper->ExportMethod(
+      kGetPowerSupplyPropertiesMethod,
+      base::Bind(&PowerSupply::OnGetPowerSupplyPropertiesMethodCall,
+                 weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->ExportMethod(
+      kSetPowerSourceMethod,
+      base::Bind(&PowerSupply::OnSetPowerSourceMethodCall,
+                 weak_ptr_factory_.GetWeakPtr()));
 
   prefs_->GetBool(kMultipleBatteriesPref, &allow_multiple_batteries_);
 
@@ -527,25 +542,6 @@ void PowerSupply::SetSuspended(bool suspended) {
     current_samples_on_line_power_->Clear();
     PerformUpdate(UpdatePolicy::UNCONDITIONALLY, NotifyPolicy::ASYNCHRONOUSLY);
   }
-}
-
-bool PowerSupply::SetPowerSource(const std::string& id) {
-  // An empty ID means we should write -1 to any power source (we'll use the
-  // active one) to ask the kernel to use the battery as the power source.
-  // Otherwise, write 0 to the requested power source to activate it.
-  const base::FilePath device_path =
-      GetPathForId(id.empty() ? power_status_.external_power_source_id : id);
-  if (device_path.empty())
-    return false;
-
-  const base::FilePath limit_path =
-      device_path.Append(kChargeControlLimitMaxFile);
-  const std::string value = id.empty() ? "-1" : "0";
-  if (!util::WriteFileFully(limit_path, value.c_str(), value.size())) {
-    LOG(ERROR) << "Failed to write " << value << " to " << limit_path.value();
-    return false;
-  }
-  return true;
 }
 
 void PowerSupply::OnUdevEvent(const UdevEvent& event) {
@@ -1123,17 +1119,24 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   const bool success = UpdatePowerStatus(update_policy);
   if (!is_suspended_)
     SchedulePoll();
-  if (success) {
-    if (notify_policy == NotifyPolicy::SYNCHRONOUSLY) {
-      NotifyObservers();
-    } else {
-      notify_observers_task_.Reset(
-          base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
-      base::MessageLoop::current()->task_runner()->PostTask(
-          FROM_HERE, notify_observers_task_.callback());
-    }
+
+  if (!success)
+    return false;
+
+  if (notify_policy == NotifyPolicy::SYNCHRONOUSLY) {
+    NotifyObservers();
+  } else {
+    notify_observers_task_.Reset(
+        base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
+    base::MessageLoop::current()->task_runner()->PostTask(
+        FROM_HERE, notify_observers_task_.callback());
   }
-  return success;
+
+  PowerSupplyProperties protobuf;
+  CopyPowerStatusToProtocolBuffer(power_status_, &protobuf);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
+
+  return true;
 }
 
 void PowerSupply::SchedulePoll() {
@@ -1146,11 +1149,11 @@ void PowerSupply::SchedulePoll() {
   }
 
   VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";
-  poll_timer_.Start(FROM_HERE, delay, this, &PowerSupply::HandlePollTimeout);
+  poll_timer_.Start(FROM_HERE, delay, this, &PowerSupply::OnPollTimeout);
   current_poll_delay_for_testing_ = delay;
 }
 
-void PowerSupply::HandlePollTimeout() {
+void PowerSupply::OnPollTimeout() {
   current_poll_delay_for_testing_ = base::TimeDelta();
   PerformUpdate(UpdatePolicy::UNCONDITIONALLY, NotifyPolicy::SYNCHRONOUSLY);
 }
@@ -1158,6 +1161,58 @@ void PowerSupply::HandlePollTimeout() {
 void PowerSupply::NotifyObservers() {
   for (PowerSupplyObserver& observer : observers_)
     observer.OnPowerStatusUpdate();
+}
+
+void PowerSupply::OnGetPowerSupplyPropertiesMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  PowerSupplyProperties protobuf;
+  CopyPowerStatusToProtocolBuffer(power_status_, &protobuf);
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendProtoAsArrayOfBytes(protobuf);
+  response_sender.Run(std::move(response));
+}
+
+void PowerSupply::OnSetPowerSourceMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  std::string id;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopString(&id)) {
+    LOG(ERROR) << "Unable to read " << kSetPowerSourceMethod << " args";
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_INVALID_ARGS, "Expected string"));
+    return;
+  }
+
+  LOG(INFO) << "Received request to switch to power source \"" << id << "\"";
+  if (!SetPowerSource(id)) {
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, "Couldn't set power source"));
+    return;
+  }
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
+}
+
+bool PowerSupply::SetPowerSource(const std::string& id) {
+  // An empty ID means we should write -1 to any power source (we'll use the
+  // active one) to ask the kernel to use the battery as the power source.
+  // Otherwise, write 0 to the requested power source to activate it.
+  const base::FilePath device_path =
+      GetPathForId(id.empty() ? power_status_.external_power_source_id : id);
+  if (device_path.empty())
+    return false;
+
+  const base::FilePath limit_path =
+      device_path.Append(kChargeControlLimitMaxFile);
+  const std::string value = id.empty() ? "-1" : "0";
+  if (!util::WriteFileFully(limit_path, value.c_str(), value.size())) {
+    LOG(ERROR) << "Failed to write " << value << " to " << limit_path.value();
+    return false;
+  }
+  return true;
 }
 
 }  // namespace system

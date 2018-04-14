@@ -41,7 +41,6 @@
 #include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
-#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
 namespace power_manager {
@@ -232,10 +231,12 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::PowerSupplyInterface> CreatePowerSupply(
       const base::FilePath& power_supply_path,
       PrefsInterface* prefs,
-      system::UdevInterface* udev) override {
+      system::UdevInterface* udev,
+      system::DBusWrapperInterface* dbus_wrapper) override {
     EXPECT_EQ(kPowerStatusPath, power_supply_path.value());
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_power_supply_);
   }
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
@@ -632,25 +633,6 @@ TEST_F(DaemonTest, EmitDBusSignalForBrightnessChange) {
                                BacklightBrightnessChange_Cause_OTHER);
   CheckBrightnessChangedSignal(1, kKeyboardBrightnessChangedSignal, 4.0,
                                BacklightBrightnessChange_Cause_USER_REQUEST);
-}
-
-TEST_F(DaemonTest, EmitDBusSignalForPowerStatusUpdate) {
-  Init();
-
-  system::PowerStatus status;
-  status.external_power = PowerSupplyProperties_ExternalPower_AC;
-  power_supply_->set_status(status);
-
-  dbus_wrapper_->ClearSentSignals();
-  power_supply_->NotifyObservers();
-  EXPECT_EQ(1, dbus_wrapper_->num_sent_signals());
-  PowerSupplyProperties proto;
-  ASSERT_TRUE(
-      dbus_wrapper_->GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
-  // Just check the field that we set; the code for copying PowerStatus structs
-  // into PowerSupplyPropreties protos lives inside the PowerSupply class and is
-  // tested there.
-  EXPECT_EQ(status.external_power, proto.external_power());
 }
 
 TEST_F(DaemonTest, RequestShutdown) {

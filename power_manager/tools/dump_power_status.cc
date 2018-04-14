@@ -13,6 +13,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
@@ -49,9 +50,10 @@ int main(int argc, char** argv) {
                    power_manager::Prefs::GetDefaultSources()));
 
   power_manager::system::UdevStub udev;
+  power_manager::system::DBusWrapperStub dbus_wrapper;
   base::FilePath path(power_manager::kPowerStatusPath);
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs, &udev);
+  power_supply.Init(path, &prefs, &udev, &dbus_wrapper);
 
   CHECK(power_supply.RefreshImmediately());
   const power_manager::system::PowerStatus status =
