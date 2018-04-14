@@ -35,6 +35,7 @@ class Sockets;
 
 class OpenVPNManagementServer {
  public:
+  static const char kStateAuth[];
   static const char kStateReconnecting[];
   static const char kStateResolve[];
 

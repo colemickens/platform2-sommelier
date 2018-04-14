@@ -54,6 +54,7 @@ namespace {
 const char kPasswordTagAuth[] = "Auth";
 }  // namespace
 
+const char OpenVPNManagementServer::kStateAuth[] = "AUTH";
 const char OpenVPNManagementServer::kStateReconnecting[] = "RECONNECTING";
 const char OpenVPNManagementServer::kStateResolve[] = "RESOLVE";
 
@@ -382,16 +383,36 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string& message) {
   vector<string> details = SplitString(message, ",", base::TRIM_WHITESPACE,
                                        base::SPLIT_WANT_ALL);
   if (details.size() > 1) {
-    state_ = details[1];
-    LOG(INFO) << "OpenVPN state: " << state_;
-    if (state_ == kStateReconnecting) {
-      OpenVPNDriver::ReconnectReason reason =
-          OpenVPNDriver::kReconnectReasonUnknown;
-      if (details.size() > 2 && details[2] == "tls-error") {
-        reason = OpenVPNDriver::kReconnectReasonTLSError;
-      }
-      driver_->OnReconnecting(reason);
+    std::string new_state = details[1];
+    std::string reason;
+    if (details.size() > 2) {
+      reason = details[2];
     }
+    LOG(INFO) << "OpenVPN state: " << state_ << " -> " << new_state << " ("
+              << reason << ")";
+
+    if (new_state == kStateReconnecting) {
+      if (state_ == kStateResolve) {
+        // RESOLVE -> RECONNECTING means DNS lookup failed.
+        driver_->FailService(Service::kFailureDNSLookup,
+                             Service::kErrorDetailsNone);
+      } else if (state_ == kStateAuth && reason == "tls-error") {
+        // AUTH -> RECONNECTING,tls_error means cert validation or auth
+        // failed.  Unfortunately OpenVPN doesn't tell us whether it
+        // was a local or remote failure.  The UI will say:
+        // "Authentication certificate rejected by network"
+        driver_->FailService(Service::kFailureIPSecCertAuth,
+                             Service::kErrorDetailsNone);
+      } else {
+        OpenVPNDriver::ReconnectReason reconnect_reason =
+            OpenVPNDriver::kReconnectReasonUnknown;
+        if (reason == "tls-error") {
+          reconnect_reason = OpenVPNDriver::kReconnectReasonTLSError;
+        }
+        driver_->OnReconnecting(reconnect_reason);
+      }
+    }
+    state_ = new_state;
   }
 
   return true;
