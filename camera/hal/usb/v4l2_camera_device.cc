@@ -719,7 +719,8 @@ int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
       v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_AUTO;
       break;
     default:
-      LOGF(ERROR) << "Invalid setting for power line frequency: " << setting;
+      LOGF(ERROR) << "Invalid setting for power line frequency: "
+                  << static_cast<int>(setting);
       return -EINVAL;
   }
 
@@ -732,7 +733,8 @@ int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
                 << v4l2_freq_setting;
     return -EINVAL;
   }
-  VLOGF(1) << "Set power line frequency(" << setting << ") successfully";
+  VLOGF(1) << "Set power line frequency(" << static_cast<int>(setting)
+           << ") successfully";
   return 0;
 }
 
