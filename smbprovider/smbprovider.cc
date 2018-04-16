@@ -541,7 +541,7 @@ bool SmbProvider::WriteTempFile(const Proto& options,
     return false;
   }
 
-  *temp_fd = scoped_fd.get();
+  *temp_fd = scoped_fd.release();
   return true;
 }
 
