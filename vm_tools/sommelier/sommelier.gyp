@@ -1,4 +1,17 @@
 {
+  'variables': {
+    # Set this to the Xwayland path.
+    'xwayland_path%': '"/opt/google/cros-containers/bin/Xwayland"',
+
+    # Set this to the shm driver to use for Xwayland.
+    'xwayland_shm_driver%': '"noop"',
+
+    # Set this to the virtwl device.
+    'virtwl_device%': '"/dev/wl0"',
+
+    # Set this to the peer command prefix.
+    'peer_cmd_prefix%': '"/opt/google/cros-containers/lib/ld-linux-x86-64.so.2 --library-path /opt/google/cros-containers/lib --inhibit-rpath \\"\\""',
+  },
   'targets': [
     {
       'target_name': 'sommelier-protocol',
@@ -48,7 +61,10 @@
       'defines': [
         '_GNU_SOURCE',
         'WL_HIDE_DEPRECATED',
-        'XWAYLAND_PATH="/opt/google/cros-containers/bin/Xwayland"',
+        'XWAYLAND_PATH=<@(xwayland_path)',
+        'XWAYLAND_SHM_DRIVER=<@(xwayland_shm_driver)',
+        'VIRTWL_DEVICE=<@(virtwl_device)',
+        'PEER_CMD_PREFIX=<@(peer_cmd_prefix)',
       ],
     },
   ],

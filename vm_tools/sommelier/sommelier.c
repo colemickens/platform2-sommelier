@@ -40,6 +40,20 @@
 #include "xdg-shell-unstable-v6-client-protocol.h"
 #include "xdg-shell-unstable-v6-server-protocol.h"
 
+// Check that required macro definitions exist.
+#ifndef XWAYLAND_PATH
+#error XWAYLAND_PATH must be defined
+#endif
+#ifndef XWAYLAND_SHM_DRIVER
+#error XWAYLAND_SHM_DRIVER must be defined
+#endif
+#ifndef VIRTWL_DEVICE
+#error VIRTWL_DEVICE must be defined
+#endif
+#ifndef PEER_CMD_PREFIX
+#error PEER_CMD_PREFIX must be defined
+#endif
+
 struct xwl;
 
 struct xwl_global {
@@ -7115,6 +7129,9 @@ int main(int argc, char **argv) {
         close(sock_fd);
         close(lock_fd);
 
+        if (!peer_cmd_prefix)
+          peer_cmd_prefix = PEER_CMD_PREFIX;
+
         if (peer_cmd_prefix) {
           snprintf(peer_cmd_prefix_str, sizeof(peer_cmd_prefix_str), "%s",
                    peer_cmd_prefix);
@@ -7196,6 +7213,9 @@ int main(int argc, char **argv) {
 
   event_loop = wl_display_get_event_loop(xwl.host_display);
 
+  if (!virtwl_device)
+    virtwl_device = VIRTWL_DEVICE;
+
   if (virtwl_device) {
     struct virtwl_ioctl_new new_ctx = {
         .type = VIRTWL_IOCTL_NEW_CTX, .fd = -1, .flags = 0, .size = 0,
@@ -7252,6 +7272,9 @@ int main(int argc, char **argv) {
 
     xwl.drm_device = drm_device;
   }
+
+  if (xwl.xwayland && !shm_driver)
+    shm_driver = XWAYLAND_SHM_DRIVER;
 
   if (shm_driver) {
     if (strcmp(shm_driver, "dmabuf") == 0) {
