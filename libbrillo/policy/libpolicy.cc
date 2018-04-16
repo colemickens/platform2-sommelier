@@ -42,9 +42,8 @@ bool PolicyProvider::device_policy_is_loaded() const {
 }
 
 const DevicePolicy& PolicyProvider::GetDevicePolicy() const {
-  if (!device_policy_is_loaded_)
-    DCHECK("Trying to get policy data but policy was not loaded!");
-
+  DCHECK(device_policy_is_loaded_)
+      << "Trying to get policy data but policy was not loaded!";
   return *device_policy_;
 }
 
