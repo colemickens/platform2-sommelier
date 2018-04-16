@@ -6410,8 +6410,9 @@ static void xwl_calculate_scale_for_xwayland(struct xwl* xwl) {
       double preferred_scale =
           xwl_aura_scale_factor_to_double(output->preferred_scale);
 
-      if (xwl->aura_shell->version >=
-          ZAURA_OUTPUT_DEVICE_SCALE_FACTOR_SINCE_VERSION) {
+      if (xwl->aura_shell &&
+          xwl->aura_shell->version >=
+              ZAURA_OUTPUT_DEVICE_SCALE_FACTOR_SINCE_VERSION) {
         double device_scale_factor =
             xwl_aura_scale_factor_to_double(output->device_scale_factor);
 
