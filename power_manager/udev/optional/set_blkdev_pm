@@ -18,6 +18,9 @@ else
 fi
 
 for dev_sysfs in /sys/block/sd[a-z]; do
+  # handle glob without matches
+  [ -e "${dev_sysfs}" ] || break
+
   is_removable=$(cat "${dev_sysfs}/removable")
   if [ "${is_removable}" = "1" ]; then
     continue
