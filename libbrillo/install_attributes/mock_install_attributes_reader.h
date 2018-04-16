@@ -13,6 +13,7 @@ class MockInstallAttributesReader : public InstallAttributesReader {
  public:
   explicit MockInstallAttributesReader(
       const cryptohome::SerializedInstallAttributes& install_attributes);
+  MockInstallAttributesReader(const std::string& device_mode, bool initialized);
 };
 
 #endif  // LIBBRILLO_INSTALL_ATTRIBUTES_MOCK_INSTALL_ATTRIBUTES_READER_H_

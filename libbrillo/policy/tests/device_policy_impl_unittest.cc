@@ -7,6 +7,7 @@
 #include "policy/device_policy_impl.h"
 
 #include "bindings/chrome_device_policy.pb.h"
+#include "install_attributes/mock_install_attributes_reader.h"
 
 namespace em = enterprise_management;
 
@@ -88,6 +89,103 @@ TEST(DevicePolicyImplTest, IsEnterpriseManaged_DMTokenConsumer) {
   device_policy.set_policy_data_for_testing(policy_data);
 
   EXPECT_FALSE(device_policy.IsEnterpriseManaged());
+}
+
+// RollbackAllowedMilestones is not set.
+TEST(DevicePolicyImplTest, GetRollbackAllowedMilestones_NotSet) {
+  DevicePolicyImpl device_policy;
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true));
+
+  int value = -1;
+  ASSERT_TRUE(device_policy.GetRollbackAllowedMilestones(&value));
+  EXPECT_EQ(4, value);
+}
+
+// RollbackAllowedMilestones is set to a valid value.
+TEST(DevicePolicyImplTest, GetRollbackAllowedMilestones_Set) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_rollback_allowed_milestones(3);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true));
+
+  int value = -1;
+  ASSERT_TRUE(device_policy.GetRollbackAllowedMilestones(&value));
+  EXPECT_EQ(3, value);
+}
+
+// RollbackAllowedMilestones is set to a valid value, using AD.
+TEST(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetAD) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_rollback_allowed_milestones(3);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterpriseAD, true));
+
+  int value = -1;
+  ASSERT_TRUE(device_policy.GetRollbackAllowedMilestones(&value));
+  EXPECT_EQ(3, value);
+}
+
+// RollbackAllowedMilestones is set to a valid value, but it's not an enterprise
+// device.
+TEST(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetConsumer) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_rollback_allowed_milestones(3);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeConsumer, true));
+
+  int value = -1;
+  ASSERT_FALSE(device_policy.GetRollbackAllowedMilestones(&value));
+}
+
+// RollbackAllowedMilestones is set to an invalid value.
+TEST(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetTooLarge) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_rollback_allowed_milestones(10);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true));
+
+  int value = -1;
+  ASSERT_TRUE(device_policy.GetRollbackAllowedMilestones(&value));
+  EXPECT_EQ(4, value);
+}
+
+// RollbackAllowedMilestones is set to an invalid value.
+TEST(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetTooSmall) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_rollback_allowed_milestones(-1);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true));
+
+  int value = -1;
+  ASSERT_TRUE(device_policy.GetRollbackAllowedMilestones(&value));
+  EXPECT_EQ(0, value);
 }
 
 }  // namespace policy

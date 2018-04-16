@@ -91,6 +91,10 @@ class DevicePolicyImpl : public DevicePolicy {
       std::unique_ptr<InstallAttributesReader> install_attributes_reader) {
     install_attributes_reader_ = std::move(install_attributes_reader);
   }
+  void set_policy_for_testing(
+      const enterprise_management::ChromeDeviceSettingsProto& device_policy) {
+    device_policy_ = device_policy;
+  }
   void set_policy_path_for_testing(const base::FilePath& policy_path) {
     policy_path_ = policy_path;
   }

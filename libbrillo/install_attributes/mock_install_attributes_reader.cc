@@ -14,3 +14,9 @@ MockInstallAttributesReader::MockInstallAttributesReader(
   }
   initialized_ = true;
 }
+
+MockInstallAttributesReader::MockInstallAttributesReader(
+    const std::string& device_mode, bool initialized) {
+  attributes_[kAttrMode] = device_mode;
+  initialized_ = initialized;
+}

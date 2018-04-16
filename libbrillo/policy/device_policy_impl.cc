@@ -26,6 +26,9 @@ namespace em = enterprise_management;
 
 namespace policy {
 
+// Maximum value of RollbackAllowedMilestones policy.
+const int kMaxRollbackAllowedMilestones = 4;
+
 namespace {
 const char kPolicyPath[] = "/var/lib/whitelist/policy";
 const char kPublicKeyPath[] = "/var/lib/whitelist/owner.key";
@@ -301,15 +304,34 @@ bool DevicePolicyImpl::GetRollbackToTargetVersion(
 
 bool DevicePolicyImpl::GetRollbackAllowedMilestones(
     int* rollback_allowed_milestones) const {
-  if (!device_policy_.has_auto_update_settings())
+  // This policy can be only set for devices which are enterprise enrolled.
+  if (!install_attributes_reader_->IsLocked())
+    return false;
+  if (install_attributes_reader_->GetAttribute(
+          InstallAttributesReader::kAttrMode) !=
+          InstallAttributesReader::kDeviceModeEnterprise &&
+      install_attributes_reader_->GetAttribute(
+          InstallAttributesReader::kAttrMode) !=
+          InstallAttributesReader::kDeviceModeEnterpriseAD)
     return false;
 
-  const em::AutoUpdateSettingsProto& proto =
-      device_policy_.auto_update_settings();
-  if (!proto.has_rollback_allowed_milestones())
-    return false;
-
-  *rollback_allowed_milestones = proto.rollback_allowed_milestones();
+  if (device_policy_.has_auto_update_settings()) {
+    const em::AutoUpdateSettingsProto& proto =
+        device_policy_.auto_update_settings();
+    if (proto.has_rollback_allowed_milestones()) {
+      // Policy is set, enforce minimum and maximum constraints.
+      *rollback_allowed_milestones = proto.rollback_allowed_milestones();
+      if (*rollback_allowed_milestones < 0)
+        *rollback_allowed_milestones = 0;
+      if (*rollback_allowed_milestones > kMaxRollbackAllowedMilestones)
+        *rollback_allowed_milestones = kMaxRollbackAllowedMilestones;
+      return true;
+    }
+  }
+  // Policy is not present, use default for enterprise devices.
+  VLOG(1) << "RollbackAllowedMilestones policy is not set, using default "
+          << kMaxRollbackAllowedMilestones << ".";
+  *rollback_allowed_milestones = kMaxRollbackAllowedMilestones;
   return true;
 }
 

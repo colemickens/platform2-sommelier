@@ -18,12 +18,14 @@ namespace policy {
 PolicyProvider::PolicyProvider() {
 #ifndef __ANDROID__
   device_policy_ = std::make_unique<DevicePolicyImpl>();
+  install_attributes_reader_ = std::make_unique<InstallAttributesReader>();
 #endif
 }
 
 PolicyProvider::PolicyProvider(std::unique_ptr<DevicePolicy> device_policy)
     : device_policy_(std::move(device_policy)),
-      device_policy_is_loaded_(true) {}
+      device_policy_is_loaded_(true),
+      install_attributes_reader_(std::make_unique<InstallAttributesReader>()) {}
 
 PolicyProvider::~PolicyProvider() {}
 
@@ -45,6 +47,27 @@ const DevicePolicy& PolicyProvider::GetDevicePolicy() const {
   DCHECK(device_policy_is_loaded_)
       << "Trying to get policy data but policy was not loaded!";
   return *device_policy_;
+}
+
+bool PolicyProvider::IsConsumerDevice() const {
+  if (!install_attributes_reader_->IsLocked())
+    return false;
+
+  const std::string& device_mode = install_attributes_reader_->GetAttribute(
+      InstallAttributesReader::kAttrMode);
+  return device_mode != InstallAttributesReader::kDeviceModeEnterprise &&
+      device_mode != InstallAttributesReader::kDeviceModeEnterpriseAD;
+}
+
+void PolicyProvider::SetDevicePolicyForTesting(
+    std::unique_ptr<DevicePolicy> device_policy) {
+  device_policy_ = std::move(device_policy);
+  device_policy_is_loaded_ = true;
+}
+
+void PolicyProvider::SetInstallAttributesReaderForTesting(
+    std::unique_ptr<InstallAttributesReader> install_attributes_reader) {
+  install_attributes_reader_ = std::move(install_attributes_reader);
 }
 
 }  // namespace policy
