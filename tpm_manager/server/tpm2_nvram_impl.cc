@@ -16,8 +16,10 @@
 
 #include "tpm_manager/server/tpm2_nvram_impl.h"
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <trunks/error_codes.h>
@@ -597,7 +599,8 @@ bool Tpm2NvramImpl::AddPoliciesForCommand(
       LOG(ERROR) << "Failed to read the current PCR value.";
       return false;
     }
-    result = session->PolicyPCR(0, current_pcr_value);
+    result = session->PolicyPCR(
+        std::map<uint32_t, std::string>({{0, current_pcr_value}}));
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Failed to setup PCR policy.";
       return false;

@@ -143,7 +143,9 @@ class Tpm2NvramTest : public testing::Test {
           .WillRepeatedly(
               DoAll(SetArgPointee<1>(kFakePCRValue), Return(TPM_RC_SUCCESS)));
       EXPECT_CALL(mock_policy_session_, PolicyAuthValue()).Times(AtLeast(1));
-      EXPECT_CALL(mock_policy_session_, PolicyPCR(0, kFakePCRValue))
+      EXPECT_CALL(mock_policy_session_,
+                  PolicyPCR(std::map<uint32_t, std::string>(
+                      {{0, kFakePCRValue}})))
           .Times(AtLeast(1));
     }
   }
@@ -182,7 +184,7 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccess) {
               SetEntityAuthorizationValue(kTestOwnerPassword))
       .Times(AtLeast(1));
   EXPECT_CALL(mock_trial_session_, PolicyAuthValue()).Times(0);
-  EXPECT_CALL(mock_trial_session_, PolicyPCR(_, _)).Times(0);
+  EXPECT_CALL(mock_trial_session_, PolicyPCR(_)).Times(0);
   std::vector<NvramSpaceAttribute> attributes{NVRAM_PERSISTENT_WRITE_LOCK};
   EXPECT_CALL(
       mock_tpm_utility_,
@@ -209,7 +211,7 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccessPlatformReadable) {
               SetEntityAuthorizationValue(kTestOwnerPassword))
       .Times(AtLeast(1));
   EXPECT_CALL(mock_trial_session_, PolicyAuthValue()).Times(0);
-  EXPECT_CALL(mock_trial_session_, PolicyPCR(_, _)).Times(0);
+  EXPECT_CALL(mock_trial_session_, PolicyPCR(_)).Times(0);
   std::vector<NvramSpaceAttribute> attributes{NVRAM_PERSISTENT_WRITE_LOCK,
                                               NVRAM_PLATFORM_READ};
   EXPECT_CALL(
@@ -268,7 +270,8 @@ TEST_F(Tpm2NvramTest, DefineSpaceWithPolicy) {
   EXPECT_CALL(mock_tpm_utility_, ReadPCR(0, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(kFakePCRValue), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_trial_session_, PolicyPCR(0, kFakePCRValue))
+  EXPECT_CALL(mock_trial_session_,
+              PolicyPCR(std::map<uint32_t, std::string>({{0, kFakePCRValue}})))
       .Times(AtLeast(1));
   std::vector<NvramSpaceAttribute> attributes{NVRAM_WRITE_AUTHORIZATION};
   EXPECT_CALL(
