@@ -284,7 +284,7 @@ def TransformConfig(config):
   # config in the source yaml.
   json_config = {CHROMEOS: {MODELS: configs}}
 
-  return json.dumps(json_config, sort_keys=True, indent=2)
+  return _FormatJson(json_config)
 
 
 def GenerateCBindings(config):
@@ -362,6 +362,18 @@ def _GetFirmwareUris(model_dict):
       for fname in valid_images
   ]
 
+def _FormatJson(config):
+  """Formats JSON for output or printing.
+
+  Args:
+    config: Dictionary to be output
+  """
+  # Work around bug in json dumps that adds trailing spaces with indent set.
+  return re.sub(
+      ', $',
+      ',',
+      json.dumps(config, sort_keys=True, indent=2), flags=re.MULTILINE)
+
 
 def FilterBuildElements(config):
   """Removes build only elements from the schema.
@@ -375,7 +387,7 @@ def FilterBuildElements(config):
   for model in json_config[CHROMEOS][MODELS]:
     _FilterBuildElements(model, '')
 
-  return json.dumps(json_config, sort_keys=True, indent=2)
+  return _FormatJson(json_config)
 
 
 def _FilterBuildElements(config, path):
@@ -392,7 +404,6 @@ def _FilterBuildElements(config, path):
       to_delete.append(key)
     elif isinstance(config[key], dict):
       _FilterBuildElements(config[key], full_path)
-
   for key in to_delete:
     config.pop(key)
 

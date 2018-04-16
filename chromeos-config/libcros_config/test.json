@@ -6,216 +6,216 @@
           "build-properties": {
             "first-api-level": "27"
           }
-        }, 
+        },
         "audio": {
           "main": {
-            "cras-config-dir": "some", 
+            "cras-config-dir": "some",
             "ucm-suffix": "some"
           }
-        }, 
+        },
         "identity": {
-          "platform-name": "Some", 
-          "sku-id": 0, 
+          "platform-name": "Some",
+          "sku-id": 0,
           "smbios-name-match": "Some"
-        }, 
-        "name": "some", 
+        },
+        "name": "some",
         "power": {
-          "keyboard-backlight-no-als-brightness": "98.7", 
-          "low-battery-shutdown-percent": "100.0", 
-          "power-supply-full-factor": "0.0", 
-          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
-        }, 
+        },
         "touch": {
-          "present": "probe", 
+          "present": "probe",
           "probe-regex": "some-prob-regex"
-        }, 
+        },
         "ui": {
           "power-button": {
-            "edge": "left", 
+            "edge": "left",
             "position": "0.3"
           }
-        }, 
+        },
         "wallpaper": "some"
-      }, 
+      },
       {
         "arc": {
           "build-properties": {
             "first-api-level": "27"
           }
-        }, 
+        },
         "audio": {
           "main": {
-            "cras-config-dir": "some", 
+            "cras-config-dir": "some",
             "ucm-suffix": "some"
           }
-        }, 
+        },
         "identity": {
-          "platform-name": "Some", 
-          "sku-id": 1, 
+          "platform-name": "Some",
+          "sku-id": 1,
           "smbios-name-match": "Some"
-        }, 
-        "name": "some", 
+        },
+        "name": "some",
         "power": {
-          "keyboard-backlight-no-als-brightness": "98.7", 
-          "low-battery-shutdown-percent": "100.0", 
-          "power-supply-full-factor": "0.0", 
-          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
-        }, 
+        },
         "touch": {
           "present": "no"
-        }, 
+        },
         "ui": {
           "power-button": {
-            "edge": "left", 
+            "edge": "left",
             "position": "0.3"
           }
-        }, 
+        },
         "wallpaper": "some"
-      }, 
+      },
       {
         "audio": {
           "main": {
-            "cras-config-dir": "another", 
+            "cras-config-dir": "another",
             "ucm-suffix": "another"
           }
-        }, 
+        },
         "identity": {
-          "platform-name": "Another", 
+          "platform-name": "Another",
           "smbios-name-match": "Another"
-        }, 
-        "name": "another", 
+        },
+        "name": "another",
         "touch": {
-          "present": "probe", 
+          "present": "probe",
           "probe-regex": "another-prob-regex"
-        }, 
+        },
         "wallpaper": "default"
-      }, 
+      },
       {
         "arc": {
           "build-properties": {
             "first-api-level": "27"
           }
-        }, 
+        },
         "identity": {
-          "customization-id": "whitelabel1", 
-          "platform-name": "Some", 
-          "sku-id": 8, 
+          "customization-id": "whitelabel1",
+          "platform-name": "Some",
+          "sku-id": 8,
           "smbios-name-match": "Some"
-        }, 
-        "name": "whitelabel", 
+        },
+        "name": "whitelabel",
         "power": {
-          "keyboard-backlight-no-als-brightness": "98.7", 
-          "low-battery-shutdown-percent": "100.0", 
-          "power-supply-full-factor": "0.0", 
-          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
-        }, 
+        },
         "touch": {
-          "present": "yes", 
+          "present": "yes",
           "probe-regex": "some-prob-regex"
-        }, 
+        },
         "ui": {
           "power-button": {
-            "edge": "left", 
+            "edge": "left",
             "position": "0.3"
           }
-        }, 
+        },
         "wallpaper": "wallpaper-wl1"
-      }, 
+      },
       {
         "arc": {
           "build-properties": {
             "first-api-level": "27"
           }
-        }, 
+        },
         "identity": {
-          "customization-id": "whitelabel1", 
-          "platform-name": "Some", 
-          "sku-id": 9, 
+          "customization-id": "whitelabel1",
+          "platform-name": "Some",
+          "sku-id": 9,
           "smbios-name-match": "Some"
-        }, 
-        "name": "whitelabel", 
+        },
+        "name": "whitelabel",
         "power": {
-          "keyboard-backlight-no-als-brightness": "98.7", 
-          "low-battery-shutdown-percent": "100.0", 
-          "power-supply-full-factor": "0.0", 
-          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
-        }, 
+        },
         "touch": {
           "present": "no"
-        }, 
+        },
         "ui": {
           "power-button": {
-            "edge": "left", 
+            "edge": "left",
             "position": "0.3"
           }
-        }, 
+        },
         "wallpaper": "wallpaper-wl1"
-      }, 
+      },
       {
         "arc": {
           "build-properties": {
             "first-api-level": "27"
           }
-        }, 
+        },
         "identity": {
-          "customization-id": "whitelabel2", 
-          "platform-name": "Some", 
-          "sku-id": 8, 
+          "customization-id": "whitelabel2",
+          "platform-name": "Some",
+          "sku-id": 8,
           "smbios-name-match": "Some"
-        }, 
-        "name": "whitelabel", 
+        },
+        "name": "whitelabel",
         "power": {
-          "keyboard-backlight-no-als-brightness": "98.7", 
-          "low-battery-shutdown-percent": "100.0", 
-          "power-supply-full-factor": "0.0", 
-          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
-        }, 
+        },
         "touch": {
-          "present": "yes", 
+          "present": "yes",
           "probe-regex": "some-prob-regex"
-        }, 
+        },
         "ui": {
           "power-button": {
-            "edge": "left", 
+            "edge": "left",
             "position": "0.3"
           }
-        }, 
+        },
         "wallpaper": "wallpaper-wl2"
-      }, 
+      },
       {
         "arc": {
           "build-properties": {
             "first-api-level": "27"
           }
-        }, 
+        },
         "identity": {
-          "customization-id": "whitelabel2", 
-          "platform-name": "Some", 
-          "sku-id": 9, 
+          "customization-id": "whitelabel2",
+          "platform-name": "Some",
+          "sku-id": 9,
           "smbios-name-match": "Some"
-        }, 
-        "name": "whitelabel", 
+        },
+        "name": "whitelabel",
         "power": {
-          "keyboard-backlight-no-als-brightness": "98.7", 
-          "low-battery-shutdown-percent": "100.0", 
-          "power-supply-full-factor": "0.0", 
-          "set-wifi-transmit-power-for-tablet-mode": "1", 
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
-        }, 
+        },
         "touch": {
           "present": "no"
-        }, 
+        },
         "ui": {
           "power-button": {
-            "edge": "left", 
+            "edge": "left",
             "position": "0.3"
           }
-        }, 
+        },
         "wallpaper": "wallpaper-wl2"
       }
     ]
