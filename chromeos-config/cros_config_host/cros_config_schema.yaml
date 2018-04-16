@@ -211,6 +211,9 @@ properties:
               properties:
                 charging-ports:
                   description: String describing charging port positions.
+                    The format expects a newline character per port line.  YAML multiline strings
+                    or explicit newline characters in the string will support this.
+                    See test.yaml for sample usage.
                   type: string
                 keyboard-backlight-no-als-brightness:
                   description: Initial brightness for the keyboard backlight for systems without

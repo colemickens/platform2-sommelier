@@ -158,6 +158,14 @@ TEST_F(CrosConfigTest, CheckWhiteLabel) {
   ASSERT_TRUE(cros_config_.GetString("/", "brand-code", &val));
   ASSERT_EQ("WLBB", val);
 }
+#else
+TEST_F(CrosConfigTest, CheckMultilineString) {
+  InitConfig("Some");
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/power", "charging-ports", &val));
+  std::cout << "GOT VALUE = " << val;
+  ASSERT_EQ("CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n", val);
+}
 #endif /* !USE_JSON */
 
 TEST_F(CrosConfigTest, CheckUiPowerPosition) {

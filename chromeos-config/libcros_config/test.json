@@ -20,6 +20,7 @@
         },
         "name": "some",
         "power": {
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
@@ -57,6 +58,7 @@
         },
         "name": "some",
         "power": {
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
@@ -106,6 +108,7 @@
         },
         "name": "whitelabel",
         "power": {
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
@@ -138,6 +141,7 @@
         },
         "name": "whitelabel",
         "power": {
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
@@ -169,6 +173,7 @@
         },
         "name": "whitelabel",
         "power": {
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
@@ -201,6 +206,7 @@
         },
         "name": "whitelabel",
         "power": {
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
           "keyboard-backlight-no-als-brightness": "98.7",
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
