@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <utility>
+#include <vector>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/tpm2_utility_impl.h"
@@ -382,7 +383,7 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
       auth_data.to_string(),
       "",  // Policy Digest
       false,  // use_only_policy_authorization
-      trunks::kNoCreationPCR,
+      std::vector<uint32_t>(),  // creation_pcr_indexes
       session_->GetDelegate(),
       key_blob,
       nullptr);
