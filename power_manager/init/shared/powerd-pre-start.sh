@@ -36,7 +36,6 @@ fi
 # Change ownership of files used by powerd.
 for FILE in \
     /sys/power/pm_test \
-    /sys/power/state \
     /proc/acpi/wakeup \
     /sys/class/backlight/*/* \
     /sys/class/leds/*:kbd_backlight/* \
@@ -50,6 +49,12 @@ for FILE in \
     chown power:power "${FILE}" || true
   fi
 done
+
+# powerd_suspend writes to this file to suspend the system. It runs as
+# root:power. Also, |legacy_dark_resume.cc| expects to write to this file as the
+# power user, thus this file needs to be group writable as well.
+chown root:power /sys/power/state
+chmod 0664 /sys/power/state
 
 # Prepare for recovery from dark resume to a full resume.  TODO(chirantan):
 # Remove this when selective resume is ready.
