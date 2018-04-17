@@ -399,6 +399,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("allow_consumer_kiosk"))
     builder->AddArg("--enable-consumer-kiosk");
+
+  if (builder->UseFlagIsSet("instant_tethering"))
+    builder->AddFeatureEnableOverride("InstantTethering");
 }
 
 // Adds enterprise-related flags to the command line.
