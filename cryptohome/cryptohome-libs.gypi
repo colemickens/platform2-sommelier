@@ -126,6 +126,9 @@
     {
       'target_name': 'libcrosplatform',
       'type': 'static_library',
+      'dependencies': [
+        'cryptohome-proto',
+      ],
       'link_settings': {
         'libraries': [
           '-lkeyutils',
