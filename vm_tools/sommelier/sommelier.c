@@ -2484,8 +2484,10 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
                           host->model, host->transform);
   wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
                       width, height, host->refresh);
-  wl_output_send_scale(host->resource, scale);
-  wl_output_send_done(host->resource);
+  if (wl_resource_get_version(host->resource) >= WL_OUTPUT_SCALE_SINCE_VERSION)
+    wl_output_send_scale(host->resource, scale);
+  if (wl_resource_get_version(host->resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
+    wl_output_send_done(host->resource);
 }
 
 static void xwl_output_done(void* data, struct wl_output* output) {
@@ -4733,7 +4735,7 @@ static void xwl_registry_handler(void *data, struct wl_registry *registry,
     assert(output);
     output->xwl = xwl;
     output->id = id;
-    output->version = MIN(2, version);
+    output->version = MIN(3, version);
     output->host_global =
         xwl_global_create(xwl, &wl_output_interface, output->version, output,
                           xwl_bind_host_output);
