@@ -107,21 +107,8 @@ const char InputWatcher::kAcpiLidDevice[] = "PNP0C0D";
 InputWatcher::InputWatcher()
     : dev_input_path_(kDevInputPath),
       sys_class_input_path_(kSysClassInputPath),
-      lid_device_(nullptr),
-      tablet_mode_device_(nullptr),
-      hover_device_(nullptr),
-      use_lid_(true),
-      lid_state_(LidState::OPEN),
-      tablet_mode_(TabletMode::UNSUPPORTED),
-      detect_hover_(false),
-      hovering_(false),
-      current_multitouch_slot_(0),
-      multitouch_slots_hover_state_(0),
-      single_touch_hover_valid_(false),
-      single_touch_hover_distance_nonzero_(false),
       power_button_to_skip_(kPowerButtonToSkip),
       acpi_lid_device_(kAcpiLidDevice),
-      udev_(nullptr),
       weak_ptr_factory_(this) {}
 
 InputWatcher::~InputWatcher() {

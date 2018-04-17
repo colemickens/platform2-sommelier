@@ -164,48 +164,48 @@ class InputWatcher : public InputWatcherInterface,
 
   // The event device exposing the lid switch. Weak pointer to an element in
   // |event_devices_|, or null if no lid device was found.
-  EventDeviceInterface* lid_device_;
+  EventDeviceInterface* lid_device_ = nullptr;
 
   // The event device exposing the tablet mode switch. Weak pointer to an
   // element in |event_devices_|, or null if no tablet mode switch device was
   // found.
-  EventDeviceInterface* tablet_mode_device_;
+  EventDeviceInterface* tablet_mode_device_ = nullptr;
 
   // The event device reporting hover events. Weak pointer to an element in
   // |event_devices_|, or null if no hover device was found.
-  EventDeviceInterface* hover_device_;
+  EventDeviceInterface* hover_device_ = nullptr;
 
   // Should the lid be watched for events if present?
-  bool use_lid_;
+  bool use_lid_ = true;
 
   // Most-recently-seen lid state.
-  LidState lid_state_;
+  LidState lid_state_ = LidState::OPEN;
 
   // Most-recently-seen tablet mode.
-  TabletMode tablet_mode_;
+  TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
 
   // Should hover events be reported?
-  bool detect_hover_;
+  bool detect_hover_ = false;
 
   // Most-recently-reported hover state.
-  bool hovering_;
+  bool hovering_ = false;
 
   // Multitouch slot for which input events are currently being reported. See
   // https://www.kernel.org/doc/Documentation/input/multi-touch-protocol.txt for
   // more details about the protocol.
-  int current_multitouch_slot_;
+  int current_multitouch_slot_ = 0;
 
   // Bitfield containing the hover state of individual multitouch slots; if a
   // bit is true, it indicates that the corresponding slot is either reporting a
   // hover event above the touchpad or a touch event on the touchpad.
-  uint64_t multitouch_slots_hover_state_;
+  uint64_t multitouch_slots_hover_state_ = 0;
 
   // Some touch devices only provide a binary hover value for the whole sensor
   // instead of the signals by finger.  These variables track that hover
   // state when it's not tied to a specific slot by using btn_tool_finger to
   // confirm that the abs_distance value is valid.
-  bool single_touch_hover_valid_;
-  bool single_touch_hover_distance_nonzero_;
+  bool single_touch_hover_valid_ = false;
+  bool single_touch_hover_distance_nonzero_ = false;
 
   // (Events, DeviceType-bitfield) tuples read from |lid_device_| by
   // QueryLidState() that haven't yet been sent to observers.
@@ -221,7 +221,7 @@ class InputWatcher : public InputWatcherInterface,
   // ACPI lid device name.
   std::string acpi_lid_device_;
 
-  UdevInterface* udev_;  // non-owned
+  UdevInterface* udev_ = nullptr;  // non-owned
 
   // Keyed by input event number.
   typedef std::map<int, linked_ptr<EventDeviceInterface>> InputMap;
