@@ -121,7 +121,9 @@ if [ "${RESULT}" != "ok" ]; then
   else
     if [ "${EXIT_STATUS}" = "${CHILD_EXITING_TOO_FAST}" ]; then
       if over_ui_crash_limit ; then
-        if under_reboot_limit ; then
+        if crossystem "cros_debug?1"; then
+          logger -t ${RUNNING_JOB} "Not auto-rebooting due to debug mode."
+        elif under_reboot_limit ; then
           logger -t ${RUNNING_JOB} "Rebooting to mitigate crashiness."
           reboot
         else
