@@ -20,9 +20,13 @@ ProtoBlob SerializeProtoToBlobAndCheck(const ProtoType& proto) {
 
 }  // namespace
 
-MountOptionsProto CreateMountOptionsProto(const std::string& path) {
+MountOptionsProto CreateMountOptionsProto(const std::string& path,
+                                          const std::string& workgroup,
+                                          const std::string& username) {
   MountOptionsProto mount_options;
   mount_options.set_path(path);
+  mount_options.set_workgroup(workgroup);
+  mount_options.set_username(username);
   return mount_options;
 }
 
@@ -172,7 +176,15 @@ RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
 }
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
-  return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(path));
+  return SerializeProtoToBlobAndCheck(
+      CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */));
+}
+
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const std::string& workgroup,
+                                 const std::string& username) {
+  return SerializeProtoToBlobAndCheck(
+      CreateMountOptionsProto(path, workgroup, username));
 }
 
 ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id) {

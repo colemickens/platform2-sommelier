@@ -12,7 +12,9 @@
 
 namespace smbprovider {
 
-MountOptionsProto CreateMountOptionsProto(const std::string& path);
+MountOptionsProto CreateMountOptionsProto(const std::string& path,
+                                          const std::string& workgroup,
+                                          const std::string& username);
 
 UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id);
 
@@ -72,6 +74,10 @@ RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
                                               int32_t mount_id);
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
+
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const std::string& workgroup,
+                                 const std::string& username);
 
 ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id);
 
