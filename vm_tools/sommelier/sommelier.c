@@ -664,6 +664,8 @@ enum {
 
 #define XCURSOR_SIZE_BASE 24
 
+#define MAX_OUTPUT_SCALE 2
+
 #define MIN_SIZE (INT_MIN / 10)
 #define MAX_SIZE (INT_MAX / 10)
 
@@ -2451,7 +2453,8 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
     width = host->width * host->output->xwl->scale / scale_factor;
     height = host->height * host->output->xwl->scale / scale_factor;
   } else {
-    scale = ceil(scale_factor / host->output->xwl->scale);
+    scale =
+        MIN(ceil(scale_factor / host->output->xwl->scale), MAX_OUTPUT_SCALE);
     physical_width = host->physical_width;
     physical_height = host->physical_height;
     width = host->width * host->output->xwl->scale * scale / scale_factor;
