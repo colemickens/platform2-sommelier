@@ -255,6 +255,7 @@ The schema definition is below:
 | depthcharge | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 | ec | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 | libpayload | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
+| u-boot | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 
 ### firmware-signing
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |

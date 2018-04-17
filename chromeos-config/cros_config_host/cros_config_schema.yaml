@@ -136,6 +136,7 @@ properties:
                     depthcharge: *firmware_build_target
                     ec: *firmware_build_target
                     libpayload: *firmware_build_target
+                    u-boot: *firmware_build_target
                   additionalProperties: false
                 ec-image: *bcs_file_name
                 pd-image: *bcs_file_name

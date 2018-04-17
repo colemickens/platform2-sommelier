@@ -47,7 +47,8 @@
             "coreboot": "some",
             "depthcharge": "some",
             "ec": "some",
-            "libpayload": "some"
+            "libpayload": "some",
+            "u-boot": "some"
           },
           "ec-image": "bcs://Some_EC.1111.11.1.tbz2",
           "main-image": "bcs://Some.1111.11.1.tbz2",
@@ -155,7 +156,8 @@
             "coreboot": "some",
             "depthcharge": "some",
             "ec": "some",
-            "libpayload": "some"
+            "libpayload": "some",
+            "u-boot": "some"
           },
           "ec-image": "bcs://Some_EC.1111.11.1.tbz2",
           "main-image": "bcs://Some.1111.11.1.tbz2",
@@ -325,7 +327,8 @@
             "coreboot": "some",
             "depthcharge": "some",
             "ec": "some",
-            "libpayload": "some"
+            "libpayload": "some",
+            "u-boot": "some"
           },
           "ec-image": "bcs://Some_EC.1111.11.1.tbz2",
           "main-image": "bcs://Some.1111.11.1.tbz2",
@@ -399,7 +402,8 @@
             "coreboot": "some",
             "depthcharge": "some",
             "ec": "some",
-            "libpayload": "some"
+            "libpayload": "some",
+            "u-boot": "some"
           },
           "ec-image": "bcs://Some_EC.1111.11.1.tbz2",
           "main-image": "bcs://Some.1111.11.1.tbz2",
@@ -472,7 +476,8 @@
             "coreboot": "some",
             "depthcharge": "some",
             "ec": "some",
-            "libpayload": "some"
+            "libpayload": "some",
+            "u-boot": "some"
           },
           "ec-image": "bcs://Some_EC.1111.11.1.tbz2",
           "main-image": "bcs://Some.1111.11.1.tbz2",
@@ -546,7 +551,8 @@
             "coreboot": "some",
             "depthcharge": "some",
             "ec": "some",
-            "libpayload": "some"
+            "libpayload": "some",
+            "u-boot": "some"
           },
           "ec-image": "bcs://Some_EC.1111.11.1.tbz2",
           "main-image": "bcs://Some.1111.11.1.tbz2",

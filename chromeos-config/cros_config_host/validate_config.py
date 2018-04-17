@@ -462,6 +462,7 @@ BUILD_TARGETS_SCHEMA = NodeDesc('build-targets', True, elements=[
     PropString('ec', True),
     PropString('depthcharge', True),
     PropString('libpayload', True),
+    PropString('u-boot'),
     PropString('cr50'),
 ], conditional_props={'shares': False, '../whitelabel': False})
 

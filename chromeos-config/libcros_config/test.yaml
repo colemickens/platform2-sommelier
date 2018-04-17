@@ -51,6 +51,7 @@ some_base_config: &some_base_config
       ec: "some"
       depthcharge: "some"
       libpayload: "some"
+      u-boot: "some"
 
     ec-image: "bcs://Some_EC.1111.11.1.tbz2"
     main-image: "bcs://Some.1111.11.1.tbz2"
