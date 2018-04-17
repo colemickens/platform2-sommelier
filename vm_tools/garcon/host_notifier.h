@@ -30,6 +30,10 @@ class HostNotifier : public base::MessageLoopForIO::Watcher {
       std::shared_ptr<grpc::Server> grpc_server,
       base::Closure shutdown_closure);
 
+  // Sends a gRPC call to the host to notify it to open the specified URL with
+  // the web browser. Returns true on success, false otherwise.
+  static bool OpenUrlInHost(const std::string& url);
+
   ~HostNotifier();
 
   // base::MessageLoopForIO::Watcher overrides.

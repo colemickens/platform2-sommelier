@@ -427,6 +427,7 @@ void Service::UpdateApplicationList(const std::string& container_token,
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   CHECK(app_list);
   CHECK(result);
+  CHECK(event);
   *result = false;
   std::string vm_name;
   VirtualMachine* vm;
@@ -457,6 +458,28 @@ void Service::UpdateApplicationList(const std::string& container_token,
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to crostini app registry";
+  } else {
+    *result = true;
+  }
+  event->Signal();
+}
+
+void Service::OpenUrl(const std::string& url,
+                      bool* result,
+                      base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  dbus::MethodCall method_call(chromeos::kUrlHandlerServiceInterface,
+                               chromeos::kUrlHandlerServiceOpenUrlMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(url);
+  std::unique_ptr<dbus::Response> dbus_response =
+      url_handler_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to Chrome for OpenUrl";
   } else {
     *result = true;
   }
@@ -512,13 +535,22 @@ bool Service::Init() {
     return false;
   }
 
-  // Get the D-Bus proxy for communicating with the crostini registry in Chrome.
+  // Get the D-Bus proxy for communicating with the crostini registry in Chrome
+  // and for the URL handler service.
   vm_applications_service_proxy_ = bus_->GetObjectProxy(
       vm_tools::apps::kVmApplicationsServiceName,
       dbus::ObjectPath(vm_tools::apps::kVmApplicationsServicePath));
   if (!vm_applications_service_proxy_) {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << vm_tools::apps::kVmApplicationsServiceName;
+    return false;
+  }
+  url_handler_service_proxy_ =
+      bus_->GetObjectProxy(chromeos::kUrlHandlerServiceName,
+                           dbus::ObjectPath(chromeos::kUrlHandlerServicePath));
+  if (!url_handler_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << chromeos::kUrlHandlerServiceName;
     return false;
   }
 

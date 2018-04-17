@@ -89,6 +89,13 @@ class Service final : public base::MessageLoopForIO::Watcher {
                              bool* result,
                              base::WaitableEvent* event);
 
+  // Sends a D-Bus message to Chrome to tell it to open the |url| in a new tab.
+  // |result| is set to true on success, false otherwise. Signals |event| when
+  // done.
+  void OpenUrl(const std::string& url,
+               bool* result,
+               base::WaitableEvent* event);
+
  private:
   explicit Service(base::Closure quit_closure);
 
@@ -165,6 +172,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;  // Owned by |bus_|.
   dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* url_handler_service_proxy_;      // Owned by |bus_|.
 
   // The StartupListener service.
   std::unique_ptr<StartupListenerImpl> startup_listener_;

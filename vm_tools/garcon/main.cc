@@ -43,6 +43,7 @@ const int kSyslogCritical = LOG_CRIT;
 constexpr char kLogPrefix[] = "garcon: ";
 constexpr char kServerSwitch[] = "server";
 constexpr char kClientSwitch[] = "client";
+constexpr char kUrlSwitch[] = "url";
 
 bool LogToSyslog(logging::LogSeverity severity,
                  const char* /* file */,
@@ -103,9 +104,11 @@ void RunGarconService(base::WaitableEvent* event,
 void PrintUsage() {
   LOG(INFO) << "Garcon: VM container bridge for Chrome OS\n\n"
             << "Mode Switches (must use one):\n"
+            << "Mode Switch:\n"
             << "  --server: run in background as daemon\n"
-            << "  --client: run as client and send one message to host\n"
-            << "Client Switches (only with --client):\n";
+            << "  --client: run as client and send message to host\n"
+            << "Client Switches (only with --client):\n"
+            << "  --url: opens all arguments as URLs in host browser\n";
 }
 
 int main(int argc, char** argv) {
@@ -128,8 +131,22 @@ int main(int argc, char** argv) {
   }
 
   if (clientMode) {
-    // TODO(jkardatzke): We will be adding a client option shortly, so don't
-    // remove this code yet.
+    if (cl->HasSwitch(kUrlSwitch)) {
+      std::vector<std::string> args = cl->GetArgs();
+      if (args.empty()) {
+        LOG(ERROR) << "Missing URL arguments in --url mode";
+        PrintUsage();
+        return -1;
+      }
+      // All arguments are URLs, send them to the host to be opened. The host
+      // will do its own verification for validity of the URLs.
+      for (const auto& arg : args) {
+        if (!vm_tools::garcon::HostNotifier::OpenUrlInHost(arg)) {
+          return -1;
+        }
+      }
+      return 0;
+    }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();
     return -1;

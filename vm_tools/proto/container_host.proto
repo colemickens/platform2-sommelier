@@ -49,12 +49,19 @@ message Application {
   string startup_wm_class = 6;
 }
 
-// Request protobuf for nothing the host of our list of installed applications.
+// Request protobuf for notifying the host of our list of installed
+// applications.
 message UpdateApplicationListRequest {
   // The security token the container was given.
   string token = 1;
   // The list of all the installed applications.
   repeated Application application = 2;
+}
+
+// Request protobuf for opening a URL in the host.
+message OpenUrlRequest {
+  // The URL to open.
+  string url = 1;
 }
 
 // Service that is notified of events from a container.
@@ -71,4 +78,8 @@ service ContainerListener {
   // the container.
   rpc UpdateApplicationList(UpdateApplicationListRequest)
       returns (EmptyMessage);
+
+  // Called by a container to open the specified URL with the browser in the
+  // host.
+  rpc OpenUrl(OpenUrlRequest) returns (EmptyMessage);
 }

@@ -165,5 +165,23 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::OpenUrl(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::OpenUrlRequest* request,
+    vm_tools::EmptyMessage* response) {
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&vm_tools::concierge::Service::OpenUrl, service_,
+                            request->url(), &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure opening URL from ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION, "Failure in OpenUrl");
+  }
+  return grpc::Status::OK;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

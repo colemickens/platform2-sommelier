@@ -81,6 +81,29 @@ std::unique_ptr<HostNotifier> HostNotifier::Create(
   return notifier;
 }
 
+// static
+bool HostNotifier::OpenUrlInHost(const std::string& url) {
+  std::string host_ip = GetHostIp();
+  std::string token = GetSecurityToken();
+  if (token.empty() || host_ip.empty()) {
+    return false;
+  }
+  vm_tools::container::ContainerListener::Stub stub(grpc::CreateChannel(
+      base::StringPrintf("%s:%u", host_ip.c_str(), vm_tools::kGarconPort),
+      grpc::InsecureChannelCredentials()));
+  grpc::ClientContext ctx;
+  vm_tools::container::OpenUrlRequest url_request;
+  url_request.set_url(url);
+  vm_tools::EmptyMessage empty;
+  grpc::Status status = stub.OpenUrl(&ctx, url_request, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to request host system to open url \"" << url
+                 << "\" error: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
 HostNotifier::HostNotifier(std::shared_ptr<grpc::Server> grpc_server,
                            base::Closure shutdown_closure)
     : shutdown_closure_(std::move(shutdown_closure)),
