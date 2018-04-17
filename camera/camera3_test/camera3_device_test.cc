@@ -1004,7 +1004,6 @@ void Camera3AlgoSandboxIPCErrorTest::Notify(const camera3_notify_msg* msg) {
 }
 
 TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorBeforeOpen) {
-  // TODO(hywu): skip the test on USB HAL
   cam_device_.Destroy();
   (void)system("stop cros-camera-algo");
   ASSERT_EQ(nullptr, cam_module_.OpenDevice(cam_id_))
@@ -1016,7 +1015,6 @@ TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorBeforeOpen) {
 }
 
 TEST_P(Camera3AlgoSandboxIPCErrorTest, IPCErrorAfterOpen) {
-  // TODO(hywu): skip the test on USB HAL
   (void)system("stop cros-camera-algo");
   struct timespec timeout;
   memset(&timeout, 0, sizeof(timeout));

@@ -972,6 +972,14 @@ TEST_F(Camera3ModuleFixture, ChromeOSRequiredResolution) {
 
 static base::AtExitManager exit_manager;
 
+static void AddGtestFilterNegativePattern(std::string negative) {
+  using ::testing::GTEST_FLAG(filter);
+
+  GTEST_FLAG(filter)
+      .append((GTEST_FLAG(filter).find('-') == std::string::npos) ? "-" : ":")
+      .append(negative);
+}
+
 bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   // Set up logging so we can enable VLOGs with -v / --vmodule.
   base::CommandLine::Init(*argc, *argv);
@@ -1027,6 +1035,11 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
       dlclose(cam_hal_handle);
     }
     return false;
+  }
+
+  if (camera_hal_path.value().find("usb") != std::string::npos) {
+    // Skip 3A algorithm sandbox IPC tests for USB HAL
+    AddGtestFilterNegativePattern("*Camera3AlgoSandboxIPCErrorTest*");
   }
   return true;
 }
