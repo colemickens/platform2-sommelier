@@ -767,6 +767,16 @@ class Nl80211AttributeSurveyInfo : public NetlinkNestedAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSurveyInfo);
 };
 
+class Nl80211AttributeSupportedCommands : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeSupportedCommands();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportedCommands);
+};
+
 }  // namespace shill
 
 #endif  // SHILL_NET_NL80211_ATTRIBUTE_H_

@@ -1233,9 +1233,34 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  random_mac_supported_ =
-        (flags & NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR) &&
-        (flags & NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR);
+  // For drivers that support scheduled scan, we want to check
+  // NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR.
+  bool supports_sched_scan = false;
+  AttributeListConstRefPtr cmds;
+  if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+        NL80211_ATTR_SUPPORTED_COMMANDS, &cmds)) {
+    LOG(WARNING) <<
+      "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_SUPPORTED_COMMANDS";
+    return;
+  }
+
+  AttributeIdIterator cmds_iter(*cmds);
+  for (; !cmds_iter.AtEnd(); cmds_iter.Advance()) {
+    uint32_t cmd;
+    if (!cmds->GetU32AttributeValue(cmds_iter.GetId(), &cmd)) {
+      LOG(ERROR) << "Failed to get supported cmd " << cmds_iter.GetId();
+      return;
+    }
+    if (cmd == NL80211_CMD_START_SCHED_SCAN)
+      supports_sched_scan = true;
+  }
+
+  // We need to support SCAN_RANDOM_MAC_ADDR. If we support scheduled scans, we
+  // also need to support SCHED_SCAN_RANDOM_MAC_ADDR.
+  random_mac_supported_ = (flags & NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR) &&
+    (!supports_sched_scan ||
+     (flags & NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR));
+
   SLOG(this, 7) << __func__ << ": "
                 << "Supports random MAC: " << random_mac_supported_;
 }

@@ -820,6 +820,18 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
                               false)));
 }
 
+const int Nl80211AttributeSupportedCommands::kName =
+    NL80211_ATTR_SUPPORTED_COMMANDS;
+const char Nl80211AttributeSupportedCommands::kNameString[] =
+    "NL80211_ATTR_SUPPORTED_COMMANDS";
+
+Nl80211AttributeSupportedCommands::Nl80211AttributeSupportedCommands()
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(
+      AttrDataPair(NL80211_ATTR_SUPPORTED_COMMANDS,
+         NestedData(kTypeU32, "NL80211_ATTR_SUPPORTED_COMMANDS", true)));
+}
+
 const int Nl80211AttributeSurveyInfo::kName = NL80211_ATTR_SURVEY_INFO;
 const char Nl80211AttributeSurveyInfo::kNameString[] =
                                  "NL80211_ATTR_SURVEY_INFO";

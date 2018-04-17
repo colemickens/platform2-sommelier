@@ -194,6 +194,8 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
 #endif  // DISABLE_WAKE_ON_WIFI
     case NL80211_ATTR_SURVEY_INFO:
       return std::make_unique<Nl80211AttributeSurveyInfo>();
+    case NL80211_ATTR_SUPPORTED_COMMANDS:
+      return std::make_unique<Nl80211AttributeSupportedCommands>();
     default:
       return std::make_unique<NetlinkAttributeGeneric>(id);
   }
