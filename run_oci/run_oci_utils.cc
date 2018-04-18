@@ -22,6 +22,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
+#include <libminijail.h>
 #include <libmount/libmount.h>
 
 namespace run_oci {
@@ -157,6 +158,13 @@ bool RedirectLoggingAndStdio(const base::FilePath& log_file) {
     PLOG(ERROR) << "Failed to redirect stderr";
     return false;
   }
+  // Redirect all minijail logs to make them easier to find.
+  // We avoid including <sys/syslog.h> to get LOG_INFO (whose value is 6)
+  // because it interacts badly with base::logging, which defines a different
+  // LOG_INFO and causes build errors.
+  constexpr int kSyslogLogInfoPriority = 6;
+  minijail_log_to_fd(STDERR_FILENO, kSyslogLogInfoPriority);
+
   brillo::SetLogFlags(brillo::kLogHeader | brillo::kLogToStderr);
   logging::SetLogItems(true /* pid */, false /* tid */, true /* timestamp */,
                        false /* tick_count */);
