@@ -47,28 +47,27 @@
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/username_passkey.h"
 
+using base::FilePath;
+using base::PlatformThread;
+using brillo::SecureBlob;
+using ::testing::_;
+using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::Invoke;
-using ::testing::NiceMock;
 using ::testing::Mock;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::WithArgs;
-using ::testing::_;
-using base::FilePath;
-using base::PlatformThread;
-using brillo::SecureBlob;
 
 namespace {
 
 const FilePath kImageDir("test_image_dir");
 const FilePath kSaltFile("test_image_dir/salt");
-// Keep in sync with service.cc
-const int64_t kNotifyDiskSpaceThreshold = 1 << 30;
 
 class FakeEventSourceSink : public cryptohome::CryptohomeEventSourceSink {
  public:
@@ -310,27 +309,34 @@ TEST_F(ServiceTest, GetSanitizedUsername) {
 }
 
 TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallback) {
-  // Checks that AutoCleanupCallback() is called periodically.
-  // Service will schedule periodic clean-ups. Wait a bit and make
-  // sure that we had at least 3 executed.
-  EXPECT_CALL(homedirs_, FreeDiskSpace())
-      .Times(::testing::AtLeast(3));
+  // Checks that DoAutoCleanup() is called periodically.
+  // Service will schedule periodic clean-ups. Wait 48+ hours and make
+  // sure that we had at least 48 executed.
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(AtLeast(48));
   SetupMount("some-user-to-clean-up");
-  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(0))
-      .Times(::testing::AtLeast(3));
+  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(0)).Times(AtLeast(2));
 
-  service_.set_auto_cleanup_period(2);  // 2ms = 500HZ
-  service_.set_update_user_activity_period(2);  // 2 x 5ms = 25HZ
+  base::Time current_time;
+  EXPECT_CALL(platform_, GetCurrentTime()).WillRepeatedly(Invoke([&]() {
+    return current_time;
+  }));
+
+  service_.set_low_disk_notification_period_ms(1);
   service_.Initialize();
-  PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+
+  // Sleep for 160 * 30 minutes = 80 testing hours.
+  for (int i = 0; i < 160; ++i) {
+    // 1ms == 30 minutes.
+    current_time += base::TimeDelta::FromMinutes(30);
+    PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(1));
+  }
 }
 
 TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallbackFirst) {
-  // Checks that AutoCleanupCallback() is called first right after init.
+  // Checks that DoAutoCleanup() is called first right after init.
   // Service will schedule first cleanup right after its init.
-  EXPECT_CALL(homedirs_, FreeDiskSpace())
-      .Times(1);
-  service_.set_auto_cleanup_period(1000);  // 1s - long enough
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(1);
+  service_.set_low_disk_notification_period_ms(1000);  // 1s - long enough
   service_.Initialize();
   // short delay to see the first invocation
   PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
@@ -347,35 +353,53 @@ static gboolean SignalCounter(GSignalInvocationHint *ihint,
 
 TEST_F(ServiceTestNotInitialized, CheckLowDiskCallback) {
   // Checks that LowDiskCallback is called periodically.
-  EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace()).Times(::testing::AtLeast(3))
+  EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
+      .Times(AtLeast(5))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
       .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
       .WillOnce(Return(kNotifyDiskSpaceThreshold - 1))
       .WillRepeatedly(Return(kNotifyDiskSpaceThreshold + 1));
+  // Checks that DoAutoCleanup is called second time ahead of schedule
+  // if disk space goes below threshold and recovers back to normal.
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(2);
+
   service_.set_low_disk_notification_period_ms(2);
 
-  guint low_disk_space_signal = g_signal_lookup("low_disk_space",
-                                           gobject::cryptohome_get_type());
+  guint low_disk_space_signal =
+      g_signal_lookup("low_disk_space", gobject::cryptohome_get_type());
   if (!low_disk_space_signal) {
-    low_disk_space_signal = g_signal_new("low_disk_space",
-                                         gobject::cryptohome_get_type(),
-                                         G_SIGNAL_RUN_LAST,
-                                         0,
-                                         NULL,
-                                         NULL,
-                                         nullptr,
-                                         G_TYPE_NONE,
-                                         1,
-                                         G_TYPE_UINT64);
+    low_disk_space_signal = g_signal_new(
+        "low_disk_space", gobject::cryptohome_get_type(), G_SIGNAL_RUN_LAST, 0,
+        nullptr, nullptr, nullptr, G_TYPE_NONE, 1, G_TYPE_UINT64);
   }
-  int count = 0;
+  int count_signals = 0;
   gulong hook_id = g_signal_add_emission_hook(
-      low_disk_space_signal, 0, SignalCounter, &count, NULL);
+      low_disk_space_signal, 0, SignalCounter, &count_signals, nullptr);
 
   service_.Initialize();
 
   PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
-  EXPECT_EQ(1, count);
+  EXPECT_EQ(1, count_signals);
   g_signal_remove_emission_hook(low_disk_space_signal, hook_id);
+}
+
+TEST_F(ServiceTestNotInitialized, CheckLowDiskCallbackFreeDiskSpaceOnce) {
+  EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
+      .Times(AtLeast(5))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
+      .WillRepeatedly(Return(kNotifyDiskSpaceThreshold - 1));
+  // Checks that DoAutoCleanup is called second time ahead of schedule
+  // if disk space goes below threshold and stays below forever.
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(2);
+
+  service_.set_low_disk_notification_period_ms(2);
+
+  service_.Initialize();
+
+  PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
 }
 
 TEST_F(ServiceTestNotInitialized, UploadAlertsCallback) {

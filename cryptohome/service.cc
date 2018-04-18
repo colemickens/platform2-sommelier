@@ -96,11 +96,11 @@ bool KeyHasWrappedAuthorizationSecrets(const Key& k) {
 const char kSaltFile[] = "salt";
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 const char kChapsSystemToken[] = "/var/lib/chaps";
-const int kAutoCleanupPeriodMS = 1000 * 60 * 60;  // 1 hour
-const int kUpdateUserActivityPeriod = 24;  // divider of the former
+const int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
+const int kUpdateUserActivityPeriodHours = 24;           // daily
 const int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
-const int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;  // 6 hours
-const int64_t kNotifyDiskSpaceThreshold = 1 << 30;  // 1GB
+const int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;    // 6 hours
+const int64_t kNotifyDiskSpaceThreshold = 1 << 30;       // 1GB
 const int kDefaultRandomSeedLength = 64;
 const char kMountThreadName[] = "MountThread";
 const char kTpmInitStatusEventType[] = "TpmInitStatus";
@@ -195,12 +195,11 @@ Service::Service()
       low_disk_space_signal_(-1),
       dircrypto_migration_progress_signal_(-1),
       key_challenge_signal_(-1),
+      low_disk_space_signal_was_emitted_(false),
       event_source_(),
       event_source_sink_(this),
-      auto_cleanup_period_(kAutoCleanupPeriodMS),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
-      update_user_activity_period_(kUpdateUserActivityPeriod - 1),
       reported_pkcs11_init_fail_(false),
       enterprise_owned_(false),
       mounts_lock_(),
@@ -221,8 +220,7 @@ Service::Service()
       boot_attributes_(nullptr),
       firmware_management_parameters_(nullptr),
       low_disk_notification_period_ms_(kLowDiskNotificationPeriodMS),
-      upload_alerts_period_ms_(kUploadAlertsPeriodMS) {
-}
+      upload_alerts_period_ms_(kUploadAlertsPeriodMS) {}
 
 Service::~Service() {
   mount_thread_.Stop();
@@ -666,17 +664,17 @@ bool Service::Initialize() {
     }
   }
 
-  // Start scheduling periodic cleanup events. Subsequent events are scheduled
-  // by the callback itself.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)));
+  last_auto_cleanup_time_ = platform_->GetCurrentTime();
+  last_user_activity_timestamp_time_ = platform_->GetCurrentTime();
 
-  // Start scheduling periodic check for low-disk space.  Subsequent events are
-  // scheduled by teh callback itself.
+  // Clean up space on start (once).
   mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::LowDiskCallback, base::Unretained(this)));
+      FROM_HERE, base::Bind(&Service::DoAutoCleanup, base::Unretained(this)));
+
+  // Start scheduling periodic check for low-disk space and cleanup events.
+  // Subsequent events are scheduled by the callback itself.
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&Service::LowDiskCallback, base::Unretained(this)));
 
   // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
   // scheduled by the callback itself.
@@ -2832,47 +2830,65 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   return TRUE;
 }
 
-// Called on Mount thread.
-void Service::AutoCleanupCallback() {
-  static int ticks;
-
-  // Update current user's activity timestamp every day.
-  if (++ticks > update_user_activity_period_) {
-    mounts_lock_.Acquire();
-    for (const auto& mount_pair : mounts_) {
-      mount_pair.second->UpdateCurrentUserActivityTimestamp(0);
-    }
-    mounts_lock_.Release();
-    ticks = 0;
-  }
-
+void Service::DoAutoCleanup() {
   homedirs_->FreeDiskSpace();
-
   // Reset the dictionary attack counter if possible and necessary.
   ResetDictionaryAttackMitigation();
+}
+
+void Service::UpdateCurrentUserActivityTimestamp() {
+  mounts_lock_.Acquire();
+  for (const auto& mount_pair : mounts_)
+    mount_pair.second->UpdateCurrentUserActivityTimestamp(0);
+  mounts_lock_.Release();
+}
+
+// Called on Mount thread.
+void Service::LowDiskCallback() {
+  bool low_disk_space_signal_emitted = false;
+  int64_t free_disk_space = homedirs_->AmountOfFreeDiskSpace();
+  if (free_disk_space < 0) {
+    LOG(ERROR) << "Error getting free disk space, got: " << free_disk_space;
+  } else if (free_disk_space < kNotifyDiskSpaceThreshold) {
+    g_signal_emit(cryptohome_, low_disk_space_signal_,
+                  0 /* signal detail (not used) */,
+                  static_cast<uint64_t>(free_disk_space));
+    low_disk_space_signal_emitted = true;
+  }
+
+  const base::Time current_time = platform_->GetCurrentTime();
+
+  const bool time_for_auto_cleanup =
+      current_time - last_auto_cleanup_time_ >
+      base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS);
+
+  // We shouldn't repeat cleanups on every minute if the disk space
+  // stays below the threshold. Trigger it only if there was no notification
+  // previously.
+  const bool early_cleanup_needed =
+      low_disk_space_signal_emitted && !low_disk_space_signal_was_emitted_;
+
+  if (time_for_auto_cleanup || early_cleanup_needed) {
+    last_auto_cleanup_time_ = current_time;
+    DoAutoCleanup();
+  }
+
+  const bool time_for_user_activity_period_update =
+      current_time - last_user_activity_timestamp_time_ >
+      base::TimeDelta::FromHours(kUpdateUserActivityPeriodHours);
+
+  if (time_for_user_activity_period_update) {
+    last_user_activity_timestamp_time_ = current_time;
+    UpdateCurrentUserActivityTimestamp();
+  }
+
+  low_disk_space_signal_was_emitted_ = low_disk_space_signal_emitted;
 
   // Schedule our next call. If the thread is terminating, we would
   // not be called. We use base::Unretained here because the Service object is
   // never destroyed.
   mount_thread_.task_runner()->PostDelayedTask(
-      FROM_HERE,
-      base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)),
-      base::TimeDelta::FromMilliseconds(auto_cleanup_period_));
-}
-
-// Called on Mount thread.
-void Service::LowDiskCallback() {
-  int64_t free_disk_space = homedirs_->AmountOfFreeDiskSpace();
-  if (free_disk_space < 0)
-    LOG(ERROR) << "Error getting free disk space, got: " << free_disk_space;
-  else if (free_disk_space < kNotifyDiskSpaceThreshold)
-    g_signal_emit(cryptohome_, low_disk_space_signal_,
-                  0 /* signal detail (not used) */,
-                  static_cast<uint64_t>(free_disk_space));
-
-  mount_thread_.task_runner()->PostDelayedTask(
-      FROM_HERE,
-      base::Bind(&Service::LowDiskCallback, base::Unretained(this)),
+      FROM_HERE, base::Bind(&Service::LowDiskCallback, base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(low_disk_notification_period_ms_));
 }
 

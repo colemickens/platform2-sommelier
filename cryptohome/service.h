@@ -50,6 +50,8 @@ class BootLockbox;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
 
+extern const int64_t kNotifyDiskSpaceThreshold;
+
 // Bridges between the MountTaskObserver callback model and the
 // CryptohomeEventSource callback model. This class forwards MountTaskObserver
 // events to a CryptohomeEventSource. An instance of this class is single-use
@@ -115,14 +117,8 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void set_initialize_tpm(bool value) {
     initialize_tpm_ = value;
   }
-  virtual void set_auto_cleanup_period(int value) {
-    auto_cleanup_period_ = value;
-  }
   virtual void set_install_attrs(InstallAttributes* install_attrs) {
     install_attrs_ = install_attrs;
-  }
-  virtual void set_update_user_activity_period(int value) {
-    update_user_activity_period_ = value;
   }
   virtual void set_mount_for_user(const std::string& username,
                                   cryptohome::Mount* m) {
@@ -667,12 +663,13 @@ class Service : public brillo::dbus::AbstractDbusService,
   guint low_disk_space_signal_;
   guint dircrypto_migration_progress_signal_;
   guint key_challenge_signal_;
+  bool low_disk_space_signal_was_emitted_;
   CryptohomeEventSource event_source_;
   CryptohomeEventSourceSink* event_source_sink_;
-  int auto_cleanup_period_;
+  base::Time last_auto_cleanup_time_;
+  base::Time last_user_activity_timestamp_time_;
   std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
   cryptohome::InstallAttributes* install_attrs_;
-  int update_user_activity_period_;
   // Keeps track of whether a failure on PKCS#11 initialization was reported
   // during this user login. We use this not to report a same failure multiple
   // times.
@@ -682,9 +679,12 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   virtual GMainLoop *main_loop() { return loop_; }
 
-  // Called periodically on Mount thread to initiate automatic disk
+  // Called periodically from LowDiskCallback to initiate automatic disk
   // cleanup if needed.
-  virtual void AutoCleanupCallback();
+  virtual void DoAutoCleanup();
+  // Called periodically from LowDiskCallback.
+  // Update current user's activity timestamp every day.
+  virtual void UpdateCurrentUserActivityTimestamp();
   // Called periodically on Mount thread to detect low disk space and emit a
   // signal if detected.
   virtual void LowDiskCallback();
