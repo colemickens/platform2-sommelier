@@ -188,6 +188,7 @@ const Log kCommandLogs[] = {
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
   },
+  { "pagetypeinfo", "/bin/cat /proc/pagetypeinfo" },
   { "platform_info", "/bin/cat /var/log/platform_info.txt" },
   { "power_supply_info", "/usr/bin/power_supply_info" },
   { "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data" },
