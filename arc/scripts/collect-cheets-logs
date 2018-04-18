@@ -23,7 +23,6 @@ dump_var_log arc-removable-media.log
 dump_var_log arc-sdcard.log
 dump_var_log arc-sensor.log
 dump_var_log arc-setfattr.log
-dump_var_log arc-setup.log
 dump_var_log arc-stale-directory-remover.log
 dump_var_log arc-start-sysctl.log
 dump_var_log arc-stop-sysctl.log
@@ -31,8 +30,9 @@ dump_var_log arc-system-mount.log
 dump_var_log arc-ureadahead-trace.log
 dump_var_log arc-ureadahead.log
 
-# TODO(yusukes): Remove this in M70.
+# TODO(yusukes): Remove these in M70.
 rm -f /var/log/arc-setup-for-login-screen.log
+rm -f /var/log/arc-setup.log
 
 if [ -d /var/log/android ] ; then
   # Dump only the last 3 log files.

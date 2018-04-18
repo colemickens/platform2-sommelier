@@ -4,9 +4,7 @@
 # found in the LICENSE file.
 
 export ENVFILE=/etc/init/arc-setup-env
-export LOGFILE=/var/log/arc-setup.log
 
-exec > $LOGFILE 2>&1
 bootstat mini-android-start
 echo "$(date --rfc-3339=ns): arc-setup --setup"
 set -e -x
