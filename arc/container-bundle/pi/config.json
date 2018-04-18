@@ -485,6 +485,29 @@
 			"options": [
 				"bind"
 			]
+		},
+		{
+			"destination": "/mnt",
+			"type": "tmpfs",
+			"source": "tmpfs",
+			"options": [
+				"mode=755",
+				"gid=1000",
+				"nosuid",
+				"nodev",
+				"noexec"
+			]
+		},
+		{
+			"destination": "/mnt/vendor",
+			"type": "tmpfs",
+			"source": "tmpfs",
+			"options": [
+				"mode=755",
+				"nosuid",
+				"nodev",
+				"noexec"
+			]
 		}
 	],
 	"hooks": {
