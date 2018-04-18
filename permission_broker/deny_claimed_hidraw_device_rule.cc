@@ -22,6 +22,7 @@ namespace permission_broker {
 namespace {
 
 const char kLogitechUnifyingReceiverDriver[] = "logitech-djreceiver";
+const char kThingmDriver[] = "thingm";
 
 // The kernel expresses capabilities as a bitfield, broken into long-sized
 // chunks encoded in hexadecimal.
@@ -76,10 +77,6 @@ DenyClaimedHidrawDeviceRule::DenyClaimedHidrawDeviceRule()
 
 Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
     struct udev_device* device) {
-  // Add an exception to the rule for Logitech Unifying receiver.
-  // This hidraw device is a parent of devices that have input
-  // subsystem. Yet the traffic to those children is not available on
-  // the hidraw node of the receiver, so it is safe to white-list it.
   struct udev_device* hid_parent =
       udev_device_get_parent_with_subsystem_devtype(device, "hid", nullptr);
   if (!hid_parent) {
@@ -88,10 +85,22 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
   }
 
   const char* hid_parent_driver = udev_device_get_driver(hid_parent);
-  if (hid_parent_driver &&
-      strcmp(hid_parent_driver, kLogitechUnifyingReceiverDriver) == 0) {
-    LOG(INFO) << "Found Logitech Unifying receiver. Skipping rule.";
-    return IGNORE;
+  if (hid_parent_driver) {
+    // Add an exception to the rule for Logitech Unifying receiver. This hidraw
+    // device is a parent of devices that have input subsystem. Yet the traffic
+    // to those children is not available on the hidraw node of the receiver,
+    // so it is safe to whitelist it.
+    if (strcmp(hid_parent_driver, kLogitechUnifyingReceiverDriver) == 0) {
+      LOG(INFO) << "Found Logitech Unifying receiver. Skipping rule.";
+      return IGNORE;
+    }
+
+    // An led subsystem driver is provided for this device but for historical
+    // reasons we want to continue to allow raw HID access as well.
+    if (strcmp(hid_parent_driver, kThingmDriver) == 0) {
+      LOG(INFO) << "Found ThingM blink(1). Skipping rule.";
+      return IGNORE;
+    }
   }
 
   std::string hid_parent_path(udev_device_get_syspath(hid_parent));
