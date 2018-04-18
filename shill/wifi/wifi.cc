@@ -1233,8 +1233,7 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  // For drivers that support scheduled scan, we want to check
-  // NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR.
+  // Look for scheduled scan support.
   bool supports_sched_scan = false;
   AttributeListConstRefPtr cmds;
   if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
@@ -1255,8 +1254,9 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
       supports_sched_scan = true;
   }
 
-  // We need to support SCAN_RANDOM_MAC_ADDR. If we support scheduled scans, we
-  // also need to support SCHED_SCAN_RANDOM_MAC_ADDR.
+  // There are two flags for MAC randomization: one for regular scans and one
+  // for scheduled scans. Only look for the latter if scheduled scans are
+  // supported.
   random_mac_supported_ = (flags & NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR) &&
     (!supports_sched_scan ||
      (flags & NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR));
