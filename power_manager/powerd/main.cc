@@ -67,50 +67,50 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<PrefsInterface> CreatePrefs() override {
     auto prefs = base::WrapUnique(new Prefs());
     CHECK(prefs->Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
-    return std::move(prefs);
+    return prefs;
   }
 
   std::unique_ptr<system::DBusWrapperInterface> CreateDBusWrapper() override {
     auto wrapper = system::DBusWrapper::Create();
     CHECK(wrapper);
-    return std::move(wrapper);
+    return wrapper;
   }
 
   std::unique_ptr<system::UdevInterface> CreateUdev() override {
     auto udev = base::WrapUnique(new system::Udev());
     CHECK(udev->Init());
-    return std::move(udev);
+    return udev;
   }
 
   std::unique_ptr<system::AmbientLightSensorInterface>
   CreateAmbientLightSensor() override {
     auto sensor = base::WrapUnique(new system::AmbientLightSensor());
     sensor->Init();
-    return std::move(sensor);
+    return sensor;
   }
 
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) override {
     auto watcher = base::WrapUnique(new system::DisplayWatcher());
     watcher->Init(udev);
-    return std::move(watcher);
+    return watcher;
   }
 
   std::unique_ptr<system::DisplayPowerSetterInterface> CreateDisplayPowerSetter(
       system::DBusWrapperInterface* dbus_wrapper) override {
     auto setter = base::WrapUnique(new system::DisplayPowerSetter());
     setter->Init(dbus_wrapper);
-    return std::move(setter);
+    return setter;
   }
 
   std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
       system::DisplayWatcherInterface* display_watcher,
-      system::DisplayPowerSetterInterface* display_power_setter) override {
-    auto controller =
-        base::WrapUnique(new policy::ExternalBacklightController());
-    controller->Init(display_watcher, display_power_setter);
-    return std::move(controller);
+      system::DisplayPowerSetterInterface* display_power_setter,
+      system::DBusWrapperInterface* dbus_wrapper) override {
+    auto controller = std::make_unique<policy::ExternalBacklightController>();
+    controller->Init(display_watcher, display_power_setter, dbus_wrapper);
+    return controller;
   }
 
   std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
@@ -129,7 +129,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
       const base::FilePath::StringType& pattern) override {
     auto backlight = base::WrapUnique(new system::PluggableInternalBacklight());
     backlight->Init(udev, udev_subsystem, base_path, pattern);
-    return std::move(backlight);
+    return backlight;
   }
 
   std::unique_ptr<policy::BacklightController>
@@ -137,11 +137,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
-      system::DisplayPowerSetterInterface* power_setter) override {
-    auto controller =
-        base::WrapUnique(new policy::InternalBacklightController());
-    controller->Init(backlight, prefs, sensor, power_setter);
-    return std::move(controller);
+      system::DisplayPowerSetterInterface* power_setter,
+      system::DBusWrapperInterface* dbus_wrapper) override {
+    auto controller = std::make_unique<policy::InternalBacklightController>();
+    controller->Init(backlight, prefs, sensor, power_setter, dbus_wrapper);
+    return controller;
   }
 
   std::unique_ptr<policy::BacklightController>
@@ -149,13 +149,13 @@ class DaemonDelegateImpl : public DaemonDelegate {
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
+      system::DBusWrapperInterface* dbus_wrapper,
       policy::BacklightController* display_backlight_controller,
       TabletMode initial_tablet_mode) override {
-    auto controller =
-        base::WrapUnique(new policy::KeyboardBacklightController());
-    controller->Init(backlight, prefs, sensor, display_backlight_controller,
-                     initial_tablet_mode);
-    return std::move(controller);
+    auto controller = std::make_unique<policy::KeyboardBacklightController>();
+    controller->Init(backlight, prefs, sensor, dbus_wrapper,
+                     display_backlight_controller, initial_tablet_mode);
+    return controller;
   }
 
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
@@ -165,7 +165,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
                             new system::EventDeviceFactory),
                         std::make_unique<system::WakeupDeviceFactory>(udev),
                         prefs, udev));
-    return std::move(watcher);
+    return watcher;
   }
 
   std::unique_ptr<system::AcpiWakeupHelperInterface> CreateAcpiWakeupHelper()
@@ -193,7 +193,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
       system::DBusWrapperInterface* dbus_wrapper) override {
     auto supply = base::WrapUnique(new system::PowerSupply());
     supply->Init(power_supply_path, prefs, udev, dbus_wrapper);
-    return std::move(supply);
+    return supply;
   }
 
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
@@ -207,19 +207,19 @@ class DaemonDelegateImpl : public DaemonDelegate {
     if (system::LegacyDarkResume::ShouldUse(prefs)) {
       auto legacy_dark_resume = std::make_unique<system::LegacyDarkResume>();
       legacy_dark_resume->Init(power_supply, prefs);
-      return std::move(legacy_dark_resume);
+      return legacy_dark_resume;
     }
 
     auto dark_resume = std::make_unique<system::DarkResume>();
     dark_resume->Init(prefs, input_watcher);
-    return std::move(dark_resume);
+    return dark_resume;
   }
 
   std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) override {
     auto client = base::WrapUnique(new system::AudioClient());
     client->Init(dbus_wrapper);
-    return std::move(client);
+    return client;
   }
 
   std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(

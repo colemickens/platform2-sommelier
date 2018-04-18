@@ -20,7 +20,6 @@
 #include <dbus/exported_object.h>
 
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/policy/wifi_controller.h"
@@ -73,8 +72,7 @@ class UdevInterface;
 class Daemon;
 
 // Main class within the powerd daemon that ties all other classes together.
-class Daemon : public policy::BacklightControllerObserver,
-               public policy::InputEventHandler::Delegate,
+class Daemon : public policy::InputEventHandler::Delegate,
                public policy::Suspender::Delegate,
                public policy::WifiController::Delegate,
                public system::AudioObserver,
@@ -99,11 +97,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // If |retry_shutdown_for_lockfile_timer_| is running, triggers it
   // and returns true. Otherwise, returns false.
   bool TriggerRetryShutdownTimerForTesting();
-
-  // Overridden from policy::BacklightControllerObserver:
-  void OnBrightnessChange(double brightness_percent,
-                          BacklightBrightnessChange_Cause cause,
-                          policy::BacklightController* source) override;
 
   // Overridden from policy::InputEventHandler::Delegate:
   void HandleLidClosed() override;
@@ -178,18 +171,6 @@ class Daemon : public policy::BacklightControllerObserver,
                       const std::string& additional_args,
                       bool wait_for_completion);
 
-  // Decreases/increases the keyboard brightness; direction should be +1 for
-  // increase and -1 for decrease. |keyboard_backlight_controller_| must be
-  // initialized.
-  void AdjustKeyboardBrightness(int direction);
-
-  // Emits a D-Bus signal named |signal_name| containing a
-  // BacklightBrightnessChange protobuf announcing that backlight brightness was
-  // changed to |brightness_percent| due to |cause|.
-  void SendBrightnessChangedSignal(const std::string& signal_name,
-                                   double brightness_percent,
-                                   BacklightBrightnessChange_Cause cause);
-
   // Connects to the D-Bus system bus and exports methods. Does not publish the
   // D-Bus service, as additional methods may need to exported by other classes
   // before that happens.
@@ -213,18 +194,6 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<dbus::Response> HandleRequestRestartMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleRequestSuspendMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleDecreaseScreenBrightnessMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleIncreaseScreenBrightnessMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleGetScreenBrightnessMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleSetScreenBrightnessMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleDecreaseKeyboardBrightnessMethod(
-      dbus::MethodCall* method_call);
-  std::unique_ptr<dbus::Response> HandleIncreaseKeyboardBrightnessMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleVideoActivityMethod(
       dbus::MethodCall* method_call);

@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/prefs.h"
@@ -78,7 +79,7 @@ bool KeyboardBacklightController::TestApi::TriggerVideoTimeout() {
 const double KeyboardBacklightController::kDimPercent = 10.0;
 
 KeyboardBacklightController::KeyboardBacklightController()
-    : clock_(new Clock) {}
+    : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
 
 KeyboardBacklightController::~KeyboardBacklightController() {
   if (display_backlight_controller_)
@@ -91,6 +92,7 @@ void KeyboardBacklightController::Init(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
     system::AmbientLightSensorInterface* sensor,
+    system::DBusWrapperInterface* dbus_wrapper,
     BacklightController* display_backlight_controller,
     TabletMode initial_tablet_mode) {
   backlight_ = backlight;
@@ -98,6 +100,16 @@ void KeyboardBacklightController::Init(
 
   prefs_ = prefs;
   tablet_mode_ = initial_tablet_mode;
+
+  dbus_wrapper_ = dbus_wrapper;
+  RegisterIncreaseBrightnessHandler(
+      dbus_wrapper_, kIncreaseKeyboardBrightnessMethod,
+      base::Bind(&KeyboardBacklightController::HandleIncreaseBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  RegisterDecreaseBrightnessHandler(
+      dbus_wrapper_, kDecreaseKeyboardBrightnessMethod,
+      base::Bind(&KeyboardBacklightController::HandleDecreaseBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
 
   display_backlight_controller_ = display_backlight_controller;
   if (display_backlight_controller_)
@@ -308,44 +320,6 @@ bool KeyboardBacklightController::GetBrightnessPercent(double* percent) {
   return true;
 }
 
-bool KeyboardBacklightController::SetUserBrightnessPercent(
-    double percent, Transition transition) {
-  // There's currently no UI for setting the keyboard backlight brightness
-  // to arbitrary levels; the user is instead just given the option of
-  // increasing or decreasing the brightness between pre-defined levels.
-  return false;
-}
-
-bool KeyboardBacklightController::IncreaseUserBrightness() {
-  LOG(INFO) << "Got user-triggered request to increase brightness";
-  if (!backlight_->DeviceExists())
-    return false;
-
-  if (user_step_index_ == -1)
-    InitUserStepIndex();
-  if (user_step_index_ < static_cast<int>(user_steps_.size()) - 1)
-    user_step_index_++;
-  num_user_adjustments_++;
-
-  return UpdateState(Transition::FAST,
-                     BacklightBrightnessChange_Cause_USER_REQUEST);
-}
-
-bool KeyboardBacklightController::DecreaseUserBrightness(bool allow_off) {
-  LOG(INFO) << "Got user-triggered request to decrease brightness";
-  if (!backlight_->DeviceExists())
-    return false;
-
-  if (user_step_index_ == -1)
-    InitUserStepIndex();
-  if (user_step_index_ > (allow_off ? 0 : 1))
-    user_step_index_--;
-  num_user_adjustments_++;
-
-  return UpdateState(Transition::FAST,
-                     BacklightBrightnessChange_Cause_USER_REQUEST);
-}
-
 int KeyboardBacklightController::GetNumAmbientLightSensorAdjustments() const {
   return num_als_adjustments_;
 }
@@ -478,6 +452,35 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
                  BacklightBrightnessChange_Cause_OTHER));
 }
 
+void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
+  LOG(INFO) << "Got user-triggered request to increase brightness";
+  if (!backlight_->DeviceExists())
+    return;
+
+  if (user_step_index_ == -1)
+    InitUserStepIndex();
+  if (user_step_index_ < static_cast<int>(user_steps_.size()) - 1)
+    user_step_index_++;
+  num_user_adjustments_++;
+
+  UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
+}
+
+void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
+    bool allow_off) {
+  LOG(INFO) << "Got user-triggered request to decrease brightness";
+  if (!backlight_->DeviceExists())
+    return;
+
+  if (user_step_index_ == -1)
+    InitUserStepIndex();
+  if (user_step_index_ > (allow_off ? 0 : 1))
+    user_step_index_--;
+  num_user_adjustments_++;
+
+  UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
+}
+
 bool KeyboardBacklightController::UpdateState(
     Transition transition, BacklightBrightnessChange_Cause cause) {
   // Force the backlight off immediately in several special cases.
@@ -542,6 +545,9 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   }
 
   current_percent_ = percent;
+  EmitBrightnessChangedSignal(dbus_wrapper_, kKeyboardBrightnessChangedSignal,
+                              percent, cause);
+
   for (BacklightControllerObserver& observer : observers_)
     observer.OnBrightnessChange(percent, cause, this);
   return true;

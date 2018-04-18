@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/compiler_specific.h>
+#include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -28,6 +29,7 @@ class PrefsInterface;
 namespace system {
 class AmbientLightSensorInterface;
 class BacklightInterface;
+class DBusWrapperInterface;
 }  // namespace system
 
 namespace policy {
@@ -70,6 +72,7 @@ class KeyboardBacklightController : public BacklightController,
   void Init(system::BacklightInterface* backlight,
             PrefsInterface* prefs,
             system::AmbientLightSensorInterface* sensor,
+            system::DBusWrapperInterface* dbus_wrapper,
             BacklightController* display_backlight_controller,
             TabletMode initial_tablet_mode);
 
@@ -94,9 +97,6 @@ class KeyboardBacklightController : public BacklightController,
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
-  bool SetUserBrightnessPercent(double percent, Transition transition) override;
-  bool IncreaseUserBrightness() override;
-  bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
   int GetNumUserAdjustments() const override;
   double LevelToPercent(int64_t level) const override;
@@ -130,6 +130,10 @@ class KeyboardBacklightController : public BacklightController,
   // |hovering_|, |last_hover_time_|, and |last_user_activity_time_|.
   void UpdateTurnOffTimer();
 
+  // Handlers for requests sent via D-Bus.
+  void HandleIncreaseBrightnessRequest();
+  void HandleDecreaseBrightnessRequest(bool allow_off);
+
   // Updates the current brightness after assessing the current state (based on
   // |dimmed_for_inactivity_|, |off_for_inactivity_|, etc.). Should be called
   // whenever the state changes. |transition| and |cause| are passed to
@@ -146,11 +150,10 @@ class KeyboardBacklightController : public BacklightController,
 
   mutable std::unique_ptr<Clock> clock_;
 
-  // Backlight used for dimming. Weak pointer.
+  // Not owned by this class.
   system::BacklightInterface* backlight_ = nullptr;
-
-  // Interface for saving preferences. Weak pointer.
   PrefsInterface* prefs_ = nullptr;
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
 
   // Controller responsible for the display's brightness. Weak pointer.
   BacklightController* display_backlight_controller_ = nullptr;
@@ -231,6 +234,8 @@ class KeyboardBacklightController : public BacklightController,
   // Did |display_backlight_controller_| indicate that the display
   // backlight brightness is currently zero?
   bool display_brightness_is_zero_ = false;
+
+  base::WeakPtrFactory<KeyboardBacklightController> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyboardBacklightController);
 };

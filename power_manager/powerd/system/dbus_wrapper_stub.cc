@@ -99,6 +99,10 @@ void DBusWrapperStub::ClearSentSignals() {
   sent_signals_.clear();
 }
 
+bool DBusWrapperStub::IsMethodExported(const std::string& method_name) const {
+  return exported_methods_.count(method_name);
+}
+
 void DBusWrapperStub::CallExportedMethod(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_cb) {

@@ -133,13 +133,6 @@ void HandleSynchronousDBusMethodCall(
   response_sender.Run(std::move(response));
 }
 
-// Creates a new "not supported" reply to |method_call|.
-std::unique_ptr<dbus::Response> CreateNotSupportedError(
-    dbus::MethodCall* method_call, std::string message) {
-  return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
-      method_call, DBUS_ERROR_NOT_SUPPORTED, message));
-}
-
 // Creates a new "invalid args" reply to |method_call|.
 std::unique_ptr<dbus::Response> CreateInvalidArgsError(
     dbus::MethodCall* method_call, std::string message) {
@@ -310,8 +303,6 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
 Daemon::~Daemon() {
   if (dbus_wrapper_)
     dbus_wrapper_->RemoveObserver(this);
-  for (auto controller : all_backlight_controllers_)
-    controller->RemoveObserver(this);
   if (audio_client_)
     audio_client_->RemoveObserver(this);
   if (power_supply_)
@@ -349,7 +340,8 @@ void Daemon::Init() {
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =
           delegate_->CreateExternalBacklightController(
-              display_watcher_.get(), display_power_setter_.get());
+              display_watcher_.get(), display_power_setter_.get(),
+              dbus_wrapper_.get());
     } else {
       display_backlight_ = delegate_->CreateInternalBacklight(
           base::FilePath(kInternalBacklightPath), kInternalBacklightPattern);
@@ -361,7 +353,7 @@ void Daemon::Init() {
         display_backlight_controller_ =
             delegate_->CreateInternalBacklightController(
                 display_backlight_.get(), prefs_.get(), light_sensor_.get(),
-                display_power_setter_.get());
+                display_power_setter_.get(), dbus_wrapper_.get());
       }
     }
     if (display_backlight_controller_)
@@ -374,14 +366,12 @@ void Daemon::Init() {
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(
               keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
-              display_backlight_controller_.get(), tablet_mode);
+              dbus_wrapper_.get(), display_backlight_controller_.get(),
+              tablet_mode);
       all_backlight_controllers_.push_back(
           keyboard_backlight_controller_.get());
     }
   }
-
-  for (auto controller : all_backlight_controllers_)
-    controller->AddObserver(this);
 
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
@@ -472,44 +462,6 @@ int Daemon::RunSetuidHelper(const std::string& action,
   } else {
     delegate_->Launch(command.c_str());
     return 0;
-  }
-}
-
-void Daemon::AdjustKeyboardBrightness(int direction) {
-  DCHECK(keyboard_backlight_controller_);
-  if (direction > 0)
-    keyboard_backlight_controller_->IncreaseUserBrightness();
-  else if (direction < 0)
-    keyboard_backlight_controller_->DecreaseUserBrightness(
-        true /* allow_off */);
-}
-
-void Daemon::SendBrightnessChangedSignal(
-    const std::string& signal_name,
-    double brightness_percent,
-    BacklightBrightnessChange_Cause cause) {
-  dbus::Signal signal(kPowerManagerInterface, signal_name);
-  BacklightBrightnessChange proto;
-  proto.set_percent(brightness_percent);
-  proto.set_cause(cause);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  dbus_wrapper_->EmitSignal(&signal);
-}
-
-void Daemon::OnBrightnessChange(double brightness_percent,
-                                BacklightBrightnessChange_Cause cause,
-                                policy::BacklightController* source) {
-  if (source == display_backlight_controller_.get() &&
-      display_backlight_controller_) {
-    SendBrightnessChangedSignal(kScreenBrightnessChangedSignal,
-                                brightness_percent, cause);
-  } else if (source == keyboard_backlight_controller_.get() &&
-             keyboard_backlight_controller_) {
-    SendBrightnessChangedSignal(kKeyboardBrightnessChangedSignal,
-                                brightness_percent, cause);
-  } else {
-    NOTREACHED() << "Received a brightness change callback from an unknown "
-                 << "backlight controller";
   }
 }
 
@@ -882,18 +834,6 @@ void Daemon::InitDBus() {
       {kRequestShutdownMethod, &Daemon::HandleRequestShutdownMethod},
       {kRequestRestartMethod, &Daemon::HandleRequestRestartMethod},
       {kRequestSuspendMethod, &Daemon::HandleRequestSuspendMethod},
-      {kDecreaseScreenBrightnessMethod,
-       &Daemon::HandleDecreaseScreenBrightnessMethod},
-      {kIncreaseScreenBrightnessMethod,
-       &Daemon::HandleIncreaseScreenBrightnessMethod},
-      {kGetScreenBrightnessPercentMethod,
-       &Daemon::HandleGetScreenBrightnessMethod},
-      {kSetScreenBrightnessPercentMethod,
-       &Daemon::HandleSetScreenBrightnessMethod},
-      {kDecreaseKeyboardBrightnessMethod,
-       &Daemon::HandleDecreaseKeyboardBrightnessMethod},
-      {kIncreaseKeyboardBrightnessMethod,
-       &Daemon::HandleIncreaseKeyboardBrightnessMethod},
       {kHandleVideoActivityMethod, &Daemon::HandleVideoActivityMethod},
       {kHandleUserActivityMethod, &Daemon::HandleUserActivityMethod},
       {kSetIsProjectingMethod, &Daemon::HandleSetIsProjectingMethod},
@@ -1144,103 +1084,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
           external_wakeup_count);
   return std::unique_ptr<dbus::Response>();
 }
-
-std::unique_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
-    dbus::MethodCall* method_call) {
-  if (!display_backlight_controller_)
-    return CreateNotSupportedError(method_call, "Backlight uninitialized");
-
-  bool allow_off = false;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopBool(&allow_off))
-    LOG(ERROR) << "Missing " << kDecreaseScreenBrightnessMethod << " arg";
-  bool changed =
-      display_backlight_controller_->DecreaseUserBrightness(allow_off);
-  double percent = 0.0;
-  if (!changed &&
-      display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    SendBrightnessChangedSignal(kScreenBrightnessChangedSignal, percent,
-                                BacklightBrightnessChange_Cause_USER_REQUEST);
-  }
-  return std::unique_ptr<dbus::Response>();
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
-    dbus::MethodCall* method_call) {
-  if (!display_backlight_controller_)
-    return CreateNotSupportedError(method_call, "Backlight uninitialized");
-
-  bool changed = display_backlight_controller_->IncreaseUserBrightness();
-  double percent = 0.0;
-  if (!changed &&
-      display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    SendBrightnessChangedSignal(kScreenBrightnessChangedSignal, percent,
-                                BacklightBrightnessChange_Cause_USER_REQUEST);
-  }
-  return std::unique_ptr<dbus::Response>();
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleSetScreenBrightnessMethod(
-    dbus::MethodCall* method_call) {
-  if (!display_backlight_controller_)
-    return CreateNotSupportedError(method_call, "Backlight uninitialized");
-
-  double percent = 0.0;
-  int dbus_transition = 0;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopDouble(&percent) || !reader.PopInt32(&dbus_transition)) {
-    LOG(ERROR) << "Missing " << kSetScreenBrightnessPercentMethod << " args";
-    return CreateInvalidArgsError(method_call,
-                                  "Expected percent and transition");
-  }
-
-  using Transition = policy::BacklightController::Transition;
-  Transition transition = Transition::FAST;
-  switch (dbus_transition) {
-    case kBrightnessTransitionGradual:
-      transition = Transition::FAST;
-      break;
-    case kBrightnessTransitionInstant:
-      transition = Transition::INSTANT;
-      break;
-    default:
-      LOG(ERROR) << "Invalid brightness transition " << dbus_transition;
-  }
-  display_backlight_controller_->SetUserBrightnessPercent(percent, transition);
-  return std::unique_ptr<dbus::Response>();
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleGetScreenBrightnessMethod(
-    dbus::MethodCall* method_call) {
-  if (!display_backlight_controller_)
-    return CreateNotSupportedError(method_call, "Backlight uninitialized");
-
-  double percent = 0.0;
-  if (!display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED, "Couldn't fetch brightness"));
-  }
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendDouble(percent);
-  return response;
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleDecreaseKeyboardBrightnessMethod(
-    dbus::MethodCall* method_call) {
-  if (keyboard_backlight_controller_)
-    AdjustKeyboardBrightness(-1);
-  return std::unique_ptr<dbus::Response>();
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
-    dbus::MethodCall* method_call) {
-  if (keyboard_backlight_controller_)
-    AdjustKeyboardBrightness(1);
-  return std::unique_ptr<dbus::Response>();
-}
-
 
 std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {

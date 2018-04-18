@@ -11,6 +11,7 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -27,6 +28,7 @@ class PrefsInterface;
 namespace system {
 class AmbientLightSensorInterface;
 class BacklightInterface;
+class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
 }  // namespace system
 
@@ -73,7 +75,8 @@ class InternalBacklightController : public BacklightController,
   void Init(system::BacklightInterface* backlight,
             PrefsInterface* prefs,
             system::AmbientLightSensorInterface* sensor,
-            system::DisplayPowerSetterInterface* display_power_setter);
+            system::DisplayPowerSetterInterface* display_power_setter,
+            system::DBusWrapperInterface* dbus_wrapper);
 
   // BacklightController implementation:
   void AddObserver(BacklightControllerObserver* observer) override;
@@ -96,9 +99,6 @@ class InternalBacklightController : public BacklightController,
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
-  bool SetUserBrightnessPercent(double percent, Transition transition) override;
-  bool IncreaseUserBrightness() override;
-  bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
   int GetNumUserAdjustments() const override;
   double LevelToPercent(int64_t level) const override;
@@ -121,6 +121,12 @@ class InternalBacklightController : public BacklightController,
   // in an undimmed state (|ambient_light_brightness_percent_| if
   // |use_ambient_light_| is true or a user- or policy-set level otherwise).
   double GetUndimmedBrightnessPercent() const;
+
+  // Handlers for requests sent via D-Bus.
+  void HandleIncreaseBrightnessRequest();
+  void HandleDecreaseBrightnessRequest(bool allow_off);
+  void HandleSetBrightnessRequest(double percent, Transition transition);
+  void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
 
   // Increases the explicitly-set brightness to the minimum visible level if
   // it's currently set to zero. Note that the brightness is left unchanged if
@@ -161,17 +167,13 @@ class InternalBacklightController : public BacklightController,
   void SetDisplayPower(chromeos::DisplayPowerState state,
                        base::TimeDelta delay);
 
-  // Backlight used for dimming. Weak pointer.
+  // Not owned by this class.
   system::BacklightInterface* backlight_ = nullptr;
-
-  // Interface for saving preferences. Weak pointer.
   PrefsInterface* prefs_ = nullptr;
-
-  // Used to turn displays on and off.
   system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
 
   std::unique_ptr<AmbientLightHandler> ambient_light_handler_;
-
   std::unique_ptr<Clock> clock_;
 
   // Observers for changes to the brightness level.
@@ -264,6 +266,8 @@ class InternalBacklightController : public BacklightController,
 
   // Screen off delay when user sets brightness to 0.
   base::TimeDelta turn_off_screen_timeout_;
+
+  base::WeakPtrFactory<InternalBacklightController> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(InternalBacklightController);
 };

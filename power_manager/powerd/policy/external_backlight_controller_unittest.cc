@@ -5,9 +5,12 @@
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 
 #include <base/compiler_specific.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
+#include "power_manager/powerd/policy/backlight_controller_test_util.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
@@ -19,7 +22,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
  public:
   ExternalBacklightControllerTest() {
     controller_.AddObserver(&observer_);
-    controller_.Init(&display_watcher_, &display_power_setter_);
+    controller_.Init(&display_watcher_, &display_power_setter_, &dbus_wrapper_);
   }
 
   ~ExternalBacklightControllerTest() override {
@@ -30,6 +33,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
   BacklightControllerObserverStub observer_;
   system::DisplayWatcherStub display_watcher_;
   system::DisplayPowerSetterStub display_power_setter_;
+  system::DBusWrapperStub dbus_wrapper_;
   ExternalBacklightController controller_;
 };
 
@@ -38,12 +42,12 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
   // requests, but it does allow relative adjustments.
   double percent = 0.0;
   EXPECT_FALSE(controller_.GetBrightnessPercent(&percent));
-  EXPECT_FALSE(controller_.SetUserBrightnessPercent(
-      50.0, BacklightController::Transition::INSTANT));
+  test::CallSetScreenBrightnessPercent(&dbus_wrapper_, 50.0,
+                                       kBrightnessTransitionInstant);
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  test::CallIncreaseScreenBrightness(&dbus_wrapper_);
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
-  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  test::CallDecreaseScreenBrightness(&dbus_wrapper_, true /* allow_off */);
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
 
   controller_.HandleSessionStateChange(SessionState::STARTED);

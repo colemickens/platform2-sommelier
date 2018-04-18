@@ -20,6 +20,7 @@
 namespace power_manager {
 
 namespace system {
+class DBusWrapperInterface;
 struct DisplayInfo;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
@@ -36,10 +37,10 @@ class ExternalBacklightController : public BacklightController,
   ExternalBacklightController();
   ~ExternalBacklightController() override;
 
-  // Initializes the object. Ownership of |display_watcher| and
-  // |display_power_setter| remain with the caller.
+  // Initializes the object. Ownership of raw pointers remains with the caller.
   void Init(system::DisplayWatcherInterface* display_watcher,
-            system::DisplayPowerSetterInterface* display_power_setter);
+            system::DisplayPowerSetterInterface* display_power_setter,
+            system::DBusWrapperInterface* dbus_wrapper);
 
   // BacklightController implementation:
   void AddObserver(BacklightControllerObserver* observer) override;
@@ -62,9 +63,6 @@ class ExternalBacklightController : public BacklightController,
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
-  bool SetUserBrightnessPercent(double percent, Transition transition) override;
-  bool IncreaseUserBrightness() override;
-  bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
   int GetNumUserAdjustments() const override;
   double LevelToPercent(int64_t level) const override;
@@ -75,6 +73,12 @@ class ExternalBacklightController : public BacklightController,
       const std::vector<system::DisplayInfo>& displays) override;
 
  private:
+  // Handlers for requests sent via D-Bus.
+  void HandleIncreaseBrightnessRequest();
+  void HandleDecreaseBrightnessRequest(bool allow_off);
+  void HandleSetBrightnessRequest(double percent, Transition transition);
+  void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
+
   // Turns displays on or off via |monitor_reconfigure_| as needed for
   // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.
   void UpdateScreenPowerState(BacklightBrightnessChange_Cause cause);
@@ -89,8 +93,10 @@ class ExternalBacklightController : public BacklightController,
   // percent in the range [-100.0, 100.0].
   void AdjustBrightnessByPercent(double percent_offset);
 
-  system::DisplayWatcherInterface* display_watcher_ = nullptr;           // weak
-  system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;  // weak
+  // These pointers aren't owned by this class.
+  system::DisplayWatcherInterface* display_watcher_ = nullptr;
+  system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
 
   base::ObserverList<BacklightControllerObserver> observers_;
 
@@ -112,6 +118,8 @@ class ExternalBacklightController : public BacklightController,
   // Number of times the user has requested that the brightness be changed in
   // the current session.
   int num_brightness_adjustments_in_session_ = 0;
+
+  base::WeakPtrFactory<ExternalBacklightController> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklightController);
 };

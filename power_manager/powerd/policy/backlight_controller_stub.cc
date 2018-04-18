@@ -24,9 +24,6 @@ void BacklightControllerStub::ResetStats() {
   tablet_mode_changes_.clear();
   policy_changes_.clear();
   display_service_starts_ = 0;
-  user_brightness_percent_ = 0.0;
-  num_user_brightness_increases_ = 0;
-  num_user_brightness_decreases_ = 0;
 }
 
 void BacklightControllerStub::NotifyObservers(
@@ -120,22 +117,6 @@ bool BacklightControllerStub::GetForcedOff() {
 bool BacklightControllerStub::GetBrightnessPercent(double* percent) {
   DCHECK(percent);
   *percent = percent_;
-  return true;
-}
-
-bool BacklightControllerStub::SetUserBrightnessPercent(double percent,
-                                                       Transition transition) {
-  user_brightness_percent_ = percent;
-  return true;
-}
-
-bool BacklightControllerStub::IncreaseUserBrightness() {
-  num_user_brightness_increases_++;
-  return true;
-}
-
-bool BacklightControllerStub::DecreaseUserBrightness(bool allow_off) {
-  num_user_brightness_decreases_++;
   return true;
 }
 

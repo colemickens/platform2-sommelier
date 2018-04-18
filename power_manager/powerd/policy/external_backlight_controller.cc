@@ -11,7 +11,10 @@
 #include <utility>
 #include <vector>
 
+#include <chromeos/dbus/service_constants.h>
+
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/display/external_display.h"
@@ -27,7 +30,8 @@ const double kBrightnessAdjustmentPercent = 5.0;
 
 }  // namespace
 
-ExternalBacklightController::ExternalBacklightController() {}
+ExternalBacklightController::ExternalBacklightController()
+    : weak_ptr_factory_(this) {}
 
 ExternalBacklightController::~ExternalBacklightController() {
   if (display_watcher_)
@@ -36,10 +40,30 @@ ExternalBacklightController::~ExternalBacklightController() {
 
 void ExternalBacklightController::Init(
     system::DisplayWatcherInterface* display_watcher,
-    system::DisplayPowerSetterInterface* display_power_setter) {
+    system::DisplayPowerSetterInterface* display_power_setter,
+    system::DBusWrapperInterface* dbus_wrapper) {
   display_watcher_ = display_watcher;
   display_power_setter_ = display_power_setter;
   display_watcher_->AddObserver(this);
+  dbus_wrapper_ = dbus_wrapper;
+
+  RegisterIncreaseBrightnessHandler(
+      dbus_wrapper_, kIncreaseScreenBrightnessMethod,
+      base::Bind(&ExternalBacklightController::HandleIncreaseBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  RegisterDecreaseBrightnessHandler(
+      dbus_wrapper_, kDecreaseScreenBrightnessMethod,
+      base::Bind(&ExternalBacklightController::HandleDecreaseBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  RegisterSetBrightnessHandler(
+      dbus_wrapper_, kSetScreenBrightnessPercentMethod,
+      base::Bind(&ExternalBacklightController::HandleSetBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  RegisterGetBrightnessHandler(
+      dbus_wrapper_, kGetScreenBrightnessPercentMethod,
+      base::Bind(&ExternalBacklightController::HandleGetBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+
   UpdateDisplays(display_watcher_->GetDisplays());
 }
 
@@ -119,23 +143,6 @@ bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
   return false;
 }
 
-bool ExternalBacklightController::SetUserBrightnessPercent(
-    double percent, Transition transition) {
-  return false;
-}
-
-bool ExternalBacklightController::IncreaseUserBrightness() {
-  num_brightness_adjustments_in_session_++;
-  AdjustBrightnessByPercent(kBrightnessAdjustmentPercent);
-  return true;
-}
-
-bool ExternalBacklightController::DecreaseUserBrightness(bool allow_off) {
-  num_brightness_adjustments_in_session_++;
-  AdjustBrightnessByPercent(-kBrightnessAdjustmentPercent);
-  return true;
-}
-
 void ExternalBacklightController::SetDocked(bool docked) {}
 
 void ExternalBacklightController::SetForcedOff(bool forced_off) {
@@ -175,6 +182,31 @@ int64_t ExternalBacklightController::PercentToLevel(double percent) const {
 void ExternalBacklightController::OnDisplaysChanged(
     const std::vector<system::DisplayInfo>& displays) {
   UpdateDisplays(displays);
+}
+
+void ExternalBacklightController::HandleIncreaseBrightnessRequest() {
+  num_brightness_adjustments_in_session_++;
+  AdjustBrightnessByPercent(kBrightnessAdjustmentPercent);
+}
+
+void ExternalBacklightController::HandleDecreaseBrightnessRequest(
+    bool allow_off) {
+  num_brightness_adjustments_in_session_++;
+  AdjustBrightnessByPercent(-kBrightnessAdjustmentPercent);
+}
+
+void ExternalBacklightController::HandleSetBrightnessRequest(
+    double percent, Transition transition) {
+  // Silently ignore requests to set to a specific percent. External displays
+  // are buggy and DDC/CI is racy if the user is simultaneously adjusting the
+  // brightness using physical buttons. Instead, we only support increasing and
+  // decreasing the brightness.
+}
+
+void ExternalBacklightController::HandleGetBrightnessRequest(
+    double* percent_out, bool* success_out) {
+  // See HandleSetBrightnessRequest.
+  *success_out = false;
 }
 
 void ExternalBacklightController::UpdateScreenPowerState(

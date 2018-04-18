@@ -18,6 +18,7 @@
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {
@@ -68,9 +69,9 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     prefs_.SetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref,
                     keep_on_during_video_ms_pref_);
 
-    controller_.Init(&backlight_, &prefs_,
-                     pass_light_sensor_ ? &light_sensor_ : NULL,
-                     &display_backlight_controller_, initial_tablet_mode_);
+    controller_.Init(
+        &backlight_, &prefs_, pass_light_sensor_ ? &light_sensor_ : nullptr,
+        &dbus_wrapper_, &display_backlight_controller_, initial_tablet_mode_);
   }
 
  protected:
@@ -85,6 +86,20 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   void AdvanceTime(const base::TimeDelta& interval) {
     test_api_.clock()->set_current_time_for_testing(
         test_api_.clock()->GetCurrentTime() + interval);
+  }
+
+  // Calls the IncreaseKeyboardBrightness D-Bus method.
+  void CallIncreaseKeyboardBrightness() {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kIncreaseKeyboardBrightnessMethod);
+    ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
+  }
+
+  // Calls the DecreaseKeyboardBrightness D-Bus method.
+  void CallDecreaseKeyboardBrightness() {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kDecreaseKeyboardBrightnessMethod);
+    ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
   }
 
   BacklightControllerStub display_backlight_controller_;
@@ -115,6 +130,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   FakePrefs prefs_;
   system::BacklightStub backlight_;
   system::AmbientLightSensorStub light_sensor_;
+  system::DBusWrapperStub dbus_wrapper_;
   BacklightControllerObserverStub observer_;
   KeyboardBacklightController controller_;
   KeyboardBacklightController::TestApi test_api_;
@@ -131,7 +147,7 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
   EXPECT_DOUBLE_EQ(static_cast<double>(initial_backlight_level_), percent);
 
   // After increasing the brightness, the new level should be returned.
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
   EXPECT_DOUBLE_EQ(static_cast<double>(backlight_.current_level()), percent);
 }
@@ -182,11 +198,11 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
   controller_.HandleSessionStateChange(SessionState::STARTED);
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
   EXPECT_EQ(0, backlight_.current_level());
   ASSERT_TRUE(test_api_.TriggerVideoTimeout());
   EXPECT_EQ(0, backlight_.current_level());
@@ -269,7 +285,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
             backlight_.current_interval().InMilliseconds());
 
   // Send an increase request to switch to user control.
-  controller_.IncreaseUserBrightness();
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -344,7 +360,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevel) {
   // After an increase request switches to user control of the brightness
   // level, the controller should first choose the step (10) nearest to the
   // initial level (15) and then increase to the next step (40).
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -367,32 +383,32 @@ TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
             backlight_.current_interval().InMilliseconds());
 }
 
-TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
+TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 0;
   Init();
 
   EXPECT_EQ(0, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(10, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumUserAdjustments());
 
-  EXPECT_FALSE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
 
@@ -401,32 +417,32 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());
 }
 
-TEST_F(KeyboardBacklightControllerTest, DecreaseUserBrightness) {
+TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 100;
   Init();
 
   EXPECT_EQ(100, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
   EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
   EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
   EXPECT_EQ(10, backlight_.current_level());
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumUserAdjustments());
 
-  EXPECT_FALSE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
 }
@@ -458,7 +474,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDocked) {
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 
   // User requests to increase the brightness shouldn't turn the backlight on.
-  EXPECT_FALSE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(0, backlight_.current_level());
 }
 
@@ -491,7 +507,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
 
   // After switching to user control of the brightness, the keyboard
   // backlight shouldn't be turned off automatically.
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   display_backlight_controller_.NotifyObservers(
       0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
@@ -562,7 +578,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
 
   // Increase the brightness to 100, dim for inactivity, and check that hover
   // restores the user-requested level.
-  ASSERT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   controller_.SetDimmedForInactivity(true);
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
@@ -604,9 +620,9 @@ TEST_F(KeyboardBacklightControllerTest, NoAmbientLightSensor) {
             backlight_.current_interval().InMilliseconds());
 
   // Subsequent adjustments should move between the user steps.
-  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
   EXPECT_EQ(50, backlight_.current_level());
 }
 
@@ -709,7 +725,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeBacklightDevice) {
   user_steps_pref_ = "0.0\n50.0\n100.0";
   backlight_.set_device_exists(false);
   Init();
-  EXPECT_FALSE(controller_.IncreaseUserBrightness());
+  CallIncreaseKeyboardBrightness();
   controller_.SetOffForInactivity(true);
 
   // Connect a device and check that the earlier off state is applied to it.
@@ -717,14 +733,14 @@ TEST_F(KeyboardBacklightControllerTest, ChangeBacklightDevice) {
   backlight_.NotifyDeviceChanged();
   EXPECT_EQ(0, backlight_.current_level());
   controller_.SetOffForInactivity(false);
-  controller_.IncreaseUserBrightness();
-  controller_.IncreaseUserBrightness();
+  CallIncreaseKeyboardBrightness();
+  CallIncreaseKeyboardBrightness();
   EXPECT_EQ(max_backlight_level_, backlight_.current_level());
 
   // Disconnect the device and check that decrease requests are ignored.
   backlight_.set_device_exists(false);
   backlight_.NotifyDeviceChanged();
-  EXPECT_FALSE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  CallDecreaseKeyboardBrightness();
 
   // The previous 100% brightness should be reapplied to a new device with a
   // different range.

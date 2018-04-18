@@ -21,6 +21,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
@@ -137,18 +138,21 @@ const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
 InternalBacklightController::InternalBacklightController()
     : clock_(new Clock),
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
-      level_to_percent_exponent_(kDefaultLevelToPercentExponent) {}
+      level_to_percent_exponent_(kDefaultLevelToPercentExponent),
+      weak_ptr_factory_(this) {}
 
-InternalBacklightController::~InternalBacklightController() {}
+InternalBacklightController::~InternalBacklightController() = default;
 
 void InternalBacklightController::Init(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
     system::AmbientLightSensorInterface* sensor,
-    system::DisplayPowerSetterInterface* display_power_setter) {
+    system::DisplayPowerSetterInterface* display_power_setter,
+    system::DBusWrapperInterface* dbus_wrapper) {
   backlight_ = backlight;
   prefs_ = prefs;
   display_power_setter_ = display_power_setter;
+  dbus_wrapper_ = dbus_wrapper;
 
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
@@ -211,6 +215,23 @@ void InternalBacklightController::Init(
 
   dimmed_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kDimmedBrightnessFraction * max_level_)));
+
+  RegisterIncreaseBrightnessHandler(
+      dbus_wrapper_, kIncreaseScreenBrightnessMethod,
+      base::Bind(&InternalBacklightController::HandleIncreaseBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  RegisterDecreaseBrightnessHandler(
+      dbus_wrapper_, kDecreaseScreenBrightnessMethod,
+      base::Bind(&InternalBacklightController::HandleDecreaseBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  RegisterSetBrightnessHandler(
+      dbus_wrapper_, kSetScreenBrightnessPercentMethod,
+      base::Bind(&InternalBacklightController::HandleSetBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  RegisterGetBrightnessHandler(
+      dbus_wrapper_, kGetScreenBrightnessPercentMethod,
+      base::Bind(&InternalBacklightController::HandleGetBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
 
   init_time_ = clock_->GetCurrentTime();
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
@@ -283,10 +304,10 @@ void InternalBacklightController::HandlePowerButtonPress() {
 }
 
 void InternalBacklightController::HandleUserActivity(UserActivityType type) {
-  // Don't increase the brightness automatically when the user hits a
-  // brightness key: if they hit brightness-up, IncreaseUserBrightness()
-  // will be called soon anyway; if they hit brightness-down, the screen
-  // shouldn't get turned back on. Also ignore volume keys.
+  // Don't increase the brightness automatically when the user hits a brightness
+  // key: if they hit brightness-up, HandleIncreaseBrightnessRequest() will be
+  // called soon anyway; if they hit brightness-down, the screen shouldn't get
+  // turned back on. Also ignore volume keys.
   if (type != USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS &&
       type != USER_ACTIVITY_BRIGHTNESS_DOWN_KEY_PRESS &&
       type != USER_ACTIVITY_VOLUME_UP_KEY_PRESS &&
@@ -410,48 +431,6 @@ bool InternalBacklightController::GetBrightnessPercent(double* percent) {
   return true;
 }
 
-bool InternalBacklightController::SetUserBrightnessPercent(
-    double percent, Transition transition) {
-  LOG(INFO) << "Got user-triggered request to set brightness to " << percent
-            << "%";
-  user_adjustment_count_++;
-  using_policy_brightness_ = false;
-
-  // When the user explicitly requests a specific brightness level, use it for
-  // both AC and battery power.
-  return SetExplicitBrightnessPercent(
-      percent, percent, transition,
-      BacklightBrightnessChange_Cause_USER_REQUEST);
-}
-
-bool InternalBacklightController::IncreaseUserBrightness() {
-  double old_percent = GetUndimmedBrightnessPercent();
-  double new_percent =
-      (old_percent < kMinVisiblePercent - kEpsilon)
-          ? kMinVisiblePercent
-          : ClampPercentToVisibleRange(SnapBrightnessPercentToNearestStep(
-                old_percent + step_percent_));
-  return SetUserBrightnessPercent(new_percent, Transition::FAST);
-}
-
-bool InternalBacklightController::DecreaseUserBrightness(bool allow_off) {
-  // Lower the backlight to the next step, turning it off if it was already at
-  // the minimum visible level.
-  double old_percent = GetUndimmedBrightnessPercent();
-  double new_percent =
-      old_percent <= kMinVisiblePercent + kEpsilon
-          ? 0.0
-          : ClampPercentToVisibleRange(SnapBrightnessPercentToNearestStep(
-                old_percent - step_percent_));
-
-  if (!allow_off && new_percent <= kEpsilon) {
-    user_adjustment_count_++;
-    return false;
-  }
-
-  return SetUserBrightnessPercent(new_percent, Transition::FAST);
-}
-
 int InternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
   return als_adjustment_count_;
 }
@@ -536,6 +515,73 @@ double InternalBacklightController::GetUndimmedBrightnessPercent() const {
 
   const double percent = GetExplicitBrightnessPercent();
   return percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(percent);
+}
+
+void InternalBacklightController::HandleIncreaseBrightnessRequest() {
+  double old_percent = GetUndimmedBrightnessPercent();
+  double new_percent =
+      (old_percent < kMinVisiblePercent - kEpsilon)
+          ? kMinVisiblePercent
+          : ClampPercentToVisibleRange(SnapBrightnessPercentToNearestStep(
+                old_percent + step_percent_));
+
+  // If we don't actually change the brightness, emit a signal so the UI can
+  // show the user that nothing changed.
+  const double current_percent = LevelToPercent(current_level_);
+  HandleSetBrightnessRequest(new_percent, Transition::FAST);
+  if (LevelToPercent(current_level_) == current_percent) {
+    EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
+                                current_percent,
+                                BacklightBrightnessChange_Cause_USER_REQUEST);
+  }
+}
+
+void InternalBacklightController::HandleDecreaseBrightnessRequest(
+    bool allow_off) {
+  // Lower the backlight to the next step, turning it off if it was already at
+  // the minimum visible level.
+  double old_percent = GetUndimmedBrightnessPercent();
+  double new_percent =
+      old_percent <= kMinVisiblePercent + kEpsilon
+          ? 0.0
+          : ClampPercentToVisibleRange(SnapBrightnessPercentToNearestStep(
+                old_percent - step_percent_));
+
+  if (!allow_off && new_percent <= kEpsilon) {
+    user_adjustment_count_++;
+    return;
+  }
+
+  // If we don't actually change the brightness, emit a signal so the UI can
+  // show the user that nothing changed.
+  const double current_percent = LevelToPercent(current_level_);
+  HandleSetBrightnessRequest(new_percent, Transition::FAST);
+  if (LevelToPercent(current_level_) == current_percent) {
+    EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
+                                current_percent,
+                                BacklightBrightnessChange_Cause_USER_REQUEST);
+  }
+}
+
+void InternalBacklightController::HandleSetBrightnessRequest(
+    double percent, Transition transition) {
+  LOG(INFO) << "Got user-triggered request to set brightness to " << percent
+            << "%";
+  user_adjustment_count_++;
+  using_policy_brightness_ = false;
+
+  // When the user explicitly requests a specific brightness level, use it for
+  // both AC and battery power.
+  SetExplicitBrightnessPercent(percent, percent, transition,
+                               BacklightBrightnessChange_Cause_USER_REQUEST);
+}
+
+void InternalBacklightController::HandleGetBrightnessRequest(
+    double* percent_out, bool* success_out) {
+  DCHECK(percent_out);
+  DCHECK(success_out);
+  *percent_out = LevelToPercent(current_level_);
+  *success_out = true;
 }
 
 void InternalBacklightController::EnsureUserBrightnessIsNonzero(
@@ -693,6 +739,9 @@ bool InternalBacklightController::ApplyBrightnessPercent(
   }
 
   current_level_ = level;
+  EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
+                              percent, cause);
+
   for (BacklightControllerObserver& observer : observers_)
     observer.OnBrightnessChange(percent, cause, this);
   return true;

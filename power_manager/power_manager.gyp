@@ -130,6 +130,7 @@
       },
       'sources': [
         'powerd/policy/ambient_light_handler.cc',
+        'powerd/policy/backlight_controller.cc',
         'powerd/policy/external_backlight_controller.cc',
         'powerd/policy/input_device_controller.cc',
         'powerd/policy/input_event_handler.cc',
@@ -377,6 +378,7 @@
           'sources': [
             'common/testrunner.cc',
             'powerd/policy/ambient_light_handler_unittest.cc',
+            'powerd/policy/backlight_controller_test_util.cc',
             'powerd/policy/external_backlight_controller_unittest.cc',
             'powerd/policy/input_device_controller_unittest.cc',
             'powerd/policy/input_event_handler_unittest.cc',

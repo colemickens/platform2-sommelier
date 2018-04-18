@@ -157,9 +157,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
       system::DisplayWatcherInterface* display_watcher,
-      system::DisplayPowerSetterInterface* display_power_setter) override {
+      system::DisplayPowerSetterInterface* display_power_setter,
+      system::DBusWrapperInterface* dbus_wrapper) override {
     EXPECT_EQ(display_watcher_, display_watcher);
     EXPECT_EQ(display_power_setter_, display_power_setter);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_external_backlight_controller_);
   }
   std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
@@ -187,11 +189,13 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
-      system::DisplayPowerSetterInterface* power_setter) override {
+      system::DisplayPowerSetterInterface* power_setter,
+      system::DBusWrapperInterface* dbus_wrapper) override {
     EXPECT_EQ(internal_backlight_, backlight);
     EXPECT_EQ(prefs_, prefs);
     EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
     EXPECT_EQ(display_power_setter_, power_setter);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_internal_backlight_controller_);
   }
   std::unique_ptr<policy::BacklightController>
@@ -199,11 +203,13 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
+      system::DBusWrapperInterface* dbus_wrapper,
       policy::BacklightController* display_backlight_controller,
       TabletMode initial_tablet_mode) override {
     EXPECT_EQ(keyboard_backlight_, backlight);
     EXPECT_EQ(prefs_, prefs);
     EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     EXPECT_EQ(internal_backlight_controller_, display_backlight_controller);
     EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);
     return std::move(passed_keyboard_backlight_controller_);
@@ -271,23 +277,6 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   }
 
  protected:
-  // Checks that the D-Bus signal at |index| has name |signal_name| and
-  // describes a brightness change to |brightness_percent| for |cause|.
-  void CheckBrightnessChangedSignal(size_t index,
-                                    const std::string& signal_name,
-                                    double brightness_percent,
-                                    BacklightBrightnessChange_Cause cause) {
-    std::unique_ptr<dbus::Signal> signal;
-    ASSERT_TRUE(
-        dbus_wrapper_->GetSentSignal(index, signal_name, nullptr, &signal));
-
-    BacklightBrightnessChange proto;
-    ASSERT_TRUE(
-        dbus::MessageReader(signal.get()).PopArrayOfBytesAsProto(&proto));
-    EXPECT_DOUBLE_EQ(brightness_percent, proto.percent());
-    EXPECT_EQ(cause, proto.cause());
-  }
-
   // Send the appropriate events to put StateController into docked mode.
   void EnterDockedMode() {
     dbus::MethodCall call(kPowerManagerInterface, kSetIsProjectingMethod);
@@ -517,59 +506,6 @@ TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
   EXPECT_EQ(0, keyboard_backlight_controller_->tablet_mode_changes().size());
 }
 
-TEST_F(DaemonTest, GetBacklightBrightness) {
-  Init();
-  const double kBrightnessPercent = 55.0;
-  internal_backlight_controller_->set_percent(kBrightnessPercent);
-
-  dbus::MethodCall method_call(kPowerManagerInterface,
-                               kGetScreenBrightnessPercentMethod);
-  auto response = dbus_wrapper_->CallExportedMethodSync(&method_call);
-  ASSERT_TRUE(response.get());
-  dbus::MessageReader reader(response.get());
-  double percent = 0;
-  ASSERT_TRUE(reader.PopDouble(&percent));
-  EXPECT_DOUBLE_EQ(kBrightnessPercent, percent);
-}
-
-TEST_F(DaemonTest, ChangeBacklightBrightness) {
-  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
-  Init();
-
-  double kSetBrightnessPercent = 62.0;
-  dbus::MethodCall set_call(kPowerManagerInterface,
-                            kSetScreenBrightnessPercentMethod);
-  dbus::MessageWriter set_writer(&set_call);
-  set_writer.AppendDouble(kSetBrightnessPercent);
-  set_writer.AppendInt32(kBrightnessTransitionGradual);
-  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&set_call).get());
-  EXPECT_DOUBLE_EQ(kSetBrightnessPercent,
-                   internal_backlight_controller_->user_brightness_percent());
-
-  dbus::MethodCall increase_call(kPowerManagerInterface,
-                                 kIncreaseScreenBrightnessMethod);
-  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_call).get());
-  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_call).get());
-  EXPECT_EQ(2, internal_backlight_controller_->num_user_brightness_increases());
-
-  dbus::MethodCall decrease_call(kPowerManagerInterface,
-                                 kDecreaseScreenBrightnessMethod);
-  dbus::MessageWriter(&decrease_call).AppendBool(true);
-  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&decrease_call).get());
-  EXPECT_EQ(1, internal_backlight_controller_->num_user_brightness_decreases());
-
-  dbus::MethodCall increase_key_call(kPowerManagerInterface,
-                                     kIncreaseKeyboardBrightnessMethod);
-  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_key_call).get());
-  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&increase_key_call).get());
-  EXPECT_EQ(2, keyboard_backlight_controller_->num_user_brightness_increases());
-
-  dbus::MethodCall decrease_key_call(kPowerManagerInterface,
-                                     kDecreaseKeyboardBrightnessMethod);
-  ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&decrease_key_call).get());
-  EXPECT_EQ(1, keyboard_backlight_controller_->num_user_brightness_decreases());
-}
-
 TEST_F(DaemonTest, ForceBacklightsOff) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   Init();
@@ -602,37 +538,6 @@ TEST_F(DaemonTest, ForceBacklightsOff) {
   ASSERT_TRUE(response.get());
   ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&forced_off));
   EXPECT_FALSE(forced_off);
-}
-
-TEST_F(DaemonTest, EmitDBusSignalForBrightnessChange) {
-  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
-  Init();
-
-  // A ScreenBrightnessChanged signal should be emitted.
-  dbus_wrapper_->ClearSentSignals();
-  internal_backlight_controller_->NotifyObservers(
-      50.0, BacklightBrightnessChange_Cause_OTHER);
-  EXPECT_EQ(1, dbus_wrapper_->num_sent_signals());
-  CheckBrightnessChangedSignal(0, kScreenBrightnessChangedSignal, 50.0,
-                               BacklightBrightnessChange_Cause_OTHER);
-
-  dbus_wrapper_->ClearSentSignals();
-  internal_backlight_controller_->NotifyObservers(
-      25.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(1, dbus_wrapper_->num_sent_signals());
-  CheckBrightnessChangedSignal(0, kScreenBrightnessChangedSignal, 25.0,
-                               BacklightBrightnessChange_Cause_USER_REQUEST);
-
-  dbus_wrapper_->ClearSentSignals();
-  keyboard_backlight_controller_->NotifyObservers(
-      8.0, BacklightBrightnessChange_Cause_OTHER);
-  keyboard_backlight_controller_->NotifyObservers(
-      4.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
-  CheckBrightnessChangedSignal(0, kKeyboardBrightnessChangedSignal, 8.0,
-                               BacklightBrightnessChange_Cause_OTHER);
-  CheckBrightnessChangedSignal(1, kKeyboardBrightnessChangedSignal, 4.0,
-                               BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
 TEST_F(DaemonTest, RequestShutdown) {
@@ -791,19 +696,22 @@ TEST_F(DaemonTest, FactoryMode) {
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_->state());
   EXPECT_EQ(base::TimeDelta(), display_power_setter_->delay());
 
-  // Display-backlight-related D-Bus calls should return errors.
-  dbus::MethodCall screen_call(kPowerManagerInterface,
-                               kGetScreenBrightnessPercentMethod);
-  EXPECT_EQ(
-      dbus::Message::MESSAGE_ERROR,
-      dbus_wrapper_->CallExportedMethodSync(&screen_call)->GetMessageType());
-
-  // Keyboard-backlight-related calls silently do nothing.
-  dbus::MethodCall keyboard_call(kPowerManagerInterface,
-                                 kIncreaseKeyboardBrightnessMethod);
-  EXPECT_EQ(
-      dbus::Message::MESSAGE_METHOD_RETURN,
-      dbus_wrapper_->CallExportedMethodSync(&keyboard_call)->GetMessageType());
+  // Display- and keyboard-backlight-related D-Bus methods shouldn't be
+  // exported.
+  EXPECT_FALSE(
+      dbus_wrapper_->IsMethodExported(kIncreaseScreenBrightnessMethod));
+  EXPECT_FALSE(
+      dbus_wrapper_->IsMethodExported(kDecreaseScreenBrightnessMethod));
+  EXPECT_FALSE(
+      dbus_wrapper_->IsMethodExported(kSetScreenBrightnessPercentMethod));
+  EXPECT_FALSE(
+      dbus_wrapper_->IsMethodExported(kSetScreenBrightnessPercentMethod));
+  EXPECT_FALSE(
+      dbus_wrapper_->IsMethodExported(kGetScreenBrightnessPercentMethod));
+  EXPECT_FALSE(
+      dbus_wrapper_->IsMethodExported(kIncreaseKeyboardBrightnessMethod));
+  EXPECT_FALSE(
+      dbus_wrapper_->IsMethodExported(kDecreaseKeyboardBrightnessMethod));
 
   // powerd shouldn't shut the system down in response to a low battery charge.
   system::PowerStatus status;

@@ -5,16 +5,24 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_
 
+#include <string>
+
+#include <base/callback.h>
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/backlight_interface.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
 
 class PowerManagementPolicy;
+
+namespace system {
+class DBusWrapperInterface;
+}
 
 namespace policy {
 
@@ -103,27 +111,6 @@ class BacklightController {
   // transitioning to, in the range [0.0, 100.0].
   virtual bool GetBrightnessPercent(double* percent) = 0;
 
-  // Sets the brightness of the backlight in the range [0.0, 100.0] in
-  // response to a user request.  Note that the change may not take effect
-  // immediately (e.g. the screen may be dimmed or turned off).  Returns
-  // true if the brightness was changed.
-  virtual bool SetUserBrightnessPercent(double percent,
-                                        Transition transition) = 0;
-
-  // Increases the brightness level of the backlight by one step in
-  // response to a user request.  Returns true if the brightness was
-  // changed.
-  virtual bool IncreaseUserBrightness() = 0;
-
-  // Decreases the brightness level of the backlight by one step in
-  // response to a user request.  Returns true if the brightness was
-  // changed.
-  //
-  // If |allow_off| is false, the backlight will never be entirely turned off.
-  // This should be used with on-screen controls to prevent their becoming
-  // impossible for the user to see.
-  virtual bool DecreaseUserBrightness(bool allow_off) = 0;
-
   // Returns the number of times that the backlight has been adjusted as a
   // result of ALS readings or user requests during the current session.
   virtual int GetNumAmbientLightSensorAdjustments() const = 0;
@@ -134,6 +121,40 @@ class BacklightController {
   // backlight driver).
   virtual int64_t PercentToLevel(double percent) const = 0;
   virtual double LevelToPercent(int64_t level) const = 0;
+
+  using IncreaseBrightnessCallback = base::Closure;
+  using DecreaseBrightnessCallback = base::Callback<void(bool allow_off)>;
+  using SetBrightnessCallback =
+      base::Callback<void(double percent, Transition)>;
+  using GetBrightnessCallback =
+      base::Callback<void(double* percent_out, bool* success_out)>;
+
+ protected:
+  // Helper methods that implementations can use to register D-Bus method call
+  // handlers.
+  static void RegisterIncreaseBrightnessHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const IncreaseBrightnessCallback& callback);
+  static void RegisterDecreaseBrightnessHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const DecreaseBrightnessCallback& callback);
+  static void RegisterSetBrightnessHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const SetBrightnessCallback& callback);
+  static void RegisterGetBrightnessHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const GetBrightnessCallback& callback);
+
+  // Emits a D-Bus signal announcing a brightness change.
+  static void EmitBrightnessChangedSignal(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& signal_name,
+      double brightness_percent,
+      BacklightBrightnessChange_Cause cause);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BacklightController);

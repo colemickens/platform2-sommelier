@@ -78,15 +78,15 @@ class Converter {
 
     if (keyboard) {
       auto controller = std::make_unique<KeyboardBacklightController>();
-      controller->Init(&backlight_, &prefs_, light_sensor_.get(),
-                       nullptr /* display_backlight_controller */,
-                       TabletMode::UNSUPPORTED);
+      controller->Init(
+          &backlight_, &prefs_, light_sensor_.get(), &dbus_wrapper_,
+          nullptr /* display_backlight_controller */, TabletMode::UNSUPPORTED);
       controller->HandleHoverStateChange(true /* hovering */);
       controller_ = std::move(controller);
     } else {
       auto controller = std::make_unique<InternalBacklightController>();
       controller->Init(&backlight_, &prefs_, light_sensor_.get(),
-                       &display_power_setter_);
+                       &display_power_setter_, &dbus_wrapper_);
       controller_ = std::move(controller);
     }
 
@@ -96,10 +96,9 @@ class Converter {
     PowerSource power_source = PowerSource::BATTERY;
     if (!force_battery) {
       UdevStub udev;
-      DBusWrapperStub dbus_wrapper;
       PowerSupply power_supply;
       power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
-                        &prefs_, &udev, &dbus_wrapper);
+                        &prefs_, &udev, &dbus_wrapper_);
       if (!power_supply.RefreshImmediately()) {
         LOG(ERROR) << "Failed to read power supply information; using battery";
       } else {
@@ -141,6 +140,7 @@ class Converter {
   Prefs prefs_;
   std::unique_ptr<AmbientLightSensorStub> light_sensor_;
   DisplayPowerSetterStub display_power_setter_;
+  DBusWrapperStub dbus_wrapper_;
   std::unique_ptr<BacklightController> controller_;
 
   DISALLOW_COPY_AND_ASSIGN(Converter);

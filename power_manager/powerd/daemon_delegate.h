@@ -69,7 +69,8 @@ class DaemonDelegate {
   virtual std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
       system::DisplayWatcherInterface* display_watcher,
-      system::DisplayPowerSetterInterface* display_power_setter) = 0;
+      system::DisplayPowerSetterInterface* display_power_setter,
+      system::DBusWrapperInterface* dbus_wrapper) = 0;
 
   // Returns null if the backlight couldn't be initialized.
   virtual std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
@@ -88,13 +89,15 @@ class DaemonDelegate {
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
-      system::DisplayPowerSetterInterface* power_setter) = 0;
+      system::DisplayPowerSetterInterface* power_setter,
+      system::DBusWrapperInterface* dbus_wrapper) = 0;
 
   virtual std::unique_ptr<policy::BacklightController>
   CreateKeyboardBacklightController(
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
+      system::DBusWrapperInterface* dbus_wrapper,
       policy::BacklightController* display_backlight_controller,
       TabletMode initial_tablet_mode) = 0;
 

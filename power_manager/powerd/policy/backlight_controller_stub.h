@@ -56,13 +56,6 @@ class BacklightControllerStub : public policy::BacklightController {
   bool shutting_down() const { return shutting_down_; }
   bool docked() const { return docked_; }
   bool forced_off() const { return forced_off_; }
-  double user_brightness_percent() const { return user_brightness_percent_; }
-  int num_user_brightness_increases() const {
-    return num_user_brightness_increases_;
-  }
-  int num_user_brightness_decreases() const {
-    return num_user_brightness_decreases_;
-  }
 
   void set_percent(double percent) { percent_ = percent; }
   void set_num_als_adjustments(int num) { num_als_adjustments_ = num; }
@@ -95,9 +88,6 @@ class BacklightControllerStub : public policy::BacklightController {
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
-  bool SetUserBrightnessPercent(double percent, Transition transition) override;
-  bool IncreaseUserBrightness() override;
-  bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override {
     return num_als_adjustments_;
   }
