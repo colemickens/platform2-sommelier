@@ -12,8 +12,9 @@
 #include <base/strings/utf_string_conversions.h>
 #include <base/sys_info.h>
 #include <components/policy/core/common/policy_load_status.h>
-#include <components/policy/core/common/preg_parser.h>
 #include <components/policy/core/common/registry_dict.h>
+
+#include "authpolicy/policy/preg_parser.h"
 
 namespace policy {
 namespace {

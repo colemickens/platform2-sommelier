@@ -99,6 +99,7 @@
         'policy/device_policy_encoder.cc',
         'policy/extension_policy_encoder.cc',
         'policy/policy_encoder_helper.cc',
+        'policy/preg_parser.cc',
         'policy/preg_policy_encoder.cc',
         'policy/user_policy_encoder.cc',
         'process_executor.cc',
@@ -198,6 +199,7 @@
             'authpolicy_unittest.cc',
             'policy/device_policy_encoder_unittest.cc',
             'policy/extension_policy_encoder_unittest.cc',
+            'policy/preg_parser_unittest.cc',
             'policy/preg_policy_encoder_unittest.cc',
             'policy/preg_policy_writer.cc',
             'policy/user_policy_encoder_unittest.cc',
@@ -291,6 +293,29 @@
             ],
           },
           'sources': ['stub_smbclient_main.cc'],
+        },
+      ],
+    }],
+    # Fuzzer target
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'preg_parser_fuzzer',
+          'type': 'executable',
+          'dependencies': [
+            'libauthpolicy',
+          ],
+          'variables': {
+            'deps': [
+              'libbrillo-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'includes': ['../common-mk/common_fuzzer.gypi'],
+          'sources': [
+            'policy/preg_parser_fuzzer.cc',
+          ],
         },
       ],
     }],

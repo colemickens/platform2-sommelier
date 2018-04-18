@@ -10,9 +10,9 @@
 #include <base/strings/string16.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <components/policy/core/common/preg_parser.h>
 
 #include "authpolicy/policy/policy_encoder_helper.h"
+#include "authpolicy/policy/preg_parser.h"
 
 namespace {
 
