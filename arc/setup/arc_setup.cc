@@ -1552,6 +1552,12 @@ void ArcSetup::MaybeStartAdbdProxy(bool is_dev_mode,
   const base::FilePath adbd_config_path("/etc/arc/adbd.json");
   if (!base::PathExists(adbd_config_path))
     return;
+  // Poll the firmware to determine whether UDC is enabled or not. We're only
+  // stopping the process if it's explicitly disabled because some systems (like
+  // ARM) do not have this signal wired in and just rely on the presence of
+  // adbd.json.
+  if (LaunchAndWait({"/usr/bin/crossystem", "dev_enable_udc?0"}))
+    return;
 
   // Now that we have identified that the system is capable of continuing, touch
   // the path where the FIFO will be located.
