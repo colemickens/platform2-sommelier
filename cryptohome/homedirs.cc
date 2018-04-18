@@ -38,8 +38,15 @@ namespace cryptohome {
 
 const FilePath::CharType *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
+// xattr used to mark Google Drive cache files, should match the
+// constant in Chrome Browser in
+// src/components/drive/chromeos/file_cache.cc
 const char kGCacheFilesAttribute[] = "user.GCacheFiles";
+// xattr used for ARC++ M. No longer used since end of 2017, should be removed.
 const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
+// Each xattr is set to Android app internal data directory, contains
+// 8-byte inode number of cache subdirectory.  Used in ARC++ N, see
+// frameworks/base/core/java/android/app/ContextImpl.java
 const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
 const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
@@ -985,9 +992,6 @@ void HomeDirs::DeleteAndroidCacheCallback(const FilePath& user_dir) {
   // desirable to make all package name directories unencrypted, they
   // are not marked as tracked directory.
   // TODO(crbug/625872): Mark root/android/data/data/ as pass through.
-  // TODO(uekawa): Not all boards have android running, we probably
-  // don't need to check for board that do not have an android
-  // configuration.
 
   // A set of parent directory/inode combinations.  We need the parent directory
   // as the inodes may have been re-used elsewhere if the cache directory was
