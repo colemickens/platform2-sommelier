@@ -46,7 +46,7 @@ JpegEncodeAcceleratorImpl::JpegEncodeAcceleratorImpl()
     : ipc_thread_("JeaIpcThread"), buffer_id_(0) {
   VLOGF_ENTER();
 
-  mojo_channel_manager_ = CameraMojoChannelManager::GetInstance();
+  mojo_channel_manager_ = CameraMojoChannelManager::CreateInstance();
 }
 
 JpegEncodeAcceleratorImpl::~JpegEncodeAcceleratorImpl() {

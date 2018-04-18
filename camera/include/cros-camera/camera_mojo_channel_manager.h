@@ -7,6 +7,8 @@
 #ifndef INCLUDE_CROS_CAMERA_CAMERA_MOJO_CHANNEL_MANAGER_H_
 #define INCLUDE_CROS_CAMERA_CAMERA_MOJO_CHANNEL_MANAGER_H_
 
+#include <memory>
+
 #include "mojo/algorithm/camera_algorithm.mojom.h"
 #include "mojo/jda/jpeg_decode_accelerator.mojom.h"
 #include "mojo/jea/jpeg_encode_accelerator.mojom.h"
@@ -17,9 +19,7 @@ namespace cros {
 // This class is used to manage them together.
 class CameraMojoChannelManager {
  public:
-  // Gets the singleton instance. Returns nullptr if any error occurrs during
-  // instance creation.
-  static CameraMojoChannelManager* GetInstance();
+  static std::unique_ptr<CameraMojoChannelManager> CreateInstance();
 
   virtual ~CameraMojoChannelManager() {}
 

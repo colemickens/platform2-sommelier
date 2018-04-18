@@ -16,14 +16,15 @@
 
 namespace cros {
 
-class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
-                                     public mojo::edk::ProcessDelegate {
+class MojoShutdownImpl : public mojo::edk::ProcessDelegate {
+  // Handle IPC shutdown completion
+  void OnShutdownComplete() final {}
+};
+
+class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
  public:
   CameraMojoChannelManagerImpl();
-
   ~CameraMojoChannelManagerImpl() final;
-
-  bool Start();
 
   // Creates a new JpegDecodeAccelerator.
   // This API uses CameraHalDispatcher to pass |request| to another process to
@@ -42,10 +43,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
   // create Mojo channel, and then return mojom::CameraAlgorithmOpsPtr.
   mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() final;
 
-  // Handle IPC shutdown completion
-  void OnShutdownComplete() final {}
-
  private:
+  bool Start();
+
   // Ensure camera dispatcher Mojo channel connected.
   // It should be called for any public API that needs |dispatcher_|.
   void EnsureDispatcherConnectedOnIpcThread();
@@ -59,18 +59,21 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager,
   // Error handler for camera dispatcher Mojo channel.
   void OnDispatcherError();
 
-  // Thread for IPC chores.
-  base::Thread ipc_thread_;
+  // This function will use the lock protect member |reference_count_| but it
+  // won't use |static_lock_| first. It is locked in destructor.
+  // It reset |dispatcher_| on |ipc_thread_| thread.
+  void DestroyOnIpcThreadLocked();
 
   // The Mojo channel to CameraHalDispatcher in Chrome. All the Mojo
   // communication to |dispatcher_| happens on |ipc_thread_|.
   mojom::CameraHalDispatcherPtr dispatcher_;
 
-  // A flag to indicate if someone called Start() before.
-  bool is_started_;
-
-  // A mutex to guard Start() operation.
-  base::Lock start_lock_;
+  // Thread for IPC chores.
+  static base::Thread* ipc_thread_;
+  // A mutex to guard static variable.
+  static base::Lock static_lock_;
+  static int reference_count_;
+  static MojoShutdownImpl* mojo_shutdown_impl_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraMojoChannelManagerImpl);
 };

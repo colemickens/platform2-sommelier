@@ -98,7 +98,7 @@ class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
 
   // Camera Mojo channel manager.
   // We use it to create JpegDecodeAccelerator Mojo channel.
-  CameraMojoChannelManager* mojo_channel_manager_;
+  std::unique_ptr<CameraMojoChannelManager> mojo_channel_manager_;
 
   // Pointer to local proxy of remote JpegDecodeAccelerator interface
   // implementation.

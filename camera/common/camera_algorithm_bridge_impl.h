@@ -70,7 +70,7 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
 
   // Camera Mojo channel manager.
   // We use it to get CameraAlgorithmOpsPtr.
-  CameraMojoChannelManager* mojo_channel_manager_;
+  std::unique_ptr<CameraMojoChannelManager> mojo_channel_manager_;
 
   // Pointer to local proxy of remote CameraAlgorithmOps interface
   // implementation.

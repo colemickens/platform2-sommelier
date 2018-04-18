@@ -35,7 +35,7 @@ std::unique_ptr<CameraAlgorithmBridge> CameraAlgorithmBridge::CreateInstance() {
 
 CameraAlgorithmBridgeImpl::CameraAlgorithmBridgeImpl()
     : callback_ops_(nullptr), ipc_thread_("IPC thread") {
-  mojo_channel_manager_ = CameraMojoChannelManager::GetInstance();
+  mojo_channel_manager_ = CameraMojoChannelManager::CreateInstance();
 }
 
 CameraAlgorithmBridgeImpl::~CameraAlgorithmBridgeImpl() {

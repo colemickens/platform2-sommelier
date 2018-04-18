@@ -6,6 +6,7 @@
 
 #include "common/camera_mojo_channel_manager_impl.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
@@ -13,56 +14,93 @@
 
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
-#include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
 
 namespace cros {
 
-CameraMojoChannelManager* CameraMojoChannelManager::GetInstance() {
-  static CameraMojoChannelManagerImpl* instance =
-      new CameraMojoChannelManagerImpl();
+// static
+base::Thread* CameraMojoChannelManagerImpl::ipc_thread_ = nullptr;
+base::Lock CameraMojoChannelManagerImpl::static_lock_;
+int CameraMojoChannelManagerImpl::reference_count_ = 0;
+MojoShutdownImpl* CameraMojoChannelManagerImpl::mojo_shutdown_impl_ = nullptr;
 
-  if (!instance->Start())
-    return nullptr;
-
-  return instance;
+// static
+std::unique_ptr<CameraMojoChannelManager>
+CameraMojoChannelManager::CreateInstance() {
+  return base::WrapUnique<CameraMojoChannelManager>(
+      new CameraMojoChannelManagerImpl());
 }
 
-CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
-    : ipc_thread_("IpcThread"), is_started_(false) {
+CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl() {
   VLOGF_ENTER();
+  bool success = Start();
+  DCHECK(success);
 }
 
 CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
+  base::AutoLock l(static_lock_);
   VLOGF_ENTER();
+
+  reference_count_--;
+
+  ipc_thread_->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraMojoChannelManagerImpl::DestroyOnIpcThreadLocked,
+                 base::Unretained(this)));
+
+  if (reference_count_ == 0) {
+    ipc_thread_->Stop();
+    delete ipc_thread_;
+    delete mojo_shutdown_impl_;
+    ipc_thread_ = nullptr;
+    mojo_shutdown_impl_ = nullptr;
+  }
+
+  VLOGF_EXIT();
+}
+
+void CameraMojoChannelManagerImpl::DestroyOnIpcThreadLocked() {
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
+
   dispatcher_.reset();
-  ipc_thread_.Stop();
-  mojo::edk::ShutdownIPCSupport();
+
+  // There is not any mojo users.
+  // We enter this function only from destructor. The lock is used in the
+  // destructor.
+  if (reference_count_ == 0) {
+    mojo::edk::ShutdownIPCSupport();
+  }
+
   VLOGF_EXIT();
 }
 
 bool CameraMojoChannelManagerImpl::Start() {
-  base::AutoLock l(start_lock_);
+  base::AutoLock l(static_lock_);
 
-  if (is_started_) {
+  reference_count_++;
+  if (reference_count_ > 1) {
     return true;
   }
 
+  ipc_thread_ = new base::Thread("MojoIpcThread");
   mojo::edk::Init();
-  if (!ipc_thread_.StartWithOptions(
+  if (!ipc_thread_->StartWithOptions(
           base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
     LOGF(ERROR) << "Failed to start IPC Thread";
+    delete ipc_thread_;
+    ipc_thread_ = nullptr;
+    reference_count_--;
     return false;
   }
-  mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
+  mojo_shutdown_impl_ = new MojoShutdownImpl();
+  mojo::edk::InitIPCSupport(mojo_shutdown_impl_, ipc_thread_->task_runner());
 
-  is_started_ = true;
   return true;
 }
 
 void CameraMojoChannelManagerImpl::CreateJpegDecodeAccelerator(
     mojom::JpegDecodeAcceleratorRequest request) {
-  ipc_thread_.task_runner()->PostTask(
+  ipc_thread_->task_runner()->PostTask(
       FROM_HERE,
       base::Bind(
           &CameraMojoChannelManagerImpl::CreateJpegDecodeAcceleratorOnIpcThread,
@@ -71,7 +109,7 @@ void CameraMojoChannelManagerImpl::CreateJpegDecodeAccelerator(
 
 void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
     mojom::JpegEncodeAcceleratorRequest request) {
-  ipc_thread_.task_runner()->PostTask(
+  ipc_thread_->task_runner()->PostTask(
       FROM_HERE,
       base::Bind(
           &CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread,
@@ -104,7 +142,7 @@ CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr() {
 
 void CameraMojoChannelManagerImpl::CreateJpegDecodeAcceleratorOnIpcThread(
     mojom::JpegDecodeAcceleratorRequest request) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
 
   EnsureDispatcherConnectedOnIpcThread();
   if (dispatcher_.is_bound()) {
@@ -114,7 +152,7 @@ void CameraMojoChannelManagerImpl::CreateJpegDecodeAcceleratorOnIpcThread(
 
 void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
     mojom::JpegEncodeAcceleratorRequest request) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
 
   EnsureDispatcherConnectedOnIpcThread();
   if (dispatcher_.is_bound()) {
@@ -123,7 +161,7 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
 }
 
 void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
 
   if (dispatcher_.is_bound()) {
@@ -142,7 +180,7 @@ void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
 
   dispatcher_ = mojo::MakeProxy(
       mojom::CameraHalDispatcherPtrInfo(std::move(child_pipe), 0u),
-      ipc_thread_.task_runner());
+      ipc_thread_->task_runner());
   dispatcher_.set_connection_error_handler(
       base::Bind(&CameraMojoChannelManagerImpl::OnDispatcherError,
                  base::Unretained(this)));
@@ -153,7 +191,7 @@ void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
 }
 
 void CameraMojoChannelManagerImpl::OnDispatcherError() {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
   LOGF(ERROR) << "Mojo channel to CameraHalDispatcher is broken";
   dispatcher_.reset();
