@@ -111,7 +111,7 @@ struct xwl_host_surface {
   uint32_t contents_height;
   int32_t contents_scale;
   struct xwl_mmap *contents_shm_mmap;
-  int is_cursor;
+  int has_role;
   int has_output;
   uint32_t last_event_serial;
   struct xwl_output_buffer *current_buffer;
@@ -1131,7 +1131,7 @@ static void xwl_window_update(struct xwl_window *window) {
 
   host_surface = wl_resource_get_user_data(host_resource);
   assert(host_surface);
-  assert(!host_surface->is_cursor);
+  assert(!host_surface->has_role);
 
   assert(xwl->xdg_shell);
   assert(xwl->xdg_shell->internal);
@@ -1751,9 +1751,26 @@ static void xwl_host_surface_commit(struct wl_client *client,
     }
   }
 
-  // No need to defer cursor or non-xwayland client commits.
-  if (host->is_cursor || !host->xwl->xwayland) {
+  // No need to defer client commits if surface has a role. E.g. is a cursor
+  // or shell surface.
+  if (host->has_role) {
     wl_surface_commit(host->proxy);
+
+    // GTK determines the scale based on the output the surface has entered.
+    // If the surface has not entered any output, then have it enter the
+    // internal output. TODO(reveman): Remove this when surface-output tracking
+    // has been implemented in Chrome.
+    if (!host->has_output) {
+      struct xwl_host_output* output;
+
+      wl_list_for_each(output, &host->xwl->host_outputs, link) {
+        if (output->internal) {
+          wl_surface_send_enter(host->resource, output->resource);
+          host->has_output = 1;
+          break;
+        }
+      }
+    }
   } else {
     // Commit if surface is associated with a window. Otherwise, defer
     // commit until window is created.
@@ -1931,7 +1948,7 @@ static void xwl_compositor_create_host_surface(struct wl_client *client,
   host_surface->contents_height = 0;
   host_surface->contents_scale = 1;
   host_surface->contents_shm_mmap = NULL;
-  host_surface->is_cursor = 0;
+  host_surface->has_role = 0;
   host_surface->has_output = 0;
   host_surface->last_event_serial = 0;
   host_surface->current_buffer = NULL;
@@ -2349,6 +2366,7 @@ xwl_host_shell_get_shell_surface(struct wl_client *client,
   wl_shell_surface_add_listener(host_shell_surface->proxy,
                                 &xwl_shell_surface_listener,
                                 host_shell_surface);
+  host_surface->has_role = 1;
 }
 
 static const struct wl_shell_interface xwl_shell_implementation = {
@@ -2753,25 +2771,9 @@ static void xwl_host_pointer_set_cursor(struct wl_client *client,
 
   if (surface_resource) {
     host_surface = wl_resource_get_user_data(surface_resource);
-    host_surface->is_cursor = 1;
-    if (host_surface->contents_width && host_surface->contents_height) {
-      // GTK determines the cursor size/scale based on the output the surface
-      // has entered. If the surface has not entered any output, then have it
-      // enter the internal output. TODO(reveman): Remove this when
-      // surface-output tracking has been implemented in Chrome.
-      if (!host_surface->has_output) {
-        struct xwl_host_output* output;
-
-        wl_list_for_each(output, &host->seat->xwl->host_outputs, link) {
-          if (output->internal) {
-            wl_surface_send_enter(host_surface->resource, output->resource);
-            host_surface->has_output = 1;
-            break;
-          }
-        }
-      }
+    host_surface->has_role = 1;
+    if (host_surface->contents_width && host_surface->contents_height)
       wl_surface_commit(host_surface->proxy);
-    }
   }
 
   wl_pointer_set_cursor(host->proxy, serial,
@@ -3965,6 +3967,7 @@ xwl_xdg_shell_get_xdg_surface(struct wl_client *client,
   zxdg_surface_v6_set_user_data(host_xdg_surface->proxy, host_xdg_surface);
   zxdg_surface_v6_add_listener(host_xdg_surface->proxy,
                                &xwl_xdg_surface_listener, host_xdg_surface);
+  host_surface->has_role = 1;
 }
 
 static void xwl_xdg_shell_pong(struct wl_client *client,
@@ -4476,6 +4479,7 @@ static void xwl_subcompositor_get_subsurface(
   host_subsurface->proxy = wl_subcompositor_get_subsurface(
       host->proxy, host_surface->proxy, host_parent->proxy);
   wl_subsurface_set_user_data(host_subsurface->proxy, host_subsurface);
+  host_surface->has_role = 1;
 }
 
 static const struct wl_subcompositor_interface
