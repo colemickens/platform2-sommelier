@@ -110,6 +110,13 @@ constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 const std::map<string, string> kLxdEnv = {
     {"LXD_DIR", "/mnt/stateful/lxd"}, {"LXD_CONF", "/mnt/stateful/lxd_conf"}};
 
+// Delimiter for the end of a URL scheme.
+constexpr char kUrlSchemeDelimiter[] = "://";
+
+// Hostnames we replace with the container IP if they are sent over in URLs to
+// be opened by the host.
+const char* const kLocalhostReplaceNames[] = {"localhost", "127.0.0.1"};
+
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -264,6 +271,50 @@ bool GetDiskPathFromName(const std::string& disk_path,
   }
 
   return true;
+}
+
+// Replaces either localhost or 127.0.0.1 in the hostname part of a URL with the
+// IP address of the container itself.
+std::string ReplaceLocalhostInUrl(const std::string& url,
+                                  const std::string& alt_host) {
+  // We don't have any URL parsing libraries at our disposal here without
+  // integrating something new, so just do some basic URL parsing ourselves.
+  // First find where the scheme ends, which'll be after the first :// string.
+  // Then search for the next / char, which will start the path for the URL, the
+  // hostname will be in the string between those two.
+  // Also check for an @ symbol, which may have a user/pass before the hostname
+  // and then check for a : at the end for an optional port.
+  // scheme://[user:pass@]hostname[:port]/path
+  auto front = url.find(kUrlSchemeDelimiter);
+  if (front == std::string::npos) {
+    return url;
+  }
+  front += sizeof(kUrlSchemeDelimiter) - 1;
+  auto back = url.find('/', front);
+  if (back == std::string::npos) {
+    // This isn't invalid, such as http://google.com.
+    back = url.length();
+  }
+  auto at_check = url.find('@', front);
+  if (at_check != std::string::npos && at_check < back) {
+    front = at_check + 1;
+  }
+  auto port_check = url.find(':', front);
+  if (port_check != std::string::npos && port_check < back) {
+    back = port_check;
+  }
+  // We don't care about URL validity, but our logic should ensure that front
+  // is less than back at this point and this checks that.
+  CHECK_LE(front, back);
+  std::string hostname = url.substr(front, back - front);
+  for (const auto host_check : kLocalhostReplaceNames) {
+    if (hostname == host_check) {
+      // Replace the hostname with the alternate hostname which will be the
+      // container's IP address.
+      return url.substr(0, front) + alt_host + url.substr(back);
+    }
+  }
+  return url;
 }
 
 }  // namespace
@@ -465,6 +516,7 @@ void Service::UpdateApplicationList(const std::string& container_token,
 }
 
 void Service::OpenUrl(const std::string& url,
+                      uint32_t container_ip,
                       bool* result,
                       base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -474,7 +526,13 @@ void Service::OpenUrl(const std::string& url,
   dbus::MethodCall method_call(chromeos::kUrlHandlerServiceInterface,
                                chromeos::kUrlHandlerServiceOpenUrlMethod);
   dbus::MessageWriter writer(&method_call);
-  writer.AppendString(url);
+  std::string container_ip_str;
+  if (!IPv4AddressToString(container_ip, &container_ip_str)) {
+    LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
+    event->Signal();
+    return;
+  }
+  writer.AppendString(ReplaceLocalhostInUrl(url, container_ip_str));
   std::unique_ptr<dbus::Response> dbus_response =
       url_handler_service_proxy_->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);

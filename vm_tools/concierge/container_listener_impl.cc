@@ -169,12 +169,18 @@ grpc::Status ContainerListenerImpl::OpenUrl(
     grpc::ServerContext* ctx,
     const vm_tools::container::OpenUrlRequest* request,
     vm_tools::EmptyMessage* response) {
+  std::string peer_address = ctx->peer();
+  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
+  if (ip == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing IPv4 address for ContainerListener");
+  }
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&vm_tools::concierge::Service::OpenUrl, service_,
-                            request->url(), &result, &event));
+                            request->url(), ip, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure opening URL from ContainerListener";

@@ -90,9 +90,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
                              base::WaitableEvent* event);
 
   // Sends a D-Bus message to Chrome to tell it to open the |url| in a new tab.
-  // |result| is set to true on success, false otherwise. Signals |event| when
-  // done.
+  // |container_ip| should be the IP address of the container the request is
+  // coming form. |result| is set to true on success, false otherwise. Signals
+  // |event| when done.
   void OpenUrl(const std::string& url,
+               uint32_t container_ip,
                bool* result,
                base::WaitableEvent* event);
 

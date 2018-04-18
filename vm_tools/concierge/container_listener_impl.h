@@ -20,8 +20,7 @@ namespace concierge {
 
 class Service;
 
-// Listens for a container within a VM to announce when it is ready for
-// sending commands into the container.
+// gRPC server implementation for receiving messages from a container in a VM.
 class ContainerListenerImpl final
     : public vm_tools::container::ContainerListener::Service {
  public:
