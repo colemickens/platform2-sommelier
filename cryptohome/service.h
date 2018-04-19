@@ -307,11 +307,10 @@ class Service : public brillo::dbus::AbstractDbusService,
                          gboolean *OUT_result,
                          GError **error);
 
-  virtual void DoMountEx(
-      AccountIdentifier* identifier,
-      AuthorizationRequest* authorization,
-      MountRequest* request,
-      DBusGMethodInvocation *response);
+  virtual void DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
+                         std::unique_ptr<AuthorizationRequest> authorization,
+                         std::unique_ptr<MountRequest> request,
+                         DBusGMethodInvocation* response);
   virtual void DoRenameCryptohome(AccountIdentifier* id_from,
                                   AccountIdentifier* id_to,
                                   DBusGMethodInvocation* context);
@@ -806,6 +805,16 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Called on Mount thread. This method calls ReportDictionaryAttackResetStatus
   // exactly once (i.e. records one sample) with the status of the operation.
   void ResetDictionaryAttackMitigation();
+
+  // Called on Mount thread. This method completes the MountEx request, given
+  // the built Credentials object. It assumes that the input parameters went
+  // through format sanity checks.
+  void ContinueMountExWithCredentials(
+      std::unique_ptr<AccountIdentifier> identifier,
+      std::unique_ptr<AuthorizationRequest> authorization,
+      std::unique_ptr<MountRequest> request,
+      std::unique_ptr<Credentials> credentials,
+      DBusGMethodInvocation* context);
 
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string, scoped_refptr<cryptohome::Mount>>

@@ -1795,16 +1795,14 @@ gboolean Service::Mount(const gchar *userid,
   return TRUE;
 }
 
-void Service::DoMountEx(AccountIdentifier* identifier,
-                        AuthorizationRequest* authorization,
-                        MountRequest* request,
-                        DBusGMethodInvocation *context) {
+void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
+                        std::unique_ptr<AuthorizationRequest> authorization,
+                        std::unique_ptr<MountRequest> request,
+                        DBusGMethodInvocation* context) {
   if (!identifier || !authorization || !request) {
     SendInvalidArgsReply(context, "Failed to parse parameters.");
     return;
   }
-
-  CleanUpHiddenMounts();
 
   // Setup a reply for use during error handling.
   BaseReply reply;
@@ -1812,11 +1810,6 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   // Needed to pass along |recreated|
   MountReply* mount_reply = reply.MutableExtension(MountReply::reply);
   mount_reply->set_recreated(false);
-
-  // See ::Mount for detailed commentary.
-  bool other_mounts_active = true;
-  if (mounts_.size() == 0)
-    other_mounts_active = CleanUpStaleMounts(false);
 
   // At present, we only enforce non-empty email addresses.
   // In the future, we may wish to canonicalize if we don't move
@@ -1889,13 +1882,39 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     }
   }
 
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
-                              SecureBlob(authorization->key().secret().begin(),
-                                         authorization->key().secret().end()));
+  auto username_passkey = std::make_unique<UsernamePasskey>(
+      GetAccountId(*identifier).c_str(),
+      SecureBlob(authorization->key().secret().begin(),
+                 authorization->key().secret().end()));
   // Everything else can be the default.
-  credentials.set_key_data(authorization->key().data());
+  username_passkey->set_key_data(authorization->key().data());
 
-  if (!request->has_create() && !homedirs_->Exists(credentials)) {
+  ContinueMountExWithCredentials(
+      std::move(identifier), std::move(authorization), std::move(request),
+      std::unique_ptr<Credentials>(std::move(username_passkey)), context);
+}
+
+void Service::ContinueMountExWithCredentials(
+    std::unique_ptr<AccountIdentifier> identifier,
+    std::unique_ptr<AuthorizationRequest> authorization,
+    std::unique_ptr<MountRequest> request,
+    std::unique_ptr<Credentials> credentials,
+    DBusGMethodInvocation* context) {
+  CleanUpHiddenMounts();
+
+  // Setup a reply for use during error handling.
+  BaseReply reply;
+
+  // Needed to pass along |recreated|
+  MountReply* mount_reply = reply.MutableExtension(MountReply::reply);
+  mount_reply->set_recreated(false);
+
+  // See ::Mount for detailed commentary.
+  bool other_mounts_active = true;
+  if (mounts_.size() == 0)
+    other_mounts_active = CleanUpStaleMounts(false);
+
+  if (!request->has_create() && !homedirs_->Exists(*credentials)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
     return;
@@ -1961,20 +1980,20 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   if (user_mount->IsMounted()) {
     LOG(INFO) << "Mount exists. Rechecking credentials.";
     // Attempt a short-circuited credential test.
-    if (user_mount->AreSameUser(credentials) &&
-        user_mount->AreValid(credentials)) {
+    if (user_mount->AreSameUser(*credentials) &&
+        user_mount->AreValid(*credentials)) {
       SendReply(context, reply);
-      homedirs_->ResetLECredentials(credentials);
+      homedirs_->ResetLECredentials(*credentials);
       return;
     }
     // If the Mount has invalid credentials (repopulated from system state)
     // this will ensure a user can still sign-in with the right ones.
     // TODO(wad) Should we unmount on a failed re-mount attempt?
-    if (!user_mount->AreValid(credentials) &&
-        !homedirs_->AreCredentialsValid(credentials)) {
+    if (!user_mount->AreValid(*credentials) &&
+        !homedirs_->AreCredentialsValid(*credentials)) {
       reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
     } else {
-      homedirs_->ResetLECredentials(credentials);
+      homedirs_->ResetLECredentials(*credentials);
     }
     SendReply(context, reply);
     return;
@@ -1999,9 +2018,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   mount_args.force_dircrypto =
       !force_ecryptfs_ && request->force_dircrypto_if_available();
   mount_args.shadow_only = request->hidden_mount();
-  bool status = user_mount->MountCryptohome(credentials,
-                                            mount_args,
-                                            &code);
+  bool status = user_mount->MountCryptohome(*credentials, mount_args, &code);
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
 
   // Mark the timer as done.
@@ -2013,7 +2030,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     mount_reply->set_recreated(true);
   }
   if (status) {
-    homedirs_->ResetLECredentials(credentials);
+    homedirs_->ResetLECredentials(*credentials);
   }
 
   SendReply(context, reply);
@@ -2048,12 +2065,12 @@ gboolean Service::MountEx(const GArray *account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoMountEx, base::Unretained(this),
-                 base::Owned(identifier.release()),
-                 base::Owned(authorization.release()),
-                 base::Owned(request.release()),
-                 base::Unretained(context)));
+                 base::Passed(std::move(identifier)),
+                 base::Passed(std::move(authorization)),
+                 base::Passed(std::move(request)), base::Unretained(context)));
   return TRUE;
 }
 

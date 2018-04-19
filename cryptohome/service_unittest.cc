@@ -865,8 +865,9 @@ TEST_F(ServiceExTest, MountInvalidArgsNoEmail) {
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
-  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
+                     NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
   EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
@@ -874,8 +875,9 @@ TEST_F(ServiceExTest, MountInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
-  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
+                     NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
@@ -884,8 +886,9 @@ TEST_F(ServiceExTest, MountInvalidArgsEmptySecret) {
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
-  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
+                     NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
@@ -895,8 +898,9 @@ TEST_F(ServiceExTest, MountInvalidArgsCreateWithNoKey) {
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   mount_req_->mutable_create();
-  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
+                     NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
   EXPECT_STREQ("CreateRequest supplied with no keys", g_error_->message);
 }
 
@@ -907,8 +911,9 @@ TEST_F(ServiceExTest, MountInvalidArgsCreateWithEmptyKey) {
   auth_->mutable_key()->set_secret("blerg");
   mount_req_->mutable_create()->add_keys();
   // TODO(wad) Add remaining missing field tests and NULL tests
-  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
+                     NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
   EXPECT_STREQ("CreateRequest Keys are not fully specified",
                g_error_->message);
 }
@@ -922,7 +927,8 @@ TEST_F(ServiceExTest, MountPublicWithExistingMounts) {
   id_->set_account_id(kUser);
   mount_req_->set_public_mount(true);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
+  service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
+                     NULL);
   BaseReply reply = GetLastReply();
   EXPECT_TRUE(reply.has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY, reply.error());
@@ -949,7 +955,8 @@ TEST_F(ServiceExTest, MountPublicUsesPublicMountPasskey) {
         }));
     return true;
   }));
-  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
+  service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
+                     NULL);
   BaseReply reply = GetLastReply();
   EXPECT_FALSE(reply.has_error());
 }
