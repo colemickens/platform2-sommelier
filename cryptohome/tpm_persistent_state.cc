@@ -189,7 +189,7 @@ bool TpmPersistentState::LoadTpmStatus() {
     read_tpm_status_ = true;
     return true;
   }
-  SecureBlob file_data;
+  brillo::Blob file_data;
   if (!platform_->ReadFile(kTpmStatusFile, &file_data)) {
     return false;
   }

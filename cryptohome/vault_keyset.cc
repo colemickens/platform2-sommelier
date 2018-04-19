@@ -208,7 +208,7 @@ void VaultKeyset::set_reset_seed(const SecureBlob& reset_seed) {
 
 bool VaultKeyset::Load(const FilePath& filename) {
   CHECK(platform_);
-  SecureBlob contents;
+  brillo::Blob contents;
   if (!platform_->ReadFile(filename, &contents))
     return false;
 
