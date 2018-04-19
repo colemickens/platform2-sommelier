@@ -488,21 +488,29 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         std::string error;
         std::unique_ptr<base::DictionaryValue> dict_value =
             JsonToDictionary(value, &error);
-        bool allow_user_initiated_powerwash;
-        if (!dict_value ||
-            !dict_value->GetBoolean("allow-user-initiated-powerwash",
-                                    &allow_user_initiated_powerwash)) {
+        if (!dict_value) {
           LOG(ERROR) << "Invalid JSON string '"
                      << (!error.empty() ? error : value) << "' for policy '"
-                     << key::kTPMFirmwareUpdateSettings
-                     << "', ignoring. Expected: "
-                     << "'{\"allow-user-initiated-powerwash\"=<true/false>}.";
+                     << key::kTPMFirmwareUpdateSettings << "', ignoring.";
           return;
         }
-        em::TPMFirmwareUpdateSettingsProto* tpm_firmware_update_settings =
+
+        em::TPMFirmwareUpdateSettingsProto* settings =
             policy->mutable_tpm_firmware_update_settings();
-        tpm_firmware_update_settings->set_allow_user_initiated_powerwash(
-            allow_user_initiated_powerwash);
+        for (base::DictionaryValue::Iterator iter(*dict_value); !iter.IsAtEnd();
+             iter.Advance()) {
+          bool flag;
+          if (iter.key() == "allow-user-initiated-powerwash" &&
+              iter.value().GetAsBoolean(&flag)) {
+            settings->set_allow_user_initiated_powerwash(flag);
+          } else if (iter.key() ==
+                         "allow-user-initiated-preserve-device-state" &&
+                     iter.value().GetAsBoolean(&flag)) {
+            settings->set_allow_user_initiated_preserve_device_state(flag);
+          } else {
+            LOG(WARNING) << "Unknown JSON key or invalid value: " << iter.key();
+          }
+        }
       });
 
   EncodeString(
@@ -540,6 +548,12 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
 
   EncodeInteger(key::kDeviceMachinePasswordChangeRate, [policy](int value) {
     policy->mutable_device_machine_password_change_rate()->set_rate_days(value);
+  });
+
+  EncodeInteger(key::kDeviceSamlLoginAuthenticationType, [policy](int value) {
+    policy->mutable_saml_login_authentication_type()
+        ->set_saml_login_authentication_type(
+            static_cast<em::SamlLoginAuthenticationTypeProto::Type>(value));
   });
 }
 

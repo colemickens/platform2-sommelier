@@ -356,10 +356,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
             ToVector(policy.native_device_printers_blacklist().blacklist()));
 
   EncodeString(&policy, key::kTPMFirmwareUpdateSettings,
-               "{\"allow-user-initiated-powerwash\":true}");
+               "{\"allow-user-initiated-powerwash\":true,"
+               " \"allow-user-initiated-preserve-device-state\":true}");
   EXPECT_EQ(
       true,
       policy.tpm_firmware_update_settings().allow_user_initiated_powerwash());
+  EXPECT_EQ(true, policy.tpm_firmware_update_settings()
+                      .allow_user_initiated_preserve_device_state());
 
   EncodeString(&policy, key::kMinimumRequiredChromeVersion, kString);
   EXPECT_EQ(kString, policy.minimum_required_version().chrome_version());
@@ -391,6 +394,14 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeInteger(&policy, key::kDeviceMachinePasswordChangeRate, kInt);
   EXPECT_EQ(kInt, policy.device_machine_password_change_rate().rate_days());
+
+  // The encoder of this policy converts ints to
+  // SamlLoginAuthenticationTypeProto::Type enums.
+  EncodeInteger(&policy, key::kDeviceSamlLoginAuthenticationType,
+                em::SamlLoginAuthenticationTypeProto::TYPE_CLIENT_CERTIFICATE);
+  EXPECT_EQ(
+      em::SamlLoginAuthenticationTypeProto::TYPE_CLIENT_CERTIFICATE,
+      policy.saml_login_authentication_type().saml_login_authentication_type());
 
   //
   // Check whether all device policies have been handled.
