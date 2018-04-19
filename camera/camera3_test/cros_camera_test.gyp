@@ -27,6 +27,11 @@
       ],
       'libraries': [
         '-ldl',
+        # Link gtest libraries statically for simple deployment of the
+        # camera_HAL3 autotest
+        '-Wl,-Bstatic',
+        '-lgtest',
+        '-Wl,-Bdynamic',
         '-ljpeg',
       ],
       'sources': [
