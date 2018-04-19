@@ -24,6 +24,13 @@ bool CanBufferHoldPassword(
   return static_cast<int32_t>(password->size()) + 1 <= buffer_length;
 }
 
+// Sets the first element in the buffer to be a null terminator.
+void SetBufferEmpty(char* buffer) {
+  DCHECK(buffer);
+
+  buffer[0] = '\0';
+}
+
 // Copies |str| to |buffer| and adds a null terminator at the end.
 void CopyStringToBuffer(const std::string& str, char* buffer) {
   DCHECK(buffer);
@@ -49,21 +56,13 @@ bool CanInputCredentials(int32_t workgroup_length,
                          int32_t username_length,
                          int32_t password_length,
                          const SmbCredentials& credentials) {
-  const std::string& workgroup = credentials.workgroup;
-  const std::string& username = credentials.username;
-  const bool empty_password = !credentials.password;
-
-  if (workgroup.empty() && username.empty() && empty_password) {
-    return false;
-  }
-
-  if (!CanBufferHoldString(workgroup, workgroup_length) ||
-      !CanBufferHoldString(username, username_length)) {
+  if (!CanBufferHoldString(credentials.workgroup, workgroup_length) ||
+      !CanBufferHoldString(credentials.username, username_length)) {
     LOG(ERROR) << "Credential buffers are too small for input.";
     return false;
   }
 
-  if (!empty_password &&
+  if (credentials.password &&
       !CanBufferHoldPassword(credentials.password, password_length)) {
     LOG(ERROR) << "Password buffer is too small for input.";
     return false;
@@ -86,7 +85,10 @@ void SetCredentials(const SmbCredentials& credentials,
   CopyStringToBuffer(credentials.workgroup, workgroup_buffer);
   CopyStringToBuffer(credentials.username, username_buffer);
 
-  if (credentials.password) {
+  const bool empty_password = !credentials.password;
+  if (empty_password) {
+    SetBufferEmpty(password_buffer);
+  } else {
     CopyPasswordToBuffer(credentials.password, password_buffer);
   }
 }
@@ -96,24 +98,35 @@ void SetCredentials(const SmbCredentials& credentials,
 CredentialStore::CredentialStore() = default;
 CredentialStore::~CredentialStore() = default;
 
-void CredentialStore::GetAuthentication(const std::string& share_path,
+bool CredentialStore::GetAuthentication(const std::string& share_path,
                                         char* workgroup,
                                         int32_t workgroup_length,
                                         char* username,
                                         int32_t username_length,
                                         char* password,
                                         int32_t password_length) const {
+  DCHECK_GT(workgroup_length, 0);
+  DCHECK_GT(username_length, 0);
+  DCHECK_GT(password_length, 0);
+
   if (!HasCredentials(share_path)) {
-    return;
+    SetBufferEmpty(workgroup);
+    SetBufferEmpty(username);
+    SetBufferEmpty(password);
+    return false;
   }
 
   const SmbCredentials& credentials = GetCredentials(share_path);
   if (!CanInputCredentials(workgroup_length, username_length, password_length,
                            credentials)) {
-    return;
+    SetBufferEmpty(workgroup);
+    SetBufferEmpty(username);
+    SetBufferEmpty(password);
+    return false;
   }
 
   SetCredentials(credentials, workgroup, username, password);
+  return true;
 }
 
 }  // namespace smbprovider

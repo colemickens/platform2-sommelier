@@ -65,8 +65,10 @@ class CredentialStore {
   // Returns the number of credentials the store currently has.
   virtual size_t CredentialsCount() const = 0;
 
-  // Samba authentication function callback.
-  void GetAuthentication(const std::string& share_path,
+  // Samba authentication function callback. DCHECKS that the buffer lengths are
+  // non-zero. Returns false when buffer lengths cannot support credentials
+  // length or when credentials are not found for |share_path|.
+  bool GetAuthentication(const std::string& share_path,
                          char* workgroup,
                          int32_t workgroup_length,
                          char* username,
