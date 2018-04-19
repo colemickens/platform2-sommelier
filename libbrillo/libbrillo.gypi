@@ -18,6 +18,7 @@
       'target_name': 'libbrillo-<(libbase_ver)',
       'type': 'none',
       'dependencies': [
+        'libbrillo-blockdeviceutils-<(libbase_ver)',
         'libbrillo-core-<(libbase_ver)',
         'libbrillo-cryptohome-<(libbase_ver)',
         'libbrillo-http-<(libbase_ver)',
@@ -103,6 +104,14 @@
       ],
     },
     {
+      'target_name': 'libbrillo-blockdeviceutils-<(libbase_ver)',
+      'type': 'shared_library',
+      'dependencies': ['libbrillo-core-<(libbase_ver)'],
+      'sources': [
+        'brillo/blkdev_utils/loop_device.cc',
+      ],
+    },
+    {
       'target_name': 'libbrillo-http-<(libbase_ver)',
       'type': 'shared_library',
       'dependencies': [
@@ -178,6 +187,7 @@
         'libbrillo-http-<(libbase_ver)',
       ],
       'sources': [
+        'brillo/blkdev_utils/loop_device_fake.cc',
         'brillo/http/http_connection_fake.cc',
         'brillo/http/http_transport_fake.cc',
         'brillo/message_loops/fake_message_loop.cc',
@@ -369,6 +379,7 @@
           'sources': [
             'brillo/asynchronous_signal_handler_test.cc',
             'brillo/backoff_entry_test.cc',
+            'brillo/blkdev_utils/loop_device_test.cc',
             'brillo/data_encoding_test.cc',
             'brillo/enum_flags_test.cc',
             'brillo/errors/error_codes_test.cc',
