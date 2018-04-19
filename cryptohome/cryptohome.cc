@@ -1355,7 +1355,7 @@ int main(int argc, char **argv) {
     FilePath vault_path = FilePath("/home/.shadow")
         .Append(up.GetObfuscatedUsername(GetSystemSalt(proxy)))
         .Append("master.0");
-    SecureBlob contents;
+    brillo::Blob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
       printf("Couldn't load keyset contents: %s.\n",
              vault_path.value().c_str());
@@ -1433,7 +1433,7 @@ int main(int argc, char **argv) {
         // Scan for "master." files.
         if (file_name.value() != cryptohome::kKeyFile)
           continue;
-        SecureBlob contents;
+        brillo::Blob contents;
         if (!platform.ReadFile(next_path, &contents)) {
           LOG(ERROR) << "Couldn't load keyset: " << next_path.value();
           continue;
