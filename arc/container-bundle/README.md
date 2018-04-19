@@ -158,10 +158,14 @@ ignore all other flags).
   through ConfigFS/FunctionFS. This file is only present in Developer Mode. Once
   the `/dev/usb-ffs/adb/ep0` file is written to, the bulk-in and bulk-out
   endpoints will be bind-mounted into this same directory.
-* `/data` and `/data/cache`: These two directories are bind-mounted from the
-  Chrome OS user's cryptohome (from
-  `/home/root/${HASH}/android-data/{data,cache}`), which is only available after
-  a user has logged in.
+* `/data` and `/data/cache`: `config.json` bind-mounts one of host's read-only
+  directories to `/data`. This read-only and near-empty `/data` is only for "mini"
+  container for login screen, and is used until the user signs into Chrome OS.
+  Once the user signs in, `arc_setup.cc`'s `OnBootContinue()` function unmounts
+  the read-only `/data`, and then bind-mounts
+  `/home/root/${HASH}/android-data/{data,cache}` to `/data` and `/data/cache`,
+  respectively. These source directories are writable and in Chrome OS user's
+  cryptohome.
 * `/var/run/arc`: A `tmpfs` that holds several mount points from other
   containers for Chrome <=> Android file system communication, such as `dlfs`, OBB,
   and external storage.
