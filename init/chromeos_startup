@@ -259,8 +259,7 @@ sanity_check_clock
 DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
 
 # This file is created after the TPM is initialized and the device is owned.
-INSTALL_ATTRIBUTES_FILE=\
-"/mnt/stateful_partition/home/.shadow/install_attributes.pb"
+INSTALL_ATTRIBUTES_FILE="/home/.shadow/install_attributes.pb"
 
 # Checks if developer mode is blocked.
 dev_check_block_dev_mode "${DEV_MODE_FILE}"
