@@ -191,6 +191,12 @@ class ArcSetup {
   // symbolic links are involved.
   void SetUpGraphicsSysfsContext();
 
+  // Initializes SELinux contexts of SysFS entries necessary to enumerate
+  // power supplies (batteries, line power, etc.) As with graphics symbolic
+  // links are involved.
+  // TODO(ejcaruso, b/78300746): remove this when we can use genfs_contexts
+  void SetUpPowerSysfsContext();
+
   // TODO(b/68814859): Remove this function once WiFi works again.  Creates
   // /data/misc/ethernet/ipconfig.txt so that the container can set up
   // networking by itself.

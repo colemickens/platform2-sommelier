@@ -1130,6 +1130,28 @@ void ArcSetup::SetUpGraphicsSysfsContext() {
   }
 }
 
+void ArcSetup::SetUpPowerSysfsContext() {
+  const base::FilePath sysfs_power_supply_path("/sys/class/power_supply");
+  const std::string sysfs_batteryinfo_context(
+      "u:object_r:sysfs_batteryinfo:s0");
+
+  base::FileEnumerator power_supply_dir(
+      sysfs_power_supply_path, false /* recursive */,
+      base::FileEnumerator::FileType::DIRECTORIES);
+
+  for (auto power_supply = power_supply_dir.Next(); !power_supply.empty();
+       power_supply = power_supply_dir.Next()) {
+    base::FileEnumerator power_supply_attrs(
+        power_supply, false /* recursive */,
+        base::FileEnumerator::FileType::FILES);
+
+    for (auto attr = power_supply_attrs.Next(); !attr.empty();
+         attr = power_supply_attrs.Next()) {
+      EXIT_IF(!Chcon(sysfs_batteryinfo_context, Realpath(attr)));
+    }
+  }
+}
+
 void ArcSetup::SetUpNetwork() {
   constexpr char kSelinuxContext[] = "u:object_r:system_data_file:s0";
   constexpr gid_t kMiscGid = 9998 + kShiftGid;
@@ -1754,6 +1776,8 @@ void ArcSetup::OnSetup() {
   CleanUpStaleMountPoints();
   RestoreContext();
   SetUpGraphicsSysfsContext();
+  if (sdk_version() == AndroidSdkVersion::ANDROID_P)
+    SetUpPowerSysfsContext();
   MakeMountPointsReadOnly();
   SetUpCameraProperty();
   SetUpSharedApkDirectory();
