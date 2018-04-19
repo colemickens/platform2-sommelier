@@ -266,11 +266,14 @@ The schema definition is below:
 ### identity
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
-| customization-id | string |  | False | x86 | [x86] Customization ID set in the VPD during manufacturing. |
+| customization-id | string |  | False | x86 | 'customization-id' value set in the VPD for Zergs and older Whitelabels. |
 | platform-name | string |  | False | x86 | [x86] Indicates the platform name for this platform. This is reported by 'mosys platform name'. It is typically the family name with the first letter capitalized. |
 | sku-id | integer |  | False | x86 | [x86] SKU/Board strapping pins configured during board manufacturing. |
 | smbios-name-match | string |  | False | x86 | [x86] Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
+| whitelabel-tag | string |  | False | x86 | 'whitelabel-tag' value set in the VPD for Whitelabels. |
+| customization-id | string |  | False | ARM | 'customization-id' value set in the VPD for Zergs and older Whitelabels. |
 | device-tree-compatible-match | string |  | False | ARM | [ARM] String pattern (partial) that is matched against the contents of /proc/device-tree/compatible on ARM devices. |
+| whitelabel-tag | string |  | False | ARM | 'whitelabel-tag' value set in the VPD for Whitelabels. |
 
 ### power
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |

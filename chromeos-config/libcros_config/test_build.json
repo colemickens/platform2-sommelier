@@ -293,6 +293,21 @@
         "wallpaper": "default"
       },
       {
+        "firmware": {
+          "no-firmware": true
+        },
+        "firmware-signing": {
+          "key-id": "SOME_CUSTOMIZATION",
+          "signature-id": "some_customization"
+        },
+        "identity": {
+          "customization-id": "SomeCustomization",
+          "platform-name": "SomeCustomization",
+          "smbios-name-match": "SomeCustomization"
+        },
+        "name": "some_customization"
+      },
+      {
         "arc": {
           "build-properties": {
             "first-api-level": "27"
@@ -322,10 +337,10 @@
           "signature-id": "whitelabel-whitelabel1"
         },
         "identity": {
-          "customization-id": "whitelabel1",
           "platform-name": "Some",
           "sku-id": 8,
-          "smbios-name-match": "Some"
+          "smbios-name-match": "Some",
+          "whitelabel-tag": "whitelabel1"
         },
         "name": "whitelabel",
         "oem-id": "1",
@@ -396,10 +411,10 @@
           "signature-id": "whitelabel-whitelabel1"
         },
         "identity": {
-          "customization-id": "whitelabel1",
           "platform-name": "Some",
           "sku-id": 9,
-          "smbios-name-match": "Some"
+          "smbios-name-match": "Some",
+          "whitelabel-tag": "whitelabel1"
         },
         "name": "whitelabel",
         "oem-id": "1",
@@ -469,10 +484,10 @@
           "signature-id": "whitelabel-whitelabel2"
         },
         "identity": {
-          "customization-id": "whitelabel2",
           "platform-name": "Some",
           "sku-id": 8,
-          "smbios-name-match": "Some"
+          "smbios-name-match": "Some",
+          "whitelabel-tag": "whitelabel2"
         },
         "name": "whitelabel",
         "oem-id": "1",
@@ -543,10 +558,10 @@
           "signature-id": "whitelabel-whitelabel2"
         },
         "identity": {
-          "customization-id": "whitelabel2",
           "platform-name": "Some",
           "sku-id": 9,
-          "smbios-name-match": "Some"
+          "smbios-name-match": "Some",
+          "whitelabel-tag": "whitelabel2"
         },
         "name": "whitelabel",
         "oem-id": "1",

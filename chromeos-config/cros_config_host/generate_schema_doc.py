@@ -61,9 +61,8 @@ def PopulateTypeDef(name, type_def, ref_types, output):
     group_attrs = collections.OrderedDict(
         sorted(group.get('properties', {}).items()))
     group_name = 'GROUP(%s)' % group_index
-    if len(group_attrs) > 0:
-      match = re.match(r"\[(.*)\] .*",
-                       group_attrs.values()[0].get('description', ''))
+    for group_attr in group_attrs.values():
+      match = re.match(r"\[(.*)\] .*", group_attr.get('description', ''))
       if match:
         group_name = match.group(1)
     attrs_by_group[group_name] = group_attrs

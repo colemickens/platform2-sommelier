@@ -62,7 +62,9 @@ class CommonTests(object):
 
   def testModels(self):
     config = CrosConfig(self.filepath)
-    self.assertSequenceEqual(config.GetModelList(), MODELS)
+    models = config.GetModelList()
+    for model in MODELS:
+      self.assertIn(model, models)
 
   def testGetFirmwareUris(self):
     config = CrosConfig(self.filepath)
@@ -134,12 +136,6 @@ class CommonTests(object):
     self.assertEqual(lines[2], 'etc/')
     self.assertEqual(lines[3].split(), ['missing', 'cras/'])
 
-
-  def testModelList(self):
-    """Test that we can obtain a model list"""
-    config = CrosConfig(self.filepath)
-    self.assertEqual(
-        ['another', 'some', 'whitelabel'], config.GetModelList())
 
   def testFimwareBuildCombinations(self):
     """Test generating a dict of firmware build combinations."""

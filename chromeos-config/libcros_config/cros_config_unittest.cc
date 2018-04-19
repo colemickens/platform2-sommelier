@@ -166,6 +166,14 @@ TEST_F(CrosConfigTest, CheckMultilineString) {
   std::cout << "GOT VALUE = " << val;
   ASSERT_EQ("CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n", val);
 }
+
+TEST_F(CrosConfigTest, CheckCustomizationId) {
+  // Assert a model can be looked up based on the customization-id value.
+  InitConfig("SomeCustomization", -1, "SomeCustomization");
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/", "name", &val));
+  ASSERT_EQ("some_customization", val);
+}
 #endif /* !USE_JSON */
 
 TEST_F(CrosConfigTest, CheckUiPowerPosition) {

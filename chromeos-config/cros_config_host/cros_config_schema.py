@@ -300,6 +300,7 @@ def GenerateCBindings(config):
      .smbios_match_name = "%s",
      .sku_id = %s,
      .customization_id = "%s",
+     .whitelabel_tag = "%s",
      .info = {.brand = "%s",
               .model = "%s",
               .customization = "%s",
@@ -309,14 +310,19 @@ def GenerateCBindings(config):
   for config in json_config[CHROMEOS][CONFIGS]:
     identity = config['identity']
     name = config['name']
-    customization = identity.get('customization-id', '')
+    whitelabel_tag = identity.get('whitelabel-tag', '')
+    customization_id = identity.get('customization-id', '')
     signature_id = config.get('firmware-signing', {}).get('signature-id', '')
     structs.append(
         struct_format % (identity.get('platform-name', ''),
                          identity.get('smbios-name-match', ''),
-                         identity.get('sku-id', -1), customization,
-                         config.get('brand-code', ''), name, customization or
-                         name, signature_id or name))
+                         identity.get('sku-id', -1),
+                         customization_id,
+                         whitelabel_tag,
+                         config.get('brand-code', ''),
+                         name,
+                         customization_id or whitelabel_tag or name,
+                         signature_id or name))
   file_format = '''\
 #include "lib/cros_config_struct.h"
 

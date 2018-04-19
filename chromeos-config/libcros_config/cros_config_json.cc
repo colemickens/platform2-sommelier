@@ -60,16 +60,28 @@ bool CrosConfigJson::SelectConfigByIDs(
                   !find_name.empty()) {
                 name_match = current_name == find_name;
               }
+              bool whitelabel_tag_match = true;
+              std::string current_whitelabel_tag;
+              if (identity_dict->GetString("whitelabel-tag",
+                                           &current_whitelabel_tag) &&
+                  !current_whitelabel_tag.empty()) {
+                whitelabel_tag_match =
+                    current_whitelabel_tag == find_whitelabel_name;
+              }
+
               bool customization_id_match = true;
               std::string current_customization_id;
               if (identity_dict->GetString("customization-id",
                                            &current_customization_id) &&
                   !current_customization_id.empty()) {
+                // Currently, the find_whitelabel_name can be either the
+                // whitelabel-tag or the customization-id.
                 customization_id_match =
                     current_customization_id == find_whitelabel_name;
               }
 
-              if (sku_match && name_match && customization_id_match) {
+              if (sku_match && name_match && whitelabel_tag_match &&
+                  customization_id_match) {
                 model_dict_ = model_dict;
                 break;
               }

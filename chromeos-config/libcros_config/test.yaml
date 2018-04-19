@@ -91,10 +91,10 @@ some_whitelabel_config: &some_whitelabel_config
     platform-name: "Some"
     smbios-name-match: "Some"
     sku-id: "{{$sku-id}}"
-    customization-id: "{{$customization-id}}"
+    whitelabel-tag: "{{$whitelabel-tag}}"
   firmware-signing:
     key-id: "{{$key-id}}"
-    signature-id: "{{$name}}-{{$customization-id}}"
+    signature-id: "{{$name}}-{{$whitelabel-tag}}"
     sig-id-in-customization-id: True
   $oem-id: "1"
 
@@ -188,16 +188,30 @@ chromeos:
                 - source: "another/dptf.dv"
                   destination: "/etc/dptf/another/dptf.dv"
             wallpaper: "default"
+    - products:
+        - $key-id: "SOME_CUSTOMIZATION"
+      skus:
+        - config:
+            name: "some_customization"
+            identity:
+              platform-name: "SomeCustomization"
+              smbios-name-match: "SomeCustomization"
+              customization-id: "SomeCustomization"
+            firmware:
+              no-firmware: true
+            firmware-signing:
+              key-id: "{{$key-id}}"
+              signature-id: "{{name}}"
     - $name: "whitelabel"
       products:
         - $brand-code: "WLBA"
           $key-id: "WHITELABEL1"
           $wallpaper: "wallpaper-wl1"
-          $customization-id: "whitelabel1"
+          $whitelabel-tag: "whitelabel1"
         - $brand-code: "WLBB"
           $key-id: "WHITELABEL2"
           $wallpaper: "wallpaper-wl2"
-          $customization-id: "whitelabel2"
+          $whitelabel-tag: "whitelabel2"
       skus:
         - $sku-id: 8
           config:
