@@ -1,6 +1,6 @@
 {
   "chromeos": {
-    "models": [
+    "configs": [
       {
         "arc": {
           "build-properties": {

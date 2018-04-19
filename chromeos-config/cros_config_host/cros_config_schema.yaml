@@ -38,7 +38,7 @@ properties:
   chromeos:
     type: object
     properties:
-      models:
+      configs:
         type: array
         items:
           type: object
@@ -51,8 +51,8 @@ properties:
                   properties:
                     product:
                       description: Product name to report in 'ro.product.name'.
-                        This may be the model name, or it can be something else, to allow
-                        several models to be grouped into one product.
+                        This may be the device name, or it can be something else, to allow
+                        several devices to be grouped into one product.
                       type: string
                     device:
                       description: Device name to report in 'ro.product.device'. This
@@ -70,7 +70,7 @@ properties:
                       type: string
                     metrics-tag:
                       description: Tag to use to track metrics for this model.
-                        The tag can be shared across many models if desired, but
+                        The tag can be shared across many devices if desired, but
                         this will result in larger granularity for metrics
                         reporting.  Ideally the metrics system should support
                         collation of metrics with different tags into groups, but if
@@ -313,7 +313,7 @@ properties:
                 flow but others should be pre-flashed in the chip level. In
                 this case, we would like to validate whether oem-id here from
                 the updated SKU ID matches the one in the EEPROM so we can
-                prevent this device from being updated to another OEM's models.
+                prevent this device from being updated to another OEM's devices.
               type: string
               pattern: "[0-9]+"
           additionalProperties: false
@@ -322,4 +322,4 @@ properties:
           - name
     additionalProperties: false
     required:
-    - models
+    - configs

@@ -19,7 +19,7 @@ import yaml
 this_dir = os.path.dirname(__file__)
 
 CHROMEOS = 'chromeos'
-MODELS = 'models'
+CONFIGS = 'configs'
 DEVICES = 'devices'
 PRODUCTS = 'products'
 SKUS = 'skus'
@@ -278,11 +278,11 @@ def TransformConfig(config):
           _DeleteTemplateOnlyVars(config)
           configs.append(config)
   else:
-    configs = json_config[CHROMEOS][MODELS]
+    configs = json_config[CHROMEOS][CONFIGS]
 
-  # Drop everything except for models since they were just used as shared
+  # Drop everything except for configs since they were just used as shared
   # config in the source yaml.
-  json_config = {CHROMEOS: {MODELS: configs}}
+  json_config = {CHROMEOS: {CONFIGS: configs}}
 
   return _FormatJson(json_config)
 
@@ -306,16 +306,16 @@ def GenerateCBindings(config):
               .signature_id = "%s"}}'''
   structs = []
   json_config = json.loads(config)
-  for model in json_config[CHROMEOS][MODELS]:
-    identity = model['identity']
-    name = model['name']
+  for config in json_config[CHROMEOS][CONFIGS]:
+    identity = config['identity']
+    name = config['name']
     customization = identity.get('customization-id', '')
-    signature_id = model.get('firmware-signing', {}).get('signature-id', '')
+    signature_id = config.get('firmware-signing', {}).get('signature-id', '')
     structs.append(
         struct_format % (identity.get('platform-name', ''),
                          identity.get('smbios-name-match', ''),
                          identity.get('sku-id', -1), customization,
-                         model.get('brand-code', ''), name, customization or
+                         config.get('brand-code', ''), name, customization or
                          name, signature_id or name))
   file_format = '''\
 #include "lib/cros_config_struct.h"
@@ -332,33 +332,33 @@ const struct config_map *cros_config_get_config_map(int *num_entries) {
   return file_format % (',\n'.join(structs), len(structs))
 
 
-def _GetFirmwareUris(model_dict):
+def _GetFirmwareUris(config_dict):
   """Returns a list of (string) firmware URIs.
 
-  Generates and returns a list of firmware URIs for this model. These URIs
+  Generates and returns a list of firmware URIs for this config. These URIs
   can be used to pull down remote firmware packages.
 
   Returns:
     A list of (string) full firmware URIs, or an empty list on failure.
   """
 
-  model = GetNamedTuple(model_dict)
-  fw = model.firmware
-  fw_dict = model.firmware._asdict()
+  config = GetNamedTuple(config_dict)
+  fw = config.firmware
+  fw_dict = config.firmware._asdict()
 
   if not getattr(fw, 'bcs_overlay'):
     return []
   bcs_overlay = fw.bcs_overlay.replace('overlay-', '')
-  base_model = fw.build_targets.coreboot
+  base_config = fw.build_targets.coreboot
 
   valid_images = [
       p for n, p in fw_dict.iteritems() if n.endswith('image') and p
   ]
   uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
-                'chromeos-base/chromeos-firmware-{base_model}/{fname}')
+                'chromeos-base/chromeos-firmware-{base_config}/{fname}')
   return [
       uri_format.format(
-          bcs=bcs_overlay, model=model.name, fname=fname, base_model=base_model)
+          bcs=bcs_overlay, config=config.name, fname=fname, base_config=base_config)
       for fname in valid_images
   ]
 
@@ -384,8 +384,8 @@ def FilterBuildElements(config):
     config: Config (transformed) that will be filtered
   """
   json_config = json.loads(config)
-  for model in json_config[CHROMEOS][MODELS]:
-    _FilterBuildElements(model, '')
+  for config in json_config[CHROMEOS][CONFIGS]:
+    _FilterBuildElements(config, '')
 
   return _FormatJson(json_config)
 
@@ -440,7 +440,7 @@ def ValidateConfig(config):
   """
   json_config = json.loads(config)
   identities = [
-      str(model['identity']) for model in json_config['chromeos']['models']
+      str(config['identity']) for config in json_config['chromeos']['configs']
   ]
   if len(identities) != len(set(identities)):
     raise ValidationError('Identities are not unique: %s' % identities)

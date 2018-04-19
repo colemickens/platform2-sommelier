@@ -113,7 +113,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
   def __init__(self, infile):
     self._json = json.loads(TransformConfig(infile.read()))
     self._configs = []
-    for config in self._json['chromeos']['models']:
+    for config in self._json['chromeos']['configs']:
       self._configs.append(DeviceConfigJson(config))
 
     sorted(self._configs, key=lambda x: str(x.GetProperties('/identity')))

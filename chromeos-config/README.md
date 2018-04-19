@@ -185,7 +185,7 @@ The schema definition is below:
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |  |
 | identity | [identity](#identity) |  | False |  | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | Unique name for the given model. |
-| oem-id | string | ```[0-9]+``` | False |  | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's models.  |
+| oem-id | string | ```[0-9]+``` | False |  | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's devices.  |
 | power | [power](#power) |  | False |  | Contains power_manager device settings.  This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Each property corresponds to a power_manager preference defined in https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h |
 | powerd-prefs | string |  | False |  | Powerd config that should be used. |
 | test-label | string |  | False |  | Test alias (model) label that will be applied in Autotest and reported for test results. |
@@ -206,9 +206,9 @@ The schema definition is below:
 | device | string |  | False |  | Device name to report in 'ro.product.device'. This is often '{product}_cheets' but it can be something else if desired. |
 | first-api-level | string |  | False |  | The first Android API level that this model shipped with.  |
 | marketing-name | string |  | False |  | Name of this model as it is called in the market, reported in 'ro.product.model'. This often starts with '{oem}'. |
-| metrics-tag | string |  | False |  | Tag to use to track metrics for this model. The tag can be shared across many models if desired, but this will result in larger granularity for metrics reporting.  Ideally the metrics system should support collation of metrics with different tags into groups, but if this is not supported, this tag can be used to achieve the same end.  This is reported in 'ro.product.metrics.tag'. |
+| metrics-tag | string |  | False |  | Tag to use to track metrics for this model. The tag can be shared across many devices if desired, but this will result in larger granularity for metrics reporting.  Ideally the metrics system should support collation of metrics with different tags into groups, but if this is not supported, this tag can be used to achieve the same end.  This is reported in 'ro.product.metrics.tag'. |
 | oem | string |  | False |  | Original Equipment Manufacturer for this model. This generally means the OEM name printed on the device. |
-| product | string |  | False |  | Product name to report in 'ro.product.name'. This may be the model name, or it can be something else, to allow several models to be grouped into one product. |
+| product | string |  | False |  | Product name to report in 'ro.product.name'. This may be the device name, or it can be something else, to allow several devices to be grouped into one product. |
 
 ### files
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |

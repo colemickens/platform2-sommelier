@@ -38,7 +38,8 @@ bool CrosConfigJson::SelectConfigByIDs(
     const base::DictionaryValue* chromeos = nullptr;
     if (root_dict->GetDictionary("chromeos", &chromeos)) {
       const base::ListValue* models_list = nullptr;
-      if (chromeos->GetList("models", &models_list)) {
+      if (chromeos->GetList("configs", &models_list) ||
+          chromeos->GetList("models", &models_list)) {
         size_t num_models = models_list->GetSize();
         for (size_t i = 0; i < num_models; ++i) {
           const base::DictionaryValue* model_dict = nullptr;

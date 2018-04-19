@@ -118,8 +118,8 @@ class TransformConfigTests(unittest.TestCase):
     json_dict = json.loads(result)
     self.assertEqual(len(json_dict), 1)
     json_obj = cros_config_schema.GetNamedTuple(json_dict)
-    self.assertEqual(1, len(json_obj.chromeos.models))
-    model = json_obj.chromeos.models[0]
+    self.assertEqual(1, len(json_obj.chromeos.configs))
+    model = json_obj.chromeos.configs[0]
     self.assertEqual('basking', model.name)
     self.assertEqual('basking', model.audio.main.cras_config_dir)
     # Check multi-level template variable evaluation
@@ -221,7 +221,7 @@ class FilterBuildElements(unittest.TestCase):
     json_dict = json.loads(
         cros_config_schema.FilterBuildElements(
             cros_config_schema.TransformConfig(BASIC_CONFIG)))
-    self.assertNotIn('firmware', json_dict['chromeos']['models'][0])
+    self.assertNotIn('firmware', json_dict['chromeos']['configs'][0])
 
 
 class MainTests(unittest.TestCase):
