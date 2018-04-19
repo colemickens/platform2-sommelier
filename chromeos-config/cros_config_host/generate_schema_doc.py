@@ -9,6 +9,7 @@ from __future__ import print_function
 import argparse
 import collections
 import os.path
+import re
 import sys
 import yaml
 
@@ -46,39 +47,60 @@ def PopulateTypeDef(name, type_def, ref_types, output):
     ref_types: Shared type definitions using the #ref attribute
     output: Running array of markdown string output lines
   """
-  attrs = collections.OrderedDict(
-      sorted(type_def.get('properties', {}).items()))
   child_types = collections.OrderedDict()
   output.append('### %s' % name)
-  output.append('| Attribute | Type   | RegEx     | Required | Description |')
-  output.append('| --------- | ------ | --------- | -------- | ----------- |')
-  for attr in attrs:
-    attr_name = attr
-    type_attrs = attrs[attr]
-    if '$ref' in type_attrs:
-      type_attrs = ref_types[type_attrs['$ref']]
+  # pylint: disable=line-too-long
+  output.append('| Attribute | Type   | RegEx     | Required | Oneof Group |  Description |')
+  output.append('| --------- | ------ | --------- | -------- | ----------- |  ----------- |')
+  # pylint: enable=line-too-long
 
-    attr_type = type_attrs['type']
-    regex = type_attrs.get('pattern', '')
-    if regex:
-      # Regex need escaping for markdown
-      regex = '```%s```' % regex
-    description = type_attrs.get('description', '')
-    description = description.replace('\n', ' ')
-    required_list = type_def.get('required', [])
-    required = attr in required_list
-    if type_attrs['type'] == 'object':
-      child_types[attr_name] = type_attrs
-      attr_type = '[%s](#%s)' % (attr_name, attr_name)
-    elif type_attrs['type'] == 'array':
-      if type_attrs['items']['type'] == 'object':
-        child_types[attr_name] = type_attrs['items']
-        attr_type = 'array - [%s](#%s)' % (attr_name, attr_name)
-      else:
-        attr_type = 'array - %s' % type_attrs['items']['type']
+  attrs_by_group = {'': collections.OrderedDict(
+      sorted(type_def.get('properties', {}).items()))}
+  group_index = 0
+  for group in type_def.get('oneOf', []):
+    group_attrs = collections.OrderedDict(
+        sorted(group.get('properties', {}).items()))
+    group_name = 'GROUP(%s)' % group_index
+    if len(group_attrs) > 0:
+      match = re.match(r"\[(.*)\] .*",
+                       group_attrs.values()[0].get('description', ''))
+      if match:
+        group_name = match.group(1)
+    attrs_by_group[group_name] = group_attrs
+    group_index = group_index + 1
 
-    output_tuple = (attr_name, attr_type, regex, required, description)
-    output.append('| %s | %s | %s | %s | %s |' % output_tuple)
+  for attr_group_name, attrs in attrs_by_group.iteritems():
+    for attr in attrs:
+      attr_name = attr
+      type_attrs = attrs[attr]
+      if '$ref' in type_attrs:
+        type_attrs = ref_types[type_attrs['$ref']]
+
+      attr_type = type_attrs['type']
+      regex = type_attrs.get('pattern', '')
+      if regex:
+        # Regex need escaping for markdown
+        regex = '```%s```' % regex
+      description = type_attrs.get('description', '')
+      description = description.replace('\n', ' ')
+      required_list = type_def.get('required', [])
+      required = attr in required_list
+      if type_attrs['type'] == 'object':
+        child_types[attr_name] = type_attrs
+        attr_type = '[%s](#%s)' % (attr_name, attr_name)
+      elif type_attrs['type'] == 'array':
+        if type_attrs['items']['type'] == 'object':
+          child_types[attr_name] = type_attrs['items']
+          attr_type = 'array - [%s](#%s)' % (attr_name, attr_name)
+        else:
+          attr_type = 'array - %s' % type_attrs['items']['type']
+
+      output_tuple = (attr_name,
+                      attr_type,
+                      regex, required,
+                      attr_group_name,
+                      description)
+      output.append('| %s | %s | %s | %s | %s | %s |' % output_tuple)
 
   output.append('')
   for child_type in child_types:
