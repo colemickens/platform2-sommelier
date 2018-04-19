@@ -7,6 +7,8 @@
 #include <memory>
 #include <string>
 
+#include <chromeos/dbus/service_constants.h>
+
 #include "hammerd/dbus_wrapper.h"
 #include "hammerd/usb_utils.h"
 
@@ -133,11 +135,27 @@ BRILLO_EXPORT PairManager* PairManager_New() {
   return new PairManager();
 }
 BRILLO_EXPORT int PairManager_PairChallenge(
-    PairManager* self, FirmwareUpdater* fw_updater) {
+    PairManager* self, FirmwareUpdater* fw_updater, uint8_t* public_key) {
+  hammerd::ChallengeStatus ret;
   // We do not allow to send DBus signal from Hammerd API. Inject a dummy
   // DBus wrapper here.
-  hammerd::DummyDBusWrapper* dummy = new hammerd::DummyDBusWrapper();
-  return static_cast<int>(self->PairChallenge(fw_updater, dummy));
+  hammerd::DummyDBusWrapper dummy;
+
+  ret = self->PairChallenge(fw_updater, &dummy);
+  if (ret != ChallengeStatus::kChallengePassed)
+    return static_cast<int>(ret);
+
+  if (dummy.GetLastSignalName() != hammerd::kPairChallengeSucceededSignal)
+    return static_cast<int>(ChallengeStatus::kUnknownError);
+
+  if (public_key) {
+    std::string last_value = dummy.GetLastValue();
+    if (last_value.size() != kX25519PublicValueLen)
+      return static_cast<int>(ChallengeStatus::kUnknownError);
+    memcpy(public_key, last_value.c_str(), last_value.size());
+  }
+
+  return static_cast<int>(ret);
 }
 
 }  // extern "C"

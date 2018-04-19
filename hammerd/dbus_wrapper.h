@@ -57,11 +57,26 @@ class DummyDBusWrapper : public DBusWrapperInterface {
   DummyDBusWrapper() {}
   virtual ~DummyDBusWrapper() = default;
 
-  void SendSignal(const std::string& signal_name) override {}
+  void SendSignal(const std::string& signal_name) override {
+    SendSignalWithArg(signal_name, NULL, 0);
+  }
   void SendSignalWithArg(const std::string& signal_name,
-                         const uint8_t* values, size_t length) override {}
+                         const uint8_t* values, size_t length) override {
+    last_signal_name_ = std::string(signal_name);
+    if (values == NULL)
+      last_value_ = "";
+    else
+      last_value_ = std::string(reinterpret_cast<const char*>(values), length);
+  }
+
+  std::string GetLastSignalName() { return last_signal_name_; }
+  std::string GetLastValue() { return last_value_; }
 
  private:
+  // Record the last signal that was "sent"
+  std::string last_signal_name_;
+  std::string last_value_;
+
   DISALLOW_COPY_AND_ASSIGN(DummyDBusWrapper);
 };
 

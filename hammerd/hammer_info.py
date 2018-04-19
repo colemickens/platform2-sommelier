@@ -101,7 +101,7 @@ def main():
 
   # Do a pairing challenge, which will check that entropy has been injected
   pair_manager = hammerd_api.PairManager()
-  challenge_status = pair_manager.PairChallenge(updater.object)
+  challenge_status = pair_manager.PairChallenge(updater.object, None)
 
   # Print the base information.
   info = collections.OrderedDict()

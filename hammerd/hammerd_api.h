@@ -41,6 +41,7 @@ struct ByteString {
 // Expose the global constant.
 BRILLO_EXPORT int kEntropySize = hammerd::kEntropySize;
 BRILLO_EXPORT int kSha256DigestLength = SHA256_DIGEST_LENGTH;
+BRILLO_EXPORT int kX25519PublicValueLen = X25519_PUBLIC_VALUE_LEN;
 
 // Expose FirmwareUpdater class.
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
@@ -98,7 +99,7 @@ BRILLO_EXPORT const char* FirmwareUpdater_GetSectionVersion(
 // Expose PairManager class.
 BRILLO_EXPORT PairManager* PairManager_New();
 BRILLO_EXPORT int PairManager_PairChallenge(
-    PairManager* self, FirmwareUpdater* fw_updater);
+    PairManager* self, FirmwareUpdater* fw_updater, uint8_t* public_key);
 
 }  // extern "C"
 #endif  // HAMMERD_HAMMERD_API_H_

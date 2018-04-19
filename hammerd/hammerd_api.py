@@ -13,6 +13,8 @@ import sys
 _DLL = ctypes.CDLL('libhammerd-api.so')
 ENTROPY_SIZE = ctypes.c_int.in_dll(_DLL, 'kEntropySize').value
 SHA256_DIGEST_LENGTH = ctypes.c_int.in_dll(_DLL, 'kSha256DigestLength').value
+X25519_PUBLIC_VALUE_LEN = ctypes.c_int.in_dll(
+    _DLL, 'kX25519PublicValueLen').value
 
 
 class Enum(object):
@@ -199,7 +201,8 @@ class PairManager(object):
   __metaclass__ = WrapperMetaclass
 
   METHODS = [
-      ('PairChallenge', [ctypes.c_voidp, ctypes.c_voidp], ctypes.c_int),
+      ('PairChallenge', [ctypes.c_voidp, ctypes.c_voidp,
+                         ctypes.POINTER(ctypes.c_uint8)], ctypes.c_int),
   ]
 
   def __init__(self):
