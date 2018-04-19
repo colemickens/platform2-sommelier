@@ -28,6 +28,7 @@ BUILD_ONLY_ELEMENTS = [
     '/firmware', '/firmware-signing', '/audio/main/files', '/touch/files',
     '/arc/files', '/thermal'
 ]
+BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper']
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
 
 
@@ -362,11 +363,11 @@ def _GetFirmwareUris(config_dict):
   ]
   uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
                 'chromeos-base/chromeos-firmware-{base_config}/{fname}')
-  return [
-      uri_format.format(
-          bcs=bcs_overlay, config=config.name, fname=fname, base_config=base_config)
-      for fname in valid_images
-  ]
+  return [uri_format.format(bcs=bcs_overlay,
+                            config=config.name,
+                            fname=fname,
+                            base_config=base_config)
+          for fname in valid_images]
 
 def _FormatJson(config):
   """Formats JSON for output or printing.
@@ -435,6 +436,59 @@ class ValidationError(Exception):
   pass
 
 
+def _ValidateUniqueIdentities(json_config):
+  """Verifies the identity tuple is globally unique within the config.
+
+  Args:
+    json_config: JSON config dictionary
+  """
+  identities = [str(config['identity'])
+                for config in json_config['chromeos']['configs']]
+  if len(identities) != len(set(identities)):
+    raise ValidationError('Identities are not unique: %s' % identities)
+
+def _ValidateWhitelabelBrandChangesOnly(json_config):
+  """Verifies that whitelabel changes are contained to branding information.
+
+  Args:
+    json_config: JSON config dictionary
+  """
+  whitelabels = {}
+  for config in json_config['chromeos']['configs']:
+    whitelabel_tag = config['identity'].get('whitelabel-tag', None)
+    if whitelabel_tag:
+      name = '%s - %s' % (config['name'], config['identity'].get('sku-id', 0))
+      config_list = whitelabels.get(name, [])
+
+      wl_minus_brand = copy.deepcopy(config)
+      wl_minus_brand['identity']['whitelabel-tag'] = ''
+
+      for brand_element in BRAND_ELEMENTS:
+        wl_minus_brand[brand_element] = ''
+
+      config_list.append(wl_minus_brand)
+      whitelabels[name] = config_list
+
+    # whitelabels now contains a map by device name with all whitelabel
+    # configs that have had their branding data stripped.
+    for device_name, configs in whitelabels.iteritems():
+      base_config = configs[0]
+      compare_index = 1
+      while compare_index < len(configs):
+        compare_config = configs[compare_index]
+        compare_index = compare_index + 1
+        base_str = str(base_config)
+        compare_str = str(compare_config)
+        if base_str != compare_str:
+          raise ValidationError(
+              'Whitelabel configs can only change branding attributes (%s).\n'
+              'However, the device %s differs by other attributes.\n'
+              'Example 1: %s\n'
+              'Example 2: %s' % (device_name,
+                                 ', '.join(BRAND_ELEMENTS),
+                                 base_str,
+                                 compare_str))
+
 def ValidateConfig(config):
   """Validates a transformed cros config for general business rules.
 
@@ -445,11 +499,8 @@ def ValidateConfig(config):
     config: Config (transformed) that will be verified.
   """
   json_config = json.loads(config)
-  identities = [
-      str(config['identity']) for config in json_config['chromeos']['configs']
-  ]
-  if len(identities) != len(set(identities)):
-    raise ValidationError('Identities are not unique: %s' % identities)
+  _ValidateUniqueIdentities(json_config)
+  _ValidateWhitelabelBrandChangesOnly(json_config)
 
 
 def Main(schema,

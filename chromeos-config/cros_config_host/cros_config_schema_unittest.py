@@ -214,6 +214,39 @@ chromeos:
     except cros_config_schema.ValidationError as err:
       self.assertIn('Identities are not unique', err.__str__())
 
+  def testWhitelabelWithOtherThanBrandChanges(self):
+    config = """
+chromeos:
+  devices:
+    - $name: 'whitelabel'
+      products:
+        - $key-id: 'WL1'
+          $wallpaper: 'WL1_WALLPAPER'
+          $whitelabel-tag: 'WL1_TAG'
+          $brand-code: 'WL1_BRAND_CODE'
+          $powerd-prefs: 'WL1_POWERD_PREFS'
+        - $key-id: 'WL2'
+          $wallpaper: 'WL2_WALLPAPER'
+          $whitelabel-tag: 'WL2_TAG'
+          $brand-code: 'WL2_BRAND_CODE'
+          $powerd-prefs: 'WL2_POWERD_PREFS'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+              whitelabel-tag: '{{$whitelabel-tag}}'
+            name: '{{$name}}'
+            brand-code: '{{$brand-code}}'
+            wallpaper: '{{$wallpaper}}'
+            # THIS WILL CAUSE THE FAILURE
+            powerd-prefs: '{{$powerd-prefs}}'
+"""
+    try:
+      cros_config_schema.ValidateConfig(
+          cros_config_schema.TransformConfig(config))
+    except cros_config_schema.ValidationError as err:
+      self.assertIn('Whitelabel configs can only', err.__str__())
+
 
 class FilterBuildElements(unittest.TestCase):
 
