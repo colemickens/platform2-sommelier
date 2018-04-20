@@ -71,13 +71,13 @@ bool CanInputCredentials(int32_t workgroup_length,
   return true;
 }
 
-// Sets the |credentials| into the specified buffers. CanInputCredentials()
+// Populates the |credentials| into the specified buffers. CanInputCredentials()
 // should be called first in order to verify the buffers can contain the
 // credentials.
-void SetCredentials(const SmbCredentials& credentials,
-                    char* workgroup_buffer,
-                    char* username_buffer,
-                    char* password_buffer) {
+void PopulateCredentials(const SmbCredentials& credentials,
+                         char* workgroup_buffer,
+                         char* username_buffer,
+                         char* password_buffer) {
   DCHECK(workgroup_buffer);
   DCHECK(username_buffer);
   DCHECK(password_buffer);
@@ -125,7 +125,7 @@ bool CredentialStore::GetAuthentication(const std::string& share_path,
     return false;
   }
 
-  SetCredentials(credentials, workgroup, username, password);
+  PopulateCredentials(credentials, workgroup, username, password);
   return true;
 }
 
