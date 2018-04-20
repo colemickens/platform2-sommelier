@@ -69,6 +69,7 @@ class DesktopFile {
   const std::vector<std::string>& mime_types() const { return mime_types_; }
   const std::vector<std::string>& categories() const { return categories_; }
   const std::string& startup_wm_class() const { return startup_wm_class_; }
+  bool startup_notify() const { return startup_notify_; }
   // This returns the path to the parsed .desktop file itself.
   const base::FilePath& file_path() const { return file_path_; }
 
@@ -95,6 +96,7 @@ class DesktopFile {
   std::vector<std::string> mime_types_;
   std::vector<std::string> categories_;
   std::string startup_wm_class_;
+  bool startup_notify_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(DesktopFile);
 };

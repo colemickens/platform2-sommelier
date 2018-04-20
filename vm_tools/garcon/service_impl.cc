@@ -35,6 +35,7 @@ namespace garcon {
 namespace {
 
 constexpr char kForkedProcessConsole[] = "/dev/null";
+constexpr char kStartupIDEnv[] = "DESKTOP_STARTUP_ID";
 
 // Information about any errors that happen in the child process before the exec
 // call.  This is sent back to the parent process via a socket.
@@ -450,8 +451,12 @@ grpc::Status ServiceImpl::LaunchApplication(
     return grpc::Status::OK;
   }
 
-  if (!Spawn(std::move(argv), std::map<std::string, std::string>(),
-             desktop_file->path())) {
+  std::map<std::string, std::string> env;
+  if (desktop_file->startup_notify()) {
+    env[kStartupIDEnv] = request->desktop_file_id();
+  }
+
+  if (!Spawn(std::move(argv), std::move(env), desktop_file->path())) {
     response->set_success(false);
     response->set_failure_reason("Failure in execution of application");
   } else {

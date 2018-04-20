@@ -36,6 +36,7 @@ struct DesktopFileTestData {
   std::vector<std::string> mime_types;
   std::vector<std::string> categories;
   std::string startup_wm_class;
+  bool startup_notify;
 };
 
 constexpr char kFilename1[] = "/absolute/file/path";
@@ -101,6 +102,7 @@ class DesktopFileTest : public ::testing::Test {
     EXPECT_EQ(result->mime_types(), results.mime_types);
     EXPECT_EQ(result->categories(), results.categories);
     EXPECT_EQ(result->startup_wm_class(), results.startup_wm_class);
+    EXPECT_EQ(result->startup_notify(), results.startup_notify);
     return result;
   }
 
@@ -151,7 +153,8 @@ TEST_F(DesktopFileTest, AllKeys) {
       "Terminal=true\n"
       "MimeType=text/plain;foo/x-java\n"
       "Categories=Magic;Playtime\n"
-      "StartupWMClass=classy\n",
+      "StartupWMClass=classy\n"
+      "StartupNotify=true\n",
       "test.desktop",
       {
           "test",
@@ -170,6 +173,7 @@ TEST_F(DesktopFileTest, AllKeys) {
           {"text/plain", "foo/x-java"},
           {"Magic", "Playtime"},
           "classy",
+          true,
       },
       true);
 }

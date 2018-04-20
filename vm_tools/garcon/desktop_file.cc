@@ -42,6 +42,7 @@ constexpr char kDesktopEntryTerminal[] = "Terminal";
 constexpr char kDesktopEntryMimeType[] = "MimeType";
 constexpr char kDesktopEntryCategories[] = "Categories";
 constexpr char kDesktopEntryStartupWmClass[] = "StartupWMClass";
+constexpr char kDesktopEntryStartupNotify[] = "StartupNotify";
 constexpr char kDesktopEntryTypeApplication[] = "Application";
 // Valid values for the "Type" entry.
 const char* const kValidDesktopEntryTypes[] = {kDesktopEntryTypeApplication,
@@ -299,6 +300,8 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
         ParseMultiString(key_value.second, &categories_);
       } else if (key == kDesktopEntryStartupWmClass) {
         startup_wm_class_ = UnescapeString(key_value.second);
+      } else if (key == kDesktopEntryStartupNotify) {
+        startup_notify_ = ParseBool(key_value.second);
       } else if (base::StartsWith(key, kDesktopEntryNameWithLocale,
                                   base::CompareCase::SENSITIVE)) {
         std::string locale = ExtractKeyLocale(key);
