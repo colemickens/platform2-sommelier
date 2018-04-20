@@ -156,7 +156,7 @@ int DumpStatus() {
 int GetRandom(unsigned int random_bytes_count) {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
   brillo::SecureBlob random_bytes;
-  tpm->GetRandomData(random_bytes_count, &random_bytes);
+  tpm->GetRandomDataSecureBlob(random_bytes_count, &random_bytes);
   if (random_bytes_count != random_bytes.size())
     return -1;
 

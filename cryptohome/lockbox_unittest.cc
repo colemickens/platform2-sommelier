@@ -93,7 +93,7 @@ class LockboxTest : public ::testing::Test {
       EXPECT_CALL(tpm_, GetNvramSize(0xdeadbeef))
         .WillOnce(Return(defined_nvram_size));
       brillo::Blob salt(salt_size, 'A');
-      EXPECT_CALL(tpm_, GetRandomData(salt_size, _))
+      EXPECT_CALL(tpm_, GetRandomDataBlob(salt_size, _))
         .Times(1)
         .WillRepeatedly(DoAll(SetArgPointee<1>(salt), Return(true)));
       EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, _))

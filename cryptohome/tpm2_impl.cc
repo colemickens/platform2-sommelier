@@ -293,7 +293,18 @@ void Tpm2Impl::SetIsBeingOwned(bool value) {
   is_being_owned_ = value;
 }
 
-bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
+bool Tpm2Impl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
+  brillo::SecureBlob blob(length);
+  if (!this->GetRandomDataSecureBlob(length, &blob)) {
+    LOG(ERROR) << "GetRandomDataBlob failed";
+    return false;
+  }
+  data->assign(blob.begin(), blob.end());
+  return true;
+}
+
+bool Tpm2Impl::GetRandomDataSecureBlob(size_t length,
+                                       brillo::SecureBlob* data) {
   CHECK(data);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -309,7 +320,8 @@ bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
     return false;
   }
   if (random_data.size() != length) {
-    LOG(ERROR) << "Error getting random data: received data of wrong length";
+    LOG(ERROR) << "Error getting random data: requested length " << length
+               << ", received length " << random_data.size();
     return false;
   }
   data->assign(random_data.begin(), random_data.end());

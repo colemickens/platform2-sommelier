@@ -987,7 +987,17 @@ bool TpmImpl::GetOwnerPassword(brillo::Blob* owner_password) {
   return result;
 }
 
-bool TpmImpl::GetRandomData(size_t length, brillo::Blob* data) {
+bool TpmImpl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
+  brillo::SecureBlob blob(length);
+  if (!this->GetRandomDataSecureBlob(length, &blob)) {
+    LOG(ERROR) << "GetRandomDataBlob failed";
+    return false;
+  }
+  data->assign(blob.begin(), blob.end());
+  return true;
+}
+
+bool TpmImpl::GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) {
   ScopedTssContext context_handle;
   if ((*(context_handle.ptr()) = ConnectContext()) == 0) {
     LOG(ERROR) << "Could not open the TPM";
@@ -996,7 +1006,7 @@ bool TpmImpl::GetRandomData(size_t length, brillo::Blob* data) {
 
   TSS_HTPM tpm_handle;
   if (!GetTpm(context_handle, &tpm_handle)) {
-    LOG(ERROR) << "Could not get a handle to the TPM.";
+    LOG(ERROR) << "Could not get a handle to the TPM";
     return false;
   }
 
@@ -2214,7 +2224,7 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   }
 
   // Generate a delegate secret.
-  if (!GetRandomData(kDelegateSecretSize, delegate_secret)) {
+  if (!GetRandomDataSecureBlob(kDelegateSecretSize, delegate_secret)) {
     return false;
   }
 

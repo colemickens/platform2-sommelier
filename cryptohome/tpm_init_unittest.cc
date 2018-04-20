@@ -57,7 +57,11 @@ class TpmInitTest : public ::testing::Test {
     *is_owned = is_tpm_owned_;
     return true;
   }
-  bool GetRandomData(size_t length, brillo::Blob* data) const {
+  bool GetRandomDataBlob(size_t length, brillo::Blob* data) const {
+    data->resize(length, 0);
+    return true;
+  }
+  bool GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) const {
     data->resize(length, 0);
     return true;
   }
@@ -158,8 +162,10 @@ class TpmInitTest : public ::testing::Test {
     ON_CALL(tpm_, PerformEnabledOwnedCheck(_, _))
       .WillByDefault(Invoke(this, &TpmInitTest::PerformTpmEnabledOwnedCheck));
 
-    ON_CALL(tpm_, GetRandomData(_, _))
-      .WillByDefault(Invoke(this, &TpmInitTest::GetRandomData));
+    ON_CALL(tpm_, GetRandomDataBlob(_, _))
+      .WillByDefault(Invoke(this, &TpmInitTest::GetRandomDataBlob));
+    ON_CALL(tpm_, GetRandomDataSecureBlob(_, _))
+      .WillByDefault(Invoke(this, &TpmInitTest::GetRandomDataSecureBlob));
 
     ON_CALL(platform_, FileExists(_))
       .WillByDefault(Invoke(this, &TpmInitTest::FileExists));

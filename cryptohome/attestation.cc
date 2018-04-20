@@ -461,8 +461,8 @@ void Attestation::PrepareForEnrollment() {
 
   // Quote PCR0.
   SecureBlob external_data;
-  if (!tpm_->GetRandomData(kQuoteExternalDataSize, &external_data)) {
-    LOG(ERROR) << "Attestation: GetRandomData failed.";
+  if (!tpm_->GetRandomDataSecureBlob(kQuoteExternalDataSize, &external_data)) {
+    LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return;
   }
   SecureBlob quoted_pcr_value0;
@@ -629,8 +629,8 @@ bool Attestation::Verify(bool is_cros_core) {
     LOG(WARNING) << "Attestation: Bad PCR1 quote.";
   }
   SecureBlob nonce;
-  if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
-    LOG(ERROR) << "Attestation: GetRandomData failed.";
+  if (!tpm_->GetRandomDataSecureBlob(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return false;
   }
   SecureBlob identity_key_blob(database_pb_.identity_key().identity_key_blob());
@@ -813,8 +813,8 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
     request_pb.set_temporal_index(ChooseTemporalIndex(username, origin));
   }
   SecureBlob nonce;
-  if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
-    LOG(ERROR) << __func__ << ": GetRandomData failed.";
+  if (!tpm_->GetRandomDataSecureBlob(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return false;
   }
   SecureBlob identity_key_blob(
@@ -1005,7 +1005,7 @@ bool Attestation::SignEnterpriseVaChallenge(
   ChallengeResponse response_pb;
   *response_pb.mutable_challenge() = signed_challenge;
   SecureBlob nonce;
-  if (!tpm_->GetRandomData(kChallengeSignatureNonceSize, &nonce)) {
+  if (!tpm_->GetRandomDataSecureBlob(kChallengeSignatureNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": Failed to generate nonce.";
     return false;
   }
@@ -1069,7 +1069,7 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
   }
   // Add a nonce to ensure this service cannot be used to sign arbitrary data.
   SecureBlob nonce;
-  if (!tpm_->GetRandomData(kChallengeSignatureNonceSize, &nonce)) {
+  if (!tpm_->GetRandomDataSecureBlob(kChallengeSignatureNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": Failed to generate nonce.";
     return false;
   }
@@ -2012,13 +2012,13 @@ bool Attestation::EncryptData(const SecureBlob& input,
                               EncryptedData* output) {
   // Encrypt with a randomly generated AES key.
   SecureBlob aes_key;
-  if (!tpm_->GetRandomData(kCipherKeySize, &aes_key)) {
-    LOG(ERROR) << "GetRandomData failed.";
+  if (!tpm_->GetRandomDataSecureBlob(kCipherKeySize, &aes_key)) {
+    LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return false;
   }
   SecureBlob aes_iv;
-  if (!tpm_->GetRandomData(kAesBlockSize, &aes_iv)) {
-    LOG(ERROR) << "GetRandomData failed.";
+  if (!tpm_->GetRandomDataSecureBlob(kAesBlockSize, &aes_iv)) {
+    LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return false;
   }
   SecureBlob encrypted;
@@ -2089,7 +2089,7 @@ bool Attestation::CreateSignedPublicKey(
 
   // Fill in a random challenge.
   SecureBlob challenge;
-  if (!tpm_->GetRandomData(kNonceSize, &challenge))
+  if (!tpm_->GetRandomDataSecureBlob(kNonceSize, &challenge))
     return false;
   std::string challenge_hex = base::HexEncode(challenge.data(),
                                               challenge.size());

@@ -761,8 +761,8 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
 }
 
 bool Service::SeedUrandom() {
-  SecureBlob random;
-  if (!tpm_->GetRandomData(kDefaultRandomSeedLength, &random)) {
+  brillo::Blob random;
+  if (!tpm_->GetRandomDataBlob(kDefaultRandomSeedLength, &random)) {
     LOG(ERROR) << "Could not get random data from the TPM";
     return false;
   }

@@ -598,17 +598,17 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   std::string encrypted_data;
   SecureBlob output_blob;
 
-  brillo::Blob aes_key(32, 'A');
+  SecureBlob aes_key(32, 'A');
   brillo::Blob sealed_key(32, 'S');
-  brillo::Blob iv(16, 'I');
+  SecureBlob iv(16, 'I');
 
   // Setup the data from the above blobs.
-  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
-      SetArgPointee<1>(aes_key), Return(true)));
-  EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
-      SetArgPointee<1>(sealed_key), Return(true)));
-  EXPECT_CALL(tpm, GetRandomData(16, _)).WillOnce(DoAll(
-      SetArgPointee<1>(iv), Return(true)));
+  EXPECT_CALL(tpm, GetRandomDataSecureBlob(32, _))
+      .WillOnce(DoAll(SetArgPointee<1>(aes_key), Return(true)));
+  EXPECT_CALL(tpm, SealToPCR0(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(sealed_key), Return(true)));
+  EXPECT_CALL(tpm, GetRandomDataSecureBlob(16, _))
+      .WillOnce(DoAll(SetArgPointee<1>(iv), Return(true)));
 
   // Matching calls of encrypt/decrypt should give me back the same data.
   EXPECT_TRUE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
@@ -641,28 +641,28 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   std::string encrypted_data;
   SecureBlob output_blob;
 
-  brillo::Blob aes_key(32, 'A');
+  SecureBlob aes_key(32, 'A');
   brillo::Blob sealed_key(32, 'S');
-  brillo::Blob iv(16, 'I');
+  SecureBlob iv(16, 'I');
 
   // Setup the data from the above blobs and fail to seal the key with the tpm.
-  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
-      SetArgPointee<1>(aes_key), Return(true)));
+  EXPECT_CALL(tpm, GetRandomDataSecureBlob(32, _))
+      .WillOnce(DoAll(SetArgPointee<1>(aes_key), Return(true)));
   EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(Return(false));
   EXPECT_FALSE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
 
   // Failed to get random data.
-  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(Return(false));
+  EXPECT_CALL(tpm, GetRandomDataSecureBlob(32, _)).WillOnce(Return(false));
   EXPECT_FALSE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
 
   // Now setup successful encrypt data but fail to unseal.
   // Setup the data from the above blobs.
-  EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
-      SetArgPointee<1>(aes_key), Return(true)));
-  EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
-      SetArgPointee<1>(sealed_key), Return(true)));
-  EXPECT_CALL(tpm, GetRandomData(16, _)).WillOnce(DoAll(
-      SetArgPointee<1>(iv), Return(true)));
+  EXPECT_CALL(tpm, GetRandomDataSecureBlob(32, _))
+      .WillOnce(DoAll(SetArgPointee<1>(aes_key), Return(true)));
+  EXPECT_CALL(tpm, SealToPCR0(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(sealed_key), Return(true)));
+  EXPECT_CALL(tpm, GetRandomDataSecureBlob(16, _))
+      .WillOnce(DoAll(SetArgPointee<1>(iv), Return(true)));
 
   // Matching calls of encrypt/decrypt should give me back the same data.
   EXPECT_TRUE(crypto.EncryptWithTpm(data_blob, &encrypted_data));

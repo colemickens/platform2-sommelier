@@ -17,7 +17,7 @@
 
 namespace cryptohome {
 // Implement just enough to make Lockbox able to use a file for the nvram
-// contents
+// contents.
 class LockboxCacheTpm : public StubTpm {
  public:
   explicit LockboxCacheTpm(const uint32_t index,

@@ -302,7 +302,7 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
   // Grab a salt from the TPM.
   brillo::Blob salt(0);
   if (IsEncryptionSaltInLockbox()) {
-    if (!tpm_->GetRandomData(contents_->salt_size, &salt)) {
+    if (!tpm_->GetRandomDataBlob(contents_->salt_size, &salt)) {
       LOG(ERROR) << "Store() failed to get a salt from the TPM.";
       *error = kErrorIdTpmError;
       return false;

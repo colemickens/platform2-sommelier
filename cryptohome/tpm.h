@@ -254,12 +254,21 @@ class Tpm {
   virtual bool IsBeingOwned() = 0;
   virtual void SetIsBeingOwned(bool value) = 0;
 
-  // Gets random bytes from the TPM
+  // Gets random bytes from the TPM.
   //
   // Parameters
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
-  virtual bool GetRandomData(size_t length, brillo::Blob* data) = 0;
+  virtual bool GetRandomDataBlob(size_t length, brillo::Blob* data) = 0;
+
+  // Gets random bytes from the TPM, returns them in a SecureBlob.
+  // brillo::SecureBlob intentionally does not inherit from brillo::Blob.
+  //
+  // Parameters
+  //   length - The number of bytes to get
+  //   data (OUT) - The random data from the TPM
+  virtual bool GetRandomDataSecureBlob(size_t length,
+                                       brillo::SecureBlob* data) = 0;
 
   // Gets alerts data the TPM
   //

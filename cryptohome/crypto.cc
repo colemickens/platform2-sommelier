@@ -930,7 +930,7 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   // and use that to generate a VKK. The HE secret will be stored in the
   // LECredentialManager, along with the LE secret (which is |key| here).
   SecureBlob he_secret;
-  if (!tpm_->GetRandomData(kDefaultAesKeySize, &he_secret)) {
+  if (!tpm_->GetRandomDataSecureBlob(kDefaultAesKeySize, &he_secret)) {
     LOG(ERROR) << "Failed to obtain a VKK Seed for LE Credential";
     return false;
   }
@@ -1127,8 +1127,8 @@ bool Crypto::CreateSealedKey(SecureBlob* aes_key,
                              SecureBlob* sealed_key) const {
   if (!use_tpm_)
     return false;
-  if (!tpm_->GetRandomData(kDefaultAesKeySize, aes_key)) {
-    LOG(ERROR) << "GetRandomData failed.";
+  if (!tpm_->GetRandomDataSecureBlob(kDefaultAesKeySize, aes_key)) {
+    LOG(ERROR) << "GetRandomDataSecureBlob failed.";
     return false;
   }
   if (!tpm_->SealToPCR0(*aes_key, sealed_key)) {
@@ -1145,8 +1145,8 @@ bool Crypto::EncryptData(const SecureBlob& data,
   if (!use_tpm_)
     return false;
   SecureBlob iv;
-  if (!tpm_->GetRandomData(kAesBlockSize, &iv)) {
-    LOG(ERROR) << "GetRandomData failed.";
+  if (!tpm_->GetRandomDataSecureBlob(kAesBlockSize, &iv)) {
+    LOG(ERROR) << "GetRandomDataSecureBlob failed.";
     return false;
   }
   SecureBlob encrypted_data_blob;

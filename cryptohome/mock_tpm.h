@@ -42,7 +42,8 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(SetIsInitialized, void(bool));
   MOCK_METHOD0(IsBeingOwned, bool());
   MOCK_METHOD1(SetIsBeingOwned, void(bool));
-  MOCK_METHOD2(GetRandomData, bool(size_t, brillo::Blob*));
+  MOCK_METHOD2(GetRandomDataBlob, bool(size_t, brillo::Blob*));
+  MOCK_METHOD2(GetRandomDataSecureBlob, bool(size_t, brillo::SecureBlob*));
   MOCK_METHOD1(GetAlertsData, bool(Tpm::AlertsData*));
   MOCK_METHOD3(DefineNvram, bool(uint32_t, size_t, uint32_t));
   MOCK_METHOD2(WriteNvram, bool(uint32_t, const brillo::SecureBlob&));
@@ -157,8 +158,14 @@ class MockTpm : public Tpm {
     return kTpmRetryNone;
   }
 
-  bool FakeGetRandomData(size_t num_bytes, brillo::Blob* blob) {
+  bool FakeGetRandomDataBlob(size_t num_bytes, brillo::Blob* blob) {
     blob->resize(num_bytes);
+    return true;
+  }
+
+  bool FakeGetRandomDataSecureBlob(size_t num_bytes,
+                                   brillo::SecureBlob* sblob) {
+    sblob->resize(num_bytes);
     return true;
   }
 

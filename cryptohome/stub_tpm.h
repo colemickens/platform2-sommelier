@@ -54,12 +54,16 @@ class StubTpm : public Tpm {
   void SetIsInitialized(bool done) override {}
   bool IsBeingOwned() override { return false; }
   void SetIsBeingOwned(bool value) override {}
-  bool GetRandomData(size_t length, brillo::Blob* data) override
-    { return false; }
-  bool GetAlertsData(Tpm::AlertsData* alerts) override
-    { return false; }
-  bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override
-    { return false; }
+  bool GetRandomDataBlob(size_t length, brillo::Blob* data) override {
+    return false;
+  }
+  bool GetRandomDataSecureBlob(size_t length,
+                               brillo::SecureBlob* data) override {
+    return false;
+  }
+  bool GetAlertsData(Tpm::AlertsData* alerts) override { return false; }
+  bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override {
+    return false; }
   bool DestroyNvram(uint32_t index) override { return false; }
   bool WriteNvram(uint32_t index, const SecureBlob& blob) override
     { return false; }

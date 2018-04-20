@@ -38,8 +38,10 @@ MockTpm::MockTpm() {
       .WillByDefault(Return(true));
   ON_CALL(*this, Unseal(_, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, GetRandomData(_, _))
-      .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomData));
+  ON_CALL(*this, GetRandomDataBlob(_, _))
+      .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomDataBlob));
+  ON_CALL(*this, GetRandomDataSecureBlob(_, _))
+      .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomDataSecureBlob));
   ON_CALL(*this, GetAlertsData(_))
       .WillByDefault(Return(true));
   ON_CALL(*this, CreateDelegate(_, _, _, _, _)).WillByDefault(Return(true));

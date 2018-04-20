@@ -325,7 +325,7 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   }
   // Generate the secret value randomly.
   SecureBlob secret_value;
-  if (!tpm_->GetRandomData(kSecretSizeBytes, &secret_value)) {
+  if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, &secret_value)) {
     LOG(ERROR) << "Error generating random secret";
     return false;
   }
