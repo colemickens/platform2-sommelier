@@ -546,9 +546,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("native_gpu_memory_buffers"))
     AddArg("--enable-native-gpu-memory-buffers");
 
+  // TODO(dcastagna): Get rid of the following code once the proper
+  // configuration will be chosen at runtime on DRM atomic boards.
   if (UseFlagIsSet("drm_atomic")) {
-    AddArg("--enable-drm-atomic");
-    AddArg("--enable-hardware-overlays=single-fullscreen,single-on-top");
     AddArg("--enable-webgl-image-chromium");
     AddFeatureEnableOverride("Pepper3DImageChromium");
   }
