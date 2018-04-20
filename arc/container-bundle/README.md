@@ -165,7 +165,7 @@ ignore all other flags).
   the read-only `/data`, and then bind-mounts
   `/home/root/${HASH}/android-data/{data,cache}` to `/data` and `/data/cache`,
   respectively. These source directories are writable and in Chrome OS user's
-  cryptohome.
+  encrypted directory managed by cryptohome.
 * `/var/run/arc`: A `tmpfs` that holds several mount points from other
   containers for Chrome <=> Android file system communication, such as `dlfs`, OBB,
   and external storage.
