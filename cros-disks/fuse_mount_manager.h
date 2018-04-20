@@ -22,7 +22,10 @@ class FUSEHelper;
 // It essentially does dispatching of mount requests to individual FUSE helpers.
 class FUSEMountManager : public MountManager {
  public:
+  // |mount_root| - where mount points go.
+  // |working_dirs_root| - where temporary working directories go.
   FUSEMountManager(const std::string& mount_root,
+                   const std::string& working_dirs_root,
                    Platform* platform,
                    Metrics* metrics);
   ~FUSEMountManager() override;
@@ -69,6 +72,7 @@ class FUSEMountManager : public MountManager {
   friend class FUSEMountManagerTest;
 
   std::vector<std::unique_ptr<FUSEHelper>> helpers_;
+  const std::string working_dirs_root_;
 
   DISALLOW_COPY_AND_ASSIGN(FUSEMountManager);
 };

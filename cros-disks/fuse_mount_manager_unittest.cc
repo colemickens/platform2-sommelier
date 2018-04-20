@@ -13,13 +13,17 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/fuse_helper.h"
+#include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/uri.h"
 
+using base::FilePath;
 using std::set;
 using std::string;
 using std::vector;
+using testing::ByMove;
 using testing::DoAll;
 using testing::Eq;
 using testing::Invoke;
@@ -28,14 +32,23 @@ using testing::SetArgPointee;
 using testing::UnorderedElementsAre;
 using testing::_;
 
+namespace base {
+
+void PrintTo(const FilePath& fp, std::ostream* os) {
+  *os << fp.value();
+}
+
+}  // namespace base
+
 namespace cros_disks {
 
 namespace {
 
 const char kMountRoot[] = "/mntroot";
+const char kWorkingDirRoot[] = "/wkdir";
 const char kNoType[] = "";
-const char kSomeSource[] = "/dev/sdz";
 const char kSomeMountpoint[] = "/mnt";
+const Uri kSomeSource("fuse", "something");
 
 // Mock Platform implementation for testing.
 class MockPlatform : public Platform {
@@ -43,20 +56,42 @@ class MockPlatform : public Platform {
   MockPlatform() = default;
 
   MOCK_CONST_METHOD1(Unmount, bool(const string& path));
+  MOCK_CONST_METHOD1(DirectoryExists, bool(const string& path));
+  MOCK_CONST_METHOD1(CreateDirectory, bool(const string& path));
+  MOCK_CONST_METHOD2(SetPermissions, bool(const string& path, mode_t mode));
+  MOCK_CONST_METHOD3(CreateTemporaryDirInDir,
+                     bool(const string& dir,
+                          const string& prefix,
+                          string* path));
 };
 
 // Mock implementation of FUSEHelper.
 class MockHelper : public FUSEHelper {
  public:
   MockHelper(const string& tag, const Platform* platform)
-      : FUSEHelper(tag, platform, "/sbin/" + tag, "fuse-" + tag) {}
+      : FUSEHelper(tag, platform, FilePath("/sbin/" + tag), "fuse-" + tag) {}
 
-  MOCK_CONST_METHOD1(CanMount, bool(const string& src));
-  MOCK_CONST_METHOD1(GetTargetSuffix, string(const string& src));
-  MOCK_CONST_METHOD3(Mount,
-                     MountErrorType(const string& src,
-                                    const string& dst,
-                                    const vector<string>& opts));
+  MOCK_CONST_METHOD1(CanMount, bool(const Uri& src));
+  MOCK_CONST_METHOD1(GetTargetSuffix, string(const Uri& src));
+  MOCK_CONST_METHOD4(CreateMounter,
+                     std::unique_ptr<FUSEMounter>(const FilePath& dir,
+                                                  const Uri& source,
+                                                  const FilePath& target,
+                                                  const vector<string>& opts));
+};
+
+class MockMounter : public FUSEMounter {
+ public:
+  explicit MockMounter(const Platform* platform)
+      : FUSEMounter("foobar",
+                    "/mnt",
+                    "fuse",
+                    MountOptions(),
+                    platform,
+                    "/bin/sh",
+                    "root",
+                    false) {}
+  MOCK_METHOD0(MountImpl, MountErrorType());
 };
 
 }  // namespace
@@ -64,11 +99,12 @@ class MockHelper : public FUSEHelper {
 class FUSEMountManagerTest : public ::testing::Test {
  public:
   FUSEMountManagerTest()
-      : manager_(kMountRoot, &platform_, &metrics_),
+      : manager_(kMountRoot, kWorkingDirRoot, &platform_, &metrics_),
         foo_(new MockHelper("foo", &platform_)),
         bar_(new MockHelper("bar", &platform_)),
         baz_(new MockHelper("baz", &platform_)) {
     ON_CALL(platform_, Unmount(_)).WillByDefault(Return(false));
+    ON_CALL(platform_, DirectoryExists(_)).WillByDefault(Return(true));
   }
 
  protected:
@@ -91,7 +127,7 @@ class FUSEMountManagerTest : public ::testing::Test {
 
 // Verifies that CanMount returns false when there are no handlers registered.
 TEST_F(FUSEMountManagerTest, CanMount_NoHandlers) {
-  EXPECT_FALSE(manager_.CanMount(kSomeSource));
+  EXPECT_FALSE(manager_.CanMount(kSomeSource.value()));
 }
 
 // Verifies that CanMount returns false when known helpers can't handle that.
@@ -102,7 +138,7 @@ TEST_F(FUSEMountManagerTest, CanMount_NotHandled) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  EXPECT_FALSE(manager_.CanMount(kSomeSource));
+  EXPECT_FALSE(manager_.CanMount(kSomeSource.value()));
 }
 
 // Verify that CanMount returns true when there is a helper that can handle
@@ -114,7 +150,7 @@ TEST_F(FUSEMountManagerTest, CanMount) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  EXPECT_TRUE(manager_.CanMount(kSomeSource));
+  EXPECT_TRUE(manager_.CanMount(kSomeSource.value()));
 }
 
 // Verify that SuggestMountPath dispatches query for name to the correct helper.
@@ -128,20 +164,21 @@ TEST_F(FUSEMountManagerTest, SuggestMountPath) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  EXPECT_EQ("/mntroot/suffix", manager_.SuggestMountPath(kSomeSource));
+  EXPECT_EQ("/mntroot/suffix", manager_.SuggestMountPath(kSomeSource.value()));
 }
 
 // Verify that DoUnmount delegates unmount directly to platform.
 TEST_F(FUSEMountManagerTest, DoUnmount) {
-  EXPECT_CALL(platform_, Unmount(kSomeSource)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, Unmount(kSomeSource.value())).WillOnce(Return(true));
   EXPECT_CALL(platform_, Unmount("foobar")).WillOnce(Return(false));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(kSomeSource, {}));
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(kSomeSource.value(), {}));
   EXPECT_NE(MOUNT_ERROR_NONE, manager_.DoUnmount("foobar", {}));
 }
 
 // Verify that DoMount fails when there are not helpers.
 TEST_F(FUSEMountManagerTest, DoMount_NoHandlers) {
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, DoMount(kNoType, kSomeSource));
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
+            DoMount(kNoType, kSomeSource.value()));
 }
 
 // Verify that DoMount fails when helpers don't handle this source.
@@ -152,7 +189,8 @@ TEST_F(FUSEMountManagerTest, DoMount_NotHandled) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, DoMount(kNoType, kSomeSource));
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM,
+            DoMount(kNoType, kSomeSource.value()));
 }
 
 // Verify that DoMount delegates mounting to the correct helpers when
@@ -161,14 +199,21 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   EXPECT_CALL(*foo_, CanMount(_)).WillOnce(Return(false));
   EXPECT_CALL(*bar_, CanMount(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*baz_, CanMount(_)).Times(0);
-  EXPECT_CALL(*foo_, Mount(_, _, _)).Times(0);
-  EXPECT_CALL(*bar_, Mount(kSomeSource, kSomeMountpoint, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_CALL(*baz_, Mount(_, _, _)).Times(0);
+  EXPECT_CALL(*foo_, CreateMounter(_, _, _, _)).Times(0);
+  EXPECT_CALL(platform_, CreateTemporaryDirInDir(kWorkingDirRoot, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>("/blah"), Return(true)));
+  EXPECT_CALL(platform_, SetPermissions("/blah", 0755)).WillOnce(Return(true));
+  MockMounter* mounter = new MockMounter(&platform_);
+  EXPECT_CALL(*mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  std::unique_ptr<FUSEMounter> ptr(mounter);
+  EXPECT_CALL(*bar_, CreateMounter(FilePath("/blah"), kSomeSource,
+                                   FilePath(kSomeMountpoint), _))
+      .WillOnce(Return(ByMove(std::move(ptr))));
+  EXPECT_CALL(*baz_, CreateMounter(_, _, _, _)).Times(0);
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  EXPECT_EQ(MOUNT_ERROR_NONE, DoMount(kNoType, kSomeSource));
+  EXPECT_EQ(MOUNT_ERROR_NONE, DoMount(kNoType, kSomeSource.value()));
 }
 
 }  // namespace cros_disks

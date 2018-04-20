@@ -38,7 +38,8 @@ const char kOptionShortNamePrefix[] = "shortname=";
 MountOptions::MountOptions()
     : whitelist_exact_({kOptionBind, kOptionDirSync, kOptionFlush,
                         kOptionSynchronous, kOptionUtf8}),
-      whitelist_prefix_({kOptionShortNamePrefix}) {}
+      whitelist_prefix_({kOptionShortNamePrefix}),
+      enforced_options_({kOptionNoDev, kOptionNoExec, kOptionNoSuid}) {}
 
 MountOptions::~MountOptions() = default;
 
@@ -72,8 +73,7 @@ void MountOptions::Initialize(const vector<string>& options,
     } else if (base::StartsWith(option, kOptionGidPrefix,
                                 base::CompareCase::INSENSITIVE_ASCII)) {
       option_group_id = option;
-    } else if (option == kOptionNoDev || option == kOptionNoExec ||
-               option == kOptionNoSuid) {
+    } else if (base::ContainsValue(enforced_options_, option)) {
       // We'll add these options unconditionally below.
       continue;
     } else if (base::ContainsValue(whitelist_exact_, option)) {
@@ -117,10 +117,8 @@ void MountOptions::Initialize(const vector<string>& options,
     }
   }
 
-  // Always set 'nodev', 'noexec', and 'nosuid'.
-  options_.push_back(kOptionNoDev);
-  options_.push_back(kOptionNoExec);
-  options_.push_back(kOptionNoSuid);
+  std::copy(enforced_options_.begin(), enforced_options_.end(),
+            std::back_inserter(options_));
 }
 
 bool MountOptions::IsReadOnlyOptionSet() const {
@@ -183,6 +181,10 @@ void MountOptions::WhitelistOption(const string& option) {
 
 void MountOptions::WhitelistOptionPrefix(const string& prefix) {
   whitelist_prefix_.push_back(prefix);
+}
+
+void MountOptions::EnforceOption(const string& option) {
+  enforced_options_.push_back(option);
 }
 
 }  // namespace cros_disks

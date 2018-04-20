@@ -8,13 +8,11 @@
 
 #include <string>
 
-#include <base/files/file_util.h>
 #include <base/logging.h>
 
 #include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
 
-using base::FilePath;
 using std::string;
 
 namespace {
@@ -32,14 +30,16 @@ FUSEMounter::FUSEMounter(const string& source_path,
                          const MountOptions& mount_options,
                          const Platform* platform,
                          const string& mount_program_path,
-                         const string& mount_user)
+                         const string& mount_user,
+                         bool permit_network_access)
     : Mounter(source_path, target_path, filesystem_type, mount_options),
       platform_(platform),
       mount_program_path_(mount_program_path),
-      mount_user_(mount_user) {}
+      mount_user_(mount_user),
+      permit_network_access_(permit_network_access) {}
 
 MountErrorType FUSEMounter::MountImpl() {
-  if (!base::PathExists(FilePath(mount_program_path_))) {
+  if (!platform_->PathExists(mount_program_path_)) {
     LOG(ERROR) << "Failed to find the FUSE mount program";
     return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
@@ -62,7 +62,7 @@ MountErrorType FUSEMounter::MountImpl() {
 
   // Source might be an URI. Only try to re-own source if it looks like
   // an existing path.
-  if (base::PathExists(FilePath(source_path()))) {
+  if (platform_->PathExists(source_path())) {
     if (!platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
         !platform_->SetPermissions(source_path(), kSourcePathPermissions)) {
       return MOUNT_ERROR_INTERNAL;
@@ -96,7 +96,9 @@ MountErrorType FUSEMounter::MountImpl() {
   // mount_process.NewCgroupNamespace();
 
   mount_process.NewIpcNamespace();
-  mount_process.NewNetworkNamespace();
+  if (!permit_network_access_) {
+    mount_process.NewNetworkNamespace();
+  }
 
   mount_process.AddArgument(mount_program_path_);
   string options_string = mount_options().ToString();
@@ -104,7 +106,9 @@ MountErrorType FUSEMounter::MountImpl() {
     mount_process.AddArgument("-o");
     mount_process.AddArgument(options_string);
   }
-  mount_process.AddArgument(source_path());
+  if (!source_path().empty()) {
+    mount_process.AddArgument(source_path());
+  }
   mount_process.AddArgument(target_path());
 
   int return_code = mount_process.Run();

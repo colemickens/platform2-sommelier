@@ -37,6 +37,11 @@ class MountOptions {
   void WhitelistOption(const std::string& option);
   void WhitelistOptionPrefix(const std::string& prefix);
 
+  // Enforces option to be included regardless of what was provided in the
+  // Initialize(). Implicitly whitelists this option.
+  // Useful for options like foo=bar to prevent changing 'bar' to user input.
+  void EnforceOption(const std::string& option);
+
   // Initializes the mount options with a list of option strings.
   //
   // If set_user_and_group_id is set to true, uid and gid options are set
@@ -67,6 +72,7 @@ class MountOptions {
   // Whitelisted mount options.
   std::vector<std::string> whitelist_exact_;
   std::vector<std::string> whitelist_prefix_;
+  std::vector<std::string> enforced_options_;
 
   // List of mount options.
   std::vector<std::string> options_;

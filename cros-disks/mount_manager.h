@@ -240,10 +240,6 @@ class MountManager {
   // But we don't consider these cases as part of the use cases of cros-disks.
   bool IsValidMountPath(const std::string& mount_path) const;
 
-  // Returns true if the given string is URI, i.e. <scheme>://[something].
-  // It checks only the scheme part and doesn't verify validity of the path.
-  static bool IsUri(const std::string& s);
-
   // Returns the root directory under which mount directories are created.
   const std::string& mount_root() const { return mount_root_; }
 

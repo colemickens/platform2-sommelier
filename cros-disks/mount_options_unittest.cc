@@ -158,6 +158,15 @@ TEST_F(MountOptionsTest, ToString) {
   mount_options_.WhitelistOptionPrefix("foo=");
   mount_options_.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options_.ToString());
+
+  // Force additional options.
+  expected_string =
+      "bind,foo=mississippi,bar,ro,nodev,noexec,nosuid,sheep=baa,zoo";
+  options = {"bind", "bang", "foo=mississippi", "bar", "baz", "sheep=moo"};
+  mount_options_.EnforceOption("sheep=baa");
+  mount_options_.EnforceOption("zoo");
+  mount_options_.Initialize(options, false, "", "");
+  EXPECT_EQ(expected_string, mount_options_.ToString());
 }
 
 TEST_F(MountOptionsTest, ToMountFlagsAndData) {

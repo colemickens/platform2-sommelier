@@ -106,6 +106,20 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
   return false;
 }
 
+bool Platform::CreateTemporaryDirInDir(const std::string& dir,
+                                       const std::string& prefix,
+                                       std::string* path) const {
+  FilePath dest;
+  bool result = base::CreateTemporaryDirInDir(FilePath(dir), prefix, &dest);
+  if (result && path)
+    *path = dest.value();
+  return result;
+}
+
+bool Platform::CopyFile(const string& src, const string& dst) const {
+  return base::CopyFile(FilePath(src), FilePath(dst));
+}
+
 string Platform::GetDirectoryFallbackName(const string& path,
                                           unsigned suffix) const {
   if (!path.empty() && base::IsAsciiDigit(path[path.size() - 1]))

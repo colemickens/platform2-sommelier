@@ -188,6 +188,43 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
   EXPECT_EQ(expected_dir.value(), path);
 }
 
+TEST_F(PlatformTest, CreateTemporaryDirInDir) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  string dir = temp_dir.GetPath().value();
+
+  string path;
+  EXPECT_TRUE(platform_.CreateTemporaryDirInDir(dir, "foo", &path));
+  EXPECT_TRUE(base::DirectoryExists(FilePath(path)));
+  EXPECT_EQ(dir, FilePath(path).DirName().value());
+  FilePath foo1 = FilePath(path).BaseName();
+  EXPECT_EQ("foo", foo1.value().substr(0, 3));
+
+  EXPECT_TRUE(platform_.CreateTemporaryDirInDir(dir, "foo", &path));
+  EXPECT_TRUE(base::DirectoryExists(FilePath(path)));
+  EXPECT_EQ(dir, FilePath(path).DirName().value());
+  FilePath foo2 = FilePath(path).BaseName();
+  EXPECT_EQ("foo", foo2.value().substr(0, 3));
+
+  EXPECT_NE(foo1.value(), foo2.value());
+}
+
+TEST_F(PlatformTest, CopyFile) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  FilePath dir = temp_dir.GetPath();
+
+  ASSERT_EQ(3, base::WriteFile(dir.Append("src"), "foo", 3));
+  EXPECT_FALSE(base::PathExists(dir.Append("dst")));
+  EXPECT_TRUE(
+      platform_.CopyFile(dir.Append("src").value(), dir.Append("dst").value()));
+  EXPECT_TRUE(base::PathExists(dir.Append("dst")));
+
+  std::string data;
+  ASSERT_TRUE(base::ReadFileToString(dir.Append("dst"), &data));
+  EXPECT_EQ("foo", data);
+}
+
 TEST_F(PlatformTest, GetDirectoryFallbackName) {
   EXPECT_EQ("test 1", platform_.GetDirectoryFallbackName("test", 1));
   EXPECT_EQ("test1 (1)", platform_.GetDirectoryFallbackName("test1", 1));

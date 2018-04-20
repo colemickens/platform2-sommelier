@@ -20,6 +20,7 @@
 
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/uri.h"
 
 using base::FilePath;
 using std::pair;
@@ -90,7 +91,8 @@ MountErrorType MountManager::Mount(const string& source_path,
   // Source is not necessary a path, but if it is let's resolve it to
   // some real underlying object.
   string real_path;
-  if (IsUri(source_path) || !platform_->GetRealPath(source_path, &real_path)) {
+  if (Uri::IsUri(source_path) ||
+      !platform_->GetRealPath(source_path, &real_path)) {
     real_path = source_path;
   }
 
@@ -456,20 +458,6 @@ bool MountManager::IsPathImmediateChildOfParent(const string& path,
 
 bool MountManager::IsValidMountPath(const std::string& mount_path) const {
   return IsPathImmediateChildOfParent(mount_path, mount_root_);
-}
-
-bool MountManager::IsUri(const string& s) {
-  size_t pos = s.find("://");
-  if (pos == string::npos || pos == 0)
-    return false;
-  // RFC 3986, section 3.1
-  if (!isalpha(s[0]))
-    return false;
-  for (auto c : s.substr(0, pos)) {
-    if (!isalnum(c) && c != '-' && c != '+' && c != '.')
-      return false;
-  }
-  return true;
 }
 
 }  // namespace cros_disks

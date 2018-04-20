@@ -32,6 +32,7 @@ ExFATMounter::ExFATMounter(const string& source_path,
                   mount_options,
                   platform,
                   kMountProgramPath,
-                  kMountUser) {}
+                  kMountUser,
+                  false) {}
 
 }  // namespace cros_disks

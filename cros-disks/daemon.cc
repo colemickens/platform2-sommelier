@@ -11,6 +11,11 @@ namespace {
 const char kArchiveMountRootDirectory[] = "/media/archive";
 const char kDiskMountRootDirectory[] = "/media/removable";
 const char kFUSEMountRootDirectory[] = "/media/fuse";
+
+// A temporary directory where every FUSE invocation will have some
+// writable subdirectory.
+const char kFUSEWritableRootDirectory[] = "/run/fuse";
+
 const char kNonPrivilegedMountUser[] = "chronos";
 
 }  // namespace
@@ -26,7 +31,10 @@ Daemon::Daemon(bool has_session_manager)
           kDiskMountRootDirectory, &platform_, &metrics_, &device_ejector_),
       format_manager_(&process_reaper_),
       rename_manager_(&platform_, &process_reaper_),
-      fuse_manager_(kFUSEMountRootDirectory, &platform_, &metrics_),
+      fuse_manager_(kFUSEMountRootDirectory,
+                    kFUSEWritableRootDirectory,
+                    &platform_,
+                    &metrics_),
       device_event_task_id_(brillo::MessageLoop::kTaskIdNull) {
   CHECK(platform_.SetMountUser(kNonPrivilegedMountUser))
       << "'" << kNonPrivilegedMountUser

@@ -57,6 +57,14 @@ class Platform {
       unsigned max_suffix_to_retry,
       const std::set<std::string>& reserved_paths) const;
 
+  // Creates a temporary directory inside |dir| and sets its path to |path|.
+  virtual bool CreateTemporaryDirInDir(const std::string& dir,
+                                       const std::string& prefix,
+                                       std::string* path) const;
+
+  // Copy contents of the file pointed by path |src| into file pointed by |dst|.
+  virtual bool CopyFile(const std::string& src, const std::string& dst) const;
+
   // Returns the fallback directory name of |path| using |suffix| as follows:
   //   "|path| (|suffix|)" if |path| ends with a ASCII digit, or
   //   "|path| |suffix|" otherwise.

@@ -18,10 +18,10 @@ Mounter::Mounter(const string& source_path,
       source_path_(source_path),
       target_path_(target_path),
       mount_options_(mount_options) {
-  CHECK(!source_path_.empty()) << "Invalid source path";
   CHECK(!target_path_.empty()) << "Invalid target path";
-  // filesystem_type can be empty if it is auto-detected or in case of
+  // |filesystem_type| can be empty if it is auto-detected or in case of
   // a bind mount.
+  // |source_path| can be empty if it's implied for the particular filesystem.
 }
 
 MountErrorType Mounter::Mount() {

@@ -22,20 +22,24 @@ class FUSEMounter : public Mounter {
               const MountOptions& mount_options,
               const Platform* platform,
               const std::string& mount_program_path,
-              const std::string& mount_user);
+              const std::string& mount_user,
+              bool permit_network_access);
 
  protected:
   // Mounts a device file using the FUSE mount program at |mount_program_path_|.
   MountErrorType MountImpl() override;
 
   // An object that provides platform service.
-  const Platform* platform_;
+  const Platform* const platform_;
 
   // Path of the FUSE mount program.
-  std::string mount_program_path_;
+  const std::string mount_program_path_;
 
   // User to run the FUSE mount program as.
-  std::string mount_user_;
+  const std::string mount_user_;
+
+  // Whether to leave network access to the mount program.
+  const bool permit_network_access_;
 };
 
 }  // namespace cros_disks

@@ -12,9 +12,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/uri.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 using testing::DoAll;
@@ -28,7 +31,7 @@ namespace cros_disks {
 
 namespace {
 
-const char kFUSEType[] = "generic";
+const char kFUSEType[] = "fuse";
 const char kMountProgram[] = "dummy";
 const char kMountUser[] = "nobody";
 const uid_t kMountUID = 200;
@@ -36,7 +39,9 @@ const gid_t kMountGID = 201;
 const uid_t kFilesUID = 700;
 const uid_t kFilesGID = 701;
 const uid_t kFilesAccessGID = 1501;
-
+const Uri kSomeUri("fuse", "some/src/path");
+const FilePath kWorkingDir("/wkdir");
+const FilePath kMountDir("/mnt");
 const char kSomeDirPath[] = "/foo/bar";
 
 // Mock Platform implementation for testing.
@@ -85,43 +90,49 @@ class MockPlatform : public Platform {
 
 }  // namespace
 
-// Basic implementation of FUSEHelper for testing.
-class FUSEHelperUnderTest : public FUSEHelper {
- public:
-  explicit FUSEHelperUnderTest(const Platform* platform)
-      : FUSEHelper(kFUSEType, platform, kMountProgram, kMountUser) {}
-
-  MOCK_CONST_METHOD1(CanMount, bool(const string& source_path));
-  MOCK_CONST_METHOD1(GetTargetSuffix, string(const string& source_path));
-};
-
 class FUSEHelperTest : public ::testing::Test {
  public:
-  FUSEHelperTest() : helper_(&platform_) {
+  FUSEHelperTest()
+      : helper_(kFUSEType, &platform_, FilePath(kMountProgram), kMountUser) {
     ON_CALL(platform_, IsDirectoryEmpty(_)).WillByDefault(Return(true));
   }
 
  protected:
   bool SetupDirectoryForFUSEAccess(const string& dir) {
-    return helper_.SetupDirectoryForFUSEAccess(dir);
+    return helper_.SetupDirectoryForFUSEAccess(FilePath(dir));
   }
 
   MockPlatform platform_;
-  FUSEHelperUnderTest helper_;
+  FUSEHelper helper_;
 };
 
-// Verifies that generic implementations for PrepareMountOptions applies default
-// rules to MountOptions
+// Verifies that CanMount correctly identifies handleable URIs.
+TEST_F(FUSEHelperTest, CanMount) {
+  EXPECT_TRUE(helper_.CanMount(Uri::Parse("fuse://foo")));
+  EXPECT_FALSE(helper_.CanMount(Uri::Parse("boose://foo")));
+  EXPECT_FALSE(helper_.CanMount(Uri::Parse("http://foo")));
+  EXPECT_FALSE(helper_.CanMount(Uri::Parse("fuse://")));
+}
+
+// Verifies that GetTargetSuffix escapes unwanted chars in URI.
+TEST_F(FUSEHelperTest, GetTargetSuffix) {
+  EXPECT_EQ("foo", helper_.GetTargetSuffix(Uri::Parse("fuse://foo")));
+  EXPECT_EQ("", helper_.GetTargetSuffix(Uri::Parse("fuse://")));
+  EXPECT_EQ("a:b@c:d$__$etc$",
+            helper_.GetTargetSuffix(Uri::Parse("fuse://a:b@c:d/../etc/")));
+}
+
+// Verifies that generic implementation applies default rules to MountOptions.
 TEST_F(FUSEHelperTest, PrepareMountOptions) {
-  MountOptions mount_options;
-  mount_options.WhitelistOptionPrefix("foo=");
-  mount_options.WhitelistOption("bar");
-  vector<string> options = {"bind", "foo=mississippi", "baz", "denied=hi",
-                            "bar"};
-  EXPECT_TRUE(helper_.PrepareMountOptions(options, 1000, 1500, &mount_options));
-  string opts = mount_options.ToString();
-  EXPECT_TRUE(base::StartsWith(opts, "bind,foo=mississippi,bar",
-                               base::CompareCase::SENSITIVE));
+  vector<string> options = {"bind", "foo=bar", "baz", "dirsync"};
+  auto mounter =
+      helper_.CreateMounter(kWorkingDir, kSomeUri, kMountDir, options);
+  EXPECT_EQ(kFUSEType, mounter->filesystem_type());
+  EXPECT_EQ(kSomeUri.path(), mounter->source_path());
+  EXPECT_EQ(kMountDir.value(), mounter->target_path());
+  string opts = mounter->mount_options().ToString();
+  EXPECT_THAT(opts, testing::StartsWith("bind,dirsync,"));
+  EXPECT_THAT(opts, testing::Not(testing::HasSubstr("uid=")));
 }
 
 // Verifies that SetupDirectoryForFUSEAccess crashes if path is unsafe.
