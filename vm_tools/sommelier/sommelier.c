@@ -6037,6 +6037,12 @@ static void xwl_send_data(struct xwl *xwl) {
     return;
   }
 
+  if (xwl->selection_event_source) {
+    fprintf(stderr, "error: selection transfer already pending\n");
+    xwl_send_selection_notify(xwl, XCB_ATOM_NONE);
+    return;
+  }
+
   wl_array_init(&xwl->selection_data);
   xwl->selection_data_ack_pending = 0;
 
@@ -6071,7 +6077,6 @@ static void xwl_send_data(struct xwl *xwl) {
   } break;
   }
 
-  assert(!xwl->selection_event_source);
   xwl->selection_event_source = wl_event_loop_add_fd(
       wl_display_get_event_loop(xwl->host_display),
       xwl->selection_data_offer_receive_fd, WL_EVENT_READABLE,
