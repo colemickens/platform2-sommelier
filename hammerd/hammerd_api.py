@@ -15,7 +15,19 @@ ENTROPY_SIZE = ctypes.c_int.in_dll(_DLL, 'kEntropySize').value
 SHA256_DIGEST_LENGTH = ctypes.c_int.in_dll(_DLL, 'kSha256DigestLength').value
 
 
-class UpdateExtraCommand(object):
+class Enum(object):
+  """Enumeration wrapper. ToStr converts enumerator to string."""
+  @classmethod
+  def ToStr(cls, val):
+    for name, enum_value in cls.__dict__.items():
+      if name.startswith('__'):
+        continue
+      if val == enum_value:
+        return name
+    return "unknown(%d)" % val
+
+
+class UpdateExtraCommand(Enum):
   """The enumeration of extra vendor subcommands."""
   ImmediateReset = 0
   JumpToRW = 1
@@ -27,14 +39,14 @@ class UpdateExtraCommand(object):
   TouchpadInfo = 7
 
 
-class SectionName(object):
+class SectionName(Enum):
   """The enumeration of the image sections."""
   RO = 0
   RW = 1
   Invalid = 2
 
 
-class ChallengeStatus(object):
+class ChallengeStatus(Enum):
   """The returned value of the PairChallenge."""
   ChallengePassed = 0
   ChallengeFailed = 1

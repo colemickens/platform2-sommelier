@@ -17,8 +17,24 @@ import hammerd_api
 
 # The mask of the hardware write protection.
 # TODO(akahuang): Move to hammerd_api.py
-EC_FLASH_PROTECT_GPIO_ASSERTED = 1 << 3
+EC_FLASH_PROTECT_RO_AT_BOOT = (1 << 0)
+EC_FLASH_PROTECT_RO_NOW = (1 << 1)
+EC_FLASH_PROTECT_ALL_NOW = (1 << 2)
+EC_FLASH_PROTECT_GPIO_ASSERTED = (1 << 3)
+EC_FLASH_PROTECT_ERROR_STUCK = (1 << 4)
+EC_FLASH_PROTECT_ERROR_INCONSISTENT = (1 << 5)
+EC_FLASH_PROTECT_ALL_AT_BOOT = (1 << 6)
+EC_FLASH_PROTECT_RW_AT_BOOT = (1 << 7)
+EC_FLASH_PROTECT_RW_NOW = (1 << 8)
+EC_FLASH_PROTECT_ROLLBACK_AT_BOOT = (1 << 9)
+EC_FLASH_PROTECT_ROLLBACK_NOW = (1 << 10)
 
+FLASH_PROTECT_ALL = (EC_FLASH_PROTECT_RO_AT_BOOT | EC_FLASH_PROTECT_RO_NOW |
+                     EC_FLASH_PROTECT_RW_AT_BOOT | EC_FLASH_PROTECT_RW_NOW |
+                     EC_FLASH_PROTECT_ROLLBACK_AT_BOOT |
+                     EC_FLASH_PROTECT_ROLLBACK_NOW |
+                     EC_FLASH_PROTECT_ALL_AT_BOOT |EC_FLASH_PROTECT_ALL_NOW |
+                     EC_FLASH_PROTECT_GPIO_ASSERTED)
 
 def GetHammerdArguments():
   """Parses the hammerd.override and retrieves the arguments.
@@ -77,16 +93,24 @@ def main():
 
   pdu_resp = updater.GetFirstResponsePdu().contents
   wp_status = (pdu_resp.flash_protection & EC_FLASH_PROTECT_GPIO_ASSERTED) > 0
+  wp_all = pdu_resp.flash_protection == FLASH_PROTECT_ALL
   touchpad_info = hammerd_api.TouchpadInfo()
   updater.SendSubcommandReceiveResponse(
       hammerd_api.UpdateExtraCommand.TouchpadInfo, "",
       ctypes.pointer(touchpad_info), ctypes.sizeof(touchpad_info))
 
+  # Do a pairing challenge, which will check that entropy has been injected
+  pair_manager = hammerd_api.PairManager()
+  challenge_status = pair_manager.PairChallenge(updater.object)
+
   # Print the base information.
   info = collections.OrderedDict()
   info['ro_version'] = updater.GetSectionVersion(hammerd_api.SectionName.RO)
   info['rw_version'] = updater.GetSectionVersion(hammerd_api.SectionName.RW)
+  info['key_version'] = pdu_resp.key_version
   info['wp_screw'] = str(wp_status)
+  info['wp_all'] = str(wp_all)
+  info['challenge_status'] = hammerd_api.ChallengeStatus.ToStr(challenge_status)
   info['touchpad_id'] = '%d.0' % touchpad_info.id
   info['touchpad_pid'] = hex(touchpad_info.vendor)
   info['touchpad_fw_version'] = '%d.0' % touchpad_info.fw_version
