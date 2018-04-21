@@ -4796,7 +4796,7 @@ static void xwl_registry_handler(void *data, struct wl_registry *registry,
     assert(aura_shell);
     aura_shell->xwl = xwl;
     aura_shell->id = id;
-    aura_shell->version = MIN(4, version);
+    aura_shell->version = MIN(5, version);
     aura_shell->host_gtk_shell_global = NULL;
     aura_shell->internal = wl_registry_bind(
         registry, id, &zaura_shell_interface, aura_shell->version);
