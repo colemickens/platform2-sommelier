@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -345,6 +345,8 @@ IntelAFModeOff::processResult(ia_aiq_af_results& afResults,
     // Af assist flash light should be disable for OFF mode
     afResults.use_af_assist = false;
     mCurrentAfState = ANDROID_CONTROL_AF_STATE_INACTIVE;
+    mLensState = afResults.lens_driver_action ? ANDROID_LENS_STATE_MOVING :
+                                                ANDROID_LENS_STATE_STATIONARY;
     updateResult(result);
 
     return OK;

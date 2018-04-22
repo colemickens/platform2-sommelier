@@ -552,7 +552,8 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
 
     mMetadata->writeLSCMetadata(reqState);
 
-    bool bypass = true;
+    // always runAf in manual focus mode
+    bool bypass = !reqState->aiqInputParams.afParams.manual_focus_parameters;
     if (mAfFirstRun || (stats != nullptr && stats->frameSequence >= mAfApplySequence)) {
         if (stats != nullptr) {
             LOG2("%s, mAfApplySequence %u, frame sequence %u, mSofSequence %u",
