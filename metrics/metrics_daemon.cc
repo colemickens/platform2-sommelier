@@ -5,6 +5,7 @@
 #include "metrics/metrics_daemon.h"
 
 #include <fcntl.h>
+#include <fstream>
 #include <inttypes.h>
 #include <math.h>
 #include <string.h>
@@ -603,15 +604,12 @@ bool MetricsDaemon::DiskStatsReadStats(uint64_t* read_sectors,
 }
 
 bool MetricsDaemon::VmStatsReadStats(struct VmstatRecord* stats) {
-  string value_string;
-  FilePath* path = new FilePath(vmstats_path_);
-  if (!base::ReadFileToString(*path, &value_string)) {
-    delete path;
-    LOG(WARNING) << "cannot read " << vmstats_path_;
+  std::ifstream vmstat_stream(vmstats_path_, std::ifstream::in);
+  if (vmstat_stream.fail()) {
+    LOG(WARNING) << "Couldn't open " << vmstats_path_;
     return false;
   }
-  delete path;
-  return VmStatsParseStats(value_string.c_str(), stats);
+  return VmStatsParseStats(&vmstat_stream, stats);
 }
 
 bool MetricsDaemon::ReadFreqToInt(const string& sysfs_file_name, int* value) {

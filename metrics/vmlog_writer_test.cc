@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <utime.h>
 
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -47,8 +48,9 @@ TEST_F(VmlogWriterTest, ParseVmStats) {
     "pgmajfault_a 3838\n"
     "pgmajfault_f 66\n"
     "etcetc 300\n";
+  std::istringstream input_stream(kVmStats);
   struct VmstatRecord stats;
-  EXPECT_TRUE(VmStatsParseStats(kVmStats, &stats));
+  EXPECT_TRUE(VmStatsParseStats(&input_stream, &stats));
   EXPECT_EQ(stats.page_faults_, 42);
   EXPECT_EQ(stats.anon_page_faults_, 3838);
   EXPECT_EQ(stats.file_page_faults_, 66);
@@ -68,10 +70,21 @@ TEST_F(VmlogWriterTest, ParseVmStatsOptionalMissing) {
     // "pgmajfault_a 3838\n"
     // "pgmajfault_f 66\n"
     "etcetc 300\n";
+  std::istringstream input_stream(kVmStats);
   struct VmstatRecord stats;
-  EXPECT_TRUE(VmStatsParseStats(kVmStats, &stats));
+  EXPECT_TRUE(VmStatsParseStats(&input_stream, &stats));
   EXPECT_EQ(stats.anon_page_faults_, 0);
   EXPECT_EQ(stats.file_page_faults_, 0);
+}
+
+TEST_F(VmlogWriterTest, ParseCpuTime) {
+  const char kProcStat[] =
+      "cpu  9440559 4101628 4207468 764635735 5162045 0 132368 0 0 0";
+  std::istringstream input_stream(kProcStat);
+  struct CpuTimeRecord record;
+  EXPECT_TRUE(ParseCpuTime(&input_stream, &record));
+  EXPECT_EQ(record.non_idle_time_, 17882023);
+  EXPECT_EQ(record.total_time_, 787679803);
 }
 
 TEST_F(VmlogWriterTest, VmlogRotation) {

@@ -27,7 +27,7 @@ namespace chromeos_metrics {
 namespace {
 
 constexpr char kVmlogHeader[] =
-  "time pgmajfault pgmajfault_f pgmajfault_a pswpin pswpout\n";
+  "time pgmajfault pgmajfault_f pgmajfault_a pswpin pswpout cpuusage\n";
 
 // We limit the size of vmlog log files to keep frequent logging from wasting
 // disk space.
@@ -35,7 +35,8 @@ constexpr int kMaxVmlogFileSize = 256 * 1024;
 
 }  // namespace
 
-bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record) {
+bool VmStatsParseStats(
+    std::istream* input_stream, struct VmstatRecord* record) {
   // a mapping of string name to field in VmstatRecord and whether we found it
   struct Mapping {
     const std::string name;
@@ -71,9 +72,8 @@ bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record) {
   // <ID> <VALUE>
   // for instance:
   // nr_free_pages 213427
-  std::vector<std::string> lines = base::SplitString(
-      stats, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& line : lines) {
+  std::string line;
+  while (std::getline(*input_stream, line)) {
     std::vector<std::string> tokens = base::SplitString(
         line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
     if (tokens.size() != 2u) {
@@ -97,6 +97,37 @@ bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record) {
         LOG(WARNING) << "vmstat missing " << mapping.name;
         return false;
       }
+    }
+  }
+  return true;
+}
+
+bool ParseCpuTime(std::istream* input, CpuTimeRecord* record) {
+  std::string buf;
+  if (!std::getline(*input, buf)) {
+    PLOG(ERROR) << "Unable to read cpu time";
+    return false;
+  }
+  // Expect the first line to be like
+  // cpu  20126642 15102603 12415348 2330408305 11759657 0 355204 0 0 0
+  // The number corresponds to cpu time for
+  // #cpu user nice system idle iowait irq softirq  steal guest guest_nice
+  std::vector<std::string> tokens = base::SplitString(
+      buf, " \t\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (tokens[0] != "cpu") {
+    LOG(WARNING) << "Expect the first line of /proc/stat to be \"cpu ...\"";
+    return false;
+  }
+  uint64_t value;
+  for (int i = 1; i < tokens.size(); ++i) {
+    if (!base::StringToUint64(tokens[i], &value)) {
+      LOG(WARNING) << "Unable to convert " << tokens[i] << " to int64";
+      return false;
+    }
+    record->total_time_ += value;
+    // Exclude idle or iowait.
+    if (i != 4 && i != 5) {
+      record->non_idle_time_ += value;
     }
   }
   return true;
@@ -210,9 +241,15 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   vmlog_.reset(new VmlogFile(
       vmlog_current_path, vmlog_rotated_path, kMaxVmlogFileSize, kVmlogHeader));
 
-  vmstat_fd_ = open("/proc/vmstat", O_RDONLY);
-  if (vmstat_fd_ < 0) {
+  vmstat_stream_.open("/proc/vmstat", std::ifstream::in);
+  if (vmstat_stream_.fail()) {
     PLOG(ERROR) << "Couldn't open /proc/vmstat";
+    return;
+  }
+
+  proc_stat_stream_.open("/proc/stat", std::ifstream::in);
+  if (proc_stat_stream_.fail()) {
+    PLOG(ERROR) << "Couldn't open /proc/stat";
     return;
   }
 
@@ -223,40 +260,59 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
 
 VmlogWriter::~VmlogWriter() = default;
 
-void VmlogWriter::WriteCallback() {
-  if (lseek(vmstat_fd_, 0, SEEK_SET) < 0) {
-    PLOG(ERROR) << "Unable to lseek() /proc/vmstat";
-    timer_.Stop();
-    return;
+bool VmlogWriter::GetCpuUsage(double* cpu_usage_out) {
+  proc_stat_stream_.clear();
+  if (!proc_stat_stream_.seekg(0, std::ios_base::beg)) {
+    PLOG(ERROR) << "Unable to seekg() /proc/stat";
+    return false;
+  }
+  CpuTimeRecord cur;
+  ParseCpuTime(&proc_stat_stream_, &cur);
+  if (cur.total_time_ == prev_cputime_record_.total_time_) {
+    LOG(WARNING) << "Same total time for two consecutive calls to GetCpuUsage";
+    return false;
+  }
+  *cpu_usage_out = (cur.non_idle_time_ - prev_cputime_record_.non_idle_time_)/
+      static_cast<double>(cur.total_time_ - prev_cputime_record_.total_time_);
+  prev_cputime_record_ = cur;
+  return true;
+}
+
+bool VmlogWriter::GetDeltaVmStat(VmstatRecord* delta_out) {
+  // Reset the Vmstat stream.
+  vmstat_stream_.clear();
+  if (!vmstat_stream_.seekg(0, std::ios_base::beg)) {
+    PLOG(ERROR) << "Unable to seekg() /proc/vmstat";
+    return false;
   }
 
-  // Assume that vmstat output will be no larger than 8K-1. Poking around some
-  // chromebooks, the size seems to generally be around 2K.
-  char buf[8192];
-  int len = HANDLE_EINTR(read(vmstat_fd_, buf, arraysize(buf) - 1));
-  if (len < 0) {
-    PLOG(ERROR) << "Unable to read() /proc/vmstat";
-    timer_.Stop();
-    return;
-  }
-
-  // Null terminate the data we've read
-  buf[len] = 0;
-
+  // Get current Vmstat.
   VmstatRecord r;
-  if (!VmStatsParseStats(buf, &r)) {
+  if (!VmStatsParseStats(&vmstat_stream_, &r)) {
     LOG(ERROR) << "Unable to parse vmstat data";
+    return false;
+  }
+
+  delta_out->page_faults_ =
+      r.page_faults_ - prev_vmstat_record_.page_faults_;
+  delta_out->file_page_faults_ =
+      r.file_page_faults_ - prev_vmstat_record_.file_page_faults_;
+  delta_out->anon_page_faults_ =
+      r.anon_page_faults_ - prev_vmstat_record_.anon_page_faults_;
+  delta_out->swap_in_ = r.swap_in_ - prev_vmstat_record_.swap_in_;
+  delta_out->swap_out_ = r.swap_out_ - prev_vmstat_record_.swap_out_;
+  prev_vmstat_record_ = r;
+  return true;
+}
+
+void VmlogWriter::WriteCallback() {
+  VmstatRecord delta_vmstat;
+  double cpu_usage;
+  if (!GetDeltaVmStat(&delta_vmstat) || !GetCpuUsage(&cpu_usage)) {
+    LOG(ERROR) << "Stop timer because of error reading system info";
     timer_.Stop();
     return;
   }
-
-  uint64_t delta_page_faults = r.page_faults_ - previous_record_.page_faults_;
-  uint64_t delta_file_page_faults =
-      r.file_page_faults_ - previous_record_.file_page_faults_;
-  uint64_t delta_anon_page_faults =
-      r.anon_page_faults_ - previous_record_.anon_page_faults_;
-  uint64_t delta_swap_in = r.swap_in_ - previous_record_.swap_in_;
-  uint64_t delta_swap_out = r.swap_out_ - previous_record_.swap_out_;
 
   timeval tv;
   gettimeofday(&tv, nullptr);
@@ -264,24 +320,24 @@ void VmlogWriter::WriteCallback() {
   localtime_r(&tv.tv_sec, &tm_time);
   std::string out_line = base::StringPrintf(
       "[%02d%02d/%02d%02d%02d]"
-      " %" PRIu64 " %" PRIu64" %" PRIu64" %" PRIu64 " %" PRIu64 "\n",
+      " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %.2f\n",
       tm_time.tm_mon + 1,
       tm_time.tm_mday,
       tm_time.tm_hour,
       tm_time.tm_min,
       tm_time.tm_sec,
-      delta_page_faults,
-      delta_file_page_faults,
-      delta_anon_page_faults,
-      delta_swap_in,
-      delta_swap_out);
+      delta_vmstat.page_faults_,
+      delta_vmstat.file_page_faults_,
+      delta_vmstat.anon_page_faults_,
+      delta_vmstat.swap_in_,
+      delta_vmstat.swap_out_,
+      cpu_usage);
 
   if (!vmlog_->Write(out_line)) {
     LOG(ERROR) << "Writing to vmlog failed.";
     timer_.Stop();
     return;
   }
-  previous_record_ = r;
 }
 
 }  // namespace chromeos_metrics

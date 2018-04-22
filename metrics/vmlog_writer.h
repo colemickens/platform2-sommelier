@@ -5,6 +5,8 @@
 #ifndef METRICS_VMLOG_WRITER_H_
 #define METRICS_VMLOG_WRITER_H_
 
+#include <fstream>
+#include <istream>
 #include <memory>
 #include <string>
 
@@ -25,9 +27,17 @@ struct VmstatRecord {
   uint64_t swap_out_ = 0;           // pages swapped out
 };
 
+struct CpuTimeRecord {
+  uint64_t non_idle_time_ = 0;
+  uint64_t total_time_ = 0;
+};
+
 // Parse cumulative vm statistics from data read from /proc/vmstat.  Returns
 // true for success.
-bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record);
+bool VmStatsParseStats(std::istream* input, struct VmstatRecord* record);
+
+// Parse cpu time from /proc/stat. Returns true for success.
+bool ParseCpuTime(std::istream* input, CpuTimeRecord* record);
 
 // Encapsulates the logic for writing to vmlog and rotating log files when
 // necessary.
@@ -82,9 +92,24 @@ class VmlogWriter {
   // /proc/vmstat and writes results to vmlog_.
   void WriteCallback();
 
+  // Calculate the difference of Vmstat between two consecutive calls to this
+  // function.
+  bool GetDeltaVmStat(VmstatRecord* delta_out);
+
+  // Calculate the CPU usage (a percentage of total CPU used) during consecutive
+  // calls to this function.
+  bool GetCpuUsage(double* cpu_usage_out);
+
   std::unique_ptr<VmlogFile> vmlog_;
-  int vmstat_fd_;
-  VmstatRecord previous_record_;
+  // Stream used to read content in /proc/vmstat.
+  std::ifstream vmstat_stream_;
+  // Stream used to read content in /proc/stat.
+  std::ifstream proc_stat_stream_;
+  // Record (partial) content read in from /proc/vmstat last time.
+  VmstatRecord prev_vmstat_record_;
+  // Record cpu stat info read in from /proc/stat last time.
+  CpuTimeRecord prev_cputime_record_;
+
   base::RepeatingTimer timer_;
   base::OneShotTimer valid_time_delay_timer_;
 
