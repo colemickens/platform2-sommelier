@@ -342,7 +342,7 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     // TAGINFO_ARRAY(ANDROID_CONTROL_AE_REGIONS, bogusValueArray, 5);
     TAGINFO(ANDROID_SENSOR_EXPOSURE_TIME, bogusValue);
     TAGINFO(ANDROID_SENSOR_SENSITIVITY, bogusValue);
-    int64_t frameDuration = 33000000;
+    int64_t frameDuration = 33333333;
     TAGINFO(ANDROID_SENSOR_FRAME_DURATION, frameDuration);
 
     TAGINFO(ANDROID_JPEG_QUALITY, JPEG_QUALITY_DEFAULT);
