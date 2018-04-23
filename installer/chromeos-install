@@ -93,7 +93,7 @@ fast_dd() {
   fi
   # Give up and do the user's slow dd
   echo
-  echo WARNING: DOING A SLOW dd OPERATION. PLEASE FIX
+  echo "WARNING: DOING A SLOW dd OPERATION. PLEASE FIX"
   echo
   local count_arg=""
   if [ "$user_count" -ne 0 ]; then
@@ -278,7 +278,7 @@ tracked_mount() {
 
 # Unmount with tracking.
 tracked_umount() {
-  # dash doesnt support ${//} expansions
+  # dash does not support ${//} expansions.
   local new_mounts
   for mount in $MOUNTS; do
     if [ "$mount" != "$1" ]; then
@@ -308,7 +308,7 @@ loop_offset_setup() {
 
 # Delete the current loop device.
 loop_offset_cleanup() {
-  # dash doesnt support ${//} expansions
+  # dash does not support ${//} expansions.
   local new_loops
   for loop in $LOOPS; do
     if [ "$loop" != "$LOOP_DEV" ]; then
@@ -454,7 +454,7 @@ wipe_stateful() {
     ;;
   esac
 
-  # When the stateful parition is wiped the TPM ownership must be reset. This
+  # When the stateful partition is wiped the TPM ownership must be reset. This
   # command will not work on older devices which do not support it. In that case
   # it will be ignored.
   crossystem clear_tpm_owner_request=1 || true
@@ -793,8 +793,8 @@ main() {
   check_payload_image
   mkdir -p "${TMPMNT}"
 
-  # We untrap on success and run cleanup ourselves. Othewise, on any failure, run
-  # our custom trap method to gather any diagnostic data before cleaning up.
+  # We untrap on success and run cleanup ourselves. Otherwise, on any failure,
+  # run our custom trap method to gather any diagnostic data before cleaning up.
   trap cleanup_on_failure EXIT
 
   # Clean media browser mounts if they've popped up.
@@ -802,7 +802,7 @@ main() {
   locate_gpt
 
   # Special handling for payload_image. This is passed in for recovery images
-  # and usb installs. This is done first so we can read the gpt partition
+  # and USB installs. This is done first so we can read the gpt partition
   # file below.
   if [ -n "${FLAGS_payload_image}" ]; then
     PARTITION_NUM_ROOT_A=$(cgpt find -n -l ROOT-A "${FLAGS_payload_image}")
@@ -824,7 +824,7 @@ main() {
   # is not defined until after the GPT helper functions are loaded.
   if [ "${FLAGS_skip_src_removable}" -eq "${FLAGS_FALSE}" ]; then
     if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
-      # Removable flag is implemented inconsistantly for ARM sdcard reader.
+      # Removable flag is implemented inconsistently for ARM sdcard reader.
       # Allow all devices except the default fixed drive.
       if [ "${SRC}" = "$(get_fixed_dst_drive)" ]; then
         trap - EXIT
@@ -849,7 +849,7 @@ main() {
   if [ ${FLAGS_yes} -eq ${FLAGS_FALSE} ]; then
     read -p "Are you sure (y/N)? " sure
     if [ "${sure}" != "y" ]; then
-      # Don't run diagnostics if the user explictly bailed out.
+      # Don't run diagnostics if the user explicitly bailed out.
       trap - EXIT
       cleanup
       die "Ok, better safe than sorry; you answered '${sure}'."
@@ -863,7 +863,7 @@ main() {
   reload_partitions
 
   if [ ${FLAGS_skip_rootfs} -eq ${FLAGS_TRUE} ]; then
-    echo Done installing partitons.
+    echo "Done installing partitions."
     exit 0
   fi
 
