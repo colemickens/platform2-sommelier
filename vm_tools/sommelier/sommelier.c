@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "sommelier.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -35,7 +37,6 @@
 #include "gtk-shell-server-protocol.h"
 #include "keyboard-extension-unstable-v1-client-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
-#include "version.h"
 #include "viewporter-client-protocol.h"
 #include "xdg-shell-unstable-v6-client-protocol.h"
 #include "xdg-shell-unstable-v6-server-protocol.h"
@@ -6632,7 +6633,7 @@ static void xwl_execvp(const char *file, char *const argv[],
     setenv("WAYLAND_SOCKET", fd_str, 1);
   }
 
-  setenv("SOMMELIER_VERSION", VERSION, 1);
+  setenv("SOMMELIER_VERSION", SOMMELIER_VERSION, 1);
 
   execvp(file, argv);
   perror(file);
@@ -7168,7 +7169,7 @@ int main(int argc, char **argv) {
       return EXIT_SUCCESS;
     }
     if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0) {
-      printf("Version: %s\n", VERSION);
+      printf("Version: %s\n", SOMMELIER_VERSION);
       return EXIT_SUCCESS;
     }
     if (strstr(arg, "--master") == arg) {
