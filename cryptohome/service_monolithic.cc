@@ -6,6 +6,7 @@
 
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include "cryptohome/service_monolithic.h"
 
@@ -43,10 +44,8 @@ Attestation::VAType GetVAType(int value) {
 ServiceMonolithic::ServiceMonolithic(const std::string& abe_data)
     : default_attestation_(new Attestation()),
       attestation_(default_attestation_.get()) {
-  if (!abe_data.empty()) {
-    if (!GetAttestationBasedEnterpriseEnrollmentData(abe_data, &abe_data_)) {
-      LOG(FATAL) << "Invalid attestation-based enterprise enrollment data.";
-    }
+  if (!GetAttestationBasedEnterpriseEnrollmentData(abe_data, &abe_data_)) {
+    LOG(FATAL) << "Invalid attestation-based enterprise enrollment data.";
   }
 }
 
@@ -61,8 +60,14 @@ ServiceMonolithic::~ServiceMonolithic() {
 
 bool ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
     const std::string& data, brillo::SecureBlob* abe_data) {
-  // The data must be a valid 32 bytes (256 bites) hexadecimal string.
-  if (!base::HexStringToBytes(data, abe_data) || abe_data->size() != 32) {
+  // Remove trailing newlines.
+  std::string trimmed;
+  base::TrimWhitespaceASCII(data, base::TRIM_TRAILING, &trimmed);
+  if (trimmed.empty()) {
+    return true;   // Empty is ok.
+  }
+  // The data must be a valid 32 bytes (256 bits) hexadecimal string.
+  if (!base::HexStringToBytes(trimmed, abe_data) || abe_data->size() != 32) {
     abe_data->clear();
     return false;
   }

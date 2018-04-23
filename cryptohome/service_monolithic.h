@@ -180,7 +180,11 @@ class ServiceMonolithic : public Service {
       const std::string& data, brillo::SecureBlob* abe_data);
 
   FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTest);
-  FRIEND_TEST_ALL_PREFIXES(ServiceTest, InvalidAbeDataTest);
+  FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTestTrailingNewlines);
+  FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTestEmpty);
+  FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTestNewlines);
+  FRIEND_TEST_ALL_PREFIXES(ServiceTest, InvalidAbeDataTestShort);
+  FRIEND_TEST_ALL_PREFIXES(ServiceTest, InvalidAbeDataTestNotHex);
 
   std::unique_ptr<Attestation> default_attestation_;
   Attestation* attestation_;
