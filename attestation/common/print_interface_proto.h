@@ -173,6 +173,7 @@ std::string GetProtoDebugString(const SetSystemSaltRequest& value);
 std::string GetProtoDebugStringWithIndent(const SetSystemSaltReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const SetSystemSaltReply& value);
+std::string GetProtoDebugString(const GetEnrollmentIdReply& value);
 
 }  // namespace attestation
 

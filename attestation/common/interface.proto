@@ -402,6 +402,7 @@ message SetSystemSaltReply {
 }
 
 message GetEnrollmentIdRequest {
+  optional bool ignore_cache = 1;
 }
 
 message GetEnrollmentIdReply {

@@ -56,6 +56,7 @@ const char kFinishEnrollCommand[] = "finish_enroll";
 const char kCreateCertRequestCommand[] = "create_cert_request";
 const char kFinishCertRequestCommand[] = "finish_cert_request";
 const char kSignChallengeCommand[] = "sign_challenge";
+const char kGetEnrollmentId[] = "get_enrollment_id";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -130,6 +131,11 @@ Commands:
 
   register [--user=<email>] [--label=<keylabel]
       Registers a key with a PKCS #11 token.
+
+  get_enrollment_id [--ignore_cache]
+      Returns the enrollment ID. If ignore_cache option is provided, the ID is
+        computed and the cache is not used to read, nor to update the value.
+        Otherwise the value from cache is returned if present.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -429,6 +435,10 @@ class ClientLoop : public ClientLoopBase {
             command_line->GetSwitchValueASCII("label"),
             command_line->GetSwitchValueASCII("user"));
       }
+    } else if (args.front() == kGetEnrollmentId) {
+      task = base::Bind(
+          &ClientLoop::GetEnrollmentId, weak_factory_.GetWeakPtr(),
+          command_line->HasSwitch("ignore_cache"));
     } else {
       return EX_USAGE;
     }
@@ -844,6 +854,19 @@ class ClientLoop : public ClientLoopBase {
       WriteOutput(reply.challenge_response());
     }
     PrintReplyAndQuit<SignSimpleChallengeReply>(reply);
+  }
+
+  void GetEnrollmentId(bool ignore_cache) {
+    GetEnrollmentIdRequest request;
+    request.set_ignore_cache(ignore_cache);
+    attestation_->GetEnrollmentId(request,
+        base::Bind(&ClientLoop::OnGetEnrollmentIdComplete,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void OnGetEnrollmentIdComplete(
+      const GetEnrollmentIdReply& reply) {
+    PrintReplyAndQuit<GetEnrollmentIdReply>(reply);
   }
 
   std::unique_ptr<attestation::AttestationInterface> attestation_;

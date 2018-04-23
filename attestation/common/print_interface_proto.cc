@@ -21,6 +21,7 @@
 #include <string>
 
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "attestation/common/print_common_proto.h"
@@ -1354,6 +1355,20 @@ std::string GetProtoDebugStringWithIndent(const SetSystemSaltReply& value,
     output += "\n";
   }
   output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetEnrollmentIdReply& value) {
+  std::string output;
+  if (value.has_enrollment_id()) {
+    output = base::ToLowerASCII(base::HexEncode(
+        value.enrollment_id().data(), value.enrollment_id().size()));
+  } else {
+    output = "GetEnrollmentId error";
+    if (value.has_status()) {
+      output += " status: " + GetProtoDebugString(value.status());
+    }
+  }
   return output;
 }
 

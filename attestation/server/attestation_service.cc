@@ -2237,25 +2237,29 @@ void AttestationService::GetEnrollmentId(
 void AttestationService::GetEnrollmentIdTask(
     const GetEnrollmentIdRequest& request,
     const std::shared_ptr<GetEnrollmentIdReply>& result) {
-  auto database_pb = database_->GetProtobuf();
-  if (database_pb.has_identity_key() &&
-      database_pb.identity_key().has_enrollment_id()) {
-    DCHECK(!database_pb.identity_key().enrollment_id().empty());
-    result->set_enrollment_id(
-        std::string(database_pb.identity_key().enrollment_id()));
-    return;
-  }
-
-  const std::string& enrollment_id = ComputeEnterpriseEnrollmentId();
-  if (!enrollment_id.empty()) {
-    auto identity_key = database_->GetMutableProtobuf()
-        ->mutable_identity_key();
-    identity_key->set_enrollment_id(enrollment_id);
-    database_->SaveChanges();
+  std::string enrollment_id;
+  if (request.ignore_cache()) {
+    enrollment_id = ComputeEnterpriseEnrollmentId();
   } else {
+    auto database_pb = database_->GetProtobuf();
+    if (database_pb.has_identity_key() &&
+        database_pb.identity_key().has_enrollment_id()) {
+      DCHECK(!database_pb.identity_key().enrollment_id().empty());
+      result->set_enrollment_id(
+          std::string(database_pb.identity_key().enrollment_id()));
+      return;
+    }
+    enrollment_id = ComputeEnterpriseEnrollmentId();
+    if (!enrollment_id.empty()) {
+      auto identity_key = database_->GetMutableProtobuf()
+          ->mutable_identity_key();
+      identity_key->set_enrollment_id(enrollment_id);
+      database_->SaveChanges();
+    }
+  }
+  if (enrollment_id.empty()) {
     result->set_status(STATUS_NOT_AVAILABLE);
   }
-
   result->set_enrollment_id(enrollment_id);
 }
 
