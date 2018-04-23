@@ -132,6 +132,8 @@ bool CredentialStore::GetAuthentication(const std::string& share_path,
   DCHECK_GT(password_length, 0);
 
   if (!HasCredentials(share_path)) {
+    LOG(ERROR) << "Credentials not found for " << share_path;
+
     SetBufferEmpty(workgroup);
     SetBufferEmpty(username);
     SetBufferEmpty(password);
@@ -141,6 +143,8 @@ bool CredentialStore::GetAuthentication(const std::string& share_path,
   const SmbCredentials& credentials = GetCredentials(share_path);
   if (!CanInputCredentials(workgroup_length, username_length, password_length,
                            credentials)) {
+    LOG(ERROR) << "Buffers cannot support credentials for " << share_path;
+
     SetBufferEmpty(workgroup);
     SetBufferEmpty(username);
     SetBufferEmpty(password);
