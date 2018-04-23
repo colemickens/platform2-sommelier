@@ -27,7 +27,6 @@ class FilePath;
 
 namespace brillo {
 
-struct SmbiosTable;
 class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
  public:
   CrosConfig();
@@ -42,7 +41,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // Alias for the above, since this is used by several clients.
   bool Init();
 
-  // Prepare the configuration system for testing.
+  // Prepare the configuration system for testing on X86 devices.
   // This reads in the given configuration file and selects the supplied
   // model name.
   // @filepath: Path to configuration .dtb|.json file.
@@ -50,10 +49,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
   // @customization_id: VPD customization ID from 'mosys platform customization'
   // @return true if OK, false on error.
-  bool InitForTest(const base::FilePath& filepath,
-                   const std::string& name,
-                   int sku_id,
-                   const std::string& customization_id);
+  bool InitForTestX86(const base::FilePath& filepath,
+                      const std::string& name,
+                      int sku_id,
+                      const std::string& customization_id);
 
   // Internal function to obtain a property value and return a list of log
   // messages on failure. Public for tests.
@@ -78,15 +77,18 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                   std::string* val_out) override;
 
  private:
-  // Common init function for both production and test code.
-  // @filepath: path to configuration .dtb|.json file.
+  // Common initialization function based on x86 identity.
   // @smbios_file: File containing memory to scan (typically this is /dev/mem)
   // @vpd_file: File containing the customization_id from VPD. Typically this
   //     is '/sys/firmware/vpd/ro/customization_id'.
   //   results for every query
-  bool InitCommon(const base::FilePath& filepath,
-                  const base::FilePath& smbios_file,
-                  const base::FilePath& vpd_file);
+  bool SelectConfigByIdentityX86(const base::FilePath& smbios_file,
+                                 const base::FilePath& vpd_file);
+
+  // Creates the appropriate instance of CrosConfigImpl based on the underlying
+  // file type (.dtb|.json).
+  // @filepath: path to configuration .dtb|.json file.
+  bool InitCrosConfig(const base::FilePath& filepath);
 
   std::unique_ptr<CrosConfigImpl> cros_config_;
 

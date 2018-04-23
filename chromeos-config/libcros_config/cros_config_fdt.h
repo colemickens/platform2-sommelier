@@ -49,11 +49,8 @@ class CrosConfigFdt : public CrosConfigImpl {
 
   // CrosConfigImpl:
   bool ReadConfigFile(const base::FilePath& filepath) override;
-
-  // CrosConfigImpl:
-  bool SelectConfigByIDs(const std::string& find_name,
-                         int find_sku_id,
-                         const std::string& find_customization_id) override;
+  bool SelectConfigByIdentityX86(
+      const CrosConfigIdentityX86& identity) override;
 
  private:
   // Internal function to obtain a property value based on a node

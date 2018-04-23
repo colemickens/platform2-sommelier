@@ -20,12 +20,9 @@ class CrosConfigJson : public CrosConfigImpl {
   ~CrosConfigJson() override;
 
   // CrosConfigImpl:
-  bool SelectConfigByIDs(const std::string& find_name,
-                         int find_sku_id,
-                         const std::string& find_customization_id) override;
-  // CrosConfigImpl:
+  bool SelectConfigByIdentityX86(
+      const CrosConfigIdentityX86& identity) override;
   bool ReadConfigFile(const base::FilePath& filepath) override;
-  // CrosConfigImpl:
   bool GetString(const std::string& path,
                  const std::string& prop,
                  std::string* val_out,

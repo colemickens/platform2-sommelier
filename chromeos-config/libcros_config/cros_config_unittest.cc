@@ -27,7 +27,7 @@ class CrosConfigTest : public testing::Test {
                   std::string whitelabel_name = "") {
     base::FilePath filepath(TEST_FILE);
     ASSERT_TRUE(
-        cros_config_.InitForTest(filepath, name, sku_id, whitelabel_name));
+        cros_config_.InitForTestX86(filepath, name, sku_id, whitelabel_name));
   }
 
   brillo::CrosConfig cros_config_;
@@ -35,12 +35,12 @@ class CrosConfigTest : public testing::Test {
 
 TEST_F(CrosConfigTest, CheckMissingFile) {
   base::FilePath filepath("invalid-file");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Another", -1, ""));
+  ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "Another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
   base::FilePath filepath(TEST_FILE);
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "no-model", -1, ""));
+  ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "no-model", -1, ""));
 }
 
 TEST_F(CrosConfigTest, Check111NoInit) {
@@ -96,16 +96,15 @@ TEST_F(CrosConfigTest, CheckAbsPath) {
   ASSERT_EQ("/etc/cras/another", val);
 }
 
-
 #ifndef USE_JSON
 TEST_F(CrosConfigTest, CheckBadFile) {
   base::FilePath filepath("test.dts");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "Another", -1, ""));
+  ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "Another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckBadStruct) {
   base::FilePath filepath("test_bad_struct.dtb");
-  ASSERT_FALSE(cros_config_.InitForTest(filepath, "not_another", -1, ""));
+  ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "not_another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckSubmodel) {

@@ -18,6 +18,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/sys_info.h>
 
 namespace {
 const char kSmbiosTablePath[] = "/run/cros_config/SMBIOS";
@@ -46,10 +47,10 @@ bool CrosConfig::Init() {
   return InitModel();
 }
 
-bool CrosConfig::InitForTest(const base::FilePath& filepath,
-                             const std::string& name,
-                             int sku_id,
-                             const std::string& customization_id) {
+bool CrosConfig::InitForTestX86(const base::FilePath& filepath,
+                                const std::string& name,
+                                int sku_id,
+                                const std::string& customization_id) {
   base::FilePath smbios_file, vpd_file;
   CrosConfigIdentityX86 identity;
   if (!identity.FakeVpdIdentity(customization_id, &vpd_file)) {
@@ -60,18 +61,27 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
     CROS_CONFIG_LOG(ERROR) << "FakeSmbiosIdentity() failed";
     return false;
   }
-  return InitCommon(filepath, smbios_file, vpd_file);
+  return InitCrosConfig(filepath) &&
+         SelectConfigByIdentityX86(smbios_file, vpd_file);
 }
 
 bool CrosConfig::InitModel() {
-  base::FilePath smbios_file(kSmbiosTablePath);
-  base::FilePath vpd_file(kCustomizationId);
   base::FilePath json_path(kConfigJsonPath);
+  bool init_config = false;
   if (base::PathExists(json_path)) {
-    return InitCommon(json_path, smbios_file, vpd_file);
+    init_config = InitCrosConfig(json_path);
   } else {
     base::FilePath dtb_path(kConfigDtbPath);
-    return InitCommon(dtb_path, smbios_file, vpd_file);
+    init_config = InitCrosConfig(dtb_path);
+  }
+  const std::string system_arch = base::SysInfo::OperatingSystemArchitecture();
+  if (system_arch == "x86_64" || system_arch == "x86") {
+    base::FilePath smbios_file(kSmbiosTablePath);
+    base::FilePath vpd_file(kCustomizationId);
+    return init_config && SelectConfigByIdentityX86(smbios_file, vpd_file);
+  } else {
+    CROS_CONFIG_LOG(ERROR) << "Only x86 system architectures are supported.";
+    return false;
   }
 }
 
@@ -103,10 +113,36 @@ bool CrosConfig::GetAbsPath(const std::string& path,
   return cros_config_->GetAbsPath(path, prop, val_out);
 }
 
-bool CrosConfig::InitCommon(const base::FilePath& filepath,
-                            const base::FilePath& mem_file,
-                            const base::FilePath& vpd_file) {
-  CROS_CONFIG_LOG(INFO) << ">>>>> starting";
+bool CrosConfig::SelectConfigByIdentityX86(const base::FilePath& mem_file,
+                                           const base::FilePath& vpd_file) {
+  CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read X86 identity";
+  CrosConfigIdentityX86 identity;
+  if (!identity.ReadVpdIdentity(vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
+    return false;
+  }
+  if (!identity.ReadSmbiosIdentity(mem_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS identity";
+    return false;
+  }
+  std::string name = identity.GetName();
+  std::string customization_id = identity.GetCustomizationId();
+  int sku_id = identity.GetSkuId();
+  if (!cros_config_->SelectConfigByIdentityX86(identity)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot find config for name " << name
+                           << " SKU ID " << sku_id << " Customization ID "
+                           << customization_id;
+    return false;
+  }
+
+  CROS_CONFIG_LOG(INFO) << ">>>>> Completed initialized with x86 identity";
+
+  return true;
+}
+
+bool CrosConfig::InitCrosConfig(const base::FilePath& filepath) {
+  CROS_CONFIG_LOG(INFO) << ">>>>> reading config file: path="
+                        << filepath.MaybeAsASCII();
   // Many systems will not have a config database (yet), so just skip all the
   // setup without any errors if the config file doesn't exist.
   if (!base::PathExists(filepath)) {
@@ -121,27 +157,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
 
   cros_config_->ReadConfigFile(filepath);
 
-  CrosConfigIdentityX86 identity;
-  if (!identity.ReadVpdIdentity(vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
-    return false;
-  }
-  if (!identity.ReadSmbiosIdentity(mem_file)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS identity";
-    return false;
-  }
-  std::string name = identity.GetName();
-  std::string customization_id = identity.GetCustomizationId();
-  int sku_id = identity.GetSkuId();
-  if (!cros_config_->SelectConfigByIDs(name, sku_id, customization_id)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot find config for name " << name
-                           << " SKU ID " << sku_id << " Customization ID "
-                           << customization_id;
-    return false;
-  }
-
-  CROS_CONFIG_LOG(INFO) << ">>>>> init complete file="
-                        << filepath.MaybeAsASCII();
+  CROS_CONFIG_LOG(INFO) << ">>>>> config file successfully read";
 
   return true;
 }

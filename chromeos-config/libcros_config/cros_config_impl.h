@@ -8,6 +8,7 @@
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_IMPL_H_
 
 #include "chromeos-config/libcros_config/cros_config_interface.h"
+#include "chromeos-config/libcros_config/identity_x86.h"
 
 #include <map>
 #include <memory>
@@ -43,16 +44,13 @@ class CrosConfigImpl : public CrosConfigInterface {
   // @return true if OK, false on error (which is logged)
   virtual bool ReadConfigFile(const base::FilePath& filepath) = 0;
 
-  // Select the config to use based on the given ids.
-  // Looks up the given name and sku_id in the mapping table and sets the
-  // config that will be used for the duration of execution.
-  // @find_name: Platform name to search for
-  // @find_sku_id: SKU ID to search for
-  // @find_customization_id: Customization ID to search for
+  // Select the config to use based on the X86 device identity.
+  // Looks up the appropriate config to use based the attributes of the X86
+  // based identity.
+  // @identity: X86 based identity attributes
   // @return true on success, false on failure
-  virtual bool SelectConfigByIDs(const std::string& find_name,
-                                 int find_sku_id,
-                                 const std::string& find_customization_id) = 0;
+  virtual bool SelectConfigByIdentityX86(
+      const CrosConfigIdentityX86& identity) = 0;
 
  protected:
   // Runs a quick init check and prints an error to stderr if it fails.

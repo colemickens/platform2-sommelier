@@ -250,9 +250,11 @@ int CrosConfigFdt::FollowPhandle(int phandle, int* target_out) {
   return model_node;
 }
 
-bool CrosConfigFdt::SelectConfigByIDs(const std::string& find_name,
-                                      int find_sku_id,
-                                      const std::string& find_whitelabel_name) {
+bool CrosConfigFdt::SelectConfigByIdentityX86(
+    const CrosConfigIdentityX86& identity) {
+  const std::string& find_name = identity.GetName();
+  int find_sku_id = identity.GetSkuId();
+  const std::string& find_whitelabel_name = identity.GetCustomizationId();
   const void* blob = blob_.c_str();
   CROS_CONFIG_LOG(INFO) << "Looking up name " << find_name << ", SKU ID "
                         << find_sku_id;

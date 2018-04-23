@@ -29,10 +29,11 @@ CrosConfigJson::CrosConfigJson() : model_dict_(nullptr) {}
 
 CrosConfigJson::~CrosConfigJson() {}
 
-bool CrosConfigJson::SelectConfigByIDs(
-    const std::string& find_name,
-    int find_sku_id,
-    const std::string& find_whitelabel_name) {
+bool CrosConfigJson::SelectConfigByIdentityX86(
+    const CrosConfigIdentityX86& identity) {
+  const std::string& find_name = identity.GetName();
+  int find_sku_id = identity.GetSkuId();
+  const std::string& find_whitelabel_name = identity.GetCustomizationId();
   const base::DictionaryValue* root_dict = nullptr;
   if (json_config_->GetAsDictionary(&root_dict)) {
     const base::DictionaryValue* chromeos = nullptr;

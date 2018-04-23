@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
       return 1;
     }
   } else {
-    if (!cros_config.InitForTest(base::FilePath(FLAGS_test_database),
+    if (!cros_config.InitForTestX86(base::FilePath(FLAGS_test_database),
                                  FLAGS_test_name, FLAGS_test_sku_id,
                                  FLAGS_whitelabel_tag)) {
       return 1;
