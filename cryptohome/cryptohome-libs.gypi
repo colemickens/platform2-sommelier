@@ -206,6 +206,7 @@
       'conditions': [
         ['USE_tpm2 == 1', {
           'sources': [
+            'pinweaver_le_credential_backend.cc',
             'signature_sealing_backend_tpm2_impl.cc',
             'tpm2_impl.cc',
             'tpm2_metrics.cc',

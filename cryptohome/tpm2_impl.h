@@ -28,6 +28,7 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "cryptohome/le_credential_backend.h"
+#include "cryptohome/pinweaver_le_credential_backend.h"
 #include "cryptohome/signature_sealing_backend_tpm2_impl.h"
 #include "cryptohome/tpm.h"
 
@@ -54,46 +55,6 @@ class Tpm2Impl : public Tpm {
     std::unique_ptr<trunks::TrunksFactoryImpl> factory_impl;
     std::unique_ptr<trunks::TpmState> tpm_state;
     std::unique_ptr<trunks::TpmUtility> tpm_utility;
-  };
-
-  class LECredentialBackendImpl : public LECredentialBackend {
-   public:
-    bool Reset() override;
-
-    // Hard-code to false, since the Cr50 side functionality is not
-    // checked in yet.
-    // TODO(pmalani): Change once TPM code is checked in.
-    bool IsSupported() override { return false; }
-
-    bool InsertCredential(const uint64_t label,
-                          const std::vector<std::vector<uint8_t>>& h_aux,
-                          const brillo::SecureBlob& le_secret,
-                          const brillo::SecureBlob& he_secret,
-                          const brillo::SecureBlob& reset_secret,
-                          const std::map<uint32_t, uint32_t>& delay_schedule,
-                          std::vector<uint8_t>* cred_metadata,
-                          std::vector<uint8_t>* mac) override;
-
-    bool CheckCredential(const uint64_t label,
-                         const std::vector<std::vector<uint8_t>>& h_aux,
-                         const std::vector<uint8_t>& orig_cred_metadata,
-                         const brillo::SecureBlob& le_secret,
-                         std::vector<uint8_t>* new_cred_metadata,
-                         std::vector<uint8_t>* new_mac,
-                         brillo::SecureBlob* he_secret,
-                         LECredBackendError* err) override;
-
-    bool ResetCredential(const uint64_t label,
-                         const std::vector<std::vector<uint8_t>>& h_aux,
-                         const std::vector<uint8_t>& orig_cred_metadata,
-                         const brillo::SecureBlob& reset_secret,
-                         std::vector<uint8_t>* new_cred_metadata,
-                         std::vector<uint8_t>* new_mac,
-                         LECredBackendError* err) override;
-
-    bool RemoveCredential(const uint64_t label,
-                          const std::vector<std::vector<uint8_t>>& h_aux,
-                          const std::vector<uint8_t>& mac) override;
   };
 
   Tpm2Impl() = default;
@@ -298,7 +259,7 @@ class Tpm2Impl : public Tpm {
   std::unique_ptr<tpm_manager::TpmOwnershipDBusProxy> default_tpm_owner_;
   tpm_manager::TpmNvramInterface* tpm_nvram_ = nullptr;
   std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
-  LECredentialBackendImpl le_credential_backend_;
+  PinweaverLECredentialBackend le_credential_backend_{this};
   SignatureSealingBackendTpm2Impl signature_sealing_backend_{this};
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2Impl);
