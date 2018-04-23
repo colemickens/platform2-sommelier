@@ -747,10 +747,12 @@ gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,
 
 gboolean cryptohome_tpm_attestation_get_enrollment_id(
     Cryptohome* self,
+    gboolean ignore_cache,
     GArray** OUT_enrollment_id,
     gboolean* OUT_success,
     GError** error) {
   CRYPTOHOME_WRAP_METHOD(TpmAttestationGetEnrollmentId,
+                         ignore_cache,
                          OUT_enrollment_id,
                          OUT_success);
 }

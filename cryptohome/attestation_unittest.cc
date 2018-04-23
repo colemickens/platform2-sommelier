@@ -553,6 +553,10 @@ TEST_P(AttestationWithAbeDataTest, GetEnterpriseEnrollmentId) {
   EXPECT_TRUE(attestation_.GetEnterpriseEnrollmentId(&blob));
   EXPECT_EQ(GetParam().enterprise_enrollment_id,
             base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+  // The EID should be different if recomputed since the abe_data has changed.
+  EXPECT_TRUE(attestation_.ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_NE(GetParam().enterprise_enrollment_id,
+            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
 }
 
 TEST_F(AttestationTest, CertRequest) {

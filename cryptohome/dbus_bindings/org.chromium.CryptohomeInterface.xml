@@ -241,6 +241,7 @@
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationGetEnrollmentId">
+      <arg type="b" name="ignore_cache" direction="in" />
       <arg type="ay" name="enrollment_id" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>

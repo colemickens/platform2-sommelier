@@ -170,7 +170,8 @@ class ServiceMonolithic : public Service {
                                    DBusGMethodInvocation* context);
   gboolean InitializeCastKey(const GArray* request,
                              DBusGMethodInvocation* context) override;
-  gboolean TpmAttestationGetEnrollmentId(GArray** OUT_enrollment_id,
+  gboolean TpmAttestationGetEnrollmentId(gboolean ignore_cache,
+                                         GArray** OUT_enrollment_id,
                                          gboolean* OUT_success,
                                          GError** error) override;
 

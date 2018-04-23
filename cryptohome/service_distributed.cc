@@ -1026,11 +1026,13 @@ gboolean ServiceDistributed::InitializeCastKey(const GArray* request,
 }
 
 gboolean ServiceDistributed::TpmAttestationGetEnrollmentId(
+    gboolean ignore_cache,
     GArray** OUT_enrollment_id,
     gboolean* OUT_success,
     GError** error) {
   attestation::GetEnrollmentIdRequest request;
   attestation::GetEnrollmentIdReply reply;
+  request.set_ignore_cache(ignore_cache);
   auto method = base::Bind(&AttestationInterface::GetEnrollmentId,
                            base::Unretained(attestation_interface_), request);
   // We must set the GArray now because if we return without setting it,

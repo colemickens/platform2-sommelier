@@ -661,14 +661,20 @@ gboolean ServiceMonolithic::InitializeCastKey(const GArray* request,
 }
 
 gboolean ServiceMonolithic::TpmAttestationGetEnrollmentId(
+    gboolean ignore_cache,
     GArray** OUT_enrollment_id,
     gboolean* OUT_success,
     GError** error) {
   *OUT_enrollment_id =
       g_array_new(false, false, sizeof(brillo::SecureBlob::value_type));
   brillo::SecureBlob enrollment_id;
-  *OUT_success =
-      attestation_->GetEnterpriseEnrollmentId(&enrollment_id);
+  if (ignore_cache) {
+    *OUT_success =
+        attestation_->ComputeEnterpriseEnrollmentId(&enrollment_id);
+  } else {
+    *OUT_success =
+        attestation_->GetEnterpriseEnrollmentId(&enrollment_id);
+  }
   if (*OUT_success) {
     g_array_append_vals(*OUT_enrollment_id,
                         enrollment_id.data(),

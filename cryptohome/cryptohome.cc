@@ -228,6 +228,7 @@ namespace switches {
   static const char kKeyPolicySwitch[] = "key_policy";
   static const char kKeyPolicyLECredential[] = "le";
   static const char kProfileSwitch[] = "profile";
+  static const char kIgnoreCache[] = "ignore_cache";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -2550,6 +2551,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_enrollment_id(
           proxy.gproxy(),
+          cl->HasSwitch(switches::kIgnoreCache),
           &brillo::Resetter(&enrollment_id).lvalue(),
           &success,
           &brillo::Resetter(&error).lvalue())) {
