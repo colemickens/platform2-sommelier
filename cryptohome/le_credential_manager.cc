@@ -167,23 +167,21 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
                                      &new_mac, &err);
   }
 
-  if (err == LE_TPM_ERROR_HASH_TREE_SYNC || err == LE_TPM_ERROR_TPM_OP_FAILED) {
-    LOG(ERROR) << "Error running CheckSecret in TPM for label: " << label
-               << ", for " << (is_le_secret ? "LE." : "Reset.");
-    return LE_CRED_ERROR_HASH_TREE;
-  }
-
-  if (!hash_tree_->StoreLabel(label_object, new_mac, new_cred)) {
-    LOG(ERROR) << "Failed to update credential in disk hash tree for label: "
-               << label;
-    // This is an un-salvageable state. We can't make LE updates anymore,
-    // since the disk state can't be updated.
-    // We block further LE operations until at least the next boot.
-    // The hope is that on reboot, the disk operations start working. In that
-    // case, we will be able to replay this operation from the TPM log.
-    is_locked_ = true;
-    // TODO(crbug.com/809749): Report failure to UMA.
-    return LE_CRED_ERROR_HASH_TREE;
+  // Store the new credential meta data and MAC in case the backend performed a
+  // state change. Note that this might also be needed for some failure cases.
+  if (!new_cred.empty() && !new_mac.empty()) {
+    if (!hash_tree_->StoreLabel(label_object, new_mac, new_cred)) {
+      LOG(ERROR) << "Failed to update credential in disk hash tree for label: "
+                 << label;
+      // This is an un-salvageable state. We can't make LE updates anymore,
+      // since the disk state can't be updated.
+      // We block further LE operations until at least the next boot.
+      // The hope is that on reboot, the disk operations start working. In that
+      // case, we will be able to replay this operation from the TPM log.
+      is_locked_ = true;
+      // TODO(crbug.com/809749): Report failure to UMA.
+      return LE_CRED_ERROR_HASH_TREE;
+    }
   }
 
   return ConvertTpmError(err);

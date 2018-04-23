@@ -83,6 +83,8 @@ bool FakeLECredentialBackend::CheckCredential(
     brillo::SecureBlob* he_secret,
     LECredBackendError* err) {
   *err = LE_TPM_SUCCESS;
+  new_cred_metadata->clear();
+  new_mac->clear();
 
   std::vector<uint8_t> orig_mac = CryptoLib::Sha256(orig_cred_metadata);
 
@@ -102,12 +104,7 @@ bool FakeLECredentialBackend::CheckCredential(
   }
 
   if (metadata_tmp.attempt_count() >= LE_MAX_INCORRECT_ATTEMPTS) {
-    // TODO(pmalani): Right now, since we have no time stamp support,
-    // simply return the original MAC and metadata back. Eventually, we will
-    // need to encode timestamp metadata which will affect behaviour.
     *err = LE_TPM_ERROR_TOO_MANY_ATTEMPTS;
-    *new_cred_metadata = orig_cred_metadata;
-    *new_mac = orig_mac;
     return false;
   }
 
@@ -126,6 +123,7 @@ bool FakeLECredentialBackend::CheckCredential(
   if (!metadata_tmp.SerializeToArray(new_cred_metadata->data(),
                                      new_cred_metadata->size())) {
     LOG(ERROR) << "Couldn't serialize new cred metadata, label: " << label;
+    new_cred_metadata->clear();
     return false;
   }
 
@@ -145,6 +143,8 @@ bool FakeLECredentialBackend::ResetCredential(
     std::vector<uint8_t>* new_mac,
     LECredBackendError* err) {
   *err = LE_TPM_SUCCESS;
+  new_cred_metadata->clear();
+  new_mac->clear();
 
   std::vector<uint8_t> orig_mac = CryptoLib::Sha256(orig_cred_metadata);
 
@@ -175,6 +175,7 @@ bool FakeLECredentialBackend::ResetCredential(
   if (!metadata_tmp.SerializeToArray(new_cred_metadata->data(),
                                      new_cred_metadata->size())) {
     LOG(ERROR) << "Couldn't serialize new cred metadata, label: " << label;
+    new_cred_metadata->clear();
     return false;
   }
 
