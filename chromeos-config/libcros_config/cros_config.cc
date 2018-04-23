@@ -7,7 +7,7 @@
 #include "chromeos-config/libcros_config/cros_config.h"
 #include "chromeos-config/libcros_config/cros_config_fdt.h"
 #include "chromeos-config/libcros_config/cros_config_json.h"
-#include "chromeos-config/libcros_config/identity.h"
+#include "chromeos-config/libcros_config/identity_x86.h"
 
 #include <stdlib.h>
 
@@ -51,10 +51,13 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
                              int sku_id,
                              const std::string& customization_id) {
   base::FilePath smbios_file, vpd_file;
-  CrosConfigIdentity identity;
-  if (!identity.FakeIdentity(name, sku_id, customization_id, &smbios_file,
-                             &vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeIdentity() failed";
+  CrosConfigIdentityX86 identity;
+  if (!identity.FakeVpdIdentity(customization_id, &vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeVpdIdentity() failed";
+    return false;
+  }
+  if (!identity.FakeSmbiosIdentity(name, sku_id, &smbios_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeSmbiosIdentity() failed";
     return false;
   }
   return InitCommon(filepath, smbios_file, vpd_file);
@@ -118,17 +121,22 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
 
   cros_config_->ReadConfigFile(filepath);
 
-  CrosConfigIdentity identity;
-  std::string name, customization_id;
-  int sku_id;
-  if (!identity.ReadIdentity(mem_file, vpd_file, &name, &sku_id,
-                             &customization_id)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot read identity";
+  CrosConfigIdentityX86 identity;
+  if (!identity.ReadVpdIdentity(vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
     return false;
   }
+  if (!identity.ReadSmbiosIdentity(mem_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS identity";
+    return false;
+  }
+  std::string name = identity.GetName();
+  std::string customization_id = identity.GetCustomizationId();
+  int sku_id = identity.GetSkuId();
   if (!cros_config_->SelectConfigByIDs(name, sku_id, customization_id)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot find SKU for name " << name << " SKU ID "
-                           << sku_id;
+    CROS_CONFIG_LOG(ERROR) << "Cannot find config for name " << name
+                           << " SKU ID " << sku_id << " Customization ID "
+                           << customization_id;
     return false;
   }
 
