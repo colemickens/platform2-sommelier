@@ -450,6 +450,10 @@ struct xwl_window {
   char *clazz;
   char *startup_id;
   uint32_t size_flags;
+  int min_width;
+  int min_height;
+  int max_width;
+  int max_height;
   struct xwl_config next_config;
   struct xwl_config pending_config;
   struct zxdg_surface_v6 *xdg_surface;
@@ -1251,6 +1255,16 @@ static void xwl_window_update(struct xwl_window *window) {
       zxdg_toplevel_v6_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
     if (window->name)
       zxdg_toplevel_v6_set_title(window->xdg_toplevel, window->name);
+    if (window->size_flags & P_MIN_SIZE) {
+      zxdg_toplevel_v6_set_min_size(window->xdg_toplevel,
+                                    window->min_width / xwl->scale,
+                                    window->min_height / xwl->scale);
+    }
+    if (window->size_flags & P_MAX_SIZE) {
+      zxdg_toplevel_v6_set_max_size(window->xdg_toplevel,
+                                    window->max_width / xwl->scale,
+                                    window->max_height / xwl->scale);
+    }
   } else if (!window->xdg_popup) {
     struct zxdg_positioner_v6 *positioner;
 
@@ -4998,6 +5012,10 @@ static void xwl_create_window(struct xwl *xwl, xcb_window_t id, int x, int y,
   window->clazz = NULL;
   window->startup_id = NULL;
   window->size_flags = P_POSITION;
+  window->min_width = 0;
+  window->min_height = 0;
+  window->max_width = 0;
+  window->max_height = 0;
   window->xdg_surface = NULL;
   window->xdg_toplevel = NULL;
   window->xdg_popup = NULL;
@@ -5298,6 +5316,16 @@ static void xwl_handle_map_request(struct xwl *xwl,
       }
       free(reply);
     }
+  }
+
+  window->size_flags |= size_hints.flags & (P_MIN_SIZE | P_MAX_SIZE);
+  if (window->size_flags & P_MIN_SIZE) {
+    window->min_width = size_hints.min_width;
+    window->min_height = size_hints.min_height;
+  }
+  if (window->size_flags & P_MAX_SIZE) {
+    window->max_width = size_hints.max_width;
+    window->max_height = size_hints.max_height;
   }
 
   window->border_width = 0;
