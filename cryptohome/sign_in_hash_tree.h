@@ -69,6 +69,8 @@ namespace cryptohome {
 // zeroes.
 class SignInHashTree {
  public:
+  static constexpr size_t kHashSize = 32;
+
   // Convenience class to help represent the labels of nodes in the
   // SignInHashTree.
   // The high level abstraction is one of a bitstring. This can be
@@ -245,6 +247,9 @@ class SignInHashTree {
   // underlying PLT.
   void UpdateHashCacheLabelPath(const Label& label);
 
+  // Update the hash cache with the provided value.
+  void UpdateHashCache(uint32_t index, const uint8_t* data, size_t size);
+
   // Length of the leaf node label.
   uint32_t leaf_length_;
   // Fan out of the hash tree, i.e number of children of each inner node.
@@ -255,7 +260,7 @@ class SignInHashTree {
   base::MemoryMappedFile hash_cache_;
   // Pointer to the |hash_cache_| file data.
   // Each element is a 32-byte hash.
-  uint8_t (*hash_cache_array_)[32];
+  uint8_t (*hash_cache_array_)[kHashSize];
 
   // This is used to actually store and retrieve data from the backing disk
   // storage.

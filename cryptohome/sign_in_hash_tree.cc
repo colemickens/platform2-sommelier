@@ -22,6 +22,8 @@ const char kHashCacheFileName[] = "hashcache";
 
 namespace cryptohome {
 
+constexpr size_t SignInHashTree::kHashSize;
+
 SignInHashTree::SignInHashTree(uint32_t leaf_length,
                                uint8_t bits_per_level,
                                base::FilePath basedir)
@@ -53,12 +55,13 @@ SignInHashTree::SignInHashTree(uint32_t leaf_length,
   auto hash_cache_fd = std::make_unique<base::ScopedFD>(open(
       hash_cache_file.value().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR));
   CHECK(hash_cache_fd->is_valid());
-  CHECK(!ftruncate(hash_cache_fd->get(), num_entries * 32));
+  CHECK(!ftruncate(hash_cache_fd->get(), num_entries * kHashSize));
   hash_cache_fd.reset();
 
   CHECK(hash_cache_.Initialize(hash_cache_file,
                                base::MemoryMappedFile::READ_WRITE));
-  hash_cache_array_ = reinterpret_cast<uint8_t(*)[32]>(hash_cache_.data());
+  hash_cache_array_ =
+      reinterpret_cast<decltype(hash_cache_array_)>(hash_cache_.data());
 }
 
 SignInHashTree::~SignInHashTree() {}
@@ -92,7 +95,7 @@ void SignInHashTree::GenerateAndStoreHashCache() {
       LOG(ERROR) << "Error getting leaf HMAC, can't regenerate HashCache.";
       return;
     }
-    memcpy(hash_cache_array_[label.cache_index()], hmac.data(), 32);
+    UpdateHashCache(label.cache_index(), hmac.data(), hmac.size());
   }
 
   // Then, calculate all the inner label hashes.
@@ -102,6 +105,11 @@ void SignInHashTree::GenerateAndStoreHashCache() {
 bool SignInHashTree::StoreLabel(const Label& label,
                                 const std::vector<uint8_t>& hmac,
                                 const std::vector<uint8_t>& cred_metadata) {
+  if (hmac.size() != kHashSize) {
+    LOG(WARNING) << "Unexpected MAC size when storing label " << label.value();
+    return false;
+  }
+
   if (IsLeafLabel(label)) {
     // Place the data in a protobuf and then write out to storage.
     HashTreeLeafData leaf_data;
@@ -120,7 +128,7 @@ bool SignInHashTree::StoreLabel(const Label& label,
     }
   }
 
-  memcpy(hash_cache_array_[label.cache_index()], hmac.data(), 32);
+  UpdateHashCache(label.cache_index(), hmac.data(), hmac.size());
   UpdateHashCacheLabelPath(label);
   return true;
 }
@@ -137,8 +145,8 @@ bool SignInHashTree::RemoveLabel(const Label& label) {
     return false;
   }
 
-  std::vector<uint8_t> hmac(32, 0);
-  memcpy(hash_cache_array_[label.cache_index()], hmac.data(), 32);
+  std::vector<uint8_t> hmac(kHashSize, 0);
+  UpdateHashCache(label.cache_index(), hmac.data(), hmac.size());
   UpdateHashCacheLabelPath(label);
   return true;
 }
@@ -152,7 +160,7 @@ bool SignInHashTree::GetLabelData(const Label& label,
     PLTError ret_val = plt_.GetValue(label.value(), &merged_blob);
     if (ret_val == PLT_KEY_NOT_FOUND) {
       // Return an all-zero HMAC.
-      hmac->assign(32, 0);
+      hmac->assign(kHashSize, 0);
       return true;
     }
 
@@ -163,16 +171,23 @@ bool SignInHashTree::GetLabelData(const Label& label,
 
     HashTreeLeafData leaf_data;
     if (!leaf_data.ParseFromArray(merged_blob.data(), merged_blob.size())) {
-      LOG(INFO) << "Couldn't deserialize leaf data, label: " << label.value();
+      LOG(WARNING) << "Couldn't deserialize leaf data for label "
+                   << label.value();
       return false;
     }
+
+    if (leaf_data.mac().size() != kHashSize) {
+      LOG(WARNING) << "Unexpected MAC size for label " << label.value();
+      return false;
+    }
+
     hmac->assign(leaf_data.mac().begin(), leaf_data.mac().end());
     cred_metadata->assign(leaf_data.credential_metadata().begin(),
                           leaf_data.credential_metadata().end());
   } else {
     // If it is a inner leaf, get the value from the HashCache file.
     hmac->assign(hash_cache_array_[label.cache_index()],
-                 hash_cache_array_[label.cache_index()] + 32);
+                 hash_cache_array_[label.cache_index()] + kHashSize);
   }
   return true;
 }
@@ -210,7 +225,7 @@ std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
   std::vector<uint8_t> ret_val;
   if (IsLeafLabel(label)) {
     ret_val.assign(hash_cache_array_[label.cache_index()],
-                   hash_cache_array_[label.cache_index()] + 32);
+                   hash_cache_array_[label.cache_index()] + kHashSize);
     return ret_val;
   }
 
@@ -226,7 +241,7 @@ std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
   ret_val.assign(result_hash.begin(), result_hash.end());
 
   // Update the hash cache with the new value.
-  memcpy(hash_cache_array_[label.cache_index()], ret_val.data(), 32);
+  UpdateHashCache(label.cache_index(), ret_val.data(), ret_val.size());
   return ret_val;
 }
 
@@ -237,14 +252,23 @@ void SignInHashTree::UpdateHashCacheLabelPath(const Label& label) {
     std::vector<uint8_t> input_buffer;
     for (uint64_t i = 0; i < fan_out_; i++) {
       Label child_label = parent.Extend(i);
-      input_buffer.insert(input_buffer.end(),
-                          hash_cache_array_[child_label.cache_index()],
-                          hash_cache_array_[child_label.cache_index()] + 32);
+      input_buffer.insert(
+          input_buffer.end(), hash_cache_array_[child_label.cache_index()],
+          hash_cache_array_[child_label.cache_index()] + kHashSize);
     }
     brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
-    memcpy(hash_cache_array_[parent.cache_index()], result_hash.data(), 32);
+    UpdateHashCache(parent.cache_index(), result_hash.data(),
+                    result_hash.size());
     cur_label = parent;
   }
+}
+
+void SignInHashTree::UpdateHashCache(uint32_t index,
+                                     const uint8_t* data,
+                                     size_t size) {
+  CHECK_EQ(kHashSize, size);
+  CHECK_LT(index, hash_cache_.length() / kHashSize);
+  memcpy(hash_cache_array_[index], data, kHashSize);
 }
 
 }  // namespace cryptohome
