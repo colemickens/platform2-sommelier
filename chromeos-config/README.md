@@ -156,6 +156,26 @@ evaluated/de-normalized form accomplishes a couple things:
     matches the identity attributes and then uses the respective config. It
     never has to care about re-use or config sharing.
 
+The transform algorithm works as follows:
+
+* FOREACH device in chromeos/devices
+    * device variables are put into scope
+    * FOREACH product in device/products
+        * product variables are put into scope
+        * FOREACH sku in device/skus
+            * sku varibles are put into scope
+            * with sku/config
+                * config variables are put into scope
+                * config template variables are evaluated
+                * the config contents are captured and stored in the resulting json
+
+Based on this algorithm, some key points are:
+
+* Only 'sku/config' actually lands in the JSON output. All other YAML structure
+  supports the generation of the sku/config payloads.
+* 'product' generally defines identity/branding information only. The main
+  reason multiple products are supported is for the whitelabel case.
+
 ### Schema Validation
 
 The config is evaluated against a http://json-schema.org/ schema located at:
