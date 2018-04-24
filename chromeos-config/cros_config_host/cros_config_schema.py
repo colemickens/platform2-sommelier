@@ -339,36 +339,6 @@ const struct config_map *cros_config_get_config_map(int *num_entries) {
   return file_format % (',\n'.join(structs), len(structs))
 
 
-def _GetFirmwareUris(config_dict):
-  """Returns a list of (string) firmware URIs.
-
-  Generates and returns a list of firmware URIs for this config. These URIs
-  can be used to pull down remote firmware packages.
-
-  Returns:
-    A list of (string) full firmware URIs, or an empty list on failure.
-  """
-
-  config = GetNamedTuple(config_dict)
-  fw = config.firmware
-  fw_dict = config.firmware._asdict()
-
-  if not getattr(fw, 'bcs_overlay'):
-    return []
-  bcs_overlay = fw.bcs_overlay.replace('overlay-', '')
-  base_config = fw.build_targets.coreboot
-
-  valid_images = [
-      p for n, p in fw_dict.iteritems() if n.endswith('image') and p
-  ]
-  uri_format = ('gs://chromeos-binaries/HOME/bcs-{bcs}/overlay-{bcs}/'
-                'chromeos-base/chromeos-firmware-{base_config}/{fname}')
-  return [uri_format.format(bcs=bcs_overlay,
-                            config=config.name,
-                            fname=fname,
-                            base_config=base_config)
-          for fname in valid_images]
-
 def _FormatJson(config):
   """Formats JSON for output or printing.
 
