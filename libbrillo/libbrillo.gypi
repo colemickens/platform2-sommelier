@@ -289,7 +289,7 @@
       'target_name': 'libbrillo-glib-<(libbase_ver)',
       'type': 'shared_library',
       'dependencies': [
-          'libbrillo-<(libbase_ver)',
+        'libbrillo-<(libbase_ver)',
       ],
       'variables': {
         'exported_deps': [
@@ -317,9 +317,6 @@
           ],
         },
       },
-      'sources': [
-        'brillo/message_loops/glib_message_loop.cc',
-      ],
       'includes': ['../common-mk/deps.gypi'],
       'conditions': [
         ['USE_dbus == 1', {
@@ -339,8 +336,8 @@
           'type': 'executable',
           'dependencies': [
             'libbrillo-<(libbase_ver)',
-            'libbrillo-test-<(libbase_ver)',
             'libbrillo-glib-<(libbase_ver)',
+            'libbrillo-test-<(libbase_ver)',
           ],
           'variables': {
             'deps': [
@@ -386,7 +383,6 @@
             'brillo/map_utils_unittest.cc',
             'brillo/message_loops/base_message_loop_unittest.cc',
             'brillo/message_loops/fake_message_loop_unittest.cc',
-            'brillo/message_loops/glib_message_loop_unittest.cc',
             'brillo/message_loops/message_loop_unittest.cc',
             'brillo/mime_utils_unittest.cc',
             'brillo/osrelease_reader_unittest.cc',

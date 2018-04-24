@@ -20,7 +20,6 @@
 #include <brillo/bind_lambda.h>
 #include <brillo/unittest_utils.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <brillo/message_loops/glib_message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
 
 using base::Bind;
@@ -66,11 +65,6 @@ class MessageLoopTest : public ::testing::Test {
 };
 
 template <>
-void MessageLoopTest<GlibMessageLoop>::MessageLoopSetUp() {
-  loop_.reset(new GlibMessageLoop());
-}
-
-template <>
 void MessageLoopTest<BaseMessageLoop>::MessageLoopSetUp() {
   base_loop_.reset(new base::MessageLoopForIO());
   loop_.reset(new BaseMessageLoop(base::MessageLoopForIO::current()));
@@ -78,9 +72,7 @@ void MessageLoopTest<BaseMessageLoop>::MessageLoopSetUp() {
 
 // This setups gtest to run each one of the following TYPED_TEST test cases on
 // on each implementation.
-typedef ::testing::Types<
-  GlibMessageLoop,
-  BaseMessageLoop> MessageLoopTypes;
+typedef ::testing::Types<BaseMessageLoop> MessageLoopTypes;
 TYPED_TEST_CASE(MessageLoopTest, MessageLoopTypes);
 
 
