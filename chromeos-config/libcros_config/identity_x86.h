@@ -27,7 +27,7 @@ class CrosConfigIdentityX86 : public CrosConfigIdentity {
   // sets the device identity.
   //
   // @smbios_file: File containing memory to scan (typically this is /dev/mem)
-  bool ReadSmbiosIdentity(const base::FilePath& smbios_file);
+  bool ReadSmbios(const base::FilePath& smbios_file);
 
   // Write out fake smbios file containing fake identity information.
   // This is only used for testing.
@@ -35,14 +35,14 @@ class CrosConfigIdentityX86 : public CrosConfigIdentity {
   // @sku_id: SKU ID number to write (e.g. 8)
   // @smbios_file_out: Returns the 'dev/mem'-style file write that was written
   // @return true if OK, false on error
-  bool FakeSmbiosIdentity(const std::string& name,
+  bool FakeSmbios(const std::string& name,
                           int sku_id,
                           base::FilePath* smbios_file_out);
 
-  // @return Name value read via ReadSmbiosIdentity
+  // @return Name value read via ReadSmbios
   const std::string& GetName() const { return name_; }
 
-  // @return SKU ID value read via ReadSmbiosIdentity
+  // @return SKU ID value read via ReadSmbios
   int GetSkuId() const { return sku_id_; }
 
  private:

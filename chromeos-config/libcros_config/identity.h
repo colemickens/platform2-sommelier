@@ -23,17 +23,17 @@ class CrosConfigIdentity {
   // Reads the VPD identity information from the supplied VPD file.
   // @vpd_file: File containing the customization_id from VPD. Typically this
   //     is '/sys/firmware/vpd/ro/customization_id'.
-  bool ReadVpdIdentity(const base::FilePath& vpd_file);
+  bool ReadVpd(const base::FilePath& vpd_file);
 
   // Writes out a fake VPD file for the purposes of testing.
   // @customization_id: Whitelabel name to write
   // @vpd_file_out: Returns the '/sys/firmware/vpd/ro/customization_id'-style
   //     file that was written
   // @return true if OK, false on error
-  bool FakeVpdIdentity(const std::string& customization_id,
+  bool FakeVpd(const std::string& customization_id,
                        base::FilePath* vpd_file_out);
 
-  // Gets the Customization ID value read via ReadVpdIdentity
+  // Gets the Customization ID value read via ReadVpd
   // @return Customization ID value
   const std::string& GetCustomizationId() const { return customization_id_; }
 

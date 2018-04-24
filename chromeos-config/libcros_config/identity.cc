@@ -20,7 +20,7 @@ CrosConfigIdentity::CrosConfigIdentity() {}
 
 CrosConfigIdentity::~CrosConfigIdentity() {}
 
-bool CrosConfigIdentity::FakeVpdIdentity(const std::string& customization_id,
+bool CrosConfigIdentity::FakeVpd(const std::string& customization_id,
                                          base::FilePath* vpd_file_out) {
   *vpd_file_out = base::FilePath("vpd");
   if (base::WriteFile(*vpd_file_out, customization_id.c_str(),
@@ -32,7 +32,7 @@ bool CrosConfigIdentity::FakeVpdIdentity(const std::string& customization_id,
   return true;
 }
 
-bool CrosConfigIdentity::ReadVpdIdentity(const base::FilePath& vpd_file) {
+bool CrosConfigIdentity::ReadVpd(const base::FilePath& vpd_file) {
   if (!base::ReadFileToString(vpd_file, &customization_id_)) {
     CROS_CONFIG_LOG(WARNING) << "No customization_id in VPD";
     // This file is only used for whitelabels, so may be missing. Without it

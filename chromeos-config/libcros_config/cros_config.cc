@@ -53,11 +53,11 @@ bool CrosConfig::InitForTestX86(const base::FilePath& filepath,
                                 const std::string& customization_id) {
   base::FilePath smbios_file, vpd_file;
   CrosConfigIdentityX86 identity;
-  if (!identity.FakeVpdIdentity(customization_id, &vpd_file)) {
+  if (!identity.FakeVpd(customization_id, &vpd_file)) {
     CROS_CONFIG_LOG(ERROR) << "FakeVpdIdentity() failed";
     return false;
   }
-  if (!identity.FakeSmbiosIdentity(name, sku_id, &smbios_file)) {
+  if (!identity.FakeSmbios(name, sku_id, &smbios_file)) {
     CROS_CONFIG_LOG(ERROR) << "FakeSmbiosIdentity() failed";
     return false;
   }
@@ -117,11 +117,11 @@ bool CrosConfig::SelectConfigByIdentityX86(const base::FilePath& mem_file,
                                            const base::FilePath& vpd_file) {
   CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read X86 identity";
   CrosConfigIdentityX86 identity;
-  if (!identity.ReadVpdIdentity(vpd_file)) {
+  if (!identity.ReadVpd(vpd_file)) {
     CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
     return false;
   }
-  if (!identity.ReadSmbiosIdentity(mem_file)) {
+  if (!identity.ReadSmbios(mem_file)) {
     CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS identity";
     return false;
   }

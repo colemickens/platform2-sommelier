@@ -125,7 +125,7 @@ bool CrosConfigIdentityX86::WriteFakeTables(base::File* smbios_file,
   return true;
 }
 
-bool CrosConfigIdentityX86::FakeSmbiosIdentity(
+bool CrosConfigIdentityX86::FakeSmbios(
     const std::string& name, int sku_id, base::FilePath* smbios_file_out) {
   // Write out to a temporary file used just for testing.
   *smbios_file_out = base::FilePath("dev_mem");
@@ -234,7 +234,7 @@ std::string CrosConfigIdentityX86::GetSmbiosString(const SmbiosTable& table,
   return std::string();
 }
 
-bool CrosConfigIdentityX86::ReadSmbiosIdentity(
+bool CrosConfigIdentityX86::ReadSmbios(
     const base::FilePath& smbios_file) {
   SmbiosTable table;
   if (!GetSystemTable(smbios_file, &table)) {
