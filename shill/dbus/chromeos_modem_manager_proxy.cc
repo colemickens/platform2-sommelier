@@ -101,15 +101,33 @@ void ChromeosModemManagerProxy::DeviceRemoved(const dbus::ObjectPath& device) {
   manager_->OnDeviceRemoved(device.value());
 }
 
+void ChromeosModemManagerProxy::OnServiceAppeared() {
+  if (!service_appeared_callback_.is_null()) {
+    service_appeared_callback_.Run();
+  }
+}
+
+void ChromeosModemManagerProxy::OnServiceVanished() {
+  if (!service_vanished_callback_.is_null()) {
+    service_vanished_callback_.Run();
+  }
+}
+
 void ChromeosModemManagerProxy::OnServiceAvailable(bool available) {
   LOG(INFO) << __func__ << ": " << available;
 
   // The callback might invoke calls to the ObjectProxy, so defer the callback
   // to event loop.
-  if (available && !service_appeared_callback_.is_null()) {
-    dispatcher_->PostTask(FROM_HERE, service_appeared_callback_);
-  } else if (!available && !service_vanished_callback_.is_null()) {
-    dispatcher_->PostTask(FROM_HERE, service_vanished_callback_);
+  if (available) {
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::Bind(&ChromeosModemManagerProxy::OnServiceAppeared,
+                   weak_factory_.GetWeakPtr()));
+  } else if (!available) {
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::Bind(&ChromeosModemManagerProxy::OnServiceVanished,
+                   weak_factory_.GetWeakPtr()));
   }
   service_available_ = available;
 }
