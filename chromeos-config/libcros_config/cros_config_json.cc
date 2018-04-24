@@ -29,11 +29,17 @@ CrosConfigJson::CrosConfigJson() : model_dict_(nullptr) {}
 
 CrosConfigJson::~CrosConfigJson() {}
 
-bool CrosConfigJson::SelectConfigByIdentityX86(
-    const CrosConfigIdentityX86& identity) {
-  const std::string& find_name = identity.GetName();
-  int find_sku_id = identity.GetSkuId();
-  const std::string& find_whitelabel_name = identity.GetCustomizationId();
+bool CrosConfigJson::SelectConfigByIdentity(
+    const CrosConfigIdentityArm* identity_arm,
+    const CrosConfigIdentityX86* identity_x86) {
+  const CrosConfigIdentity* identity;
+  if (identity_arm) {
+    identity = identity_arm;
+  } else {
+    identity = identity_x86;
+  }
+  const std::string& find_whitelabel_name = identity->GetCustomizationId();
+
   const base::DictionaryValue* root_dict = nullptr;
   if (json_config_->GetAsDictionary(&root_dict)) {
     const base::DictionaryValue* chromeos = nullptr;
@@ -47,20 +53,36 @@ bool CrosConfigJson::SelectConfigByIdentityX86(
           if (models_list->GetDictionary(i, &model_dict)) {
             const base::DictionaryValue* identity_dict = nullptr;
             if (model_dict->GetDictionary("identity", &identity_dict)) {
-              bool require_sku_match = find_sku_id > -1;
-              int current_sku_id;
-              bool sku_match =
-                  (!require_sku_match ||
-                   (identity_dict->GetInteger("sku-id", &current_sku_id) &&
-                    current_sku_id == find_sku_id));
+              bool platform_specific_match = false;
+              if (identity_x86) {
+                const std::string& find_name = identity_x86->GetName();
+                int find_sku_id = identity_x86->GetSkuId();
+                bool require_sku_match = find_sku_id > -1;
+                int current_sku_id;
+                bool sku_match =
+                    (!require_sku_match ||
+                     (identity_dict->GetInteger("sku-id", &current_sku_id) &&
+                      current_sku_id == find_sku_id));
 
-              bool name_match = true;
-              std::string current_name;
-              if (identity_dict->GetString("smbios-name-match",
-                                           &current_name) &&
-                  !find_name.empty()) {
-                name_match = current_name == find_name;
+                bool name_match = true;
+                std::string current_name;
+                if (identity_dict->GetString("smbios-name-match",
+                                             &current_name) &&
+                    !find_name.empty()) {
+                  name_match = current_name == find_name;
+                }
+                platform_specific_match = sku_match && name_match;
+              } else if (identity_arm) {
+                bool dt_compatible_match = false;
+                std::string current_dt_compatible_match;
+                if (identity_dict->GetString("device-tree-compatible-match",
+                                             &current_dt_compatible_match)) {
+                  dt_compatible_match =
+                      identity_arm->IsCompatible(current_dt_compatible_match);
+                }
+                platform_specific_match = dt_compatible_match;
               }
+
               bool whitelabel_tag_match = true;
               std::string current_whitelabel_tag;
               if (identity_dict->GetString("whitelabel-tag",
@@ -81,7 +103,7 @@ bool CrosConfigJson::SelectConfigByIdentityX86(
                     current_customization_id == find_whitelabel_name;
               }
 
-              if (sku_match && name_match && whitelabel_tag_match &&
+              if (platform_specific_match && whitelabel_tag_match &&
                   customization_id_match) {
                 model_dict_ = model_dict;
                 break;
@@ -93,13 +115,29 @@ bool CrosConfigJson::SelectConfigByIdentityX86(
     }
   }
   if (!model_dict_) {
-    CROS_CONFIG_LOG(ERROR) << "Failed to find config for name: " << find_name
-                           << " sku_id: " << find_sku_id
-                           << " customization_id: " << find_whitelabel_name;
+    if (identity_arm) {
+      CROS_CONFIG_LOG(ERROR)
+          << "Failed to find config for device-tree compatible string: "
+          << identity_arm->GetCompatibleDeviceString();
+    } else {
+      CROS_CONFIG_LOG(ERROR)
+          << "Failed to find config for name: " << identity_x86->GetName()
+          << " sku_id: " << identity_x86->GetSkuId()
+          << " customization_id: " << find_whitelabel_name;
+    }
     return false;
   }
   inited_ = true;
   return true;
+}
+
+bool CrosConfigJson::SelectConfigByIdentityArm(
+    const CrosConfigIdentityArm& identity) {
+  return SelectConfigByIdentity(&identity, NULL);
+}
+bool CrosConfigJson::SelectConfigByIdentityX86(
+    const CrosConfigIdentityX86& identity) {
+  return SelectConfigByIdentity(NULL, &identity);
 }
 
 bool CrosConfigJson::GetString(const std::string& path,

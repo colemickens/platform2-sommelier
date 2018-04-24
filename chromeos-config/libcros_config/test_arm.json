@@ -1,0 +1,29 @@
+{
+  "chromeos": {
+    "configs": [
+      {
+        "identity": {
+          "device-tree-compatible-match": "google,some"
+        },
+        "name": "some",
+        "wallpaper": "some-wallpaper"
+      },
+      {
+        "identity": {
+          "device-tree-compatible-match": "google,whitelabel",
+          "whitelabel-tag": "whitelabel1"
+        },
+        "name": "whitelabel",
+        "wallpaper": "whitelabel1-wallpaper"
+      },
+      {
+        "identity": {
+          "device-tree-compatible-match": "google,whitelabel",
+          "whitelabel-tag": "whitelabel2"
+        },
+        "name": "whitelabel",
+        "wallpaper": "whitelabel2-wallpaper"
+      }
+    ]
+  }
+}

@@ -20,6 +20,8 @@ class CrosConfigJson : public CrosConfigImpl {
   ~CrosConfigJson() override;
 
   // CrosConfigImpl:
+  bool SelectConfigByIdentityArm(
+      const CrosConfigIdentityArm& identity) override;
   bool SelectConfigByIdentityX86(
       const CrosConfigIdentityX86& identity) override;
   bool ReadConfigFile(const base::FilePath& filepath) override;
@@ -29,6 +31,12 @@ class CrosConfigJson : public CrosConfigImpl {
                  std::vector<std::string>* log_msgs_out) override;
 
  private:
+  // Common impl for both the X86 and ARM based identity schemes.
+  // Shares all of the basic logic for iterating through configs;
+  // however, performs slight variations on identity matching based
+  // on the X86 versus ARM identity attributes.
+  bool SelectConfigByIdentity(const CrosConfigIdentityArm* identity_arm,
+                              const CrosConfigIdentityX86* identity_x86);
   std::unique_ptr<const base::Value> json_config_;
   // Owned by json_config_
   const base::DictionaryValue* model_dict_;  // Model root

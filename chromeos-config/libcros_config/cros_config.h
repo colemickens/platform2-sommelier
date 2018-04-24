@@ -42,16 +42,27 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   bool Init();
 
   // Prepare the configuration system for testing on X86 devices.
-  // This reads in the given configuration file and selects the supplied
-  // model name.
+  // This reads in the given configuration file and selects the config
+  // based on the supplied X86 identifiers.
   // @filepath: Path to configuration .dtb|.json file.
   // @name: Platform name as returned by 'mosys platform id'.
   // @sku_id: SKU ID as returned by 'mosys platform sku'.
-  // @customization_id: VPD customization ID from 'mosys platform customization'
+  // @customization_id: VPD customization ID
   // @return true if OK, false on error.
   bool InitForTestX86(const base::FilePath& filepath,
                       const std::string& name,
                       int sku_id,
+                      const std::string& customization_id);
+
+  // Prepare the configuration system for testing on ARM devices.
+  // This reads in the given configuration file and selects the config
+  // based on the supplied ARM identifiers.
+  // @filepath: Path to configuration .dtb|.json file.
+  // @dt_compatible_name: ARM device-tree compatible name string.
+  // @customization_id: VPD customization ID
+  // @return true if OK, false on error.
+  bool InitForTestArm(const base::FilePath& filepath,
+                      const std::string& dt_compatible_name,
                       const std::string& customization_id);
 
   // Internal function to obtain a property value and return a list of log
@@ -83,6 +94,14 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   //     is '/sys/firmware/vpd/ro/customization_id'.
   //   results for every query
   bool SelectConfigByIdentityX86(const base::FilePath& smbios_file,
+                                 const base::FilePath& vpd_file);
+
+  // Common initialization function based on ARM identity.
+  // @dt_compatible_file: ARM based device-tree compatible file
+  // @vpd_file: File containing the customization_id from VPD. Typically this
+  //     is '/sys/firmware/vpd/ro/customization_id'.
+  //   results for every query
+  bool SelectConfigByIdentityArm(const base::FilePath& dt_compatible_file,
                                  const base::FilePath& vpd_file);
 
   // Creates the appropriate instance of CrosConfigImpl based on the underlying

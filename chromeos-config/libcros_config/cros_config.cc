@@ -23,6 +23,7 @@
 namespace {
 const char kSmbiosTablePath[] = "/run/cros_config/SMBIOS";
 const char kCustomizationId[] = "/sys/firmware/vpd/ro/customization_id";
+const char kDeviceTreeCompatiblePath[] = "/proc/device-tree/compatible";
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kConfigJsonPath[] = "/usr/share/chromeos-config/config.json";
 const char kDtbExtension[] = ".dtb";
@@ -54,15 +55,32 @@ bool CrosConfig::InitForTestX86(const base::FilePath& filepath,
   base::FilePath smbios_file, vpd_file;
   CrosConfigIdentityX86 identity;
   if (!identity.FakeVpd(customization_id, &vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeVpdIdentity() failed";
+    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
     return false;
   }
   if (!identity.FakeSmbios(name, sku_id, &smbios_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeSmbiosIdentity() failed";
+    CROS_CONFIG_LOG(ERROR) << "FakeSmbios() failed";
     return false;
   }
   return InitCrosConfig(filepath) &&
          SelectConfigByIdentityX86(smbios_file, vpd_file);
+}
+
+bool CrosConfig::InitForTestArm(const base::FilePath& filepath,
+                                const std::string& dt_compatible_name,
+                                const std::string& customization_id) {
+  base::FilePath dt_compatible_file, vpd_file;
+  CrosConfigIdentityArm identity;
+  if (!identity.FakeVpd(customization_id, &vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
+    return false;
+  }
+  if (!identity.FakeDtCompatible(dt_compatible_name, &dt_compatible_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeDtCompatible() failed";
+    return false;
+  }
+  return InitCrosConfig(filepath) &&
+         SelectConfigByIdentityArm(dt_compatible_file, vpd_file);
 }
 
 bool CrosConfig::InitModel() {
@@ -75,13 +93,14 @@ bool CrosConfig::InitModel() {
     init_config = InitCrosConfig(dtb_path);
   }
   const std::string system_arch = base::SysInfo::OperatingSystemArchitecture();
+  base::FilePath vpd_file(kCustomizationId);
   if (system_arch == "x86_64" || system_arch == "x86") {
     base::FilePath smbios_file(kSmbiosTablePath);
-    base::FilePath vpd_file(kCustomizationId);
     return init_config && SelectConfigByIdentityX86(smbios_file, vpd_file);
   } else {
-    CROS_CONFIG_LOG(ERROR) << "Only x86 system architectures are supported.";
-    return false;
+    base::FilePath dt_compatible_file(kDeviceTreeCompatiblePath);
+    return init_config &&
+           SelectConfigByIdentityArm(dt_compatible_file, vpd_file);
   }
 }
 
@@ -125,17 +144,41 @@ bool CrosConfig::SelectConfigByIdentityX86(const base::FilePath& mem_file,
     CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS identity";
     return false;
   }
-  std::string name = identity.GetName();
-  std::string customization_id = identity.GetCustomizationId();
-  int sku_id = identity.GetSkuId();
   if (!cros_config_->SelectConfigByIdentityX86(identity)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot find config for name " << name
-                           << " SKU ID " << sku_id << " Customization ID "
-                           << customization_id;
+    CROS_CONFIG_LOG(ERROR) << "Cannot find config for"
+                           << " name " << identity.GetName()
+                           << " SKU ID " << identity.GetSkuId()
+                           << " Customization ID "
+                           << identity.GetCustomizationId();
     return false;
   }
 
-  CROS_CONFIG_LOG(INFO) << ">>>>> Completed initialized with x86 identity";
+  CROS_CONFIG_LOG(INFO) << ">>>>> Completed initialization with x86 identity";
+
+  return true;
+}
+
+bool CrosConfig::SelectConfigByIdentityArm(
+    const base::FilePath& dt_compatible_file, const base::FilePath& vpd_file) {
+  CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read ARM identity";
+  CrosConfigIdentityArm identity;
+  if (!identity.ReadVpd(vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
+    return false;
+  }
+  if (!identity.ReadDtCompatible(dt_compatible_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read device-tree compatible identity";
+    return false;
+  }
+  if (!cros_config_->SelectConfigByIdentityArm(identity)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot find config for device-tree compatible "
+                           << "string " << identity.GetCompatibleDeviceString()
+                           << " Customization ID "
+                           << identity.GetCustomizationId();
+    return false;
+  }
+
+  CROS_CONFIG_LOG(INFO) << ">>>>> Completed initialization with ARM identity";
 
   return true;
 }

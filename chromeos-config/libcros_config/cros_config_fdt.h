@@ -51,6 +51,8 @@ class CrosConfigFdt : public CrosConfigImpl {
   bool ReadConfigFile(const base::FilePath& filepath) override;
   bool SelectConfigByIdentityX86(
       const CrosConfigIdentityX86& identity) override;
+  bool SelectConfigByIdentityArm(
+      const CrosConfigIdentityArm& identity) override;
 
  private:
   // Internal function to obtain a property value based on a node

@@ -1,0 +1,34 @@
+#
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+#
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+chromeos:
+  devices:
+    - $name: "some"
+      products:
+        - $key-id: "SOME"
+      skus:
+        - config:
+            name: "{{$name}}"
+            identity:
+              device-tree-compatible-match: "google,some"
+            firmware:
+              no-firmware: true
+            wallpaper: "some-wallpaper"
+    - $name: "whitelabel"
+      products:
+        - $whitelabel-tag: "whitelabel1"
+          $wallpaper: "whitelabel1-wallpaper"
+        - $whitelabel-tag: "whitelabel2"
+          $wallpaper: "whitelabel2-wallpaper"
+      skus:
+        - config:
+            name: "{{$name}}"
+            identity:
+              device-tree-compatible-match: "google,whitelabel"
+              whitelabel-tag: "{{$whitelabel-tag}}"
+            firmware:
+              no-firmware: true
+            wallpaper: "{{$wallpaper}}"

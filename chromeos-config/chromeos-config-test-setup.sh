@@ -14,3 +14,4 @@ dtc ${args} -o test_bad_default.dtb libcros_config/test_bad_default.dts
 
 # Copy the json test config locally
 cp libcros_config/test.json test.json
+cp libcros_config/test_arm.json test_arm.json

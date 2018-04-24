@@ -9,6 +9,7 @@
 
 #include "chromeos-config/libcros_config/cros_config_interface.h"
 #include "chromeos-config/libcros_config/identity_x86.h"
+#include "chromeos-config/libcros_config/identity_arm.h"
 
 #include <map>
 #include <memory>
@@ -45,12 +46,17 @@ class CrosConfigImpl : public CrosConfigInterface {
   virtual bool ReadConfigFile(const base::FilePath& filepath) = 0;
 
   // Select the config to use based on the X86 device identity.
-  // Looks up the appropriate config to use based the attributes of the X86
   // based identity.
   // @identity: X86 based identity attributes
   // @return true on success, false on failure
   virtual bool SelectConfigByIdentityX86(
       const CrosConfigIdentityX86& identity) = 0;
+
+  // Select the config to use based on the ARM device identity.
+  // @identity: ARM based identity attributes
+  // @return true on success, false on failure
+  virtual bool SelectConfigByIdentityArm(
+      const CrosConfigIdentityArm& identity) = 0;
 
  protected:
   // Runs a quick init check and prints an error to stderr if it fails.

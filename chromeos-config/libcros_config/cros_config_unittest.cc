@@ -16,8 +16,10 @@
 
 #ifndef USE_JSON
 #define TEST_FILE "test.dtb"
+#define TEST_FILE_ARM ""  // No FDT support for ARM
 #else
 #define TEST_FILE "test.json"
+#define TEST_FILE_ARM "test_arm.json"
 #endif
 
 class CrosConfigTest : public testing::Test {
@@ -28,6 +30,13 @@ class CrosConfigTest : public testing::Test {
     base::FilePath filepath(TEST_FILE);
     ASSERT_TRUE(
         cros_config_.InitForTestX86(filepath, name, sku_id, whitelabel_name));
+  }
+
+  void InitConfigArm(const std::string device_name = "google,some",
+                     std::string whitelabel_name = "") {
+    base::FilePath filepath(TEST_FILE_ARM);
+    ASSERT_TRUE(
+        cros_config_.InitForTestArm(filepath, device_name, whitelabel_name));
   }
 
   brillo::CrosConfig cros_config_;
@@ -162,7 +171,6 @@ TEST_F(CrosConfigTest, CheckMultilineString) {
   InitConfig("Some");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/power", "charging-ports", &val));
-  std::cout << "GOT VALUE = " << val;
   ASSERT_EQ("CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n", val);
 }
 
@@ -172,6 +180,25 @@ TEST_F(CrosConfigTest, CheckCustomizationId) {
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "name", &val));
   ASSERT_EQ("some_customization", val);
+}
+
+TEST_F(CrosConfigTest, CheckArmIdentityByDeviceName) {
+  InitConfigArm();
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_EQ("some-wallpaper", val);
+}
+
+TEST_F(CrosConfigTest, CheckArmIdentityByWhitelabel) {
+  InitConfigArm("google,whitelabel", "whitelabel1");
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_EQ("whitelabel1-wallpaper", val);
+}
+
+TEST_F(CrosConfigTest, CheckArmNoIdentityMatch) {
+  base::FilePath filepath(TEST_FILE_ARM);
+  ASSERT_FALSE(cros_config_.InitForTestArm(filepath, "invalid", ""));
 }
 #endif /* !USE_JSON */
 

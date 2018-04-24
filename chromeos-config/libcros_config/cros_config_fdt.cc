@@ -250,6 +250,12 @@ int CrosConfigFdt::FollowPhandle(int phandle, int* target_out) {
   return model_node;
 }
 
+bool CrosConfigFdt::SelectConfigByIdentityArm(
+    const CrosConfigIdentityArm& identity) {
+  CROS_CONFIG_LOG(ERROR) << "ARM is not supported for the FDT impl.";
+  return false;
+}
+
 bool CrosConfigFdt::SelectConfigByIdentityX86(
     const CrosConfigIdentityX86& identity) {
   const std::string& find_name = identity.GetName();
