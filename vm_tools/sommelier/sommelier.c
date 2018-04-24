@@ -623,6 +623,21 @@ enum {
 #define P_BASE_SIZE (1L << 8)
 #define P_WIN_GRAVITY (1L << 9)
 
+struct xwl_wm_size_hints {
+  uint32_t flags;
+  int32_t x, y;
+  int32_t width, height;
+  int32_t min_width, min_height;
+  int32_t max_width, max_height;
+  int32_t width_inc, height_inc;
+  struct {
+    int32_t x;
+    int32_t y;
+  } min_aspect, max_aspect;
+  int32_t base_width, base_height;
+  int32_t win_gravity;
+};
+
 #define MWM_HINTS_FUNCTIONS (1L << 0)
 #define MWM_HINTS_DECORATIONS (1L << 1)
 #define MWM_HINTS_INPUT_MODE (1L << 2)
@@ -635,6 +650,14 @@ enum {
 #define MWM_DECOR_MENU (1L << 4)
 #define MWM_DECOR_MINIMIZE (1L << 5)
 #define MWM_DECOR_MAXIMIZE (1L << 6)
+
+struct xwl_mwm_hints {
+  uint32_t flags;
+  uint32_t functions;
+  uint32_t decorations;
+  int32_t input_mode;
+  uint32_t status;
+};
 
 #define NET_WM_MOVERESIZE_SIZE_TOPLEFT 0
 #define NET_WM_MOVERESIZE_SIZE_TOP 1
@@ -5166,27 +5189,8 @@ static void xwl_handle_map_request(struct xwl *xwl,
   };
   xcb_get_geometry_cookie_t geometry_cookie;
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
-  struct xwl_wm_size_hints {
-    uint32_t flags;
-    int32_t x, y;
-    int32_t width, height;
-    int32_t min_width, min_height;
-    int32_t max_width, max_height;
-    int32_t width_inc, height_inc;
-    struct {
-      int32_t x;
-      int32_t y;
-    } min_aspect, max_aspect;
-    int32_t base_width, base_height;
-    int32_t win_gravity;
-  } size_hints = {0};
-  struct xwl_mwm_hints {
-    uint32_t flags;
-    uint32_t functions;
-    uint32_t decorations;
-    int32_t input_mode;
-    uint32_t status;
-  } mwm_hints = {0};
+  struct xwl_wm_size_hints size_hints = {0};
+  struct xwl_mwm_hints mwm_hints = {0};
   uint32_t values[5];
   int i;
 
@@ -5851,6 +5855,90 @@ static void xwl_handle_property_notify(struct xwl *xwl,
     } else {
       zxdg_toplevel_v6_set_title(window->xdg_toplevel, "");
     }
+  } else if (event->atom == XCB_ATOM_WM_NORMAL_HINTS) {
+    struct xwl_window* window = xwl_lookup_window(xwl, event->window);
+    if (!window)
+      return;
+
+    window->size_flags &= ~(P_MIN_SIZE | P_MAX_SIZE);
+
+    if (event->state != XCB_PROPERTY_DELETE) {
+      struct xwl_wm_size_hints size_hints = {0};
+      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+          xwl->connection,
+          xcb_get_property(xwl->connection, 0, window->id,
+                           XCB_ATOM_WM_NORMAL_HINTS, XCB_ATOM_ANY, 0,
+                           sizeof(size_hints)),
+          NULL);
+      if (reply) {
+        memcpy(&size_hints, xcb_get_property_value(reply), sizeof(size_hints));
+        free(reply);
+      }
+
+      window->size_flags |= size_hints.flags & (P_MIN_SIZE | P_MAX_SIZE);
+      if (window->size_flags & P_MIN_SIZE) {
+        window->min_width = size_hints.min_width;
+        window->min_height = size_hints.min_height;
+      }
+      if (window->size_flags & P_MAX_SIZE) {
+        window->max_width = size_hints.max_width;
+        window->max_height = size_hints.max_height;
+      }
+    }
+
+    if (!window->xdg_toplevel)
+      return;
+
+    if (window->size_flags & P_MIN_SIZE) {
+      zxdg_toplevel_v6_set_min_size(window->xdg_toplevel,
+                                    window->min_width / xwl->scale,
+                                    window->min_height / xwl->scale);
+    } else {
+      zxdg_toplevel_v6_set_min_size(window->xdg_toplevel, 0, 0);
+    }
+
+    if (window->size_flags & P_MAX_SIZE) {
+      zxdg_toplevel_v6_set_max_size(window->xdg_toplevel,
+                                    window->max_width / xwl->scale,
+                                    window->max_height / xwl->scale);
+    } else {
+      zxdg_toplevel_v6_set_max_size(window->xdg_toplevel, 0, 0);
+    }
+  } else if (event->atom == xwl->atoms[ATOM_MOTIF_WM_HINTS].value) {
+    struct xwl_window* window = xwl_lookup_window(xwl, event->window);
+    if (!window)
+      return;
+
+    // Managed windows are decorated by default.
+    window->decorated = window->managed;
+
+    if (event->state != XCB_PROPERTY_DELETE) {
+      struct xwl_mwm_hints mwm_hints = {0};
+      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+          xwl->connection,
+          xcb_get_property(xwl->connection, 0, window->id,
+                           xwl->atoms[ATOM_MOTIF_WM_HINTS].value, XCB_ATOM_ANY,
+                           0, sizeof(mwm_hints)),
+          NULL);
+      if (reply) {
+        if (mwm_hints.flags & MWM_HINTS_DECORATIONS) {
+          if (mwm_hints.decorations & MWM_DECOR_ALL)
+            window->decorated = ~mwm_hints.decorations & MWM_DECOR_TITLE;
+          else
+            window->decorated = mwm_hints.decorations & MWM_DECOR_TITLE;
+        }
+      }
+    }
+
+    if (!window->aura_surface)
+      return;
+
+    zaura_surface_set_frame(window->aura_surface,
+                            window->decorated
+                                ? ZAURA_SURFACE_FRAME_TYPE_NORMAL
+                                : window->depth == 32
+                                      ? ZAURA_SURFACE_FRAME_TYPE_NONE
+                                      : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
   } else if (event->atom == xwl->atoms[ATOM_WL_SELECTION].value) {
     if (event->window == xwl->selection_window &&
         event->state == XCB_PROPERTY_NEW_VALUE &&
