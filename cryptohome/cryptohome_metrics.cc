@@ -202,8 +202,7 @@ void ReportFreedGCacheDiskSpaceInMb(int mb) {
     return;
   }
   g_metrics->SendToUMA(kCryptohomeFreedGCacheDiskSpaceInMbHistogram, mb,
-                       0 /* minimum value of the histogram samples */,
-                       1000 /* maximum value of the histogram samples (1GB) */,
+                       10 /* 10 MiB minimum */, 1024 * 10 /* 10 GiB maximum */,
                        50 /* number of buckets */);
 }
 

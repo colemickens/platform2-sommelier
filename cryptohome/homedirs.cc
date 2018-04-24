@@ -99,10 +99,12 @@ bool HomeDirs::FreeDiskSpace() {
   DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteGCacheTmpCallback,
                                            base::Unretained(this)));
 
-  int64_t oldFreeDiskSpace = freeDiskSpace;
+  const int64_t old_free_disk_space = freeDiskSpace;
   freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
-  ReportFreedGCacheDiskSpaceInMb((freeDiskSpace - oldFreeDiskSpace) / 1024 /
-                                 1024);
+  const int64_t freed_gcache_space = freeDiskSpace - old_free_disk_space;
+  // Report only if something was deleted.
+  if (freed_gcache_space > 0)
+    ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
 
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
     return true;
