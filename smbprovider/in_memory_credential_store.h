@@ -11,7 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/macros.h>
 
-#include <smbprovider/credential_store.h>
+#include "smbprovider/credential_store.h"
 
 namespace smbprovider {
 
