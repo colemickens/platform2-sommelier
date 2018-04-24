@@ -75,41 +75,41 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   DCHECK(mount_id);
   *mount_id = -1;
 
+  // The functions below will set the error if they fail.
+  *error_code = static_cast<int32_t>(ERROR_OK);
+
+  // AddMount() has to be called first since the credentials have to be stored
+  // before calling CanAccessMount().
   MountOptionsProto options;
-  bool can_mount = ParseOptionsProto(options_blob, &options, error_code) &&
-                   CanMountPath(options.path(), error_code);
+  const bool success =
+      ParseOptionsProto(options_blob, &options, error_code) &&
+      AddMount(options.path(), options.workgroup(), options.username(),
+               password_fd, error_code, mount_id) &&
+      CanAccessMount(options.path(), error_code);
 
-  if (!can_mount) {
-    // ParseOptionsProto() or CanMountPath() already set |error_code|.
-    return;
+  if (!success) {
+    // If AddMount() was successful but the mount could not be accessed, remove
+    // the mount from mount_manager_.
+    RemoveMountIfMounted(*mount_id);
   }
-
-  // Attempt to mount the path. AddMount() will return false if the path
-  // specified is already mounted.
-  bool success =
-      mount_manager_->AddMount(options.path(), options.workgroup(),
-                               options.username(), password_fd, mount_id);
-  *error_code = success ? static_cast<int32_t>(ERROR_OK)
-                        : static_cast<int32_t>(ERROR_EXISTS);
 }
 
 int32_t SmbProvider::Remount(const ProtoBlob& options_blob) {
-  int32_t error_code;
+  // The functions below will set the error if they fail.
+  int32_t error_code = static_cast<int32_t>(ERROR_OK);
 
   RemountOptionsProto options;
-  bool can_remount = ParseOptionsProto(options_blob, &options, &error_code) &&
-                     CanMountPath(options.path(), &error_code);
+  const bool remounted =
+      ParseOptionsProto(options_blob, &options, &error_code) &&
+      Remount(options.path(), options.mount_id(), &error_code);
 
-  if (!can_remount) {
-    // ParseOptionsProto() or CanMountPath() already set |error_code|.
+  if (!remounted) {
     return error_code;
   }
 
-  // Attempt to mount the path. Remount will return false if the path specified
-  // is already mounted.
-  bool success = mount_manager_->Remount(options.path(), options.mount_id());
-  error_code = success ? static_cast<int32_t>(ERROR_OK)
-                       : static_cast<int32_t>(ERROR_EXISTS);
+  if (!CanAccessMount(options.path(), &error_code)) {
+    RemoveMountIfMounted(options.mount_id());
+  }
 
   return error_code;
 }
@@ -498,8 +498,8 @@ bool SmbProvider::Seek(const Proto& options, int32_t* error_code) {
   return true;
 }
 
-bool SmbProvider::CanMountPath(const std::string& mount_root,
-                               int32_t* error_code) {
+bool SmbProvider::CanAccessMount(const std::string& mount_root,
+                                 int32_t* error_code) {
   int32_t dir_id = -1;
   int32_t result = samba_interface_->OpenDirectory(mount_root, &dir_id);
   if (result != 0) {
@@ -525,6 +525,38 @@ bool SmbProvider::RemoveMount(int32_t mount_id, int32_t* error_code) {
   }
 
   return removed;
+}
+
+bool SmbProvider::AddMount(const std::string& mount_root,
+                           const std::string& workgroup,
+                           const std::string& username,
+                           const base::ScopedFD& password_fd,
+                           int32_t* error_code,
+                           int32_t* mount_id) {
+  bool added = mount_manager_->AddMount(mount_root, workgroup, username,
+                                        password_fd, mount_id);
+  if (!added) {
+    *error_code = static_cast<int32_t>(ERROR_IN_USE);
+  }
+
+  return added;
+}
+
+bool SmbProvider::Remount(const std::string& mount_root,
+                          int32_t mount_id,
+                          int32_t* error_code) {
+  bool remounted = mount_manager_->Remount(mount_root, mount_id);
+  if (!remounted) {
+    *error_code = static_cast<int32_t>(ERROR_IN_USE);
+  }
+
+  return remounted;
+}
+
+void SmbProvider::RemoveMountIfMounted(int32_t mount_id) {
+  if (mount_id != -1) {
+    mount_manager_->RemoveMount(mount_id);
+  }
 }
 
 bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptionsProto& options,

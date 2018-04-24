@@ -144,7 +144,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   // Tests whether |mount_root| is a valid path to be mounted by attemping
   // to open the directory.
-  bool CanMountPath(const std::string& mount_root, int32_t* error_code);
+  bool CanAccessMount(const std::string& mount_root, int32_t* error_code);
 
   // Helper method to get the type of an entry. Returns boolean indicating
   // success. Sets is_directory to true for directory, and false for file.
@@ -161,6 +161,25 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Removes |mount_id| from the |mount_manager_| object and sets |error_code|
   // on failure.
   bool RemoveMount(int32_t mount_id, int32_t* error_code);
+
+  // Adds mount |mount_root| to mount_manager_ and sets |error_code| on failure.
+  // Credentials such as |workgroup|, |username| and |password_fd| will be used
+  // if provided. Sets |mount_id| when mount is successful.
+  bool AddMount(const std::string& mount_root,
+                const std::string& workgroup,
+                const std::string& username,
+                const base::ScopedFD& password_fd,
+                int32_t* error_code,
+                int32_t* mount_id);
+
+  // Remounts |mount_root| on mount_manager_ with |mount_id| and sets
+  // |error_code| on failure.
+  bool Remount(const std::string& mount_root,
+               int32_t mount_id,
+               int32_t* error_code);
+
+  // Removes |mount_id| from mount_manager_ if |mount_id| is mounted.
+  void RemoveMountIfMounted(int32_t mount_id);
 
   // Helper method to read a file with valid |options| and output the results
   // into a |buffer|. This sets |error_code| on failure.
