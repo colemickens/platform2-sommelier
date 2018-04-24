@@ -108,7 +108,10 @@ constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 
 // Common environment for all LXD functionality.
 const std::map<string, string> kLxdEnv = {
-    {"LXD_DIR", "/mnt/stateful/lxd"}, {"LXD_CONF", "/mnt/stateful/lxd_conf"}};
+    {"LXD_DIR", "/mnt/stateful/lxd"},
+    {"LXD_CONF", "/mnt/stateful/lxd_conf"},
+    {"LXD_UNPRIVILEGED_ONLY", "true"},
+};
 
 // Delimiter for the end of a URL scheme.
 constexpr char kUrlSchemeDelimiter[] = "://";
