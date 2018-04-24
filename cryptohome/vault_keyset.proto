@@ -88,9 +88,9 @@ message SerializedVaultKeyset {
   optional bytes le_fek_iv = 14;
   optional bytes le_chaps_iv = 15;
 
-  // Used *only* by EncryptLECredenrtial/DecryptLECredential to wrap
-  // conver the reset_seed (which is only 1-per-user) to a per LE
-  // Credential reset secret using HMACSha256.
+  // Used *only* by EncryptLECredential/DecryptLECredential to derive the
+  // per-credential reset_secret from the per-user |reset_seed| using
+  // HMACSha256.
   optional bytes reset_salt = 16;
 
   // Fields specific to the challenge-response protection.

@@ -79,7 +79,6 @@ class HomeDirs {
 
   // Returns a list of present keyset indices for an obfuscated username.
   // There is no guarantee the keysets are valid.
-  // NOTE: The returned keysets DO NOT include LE Credential Keysets.
   virtual bool GetVaultKeysets(const std::string& obfuscated,
                                std::vector<int>* keysets) const;
 
@@ -119,6 +118,8 @@ class HomeDirs {
   // Returns true if a valid keyset can be decrypted with |creds|.  If true,
   // |vk| will contain the decrypted value. If false, |vk| will contain the
   // last failed keyset attempt.
+  // NOTE: The LE Credential Keysets are only considered when the key label
+  // provided via |creds| is non-empty.
   virtual bool GetValidKeyset(const Credentials& creds, VaultKeyset* vk);
 
   // Returns the vault keyset path for the supplied obfuscated username.
