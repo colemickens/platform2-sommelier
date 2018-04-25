@@ -45,6 +45,12 @@ class ChromiumCommandBuilder {
   // Default zoneinfo file used if the time zone hasn't been explicitly set.
   static const char kDefaultZoneinfoPath[];
 
+  // Names of Chromium flags (without "--" prefixes) that need to be merged due
+  // to containing lists of comma-separated values.
+  static const char kVmoduleFlag[];
+  static const char kEnableFeaturesFlag[];
+  static const char kEnableBlinkFeaturesFlag[];
+
   ChromiumCommandBuilder();
   ~ChromiumCommandBuilder();
 
@@ -119,7 +125,9 @@ class ChromiumCommandBuilder {
   // not call getenv().
   std::string ReadEnvVar(const std::string& name) const;
 
-  // Adds a command-line argument.
+  // Adds a command-line argument. For --vmodule, --enable-features, or
+  // --enable-blink-features flags (which contain lists of values that must be
+  // merged), use the following dedicated methods instead.
   void AddArg(const std::string& arg);
 
   // Prepends |pattern| to the --vmodule flag in |arguments_|.
@@ -127,6 +135,9 @@ class ChromiumCommandBuilder {
 
   // Appends |feature_name| to the --enable-features flag in |arguments_|.
   void AddFeatureEnableOverride(const std::string& feature_name);
+
+  // Appends |feature_name| to the --enable-blink-features flag in |arguments_|.
+  void AddBlinkFeatureEnableOverride(const std::string& feature_name);
 
  private:
   // Converts absolute path |path| into a base::FilePath, rooting it under
@@ -137,14 +148,14 @@ class ChromiumCommandBuilder {
   void DeleteArgsWithPrefix(const std::string& prefix);
 
   // Adds an entry to a flag containing a list of values. For example, for a
-  // flag like "--my-list=foo,bar", |flag_prefix| would be "--my-list=",
+  // flag like "--my-list=foo,bar", |flag_name| would be "my-list",
   // |entry_separator| would be ",", and |new_entry| would be "foo" or "bar".
   // |flag_argument_index|'s memory holds the flag's position within
   // |arguments_| or -1 if the flag is not yet set. If |prepend| is true,
   // |new_entry| will be prepended before existing values; otherwise it will be
   // appended after them.
   void AddListFlagEntry(int* flag_argument_index,
-                        const std::string& flag_prefix,
+                        const std::string& flag_name,
                         const std::string& entry_separator,
                         const std::string& new_entry,
                         bool prepend);
@@ -164,21 +175,21 @@ class ChromiumCommandBuilder {
   base::FilePath base_path_for_testing_;
 
   // UID and GID of the user used to run the binary.
-  uid_t uid_;
-  gid_t gid_;
+  uid_t uid_ = 0;
+  gid_t gid_ = 0;
 
   // USE flags that were set when the system was built.
   std::set<std::string> use_flags_;
 
   // True if official Chrome OS hardware is being used.
-  bool is_chrome_os_hardware_;
+  bool is_chrome_os_hardware_ = false;
 
   // True if this is a developer system, per the is_developer_end_user command.
-  bool is_developer_end_user_;
+  bool is_developer_end_user_ = false;
 
   // True if this is a test build, per CHROMEOS_RELEASE_TRACK in
   // /etc/lsb-release.
-  bool is_test_build_;
+  bool is_test_build_ = false;
 
   // Data in /etc/lsb-release.
   std::string lsb_data_;
@@ -193,10 +204,11 @@ class ChromiumCommandBuilder {
   // Command-line arguments that the caller should pass to the executable.
   StringVector arguments_;
 
-  // Index in |arguments_| of the --vmodule and --enable-features flags. -1 if
-  // the flags haven't been set.
-  int vmodule_argument_index_;
-  int enable_features_argument_index_;
+  // Index in |arguments_| of the --vmodule, --enable-features, and
+  // --enable-blink-features flags. -1 if the flags haven't been set.
+  int vmodule_argument_index_ = -1;
+  int enable_features_argument_index_ = -1;
+  int enable_blink_features_argument_index_ = -1;
 
   DISALLOW_COPY_AND_ASSIGN(ChromiumCommandBuilder);
 };

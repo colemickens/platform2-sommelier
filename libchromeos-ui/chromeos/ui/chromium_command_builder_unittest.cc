@@ -4,10 +4,14 @@
 
 #include "chromeos/ui/chromium_command_builder.h"
 
+#include <string>
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "chromeos/ui/util.h"
@@ -171,42 +175,42 @@ TEST_F(ChromiumCommandBuilderTest, BasicEnvironment) {
   EXPECT_TRUE(base::DirectoryExists(data_dir));
 }
 
-TEST_F(ChromiumCommandBuilderTest, VmoduleFlag) {
+TEST_F(ChromiumCommandBuilderTest, ValueListFlags) {
   ASSERT_TRUE(Init());
   ASSERT_TRUE(builder_.SetUpChromium());
 
-  const char kVmodulePrefix[] = "--vmodule=";
-  ASSERT_EQ("", GetFirstArgWithPrefix(kVmodulePrefix));
-  builder_.AddVmodulePattern("foo=1");
-  ASSERT_EQ("--vmodule=foo=1", GetFirstArgWithPrefix(kVmodulePrefix));
-  builder_.AddVmodulePattern("bar=2");
-  ASSERT_EQ("--vmodule=bar=2,foo=1", GetFirstArgWithPrefix(kVmodulePrefix));
+  // All of these methods do essentially the same thing.
+  typedef void (ChromiumCommandBuilder::*AddMethod)(const std::string&);
+  struct TestCase {
+    const char* flag;
+    AddMethod method;
+    bool append;
+  };
+  const std::vector<TestCase> kTestCases = {
+      {ChromiumCommandBuilder::kVmoduleFlag,
+       &ChromiumCommandBuilder::AddVmodulePattern, false},
+      {ChromiumCommandBuilder::kEnableFeaturesFlag,
+       &ChromiumCommandBuilder::AddFeatureEnableOverride, true},
+      {ChromiumCommandBuilder::kEnableBlinkFeaturesFlag,
+       &ChromiumCommandBuilder::AddBlinkFeatureEnableOverride, true},
+  };
 
-  // Add another argument and check that --vmodule still gets updated.
-  builder_.AddArg("--blah");
-  builder_.AddVmodulePattern("baz=1");
-  ASSERT_EQ("--vmodule=baz=1,bar=2,foo=1",
-            GetFirstArgWithPrefix(kVmodulePrefix));
-}
+  for (const auto& tc : kTestCases) {
+    SCOPED_TRACE(tc.flag);
+    const std::string kPrefix = base::StringPrintf("--%s=", tc.flag);
+    EXPECT_EQ("", GetFirstArgWithPrefix(kPrefix));
+    (builder_.*(tc.method))("foo");
+    EXPECT_EQ(kPrefix + "foo", GetFirstArgWithPrefix(kPrefix));
+    (builder_.*(tc.method))("bar");
+    EXPECT_EQ(kPrefix + (tc.append ? "foo,bar" : "bar,foo"),
+              GetFirstArgWithPrefix(kPrefix));
 
-TEST_F(ChromiumCommandBuilderTest, EnableFeatures) {
-  ASSERT_TRUE(Init());
-  ASSERT_TRUE(builder_.SetUpChromium());
-
-  const char kEnableFeaturesPrefix[] = "--enable-features=";
-  ASSERT_EQ("", GetFirstArgWithPrefix(kEnableFeaturesPrefix));
-  builder_.AddFeatureEnableOverride("foo");
-  ASSERT_EQ("--enable-features=foo",
-            GetFirstArgWithPrefix(kEnableFeaturesPrefix));
-  builder_.AddFeatureEnableOverride("bar");
-  ASSERT_EQ("--enable-features=foo,bar",
-            GetFirstArgWithPrefix(kEnableFeaturesPrefix));
-
-  // Add another argument and check that --enable-features still gets updated.
-  builder_.AddArg("--blah");
-  builder_.AddFeatureEnableOverride("baz");
-  ASSERT_EQ("--enable-features=foo,bar,baz",
-            GetFirstArgWithPrefix(kEnableFeaturesPrefix));
+    // Add another argument and check that the flag still gets updated.
+    builder_.AddArg("--blah");
+    (builder_.*(tc.method))("baz");
+    ASSERT_EQ(kPrefix + (tc.append ? "foo,bar,baz" : "baz,bar,foo"),
+              GetFirstArgWithPrefix(kPrefix));
+  }
 }
 
 TEST_F(ChromiumCommandBuilderTest, UserConfig) {

@@ -47,6 +47,7 @@ namespace {
 constexpr char kVmoduleFlag[] = "--vmodule=";
 constexpr char kEnableFeaturesFlag[] = "--enable-features=";
 constexpr char kDisableFeaturesFlag[] = "--disable-features=";
+constexpr char kEnableBlinkFeaturesFlag[] = "--enable-blink-features=";
 constexpr char kSafeModeFlag[] = "--safe-mode";
 
 // Erases all occurrences of |arg| within |args|. Returns true if any entries
@@ -267,6 +268,8 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   MergeSwitches(&to_return, kVmoduleFlag, ",", false /* keep_existing */);
   MergeSwitches(&to_return, kEnableFeaturesFlag, ",", true /* keep_existing */);
   MergeSwitches(&to_return, kDisableFeaturesFlag, ",",
+                true /* keep_existing */);
+  MergeSwitches(&to_return, kEnableBlinkFeaturesFlag, ",",
                 true /* keep_existing */);
 
   // Add --show-webui-login if we are not in a session and Chrome has crashed.

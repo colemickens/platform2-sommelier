@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/userdb_utils.h>
@@ -124,18 +125,14 @@ const char ChromiumCommandBuilder::kDefaultZoneinfoPath[] =
     "/usr/share/zoneinfo/US/Pacific";
 const char ChromiumCommandBuilder::kPepperPluginsPath[] =
     "/opt/google/chrome/pepper";
+const char ChromiumCommandBuilder::kVmoduleFlag[] = "vmodule";
+const char ChromiumCommandBuilder::kEnableFeaturesFlag[] = "enable-features";
+const char ChromiumCommandBuilder::kEnableBlinkFeaturesFlag[] =
+    "enable-blink-features";
 
-ChromiumCommandBuilder::ChromiumCommandBuilder()
-    : uid_(0),
-      gid_(0),
-      is_chrome_os_hardware_(false),
-      is_developer_end_user_(false),
-      is_test_build_(false),
-      vmodule_argument_index_(-1),
-      enable_features_argument_index_(-1) {
-}
+ChromiumCommandBuilder::ChromiumCommandBuilder() = default;
 
-ChromiumCommandBuilder::~ChromiumCommandBuilder() {}
+ChromiumCommandBuilder::~ChromiumCommandBuilder() = default;
 
 bool ChromiumCommandBuilder::Init() {
   if (!brillo::userdb::GetUserInfo(kUser, &uid_, &gid_))
@@ -302,12 +299,16 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path,
     // Bare "vmodule" and "enable-features" directives were used up until
     // November 2017; we continue supporting them for backwards compatibility
     // with existing configs and developer behavior.
-    if (name == "vmodule" || name == "--vmodule") {
+    if (name == kVmoduleFlag || name == std::string("--") + kVmoduleFlag) {
       for (const auto& pattern : SplitFlagValues(value))
         AddVmodulePattern(pattern);
-    } else if (name == "enable-features" || name == "--enable-features") {
+    } else if (name == kEnableFeaturesFlag ||
+               name == std::string("--") + kEnableFeaturesFlag) {
       for (const auto& feature : SplitFlagValues(value))
         AddFeatureEnableOverride(feature);
+    } else if (name == std::string("--") + kEnableBlinkFeaturesFlag) {
+      for (const auto& feature : SplitFlagValues(value))
+        AddBlinkFeatureEnableOverride(feature);
     } else if (IsEnvironmentVariableName(name)) {
       AddEnvVar(name, value);
     } else if (!HasPrefix(line, disallowed_prefixes)) {
@@ -334,6 +335,23 @@ std::string ChromiumCommandBuilder::ReadEnvVar(const std::string& name) const {
 }
 
 void ChromiumCommandBuilder::AddArg(const std::string& arg) {
+  // Check that we're not trying to add multiple copies of list-value flags
+  // (since they wouldn't be handled correctly by Chrome).
+  DCHECK(vmodule_argument_index_ < 0 ||
+         !base::StartsWith(arg, base::StringPrintf("--%s=", kVmoduleFlag),
+                           base::CompareCase::SENSITIVE))
+      << "Must use AddVModulePattern() for " << arg;
+  DCHECK(enable_features_argument_index_ < 0 ||
+         !base::StartsWith(arg,
+                           base::StringPrintf("--%s=", kEnableFeaturesFlag),
+                           base::CompareCase::SENSITIVE))
+      << "Must use AddFeatureEnableOverride() for " << arg;
+  DCHECK(enable_blink_features_argument_index_ < 0 ||
+         !base::StartsWith(
+             arg, base::StringPrintf("--%s=", kEnableBlinkFeaturesFlag),
+             base::CompareCase::SENSITIVE))
+      << "Must use AddBlinkFeatureEnableOverride() for " << arg;
+
   arguments_.push_back(arg);
 }
 
@@ -341,16 +359,20 @@ void ChromiumCommandBuilder::AddVmodulePattern(const std::string& pattern) {
   // Chrome's code for handling --vmodule applies the first matching pattern.
   // Prepend patterns here so that more-specific later patterns will override
   // more-general earlier ones.
-  AddListFlagEntry(
-      &vmodule_argument_index_, "--vmodule=", ",", pattern, true /* prepend */);
+  AddListFlagEntry(&vmodule_argument_index_, kVmoduleFlag, ",", pattern,
+                   true /* prepend */);
 }
 
 void ChromiumCommandBuilder::AddFeatureEnableOverride(
     const std::string& feature_name) {
-  AddListFlagEntry(&enable_features_argument_index_,
-                   "--enable-features=",
-                   ",",
-                   feature_name,
+  AddListFlagEntry(&enable_features_argument_index_, kEnableFeaturesFlag, ",",
+                   feature_name, false /* prepend */);
+}
+
+void ChromiumCommandBuilder::AddBlinkFeatureEnableOverride(
+    const std::string& feature_name) {
+  AddListFlagEntry(&enable_blink_features_argument_index_,
+                   kEnableBlinkFeaturesFlag, ",", feature_name,
                    false /* prepend */);
 }
 
@@ -368,6 +390,8 @@ void ChromiumCommandBuilder::DeleteArgsWithPrefix(const std::string& prefix) {
                                      static_cast<int>(src_index));
       UpdateArgumentIndexForDeletion(&enable_features_argument_index_,
                                      static_cast<int>(src_index));
+      UpdateArgumentIndexForDeletion(&enable_blink_features_argument_index_,
+                                     static_cast<int>(src_index));
     } else {
       arguments_[num_copied] = arguments_[src_index];
       num_copied++;
@@ -378,13 +402,16 @@ void ChromiumCommandBuilder::DeleteArgsWithPrefix(const std::string& prefix) {
 
 void ChromiumCommandBuilder::AddListFlagEntry(
     int* flag_argument_index,
-    const std::string& flag_prefix,
+    const std::string& flag_name,
     const std::string& entry_separator,
     const std::string& new_entry,
     bool prepend) {
   DCHECK(flag_argument_index);
   if (new_entry.empty())
     return;
+
+  const std::string flag_prefix =
+      base::StringPrintf("--%s=", flag_name.c_str());
 
   if (*flag_argument_index < 0) {
     AddArg(flag_prefix + new_entry);

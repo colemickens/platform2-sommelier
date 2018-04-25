@@ -343,10 +343,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   // enabled by default.
   if (builder->UseFlagIsSet("cfm_enabled_device")) {
     if (IsEnrolledChromeboxForMeetings()) {
-      builder->AddArg("--enable-blink-features=MediaStreamTrackContentHint");
+      builder->AddBlinkFeatureEnableOverride("MediaStreamTrackContentHint");
     }
     if (builder->UseFlagIsSet("screenshare_sw_codec")) {
-      builder->AddArg("--enable-features=WebRtcScreenshareSwEncoding");
+      builder->AddFeatureEnableOverride("WebRtcScreenshareSwEncoding");
     }
   }
 
