@@ -29,6 +29,9 @@ const base::char16 kDelimNull = L'\0';
 // not. This is checked when GPO is converted to a policy proto.
 const uint32_t kRegSz = 1;
 const uint32_t kRegDwordLittleEndian = 4;
+const uint32_t kRegMultiSz = 7;
+
+const uint32_t kMaxUInt32 = std::numeric_limits<uint32_t>::max();
 
 }  // namespace
 
@@ -101,10 +104,35 @@ void PRegPolicyWriter::AppendString(const char* policy_name,
   DCHECK(!recommended_key_.empty() && !mandatory_key_.empty());
 
   // size * 2 + 2 because of char16 and the 0-terminator.
-  CHECK(value.size() <= (std::numeric_limits<uint32_t>::max() - 2) / 2);
+  CHECK(value.size() <= (kMaxUInt32 - 2) / 2);
   StartEntry(GetKey(level), policy_name, kRegSz,
              static_cast<uint32_t>(value.size()) * 2 + 2);
   AppendNullTerminatedString(value);
+  EndEntry();
+}
+
+void PRegPolicyWriter::AppendMultiString(const char* policy_name,
+                                         const std::vector<std::string>& values,
+                                         PolicyLevel level) {
+  DCHECK(!recommended_key_.empty() && !mandatory_key_.empty());
+
+  uint32_t total_utf16_size = 0;
+  for (const std::string& value : values) {
+    CHECK(value.size() <= (kMaxUInt32 - 2) / 2);
+    // size * 2 + 2 because of char16 and the 0-terminator.
+    uint32_t value_utf16_size = value.size() * 2 + 2;
+    CHECK(value_utf16_size <= kMaxUInt32 - total_utf16_size);
+    total_utf16_size += value_utf16_size;
+  }
+  // After the last 0-terminated string comes an extra 0-terminator:
+  CHECK(total_utf16_size <= kMaxUInt32 - 2);
+  total_utf16_size += 2;
+
+  StartEntry(GetKey(level), policy_name, kRegMultiSz, total_utf16_size);
+  for (const std::string& value : values) {
+    AppendNullTerminatedString(value);
+  }
+  AppendChar16(kDelimNull);
   EndEntry();
 }
 
@@ -120,10 +148,10 @@ void PRegPolicyWriter::AppendStringList(const char* policy_name,
   EndEntry();
 
   // Add an entry for each value.
-  CHECK(values.size() <= std::numeric_limits<int>::max());
+  CHECK(values.size() <= kMaxUInt32 - 1);
   for (int n = 0; n < static_cast<int>(values.size()); ++n) {
-    CHECK(values[n].size() <= (std::numeric_limits<uint32_t>::max() - 2) / 2);
-    StartEntry(key, base::IntToString(n + 1), kRegSz,
+    CHECK(values[n].size() <= (kMaxUInt32 - 2) / 2);
+    StartEntry(key, base::UintToString(n + 1), kRegSz,
                static_cast<uint32_t>(values[n].size()) * 2 + 2);
     AppendNullTerminatedString(values[n]);
     EndEntry();

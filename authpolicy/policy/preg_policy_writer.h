@@ -18,6 +18,8 @@ namespace policy {
 // policy values. Useful to test preg parsing and encoding for in unit tests.
 // See https://msdn.microsoft.com/en-us/library/aa374407(v=vs.85).aspx for a
 // description of the file format.
+// TAKE NOTE: When writing strings, this writer only supports US-ASCII - other
+// codepoints are not properly converted to UTF16-LE when written to file.
 class PRegPolicyWriter {
  public:
   // Creates a new writer using |mandatory_key| as registry key for mandatory
@@ -62,6 +64,11 @@ class PRegPolicyWriter {
   void AppendString(const char* policy_name,
                     const std::string& value,
                     PolicyLevel level = POLICY_LEVEL_MANDATORY);
+
+  // Appends a multi-line string policy value. Must set keys beforehand.
+  void AppendMultiString(const char* policy_name,
+                         const std::vector<std::string>& values,
+                         PolicyLevel level = POLICY_LEVEL_MANDATORY);
 
   // Appends a string list policy value. Must set keys beforehand.
   void AppendStringList(const char* policy_name,

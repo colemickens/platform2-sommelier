@@ -46,6 +46,15 @@ testing::AssertionResult RegistryDictEquals(const RegistryDict& a,
       return result;
   }
 
+  if (iter_key_a != a.keys().end()) {
+    return testing::AssertionFailure()
+           << "Unmatched key: " << iter_key_a->first << " vs. [nothing]";
+  }
+  if (iter_key_b != b.keys().end()) {
+    return testing::AssertionFailure()
+           << "Unmatched key: [nothing] vs. " << iter_key_b->first;
+  }
+
   auto iter_value_a = a.values().begin();
   auto iter_value_b = b.values().begin();
   for (; iter_value_a != a.values().end() && iter_value_b != b.values().end();
@@ -58,6 +67,15 @@ testing::AssertionResult RegistryDictEquals(const RegistryDict& a,
              << *iter_value_a->second.get() << " vs. " << iter_value_b->first
              << "=" << *iter_value_b->second.get();
     }
+  }
+
+  if (iter_value_a != a.values().end()) {
+    return testing::AssertionFailure()
+           << "Unmatched value: " << iter_value_a->first << " vs. [nothing]";
+  }
+  if (iter_value_b != b.values().end()) {
+    return testing::AssertionFailure()
+           << "Unmatched value: [nothing] vs. " << iter_value_b->first;
   }
 
   return testing::AssertionSuccess();
@@ -114,6 +132,12 @@ TEST(PRegParserTest, TestParseFile) {
   SetInteger(&expected, "ShowHomeButton", 1);
   SetString(&expected, "Snowman", "\xE2\x98\x83");
   SetString(&expected, "Empty", "");
+  SetString(&expected, "WallpaperImage",
+            R"({
+  "url": "http://www.example.com/risqué_wallpaper.jpg",
+  "hash": "8b64f148e621dcf189eeb56d41ec6b8293916b84c64fd34d73ecba5e847b51ce"
+}
+)");
 
   EXPECT_TRUE(RegistryDictEquals(dict, expected));
 }

@@ -128,7 +128,7 @@ bool ReadFieldString(const uint8_t** cursor,
   return current == L'\0';
 }
 
-// Converts the UTF16 |data| to an UTF8 string |value|. Returns false if the
+// Converts the UTF16 |data| to a UTF8 string |value|. Returns false if the
 // resulting UTF8 string contains invalid characters.
 bool DecodePRegStringValue(const std::vector<uint8_t>& data,
                            std::string* value) {
@@ -154,6 +154,21 @@ bool DecodePRegStringValue(const std::vector<uint8_t>& data,
   return true;
 }
 
+// Converts the UTF16, null-delimited string of strings |data| to a multi-line
+// UTF8 string |value|. Returns false if the resulting UTF8 string contains
+// invalid characters.
+bool DecodePRegMultiStringValue(const std::vector<uint8_t>& data,
+                                std::string* value) {
+  if (!DecodePRegStringValue(data, value)) {
+    return false;
+  }
+
+  // The strings in a REG_MULTI_SZ are separated by a '\0'.
+  // We parse them as a single string with multiple lines.
+  std::replace(value->begin(), value->end(), '\0', '\n');
+  return true;
+}
+
 // Decodes a value from a PReg file given as a uint8_t vector.
 bool DecodePRegValue(uint32_t type,
                      const std::vector<uint8_t>& data,
@@ -162,18 +177,26 @@ bool DecodePRegValue(uint32_t type,
   switch (type) {
     case REG_SZ:
     case REG_EXPAND_SZ:
-      if (!DecodePRegStringValue(data, &data_utf8))
+      if (!DecodePRegStringValue(data, &data_utf8)) {
         return false;
+      }
+      value->reset(new base::Value(data_utf8));
+      return true;
+    case REG_MULTI_SZ:
+      if (!DecodePRegMultiStringValue(data, &data_utf8)) {
+        return false;
+      }
       value->reset(new base::Value(data_utf8));
       return true;
     case REG_DWORD_LITTLE_ENDIAN:
     case REG_DWORD_BIG_ENDIAN:
       if (data.size() == sizeof(uint32_t)) {
         uint32_t val = *reinterpret_cast<const uint32_t*>(data.data());
-        if (type == REG_DWORD_BIG_ENDIAN)
+        if (type == REG_DWORD_BIG_ENDIAN) {
           val = base::NetToHost32(val);
-        else
+        } else {
           val = base::ByteSwapToLE32(val);
+        }
         value->reset(new base::Value(static_cast<int>(val)));
         return true;
       } else {
@@ -182,7 +205,6 @@ bool DecodePRegValue(uint32_t type,
       break;
     case REG_NONE:
     case REG_LINK:
-    case REG_MULTI_SZ:
     case REG_RESOURCE_LIST:
     case REG_FULL_RESOURCE_DESCRIPTOR:
     case REG_RESOURCE_REQUIREMENTS_LIST:

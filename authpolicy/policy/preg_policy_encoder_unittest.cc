@@ -3,11 +3,14 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/macros.h>
 #include <base/strings/stringprintf.h>
+#include <components/policy/core/common/registry_dict.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -44,6 +47,14 @@ constexpr char kExtensionPolicy1[] = "Policy1";
 constexpr char kExtensionPolicy2[] = "Policy2";
 constexpr char kExtensionPolicy3[] = "Policy3";
 constexpr char kExtensionPolicy4[] = "Policy4";
+
+// Converts a json string that contains a dict into a base::DictionaryValue.
+std::unique_ptr<base::DictionaryValue> JsonStringToDictionaryValue(
+    const std::string& json_string) {
+  std::unique_ptr<base::Value> root =
+      base::JSONReader::Read(json_string, base::JSON_ALLOW_TRAILING_COMMAS);
+  return root ? base::DictionaryValue::From(std::move(root)) : nullptr;
+}
 
 }  // namespace
 
@@ -345,6 +356,73 @@ TEST_F(PregPolicyEncoderTest, ExtensionPolicyRecommendedAndMandatory) {
   ASSERT_EQ(1, policies.size());
   EXPECT_EQ(kExtensionId, policies[0].id());
   EXPECT_EQ(expected_json, policies[0].json_data());
+}
+
+// Roundtrips a multi-line JSON dict through a PReg file, and ensures that
+// the multi-line string that is roundtripped can be read by JSONReader.
+TEST_F(PregPolicyEncoderTest, TestJsonWithNewlinesRoundtrip) {
+  PRegUserDevicePolicyWriter writer1;
+  const std::vector<std::string> json_with_newlines = {
+      "{",
+      "  \"TestBool\": true,",
+      "  \"TestInt\":",
+      "        123456,",
+      "  \"TestString\": \"elephant\",",
+      "}",
+  };
+  writer1.AppendMultiString("TestJson", json_with_newlines);
+  writer1.WriteToFile(preg_1_path_);
+
+  RegistryDict dict;
+  EXPECT_TRUE(LoadPRegFile(preg_1_path_, kKeyUserDevice, &dict));
+  const std::string& roundtripped_json = dict.GetValue("TestJson")->GetString();
+  std::unique_ptr<base::DictionaryValue> json_dict =
+      JsonStringToDictionaryValue(roundtripped_json);
+  ASSERT_TRUE(json_dict != nullptr);
+
+  bool test_bool;
+  json_dict->GetBoolean("TestBool", &test_bool);
+  EXPECT_EQ(true, test_bool);
+
+  int test_int;
+  json_dict->GetInteger("TestInt", &test_int);
+  EXPECT_EQ(123456, test_int);
+
+  std::string test_string;
+  json_dict->GetString("TestString", &test_string);
+  EXPECT_EQ("elephant", test_string);
+}
+
+// Roundtrips a JSON dict that contains unescaped newlines within a single
+// JSON string literal, ensures that the multi-line string that is roundtripped
+// can be read by JSONReader.
+// This is not strictly valid JSON, but we make sure to allow it anyway since
+// pasting certificates into JSON is much easier if they are allowed to contain
+// raw newlines, so the admin doesn't have to escape them first.
+TEST_F(PregPolicyEncoderTest, TestJsonWithNewlinesInsideStringRoundtrip) {
+  PRegUserDevicePolicyWriter writer1;
+  const std::vector<std::string> json_with_newlines = {
+      "{",
+      "  \"TestCertificate\": \"A-B-C-D-E-F-G",
+      "H-I-J-K-LMNOP",
+      "Q-R-S...T-U-V",
+      "W-X...Y-and-Z\"",
+      "}",
+  };
+  writer1.AppendMultiString("TestJson", json_with_newlines);
+  writer1.WriteToFile(preg_1_path_);
+
+  RegistryDict dict;
+  EXPECT_TRUE(LoadPRegFile(preg_1_path_, kKeyUserDevice, &dict));
+  const std::string& roundtripped_json = dict.GetValue("TestJson")->GetString();
+  std::unique_ptr<base::DictionaryValue> json_dict =
+      JsonStringToDictionaryValue(roundtripped_json);
+  ASSERT_TRUE(json_dict != nullptr);
+
+  std::string test_certificate;
+  json_dict->GetString("TestCertificate", &test_certificate);
+  EXPECT_EQ("A-B-C-D-E-F-G\nH-I-J-K-LMNOP\nQ-R-S...T-U-V\nW-X...Y-and-Z",
+            test_certificate);
 }
 
 }  // namespace policy
