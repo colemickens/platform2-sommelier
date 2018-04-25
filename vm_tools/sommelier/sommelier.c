@@ -6487,6 +6487,40 @@ static void xwl_connect(struct xwl *xwl) {
   xcb_flush(xwl->connection);
 }
 
+static void xwl_sd_notify(const char* state) {
+  const char* socket_name;
+  struct msghdr msghdr;
+  struct iovec iovec;
+  struct sockaddr_un addr;
+  int fd;
+  int rv;
+
+  socket_name = getenv("NOTIFY_SOCKET");
+  assert(socket_name);
+
+  fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+  assert(fd >= 0);
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, socket_name, sizeof(addr.sun_path));
+
+  memset(&iovec, 0, sizeof(iovec));
+  iovec.iov_base = (char*)state;
+  iovec.iov_len = strlen(state);
+
+  memset(&msghdr, 0, sizeof(msghdr));
+  msghdr.msg_name = &addr;
+  msghdr.msg_namelen =
+      offsetof(struct sockaddr_un, sun_path) + strlen(socket_name);
+  msghdr.msg_iov = &iovec;
+  msghdr.msg_iovlen = 1;
+
+  rv = sendmsg(fd, &msghdr, MSG_NOSIGNAL);
+  assert(rv != -1);
+  UNUSED(rv);
+}
+
 static int xwl_handle_sigchld(int signal_number, void *data) {
   struct xwl *xwl = (struct xwl *)data;
   int status;
@@ -6498,8 +6532,15 @@ static int xwl_handle_sigchld(int signal_number, void *data) {
       if (WIFEXITED(status) && WEXITSTATUS(status)) {
         fprintf(stderr, "Child exited with status: %d\n", WEXITSTATUS(status));
       }
-      if (xwl->exit_with_child && xwl->xwayland_pid >= 0)
-        kill(xwl->xwayland_pid, SIGTERM);
+      if (xwl->exit_with_child) {
+        if (xwl->xwayland_pid >= 0)
+          kill(xwl->xwayland_pid, SIGTERM);
+      } else {
+        // Notify systemd that we are ready to accept connections now that
+        // child process has finished running and all environment is ready.
+        if (xwl->sd_notify)
+          xwl_sd_notify(xwl->sd_notify);
+      }
     } else if (pid == xwl->xwayland_pid) {
       xwl->xwayland_pid = -1;
       if (WIFEXITED(status) && WEXITSTATUS(status)) {
@@ -6528,40 +6569,6 @@ static void xwl_execvp(const char *file, char *const argv[],
 
   execvp(file, argv);
   perror(file);
-}
-
-static void xwl_sd_notify(const char *state) {
-  const char *socket_name;
-  struct msghdr msghdr;
-  struct iovec iovec;
-  struct sockaddr_un addr;
-  int fd;
-  int rv;
-
-  socket_name = getenv("NOTIFY_SOCKET");
-  assert(socket_name);
-
-  fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-  assert(fd >= 0);
-
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, socket_name, sizeof(addr.sun_path));
-
-  memset(&iovec, 0, sizeof(iovec));
-  iovec.iov_base = (char *)state;
-  iovec.iov_len = strlen(state);
-
-  memset(&msghdr, 0, sizeof(msghdr));
-  msghdr.msg_name = &addr;
-  msghdr.msg_namelen =
-      offsetof(struct sockaddr_un, sun_path) + strlen(socket_name);
-  msghdr.msg_iov = &iovec;
-  msghdr.msg_iovlen = 1;
-
-  rv = sendmsg(fd, &msghdr, MSG_NOSIGNAL);
-  assert(rv != -1);
-  UNUSED(rv);
 }
 
 static void xwl_calculate_scale_for_xwayland(struct xwl* xwl) {
@@ -6652,9 +6659,6 @@ static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
   snprintf(xcursor_size_str, sizeof(xcursor_size_str), "%d",
            (int)(XCURSOR_SIZE_BASE * xwl->scale + 0.5));
   setenv("XCURSOR_SIZE", xcursor_size_str, 1);
-
-  if (xwl->sd_notify)
-    xwl_sd_notify(xwl->sd_notify);
 
   pid = fork();
   assert(pid >= 0);
