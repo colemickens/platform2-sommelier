@@ -402,6 +402,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("instant_tethering"))
     builder->AddFeatureEnableOverride("InstantTethering");
+
+  if (builder->UseFlagIsSet("biod"))
+    builder->AddFeatureEnableOverride("QuickUnlockFingerprint");
 }
 
 // Adds enterprise-related flags to the command line.
