@@ -201,7 +201,8 @@ ignore all other flags).
   will crash if this operation is not allowed. Mounting these two files reduces
   the number of mods to `init`.
 * `/proc/sys/kernel/kptr_restrict`: Same as with `/proc/sys/vm/mmap_rnd_bits`.
-* `/oem`: Holds `platform.xml` file.
+* `/oem/etc`: This is bind-mounted from host's `/run/arc/oem/etc` and holds
+  `platform.xml` file.
 * `/var/run/arc/bugreport`: This is bind-mounted from host's
   `/run/arc/bugreport`. The container creates a pipe file in the directory to
   allow host's `debugd` to read it. When it is read, Android's `bugreport`

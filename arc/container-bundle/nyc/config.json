@@ -241,9 +241,9 @@
 			]
 		},
 		{
-			"destination": "/oem",
+			"destination": "/oem/etc",
 			"type": "bind",
-			"source": "/run/arc/oem",
+			"source": "/run/arc/oem/etc",
 			"options": [
 				"bind"
 			]

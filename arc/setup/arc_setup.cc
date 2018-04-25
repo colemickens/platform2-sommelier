@@ -635,7 +635,7 @@ void ArcSetup::CreateContainerFilesAndDirectories() {
 }
 
 void ArcSetup::ApplyPerBoardConfigurations() {
-  EXIT_IF(!MkdirRecursively(arc_paths_->oem_mount_directory));
+  EXIT_IF(!MkdirRecursively(arc_paths_->oem_mount_directory.Append("etc")));
 
   const base::FilePath hardware_features_xml("/etc/hardware_features.xml");
   if (!base::PathExists(hardware_features_xml))
@@ -1681,7 +1681,7 @@ void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
     // them to |kPaths| below instead.
     constexpr std::array<const char*, 8> kDirectories{
         "dev",
-        "oem",
+        "oem/etc",
         "var/run/arc/apkcache",
         "var/run/arc/bugreport",
         "var/run/arc/dalvik-cache",
