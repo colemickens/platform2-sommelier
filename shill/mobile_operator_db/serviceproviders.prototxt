@@ -94,7 +94,7 @@ mno {
     }
     mccmnc : "27602"
     mobile_apn {
-      apn : "Twa"
+      apn : "twa"
       localized_name {
         name : "TWA"
       }
@@ -676,13 +676,13 @@ mno {
     }
     mccmnc : "50502"
     mobile_apn {
-      apn : "WirelessBroadband"
+      apn : "wirelessbroadband"
       localized_name {
         name : "Postpaid"
       }
     }
     mobile_apn {
-      apn : "DODOLNS1"
+      apn : "dodolns1"
       localized_name {
         name : "Prepaid"
       }
@@ -719,19 +719,19 @@ mno {
       }
     }
     mobile_apn {
-      apn : "INTERNET"
+      apn : "internet"
       localized_name {
         name : "Exetel (Optus Based CAP Plans) not iPhone"
       }
     }
     mobile_apn {
-      apn : "OPTUSWAP"
+      apn : "optuswap"
       localized_name {
         name : "Exetel (Optus Based CAP Plans) not iPhone"
       }
     }
     mobile_apn {
-      apn : "YesINTERNET"
+      apn : "yesinternet"
       localized_name {
         name : "Exetel (Optus Based CAP Plans) iPhone"
       }
@@ -1014,7 +1014,7 @@ mno {
     }
     mccmnc : "50502"
     mobile_apn {
-      apn : "VirginInternet"
+      apn : "virgininternet"
       localized_name {
         name : "Mobile Internet"
       }
@@ -1023,7 +1023,7 @@ mno {
       dns : "61.88.88.88"
     }
     mobile_apn {
-      apn : "VirginBroadband"
+      apn : "virginbroadband"
       localized_name {
         name : "Mobile Broadband"
       }
@@ -2470,7 +2470,7 @@ mno {
     }
     mccmnc : "62401"
     mobile_apn {
-      apn : "INTERNET"
+      apn : "internet"
       username : "guest"
       password : "guest"
     }
@@ -3692,7 +3692,7 @@ mno {
       name : "Carrefour Móvil"
     }
     mobile_apn {
-      apn : "CARREFOURINTERNET"
+      apn : "carrefourinternet"
     }
   }
 }
@@ -3980,7 +3980,7 @@ mno {
     }
     mccmnc : "21403"
     mobile_apn {
-      apn : "INTERNETTPH"
+      apn : "internettph"
       dns : "213.143.33.8"
       dns : "62.36.225.150"
     }
@@ -4867,7 +4867,7 @@ mno {
     }
     mccmnc : "28201"
     mobile_apn {
-      apn : "Internet"
+      apn : "internet"
       dns : "212.72.130.20"
       dns : "212.72.152.001"
     }
@@ -5108,7 +5108,7 @@ mno {
     }
     mccmnc : "70402"
     mobile_apn {
-      apn : "Wap.tigo.gt"
+      apn : "wap.tigo.gt"
       username : "Wap"
       password : "Wap"
     }
@@ -5573,7 +5573,7 @@ mno {
     }
     mccmnc : "51008"
     mobile_apn {
-      apn : "AXIS"
+      apn : "axis"
       username : "axis"
       password : "123456"
     }
@@ -6444,7 +6444,7 @@ mno {
     mccmnc : "40414"
     mccmnc : "40444"
     mobile_apn {
-      apn : "Simplyenjoy"
+      apn : "simplyenjoy"
       username : "spice"
       password : "spice"
     }
@@ -6485,13 +6485,13 @@ mno {
     mccmnc : "405046"
     mccmnc : "405047"
     mobile_apn {
-      apn : "TATA.DOCOMO.INTERNET"
+      apn : "tata.docomo.internet"
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
-      apn : "TATADOCOMO3G"
+      apn : "tatadocomo3g"
       localized_name {
         name : "Internet"
       }
@@ -7604,7 +7604,7 @@ mno {
     }
     mccmnc : "45618"
     mobile_apn {
-      apn : "Mfone"
+      apn : "mfone"
     }
   }
 }
@@ -7632,7 +7632,7 @@ mno {
     }
     mccmnc : "45604"
     mobile_apn {
-      apn : "WAP"
+      apn : "wap"
     }
   }
 }
@@ -8772,7 +8772,7 @@ mno {
     }
     mccmnc : "27801"
     mobile_apn {
-      apn : "Internet"
+      apn : "internet"
       username : "internet"
       password : "internet"
       dns : "80.85.96.131"
@@ -8790,7 +8790,7 @@ mno {
     }
     mccmnc : "61710"
     mobile_apn {
-      apn : "WEB"
+      apn : "web"
     }
   }
 }
@@ -8818,7 +8818,7 @@ mno {
     }
     mccmnc : "47202"
     mobile_apn {
-      apn : "WataniyaNet"
+      apn : "wataniyanet"
     }
   }
 }
@@ -8832,7 +8832,7 @@ mno {
     }
     mccmnc : "65001"
     mobile_apn {
-      apn : "Internet"
+      apn : "internet"
     }
   }
 }
@@ -9237,7 +9237,7 @@ mno {
     }
     mccmnc : "20408"
     mobile_apn {
-      apn : "KPN4G.nl"
+      apn : "kpn4g.nl"
     }
     mobile_apn {
       apn : "prepaidinternet"
@@ -10702,7 +10702,7 @@ mno {
       }
       mccmnc : "26002"
       mobile_apn {
-        apn : "wapMOBILKING"
+        apn : "wapmobilking"
         username : "mobilking"
         password : "mobilking"
       }
@@ -13125,7 +13125,7 @@ mno {
     mccmnc : "310560"
     mccmnc : "310680"
     mobile_apn {
-      apn : "Broadband"
+      apn : "broadband"
       localized_name {
         name : "LaptopConnect (data cards)"
       }
@@ -13425,7 +13425,7 @@ mno {
     }
     mccmnc : "311570"
     mobile_apn {
-      apn : "ISP"
+      apn : "isp"
     }
   }
 }
