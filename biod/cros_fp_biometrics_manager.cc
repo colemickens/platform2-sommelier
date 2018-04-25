@@ -172,8 +172,9 @@ bool CrosFpBiometricsManager::CrosFpDevice::EcProtoInfo(ssize_t* max_read,
 
   *max_read =
       cmd.Resp()->max_response_packet_size - sizeof(struct ec_host_response);
+  // TODO(vpalatin): workaround for b/78544921, can be removed if MCU is fixed.
   *max_write =
-      cmd.Resp()->max_request_packet_size - sizeof(struct ec_host_request);
+      cmd.Resp()->max_request_packet_size - sizeof(struct ec_host_request) - 4;
   return true;
 }
 
