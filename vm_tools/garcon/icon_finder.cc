@@ -82,6 +82,15 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
     if (base::PathExists(test_path))
       return test_path;
   }
+  // If a scale factor is set and we couldn't find the icon, then remove the
+  // scale factor and check again.
+  if (scale > 1) {
+    for (const base::FilePath& curr_path : GetPathsForIcons(icon_size, 1)) {
+      base::FilePath test_path = curr_path.Append(icon_filename);
+      if (base::PathExists(test_path))
+        return test_path;
+    }
+  }
 
   LOG(INFO) << "No icon file found for " << desktop_file_id;
   return base::FilePath();
