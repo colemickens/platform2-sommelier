@@ -296,10 +296,19 @@ def GenerateCBindings(config):
   Args:
     config: Config (transformed) that is the transform basis.
   """
-  struct_format = '''
+  struct_format_x86 = '''
     {.platform_name = "%s",
      .smbios_match_name = "%s",
      .sku_id = %s,
+     .customization_id = "%s",
+     .whitelabel_tag = "%s",
+     .info = {.brand = "%s",
+              .model = "%s",
+              .customization = "%s",
+              .signature_id = "%s"}}'''
+  struct_format_arm = '''
+    {.platform_name = "%s",
+     .device_tree_compatible_match = "%s",
      .customization_id = "%s",
      .whitelabel_tag = "%s",
      .info = {.brand = "%s",
@@ -313,17 +322,34 @@ def GenerateCBindings(config):
     name = config['name']
     whitelabel_tag = identity.get('whitelabel-tag', '')
     customization_id = identity.get('customization-id', '')
+    customization = customization_id or whitelabel_tag or name
     signature_id = config.get('firmware-signing', {}).get('signature-id', '')
-    structs.append(
-        struct_format % (identity.get('platform-name', ''),
-                         identity.get('smbios-name-match', ''),
-                         identity.get('sku-id', -1),
-                         customization_id,
-                         whitelabel_tag,
-                         config.get('brand-code', ''),
-                         name,
-                         customization_id or whitelabel_tag or name,
-                         signature_id or name))
+    signature_id = signature_id or name
+    brand_code = config.get('brand-code', '')
+    platform_name = identity.get('platform-name', '')
+    device_tree_compatible_match = identity.get(
+        'device-tree-compatible-match', '')
+    if device_tree_compatible_match:
+      structs.append(
+          struct_format_arm % (platform_name,
+                               device_tree_compatible_match,
+                               customization_id,
+                               whitelabel_tag,
+                               brand_code,
+                               name,
+                               customization,
+                               signature_id))
+    else:
+      structs.append(
+          struct_format_x86 % (platform_name,
+                               identity.get('smbios-name-match', ''),
+                               identity.get('sku-id', -1),
+                               customization_id,
+                               whitelabel_tag,
+                               brand_code,
+                               name,
+                               customization,
+                               signature_id))
   file_format = '''\
 #include "lib/cros_config_struct.h"
 

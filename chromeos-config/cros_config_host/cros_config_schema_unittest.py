@@ -304,21 +304,30 @@ class MainTests(unittest.TestCase):
 
   def testMainArmExample(self):
     output = tempfile.mktemp()
+    c_output = tempfile.mktemp()
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test_arm.yaml'),
         output,
-        filter_build_details=True)
+        filter_build_details=True,
+        gen_c_bindings_output=c_output)
+    regen_cmd = ('To regenerate the expected output, run:\n'
+                 '\tpython -m cros_config_host.cros_config_schema '
+                 '-f True '
+                 '-c libcros_config/test_arm.yaml '
+                 '-o libcros_config/test_arm.json '
+                 '-g libcros_config/test_arm.c')
     with open(output, 'r') as output_stream:
       with open(os.path.join(
           this_dir,
           '../libcros_config/test_arm.json')) as expected_stream:
+        self.assertEqual(
+            expected_stream.read(), output_stream.read(), regen_cmd)
+    with open(c_output, 'r') as output_stream:
+      expected_file = os.path.join(this_dir, '../libcros_config/test_arm.c')
+      with open(expected_file) as expected_stream:
         self.assertEqual(expected_stream.read(), output_stream.read(),
-                         ('To regenerate the expected output, run:\n'
-                          '\tpython -m cros_config_host.cros_config_schema '
-                          '-f True '
-                          '-c libcros_config/test_arm.yaml '
-                          '-o libcros_config/test_arm.json'))
+                         regen_cmd)
 
     os.remove(output)
 
