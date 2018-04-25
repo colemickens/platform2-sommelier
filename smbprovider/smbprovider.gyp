@@ -98,6 +98,8 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'credential_store_test.cc',
+            'fake_kerberos_artifact_client.cc',
+            'fake_kerberos_artifact_client.h',
             'fake_samba_interface.cc',
             'fake_samba_interface.h',
             'fake_samba_test.cc',
