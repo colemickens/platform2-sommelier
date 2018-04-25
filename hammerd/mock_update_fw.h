@@ -27,6 +27,7 @@ class MockFirmwareUpdater : public FirmwareUpdaterInterface {
 
   MOCK_METHOD1(LoadEcImage, bool(const std::string& ec_image));
   MOCK_METHOD1(LoadTouchpadImage, bool(const std::string& touchpad_image));
+  MOCK_METHOD0(UsbSysfsExists, bool());
   MOCK_METHOD0(ConnectUsb, UsbConnectStatus());
   MOCK_METHOD0(TryConnectUsb, UsbConnectStatus());
   MOCK_METHOD0(CloseUsb, void());

@@ -41,6 +41,7 @@ enum class ChallengeStatus {
   kChallengePassed,
   kChallengeFailed,
   kNeedInjectEntropy,
+  kConnectionError,
   kUnknownError,
 };
 

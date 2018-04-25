@@ -111,6 +111,10 @@ FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
       ec_image_(""),
       sections_() {}
 
+bool FirmwareUpdater::UsbSysfsExists() {
+  return endpoint_->UsbSysfsExists();
+}
+
 UsbConnectStatus FirmwareUpdater::ConnectUsb() {
   return endpoint_->Connect();
 }

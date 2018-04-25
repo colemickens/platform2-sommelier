@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
@@ -40,6 +41,16 @@ ChallengeStatus PairManager::PairChallenge(
       // Because we will inject entropy and try to pair again, we don't send
       // kPairChallengeFailed signal here.
       return ChallengeStatus::kNeedInjectEntropy;
+    }
+    // If the base is disconnected, then do not send DBus message.
+    // There is a short delay between device disconnected and kernel react to
+    // it. Add a short delay before check.
+    constexpr int kernel_delay_ms = 100;
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kernel_delay_ms));
+    if (!fw_updater->UsbSysfsExists()) {
+      LOG(ERROR) << "USB device is disconnected.";
+      return ChallengeStatus::kConnectionError;
     }
     LOG(ERROR) << "Unknown error! The status of response: " << response.status;
     dbus_wrapper->SendSignal(kPairChallengeFailedSignal);

@@ -51,6 +51,8 @@ class UsbEndpointInterface {
  public:
   virtual ~UsbEndpointInterface() = default;
 
+  // Check whether the USB sysfs file exist or not.
+  virtual bool UsbSysfsExists() = 0;
   // Initializes the USB endpoint.
   virtual UsbConnectStatus Connect() = 0;
   // Releases USB endpoint.
@@ -92,6 +94,7 @@ class UsbEndpoint : public UsbEndpointInterface {
 
   // UsbEndpointInterface:
   ~UsbEndpoint() override;
+  bool UsbSysfsExists() override;
   UsbConnectStatus Connect() override;
   void Close() override;
   bool IsConnected() const override;

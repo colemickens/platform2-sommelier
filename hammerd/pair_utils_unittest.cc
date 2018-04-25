@@ -103,6 +103,8 @@ class PairTest : public testing::Test {
     EXPECT_CALL(pair_manager_, GenerateChallenge(_, _))
         .WillRepeatedly(SetChallengeRequest(
             tv_.alice_public_, tv_.alice_private_, tv_.nonce_));
+    // USB device is not disconnected in normal case.
+    ON_CALL(fw_updater_, UsbSysfsExists()).WillByDefault(Return(true));
   }
 
  protected:
@@ -161,6 +163,26 @@ TEST_F(PairTest, ChallengeNeedInjectEntropy) {
                                      false));
   EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_, &dbus_wrapper_),
             ChallengeStatus::kNeedInjectEntropy);
+}
+
+// Do not send DBus signal when the base is disconnected.
+TEST_F(PairTest, UsbDisconnection) {
+  // The base is disconnected.
+  ON_CALL(fw_updater_, UsbSysfsExists()).WillByDefault(Return(false));
+
+  EXPECT_CALL(fw_updater_,
+              SendSubcommandReceiveResponse(UpdateExtraCommand::kPairChallenge,
+                                            request_payload_,
+                                            _,
+                                            sizeof(PairChallengeResponse)))
+      .WillOnce(SetChallengeResponse(EcResponseStatus::kInvalidParam,
+                                     std::vector<uint8_t>(),
+                                     std::vector<uint8_t>(),
+                                     false));
+  // The DBus signal is not sent.
+  EXPECT_CALL(dbus_wrapper_, SendSignal(_)).Times(0);
+  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_, &dbus_wrapper_),
+            ChallengeStatus::kConnectionError);
 }
 
 // Hammer only returns the other error status.

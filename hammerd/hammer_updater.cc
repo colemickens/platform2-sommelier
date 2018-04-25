@@ -446,14 +446,21 @@ HammerUpdater::RunStatus HammerUpdater::Pair() {
       metric_result = PairResult::kChallengeFailed;
       break;
 
+    case ChallengeStatus::kConnectionError:
+      // Do not send UMA if the base is disconnected.
+      metric_result = PairResult::kCount;
+      ret = HammerUpdater::RunStatus::kLostConnection;
+
     case ChallengeStatus::kUnknownError:
       break;
   }
 
-  metrics_->SendEnumToUMA(
-      kMetricPairResult,
-      static_cast<int>(metric_result),
-      static_cast<int>(PairResult::kCount));
+  if (metric_result != PairResult::kCount) {
+    metrics_->SendEnumToUMA(
+        kMetricPairResult,
+        static_cast<int>(metric_result),
+        static_cast<int>(PairResult::kCount));
+  }
   return ret;
 }
 

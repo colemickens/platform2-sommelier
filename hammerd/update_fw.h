@@ -209,6 +209,7 @@ class FirmwareUpdaterInterface {
   // Retrieves local touchpad firmware.
   virtual bool LoadTouchpadImage(const std::string& touchpad_image) = 0;
 
+  virtual bool UsbSysfsExists() = 0;
   virtual UsbConnectStatus ConnectUsb() = 0;
   // Tries to connect to the USB endpoint during a period of time.
   virtual UsbConnectStatus TryConnectUsb() = 0;
@@ -300,6 +301,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   // FirmwareUpdaterInterface implementation:
   bool LoadEcImage(const std::string& ec_image) override;
   bool LoadTouchpadImage(const std::string& touchpad_image) override;
+  bool UsbSysfsExists() override;
   UsbConnectStatus ConnectUsb() override;
   UsbConnectStatus TryConnectUsb() override;
   void CloseUsb() override;

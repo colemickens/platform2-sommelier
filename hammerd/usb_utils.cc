@@ -78,6 +78,11 @@ UsbEndpoint::~UsbEndpoint() {
   Close();
 }
 
+bool UsbEndpoint::UsbSysfsExists() {
+  const base::FilePath usb_path = GetUsbSysfsPath(bus_, port_);
+  return base::DirectoryExists(usb_path);
+}
+
 UsbConnectStatus UsbEndpoint::Connect() {
   if (IsConnected()) {
     DLOG(INFO) << "Already initialized. Ignore.";
@@ -88,11 +93,11 @@ UsbConnectStatus UsbEndpoint::Connect() {
   // (b/70955082): Only return |kInvalidDevice| when the VID/PID files exist but
   // aren't the expected values.  This is to prevent mis-reporting an invalid
   // device on AP suspend/resume, when the files may not yet be ready.
-  const base::FilePath usb_path = GetUsbSysfsPath(bus_, port_);
-  if (!base::DirectoryExists(usb_path)) {
+  if (!UsbSysfsExists()) {
     LOG(ERROR) << "USB sysfs does not exist.";
     return UsbConnectStatus::kUsbPathEmpty;
   }
+  const base::FilePath usb_path = GetUsbSysfsPath(bus_, port_);
   int vendor_id, product_id;
   if (!ReadFileToInt(usb_path.Append("idVendor"), &vendor_id) ||
       !ReadFileToInt(usb_path.Append("idProduct"), &product_id)) {
