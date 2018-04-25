@@ -34,6 +34,7 @@ copies.
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
 | [buffet](./buffet/) | Daemon for reacting to cloud messages |
 | [chaps](./chaps/) | PKCS #11 implementation for TPM 1 devices |
+| [chromeos-common-script](./chromeos-common-script/) | Shared scripts for partitions and basic disk information |
 | [chromeos-config](./chromeos-config/) | CrOS unified build runtime config manager |
 | [chromeos-dbus-bindings](./chromeos-dbus-bindings/) | Simplifies the implementation of D-Bus daemons and proxies |
 | [common-mk](./common-mk/) | Common build & test logic for platform2 projects |
@@ -81,6 +82,7 @@ copies.
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
 | [smogcheck](./smogcheck/) | Developer library for working with raw I2C devices |
 | [st_flash](./st_flash/) ||
+| [storage_info](./storage_info/) | Helper shell functions for retrieving disk information) |
 | [thd](./thd/) | Thermal daemon to help keep systems running cool |
 | [timberslide](./timberslide/) | Tool for working with EC crashes for reporting purposes |
 | [touch_firmware_calibration](./touch_firmware_calibration/) ||
