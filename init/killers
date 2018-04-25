@@ -46,13 +46,22 @@ term_process() {
 }
 
 # Parses the output of `lsof -Fn` in the format (p<pid>\n(n<filename>\n)*)*,
-# and returns the list of <pid>s followed by a non-empty list of filenames.
-# This is an utility function for use in kill_open_file_on().
+# and returns the list of <pid>s that were followed by some filename matching
+# the argument $1. This is an utility function for use in kill_open_file_on().
 _lsofFn_filter() {
-  # Save all the most recent 'p' line in the buffer.
-  # When we get a matching 'n' line, pull the last 'p' line out
-  # of the buffer and show it (w/out the leading 'p' char).
-  sed -n -E -e '/^p/h' -e "\\%^n($1)%{x;s:^p::;p}" | sort -u
+  sed -n -E -e "
+    # Hold all the most recent 'p' line in the buffer.
+    /^p/h
+    # Look for a matching 'n' line.  Pick % as it's unlikely to be in a path.
+    \\%^n$1%{
+      # Get the last 'p' line out of the buffer.
+      g
+      # Delete the leading 'p'.
+      s:^p::
+      # Print it.
+      p
+    }
+  " | sort -u
 }
 
 # For a given path pattern regex (the first argument) and given mountpoints
@@ -69,20 +78,20 @@ kill_with_open_files_on_path_and_mountpoints() {
   local paths="$1"
   shift
 
-  pids=$(lsof -Fn "$@" | _lsofFn_filter "${paths}")
+  pids=$(lsof -n -Fn "$@" | _lsofFn_filter "${paths}")
   if [ -z "${pids}" ] ; then
     return  # The typical case; no open files at this point.
   fi
 
   # pids should have been empty. Since it is not, we log for future inspection.
-  lsof "$@" > /var/log/shutdown_force_kill_processes
+  lsof -n "$@" > /var/log/shutdown_force_kill_processes
 
   # First try a gentle kill -TERM
   for i in 1 2 3 4 5 6 7 8 9 10; do
     for pid in ${pids} ; do
       ! kill -TERM ${pid}
     done
-    pids=$(lsof -Fn "$@" | _lsofFn_filter "${paths}")
+    pids=$(lsof -n -Fn "$@" | _lsofFn_filter "${paths}")
     if [ -z "${pids}" ] ; then
       return
     fi
@@ -94,7 +103,7 @@ kill_with_open_files_on_path_and_mountpoints() {
     for pid in ${pids} ; do
       ! kill -KILL ${pid}
     done
-    pids=$(lsof -Fn "$@" | _lsofFn_filter "${paths}")
+    pids=$(lsof -n -Fn "$@" | _lsofFn_filter "${paths}")
     if [ -z "${pids}" ] ; then
       return
     fi
