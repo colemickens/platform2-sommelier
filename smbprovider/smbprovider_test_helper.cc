@@ -306,4 +306,12 @@ base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
   return temp_manager->CreateTempFile(password_data);
 }
 
+std::string CreateKrb5ConfPath(const base::FilePath& temp_dir) {
+  return temp_dir.Append(kTestKrb5ConfName).value();
+}
+
+std::string CreateKrb5CCachePath(const base::FilePath& temp_dir) {
+  return temp_dir.Append(kTestCCacheName).value();
+}
+
 }  // namespace smbprovider

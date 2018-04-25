@@ -14,6 +14,9 @@
 
 namespace smbprovider {
 
+constexpr char kTestCCacheName[] = "ccache";
+constexpr char kTestKrb5ConfName[] = "krb5.conf";
+
 class TempFileManager;
 
 MountOptionsProto CreateMountOptionsProto(const std::string& path,
@@ -170,6 +173,10 @@ inline std::string GetAddedFullFilePath() {
 // "{password_length}{password}".
 base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
                                    const std::string& password);
+
+std::string CreateKrb5ConfPath(const base::FilePath& temp_dir);
+
+std::string CreateKrb5CCachePath(const base::FilePath& temp_dir);
 
 }  // namespace smbprovider
 
