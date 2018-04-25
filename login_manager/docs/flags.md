@@ -1,9 +1,13 @@
 # Passing Chrome flags from `session_manager`
 
+## Runtime configuration
+
 Chrome sometimes needs to behave differently on different Chrome OS devices.
 It's preferable to test for the hardware features that you care about directly
 within Chrome: if you want to do something special on Chromebooks that have
 accelerometers, just check if an accelerometer device is present.
+
+## Build-time configuration
 
 Sometimes it's not possible to check for these features from within Chrome,
 though. In that case, the recommended approach is to add a command-line flag to
@@ -22,6 +26,8 @@ this file to a tiny dedicated package allows us to use the same prebuilt
 `chromeos-chrome` and `chromeos-login` packages on devices that have different
 sets of USE flags.)
 
+### Configuration location
+
 Configuration that would apply both to the Chrome browser and to other products
 that could be built using the Chromium codebase (e.g. a simple shell that runs a
 dedicated web app) should be placed in `ChromiumCommandBuilder`. This includes
@@ -30,6 +36,35 @@ most compositor- and audio-related flags.
 Configuration that is specific to the Chrome browser should instead be placed in
 [chrome_setup.cc]. This includes most flags that are implemented within Chrome's
 `//ash` and `//chrome` directories.
+
+### Use feature-based USE flags
+
+If possible, introduce a new USE flag named after the feature that you're adding
+and set it in the appropriate [board overlays] rather than making
+`session_manager` examine board USE flags like `samus` or `eve`. Using
+feature-specific USE flags reduces the number of changes needed to enable the
+feature for a new board — just set the USE flag in the new board's overlay. In
+contrast, if `session_manager` contains an expression like this:
+
+```c++
+if (builder->UseFlagIsSet("samus") || builder->UseFlagIsSet("eve"))
+  builder->AddArgs("--enable-my-feature");
+```
+
+then additionally enabling the feature for `newboard` will require:
+
+*   Adding `newboard` to `IUSE` in [libchromeos-use-flags] if it's not there
+    already
+*   Updating `session_manager` to additionally check for the `newboard` USE flag
+
+### Unibuild and chromeos-config
+
+With the Unibuild project, the same system image (and hence, board) may be
+shared by multiple types of devices. Device-specific configuration is performed
+through additional files that are read by [chromeos-config]. Modifying device
+configurations is beyond the scope of this document, but see
+`SetUpWallpaperFlags` in [chrome_setup.cc] for an example of using
+`libcros_config` to perform per-device configuration.
 
 ## Making quick changes
 
@@ -41,4 +76,6 @@ format.
 [chrome_setup.cc]: ../chrome_setup.cc
 [ChromiumCommandBuilder]: https://chromium.googlesource.com/chromiumos/platform2/+/master/libchromeos-ui/chromeos/ui/chromium_command_builder.h
 [libchromeos-use-flags]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/chromeos-base/libchromeos-use-flags/libchromeos-use-flags-0.0.1.ebuild
+[board overlays]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/master
+[chromeos-config]: https://chromium.googlesource.com/chromiumos/platform2/+/master/chromeos-config/
 [/etc/chrome_dev.conf]: ../chrome_dev.conf
