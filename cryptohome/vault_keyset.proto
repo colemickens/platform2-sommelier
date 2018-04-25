@@ -7,6 +7,7 @@ syntax = "proto2";
 package cryptohome;
 
 import "key.proto";
+import "signature_sealed_data.proto";
 
 message SerializedVaultKeyset {
   enum Flags {
@@ -15,6 +16,11 @@ message SerializedVaultKeyset {
     SCRYPT_WRAPPED = 2;
     SCRYPT_DERIVED = 4;
     LE_CREDENTIAL = 8;
+    // The keyset is encrypted via Scrypt, where the Scrypt KDF passphrase is
+    // protected with the signing cryptographic key specified in
+    // |signature_challenge_info.public_key_spki_der|. The process of obtaining
+    // the KDF passphrase involves signature challenges against this key.
+    SIGNATURE_CHALLENGE_PROTECTED = 16;
   }
   required int32 flags = 1;
   required bytes salt = 2;
@@ -86,4 +92,31 @@ message SerializedVaultKeyset {
   // conver the reset_seed (which is only 1-per-user) to a per LE
   // Credential reset secret using HMACSha256.
   optional bytes reset_salt = 16;
+
+  // Fields specific to the challenge-response protection.
+  // The Scrypt KDF passphrase, used for the protection of the keyset, is
+  // defined as a concatenation of two values:
+  // * The first is the blob which is sealed in |sealed_secret|.
+  // * The second is the deterministic signature of |salt| using the
+  //   |salt_signature_algorithm| algorithm.
+  // The cryptographic key specified in |public_key_spki_der| is used for both.
+  message SignatureChallengeInfo {
+    // DER-encoded blob of the X.509 Subject Public Key Info of the key to be
+    // challenged in order to obtain the KDF passphrase for decrypting the vault
+    // keyset.
+    optional bytes public_key_spki_der = 1;
+    // Container with the secret data which is sealed using the TPM in a way
+    // that the process of its unsealing involves signature challenges against
+    // the specified key. This secret data is one of the sources for building
+    // the KDF passphrase.
+    optional SignatureSealedData sealed_secret = 2;
+    // Signature algorithm to be used for signing the salt; the resulting
+    // signature is another source for building the KDF passphrase.
+    // NOTE: the signature algorithm has to be deterministic (that is, always
+    // produce the same output for the same input).
+    optional ChallengeSignatureAlgorithm salt_signature_algorithm = 3;
+  }
+
+  // Set only when the |SIGNATURE_CHALLENGE_PROTECTED| flag is present.
+  optional SignatureChallengeInfo signature_challenge_info = 17;
 }
