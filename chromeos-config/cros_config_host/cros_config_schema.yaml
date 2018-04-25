@@ -39,6 +39,10 @@ typeDefs:
   customization-id: &customization_id
     description: "'customization-id' value set in the VPD for Zergs and older Whitelabels."
     type: string
+  platform-name: &platform_name
+    description: "Defines the name that is reported by 'mosys platform name'
+      This is typically the reference design name with the first letter capitalized"
+    type: string
 type: object
 properties:
   chromeos:
@@ -193,11 +197,6 @@ properties:
                 This tuple must either contain x86 properties only or ARM properties only.
               oneOf:
                 - properties:
-                    platform-name:
-                      description: "[x86] Indicates the platform name for this platform.
-                        This is reported by 'mosys platform name'. It is
-                        typically the family name with the first letter capitalized."
-                      type: string
                     sku-id:
                       description: "[x86] SKU/Board strapping pins configured during board
                         manufacturing."
@@ -206,6 +205,7 @@ properties:
                       description: "[x86] Firmware name built into the firmware and reflected back
                         out in the SMBIOS tables."
                       type: string
+                    platform-name: *platform_name
                     customization-id: *customization_id
                     whitelabel-tag: *whitelabel_tag
                   additionalProperties: false
@@ -214,6 +214,7 @@ properties:
                       description: "[ARM] String pattern (partial) that is matched against the
                         contents of /proc/device-tree/compatible on ARM devices."
                       type: string
+                    platform-name: *platform_name
                     customization-id: *customization_id
                     whitelabel-tag: *whitelabel_tag
                   additionalProperties: false
