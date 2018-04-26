@@ -640,6 +640,11 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
 }
 
 void CellularCapabilityUniversal::OnServiceCreated() {
+  // ModemManager might have issued some property updates before the service
+  // object was created to receive the udpates, so we explicitly refresh the
+  // properties here.
+  GetProperties();
+
   cellular()->service()->SetActivationType(CellularService::kActivationTypeOTA);
   UpdateServiceActivationState();
 

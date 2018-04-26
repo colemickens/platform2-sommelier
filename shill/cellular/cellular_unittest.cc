@@ -1031,6 +1031,8 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
 
+  PopulateProxies();
+
   // (2) serving operator known.
   // When home provider is not known, serving operator proxies in.
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
@@ -1060,6 +1062,8 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
 
+  PopulateProxies();
+
   // (3) home provider known.
   // When serving operator is not known, home provider proxies in.
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
@@ -1088,6 +1092,8 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
+
+  PopulateProxies();
 
   // (4) Serving operator known, home provider known.
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
