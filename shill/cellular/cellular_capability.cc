@@ -44,9 +44,9 @@ static string ObjectID(CellularCapability* c) {
 const char CellularCapability::kModemPropertyIMSI[] = "imsi";
 // All timeout values are in milliseconds
 const int CellularCapability::kTimeoutActivate = 300000;
-const int CellularCapability::kTimeoutConnect = 45000;
+const int CellularCapability::kTimeoutConnect = 90000;
 const int CellularCapability::kTimeoutDefault = 5000;
-const int CellularCapability::kTimeoutDisconnect = 45000;
+const int CellularCapability::kTimeoutDisconnect = 90000;
 const int CellularCapability::kTimeoutEnable = 45000;
 const int CellularCapability::kTimeoutGetLocation = 45000;
 const int CellularCapability::kTimeoutRegister = 90000;
