@@ -136,12 +136,20 @@
         ],
       },
       'variables': {
-        'deps': [
+        'exported_deps': [
           'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
           'libecryptfs',
           'libmetrics-<(libbase_ver)',
+          'openssl',
+          'vboot_host',
         ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
       },
       'sources': [
         'cryptohome_metrics.cc',
@@ -159,14 +167,23 @@
       ],
       'link_settings': {
         'libraries': [
-          '-lsecure_erase_file',
+          '-lchaps',
+          '-lscrypt',
         ],
       },
       'variables': {
-        'deps': [
+        'exported_deps': [
+          'glib-2.0',
+          'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
-          'libmetrics-<(libbase_ver)',
+          'openssl',
         ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
       },
       'sources': [
         'attestation.cc',
@@ -193,7 +210,7 @@
             'tpm2_impl.cc',
             'tpm2_metrics.cc',
           ],
-          'all_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '-ltrunks',
               '-ltpm_manager',
@@ -206,7 +223,7 @@
             'tpm_impl.cc',
             'tpm_metrics.cc',
           ],
-          'all_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '-ltspi',
             ],
@@ -220,11 +237,29 @@
       'dependencies': [
         'cryptohome-dbus-server',
         'cryptohome-proto',
+        'libcrosplatform',
+        'libcrostpm',
       ],
+      'link_settings': {
+        'libraries': [
+          '-lchaps',
+          '-lpolicy-<(libbase_ver)',
+        ],
+      },
       'variables': {
-        'deps': [
+        'exported_deps': [
+          'dbus-glib-1',
+          'glib-2.0',
+          'libbrillo-<(libbase_ver)',
+          'libbrillo-glib-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
         ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
       },
       'cflags': [
         # The generated dbus headers use "register".
@@ -244,7 +279,6 @@
         'le_credential_manager.cc',
         'lockbox-cache-tpm.cc',
         'lockbox-cache.cc',
-        'migration_type.h',
         'mount.cc',
         'mount_factory.cc',
         'mount_stack.cc',
@@ -265,7 +299,7 @@
           'sources': [
             'service_distributed.cc',
           ],
-          'all_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '-lattestation',
             ],
