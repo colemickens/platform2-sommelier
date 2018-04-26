@@ -182,6 +182,13 @@ TEST_F(CrosConfigTest, CheckCustomizationId) {
   ASSERT_EQ("some_customization", val);
 }
 
+TEST_F(CrosConfigTest, CheckEmptySkuCase) {
+  InitConfig("Another", 0);
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/", "name", &val));
+  ASSERT_EQ("another", val);
+}
+
 TEST_F(CrosConfigTest, CheckArmIdentityByDeviceName) {
   InitConfigArm();
   std::string val;

@@ -57,12 +57,12 @@ bool CrosConfigJson::SelectConfigByIdentity(
               if (identity_x86) {
                 const std::string& find_name = identity_x86->GetName();
                 int find_sku_id = identity_x86->GetSkuId();
-                bool require_sku_match = find_sku_id > -1;
                 int current_sku_id;
-                bool sku_match =
-                    (!require_sku_match ||
-                     (identity_dict->GetInteger("sku-id", &current_sku_id) &&
-                      current_sku_id == find_sku_id));
+                bool sku_match = true;
+                if (find_sku_id > -1 &&
+                    identity_dict->GetInteger("sku-id", &current_sku_id)) {
+                  sku_match = current_sku_id == find_sku_id;
+                }
 
                 bool name_match = true;
                 std::string current_name;
