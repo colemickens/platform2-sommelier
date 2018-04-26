@@ -498,6 +498,57 @@ def ValidateConfig(config):
   _ValidateUniqueIdentities(json_config)
   _ValidateWhitelabelBrandChangesOnly(json_config)
 
+def _FindImports(config_file, includes):
+  """Recursively looks up and finds files to include for yaml.
+
+  Args:
+    config_file: Path to the config file for which to apply imports.
+    includes: List that is built up through processing the files.
+  """
+  working_dir = os.path.dirname(config_file)
+  with open(config_file, 'r') as config_stream:
+    config_lines = config_stream.readlines()
+    yaml_import_lines = []
+    found_imports = False
+    # Parsing out just the imports snippet is required because the YAML
+    # isn't valid until the imports are eval'd
+    for line in config_lines:
+      if re.match("^imports", line):
+        found_imports = True
+        yaml_import_lines.append(line)
+      elif found_imports:
+        match = re.match(" *- (.*)", line)
+        if match:
+          yaml_import_lines.append(line)
+        else:
+          break
+
+    if yaml_import_lines:
+      yaml_import = yaml.load("\n".join(yaml_import_lines))
+
+      for import_file in yaml_import.get("imports", []):
+        full_path = os.path.join(working_dir, import_file)
+        _FindImports(full_path, includes)
+    includes.append(config_file)
+
+def ApplyImports(config_file):
+  """Parses the imports statements and applies them to a result config.
+
+  Args:
+    config_file: Path to the config file for which to apply imports.
+
+  Returns:
+    Raw config with the imports applied.
+  """
+  import_files = []
+  _FindImports(config_file, import_files)
+
+  all_yaml_files = []
+  for import_file in import_files:
+    with open(import_file, 'r') as yaml_stream:
+      all_yaml_files.append(yaml_stream.read())
+
+  return '\n'.join(all_yaml_files)
 
 def Main(schema,
          config,
@@ -522,22 +573,22 @@ def Main(schema,
   if not schema:
     schema = os.path.join(this_dir, 'cros_config_schema.yaml')
 
-  with open(config, 'r') as config_stream:
-    full_json_transform = TransformConfig(config_stream.read())
-    json_transform = full_json_transform
-    with open(schema, 'r') as schema_stream:
-      ValidateConfigSchema(schema_stream.read(), json_transform)
-      ValidateConfig(json_transform)
-      if filter_build_details:
-        json_transform = FilterBuildElements(json_transform)
-    if output:
-      with open(output, 'w') as output_stream:
-        output_stream.write(json_transform)
-    else:
-      print(json_transform)
-    if gen_c_bindings_output:
-      with open(gen_c_bindings_output, 'w') as output_stream:
-        output_stream.write(GenerateCBindings(full_json_transform))
+  yaml_with_imports = ApplyImports(config)
+  full_json_transform = TransformConfig(yaml_with_imports)
+  json_transform = full_json_transform
+  with open(schema, 'r') as schema_stream:
+    ValidateConfigSchema(schema_stream.read(), json_transform)
+    ValidateConfig(json_transform)
+    if filter_build_details:
+      json_transform = FilterBuildElements(json_transform)
+  if output:
+    with open(output, 'w') as output_stream:
+      output_stream.write(json_transform)
+  else:
+    print(json_transform)
+  if gen_c_bindings_output:
+    with open(gen_c_bindings_output, 'w') as output_stream:
+      output_stream.write(GenerateCBindings(full_json_transform))
 
 
 def main(_argv=None):
@@ -551,11 +602,11 @@ def main(_argv=None):
   if args.merge:
     yaml_files = []
     for yaml_file in args.merge:
-      with open(yaml_file, 'r') as yaml_stream:
-        # Dropping anchors as part of the merge to keep it simplified.
-        json_from_yaml = json.dumps(
-            yaml.load(yaml_stream.read()), sort_keys=True, indent=2)
-        yaml_files.append(json.loads(json_from_yaml))
+      yaml_with_imports = ApplyImports(yaml_file)
+      # Dropping anchors as part of the merge to keep it simplified.
+      json_from_yaml = json.dumps(
+          yaml.load(yaml_with_imports), sort_keys=True, indent=2)
+      yaml_files.append(json.loads(json_from_yaml))
 
     result_yaml = {}
     if yaml_files:
