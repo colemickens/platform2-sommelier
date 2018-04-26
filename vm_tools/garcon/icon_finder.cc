@@ -18,7 +18,8 @@ namespace garcon {
 namespace {
 
 constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
-constexpr char kDefaultIconDir[] = "/usr/share";
+constexpr char kXdgDataDirsDefault[] = "/usr/share/";
+constexpr char kDefaultPixmapsDir[] = "/usr/share/pixmaps/";
 
 }  // namespace
 
@@ -35,7 +36,7 @@ std::vector<base::FilePath> GetPathsForIcons(int icon_size, int scale) {
   }
   const char* xdg_data_dirs = getenv(kXdgDataDirsEnvVar);
   if (!xdg_data_dirs || strlen(xdg_data_dirs) != 0) {
-    xdg_data_dirs = kDefaultIconDir;
+    xdg_data_dirs = kXdgDataDirsDefault;
   }
   std::vector<base::StringPiece> search_dirs = base::SplitStringPiece(
       xdg_data_dirs, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -91,6 +92,12 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
         return test_path;
     }
   }
+
+  // Also check the default pixmaps dir as a last resort.
+  base::FilePath test_path =
+      base::FilePath(kDefaultPixmapsDir).Append(icon_filename);
+  if (base::PathExists(test_path))
+    return test_path;
 
   LOG(INFO) << "No icon file found for " << desktop_file_id;
   return base::FilePath();

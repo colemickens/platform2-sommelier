@@ -36,6 +36,7 @@ namespace {
 
 constexpr char kForkedProcessConsole[] = "/dev/null";
 constexpr char kStartupIDEnv[] = "DESKTOP_STARTUP_ID";
+constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
 
 // Information about any errors that happen in the child process before the exec
 // call.  This is sent back to the parent process via a socket.
@@ -481,8 +482,8 @@ grpc::Status ServiceImpl::GetIcon(
     if (icon_filepath.empty()) {
       continue;
     }
-    // 65536 is a big enough size that normal icon should fall under the limit.
-    if (!base::ReadFileToStringWithMaxSize(icon_filepath, &icon_data, 65536)) {
+    if (!base::ReadFileToStringWithMaxSize(icon_filepath, &icon_data,
+                                           kMaxIconSize)) {
       LOG(ERROR) << "Failed to read icon data file " << icon_filepath.value();
       continue;
     }
