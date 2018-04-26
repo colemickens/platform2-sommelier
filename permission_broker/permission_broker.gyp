@@ -2,6 +2,7 @@
   'target_defaults': {
     'defines': [
       'USE_CONTAINERS=<(USE_containers)',
+      'USE_CFM_ENABLED_DEVICE=<(USE_cfm_enabled_device)',
     ],
     'variables': {
       'deps': [
@@ -63,9 +64,6 @@
           'dependencies': [
             '../container_utils/container_utils.gyp:libdevice_jail',
           ],
-        }],
-        ['USE_cfm_enabled_device == 1', {
-          'defines': ['USE_CFM_ENABLED_DEVICE'],
         }],
       ],
     },

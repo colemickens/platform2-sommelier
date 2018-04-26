@@ -62,12 +62,8 @@ bool IsCapabilityBitSet(const std::vector<uint64_t>& bitfield, size_t bit) {
   return bitfield[offset] & (1ULL << (bit - offset * sizeof(long) * 8));
 }
 
-bool IsCfmDevice() {
-#if defined(USE_CFM_ENABLED_DEVICE)
-  return true;
-#else
-  return false;
-#endif
+constexpr bool IsCfmDevice() {
+  return USE_CFM_ENABLED_DEVICE;
 }
 
 }  // namespace
@@ -173,9 +169,13 @@ bool DenyClaimedHidrawDeviceRule::ShouldSiblingSubsystemExcludeHidAccess(
   // Generic USB/HID is okay.
   if (strcmp(subsystem, "hid") == 0 ||
       strcmp(subsystem, "hidraw") == 0 ||
-      (IsCfmDevice() && strcmp(subsystem, "leds") == 0) ||
       strcmp(subsystem, "usb") == 0 ||
       strcmp(subsystem, "usbmisc") == 0) {
+    return false;
+  }
+
+  // Don't block hidraw access due to leds subsystem.
+  if (IsCfmDevice() && strcmp(subsystem, "leds") == 0) {
     return false;
   }
 
