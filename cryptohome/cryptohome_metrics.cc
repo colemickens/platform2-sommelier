@@ -27,6 +27,8 @@ constexpr char kDictionaryAttackCounterHistogram[] =
 constexpr int kDictionaryAttackCounterNumBuckets = 100;
 constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
 constexpr char kCryptohomeTpmResultsHistogram[] = "Cryptohome.TpmResults";
+constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
+    "Cryptohome.DeletedUserProfiles";
 constexpr char kCryptohomeFreedGCacheDiskSpaceInMbHistogram[] =
     "Cryptohome.FreedGCacheDiskSpaceInMb";
 constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
@@ -204,6 +206,15 @@ void ReportFreedGCacheDiskSpaceInMb(int mb) {
   g_metrics->SendToUMA(kCryptohomeFreedGCacheDiskSpaceInMbHistogram, mb,
                        10 /* 10 MiB minimum */, 1024 * 10 /* 10 GiB maximum */,
                        50 /* number of buckets */);
+}
+
+void ReportDeletedUserProfiles(int user_profile_count) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendToUMA(kCryptohomeDeletedUserProfilesHistogram,
+                       user_profile_count, 1 /* minimum */, 100 /* maximum */,
+                       20 /* number of buckets */);
 }
 
 void ReportDircryptoMigrationStartStatus(MigrationType migration_type,

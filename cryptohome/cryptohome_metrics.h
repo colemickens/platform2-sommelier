@@ -170,6 +170,10 @@ void ReportDictionaryAttackCounter(int counter);
 
 void ReportChecksum(ChecksumStatus status);
 
+// Reports number of deleted user profiles to the
+// "Cryptohome.DeletedUserProfiles" histogram.
+void ReportDeletedUserProfiles(int user_profile_count);
+
 // Reports removed GCache size by cryptohome to the
 // "Cryptohome.FreedGCacheDiskSpaceInMb" histogram.
 void ReportFreedGCacheDiskSpaceInMb(int mb);

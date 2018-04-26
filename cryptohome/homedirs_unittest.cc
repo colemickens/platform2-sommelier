@@ -424,13 +424,14 @@ INSTANTIATE_TEST_CASE_P(WithDircrypto, FreeDiskSpaceTest,
                         ::testing::Values(false));
 
 TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
-  // To get to the init logic, we need to fail four
+  // To get to the init logic, we need to fail five
   // |kTargetFreeSpaceAfterCleanup| checks.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0));
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillOnce(Return(0));
 
   // Expect cache clean ups.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -506,13 +507,14 @@ TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
 }
 
 TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
-  // To get to the init logic, we need to fail four
+  // To get to the init logic, we need to fail five
   // |kTargetFreeSpaceAfterCleanup| checks.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0));
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillOnce(Return(0));
 
   // Expect cache clean ups.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -939,7 +941,8 @@ TEST_P(FreeDiskSpaceTest, CleanUpOneUser) {
     .WillOnce(Return(homedir_paths_[0]));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1))
+      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
@@ -963,8 +966,9 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleUsers) {
     .WillOnce(Return(homedir_paths_[1]));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kTargetFreeSpaceAfterCleanup - 1))
-    .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillOnce(Return(kTargetFreeSpaceAfterCleanup - 1))
+      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1))
+      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
@@ -999,7 +1003,7 @@ TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
               IsDirectoryMounted(_)).WillRepeatedly(Return(false));
 
   ExpectCacheDirCleanupCalls(4);
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+  EXPECT_FALSE(homedirs_.FreeDiskSpace());
 
   // Last user is re-inserted into cache, to be a candidate for deletion
   // next time.
@@ -1066,9 +1070,10 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
     .WillOnce(Return((homedir_paths_[1])));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(0))
-    // Loop continued before we check disk space for owner.
-    .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillOnce(Return(0))
+      // Loop continued before we check disk space for owner.
+      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1))
+      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));

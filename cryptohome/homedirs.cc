@@ -116,10 +116,11 @@ bool HomeDirs::FreeDiskSpace() {
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
     return true;
 
-  if (freeDiskSpace >= kMinFreeSpaceInBytes)
+  if (freeDiskSpace >= kMinFreeSpaceInBytes) {
     // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
     // than the threshold to do more aggressive cleanups.
     return false;
+  }
 
   // Clean Android cache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(base::Bind(
@@ -130,10 +131,22 @@ bool HomeDirs::FreeDiskSpace() {
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
     return true;
 
-  if (freeDiskSpace >= kMinFreeSpaceInBytes)
+  if (freeDiskSpace >= kMinFreeSpaceInBytes) {
     // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
     // than the threshold to do more aggressive cleanup by removing users.
     return false;
+  }
+
+  const int deleted_users_count = DeleteUserProfiles();
+  if (deleted_users_count > 0)
+    ReportDeletedUserProfiles(deleted_users_count);
+
+  return platform_->AmountOfFreeDiskSpace(shadow_root_) >=
+         kTargetFreeSpaceAfterCleanup;
+}
+
+int HomeDirs::DeleteUserProfiles() {
+  int deleted_users_count = 0;
 
   // Initialize user timestamp cache if it has not been yet. This reads the
   // last-activity time from each homedir's SerializedVaultKeyset.  This value
@@ -148,7 +161,7 @@ bool HomeDirs::FreeDiskSpace() {
         base::Unretained(this)));
   }
 
-  // Delete old users, the oldest first.
+  // Delete old users using timestamp_cache_, the oldest first.
   // Don't delete anyone if we don't know who the owner is.
   // For consumer devices, don't delete the device owner. Enterprise-enrolled
   // devices have no owner, so don't delete the last user.
@@ -172,7 +185,7 @@ bool HomeDirs::FreeDiskSpace() {
                                             deleted_timestamp);
 
           LOG(INFO) << "Skipped deletion of the most recent device user.";
-          return true;
+          break;
         }
       } else {
         if (obfuscated == owner) {
@@ -190,15 +203,15 @@ bool HomeDirs::FreeDiskSpace() {
         LOG(INFO) << "Freeing disk space by deleting user "
                   << deleted_user_dir.value();
         platform_->DeleteFile(deleted_user_dir, true);
+        ++deleted_users_count;
         if (platform_->AmountOfFreeDiskSpace(shadow_root_) >=
             kTargetFreeSpaceAfterCleanup)
-          return true;
+          break;
       }
     }
   }
 
-  // TODO(glotov): do further cleanup.
-  return false;
+  return deleted_users_count;
 }
 
 int64_t HomeDirs::AmountOfFreeDiskSpace() {

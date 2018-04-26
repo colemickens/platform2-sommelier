@@ -268,6 +268,9 @@ class HomeDirs {
   bool LoadVaultKeysetForUser(const std::string& obfuscated_user,
                               int index,
                               VaultKeyset* keyset) const;
+  // Deletes old user profiles, the oldest first.
+  // Returns a number, how many profiles were deleted.
+  int DeleteUserProfiles();
 
   // Takes ownership of the supplied PolicyProvider. Used to avoid leaking mocks
   // in unit tests.
