@@ -194,7 +194,6 @@ Service::Service()
       tpm_init_signal_(-1),
       low_disk_space_signal_(-1),
       dircrypto_migration_progress_signal_(-1),
-      key_challenge_signal_(-1),
       low_disk_space_signal_was_emitted_(false),
       event_source_(),
       event_source_sink_(this),
@@ -626,24 +625,6 @@ bool Service::Initialize() {
         G_TYPE_INT,
         G_TYPE_UINT64,
         G_TYPE_UINT64);
-  }
-
-  key_challenge_signal_ = g_signal_lookup(
-      "key_challenge",
-      gobject::cryptohome_get_type());
-  if (!key_challenge_signal_) {
-    key_challenge_signal_ = g_signal_new(
-        "key_challenge",
-        gobject::cryptohome_get_type(),
-        G_SIGNAL_RUN_LAST,
-        0,
-        NULL,
-        NULL,
-        nullptr,
-        G_TYPE_NONE,
-        2,
-        DBUS_TYPE_G_UCHAR_ARRAY,
-        DBUS_TYPE_G_UCHAR_ARRAY);
   }
 
   mount_thread_.Start();
@@ -2797,14 +2778,6 @@ gboolean Service::RemoveFirmwareManagementParameters(const GArray* request,
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
-}
-
-gboolean Service::RespondKeyChallenge(GArray* account_id,
-                                      GArray* challenge_response,
-                                      DBusGMethodInvocation* context) {
-  // TODO(emaxx): crbug.com/806788
-  NOTIMPLEMENTED();
-  return FALSE;
 }
 
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {

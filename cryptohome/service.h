@@ -628,10 +628,6 @@ class Service : public brillo::dbus::AbstractDbusService,
                                                  gboolean* OUT_success,
                                                  GError** error) = 0;
 
-  virtual gboolean RespondKeyChallenge(GArray* account_id,
-                                       GArray* challenge_response,
-                                       DBusGMethodInvocation* context);
-
  protected:
   FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
@@ -661,7 +657,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   guint tpm_init_signal_;
   guint low_disk_space_signal_;
   guint dircrypto_migration_progress_signal_;
-  guint key_challenge_signal_;
   bool low_disk_space_signal_was_emitted_;
   CryptohomeEventSource event_source_;
   CryptohomeEventSourceSink* event_source_sink_;
