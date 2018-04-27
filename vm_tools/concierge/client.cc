@@ -38,7 +38,7 @@ using std::string;
 
 namespace {
 
-constexpr int kDefaultTimeoutMs = 30 * 1000;
+constexpr int kDefaultTimeoutMs = 80 * 1000;
 
 constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";

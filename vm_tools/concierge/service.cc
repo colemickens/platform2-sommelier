@@ -76,8 +76,9 @@ constexpr char kVmRootfsName[] = "vm_rootfs.img";
 constexpr int kMaxExtraDisks = 10;
 
 // How long to wait before timing out on `lxd waitready`.
+constexpr int kLxdWaitreadyTimeoutSeconds = 50;
 constexpr base::TimeDelta kLxdWaitreadyTimeout =
-    base::TimeDelta::FromSeconds(10);
+    base::TimeDelta::FromSeconds(kLxdWaitreadyTimeoutSeconds);
 
 // How long we should wait for a VM to start up.
 // While this timeout might be high, it's meant to be a final failure point, not
@@ -1123,8 +1124,9 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
 
   // Wait for lxd to be ready. The first start may take a few seconds, so use
   // a longer timeout than the default.
-  if (!vm->RunProcessWithTimeout({"lxd", "waitready"}, kLxdEnv,
-                                 kLxdWaitreadyTimeout)) {
+  string timeout = std::to_string(kLxdWaitreadyTimeoutSeconds);
+  if (!vm->RunProcessWithTimeout({"lxd", "waitready", "--timeout", timeout},
+                                 kLxdEnv, kLxdWaitreadyTimeout)) {
     LOG(ERROR) << "lxd waitready failed";
     *failure_reason = "lxd waitready failed";
     return false;
