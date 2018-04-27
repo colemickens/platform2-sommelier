@@ -131,7 +131,7 @@ std::vector<uint32_t> GetNonVpdIwlPowerTable(bool tablet) {
 
   if (board == "cave") {
     return tablet ? std::vector<uint32_t>{13, 9, 9}
-                  : std::vector<uint32_t>{13, 9, 9};
+                  : std::vector<uint32_t>{30, 30, 30};
   }
   return {};
 }
