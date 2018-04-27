@@ -2587,6 +2587,7 @@ static void xwl_aura_output_scale(void *data, struct zaura_output *output,
     case ZAURA_OUTPUT_SCALE_FACTOR_0900:
     case ZAURA_OUTPUT_SCALE_FACTOR_0950:
     case ZAURA_OUTPUT_SCALE_FACTOR_1000:
+    case ZAURA_OUTPUT_SCALE_FACTOR_1050:
     case ZAURA_OUTPUT_SCALE_FACTOR_1100:
     case ZAURA_OUTPUT_SCALE_FACTOR_1150:
     case ZAURA_OUTPUT_SCALE_FACTOR_1125:
@@ -2600,6 +2601,7 @@ static void xwl_aura_output_scale(void *data, struct zaura_output *output,
     case ZAURA_OUTPUT_SCALE_FACTOR_1750:
     case ZAURA_OUTPUT_SCALE_FACTOR_1800:
     case ZAURA_OUTPUT_SCALE_FACTOR_2000:
+    case ZAURA_OUTPUT_SCALE_FACTOR_2200:
     case ZAURA_OUTPUT_SCALE_FACTOR_2250:
     case ZAURA_OUTPUT_SCALE_FACTOR_2500:
     case ZAURA_OUTPUT_SCALE_FACTOR_2750:
