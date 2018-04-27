@@ -24,6 +24,7 @@
 
 #include "shill/error.h"
 #include "shill/fake_store.h"
+#include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
@@ -407,6 +408,16 @@ TEST_F(VPNProviderTest, HasActiveService) {
 
   SetConnectState(service1, Service::kStateOnline);
   EXPECT_TRUE(provider_.HasActiveService());
+}
+
+TEST_F(VPNProviderTest, SetDefaultRoutingPolicy) {
+  manager_.browser_traffic_uids_.push_back(1000);
+
+  IPConfig::Properties properties;
+  provider_.SetDefaultRoutingPolicy(&properties);
+
+  EXPECT_EQ(1, properties.allowed_uids.size());
+  EXPECT_EQ(1000, properties.allowed_uids[0]);
 }
 
 }  // namespace shill

@@ -80,9 +80,8 @@ class VPNProvider : public ProviderInterface {
   // Disconnect any other active VPN services.
   virtual void DisconnectAll();
 
-  // Default lists of whitelisted UIDs and input interfaces, for VPNs that
+  // Default lists of whitelisted input interfaces, for VPNs that
   // do not want to handle all system traffic.
-  const std::vector<uint32_t>& allowed_uids() const { return allowed_uids_; }
   const std::vector<std::string>& allowed_iifs() const { return allowed_iifs_; }
 
   // Allow Chrome and crosh UIDs, plus any ARC interface(s) on this system.
@@ -150,7 +149,6 @@ class VPNProvider : public ProviderInterface {
   Metrics* metrics_;
   Manager* manager_;
   std::vector<VPNServiceRefPtr> services_;
-  std::vector<uint32_t> allowed_uids_;
   std::vector<std::string> allowed_iifs_;
 
   VirtualDeviceRefPtr arc_device_;

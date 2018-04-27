@@ -121,7 +121,7 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
 
   // This will always create the per-device routing table, but it might
   // not have any routes if |ip_properties.routes| is empty.
-  ip_properties.allowed_uids = manager()->vpn_provider()->allowed_uids();
+  ip_properties.allowed_uids = manager()->browser_traffic_uids();
   CHECK(!ip_properties.allowed_uids.empty());
 
   ip_properties.default_route = false;

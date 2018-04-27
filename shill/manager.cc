@@ -16,7 +16,9 @@
 
 #include "shill/manager.h"
 
+#include <pwd.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include <time.h>
 
 #include <algorithm>
@@ -134,6 +136,12 @@ const Technology::Identifier kNoAutoConnectTechnologiesBeforeLoggedIn[] = {
 
 // Name of the default claimer.
 constexpr char kDefaultClaimerName[] = "";
+
+// For VPN drivers that only want to pass traffic for specific users,
+// these are the usernames that will be used to create the routing policy
+// rules. Also, when an AlwaysOnVpnPackage is set and a corresponding VPN
+// service is not active, traffic from these users will blackholed.
+const char* const kBrowserTrafficUsernames[] = {"chronos", "debugd"};
 
 }  // namespace
 
@@ -297,6 +305,7 @@ void Manager::ApplyPolicies() {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
+  ComputeBrowserTrafficUids();
   ApplyPolicies();
 
   power_manager_.reset(
@@ -2766,6 +2775,18 @@ std::vector<std::string> Manager::GetDeviceInterfaceNames() {
     }
   }
   return interfaces;
+}
+
+void Manager::ComputeBrowserTrafficUids() {
+  for (const auto& username : kBrowserTrafficUsernames) {
+    struct passwd* entry = getpwnam(username);  // NOLINT(runtime/threadsafe_fn)
+    if (!entry) {
+      LOG(WARNING) << "Unable to look up UID for " << username << ", skipping";
+    } else {
+      browser_traffic_uids_.push_back(
+          static_cast<uint32_t>(entry->pw_uid));
+    }
+  }
 }
 
 bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,

@@ -553,6 +553,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // on the system e.g. eth0, wlan0.
   virtual std::vector<std::string> GetDeviceInterfaceNames();
 
+  const std::vector<uint32_t>& browser_traffic_uids() const {
+    return browser_traffic_uids_;
+  }
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -615,6 +619,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
+  FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
 
   struct DeviceClaim {
     DeviceClaim() {}
@@ -767,6 +772,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   DeviceRefPtr GetDeviceConnectedToService(ServiceRefPtr service);
 
   void DeregisterDeviceByLinkName(const std::string& link_name);
+
+  void ComputeBrowserTrafficUids();
 
   // Returns the names of all of the devices that have been claimed by the
   // current DeviceClaimer.  Returns an empty vector if no DeviceClaimer is set.
@@ -921,6 +928,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool network_throttling_enabled_;
   uint32_t download_rate_kbits_;
   uint32_t upload_rate_kbits_;
+
+  // "Browser traffic" refers to traffic from processes under the chronos and
+  // debugd users, which includes everything going through chrome and nacl
+  // application, but not e.g. Android apps or system processes like the
+  // update engine.
+  std::vector<uint32_t> browser_traffic_uids_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
