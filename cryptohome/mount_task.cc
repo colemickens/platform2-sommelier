@@ -132,7 +132,8 @@ void MountTaskResetTpmContext::Run() {
 void MountTaskAutomaticFreeDiskSpace::Run() {
   bool rc = false;
   if (homedirs_) {
-    rc = homedirs_->FreeDiskSpace();
+    homedirs_->FreeDiskSpace();
+    rc = homedirs_->HasTargetFreeSpace();
   }
   result()->set_return_status(rc);
   MountTask::Notify();

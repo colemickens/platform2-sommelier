@@ -127,7 +127,6 @@ class ServiceTestNotInitialized : public ::testing::Test {
     service_.set_reply_factory(&reply_factory_);
     service_.set_event_source_sink(&event_sink_);
     test_helper_.SetUpSystemSalt();
-    ON_CALL(homedirs_, FreeDiskSpace()).WillByDefault(Return(true));
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
     ON_CALL(homedirs_, AmountOfFreeDiskSpace()).WillByDefault(
         Return(kNotifyDiskSpaceThreshold));

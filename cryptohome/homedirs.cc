@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
@@ -79,19 +80,28 @@ bool HomeDirs::Init(Platform* platform, Crypto* crypto,
   return GetSystemSalt(NULL);
 }
 
-bool HomeDirs::FreeDiskSpace() {
-  if (platform_->AmountOfFreeDiskSpace(shadow_root_) >=
-      kFreeSpaceThresholdToTriggerCleanup) {
+void HomeDirs::FreeDiskSpace() {
+  const int64_t free_disk_space =
+      platform_->AmountOfFreeDiskSpace(shadow_root_);
+  if (free_disk_space >= kFreeSpaceThresholdToTriggerCleanup) {
     // Already have enough space. No need to cleanup.
-    return true;
+    return;
   }
 
+  base::ElapsedTimer total_timer;
+
+  FreeDiskSpaceInternal();
+
+  ReportFreeDiskSpaceTotalTime(total_timer.Elapsed().InMilliseconds());
+}
+
+void HomeDirs::FreeDiskSpaceInternal() {
   // If ephemeral users are enabled, remove all cryptohomes except those
   // currently mounted or belonging to the owner.
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (AreEphemeralUsersEnabled()) {
     RemoveNonOwnerCryptohomes();
-    return true;
+    return;
   }
 
   // Clean Cache directories for every user (except current one).
@@ -99,8 +109,9 @@ bool HomeDirs::FreeDiskSpace() {
                                            base::Unretained(this)));
 
   int64_t freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
-  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
-    return true;
+  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
+    return;
+  }
 
   // Clean GCache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteGCacheTmpCallback,
@@ -110,16 +121,18 @@ bool HomeDirs::FreeDiskSpace() {
   freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
   const int64_t freed_gcache_space = freeDiskSpace - old_free_disk_space;
   // Report only if something was deleted.
-  if (freed_gcache_space > 0)
+  if (freed_gcache_space > 0) {
     ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
+  }
 
-  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
-    return true;
+  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
+    return;
+  }
 
   if (freeDiskSpace >= kMinFreeSpaceInBytes) {
     // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
     // than the threshold to do more aggressive cleanups.
-    return false;
+    return;
   }
 
   // Clean Android cache directories for every user (except current one).
@@ -128,21 +141,20 @@ bool HomeDirs::FreeDiskSpace() {
       base::Unretained(this)));
 
   freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
-  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
-    return true;
+  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
+    return;
+  }
 
   if (freeDiskSpace >= kMinFreeSpaceInBytes) {
     // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
     // than the threshold to do more aggressive cleanup by removing users.
-    return false;
+    return;
   }
 
   const int deleted_users_count = DeleteUserProfiles();
-  if (deleted_users_count > 0)
+  if (deleted_users_count > 0) {
     ReportDeletedUserProfiles(deleted_users_count);
-
-  return platform_->AmountOfFreeDiskSpace(shadow_root_) >=
-         kTargetFreeSpaceAfterCleanup;
+  }
 }
 
 int HomeDirs::DeleteUserProfiles() {
@@ -214,7 +226,11 @@ int HomeDirs::DeleteUserProfiles() {
   return deleted_users_count;
 }
 
-int64_t HomeDirs::AmountOfFreeDiskSpace() {
+bool HomeDirs::HasTargetFreeSpace() const {
+  return AmountOfFreeDiskSpace() >= kTargetFreeSpaceAfterCleanup;
+}
+
+int64_t HomeDirs::AmountOfFreeDiskSpace() const {
   return platform_->AmountOfFreeDiskSpace(shadow_root_);
 }
 

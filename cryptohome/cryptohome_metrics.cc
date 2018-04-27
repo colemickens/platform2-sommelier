@@ -31,6 +31,8 @@ constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
     "Cryptohome.DeletedUserProfiles";
 constexpr char kCryptohomeFreedGCacheDiskSpaceInMbHistogram[] =
     "Cryptohome.FreedGCacheDiskSpaceInMb";
+constexpr char kCryptohomeFreeDiskSpaceTotalTimeHistogram[] =
+    "Cryptohome.FreeDiskSpaceTotalTime";
 constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
     "Cryptohome.DircryptoMigrationStartStatus";
 constexpr char kCryptohomeDircryptoMigrationEndStatusHistogram[] =
@@ -215,6 +217,14 @@ void ReportDeletedUserProfiles(int user_profile_count) {
   g_metrics->SendToUMA(kCryptohomeDeletedUserProfilesHistogram,
                        user_profile_count, 1 /* minimum */, 100 /* maximum */,
                        20 /* number of buckets */);
+}
+
+void ReportFreeDiskSpaceTotalTime(int ms) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendToUMA(kCryptohomeFreeDiskSpaceTotalTimeHistogram, ms, 1, 1000,
+                       20);
 }
 
 void ReportDircryptoMigrationStartStatus(MigrationType migration_type,

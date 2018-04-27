@@ -424,14 +424,10 @@ INSTANTIATE_TEST_CASE_P(WithDircrypto, FreeDiskSpaceTest,
                         ::testing::Values(false));
 
 TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
-  // To get to the init logic, we need to fail five
+  // To get to the init logic, we need to fail
   // |kTargetFreeSpaceAfterCleanup| checks.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   // Expect cache clean ups.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -502,19 +498,17 @@ TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
   // Now skip the deletion steps by not having a legit owner.
   set_policy(false, "", false, "");
 
+  homedirs_.FreeDiskSpace();
+
   // Could not delete user, so it doesn't have enough space yet.
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
   // To get to the init logic, we need to fail five
   // |kTargetFreeSpaceAfterCleanup| checks.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   // Expect cache clean ups.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -613,15 +607,20 @@ TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
   // Now skip the deletion steps by not having a legit owner.
   set_policy(false, "", false, "");
 
+  homedirs_.FreeDiskSpace();
+
   // Could not delete user, so it doesn't have enough space yet.
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, NoCacheCleanup) {
   // Pretend we have lots of free space
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1));
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
+
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, OnlyCacheCleanup) {
@@ -632,8 +631,8 @@ TEST_P(FreeDiskSpaceTest, OnlyCacheCleanup) {
               Return(true)));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(0))
-    .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillOnce(Return(0))
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
@@ -661,7 +660,9 @@ TEST_P(FreeDiskSpaceTest, OnlyCacheCleanup) {
 
   ExpectTrackedDirectoriesEnumeration();
 
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
@@ -670,9 +671,9 @@ TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0))
-    .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
@@ -764,7 +765,9 @@ TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
         _))
     .WillOnce(Return(true));
 
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
@@ -773,9 +776,10 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(0))  // Before cleanup
-    .WillOnce(Return(0))  // After removing cache
-    .WillOnce(Return(kMinFreeSpaceInBytes + 1));  // After removing gcache
+      .WillOnce(Return(0))  // Before cleanup
+      .WillOnce(Return(0))  // After removing cache
+      .WillRepeatedly(
+          Return(kMinFreeSpaceInBytes + 1));  // After removing gcache
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
@@ -814,10 +818,12 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
 
   ExpectTrackedDirectoriesEnumeration();
 
+  homedirs_.FreeDiskSpace();
+
   // Should finish cleaning up because the free space size exceeds
   // |kMinFreeSpaceInBytes| after deleting gcache, although it's still
   // below |kTargetFreeSpaceAfterCleanup|.
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
@@ -826,10 +832,10 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(0))
-    .WillOnce(Return(0))
-    .WillOnce(Return(kMinFreeSpaceInBytes - 1))
-    .WillOnce(Return(kMinFreeSpaceInBytes + 1));
+      .WillOnce(Return(0))
+      .WillOnce(Return(0))
+      .WillOnce(Return(kMinFreeSpaceInBytes - 1))
+      .WillRepeatedly(Return(kMinFreeSpaceInBytes + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
@@ -922,10 +928,12 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
   EXPECT_CALL(platform_, DeleteFile(code_cache_dir.Append("bar"), true))
       .WillOnce(Return(true));
 
+  homedirs_.FreeDiskSpace();
+
   // Should finish cleaning up because the free space size exceeds
   // |kMinFreeSpaceInBytes| after deleting Android cache, although it's still
   // below |kTargetFreeSpaceAfterCleanup|.
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, CleanUpOneUser) {
@@ -941,14 +949,16 @@ TEST_P(FreeDiskSpaceTest, CleanUpOneUser) {
     .WillOnce(Return(homedir_paths_[0]));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1))
-      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
 
   ExpectCacheDirCleanupCalls(4);
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, CleanUpMultipleUsers) {
@@ -967,8 +977,7 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleUsers) {
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
       .WillOnce(Return(kTargetFreeSpaceAfterCleanup - 1))
-      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1))
-      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
@@ -976,7 +985,10 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleUsers) {
     .WillOnce(Return(true));
 
   ExpectCacheDirCleanupCalls(4);
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
@@ -1003,7 +1015,10 @@ TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
               IsDirectoryMounted(_)).WillRepeatedly(Return(false));
 
   ExpectCacheDirCleanupCalls(4);
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 
   // Last user is re-inserted into cache, to be a candidate for deletion
   // next time.
@@ -1047,7 +1062,10 @@ TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
     .WillRepeatedly(Return(true));
 
   ExpectCacheDirCleanupCalls(3);
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 
   // Cache is empty (oldest user only re-inserted if no one is logged in).
   EXPECT_TRUE(cache.empty());
@@ -1072,8 +1090,7 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
       .WillOnce(Return(0))
       // Loop continued before we check disk space for owner.
-      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1))
-      .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
@@ -1084,7 +1101,10 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
     .Times(0);
 
   ExpectCacheDirCleanupCalls(4);
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
@@ -1110,7 +1130,10 @@ TEST_P(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
   set_policy(false, "", false, "");
 
   ExpectCacheDirCleanupCalls(4);
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
@@ -1135,7 +1158,8 @@ TEST_P(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
               Return(true)));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup - 1))
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
@@ -1158,7 +1182,9 @@ TEST_P(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
     .Times(0);
 
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
@@ -1184,7 +1210,8 @@ TEST_P(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
               Return(true)));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
-    .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup - 1))
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
@@ -1208,7 +1235,9 @@ TEST_P(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
     .WillOnce(Return(true))
     .WillOnce(Return(true));
 
-  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_TRUE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(FreeDiskSpaceTest, DontCleanUpMountedUser) {
@@ -1264,7 +1293,9 @@ TEST_P(FreeDiskSpaceTest, DontCleanUpMountedUser) {
       .WillRepeatedly(Return(false));
   }
 
-  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+  homedirs_.FreeDiskSpace();
+
+  EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
 }
 
 TEST_P(HomeDirsTest, GoodDecryptTest) {

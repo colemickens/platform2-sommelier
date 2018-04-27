@@ -174,6 +174,10 @@ void ReportChecksum(ChecksumStatus status);
 // "Cryptohome.DeletedUserProfiles" histogram.
 void ReportDeletedUserProfiles(int user_profile_count);
 
+// Reports total time taken by HomeDirs::FreeDiskSpace cleanup (milliseconds) to
+// the "Cryptohome.FreeDiskSpaceTotalTime" histogram.
+void ReportFreeDiskSpaceTotalTime(int ms);
+
 // Reports removed GCache size by cryptohome to the
 // "Cryptohome.FreedGCacheDiskSpaceInMb" histogram.
 void ReportFreedGCacheDiskSpaceInMb(int mb);

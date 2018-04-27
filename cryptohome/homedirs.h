@@ -57,13 +57,12 @@ class HomeDirs {
 
   // Frees disk space for unused cryptohomes. If the available disk space is
   // below |kFreeSpaceThresholdToTriggerCleanup|, attempts to free space until
-  // it goes up to |kTargetFreeSpaceAfterCleanup|. Returns true if there is now
-  // at least |kTargetFreeSpaceAfterCleanup|, or false otherwise.
-  virtual bool FreeDiskSpace();
+  // it goes up to |kTargetFreeSpaceAfterCleanup|.
+  virtual void FreeDiskSpace();
 
   // Return the available disk space in bytes for home directories, or -1 on
   // failure.
-  virtual int64_t AmountOfFreeDiskSpace();
+  virtual int64_t AmountOfFreeDiskSpace() const;
 
   // Removes all cryptohomes owned by anyone other than the owner user (if set),
   // regardless of free disk space.
@@ -222,6 +221,10 @@ class HomeDirs {
     return vault_keyset_factory_;
   }
 
+  // Returns true if there is now at least |kTargetFreeSpaceAfterCleanup|
+  // amount of free disk space or false otherwise.
+  bool HasTargetFreeSpace() const;
+
  private:
   base::TimeDelta GetUserInactivityThresholdForRemoval();
   bool AreEphemeralUsersEnabled();
@@ -271,6 +274,8 @@ class HomeDirs {
   // Deletes old user profiles, the oldest first.
   // Returns a number, how many profiles were deleted.
   int DeleteUserProfiles();
+  // An implementation function for public FreeDiskSpace interface.
+  void FreeDiskSpaceInternal();
 
   // Takes ownership of the supplied PolicyProvider. Used to avoid leaking mocks
   // in unit tests.
