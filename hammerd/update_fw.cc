@@ -611,7 +611,7 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
   }
   reply = *(reinterpret_cast<uint8_t*>(&reply));
   if (reply) {
-    LOG(ERROR) << "Error: status " << reply;
+    LOG(ERROR) << "Error: status " << static_cast<int>(reply);
     return false;
   }
   return true;

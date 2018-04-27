@@ -52,7 +52,8 @@ ChallengeStatus PairManager::PairChallenge(
       LOG(ERROR) << "USB device is disconnected.";
       return ChallengeStatus::kConnectionError;
     }
-    LOG(ERROR) << "Unknown error! The status of response: " << response.status;
+    LOG(ERROR) << "Unknown error! The status of response: "
+               << static_cast<int>(response.status);
     dbus_wrapper->SendSignal(kPairChallengeFailedSignal);
     return ChallengeStatus::kUnknownError;
   }
