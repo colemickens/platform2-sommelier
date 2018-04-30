@@ -70,7 +70,7 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
   }
   const base::FilePath desktop_file_icon_filepath(desktop_file->icon());
   if (desktop_file_icon_filepath.IsAbsolute()) {
-    if (desktop_file_icon_filepath.Extension() == "png") {
+    if (desktop_file_icon_filepath.Extension() == ".png") {
       return desktop_file_icon_filepath;
     } else {
       LOG(INFO) << desktop_file_id << " icon file is not png file";
