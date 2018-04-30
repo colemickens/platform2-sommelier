@@ -185,9 +185,9 @@ dev_mount_packages() {
   # things here (crosbug.com/14091).
   local base="${STATEFUL_PARTITION}/var_overlay"
   if [ -d "${base}" ]; then
-    local dest
+    local dir dest
     echo "${MOUNTDIRS}" | while read dir ; do
-      if [ ! -z "${dir}" ]; then
+      if [ -n "${dir}" ]; then
         if [ ! -d "${base}/${dir}" ]; then
           continue
         fi
@@ -207,7 +207,7 @@ dev_unmount_packages() {
   local base="/var"
   if [ -d "${base}" ]; then
     echo "${MOUNTDIRS}" | while read dir ; do
-      if [ ! -z "${dir}" ]; then
+      if [ -n "${dir}" ]; then
         if [ ! -d "${base}/${dir}" ]; then
           continue
         fi
