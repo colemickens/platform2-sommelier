@@ -38,18 +38,21 @@ class HmacSession {
   // delegate pointer is retained by the session.
   virtual AuthorizationDelegate* GetDelegate() = 0;
 
-  // Starts a salted session which is bound to |bind_entity| with
+  // Starts a session which is bound to |bind_entity| with
   // |bind_authorization_value|. Encryption is enabled if |enable_encryption| is
-  // true. The session remains active until this object is destroyed or another
-  // session is started with a call to Start*Session.
+  // true. Salting is done if |salted| is true. The session remains active until
+  // this object is destroyed or another session is started with a call to
+  // Start*Session.
   virtual TPM_RC StartBoundSession(TPMI_DH_ENTITY bind_entity,
                                    const std::string& bind_authorization_value,
+                                   bool salted,
                                    bool enable_encryption) = 0;
 
-  // Starts a salted, unbound session. Encryption is enabled if
-  // |enable_encryption| is true. The session remains active until this object
-  // is destroyed or another session is started with a call to Start*Session.
-  virtual TPM_RC StartUnboundSession(bool enable_encryption) = 0;
+  // Starts an unbound session. Salting is done if |salted| is true. Encryption
+  // is enabled if |enable_encryption| is true. The session remains active until
+  // this object is destroyed or another session is started with a call to
+  // Start*Session.
+  virtual TPM_RC StartUnboundSession(bool salted, bool enable_encryption) = 0;
 
   // Sets the current entity authorization value. This can be safely called
   // while the session is active and subsequent commands will use the value.

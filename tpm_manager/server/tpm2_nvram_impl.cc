@@ -36,6 +36,8 @@ using trunks::TPM_RC_SUCCESS;
 
 namespace {
 
+// Enable salting for global session.
+const bool kGlobalSessionSalted = true;
 // Enable encryption for global session.
 const bool kGlobalSessionEncryption = true;
 
@@ -161,6 +163,7 @@ NvramResult Tpm2NvramImpl::DefineSpace(
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionSalted,
                                                 kGlobalSessionEncryption,
                                                 &trunks_session_);
   if (!trunks_session_) {
@@ -206,6 +209,7 @@ NvramResult Tpm2NvramImpl::DestroySpace(uint32_t index) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionSalted,
                                                 kGlobalSessionEncryption,
                                                 &trunks_session_);
   if (!trunks_session_) {
@@ -231,6 +235,7 @@ NvramResult Tpm2NvramImpl::WriteSpace(uint32_t index,
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionSalted,
                                                 kGlobalSessionEncryption,
                                                 &trunks_session_);
   if (!trunks_session_) {
@@ -297,6 +302,7 @@ NvramResult Tpm2NvramImpl::ReadSpace(uint32_t index,
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionSalted,
                                                 kGlobalSessionEncryption,
                                                 &trunks_session_);
   if (!trunks_session_) {
@@ -366,6 +372,7 @@ NvramResult Tpm2NvramImpl::LockSpace(uint32_t index,
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionSalted,
                                                 kGlobalSessionEncryption,
                                                 &trunks_session_);
   if (!trunks_session_) {
@@ -517,7 +524,8 @@ bool Tpm2NvramImpl::Initialize() {
     return true;
   }
   TPM_RC result =
-      trunks_session_->StartUnboundSession(true /* enable_encryption */);
+      trunks_session_->StartUnboundSession(true /* salted */,
+                                           true /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a default authorization session: "
                << GetErrorString(result);
@@ -552,7 +560,8 @@ bool Tpm2NvramImpl::SetupPolicySession(
     const std::string& authorization_value,
     trunks::TPM_CC command_code,
     trunks::PolicySession* session) {
-  TPM_RC result = session->StartUnboundSession(true /* enable_encryption */);
+  TPM_RC result = session->StartUnboundSession(true /* salted */,
+                                               true /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a policy authorization session: "
                << GetErrorString(result);
@@ -640,7 +649,8 @@ bool Tpm2NvramImpl::ComputePolicyDigest(NvramPolicyRecord* policy_record,
         trunks::TPM_CC_NV_WriteLock, trunks::TPM_CC_NV_Read,
         trunks::TPM_CC_NV_ReadLock, trunks::TPM_CC_NV_Certify}) {
     trial_session = trunks_factory_.GetTrialSession();
-    if (trial_session->StartUnboundSession(false /* enable_encryption */) !=
+    if (trial_session->StartUnboundSession(true /* salted */,
+                                           false /* enable_encryption */) !=
         TPM_RC_SUCCESS) {
       return false;
     }

@@ -87,35 +87,36 @@ TEST_F(PolicySessionTest, GetDelegateSuccess) {
 TEST_F(PolicySessionTest, StartBoundSessionSuccess) {
   PolicySessionImpl session(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS,
-            session.StartBoundSession(TPM_RH_FIRST, "auth", true));
+            session.StartBoundSession(TPM_RH_FIRST, "auth", true, true));
 }
 
 TEST_F(PolicySessionTest, StartBoundSessionFailure) {
   PolicySessionImpl session(factory_);
   TPM_HANDLE handle = TPM_RH_FIRST;
   EXPECT_CALL(mock_session_manager_,
-              StartSession(TPM_SE_POLICY, handle, _, true, _))
+              StartSession(TPM_SE_POLICY, handle, _, true, true, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, session.StartBoundSession(handle, "auth", true));
+  EXPECT_EQ(TPM_RC_FAILURE, session.StartBoundSession(handle, "auth",
+                                                      true, true));
 }
 
 TEST_F(PolicySessionTest, StartBoundSessionBadType) {
   PolicySessionImpl session(factory_, TPM_SE_HMAC);
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
-            session.StartBoundSession(TPM_RH_FIRST, "auth", true));
+            session.StartBoundSession(TPM_RH_FIRST, "auth", true, true));
 }
 
 TEST_F(PolicySessionTest, StartUnboundSessionSuccess) {
   PolicySessionImpl session(factory_);
-  EXPECT_EQ(TPM_RC_SUCCESS, session.StartUnboundSession(true));
+  EXPECT_EQ(TPM_RC_SUCCESS, session.StartUnboundSession(true, true));
 }
 
 TEST_F(PolicySessionTest, StartUnboundSessionFailure) {
   PolicySessionImpl session(factory_);
   EXPECT_CALL(mock_session_manager_,
-              StartSession(TPM_SE_POLICY, TPM_RH_NULL, _, true, _))
+              StartSession(TPM_SE_POLICY, TPM_RH_NULL, _, true, true, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, session.StartUnboundSession(true));
+  EXPECT_EQ(TPM_RC_FAILURE, session.StartUnboundSession(true, true));
 }
 
 TEST_F(PolicySessionTest, GetDigestSuccess) {

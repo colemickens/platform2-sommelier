@@ -74,37 +74,45 @@ TPM_RC SessionManagerImpl::StartSession(
     TPM_SE session_type,
     TPMI_DH_ENTITY bind_entity,
     const std::string& bind_authorization_value,
+    bool salted,
     bool enable_encryption,
     HmacAuthorizationDelegate* delegate) {
   CHECK(delegate);
   // If we already have an active session, close it.
   CloseSession();
 
-  std::string salt(SHA256_DIGEST_SIZE, 0);
-  unsigned char* salt_buffer =
-      reinterpret_cast<unsigned char*>(base::string_as_array(&salt));
-  CHECK_EQ(RAND_bytes(salt_buffer, salt.size()), 1)
-      << "Error generating a cryptographically random salt.";
-  // First we encrypt the cryptographically secure salt using PKCS1_OAEP
-  // padded RSA public key encryption. This is specified in TPM2.0
-  // Part1 Architecture, Appendix B.10.2.
+  std::string salt;
   std::string encrypted_salt;
-  TPM_RC salt_result = EncryptSalt(salt, &encrypted_salt);
-  if (salt_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error encrypting salt: " << GetErrorString(salt_result);
-    return salt_result;
-  }
+  TPMI_DH_OBJECT tpm_key = TPM_RH_NULL;
+  if (salted) {
+    tpm_key = kSaltingKey;
 
+    salt.resize(SHA256_DIGEST_SIZE);
+    unsigned char* salt_buffer =
+        reinterpret_cast<unsigned char*>(base::string_as_array(&salt));
+    CHECK_EQ(RAND_bytes(salt_buffer, salt.size()), 1)
+        << "Error generating a cryptographically random salt.";
+    // First we encrypt the cryptographically secure salt using PKCS1_OAEP
+    // padded RSA public key encryption. This is specified in TPM2.0
+    // Part1 Architecture, Appendix B.10.2.
+    TPM_RC salt_result = EncryptSalt(salt, &encrypted_salt);
+    if (salt_result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error encrypting salt: " << GetErrorString(salt_result);
+      return salt_result;
+    }
+  }
   TPM2B_ENCRYPTED_SECRET encrypted_secret =
       Make_TPM2B_ENCRYPTED_SECRET(encrypted_salt);
-  // Then we use TPM2_StartAuthSession to start a HMAC session with the TPM.
-  // The tpm returns the tpm_nonce and the session_handle referencing the
-  // created session.
+
   TPMI_ALG_HASH hash_algorithm = TPM_ALG_SHA256;
   TPMT_SYM_DEF symmetric_algorithm;
-  symmetric_algorithm.algorithm = TPM_ALG_AES;
-  symmetric_algorithm.key_bits.aes = 128;
-  symmetric_algorithm.mode.aes = TPM_ALG_CFB;
+  if (enable_encryption) {
+    symmetric_algorithm.algorithm = TPM_ALG_AES;
+    symmetric_algorithm.key_bits.aes = 128;
+    symmetric_algorithm.mode.aes = TPM_ALG_CFB;
+  } else {
+    symmetric_algorithm.algorithm = TPM_ALG_NULL;
+  }
 
   TPM2B_NONCE nonce_caller;
   TPM2B_NONCE nonce_tpm;
@@ -115,11 +123,14 @@ TPM_RC SessionManagerImpl::StartSession(
       << "Error generating a cryptographically random nonce.";
 
   Tpm* tpm = factory_.GetTpm();
+  // Then we use TPM2_StartAuthSession to start a session with the TPM.
+  // The TPM returns the tpm_nonce and the session_handle referencing the
+  // created session.
   // The TPM2 command below needs no authorization. This is why we can use
   // the empty string "", when referring to the handle names for the salting
   // key and the bind entity.
   TPM_RC tpm_result = tpm->StartAuthSessionSync(
-      kSaltingKey,
+      tpm_key,
       "",  // salt_handle_name.
       bind_entity,
       "",  // bind_entity_name.

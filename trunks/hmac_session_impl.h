@@ -38,7 +38,7 @@ namespace trunks {
 // can use it as below:
 // TrunksFactoryImpl factory;
 // HmacSessionImpl session(factory);
-// session.StartBoundSession(bind_entity, bind_authorization, true);
+// session.StartBoundSession(bind_entity, bind_authorization, true, true);
 // session.SetEntityAuthorizationValue(entity_authorization);
 // factory.GetTpm()->RSA_EncrpytSync(_,_,_,_, session.GetDelegate());
 // NOTE: StartBoundSession/StartUnboundSession should not be called before
@@ -56,8 +56,9 @@ class TRUNKS_EXPORT HmacSessionImpl : public HmacSession {
   AuthorizationDelegate* GetDelegate() override;
   TPM_RC StartBoundSession(TPMI_DH_ENTITY bind_entity,
                            const std::string& bind_authorization_value,
+                           bool salted,
                            bool enable_encryption) override;
-  TPM_RC StartUnboundSession(bool enable_encryption) override;
+  TPM_RC StartUnboundSession(bool salted, bool enable_encryption) override;
   void SetEntityAuthorizationValue(const std::string& value) override;
   void SetFutureAuthorizationValue(const std::string& value) override;
 

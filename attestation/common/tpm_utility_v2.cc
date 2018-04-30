@@ -290,7 +290,8 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
   std::unique_ptr<HmacSession> endorsement_session =
       trunks_factory_->GetHmacSession();
   result =
-      endorsement_session->StartUnboundSession(false /* enable_encryption */);
+      endorsement_session->StartUnboundSession(true /* salted */,
+                                               false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
                << trunks::GetErrorString(result);
@@ -300,7 +301,8 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
 
   std::unique_ptr<trunks::PolicySession> session =
       trunks_factory_->GetPolicySession();
-  result = session->StartUnboundSession(false /* enable_encryption */);
+  result = session->StartUnboundSession(true /* salted */,
+                                        false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to start session: "
                << trunks::GetErrorString(result);
@@ -472,7 +474,8 @@ bool TpmUtilityV2::SealToPCR0(const std::string& data,
 bool TpmUtilityV2::Unseal(const std::string& sealed_data, std::string* data) {
   std::unique_ptr<trunks::PolicySession> session =
       trunks_factory_->GetPolicySession();
-  TPM_RC result = session->StartUnboundSession(true /* enable_encryption */);
+  TPM_RC result = session->StartUnboundSession(true /* salted */,
+                                               true /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to start encrypted session: "
                << trunks::GetErrorString(result);
@@ -858,7 +861,8 @@ bool TpmUtilityV2::GetEndorsementKey(KeyType key_type, TPM_HANDLE* key_handle) {
   std::unique_ptr<HmacSession> endorsement_session =
       trunks_factory_->GetHmacSession();
   TPM_RC result =
-      endorsement_session->StartUnboundSession(false /* enable_encryption */);
+      endorsement_session->StartUnboundSession(true /* salted */,
+                                               false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
                << trunks::GetErrorString(result);
@@ -870,7 +874,8 @@ bool TpmUtilityV2::GetEndorsementKey(KeyType key_type, TPM_HANDLE* key_handle) {
   GetOwnerPassword(&owner_password);
   std::unique_ptr<HmacSession> owner_session =
       trunks_factory_->GetHmacSession();
-  result = owner_session->StartUnboundSession(false /* enable_encryption */);
+  result = owner_session->StartUnboundSession(true /* salted */,
+                                              false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to setup owner session: "
                << trunks::GetErrorString(result);

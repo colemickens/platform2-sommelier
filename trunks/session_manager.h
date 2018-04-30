@@ -53,13 +53,14 @@ class TRUNKS_EXPORT SessionManager {
 
   // This method is used to start a new AuthorizationSession. Once started,
   // GetSessionHandle() can be used to access the handle to the TPM session.
-  // Since the sessions are salted, we need to ensure that TPM ownership is
+  // If the created sessions is salted, we need to ensure that TPM ownership is
   // taken and the salting key created before this method is called.
   // Returns TPM_RC_SUCCESS and returns the nonces used to create the session
   // on success.
   virtual TPM_RC StartSession(TPM_SE session_type,
                               TPMI_DH_ENTITY bind_entity,
                               const std::string& bind_authorization_value,
+                              bool salted,
                               bool enable_encryption,
                               HmacAuthorizationDelegate* delegate) = 0;
 

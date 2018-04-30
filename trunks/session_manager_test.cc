@@ -111,7 +111,8 @@ TEST_F(SessionManagerTest, StartSessionSuccess) {
                                                    session_type, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<8>(nonce), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, session_manager_.StartSession(
-                                session_type, handle, "", false, &delegate_));
+                                session_type, handle, "", true, false,
+                                &delegate_));
 }
 
 TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
@@ -121,15 +122,15 @@ TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TRUNKS_RC_SESSION_SETUP_ERROR,
-            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "", false,
-                                          &delegate_));
+            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "",
+                                          true, false, &delegate_));
   public_data.public_area.type = TPM_ALG_ECC;
   public_data.public_area.unique.rsa.size = 256;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TRUNKS_RC_SESSION_SETUP_ERROR,
-            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "", false,
-                                          &delegate_));
+            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "",
+                                          true, false, &delegate_));
 }
 
 TEST_F(SessionManagerTest, StartSessionFailure) {
@@ -142,8 +143,8 @@ TEST_F(SessionManagerTest, StartSessionFailure) {
               StartAuthSessionSyncShort(_, TPM_RH_NULL, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
-            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "", false,
-                                          &delegate_));
+            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "",
+                                          true, false, &delegate_));
 }
 
 TEST_F(SessionManagerTest, StartSessionBadNonce) {
@@ -160,7 +161,8 @@ TEST_F(SessionManagerTest, StartSessionBadNonce) {
                                                    session_type, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<8>(nonce), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_FAILURE, session_manager_.StartSession(
-                                session_type, handle, "", false, &delegate_));
+                                session_type, handle, "", true, false,
+                                &delegate_));
 }
 
 }  // namespace trunks

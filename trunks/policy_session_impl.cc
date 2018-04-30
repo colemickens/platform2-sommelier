@@ -56,6 +56,7 @@ AuthorizationDelegate* PolicySessionImpl::GetDelegate() {
 TPM_RC PolicySessionImpl::StartBoundSession(
     TPMI_DH_ENTITY bind_entity,
     const std::string& bind_authorization_value,
+    bool salted,
     bool enable_encryption) {
   hmac_delegate_.set_use_entity_authorization_for_encryption_only(true);
   if (session_type_ != TPM_SE_POLICY && session_type_ != TPM_SE_TRIAL) {
@@ -63,14 +64,15 @@ TPM_RC PolicySessionImpl::StartBoundSession(
     return SAPI_RC_INVALID_SESSIONS;
   }
   return session_manager_->StartSession(session_type_, bind_entity,
-                                        bind_authorization_value,
+                                        bind_authorization_value, salted,
                                         enable_encryption, &hmac_delegate_);
 }
 
-TPM_RC PolicySessionImpl::StartUnboundSession(bool enable_encryption) {
+TPM_RC PolicySessionImpl::StartUnboundSession(bool salted,
+                                              bool enable_encryption) {
   // Just like a HmacAuthorizationSession, an unbound policy session is just
   // a session bound to TPM_RH_NULL.
-  return StartBoundSession(TPM_RH_NULL, "", enable_encryption);
+  return StartBoundSession(TPM_RH_NULL, "", salted, enable_encryption);
 }
 
 TPM_RC PolicySessionImpl::GetDigest(std::string* digest) {

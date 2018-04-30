@@ -45,89 +45,105 @@ class ScopedGlobalHmacSessionTest : public testing::Test {
 
 #ifdef TRUNKS_USE_PER_OP_SESSIONS
 TEST_F(ScopedGlobalHmacSessionTest, HmacSessionSuccessNew) {
-  for (bool enable_encryption : {true, false}) {
-    std::unique_ptr<HmacSession> global_session;
-    EXPECT_EQ(nullptr, global_session);
-    {
-      EXPECT_CALL(hmac_session_, StartUnboundSession(enable_encryption))
-          .WillOnce(Return(TPM_RC_SUCCESS));
-      ScopedGlobalHmacSession scope(&factory_, enable_encryption,
-                                    &global_session);
-      EXPECT_NE(nullptr, global_session);
+  for (bool salted : {true, false}) {
+    for (bool enable_encryption : {true, false}) {
+      std::unique_ptr<HmacSession> global_session;
+      EXPECT_EQ(nullptr, global_session);
+      {
+        EXPECT_CALL(hmac_session_,
+                    StartUnboundSession(salted, enable_encryption))
+            .WillOnce(Return(TPM_RC_SUCCESS));
+        ScopedGlobalHmacSession scope(&factory_, salted, enable_encryption,
+                                      &global_session);
+        EXPECT_NE(nullptr, global_session);
+      }
+      EXPECT_EQ(nullptr, global_session);
     }
-    EXPECT_EQ(nullptr, global_session);
   }
 }
 
 TEST_F(ScopedGlobalHmacSessionTest, HmacSessionFailureNew) {
-  for (bool enable_encryption : {true, false}) {
-    std::unique_ptr<HmacSession> global_session;
-    {
-      EXPECT_CALL(hmac_session_, StartUnboundSession(enable_encryption))
-          .WillOnce(Return(TPM_RC_FAILURE));
-      ScopedGlobalHmacSession scope(&factory_, enable_encryption,
-                                    &global_session);
+  for (bool salted : {true, false}) {
+    for (bool enable_encryption : {true, false}) {
+      std::unique_ptr<HmacSession> global_session;
+      {
+        EXPECT_CALL(hmac_session_,
+                    StartUnboundSession(salted, enable_encryption))
+            .WillOnce(Return(TPM_RC_FAILURE));
+        ScopedGlobalHmacSession scope(&factory_, salted, enable_encryption,
+                                      &global_session);
+        EXPECT_EQ(nullptr, global_session);
+      }
       EXPECT_EQ(nullptr, global_session);
     }
-    EXPECT_EQ(nullptr, global_session);
   }
 }
 
 TEST_F(ScopedGlobalHmacSessionTest, HmacSessionSuccessExisting) {
-  for (bool enable_encryption : {true, false}) {
-    auto old_hmac_session = new StrictMock<MockHmacSession>();
-    std::unique_ptr<HmacSession> global_session(old_hmac_session);
-    EXPECT_EQ(old_hmac_session, global_session.get());
-    {
-      EXPECT_CALL(hmac_session_, StartUnboundSession(enable_encryption))
-          .WillOnce(Return(TPM_RC_SUCCESS));
-      ScopedGlobalHmacSession scope(&factory_, enable_encryption,
-                                    &global_session);
-      EXPECT_NE(nullptr, global_session);
-      EXPECT_NE(old_hmac_session, global_session.get());
+  for (bool salted : {true, false}) {
+    for (bool enable_encryption : {true, false}) {
+      auto old_hmac_session = new StrictMock<MockHmacSession>();
+      std::unique_ptr<HmacSession> global_session(old_hmac_session);
+      EXPECT_EQ(old_hmac_session, global_session.get());
+      {
+        EXPECT_CALL(hmac_session_,
+                    StartUnboundSession(salted, enable_encryption))
+            .WillOnce(Return(TPM_RC_SUCCESS));
+        ScopedGlobalHmacSession scope(&factory_, salted, enable_encryption,
+                                      &global_session);
+        EXPECT_NE(nullptr, global_session);
+        EXPECT_NE(old_hmac_session, global_session.get());
+      }
+      EXPECT_EQ(nullptr, global_session);
     }
-    EXPECT_EQ(nullptr, global_session);
   }
 }
 
 TEST_F(ScopedGlobalHmacSessionTest, HmacSessionFailureExisting) {
-  for (bool enable_encryption : {true, false}) {
-    auto old_hmac_session = new StrictMock<MockHmacSession>();
-    std::unique_ptr<HmacSession> global_session(old_hmac_session);
-    EXPECT_EQ(old_hmac_session, global_session.get());
-    {
-      EXPECT_CALL(hmac_session_, StartUnboundSession(enable_encryption))
-          .WillOnce(Return(TPM_RC_FAILURE));
-      ScopedGlobalHmacSession scope(&factory_, enable_encryption,
-                                    &global_session);
+  for (bool salted : {true, false}) {
+    for (bool enable_encryption : {true, false}) {
+      auto old_hmac_session = new StrictMock<MockHmacSession>();
+      std::unique_ptr<HmacSession> global_session(old_hmac_session);
+      EXPECT_EQ(old_hmac_session, global_session.get());
+      {
+        EXPECT_CALL(hmac_session_,
+                    StartUnboundSession(salted, enable_encryption))
+            .WillOnce(Return(TPM_RC_FAILURE));
+        ScopedGlobalHmacSession scope(&factory_, salted, enable_encryption,
+                                      &global_session);
+        EXPECT_EQ(nullptr, global_session);
+      }
       EXPECT_EQ(nullptr, global_session);
     }
-    EXPECT_EQ(nullptr, global_session);
   }
 }
 #else  // TRUNKS_USE_PER_OP_SESSIONS
 TEST_F(ScopedGlobalHmacSessionTest, HmacSessionNew) {
-  for (bool enable_encryption : {true, false}) {
-    std::unique_ptr<HmacSession> global_session;
-    {
-      ScopedGlobalHmacSession scope(&factory_, enable_encryption,
-                                    &global_session);
+  for (bool salted : {true, false}) {
+    for (bool enable_encryption : {true, false}) {
+      std::unique_ptr<HmacSession> global_session;
+      {
+        ScopedGlobalHmacSession scope(&factory_, salted, enable_encryption,
+                                      &global_session);
+        EXPECT_EQ(nullptr, global_session);
+      }
       EXPECT_EQ(nullptr, global_session);
     }
-    EXPECT_EQ(nullptr, global_session);
   }
 }
 
 TEST_F(ScopedGlobalHmacSessionTest, HmacSessionExisting) {
-  for (bool enable_encryption : {true, false}) {
-    auto old_hmac_session = new StrictMock<MockHmacSession>();
-    std::unique_ptr<HmacSession> global_session(old_hmac_session);
-    {
-      ScopedGlobalHmacSession scope(&factory_, enable_encryption,
-                                    &global_session);
+  for (bool salted : {true, false}) {
+    for (bool enable_encryption : {true, false}) {
+      auto old_hmac_session = new StrictMock<MockHmacSession>();
+      std::unique_ptr<HmacSession> global_session(old_hmac_session);
+      {
+        ScopedGlobalHmacSession scope(&factory_, salted, enable_encryption,
+                                      &global_session);
+        EXPECT_EQ(old_hmac_session, global_session.get());
+      }
       EXPECT_EQ(old_hmac_session, global_session.get());
     }
-    EXPECT_EQ(old_hmac_session, global_session.get());
   }
 }
 #endif  // TRUNKS_USE_PER_OP_SESSIONS

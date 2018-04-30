@@ -118,7 +118,7 @@ TEST_F(TPM2UtilityTest, InitTpmNoSession) {
   TPM2UtilityImpl utility(factory_.get());
   EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
     .WillOnce(Return(false));
-  EXPECT_CALL(mock_session_, StartUnboundSession(true))
+  EXPECT_CALL(mock_session_, StartUnboundSession(true, true))
      .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(utility.Init());
 }

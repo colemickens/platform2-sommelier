@@ -360,7 +360,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
     return result;
   }
   std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
-  result = session->StartUnboundSession(true);
+  result = session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error initializing AuthorizationSession: "
                << GetErrorString(result);
@@ -1270,7 +1270,8 @@ TPM_RC TpmUtilityImpl::UnsealData(const std::string& sealed_data,
 }
 
 TPM_RC TpmUtilityImpl::StartSession(HmacSession* session) {
-  TPM_RC result = session->StartUnboundSession(true /* enable_encryption */);
+  TPM_RC result = session->StartUnboundSession(true /* salted */,
+                                               true /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error starting unbound session: "
                << GetErrorString(result);
@@ -1285,7 +1286,7 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
     std::string* policy_digest) {
   CHECK(policy_digest);
   std::unique_ptr<PolicySession> session = factory_.GetTrialSession();
-  TPM_RC result = session->StartUnboundSession(false);
+  TPM_RC result = session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error starting unbound trial session: "
                << GetErrorString(result);

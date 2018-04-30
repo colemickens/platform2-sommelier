@@ -45,13 +45,14 @@ namespace trunks {
 class ScopedGlobalHmacSession {
  public:
   ScopedGlobalHmacSession(const TrunksFactory* factory,
+      bool salted,
       bool enable_encryption,
       std::unique_ptr<HmacSession>* session)
       : target_session_(session) {
     DCHECK(target_session_);
     VLOG_IF(1, *target_session_) << "Concurrent sessions?";
     std::unique_ptr<HmacSession> new_session = factory->GetHmacSession();
-    TPM_RC result = new_session->StartUnboundSession(enable_encryption);
+    TPM_RC result = new_session->StartUnboundSession(salted, enable_encryption);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting an authorization session: "
                  << GetErrorString(result);
@@ -73,6 +74,7 @@ class ScopedGlobalHmacSession {
 class ScopedGlobalHmacSession {
  public:
   ScopedGlobalHmacSession(const TrunksFactory* /* factory */,
+      bool /* salted */,
       bool /* enable_encryption */,
       std::unique_ptr<HmacSession>* /* session */) {}
  private:

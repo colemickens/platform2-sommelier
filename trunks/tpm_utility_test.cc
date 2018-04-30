@@ -402,7 +402,7 @@ TEST_F(TpmUtilityTest, TakeOwnershipOwnershipDone) {
 }
 
 TEST_F(TpmUtilityTest, TakeOwnershipBadSession) {
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.TakeOwnership("owner", "endorsement", "lockout"));
@@ -1874,13 +1874,13 @@ TEST_F(TpmUtilityTest, UnsealObjectFailure) {
 }
 
 TEST_F(TpmUtilityTest, StartSessionSuccess) {
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.StartSession(&mock_hmac_session_));
 }
 
 TEST_F(TpmUtilityTest, StartSessionFailure) {
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.StartSession(&mock_hmac_session_));
 }
@@ -1982,7 +1982,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesBadSession) {
   int index = 5;
   std::string pcr_value("value");
   std::string policy_digest;
-  EXPECT_CALL(mock_trial_session_, StartUnboundSession(false))
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.GetPolicyDigestForPcrValues(

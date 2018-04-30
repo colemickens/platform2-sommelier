@@ -179,7 +179,7 @@ bool Tpm2InitializerImpl::ResetDictionaryAttackLock() {
   }
   std::unique_ptr<trunks::HmacSession> session =
       trunks_factory_.GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(false);
+  TPM_RC result = session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error initializing AuthorizationSession: "
                << trunks::GetErrorString(result);

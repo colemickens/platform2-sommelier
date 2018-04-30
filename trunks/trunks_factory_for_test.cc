@@ -551,11 +551,12 @@ class SessionManagerForwarder : public SessionManager {
   TPM_RC StartSession(TPM_SE session_type,
                       TPMI_DH_ENTITY bind_entity,
                       const std::string& bind_authorization_value,
+                      bool salted,
                       bool enable_encryption,
                       HmacAuthorizationDelegate* delegate) override {
     return target_->StartSession(session_type, bind_entity,
-                                 bind_authorization_value, enable_encryption,
-                                 delegate);
+                                 bind_authorization_value,
+                                 salted, enable_encryption, delegate);
   }
 
  private:
@@ -574,13 +575,14 @@ class HmacSessionForwarder : public HmacSession {
 
   TPM_RC StartBoundSession(TPMI_DH_ENTITY bind_entity,
                            const std::string& bind_authorization_value,
+                           bool salted,
                            bool enable_encryption) override {
     return target_->StartBoundSession(bind_entity, bind_authorization_value,
-                                      enable_encryption);
+                                      salted, enable_encryption);
   }
 
-  TPM_RC StartUnboundSession(bool enable_encryption) override {
-    return target_->StartUnboundSession(enable_encryption);
+  TPM_RC StartUnboundSession(bool salted, bool enable_encryption) override {
+    return target_->StartUnboundSession(salted, enable_encryption);
   }
 
   void SetEntityAuthorizationValue(const std::string& value) override {
@@ -607,13 +609,14 @@ class PolicySessionForwarder : public PolicySession {
 
   TPM_RC StartBoundSession(TPMI_DH_ENTITY bind_entity,
                            const std::string& bind_authorization_value,
+                           bool salted,
                            bool enable_encryption) override {
     return target_->StartBoundSession(bind_entity, bind_authorization_value,
-                                      enable_encryption);
+                                      salted, enable_encryption);
   }
 
-  TPM_RC StartUnboundSession(bool enable_encryption) override {
-    return target_->StartUnboundSession(enable_encryption);
+  TPM_RC StartUnboundSession(bool salted, bool enable_encryption) override {
+    return target_->StartUnboundSession(salted, enable_encryption);
   }
 
   TPM_RC GetDigest(std::string* digest) override {

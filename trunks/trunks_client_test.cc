@@ -318,7 +318,7 @@ bool TrunksClientTest::SealedDataTest() {
     return false;
   }
   std::unique_ptr<PolicySession> policy_session = factory_.GetPolicySession();
-  result = policy_session->StartUnboundSession(false);
+  result = policy_session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -391,7 +391,7 @@ bool TrunksClientTest::SealedToMultiplePCRDataTest() {
     return false;
   }
   std::unique_ptr<PolicySession> policy_session = factory_.GetPolicySession();
-  result = policy_session->StartUnboundSession(false);
+  result = policy_session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -479,7 +479,7 @@ bool TrunksClientTest::PolicyAuthValueTest() {
   std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
   std::unique_ptr<PolicySession> trial_session = factory_.GetTrialSession();
   TPM_RC result;
-  result = trial_session->StartUnboundSession(true);
+  result = trial_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -500,7 +500,7 @@ bool TrunksClientTest::PolicyAuthValueTest() {
   trial_session.reset();
 
   std::unique_ptr<HmacSession> hmac_session = factory_.GetHmacSession();
-  result = hmac_session->StartUnboundSession(true);
+  result = hmac_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
@@ -528,7 +528,7 @@ bool TrunksClientTest::PolicyAuthValueTest() {
   hmac_session.reset();
 
   std::unique_ptr<PolicySession> policy_session = factory_.GetPolicySession();
-  result = policy_session->StartUnboundSession(false);
+  result = policy_session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -589,7 +589,7 @@ bool TrunksClientTest::PolicyAndTest() {
   std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
   std::unique_ptr<PolicySession> trial_session = factory_.GetTrialSession();
   TPM_RC result;
-  result = trial_session->StartUnboundSession(true);
+  result = trial_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -627,7 +627,7 @@ bool TrunksClientTest::PolicyAndTest() {
   trial_session.reset();
 
   std::unique_ptr<HmacSession> hmac_session = factory_.GetHmacSession();
-  result = hmac_session->StartUnboundSession(true);
+  result = hmac_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
@@ -656,7 +656,7 @@ bool TrunksClientTest::PolicyAndTest() {
   hmac_session.reset();
 
   std::unique_ptr<PolicySession> policy_session = factory_.GetPolicySession();
-  result = policy_session->StartUnboundSession(false);
+  result = policy_session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -690,7 +690,7 @@ bool TrunksClientTest::PolicyAndTest() {
     return false;
   }
   // we have to restart the session because we changed the pcr values.
-  result = policy_session->StartUnboundSession(false);
+  result = policy_session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -760,7 +760,7 @@ bool TrunksClientTest::PolicyOrTest() {
   TPM_RC result;
   // Specify a policy that asserts either TPM_CC_Sign or TPM_CC_RSA_Decrypt.
   // A key created under this policy can only be used to sign or decrypt.
-  result = trial_session->StartUnboundSession(true);
+  result = trial_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -776,7 +776,7 @@ bool TrunksClientTest::PolicyOrTest() {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;
   }
-  result = trial_session->StartUnboundSession(true);
+  result = trial_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -810,7 +810,7 @@ bool TrunksClientTest::PolicyOrTest() {
   trial_session.reset();
 
   std::unique_ptr<HmacSession> hmac_session = factory_.GetHmacSession();
-  result = hmac_session->StartUnboundSession(true);
+  result = hmac_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
@@ -839,7 +839,7 @@ bool TrunksClientTest::PolicyOrTest() {
   hmac_session.reset();
 
   std::unique_ptr<PolicySession> policy_session = factory_.GetPolicySession();
-  result = policy_session->StartUnboundSession(false);
+  result = policy_session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -902,7 +902,8 @@ bool TrunksClientTest::PolicyOrTest() {
 bool TrunksClientTest::NvramTest(const std::string& owner_password) {
   std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
   std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
+  TPM_RC result = session->StartUnboundSession(true /* salted */,
+                                               true /* enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
@@ -1030,7 +1031,8 @@ bool TrunksClientTest::ManySessionsTest() {
   std::vector<std::unique_ptr<HmacSession>> sessions;
   for (size_t i = 0; i < kNumSessions; ++i) {
     std::unique_ptr<HmacSession> session(factory_.GetHmacSession().release());
-    TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
+    TPM_RC result = session->StartUnboundSession(true /* salted */,
+                                                 true /* enable encryption */);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting hmac session " << i << ": "
                  << GetErrorString(result);
@@ -1062,14 +1064,16 @@ bool TrunksClientTest::EndorsementTest(const std::string& endorsement_password,
                                        const std::string& owner_password) {
   std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
   std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(false /* enable encryption */);
+  TPM_RC result = session->StartUnboundSession(true /* salted */,
+                                               false /* enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
   }
   session->SetEntityAuthorizationValue(endorsement_password);
   std::unique_ptr<HmacSession> session2 = factory_.GetHmacSession();
-  result = session2->StartUnboundSession(false /* enable encryption */);
+  result = session2->StartUnboundSession(true /* salted */,
+                                         false /* enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
@@ -1094,7 +1098,8 @@ bool TrunksClientTest::EndorsementTest(const std::string& endorsement_password,
 bool TrunksClientTest::IdentityKeyTest() {
   std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
   std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(false /* enable encryption */);
+  TPM_RC result = session->StartUnboundSession(true /* salted */,
+                                               false /* enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;

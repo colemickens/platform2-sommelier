@@ -42,6 +42,7 @@ class TRUNKS_EXPORT SessionManagerImpl : public SessionManager {
   TPM_RC StartSession(TPM_SE session_type,
                       TPMI_DH_ENTITY bind_entity,
                       const std::string& bind_authorization_value,
+                      bool salted,
                       bool enable_encryption,
                       HmacAuthorizationDelegate* delegate) override;
 

@@ -32,10 +32,11 @@ class MockSessionManager : public SessionManager {
 
   MOCK_CONST_METHOD0(GetSessionHandle, TPM_HANDLE());
   MOCK_METHOD0(CloseSession, void());
-  MOCK_METHOD5(StartSession,
+  MOCK_METHOD6(StartSession,
                TPM_RC(TPM_SE,
                       TPMI_DH_ENTITY,
                       const std::string&,
+                      bool,
                       bool,
                       HmacAuthorizationDelegate*));
 

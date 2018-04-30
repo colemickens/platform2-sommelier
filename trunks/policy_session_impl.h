@@ -35,7 +35,7 @@ namespace trunks {
 // provide authorization for commands that need it. It can also be used to
 // create custom policies to restrict the usage of keys.
 // PolicySessionImpl session(factory);
-// session.StartBoundSession(bind_entity, bind_authorization, true);
+// session.StartBoundSession(bind_entity, bind_authorization, true, true);
 // session.PolicyPCR(pcr_index, pcr_value);
 // factory.GetTpm()->RSA_EncrpytSync(_,_,_,_, session.GetDelegate());
 // NOTE: StartBoundSession/StartUnboundSession should not be called before
@@ -54,8 +54,9 @@ class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
   AuthorizationDelegate* GetDelegate() override;
   TPM_RC StartBoundSession(TPMI_DH_ENTITY bind_entity,
                            const std::string& bind_authorization_value,
+                           bool salted,
                            bool enable_encryption) override;
-  TPM_RC StartUnboundSession(bool enable_encryption) override;
+  TPM_RC StartUnboundSession(bool salted, bool enable_encryption) override;
   TPM_RC GetDigest(std::string* digest) override;
   TPM_RC PolicyOR(const std::vector<std::string>& digests) override;
   TPM_RC PolicyPCR(const std::map<uint32_t, std::string>& pcr_map) override;

@@ -625,7 +625,7 @@ bool Tpm2Impl::Unseal(const brillo::Blob& sealed_value, brillo::Blob* value) {
   }
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks->factory->GetPolicySession();
-  TPM_RC result = policy_session->StartUnboundSession(false);
+  TPM_RC result = policy_session->StartUnboundSession(true, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
@@ -723,7 +723,7 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   TPM_RC result;
   if (bound_pcr_index != kNotBoundToPCR) {
     policy_session = trunks->factory->GetPolicySession();
-    result = policy_session->StartUnboundSession(false);
+    result = policy_session->StartUnboundSession(true, false);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
       return false;
@@ -737,7 +737,7 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
     delegate = policy_session->GetDelegate();
   } else {
     hmac_session = trunks->factory->GetHmacSession();
-    result = hmac_session->StartUnboundSession(true);
+    result = hmac_session->StartUnboundSession(true, true);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
       return false;
@@ -890,7 +890,7 @@ bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   // Finally we verify that the key's policy_digest is the expected value.
   std::unique_ptr<trunks::PolicySession> trial_session =
       trunks->factory->GetTrialSession();
-  result = trial_session->StartUnboundSession(true);
+  result = trial_session->StartUnboundSession(true, true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a trial session: " << GetErrorString(result);
     return false;
@@ -1068,7 +1068,7 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(
   std::unique_ptr<trunks::AuthorizationDelegate> default_delegate;
   if (!pcr_map.empty()) {
     policy_session = trunks->factory->GetPolicySession();
-    TPM_RC result = policy_session->StartUnboundSession(true);
+    TPM_RC result = policy_session->StartUnboundSession(true, true);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
       return Tpm::kTpmRetryFailNoRetry;

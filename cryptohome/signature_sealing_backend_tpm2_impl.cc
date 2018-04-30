@@ -285,7 +285,7 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   // Start a trial policy session for sealing the secret value.
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks->factory->GetTrialSession();
-  tpm_result = policy_session->StartUnboundSession(false);
+  tpm_result = policy_session->StartUnboundSession(true, false);
   if (tpm_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a trial session: "
                << GetErrorString(tpm_result);
@@ -409,7 +409,7 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
   // unsealing the secret value.
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks->factory->GetPolicySession();
-  TPM_RC tpm_result = policy_session->StartUnboundSession(false);
+  TPM_RC tpm_result = policy_session->StartUnboundSession(true, false);
   if (tpm_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a policy session: "
                << GetErrorString(tpm_result);

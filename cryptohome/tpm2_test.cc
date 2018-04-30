@@ -471,7 +471,7 @@ TEST_F(Tpm2Test, UnsealSuccess) {
 TEST_F(Tpm2Test, UnsealStartPolicySessionFail) {
   SecureBlob sealed_value("sealed");
   SecureBlob value;
-  EXPECT_CALL(mock_policy_session_, StartUnboundSession(false))
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->Unseal(sealed_value, &value));
 }
@@ -769,7 +769,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
-  EXPECT_CALL(mock_trial_session_, StartUnboundSession(true))
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(true, true))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(
       tpm_->VerifyPCRBoundKey(

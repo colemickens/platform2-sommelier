@@ -168,7 +168,7 @@ TEST_F(Tpm2NvramTest, NoOwnerFailure) {
 }
 
 TEST_F(Tpm2NvramTest, SessionFailure) {
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(_))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(_, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
             tpm_nvram_->DefineSpace(0, 0, {}, "", NVRAM_POLICY_NONE));

@@ -120,7 +120,8 @@ class ScopedSession {
     std::unique_ptr<trunks::HmacSession> new_session =
       factory->GetHmacSession();
     TPM_RC result =
-      new_session->StartUnboundSession(false /* disable encryption */);
+      new_session->StartUnboundSession(true /* salted */,
+                                       false /* disable encryption */);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting an AuthorizationSession: "
                  << trunks::GetErrorString(result);
@@ -232,7 +233,8 @@ bool TPM2UtilityImpl::Init() {
     return false;
   }
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
-  result = session_->StartUnboundSession(true /* enable encryption */);
+  result = session_->StartUnboundSession(true /* salted */,
+                                         true /* enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting an AuthorizationSession: "
                << trunks::GetErrorString(result);

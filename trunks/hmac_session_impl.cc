@@ -44,18 +44,20 @@ AuthorizationDelegate* HmacSessionImpl::GetDelegate() {
 TPM_RC HmacSessionImpl::StartBoundSession(
     TPMI_DH_ENTITY bind_entity,
     const std::string& bind_authorization_value,
+    bool salted,
     bool enable_encryption) {
   return session_manager_->StartSession(TPM_SE_HMAC, bind_entity,
-                                        bind_authorization_value,
+                                        bind_authorization_value, salted,
                                         enable_encryption, &hmac_delegate_);
 }
 
-TPM_RC HmacSessionImpl::StartUnboundSession(bool enable_encryption) {
+TPM_RC HmacSessionImpl::StartUnboundSession(bool salted,
+                                            bool enable_encryption) {
   // Starting an unbound session is the same as starting a session bound to
   // TPM_RH_NULL. In this case, the authorization is the zero length buffer.
   // We can therefore simply call StartBoundSession with TPM_RH_NULL as the
   // binding entity, and the empty string as the authorization.
-  return StartBoundSession(TPM_RH_NULL, "", enable_encryption);
+  return StartBoundSession(TPM_RH_NULL, "", salted, enable_encryption);
 }
 
 void HmacSessionImpl::SetEntityAuthorizationValue(const std::string& value) {
