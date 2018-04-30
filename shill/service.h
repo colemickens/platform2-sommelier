@@ -258,6 +258,11 @@ class Service : public base::RefCounted<Service> {
   // Returns the unique persistent storage identifier for the service.
   virtual std::string GetStorageIdentifier() const = 0;
 
+  // Returns whether this service is the Always-On VPN connection indicated by
+  // the package name. Here, "package" refers to an Android package running
+  // inside an ARC++ container.
+  virtual bool IsAlwaysOnVpn(const std::string& package) const { return false; }
+
   // Returns the identifier within |storage| from which configuration for
   // this service can be loaded.  Returns an empty string if no entry in
   // |storage| can be used.

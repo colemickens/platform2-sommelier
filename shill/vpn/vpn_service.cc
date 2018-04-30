@@ -95,6 +95,13 @@ string VPNService::GetStorageIdentifier() const {
   return storage_id_;
 }
 
+bool VPNService::IsAlwaysOnVpn(const string& package) const {
+  // For ArcVPN connections, the driver host is set to the package name of the
+  // Android app that is creating the VPN connection.
+  return driver_->GetProviderType() == string(kProviderArcVpn) &&
+      driver_->GetHost() == package;
+}
+
 // static
 string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
                                            Error* error) {

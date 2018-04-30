@@ -179,6 +179,20 @@ TEST_F(VPNServiceTest, GetStorageIdentifier) {
   EXPECT_EQ("foo", service_->GetStorageIdentifier());
 }
 
+TEST_F(VPNServiceTest, IsAlwaysOnVpn) {
+  const string kPackage = "com.foo.vpn";
+  const string kOtherPackage = "com.bar.vpn";
+  EXPECT_FALSE(service_->IsAlwaysOnVpn(kPackage));
+
+  EXPECT_CALL(*driver_, GetHost()).WillRepeatedly(Return(kPackage));
+  EXPECT_FALSE(service_->IsAlwaysOnVpn(kPackage));
+
+  EXPECT_CALL(*driver_, GetProviderType())
+      .WillRepeatedly(Return(kProviderArcVpn));
+  EXPECT_TRUE(service_->IsAlwaysOnVpn(kPackage));
+  EXPECT_FALSE(service_->IsAlwaysOnVpn(kOtherPackage));
+}
+
 TEST_F(VPNServiceTest, GetDeviceRpcId) {
   Error error;
   EXPECT_EQ("/", service_->GetDeviceRpcId(&error));

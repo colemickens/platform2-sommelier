@@ -43,6 +43,7 @@ class MockVPNDriver : public VPNDriver {
   MOCK_METHOD0(UnloadCredentials, void());
   MOCK_METHOD1(InitPropertyStore, void(PropertyStore* store));
   MOCK_CONST_METHOD0(GetProviderType, std::string());
+  MOCK_CONST_METHOD0(GetHost, std::string());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVPNDriver);

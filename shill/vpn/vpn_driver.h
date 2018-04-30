@@ -64,7 +64,7 @@ class VPNDriver {
   virtual void OnAfterResume();
   virtual void OnDefaultServiceStateChanged(const ServiceRefPtr& service);
 
-  std::string GetHost() const;
+  virtual std::string GetHost() const;
 
   KeyValueStore* args() { return &args_; }
   const KeyValueStore* const_args() const { return &args_; }

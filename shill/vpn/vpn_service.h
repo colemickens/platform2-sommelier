@@ -44,6 +44,7 @@ class VPNService : public Service {
   void Connect(Error* error, const char* reason) override;
   void Disconnect(Error* error, const char* reason) override;
   std::string GetStorageIdentifier() const override;
+  bool IsAlwaysOnVpn(const std::string& package) const override;
   bool Load(StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
   bool Unload() override;

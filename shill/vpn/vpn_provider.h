@@ -98,6 +98,7 @@ class VPNProvider : public ProviderInterface {
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, ArcDeviceFound);
   FRIEND_TEST(VPNProviderTest, CreateService);
+  FRIEND_TEST(VPNProviderTest, CreateArcService);
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
   FRIEND_TEST(VPNServiceTest, Unload);

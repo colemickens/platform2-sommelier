@@ -296,6 +296,7 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
 TEST_F(VPNProviderTest, CreateService) {
   static const char kName[] = "test-vpn-service";
   static const char kStorageID[] = "test_vpn_storage_id";
+  static const char kHost[] = "test-vpn-host";
   static const char* const kTypes[] = {
     kProviderOpenVpn,
     kProviderL2tpIpsec,
@@ -315,6 +316,7 @@ TEST_F(VPNProviderTest, CreateService) {
     EXPECT_EQ(type, service->driver()->GetProviderType());
     EXPECT_EQ(kName, GetServiceFriendlyName(service)) << type;
     EXPECT_EQ(kStorageID, service->GetStorageIdentifier()) << type;
+    EXPECT_FALSE(service->IsAlwaysOnVpn(kHost)) << type;
     EXPECT_TRUE(error.IsSuccess()) << type;
   }
   Error error;
@@ -322,6 +324,26 @@ TEST_F(VPNProviderTest, CreateService) {
       provider_.CreateService("unknown-vpn-type", kName, kStorageID, &error);
   EXPECT_FALSE(unknown_service);
   EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
+TEST_F(VPNProviderTest, CreateArcService) {
+  static const char kName[] = "test-vpn-service";
+  static const char kStorageID[] = "test_vpn_storage_id";
+  static const char kHost[] = "com.example.test.vpn";
+  EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
+  EXPECT_CALL(manager_, RegisterService(_));
+  Error error;
+  VPNServiceRefPtr service = provider_.CreateService(
+      kProviderArcVpn, kName, kStorageID, &error);
+  ASSERT_TRUE(service.get());
+  ASSERT_TRUE(service->driver());
+  service->driver()->args()->SetString(kProviderHostProperty, kHost);
+
+  EXPECT_EQ(kProviderArcVpn, service->driver()->GetProviderType());
+  EXPECT_EQ(kName, GetServiceFriendlyName(service));
+  EXPECT_EQ(kStorageID, service->GetStorageIdentifier());
+  EXPECT_TRUE(service->IsAlwaysOnVpn(kHost));
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(VPNProviderTest, CreateTemporaryServiceFromProfile) {
