@@ -49,6 +49,7 @@
       'sources': [
         'vsh/scoped_termios.cc',
         'vsh/vsh.cc',
+        'vsh/vsh_client.cc',
       ],
     },
     {
