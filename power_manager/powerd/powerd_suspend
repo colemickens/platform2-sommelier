@@ -513,8 +513,6 @@ fi
 
 send_uma_result "${result}"
 
-initctl emit system-resumed &
-
 # Refresh mosys eventlog to help feedback reports pick up the latest snapshot.
 /usr/share/userfeedback/scripts/eventlog &
 
