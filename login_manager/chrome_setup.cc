@@ -126,6 +126,11 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--force-remote-shell-scale=2");
 }
 
+void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
+  if (builder->UseFlagIsSet("kvm_host"))
+    builder->AddFeatureEnableOverride("Crostini");
+}
+
 // Blatantly copied from //components/crx_file/id_util.cc.
 // TODO(rkc): Remove when crbug.com/706523 is fixed.
 std::string HashedIdInHex(const std::string& id) {
@@ -525,6 +530,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddSystemFlags(&builder);
   AddUiFlags(&builder, cros_config);
   AddArcFlags(&builder, &disallowed_prefixes);
+  AddCrostiniFlags(&builder);
   AddEnterpriseFlags(&builder);
   AddVmodulePatterns(&builder);
 
