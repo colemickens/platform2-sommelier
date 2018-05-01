@@ -229,7 +229,7 @@ bool Crypto::GetOrCreateSalt(const FilePath& path,
   if (force || file_len == 0 || file_len > kSaltMax) {
     LOG(ERROR) << "Creating new salt at " << path.value()
                << " (" << force << ", " << file_len << ")";
-    // If this salt doesn't exist, automatically create it
+    // If this salt doesn't exist, automatically create it.
     local_salt.resize(length);
     CryptoLib::GetSecureRandom(local_salt.data(), local_salt.size());
     if (!platform_->WriteFileAtomicDurable(path, local_salt,
@@ -239,7 +239,7 @@ bool Crypto::GetOrCreateSalt(const FilePath& path,
     }
   } else {
     local_salt.resize(file_len);
-    if (!platform_->ReadFile(path, &local_salt)) {
+    if (!platform_->ReadFileToSecureBlob(path, &local_salt)) {
       LOG(ERROR) << "Could not read salt file of length " << file_len;
       return false;
     }

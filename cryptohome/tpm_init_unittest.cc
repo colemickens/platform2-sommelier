@@ -110,6 +110,15 @@ class TpmInitTest : public ::testing::Test {
     str->assign(reinterpret_cast<char*>(blob.data()), blob.size());
     return true;
   }
+  bool FileReadToSecureBlob(const base::FilePath& path,
+                            brillo::SecureBlob* sblob) {
+    if (!FileExists(path)) {
+      return false;
+    }
+    brillo::Blob temp = files_[path];
+    sblob->assign(temp.begin(), temp.end());
+    return true;
+  }
   bool FileWrite(const base::FilePath& path, const brillo::Blob& blob) {
     files_[path] = blob;
     return true;
@@ -181,6 +190,8 @@ class TpmInitTest : public ::testing::Test {
       .WillByDefault(Invoke(this, &TpmInitTest::GetFileSize));
     ON_CALL(platform_, ReadFile(_, _))
       .WillByDefault(Invoke(this, &TpmInitTest::FileRead));
+    ON_CALL(platform_, ReadFileToSecureBlob(_, _))
+      .WillByDefault(Invoke(this, &TpmInitTest::FileReadToSecureBlob));
     ON_CALL(platform_, WriteFile(_, _))
       .WillByDefault(Invoke(this, &TpmInitTest::FileWrite));
     ON_CALL(platform_, WriteFileAtomic(_, _, _))

@@ -47,6 +47,10 @@ class BootAttributesTest : public testing::Test {
     ON_CALL(mock_platform_, ReadFile(_, _))
         .WillByDefault(Invoke(this, &BootAttributesTest::FakeReadFile));
 
+    ON_CALL(mock_platform_, ReadFileToSecureBlob(_, _))
+        .WillByDefault(
+            Invoke(this, &BootAttributesTest::FakeReadFileToSecureBlob));
+
     ON_CALL(mock_platform_, WriteFile(_, _))
         .WillByDefault(Invoke(this, &BootAttributesTest::FakeWriteFile));
 
@@ -73,6 +77,13 @@ class BootAttributesTest : public testing::Test {
 
   bool FakeReadFile(const FilePath& filename, brillo::Blob* blob) {
     *blob = files_[filename];
+    return true;
+  }
+
+  bool FakeReadFileToSecureBlob(const FilePath& filename,
+                                brillo::SecureBlob* sblob) {
+    brillo::Blob temp = files_[filename];
+    sblob->assign(temp.begin(), temp.end());
     return true;
   }
 
@@ -168,7 +179,7 @@ TEST_F(BootAttributesTest, WriteFileFailed) {
 }
 
 TEST_F(BootAttributesTest, ReadFileFailed) {
-  EXPECT_CALL(mock_platform_, ReadFile(_, _))
+  EXPECT_CALL(mock_platform_, ReadFileToSecureBlob(_, _))
       .WillRepeatedly(Return(false));
 
   EXPECT_FALSE(boot_attributes_->Load());

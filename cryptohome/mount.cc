@@ -1194,13 +1194,13 @@ bool Mount::LoadVaultKeysetForUser(const std::string& obfuscated_username,
     LOG(ERROR) << "Attempted to load an invalid key index: " << index;
     return false;
   }
-  // Load the encrypted keyset
-  FilePath user_key_file = GetUserLegacyKeyFileForUser(obfuscated_username,
-                                                          index);
+  // Load the encrypted keyset.
+  FilePath user_key_file =
+      GetUserLegacyKeyFileForUser(obfuscated_username, index);
   if (!platform_->FileExists(user_key_file)) {
     return false;
   }
-  SecureBlob cipher_text;
+  brillo::Blob cipher_text;
   if (!platform_->ReadFile(user_key_file, &cipher_text)) {
     LOG(ERROR) << "Failed to read keyset file for user " << obfuscated_username;
     return false;

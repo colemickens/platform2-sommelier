@@ -384,6 +384,8 @@ class Platform {
   virtual bool ReadFile(const base::FilePath& path, brillo::Blob* blob);
   virtual bool ReadFileToString(const base::FilePath& path,
                                 std::string* string);
+  virtual bool ReadFileToSecureBlob(const base::FilePath& path,
+                                    brillo::SecureBlob* sblob);
 
   // Writes to the open file pointer.
   //

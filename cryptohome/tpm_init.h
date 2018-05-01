@@ -148,7 +148,6 @@ class TpmInit {
   // entry in either /sys/class/misc or /sys/class/tpm.
   bool IsOwnedCheckViaSysfs(const base::FilePath& owned_file);
 
-
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
   Tpm::TpmRetryAction LoadCryptohomeKey(ScopedKeyHandle* key_handle);

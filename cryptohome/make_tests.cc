@@ -104,16 +104,19 @@ void MakeTests::TearDownSystemSalt() {
   delete salt;
 }
 
-void MakeTests::InjectSystemSalt(MockPlatform* platform,
-                                 const FilePath& path) {
+void MakeTests::InjectSystemSalt(MockPlatform* platform, const FilePath& path) {
   CHECK(brillo::cryptohome::home::GetSystemSalt());
-  EXPECT_CALL(*platform, FileExists(path))
-    .WillRepeatedly(Return(true));
+  brillo::SecureBlob sec_salt(system_salt);
+  EXPECT_CALL(*platform, FileExists(path)).WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, GetFileSize(path, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(system_salt.size()),
-                          Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(system_salt.size()), Return(true)));
+
   EXPECT_CALL(*platform, ReadFile(path, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(system_salt), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(system_salt), Return(true)));
+
+  EXPECT_CALL(*platform, ReadFileToSecureBlob(path, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(sec_salt), Return(true)));
 }
 
 void MakeTests::InjectEphemeralSkeleton(MockPlatform* platform,
@@ -189,9 +192,8 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
 
 void TestUser::GenerateCredentials(bool force_ecryptfs) {
   std::string* system_salt = brillo::cryptohome::home::GetSystemSalt();
-  brillo::Blob salt;
-  salt.resize(system_salt->size());
-  memcpy(&salt.at(0), system_salt->c_str(), system_salt->size());
+  brillo::Blob salt(system_salt->begin(), system_salt->end());
+  SecureBlob sec_salt(*system_salt);
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
   Crypto crypto(&platform);
@@ -217,6 +219,8 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
     .WillRepeatedly(DoAll(SetArgPointee<1>(salt_size), Return(true)));
   EXPECT_CALL(platform, ReadFile(salt_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(salt), Return(true)));
+  EXPECT_CALL(platform, ReadFileToSecureBlob(salt_path, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(sec_salt), Return(true)));
   EXPECT_CALL(platform, DirectoryExists(shadow_root))
     .WillRepeatedly(Return(true));
   mount->Init(&platform, &crypto, &timestamp_cache);

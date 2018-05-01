@@ -70,6 +70,9 @@ ACTION(CallCreateDirectory) {
 }
 ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
 ACTION(CallReadFileToString) { return Platform().ReadFileToString(arg0, arg1); }
+ACTION(CallReadFileToSecureBlob) {
+  return Platform().ReadFileToSecureBlob(arg0, arg1);
+}
 ACTION(CallCopy) { return Platform().Copy(arg0, arg1); }
 ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
 ACTION(CallComputeDirectorySize) {
@@ -146,6 +149,8 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(HasNoDumpFileAttribute, bool(const base::FilePath&));
   MOCK_METHOD2(ReadFile, bool(const base::FilePath&, brillo::Blob*));
   MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
+  MOCK_METHOD2(ReadFileToSecureBlob,
+               bool(const base::FilePath&, brillo::SecureBlob*));
   MOCK_METHOD2(Rename, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD2(WriteOpenFile, bool(FILE*, const brillo::Blob&));
   MOCK_METHOD2(WriteFile, bool(const base::FilePath&, const brillo::Blob&));

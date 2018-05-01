@@ -384,7 +384,7 @@ bool TpmInit::CreateCryptohomeKey() {
     LOG(ERROR) << "Error creating RSA key";
     return false;
   }
-  brillo::SecureBlob wrapped_key;
+  SecureBlob wrapped_key;
   if (!get_tpm()->WrapRsaKey(n, p, &wrapped_key)) {
     LOG(ERROR) << "Couldn't wrap cryptohome key";
     return false;
@@ -399,22 +399,23 @@ bool TpmInit::CreateCryptohomeKey() {
   return true;
 }
 
-bool TpmInit::SaveCryptohomeKey(const brillo::SecureBlob& raw_key) {
+bool TpmInit::SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key) {
   bool ok = platform_->WriteFileAtomicDurable(kDefaultCryptohomeKeyFile,
-                                              raw_key, 0600);
+                                              wrapped_key, 0600);
   if (!ok)
-    LOG(ERROR) << "Error writing key file of desired size: " << raw_key.size();
+    LOG(ERROR) << "Error writing key file of desired size: "
+               << wrapped_key.size();
   return ok;
 }
 
 Tpm::TpmRetryAction TpmInit::LoadCryptohomeKey(ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
-  // First, try loading the key from the key file
+  // First, try loading the key from the key file.
   {
     SecureBlob raw_key;
     if (platform_->ReadFile(kDefaultCryptohomeKeyFile, &raw_key)) {
-      Tpm::TpmRetryAction retry_action = get_tpm()->LoadWrappedKey(
-          raw_key, key_handle);
+      Tpm::TpmRetryAction retry_action =
+          get_tpm()->LoadWrappedKey(raw_key, key_handle);
       if (retry_action == Tpm::kTpmRetryNone ||
           get_tpm()->IsTransient(retry_action)) {
         return retry_action;
@@ -422,14 +423,13 @@ Tpm::TpmRetryAction TpmInit::LoadCryptohomeKey(ScopedKeyHandle* key_handle) {
     }
   }
 
-  // Then try loading the key by the UUID (this is a legacy upgrade path)
+  // Then try loading the key by the UUID (this is a legacy upgrade path).
   SecureBlob raw_key;
-  if (!get_tpm()->LegacyLoadCryptohomeKey(key_handle,
-                                          &raw_key)) {
+  if (!get_tpm()->LegacyLoadCryptohomeKey(key_handle, &raw_key)) {
     return Tpm::kTpmRetryFailNoRetry;
   }
 
-  // Save the cryptohome key to the well-known location
+  // Save the cryptohome key to the well-known location.
   if (!SaveCryptohomeKey(raw_key)) {
     LOG(ERROR) << "Couldn't save cryptohome key";
     return Tpm::kTpmRetryFailNoRetry;

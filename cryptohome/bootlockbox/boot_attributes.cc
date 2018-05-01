@@ -35,8 +35,8 @@ BootAttributes::~BootAttributes() {
 
 bool BootAttributes::Load() {
   brillo::SecureBlob data, signature;
-  if (!platform_->ReadFile(FilePath(kAttributeFile), &data) ||
-      !platform_->ReadFile(FilePath(kSignatureFile), &signature)) {
+  if (!platform_->ReadFileToSecureBlob(FilePath(kAttributeFile), &data) ||
+      !platform_->ReadFileToSecureBlob(FilePath(kSignatureFile), &signature)) {
     LOG(INFO) << "Cannot read boot lockbox files.";
     return false;
   }
