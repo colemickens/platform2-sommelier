@@ -90,13 +90,13 @@ bool ArcIpConfig::Init() {
       base::StringPrintf("/proc/%d/ns/net", static_cast<int>(con_netns_));
   con_netns_fd_.reset(open(filename.c_str(), O_RDONLY));
   if (!con_netns_fd_.is_valid()) {
-    LOG(ERROR) << "Could not open " << filename;
+    PLOG(ERROR) << "Could not open " << filename;
     return false;
   }
 
   self_netns_fd_.reset(open("/proc/self/ns/net", O_RDONLY));
   if (!self_netns_fd_.is_valid()) {
-    LOG(ERROR) << "Could not open host netns";
+    PLOG(ERROR) << "Could not open host netns";
     return false;
   }
 
@@ -121,7 +121,7 @@ bool ArcIpConfig::ContainerInit() {
   strncpy(ifr.ifr_name, con_ifname_.c_str(), IFNAMSIZ);
 
   if (ioctl(fd.get(), SIOCGIFFLAGS, &ifr) < 0) {
-    LOG(ERROR) << "SIOCGIFFLAGS failed";
+    PLOG(ERROR) << "SIOCGIFFLAGS(" << con_ifname_ << ") failed";
     return false;
   }
 
