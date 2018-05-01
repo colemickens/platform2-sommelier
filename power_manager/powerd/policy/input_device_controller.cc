@@ -196,8 +196,10 @@ void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
   std::string parent_syspath;
   if (!system::udev_util::FindWakeCapableParent(device.syspath(), udev_,
                                                 &parent_syspath)) {
-    LOG(WARNING) << "No " << kPowerWakeup << " sysattr available for "
-                 << device.syspath();
+    // Don't warn if we didn't want to enable wakeups anyway:
+    // https://crbug.com/837274
+    LOG_IF(WARNING, enabled) << "No " << kPowerWakeup
+                             << " sysattr available for " << device.syspath();
     return;
   }
   LOG(INFO) << (enabled ? "Enabling" : "Disabling") << " wakeup for "
