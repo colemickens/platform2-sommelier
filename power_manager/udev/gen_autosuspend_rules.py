@@ -61,6 +61,8 @@ USB_IDS += [
   "064e:d251",
   # Realtek (falco)
   "0bda:571c",
+  # IMC Networks (squawks)
+  "13d3:5657",
   # Sunplus (parrot)
   "1bcf:2c17",
   # (C-13HDO10B39N) (alex)
