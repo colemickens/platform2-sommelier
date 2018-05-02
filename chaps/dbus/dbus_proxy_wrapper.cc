@@ -67,8 +67,8 @@ namespace chaps {
 
 ProxyWrapperConstructionTask::ProxyWrapperConstructionTask()
     : construction_callback_(base::Bind(&CreateObjectProxyOnTaskRunner)),
-      completion_event_(false /* manual_reset */,
-                        false /* initially_signaled */) {}
+      completion_event_(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                        base::WaitableEvent::InitialState::NOT_SIGNALED) {}
 
 scoped_refptr<DBusProxyWrapper>
 ProxyWrapperConstructionTask::ConstructProxyWrapper(
