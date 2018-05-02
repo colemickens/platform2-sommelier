@@ -27,8 +27,8 @@
 #include <gtest/gtest.h>
 
 #include "trunks/error_codes.h"
-#include "trunks/mock_dbus_bus.h"
 #include "trunks/interface.pb.h"
+#include "trunks/mock_dbus_bus.h"
 
 using testing::_;
 using testing::NiceMock;
