@@ -99,12 +99,13 @@ void TrunksDBusProxy::SendCommand(const std::string& command,
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
-  auto on_success = [callback](const SendCommandResponse& response) {
+  auto on_success = base::Bind([](const ResponseCallback& callback,
+                                  const SendCommandResponse& response) {
     callback.Run(response.response());
-  };
+  }, callback);
   brillo::dbus_utils::CallMethodWithTimeout(
       kDBusMaxTimeout, object_proxy_, trunks::kTrunksInterface,
-      trunks::kSendCommand, base::Bind(on_success),
+      trunks::kSendCommand, on_success,
       base::Bind(&TrunksDBusProxy::OnError, GetWeakPtr(), callback),
       tpm_command_proto);
 }

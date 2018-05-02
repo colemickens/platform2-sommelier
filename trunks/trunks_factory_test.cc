@@ -72,10 +72,11 @@ TEST_F(TrunksFactoryTest, TpmSendCommand) {
   EXPECT_TRUE(factory_.Initialize());
   for (TPM_RC expected_code : {TPM_RC_SUCCESS, TPM_RC_FAILURE}) {
     next_response_ = BuildSimpleResponse(expected_code);
-    auto callback = [expected_code](TPM_RC response_code) {
+    auto callback = [](TPM_RC expected_code, TPM_RC response_code) {
       EXPECT_EQ(expected_code, response_code);
     };
-    factory_.GetTpm()->Startup(TPM_SU_CLEAR, nullptr, base::Bind(callback));
+    factory_.GetTpm()->Startup(
+        TPM_SU_CLEAR, nullptr, base::Bind(callback, expected_code));
     EXPECT_EQ(expected_code,
               factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr));
   }

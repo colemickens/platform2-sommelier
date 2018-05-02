@@ -23,6 +23,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/callback_helpers.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <brillo/bind_lambda.h>
@@ -834,26 +835,16 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
     return false;
   }
   // Setup auto-cleanup of the NVRAM space.
-  auto cleanup = [&session, &owner_password, &utility, index]() {
+  auto cleanup = base::Bind(
+      [](HmacSession* session, const std::string& owner_password,
+         TpmUtility* utility, uint32_t index) {
     session->SetEntityAuthorizationValue(owner_password);
     TPM_RC result = utility->DestroyNVSpace(index, session->GetDelegate());
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error destroying nvram: " << GetErrorString(result);
     }
-  };
-  class Scoper {
-   public:
-    explicit Scoper(const base::Closure& callback) : callback_(callback) {}
-    ~Scoper() {
-      if (!cancel_)
-        callback_.Run();
-    }
-    void Cancel() { cancel_ = true; }
-
-   private:
-    base::Closure callback_;
-    bool cancel_ = false;
-  } scoper(base::Bind(cleanup));
+  }, session.get(), owner_password, utility.get(), index);
+  base::ScopedClosureRunner scoper(cleanup);
 
   session->SetEntityAuthorizationValue(owner_password);
   result = utility->WriteNVSpace(index, 0, nv_data, true /*owner*/,
