@@ -52,6 +52,17 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                  std::make_tuple(0xD2, 0x00, 0xFF),
                  std::make_tuple(0x00, 0xA0, 0xFF),
                  std::make_tuple(0xFF, 0xFF, 0xFF),
+             },
+             {
+                 // IMX258 color bars
+                 std::make_tuple(0xFF, 0xFF, 0xFF),  // White
+                 std::make_tuple(0x00, 0xFF, 0xFF),  // Cyan
+                 std::make_tuple(0xFF, 0xFF, 0x00),  // Yellow
+                 std::make_tuple(0x00, 0xFF, 0x00),  // Green
+                 std::make_tuple(0xFF, 0x00, 0xFF),  // Magenta
+                 std::make_tuple(0x00, 0x00, 0xFF),  // Blue
+                 std::make_tuple(0xFF, 0x00, 0x00),  // Red
+                 std::make_tuple(0x00, 0x00, 0x00),  // Black
              }}),
         supported_color_bars_test_pattern_modes_(
             {ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY,
