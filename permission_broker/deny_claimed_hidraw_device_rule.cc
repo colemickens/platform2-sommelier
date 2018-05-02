@@ -4,6 +4,7 @@
 
 #include "permission_broker/deny_claimed_hidraw_device_rule.h"
 
+#include <bits/wordsize.h>
 #include <libudev.h>
 #include <linux/input.h>
 
@@ -24,9 +25,9 @@ namespace {
 const char kLogitechUnifyingReceiverDriver[] = "logitech-djreceiver";
 const char kThingmDriver[] = "thingm";
 
-// The kernel expresses capabilities as a bitfield, broken into long-sized
-// chunks encoded in hexadecimal.
 bool ParseInputCapabilities(const char* input, std::vector<uint64_t>* output) {
+  // The kernel expresses capabilities as a bitfield, broken into long-sized
+  // chunks encoded in hexadecimal.
   std::vector<std::string> chunks =
       base::SplitString(input, " ", base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_ALL);
@@ -50,16 +51,41 @@ bool ParseInputCapabilities(const char* input, std::vector<uint64_t>* output) {
     output->push_back(value);
   }
 
+  if (__WORDSIZE == 32) {
+    // Compact the vector of 32-bit values into a vector of 64-bit values.
+    for (size_t i = 0; i < chunks.size(); i += 2) {
+      (*output)[i / 2] = (*output)[i];
+      if (i + 1 < chunks.size())
+        (*output)[i / 2] |= (uint64_t)((*output)[i + 1]) << 32;
+    }
+    output->resize((chunks.size() + 1) / 2);
+  }
+
   return true;
 }
 
 bool IsCapabilityBitSet(const std::vector<uint64_t>& bitfield, size_t bit) {
-  size_t offset = bit / (sizeof(long) * 8);  // NOLINT(runtime/int)
-  if (offset >= bitfield.size()) {
+  size_t offset = bit / (sizeof(uint64_t) * 8);
+  if (offset >= bitfield.size())
     return false;
+
+  return bitfield[offset] & (1ULL << (bit - offset * sizeof(bitfield[0]) * 8));
+}
+
+bool AnyCapabilityBitsSet(const std::vector<uint64_t>& bitfield) {
+  for (auto value : bitfield) {
+    if (value != 0)
+      return true;
   }
-  // NOLINTNEXTLINE(runtime/int)
-  return bitfield[offset] & (1ULL << (bit - offset * sizeof(long) * 8));
+  return false;
+}
+
+void UnsetCapabilityBit(std::vector<uint64_t>* bitfield, size_t bit) {
+  size_t offset = bit / (sizeof(uint64_t) * 8);
+  if (offset >= bitfield->size())
+    return;
+
+  (*bitfield)[offset] &= ~(1ULL << (bit - offset * sizeof(uint64_t) * 8));
 }
 
 constexpr bool IsCfmDevice() {
@@ -200,12 +226,10 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
       // Parse error? Fail safe.
       return true;
     }
-    for (uint64_t value : capabilities) {
-      if (value != 0) {
-        // Any absolute pointer capabilities exclude access.
-        return true;
-      }
-    }
+    // Any absolute pointer capabilities other than ABS_MISC exclude access.
+    UnsetCapabilityBit(&capabilities, ABS_MISC);
+    if (AnyCapabilityBitsSet(capabilities))
+      return true;
   }
 
   if (rel_capabilities) {
@@ -213,12 +237,9 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
       // Parse error? Fail safe.
       return true;
     }
-    for (uint64_t value : capabilities) {
-      if (value != 0) {
-        // Any relative pointer capabilities exclude access.
-        return true;
-      }
-    }
+    // Any relative pointer capabilities exclude access.
+    if (AnyCapabilityBitsSet(capabilities))
+      return true;
   }
 
   if (key_capabilities) {

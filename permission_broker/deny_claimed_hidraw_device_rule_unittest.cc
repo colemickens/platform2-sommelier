@@ -112,6 +112,9 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
   const char* kMouseKeys;
   const char* kHeadsetKeys;
   const char* kBrailleKeys;
+  const char* kSpeakerphoneAbs;
+  const char* kSpeakerphoneKeys;
+  const char* kAbsoluteMouseAbs;
 
   // The size of these bitfield chunks is the width of a userspace long.
   switch (sizeof(long)) {  // NOLINT(runtime/int)
@@ -119,22 +122,22 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
       kKeyboardKeys =
           "10000 00000007 ff9f207a c14057ff "
           "febeffdf ffefffff ffffffff fffffffe";
-      kMouseKeys =
-          "1f0000 0 0 0 0 0 0 0 0";
-      kHeadsetKeys =
-          "18000 178 0 8e0000 0 0 0";
-      kBrailleKeys =
-          "7fe0000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
+      kMouseKeys = "1f0000 0 0 0 0 0 0 0 0";
+      kHeadsetKeys = "18000 178 0 8e0000 0 0 0";
+      kBrailleKeys = "7fe0000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
+      kSpeakerphoneAbs = "100 0";
+      kSpeakerphoneKeys = "1 10000000 0 0 c0000000 0 0";
+      kAbsoluteMouseAbs = "100 3";
       break;
     case 8:
       kKeyboardKeys =
           "1000000000007 ff9f207ac14057ff febeffdfffefffff fffffffffffffffe";
-      kMouseKeys =
-          "1f0000 0 0 0 0";
-      kHeadsetKeys =
-          "18000 17800000000 8e000000000000 0";
-      kBrailleKeys =
-          "7fe000000000000 0 0 0 0 0 0 0";
+      kMouseKeys = "1f0000 0 0 0 0";
+      kHeadsetKeys = "18000 17800000000 8e000000000000 0";
+      kBrailleKeys = "7fe000000000000 0 0 0 0 0 0 0";
+      kSpeakerphoneAbs = "10000000000";
+      kSpeakerphoneKeys = "1 1000000000000000 0 c000000000000000 0";
+      kAbsoluteMouseAbs = "10000000003";
       break;
     default:
       FAIL() << "Unsupported platform long width.";
@@ -160,6 +163,18 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
   EXPECT_TRUE(
       DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
           "0", "0", kBrailleKeys));
+
+  // Example capabilities from a speakerphone device which includes ABS_MISC
+  // events. Should not be excluded.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kSpeakerphoneAbs, "0", kSpeakerphoneKeys));
+
+  // A absolute pointing device (made up) which includes ABS_MISC events.
+  // Should be excluded.
+  EXPECT_TRUE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kAbsoluteMouseAbs, "0", kMouseKeys));
 }
 
 }  // namespace permission_broker
