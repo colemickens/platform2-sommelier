@@ -21,8 +21,9 @@ namespace vsh {
 // VshClient encapsulates a vsh client session.
 class VshClient {
  public:
-  static std::unique_ptr<VshClient> Create(unsigned int vsock_cid,
-                                           const std::string& user);
+  static std::unique_ptr<VshClient> Create(base::ScopedFD sock_fd,
+                                           const std::string& user,
+                                           const std::string& container);
   ~VshClient() = default;
 
   int exit_code();
@@ -30,7 +31,7 @@ class VshClient {
  private:
   VshClient(base::ScopedFD tty_fd, base::ScopedFD sock_fd);
 
-  bool Init(const std::string& user);
+  bool Init(const std::string& user, const std::string& container);
 
   bool HandleTermSignal(const struct signalfd_siginfo& siginfo);
   bool HandleWindowResizeSignal(const struct signalfd_siginfo& siginfo);

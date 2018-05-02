@@ -97,6 +97,7 @@
         'vsh-protos',
       ],
       'sources': [
+        'vsh/vsh_forwarder.cc',
         'vsh/vshd.cc',
       ],
       'variables': {

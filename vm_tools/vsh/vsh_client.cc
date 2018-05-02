@@ -46,38 +46,21 @@ using std::string;
 namespace vm_tools {
 namespace vsh {
 
-std::unique_ptr<VshClient> VshClient::Create(unsigned int vsock_cid,
-                                             const std::string& user) {
-  base::ScopedFD tty_fd(HANDLE_EINTR(
-      open(kDevTtyPath, O_RDONLY | O_NOCTTY | O_CLOEXEC | O_NONBLOCK)));
+std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
+                                             const std::string& user,
+                                             const std::string& container) {
+  base::ScopedFD tty_fd(
+      HANDLE_EINTR(open(vm_tools::vsh::kDevTtyPath,
+                        O_RDONLY | O_NOCTTY | O_CLOEXEC | O_NONBLOCK)));
   if (!tty_fd.is_valid()) {
     PLOG(ERROR) << "Failed to open /dev/tty";
-    return nullptr;
-  }
-
-  base::ScopedFD sock_fd(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));
-  if (!sock_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open vsock socket";
-    return nullptr;
-  }
-
-  struct sockaddr_vm addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.svm_family = AF_VSOCK;
-  addr.svm_port = kVshPort;
-  addr.svm_cid = vsock_cid;
-
-  if (HANDLE_EINTR(connect(sock_fd.get(),
-                           reinterpret_cast<struct sockaddr*>(&addr),
-                           sizeof(addr)) < 0)) {
-    PLOG(ERROR) << "Failed to connect to vshd";
     return nullptr;
   }
 
   auto client = std::unique_ptr<VshClient>(
       new VshClient(std::move(tty_fd), std::move(sock_fd)));
 
-  if (!client->Init(user)) {
+  if (!client->Init(user, container)) {
     return nullptr;
   }
 
@@ -87,7 +70,7 @@ std::unique_ptr<VshClient> VshClient::Create(unsigned int vsock_cid,
 VshClient::VshClient(base::ScopedFD tty_fd, base::ScopedFD sock_fd)
     : tty_fd_(std::move(tty_fd)), sock_fd_(std::move(sock_fd)) {}
 
-bool VshClient::Init(const std::string& user) {
+bool VshClient::Init(const std::string& user, const std::string& container) {
   // Set up the connection with the guest. The setup process is:
   //
   // 1) Client opens connection and sends a SetupConnectionRequest.
@@ -100,7 +83,12 @@ bool VshClient::Init(const std::string& user) {
   //    that does not indicate READY, the recepient must exit.
   // TODO(smbarber): Connect to an lxd container instead of the VM.
   SetupConnectionRequest connection_request;
-  connection_request.set_target(kVmShell);
+  if (container.empty()) {
+    connection_request.set_target(vm_tools::vsh::kVmShell);
+  } else {
+    connection_request.set_target(container);
+  }
+
   connection_request.set_user(user);
 
   auto env = connection_request.mutable_env();
@@ -148,6 +136,17 @@ bool VshClient::Init(const std::string& user) {
                << connection_response.description();
     return false;
   }
+
+  SendCurrentWindowSize();
+
+  brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
+  message_loop->WatchFileDescriptor(
+      FROM_HERE, sock_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
+      true,
+      base::Bind(&VshClient::HandleVsockReadable, base::Unretained(this)));
+  message_loop->WatchFileDescriptor(
+      FROM_HERE, STDIN_FILENO, brillo::MessageLoop::WatchMode::kWatchRead, true,
+      base::Bind(&VshClient::HandleStdinReadable, base::Unretained(this)));
 
   // Handle termination signals and SIGWINCH.
   signal_handler_.Init();

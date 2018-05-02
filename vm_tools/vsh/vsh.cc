@@ -3,8 +3,13 @@
 // found in the LICENSE file.
 
 #include <fcntl.h>
+#include <poll.h>
 #include <termios.h>
 #include <unistd.h>
+
+#include <sys/socket.h>
+
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <memory>
 #include <string>
@@ -95,41 +100,138 @@ bool GetCid(const std::string& vm_name, unsigned int* cid) {
   return true;
 }
 
+bool ListenForVshd(unsigned int port, base::ScopedFD* peer_sock_fd) {
+  DCHECK(peer_sock_fd);
+
+  // Create a socket to listen for incoming vsh connections.
+  base::ScopedFD listen_fd(
+      socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0));
+  if (!listen_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create socket";
+    return false;
+  }
+
+  struct sockaddr_vm addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.svm_family = AF_VSOCK;
+  addr.svm_port = port;
+  addr.svm_cid = VMADDR_CID_ANY;
+
+  if (bind(listen_fd.get(), reinterpret_cast<const struct sockaddr*>(&addr),
+           sizeof(addr)) < 0) {
+    PLOG(ERROR) << "Failed to bind vshd port";
+    return false;
+  }
+
+  if (listen(listen_fd.get(), 1) < 0) {
+    PLOG(ERROR) << "Failed to listen";
+    return false;
+  }
+  struct pollfd pollfds[] = {
+      {listen_fd.get(), POLLIN, 0},
+  };
+  const int num_pollfds = arraysize(pollfds);
+
+  if (HANDLE_EINTR(poll(pollfds, num_pollfds, -1)) < 0) {
+    PLOG(ERROR) << "Failed to poll";
+    return false;
+  }
+
+  struct sockaddr_vm peer_addr;
+  socklen_t addr_size;
+  peer_sock_fd->reset(HANDLE_EINTR(
+      accept4(listen_fd.get(), reinterpret_cast<struct sockaddr*>(&peer_addr),
+              &addr_size, SOCK_CLOEXEC)));
+  if (!peer_sock_fd->is_valid()) {
+    PLOG(ERROR) << "Failed to accept connection from client";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   brillo::InitLog(brillo::kLogToStderrIfTty);
 
+  DEFINE_uint64(listen_port, 0, "Port to listen on");
   DEFINE_uint64(cid, 0, "Cid of VM");
   DEFINE_string(vm_name, "", "Target VM name");
   DEFINE_string(user, "chronos", "Target user in the VM");
+  DEFINE_string(target_container, "", "Target container");
 
   brillo::FlagHelper::Init(argc, argv, kVshUsage);
 
-  if ((FLAGS_cid != 0 && !FLAGS_vm_name.empty()) ||
-      (FLAGS_cid == 0 && FLAGS_vm_name.empty())) {
-    LOG(ERROR) << "Exactly one of --cid or --vm_name is required";
-    return EXIT_FAILURE;
-  }
-  unsigned int cid;
-  if (FLAGS_cid != 0) {
-    cid = FLAGS_cid;
-    if (static_cast<uint64_t>(cid) != FLAGS_cid) {
-      LOG(ERROR) << "Cid value (" << FLAGS_cid << ") is too large.  Largest "
-                 << "valid value is "
-                 << std::numeric_limits<unsigned int>::max();
+  brillo::BaseMessageLoop message_loop;
+  message_loop.SetAsCurrent();
+  std::unique_ptr<VshClient> client;
+
+  if (FLAGS_listen_port != 0 || !FLAGS_target_container.empty()) {
+    unsigned int port = 0;
+    if (FLAGS_listen_port != 0) {
+      port = static_cast<unsigned int>(FLAGS_listen_port);
+      if (FLAGS_listen_port < 0 ||
+          static_cast<uint64_t>(port) != FLAGS_listen_port) {
+        LOG(ERROR) << "Port " << FLAGS_listen_port << " is not a valid port";
+        return EXIT_FAILURE;
+      }
+    }
+
+    base::ScopedFD sock_fd;
+    if (!ListenForVshd(port, &sock_fd)) {
+      return EXIT_FAILURE;
+    }
+
+    client = VshClient::Create(std::move(sock_fd), FLAGS_user,
+                               FLAGS_target_container);
+
+    if (!client) {
       return EXIT_FAILURE;
     }
   } else {
-    if (!GetCid(FLAGS_vm_name, &cid))
+    if ((FLAGS_cid != 0 && !FLAGS_vm_name.empty()) ||
+        (FLAGS_cid == 0 && FLAGS_vm_name.empty())) {
+      LOG(ERROR) << "Exactly one of --cid or --vm_name is required";
       return EXIT_FAILURE;
+    }
+    unsigned int cid;
+    if (FLAGS_cid != 0) {
+      cid = FLAGS_cid;
+      if (static_cast<uint64_t>(cid) != FLAGS_cid) {
+        LOG(ERROR) << "Cid value (" << FLAGS_cid << ") is too large.  Largest "
+                   << "valid value is "
+                   << std::numeric_limits<unsigned int>::max();
+        return EXIT_FAILURE;
+      }
+    } else {
+      if (!GetCid(FLAGS_vm_name, &cid))
+        return EXIT_FAILURE;
+    }
+
+    base::ScopedFD sock_fd(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));
+    if (!sock_fd.is_valid()) {
+      PLOG(ERROR) << "Failed to open vsock socket";
+      return EXIT_FAILURE;
+    }
+
+    struct sockaddr_vm addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.svm_family = AF_VSOCK;
+    addr.svm_port = vm_tools::kVshPort;
+    addr.svm_cid = cid;
+
+    if (HANDLE_EINTR(connect(sock_fd.get(),
+                             reinterpret_cast<struct sockaddr*>(&addr),
+                             sizeof(addr)) < 0)) {
+      PLOG(ERROR) << "Failed to connect to vshd";
+      return EXIT_FAILURE;
+    }
+
+    client = VshClient::Create(std::move(sock_fd), FLAGS_user,
+                               FLAGS_target_container);
   }
-
-  brillo::BaseMessageLoop message_loop;
-  message_loop.SetAsCurrent();
-
-  auto client = VshClient::Create(cid, FLAGS_user);
 
   if (!client) {
     return EXIT_FAILURE;
