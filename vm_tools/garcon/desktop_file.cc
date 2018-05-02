@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 
 #include "vm_tools/garcon/desktop_file.h"
+#include "vm_tools/garcon/ini_parse_util.h"
 
 namespace {
 // Ridiculously large size for a desktop file.
@@ -52,115 +53,6 @@ constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
 constexpr char kDefaultDesktopFilesPath[] = "/usr/share";
 constexpr char kSettingsCategory[] = "Settings";
 constexpr char kPathEnvVar[] = "PATH";
-
-// Extracts name from "[Name]" formatted string, empty string returned if error.
-base::StringPiece ParseGroupName(base::StringPiece group_line) {
-  if (group_line.empty() || group_line.front() != '[' ||
-      group_line.back() != ']') {
-    return base::StringPiece();
-  }
-  return group_line.substr(1, group_line.size() - 2);
-}
-
-// Converts a boolean string value to primitive.
-bool ParseBool(const std::string& s) {
-  return s == "true";
-}
-
-// Gets the locale value out of a key name, which is in the format:
-// "key[locale]". Returns empty string if this had an invalid format.
-std::string ExtractKeyLocale(const std::string& key) {
-  if (key.back() != ']') {
-    return "";
-  }
-  size_t bracket_pos = key.find_first_of('[');
-  if (bracket_pos == std::string::npos) {
-    return "";
-  }
-  return key.substr(bracket_pos + 1, key.length() - bracket_pos - 2);
-}
-
-// Returns a std::pair of strings that is extracted from the passed in string.
-// This uses '=' as the delimiter between the key and value pair. Any whitespace
-// around the '=' is removed. If there is no delimiter, then the second item in
-// the pair will be empty.
-std::pair<std::string, std::string> ExtractKeyValuePair(
-    base::StringPiece entry_line) {
-  size_t equal_pos = entry_line.find_first_of('=');
-  if (equal_pos == std::string::npos) {
-    return std::make_pair(entry_line.as_string(), "");
-  }
-  base::StringPiece key = base::TrimWhitespaceASCII(
-      entry_line.substr(0, equal_pos), base::TRIM_TRAILING);
-  base::StringPiece value = base::TrimWhitespaceASCII(
-      entry_line.substr(equal_pos + 1), base::TRIM_LEADING);
-  return std::make_pair(key.as_string(), value.as_string());
-}
-
-// Converts all escaped chars in this string to their proper equivalent.
-std::string UnescapeString(const std::string& s) {
-  std::string retval;
-  bool is_escaped = false;
-  for (auto c : s) {
-    if (is_escaped) {
-      switch (c) {
-        case 's':
-          retval.push_back(' ');
-          break;
-        case 't':
-          retval.push_back('\t');
-          break;
-        case 'r':
-          retval.push_back('\r');
-          break;
-        case 'n':
-          retval.push_back('\n');
-          break;
-        default:
-          retval.push_back(c);
-          break;
-      }
-      is_escaped = false;
-      continue;
-    }
-    if (c == '\\') {
-      is_escaped = true;
-      continue;
-    }
-    retval.push_back(c);
-  }
-  return retval;
-}
-
-// Parses the passed in string into parts that are delimited by semicolon. This
-// also allows escaping of semicolons with the backslash character which is why
-// we can't use standard string splitting.
-void ParseMultiString(const std::string& s, std::vector<std::string>* out) {
-  CHECK(out);
-  std::string curr;
-  bool use_next = false;
-  for (auto c : s) {
-    if (use_next) {
-      use_next = false;
-      curr.push_back(c);
-      continue;
-    }
-    if (c == ';') {
-      out->emplace_back(UnescapeString(curr));
-      curr.clear();
-      continue;
-    }
-    if (c == '\\') {
-      // Leave the backslashes in there since we will be unescaping this string
-      // still.
-      use_next = true;
-    }
-    curr.push_back(c);
-  }
-  if (!curr.empty()) {
-    out->emplace_back(UnescapeString(curr));
-  }
-}
 
 }  // namespace
 

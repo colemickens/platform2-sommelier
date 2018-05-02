@@ -14,16 +14,20 @@ namespace vm_tools {
 namespace garcon {
 
 // Returns a valid file path for reading in an icon file with the specified
-// parameters. If |scale| is greater than 1 and it cannot find an icon at the
-// requested scale, it will search with a scale factor of 1 as well.
+// parameters. The |icon_size| and |scale| are preferences rather than strict
+// criteria.
 base::FilePath LocateIconFile(const std::string& desktop_file_id,
                               int icon_size,
                               int scale);
 
-// Returns a vector of directory paths that can be searched under for a
-// specific icon meeting the passed in criteria.
-std::vector<base::FilePath> GetPathsForIcons(int icon_size, int scale);
-
+// Returns a vector of directory paths under |icon_dir| that can be searched
+// under for an icon. The |icon_size| and |scale| parameters are preferences
+// rather than strict criteria. A directory that matches these criteria more
+// closely will precede another directory that matches these criteria less
+// closely in the return vector.
+std::vector<base::FilePath> GetPathsForIcons(const base::FilePath& icon_dir,
+                                             int icon_size,
+                                             int scale);
 }  // namespace garcon
 }  // namespace vm_tools
 

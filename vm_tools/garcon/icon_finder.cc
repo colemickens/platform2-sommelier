@@ -4,6 +4,7 @@
 
 #include "vm_tools/garcon/icon_finder.h"
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include "vm_tools/garcon/desktop_file.h"
+#include "vm_tools/garcon/icon_index_file.h"
 
 namespace vm_tools {
 namespace garcon {
@@ -21,33 +23,35 @@ constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
 constexpr char kXdgDataDirsDefault[] = "/usr/share/";
 constexpr char kDefaultPixmapsDir[] = "/usr/share/pixmaps/";
 
-}  // namespace
-
-std::vector<base::FilePath> GetPathsForIcons(int icon_size, int scale) {
-  // TODO(timzheng): Read the icon index.theme file and locate the icon file
-  // with the settings in it.
+// Returns a vector of directory paths under which an index.theme file is
+// located.
+std::vector<base::FilePath> GetPathsForIconIndexDirs() {
   std::vector<base::FilePath> retval;
-  std::string size_scale_dir;
-  if (scale == 1 || scale == 0) {
-    size_scale_dir = base::StringPrintf("%dx%d", icon_size, icon_size);
-  } else {
-    size_scale_dir =
-        base::StringPrintf("%dx%d@%d", icon_size, icon_size, scale);
-  }
   const char* xdg_data_dirs = getenv(kXdgDataDirsEnvVar);
   if (!xdg_data_dirs || strlen(xdg_data_dirs) == 0) {
     xdg_data_dirs = kXdgDataDirsDefault;
   }
-  std::vector<base::StringPiece> search_dirs = base::SplitStringPiece(
+  std::vector<base::StringPiece> dirs = base::SplitStringPiece(
       xdg_data_dirs, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& curr_dir : search_dirs) {
-    base::FilePath curr_path(curr_dir);
-    retval.emplace_back(curr_path.Append("icons")
-                            .Append("hicolor")
-                            .Append(size_scale_dir)
-                            .Append("apps"));
-  }
+  std::transform(dirs.begin(), dirs.end(), std::back_inserter(retval),
+                 [](const base::StringPiece& dir) {
+                   return base::FilePath(dir).Append("icons").Append("hicolor");
+                 });
   return retval;
+}
+
+}  // namespace
+
+std::vector<base::FilePath> GetPathsForIcons(const base::FilePath& icon_dir,
+                                             int icon_size,
+                                             int scale) {
+  std::unique_ptr<IconIndexFile> icon_index_file =
+      IconIndexFile::ParseIconIndexFile(icon_dir);
+  if (icon_index_file) {
+    return icon_index_file->GetPathsForSizeAndScale(icon_size, scale);
+  } else {
+    return {};
+  }
 }
 
 base::FilePath LocateIconFile(const std::string& desktop_file_id,
@@ -73,20 +77,15 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
     if (desktop_file_icon_filepath.Extension() == ".png") {
       return desktop_file_icon_filepath;
     } else {
-      LOG(INFO) << desktop_file_id << " icon file is not png file";
+      LOG(INFO) << desktop_file_id << " icon file is not a png file";
+      return base::FilePath();
     }
   }
   std::string icon_filename =
       desktop_file_icon_filepath.AddExtension("png").value();
-  for (const base::FilePath& curr_path : GetPathsForIcons(icon_size, scale)) {
-    base::FilePath test_path = curr_path.Append(icon_filename);
-    if (base::PathExists(test_path))
-      return test_path;
-  }
-  // If a scale factor is set and we couldn't find the icon, then remove the
-  // scale factor and check again.
-  if (scale > 1) {
-    for (const base::FilePath& curr_path : GetPathsForIcons(icon_size, 1)) {
+  for (const base::FilePath& icon_dir : GetPathsForIconIndexDirs()) {
+    for (const base::FilePath& curr_path :
+         GetPathsForIcons(icon_dir, icon_size, scale)) {
       base::FilePath test_path = curr_path.Append(icon_filename);
       if (base::PathExists(test_path))
         return test_path;

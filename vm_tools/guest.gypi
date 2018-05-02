@@ -28,6 +28,8 @@
         'garcon/desktop_file.cc',
         'garcon/host_notifier.cc',
         'garcon/icon_finder.cc',
+        'garcon/icon_index_file.cc',
+        'garcon/ini_parse_util.cc',
         'garcon/service_impl.cc',
       ],
     },
@@ -142,6 +144,18 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'garcon/desktop_file_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'garcon_icon_index_file_test',
+          'type': 'executable',
+          'dependencies': [
+            'libgarcon',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'garcon/icon_index_file_unittest.cc',
           ],
         },
       ],
