@@ -459,5 +459,27 @@
         },
       ],
     }],
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer',
+          'type': 'executable',
+          'dependencies': [
+            'libcrosplatform',
+          ],
+          'variables': {
+            'deps': [
+              'libbrillo-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
+              'openssl',
+            ],
+          },
+          'includes': ['../common-mk/common_fuzzer.gypi'],
+          'sources': [
+            'fuzzers/cryptolib_rsa_oaep_decrypt_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
