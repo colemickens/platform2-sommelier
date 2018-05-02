@@ -5354,4 +5354,83 @@ TEST_F(ManagerTest, FilterPrependDNSServersByFamily) {
   }
 }
 
+TEST_F(ManagerTest, SetAlwaysOnVpnPackage) {
+  const string kPackage = "com.example.test.vpn";
+  EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));
+
+  // If the package is not changed, return false
+  EXPECT_EQ(false, manager()->SetAlwaysOnVpnPackage("", nullptr));
+  EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));
+
+  // If the package is not changed, return true
+  EXPECT_EQ(true, manager()->SetAlwaysOnVpnPackage(kPackage, nullptr));
+  EXPECT_EQ(kPackage, manager()->GetAlwaysOnVpnPackage(nullptr));
+
+  EXPECT_EQ(false, manager()->SetAlwaysOnVpnPackage(kPackage, nullptr));
+  EXPECT_EQ(kPackage, manager()->GetAlwaysOnVpnPackage(nullptr));
+
+  EXPECT_EQ(true, manager()->SetAlwaysOnVpnPackage("", nullptr));
+  EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));
+}
+
+TEST_F(ManagerTest, ShouldBlackholeBrowserTraffic) {
+  const string kRegistered = mock_devices_[0]->UniqueName();
+  const string kUnregistered = mock_devices_[1]->UniqueName();
+
+  manager()->RegisterDevice(mock_devices_[0]);
+
+  const string kOnlinePackage = "com.example.test.vpn1";
+  const string kOfflinePackage = "com.example.test.vpn2";
+  const string kOtherPackage = "com.example.test.vpn3";
+
+  MockServiceRefPtr online_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr offline_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*online_service.get(), IsOnline()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*online_service.get(), IsAlwaysOnVpn(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*online_service.get(), IsAlwaysOnVpn(kOnlinePackage))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*offline_service.get(), IsOnline()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*offline_service.get(), IsAlwaysOnVpn(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*offline_service.get(), IsAlwaysOnVpn(kOfflinePackage))
+      .WillRepeatedly(Return(true));
+  manager()->RegisterService(online_service);
+  manager()->RegisterService(offline_service);
+
+  // No package set: no blackholing
+  EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kRegistered));
+  EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
+
+  // Package set, service is not online yet, blackhole all registered devices
+  manager()->SetAlwaysOnVpnPackage(kOnlinePackage, nullptr);
+  EXPECT_EQ(true, manager()->ShouldBlackholeBrowserTraffic(kRegistered));
+  EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
+
+  // Service comes online, stop blackholing
+  EXPECT_CALL(*online_service.get(), IsOnline()).WillRepeatedly(Return(true));
+  manager()->UpdateBlackholeBrowserTraffic();
+  EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kRegistered));
+  EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
+
+  // Set to a different package whose service is offline, resume blackholing
+  manager()->SetAlwaysOnVpnPackage(kOfflinePackage, nullptr);
+  EXPECT_EQ(true, manager()->ShouldBlackholeBrowserTraffic(kRegistered));
+  EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
+
+  // Set to a different package which has no service, keep blackholing
+  manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
+  EXPECT_EQ(true, manager()->ShouldBlackholeBrowserTraffic(kRegistered));
+  EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
+}
+
 }  // namespace shill

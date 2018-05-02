@@ -201,10 +201,14 @@ Manager::Manager(ControlInterface* control_interface,
       dhcp_properties_(new DhcpProperties()),
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
-      upload_rate_kbits_(0) {
+      upload_rate_kbits_(0),
+      should_blackhole_browser_traffic_(false) {
   HelpRegisterDerivedString(kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             nullptr);
+  HelpRegisterDerivedString(kAlwaysOnVpnPackageProperty,
+                            &Manager::GetAlwaysOnVpnPackage,
+                            &Manager::SetAlwaysOnVpnPackage);
   store_.RegisterBool(kArpGatewayProperty, &props_.arp_gateway);
   HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);
@@ -1969,6 +1973,7 @@ void Manager::SortServicesTask() {
                                ConnectedTechnologies(&error));
   adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
                               DefaultTechnology(&error));
+  UpdateBlackholeBrowserTraffic();
   UpdateDefaultServices(new_logical, new_physical);
   RefreshConnectionState();
   DetectMultiHomedDevices();
@@ -2777,6 +2782,33 @@ std::vector<std::string> Manager::GetDeviceInterfaceNames() {
   return interfaces;
 }
 
+bool Manager::ShouldBlackholeBrowserTraffic(const std::string& device_name)
+    const {
+  if (!should_blackhole_browser_traffic_) {
+    return false;
+  }
+  for (const auto& device : devices_) {
+    if (device->UniqueName() == device_name)
+      return true;
+  }
+  return false;
+}
+
+void Manager::UpdateBlackholeBrowserTraffic() {
+  if (props_.always_on_vpn_package.empty()) {
+    should_blackhole_browser_traffic_ = false;
+  } else {
+    should_blackhole_browser_traffic_ = true;
+    for (const auto& service : services_) {
+      if (service->IsOnline() &&
+          service->IsAlwaysOnVpn(props_.always_on_vpn_package)) {
+        should_blackhole_browser_traffic_ = false;
+        break;
+      }
+    }
+  }
+}
+
 void Manager::ComputeBrowserTrafficUids() {
   for (const auto& username : kBrowserTrafficUsernames) {
     struct passwd* entry = getpwnam(username);  // NOLINT(runtime/threadsafe_fn)
@@ -2787,6 +2819,19 @@ void Manager::ComputeBrowserTrafficUids() {
           static_cast<uint32_t>(entry->pw_uid));
     }
   }
+}
+
+string Manager::GetAlwaysOnVpnPackage(Error* /*error*/) {
+  return props_.always_on_vpn_package;
+}
+
+bool Manager::SetAlwaysOnVpnPackage(const string& package_name,
+                                    Error* error) {
+  if (props_.always_on_vpn_package == package_name)
+    return false;
+  props_.always_on_vpn_package = package_name;
+  UpdateBlackholeBrowserTraffic();
+  return true;
 }
 
 bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,

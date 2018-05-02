@@ -109,6 +109,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     int minimum_mtu;
     // Whether to run third party VPN client programs in a minijail.
     bool jail_vpn_clients;
+    // Name of Android VPN package that should be enforced for browser traffic.
+    // Empty string if the lockdown feature is not enabled.
+    std::string always_on_vpn_package;
   };
 
   Manager(ControlInterface* control_interface,
@@ -560,6 +563,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // on the system e.g. eth0, wlan0.
   virtual std::vector<std::string> GetDeviceInterfaceNames();
 
+  bool ShouldBlackholeBrowserTraffic(const std::string& device_name) const;
+
   const std::vector<uint32_t>& browser_traffic_uids() const {
     return browser_traffic_uids_;
   }
@@ -622,6 +627,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ReleaseDevice);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
+  FRIEND_TEST(ManagerTest, SetAlwaysOnVpnPackage);
+  FRIEND_TEST(ManagerTest, ShouldBlackholeBrowserTraffic);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
@@ -651,6 +658,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::string GetCheckPortalList(Error* error);
   std::string GetIgnoredDNSSearchPaths(Error* error);
   ServiceRefPtr GetServiceInner(const KeyValueStore& args, Error* error);
+  bool SetAlwaysOnVpnPackage(const std::string& package_name, Error* error);
   bool SetCheckPortalList(const std::string& portal_list, Error* error);
   bool SetIgnoredDNSSearchPaths(const std::string& ignored_paths, Error* error);
   void EmitDefaultService();
@@ -779,6 +787,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   DeviceRefPtr GetDeviceConnectedToService(ServiceRefPtr service);
 
   void DeregisterDeviceByLinkName(const std::string& link_name);
+
+  std::string GetAlwaysOnVpnPackage(Error* error);
+
+  void UpdateBlackholeBrowserTraffic();
 
   void ComputeBrowserTrafficUids();
 
@@ -940,6 +952,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // debugd users, which includes everything going through chrome and nacl
   // application, but not e.g. Android apps or system processes like the
   // update engine.
+  bool should_blackhole_browser_traffic_;
   std::vector<uint32_t> browser_traffic_uids_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
