@@ -49,7 +49,7 @@ const char* GetLidAction(LidState state) {
     case LidState::NOT_PRESENT:
       return kLidNotPresentAction;
   }
-  NOTREACHED() << "Invalid lid state " << state;
+  NOTREACHED() << "Invalid lid state " << static_cast<int>(state);
   return "lid-invalid";
 }
 
@@ -62,7 +62,7 @@ const char* GetTabletModeAction(TabletMode mode) {
     case TabletMode::UNSUPPORTED:
       return kTabletModeUnsupportedAction;
   }
-  NOTREACHED() << "Invalid tablet mode " << mode;
+  NOTREACHED() << "Invalid tablet mode " << static_cast<int>(mode);
   return "tablet-mode-invalid";
 }
 
@@ -75,7 +75,7 @@ const char* GetPowerButtonAction(ButtonState state) {
     case ButtonState::REPEAT:
       return kPowerButtonRepeatAction;
   }
-  NOTREACHED() << "Invalid power button state " << state;
+  NOTREACHED() << "Invalid power button state " << static_cast<int>(state);
   return "power-invalid";
 }
 

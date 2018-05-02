@@ -53,7 +53,7 @@ const char* GetTabletModeAction(TabletMode mode) {
     case TabletMode::UNSUPPORTED:
       return kTabletUnsupported;
   }
-  NOTREACHED() << "Invalid tablet mode " << mode;
+  NOTREACHED() << "Invalid tablet mode " << static_cast<int>(mode);
   return "tablet_invalid";
 }
 
@@ -66,7 +66,7 @@ const char* GetPowerButtonAction(ButtonState state) {
     case ButtonState::REPEAT:
       return kPowerButtonRepeat;
   }
-  NOTREACHED() << "Invalid power button state " << state;
+  NOTREACHED() << "Invalid power button state " << static_cast<int>(state);
   return "power_invalid";
 }
 

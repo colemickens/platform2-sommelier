@@ -512,7 +512,7 @@ std::string StateController::ActionToString(Action action) {
     case Action::DO_NOTHING:
       return "no-op";
   }
-  NOTREACHED() << "Unhandled action " << action;
+  NOTREACHED() << "Unhandled action " << static_cast<int>(action);
   return base::StringPrintf("unknown (%d)", static_cast<int>(action));
 }
 
@@ -529,7 +529,7 @@ StateController::Action StateController::ProtoActionToAction(
     case PowerManagementPolicy_Action_DO_NOTHING:
       return Action::DO_NOTHING;
     default:
-      NOTREACHED() << "Unhandled action " << proto_action;
+      NOTREACHED() << "Unhandled action " << static_cast<int>(proto_action);
       return Action::DO_NOTHING;
   }
 }
@@ -905,7 +905,7 @@ void StateController::PerformAction(Action action, ActionReason reason) {
     case Action::DO_NOTHING:
       break;
     default:
-      NOTREACHED() << "Unhandled action " << action;
+      NOTREACHED() << "Unhandled action " << static_cast<int>(action);
   }
 }
 

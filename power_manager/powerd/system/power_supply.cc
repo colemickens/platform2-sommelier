@@ -1071,7 +1071,8 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
     case PowerSupplyProperties_BatteryState_FULL:
       break;
     default:
-      NOTREACHED() << "Unhandled battery state " << status->battery_state;
+      NOTREACHED() << "Unhandled battery state "
+                   << static_cast<int>(status->battery_state);
   }
 
   return true;

@@ -107,7 +107,7 @@ std::string PowerSourceToString(PowerSource source) {
     case PowerSource::BATTERY:
       return "battery";
   }
-  NOTREACHED() << "Unhandled power source " << source;
+  NOTREACHED() << "Unhandled power source " << static_cast<int>(source);
   return base::StringPrintf("unknown (%d)", static_cast<int>(source));
 }
 
@@ -120,7 +120,7 @@ std::string LidStateToString(LidState state) {
     case LidState::NOT_PRESENT:
       return "not present";
   }
-  NOTREACHED() << "Unhandled lid state " << state;
+  NOTREACHED() << "Unhandled lid state " << static_cast<int>(state);
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
@@ -133,7 +133,7 @@ std::string TabletModeToString(TabletMode mode) {
     case TabletMode::UNSUPPORTED:
       return "unsupported";
   }
-  NOTREACHED() << "Unhandled tablet mode " << mode;
+  NOTREACHED() << "Unhandled tablet mode " << static_cast<int>(mode);
   return base::StringPrintf("unknown (%d)", static_cast<int>(mode));
 }
 
@@ -144,7 +144,7 @@ std::string SessionStateToString(SessionState state) {
     case SessionState::STARTED:
       return "started";
   }
-  NOTREACHED() << "Unhandled session state " << state;
+  NOTREACHED() << "Unhandled session state " << static_cast<int>(state);
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
@@ -157,7 +157,7 @@ std::string UpdaterStateToString(UpdaterState state) {
     case UpdaterState::UPDATED:
       return "updated";
   }
-  NOTREACHED() << "Unhandled updater state " << state;
+  NOTREACHED() << "Unhandled updater state " << static_cast<int>(state);
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
@@ -168,7 +168,7 @@ std::string DisplayModeToString(DisplayMode mode) {
     case DisplayMode::PRESENTATION:
       return "presentation";
   }
-  NOTREACHED() << "Unhandled display mode " << mode;
+  NOTREACHED() << "Unhandled display mode " << static_cast<int>(mode);
   return base::StringPrintf("unknown (%d)", static_cast<int>(mode));
 }
 
@@ -181,7 +181,7 @@ std::string ButtonStateToString(ButtonState state) {
     case ButtonState::REPEAT:
       return "repeat";
   }
-  NOTREACHED() << "Unhandled button state " << state;
+  NOTREACHED() << "Unhandled button state " << static_cast<int>(state);
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
@@ -207,7 +207,7 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
     case ShutdownReason::OTHER_REQUEST_TO_POWERD:
       return "other-request-to-powerd";
   }
-  NOTREACHED() << "Unhandled shutdown reason " << reason;
+  NOTREACHED() << "Unhandled shutdown reason " << static_cast<int>(reason);
   return "unknown";
 }
 

@@ -44,7 +44,7 @@ base::TimeDelta GetTransitionDuration(
     case BacklightController::Transition::SLOW:
       return base::TimeDelta::FromMilliseconds(kSlowBacklightTransitionMs);
   }
-  NOTREACHED() << "Unhandled transition style " << transition;
+  NOTREACHED() << "Unhandled transition style " << static_cast<int>(transition);
   return base::TimeDelta();
 }
 
