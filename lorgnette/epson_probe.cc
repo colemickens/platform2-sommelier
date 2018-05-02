@@ -165,7 +165,7 @@ static void SendProbeAndListen(uint16_t probe_socket,
       char* ip_address_string = inet_ntoa(remote.sin_addr);
       std::string device_name =
           std::string(kEpsonDeviceNamePrefix) + ip_address_string;
-      if (!ContainsKey(*scanner_list, device_name)) {
+      if (!base::ContainsKey(*scanner_list, device_name)) {
         // We don't use anything from the response; neither does sane-backends.
         std::map<std::string, std::string> scanner_info;
         scanner_info[kScannerPropertyManufacturer] = kScannerManufacturerEpson;

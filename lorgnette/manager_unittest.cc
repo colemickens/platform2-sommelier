@@ -330,13 +330,13 @@ TEST_F(ManagerTest, ScannerInfoFromString) {
       kDevice1, kManufacturer1, kModel1, kType1));
   Manager::ScannerInfo scan_info = ScannerInfoFromString(kInputString);
   EXPECT_EQ(2, scan_info.size());
-  EXPECT_TRUE(ContainsKey(scan_info, kDevice0));
+  EXPECT_TRUE(base::ContainsKey(scan_info, kDevice0));
   EXPECT_EQ(3, scan_info[kDevice0].size());
   EXPECT_STREQ(kManufacturer0, scan_info[kDevice0]["Manufacturer"].c_str());
   EXPECT_STREQ(kModel0, scan_info[kDevice0]["Model"].c_str());
   EXPECT_STREQ(kType0, scan_info[kDevice0]["Type"].c_str());
 
-  EXPECT_TRUE(ContainsKey(scan_info, kDevice1));
+  EXPECT_TRUE(base::ContainsKey(scan_info, kDevice1));
   EXPECT_EQ(3, scan_info[kDevice1].size());
   EXPECT_STREQ(kManufacturer1, scan_info[kDevice1]["Manufacturer"].c_str());
   EXPECT_STREQ(kModel1, scan_info[kDevice1]["Model"].c_str());
