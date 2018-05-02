@@ -271,6 +271,7 @@ bool L2tpManager::Start() {
   l2tpd_->AddStringOption("-c", l2tpd_config_path.value());
   l2tpd_->AddStringOption("-C", l2tpd_control_path_.value());
   l2tpd_->AddArg("-D");
+  l2tpd_->AddStringOption("-p", "/run/l2tpipsec_vpn/xl2tpd.pid");
   l2tpd_->RedirectUsingPipe(STDERR_FILENO, false);
   l2tpd_->Start();
   output_fd_ = l2tpd_->GetPipe(STDERR_FILENO);

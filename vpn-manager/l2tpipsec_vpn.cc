@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
   // by non-root users. This will allow items like CA certificates to be
   // visible by the l2tpipsec process even after it has dropped privileges.
   for (auto path : {run_path, persistent_path}) {
-    if (!base::CreateDirectory(path)) {
+    if (!base::DirectoryExists(path) && !base::CreateDirectory(path)) {
       PLOG(ERROR) << "Unable to create directory " << path.value();
       return vpn_manager::kServiceErrorInternal;
     }

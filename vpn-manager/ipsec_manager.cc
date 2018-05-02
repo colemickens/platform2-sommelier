@@ -41,13 +41,11 @@ const char kIpsecCaCertsName[] = "cacert.der";
 const char kIpsecStarterConfName[] = "ipsec.conf";
 const char kIpsecSecretsName[] = "ipsec.secrets";
 const char kIpsecGroupName[] = "ipsec";
-const char kIpsecRunPath[] = "/run/ipsec";
 const char kIpsecUpFile[] = "/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
-const char kStarterPidFile[] = "/run/starter.pid";
+const char kStarterPidFile[] = "/run/ipsec/starter.pid";
 const char kStrongswanConfName[] = "strongswan.conf";
-const char kCharonPidFile[] = "/run/charon.pid";
-const mode_t kIpsecRunPathMode = S_IRWXU | S_IRWXG;
+const char kCharonPidFile[] = "/run/ipsec/charon.pid";
 const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
 const char kSmartcardModuleName[] = "crypto_module";
@@ -78,7 +76,6 @@ IpsecManager::IpsecManager(const std::string& esp,
       ike_version_(0),
       ipsec_group_(0),
       persistent_path_(persistent_path),
-      ipsec_run_path_(kIpsecRunPath),
       ipsec_up_file_(kIpsecUpFile),
       starter_daemon_(new Daemon(kStarterPidFile)),
       charon_daemon_(new Daemon(kCharonPidFile)) {}
@@ -428,8 +425,10 @@ std::string IpsecManager::FormatStarterConfigFile() {
   return config;
 }
 
+// Even without root privs or CAP_CHOWN, we can still chgrp() to a group that
+// the 'shill' user is a member of -- in this case the 'ipsec' group.
 bool IpsecManager::SetIpsecGroup(const FilePath& file_path) {
-  return chown(file_path.value().c_str(), getuid(), ipsec_group_) == 0;
+  return chown(file_path.value().c_str(), -1, ipsec_group_) == 0;
 }
 
 bool IpsecManager::WriteConfigFile(const std::string& output_name,
@@ -440,6 +439,9 @@ bool IpsecManager::WriteConfigFile(const std::string& output_name,
     LOG(ERROR) << "Unable to remove existing file " << temp_file.value();
     return false;
   }
+  // Dir in temp_path must be accessible to both 'shill' and 'ipsec' users
+  // so this code (running as 'shill') can create config files which can be
+  // accessed by user/group 'ipsec'.
   if (!base::WriteFile(temp_file, contents.c_str(), contents.length()) ||
       !SetIpsecGroup(temp_file)) {
     LOG(ERROR) << "Unable to write " << output_name << " file "
@@ -501,16 +503,6 @@ bool IpsecManager::WriteConfigFiles() {
   return true;
 }
 
-bool IpsecManager::CreateIpsecRunDirectory() {
-  if (!base::CreateDirectory(FilePath(ipsec_run_path_)) ||
-      !SetIpsecGroup(FilePath(ipsec_run_path_)) ||
-      chmod(ipsec_run_path_.c_str(), kIpsecRunPathMode) != 0) {
-    LOG(ERROR) << "Unable to create " << ipsec_run_path_;
-    return false;
-  }
-  return true;
-}
-
 bool IpsecManager::Start() {
   if (!ipsec_group_) {
     struct group group_buffer;
@@ -526,7 +518,7 @@ bool IpsecManager::Start() {
     ipsec_group_ = group_result->gr_gid;
     DLOG(INFO) << "Using ipsec group " << ipsec_group_;
   }
-  if (!WriteConfigFiles() || !CreateIpsecRunDirectory() || !StartStarter()) {
+  if (!WriteConfigFiles() || !StartStarter()) {
     RegisterError(kServiceErrorInternal);
     return false;
   }

@@ -171,6 +171,8 @@ TEST_F(L2tpManagerTest, Start) {
   EXPECT_CALL(*l2tpd_, AddArg("-C"));
   EXPECT_CALL(*l2tpd_, AddArg(test_path_.value() + "/l2tpd.control"));
   EXPECT_CALL(*l2tpd_, AddArg("-D"));
+  EXPECT_CALL(*l2tpd_, AddArg("-p"));
+  EXPECT_CALL(*l2tpd_, AddArg("/run/l2tpipsec_vpn/xl2tpd.pid"));
   EXPECT_CALL(*l2tpd_, RedirectUsingPipe(STDERR_FILENO, false));
   EXPECT_CALL(*l2tpd_, Start());
   EXPECT_CALL(*l2tpd_, GetPipe(STDERR_FILENO)).WillOnce(Return(kMockFd));

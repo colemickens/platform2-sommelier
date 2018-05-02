@@ -58,6 +58,9 @@ class IpsecManagerTest : public ::testing::Test {
     client_cert_tpm_id_ = "0a";
     tpm_user_pin_ = "123456";
     ipsec_run_path_ = test_path_.Append("run").value();
+    // Ipsec runtime data dir is created in shill init script, so just create
+    // it here as well for the purposes of this test.
+    base::CreateDirectory(FilePath(ipsec_run_path_));
     ipsec_up_file_ = FilePath(ipsec_run_path_).Append("up").value();
     WriteFile(psk_file_, "secret");
     WriteFile(
@@ -84,7 +87,6 @@ class IpsecManagerTest : public ::testing::Test {
     ipsec_->starter_daemon_.reset(starter_daemon_);  // Passes ownership.
     ipsec_->charon_daemon_.reset(charon_daemon_);    // Passes ownership.
     ipsec_->ipsec_group_ = getgid();
-    ipsec_->ipsec_run_path_ = ipsec_run_path_;
     ipsec_->ipsec_up_file_ = ipsec_up_file_;
     ipsec_->force_local_address_ = "5.6.7.8";
   }
@@ -191,13 +193,6 @@ TEST_F(IpsecManagerTest, InitializeIkev2WithCertificates) {
   EXPECT_TRUE(FindLog("Only IKE version 1 is supported with certificates"));
 }
 
-TEST_F(IpsecManagerTest, CreateIpsecRunDirectory) {
-  EXPECT_TRUE(ipsec_->CreateIpsecRunDirectory());
-  struct stat stat_buffer;
-  ASSERT_EQ(0, stat(ipsec_run_path_.c_str(), &stat_buffer));
-  EXPECT_EQ(0, stat_buffer.st_mode & (S_IWOTH | S_IXOTH | S_IROTH));
-}
-
 TEST_F(IpsecManagerTest, PollWaitIfNotUpYet) {
   ipsec_->start_ticks_ = base::TimeTicks::Now();
   EXPECT_EQ(1000, ipsec_->Poll());
@@ -224,7 +219,6 @@ TEST_F(IpsecManagerTest, PollTimeoutWaiting) {
 
 TEST_F(IpsecManagerTest, PollTransitionToUp) {
   ipsec_->start_ticks_ = base::TimeTicks::Now();
-  EXPECT_TRUE(ipsec_->CreateIpsecRunDirectory());
   EXPECT_TRUE(base::PathExists(FilePath(ipsec_run_path_)));
   WriteFile(ipsec_up_file_, "");
   EXPECT_FALSE(ipsec_->is_running());

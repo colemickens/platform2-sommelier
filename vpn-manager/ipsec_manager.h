@@ -125,9 +125,6 @@ class IpsecManager : public ServiceManager {
   // Writeable directory that the root filesystem has symbolic links to for
   // all VPN configuration files we care about.
   base::FilePath persistent_path_;
-  // Directory containing run files for ipsec that we create with
-  // permissions locked to ipsec group.
-  std::string ipsec_run_path_;
   // File whose existence signifies ipsec is now up.
   std::string ipsec_up_file_;
   // String with which to prefix ipsec output log lines.
