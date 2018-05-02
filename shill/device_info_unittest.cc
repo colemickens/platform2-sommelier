@@ -49,6 +49,7 @@
 #include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/rtnl_message.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/wimax/mock_wimax_provider.h"
 #include "shill/wimax/wimax.h"
@@ -80,7 +81,7 @@ using testing::Test;
 
 namespace shill {
 
-class TestEventDispatcherForDeviceInfo : public EventDispatcher {
+class TestEventDispatcherForDeviceInfo : public EventDispatcherForTest {
  public:
   virtual IOHandler* CreateInputHandler(
       int /*fd*/,
