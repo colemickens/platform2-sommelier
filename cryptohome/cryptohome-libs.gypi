@@ -121,6 +121,28 @@
       ],
       'includes': ['../common-mk/dbus_glib.gypi'],
     },
+    {
+      'target_name': 'cryptohome-key-delegate-dbus-client',
+      'type': 'none',
+      'variables': {
+        'dbus_glib_type': 'client',
+        'dbus_glib_out_dir': 'include/bindings',
+        'dbus_glib_prefix': 'cryptohome',
+        'dbus_glib_header_stem': 'cryptohome_key_delegate',
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            'dbus-glib-1',
+            'glib-2.0',
+          ],
+        },
+      },
+      'sources': [
+        'dbus_bindings/org.chromium.CryptohomeKeyDelegateInterface.xml',
+      ],
+      'includes': ['../common-mk/dbus_glib.gypi'],
+    },
 
     # Common objects.
     {

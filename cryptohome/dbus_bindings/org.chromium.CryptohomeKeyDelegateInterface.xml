@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2018 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/">
+  <!-- Interface for a delegate service to be used by cryptohome for operations
+       related to user protection keys.
+  -->
+  <interface name="org.chromium.CryptohomeKeyDelegateInterface">
+    <!-- Called by cryptohome when it needs to request a challenge in order to
+         authenticate the user using a key that has the
+         KEY_TYPE_CHALLENGE_RESPONSE type.
+         account_id: binary serialized AccountIdentifier
+         challenge_request: binary serialized KeyChallengeRequest
+         challenge_response: binary serialized KeyChallengeResponse
+    -->
+    <method name="ChallengeKey">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="challenge_request" direction="in" />
+      <arg type="ay" name="challenge_response" direction="out" />
+    </method>
+  </interface>
+</node>
