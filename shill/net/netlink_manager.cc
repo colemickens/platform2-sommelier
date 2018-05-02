@@ -575,7 +575,7 @@ bool NetlinkManager::SendMessageInternal(
     dump_pending_ = true;
     pending_dump_timeout_callback_.Reset(Bind(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
-    MessageLoop::current()->PostDelayedTask(
+    MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
         base::TimeDelta::FromMilliseconds(kPendingDumpTimeoutMilliseconds));
   }
@@ -847,7 +847,7 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
   resend_dump_message_callback_.Reset(
       Bind(&NetlinkManager::ResendPendingDumpMessage,
            weak_ptr_factory_.GetWeakPtr()));
-  MessageLoop::current()->PostDelayedTask(
+  MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
       base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));
 }

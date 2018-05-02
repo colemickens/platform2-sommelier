@@ -237,7 +237,7 @@ class ManagerTest : public PropertyStoreTest {
                                     const string& service_name) {
     std::unique_ptr<StoreInterface> store =
         CreateStore(Profile::GetFinalStoragePath(
-            temp_dir->path(),
+            temp_dir->GetPath(),
             Profile::Identifier(user_identifier, profile_identifier)));
     return store->Open() &&
         store->SetString(service_name, "rather", "irrelevant") &&
