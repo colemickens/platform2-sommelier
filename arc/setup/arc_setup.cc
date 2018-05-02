@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
@@ -234,6 +235,19 @@ std::vector<base::FilePath> PrependPath(It first,
                    return path_to_prepend.Append(path);
                  });
   return result;
+}
+
+bool MaybeLogUnexpectedMountInfoLine(const std::string& mount_path,
+                                     const std::string& line) {
+  LOG_IF(ERROR, line.find(mount_path) != std::string::npos)
+      << "Unexpected mount info: " << line;
+  // To record all found lines, always return false.
+  return false;
+}
+
+void MaybeLogUnexpectedMountInfo(const std::string& mount_path) {
+  FindLine(base::FilePath("/proc/self/mountinfo"),
+           base::Bind(&MaybeLogUnexpectedMountInfoLine, mount_path));
 }
 
 }  // namespace
@@ -570,6 +584,9 @@ void ArcSetup::SetUpDalvikCacheInternal(
           .Append(isa_relative);
   LOG(INFO) << "Setting up " << dest_directory.value();
   EXIT_IF(!base::PathExists(dest_directory));
+  // TODO(crbug.com/834479): Remove this after the cause of the bug is
+  // identified.
+  MaybeLogUnexpectedMountInfo(Realpath(dest_directory).value());
 
   base::FilePath src_directory = dalvik_cache_directory.Append(isa_relative);
   EXIT_IF(!arc_mounter_->BindMount(src_directory, dest_directory));
@@ -595,12 +612,14 @@ void ArcSetup::SetUpDalvikCache() {
 void ArcSetup::CleanUpDalvikCache() {
   const base::FilePath dalvik_cache_directory =
       arc_paths_->android_mutable_source.Append("data/dalvik-cache");
-  IGNORE_ERRORS(
-      arc_mounter_->UmountLazily(dalvik_cache_directory.Append("arm")));
-  IGNORE_ERRORS(
-      arc_mounter_->UmountLazily(dalvik_cache_directory.Append("x86")));
-  IGNORE_ERRORS(
-      arc_mounter_->UmountLazily(dalvik_cache_directory.Append("x86_64")));
+  for (const auto* isa : {"arm", "x86", "x86_64"}) {
+    const base::FilePath mount_path = dalvik_cache_directory.Append(isa);
+    LOG(INFO) << "Unmounting: " << mount_path.value();
+    IGNORE_ERRORS(arc_mounter_->UmountLazily(mount_path));
+    // TODO(crbug.com/834479): Remove this after the cause of the bug is
+    // identified.
+    MaybeLogUnexpectedMountInfo(mount_path.value());
+  }
 }
 
 void ArcSetup::CreateContainerFilesAndDirectories() {
