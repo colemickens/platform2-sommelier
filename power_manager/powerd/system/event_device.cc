@@ -147,7 +147,8 @@ bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
 }
 
 void EventDevice::WatchForEvents(base::Closure new_events_cb) {
-  fd_watcher_.reset(new base::MessageLoopForIO::FileDescriptorWatcher);
+  fd_watcher_ = std::make_unique<base::MessageLoopForIO::FileDescriptorWatcher>(
+      FROM_HERE);
   new_events_cb_ = new_events_cb;
   if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
           fd_, true, base::MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
