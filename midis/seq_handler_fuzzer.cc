@@ -7,8 +7,14 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/logging.h>
 
 #include "midis/device.h"
+
+namespace {
+
+const int kFakeOutputPort = 0;
+}
 
 namespace midis {
 
@@ -53,6 +59,23 @@ class SeqHandlerFuzzer {
     seq_handler_->decoder_ = midis::SeqHandler::CreateMidiEvent(0);
   }
 
+  bool SetUpOutputPort() {
+    snd_seq_t* tmp_seq = nullptr;
+
+    int err = snd_seq_open(&tmp_seq, "hw", SND_SEQ_OPEN_OUTPUT, 0);
+    if (err != 0) {
+      LOG(ERROR) << "snd_seq_open fails: " << snd_strerror(err);
+      return false;
+    }
+
+    SeqHandler::ScopedSeqPtr out_client(tmp_seq);
+    tmp_seq = nullptr;
+    seq_handler_->out_client_ = std::move(out_client);
+    seq_handler_->out_client_id_ =
+        snd_seq_client_id(seq_handler_->out_client_.get());
+    return true;
+  }
+
   // Send arbitrary data to ProcessMidiEvent() and see what happens.
   void ProcessMidiEvent(const uint8_t* data, size_t size) {
     snd_seq_event_t event;
@@ -64,16 +87,34 @@ class SeqHandlerFuzzer {
     seq_handler_->ProcessMidiEvent(&event);
   }
 
+  void SendMidiData(const uint8_t* data, size_t size) {
+    // We don't have a real output port, so we just supply a value.
+    // This ALSA seq interface should fail gracefully.
+    seq_handler_->SendMidiData(kFakeOutputPort, data, size);
+  }
+
  private:
   std::unique_ptr<SeqHandler> seq_handler_;
   FakeCallbacks callbacks_;
 };
+
+struct Environment {
+  Environment() {
+    logging::SetMinLogLevel(logging::LOG_ERROR);
+  }
+};
+
+Environment* env = new Environment();
 
 }  // namespace midis
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   midis::SeqHandlerFuzzer fuzzer;
   fuzzer.SetUpSeqHandler();
+  if (!fuzzer.SetUpOutputPort()) {
+    abort();
+  }
   fuzzer.ProcessMidiEvent(data, size);
+  fuzzer.SendMidiData(data, size);
   return 0;
 }

@@ -11,7 +11,6 @@
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
 
-#include "media/midi/message_util.h"
 #include "midis/constants.h"
 
 namespace midis {
@@ -81,12 +80,6 @@ void SubDeviceClientFdHolder::HandleClientMidiData() {
   ssize_t ret = HANDLE_EINTR(read(fd_.get(), buf, sizeof(buf)));
   if (ret < 0) {
     PLOG(ERROR) << "Error reading from pipe fd.";
-    return;
-  }
-
-  std::vector<uint8_t> v(buf, buf + ret);
-  if (!midi::IsValidWebMIDIData(v)) {
-    PLOG(ERROR) << "Received invalid MIDI Data.";
     return;
   }
 

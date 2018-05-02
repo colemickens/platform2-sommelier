@@ -8,10 +8,12 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <poll.h>
 
+#include "media/midi/message_util.h"
 #include "midis/constants.h"
 
 namespace {
@@ -359,7 +361,7 @@ bool SeqHandler::EncodeMidiBytes(int out_port_id,
       int expected_length = snd_seq_event_length(&event);
       result = SndSeqEventOutputDirect(out_client, &event);
       if (result != expected_length) {
-        LOG(ERROR) << "Error in snd_seq_event_output_direct(): " << result;
+        LOG(WARNING) << "Error in snd_seq_event_output_direct(): " << result;
         return false;
       }
       return true;
@@ -373,6 +375,12 @@ bool SeqHandler::EncodeMidiBytes(int out_port_id,
 void SeqHandler::SendMidiData(int out_port_id,
                               const uint8_t* buffer,
                               size_t buf_len) {
+  std::vector<uint8_t> v(buffer, buffer + buf_len);
+  if (!midi::IsValidWebMIDIData(v)) {
+    LOG(WARNING) << "Received invalid MIDI Data.";
+    return;
+  }
+
   snd_midi_event_t* encoder;
   int ret = snd_midi_event_new(buf_len, &encoder);
   if (ret != 0) {
@@ -382,7 +390,7 @@ void SeqHandler::SendMidiData(int out_port_id,
   bool success =
       EncodeMidiBytes(out_port_id, out_client_.get(), buffer, buf_len, encoder);
   if (!success) {
-    LOG(ERROR) << "Failed to send MIDI data to output port: " << out_port_id;
+    LOG(WARNING) << "Failed to send MIDI data to output port: " << out_port_id;
   }
   snd_midi_event_free(encoder);
 }
