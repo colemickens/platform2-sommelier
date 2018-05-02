@@ -182,6 +182,10 @@ class Crypto {
                          CryptoError* error,
                          const VaultKeyset& vk) const;
 
+  // Removes an LE credential specified by |label|.
+  // Returns true on success, false otherwise.
+  bool RemoveLECredential(uint64_t label) const;
+
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's

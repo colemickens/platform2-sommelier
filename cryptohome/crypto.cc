@@ -1268,6 +1268,10 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
   return true;
 }
 
+bool Crypto::RemoveLECredential(uint64_t label) const {
+  return le_manager_->RemoveCredential(label) == LE_CRED_SUCCESS;
+}
+
 bool Crypto::is_cryptohome_key_loaded() const {
   if (tpm_ == NULL || tpm_init_ == NULL) {
     return false;

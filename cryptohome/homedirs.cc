@@ -745,12 +745,25 @@ bool HomeDirs::ForceRemoveKeyset(const std::string& obfuscated, int index) {
   if (index < 0 || index >= kKeyFileMax)
     return false;
 
+  std::unique_ptr<VaultKeyset> vk(
+      vault_keyset_factory()->New(platform_, crypto_));
   FilePath path = GetVaultKeysetPath(obfuscated, index);
-  if (!platform_->FileExists(path)) {
+  if (!vk->Load(path)) {
     LOG(WARNING) << "ForceRemoveKeyset: keyset " << index << " for "
                  << obfuscated << " does not exist";
     // Since it doesn't exist, then we're done.
     return true;
+  }
+
+  // Try removing the LE credential data, if applicable. But, don't abort if we
+  // fail. The leaf data will remain, but at least the SerializedVaultKeyset
+  // will be deleted.
+  if (vk->IsLECredential()) {
+    if (!crypto_->RemoveLECredential(vk->serialized().le_label())) {
+      // TODO(crbug.com/809749): Add UMA logging for this failure.
+      LOG(ERROR)
+          << "ForceRemoveKeyset: Failed to remove LE credential metadata.";
+    }
   }
 
   if (platform_->DeleteFileSecurely(path))

@@ -1389,8 +1389,6 @@ class KeysetManagementTest : public HomeDirsTest {
     last_vk_++;
     CHECK(last_vk_ < MAX_VKS);
     active_vk_ = active_vks_[last_vk_];
-    EXPECT_CALL(*active_vk_, Load(keyset_paths_[0]))
-      .WillOnce(Return(true));
     EXPECT_CALL(*active_vk_, Decrypt(_))
       .WillRepeatedly(Invoke(this, &KeysetManagementTest::VkDecrypt0));
 
@@ -1426,6 +1424,14 @@ class KeysetManagementTest : public HomeDirsTest {
     // but expectations can be set.
     for (int i = 0; i < MAX_VKS; ++i) {
       active_vks_[i] = new MockVaultKeyset();
+      // Move this particular expectation setting here instead of
+      // NewActiveVaultKeyset, since this allows us to make some modifications
+      // to the expectation in the test itself, if necessary.
+      // Also change the cardinality to be WillRepeatedly, since this makes it
+      // more forgiving even if we don't make an invocation for a VaultKeyset
+      // which isn't used in a test.
+      EXPECT_CALL(*active_vks_[i], Load(keyset_paths_[0]))
+          .WillRepeatedly(Return(true));
     }
     active_vk_ = active_vks_[0];
 
@@ -1886,9 +1892,10 @@ TEST_P(KeysetManagementTest, RemoveKeysetSuccess) {
   // Return a different slot to make sure the code is using the right object.
   EXPECT_CALL(*active_vks_[1], legacy_index())
     .WillOnce(Return(1));
-  EXPECT_CALL(platform_,
-      FileExists(Property(&FilePath::value, EndsWith("master.1"))))
-    .WillOnce(Return(true));
+  // The VaultKeyset which will be removed will get index 2.
+  EXPECT_CALL(*active_vks_[2],
+              Load(keyset_paths_[0].ReplaceExtension(std::to_string(1))))
+      .WillOnce(Return(true));
 
   serialized_.mutable_key_data()->mutable_privileges()->set_remove(true);
   serialized_.mutable_key_data()->set_label("remove me");
@@ -2143,21 +2150,23 @@ TEST_P(KeysetManagementTest, AddKeysetNoResetSeedSuccess) {
 }
 
 TEST_P(KeysetManagementTest, ForceRemoveKeysetSuccess) {
-  EXPECT_CALL(platform_,
-      FileExists(Property(&FilePath::value, EndsWith("master.0"))))
-    .WillOnce(Return(true));
+  KeysetSetUp();
   EXPECT_CALL(platform_,
       DeleteFile(
         Property(&FilePath::value, EndsWith("master.0")), false))
     .WillOnce(Return(true));
+  // There is only one call to VaultKeyset, so it gets the MockVaultKeyset
+  // with index 0.
+  EXPECT_CALL(*active_vks_[0], Load(_)).WillOnce(Return(true));
   ASSERT_TRUE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
 TEST_P(KeysetManagementTest, ForceRemoveKeysetMissingKeyset) {
-  EXPECT_CALL(platform_,
-      FileExists(
-        Property(&FilePath::value, EndsWith("master.0"))))
-    .WillOnce(Return(false));
+  KeysetSetUp();
+  // There is only one call to VaultKeyset, so it gets the MockVaultKeyset
+  // with index 0.
+  // Set it to false, since there is no valid VaultKeyset.
+  EXPECT_CALL(*active_vks_[0], Load(_)).WillOnce(Return(false));
   ASSERT_TRUE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
@@ -2170,15 +2179,15 @@ TEST_P(KeysetManagementTest, ForceRemoveKeysetOverMaxIndex) {
 }
 
 TEST_P(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
-  EXPECT_CALL(platform_,
-      FileExists(
-        Property(&FilePath::value, EndsWith("master.0"))))
-    .WillOnce(Return(true));
+  KeysetSetUp();
   EXPECT_CALL(platform_,
       DeleteFile(
         Property(&FilePath::value, EndsWith("master.0")),
         false))
     .WillOnce(Return(false));
+  // There is only one call to VaultKeyset, so it gets the MockVaultKeyset
+  // with index 0.
+  EXPECT_CALL(*active_vks_[0], Load(_)).WillOnce(Return(true));
   ASSERT_FALSE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
