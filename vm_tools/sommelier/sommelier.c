@@ -255,6 +255,7 @@ struct xwl_host_keyboard {
   xkb_mod_mask_t alt_mask;
   xkb_mod_mask_t shift_mask;
   uint32_t modifiers;
+  struct wl_array pressed_keys;
 };
 
 struct xwl_host_touch {
@@ -3056,6 +3057,7 @@ static void xwl_keyboard_enter(void *data, struct wl_keyboard *keyboard,
   if (!host_surface)
     return;
 
+  wl_array_copy(&host->pressed_keys, keys);
   xwl_keyboard_set_focus(host, serial, host_surface, keys);
 
   host->seat->last_serial = serial;
@@ -3070,37 +3072,78 @@ static void xwl_keyboard_leave(void *data, struct wl_keyboard *keyboard,
   xwl_keyboard_set_focus(host, serial, NULL, &array);
 }
 
-static void xwl_keyboard_key(void *data, struct wl_keyboard *keyboard,
-                             uint32_t serial, uint32_t time, uint32_t key,
-                             uint32_t state) {
-  struct xwl_host_keyboard *host = wl_keyboard_get_user_data(keyboard);
+static int xwl_array_set_add(struct wl_array* array, uint32_t key) {
+  uint32_t* k;
 
-  if (host->state) {
-    const xkb_keysym_t *symbols;
-    uint32_t num_symbols;
-    xkb_keysym_t symbol = XKB_KEY_NoSymbol;
-    uint32_t code = key + 8;
-    struct xwl_accelerator *accelerator;
+  wl_array_for_each(k, array) {
+    if (*k == key)
+      return 0;
+  }
+  k = wl_array_add(array, sizeof(key));
+  assert(k);
+  *k = key;
+  return 1;
+}
 
-    num_symbols = xkb_state_key_get_syms(host->state, code, &symbols);
-    if (num_symbols == 1)
-      symbol = symbols[0];
+static int xwl_array_set_remove(struct wl_array* array, uint32_t key) {
+  uint32_t* k;
 
-    wl_list_for_each(accelerator, &host->seat->xwl->accelerators, link) {
-      if (host->modifiers != accelerator->modifiers)
-        continue;
-      if (symbol != accelerator->symbol)
-        continue;
+  wl_array_for_each(k, array) {
+    if (*k == key) {
+      uint32_t* end = (uint32_t*)((char*)array->data + array->size);
 
-      assert(host->extended_keyboard_proxy);
-      zcr_extended_keyboard_v1_ack_key(
-          host->extended_keyboard_proxy, serial,
-          ZCR_EXTENDED_KEYBOARD_V1_HANDLED_STATE_NOT_HANDLED);
-      return;
+      *k = *(end - 1);
+      array->size -= sizeof(*k);
+      return 1;
     }
   }
+  return 0;
+}
 
-  wl_keyboard_send_key(host->resource, serial, time, key, state);
+static void xwl_keyboard_key(void* data,
+                             struct wl_keyboard* keyboard,
+                             uint32_t serial,
+                             uint32_t time,
+                             uint32_t key,
+                             uint32_t state) {
+  struct xwl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
+  int handled = 1;
+
+  if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+    if (host->state) {
+      const xkb_keysym_t* symbols;
+      uint32_t num_symbols;
+      xkb_keysym_t symbol = XKB_KEY_NoSymbol;
+      uint32_t code = key + 8;
+      struct xwl_accelerator* accelerator;
+
+      num_symbols = xkb_state_key_get_syms(host->state, code, &symbols);
+      if (num_symbols == 1)
+        symbol = symbols[0];
+
+      wl_list_for_each(accelerator, &host->seat->xwl->accelerators, link) {
+        if (host->modifiers != accelerator->modifiers)
+          continue;
+        if (symbol != accelerator->symbol)
+          continue;
+
+        handled = 0;
+        break;
+      }
+    }
+
+    // Forward key pressed event if it should be handled and not
+    // already pressed.
+    if (handled) {
+      if (xwl_array_set_add(&host->pressed_keys, key))
+        wl_keyboard_send_key(host->resource, serial, time, key, state);
+    }
+  } else {
+    // Forward key release event if currently pressed.
+    handled = xwl_array_set_remove(&host->pressed_keys, key);
+    if (handled)
+      wl_keyboard_send_key(host->resource, serial, time, key, state);
+  }
 
   if (host->focus_resource)
     xwl_set_last_event_serial(host->focus_resource, serial);
@@ -3109,7 +3152,8 @@ static void xwl_keyboard_key(void *data, struct wl_keyboard *keyboard,
   if (host->extended_keyboard_proxy) {
     zcr_extended_keyboard_v1_ack_key(
         host->extended_keyboard_proxy, serial,
-        ZCR_EXTENDED_KEYBOARD_V1_HANDLED_STATE_HANDLED);
+        handled ? ZCR_EXTENDED_KEYBOARD_V1_HANDLED_STATE_HANDLED
+                : ZCR_EXTENDED_KEYBOARD_V1_HANDLED_STATE_NOT_HANDLED);
   }
 }
 
@@ -3290,6 +3334,7 @@ static void xwl_destroy_host_keyboard(struct wl_resource *resource) {
   if (host->extended_keyboard_proxy)
     zcr_extended_keyboard_v1_destroy(host->extended_keyboard_proxy);
 
+  wl_array_release(&host->pressed_keys);
   if (host->keymap)
     xkb_keymap_unref(host->keymap);
   if (host->state)
@@ -3301,6 +3346,7 @@ static void xwl_destroy_host_keyboard(struct wl_resource *resource) {
   } else {
     wl_keyboard_destroy(host->proxy);
   }
+
   wl_list_remove(&host->focus_resource_listener.link);
   wl_resource_set_user_data(resource, NULL);
   free(host);
@@ -3346,6 +3392,7 @@ static void xwl_host_seat_get_host_keyboard(struct wl_client *client,
   host_keyboard->alt_mask = 0;
   host_keyboard->shift_mask = 0;
   host_keyboard->modifiers = 0;
+  wl_array_init(&host_keyboard->pressed_keys);
 
   if (host->seat->xwl->keyboard_extension) {
     host_keyboard->extended_keyboard_proxy =
