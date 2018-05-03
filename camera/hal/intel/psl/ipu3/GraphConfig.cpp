@@ -74,6 +74,7 @@ GraphConfig::GraphConfig() :
         mReqId(0),
         mMetaEnabled(false),
         mFallback(false),
+        mCIO2Format(V4L2_PIX_FMT_IPU3_SGRBG10),
         mPipeType(PIPE_PREVIEW),
         mSourceType(SRC_NONE)
 {
@@ -1864,6 +1865,9 @@ status_t GraphConfig::parseSensorNodeInfo(Node* sensorNode,
     int32_t bpp = gcu::getBpp(info.output.mbusFormat);
     info.pa.out.mbusFormat = gcu::getMBusFormat(info.nativeBayer, bpp);
 
+    // CIO2 format is same with pixel array format.
+    mCIO2Format = info.pa.out.mbusFormat;
+
     return OK;
 }
 
@@ -2119,7 +2123,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
     addFormatParams(csi2, csiBEOutW, csiBEOutH, 1, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
 
     // Imgu cio2 format
-    addFormatParams(mCSIBE, csiBEOutW, csiBEOutH, 0, V4L2_PIX_FMT_IPU3_SGRBG10, 0, mediaCtlConfig);
+    addFormatParams(mCSIBE, csiBEOutW, csiBEOutH, 0, mCIO2Format, 0, mediaCtlConfig);
 
     /* Start populating selections into mediaCtlConfig
      * entity name, width, height, left crop, top crop, target, pad, config */
@@ -2250,7 +2254,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
         if (fourccFormat == "NV12")
             format = V4L2_PIX_FMT_NV12;
         else if (fourccFormat == "CIO2")
-            format = V4L2_PIX_FMT_IPU3_SGRBG10;
+            format = mCIO2Format;
         else if (fourccFormat == "YUYV")
             format = V4L2_PIX_FMT_YUYV;
         else

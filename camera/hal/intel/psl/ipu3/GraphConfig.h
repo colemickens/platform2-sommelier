@@ -445,6 +445,7 @@ private:
     bool mMetaEnabled; // indicates if the specific sensor provides sensor
                        // embedded metadata
     bool mFallback;
+    int mCIO2Format;
     PipeType mPipeType;
     enum SourceType {
         SRC_NONE = 0,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -222,6 +222,10 @@ int32_t getMBusFormat(const std::string& bayerOrder, const int32_t bpp)
         } else if (gFormatMapping[i].type == FORMAT_MBUS_YUV) {
             if (gFormatMapping[i].shortName.find(bppAsStr) != string::npos)
                 return gFormatMapping[i].pixelCode;
+        } else if (gFormatMapping[i].type == FORMAT_RAW_VEC) {
+            if (gFormatMapping[i].shortName.compare(targetFormat) == 0) {
+                return gFormatMapping[i].pixelCode;
+            }
         }
     }
 
