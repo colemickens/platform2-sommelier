@@ -14,6 +14,7 @@
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/resource.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -303,6 +304,42 @@ constexpr struct {
     {
         .path = "/var/lib/misc",
         .mode = 0755,
+    },
+};
+
+// These limits are based on suggestions from lxd doc/production-setup.md.
+constexpr struct {
+  uint8_t resource_type;
+  rlimit limit;
+} resource_limits[] = {
+    {
+        .resource_type = RLIMIT_NOFILE,
+        .limit = {.rlim_cur = 1048576, .rlim_max = 1048576, },
+    },
+    {
+        .resource_type = RLIMIT_MEMLOCK,
+        .limit = {.rlim_cur = RLIM_INFINITY, .rlim_max = RLIM_INFINITY, },
+    },
+};
+
+constexpr struct {
+  const char* path;
+  const char* value;
+} sysctl_limits[] = {
+    {
+        .path = "/proc/sys/fs/inotify/max_queued_events", .value = "1048576",
+    },
+    {
+        .path = "/proc/sys/fs/inotify/max_user_instances", .value = "1048576",
+    },
+    {
+        .path = "/proc/sys/fs/inotify/max_user_watches", .value = "1048576",
+    },
+    {
+        .path = "/proc/sys/vm/max_map_count", .value = "262144",
+    },
+    {
+        .path = "/proc/sys/kernel/dmesg_restrict", .value = "1",
     },
 };
 
@@ -1370,6 +1407,35 @@ void Init::Shutdown() {
   DCHECK_EQ(done, 1);
 }
 
+bool Init::SetupResourceLimit() {
+  // Setup rlimit.
+  for (const auto& rlimit : resource_limits) {
+    if (setrlimit(rlimit.resource_type, &rlimit.limit) != 0) {
+      PLOG(ERROR) << "Failed to set limit for resouce type: "
+                  << rlimit.resource_type;
+      return false;
+    }
+  }
+
+  // Setup sysctl limits.
+  for (const auto& syslimit : sysctl_limits) {
+    base::ScopedFD sysctl_node(open(syslimit.path, O_RDWR | O_CLOEXEC));
+
+    if (!sysctl_node.is_valid()) {
+      PLOG(ERROR) << "Unable to open sysctl node: " << syslimit.path;
+      return false;
+    }
+
+    ssize_t count =
+        write(sysctl_node.get(), syslimit.value, strlen(syslimit.value));
+    if (count != strlen(syslimit.value)) {
+      PLOG(ERROR) << "Faile to write sysctl node: " << syslimit.path;
+      return false;
+    }
+  }
+  return true;
+}
+
 bool Init::Setup() {
   // Set the umask properly or the directory modes will not work.
   umask(0000);
@@ -1388,6 +1454,11 @@ bool Init::Setup() {
       if (mt.failure_is_fatal)
         return false;
     }
+  }
+
+  // Setup the resource limits.
+  if (!SetupResourceLimit()) {
+    return false;
   }
 
   // Create all the symlinks.

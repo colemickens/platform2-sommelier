@@ -74,6 +74,11 @@ class Init final {
 
  private:
   Init() = default;
+
+  // Subroutine to setup resource limits. For more details of resource limits,
+  // see man page of setrlimits and sysctl.
+  bool SetupResourceLimit();
+
   bool Setup();
 
   // Worker that lives on a separate thread and is responsible for actually
