@@ -960,7 +960,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       "androidboot.ui_scale=%s "
       "androidboot.container_ipv4_address=%s "
       "androidboot.gateway_ipv4_address=%s "
-      "androidboot.partial_boot=1 "
       "androidboot.native_bridge=%s "
       "androidboot.chromeos_channel=%s "
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
@@ -970,8 +969,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       chromeos_channel.c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
-  // TODO(yusukes): Stop using ro.boot.partial_boot in the container and
-  // remove "androidboot.partial_boot=1".
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }
 
