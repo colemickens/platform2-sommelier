@@ -56,17 +56,17 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   void CreateJpegEncodeAcceleratorOnIpcThread(
       mojom::JpegEncodeAcceleratorRequest request);
 
-  // Error handler for camera dispatcher Mojo channel.
-  void OnDispatcherError();
-
   // This function will use the lock protect member |reference_count_| but it
   // won't use |static_lock_| first. It is locked in destructor.
   // It reset |dispatcher_| on |ipc_thread_| thread.
   void DestroyOnIpcThreadLocked();
 
+  // Error handler for camera dispatcher Mojo channel.
+  static void OnDispatcherError();
+
   // The Mojo channel to CameraHalDispatcher in Chrome. All the Mojo
   // communication to |dispatcher_| happens on |ipc_thread_|.
-  mojom::CameraHalDispatcherPtr dispatcher_;
+  static mojom::CameraHalDispatcherPtr dispatcher_;
 
   // Thread for IPC chores.
   static base::Thread* ipc_thread_;

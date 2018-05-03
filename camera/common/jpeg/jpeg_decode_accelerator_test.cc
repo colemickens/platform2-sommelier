@@ -42,6 +42,8 @@ const base::FilePath::CharType* kDefaultJpegFilename2 =
 const double kDecodeSimilarityThreshold = 1.0;
 // Bytes per pixel for YUV420 format
 const double kYUV420_BytesFactor = 6.0 / 4;
+
+const int kMaxDecoderNumber = 3;
 }  // namespace
 
 struct Frame {
@@ -62,7 +64,9 @@ struct Frame {
 class JpegDecodeAcceleratorTest : public ::testing::Test {
  public:
   JpegDecodeAcceleratorTest() {
-    jpeg_decoder_ = base::WrapUnique(new JpegDecodeAcceleratorImpl());
+    for (size_t i = 0; i < kMaxDecoderNumber; i++) {
+      jpeg_decoder_[i] = std::make_unique<JpegDecodeAcceleratorImpl>();
+    }
   }
 
   ~JpegDecodeAcceleratorTest() {}
@@ -74,7 +78,7 @@ class JpegDecodeAcceleratorTest : public ::testing::Test {
   void PrepareMemory(Frame* frame);
   bool GetSoftwareDecodeResult(Frame* frame);
   double GetMeanAbsoluteDifference(Frame* frame);
-  void DecodeTest(Frame* frame);
+  void DecodeTest(Frame* frame, size_t decoder_id);
   void DecodeTestAsync(Frame* frame, DecodeCallback callback);
   void DecodeSyncCallback(base::Callback<void(int)> callback,
                           int32_t buffer_id,
@@ -82,7 +86,7 @@ class JpegDecodeAcceleratorTest : public ::testing::Test {
   void ResetJDAChannel();
 
  protected:
-  std::unique_ptr<JpegDecodeAcceleratorImpl> jpeg_decoder_;
+  std::unique_ptr<JpegDecodeAcceleratorImpl> jpeg_decoder_[kMaxDecoderNumber];
 
   Frame jpeg_frame1_;
   Frame jpeg_frame2_;
@@ -182,7 +186,7 @@ bool JpegDecodeAcceleratorTest::GetSoftwareDecodeResult(Frame* frame) {
   return true;
 }
 
-void JpegDecodeAcceleratorTest::DecodeTest(Frame* frame) {
+void JpegDecodeAcceleratorTest::DecodeTest(Frame* frame, size_t decoder_id) {
   base::SharedMemoryHandle input_handle;
   base::SharedMemoryHandle output_handle;
   int input_fd, output_fd;
@@ -199,9 +203,9 @@ void JpegDecodeAcceleratorTest::DecodeTest(Frame* frame) {
 
   // Pretend the shared memory as DMA buffer.
   // Since we all use mmap to get the user space address.
-  error = jpeg_decoder_->DecodeSync(input_fd, frame->in_shm->mapped_size(),
-                                    frame->width, frame->height, output_fd,
-                                    frame->hw_out_shm->mapped_size());
+  error = jpeg_decoder_[decoder_id]->DecodeSync(
+      input_fd, frame->in_shm->mapped_size(), frame->width, frame->height,
+      output_fd, frame->hw_out_shm->mapped_size());
   EXPECT_EQ(error, JpegDecodeAccelerator::Error::NO_ERRORS);
   if (error == JpegDecodeAccelerator::Error::NO_ERRORS) {
     double difference = GetMeanAbsoluteDifference(frame);
@@ -224,9 +228,9 @@ void JpegDecodeAcceleratorTest::DecodeTestAsync(Frame* frame,
   output_fd = base::SharedMemory::GetFdFromSharedMemoryHandle(output_handle);
   VLOG(1) << "input fd " << input_fd << " output fd " << output_fd;
 
-  jpeg_decoder_->Decode(input_fd, frame->in_shm->mapped_size(), frame->width,
-                        frame->height, output_fd,
-                        frame->hw_out_shm->mapped_size(), callback);
+  jpeg_decoder_[0]->Decode(input_fd, frame->in_shm->mapped_size(), frame->width,
+                           frame->height, output_fd,
+                           frame->hw_out_shm->mapped_size(), callback);
 }
 
 void JpegDecodeAcceleratorTest::DecodeSyncCallback(
@@ -235,21 +239,41 @@ void JpegDecodeAcceleratorTest::DecodeSyncCallback(
 }
 
 void JpegDecodeAcceleratorTest::ResetJDAChannel() {
-  jpeg_decoder_->TestResetJDAChannel();
+  jpeg_decoder_[0]->TestResetJDAChannel();
 }
 
 TEST_F(JpegDecodeAcceleratorTest, InitTest) {
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
+  for (size_t i = 0; i < kMaxDecoderNumber; i++) {
+    EXPECT_TRUE(jpeg_decoder_[i]->Start());
+  }
 }
 
 TEST_F(JpegDecodeAcceleratorTest, DecodeTest) {
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
+  EXPECT_TRUE(jpeg_decoder_[0]->Start());
   LoadFrame(g_env->jpeg_filename1_, &jpeg_frame1_);
   PrepareMemory(&jpeg_frame1_);
 
-  EXPECT_EQ(GetSoftwareDecodeResult(&jpeg_frame1_), true);
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame1_));
 
-  DecodeTest(&jpeg_frame1_);
+  DecodeTest(&jpeg_frame1_, 0);
+}
+
+TEST_F(JpegDecodeAcceleratorTest, MultiDecodesTest) {
+  for (size_t i = 0; i < kMaxDecoderNumber; i++) {
+    EXPECT_TRUE(jpeg_decoder_[i]->Start());
+  }
+
+  LoadFrame(g_env->jpeg_filename1_, &jpeg_frame1_);
+  PrepareMemory(&jpeg_frame1_);
+
+  LoadFrame(g_env->jpeg_filename2_, &jpeg_frame2_);
+  PrepareMemory(&jpeg_frame2_);
+
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame1_));
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame2_));
+
+  DecodeTest(&jpeg_frame1_, 0);
+  DecodeTest(&jpeg_frame2_, 1);
 }
 
 TEST_F(JpegDecodeAcceleratorTest, DecodeFailTest) {
@@ -269,8 +293,8 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeFailTest) {
   output_fd = base::SharedMemory::GetFdFromSharedMemoryHandle(output_handle);
   VLOG(1) << "input fd " << input_fd << " output fd " << output_fd;
 
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
-  error = jpeg_decoder_->DecodeSync(
+  EXPECT_TRUE(jpeg_decoder_[0]->Start());
+  error = jpeg_decoder_[0]->DecodeSync(
       input_fd, jpeg_frame1_.in_shm->mapped_size(), jpeg_frame1_.width,
       jpeg_frame1_.height, output_fd, jpeg_frame1_.hw_out_shm->mapped_size());
 
@@ -278,33 +302,31 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeFailTest) {
 }
 
 TEST_F(JpegDecodeAcceleratorTest, Decode60Images) {
-  int i;
-
   LoadFrame(g_env->jpeg_filename1_, &jpeg_frame1_);
   PrepareMemory(&jpeg_frame1_);
-  EXPECT_EQ(GetSoftwareDecodeResult(&jpeg_frame1_), true);
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame1_));
 
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
-  for (i = 0; i < 60; i++) {
-    DecodeTest(&jpeg_frame1_);
+  EXPECT_TRUE(jpeg_decoder_[0]->Start());
+  for (size_t i = 0; i < 60; i++) {
+    DecodeTest(&jpeg_frame1_, 0);
   }
 }
 
 TEST_F(JpegDecodeAcceleratorTest, DecodeAsync) {
   LoadFrame(g_env->jpeg_filename1_, &jpeg_frame1_);
   PrepareMemory(&jpeg_frame1_);
-  EXPECT_EQ(GetSoftwareDecodeResult(&jpeg_frame1_), true);
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame1_));
 
   auto future1 = cros::Future<int>::Create(nullptr);
 
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
+  EXPECT_TRUE(jpeg_decoder_[0]->Start());
 
   DecodeTestAsync(
       &jpeg_frame1_,
       base::Bind(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
                  base::Unretained(this), cros::GetFutureCallback(future1)));
 
-  EXPECT_EQ(future1->Wait(), true);
+  EXPECT_TRUE(future1->Wait());
   EXPECT_EQ(future1->Get(),
             static_cast<int>(JpegDecodeAccelerator::Error::NO_ERRORS));
 
@@ -313,15 +335,15 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeAsync) {
 }
 
 TEST_F(JpegDecodeAcceleratorTest, DecodeAsync2) {
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
+  EXPECT_TRUE(jpeg_decoder_[0]->Start());
 
   LoadFrame(g_env->jpeg_filename1_, &jpeg_frame1_);
   PrepareMemory(&jpeg_frame1_);
-  EXPECT_EQ(GetSoftwareDecodeResult(&jpeg_frame1_), true);
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame1_));
 
   LoadFrame(g_env->jpeg_filename2_, &jpeg_frame2_);
   PrepareMemory(&jpeg_frame2_);
-  EXPECT_EQ(GetSoftwareDecodeResult(&jpeg_frame2_), true);
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame2_));
 
   auto future1 = cros::Future<int>::Create(nullptr);
   auto future2 = cros::Future<int>::Create(nullptr);
@@ -335,7 +357,7 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeAsync2) {
       &jpeg_frame2_,
       base::Bind(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
                  base::Unretained(this), cros::GetFutureCallback(future2)));
-  EXPECT_EQ(future2->Wait(), true);
+  EXPECT_TRUE(future2->Wait());
   EXPECT_EQ(future2->Get(),
             static_cast<int>(JpegDecodeAccelerator::Error::NO_ERRORS));
 
@@ -347,37 +369,37 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeAsync2) {
 }
 
 TEST_F(JpegDecodeAcceleratorTest, Decode6000Images) {
-  int i;
-
   LoadFrame(g_env->jpeg_filename1_, &jpeg_frame1_);
   PrepareMemory(&jpeg_frame1_);
-  EXPECT_EQ(GetSoftwareDecodeResult(&jpeg_frame1_), true);
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame1_));
 
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
-  for (i = 0; i < 6000; i++) {
-    DecodeTest(&jpeg_frame1_);
+  for (size_t i = 0; i < kMaxDecoderNumber; i++) {
+    EXPECT_TRUE(jpeg_decoder_[i]->Start());
+  }
+  for (size_t i = 0; i < 6000; i++) {
+    DecodeTest(&jpeg_frame1_, i % kMaxDecoderNumber);
   }
 }
 
 TEST_F(JpegDecodeAcceleratorTest, LostMojoChannel) {
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
+  EXPECT_TRUE(jpeg_decoder_[0]->Start());
   LoadFrame(g_env->jpeg_filename1_, &jpeg_frame1_);
   PrepareMemory(&jpeg_frame1_);
 
-  EXPECT_EQ(GetSoftwareDecodeResult(&jpeg_frame1_), true);
+  EXPECT_TRUE(GetSoftwareDecodeResult(&jpeg_frame1_));
 
-  DecodeTest(&jpeg_frame1_);
+  DecodeTest(&jpeg_frame1_, 0);
 
   ResetJDAChannel();
   // The channel is broken now, use wrong parameters here.
   // It shouldn't be INVALID_ARGUMENT error.
   JpegDecodeAccelerator::Error error =
-      jpeg_decoder_->DecodeSync(0, 0, 0, 0, 0, 0);
+      jpeg_decoder_[0]->DecodeSync(0, 0, 0, 0, 0, 0);
   EXPECT_EQ(error, JpegDecodeAccelerator::Error::TRY_START_AGAIN);
 
   // Call start again and test decode jpeg.
-  EXPECT_EQ(jpeg_decoder_->Start(), true);
-  DecodeTest(&jpeg_frame1_);
+  EXPECT_TRUE(jpeg_decoder_[0]->Start());
+  DecodeTest(&jpeg_frame1_, 0);
 }
 
 }  // namespace tests

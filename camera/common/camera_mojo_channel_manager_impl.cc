@@ -19,6 +19,7 @@
 namespace cros {
 
 // static
+mojom::CameraHalDispatcherPtr CameraMojoChannelManagerImpl::dispatcher_;
 base::Thread* CameraMojoChannelManagerImpl::ipc_thread_ = nullptr;
 base::Lock CameraMojoChannelManagerImpl::static_lock_;
 int CameraMojoChannelManagerImpl::reference_count_ = 0;
@@ -62,12 +63,11 @@ CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
 void CameraMojoChannelManagerImpl::DestroyOnIpcThreadLocked() {
   DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
 
-  dispatcher_.reset();
-
   // There is not any mojo users.
   // We enter this function only from destructor. The lock is used in the
   // destructor.
   if (reference_count_ == 0) {
+    dispatcher_.reset();
     mojo::edk::ShutdownIPCSupport();
   }
 
@@ -182,14 +182,14 @@ void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
       mojom::CameraHalDispatcherPtrInfo(std::move(child_pipe), 0u),
       ipc_thread_->task_runner());
   dispatcher_.set_connection_error_handler(
-      base::Bind(&CameraMojoChannelManagerImpl::OnDispatcherError,
-                 base::Unretained(this)));
+      base::Bind(&CameraMojoChannelManagerImpl::OnDispatcherError));
 
   LOGF(INFO) << "Connected to CameraHalDispatcher";
 
   VLOGF_EXIT();
 }
 
+// static
 void CameraMojoChannelManagerImpl::OnDispatcherError() {
   DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
