@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <dbus_adaptors/org.chromium.SmbProvider.h>
 
+#include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider_helper.h"
@@ -44,14 +45,18 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   using SetupKerberosCallback =
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>;
 
-  SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-              std::unique_ptr<SambaInterface> samba_interface,
-              std::unique_ptr<MountManager> mount_manager,
-              size_t buffer_size);
+  SmbProvider(
+      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+      std::unique_ptr<SambaInterface> samba_interface,
+      std::unique_ptr<MountManager> mount_manager,
+      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
+      size_t buffer_size);
 
-  SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-              std::unique_ptr<SambaInterface> samba_interface,
-              std::unique_ptr<MountManager> mount_manager);
+  SmbProvider(
+      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+      std::unique_ptr<SambaInterface> samba_interface,
+      std::unique_ptr<MountManager> mount_manager,
+      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
   void Mount(const ProtoBlob& options_blob,
@@ -379,6 +384,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
+  std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer_;
   TempFileManager temp_file_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbProvider);

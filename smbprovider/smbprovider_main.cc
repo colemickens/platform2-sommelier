@@ -147,12 +147,23 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
       exit(EXIT_FAILURE);
     }
 
+    auto dbus_object = std::make_unique<brillo::dbus_utils::DBusObject>(
+        nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath());
+
+    auto kerberos_artifact_client =
+        std::make_unique<KerberosArtifactClient>(dbus_object.get());
+
+    auto kerberos_artifact_synchronizer =
+        std::make_unique<KerberosArtifactSynchronizer>(
+            GetKrb5ConfPath(), GetCCachePath(),
+            std::move(kerberos_artifact_client));
+
     auto mount_manager =
         std::make_unique<MountManager>(std::move(credential_store));
+
     smb_provider_ = std::make_unique<SmbProvider>(
-        std::make_unique<brillo::dbus_utils::DBusObject>(
-            nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath()),
-        std::move(samba_interface), std::move(mount_manager));
+        std::move(dbus_object), std::move(samba_interface),
+        std::move(mount_manager), std::move(kerberos_artifact_synchronizer));
     smb_provider_->RegisterAsync(
         sequencer->GetHandler("SmbProvider.RegisterAsync() failed.", true));
   }

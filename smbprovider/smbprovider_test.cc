@@ -9,9 +9,11 @@
 #include <dbus/object_path.h>
 #include <gtest/gtest.h>
 
+#include "smbprovider/fake_kerberos_artifact_client.h"
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/iterator/directory_iterator.h"
+#include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider.h"
@@ -155,10 +157,24 @@ class SmbProviderTest : public testing::Test {
     auto mount_manager_ptr = std::make_unique<MountManager>(
         std::make_unique<InMemoryCredentialStore>());
     mount_manager_ = mount_manager_ptr.get();
+
+    auto fake_artifact_client = std::make_unique<FakeKerberosArtifactClient>();
+
+    EXPECT_TRUE(krb_temp_dir_.CreateUniqueTempDir());
+
+    krb5_conf_path_ = CreateKrb5ConfPath(krb_temp_dir_.GetPath());
+    krb5_ccache_path_ = CreateKrb5CCachePath(krb_temp_dir_.GetPath());
+
+    auto kerberos_artifact_synchronizer =
+        std::make_unique<KerberosArtifactSynchronizer>(
+            krb5_conf_path_, krb5_ccache_path_,
+            std::move(fake_artifact_client));
+
     const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
-        std::move(fake_ptr), std::move(mount_manager_ptr));
+        std::move(fake_ptr), std::move(mount_manager_ptr),
+        std::move(kerberos_artifact_synchronizer));
   }
 
   // Helper method that asserts there are no entries that have not been
@@ -192,13 +208,16 @@ class SmbProviderTest : public testing::Test {
     fd->reset(temp_file_manager_.CreateTempFile(data).release());
     EXPECT_LE(0, fd->get());
   }
-
+  std::string krb5_conf_path_;
+  std::string krb5_ccache_path_;
+  base::ScopedTempDir krb_temp_dir_;
   scoped_refptr<dbus::MockBus> mock_bus_ =
       new dbus::MockBus(dbus::Bus::Options());
   std::unique_ptr<SmbProvider> smbprovider_;
   FakeSambaInterface* fake_samba_;
   MountManager* mount_manager_;
   TempFileManager temp_file_manager_;
+  KerberosArtifactSynchronizer* kerberos_synchronizer_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderTest);
