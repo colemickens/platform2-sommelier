@@ -1122,6 +1122,12 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
         PLOG(ERROR) << "Failed to set onwers " << target_path.value();
         return false;
       }
+
+      if (fchmodat(dirfd.get(), target_base_name.c_str(), from_stat.st_mode,
+                   0 /* flags */) < 0) {
+        PLOG(ERROR) << "Failed to set permissions " << target_path.value();
+        return false;
+      }
     } else if (S_ISREG(from_stat.st_mode)) {
       base::ScopedFD fd_read(open(current.value().c_str(), O_RDONLY));
       if (!fd_read.is_valid()) {

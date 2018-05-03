@@ -895,7 +895,7 @@ TEST(ArcSetupUtil, TestCopyWithAttributes) {
   const base::FilePath from_fifo = from_sub_dir1.Append("fifo");
 
   EXPECT_TRUE(InstallDirectory(0751, kTestUid, kTestGid, from_path));
-  EXPECT_TRUE(InstallDirectory(0711, kTestUid, kTestGid, from_sub_dir1));
+  EXPECT_TRUE(InstallDirectory(0771, kTestUid, kTestGid, from_sub_dir1));
   EXPECT_TRUE(InstallDirectory(0700, kTestUid, kTestGid, from_sub_dir2));
   EXPECT_TRUE(WriteToFile(from_test_file, 0660, "testme"));
   EXPECT_TRUE(base::CreateSymbolicLink(from_test_file, from_test_link));
