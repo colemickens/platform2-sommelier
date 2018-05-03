@@ -43,6 +43,7 @@ mkdir: 1
 mlock: 1
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+mremap: 1
 munlock: 1
 munmap: 1
 open: 1
