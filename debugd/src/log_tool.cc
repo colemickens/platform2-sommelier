@@ -195,6 +195,7 @@ const Log kCommandLogs[] = {
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
   },
+  { "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot, },
   { "pagetypeinfo", "/bin/cat /proc/pagetypeinfo" },
   {
     "platform_info",
