@@ -17,8 +17,18 @@
 
 bootstat shill-start
 
-# Create state directory
+# Create state directory for shill.
 mkdir -p /run/shill
+
+# Create state directory for IPsec
+mkdir -p /run/ipsec
+chown -R root:ipsec /run/ipsec
+chmod -R 0770 /run/ipsec
+
+# Create state directory for entire L2TP/IPsec subtree
+mkdir -p /run/l2tpipsec_vpn
+chown -R root:ipsec /run/l2tpipsec_vpn
+chmod -R 0770 /run/l2tpipsec_vpn
 
 # Create storage for the shill global profile.
 mkdir -p /var/cache/shill
