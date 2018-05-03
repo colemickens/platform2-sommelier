@@ -396,7 +396,7 @@ void TgtManager::EnableTgtAutoRenewal(bool enabled) {
 ErrorType TgtManager::RenewTgt() {
   // kinit -R renews the TGT.
   ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), kRenewParam});
-  ErrorType error = RunKinit(&kinit_cmd, -1);
+  ErrorType error = RunKinit(&kinit_cmd, kInvalidFd);
 
   // No matter if it worked or not, reschedule auto-renewal. We might be offline
   // and want to try again later.
@@ -507,7 +507,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
     // Set password as input. Duplicate it in any case since we don't know
     // whether we'll have to rerun.
     base::ScopedFD password_dup;
-    if (password_fd != -1) {
+    if (password_fd != kInvalidFd) {
       password_dup = DuplicatePipe(password_fd);
       if (!password_dup.is_valid()) {
         error = ERROR_LOCAL_IO;

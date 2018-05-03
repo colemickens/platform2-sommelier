@@ -1679,6 +1679,7 @@ ErrorType SambaInterface::CheckMachinePasswordChange() {
   ErrorType error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE)
     return error;
+  device_tgt_manager_.SetKdcIp(device_account_.kdc_ip);
 
   const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
   base::File::Info file_info;

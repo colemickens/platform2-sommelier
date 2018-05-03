@@ -104,6 +104,7 @@ struct Krb5Conf {
   std::string default_tkt_enctypes;
   std::string permitted_enctypes;
   std::string allow_weak_crypto;
+  std::string kdc;
 };
 
 // Checks and casts an integer |error| to the corresponding ErrorType.
@@ -181,6 +182,10 @@ void ReadKrb5Conf(const std::string& krb5_conf_path, Krb5Conf* conf) {
                         &conf->permitted_enctypes));
   EXPECT_TRUE(
       FindToken(krb5_conf, '=', "allow_weak_crypto", &conf->allow_weak_crypto));
+
+  // KDC is optional.
+  if (!FindToken(krb5_conf, '=', "kdc", &conf->kdc))
+    conf->kdc.clear();
 }
 
 // Checks whether the file at krb5_conf_path is a krb5.conf file and has the
@@ -782,10 +787,18 @@ class AuthPolicyTest : public testing::Test {
 
   // Returns the modification time of the file at |path|.
   base::Time GetLastModified(Path path) {
-    const base::FilePath password_path(paths_->Get(path));
+    const base::FilePath filepath(paths_->Get(path));
     base::File::Info file_info;
-    EXPECT_TRUE(GetFileInfo(password_path, &file_info));
+    EXPECT_TRUE(GetFileInfo(filepath, &file_info));
     return file_info.last_modified;
+  }
+
+  void SetLastModified(Path path, const base::Time& last_modified) {
+    const base::FilePath filepath(paths_->Get(path));
+    base::File::Info file_info;
+    EXPECT_TRUE(GetFileInfo(filepath, &file_info));
+    EXPECT_TRUE(
+        base::TouchFile(filepath, file_info.last_accessed, last_modified));
   }
 
   // Returns the contents of the file at |path|.
@@ -1131,11 +1144,19 @@ TEST_F(AuthPolicyTest, ChecksMachinePasswordOnStartup) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_FALSE(samba().DidPasswordChangeCheckRunForTesting());
 
+  // Make password old enough for a password change.
+  SetLastModified(Path::MACHINE_PASS, base::Time());
+
   // Restart with empty device policy. This should trigger it as well.
   samba().ResetForTesting();
   EXPECT_FALSE(samba().DidPasswordChangeCheckRunForTesting());
   EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
   EXPECT_TRUE(samba().DidPasswordChangeCheckRunForTesting());
+
+  // Check that SMB conf contains KDC IP (regression test for crbug.com/815139).
+  Krb5Conf conf;
+  ReadKrb5Conf(paths_->Get(Path::DEVICE_KRB5_CONF), &conf);
+  EXPECT_FALSE(conf.kdc.empty());
 }
 
 // Successful user authentication.
