@@ -53,10 +53,12 @@ bool DomainRequiresComponentId(login_manager::PolicyDomain domain) {
 }
 
 void PrintError(const char* msg, ErrorType error) {
-  if (error == ERROR_NONE)
-    LOG(INFO) << msg << " succeeded";
-  else
-    LOG(INFO) << msg << " failed with code " << error;
+  if (error == ERROR_NONE) {
+    LOG(INFO) << kColorRequestSuccess << msg << " succeeded" << kColorReset;
+  } else {
+    LOG(INFO) << kColorRequestFail << msg << " failed with code " << error
+              << kColorReset;
+  }
 }
 
 ErrorMetricType GetPolicyErrorMetricType(bool is_refresh_user_policy) {
@@ -105,7 +107,6 @@ class ResponseTracker : public base::RefCountedThreadSafe<ResponseTracker> {
                   std::unique_ptr<ScopedTimerReporter> timer,
                   AuthPolicy::PolicyResponseCallback callback)
       : is_refresh_user_policy_(is_refresh_user_policy),
-        total_response_count_(total_response_count),
         outstanding_response_count_(total_response_count),
         metrics_(metrics),
         timer_(std::move(timer)),
@@ -134,11 +135,9 @@ class ResponseTracker : public base::RefCountedThreadSafe<ResponseTracker> {
       metrics_->ReportError(metric_type, error);
       callback_->Return(error);
 
-      if (all_responses_succeeded_) {
-        LOG(INFO) << "All " << total_response_count_ << " calls to "
-                  << login_manager::kSessionManagerStoreUnsignedPolicyEx
-                  << " succeeded.";
-      }
+      const char* request =
+          is_refresh_user_policy_ ? "RefreshUserPolicy" : "RefreshDevicePolicy";
+      PrintError(request, error);
 
       // Destroy the timer, which triggers the metric. It's going to be
       // destroyed with this instance, anyway, but doing it here explicitly is
@@ -149,7 +148,6 @@ class ResponseTracker : public base::RefCountedThreadSafe<ResponseTracker> {
 
  private:
   bool is_refresh_user_policy_;
-  int total_response_count_;
   int outstanding_response_count_;
   AuthPolicyMetrics* metrics_;  // Not owned.
   std::unique_ptr<ScopedTimerReporter> timer_;
@@ -302,10 +300,10 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
   // Fetch GPOs for the current user.
   auto gpo_policy_data = std::make_unique<protos::GpoPolicyData>();
   ErrorType error = samba_.FetchUserGpos(account_id, gpo_policy_data.get());
-  PrintError("User policy fetch and parsing", error);
 
   // Return immediately on error.
   if (error != ERROR_NONE) {
+    PrintError("RefreshUserPolicy", error);
     metrics_->ReportError(ERROR_OF_REFRESH_USER_POLICY, error);
     callback->Return(error);
     return;
@@ -334,7 +332,6 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   // Fetch GPOs for the device.
   auto gpo_policy_data = std::make_unique<protos::GpoPolicyData>();
   ErrorType error = samba_.FetchDeviceGpos(gpo_policy_data.get());
-  PrintError("Device policy fetch and parsing", error);
 
   device_is_locked_ = device_is_locked_ || InstallAttributesReader().IsLocked();
   if (!device_is_locked_ && error == ERROR_NONE) {
@@ -345,6 +342,7 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
 
   // Return immediately on error.
   if (error != ERROR_NONE) {
+    PrintError("RefreshDevicePolicy", error);
     metrics_->ReportError(ERROR_OF_REFRESH_DEVICE_POLICY, error);
     callback->Return(error);
     return;
@@ -386,6 +384,11 @@ void AuthPolicy::StorePolicy(
   const bool is_refresh_user_policy = account_id_key != nullptr;
   const int num_extensions = gpo_policy_data->extension_policies_size();
   const int num_store_policy_calls = 1 + num_extensions;
+
+  LOG(INFO) << "Sending " << (is_refresh_user_policy ? "user" : "device")
+            << " policy to Session Manager (Chrome policy, " << num_extensions
+            << " extensions)";
+
   scoped_refptr<ResponseTracker> response_tracker =
       new ResponseTracker(is_refresh_user_policy, num_store_policy_calls,
                           metrics_, std::move(timer), std::move(callback));
