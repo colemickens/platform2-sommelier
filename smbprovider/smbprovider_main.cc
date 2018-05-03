@@ -13,6 +13,8 @@
 
 #include "smbprovider/constants.h"
 #include "smbprovider/in_memory_credential_store.h"
+#include "smbprovider/kerberos_artifact_client.h"
+#include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider.h"
@@ -32,6 +34,80 @@ bool SetHomeEnvironmentVariable() {
   return true;
 }
 
+std::string GetKrb5ConfLocation() {
+  return std::string(kSmbProviderHome) + kKrb5ConfLocation;
+}
+
+std::string GetCCacheLocation() {
+  return std::string(kSmbProviderHome) + kCCacheLocation;
+}
+
+std::string GetKrb5TraceLocation() {
+  return std::string(kSmbProviderHome) + kKrbTraceLocation;
+}
+
+std::string GetKrb5ConfPath() {
+  return GetKrb5ConfLocation() + kKrb5ConfFile;
+}
+
+std::string GetCCachePath() {
+  return GetCCacheLocation() + kCCacheFile;
+}
+
+std::string GetKrb5TracePath() {
+  return GetKrb5TraceLocation() + kKrbTraceFile;
+}
+
+bool SetKrb5ConfigEnviornmentVariable() {
+  if (setenv(kKrb5ConfigEnvironmentVariable, GetKrb5ConfPath().c_str(),
+             1 /* overwrite */) != 0) {
+    PLOG(ERROR) << "Failed to set $KRB5_CONFIG variable";
+    return false;
+  }
+  return true;
+}
+
+bool SetKrb5CCNameEnvironmentVariable() {
+  if (setenv(kKrb5CCNameEnvironmentVariable, GetCCachePath().c_str(),
+             1 /* overwrite */) != 0) {
+    PLOG(ERROR) << "Failed to set $KRB5CCNAME variable";
+    return false;
+  }
+  return true;
+}
+
+bool SetKrb5TraceEnvironmentVariable() {
+  if (setenv(kKrb5TraceEnvironmentVariable, GetKrb5TracePath().c_str(),
+             1 /* overwrite */) != 0) {
+    PLOG(ERROR) << "Failed to set $KRB5_TRACE variable";
+    return false;
+  }
+  return true;
+}
+
+bool SetKerberosEnvironmentVariables() {
+  return SetKrb5ConfigEnviornmentVariable() &&
+         SetKrb5CCNameEnvironmentVariable() &&
+         SetKrb5TraceEnvironmentVariable();
+}
+
+// Creates a directory at |path|. Logs and returns an error on failure.
+bool CreateDirectory(const std::string& path) {
+  base::File::Error ferror;
+  if (!base::CreateDirectoryAndGetError(base::FilePath(path), &ferror)) {
+    LOG(ERROR) << "Failed to create directory '" << path
+               << "': " << base::File::ErrorToString(ferror);
+    return false;
+  }
+  return true;
+}
+
+bool CreateKerberosDirectories() {
+  return CreateDirectory(GetKrb5ConfLocation()) &&
+         CreateDirectory(GetCCacheLocation()) &&
+         CreateDirectory(GetKrb5TraceLocation());
+}
+
 void InitLog() {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   logging::SetLogItems(true /* enable_process_id */,
@@ -41,15 +117,12 @@ void InitLog() {
 
 // Creates smb configuration file in $HOME/.smb/smb.conf.
 bool CreateSmbConfFile() {
-  base::File::Error ferror;
   const std::string smb_conf_directory(std::string(kSmbProviderHome) +
                                        kSmbConfLocation);
-  if (!base::CreateDirectoryAndGetError(base::FilePath(smb_conf_directory),
-                                        &ferror)) {
-    LOG(ERROR) << "Failed to create directory '" << smb_conf_directory
-               << "': " << base::File::ErrorToString(ferror);
+  if (!CreateDirectory(smb_conf_directory)) {
     return false;
   }
+
   const int data_size = strlen(kSmbConfData);
   return base::WriteFile(base::FilePath(smb_conf_directory + kSmbConfFile),
                          kSmbConfData, data_size) == data_size;
@@ -109,8 +182,10 @@ int main(int argc, char* argv[]) {
   // Smb configuration file must be written before the daemon is started because
   // the check for smb.conf happens when the context is set.
   if (!(smbprovider::SetHomeEnvironmentVariable() &&
-        smbprovider::CreateSmbConfFile())) {
-    LOG(ERROR) << "Failed to set configuration file, exiting";
+        smbprovider::SetKerberosEnvironmentVariables() &&
+        smbprovider::CreateSmbConfFile() &&
+        smbprovider::CreateKerberosDirectories())) {
+    LOG(ERROR) << "Failed to set configuration files, exiting";
     return EXIT_FAILURE;
   }
   return smbprovider::RunDaemon();

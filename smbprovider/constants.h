@@ -39,6 +39,23 @@ extern const char kSmbConfFile[];
 // Data for smb config file.
 extern const char kSmbConfData[];
 
+// Environment variables for Kerberos.
+extern const char kKrb5ConfigEnvironmentVariable[];
+extern const char kKrb5CCNameEnvironmentVariable[];
+extern const char kKrb5TraceEnvironmentVariable[];
+
+// Location and file name for krb5 configuration file.
+extern const char kKrb5ConfLocation[];
+extern const char kKrb5ConfFile[];
+
+// Location and file name for credential cache file.
+extern const char kCCacheLocation[];
+extern const char kCCacheFile[];
+
+// Location and file name for the Kerberos trace file.
+extern const char kKrbTraceLocation[];
+extern const char kKrbTraceFile[];
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_CONSTANTS_H_
