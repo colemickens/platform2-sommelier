@@ -30,8 +30,12 @@ is available:
 -   [Power Buttons](docs/power_buttons.md) describes how power buttons work.
 -   [Screen Brightness](docs/screen_brightness.md) describes powerd's logic for
     controlling the display backlight.
+-   [Shutdown and Reboot](docs/shutdown.md) describes why and how Chrome OS
+    systems shut down and reboot.
 -   [Suspend and Resume](docs/suspend_resume.md) describes powerd's process for
     suspending and resuming the system.
+-   [udev Usage](docs/udev.md) describes how powerd uses the udev system to
+    learn about hardware changes.
 
 ## Code Overview
 
