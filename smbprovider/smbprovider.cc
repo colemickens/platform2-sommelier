@@ -376,6 +376,11 @@ void SmbProvider::GetShares(const ProtoBlob& options_blob,
       options_blob, error_code, shares);
 }
 
+void SmbProvider::SetupKerberos(SetupKerberosCallback callback,
+                                const std::string& account_id) {
+  NOTREACHED();
+}
+
 template <typename Proto>
 bool SmbProvider::GetFullPath(const Proto* options,
                               std::string* full_path) const {

@@ -41,6 +41,9 @@ bool GetEntries(const Proto& options,
 class SmbProvider : public org::chromium::SmbProviderAdaptor,
                     public org::chromium::SmbProviderInterface {
  public:
+  using SetupKerberosCallback =
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>;
+
   SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
               std::unique_ptr<SambaInterface> samba_interface,
               std::unique_ptr<MountManager> mount_manager,
@@ -101,6 +104,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   void GetShares(const ProtoBlob& options_blob,
                  int32_t* error_code,
                  ProtoBlob* shares) override;
+
+  void SetupKerberos(SetupKerberosCallback callback,
+                     const std::string& account_id) override;
 
   // Register DBus object and interfaces.
   void RegisterAsync(

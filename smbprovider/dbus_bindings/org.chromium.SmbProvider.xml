@@ -352,5 +352,22 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="SetupKerberos">
+      <tp:docstring>
+        Sets up Kerberos for a user.
+      </tp:docstring>
+      <arg name="account_id" type="s" direction="in">
+        <tp:docstring>
+          Object GUID of the user account to setup Kerberos for.
+        </tp:docstring>
+      </arg>
+      <arg name="success" type="b" direction="out">
+        <tp:docstring>
+          Boolean indicating success of the SetupKerberos operation.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
+
   </interface>
 </node>
