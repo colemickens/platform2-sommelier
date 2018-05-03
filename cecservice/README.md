@@ -7,10 +7,12 @@ and out of standby mode.
 
 ## D-Bus API
 
-The service exposes a D-Bus API consisting of 2 functions:
+The service exposes a D-Bus API consisting of following functions:
 *   `SendWakeUpToAllDevices` - wakes up all TVs, putting them out of standby and
     announces the device running this service as an active source.
 *   `SendStandByToAllDevices` - puts all TVs on standby.
+*   `GetTvsPowerStatus` - returns power status of TVs (devices with logical
+    address 0) on all connected CEC adapters.
 
 ## Implementation
 
@@ -33,6 +35,11 @@ source role. While being an active source it will respond to
 another CEC device announces itself as an active source or
 the `SendStandByToAllDevice` is called.
 
+`GetTvsPowerStatus` sends `give device power status` request on all adapters.
+This method returns array of integers, each integer describing power state of
+a TV connected to an adapter. The meaning of the values is explained in
+the service [system API] definition.
+
 ## Supported adapters / limitations
 
 The service only works with CEC adapters which drivers handle physical address
@@ -41,3 +48,4 @@ addresses.
 
 [CEC]: https://en.wikipedia.org/wiki/Consumer_Electronics_Control
 [Linux CEC API]: https://www.kernel.org/doc/html/latest/media/uapi/cec/cec-api.html
+[system API]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/cecservice/dbus-constants.h

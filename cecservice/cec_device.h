@@ -8,11 +8,14 @@
 #include <linux/cec.h>
 
 #include <deque>
+#include <list>
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/files/file_path.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "cecservice/cec_fd.h"
 
@@ -21,8 +24,12 @@ namespace cecservice {
 // Object handling interaction with a single /dev/cec* node.
 class CecDevice {
  public:
+  using GetTvPowerStatusCallback = base::Callback<void(TvPowerStatus)>;
+
   virtual ~CecDevice() = default;
 
+  // Gets power state of TV.
+  virtual void GetTvPowerStatus(GetTvPowerStatusCallback callback) = 0;
   // Sends stand by request to a TV.
   virtual void SetStandBy() = 0;
   // Sends wake up (image view on + active source) messages.
@@ -36,37 +43,37 @@ class CecDeviceImpl : public CecDevice {
   ~CecDeviceImpl() override;
 
   // Performs object initialization. Returns false if the initialization
-  // failed and object is unusuable.
+  // failed and object is unusable.
   bool Init();
 
   // CecDevice overrides:
+  void GetTvPowerStatus(GetTvPowerStatusCallback callback) override;
   void SetStandBy() override;
   void SetWakeUp() override;
 
  private:
   // Represents CEC adapter state.
   enum class State {
-    kStart,  // State when no physical address is known, in this state we are
-             // only allowed to send image view on message.
+    kStart,  // State when no physical address is known, in this state we
+             // are only allowed to send image view on message.
     kNoLogicalAddress,  // The physical address is known but the logical
                         // address is not (yet) configured.
     kReady  // All is set up, we are free to send any type of messages.
   };
 
-  // Represents the request that we intend to send at the earliest opportunity.
-  enum class Request {
-    kActiveSource,  // Send active source request.
-    kImageViewOn,   // Send image view on request.
-    kStandBy,       // Send stand by.
-    kNone           // No request pending.
+  // Represents request that either is to be sent or already has been sent
+  // but we didn't yet get response to.
+  struct RequestInFlight {
+    // The callback to invoke when request completes.
+    GetTvPowerStatusCallback callback;
+
+    // Message id assigned by CEC API or 0 if the request has not been sent yet.
+    uint32_t sequence_id;
   };
 
-  // Schedules watching for write readiness on the fd.
+  // Schedules watching for write readiness on the fd if there are some
+  // outgoing messages.
   void RequestWriteWatch();
-
-  // Schedules watching for write readiness on the fd if the current state
-  // demands it.
-  void RequestWriteWatchIfNeeded();
 
   // Returns the current state.
   State GetState() const;
@@ -80,8 +87,7 @@ class CecDeviceImpl : public CecDevice {
   bool ProcessMessagesLostEvent(const struct cec_event_lost_msgs& event);
 
   // Acts on process update event from CEC core. If this method returns false
-  // then an unexpected error was encountered and the object should be not acted
-  // upon any further.
+  // then an unexpected error was encountered and the object should be disabled.
   bool ProcessStateChangeEvent(const struct cec_event_state_change& event);
 
   // Processes incoming events. If false is returned, then unexpected failure
@@ -96,37 +102,31 @@ class CecDeviceImpl : public CecDevice {
   // occurred and the object should be disabled.
   bool ProcessWrite();
 
-  // Processes sent message notifications, nothing is really done about failures
-  // atm. We just log them.
+  // Processes response received to get power status request. Returns false if
+  // the message is not a response to a previously sent request.
+  bool ProcessPowerStatusResponse(const struct cec_msg& msg);
+
+  // Handles sent message notifications and responses to get tv power queries.
   void ProcessSentMessage(const struct cec_msg& msg);
 
   // Handles messages directed to us.
   void ProcessIncomingMessage(struct cec_msg* msg);
 
-  // Sends provided message,.
+  // Sends provided message.
   CecFd::TransmitResult SendMessage(struct cec_msg* msg);
 
-  // Sets logical address on an adapter (if it has not been yet configured),
+  // Sets logical address on the adapter (if it has not been yet configured),
   // returns false if the operation failed.
   bool SetLogicalAddress();
-
-  // Sends a pending reply (if there is any). Returns false if unexpected error
-  // occurred.
-  bool SendReply();
 
   // Handles fd event.
   void OnFdEvent(CecFd::EventType event);
 
-  // Sends a stand by request to a TV. Returns false if unexpected error
-  // occurred.
-  bool SendStandByRequest();
+  // Immediately responds to all currently ongoing queries.
+  void RespondToAllPendingQueries(TvPowerStatus response);
 
-  // Sends a image view on to a TV. Returns false if unexpected error occurred.
-  bool SendImageViewOn();
-
-  // Broadcasts an active source message. Returns false if unexpected error
-  // occurred.
-  bool SendActiveSource();
+  // Disables device.
+  void DisableDevice();
 
   // Current physical address.
   uint16_t physical_address_ = CEC_PHYS_ADDR_INVALID;
@@ -134,14 +134,18 @@ class CecDeviceImpl : public CecDevice {
   // Current logical address.
   uint8_t logical_address_ = CEC_LOG_ADDR_INVALID;
 
-  // Pending request.
-  Request pending_request_ = Request::kNone;
+  // Queue of messages we are about to send.
+  std::deque<struct cec_msg> message_queue_;
 
-  // Queue of responses we are about to send.
-  std::deque<struct cec_msg> reply_queue_;
+  // Queue of requests that are in flight.
+  std::list<RequestInFlight> requests_;
 
   // Flag indicating if we believe we are the active source.
   bool active_source_ = false;
+
+  // If true, we should send out an active source message when the bus becomes
+  // ready.
+  bool pending_active_source_broadcast_ = false;
 
   // The descriptor associated with the device.
   std::unique_ptr<CecFd> fd_;

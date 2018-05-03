@@ -8,9 +8,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
+#include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/files/file_path.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "cecservice/cec_device.h"
 #include "cecservice/udev.h"
@@ -21,17 +24,44 @@ namespace cecservice {
 // udev) and passes received commands to CEC devices.
 class CecManager {
  public:
+  using GetTvsPowerStatusCallback =
+      base::Callback<void(const std::vector<TvPowerStatus>&)>;
+
   CecManager(const UdevFactory& udev_factory,
              const CecDeviceFactory& cec_factory);
   ~CecManager();
 
-  // Sends wake up (image view on + active source ) request to all cec devices.
+  // Queries power status of CEC-enabled TVs (devices with logical address 0).
+  // The order of returned values is arbitrary.
+  void GetTvsPowerStatus(GetTvsPowerStatusCallback callback);
+
+  // Sends wake up (image view on + active source) request to all CEC-enabled
+  // TVs.
   void SetWakeUp();
 
-  // Passes stand by command to all CEC devices.
+  // Passes stand by command to all CEC-enabled TVs.
   void SetStandBy();
 
  private:
+  // Ids for get tv power queries.
+  typedef unsigned QueryId;
+
+  // Represents a power status query result from a single CEC device.
+  struct TvPowerStatusResult;
+  // Ongoing power status query.
+  struct TvsPowerStatusQuery;
+
+  // Callback for TV power status responses.
+  void OnTvPowerResponse(QueryId id,
+                         base::FilePath device_path,
+                         TvPowerStatus result);
+
+  // If all responses for a given query has been received, this method will
+  // invoke the query's callback and return true. False is returned when not
+  // all of the responses have been received and thus the query has not
+  // completed yet.
+  bool MaybeRespondToTvsPowerStatusQuery(const TvsPowerStatusQuery& query);
+
   // Called when udev reports that new device has been added.
   void OnDeviceAdded(const base::FilePath& device_path);
 
@@ -46,6 +76,12 @@ class CecManager {
 
   // Factory of CEC device handlers.
   const CecDeviceFactory& cec_factory_;
+
+  // Id to be used for next query.
+  QueryId next_query_id_ = 0;
+
+  // Ongoing power status queries.
+  std::map<QueryId, TvsPowerStatusQuery> tv_power_status_queries_;
 
   // List of currently opened CEC devices.
   std::map<base::FilePath, std::unique_ptr<CecDevice>> devices_;

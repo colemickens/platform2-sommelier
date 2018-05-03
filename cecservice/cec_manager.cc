@@ -14,6 +14,21 @@
 
 namespace cecservice {
 
+struct CecManager::TvPowerStatusResult {
+  // Set to true if the response has been received from the device.
+  bool received = false;
+
+  // The actual power status received.
+  TvPowerStatus power_status = kTvPowerStatusUnknown;
+};
+
+struct CecManager::TvsPowerStatusQuery {
+  // Callback to invoke when all responses have been received.
+  GetTvsPowerStatusCallback callback;
+  // Device nodes the request has been sent to.
+  std::map<base::FilePath, TvPowerStatusResult> responses;
+};
+
 CecManager::CecManager(const UdevFactory& udev_factory,
                        const CecDeviceFactory& cec_factory)
     : cec_factory_(cec_factory) {
@@ -26,6 +41,29 @@ CecManager::CecManager(const UdevFactory& udev_factory,
 }
 
 CecManager::~CecManager() = default;
+
+void CecManager::GetTvsPowerStatus(GetTvsPowerStatusCallback callback) {
+  LOG(INFO) << "Received get TVs power status request.";
+  if (devices_.empty()) {
+    std::move(callback).Run({});
+    return;
+  }
+
+  TvsPowerStatusQuery query{std::move(callback)};
+
+  for (auto& kv : devices_) {
+    query.responses.insert(std::make_pair(kv.first, TvPowerStatusResult()));
+  }
+
+  QueryId id = next_query_id_++;
+  tv_power_status_queries_.insert(std::make_pair(id, std::move(query)));
+
+  for (auto& kv : devices_) {
+    kv.second->GetTvPowerStatus(base::Bind(&CecManager::OnTvPowerResponse,
+                                           weak_factory_.GetWeakPtr(), id,
+                                           kv.first));
+  }
+}
 
 void CecManager::SetWakeUp() {
   LOG(INFO) << "Received wake up request.";
@@ -41,6 +79,37 @@ void CecManager::SetStandBy() {
   }
 }
 
+void CecManager::OnTvPowerResponse(QueryId id,
+                                   base::FilePath device_path,
+                                   TvPowerStatus result) {
+  auto iterator = tv_power_status_queries_.find(id);
+  CHECK(iterator != tv_power_status_queries_.end());
+
+  TvsPowerStatusQuery& query = iterator->second;
+  query.responses[device_path] = {true, result};
+
+  if (MaybeRespondToTvsPowerStatusQuery(query)) {
+    tv_power_status_queries_.erase(iterator);
+  }
+}
+
+bool CecManager::MaybeRespondToTvsPowerStatusQuery(
+    const TvsPowerStatusQuery& query) {
+  std::vector<TvPowerStatus> result;
+  for (auto& response : query.responses) {
+    const TvPowerStatusResult& status = response.second;
+    if (!status.received) {
+      return false;
+    }
+
+    result.push_back(status.power_status);
+  }
+
+  std::move(query.callback).Run(result);
+
+  return true;
+}
+
 void CecManager::OnDeviceAdded(const base::FilePath& device_path) {
   LOG(INFO) << "New device: " << device_path.value();
   AddNewDevice(device_path);
@@ -49,6 +118,18 @@ void CecManager::OnDeviceAdded(const base::FilePath& device_path) {
 void CecManager::OnDeviceRemoved(const base::FilePath& device_path) {
   LOG(INFO) << "Removing device: " << device_path.value();
   devices_.erase(device_path);
+
+  auto iterator = tv_power_status_queries_.begin();
+  while (iterator != tv_power_status_queries_.end()) {
+    TvsPowerStatusQuery& query = iterator->second;
+    query.responses.erase(device_path);
+
+    if (MaybeRespondToTvsPowerStatusQuery(query)) {
+      iterator = tv_power_status_queries_.erase(iterator);
+    } else {
+      ++iterator;
+    }
+  }
 }
 
 void CecManager::EnumerateAndAddExistingDevices() {

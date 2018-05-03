@@ -22,5 +22,22 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="GetTvsPowerStatus">
+      <tp:docstring>
+        Returns power status of all present TVs.
+
+        This will send “Give Power Status" to devices with logical address 0
+        on all CEC adapters and return values the devices reponded with.
+      </tp:docstring>
+      <arg name="response" type="ai" direction="out">
+        <tp:docstring>
+          Returns array of integers, each representing power status of a TV
+          connected to the device. The order of returned values is arbitrary.
+          See the link below for the meaning of the values:
+          https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/cecservice/dbus-constants.h
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
   </interface>
 </node>

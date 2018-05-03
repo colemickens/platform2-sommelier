@@ -5,6 +5,9 @@
 #ifndef CECSERVICE_CECSERVICE_DBUS_ADAPTOR_H_
 #define CECSERVICE_CECSERVICE_DBUS_ADAPTOR_H_
 
+#include <memory>
+#include <vector>
+
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_object.h>
@@ -28,6 +31,8 @@ class CecServiceDBusAdaptor : public org::chromium::CecServiceAdaptor,
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
   // org::chromium::CecServiceInterface overrides; D-Bus methods.
+  void GetTvsPowerStatus(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             std::vector<int32_t>>> response) override;
   bool SendStandByToAllDevices(brillo::ErrorPtr* error) override;
   bool SendWakeUpToAllDevices(brillo::ErrorPtr* error) override;
 

@@ -19,6 +19,7 @@ class CecDeviceMock : public CecDevice {
   CecDeviceMock() = default;
   ~CecDeviceMock() override { DestructorCalled(); };
 
+  MOCK_METHOD1(GetTvPowerStatus, void(GetTvPowerStatusCallback callback));
   MOCK_METHOD0(SetStandBy, void());
   MOCK_METHOD0(SetWakeUp, void());
   MOCK_METHOD0(DestructorCalled, void());

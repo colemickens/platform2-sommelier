@@ -13,10 +13,40 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 
 namespace cecservice {
+
+namespace {
+struct cec_msg CreateMessage(uint16_t source_address,
+                             uint16_t destination_address) {
+  struct cec_msg message;
+  if (source_address == CEC_LOG_ADDR_INVALID) {
+    cec_msg_init(&message, CEC_LOG_ADDR_UNREGISTERED, destination_address);
+  } else {
+    cec_msg_init(&message, source_address, destination_address);
+  }
+  return message;
+}
+
+TvPowerStatus GetPowerStatus(const struct cec_msg& msg) {
+  uint8_t power_status;
+  cec_ops_report_power_status(&msg, &power_status);
+  switch (power_status) {
+    case CEC_OP_POWER_STATUS_ON:
+      return kTvPowerStatusOn;
+    case CEC_OP_POWER_STATUS_STANDBY:
+      return kTvPowerStatusStandBy;
+    case CEC_OP_POWER_STATUS_TO_ON:
+      return kTvPowerStatusToOn;
+    case CEC_OP_POWER_STATUS_TO_STANDBY:
+      return kTvPowerStatusToStandBy;
+    default:
+      LOG(WARNING) << "Unknown power status:" << power_status << " received.";
+      return kTvPowerStatusUnknown;
+  }
+}
+}  // namespace
 
 CecDeviceImpl::CecDeviceImpl(std::unique_ptr<CecFd> fd) : fd_(std::move(fd)) {}
 
@@ -25,10 +55,33 @@ CecDeviceImpl::~CecDeviceImpl() = default;
 bool CecDeviceImpl::Init() {
   if (!fd_->SetEventCallback(
           base::Bind(&CecDeviceImpl::OnFdEvent, weak_factory_.GetWeakPtr()))) {
-    fd_.reset();
+    DisableDevice();
     return false;
   }
   return true;
+}
+
+void CecDeviceImpl::GetTvPowerStatus(GetTvPowerStatusCallback callback) {
+  LOG(INFO) << "Getting power status.";
+  if (!fd_) {
+    LOG(WARNING) << "Device is disabled due to errors, unable to query.";
+    std::move(callback).Run(kTvPowerStatusError);
+    return;
+  }
+
+  if (GetState() == State::kStart) {
+    LOG(INFO) << "Not configured, not querying TV power state.";
+    std::move(callback).Run(kTvPowerStatusAdapterNotConfigured);
+    return;
+  }
+
+  struct cec_msg message = CreateMessage(logical_address_, CEC_LOG_ADDR_TV);
+  cec_msg_give_device_power_status(&message, 1);
+  message_queue_.push_back(message);
+
+  requests_.push_back({std::move(callback), 0});
+
+  RequestWriteWatch();
 }
 
 void CecDeviceImpl::SetStandBy() {
@@ -38,11 +91,18 @@ void CecDeviceImpl::SetStandBy() {
     return;
   }
 
-  active_source_ = false;
-  if (GetState() == State::kReady) {
-    pending_request_ = Request::kStandBy;
-    RequestWriteWatch();
+  if (GetState() == State::kStart) {
+    LOG(INFO) << "Ignoring standby request, we are not connected.";
+    return;
   }
+
+  active_source_ = false;
+
+  struct cec_msg message = CreateMessage(logical_address_, CEC_LOG_ADDR_TV);
+  cec_msg_standby(&message);
+  message_queue_.push_back(message);
+
+  RequestWriteWatch();
 }
 
 void CecDeviceImpl::SetWakeUp() {
@@ -52,32 +112,46 @@ void CecDeviceImpl::SetWakeUp() {
     return;
   }
 
+  struct cec_msg image_view_on_message =
+      CreateMessage(logical_address_, CEC_LOG_ADDR_TV);
+  cec_msg_image_view_on(&image_view_on_message);
+
+  switch (GetState()) {
+    case State::kReady: {
+      message_queue_.push_back(image_view_on_message);
+
+      struct cec_msg active_source_message =
+          CreateMessage(logical_address_, CEC_LOG_ADDR_BROADCAST);
+      cec_msg_active_source(&active_source_message, physical_address_);
+      message_queue_.push_back(active_source_message);
+    } break;
+    case State::kStart:
+      if (SendMessage(&image_view_on_message) == CecFd::TransmitResult::kOk) {
+        pending_active_source_broadcast_ = true;
+      } else {
+        LOG(WARNING) << "Failed to send image view on message while in start "
+                        "state, we are not able to wake up this TV.";
+        return;
+      }
+      break;
+    case State::kNoLogicalAddress:
+      message_queue_.push_back(image_view_on_message);
+      pending_active_source_broadcast_ = true;
+      break;
+  }
   active_source_ = true;
-  pending_request_ = Request::kImageViewOn;
+
   RequestWriteWatch();
 }
 
 void CecDeviceImpl::RequestWriteWatch() {
+  if (message_queue_.empty()) {
+    return;
+  }
+
   if (!fd_->WriteWatch()) {
     LOG(ERROR) << "Failed to request write watch on fd, disabling device.";
-    fd_.reset();
-  }
-}
-
-void CecDeviceImpl::RequestWriteWatchIfNeeded() {
-  switch (GetState()) {
-    case State::kReady:
-      if (pending_request_ != Request::kNone || reply_queue_.size()) {
-        RequestWriteWatch();
-      }
-      break;
-    case State::kStart:
-      if (pending_request_ == Request::kImageViewOn) {
-        RequestWriteWatch();
-      }
-      break;
-    case State::kNoLogicalAddress:
-      break;
+    DisableDevice();
   }
 }
 
@@ -117,20 +191,24 @@ bool CecDeviceImpl::ProcessMessagesLostEvent(
 
 bool CecDeviceImpl::ProcessStateChangeEvent(
     const struct cec_event_state_change& event) {
-  bool ret = true;
   switch (UpdateState(event)) {
     case State::kNoLogicalAddress:
-      reply_queue_.clear();
-      ret = SetLogicalAddress();
-      break;
+      return SetLogicalAddress();
     case State::kStart:
-      pending_request_ = Request::kNone;
-      reply_queue_.clear();
-      break;
+      RespondToAllPendingQueries(kTvPowerStatusAdapterNotConfigured);
+      message_queue_.clear();
+      return true;
     case State::kReady:
-      break;
+      if (pending_active_source_broadcast_) {
+        struct cec_msg message =
+            CreateMessage(logical_address_, CEC_LOG_ADDR_BROADCAST);
+        cec_msg_active_source(&message, physical_address_);
+        message_queue_.push_back(message);
+
+        pending_active_source_broadcast_ = false;
+      }
+      return true;
   }
-  return ret;
 }
 
 bool CecDeviceImpl::ProcessEvents() {
@@ -168,19 +246,64 @@ bool CecDeviceImpl::ProcessRead() {
 }
 
 bool CecDeviceImpl::ProcessWrite() {
-  switch (pending_request_) {
-    case Request::kNone:
-      return SendReply();
-    case Request::kStandBy:
-      return SendStandByRequest();
-    case Request::kImageViewOn:
-      return SendImageViewOn();
-    case Request::kActiveSource:
-      return SendActiveSource();
+  if (message_queue_.empty()) {
+    return true;
   }
+
+  struct cec_msg message = message_queue_.front();
+  const CecFd::TransmitResult ret = SendMessage(&message);
+  if (ret == CecFd::TransmitResult::kWouldBlock) {
+    return true;
+  }
+
+  if (cec_msg_opcode(&message) == CEC_MSG_GIVE_DEVICE_POWER_STATUS) {
+    auto iterator = std::find_if(requests_.begin(), requests_.end(),
+                                 [](const RequestInFlight& request) {
+                                   return request.sequence_id == 0;
+                                 });
+    CHECK(iterator != requests_.end());
+
+    if (ret == CecFd::TransmitResult::kOk) {
+      iterator->sequence_id = message.sequence;
+    } else {
+      std::move(iterator->callback).Run(kTvPowerStatusError);
+      requests_.erase(iterator);
+    }
+  }
+
+  message_queue_.pop_front();
+  return ret != CecFd::TransmitResult::kError;
+}
+
+bool CecDeviceImpl::ProcessPowerStatusResponse(const struct cec_msg& msg) {
+  auto iterator = std::find_if(requests_.begin(), requests_.end(),
+                               [&](const RequestInFlight& request) {
+                                 return request.sequence_id == msg.sequence;
+                               });
+  if (iterator == requests_.end()) {
+    return false;
+  }
+
+  TvPowerStatus status;
+  if (cec_msg_status_is_ok(&msg)) {
+    status = GetPowerStatus(msg);
+  } else if (msg.tx_status & CEC_TX_STATUS_NACK) {
+    status = kTvPowerStatusNoTv;
+  } else {
+    status = kTvPowerStatusError;
+  }
+
+  std::move(iterator->callback).Run(status);
+  requests_.erase(iterator);
+
+  return true;
 }
 
 void CecDeviceImpl::ProcessSentMessage(const struct cec_msg& msg) {
+  if (ProcessPowerStatusResponse(msg)) {
+    return;
+  }
+
   if (cec_msg_status_is_ok(&msg)) {
     VLOG(1) << base::StringPrintf("Successfully sent message, opcode: 0x%x",
                                   cec_msg_opcode(&msg));
@@ -200,7 +323,7 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
         VLOG(1) << "We are active source, will respond.";
         cec_msg_init(&reply, logical_address_, CEC_LOG_ADDR_BROADCAST);
         cec_msg_active_source(&reply, physical_address_);
-        reply_queue_.push_back(std::move(reply));
+        message_queue_.push_back(std::move(reply));
       }
       break;
     case CEC_MSG_ACTIVE_SOURCE:
@@ -214,7 +337,7 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
       VLOG(1) << "Received give power status message.";
       cec_msg_init(&reply, logical_address_, cec_msg_initiator(msg));
       cec_msg_report_power_status(&reply, CEC_OP_POWER_STATUS_ON);
-      reply_queue_.push_back(reply);
+      message_queue_.push_back(reply);
       break;
     default:
       VLOG(1) << base::StringPrintf("Received message, opcode: 0x%x",
@@ -222,7 +345,7 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
       if (!cec_msg_is_broadcast(msg)) {
         VLOG(1) << "Responding with feature abort.";
         cec_msg_reply_feature_abort(msg, CEC_OP_ABORT_UNRECOGNIZED_OP);
-        reply_queue_.push_back(*msg);
+        message_queue_.push_back(std::move(*msg));
       } else {
         VLOG(1) << "Ignoring broadcast message.";
       }
@@ -261,30 +384,6 @@ bool CecDeviceImpl::SetLogicalAddress() {
   return fd_->SetLogicalAddresses(&addresses);
 }
 
-bool CecDeviceImpl::SendReply() {
-  if (reply_queue_.empty()) {
-    return true;
-  }
-
-  struct cec_msg& msg = reply_queue_.front();
-  switch (SendMessage(&msg)) {
-    case CecFd::TransmitResult::kOk:
-    case CecFd::TransmitResult::kNoNet:
-    case CecFd::TransmitResult::kInvalidValue:
-      reply_queue_.pop_front();
-      return true;
-    case CecFd::TransmitResult::kWouldBlock:
-      return true;
-    case CecFd::TransmitResult::kError:
-      LOG(ERROR) << base::StringPrintf(
-          "Failed to send response with opcode:0x%x", cec_msg_opcode(&msg));
-      return false;
-  }
-
-  NOTREACHED() << "Unhandled result";
-  return false;
-}
-
 void CecDeviceImpl::OnFdEvent(CecFd::EventType event) {
   if (!fd_) {
     return;
@@ -304,83 +403,26 @@ void CecDeviceImpl::OnFdEvent(CecFd::EventType event) {
   }
 
   if (!ret) {
-    fd_.reset();
+    DisableDevice();
     return;
   }
 
-  RequestWriteWatchIfNeeded();
+  RequestWriteWatch();
 }
 
-bool CecDeviceImpl::SendStandByRequest() {
-  struct cec_msg msg;
-  cec_msg_init(&msg, logical_address_, CEC_LOG_ADDR_TV);
-  cec_msg_standby(&msg);
+void CecDeviceImpl::RespondToAllPendingQueries(TvPowerStatus response) {
+  std::list<RequestInFlight> requests;
+  requests.swap(requests_);
 
-  switch (SendMessage(&msg)) {
-    case CecFd::TransmitResult::kOk:
-    case CecFd::TransmitResult::kNoNet:
-    case CecFd::TransmitResult::kInvalidValue:
-      pending_request_ = Request::kNone;
-      return true;
-    case CecFd::TransmitResult::kWouldBlock:
-      return true;
-    case CecFd::TransmitResult::kError:
-      LOG(ERROR) << "Failed to send stand by request.";
-      return false;
+  for (auto& request : requests) {
+    std::move(request.callback).Run(response);
   }
-
-  NOTREACHED() << "Unhandled result";
-  return false;
 }
 
-bool CecDeviceImpl::SendImageViewOn() {
-  struct cec_msg msg;
-  if (GetState() == State::kStart) {
-    cec_msg_init(&msg, CEC_LOG_ADDR_UNREGISTERED, CEC_LOG_ADDR_TV);
-  } else {
-    cec_msg_init(&msg, logical_address_, CEC_LOG_ADDR_TV);
-  }
-  cec_msg_image_view_on(&msg);
+void CecDeviceImpl::DisableDevice() {
+  fd_.reset();
 
-  switch (SendMessage(&msg)) {
-    case CecFd::TransmitResult::kOk:
-      pending_request_ = Request::kActiveSource;
-      return true;
-    case CecFd::TransmitResult::kNoNet:
-    case CecFd::TransmitResult::kInvalidValue:
-      pending_request_ = Request::kNone;
-      return true;
-    case CecFd::TransmitResult::kWouldBlock:
-      return true;
-    case CecFd::TransmitResult::kError:
-      LOG(ERROR) << "Failed to send image view on request.";
-      return false;
-  }
-
-  NOTREACHED() << "Unhandled result";
-  return false;
-}
-
-bool CecDeviceImpl::SendActiveSource() {
-  struct cec_msg msg;
-  cec_msg_init(&msg, logical_address_, CEC_LOG_ADDR_BROADCAST);
-  cec_msg_active_source(&msg, physical_address_);
-
-  switch (SendMessage(&msg)) {
-    case CecFd::TransmitResult::kOk:
-    case CecFd::TransmitResult::kNoNet:
-    case CecFd::TransmitResult::kInvalidValue:
-      pending_request_ = Request::kNone;
-      return true;
-    case CecFd::TransmitResult::kWouldBlock:
-      return true;
-    case CecFd::TransmitResult::kError:
-      LOG(ERROR) << "Failed to send active source broadcast.";
-      return false;
-  }
-
-  NOTREACHED() << "Unhandled result";
-  return false;
+  RespondToAllPendingQueries(kTvPowerStatusError);
 }
 
 CecDeviceFactoryImpl::CecDeviceFactoryImpl(const CecFdOpener* cec_fd_opener)

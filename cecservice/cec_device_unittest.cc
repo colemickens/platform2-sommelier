@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/callback.h>
+#include <base/bind.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
@@ -31,6 +33,10 @@ constexpr uint16_t kPhysicalAddress = 2;
 constexpr uint8_t kLogicalAddress = CEC_LOG_ADDR_PLAYBACK_1;
 constexpr uint8_t kOtherLogicalAddress = CEC_LOG_ADDR_PLAYBACK_3;
 constexpr uint16_t kLogicalAddressMask = (1 << kLogicalAddress);
+
+void Copy(TvPowerStatus* out, TvPowerStatus in) {
+  *out = in;
+}
 }  // namespace
 
 class CecDeviceTest : public ::testing::Test {
@@ -147,10 +153,11 @@ TEST_F(CecDeviceTest, TestSendWakeUp) {
   Init();
   Connect();
 
-  EXPECT_CALL(*cec_fd_mock_, WriteWatch());
+  EXPECT_CALL(*cec_fd_mock_, WriteWatch())
+      .Times(2)
+      .WillRepeatedly(Return(true));
   device_->SetWakeUp();
 
-  EXPECT_CALL(*cec_fd_mock_, WriteWatch());
   event_callback_.Run(CecFd::EventType::kWrite);
 
   EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
@@ -158,7 +165,6 @@ TEST_F(CecDeviceTest, TestSendWakeUp) {
   EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
 
   event_callback_.Run(CecFd::EventType::kWrite);
-
   EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
   EXPECT_EQ(CEC_LOG_ADDR_BROADCAST, cec_msg_destination(&sent_message_));
   EXPECT_EQ(CEC_MSG_ACTIVE_SOURCE, cec_msg_opcode(&sent_message_));
@@ -167,8 +173,11 @@ TEST_F(CecDeviceTest, TestSendWakeUp) {
 TEST_F(CecDeviceTest, TestSendWakeUpWhileDisconnected) {
   Init();
 
-  EXPECT_CALL(*cec_fd_mock_, WriteWatch());
   device_->SetWakeUp();
+
+  EXPECT_EQ(CEC_LOG_ADDR_UNREGISTERED, cec_msg_initiator(&sent_message_));
+  EXPECT_EQ(CEC_LOG_ADDR_TV, cec_msg_destination(&sent_message_));
+  EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
 
   // Test that we hold off with requesting write until we have addresses
   // configured.
@@ -292,35 +301,6 @@ TEST_F(CecDeviceTest, TestFeatureAbortResponse) {
   EXPECT_EQ(CEC_MSG_FEATURE_ABORT, cec_msg_opcode(&sent_message_));
 }
 
-TEST_F(CecDeviceTest, TestResetOnPhysicalAddressLost) {
-  Init();
-  Connect();
-
-  // Schedule 2 operations, stand by request and power request.
-  EXPECT_CALL(*cec_fd_mock_, WriteWatch());
-  device_->SetStandBy();
-
-  EXPECT_CALL(*cec_fd_mock_, WriteWatch());
-  EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
-      .WillOnce(Invoke([](struct cec_msg* msg) {
-        cec_msg_init(msg, kOtherLogicalAddress, kLogicalAddress);
-        cec_msg_give_device_power_status(msg, 0);
-        return true;
-      }));
-  event_callback_.Run(CecFd::EventType::kRead);
-
-  // While physical address is lost all the state should be reset - we should
-  // not to act on anything that happed before the reset.
-  SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
-
-  // Connect again.
-  Connect();
-
-  // Nothing should be sent.
-  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_)).Times(0);
-  event_callback_.Run(CecFd::EventType::kWrite);
-}
-
 TEST_F(CecDeviceTest, TestEventReadFailureDisablesDevice) {
   Init();
 
@@ -363,7 +343,7 @@ TEST_F(CecDeviceTest, TestFailureToSetWriteWatchDisablesDevice) {
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
 }
 
-TEST_F(CecDeviceTest, TestFailureToSendWakeUpDisablesDevice) {
+TEST_F(CecDeviceTest, TestFailureToSendMessageDisablesDevice) {
   Init();
   Connect();
 
@@ -380,62 +360,88 @@ TEST_F(CecDeviceTest, TestFailureToSendWakeUpDisablesDevice) {
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
 }
 
-TEST_F(CecDeviceTest, TestFailureToSendActiveSourceDisableDevice) {
+TEST_F(CecDeviceTest, TestErrorWouldBlockRetries) {
   Init();
   Connect();
 
-  // Image view on request is sent OK.
-  ON_CALL(*cec_fd_mock_, TransmitMessage(_))
-      .WillByDefault(Return(CecFd::TransmitResult::kOk));
+  // Object should retry
+  EXPECT_CALL(*cec_fd_mock_, WriteWatch())
+      .Times(3)
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .Times(2)
+      .WillRepeatedly(DoAll(SaveArgPointee<0>(&sent_message_),
+                            Return(CecFd::TransmitResult::kWouldBlock)));
   device_->SetWakeUp();
   event_callback_.Run(CecFd::EventType::kWrite);
 
-  // Now fail the active source message.
-  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
-      .WillOnce(Return(CecFd::TransmitResult::kError));
-  EXPECT_CALL(*cec_fd_mock_, CecFdDestructorCalled());
-  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
+  sent_message_ = {};
 
-  // The FD should be destroyed at this point.
-  EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
+  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
 }
 
-TEST_F(CecDeviceTest, TestFailureToSendStanbyDisablesDevice) {
+TEST_F(CecDeviceTest, TestGetTvStatus) {
   Init();
   Connect();
 
-  // Object should enter disabled state when it fails to send stand by request.
-  EXPECT_CALL(*cec_fd_mock_, CecFdDestructorCalled());
+  TvPowerStatus power_status = kTvPowerStatusUnknown;
+
+  CecDevice::GetTvPowerStatusCallback callback =
+      base::Bind(Copy, &power_status);
+  device_->GetTvPowerStatus(callback);
+
   EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
-      .WillOnce(Return(CecFd::TransmitResult::kError));
-  device_->SetStandBy();
+      .WillOnce(Invoke([](struct cec_msg* msg) {
+        msg->sequence = 1;
+        return CecFd::TransmitResult::kOk;
+      }));
   event_callback_.Run(CecFd::EventType::kWrite);
-
-  // The FD should be destroyed at this point.
-  EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
-}
-
-TEST_F(CecDeviceTest, TestFailureToSendResponseDisablesDevice) {
-  Init();
-  Connect();
 
   EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
       .WillOnce(Invoke([](struct cec_msg* msg) {
-        cec_msg_init(msg, kOtherLogicalAddress, kLogicalAddress);
-        cec_msg_give_device_power_status(msg, 0);
+        cec_msg_init(msg, CEC_LOG_ADDR_TV, kLogicalAddress);
+        cec_msg_report_power_status(msg, CEC_OP_POWER_STATUS_ON);
+        msg->sequence = 1;
+        msg->tx_status = CEC_TX_STATUS_OK;
+        msg->rx_status = CEC_RX_STATUS_OK;
         return true;
       }));
   // Read the request in.
   event_callback_.Run(CecFd::EventType::kRead);
 
-  EXPECT_CALL(*cec_fd_mock_, CecFdDestructorCalled());
-  // Fail the request.
-  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
-      .WillOnce(Return(CecFd::TransmitResult::kError));
-  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(kTvPowerStatusOn, power_status);
+}
 
-  // The FD should be destroyed at this point.
-  EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
+TEST_F(CecDeviceTest, TestGetTvStatusOnDisconnect) {
+  Init();
+  Connect();
+
+  TvPowerStatus power_status = kTvPowerStatusUnknown;
+
+  CecDevice::GetTvPowerStatusCallback callback =
+      base::Bind(Copy, &power_status);
+  device_->GetTvPowerStatus(callback);
+
+  SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
+
+  EXPECT_EQ(kTvPowerStatusAdapterNotConfigured, power_status);
+}
+
+TEST_F(CecDeviceTest, TestGetTvStatusError) {
+  Init();
+  Connect();
+
+  TvPowerStatus power_status = kTvPowerStatusUnknown;
+
+  EXPECT_CALL(*cec_fd_mock_, WriteWatch()).WillOnce(Return(false));
+
+  CecDevice::GetTvPowerStatusCallback callback =
+      base::Bind(Copy, &power_status);
+  device_->GetTvPowerStatus(callback);
+
+  EXPECT_EQ(kTvPowerStatusError, power_status);
 }
 
 }  // namespace cecservice

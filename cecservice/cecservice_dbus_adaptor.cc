@@ -4,12 +4,27 @@
 
 #include "cecservice/cecservice_dbus_adaptor.h"
 
+#include <algorithm>
+#include <iterator>
+#include <utility>
+
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
 
 #include "cecservice/udev.h"
 
 namespace cecservice {
+
+namespace {
+void GetTvsPowerStatusCallback(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<int32_t>>> response,
+    const std::vector<TvPowerStatus>& results) {
+  std::vector<int32_t> return_value;
+  std::copy(results.begin(), results.end(), std::back_inserter(return_value));
+  response->Return(return_value);
+}
+}  // namespace
 
 CecServiceDBusAdaptor::CecServiceDBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::CecServiceAdaptor(this),
@@ -33,6 +48,14 @@ bool CecServiceDBusAdaptor::SendStandByToAllDevices(brillo::ErrorPtr* error) {
 bool CecServiceDBusAdaptor::SendWakeUpToAllDevices(brillo::ErrorPtr* error) {
   cec_.SetWakeUp();
   return true;
+}
+
+void CecServiceDBusAdaptor::GetTvsPowerStatus(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<int32_t>>>
+        response) {
+  cec_.GetTvsPowerStatus(base::Bind(&GetTvsPowerStatusCallback,
+                                    base::Passed(std::move(response))));
 }
 
 }  // namespace cecservice
