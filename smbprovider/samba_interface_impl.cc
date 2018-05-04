@@ -44,6 +44,9 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
     return nullptr;
   }
 
+  smbc_setOptionUseKerberos(context, 1);
+  smbc_setOptionFallbackAfterKerberos(context, 1);
+
   if (!smbc_init_context(context)) {
     smbc_free_context(context, 0);
     LOG(ERROR) << "Could not initialize smbc context";
