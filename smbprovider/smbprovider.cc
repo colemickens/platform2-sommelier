@@ -586,7 +586,10 @@ bool SmbProvider::WriteTempFile(const Proto& options,
     return false;
   }
 
-  *temp_fd = scoped_fd.release();
+  // get() is called here instead of release() since FileDescriptor duplicates
+  // the FD when getting assigned, meaning the local FD still needs to be
+  // closed by ScopedFD when it goes out of scope.
+  *temp_fd = scoped_fd.get();
   return true;
 }
 
@@ -983,7 +986,10 @@ brillo::dbus_utils::FileDescriptor SmbProvider::GenerateEmptyFile() {
   base::ScopedFD temp_fd = temp_file_manager_.CreateTempFile();
   DCHECK(temp_fd.is_valid());
 
-  return temp_fd.release();
+  // get() is called here instead of release() since FileDescriptor duplicates
+  // the FD when getting assigned, meaning the local FD still needs to be
+  // closed by ScopedFD when it goes out of scope.
+  return brillo::dbus_utils::FileDescriptor(temp_fd.get());
 }
 
 std::string SmbProvider::GetRelativePath(int32_t mount_id,
