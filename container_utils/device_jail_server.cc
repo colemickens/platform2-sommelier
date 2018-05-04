@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 
 namespace {
 
@@ -21,9 +22,10 @@ const char kJailRequestPath[] = "/dev/jail-request";
 
 namespace device_jail {
 
-DeviceJailServer::DeviceJailServer(std::unique_ptr<Delegate> delegate, int fd)
+DeviceJailServer::DeviceJailServer(std::unique_ptr<Delegate> delegate,
+                                   base::ScopedFD fd)
     : delegate_(std::move(delegate)),
-      fd_(base::ScopedFD(fd)),
+      fd_(std::move(fd)),
       watcher_(FROM_HERE) {}
 
 // static
@@ -33,14 +35,14 @@ std::unique_ptr<DeviceJailServer> DeviceJailServer::CreateAndListen(
   if (!delegate || !message_loop)
     return std::unique_ptr<DeviceJailServer>();
 
-  int fd = open(kJailRequestPath, O_RDWR);
-  if (fd < 0) {
+  base::ScopedFD fd(HANDLE_EINTR(open(kJailRequestPath, O_RDWR)));
+  if (!fd.is_valid()) {
     PLOG(ERROR) << "could not open jail request device";
     return std::unique_ptr<DeviceJailServer>();
   }
 
   std::unique_ptr<DeviceJailServer> server(
-      new DeviceJailServer(std::move(delegate), fd));
+      new DeviceJailServer(std::move(delegate), std::move(fd)));
   server->Start(message_loop);
   return server;
 }
