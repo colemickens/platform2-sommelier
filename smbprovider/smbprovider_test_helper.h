@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/files/file_util.h>
 
 #include "smbprovider/proto.h"
@@ -79,6 +80,11 @@ GetSharesOptionsProto CreateGetSharesOptionsProto(
 
 RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
                                               int32_t mount_id);
+
+// Writes the Credential Cache file contents |krb5cc| and the krb5.conf file
+// contents |krb5conf| into a authpolicy::KerberosFiles proto.
+authpolicy::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
+                                                   const std::string& krb5conf);
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
@@ -177,6 +183,14 @@ base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
 std::string CreateKrb5ConfPath(const base::FilePath& temp_dir);
 
 std::string CreateKrb5CCachePath(const base::FilePath& temp_dir);
+
+// Expects that the file at |path| contains |expected_contents|.
+void ExpectFileEqual(const std::string& path,
+                     const std::string expected_contents);
+
+// Expects that the file at |path| does not contain |expected_contents|.
+void ExpectFileNotEqual(const std::string& path,
+                        const std::string expected_contents);
 
 }  // namespace smbprovider
 

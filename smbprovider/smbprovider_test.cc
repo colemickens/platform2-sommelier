@@ -7,6 +7,7 @@
 
 #include <dbus/mock_bus.h>
 #include <dbus/object_path.h>
+#include <dbus/smbprovider/dbus-constants.h>
 #include <gtest/gtest.h>
 
 #include "smbprovider/fake_kerberos_artifact_client.h"
@@ -28,6 +29,9 @@ namespace {
 
 constexpr size_t kFileSize = 10;
 constexpr uint64_t kFileDate = 42;
+
+// arbitary D-Bus
+constexpr int32_t kDBusSerial = 123;
 
 ErrorType CastError(int error) {
   EXPECT_GE(error, 0);
@@ -66,6 +70,15 @@ DirectoryEntryListProto GetDirectoryEntryListProtoFromBlob(
   EXPECT_TRUE(entries.ParseFromArray(blob.data(), blob.size()));
 
   return entries;
+}
+
+void ExpectKerberosCallback(bool expected_result,
+                            std::unique_ptr<dbus::Response> response) {
+  EXPECT_TRUE(response.get());
+  dbus::MessageReader reader(response.get());
+  bool result;
+  EXPECT_TRUE(reader.PopBool(&result));
+  EXPECT_EQ(expected_result, result);
 }
 
 }  // namespace
@@ -159,6 +172,7 @@ class SmbProviderTest : public testing::Test {
     mount_manager_ = mount_manager_ptr.get();
 
     auto fake_artifact_client = std::make_unique<FakeKerberosArtifactClient>();
+    kerberos_client_ = fake_artifact_client.get();
 
     EXPECT_TRUE(krb_temp_dir_.CreateUniqueTempDir());
 
@@ -169,6 +183,7 @@ class SmbProviderTest : public testing::Test {
         std::make_unique<KerberosArtifactSynchronizer>(
             krb5_conf_path_, krb5_ccache_path_,
             std::move(fake_artifact_client));
+    kerberos_synchronizer_ = kerberos_artifact_synchronizer.get();
 
     const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
@@ -217,6 +232,7 @@ class SmbProviderTest : public testing::Test {
   FakeSambaInterface* fake_samba_;
   MountManager* mount_manager_;
   TempFileManager temp_file_manager_;
+  FakeKerberosArtifactClient* kerberos_client_;
   KerberosArtifactSynchronizer* kerberos_synchronizer_;
 
  private:
@@ -2589,6 +2605,43 @@ TEST_F(SmbProviderTest, RemountSucceedsOnValidShare) {
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob)));
   EXPECT_EQ(1, mount_manager_->MountCount());
   EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
+}
+
+TEST_F(SmbProviderTest, SetupKerberosWritesKerberosFilesSuccessfully) {
+  const std::string user = "test user";
+  const std::string krb5cc = "test creds";
+  const std::string krb5conf = "test conf";
+
+  authpolicy::KerberosFiles kerberos_files =
+      CreateKerberosFilesProto(krb5cc, krb5conf);
+  kerberos_client_->AddKerberosFiles(user, kerberos_files);
+
+  dbus::MethodCall method_call(kSmbProviderInterface, "SetupKerberos");
+  method_call.SetSerial(kDBusSerial);
+
+  SmbProvider::SetupKerberosCallback callback =
+      std::make_unique<brillo::dbus_utils::DBusMethodResponse<bool>>(
+          &method_call,
+          base::Bind(&ExpectKerberosCallback, true /* expected_result*/));
+
+  smbprovider_->SetupKerberos(std::move(callback), user);
+
+  ExpectFileEqual(krb5_conf_path_, krb5conf);
+  ExpectFileEqual(krb5_ccache_path_, krb5cc);
+}
+
+TEST_F(SmbProviderTest, SetupKerberosFailsWhenKerberosFilesDoNotExist) {
+  const std::string user = "test user";
+
+  dbus::MethodCall method_call(kSmbProviderInterface, "SetupKerberos");
+  method_call.SetSerial(kDBusSerial);
+
+  SmbProvider::SetupKerberosCallback callback =
+      std::make_unique<brillo::dbus_utils::DBusMethodResponse<bool>>(
+          &method_call,
+          base::Bind(&ExpectKerberosCallback, false /* expected_result*/));
+
+  smbprovider_->SetupKerberos(std::move(callback), user);
 }
 
 }  // namespace smbprovider

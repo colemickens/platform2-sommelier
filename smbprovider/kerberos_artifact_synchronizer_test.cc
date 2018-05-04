@@ -25,34 +25,6 @@ void ExpectSetupFailure(bool success) {
   EXPECT_FALSE(success);
 }
 
-// Writes the Credential Cache file contents |krb5cc| and the krb5.conf file
-// contents |krb5conf| into a authpolicy::KerberosFiles proto.
-authpolicy::KerberosFiles CreateKerberosFilesProto(
-    const std::string& krb5cc, const std::string& krb5conf) {
-  authpolicy::KerberosFiles kerberos_files;
-  kerberos_files.set_krb5cc(krb5cc);
-  kerberos_files.set_krb5conf(krb5conf);
-  return kerberos_files;
-}
-
-void ExpectFileEqual(const std::string& path,
-                     const std::string expected_contents) {
-  const base::FilePath file_path(path);
-  std::string actual_contents;
-  EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
-
-  EXPECT_EQ(expected_contents, actual_contents);
-}
-
-void ExpectFileNotEqual(const std::string& path,
-                        const std::string expected_contents) {
-  const base::FilePath file_path(path);
-  std::string actual_contents;
-  EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
-
-  EXPECT_NE(expected_contents, actual_contents);
-}
-
 }  // namespace
 
 class KerberosArtifactSynchronizerTest : public testing::Test {

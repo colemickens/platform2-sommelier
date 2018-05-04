@@ -380,7 +380,15 @@ void SmbProvider::GetShares(const ProtoBlob& options_blob,
 
 void SmbProvider::SetupKerberos(SetupKerberosCallback callback,
                                 const std::string& account_id) {
-  NOTREACHED();
+  kerberos_synchronizer_->SetupKerberos(
+      account_id,
+      base::Bind(&SmbProvider::HandleSetupKerberosResponse,
+                 base::Unretained(this), base::Passed(std::move(callback))));
+}
+
+void SmbProvider::HandleSetupKerberosResponse(SetupKerberosCallback callback,
+                                              bool result) {
+  callback->Return(result);
 }
 
 template <typename Proto>

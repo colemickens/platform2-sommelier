@@ -178,6 +178,14 @@ RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
   return options;
 }
 
+authpolicy::KerberosFiles CreateKerberosFilesProto(
+    const std::string& krb5cc, const std::string& krb5conf) {
+  authpolicy::KerberosFiles kerberos_files;
+  kerberos_files.set_krb5cc(krb5cc);
+  kerberos_files.set_krb5conf(krb5conf);
+  return kerberos_files;
+}
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(
       CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */));
@@ -312,6 +320,24 @@ std::string CreateKrb5ConfPath(const base::FilePath& temp_dir) {
 
 std::string CreateKrb5CCachePath(const base::FilePath& temp_dir) {
   return temp_dir.Append(kTestCCacheName).value();
+}
+
+void ExpectFileEqual(const std::string& path,
+                     const std::string expected_contents) {
+  const base::FilePath file_path(path);
+  std::string actual_contents;
+  EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
+
+  EXPECT_EQ(expected_contents, actual_contents);
+}
+
+void ExpectFileNotEqual(const std::string& path,
+                        const std::string expected_contents) {
+  const base::FilePath file_path(path);
+  std::string actual_contents;
+  EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
+
+  EXPECT_NE(expected_contents, actual_contents);
 }
 
 }  // namespace smbprovider

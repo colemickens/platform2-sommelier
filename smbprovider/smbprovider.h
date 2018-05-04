@@ -381,6 +381,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // associated with |mount_id|.
   std::string GetRelativePath(int32_t mount_id, const std::string& entry_path);
 
+  // Callback handler for SetupKerberos.
+  void HandleSetupKerberosResponse(SetupKerberosCallback callback, bool result);
+
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
