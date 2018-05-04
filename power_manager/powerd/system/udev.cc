@@ -67,7 +67,7 @@ bool GetDeviceInfo(struct udev_device* dev, UdevDeviceInfo* device_info_out) {
 
 };  // namespace
 
-Udev::Udev() : udev_(NULL), udev_monitor_(NULL) {}
+Udev::Udev() : udev_(NULL), udev_monitor_(NULL), watcher_(FROM_HERE) {}
 
 Udev::~Udev() {
   if (udev_monitor_)
