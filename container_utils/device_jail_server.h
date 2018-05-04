@@ -40,8 +40,7 @@ class DeviceJailServer : base::MessageLoopForIO::Watcher {
   }
 
  private:
-  DeviceJailServer(std::unique_ptr<Delegate> delegate, int fd)
-    : delegate_(std::move(delegate)), fd_(base::ScopedFD(fd)) {}
+  DeviceJailServer(std::unique_ptr<Delegate> delegate, int fd);
   void Start(base::MessageLoopForIO* message_loop);
 
   std::unique_ptr<Delegate> delegate_;

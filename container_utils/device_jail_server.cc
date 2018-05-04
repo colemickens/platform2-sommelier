@@ -21,6 +21,11 @@ const char kJailRequestPath[] = "/dev/jail-request";
 
 namespace device_jail {
 
+DeviceJailServer::DeviceJailServer(std::unique_ptr<Delegate> delegate, int fd)
+    : delegate_(std::move(delegate)),
+      fd_(base::ScopedFD(fd)),
+      watcher_(FROM_HERE) {}
+
 // static
 std::unique_ptr<DeviceJailServer> DeviceJailServer::CreateAndListen(
     std::unique_ptr<DeviceJailServer::Delegate> delegate,
