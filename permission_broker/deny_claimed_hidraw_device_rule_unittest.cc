@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include "base/strings/string_util.h"
 #include "permission_broker/udev_scopers.h"
 
 namespace permission_broker {
@@ -42,7 +43,7 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
     Rule::Result result = rule_.ProcessHidrawDevice(device.get());
 
     // This device was ignored by the rule. Make sure that it's a USB device
-    // and that it's USB interface is not, in fact, being used by other drivers.
+    // and that its USB interface is not, in fact, being used by other drivers.
     if (result == Rule::IGNORE) {
       struct udev_device* usb_interface =
           udev_device_get_parent_with_subsystem_devtype(
@@ -60,6 +61,8 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
         usb_interface_path.assign(udev_device_get_syspath(usb_interface));
 
       int hid_siblings = 0;
+      bool should_sibling_subsystem_exclude_access = false;
+      bool is_gamepad = false;
       // Verify that this hidraw device does not share a USB interface with any
       // other drivers' devices. This means we have to enumerate every device
       // to find any with the same ancestral usb_interface, then test for a non-
@@ -89,15 +92,22 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
         if (!other_usb_interface) {
           continue;
         }
+        base::StringPiece devnode(udev_device_get_devnode(other_device.get()));
+        if (base::StartsWith(devnode, "/dev/input/js",
+                             base::CompareCase::SENSITIVE)) {
+          is_gamepad = true;
+        }
         std::string other_usb_interface_path(
             udev_device_get_syspath(other_usb_interface));
-        if (usb_interface_path == other_usb_interface_path) {
-          ASSERT_FALSE(
+        if (!should_sibling_subsystem_exclude_access &&
+            usb_interface_path == other_usb_interface_path) {
+          should_sibling_subsystem_exclude_access =
               DenyClaimedHidrawDeviceRule::
-                  ShouldSiblingSubsystemExcludeHidAccess(other_device.get()))
-              << "This rule should IGNORE claimed devices.";
+                  ShouldSiblingSubsystemExcludeHidAccess(other_device.get());
         }
       }
+      ASSERT_FALSE(should_sibling_subsystem_exclude_access && !is_gamepad)
+          << "This rule should IGNORE claimed devices.";
       ASSERT_FALSE(!usb_interface && hid_siblings > 1)
           << "This rule should DENY all non-USB HID devices.";
 
@@ -115,6 +125,7 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
   const char* kSpeakerphoneAbs;
   const char* kSpeakerphoneKeys;
   const char* kAbsoluteMouseAbs;
+  const char* kAbsoluteMouseKeys;
 
   // The size of these bitfield chunks is the width of a userspace long.
   switch (sizeof(long)) {  // NOLINT(runtime/int)
@@ -127,7 +138,8 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
       kBrailleKeys = "7fe0000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
       kSpeakerphoneAbs = "100 0";
       kSpeakerphoneKeys = "1 10000000 0 0 c0000000 0 0";
-      kAbsoluteMouseAbs = "100 3";
+      kAbsoluteMouseAbs = "3";
+      kAbsoluteMouseKeys = "70000 0 0 0 0 0 0 0 0";
       break;
     case 8:
       kKeyboardKeys =
@@ -137,7 +149,8 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
       kBrailleKeys = "7fe000000000000 0 0 0 0 0 0 0";
       kSpeakerphoneAbs = "10000000000";
       kSpeakerphoneKeys = "1 1000000000000000 0 c000000000000000 0";
-      kAbsoluteMouseAbs = "10000000003";
+      kAbsoluteMouseAbs = "3";
+      kAbsoluteMouseKeys = "70000 0 0 0 0";
       break;
     default:
       FAIL() << "Unsupported platform long width.";
@@ -170,11 +183,118 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
       DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
           kSpeakerphoneAbs, "0", kSpeakerphoneKeys));
 
-  // A absolute pointing device (made up) which includes ABS_MISC events.
+  // An absolute pointing device of the sort used by virtualization software.
   // Should be excluded.
   EXPECT_TRUE(
       DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
-          kAbsoluteMouseAbs, "0", kMouseKeys));
+          kAbsoluteMouseAbs, "0", kAbsoluteMouseKeys));
+}
+
+TEST_F(DenyClaimedHidrawDeviceRuleTest, JoystickCapabilitiesNotExcluded) {
+  // Gamepad absolute capabilities (axes).
+  const char* kDualAnalog8AxesAbs;
+  const char* kDualAnalog6AxesNoHatAbs;
+  const char* kDualAnalog6AxesAbs;
+  const char* kDualshock3Abs;
+  const char* kWiiUProAbs;
+  const char* kSwitchProBluetoothAbs;
+
+  // Gamepad key capabilities (buttons).
+  const char* kXInputKeys;
+  const char* kXboxOneBluetoothKeys;
+  const char* kDualshock3Keys;
+  const char* kDualshock4Keys;
+  const char* kLogitechKeys;
+  const char* kWiiUProKeys;
+  const char* kSwitchProUsbKeys;
+  const char* kSwitchProBluetoothKeys;
+
+  // The size of these bitfield chunks is the width of a userspace long.
+  switch (sizeof(long)) {  // NOLINT(runtime/int)
+    case 4:
+      kDualAnalog8AxesAbs = "3003f";
+      kDualAnalog6AxesNoHatAbs = "3f";
+      kDualAnalog6AxesAbs = "30027";
+      kSwitchProBluetoothAbs = "3001b";
+      kDualshock3Abs = "7fffff00 27";
+      kWiiUProAbs = "1b";
+
+      kXInputKeys = "7cdb0000 0 0 0 0 0 0 0 0 0";
+      kXboxOneBluetoothKeys = "3ff0000 0 0 0 0 800 0 0 0 0";
+      kDualshock3Keys = "7 0 0 0 0 0 0 0 0 0 0 0 0 ffff 0 0 0 0 0 0 0 0 0";
+      kDualshock4Keys = "3fff0000 0 0 0 0 0 0 0 0 0";
+      kLogitechKeys = "fff 0 0 0 0 0 0 0 0 0";
+      kWiiUProKeys = "f 0 0 0 0 0 0 0 7fdb0000 0 0 0 0 0 0 0 0 0";
+      kSwitchProUsbKeys = "3 0 0 0 0 0 0 0 0 0 0 0 0 ffff 0 0 0 0 0 0 0 0 0";
+      kSwitchProBluetoothKeys = "ffff0000 0 0 0 0 0 0 0 0 0";
+      break;
+    case 8:
+      kDualAnalog8AxesAbs = "3003f";
+      kDualAnalog6AxesNoHatAbs = "3f";
+      kDualAnalog6AxesAbs = "30027";
+      kSwitchProBluetoothAbs = "3001b";
+      kDualshock3Abs = "7fffff0000000027";
+      kWiiUProAbs = "1b";
+
+      kXInputKeys = "7cdb000000000000 0 0 0 0";
+      kXboxOneBluetoothKeys = "3ff000000000000 0 800 0 0";
+      kDualshock3Keys = "7 0 0 0 0 0 0 ffff00000000 0 0 0 0";
+      kDualshock4Keys = "3fff000000000000 0 0 0 0";
+      kLogitechKeys = "fff00000000 0 0 0 0";
+      kWiiUProKeys = "f00000000 0 0 0 7fdb000000000000 0 0 0 0";
+      kSwitchProUsbKeys = "3 0 0 0 0 0 0 ffff00000000 0 0 0 0";
+      kSwitchProBluetoothKeys = "ffff000000000000 0 0 0 0";
+      break;
+    default:
+      FAIL() << "Unsupported platform long width.";
+  }
+
+  // XInput gamepad.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kDualAnalog8AxesAbs, "0", kXInputKeys));
+
+  // Xbox One S gamepad connected over Bluetooth.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kDualAnalog8AxesAbs, "0", kXboxOneBluetoothKeys));
+
+  // Dualshock4 gamepad connected over USB.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kDualAnalog8AxesAbs, "0", kDualshock4Keys));
+
+  // Logitech F310 gamepad in DirectInput mode.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kDualAnalog6AxesAbs, "0", kLogitechKeys));
+
+  // Wii U Pro gamepad connected over Bluetooth.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kWiiUProAbs, "0", kWiiUProKeys));
+
+  // Switch Pro gamepad connected over USB.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kDualAnalog6AxesAbs, "0", kSwitchProUsbKeys));
+
+  // Switch Pro gamepad connected over Bluetooth.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kSwitchProBluetoothAbs, "0", kSwitchProBluetoothKeys));
+
+  // Dualshock3 gamepad connected over USB.
+  // TODO(crbug.com/840004) This returns true because Dualshock3 exposes
+  // absolute inputs outside the range normally used by gamepads.
+  EXPECT_TRUE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kDualshock3Abs, "0", kDualshock3Keys));
+
+  // A Dualshock3-like gamepad with more typical axes.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          kDualAnalog6AxesNoHatAbs, "0", kDualshock3Keys));
 }
 
 }  // namespace permission_broker

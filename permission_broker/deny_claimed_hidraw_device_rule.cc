@@ -16,6 +16,7 @@
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "permission_broker/udev_scopers.h"
 
 namespace permission_broker {
@@ -24,6 +25,19 @@ namespace {
 
 const char kLogitechUnifyingReceiverDriver[] = "logitech-djreceiver";
 const char kThingmDriver[] = "thingm";
+
+const base::StringPiece kJoydevPrefix = "/dev/input/js";
+
+const size_t kAllowedAbsCapabilities[] = {
+    ABS_X, ABS_Y, ABS_Z,
+    ABS_RX, ABS_RY, ABS_RZ,
+    ABS_THROTTLE, ABS_RUDDER, ABS_WHEEL, ABS_GAS, ABS_BRAKE,
+    ABS_HAT0X, ABS_HAT0Y,
+    ABS_HAT1X, ABS_HAT1Y,
+    ABS_HAT2X, ABS_HAT2Y,
+    ABS_HAT3X, ABS_HAT3Y,
+    ABS_MISC,
+};
 
 bool ParseInputCapabilities(const char* input, std::vector<uint64_t>* output) {
   // The kernel expresses capabilities as a bitfield, broken into long-sized
@@ -92,6 +106,22 @@ constexpr bool IsCfmDevice() {
   return USE_CFM_ENABLED_DEVICE;
 }
 
+// Joydev devices expose a devnode string with the format:
+//     /dev/input/js#
+// Where # is the numeric index of the joydev device.
+bool IsJoydevDeviceNode(base::StringPiece devnode) {
+  // Match the devnode prefix.
+  if (!base::StartsWith(devnode, kJoydevPrefix, base::CompareCase::SENSITIVE))
+    return false;
+
+  // Match if the suffix parses as a non-negative integer.
+  devnode.remove_prefix(kJoydevPrefix.length());
+  int joydev_index = 0;
+  if (!base::StringToInt(devnode, &joydev_index))
+    return false;
+  return joydev_index >= 0;
+}
+
 }  // namespace
 
 DenyClaimedHidrawDeviceRule::DenyClaimedHidrawDeviceRule()
@@ -136,6 +166,9 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
 
   // Count the number of children of the same HID parent as us.
   int hid_siblings = 0;
+
+  bool should_sibling_subsystem_exclude_access = false;
+
   // Scan all children of the USB interface for subsystems other than generic
   // USB or HID, and all the children of the same HID parent device.
   // The presence of such subsystems is an indication that the device is in
@@ -162,12 +195,21 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
     if (!child_usb_interface && !child_hid_parent) {
       continue;
     }
+    // Some gamepads expose functionality that is only accessible through the
+    // hidraw node. To allow hidraw access to such devices, skip the sibling
+    // subsystem and capabilities checks if one of the siblings is a joydev
+    // device.
+    const char* devnode = udev_device_get_devnode(child.get());
+    if (devnode && IsJoydevDeviceNode(devnode))
+      return IGNORE;
+
     // This device shares a USB interface with the hidraw device in question.
     // Check its subsystem to see if it should block hidraw access.
-    if (usb_interface && child_usb_interface &&
-        usb_interface_path == udev_device_get_syspath(child_usb_interface) &&
-        ShouldSiblingSubsystemExcludeHidAccess(child.get())) {
-      return DENY;
+    if (!should_sibling_subsystem_exclude_access &&
+        usb_interface && child_usb_interface &&
+        usb_interface_path == udev_device_get_syspath(child_usb_interface)) {
+      should_sibling_subsystem_exclude_access =
+          ShouldSiblingSubsystemExcludeHidAccess(child.get());
     }
     // This device shares the same HID device as parent, count it.
     if (child_hid_parent &&
@@ -175,6 +217,12 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
       hid_siblings++;
     }
   }
+
+  // If the underlying device presents other interfaces, deny access to the
+  // hidraw node as it may allow access to private data transmitted over these
+  // interfaces.
+  if (should_sibling_subsystem_exclude_access)
+    return DENY;
 
   // If the underlying HID device presents no other interface than hidraw,
   // we can use it.
@@ -220,14 +268,29 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
     const char* abs_capabilities,
     const char* rel_capabilities,
     const char* key_capabilities) {
+  bool has_absolute_mouse_axes = false;
+  bool has_absolute_mouse_keys = false;
   std::vector<uint64_t> capabilities;
   if (abs_capabilities) {
     if (!ParseInputCapabilities(abs_capabilities, &capabilities)) {
       // Parse error? Fail safe.
       return true;
     }
-    // Any absolute pointer capabilities other than ABS_MISC exclude access.
-    UnsetCapabilityBit(&capabilities, ABS_MISC);
+
+    // If the device has ABS_X and ABS_Y and no other absolute axes, it may be
+    // an absolute pointing device.
+    if (IsCapabilityBitSet(capabilities, ABS_X) &&
+        IsCapabilityBitSet(capabilities, ABS_Y)) {
+      UnsetCapabilityBit(&capabilities, ABS_X);
+      UnsetCapabilityBit(&capabilities, ABS_Y);
+      if (!AnyCapabilityBitsSet(capabilities))
+        has_absolute_mouse_axes = true;
+    }
+
+    // Remove whitelisted capabilities. Any other absolute pointer capabilities
+    // exclude access.
+    for (size_t i = 0; i < arraysize(kAllowedAbsCapabilities); ++i)
+      UnsetCapabilityBit(&capabilities, kAllowedAbsCapabilities[i]);
     if (AnyCapabilityBitsSet(capabilities))
       return true;
   }
@@ -247,6 +310,19 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
       // Parse error? Fail safe.
       return true;
     }
+
+    // If the device has BTN_LEFT, BTN_RIGHT, BTN_MIDDLE and no other keys,
+    // it may be an absolute pointing device.
+    if (IsCapabilityBitSet(capabilities, BTN_LEFT) &&
+        IsCapabilityBitSet(capabilities, BTN_RIGHT) &&
+        IsCapabilityBitSet(capabilities, BTN_MIDDLE)) {
+      UnsetCapabilityBit(&capabilities, BTN_LEFT);
+      UnsetCapabilityBit(&capabilities, BTN_RIGHT);
+      UnsetCapabilityBit(&capabilities, BTN_MIDDLE);
+      if (!AnyCapabilityBitsSet(capabilities))
+        has_absolute_mouse_keys = true;
+    }
+
     // Any key code <= KEY_KPDOT (83) excludes access.
     for (int key = 0; key <= KEY_KPDOT; key++) {
       if (IsCapabilityBitSet(capabilities, key)) {
@@ -260,6 +336,10 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
       }
     }
   }
+
+  // Exclude absolute pointing devices that match joydev's capabilities check.
+  if (has_absolute_mouse_axes && has_absolute_mouse_keys)
+    return true;
 
   return false;
 }
