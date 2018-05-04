@@ -44,6 +44,7 @@ copies.
 | [cromo](./cromo/) | modemmanager compatible D-Bus interface to support closed source modem drivers |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
 | [cros_component](./cros_component/) ||
+| [crosdns](./crosdns/) | Hostname resolution service for Chrome OS |
 | [crosh](./crosh/) | The Chromium OS shell |
 | [cryptohome](./cryptohome/) | Daemon and tools for managing encrypted /home and /var directories |
 | [debugd](./debugd/) | Centralized debug daemon for random tools |
