@@ -10,6 +10,7 @@
 
 #include <iterator>
 #include <map>
+#include <memory>
 #include <set>
 
 #include <base/memory/ptr_util.h>
@@ -65,10 +66,7 @@ namespace cryptohome {
 
 class Tpm2Test : public testing::Test {
  public:
-  Tpm2Test() {}
-  ~Tpm2Test() override {}
-
-  void SetUp() override {
+  Tpm2Test() {
     factory_.set_blob_parser(&mock_blob_parser_);
     factory_.set_tpm(&mock_tpm_);
     factory_.set_tpm_state(&mock_tpm_state_);
@@ -76,7 +74,8 @@ class Tpm2Test : public testing::Test {
     factory_.set_hmac_session(&mock_hmac_session_);
     factory_.set_policy_session(&mock_policy_session_);
     factory_.set_trial_session(&mock_trial_session_);
-    tpm_ = new Tpm2Impl(&factory_, &mock_tpm_owner_, &mock_tpm_nvram_);
+    tpm_ = std::make_unique<Tpm2Impl>(&factory_, &mock_tpm_owner_,
+                                      &mock_tpm_nvram_);
     // Setup default status data.
     tpm_status_.set_status(tpm_manager::STATUS_SUCCESS);
     tpm_status_.set_enabled(true);
@@ -92,6 +91,40 @@ class Tpm2Test : public testing::Test {
     SetupFakeNvram();
   }
 
+ protected:
+  tpm_manager::GetTpmStatusReply tpm_status_;
+  tpm_manager::DefineSpaceRequest last_define_space_request;
+  tpm_manager::DestroySpaceRequest last_destroy_space_request;
+  tpm_manager::WriteSpaceRequest last_write_space_request;
+  tpm_manager::ReadSpaceRequest last_read_space_request;
+  tpm_manager::LockSpaceRequest last_lock_space_request;
+  tpm_manager::ListSpacesRequest last_list_spaces_request;
+  tpm_manager::GetSpaceInfoRequest last_get_space_info_request;
+  tpm_manager::RemoveOwnerDependencyRequest
+      last_remove_owner_dependency_request;
+  tpm_manager::DefineSpaceReply next_define_space_reply;
+  tpm_manager::DestroySpaceReply next_destroy_space_reply;
+  tpm_manager::WriteSpaceReply next_write_space_reply;
+  tpm_manager::ReadSpaceReply next_read_space_reply;
+  tpm_manager::LockSpaceReply next_lock_space_reply;
+  tpm_manager::ListSpacesReply next_list_spaces_reply;
+  tpm_manager::GetSpaceInfoReply next_get_space_info_reply;
+  tpm_manager::RemoveOwnerDependencyReply next_remove_owner_dependency_reply;
+  tpm_manager::ClearStoredOwnerPasswordReply next_clear_stored_password_reply;
+
+  std::unique_ptr<Tpm2Impl> tpm_;
+  NiceMock<trunks::MockAuthorizationDelegate> mock_authorization_delegate_;
+  NiceMock<trunks::MockBlobParser> mock_blob_parser_;
+  NiceMock<trunks::MockTpm> mock_tpm_;
+  NiceMock<trunks::MockTpmState> mock_tpm_state_;
+  NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
+  NiceMock<trunks::MockHmacSession> mock_hmac_session_;
+  NiceMock<trunks::MockPolicySession> mock_policy_session_;
+  NiceMock<trunks::MockPolicySession> mock_trial_session_;
+  NiceMock<tpm_manager::MockTpmOwnershipInterface> mock_tpm_owner_;
+  NiceMock<tpm_manager::MockTpmNvramInterface> mock_tpm_nvram_;
+
+ private:
   void SetupFakeNvram() {
     ON_CALL(mock_tpm_nvram_, DefineSpace(_, _))
         .WillByDefault(Invoke(this, &Tpm2Test::FakeDefineSpace));
@@ -109,7 +142,6 @@ class Tpm2Test : public testing::Test {
         .WillByDefault(Invoke(this, &Tpm2Test::FakeGetSpaceInfo));
   }
 
- protected:
   void FakeGetTpmStatus(
       const tpm_manager::TpmOwnershipInterface::GetTpmStatusCallback&
           callback) {
@@ -180,38 +212,7 @@ class Tpm2Test : public testing::Test {
     callback.Run(next_get_space_info_reply);
   }
 
-  tpm_manager::GetTpmStatusReply tpm_status_;
-  tpm_manager::DefineSpaceRequest last_define_space_request;
-  tpm_manager::DestroySpaceRequest last_destroy_space_request;
-  tpm_manager::WriteSpaceRequest last_write_space_request;
-  tpm_manager::ReadSpaceRequest last_read_space_request;
-  tpm_manager::LockSpaceRequest last_lock_space_request;
-  tpm_manager::ListSpacesRequest last_list_spaces_request;
-  tpm_manager::GetSpaceInfoRequest last_get_space_info_request;
-  tpm_manager::RemoveOwnerDependencyRequest
-      last_remove_owner_dependency_request;
-  tpm_manager::DefineSpaceReply next_define_space_reply;
-  tpm_manager::DestroySpaceReply next_destroy_space_reply;
-  tpm_manager::WriteSpaceReply next_write_space_reply;
-  tpm_manager::ReadSpaceReply next_read_space_reply;
-  tpm_manager::LockSpaceReply next_lock_space_reply;
-  tpm_manager::ListSpacesReply next_list_spaces_reply;
-  tpm_manager::GetSpaceInfoReply next_get_space_info_reply;
-  tpm_manager::RemoveOwnerDependencyReply next_remove_owner_dependency_reply;
-  tpm_manager::ClearStoredOwnerPasswordReply next_clear_stored_password_reply;
-
   trunks::TrunksFactoryForTest factory_;
-  Tpm* tpm_;
-  NiceMock<trunks::MockAuthorizationDelegate> mock_authorization_delegate_;
-  NiceMock<trunks::MockBlobParser> mock_blob_parser_;
-  NiceMock<trunks::MockTpm> mock_tpm_;
-  NiceMock<trunks::MockTpmState> mock_tpm_state_;
-  NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
-  NiceMock<trunks::MockHmacSession> mock_hmac_session_;
-  NiceMock<trunks::MockPolicySession> mock_policy_session_;
-  NiceMock<trunks::MockPolicySession> mock_trial_session_;
-  NiceMock<tpm_manager::MockTpmOwnershipInterface> mock_tpm_owner_;
-  NiceMock<tpm_manager::MockTpmNvramInterface> mock_tpm_nvram_;
 };
 
 TEST_F(Tpm2Test, GetOwnerPassword) {
