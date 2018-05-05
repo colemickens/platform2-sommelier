@@ -5,6 +5,7 @@
 // Unit tests for PersistentLookupTable.
 
 #include <memory>
+#include <set>
 #include <string>
 
 #include <base/files/file_util.h>
@@ -141,6 +142,34 @@ TEST(PersistentLookupTableTest, DeleteKeys) {
   ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_4));
   EXPECT_EQ(PLT_SUCCESS, lookup_table.GetValue(kKey1, &result));
   EXPECT_EQ(kValue1_4, result);
+}
+
+// Tests whether we can list the number of currently used keys.
+TEST(PersistentLookupTableTest, GetUsedKeys) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  std::unique_ptr<Platform> platform(new Platform());
+  PersistentLookupTable lookup_table(platform.get(), temp_dir.path());
+  lookup_table.InitOnBoot();
+
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey2, kValue2_1));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_2));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey2, kValue2_2));
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey3, kValue3_1));
+
+  std::vector<uint64_t> key_list;
+  lookup_table.GetUsedKeys(&key_list);
+  EXPECT_EQ(std::set<uint64_t>({kKey1, kKey2, kKey3}),
+            std::set<uint64_t>(key_list.begin(), key_list.end()));
+
+  // Remove a key and make sure the number of keys is correct.
+  ASSERT_EQ(PLT_SUCCESS, lookup_table.RemoveKey(kKey2));
+  key_list.clear();
+  lookup_table.GetUsedKeys(&key_list);
+  EXPECT_EQ(std::set<uint64_t>({kKey1, kKey3}),
+            std::set<uint64_t>(key_list.begin(), key_list.end()));
 }
 
 }  // namespace cryptohome

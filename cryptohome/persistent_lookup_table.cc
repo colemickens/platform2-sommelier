@@ -107,6 +107,24 @@ bool PersistentLookupTable::KeyExists(const uint64_t key) {
   return FindLatestVersion(key) != 0;
 }
 
+void PersistentLookupTable::GetUsedKeys(std::vector<uint64_t>* key_list) {
+  // Go through all key directories, and if there are valid key entries,
+  // add it to the list.
+  base::FileEnumerator file(table_dir_, false,
+                            base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath cur_dir = file.Next(); !cur_dir.empty();
+       cur_dir = file.Next()) {
+    uint64_t key;
+    if (!base::StringToUint64(cur_dir.BaseName().value(), &key)) {
+      LOG(WARNING) << "Can't parse directory, skipping: " << cur_dir.value();
+      continue;
+    }
+    if (KeyExists(key)) {
+      key_list->push_back(key);
+    }
+  }
+}
+
 bool PersistentLookupTable::InitOnBoot() {
   if (!platform_->DirectoryExists(table_dir_)) {
     VLOG(1) << "Lookup table dir not found, have to create it.";

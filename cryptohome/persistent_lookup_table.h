@@ -114,6 +114,9 @@ class PersistentLookupTable {
   // Returns |true| if an entry exists for |key|, and |false| otherwise.
   bool KeyExists(const uint64_t key);
 
+  // Obtains a list of currently used keys and places them in |key_list|.
+  void GetUsedKeys(std::vector<uint64_t>* key_list);
+
  private:
   friend class PersistentLookupTableTest;
   FRIEND_TEST(PersistentLookupTableTest, CreateDirStoreValues);

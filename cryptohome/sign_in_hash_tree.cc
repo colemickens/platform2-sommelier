@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -177,19 +178,32 @@ bool SignInHashTree::GetLabelData(const Label& label,
 }
 
 SignInHashTree::Label SignInHashTree::GetFreeLabel() {
-  // Iterate through all the leaf nodes in the PLT and see if any key is valid.
-  //
-  // TODO(pmalani): This approach will lead to the labels bunching near
-  // the start of the label namespace. This may be problematic when an
-  // out-of-sync situation that only affects the first child of the root would
-  // cause the entire tree to always go out of sync. Try to evenly space out the
-  // distribution of labels.
-  for (uint64_t i = 0; i < (1 << leaf_length_); i++) {
-    if (!plt_.KeyExists(i)) {
-      return Label(i, leaf_length_, bits_per_level_);
-    }
+  // Get the list of currently used labels, then pick a random
+  // label from the remaining ones.
+  std::vector<uint64_t> used_keys;
+  plt_.GetUsedKeys(&used_keys);
+  uint64_t num_max_labels = 1 << leaf_length_;
+  uint64_t num_free_keys = num_max_labels - used_keys.size();
+  if (num_free_keys <= 0) {
+    // No more labels.
+    return Label();
   }
-  return Label();
+
+  uint64_t new_label;
+  CryptoLib::GetSecureRandom(reinterpret_cast<unsigned char*>(&new_label),
+                             sizeof(new_label));
+  new_label %= num_free_keys;
+  std::sort(used_keys.begin(), used_keys.end());
+  for (uint64_t used_key : used_keys) {
+    if (used_key > new_label) {
+      break;
+    }
+    new_label++;
+  }
+  CHECK_LT(new_label, num_max_labels);
+  CHECK(!plt_.KeyExists(new_label));
+
+  return Label(new_label, leaf_length_, bits_per_level_);
 }
 
 std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
