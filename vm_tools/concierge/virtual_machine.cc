@@ -208,6 +208,7 @@ bool VirtualMachine::Start(base::FilePath kernel,
       "--cid",          std::to_string(vsock_cid_),
       "--socket",       runtime_dir_.path().Append(kCrosvmSocket).value(),
       "--wayland-sock", kWaylandSocket,
+      "--wayland-dmabuf",
   };
   // clang-format on
 
