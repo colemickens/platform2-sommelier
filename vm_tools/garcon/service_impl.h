@@ -33,6 +33,11 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
                        const vm_tools::container::IconRequest* request,
                        vm_tools::container::IconResponse* response) override;
 
+  grpc::Status LaunchVshd(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::LaunchVshdRequest* request,
+      vm_tools::container::LaunchVshdResponse* response) override;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };

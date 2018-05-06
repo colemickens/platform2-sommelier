@@ -25,6 +25,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/logging.h>
 
 #include "vm_tools/garcon/desktop_file.h"
@@ -492,6 +493,32 @@ grpc::Status ServiceImpl::GetIcon(
     desktop_icon->set_icon(icon_data);
   }
 
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::LaunchVshd(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::LaunchVshdRequest* request,
+    vm_tools::container::LaunchVshdResponse* response) {
+  LOG(INFO) << "Received request to launch vshd in container";
+
+  if (request->port() == 0) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "vshd port cannot be 0");
+  }
+
+  std::vector<std::string> argv{
+      "/opt/google/cros-containers/bin/vshd", "--inherit_env",
+      base::StringPrintf("--forward_to_host_port=%u", request->port())};
+
+  if (!Spawn(std::move(argv), {}, "")) {
+    response->set_success(false);
+    response->set_failure_reason("Failed to spawn vshd");
+  } else {
+    response->set_success(true);
+  }
+
+  // Return OK no matter what because the RPC itself succeeded even if there
+  // was an issue with launching the process.
   return grpc::Status::OK;
 }
 

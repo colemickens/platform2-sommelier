@@ -55,6 +55,21 @@ message IconResponse {
   repeated DesktopIcon desktop_icons = 1;
 }
 
+// Request protobuf for launching a vshd instance.
+message LaunchVshdRequest {
+  // The host port for vshd to connect to.
+  uint32 port = 1;
+}
+
+// Response protobuf for launching a vshd instance.
+message LaunchVshdResponse {
+  // If true, the vshd launched successfully.
+  bool success = 1;
+
+  // The failure_reason if vshd could not be started.
+  string failure_reason = 2;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
@@ -63,4 +78,7 @@ service Garcon {
 
   // Get an application icon from the container.
   rpc GetIcon(IconRequest) returns (IconResponse);
+
+  // Launch a vshd instance that will connect back to the host.
+  rpc LaunchVshd(LaunchVshdRequest) returns (LaunchVshdResponse);
 }
