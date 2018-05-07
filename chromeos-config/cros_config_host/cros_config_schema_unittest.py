@@ -104,11 +104,11 @@ class ParseArgsTests(unittest.TestCase):
     self.assertEqual(args.output, 'output')
     self.assertTrue(args.filter)
 
-  def testParseArgsForMerge(self):
+  def testParseArgsForConfigs(self):
     argv = ['-o', 'output', '-m' 'm1' 'm2' 'm3']
     args = cros_config_schema.ParseArgs(argv)
     self.assertEqual(args.output, 'output')
-    self.assertEqual(args.merge, ['m1' 'm2' 'm3'])
+    self.assertEqual(args.configs, ['m1' 'm2' 'm3'])
 
 
 class TransformConfigTests(unittest.TestCase):
@@ -345,6 +345,29 @@ class MainTests(unittest.TestCase):
       with open(os.path.join(
           this_dir,
           '../libcros_config/test_import.json')) as expected_stream:
+        self.assertEqual(
+            expected_stream.read(), output_stream.read(), regen_cmd)
+
+    os.remove(output)
+
+  def testMainMergeExample(self):
+    output = tempfile.mktemp()
+    base_path = os.path.join(this_dir, '../libcros_config')
+    cros_config_schema.Main(
+        None,
+        None,
+        output,
+        configs=[os.path.join(base_path, 'test_merge_base.yaml'),
+                 os.path.join(base_path, 'test_merge_overlay.yaml')])
+    regen_cmd = ('To regenerate the expected output, run:\n'
+                 '\tpython -m cros_config_host.cros_config_schema '
+                 '-o libcros_config/test_merge.json '
+                 '-m libcros_config/test_merge_base.yaml '
+                 'libcros_config/test_merge_overlay.yaml')
+    with open(output, 'r') as output_stream:
+      with open(os.path.join(
+          this_dir,
+          '../libcros_config/test_merge.json')) as expected_stream:
         self.assertEqual(
             expected_stream.read(), output_stream.read(), regen_cmd)
 

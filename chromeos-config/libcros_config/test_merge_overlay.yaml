@@ -1,0 +1,37 @@
+#
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+#
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_config: &shared_config
+  name: "{{$name}}"
+  identity:
+    platform-name: "PlatformName"
+    smbios-name-match: "SMBiosNameMatch"
+    sku-id: "{{$sku-id}}"
+  firmware:
+    no-firmware: true
+  wallpaper: "{{$wallpaper}}"
+
+chromeos:
+  devices:
+    - $name: "base"
+      skus:
+        - config:
+            identity:
+              # Only matching on 2 identity attributes in order to override.
+              # sku-id will be ignored since it's not specified.
+              platform-name: "PlatformName"
+              smbios-name-match: "SMBiosNameMatch"
+            wallpaper: "wallpaper-overridden"
+    - $name: "new-override"
+      skus:
+        - config:
+            name: "{{$name}}"
+            identity:
+              platform-name: "PlatformName"
+              smbios-name-match: "SMBiosNameMatch"
+              sku-id: 3
+            firmware:
+              no-firmware: true

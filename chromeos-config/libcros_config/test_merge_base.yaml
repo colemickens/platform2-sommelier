@@ -1,0 +1,27 @@
+#
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+#
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_config: &shared_config
+  name: "{{$name}}"
+  identity:
+    platform-name: "PlatformName"
+    smbios-name-match: "SMBiosNameMatch"
+    sku-id: "{{$sku-id}}"
+  firmware:
+    no-firmware: true
+  wallpaper: "{{$wallpaper}}"
+
+
+chromeos:
+  devices:
+    - $name: "base"
+      products:
+        - $wallpaper: "base-wallpaper"
+      skus:
+        - $sku-id: 0
+          config: *shared_config
+        - $sku-id: 1
+          config: *shared_config

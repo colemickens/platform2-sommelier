@@ -1,0 +1,41 @@
+{
+  "chromeos": {
+    "configs": [
+      {
+        "firmware": {
+          "no-firmware": true
+        },
+        "identity": {
+          "platform-name": "PlatformName",
+          "sku-id": 0,
+          "smbios-name-match": "SMBiosNameMatch"
+        },
+        "name": "base",
+        "wallpaper": "wallpaper-overridden"
+      },
+      {
+        "firmware": {
+          "no-firmware": true
+        },
+        "identity": {
+          "platform-name": "PlatformName",
+          "sku-id": 1,
+          "smbios-name-match": "SMBiosNameMatch"
+        },
+        "name": "base",
+        "wallpaper": "wallpaper-overridden"
+      },
+      {
+        "firmware": {
+          "no-firmware": true
+        },
+        "identity": {
+          "platform-name": "PlatformName",
+          "sku-id": 3,
+          "smbios-name-match": "SMBiosNameMatch"
+        },
+        "name": "new-override"
+      }
+    ]
+  }
+}
