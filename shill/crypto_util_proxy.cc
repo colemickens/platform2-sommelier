@@ -172,6 +172,7 @@ bool CryptoUtilProxy::StartShimForCommand(
     LOG(ERROR) << "Refusing to start a shim with no input data.";
     return false;
   }
+  struct std_file_descriptors std_fds { &shim_stdin_, &shim_stdout_, nullptr };
   shim_pid_ = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE,
       base::FilePath(kCryptoUtilShimPath),
@@ -179,10 +180,9 @@ bool CryptoUtilProxy::StartShimForCommand(
       kDestinationVerificationUser,
       kDestinationVerificationUser,
       kRequiredCapabilities,
+      false,
       base::Bind(DoNothingWithExitStatus),
-      &shim_stdin_,
-      &shim_stdout_,
-      nullptr);
+      std_fds);
   if (shim_pid_ == -1) {
     LOG(ERROR) << "Minijail couldn't run our child process";
     return false;

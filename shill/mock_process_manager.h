@@ -42,25 +42,25 @@ class MockProcessManager : public ProcessManager {
                      const std::map<std::string, std::string>& env,
                      bool terminate_with_parent,
                      const base::Callback<void(int)>& exit_callback));
-  MOCK_METHOD7(StartProcessInMinijail,
+  MOCK_METHOD8(StartProcessInMinijail,
                pid_t(const tracked_objects::Location& spawn_source,
                      const base::FilePath& program,
                      const std::vector<std::string>& arguments,
                      const std::string& user,
                      const std::string& group,
                      uint64_t capmask,
+                     bool inherit_supplementary_groups,
                      const base::Callback<void(int)>& exit_callback));
-  MOCK_METHOD10(StartProcessInMinijailWithPipes,
+  MOCK_METHOD9(StartProcessInMinijailWithPipes,
                 pid_t(const tracked_objects::Location& spawn_source,
                       const base::FilePath& program,
                       const std::vector<std::string>& arguments,
                       const std::string& user,
                       const std::string& group,
                       uint64_t capmask,
+                      bool inherit_supplementary_groups,
                       const base::Callback<void(int)>& exit_callback,
-                      int* stdin_fd,
-                      int* stdout_fd,
-                      int* stderr_fd));
+                      struct std_file_descriptors std_fds));
   MOCK_METHOD1(StopProcess, bool(pid_t pid));
   MOCK_METHOD1(StopProcessAndBlock, bool(pid_t pid));
   MOCK_METHOD2(UpdateExitCallback,

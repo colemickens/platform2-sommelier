@@ -126,6 +126,7 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
                                      user,
                                      group,
                                      mask,
+                                     false, /* inherit_supplementary_groups */
                                      base::Bind(&ExternalTask::OnTaskDied,
                                                 base::Unretained(this)));
 

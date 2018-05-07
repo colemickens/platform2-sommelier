@@ -171,6 +171,7 @@ TEST_F(ProcessManagerTest,
                                  &stdout_fd,
                                  &stderr_fd))
       .WillOnce(DoAll(SetArgPointee<2>(kPid), Return(true)));
+  struct std_file_descriptors std_fds { &stdin_fd, &stdout_fd, &stderr_fd };
   pid_t actual_pid =
       process_manager_->StartProcessInMinijailWithPipes(
           FROM_HERE,
@@ -179,10 +180,9 @@ TEST_F(ProcessManagerTest,
           kUser,
           kGroup,
           kCapMask,
+          false,
           Callback<void(int)>(),
-          &stdin_fd,
-          &stdout_fd,
-          &stderr_fd);
+          std_fds);
   EXPECT_EQ(kPid, actual_pid);
   AssertNonEmptyWatchedProcesses();
 }
@@ -200,6 +200,7 @@ TEST_F(ProcessManagerTest,
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .Times(0);
+  struct std_file_descriptors std_fds = { nullptr, nullptr, nullptr };
   pid_t actual_pid =
       process_manager_->StartProcessInMinijailWithPipes(
           FROM_HERE,
@@ -208,10 +209,9 @@ TEST_F(ProcessManagerTest,
           kUser,
           kGroup,
           kCapMask,
+          false,
           Callback<void(int)>(),
-          nullptr,
-          nullptr,
-          nullptr);
+          std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }
@@ -230,6 +230,7 @@ TEST_F(ProcessManagerTest,
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .WillOnce(Return(false));
+  struct std_file_descriptors std_fds = { nullptr, nullptr, nullptr };
   pid_t actual_pid =
       process_manager_->StartProcessInMinijailWithPipes(
           FROM_HERE,
@@ -238,10 +239,9 @@ TEST_F(ProcessManagerTest,
           kUser,
           kGroup,
           kCapMask,
+          false,
           Callback<void(int)>(),
-          nullptr,
-          nullptr,
-          nullptr);
+          std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }

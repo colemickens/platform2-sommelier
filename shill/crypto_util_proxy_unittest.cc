@@ -108,13 +108,15 @@ class CryptoUtilProxyTest : public testing::Test {
       const std::string& /* run_as_user */,
       const std::string& /* run_as_group */,
       uint64_t /* capabilities_mask */,
+      bool /* inherit_supplementary_groups */,
       const base::Callback<void(int)>& exit_callback,
-      int* stdin,
-      int* stdout,
-      int* /* stderr */) {
+      struct std_file_descriptors std_fds) {
+    EXPECT_NE(nullptr, std_fds.stdin_fd);
+    EXPECT_NE(nullptr, std_fds.stdout_fd);
+    EXPECT_EQ(nullptr, std_fds.stderr_fd);
     exit_callback_ = exit_callback;
-    *stdin = kTestStdinFd;
-    *stdout = kTestStdoutFd;
+    *(std_fds.stdin_fd) = kTestStdinFd;
+    *(std_fds.stdout_fd) = kTestStdoutFd;
     return kTestShimPid;
   }
 
@@ -137,10 +139,9 @@ class CryptoUtilProxyTest : public testing::Test {
             "shill-crypto",
             "shill-crypto",
             0,  // no capabilities required
+            false,
             _,  // exit_callback
-            NotNull(),  // stdin
-            NotNull(),  // stdout
-            nullptr))  // stderr
+            _)) // std fds are checked in HandleStartInMinijailWithPipes
         .WillOnce(Invoke(this,
                          &CryptoUtilProxyTest::HandleStartInMinijailWithPipes));
     // We should always schedule a shim timeout callback.

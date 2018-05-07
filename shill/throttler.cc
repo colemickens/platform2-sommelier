@@ -238,12 +238,12 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
   uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN);
 
   tc_commands_ = commands;
+  // shill's stderr is wired to syslog, so nullptr for stderr
+  // here implies throttling errors show up in /var/log/net.log.
+  struct std_file_descriptors std_fds { &tc_stdin_, nullptr, nullptr };
   tc_pid_ = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kTCPath), args, kTCUser, kTCGroup, capmask,
-      base::Bind(&Throttler::OnProcessExited, AsWeakPtr()), &tc_stdin_, nullptr,
-      // shill's stderr is wired to syslog, so nullptr
-      // here implies throttling errors show up in /var/log/net.log.
-      nullptr);
+      false, base::Bind(&Throttler::OnProcessExited, AsWeakPtr()), std_fds);
 
   SLOG(this, 1) << "Spawned tc with pid: " << tc_pid_;
 

@@ -135,10 +135,9 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     const std::string& user,
     const std::string& group,
     uint64_t capmask,
+    bool inherit_supplementary_groups,
     const base::Callback<void(int)>& exit_callback,
-    int* stdin_fd,
-    int* stdout_fd,
-    int* stderr_fd) {
+    struct std_file_descriptors std_fds) {
   SLOG(this, 2) << __func__ << "(" << program.value() << ")";
 
   vector<char*> args;
@@ -155,12 +154,17 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     return -1;
   }
 
+  if (inherit_supplementary_groups) {
+    minijail_inherit_usergroups(jail);
+  }
+
   minijail_->UseCapabilities(jail, capmask);
   minijail_->ResetSignalMask(jail);
 
   pid_t pid;
   if (!minijail_->RunPipesAndDestroy(
-          jail, args, &pid, stdin_fd, stdout_fd, stderr_fd)) {
+          jail, args, &pid, std_fds.stdin_fd,
+          std_fds.stdout_fd, std_fds.stderr_fd)) {
     LOG(ERROR) << "Unable to spawn " << program.value() << " in a jail.";
     return -1;
   }

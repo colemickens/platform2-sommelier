@@ -31,8 +31,15 @@
 #include <brillo/minijail/minijail.h>
 #include <brillo/process.h>
 #include <brillo/process_reaper.h>
+#include <libminijail.h>
 
 namespace shill {
+
+struct std_file_descriptors {
+  int* stdin_fd;
+  int* stdout_fd;
+  int* stderr_fd;
+};
 
 class EventDispatcher;
 
@@ -73,6 +80,9 @@ class ProcessManager {
   // - the child process will run as |user| and |group|
   // - the |capmask| argument can be used to provide the child process
   //   with capabilities, which |user| might not have on its own
+  // - the |inherit_supplementary_groups| argument allows child process to
+  //   inherit supplementary groups from uid, equivalent to using '-G' on the
+  //   minijail command line.
   virtual pid_t StartProcessInMinijail(
       const tracked_objects::Location& spawn_source,
       const base::FilePath& program,
@@ -80,16 +90,19 @@ class ProcessManager {
       const std::string& user,
       const std::string& group,
       uint64_t capmask,
+      bool inherit_supplementary_groups,
       const base::Callback<void(int)>& exit_callback) {
     return StartProcessInMinijailWithPipes(
-        spawn_source, program, arguments, user, group, capmask, exit_callback,
-        nullptr, nullptr, nullptr);
+        spawn_source, program, arguments, user, group, capmask,
+        inherit_supplementary_groups, exit_callback,
+        (struct std_file_descriptors){nullptr, nullptr, nullptr});
   }
 
   // Similar to StartProcessInMinijail(), with the additional ability to
   // pipe the child's stdin/stdout/stderr back to us. If any of those
   // streams is not needed, simply pass nullptr for the corresponding
-  // 'fd' argument. If no pipes are needed, use StartProcessInMinijail().
+  // member in std file descriptor struct. If no pipes are needed, use
+  // StartProcessInMinijail().
   virtual pid_t StartProcessInMinijailWithPipes(
       const tracked_objects::Location& spawn_source,
       const base::FilePath& program,
@@ -97,10 +110,9 @@ class ProcessManager {
       const std::string& user,
       const std::string& group,
       uint64_t capmask,
+      bool inherit_supplementary_groups,
       const base::Callback<void(int)>& exit_callback,
-      int* stdin_fd,
-      int* stdout_fd,
-      int* stderr_fd);
+      struct std_file_descriptors std_fds);
 
   // Stop the given |pid|.  Previously registered |exit_callback| will be
   // unregistered, since the caller is not interested in this process anymore
