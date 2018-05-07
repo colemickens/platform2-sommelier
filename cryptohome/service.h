@@ -130,9 +130,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void set_mount_factory(cryptohome::MountFactory* mf) {
     mount_factory_ = mf;
   }
-  virtual void set_reply_factory(cryptohome::DBusReplyFactory* rf) {
-    reply_factory_ = rf;
-  }
   virtual void set_use_tpm(bool value) {
     use_tpm_ = value;
   }
@@ -628,8 +625,10 @@ class Service : public brillo::dbus::AbstractDbusService,
                                                  gboolean* OUT_success,
                                                  GError** error) = 0;
 
+  // Runs the event loop once. Only for testing.
+  virtual void DispatchEventsForTesting();
+
  protected:
-  FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
 
   bool use_tpm_;
@@ -697,9 +696,6 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   // Checks if the machine is enterprise owned and report to mount_ then.
   virtual void DetectEnterpriseOwnership();
-
-  // Runs the event loop once. Only for testing.
-  virtual void DispatchEvents();
 
   virtual scoped_refptr<cryptohome::Mount> GetMountForUser(
       const std::string& username);
@@ -819,8 +815,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
   std::unique_ptr<cryptohome::MountFactory> default_mount_factory_;
   cryptohome::MountFactory* mount_factory_;
-  std::unique_ptr<cryptohome::DBusReplyFactory> default_reply_factory_;
-  cryptohome::DBusReplyFactory* reply_factory_;
 
   typedef std::map<int, scoped_refptr<MountTaskPkcs11Init>> Pkcs11TaskMap;
   Pkcs11TaskMap pkcs11_tasks_;

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/sys_string_conversions.h>
 #include <base/threading/platform_thread.h>
@@ -34,7 +35,6 @@
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_attestation.h"
 #include "cryptohome/mock_crypto.h"
-#include "cryptohome/mock_dbus_transition.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_homedirs.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -64,27 +64,51 @@ using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::WithArgs;
 
+namespace cryptohome {
+
 namespace {
 
-const FilePath kImageDir("test_image_dir");
-const FilePath kSaltFile("test_image_dir/salt");
+constexpr FilePath::CharType kImageDir[] = FILE_PATH_LITERAL("test_image_dir");
+constexpr FilePath::CharType kSaltFile[] =
+    FILE_PATH_LITERAL("test_image_dir/salt");
 
-class FakeEventSourceSink : public cryptohome::CryptohomeEventSourceSink {
+class FakeEventSourceSink : public CryptohomeEventSourceSink {
  public:
   FakeEventSourceSink() = default;
   ~FakeEventSourceSink() override = default;
 
-  void NotifyEvent(cryptohome::CryptohomeEventBase* result) override {
-    if (strcmp(result->GetEventName(),
-               cryptohome::kMountTaskResultEventType)) {
-      return;
+  void NotifyEvent(CryptohomeEventBase* event) override {
+    const std::string event_name = event->GetEventName();
+    if (event_name == kDBusReplyEventType) {
+      EXPECT_FALSE(reply_);
+      EXPECT_FALSE(error_reply_);
+      auto* dbus_reply = static_cast<const DBusReply*>(event);
+      BaseReply parsed_reply;
+      EXPECT_TRUE(parsed_reply.ParseFromString(dbus_reply->reply()));
+      reply_ = std::make_unique<BaseReply>(parsed_reply);
+    } else if (event_name == kDBusErrorReplyEventType) {
+      EXPECT_FALSE(reply_);
+      EXPECT_FALSE(error_reply_);
+      auto* dbus_error_reply = static_cast<const DBusErrorReply*>(event);
+      error_reply_ =
+          std::make_unique<std::string>(dbus_error_reply->error().message);
     }
-    cryptohome::MountTaskResult* r =
-        static_cast<cryptohome::MountTaskResult*>(result);
-    completed_tasks_.push_back(*r);
   }
 
-  std::vector<cryptohome::MountTaskResult> completed_tasks_;
+  const BaseReply* reply() const { return reply_.get(); }
+
+  const std::string* error_reply() const { return error_reply_.get(); }
+
+  void ClearReplies() {
+    reply_.reset();
+    error_reply_.reset();
+  }
+
+ private:
+  std::unique_ptr<BaseReply> reply_;
+  std::unique_ptr<std::string> error_reply_;
+
+  DISALLOW_COPY_AND_ASSIGN(FakeEventSourceSink);
 };
 
 bool AssignSalt(size_t size, SecureBlob* salt) {
@@ -102,8 +126,6 @@ bool ProtosAreEqual(const google::protobuf::MessageLite& lhs,
 }
 
 }  // namespace
-
-namespace cryptohome {
 
 // Tests that need to do more setup work before calling Service::Initialize can
 // use this instead of ServiceTest.
@@ -124,7 +146,6 @@ class ServiceTestNotInitialized : public ::testing::Test {
     service_.set_boot_lockbox(&lockbox_);
     service_.set_boot_attributes(&boot_attributes_);
     service_.set_firmware_management_parameters(&fwmp_);
-    service_.set_reply_factory(&reply_factory_);
     service_.set_event_source_sink(&event_sink_);
     test_helper_.SetUpSystemSalt();
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
@@ -163,6 +184,19 @@ class ServiceTestNotInitialized : public ::testing::Test {
   }
 
  protected:
+  void DispatchEvents() { service_.DispatchEventsForTesting(); }
+
+  const BaseReply* reply() const { return event_sink_.reply(); }
+
+  bool ReplyIsEmpty() const {
+    EXPECT_TRUE(reply());
+    return reply() && ProtosAreEqual(BaseReply(), *reply());
+  }
+
+  const std::string* error_reply() const { return event_sink_.error_reply(); }
+
+  void ClearReplies() { event_sink_.ClearReplies(); }
+
   // The current_time_ lifetime scope should include platform_ lifetime.
   base::Time current_time_;
   MakeTests test_helper_;
@@ -174,7 +208,6 @@ class ServiceTestNotInitialized : public ::testing::Test {
   NiceMock<MockBootAttributes> boot_attributes_;
   NiceMock<MockFirmwareManagementParameters> fwmp_;
   NiceMock<MockPlatform> platform_;
-  NiceMock<MockDBusReplyFactory> reply_factory_;
   NiceMock<chaps::TokenManagerClientMock> chaps_client_;
   FakeEventSourceSink event_sink_;
   scoped_refptr<MockMount> mount_;
@@ -248,8 +281,8 @@ TEST_F(ServiceTest, InvalidAbeDataTestNotHex) {
 
 TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   // Setup a real homedirs instance (making this a pseudo-integration test).
-  test_helper_.InjectSystemSalt(&platform_, kSaltFile);
-  test_helper_.InitTestData(kImageDir, kDefaultUsers, 1,
+  test_helper_.InjectSystemSalt(&platform_, FilePath(kSaltFile));
+  test_helper_.InitTestData(FilePath(kImageDir), kDefaultUsers, 1,
                             false /* force_ecryptfs */);
   TestUser* user = &test_helper_.users[0];
   user->InjectKeyset(&platform_);
@@ -268,7 +301,7 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   real_crypto.Init(nullptr);
   HomeDirs real_homedirs;
   real_homedirs.set_crypto(&real_crypto);
-  real_homedirs.set_shadow_root(kImageDir);
+  real_homedirs.set_shadow_root(FilePath(kImageDir));
   real_homedirs.set_platform(&platform_);
   policy::PolicyProvider policy_provider(
       std::unique_ptr<NiceMock<policy::MockDevicePolicy>>(
@@ -287,23 +320,12 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   auth.mutable_key()->set_secret(passkey_string.c_str());
   CheckKeyRequest req;
 
-  // event_source_ will delete reply on cleanup.
-  std::string* base_reply_ptr = NULL;
-  MockDBusReply* reply = new MockDBusReply();
-  EXPECT_CALL(reply_factory_, NewReply(NULL, _))
-    .WillOnce(DoAll(SaveArg<1>(&base_reply_ptr), Return(reply)));
-
   // Run will never be called because we aren't running the event loop.
   service_.DoCheckKeyEx(&id, &auth, &req, NULL);
 
   // Expect an empty reply as success.
-  BaseReply expected_reply;
-  std::string expected_reply_str;
-  expected_reply.SerializeToString(&expected_reply_str);
-  ASSERT_TRUE(base_reply_ptr);
-  EXPECT_EQ(expected_reply_str, *base_reply_ptr);
-  delete base_reply_ptr;
-  base_reply_ptr = NULL;
+  DispatchEvents();
+  EXPECT_TRUE(ReplyIsEmpty());
 }
 
 TEST_F(ServiceTest, GetPublicMountPassKey) {
@@ -776,40 +798,13 @@ class ServiceExTest : public ServiceTest {
   ServiceExTest() = default;
   ~ServiceExTest() override = default;
 
-  void TearDown() override {
-    if (g_error_) {
-      g_error_free(g_error_);
-      g_error_ = NULL;
-    }
-    ServiceTest::TearDown();
+  VaultKeyset* GetNiceMockVaultKeyset(const Credentials& credentials) const {
+    std::unique_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
+    *(mvk->mutable_serialized()->mutable_key_data()) = credentials.key_data();
+    return mvk.release();
   }
 
-  void SetupErrorReply() {
-    g_error_ = NULL;
-    // |error| will be cleaned up by event_source_
-    MockDBusErrorReply *error = new MockDBusErrorReply();
-    EXPECT_CALL(reply_factory_, NewErrorReply(NULL, _))
-        .WillOnce(DoAll(SaveArg<1>(&g_error_), Return(error)));
-  }
-
-  void SetupReply() {
-    EXPECT_CALL(reply_factory_, NewReply(NULL, _))
-        .WillOnce(DoAll(SaveArg<1>(&reply_), Return(new MockDBusReply())));
-  }
-
-  BaseReply GetLastReply() {
-    BaseReply reply;
-    CHECK(reply_);
-    CHECK(reply.ParseFromString(*reply_));
-    delete reply_;
-    reply_ = NULL;
-    return reply;
-  }
-
-  bool LastReplyIsEmpty() {
-    return ProtosAreEqual(BaseReply(), GetLastReply());
-  }
-
+ protected:
   void PrepareArguments() {
     id_.reset(new AccountIdentifier);
     auth_.reset(new AuthorizationRequest);
@@ -821,31 +816,12 @@ class ServiceExTest : public ServiceTest {
   }
 
   template<class ProtoBuf>
-  GArray* GArrayFromProtoBuf(const ProtoBuf& pb) {
-    guint len = pb.ByteSize();
-    GArray* ary = g_array_sized_new(FALSE, FALSE, 1, len);
-    g_array_set_size(ary, len);
-    if (!pb.SerializeToArray(ary->data, len)) {
-      printf("Failed to serialize protocol buffer.\n");
-      return NULL;
-    }
-    return ary;
-  }
-
-  VaultKeyset* GetNiceMockVaultKeyset(const Credentials& credentials) const {
-    std::unique_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
-    *(mvk->mutable_serialized()->mutable_key_data()) = credentials.key_data();
-    return mvk.release();
-  }
-
-  template<class ProtoBuf>
   brillo::SecureBlob BlobFromProtobuf(const ProtoBuf& pb) {
     std::string serialized;
     CHECK(pb.SerializeToString(&serialized));
     return brillo::SecureBlob(serialized);
   }
 
- protected:
   std::unique_ptr<AccountIdentifier> id_;
   std::unique_ptr<AuthorizationRequest> auth_;
   std::unique_ptr<AddKeyRequest> add_req_;
@@ -854,59 +830,55 @@ class ServiceExTest : public ServiceTest {
   std::unique_ptr<RemoveKeyRequest> remove_req_;
   std::unique_ptr<ListKeysRequest> list_keys_req_;
 
-  GError* g_error_{nullptr};
-  std::string* reply_{nullptr};
-
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceExTest);
 };
 
 TEST_F(ServiceExTest, MountInvalidArgsNoEmail) {
-  SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
   service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
                      NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
-  EXPECT_STREQ("No email supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, MountInvalidArgsNoSecret) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
                      NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
-  EXPECT_STREQ("No key secret supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, MountInvalidArgsEmptySecret) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
   service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
                      NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
-  EXPECT_STREQ("No key secret supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, MountInvalidArgsCreateWithNoKey) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   mount_req_->mutable_create();
   service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
                      NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
-  EXPECT_STREQ("CreateRequest supplied with no keys", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("CreateRequest supplied with no keys", *error_reply());
 }
 
 TEST_F(ServiceExTest, MountInvalidArgsCreateWithEmptyKey) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
@@ -914,14 +886,13 @@ TEST_F(ServiceExTest, MountInvalidArgsCreateWithEmptyKey) {
   // TODO(wad) Add remaining missing field tests and NULL tests
   service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
                      NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void*>(0));
-  EXPECT_STREQ("CreateRequest Keys are not fully specified",
-               g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("CreateRequest Keys are not fully specified", *error_reply());
 }
 
 TEST_F(ServiceExTest, MountPublicWithExistingMounts) {
   constexpr char kUser[] = "chromeos-user";
-  SetupReply();
   PrepareArguments();
   SetupMount("foo@gmail.com");
 
@@ -930,14 +901,14 @@ TEST_F(ServiceExTest, MountPublicWithExistingMounts) {
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
                      NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
-  EXPECT_EQ(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY, reply.error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY, reply()->error());
 }
 
 TEST_F(ServiceExTest, MountPublicUsesPublicMountPasskey) {
   constexpr char kUser[] = "chromeos-user";
-  SetupReply();
   PrepareArguments();
 
   id_->set_account_id(kUser);
@@ -958,53 +929,53 @@ TEST_F(ServiceExTest, MountPublicUsesPublicMountPasskey) {
   }));
   service_.DoMountEx(std::move(id_), std::move(auth_), std::move(mount_req_),
                      NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
 }
 
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoEmail) {
-  SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No email supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoSecret) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No key secret supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeySet) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   add_req_->clear_key();
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No new key supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No new key supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoKeyFilled) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   add_req_->mutable_key();
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No new key supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No new key supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeyLabel) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
@@ -1012,15 +983,15 @@ TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeyLabel) {
   // No label
   add_req_->mutable_key()->set_secret("some secret");
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No new key label supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No new key label supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, CheckKeySuccessTest) {
   constexpr char kUser[] = "chromeos-user";
   constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
 
-  SetupReply();
   PrepareArguments();
   SetupMount(kUser);
 
@@ -1037,14 +1008,14 @@ TEST_F(ServiceExTest, CheckKeySuccessTest) {
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
 
   // Expect an empty reply as success.
-  EXPECT_TRUE(LastReplyIsEmpty());
+  DispatchEvents();
+  EXPECT_TRUE(ReplyIsEmpty());
 }
 
 TEST_F(ServiceExTest, CheckKeyMountTest) {
   constexpr char kUser[] = "chromeos-user";
   constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
 
-  SetupReply();
   PrepareArguments();
   SetupMount(kUser);
 
@@ -1056,26 +1027,27 @@ TEST_F(ServiceExTest, CheckKeyMountTest) {
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
 
   // Expect an empty reply as success.
-  EXPECT_TRUE(LastReplyIsEmpty());
+  DispatchEvents();
+  EXPECT_TRUE(ReplyIsEmpty());
   Mock::VerifyAndClearExpectations(mount_.get());
 
   // Rinse and repeat but fail.
+  ClearReplies();
   EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(true));
   EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
-  SetupReply();
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
 
-  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
-            GetLastReply().error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED, reply()->error());
 }
 
 TEST_F(ServiceExTest, CheckKeyHomedirsTest) {
   constexpr char kUser[] = "chromeos-user";
   constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
 
-  SetupReply();
   PrepareArguments();
   SetupMount(kUser);
 
@@ -1088,90 +1060,91 @@ TEST_F(ServiceExTest, CheckKeyHomedirsTest) {
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
 
   // Expect an empty reply as success.
-  EXPECT_TRUE(LastReplyIsEmpty());
+  DispatchEvents();
+  EXPECT_TRUE(ReplyIsEmpty());
   Mock::VerifyAndClearExpectations(&homedirs_);
 
   // Ensure failure
+  ClearReplies();
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
-  SetupReply();
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
 
-  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
-            GetLastReply().error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED, reply()->error());
 }
 
 TEST_F(ServiceExTest, CheckKeyInvalidArgsNoEmail) {
-  SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No email supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, CheckKeyInvalidArgsNoSecret) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No key secret supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, CheckKeyInvalidArgsEmptySecret) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No key secret supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, RemoveKeyInvalidArgsNoEmail) {
-  SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No email supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, RemoveKeyInvalidArgsNoSecret) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No key secret supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, RemoveKeyInvalidArgsEmptySecret) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No key secret supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, RemoveKeyInvalidArgsEmptyRemoveLabel) {
-  SetupErrorReply();
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("some secret");
   remove_req_->mutable_key()->mutable_data();
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No label provided for target key", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No label provided for target key", *error_reply());
 }
 
 TEST_F(ServiceExTest, BootLockboxSignSuccess) {
-  SetupReply();
   SecureBlob test_signature("test");
   EXPECT_CALL(lockbox_, Sign(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(test_signature),
@@ -1180,43 +1153,44 @@ TEST_F(ServiceExTest, BootLockboxSignSuccess) {
   SignBootLockboxRequest request;
   request.set_data("test_data");
   service_.DoSignBootLockbox(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
-  EXPECT_TRUE(reply.HasExtension(SignBootLockboxReply::reply));
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  EXPECT_TRUE(reply()->HasExtension(SignBootLockboxReply::reply));
   EXPECT_EQ("test",
-            reply.GetExtension(SignBootLockboxReply::reply).signature());
+            reply()->GetExtension(SignBootLockboxReply::reply).signature());
 }
 
 TEST_F(ServiceExTest, BootLockboxSignBadArgs) {
   // Try with bad proto data.
-  SetupErrorReply();
   service_.DoSignBootLockbox(SecureBlob("not_a_protobuf"), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
   // Try with |data| not set.
-  SetupErrorReply();
+  ClearReplies();
   SignBootLockboxRequest request;
   service_.DoSignBootLockbox(BlobFromProtobuf(request), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
 }
 
 TEST_F(ServiceExTest, BootLockboxSignError) {
-  SetupReply();
   EXPECT_CALL(lockbox_, Sign(_, _))
       .WillRepeatedly(Return(false));
 
   SignBootLockboxRequest request;
   request.set_data("test_data");
   service_.DoSignBootLockbox(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
-  EXPECT_EQ(CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN, reply.error());
-  EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN, reply()->error());
+  EXPECT_FALSE(reply()->HasExtension(SignBootLockboxReply::reply));
 }
 
 TEST_F(ServiceExTest, BootLockboxVerifySuccess) {
-  SetupReply();
   EXPECT_CALL(lockbox_, Verify(_, _))
       .WillRepeatedly(Return(true));
 
@@ -1224,35 +1198,37 @@ TEST_F(ServiceExTest, BootLockboxVerifySuccess) {
   request.set_data("test_data");
   request.set_signature("test_signature");
   service_.DoVerifyBootLockbox(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
-  EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  EXPECT_FALSE(reply()->HasExtension(SignBootLockboxReply::reply));
 }
 
 TEST_F(ServiceExTest, BootLockboxVerifyBadArgs) {
   // Try with bad proto data.
-  SetupErrorReply();
   service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
   // Try with |signature| not set.
-  SetupErrorReply();
+  ClearReplies();
   VerifyBootLockboxRequest request;
   request.set_data("test_data");
   service_.DoVerifyBootLockbox(BlobFromProtobuf(request), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
   // Try with |data| not set.
-  SetupErrorReply();
+  ClearReplies();
   VerifyBootLockboxRequest request2;
   request2.set_signature("test_data");
   service_.DoVerifyBootLockbox(BlobFromProtobuf(request2), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
 }
 
 TEST_F(ServiceExTest, BootLockboxVerifyError) {
-  SetupReply();
   EXPECT_CALL(lockbox_, Verify(_, _))
       .WillRepeatedly(Return(false));
 
@@ -1260,130 +1236,130 @@ TEST_F(ServiceExTest, BootLockboxVerifyError) {
   request.set_data("test_data");
   request.set_signature("test_signature");
   service_.DoVerifyBootLockbox(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
-  EXPECT_EQ(CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID, reply.error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID, reply()->error());
 }
 
 TEST_F(ServiceExTest, BootLockboxFinalizeSuccess) {
-  SetupReply();
   EXPECT_CALL(lockbox_, FinalizeBoot())
       .WillRepeatedly(Return(true));
 
   FinalizeBootLockboxRequest request;
   service_.DoFinalizeBootLockbox(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
-  EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  EXPECT_FALSE(reply()->HasExtension(SignBootLockboxReply::reply));
 }
 
 TEST_F(ServiceExTest, BootLockboxFinalizeBadArgs) {
   // Try with bad proto data.
-  SetupErrorReply();
   service_.DoFinalizeBootLockbox(SecureBlob("not_a_protobuf"), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
 }
 
 TEST_F(ServiceExTest, BootLockboxFinalizeError) {
-  SetupReply();
   EXPECT_CALL(lockbox_, FinalizeBoot())
       .WillRepeatedly(Return(false));
 
   FinalizeBootLockboxRequest request;
   service_.DoFinalizeBootLockbox(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
-  EXPECT_EQ(CRYPTOHOME_ERROR_TPM_COMM_ERROR, reply.error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_TPM_COMM_ERROR, reply()->error());
 }
 
 TEST_F(ServiceExTest, GetBootAttributeSuccess) {
-  SetupReply();
   EXPECT_CALL(boot_attributes_, Get(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>("1234"), Return(true)));
 
   GetBootAttributeRequest request;
   request.set_name("test");
   service_.DoGetBootAttribute(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
-  EXPECT_TRUE(reply.HasExtension(GetBootAttributeReply::reply));
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  EXPECT_TRUE(reply()->HasExtension(GetBootAttributeReply::reply));
   EXPECT_EQ("1234",
-            reply.GetExtension(GetBootAttributeReply::reply).value());
+            reply()->GetExtension(GetBootAttributeReply::reply).value());
 }
 
 TEST_F(ServiceExTest, GetBootAttributeBadArgs) {
   // Try with bad proto data.
-  SetupErrorReply();
   service_.DoGetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
 }
 
 TEST_F(ServiceExTest, GetBootAttributeError) {
-  SetupReply();
   EXPECT_CALL(boot_attributes_, Get(_, _))
       .WillRepeatedly(Return(false));
 
   GetBootAttributeRequest request;
   request.set_name("test");
   service_.DoGetBootAttribute(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
-  EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND, reply.error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND, reply()->error());
 }
 
 TEST_F(ServiceExTest, SetBootAttributeSuccess) {
-  SetupReply();
   SetBootAttributeRequest request;
   request.set_name("test");
   request.set_value("1234");
   service_.DoSetBootAttribute(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
 }
 
 TEST_F(ServiceExTest, SetBootAttributeBadArgs) {
   // Try with bad proto data.
-  SetupErrorReply();
   service_.DoSetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
 }
 
 TEST_F(ServiceExTest, FlushAndSignBootAttributesSuccess) {
-  SetupReply();
   EXPECT_CALL(boot_attributes_, FlushAndSign())
       .WillRepeatedly(Return(true));
 
   FlushAndSignBootAttributesRequest request;
   service_.DoFlushAndSignBootAttributes(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
 }
 
 TEST_F(ServiceExTest, FlushAndSignBootAttributesBadArgs) {
   // Try with bad proto data.
-  SetupErrorReply();
   service_.DoFlushAndSignBootAttributes(SecureBlob("not_a_protobuf"), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
 }
 
 TEST_F(ServiceExTest, FlushAndSignBootAttributesError) {
-  SetupReply();
   EXPECT_CALL(boot_attributes_, FlushAndSign())
       .WillRepeatedly(Return(false));
 
   FlushAndSignBootAttributesRequest request;
   service_.DoFlushAndSignBootAttributes(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
-  EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN, reply.error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN, reply()->error());
 }
 
 TEST_F(ServiceExTest, GetLoginStatusSuccess) {
-  SetupReply();
   EXPECT_CALL(homedirs_, GetPlainOwner(_))
     .WillOnce(Return(true));
   EXPECT_CALL(lockbox_, IsFinalized())
@@ -1391,25 +1367,26 @@ TEST_F(ServiceExTest, GetLoginStatusSuccess) {
 
   GetLoginStatusRequest request;
   service_.DoGetLoginStatus(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
-  EXPECT_TRUE(reply.HasExtension(GetLoginStatusReply::reply));
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  EXPECT_TRUE(reply()->HasExtension(GetLoginStatusReply::reply));
   EXPECT_TRUE(
-      reply.GetExtension(GetLoginStatusReply::reply).owner_user_exists());
-  EXPECT_FALSE(
-      reply.GetExtension(GetLoginStatusReply::reply).boot_lockbox_finalized());
+      reply()->GetExtension(GetLoginStatusReply::reply).owner_user_exists());
+  EXPECT_FALSE(reply()
+                   ->GetExtension(GetLoginStatusReply::reply)
+                   .boot_lockbox_finalized());
 }
 
 TEST_F(ServiceExTest, GetLoginStatusBadArgs) {
   // Try with bad proto data.
-  SetupErrorReply();
   service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STRNE("", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_NE("", *error_reply());
 }
 
 TEST_F(ServiceExTest, GetKeyDataExNoMatch) {
-  SetupReply();
   PrepareArguments();
 
   EXPECT_CALL(homedirs_, Exists(_))
@@ -1423,15 +1400,15 @@ TEST_F(ServiceExTest, GetKeyDataExNoMatch) {
       .Times(1)
       .WillRepeatedly(Return(static_cast<VaultKeyset*>(NULL)));
   service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
-  GetKeyDataReply sub_reply = reply.GetExtension(GetKeyDataReply::reply);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  GetKeyDataReply sub_reply = reply()->GetExtension(GetKeyDataReply::reply);
   EXPECT_EQ(0, sub_reply.key_data_size());
 }
 
 TEST_F(ServiceExTest, GetKeyDataExOneMatch) {
   // Request the single key by label.
-  SetupReply();
   PrepareArguments();
 
   static const char *kExpectedLabel = "find-me";
@@ -1446,36 +1423,36 @@ TEST_F(ServiceExTest, GetKeyDataExOneMatch) {
 
   id_->set_account_id("unittest@example.com");
   service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
 
-  GetKeyDataReply sub_reply = reply.GetExtension(GetKeyDataReply::reply);
+  GetKeyDataReply sub_reply = reply()->GetExtension(GetKeyDataReply::reply);
   ASSERT_EQ(1, sub_reply.key_data_size());
   EXPECT_EQ(std::string(kExpectedLabel), sub_reply.key_data(0).label());
 }
 
 TEST_F(ServiceExTest, GetKeyDataInvalidArgsNoEmail) {
-  SetupErrorReply();
   PrepareArguments();
   GetKeyDataRequest req;
   service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No email supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, ListKeysInvalidArgsNoEmail) {
-  SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoListKeysEx is called directly.
   service_.DoListKeysEx(id_.get(), auth_.get(), list_keys_req_.get(), NULL);
-  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
-  EXPECT_STREQ("No email supplied", g_error_->message);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
 }
 
 TEST_F(ServiceExTest, GetFirmwareManagementParametersSuccess) {
   brillo::SecureBlob hash("its_a_hash");
-  SetupReply();
 
   EXPECT_CALL(fwmp_, Load())
     .WillOnce(Return(true));
@@ -1486,35 +1463,37 @@ TEST_F(ServiceExTest, GetFirmwareManagementParametersSuccess) {
 
   GetFirmwareManagementParametersRequest request;
   service_.DoGetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
-  EXPECT_TRUE(reply.HasExtension(GetFirmwareManagementParametersReply::reply));
-  EXPECT_EQ(
-      reply.GetExtension(GetFirmwareManagementParametersReply::reply).flags(),
-      0x1234);
-  EXPECT_EQ(reply.GetExtension(
-      GetFirmwareManagementParametersReply::reply).developer_key_hash(),
-      hash.to_string());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  EXPECT_TRUE(
+      reply()->HasExtension(GetFirmwareManagementParametersReply::reply));
+  EXPECT_EQ(reply()
+                ->GetExtension(GetFirmwareManagementParametersReply::reply)
+                .flags(),
+            0x1234);
+  EXPECT_EQ(reply()
+                ->GetExtension(GetFirmwareManagementParametersReply::reply)
+                .developer_key_hash(),
+            hash.to_string());
 }
 
 TEST_F(ServiceExTest, GetFirmwareManagementParametersError) {
-  SetupReply();
-
   EXPECT_CALL(fwmp_, Load())
     .WillRepeatedly(Return(false));
 
   GetFirmwareManagementParametersRequest request;
   service_.DoGetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
-            reply.error());
+            reply()->error());
 }
 
 TEST_F(ServiceExTest, SetFirmwareManagementParametersSuccess) {
   brillo::SecureBlob hash("its_a_hash");
   brillo::Blob out_hash;
-  SetupReply();
 
   EXPECT_CALL(fwmp_, Create())
     .WillOnce(Return(true));
@@ -1525,14 +1504,14 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersSuccess) {
   request.set_flags(0x1234);
   request.set_developer_key_hash(hash.to_string());
   service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
   EXPECT_EQ(hash, out_hash);
 }
 
 TEST_F(ServiceExTest, SetFirmwareManagementParametersNoHash) {
   brillo::Blob hash(0);
-  SetupReply();
 
   EXPECT_CALL(fwmp_, Create())
     .WillOnce(Return(true));
@@ -1542,13 +1521,13 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersNoHash) {
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
   service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
 }
 
 TEST_F(ServiceExTest, SetFirmwareManagementParametersCreateError) {
   brillo::SecureBlob hash("its_a_hash");
-  SetupReply();
 
   EXPECT_CALL(fwmp_, Create())
     .WillOnce(Return(false));
@@ -1557,15 +1536,15 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersCreateError) {
   request.set_flags(0x1234);
   request.set_developer_key_hash(hash.to_string());
   service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
-            reply.error());
+            reply()->error());
 }
 
 TEST_F(ServiceExTest, SetFirmwareManagementParametersStoreError) {
   brillo::SecureBlob hash("its_a_hash");
-  SetupReply();
 
   EXPECT_CALL(fwmp_, Create())
     .WillOnce(Return(true));
@@ -1576,38 +1555,37 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersStoreError) {
   request.set_flags(0x1234);
   request.set_developer_key_hash(hash.to_string());
   service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
-            reply.error());
+            reply()->error());
 }
 
 TEST_F(ServiceExTest, RemoveFirmwareManagementParametersSuccess) {
-  SetupReply();
-
   EXPECT_CALL(fwmp_, Destroy())
     .WillOnce(Return(true));
 
   RemoveFirmwareManagementParametersRequest request;
   service_.DoRemoveFirmwareManagementParameters(BlobFromProtobuf(request),
                                                 NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_FALSE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
 }
 
 TEST_F(ServiceExTest, RemoveFirmwareManagementParametersError) {
-  SetupReply();
-
   EXPECT_CALL(fwmp_, Destroy())
     .WillOnce(Return(false));
 
   RemoveFirmwareManagementParametersRequest request;
   service_.DoRemoveFirmwareManagementParameters(BlobFromProtobuf(request),
                                                 NULL);
-  BaseReply reply = GetLastReply();
-  EXPECT_TRUE(reply.has_error());
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE,
-            reply.error());
+            reply()->error());
 }
 
 void ImmediatelySignalOwnership(TpmInit::OwnershipCallback callback) {

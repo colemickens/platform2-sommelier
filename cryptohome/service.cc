@@ -205,8 +205,6 @@ Service::Service()
       user_timestamp_cache_(new UserOldestActivityTimestampCache()),
       default_mount_factory_(new cryptohome::MountFactory()),
       mount_factory_(default_mount_factory_.get()),
-      default_reply_factory_(new cryptohome::DBusReplyFactory),
-      reply_factory_(default_reply_factory_.get()),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
@@ -317,17 +315,15 @@ void Service::SendReply(DBusGMethodInvocation* context,
   // DBusReply will take ownership of the |reply_str|.
   std::unique_ptr<std::string> reply_str(new std::string);
   reply.SerializeToString(reply_str.get());
-  event_source_.AddEvent(reply_factory_->NewReply(context,
-                                                  reply_str.release()));
+  event_source_.AddEvent(new DBusReply(context, reply_str.release()));
 }
 
 void Service::SendDBusErrorReply(DBusGMethodInvocation* context,
                                  GQuark domain,
                                  gint code,
                                  const gchar* message) {
-    GError* error = g_error_new_literal(domain, code, message);
-    DBusErrorReply* reply_cb = reply_factory_->NewErrorReply(context, error);
-    event_source_.AddEvent(reply_cb);
+  GError* error = g_error_new_literal(domain, code, message);
+  event_source_.AddEvent(new DBusErrorReply(context, error));
 }
 
 bool Service::FilterActiveMounts(
@@ -3067,7 +3063,7 @@ int Service::PostAsyncCallResult(MountTaskObserver* bridge,
   return mount_task->sequence_id();
 }
 
-void Service::DispatchEvents() {
+void Service::DispatchEventsForTesting() {
   event_source_.HandleDispatch();
 }
 

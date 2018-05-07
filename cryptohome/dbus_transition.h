@@ -50,6 +50,8 @@ class DBusErrorReply : public CryptohomeEventBase {
   virtual void Run() {
     dbus_g_method_return_error(context_, error_.get());
   }
+  const GError& error() const { return *error_; }
+
  private:
   // If this event is not serviced, the memory will be leaked.
   DBusGMethodInvocation* context_;
@@ -71,24 +73,12 @@ class DBusReply : public CryptohomeEventBase {
                         reply_->size());
     dbus_g_method_return(context_, tmp_array.get());
   }
+  const std::string& reply() const { return *reply_; }
+
  private:
   // If this event is not serviced, the memory will be leaked.
   DBusGMethodInvocation* context_;
   std::unique_ptr<std::string> reply_;
-};
-
-class DBusReplyFactory {
- public:
-  DBusReplyFactory() { }
-  virtual ~DBusReplyFactory() { }
-  virtual DBusReply* NewReply(DBusGMethodInvocation* context,
-                              std::string* reply) {
-    return new DBusReply(context, reply);
-  }
-  virtual DBusErrorReply* NewErrorReply(DBusGMethodInvocation* context,
-                                        GError* error) {
-    return new DBusErrorReply(context, error);
-  }
 };
 
 }  // namespace cryptohome
