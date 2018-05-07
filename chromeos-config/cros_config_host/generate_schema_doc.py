@@ -88,6 +88,7 @@ def PopulateTypeDef(name, type_def, ref_types, output):
         child_types[attr_name] = type_attrs
         attr_type = '[%s](#%s)' % (attr_name, attr_name)
       elif type_attrs['type'] == 'array':
+        description = type_attrs['items'].get('description', '')
         if type_attrs['items']['type'] == 'object':
           child_types[attr_name] = type_attrs['items']
           attr_type = 'array - [%s](#%s)' % (attr_name, attr_name)
