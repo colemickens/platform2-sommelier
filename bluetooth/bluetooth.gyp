@@ -32,10 +32,24 @@
       ],
     },
     {
+      'target_name': 'libnewblued',
+      'type': 'static_library',
+      'sources': [
+        'newblued/dbus_daemon.cc',
+        'newblued/newblue_daemon.cc',
+      ],
+    },
+    {
       'target_name': 'btdispatch',
       'type': 'executable',
       'dependencies': ['libdispatcher'],
       'sources': ['dispatcher/main.cc'],
+    },
+    {
+      'target_name': 'newblued',
+      'type': 'executable',
+      'dependencies': ['libnewblued'],
+      'sources': ['newblued/main.cc'],
     },
   ],
   'conditions': [
