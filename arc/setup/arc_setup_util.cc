@@ -64,8 +64,9 @@ constexpr char kAttributeFingerprint[] = " fingerprint=\"";
 // Maximum length of an Android property value.
 constexpr int kAndroidMaxPropertyLength = 91;
 
-std::string GetLoopDevice(int32_t device) {
-  return base::StringPrintf("/dev/loop%d", device);
+// Gets the loop device path for a loop device number.
+base::FilePath GetLoopDevicePath(int32_t device) {
+  return base::FilePath(base::StringPrintf("/dev/loop%d", device));
 }
 
 // A callback function for SELinux restorecon.
@@ -399,18 +400,17 @@ class ArcMounterImpl : public ArcMounter {
       return false;
     }
 
-    const std::string device_file = GetLoopDevice(minor(st.st_dev));
-    const int fd = open(device_file.c_str(), O_RDWR);
-    if (fd < 0) {
-      PLOG(ERROR) << "Failed to open " << device_file;
+    const base::FilePath device_path = GetLoopDevicePath(minor(st.st_dev));
+    base::ScopedFD scoped_loop_fd(open(device_path.value().c_str(), O_RDWR));
+    if (!scoped_loop_fd.is_valid()) {
+      PLOG(ERROR) << "Failed to open " << device_path.value();
       return false;
     }
-    base::ScopedFD scoped_loop_fd(fd);
-
     if (ioctl(scoped_loop_fd.get(), LOOP_CLR_FD)) {
-      PLOG(ERROR) << "Failed to free " << device_file;
+      PLOG(ERROR) << "Failed to free " << device_path.value();
       return false;
     }
+
     return true;
   }
 
@@ -422,12 +422,11 @@ class ArcMounterImpl : public ArcMounter {
     constexpr char kLoopControl[] = "/dev/loop-control";
 
     *out_retry = false;
-    int fd = open(kLoopControl, O_RDONLY);
-    if (fd < 0) {
+    base::ScopedFD scoped_control_fd(open(kLoopControl, O_RDONLY));
+    if (!scoped_control_fd.is_valid()) {
       PLOG(ERROR) << "Failed to open " << kLoopControl;
       return false;
     }
-    base::ScopedFD scoped_control_fd(fd);
 
     const int32_t device_num =
         ioctl(scoped_control_fd.get(), LOOP_CTL_GET_FREE);
@@ -436,33 +435,32 @@ class ArcMounterImpl : public ArcMounter {
       return false;
     }
 
-    const std::string device_file = GetLoopDevice(device_num);
-    fd = open(device_file.c_str(), O_RDWR);
-    if (fd < 0) {
-      PLOG(ERROR) << "Failed to open " << device_file;
+    const base::FilePath device_path = GetLoopDevicePath(device_num);
+    base::ScopedFD scoped_loop_fd(open(device_path.value().c_str(), O_RDWR));
+    if (!scoped_loop_fd.is_valid() < 0) {
+      PLOG(ERROR) << "Failed to open " << device_path.value();
       return false;
     }
-    base::ScopedFD scoped_loop_fd(fd);
 
     const bool is_readonly_mount = mount_flags & MS_RDONLY;
-    fd = open(source.c_str(), is_readonly_mount ? O_RDONLY : O_RDWR);
-    if (fd < 0) {
+    base::ScopedFD scoped_source_fd(
+        open(source.c_str(), is_readonly_mount ? O_RDONLY : O_RDWR));
+    if (!scoped_source_fd.is_valid() < 0) {
       // If the open failed because we tried to open a read only file as RW
       // we fallback to opening it with O_RDONLY
       if (!is_readonly_mount && (errno == EROFS || errno == EACCES)) {
         LOG(WARNING) << source << " is write-protected, using read-only";
-        fd = open(source.c_str(), O_RDONLY);
+        scoped_source_fd.reset(open(source.c_str(), O_RDONLY));
       }
-      if (fd < 0) {
+      if (!scoped_source_fd.is_valid() < 0) {
         PLOG(ERROR) << "Failed to open " << source;
         return false;
       }
     }
-    base::ScopedFD scoped_source_fd(fd);
 
     if (ioctl(scoped_loop_fd.get(), LOOP_SET_FD, scoped_source_fd.get()) < 0) {
       PLOG(ERROR) << "Failed to associate " << source << " with "
-                  << device_file;
+                  << device_path.value();
       // Set |out_retry| to true if LOOP_SET_FD returns EBUSY. The errno
       // indicates that another process has grabbed the same |device_num|
       // before arc-setup does that.
@@ -470,19 +468,21 @@ class ArcMounterImpl : public ArcMounter {
       return false;
     }
 
-    if (Mount(device_file, target, "squashfs", mount_flags, nullptr))
+    if (Mount(device_path.value(), target, "squashfs", mount_flags, nullptr))
       return true;
 
     // For debugging, ext4 might be used.
-    if (Mount(device_file, target, "ext4", mount_flags, nullptr)) {
+    if (Mount(device_path.value(), target, "ext4", mount_flags, nullptr)) {
       LOG(INFO) << "Mounted " << source << " as ext4";
       return true;
     }
 
     // Mount failed. Remove |source| from the loop device so that |device_num|
     // can be reused.
-    if (ioctl(scoped_loop_fd.get(), LOOP_CLR_FD) < 0)
-      PLOG(ERROR) << "Failed to remove " << source << " from " << device_file;
+    if (ioctl(scoped_loop_fd.get(), LOOP_CLR_FD) < 0) {
+      PLOG(ERROR) << "Failed to remove " << source << " from "
+                  << device_path.value();
+    }
     return false;
   }
 };
