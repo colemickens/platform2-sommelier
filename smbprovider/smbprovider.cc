@@ -846,40 +846,13 @@ bool SmbProvider::CopyFile(const CopyEntryOptionsProto& options,
                            int32_t* error_code) {
   DCHECK(error_code);
 
-  int32_t target_file_id;
-  int32_t source_file_id;
-  bool success =
-      CreateFile(options, target_path, &target_file_id, error_code) &&
-      OpenFile(options, source_path, error_code, &source_file_id) &&
-      CopyData(options, source_file_id, target_file_id, error_code) &&
-      CloseFile(options, source_file_id, error_code) &&
-      CloseFile(options, target_file_id, error_code);
-
-  return success;
-}
-
-bool SmbProvider::CopyData(const CopyEntryOptionsProto& options,
-                           int32_t source_fd,
-                           int32_t target_fd,
-                           int32_t* error_code) {
-  DCHECK(error_code);
-
-  std::vector<uint8_t> buffer;
-  buffer.resize(kBufferSize);
-
-  size_t bytes_read;
-  while (ReadToBuffer(options, source_fd, &buffer, &bytes_read, error_code)) {
-    if (bytes_read == 0) {
-      // reached end of file successfully.
-      return true;
-    }
-
-    if (!WriteFileFromBuffer(options, target_fd, buffer, error_code)) {
-      return false;
-    }
+  int32_t result = samba_interface_->CopyFile(source_path, target_path);
+  if (result != 0) {
+    LogAndSetError(options, GetErrorFromErrno(result), error_code);
+    return false;
   }
 
-  return false;
+  return true;
 }
 
 template <typename Proto>

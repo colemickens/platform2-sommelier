@@ -339,13 +339,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                 const std::string& target_path,
                 int32_t* error_code);
 
-  // Copies the data at open file |source_fd| to open file |target_fd|. Returns
-  // true on success. Returns false and sets |error_code| on failure.
-  bool CopyData(const CopyEntryOptionsProto& options,
-                int32_t source_fd,
-                int32_t target_fd,
-                int32_t* error_code);
-
   // Helper method that fills |buffer| by reading the file with handle
   // |file_id|. Returns true and sets |bytes_read| on success. Returns false and
   // sets |error_code| on failure. |options| is used for logging.
