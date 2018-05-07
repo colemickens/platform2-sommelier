@@ -81,7 +81,7 @@ class ArcMounter {
 // A class that umounts a mountpoint when the mountpoint goes out of scope.
 class ScopedMount {
  public:
-  ScopedMount(const base::FilePath& path, ArcMounter* mounter);
+  ScopedMount(const base::FilePath& path, ArcMounter* mounter, bool is_loop);
   ~ScopedMount();
 
   // Mounts |source| to |target| and returns a unique_ptr that umounts the
@@ -113,6 +113,7 @@ class ScopedMount {
   // Owned by caller.
   ArcMounter* const mounter_;
   const base::FilePath path_;
+  const bool is_loop_;
 
   DISALLOW_COPY_AND_ASSIGN(ScopedMount);
 };

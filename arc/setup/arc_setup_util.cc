@@ -501,12 +501,19 @@ bool AdvanceEnumeratorWithStat(base::FileEnumerator* traversal,
 
 }  // namespace
 
-ScopedMount::ScopedMount(const base::FilePath& path, ArcMounter* mounter)
-    : mounter_(mounter), path_(path) {}
+ScopedMount::ScopedMount(const base::FilePath& path,
+                         ArcMounter* mounter,
+                         bool is_loop)
+    : mounter_(mounter), path_(path), is_loop_(is_loop) {}
 
 ScopedMount::~ScopedMount() {
-  PLOG_IF(INFO, !mounter_->UmountLazily(path_))
-      << "Ignoring failure to umount " << path_.value();
+  if (is_loop_) {
+    PLOG_IF(INFO, !mounter_->LoopUmount(path_))
+        << "Ignoring failure to umount " << path_.value();
+  } else {
+    PLOG_IF(INFO, !mounter_->UmountLazily(path_))
+        << "Ignoring failure to umount " << path_.value();
+  }
 }
 
 // static
@@ -519,7 +526,7 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedMount(
     const char* data) {
   if (!mounter->Mount(source, target, filesystem_type, mount_flags, data))
     return nullptr;
-  return std::make_unique<ScopedMount>(target, mounter);
+  return std::make_unique<ScopedMount>(target, mounter, false /*is_loop*/);
 }
 
 // static
@@ -530,7 +537,7 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedLoopMount(
     unsigned long flags) {  // NOLINT(runtime/int)
   if (!mounter->LoopMount(source, target, flags))
     return nullptr;
-  return std::make_unique<ScopedMount>(target, mounter);
+  return std::make_unique<ScopedMount>(target, mounter, true /*is_loop*/);
 }
 
 // static
@@ -540,7 +547,7 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedBindMount(
     const base::FilePath& new_path) {
   if (!mounter->BindMount(old_path, new_path))
     return nullptr;
-  return std::make_unique<ScopedMount>(new_path, mounter);
+  return std::make_unique<ScopedMount>(new_path, mounter, false /*is_loop*/);
 }
 
 ScopedMountNamespace::ScopedMountNamespace(base::ScopedFD mount_namespace_fd)
