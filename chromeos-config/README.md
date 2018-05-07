@@ -48,8 +48,8 @@ minutes](https://learnxinyminutes.com/docs/yaml/)
 The source is generally located at:
 overlay-${BOARD}/chromeos-base/chromeos-config-bsp/files/model.yaml
 
-Beyond the normal features of YAML, there are two custom features supported that
-allow for even better re-use and expressiveness in the YAML config.
+Beyond the normal features of YAML, there are a few custom features supported
+that allow for even better re-use and expressiveness in the YAML config.
 
 1.  Templating - Templating allows config to be shared by letting callers
     reference variables in the config, which are then evaluated on a per
@@ -88,6 +88,18 @@ allow for even better re-use and expressiveness in the YAML config.
     2.  Re-using common config (e.g. 'identity') where the variable value isn't
         known until the device/product/sku variables come into scope (e.g.
         $sku-id).
+
+2.  File Imports - File imports allow common snippets of YAML to be shared
+    across multiple different implementations.  File importing works the same as
+    if the YAML files were cat'd together and then evaluated.  File importing is
+    recursive also, so it will support importing files that import other files.
+    Import paths must be relative to the file that specifies the import.
+
+    ```yaml
+    imports:
+      - "some_common_import_file.yaml"
+      - "../common/some_other_common_import_file.yaml"
+    ```
 
 The following provides a simple example of a config using both core YAML
 features and the custom features described above.
