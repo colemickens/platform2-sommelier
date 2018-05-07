@@ -5,6 +5,8 @@
 #ifndef LIBCONTAINER_LIBCONTAINER_UTIL_H_
 #define LIBCONTAINER_LIBCONTAINER_UTIL_H_
 
+#include <linux/loop.h>
+
 #include <string>
 #include <vector>
 
@@ -74,6 +76,20 @@ class HookState {
   DISALLOW_COPY_AND_ASSIGN(HookState);
 };
 
+// Loopdev represents an active loopback device.
+struct Loopdev {
+  // The path of the loopback device. e.g. /dev/loop1
+  base::FilePath path;
+
+  // An open file descriptor for the loopback device. Has the autoclear flag,
+  // such that the kernel will automatically remove it once all references to it
+  // are closed.
+  base::ScopedFD fd;
+
+  // Information about the loop device.
+  struct loop_info64 info;
+};
+
 // Given a uid/gid map of "inside1 outside1 length1, ...", and an id inside of
 // the user namespace, populate |id_out|. Returns true on success.
 bool GetUsernsOutsideId(const std::string& map, int id, int* id_out);
@@ -83,11 +99,10 @@ bool MakeDir(const base::FilePath& path, int uid, int gid, int mode);
 bool TouchFile(const base::FilePath& path, int uid, int gid, int mode);
 
 // Find a free loop device and attach it.
-bool LoopdevSetup(const base::FilePath& source,
-                  base::FilePath* loopdev_path_out);
+bool LoopdevSetup(const base::FilePath& source, Loopdev* loopdev_out);
 
 // Detach the specified loop device.
-bool LoopdevDetach(const base::FilePath& loopdev);
+bool LoopdevDetach(Loopdev* loopdev);
 
 // Create a new device mapper target for the source.
 bool DeviceMapperSetup(const base::FilePath& source,

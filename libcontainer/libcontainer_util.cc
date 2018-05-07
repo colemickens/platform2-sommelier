@@ -182,6 +182,12 @@ bool ExecveCallbackHelper(base::FilePath filename,
   return static_cast<int8_t>(WEXITSTATUS(status)) == 0;
 }
 
+// Immediately removes the loop device from the system.
+void RemoveLoopDevice(int control_fd, int32_t device) {
+  if (ioctl(control_fd, LOOP_CTL_REMOVE, device) < 0)
+    PLOG(ERROR) << "Failed to free /dev/loop" << device;
+}
+
 }  // namespace
 
 WaitablePipe::WaitablePipe() {
@@ -348,8 +354,7 @@ bool TouchFile(const base::FilePath& path, int uid, int gid, int mode) {
   return true;
 }
 
-bool LoopdevSetup(const base::FilePath& source,
-                  base::FilePath* loopdev_path_out) {
+bool LoopdevSetup(const base::FilePath& source, Loopdev* loopdev_out) {
   base::ScopedFD source_fd(open(source.value().c_str(), O_RDONLY | O_CLOEXEC));
   if (!source_fd.is_valid()) {
     PLOG(ERROR) << "Failed to open " << source.value();
@@ -370,6 +375,10 @@ bool LoopdevSetup(const base::FilePath& source,
       return false;
     }
 
+    // Cleanup in case the setup fails. This frees |num| altogether.
+    base::ScopedClosureRunner loop_device_cleanup(
+        base::Bind(&RemoveLoopDevice, control_fd.get(), num));
+
     base::FilePath loopdev_path(base::StringPrintf("/dev/loop%i", num));
     base::ScopedFD loop_fd(
         open(loopdev_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
@@ -378,29 +387,42 @@ bool LoopdevSetup(const base::FilePath& source,
       return false;
     }
 
-    if (ioctl(loop_fd.get(), LOOP_SET_FD, source_fd.get()) == 0) {
-      *loopdev_path_out = loopdev_path;
-      break;
+    if (ioctl(loop_fd.get(), LOOP_SET_FD, source_fd.get()) < 0) {
+      if (errno != EBUSY) {
+        PLOG(ERROR) << "Failed to ioctl(LOOP_SET_FD) " << loopdev_path.value();
+        return false;
+      }
+      continue;
     }
 
-    if (errno != EBUSY) {
-      PLOG(ERROR) << "Failed to ioctl(LOOP_SET_FD) " << loopdev_path.value();
+    // Set the autoclear flag on the loop device, which will release it when
+    // there are no more references to it.
+    struct loop_info64 loop_info = {};
+    if (ioctl(loop_fd.get(), LOOP_GET_STATUS64, &loop_info) < 0) {
+      PLOG(ERROR) << "Failed to ioctl(LOOP_GET_STATUS64) "
+                  << loopdev_path.value();
       return false;
     }
+    loop_info.lo_flags |= LO_FLAGS_AUTOCLEAR;
+    if (ioctl(loop_fd.get(), LOOP_SET_STATUS64, &loop_info) < 0) {
+      PLOG(ERROR) << "Failed to ioctl(LOOP_SET_STATUS64, LO_FLAGS_AUTOCLEAR) "
+                  << loopdev_path.value();
+      return false;
+    }
+
+    ignore_result(loop_device_cleanup.Release());
+    loopdev_out->path = loopdev_path;
+    loopdev_out->fd = std::move(loop_fd);
+    loopdev_out->info = loop_info;
+    break;
   }
 
   return true;
 }
 
-bool LoopdevDetach(const base::FilePath& loopdev) {
-  base::ScopedFD fd(
-      open(loopdev.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << loopdev.value();
-    return false;
-  }
-  if (ioctl(fd.get(), LOOP_CLR_FD) < 0) {
-    PLOG(ERROR) << "Failed to ioctl(LOOP_CLR_FD) for " << loopdev.value();
+bool LoopdevDetach(Loopdev* loopdev) {
+  if (ioctl(loopdev->fd.get(), LOOP_CLR_FD) < 0) {
+    PLOG(ERROR) << "Failed to ioctl(LOOP_CLR_FD) for " << loopdev->path.value();
     return false;
   }
 

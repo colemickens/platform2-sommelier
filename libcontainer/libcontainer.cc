@@ -51,6 +51,7 @@ namespace {
 using libcontainer::DeviceMapperDetach;
 using libcontainer::DeviceMapperSetup;
 using libcontainer::GetUsernsOutsideId;
+using libcontainer::Loopdev;
 using libcontainer::LoopdevDetach;
 using libcontainer::LoopdevSetup;
 using libcontainer::MakeDir;
@@ -234,7 +235,7 @@ struct container {
 
   // Mounts made outside of the minijail.
   std::vector<base::FilePath> ext_mounts;
-  std::vector<base::FilePath> loopdev_paths;
+  std::vector<Loopdev> loopdevs;
   std::vector<std::string> device_mappers;
   std::string name;
 
@@ -485,12 +486,11 @@ bool UnmountExternalMounts(struct container* c) {
   }
   c->ext_mounts.clear();
 
-  for (auto it = c->loopdev_paths.rbegin(); it != c->loopdev_paths.rend();
-       ++it) {
-    if (!LoopdevDetach(*it))
+  for (auto it = c->loopdevs.rbegin(); it != c->loopdevs.rend(); ++it) {
+    if (!LoopdevDetach(&(*it)))
       ret = false;
   }
-  c->loopdev_paths.clear();
+  c->loopdevs.clear();
 
   for (auto it = c->device_mappers.rbegin(); it != c->device_mappers.rend();
        ++it) {
@@ -527,13 +527,15 @@ bool DoContainerMount(struct container* c,
       return false;
   }
   if (mount.loopback) {
-    // Record this loopback file for cleanup later.
-    base::FilePath loop_source = source;
-    if (!LoopdevSetup(loop_source, &source))
+    Loopdev loopdev;
+    if (!LoopdevSetup(source, &loopdev))
       return false;
 
+    // Replace the mount source with the loopback device path.
+    source = loopdev.path;
+
     // Save this to cleanup when shutting down.
-    c->loopdev_paths.push_back(source);
+    c->loopdevs.emplace_back(std::move(loopdev));
   }
   if (!mount.verity.empty()) {
     // Set this device up via dm-verity.
@@ -728,15 +730,9 @@ bool DeviceSetup(struct container* c, const struct container_config* config) {
     }
   }
 
-  for (const auto& loopdev_path : c->loopdev_paths) {
-    struct stat st;
-
-    if (stat(loopdev_path.value().c_str(), &st) != 0) {
-      PLOG(ERROR) << "Failed to stat " << loopdev_path.value();
-      return false;
-    }
-    if (!c->cgroup->AddDevice(1, major(st.st_rdev), minor(st.st_rdev), 1, 0, 0,
-                              'b')) {
+  for (const auto& loopdev : c->loopdevs) {
+    if (!c->cgroup->AddDevice(1, major(loopdev.info.lo_rdevice),
+                              minor(loopdev.info.lo_rdevice), 1, 0, 0, 'b')) {
       return false;
     }
   }
