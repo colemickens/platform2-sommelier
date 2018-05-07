@@ -26,6 +26,13 @@ std::string GetMountRoot(const char* server, const char* share) {
   return std::string(kSmbUrlScheme) + server + "/" + share;
 }
 
+// Default handler for server side copy progress. Since nothing can make use
+// of this callback yet, it remains an implementation detail.
+int CopyProgressHandler(off_t upto, void* callback_context) {
+  // Return non-zero to indicate that copy should continue.
+  return 1;
+}
+
 }  // namespace
 
 template <typename T>
@@ -171,15 +178,90 @@ int32_t SambaInterfaceImpl::MoveEntry(const std::string& source_path,
 
 int32_t SambaInterfaceImpl::CopyFile(const std::string& source_path,
                                      const std::string& target_path) {
-  NOTREACHED();
-  return -1;
+  return CopyFile(source_path, target_path, CopyProgressHandler, nullptr);
+}
+
+int32_t SambaInterfaceImpl::CopyFile(const std::string& source_path,
+                                     const std::string& target_path,
+                                     CopyProgressCallback progress_callback,
+                                     void* callback_context) {
+  SMBCFILE* source = nullptr;
+  SMBCFILE* target = nullptr;
+  int32_t result = OpenCopySource(source_path, &source);
+  if (result != 0) {
+    return result;
+  }
+
+  result = OpenCopyTarget(target_path, &target);
+  if (result != 0) {
+    CloseCopySourceAndTarget(source, target);
+    return result;
+  }
+
+  struct stat source_stat;
+  result = GetEntryStatus(source_path, &source_stat);
+  if (result != 0) {
+    CloseCopySourceAndTarget(source, target);
+    return result;
+  }
+
+  if (smbc_splice_ctx_(context_, source, target, source_stat.st_size,
+                       progress_callback, callback_context) != 0) {
+    result = errno;
+    CloseCopySourceAndTarget(source, target);
+    return result;
+  }
+
+  CloseCopySourceAndTarget(source, target);
+  return 0;
+}
+
+int32_t SambaInterfaceImpl::OpenCopySource(const std::string& file_path,
+                                           SMBCFILE** source) {
+  DCHECK(source);
+  *source = smbc_open_ctx_(context_, file_path.c_str(), O_RDONLY, 0 /* mode */);
+  if (!(*source)) {
+    return errno;
+  }
+
+  return 0;
+}
+
+int32_t SambaInterfaceImpl::OpenCopyTarget(const std::string& file_path,
+                                           SMBCFILE** target) {
+  DCHECK(target);
+  *target = smbc_open_ctx_(context_, file_path.c_str(), kCreateFileFlags,
+                           0 /* mode */);
+  if (!(*target)) {
+    return errno;
+  }
+
+  return 0;
+}
+
+void SambaInterfaceImpl::CloseCopySourceAndTarget(SMBCFILE* source,
+                                                  SMBCFILE* target) {
+  if (source) {
+    smbc_close_ctx_(context_, source);
+  }
+
+  if (target) {
+    smbc_close_ctx_(context_, target);
+  }
 }
 
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }
 
-SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {}
+SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {
+  DCHECK(context);
+
+  // Load the context functions required for smbc_splice.
+  smbc_splice_ctx_ = smbc_getFunctionSplice(context);
+  smbc_open_ctx_ = smbc_getFunctionOpen(context);
+  smbc_close_ctx_ = smbc_getFunctionClose(context);
+}
 
 // This is required to explicitly instantiate the template function.
 template std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create<

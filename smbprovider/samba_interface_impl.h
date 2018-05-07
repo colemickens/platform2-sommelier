@@ -80,8 +80,27 @@ class SambaInterfaceImpl : public SambaInterface {
                    const std::string& target_path) override;
 
  private:
+  using CopyProgressCallback = int (*)(off_t upto, void* callback_context);
+
+  // Copies a file from |source_path| to |target_path| using a server side
+  // copy. If there is already an entry at |target_path|, this will return an
+  // error. The parent directory of the destination must exist. Returns 0 on
+  // success and errno on failure. The progress callback is currently not
+  // exposed outside this class, but could in future to support progress and
+  // cancellation.
+  int32_t CopyFile(const std::string& source_path,
+                   const std::string& target_path,
+                   CopyProgressCallback progress_callback,
+                   void* callback_context) WARN_UNUSED_RESULT;
+  int32_t OpenCopySource(const std::string& file_path, SMBCFILE** source);
+  int32_t OpenCopyTarget(const std::string& file_path, SMBCFILE** target);
+  void CloseCopySourceAndTarget(SMBCFILE* source, SMBCFILE* target);
+
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;
+  smbc_splice_fn smbc_splice_ctx_;
+  smbc_open_fn smbc_open_ctx_;
+  smbc_close_fn smbc_close_ctx_;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceImpl);
 };
