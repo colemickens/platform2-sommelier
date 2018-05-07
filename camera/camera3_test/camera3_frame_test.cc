@@ -1669,7 +1669,7 @@ INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
                         Camera3MultiStreamFrameTest,
                         ::testing::ValuesIn(Camera3Module().GetCameraIds()));
 
-INSTANTIATE_TEST_CASE_P(NullOrUnconfiguredRequest,
+INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
                         Camera3InvalidRequestTest,
                         ::testing::ValuesIn(Camera3Module().GetCameraIds()));
 
