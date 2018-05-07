@@ -30,6 +30,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -67,6 +68,22 @@ constexpr int kAndroidMaxPropertyLength = 91;
 // Gets the loop device path for a loop device number.
 base::FilePath GetLoopDevicePath(int32_t device) {
   return base::FilePath(base::StringPrintf("/dev/loop%d", device));
+}
+
+// Immediately removes the loop device from the system.
+void RemoveLoopDevice(int control_fd, int32_t device) {
+  if (ioctl(control_fd, LOOP_CTL_REMOVE, device) < 0)
+    PLOG(ERROR) << "Failed to free /dev/loop" << device;
+}
+
+// Disassociates the loop device from any file descriptor.
+void DisassociateLoopDevice(int loop_fd,
+                            const std::string& source,
+                            const base::FilePath& device_path) {
+  if (ioctl(loop_fd, LOOP_CLR_FD) < 0) {
+    PLOG(ERROR) << "Failed to remove " << source << " from "
+                << device_path.value();
+  }
 }
 
 // A callback function for SELinux restorecon.
@@ -435,6 +452,10 @@ class ArcMounterImpl : public ArcMounter {
       return false;
     }
 
+    // Cleanup in case mount fails. This frees |device_num| altogether.
+    base::ScopedClosureRunner loop_device_cleanup(
+        base::Bind(&RemoveLoopDevice, scoped_control_fd.get(), device_num));
+
     const base::FilePath device_path = GetLoopDevicePath(device_num);
     base::ScopedFD scoped_loop_fd(open(device_path.value().c_str(), O_RDWR));
     if (!scoped_loop_fd.is_valid() < 0) {
@@ -468,21 +489,37 @@ class ArcMounterImpl : public ArcMounter {
       return false;
     }
 
-    if (Mount(device_path.value(), target, "squashfs", mount_flags, nullptr))
+    // Set the autoclear flag on the loop device, which will release it when
+    // there are no more references to it.
+    struct loop_info64 loop_info = {};
+    if (ioctl(scoped_loop_fd.get(), LOOP_GET_STATUS64, &loop_info) < 0) {
+      PLOG(ERROR) << "Failed to get loop status for " << device_path.value();
+      return false;
+    }
+    loop_info.lo_flags |= LO_FLAGS_AUTOCLEAR;
+    if (ioctl(scoped_loop_fd.get(), LOOP_SET_STATUS64, &loop_info) < 0) {
+      PLOG(ERROR) << "Failed to set autoclear loop status for "
+                  << device_path.value();
+      return false;
+    }
+    // Substitute the removal of the device number by disassociating |source|
+    // from the loop device, such that the autoclear flag on |device_num| can
+    // automatically remove the loop device.
+    loop_device_cleanup.Reset(base::Bind(
+        &DisassociateLoopDevice, scoped_loop_fd.get(), source, device_path));
+
+    if (Mount(device_path.value(), target, "squashfs", mount_flags, nullptr)) {
+      ignore_result(loop_device_cleanup.Release());
       return true;
+    }
 
     // For debugging, ext4 might be used.
     if (Mount(device_path.value(), target, "ext4", mount_flags, nullptr)) {
       LOG(INFO) << "Mounted " << source << " as ext4";
+      ignore_result(loop_device_cleanup.Release());
       return true;
     }
 
-    // Mount failed. Remove |source| from the loop device so that |device_num|
-    // can be reused.
-    if (ioctl(scoped_loop_fd.get(), LOOP_CLR_FD) < 0) {
-      PLOG(ERROR) << "Failed to remove " << source << " from "
-                  << device_path.value();
-    }
     return false;
   }
 };
