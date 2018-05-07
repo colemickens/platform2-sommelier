@@ -146,6 +146,11 @@ class ServiceTestNotInitialized : public ::testing::Test {
           Property(&FilePath::value, EndsWith("decrypt_stateful")),
           _))
         .WillByDefault(Return(false));
+
+    // Expose Platform::GetCurrentTime() as a variable so tests can control time
+    EXPECT_CALL(platform_, GetCurrentTime()).WillRepeatedly(Invoke([this]() {
+      return current_time_;
+    }));
   }
 
   void SetupMount(const std::string& username) {
@@ -158,6 +163,8 @@ class ServiceTestNotInitialized : public ::testing::Test {
   }
 
  protected:
+  // The current_time_ lifetime scope should include platform_ lifetime.
+  base::Time current_time_;
   MakeTests test_helper_;
   NiceMock<MockCrypto> crypto_;
   NiceMock<MockAttestation> attest_;
@@ -338,18 +345,13 @@ TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallback) {
   SetupMount("some-user-to-clean-up");
   EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(0)).Times(AtLeast(2));
 
-  base::Time current_time;
-  EXPECT_CALL(platform_, GetCurrentTime()).WillRepeatedly(Invoke([&]() {
-    return current_time;
-  }));
-
   service_.set_low_disk_notification_period_ms(1);
   service_.Initialize();
 
   // Sleep for 160 * 30 minutes = 80 testing hours.
   for (int i = 0; i < 160; ++i) {
     // 1ms == 30 minutes.
-    current_time += base::TimeDelta::FromMinutes(30);
+    current_time_ += base::TimeDelta::FromMinutes(30);
     PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(1));
   }
 }
