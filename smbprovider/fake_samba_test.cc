@@ -522,4 +522,125 @@ TEST_F(FakeSambaTest, MoveEntryFailsToMoveLockedDirectory) {
                                           "smb://wdshare/test/cats/dogs"));
 }
 
+// CopyFile should succeed when the source file exists, the destination file
+// does not exist, but the destination directory does.
+TEST_F(FakeSambaTest, CopyFileWithDataSucceeds) {
+  const std::string source_dir = "smb://wdshare/test/source";
+  const std::string source_file = source_dir + "/source.txt";
+  const std::string target_dir = "smb://wdshare/test/target";
+  const std::string target_file = target_dir + "/target.txt";
+
+  fake_samba_.AddDirectory(source_dir);
+  fake_samba_.AddDirectory(target_dir);
+  const std::vector<uint8_t> data = {0, 1, 2, 3};
+  fake_samba_.AddFile(source_file, kFileDate, data);
+
+  EXPECT_FALSE(fake_samba_.EntryExists(target_file));
+  EXPECT_EQ(0, fake_samba_.CopyFile(source_file, target_file));
+
+  // Verify the target file was created correctly.
+  EXPECT_TRUE(fake_samba_.EntryExists(target_file));
+  EXPECT_EQ(data.size(), fake_samba_.GetFileSize(target_file));
+  EXPECT_TRUE(fake_samba_.IsFileDataEqual(target_file, data));
+
+  // Verify the source file is still there.
+  EXPECT_TRUE(fake_samba_.EntryExists(source_file));
+  EXPECT_EQ(data.size(), fake_samba_.GetFileSize(source_file));
+  EXPECT_TRUE(fake_samba_.IsFileDataEqual(source_file, data));
+}
+
+// CopyFile without file data should succeed when the source file exists,
+// the destination file does not exist, but the destination directory does.
+TEST_F(FakeSambaTest, CopyFileWithoutDataSucceeds) {
+  const std::string source_dir = "smb://wdshare/test/source";
+  const std::string source_file = source_dir + "/source.txt";
+  const std::string target_dir = "smb://wdshare/test/target";
+  const std::string target_file = target_dir + "/target.txt";
+
+  fake_samba_.AddDirectory(source_dir);
+  fake_samba_.AddDirectory(target_dir);
+  const size_t file_size = 12345;
+  fake_samba_.AddFile(source_file, file_size, kFileDate, false /* locked */);
+
+  EXPECT_FALSE(fake_samba_.EntryExists(target_file));
+  EXPECT_EQ(0, fake_samba_.CopyFile(source_file, target_file));
+
+  // Verify the target file was created correctly.
+  EXPECT_TRUE(fake_samba_.EntryExists(target_file));
+  EXPECT_EQ(file_size, fake_samba_.GetFileSize(target_file));
+
+  // Verify the source file is still there.
+  EXPECT_TRUE(fake_samba_.EntryExists(source_file));
+  EXPECT_EQ(file_size, fake_samba_.GetFileSize(source_file));
+}
+
+// CopyFile should fail when the source file does not exist.
+TEST_F(FakeSambaTest, CopyFailsWhenSourceDoesNotExist) {
+  const std::string target_dir = "smb://wdshare/test/target";
+  const std::string target_file = "smb://wdshare/test/target/file.txt";
+
+  fake_samba_.AddDirectory(target_dir);
+
+  EXPECT_EQ(ENOENT, fake_samba_.CopyFile("smb://wdshare/test/source/file.txt",
+                                         target_file));
+}
+
+// CopyFile should fail if the destination file exists.
+TEST_F(FakeSambaTest, CopyFailsWhenDestinationFileExists) {
+  const std::string source_dir = "smb://wdshare/test/source";
+  const std::string source_file = source_dir + "/source.txt";
+  const std::string target_dir = "smb://wdshare/test/target";
+  const std::string target_file = target_dir + "/target.txt";
+
+  fake_samba_.AddDirectory(source_dir);
+  fake_samba_.AddDirectory(target_dir);
+  fake_samba_.AddFile(source_file);
+  fake_samba_.AddFile(target_file);
+
+  EXPECT_EQ(EEXIST, fake_samba_.CopyFile(source_file, target_file));
+}
+
+// CopyFile should fail if the destination directory exists. The
+// destination must be a path to the file, not just a directory.
+TEST_F(FakeSambaTest, CopyFailsWhenDestinationDirExists) {
+  const std::string source_dir = "smb://wdshare/test/source";
+  const std::string source_file = source_dir + "/source.txt";
+  const std::string target_dir = "smb://wdshare/test/target";
+
+  fake_samba_.AddDirectory(source_dir);
+  fake_samba_.AddDirectory(target_dir);
+  fake_samba_.AddFile(source_file);
+
+  EXPECT_EQ(EEXIST, fake_samba_.CopyFile(source_file, target_dir));
+}
+
+// CopyFile should fail if the parent directory of the destination
+// does not exist.
+TEST_F(FakeSambaTest, CopyFailsWhenDestinationParentDirDoesNotExist) {
+  const std::string source_dir = "smb://wdshare/test/source";
+  const std::string source_file = source_dir + "/source.txt";
+  const std::string target_dir = "smb://wdshare/test/target";
+  const std::string target_file = target_dir + "/target.txt";
+
+  fake_samba_.AddDirectory(source_dir);
+  fake_samba_.AddFile(source_file);
+
+  EXPECT_EQ(ENOENT, fake_samba_.CopyFile(source_file, target_file));
+}
+
+// CopyFile should fail if the parent directory of the destination
+// does not exist.
+TEST_F(FakeSambaTest, CopyFailsWhenDestinationDirLocked) {
+  const std::string source_dir = "smb://wdshare/test/source";
+  const std::string source_file = source_dir + "/source.txt";
+  const std::string target_dir = "smb://wdshare/test/target";
+  const std::string target_file = target_dir + "/target.txt";
+
+  fake_samba_.AddDirectory(source_dir);
+  fake_samba_.AddFile(source_file);
+  fake_samba_.AddLockedDirectory(target_dir);
+
+  EXPECT_EQ(EACCES, fake_samba_.CopyFile(source_file, target_file));
+}
+
 }  // namespace smbprovider

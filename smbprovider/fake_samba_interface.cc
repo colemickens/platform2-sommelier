@@ -341,8 +341,45 @@ int32_t FakeSambaInterface::MoveEntry(const std::string& source_path,
 
 int32_t FakeSambaInterface::CopyFile(const std::string& source_path,
                                      const std::string& target_path) {
-  NOTREACHED();
-  return -1;
+  if (!EntryExists(source_path)) {
+    // CopyFile fails if |source_path| does not exist.
+    return ENOENT;
+  }
+
+  // CopyFile should only be called on files. A higher layer should have
+  // already translated a copy of a directory to a series of file copies and
+  // directory creations.
+  FakeFile* source_entry = GetFile(source_path);
+  if (!source_entry) {
+    return EISDIR;
+  }
+
+  if (EntryExists(target_path)) {
+    // |target_path| is the full path to the intended target file and must
+    // not exist. |target_path| also cannot be a directory.
+    return EEXIST;
+  }
+
+  // The parent of |target_path| must exist.
+  int32_t error;
+  FakeDirectory* target_parent = GetDirectory(GetDirPath(target_path), &error);
+  if (!target_parent) {
+    return error;
+  }
+
+  std::unique_ptr<FakeFile> new_target_file;
+  if (source_entry->has_data) {
+    new_target_file = std::make_unique<FakeFile>(
+        target_path, source_entry->date, source_entry->data);
+
+  } else {
+    new_target_file = std::make_unique<FakeFile>(
+        target_path, source_entry->size, source_entry->date, false /*locked */);
+  }
+
+  target_parent->entries.push_back(std::move(new_target_file));
+
+  return 0;
 }
 
 int32_t FakeSambaInterface::CheckEntriesValidForMove(
