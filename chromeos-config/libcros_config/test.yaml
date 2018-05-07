@@ -36,10 +36,6 @@ audio: &audio
       - source: "topology/{{$topology-bin}}"
         destination: "{{$fw_root}}/{{$topology-bin}}"
 
-# TODO(shapiroc): Enable this was incremental builders are updated.
-#imports:
-#  - "test_common.yaml"
-
 some_base_config: &some_base_config
   name: "{{$name}}"
   arc:

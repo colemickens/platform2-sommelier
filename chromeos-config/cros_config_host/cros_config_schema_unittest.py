@@ -331,6 +331,25 @@ class MainTests(unittest.TestCase):
 
     os.remove(output)
 
+  def testMainImportExample(self):
+    output = tempfile.mktemp()
+    cros_config_schema.Main(
+        None,
+        os.path.join(this_dir, '../libcros_config/test_import.yaml'),
+        output)
+    regen_cmd = ('To regenerate the expected output, run:\n'
+                 '\tpython -m cros_config_host.cros_config_schema '
+                 '-c libcros_config/test_import.yaml '
+                 '-o libcros_config/test_import.json')
+    with open(output, 'r') as output_stream:
+      with open(os.path.join(
+          this_dir,
+          '../libcros_config/test_import.json')) as expected_stream:
+        self.assertEqual(
+            expected_stream.read(), output_stream.read(), regen_cmd)
+
+    os.remove(output)
+
 
 if __name__ == '__main__':
   unittest.main()
