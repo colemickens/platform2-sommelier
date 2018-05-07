@@ -7540,8 +7540,12 @@ int main(int argc, char **argv) {
     client_fd = sv[0];
   }
 
+  // The success of this depends on xkb-data being installed.
   xwl.xkb_context = xkb_context_new(0);
-  assert(xwl.xkb_context);
+  if (!xwl.xkb_context) {
+    fprintf(stderr, "error: xkb_context_new failed. xkb-data missing?\n");
+    return EXIT_FAILURE;
+  }
 
   if (virtwl_display_fd != -1) {
     xwl.display = wl_display_connect_to_fd(virtwl_display_fd);
