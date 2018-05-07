@@ -5,12 +5,15 @@
 // specific commands to Cr50.
 
 #include <base/command_line.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/values.h>
 #include <brillo/syslog_logging.h>
 #include <openssl/sha.h>
 
 #include <cinttypes>
+#include <memory>
 
 #include "trunks/tpm_pinweaver.h"
 #include "trunks/tpm_utility.h"
@@ -55,7 +58,7 @@ void PrintUsage() {
   puts("  insert [...] - sends an insert leaf command.");
   puts("  remove [...] - sends an remove leaf command.");
   puts("  auth [...] - sends an try auth command.");
-  puts("  resertleaf [...] - sends an reset auth command.");
+  puts("  resetleaf [...] - sends an reset auth command.");
   puts("  getlog [...] - sends an get log command.");
   puts("  replay [...] - sends an log replay command.");
   puts("  selftest - runs a self test with the following commands:");
@@ -114,8 +117,7 @@ std::string PwErrorStr(int code) {
   }
 }
 
-void get_empty_path(uint8_t bits_per_level, uint8_t height,
-                    std::string* h_aux) {
+void GetEmptyPath(uint8_t bits_per_level, uint8_t height, std::string* h_aux) {
   static_assert(SHA256_DIGEST_SIZE >= PW_HASH_SIZE, "");
   std::vector<uint8_t> hash(SHA256_DIGEST_SIZE, 0);
   uint8_t num_siblings = (1 << bits_per_level) - 1;
@@ -139,13 +141,13 @@ void get_empty_path(uint8_t bits_per_level, uint8_t height,
   }
 }
 
-void get_insert_leaf_defaults(
+void GetInsertLeafDefaults(
     uint64_t* label, std::string* h_aux, brillo::SecureBlob* le_secret,
     brillo::SecureBlob* he_secret, brillo::SecureBlob* reset_secret,
     std::map<uint32_t, uint32_t>* delay_schedule) {
   *label = 0x1b1llu;  // {0, 1, 2, 3, 0, 1}
 
-  get_empty_path(DEFAULT_BITS_PER_LEVEL, DEFAULT_HEIGHT, h_aux);
+  GetEmptyPath(DEFAULT_BITS_PER_LEVEL, DEFAULT_HEIGHT, h_aux);
   le_secret->assign(DEFAULT_LE_SECRET,
                     DEFAULT_LE_SECRET + sizeof(DEFAULT_LE_SECRET));
   he_secret->assign(DEFAULT_HE_SECRET,
@@ -162,9 +164,24 @@ void get_insert_leaf_defaults(
   delay_schedule->emplace(50, PW_BLOCK_ATTEMPTS);
 }
 
-int handle_resettree(base::CommandLine::StringVector::const_iterator begin,
-                     base::CommandLine::StringVector::const_iterator end,
-                     TrunksFactoryImpl* factory) {
+void SetupBaseOutcome(uint32_t result_code, const std::string& root,
+                      base::DictionaryValue* outcome) {
+  // This is exported as a string because the API handles integers as signed.
+  outcome->SetString("result_code.value", std::to_string(result_code));
+  outcome->SetString("result_code.name", PwErrorStr(result_code));
+  outcome->SetString("root_hash", HexEncode(root));
+}
+
+std::string GetOutcomeJson(const base::DictionaryValue& outcome) {
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      outcome, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+  return json;
+}
+
+int HandleResetTree(base::CommandLine::StringVector::const_iterator begin,
+                    base::CommandLine::StringVector::const_iterator end,
+                    TrunksFactoryImpl* factory) {
   uint8_t bits_per_level;
   uint8_t height;
   if (begin == end) {
@@ -188,15 +205,16 @@ int handle_resettree(base::CommandLine::StringVector::const_iterator begin,
   if (result) {
     LOG(ERROR) << "PinWeaverResetTree: " << trunks::GetErrorString(result);
   }
-  printf("result_code: %d %s\n", result_code,
-         PwErrorStr(result_code).c_str());
-  printf("root_hash: %s\n", HexEncode(root).c_str());
+
+  base::DictionaryValue outcome;
+  SetupBaseOutcome(result_code, root, &outcome);
+  puts(GetOutcomeJson(outcome).c_str());
   return result;
 }
 
-int handle_insert(base::CommandLine::StringVector::const_iterator begin,
-                  base::CommandLine::StringVector::const_iterator end,
-                  TrunksFactoryImpl* factory) {
+int HandleInsert(base::CommandLine::StringVector::const_iterator begin,
+                 base::CommandLine::StringVector::const_iterator end,
+                 TrunksFactoryImpl* factory) {
   uint64_t label;
   std::string h_aux;
   brillo::SecureBlob le_secret;
@@ -204,8 +222,8 @@ int handle_insert(base::CommandLine::StringVector::const_iterator begin,
   brillo::SecureBlob reset_secret;
   std::map<uint32_t, uint32_t> delay_schedule;
   if (begin == end) {
-    get_insert_leaf_defaults(&label, &h_aux, &le_secret, &he_secret,
-                             &reset_secret, &delay_schedule);
+    GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret,
+                          &reset_secret, &delay_schedule);
   } else if (end - begin < 6) {
     puts("Invalid options!");
     PrintUsage();
@@ -252,17 +270,18 @@ int handle_insert(base::CommandLine::StringVector::const_iterator begin,
   if (result) {
     LOG(ERROR) << "PinWeaverInsertLeaf: " << trunks::GetErrorString(result);
   }
-  printf("result_code: %" PRIu32 " %s\n", result_code,
-         PwErrorStr(result_code).c_str());
-  printf("root_hash: %s\n", HexEncode(root).c_str());
-  printf("cred_metadata: %s\n", HexEncode(cred_metadata).c_str());
-  printf("mac: %s\n", HexEncode(mac).c_str());
+
+  base::DictionaryValue outcome;
+  SetupBaseOutcome(result_code, root, &outcome);
+  outcome.SetString("cred_metadata", HexEncode(cred_metadata));
+  outcome.SetString("mac", HexEncode(mac));
+  puts(GetOutcomeJson(outcome).c_str());
   return result;
 }
 
-int handle_remove(base::CommandLine::StringVector::const_iterator begin,
-                  base::CommandLine::StringVector::const_iterator end,
-                  TrunksFactoryImpl* factory) {
+int HandleRemove(base::CommandLine::StringVector::const_iterator begin,
+                 base::CommandLine::StringVector::const_iterator end,
+                 TrunksFactoryImpl* factory) {
   if (end - begin != 3) {
     puts("Invalid options!");
     PrintUsage();
@@ -289,15 +308,16 @@ int handle_remove(base::CommandLine::StringVector::const_iterator begin,
   if (result) {
     LOG(ERROR) << "PinWeaverRemoveLeaf: " << trunks::GetErrorString(result);
   }
-  printf("result_code: %" PRIu32 " %s\n", result_code,
-         PwErrorStr(result_code).c_str());
-  printf("root_hash: %s\n", HexEncode(root).c_str());
+
+  base::DictionaryValue outcome;
+  SetupBaseOutcome(result_code, root, &outcome);
+  puts(GetOutcomeJson(outcome).c_str());
   return result;
 }
 
-int handle_auth(base::CommandLine::StringVector::const_iterator begin,
-                base::CommandLine::StringVector::const_iterator end,
-                TrunksFactoryImpl* factory) {
+int HandleAuth(base::CommandLine::StringVector::const_iterator begin,
+               base::CommandLine::StringVector::const_iterator end,
+               TrunksFactoryImpl* factory) {
   std::string h_aux;
   brillo::SecureBlob le_secret;
   std::string cred_metadata;
@@ -336,19 +356,20 @@ int handle_auth(base::CommandLine::StringVector::const_iterator begin,
   if (result) {
     LOG(ERROR) << "PinWeaverTryAuth: " << trunks::GetErrorString(result);
   }
-  printf("result_code: %" PRIu32 " %s\n", result_code,
-         PwErrorStr(result_code).c_str());
-  printf("root_hash: %s\n", HexEncode(root).c_str());
-  printf("seconds_to_wait: %" PRIu32 "\n", seconds_to_wait);
-  printf("he_secret: %s\n", HexEncode(he_secret.to_string()).c_str());
-  printf("cred_metadata: %s\n", HexEncode(cred_metadata_out).c_str());
-  printf("mac: %s\n", HexEncode(mac_out).c_str());
+
+  base::DictionaryValue outcome;
+  SetupBaseOutcome(result_code, root, &outcome);
+  outcome.SetString("seconds_to_wait", std::to_string(seconds_to_wait));
+  outcome.SetString("he_secret", HexEncode(he_secret.to_string()));
+  outcome.SetString("cred_metadata", HexEncode(cred_metadata_out));
+  outcome.SetString("mac", HexEncode(mac_out));
+  puts(GetOutcomeJson(outcome).c_str());
   return result;
 }
 
-int handle_resetleaf(base::CommandLine::StringVector::const_iterator begin,
-                     base::CommandLine::StringVector::const_iterator end,
-                     TrunksFactoryImpl* factory) {
+int HandleResetLeaf(base::CommandLine::StringVector::const_iterator begin,
+                    base::CommandLine::StringVector::const_iterator end,
+                    TrunksFactoryImpl* factory) {
   std::string h_aux;
   brillo::SecureBlob reset_secret;
   std::string cred_metadata;
@@ -386,23 +407,26 @@ int handle_resetleaf(base::CommandLine::StringVector::const_iterator begin,
   if (result) {
     LOG(ERROR) << "PinWeaverResetAuth: " << trunks::GetErrorString(result);
   }
-  printf("result_code: %" PRIu32 " %s\n", result_code,
-         PwErrorStr(result_code).c_str());
-  printf("root_hash: %s\n", HexEncode(root).c_str());
-  printf("he_secret: %s\n", HexEncode(he_secret.to_string()).c_str());
-  printf("cred_metadata: %s\n", HexEncode(cred_metadata_out).c_str());
-  printf("mac: %s\n", HexEncode(mac_out).c_str());
+
+  base::DictionaryValue outcome;
+  SetupBaseOutcome(result_code, root, &outcome);
+  outcome.SetString("he_secret", HexEncode(he_secret.to_string()));
+  outcome.SetString("cred_metadata", HexEncode(cred_metadata_out));
+  outcome.SetString("mac", HexEncode(mac_out));
+  puts(GetOutcomeJson(outcome).c_str());
   return result;
 }
 
-int handle_getlog(base::CommandLine::StringVector::const_iterator begin,
-                  base::CommandLine::StringVector::const_iterator end,
-                  TrunksFactoryImpl* factory) {
+int HandleGetLog(base::CommandLine::StringVector::const_iterator begin,
+                 base::CommandLine::StringVector::const_iterator end,
+                 TrunksFactoryImpl* factory) {
   std::string root;
-  if (end - begin != 1) {
+  if (end - begin > 1) {
     puts("Invalid options!");
     PrintUsage();
     return EXIT_FAILURE;
+  } else if (end == begin) {
+    root.assign(static_cast<size_t>(SHA256_DIGEST_SIZE), '\0');
   } else {
     std::vector<uint8_t> bytes;
     if (!base::HexStringToBytes(begin[0], &bytes))
@@ -418,42 +442,54 @@ int handle_getlog(base::CommandLine::StringVector::const_iterator begin,
       root, &result_code, &root_hash, &log);
 
   if (result) {
-    LOG(ERROR) << "PinWeaverResetAuth: " << trunks::GetErrorString(result);
+    LOG(ERROR) << "PinWeaverGetLog: " << trunks::GetErrorString(result);
   }
-  printf("result_code: %" PRIu32 " %s\n", result_code,
-         PwErrorStr(result_code).c_str());
-  printf("root_hash: %s\n", HexEncode(root_hash).c_str());
-  size_t log_entry_index = 0;
+
+  base::DictionaryValue outcome;
+  SetupBaseOutcome(result_code, root, &outcome);
+
+  auto out_entries = std::make_unique<base::ListValue>();
   for (const auto& entry : log) {
-    printf("entry[%d]:\n", log_entry_index++);
-    printf("  label: 0x%0x\n", entry.label());
-    printf("  root: %s\n", HexEncode(entry.root()).c_str());
+    auto out_entry = std::make_unique<base::DictionaryValue>();
+    out_entry->SetString("label", std::to_string(entry.label()));
+    out_entry->SetString("root", HexEncode(entry.root()));
     switch (entry.type_case()) {
       case trunks::PinWeaverLogEntry::TypeCase::kInsertLeaf:
-        printf("  type: InsertLeaf\n");
-        printf("  hmac: %s\n", HexEncode(entry.insert_leaf().hmac()).c_str());
+        out_entry->SetString("type", "InsertLeaf");
+        out_entry->SetString("hmac", HexEncode(entry.insert_leaf().hmac()));
         break;
       case trunks::PinWeaverLogEntry::TypeCase::kRemoveLeaf:
-        printf("  type: RemoveLeaf\n");
+        out_entry->SetString("type", "RemoveLeaf");
         break;
       case trunks::PinWeaverLogEntry::TypeCase::kAuth:
-        printf("  type: Auth\n");
-        printf("  timestamp_boot_count: %" PRIu32 "\n",
-               entry.auth().timestamp().boot_count());
-        printf("  timestamp_timer_value: %" PRIu64 "\n",
-               entry.auth().timestamp().timer_value());
-        printf("  return_code: %" PRIu32 "\n", entry.auth().return_code());
+        out_entry->SetString("type", "Auth");
+        out_entry->SetString(
+            "timestamp.boot_count",
+            std::to_string(entry.auth().timestamp().boot_count()));
+        out_entry->SetString(
+            "timestamp.timer_value",
+            std::to_string(entry.auth().timestamp().timer_value()));
+        out_entry->SetString("return_code.value",
+                            std::to_string(entry.auth().return_code()));
+        out_entry->SetString("return_code.name",
+                            trunks::GetErrorString(entry.auth().return_code()));
+        break;
+      case trunks::PinWeaverLogEntry::TypeCase::kResetTree:
+        out_entry->SetString("type", "ResetTree");
         break;
       default:
-        printf("  type: %d\n", entry.type_case());
+        out_entry->SetString("type", std::to_string(entry.type_case()));
     }
+    out_entries->Append(std::move(out_entry));
   }
+  outcome.Set("entries", std::move(out_entries));
+  puts(GetOutcomeJson(outcome).c_str());
   return result;
 }
 
-int handle_replay(base::CommandLine::StringVector::const_iterator begin,
-                  base::CommandLine::StringVector::const_iterator end,
-                  TrunksFactoryImpl* factory) {
+int HandleReplay(base::CommandLine::StringVector::const_iterator begin,
+                 base::CommandLine::StringVector::const_iterator end,
+                 TrunksFactoryImpl* factory) {
   std::string h_aux;
   std::string log_root;
   std::string cred_metadata;
@@ -490,17 +526,18 @@ int handle_replay(base::CommandLine::StringVector::const_iterator begin,
   if (result) {
     LOG(ERROR) << "PinWeaverResetAuth: " << trunks::GetErrorString(result);
   }
-  printf("result_code: %" PRIu32 " %s\n", result_code,
-         PwErrorStr(result_code).c_str());
-  printf("root_hash: %s\n", HexEncode(root).c_str());
-  printf("cred_metadata: %s\n", HexEncode(cred_metadata_out).c_str());
-  printf("mac: %s\n", HexEncode(mac_out).c_str());
+
+  base::DictionaryValue outcome;
+  SetupBaseOutcome(result_code, root, &outcome);
+  outcome.SetString("cred_metadata", HexEncode(cred_metadata_out));
+  outcome.SetString("mac", HexEncode(mac_out));
+  puts(GetOutcomeJson(outcome).c_str());
   return result;
 }
 
-int handle_selftest(base::CommandLine::StringVector::const_iterator begin,
-                    base::CommandLine::StringVector::const_iterator end,
-                    TrunksFactoryImpl* factory) {
+int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
+                   base::CommandLine::StringVector::const_iterator end,
+                   TrunksFactoryImpl* factory) {
   if (begin != end) {
     puts("Invalid options!");
     PrintUsage();
@@ -527,8 +564,8 @@ int handle_selftest(base::CommandLine::StringVector::const_iterator begin,
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   std::map<uint32_t, uint32_t> delay_schedule;
-  get_insert_leaf_defaults(&label, &h_aux, &le_secret, &he_secret,
-                           &reset_secret, &delay_schedule);
+  GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret,
+                        &reset_secret, &delay_schedule);
   std::string cred_metadata;
   std::string mac;
   result = tpm_utility->PinWeaverInsertLeaf(
@@ -706,14 +743,14 @@ int main(int argc, char** argv) {
                    base::CommandLine::StringVector::const_iterator end,
                    TrunksFactoryImpl* factory);
   } command_handlers[] = {
-      {"resettree", handle_resettree},
-      {"insert", handle_insert},
-      {"remove", handle_remove},
-      {"auth", handle_auth},
-      {"resetleaf", handle_resetleaf},
-      {"getlog", handle_getlog},
-      {"replay", handle_replay},
-      {"selftest", handle_selftest},
+      {"resettree", HandleResetTree},
+      {"insert", HandleInsert},
+      {"remove", HandleRemove},
+      {"auth", HandleAuth},
+      {"resetleaf", HandleResetLeaf},
+      {"getlog", HandleGetLog},
+      {"replay", HandleReplay},
+      {"selftest", HandleSelfTest},
   };
 
   for (const auto& command_handler : command_handlers) {

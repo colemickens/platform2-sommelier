@@ -409,7 +409,7 @@ TPM_RC Parse_pw_get_log_t(
     switch (entry->type.v) {
       case PW_INSERT_LEAF:
         proto_entry->mutable_insert_leaf()->set_hmac(entry->leaf_hmac,
-                                                    PW_HASH_SIZE);
+                                                     PW_HASH_SIZE);
         break;
       case PW_REMOVE_LEAF:
         proto_entry->mutable_remove_leaf();
@@ -420,6 +420,9 @@ TPM_RC Parse_pw_get_log_t(
         ptr->mutable_timestamp()->set_timer_value(entry->timestamp.timer_value);
         ptr->set_return_code(entry->return_code);
       } break;
+      case PW_RESET_TREE:
+        proto_entry->mutable_reset_tree();
+        break;
       default:
         ret = SAPI_RC_BAD_SEQUENCE;
     }

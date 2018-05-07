@@ -13,7 +13,9 @@ message PinWeaverInsertLeafLogEntry {
 }
 
 message PinWeaverRemoveLeafLogEntry {
+}
 
+message PinWeaverResetTreeLogEntry {
 }
 
 message PinWeaverTimestamp {
@@ -33,5 +35,6 @@ message PinWeaverLogEntry {
     PinWeaverInsertLeafLogEntry insert_leaf = 3;
     PinWeaverRemoveLeafLogEntry remove_leaf = 4;
     PinWeaverAuthLogEntry auth = 5;
+    PinWeaverResetTreeLogEntry reset_tree = 6;
   }
 }
