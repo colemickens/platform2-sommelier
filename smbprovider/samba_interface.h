@@ -127,6 +127,14 @@ class SambaInterface {
                             const std::string& target_path)
       WARN_UNUSED_RESULT = 0;
 
+  // Copies a file from |source_path| to |target_path| using a server side
+  // copy. If there is already an entry at |target_path|, this will return an
+  // error. The parent directory of the destination must exist. Returns 0 on
+  // success and errno on failure.
+  virtual int32_t CopyFile(const std::string& source_path,
+                           const std::string& target_path)
+      WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(std::is_same<int, int32_t>::value,
                 "Ensure that int32_t is same as int, due to casting of int to "

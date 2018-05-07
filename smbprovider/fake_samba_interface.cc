@@ -339,6 +339,12 @@ int32_t FakeSambaInterface::MoveEntry(const std::string& source_path,
   return MoveEntryFromSourceToTarget(source_path, target_path);
 }
 
+int32_t FakeSambaInterface::CopyFile(const std::string& source_path,
+                                     const std::string& target_path) {
+  NOTREACHED();
+  return -1;
+}
+
 int32_t FakeSambaInterface::CheckEntriesValidForMove(
     FakeEntry* src_entry, FakeEntry* target_entry) const {
   DCHECK(src_entry);

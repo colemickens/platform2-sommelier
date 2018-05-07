@@ -168,6 +168,12 @@ int32_t SambaInterfaceImpl::MoveEntry(const std::string& source_path,
   return result < 0 ? errno : 0;
 }
 
+int32_t SambaInterfaceImpl::CopyFile(const std::string& source_path,
+                                     const std::string& target_path) {
+  NOTREACHED();
+  return -1;
+}
+
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }

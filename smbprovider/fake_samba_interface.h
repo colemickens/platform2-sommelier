@@ -67,6 +67,9 @@ class FakeSambaInterface : public SambaInterface {
   int32_t MoveEntry(const std::string& source_path,
                     const std::string& target_path) override;
 
+  int32_t CopyFile(const std::string& source_path,
+                   const std::string& target_path) override;
+
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
