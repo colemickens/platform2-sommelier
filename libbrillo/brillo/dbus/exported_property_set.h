@@ -215,7 +215,7 @@ class ExportedProperty : public ExportedPropertyBase {
     if (!validator_.is_null() && !validator_.Run(error, value.Get<T>())) {
       return false;
     }
-    value_ = value.Get<T>();
+    SetValue(value.Get<T>());
     return true;
   }
 
