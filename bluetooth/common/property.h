@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_DISPATCHER_PROPERTY_H_
-#define BLUETOOTH_DISPATCHER_PROPERTY_H_
+#ifndef BLUETOOTH_COMMON_PROPERTY_H_
+#define BLUETOOTH_COMMON_PROPERTY_H_
 
 #include <map>
 #include <memory>
@@ -100,4 +100,4 @@ class PropertySet : public dbus::PropertySet {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_DISPATCHER_PROPERTY_H_
+#endif  // BLUETOOTH_COMMON_PROPERTY_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_DBUS_DAEMON_H_
-#define BLUETOOTH_NEWBLUED_DBUS_DAEMON_H_
+#ifndef BLUETOOTH_COMMON_DBUS_DAEMON_H_
+#define BLUETOOTH_COMMON_DBUS_DAEMON_H_
 
 #include <memory>
 
@@ -11,7 +11,7 @@
 #include <brillo/daemons/daemon.h>
 #include <dbus/bus.h>
 
-#include "bluetooth/newblued/bluetooth_daemon.h"
+#include "bluetooth/common/bluetooth_daemon.h"
 
 namespace bluetooth {
 
@@ -34,4 +34,4 @@ class DBusDaemon : public brillo::Daemon {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_DBUS_DAEMON_H_
+#endif  // BLUETOOTH_COMMON_DBUS_DAEMON_H_

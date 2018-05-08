@@ -5,7 +5,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "bluetooth/newblued/dbus_daemon.h"
+#include "bluetooth/common/dbus_daemon.h"
 #include "bluetooth/newblued/newblue_daemon.h"
 
 int main(int argc, char** argv) {

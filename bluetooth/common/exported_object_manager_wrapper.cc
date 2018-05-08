@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "bluetooth/dispatcher/exported_object_manager_wrapper.h"
+#include "bluetooth/common/exported_object_manager_wrapper.h"
 
 #include <memory>
 #include <utility>

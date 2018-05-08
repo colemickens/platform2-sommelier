@@ -8,7 +8,7 @@
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 
-#include "bluetooth/newblued/bluetooth_daemon.h"
+#include "bluetooth/common/bluetooth_daemon.h"
 
 namespace bluetooth {
 

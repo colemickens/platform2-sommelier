@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_DISPATCHER_EXPORTED_OBJECT_MANAGER_WRAPPER_H_
-#define BLUETOOTH_DISPATCHER_EXPORTED_OBJECT_MANAGER_WRAPPER_H_
+#ifndef BLUETOOTH_COMMON_EXPORTED_OBJECT_MANAGER_WRAPPER_H_
+#define BLUETOOTH_COMMON_EXPORTED_OBJECT_MANAGER_WRAPPER_H_
 
 #include <map>
 #include <memory>
@@ -11,7 +11,7 @@
 
 #include <brillo/dbus/exported_object_manager.h>
 
-#include "bluetooth/dispatcher/property.h"
+#include "bluetooth/common/property.h"
 
 namespace bluetooth {
 
@@ -181,4 +181,4 @@ class ExportedObjectManagerWrapper {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_DISPATCHER_EXPORTED_OBJECT_MANAGER_WRAPPER_H_
+#endif  // BLUETOOTH_COMMON_EXPORTED_OBJECT_MANAGER_WRAPPER_H_

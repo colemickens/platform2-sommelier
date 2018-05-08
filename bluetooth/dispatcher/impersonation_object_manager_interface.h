@@ -15,10 +15,10 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_manager.h>
 
+#include "bluetooth/common/exported_object_manager_wrapper.h"
+#include "bluetooth/common/property.h"
 #include "bluetooth/dispatcher/dispatcher_client.h"
-#include "bluetooth/dispatcher/exported_object_manager_wrapper.h"
 #include "bluetooth/dispatcher/object_manager_interface_multiplexer.h"
-#include "bluetooth/dispatcher/property.h"
 
 namespace bluetooth {
 

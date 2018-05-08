@@ -15,7 +15,7 @@
 #include <dbus/property.h>
 #include <gtest/gtest.h>
 
-#include "bluetooth/dispatcher/exported_object_manager_wrapper.h"
+#include "bluetooth/common/exported_object_manager_wrapper.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;

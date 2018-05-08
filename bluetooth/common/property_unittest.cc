@@ -12,7 +12,7 @@
 #include <dbus/property.h>
 #include <gtest/gtest.h>
 
-#include "bluetooth/dispatcher/property.h"
+#include "bluetooth/common/property.h"
 
 using ::testing::_;
 

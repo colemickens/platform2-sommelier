@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_BLUETOOTH_DAEMON_H_
-#define BLUETOOTH_NEWBLUED_BLUETOOTH_DAEMON_H_
+#ifndef BLUETOOTH_COMMON_BLUETOOTH_DAEMON_H_
+#define BLUETOOTH_COMMON_BLUETOOTH_DAEMON_H_
 
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
@@ -25,4 +25,4 @@ class BluetoothDaemon {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_BLUETOOTH_DAEMON_H_
+#endif  // BLUETOOTH_COMMON_BLUETOOTH_DAEMON_H_
