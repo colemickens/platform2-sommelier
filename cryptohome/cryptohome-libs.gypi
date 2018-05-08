@@ -228,6 +228,7 @@
       'conditions': [
         ['USE_tpm2 == 1', {
           'sources': [
+            'bootlockbox/tpm2_nvspace_utility.cc',
             'pinweaver_le_credential_backend.cc',
             'signature_sealing_backend_tpm2_impl.cc',
             'tpm2_impl.cc',

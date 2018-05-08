@@ -491,6 +491,7 @@
                 '-ltpm_manager_test',
               ],
               'sources': [
+                'bootlockbox/tpm2_nvspace_utility_unittest.cc',
                 'tpm2_test.cc',
               ],
             }],
