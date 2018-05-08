@@ -6,6 +6,7 @@
 #include <cstring>
 #include <vector>
 
+#include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
@@ -62,9 +63,17 @@ bool ParseFuzzerParameters(const uint8_t* data,
   return true;
 }
 
+struct Environment {
+  Environment() {
+    logging::SetMinLogLevel(logging::LOG_FATAL);
+  }
+};
+
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  static Environment environment;
+
   SecureBlob ciphertext;
   SecureBlob oaep_label;
   ScopedRSA rsa;
