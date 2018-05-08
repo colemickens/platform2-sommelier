@@ -12,11 +12,13 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/sha1.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/values.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <chromeos/ui/chromium_command_builder.h>
@@ -35,6 +37,10 @@ using chromeos::ui::util::EnsureDirectoryExists;
 namespace login_manager {
 
 const char kWallpaperProperty[] = "wallpaper";
+
+const char kPowerButtonPositionPath[] = "/ui/power-button";
+const char kPowerButtonEdgeField[] = "edge";
+const char kPowerButtonPositionField[] = "position";
 
 // These hashes are only being used temporarily till we can determine if a
 // device is a Chromebox for Meetings or not from the Install Time attributes.
@@ -415,6 +421,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("biod"))
     builder->AddFeatureEnableOverride("QuickUnlockFingerprint");
+
+  SetUpPowerButtonPositionFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
@@ -510,6 +518,34 @@ void SetUpWallpaperFlags(
 
   // Fall back to default.
   AddWallpaperFlags(builder, "default", "default", path_exists);
+}
+
+void SetUpPowerButtonPositionFlag(ChromiumCommandBuilder* builder,
+                                  brillo::CrosConfigInterface* cros_config) {
+  std::string edge_as_string, position_as_string;
+  if (!cros_config ||
+      !cros_config->GetString(kPowerButtonPositionPath, kPowerButtonEdgeField,
+                              &edge_as_string) ||
+      !cros_config->GetString(kPowerButtonPositionPath,
+                              kPowerButtonPositionField, &position_as_string)) {
+    return;
+  }
+
+  double position_as_double = 0;
+  if (!base::StringToDouble(position_as_string, &position_as_double)) {
+    LOG(ERROR) << "Invalid value for power button position: "
+               << position_as_string;
+    return;
+  }
+
+  base::DictionaryValue position_info;
+  position_info.SetString(kPowerButtonEdgeField, edge_as_string);
+  position_info.SetDouble(kPowerButtonPositionField, position_as_double);
+
+  std::string json_position_info;
+  base::JSONWriter::Write(position_info, &json_position_info);
+  builder->AddArg(base::StringPrintf("--ash-power-button-position=%s",
+                                     json_position_info.c_str()));
 }
 
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,

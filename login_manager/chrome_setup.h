@@ -32,6 +32,15 @@ namespace login_manager {
 // Property name of the wallpaper setting in CrosConfig.
 extern const char kWallpaperProperty[];
 
+// Path to get the power button position info from cros_config.
+extern const char kPowerButtonPositionPath[];
+
+// Edge property in power button position info.
+extern const char kPowerButtonEdgeField[];
+
+// Position property in power button position info.
+extern const char kPowerButtonPositionField[];
+
 // Initializes a ChromiumCommandBuilder and performs additional Chrome-specific
 // setup. Returns environment variables that the caller should export for Chrome
 // and arguments that it should pass to the Chrome binary, along with the UID
@@ -60,6 +69,11 @@ void SetUpWallpaperFlags(
     chromeos::ui::ChromiumCommandBuilder* builder,
     brillo::CrosConfigInterface* cros_config,
     base::Callback<bool(const base::FilePath&)> path_exists);
+
+// Add "--ash-power-button-position" flag with value in JSON format read from
+// |cros_config|.
+void SetUpPowerButtonPositionFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                                  brillo::CrosConfigInterface* cros_config);
 
 }  // namespace login_manager
 

@@ -7,8 +7,11 @@
 #include <set>
 
 #include <base/bind.h>
+#include <base/json/json_writer.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <base/values.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <gtest/gtest.h>
@@ -139,6 +142,40 @@ TEST_F(ChromeSetupTest, TestModelExists) {
               GetFlag(argv, GetFlagName("guest", size)));
   }
   EXPECT_EQ(kNotPresent, GetFlag(argv, "--default-wallpaper-is-oem"));
+}
+
+TEST_F(ChromeSetupTest, TestPowerButtonPosition) {
+  login_manager::SetUpPowerButtonPositionFlag(&builder_, &cros_config_);
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(0, argv.size());
+
+  const std::string kPowerButtonEdge = "left";
+  cros_config_.SetString(login_manager::kPowerButtonPositionPath,
+                         login_manager::kPowerButtonEdgeField,
+                         kPowerButtonEdge);
+  login_manager::SetUpPowerButtonPositionFlag(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  ASSERT_EQ(0, argv.size());
+
+  // Add "--ash-power-button-position" flag only if both kPowerButtonEdgeField
+  // and kPowerButtonPositionField are set correctly.
+  const std::string kPowerButtonPosition = "0.3";
+  cros_config_.SetString(login_manager::kPowerButtonPositionPath,
+                         login_manager::kPowerButtonPositionField,
+                         kPowerButtonPosition);
+  login_manager::SetUpPowerButtonPositionFlag(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  ASSERT_EQ(1, argv.size());
+  base::DictionaryValue position_info;
+  position_info.SetString(login_manager::kPowerButtonEdgeField,
+                          kPowerButtonEdge);
+  double position_as_double = 0;
+  base::StringToDouble(kPowerButtonPosition, &position_as_double);
+  position_info.SetDouble(login_manager::kPowerButtonPositionField,
+                          position_as_double);
+  std::string json_position_info;
+  base::JSONWriter::Write(position_info, &json_position_info);
+  EXPECT_EQ(json_position_info, GetFlag(argv, "--ash-power-button-position"));
 }
 
 }  // namespace login_manager
