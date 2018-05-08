@@ -23,6 +23,7 @@ namespace {
 
 const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 const char kStatePrefix[] = "State:\t";
+const char kUptimeField[] = "ptime";
 
 #if USE_DIRENCRYPTION
 // Name of the session keyring.
@@ -54,6 +55,10 @@ void UserCollectorBase::Initialize(
 bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
                                     const char* force_exec) {
   CHECK(initialized_);
+
+  base::TimeDelta crash_time;
+  GetUptime(&crash_time);
+
   pid_t pid;
   int signal;
   uid_t supplied_ruid;
@@ -101,8 +106,8 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
 
     if (generate_diagnostics_) {
       bool out_of_capacity = false;
-      ErrorType error_type =
-          ConvertAndEnqueueCrash(pid, exec, supplied_ruid, &out_of_capacity);
+      ErrorType error_type = ConvertAndEnqueueCrash(
+          pid, exec, supplied_ruid, crash_time, &out_of_capacity);
       if (error_type != kErrorNone) {
         if (!out_of_capacity)
           EnqueueCollectionErrorLog(pid, error_type, exec);
@@ -224,6 +229,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     pid_t pid,
     const std::string& exec,
     uid_t supplied_ruid,
+    const base::TimeDelta& crash_time,
     bool* out_of_capacity) {
   FilePath crash_path;
   if (!GetCreatedCrashDirectory(pid, supplied_ruid, &crash_path,
@@ -262,6 +268,15 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     return error_type;
   } else {
     LOG(INFO) << "Stored minidump to " << minidump_path.value();
+  }
+
+  base::TimeDelta start_time;
+  if (GetUptimeAtProcessStart(pid, &start_time) && crash_time > start_time) {
+    const base::TimeDelta uptime = crash_time - start_time;
+    AddCrashMetaUploadData(kUptimeField,
+                           std::to_string(uptime.InMilliseconds()));
+  } else {
+    LOG(WARNING) << "Failed to get process uptime.";
   }
 
   // Here we commit to sending this file.  We must not return false

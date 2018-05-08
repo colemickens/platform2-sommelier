@@ -13,6 +13,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <session_manager/dbus-proxies.h>
 
@@ -69,9 +70,11 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfo);
   FRIEND_TEST(CrashCollectorTest, GetCrashPath);
   FRIEND_TEST(CrashCollectorTest, GetLogContents);
+  FRIEND_TEST(CrashCollectorTest, GetUptime);
   FRIEND_TEST(CrashCollectorTest, Initialize);
   FRIEND_TEST(CrashCollectorTest, IsUserSpecificDirectoryEnabled);
   FRIEND_TEST(CrashCollectorTest, MetaData);
+  FRIEND_TEST(CrashCollectorTest, ParseProcessTicksFromStat);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
   FRIEND_TEST(CrashCollectorTest, StripMacAddressesBasic);
   FRIEND_TEST(CrashCollectorTest, StripMacAddressesBulk);
@@ -151,6 +154,9 @@ class CrashCollector {
   // Returns the path /proc/<pid>.
   static base::FilePath GetProcessPath(pid_t pid);
 
+  static bool GetUptime(base::TimeDelta* uptime);
+  static bool GetUptimeAtProcessStart(pid_t pid, base::TimeDelta* uptime);
+
   bool GetSymlinkTarget(const base::FilePath& symlink, base::FilePath* target);
   virtual bool GetExecutableBaseNameFromPid(pid_t pid, std::string* base_name);
 
@@ -228,6 +234,9 @@ class CrashCollector {
   static unsigned HashString(base::StringPiece input);
 
  private:
+  static bool ParseProcessTicksFromStat(base::StringPiece stat,
+                                        uint64_t* ticks);
+
   // True if reports should always be stored in the user crash directory.
   const bool force_user_crash_dir_;
 

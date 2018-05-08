@@ -13,6 +13,7 @@
 #include <sys/wait.h>      // For waitpid.
 #include <unistd.h>        // For execv and fork.
 
+#include <ctime>
 #include <set>
 #include <vector>
 
@@ -22,6 +23,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/scoped_clear_errno.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -467,6 +469,41 @@ FilePath CrashCollector::GetProcessPath(pid_t pid) {
   return FilePath(StringPrintf("/proc/%d", pid));
 }
 
+// static
+bool CrashCollector::GetUptime(base::TimeDelta* uptime) {
+  timespec boot_time;
+  if (clock_gettime(CLOCK_BOOTTIME, &boot_time) != 0) {
+    PLOG(ERROR) << "Failed to get boot time.";
+    return false;
+  }
+
+  *uptime = base::TimeDelta::FromSeconds(boot_time.tv_sec) +
+            base::TimeDelta::FromMicroseconds(
+                boot_time.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
+  return true;
+}
+
+// static
+bool CrashCollector::GetUptimeAtProcessStart(pid_t pid,
+                                             base::TimeDelta* uptime) {
+  std::string stat;
+  if (!base::ReadFileToString(GetProcessPath(pid).Append("stat"), &stat)) {
+    PLOG(ERROR) << "Failed to read process status.";
+    return false;
+  }
+
+  uint64_t ticks;
+  if (!ParseProcessTicksFromStat(stat, &ticks)) {
+    LOG(ERROR) << "Failed to parse process status.";
+    return false;
+  }
+
+  *uptime = base::TimeDelta::FromSecondsD(static_cast<double>(ticks) /
+                                          sysconf(_SC_CLK_TCK));
+
+  return true;
+}
+
 bool CrashCollector::GetSymlinkTarget(const FilePath& symlink,
                                       FilePath* target) {
   ssize_t max_size = 64;
@@ -781,4 +818,21 @@ bool CrashCollector::InitializeSystemCrashDirectories() {
     return false;
 
   return true;
+}
+
+// static
+bool CrashCollector::ParseProcessTicksFromStat(base::StringPiece stat,
+                                               uint64_t* ticks) {
+  // Skip "pid" and "comm" fields. See format in proc(5).
+  const auto pos = stat.find_last_of(')');
+  if (pos == base::StringPiece::npos)
+    return false;
+
+  stat.remove_prefix(pos + 1);
+  const auto fields = base::SplitStringPiece(stat, " ", base::TRIM_WHITESPACE,
+                                             base::SPLIT_WANT_NONEMPTY);
+
+  constexpr size_t kStartTimePos = 19;
+  return fields.size() > kStartTimePos &&
+         base::StringToUint64(fields[kStartTimePos], ticks);
 }

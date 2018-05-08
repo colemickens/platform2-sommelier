@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 
 #include "crash-reporter/crash_collector.h"
 
@@ -117,6 +118,7 @@ class UserCollectorBase : public CrashCollector {
   ErrorType ConvertAndEnqueueCrash(pid_t pid,
                                    const std::string& exec,
                                    uid_t supplied_ruid,
+                                   const base::TimeDelta& crash_time,
                                    bool* out_of_capacity);
 
   // Returns an error type signature for a given |error_type| value,

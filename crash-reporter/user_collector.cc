@@ -74,7 +74,7 @@ UserCollector::~UserCollector() {}
 // user_collector_test.cc unittest, and the logging_UserCrash.py autotest.
 std::string UserCollector::GetPattern(bool enabled) const {
   if (enabled) {
-    // Combine the four crash attributes into one parameter to try to reduce
+    // Combine the crash attributes into one parameter to try to reduce
     // the size of the invocation line for crash_reporter, since the kernel
     // has a fixed-sized (128B) buffer for it (before parameter expansion).
     // Note that the kernel does not support quoted arguments in core_pattern.

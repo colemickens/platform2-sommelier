@@ -285,6 +285,47 @@ TEST_F(CrashCollectorTest, GetCrashPath) {
                 .value());
 }
 
+TEST_F(CrashCollectorTest, ParseProcessTicksFromStat) {
+  uint64_t ticks;
+  EXPECT_FALSE(CrashCollector::ParseProcessTicksFromStat("", &ticks));
+  EXPECT_FALSE(CrashCollector::ParseProcessTicksFromStat("123 (foo)", &ticks));
+
+  constexpr char kTruncatedStat[] =
+      "234641 (cat) R 234581 234641 234581 34821 234641 4194304 117 0 0 0 0 0 "
+      "0 0 20 0 1 0";
+
+  EXPECT_FALSE(
+      CrashCollector::ParseProcessTicksFromStat(kTruncatedStat, &ticks));
+
+  constexpr char kInvalidStat[] =
+      "234641 (cat) R 234581 234641 234581 34821 234641 4194304 117 0 0 0 0 0 "
+      "0 0 20 0 1 0 foo";
+
+  EXPECT_FALSE(CrashCollector::ParseProcessTicksFromStat(kInvalidStat, &ticks));
+
+  // Executable name is ") (".
+  constexpr char kStat[] =
+      "234641 () () R 234581 234641 234581 34821 234641 4194304 117 0 0 0 0 0 "
+      "0 0 20 0 1 0 2092891 6090752 182 18446744073709551615 94720364494848 "
+      "94720364525584 140735323062016 0 0 0 0 0 0 0 0 0 17 32 0 0 0 0 0 "
+      "94720366623824 94720366625440 94720371765248 140735323070153 "
+      "140735323070173 140735323070173 140735323074543 0";
+
+  EXPECT_TRUE(CrashCollector::ParseProcessTicksFromStat(kStat, &ticks));
+  EXPECT_EQ(2092891, ticks);
+}
+
+TEST_F(CrashCollectorTest, GetUptime) {
+  base::TimeDelta uptime_at_process_start;
+  EXPECT_TRUE(CrashCollector::GetUptimeAtProcessStart(
+      getpid(), &uptime_at_process_start));
+
+  base::TimeDelta uptime;
+  EXPECT_TRUE(CrashCollector::GetUptime(&uptime));
+
+  EXPECT_GT(uptime, uptime_at_process_start);
+}
+
 bool CrashCollectorTest::CheckHasCapacity() {
   static const char kFullMessage[] = "Crash directory test already full";
   bool has_capacity = collector_.CheckHasCapacity(test_dir_);
