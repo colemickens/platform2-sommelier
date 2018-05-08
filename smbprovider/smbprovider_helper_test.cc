@@ -131,6 +131,8 @@ TEST_F(SmbProviderHelperTest, GetErrorFromErrno) {
 
   EXPECT_EQ(ERROR_INVALID_OPERATION, GetErrorFromErrno(EINVAL));
 
+  EXPECT_EQ(ERROR_ABORT, GetErrorFromErrno(ECONNABORTED));
+
   // Errors without an explicit mapping get mapped
   // to ERROR_FAILED.
   EXPECT_EQ(ERROR_FAILED, GetErrorFromErrno(ENOSPC));

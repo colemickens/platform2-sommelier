@@ -104,6 +104,9 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case EINVAL:
       error = ERROR_INVALID_OPERATION;
       break;
+    case ECONNABORTED:
+      error = ERROR_ABORT;
+      break;
     default:
       error = ERROR_FAILED;
       break;
