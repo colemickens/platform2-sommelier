@@ -130,8 +130,8 @@ bool RestoreconInternal(const std::vector<base::FilePath>& paths,
 
 // A callback function for GetPropertyFromFile.
 bool FindProperty(const std::string& line_prefix_to_find,
-                  const std::string& line,
-                  std::string* out_prop) {
+                  std::string* out_prop,
+                  const std::string& line) {
   if (base::StartsWith(line, line_prefix_to_find,
                        base::CompareCase::SENSITIVE)) {
     *out_prop = line.substr(line_prefix_to_find.length());
@@ -146,7 +146,7 @@ bool FindProperty(const std::string& line_prefix_to_find,
 // and store the fingerprint part in |out_fingerprint| if it is. Ignore a line
 // with a volumeUuid attribute which means that the line is for an external
 // storage. What we need is a fingerprint for an internal storage.
-bool FindFingerprint(const std::string& line, std::string* out_fingerprint) {
+bool FindFingerprint(std::string* out_fingerprint, const std::string& line) {
   constexpr char kAttributeVolumeUuid[] = " volumeUuid=\"";
   constexpr char kAttributeSdkVersion[] = " sdkVersion=\"";
   constexpr char kAttributeDatabaseVersion[] = " databaseVersion=\"";
@@ -185,48 +185,6 @@ bool FindFingerprint(const std::string& line, std::string* out_fingerprint) {
 
   *out_fingerprint = fingerprint.substr(0, pos);
   return true;
-}
-
-// Reads |file_path| line by line and pass each line to the |callback| after
-// trimming it. |out_string| is also passed to the |callback| each time. If
-// |callback| returns true, stops reading the file and returns true. |callback|
-// must update |out_string| before returning true.
-bool FindLine(
-    const base::FilePath& file_path,
-    const base::Callback<bool(const std::string&, std::string*)>& callback,
-    std::string* out_string) {
-  // Do exactly the same stream handling as TextContentsEqual() in
-  // base/files/file_util.cc which is known to work.
-  std::ifstream file(file_path.value().c_str(), std::ios::in);
-  if (!file.is_open()) {
-    PLOG(WARNING) << "Cannot open " << file_path.value();
-    return false;
-  }
-
-  do {
-    std::string line;
-    std::getline(file, line);
-
-    // Check for any error state.
-    if (file.bad()) {
-      PLOG(WARNING) << "Failed to read " << file_path.value();
-      return false;
-    }
-
-    // Trim all '\r' and '\n' characters from the end of the line.
-    std::string::size_type end = line.find_last_not_of("\r\n");
-    if (end == std::string::npos)
-      line.clear();
-    else if (end + 1 < line.length())
-      line.erase(end + 1);
-
-    // Stop reading the file if |callback| returns true.
-    if (callback.Run(line, out_string))
-      return true;
-  } while (!file.eof());
-
-  // |callback| didn't find anything in the file.
-  return false;
 }
 
 // Sets the permission of the given |fd|.
@@ -762,8 +720,8 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
                          const std::string& prop_name,
                          std::string* out_prop) {
   const std::string line_prefix_to_find = prop_name + '=';
-  if (FindLine(prop_file_path, base::Bind(&FindProperty, line_prefix_to_find),
-               out_prop)) {
+  if (FindLine(prop_file_path,
+               base::Bind(&FindProperty, line_prefix_to_find, out_prop))) {
     return true;  // found the line.
   }
   LOG(WARNING) << prop_name << " is not in " << prop_file_path.value();
@@ -772,8 +730,8 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
 
 bool GetFingerprintFromPackagesXml(const base::FilePath& packages_xml_path,
                                    std::string* out_fingerprint) {
-  if (FindLine(packages_xml_path, base::Bind(&FindFingerprint),
-               out_fingerprint)) {
+  if (FindLine(packages_xml_path,
+               base::Bind(&FindFingerprint, out_fingerprint))) {
     return true;  // found it.
   }
   LOG(WARNING) << "No fingerprint found in " << packages_xml_path.value();
@@ -880,11 +838,40 @@ std::unique_ptr<ArcMounter> GetDefaultMounter() {
   return std::make_unique<ArcMounterImpl>();
 }
 
-bool FindLineForTesting(
-    const base::FilePath& file_path,
-    const base::Callback<bool(const std::string&, std::string*)>& callback,
-    std::string* out_string) {
-  return FindLine(file_path, callback, out_string);
+bool FindLine(const base::FilePath& file_path,
+              const base::Callback<bool(const std::string&)>& callback) {
+  // Do exactly the same stream handling as TextContentsEqual() in
+  // base/files/file_util.cc which is known to work.
+  std::ifstream file(file_path.value().c_str(), std::ios::in);
+  if (!file.is_open()) {
+    PLOG(WARNING) << "Cannot open " << file_path.value();
+    return false;
+  }
+
+  do {
+    std::string line;
+    std::getline(file, line);
+
+    // Check for any error state.
+    if (file.bad()) {
+      PLOG(WARNING) << "Failed to read " << file_path.value();
+      return false;
+    }
+
+    // Trim all '\r' and '\n' characters from the end of the line.
+    std::string::size_type end = line.find_last_not_of("\r\n");
+    if (end == std::string::npos)
+      line.clear();
+    else if (end + 1 < line.length())
+      line.erase(end + 1);
+
+    // Stop reading the file if |callback| returns true.
+    if (callback.Run(line))
+      return true;
+  } while (!file.eof());
+
+  // |callback| didn't find anything in the file.
+  return false;
 }
 
 base::ScopedFD OpenSafelyForTesting(const base::FilePath& path,

@@ -245,11 +245,11 @@ bool DeleteFilesInDir(const base::FilePath& directory);
 // Returns a mounter for production.
 std::unique_ptr<ArcMounter> GetDefaultMounter();
 
-// See FindLine() in arc_setup_util.cc.
-bool FindLineForTesting(
-    const base::FilePath& file_path,
-    const base::Callback<bool(const std::string&, std::string*)>& callback,
-    std::string* out_string);
+// Reads |file_path| line by line and pass each line to the |callback| after
+// trimming it. If |callback| returns true, stops reading the file and returns
+// true.
+bool FindLine(const base::FilePath& file_path,
+              const base::Callback<bool(const std::string&)>& callback);
 
 // See OpenSafely() in arc_setup_util.cc.
 base::ScopedFD OpenSafelyForTesting(const base::FilePath& path,

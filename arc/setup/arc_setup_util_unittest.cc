@@ -35,7 +35,7 @@ namespace arc {
 
 namespace {
 
-bool FindLineCallback(const std::string& line, std::string* out_prop) {
+bool FindLineCallback(std::string* out_prop, const std::string& line) {
   if (line != "string_to_find")
     return false;
   *out_prop = "FOUND";
@@ -383,7 +383,6 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
   EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
 }
 
-// Tests the internal function directly.
 TEST(ArcSetupUtil, TestFindLine) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
@@ -392,38 +391,38 @@ TEST(ArcSetupUtil, TestFindLine) {
   // Create a new prop file and read it.
   ASSERT_TRUE(WriteToFile(file, 0700, "string_to_find"));
   std::string v;
-  EXPECT_TRUE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_TRUE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   EXPECT_EQ("FOUND", v);
 
   // Test with multi-line files.
   v.clear();
   ASSERT_TRUE(WriteToFile(file, 0700, "string_to_find\nline"));
-  EXPECT_TRUE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_TRUE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   EXPECT_EQ("FOUND", v);
   v.clear();
   ASSERT_TRUE(WriteToFile(file, 0700, "line\nstring_to_find\nline"));
-  EXPECT_TRUE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_TRUE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   EXPECT_EQ("FOUND", v);
   v.clear();
   ASSERT_TRUE(WriteToFile(file, 0700, "line\nstring_to_find"));
-  EXPECT_TRUE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_TRUE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   EXPECT_EQ("FOUND", v);
   v.clear();
   ASSERT_TRUE(WriteToFile(file, 0700, "line\nstring_to_find\n"));
-  EXPECT_TRUE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_TRUE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   EXPECT_EQ("FOUND", v);
 
   // Test without the target string.
   ASSERT_TRUE(WriteToFile(file, 0700, "string_to_findX"));
-  EXPECT_FALSE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_FALSE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   ASSERT_TRUE(WriteToFile(file, 0700, "string_to_fin"));
-  EXPECT_FALSE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_FALSE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   ASSERT_TRUE(WriteToFile(file, 0700, "string_to_fin\nd"));
-  EXPECT_FALSE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_FALSE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   ASSERT_TRUE(WriteToFile(file, 0700, "s\ntring_to_find"));
-  EXPECT_FALSE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_FALSE(FindLine(file, base::Bind(&FindLineCallback, &v)));
   ASSERT_TRUE(WriteToFile(file, 0700, ""));
-  EXPECT_FALSE(FindLineForTesting(file, base::Bind(&FindLineCallback), &v));
+  EXPECT_FALSE(FindLine(file, base::Bind(&FindLineCallback, &v)));
 }
 
 TEST(ArcSetupUtil, TestMkdirRecursively) {
