@@ -4,19 +4,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-shared_config: &shared_config
-  name: "{{$name}}"
-  identity:
-    platform-name: "PlatformName"
-    smbios-name-match: "SMBiosNameMatch"
-    sku-id: "{{$sku-id}}"
-  firmware:
-    no-firmware: true
-  wallpaper: "{{$wallpaper}}"
-
 chromeos:
   devices:
-    - $name: "base"
+    - $name: "IdentityMatch"
       skus:
         - config:
             identity:
@@ -24,14 +14,19 @@ chromeos:
               # sku-id will be ignored since it's not specified.
               platform-name: "PlatformName"
               smbios-name-match: "SMBiosNameMatch"
-            wallpaper: "wallpaper-overridden"
-    - $name: "new-override"
+            wallpaper: "wallpaper-overridden-by-identity"
+    - $name: "NameMatch"
+      skus:
+        - config:
+            name: "{{$name}}"
+            wallpaper: "wallpaper-overridden-by-name"
+    - $name: "NoMatchAppended"
       skus:
         - config:
             name: "{{$name}}"
             identity:
               platform-name: "PlatformName"
               smbios-name-match: "SMBiosNameMatch"
-              sku-id: 3
+              sku-id: 4
             firmware:
               no-firmware: true

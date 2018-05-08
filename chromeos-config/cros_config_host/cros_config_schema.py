@@ -568,20 +568,25 @@ def MergeConfigs(configs):
   result_json = json_files[0]
   for overlay_json in json_files[1:]:
     for to_merge_config in overlay_json['chromeos']['configs']:
-      to_merge_identity = to_merge_config['identity']
+      to_merge_identity = to_merge_config.get('identity', {})
+      to_merge_name = to_merge_config.get('name', '')
       matched = False
       # Find all existing configs where there is a full/partial identity
-      # match and merge that config into the source.
+      # match or name match and merge that config into the source.
       # If there are no matches, then append the config.
       for source_config in result_json['chromeos']['configs']:
-        source_identity = source_config['identity']
-        # Need to match at least 1 item
-        identity_match = len(to_merge_identity) > 0
-        for identity_key, identity_value in to_merge_identity.iteritems():
-          if (identity_key not in source_identity or
-              source_identity[identity_key] != identity_value):
-            identity_match = False
-            break
+        identity_match = False
+        if to_merge_identity:
+          source_identity = source_config['identity']
+          identity_match = True
+          for identity_key, identity_value in to_merge_identity.iteritems():
+            if (identity_key not in source_identity or
+                source_identity[identity_key] != identity_value):
+              identity_match = False
+              break
+        elif to_merge_name:
+          identity_match = to_merge_name == source_config.get('name', '')
+
         if identity_match:
           MergeDictionaries(source_config, to_merge_config)
           matched = True
