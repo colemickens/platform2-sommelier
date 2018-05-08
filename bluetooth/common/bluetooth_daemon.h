@@ -17,7 +17,8 @@ class BluetoothDaemon {
   virtual ~BluetoothDaemon() = default;
 
   // Initializes the daemon's D-Bus operation.
-  virtual void Init(scoped_refptr<dbus::Bus> bus) = 0;
+  // Returns true if succeeds, false otherwise.
+  virtual bool Init(scoped_refptr<dbus::Bus> bus) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BluetoothDaemon);

@@ -68,6 +68,7 @@
           'dependencies': [
             'libcommon',
             'libdispatcher',
+            'libnewblued',
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'variables': {
@@ -83,6 +84,7 @@
             'dispatcher/impersonation_object_manager_interface_unittest.cc',
             'dispatcher/object_manager_interface_multiplexer_unittest.cc',
             'dispatcher/suspend_manager_unittest.cc',
+            'newblued/newblue_daemon_unittest.cc',
           ],
         },
       ],

@@ -5,23 +5,52 @@
 #ifndef BLUETOOTH_NEWBLUED_NEWBLUE_DAEMON_H_
 #define BLUETOOTH_NEWBLUED_NEWBLUE_DAEMON_H_
 
+#include <memory>
+
 #include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
+#include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>
 
 #include "bluetooth/common/bluetooth_daemon.h"
+#include "bluetooth/common/exported_object_manager_wrapper.h"
+#include "bluetooth/newblued/newblue.h"
 
 namespace bluetooth {
 
 class NewblueDaemon : public BluetoothDaemon {
  public:
-  NewblueDaemon() = default;
+  NewblueDaemon();
   ~NewblueDaemon() = default;
 
-  // Initializes the daemon D-Bus operations.
-  void Init(scoped_refptr<dbus::Bus> bus) override;
+  // Initializes D-Bus and NewBlue stack.
+  bool Init(scoped_refptr<dbus::Bus> bus) override;
+
+  // Frees up all resources. Currently only needed in test.
+  void Shutdown();
 
  private:
+  // Registers GetAll/Get/Set method handlers.
+  void SetupPropertyMethodHandlers(
+      brillo::dbus_utils::DBusInterface* prop_interface,
+      brillo::dbus_utils::ExportedPropertySet* property_set);
+
+  // Exports org.bluez.Adapter1 interface on object /org/bluez/hci0.
+  // The properties of this object will be ignored by btdispatch, but the object
+  // still has to be exposed to be able to receive org.bluez.Adapter1 method
+  // calls, e.g. StartDiscovery(), StopDiscovery().
+  void ExportAdapterInterface();
+
   scoped_refptr<dbus::Bus> bus_;
+
+  std::unique_ptr<ExportedObjectManagerWrapper>
+      exported_object_manager_wrapper_;
+
+  std::unique_ptr<Newblue> newblue_;
+
+  // Must come last so that weak pointers will be invalidated before other
+  // members are destroyed.
+  base::WeakPtrFactory<NewblueDaemon> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(NewblueDaemon);
 };

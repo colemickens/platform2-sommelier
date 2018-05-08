@@ -52,6 +52,16 @@ class ExportedInterface {
   brillo::dbus_utils::ExportedPropertyBase* EnsureExportedPropertyRegistered(
       const std::string& property_name, PropertyFactoryBase* property_factory);
 
+  // Exports the specified property having the specified type |T|, if not
+  // already exported.
+  template <typename T>
+  brillo::dbus_utils::ExportedProperty<T>* EnsureExportedPropertyRegistered(
+      const std::string& property_name) {
+    PropertyFactory<T> property_factory;
+    return static_cast<brillo::dbus_utils::ExportedProperty<T>*>(
+        EnsureExportedPropertyRegistered(property_name, &property_factory));
+  }
+
  private:
   // Object path this interface is on.
   dbus::ObjectPath object_path_;

@@ -27,7 +27,10 @@ int DBusDaemon::OnInit() {
 
   VLOG(1) << "D-Bus connection name = " << bus->GetConnectionName();
 
-  bluetooth_daemon_->Init(bus);
+  if (!bluetooth_daemon_->Init(bus)) {
+    LOG(ERROR) << "Failed to initialize daemon";
+    return EX_UNAVAILABLE;
+  }
 
   return EX_OK;
 }
