@@ -2489,8 +2489,16 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
     double device_scale_factor =
         xwl_aura_scale_factor_to_double(host->device_scale_factor);
 
-    ideal_scale_factor = device_scale_factor / preferred_scale;
-    scale_factor = device_scale_factor / current_scale;
+    // Version 5 and below has inverted scale.
+    // TODO(reveman): Remove this conditional when version 6 or above can
+    // be a requirement.
+    if (host->output->xwl->aura_shell->version >= 6) {
+      ideal_scale_factor = device_scale_factor * preferred_scale;
+      scale_factor = device_scale_factor * current_scale;
+    } else {
+      ideal_scale_factor = device_scale_factor / preferred_scale;
+      scale_factor = device_scale_factor / current_scale;
+    }
   } else {
     double max_scale = xwl_aura_scale_factor_to_double(host->max_scale);
 
@@ -4904,7 +4912,7 @@ static void xwl_registry_handler(void *data, struct wl_registry *registry,
     assert(aura_shell);
     aura_shell->xwl = xwl;
     aura_shell->id = id;
-    aura_shell->version = MIN(5, version);
+    aura_shell->version = MIN(6, version);
     aura_shell->host_gtk_shell_global = NULL;
     aura_shell->internal = wl_registry_bind(
         registry, id, &zaura_shell_interface, aura_shell->version);
