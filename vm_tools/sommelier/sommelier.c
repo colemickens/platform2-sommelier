@@ -2480,6 +2480,8 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
   int scale;
   int physical_width;
   int physical_height;
+  int x;
+  int y;
   int width;
   int height;
 
@@ -2514,6 +2516,11 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
     scale = 1;
     physical_width = host->physical_width * ideal_scale_factor / scale_factor;
     physical_height = host->physical_height * ideal_scale_factor / scale_factor;
+    // X/Y are best left at origin as managed X windows are kept centered on
+    // the root window. The result is that all outputs are overlapping and
+    // pointer events can always be dispatched to the visible region of the
+    // window.
+    x = y = 0;
     width = host->width * host->output->xwl->scale / scale_factor;
     height = host->height * host->output->xwl->scale / scale_factor;
   } else {
@@ -2521,6 +2528,9 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
         MIN(ceil(scale_factor / host->output->xwl->scale), MAX_OUTPUT_SCALE);
     physical_width = host->physical_width;
     physical_height = host->physical_height;
+    // Should x/y be affected by scale?
+    x = host->x;
+    y = host->y;
     width = host->width * host->output->xwl->scale * scale / scale_factor;
     height = host->height * host->output->xwl->scale * scale / scale_factor;
   }
@@ -2543,9 +2553,9 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
     physical_height = height * mmpd + 0.5;
   }
 
-  wl_output_send_geometry(host->resource, host->x, host->y, physical_width,
-                          physical_height, host->subpixel, host->make,
-                          host->model, host->transform);
+  wl_output_send_geometry(host->resource, x, y, physical_width, physical_height,
+                          host->subpixel, host->make, host->model,
+                          host->transform);
   wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
                       width, height, host->refresh);
   if (wl_resource_get_version(host->resource) >= WL_OUTPUT_SCALE_SINCE_VERSION)
