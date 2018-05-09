@@ -23,9 +23,7 @@
       ],
       'sources': [
         'c_metrics_library.cc',
-        'cumulative_metrics.cc',
         'metrics_library.cc',
-        'persistent_integer.cc',
         'serialization/metric_sample.cc',
         'serialization/serialization_utils.cc',
         'timer.cc',

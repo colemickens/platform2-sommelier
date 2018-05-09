@@ -28,6 +28,7 @@
       'sources': [
         'metrics_daemon.cc',
         'metrics_daemon_main.cc',
+        'persistent_integer.cc',
         'vmlog_writer.cc',
       ],
       'include_dirs': ['.'],
@@ -110,22 +111,8 @@
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            '../common-mk/testrunner.cc',
             'persistent_integer.cc',
             'persistent_integer_test.cc',
-            'persistent_integer_test_base.cc',
-          ],
-        },
-        {
-          'target_name': 'cumulative_metrics_test',
-          'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            '../common-mk/testrunner.cc',
-            'cumulative_metrics.cc',
-            'cumulative_metrics_test.cc',
-            'persistent_integer.cc',
-            'persistent_integer_test_base.cc',
           ],
         },
         {
@@ -165,8 +152,10 @@
             'uploader/upload_service_test.cc',
           ],
           'dependencies': [
-             '../common-mk/testrunner.gyp:testrunner',
-             'libupload_service',
+            'libupload_service',
+          ],
+          'includes':[
+            '../common-mk/common_test.gypi',
           ],
           'include_dirs': ['.'],
         },

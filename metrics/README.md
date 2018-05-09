@@ -15,19 +15,19 @@ metrics itself.
 
 # The Metrics Library: libmetrics
 
-libmetrics implements the basic C and C++ API for metrics collection. All
-metrics collection is funneled through this library. The easiest and
-recommended way for a client-side module to collect user metrics is to link
-libmetrics and use its APIs to send metrics to Chromium for transport to
+libmetrics is a small library that implements the basic C and C++ API for
+metrics collection. All metrics collection is funneled through this library. The
+easiest and recommended way for a client-side module to collect user metrics is
+to link libmetrics and use its APIs to send metrics to Chromium for transport to
 UMA. In order to use the library in a module, you need to do the following:
 
 - Add a dependence (DEPEND and RDEPEND) on chromeos-base/metrics to the module's
   ebuild.
 
 - Link the module with libmetrics (for example, by passing `-lmetrics` to the
-  module's link command).  Both `libmetrics.so` and `libmetrics.a` are built
-  and installed into the sysroot libdir (e.g. `$SYSROOT/usr/lib/`). By default
-  `-lmetrics` links against `libmetrics.so`, which is preferred.
+  module's link command).  Both `libmetrics.so` and `libmetrics.a` are built and
+  installed into the sysroot libdir (e.g. `$SYSROOT/usr/lib/`). Note that by
+  default `-lmetrics` will link against `libmetrics.so`, which is preferred.
 
 - To access the metrics library API in the module, include the
   `<metrics/metrics_library.h>` header file. The file is installed in
@@ -47,18 +47,13 @@ UMA. In order to use the library in a module, you need to do the following:
 - On the target platform, shortly after the sample is sent, it should be visible
   in Chromium through `chrome://histograms`.
 
-- The library includes a CumulativeMetrics class which can be used for
-  histograms whose samples represent accumulation of quantities on the
-  same device across a period of time: for instance, how much time was spent
-  playing music on each device and each day of use.  Please see the
-  CumulativeMetrics section below.
-
 
 # The Metrics Client: metrics_client
 
-metrics_client is a command-line utility for sending histogram samples and user
-actions.  It is installed under /usr/bin on the target platform and uses
-libmetrics.  It is typically used for generating metrics from shell scripts.
+metrics_client is a simple shell command-line utility for sending histogram
+samples and user actions. It's installed under /usr/bin on the target platform
+and uses libmetrics to send the data to Chromium.  The utility is useful for
+generating metrics from shell scripts.
 
 For usage information and command-line options, run `metrics_client` on the
 target platform or look for `Usage:` in
@@ -69,10 +64,10 @@ target platform or look for `Usage:` in
 
 metrics_daemon is a daemon that runs in the background on the target platform
 and is intended for passive or ongoing metrics collection, or metrics collection
-requiring input from other modules. For example, it listens to D-Bus
+requiring feedback from multiple modules. For example, it listens to D-Bus
 signals related to the user session and screen saver states to determine if the
 user is actively using the device or not and generates the corresponding
-data. The metrics daemon also uses libmetrics.
+data. The metrics daemon uses libmetrics to send the data to Chromium.
 
 The recommended way to generate metrics data from a module is to link and use
 libmetrics directly. However, the module could instead send signals to or
@@ -80,40 +75,8 @@ communicate in some alternative way with the metrics daemon. Then the metrics
 daemon needs to monitor for the relevant events and take appropriate action --
 for example, aggregate data and send the histogram samples.
 
-# Cumulative Metrics
 
-The CumulativeMetrics class in libmetrics helps keep track of quantities across
-boot sessions, so that the quantities can be accumulated over stretches of time
-(for instance, a day or a week) and then reported as samples.  For this
-purpose, some persistent state (i.e. partial accumulations) is maintained as
-files on the device.  The file names use a prefix supplied by the user of the
-CumulativeMetrics class.  Typically the prefix should be the name of the daemon
-(or other program) using the class.  The following prefixes are currently
-reserved.  New prefixes should be added to this list.
-
-`metrics_daemon`:
-
-- `Platform.`
-- `daily.`
-- `weekly.`
-- `version.`
-
-`shill`:
-
-- `shill.`
-
-# Further Information
-
-See
-
-https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histograms/README.md
-
-for more information on choosing name, type, and other parameters of new
-histograms.  The rest of this README is a super-short synopsis of that
-document, and with some luck it won't be too out of date.
-
-
-# Synopsis: Histogram Naming Convention
+# Histogram Naming Convention
 
 Use TrackerArea.MetricName. For example:
 
@@ -121,7 +84,7 @@ Use TrackerArea.MetricName. For example:
 * Network.TimeToDrop
 
 
-# Synopsis: Server Side
+# Server Side
 
 If the histogram data is visible in `chrome://histograms`, it will be sent by an
 official Chromium build to UMA, assuming the user has opted into metrics
@@ -138,23 +101,24 @@ include data for older dates. If past data needs to be displayed, manual
 server-side intervention is required. In other words, one should assume that
 field data collection starts only after the histogram XML has been updated.
 
-# Synopsis: FAQ
+
+# FAQ
 
 ## What should my histogram's |min| and |max| values be set at?
 
 You should set the values to a range that covers the vast majority of samples
-that would appear in the field.  Values below |min| are collected in the
-"underflow bucket" and values above |max| end up in the "overflow bucket".  The
-reported mean of the data is precise, i.e. it does not depend on range and
-number of buckets.
+that would appear in the field. Note that samples below the |min| will still
+be collected in the underflow bucket and samples above the |max| will end up
+in the overflow bucket. Also, the reported mean of the data will be correct
+regardless of the range.
 
 ## How many buckets should I use in my histogram?
 
-You should allocate as many buckets as necessary to perform proper analysis on
-the collected data.  Most data is fairly noisy: 50 buckets are plenty, 100
-buckets are probably overkill.  Also consider that the memory allocated in
-Chromium for each histogram is proportional to the number of buckets, so don't
-waste it.
+You should allocate as many buckets as necessary to perform proper analysis
+on the collected data. Note, however, that the memory allocated in Chromium
+for each histogram is proportional to the number of buckets. Therefore, it is
+strongly recommended to keep this number low (e.g., 50 is normal, while 100
+is probably high).
 
 ## When should I use an enumeration (linear) histogram vs. a regular (exponential) histogram?
 

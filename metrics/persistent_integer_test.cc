@@ -7,23 +7,42 @@
 #include <gtest/gtest.h>
 
 #include <base/compiler_specific.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 
 #include "metrics/persistent_integer.h"
-#include "metrics/persistent_integer_test_base.h"
+
+const char kBackingFileName[] = "1.pibakf";
+const char kBackingFilePattern[] = "*.pibakf";
 
 using chromeos_metrics::PersistentInteger;
 
-class PersistentIntegerTest :
-    public chromeos_metrics::PersistentIntegerTestBase {
+class PersistentIntegerTest : public testing::Test {
+  void SetUp() override {
+    // Set testing mode.
+    chromeos_metrics::PersistentInteger::SetTestingMode(true);
+  }
+
+  void TearDown() override {
+    // Remove backing files.  The convention is that they all end in ".pibakf".
+    base::FileEnumerator f_enum(base::FilePath("."),
+                                false,
+                                base::FileEnumerator::FILES,
+                                FILE_PATH_LITERAL(kBackingFilePattern));
+    for (base::FilePath name = f_enum.Next(); !name.empty();
+         name = f_enum.Next()) {
+      base::DeleteFile(name, false);
+    }
+  }
 };
 
 TEST_F(PersistentIntegerTest, BasicChecks) {
-  const std::string pi_name("xyz");
-  std::unique_ptr<PersistentInteger> pi(new PersistentInteger(pi_name));
+  std::unique_ptr<PersistentInteger> pi(
+      new PersistentInteger(kBackingFileName));
 
   // Test initialization.
   EXPECT_EQ(0, pi->Get());
-  EXPECT_EQ(pi_name, pi->Name());  // not too useful really
+  EXPECT_EQ(kBackingFileName, pi->Name());  // boring
 
   // Test set and add.
   pi->Set(2);
@@ -31,7 +50,7 @@ TEST_F(PersistentIntegerTest, BasicChecks) {
   EXPECT_EQ(5, pi->Get());
 
   // Test persistence.
-  pi.reset(new PersistentInteger(pi_name));
+  pi.reset(new PersistentInteger(kBackingFileName));
   EXPECT_EQ(5, pi->Get());
 
   // Test GetAndClear.
@@ -39,6 +58,11 @@ TEST_F(PersistentIntegerTest, BasicChecks) {
   EXPECT_EQ(pi->Get(), 0);
 
   // Another persistence test.
-  pi.reset(new PersistentInteger(pi_name));
+  pi.reset(new PersistentInteger(kBackingFileName));
   EXPECT_EQ(0, pi->Get());
+}
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
