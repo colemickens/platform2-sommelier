@@ -1452,7 +1452,7 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
       LOG(WARNING) << "Failed to reset an LE credential: " << err;
     } else {
       vk_reset->mutable_serialized()->mutable_key_data()->mutable_policy()
-          ->set_auth_locked(true);
+          ->set_auth_locked(false);
       if (!vk_reset->Save(vk_reset->source_file())) {
         LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
       }
