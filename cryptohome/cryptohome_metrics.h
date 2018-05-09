@@ -13,6 +13,8 @@
 
 namespace cryptohome {
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum CryptohomeError {
   kTpmFail = 1,
   kTcsKeyLoadFailed = 2,
@@ -36,6 +38,8 @@ enum CryptohomeError {
   kCryptohomeErrorNumBuckets,  // Must be the last entry.
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum TimerType {
   kAsyncMountTimer,
   kSyncMountTimer,
@@ -49,6 +53,8 @@ enum TimerType {
   kNumTimerTypes  // For the number of timer types.
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum DictionaryAttackResetStatus {
   kResetNotNecessary,
   kResetAttemptSucceeded,
@@ -59,6 +65,8 @@ enum DictionaryAttackResetStatus {
   kDictionaryAttackResetStatusNumBuckets
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum ChecksumStatus {
   kChecksumOK,
   kChecksumDoesNotExist,
@@ -68,12 +76,16 @@ enum ChecksumStatus {
   kChecksumStatusNumBuckets
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum DircryptoMigrationStartStatus {
   kMigrationStarted = 1,
   kMigrationResumed = 2,
   kMigrationStartStatusNumBuckets
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum DircryptoMigrationEndStatus {
   kNewMigrationFailedGeneric = 1,
   kNewMigrationFinished = 2,
@@ -95,6 +107,8 @@ enum DircryptoMigrationEndStatus {
   kMigrationEndStatusNumBuckets
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum DircryptoMigrationFailedOperationType {
   kMigrationFailedAtOtherOperation = 1,
   kMigrationFailedAtOpenSourceFile = 2,
@@ -115,6 +129,8 @@ enum DircryptoMigrationFailedOperationType {
   kMigrationFailedOperationTypeNumBuckets
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum DircryptoMigrationFailedPathType {
   kMigrationFailedUnderOther = 1,
   kMigrationFailedUnderAndroidOther = 2,
@@ -125,10 +141,27 @@ enum DircryptoMigrationFailedPathType {
   kMigrationFailedPathTypeNumBuckets
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class HomedirEncryptionType {
   kEcryptfs = 1,
   kDircrypto = 2,
   kHomedirEncryptionTypeNumBuckets
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class DiskCleanupProgress {
+  kEphemeralUserProfilesCleaned = 1,
+  kBrowserCacheCleanedAboveTarget = 2,
+  kGoogleDriveCacheCleanedAboveTarget = 3,
+  kGoogleDriveCacheCleanedAboveMinimum = 4,
+  kAndroidCacheCleanedAboveTarget = 5,
+  kAndroidCacheCleanedAboveMinimum = 6,
+  kWholeUserProfilesCleanedAboveTarget = 7,
+  kWholeUserProfilesCleaned = 8,
+  kNoUnmountedCryptohomes = 9,
+  kNumBuckets
 };
 
 // Cros events emitted by cryptohome.
@@ -224,6 +257,10 @@ void ReportDircryptoMigrationTotalByteCountInMb(int total_byte_count_mb);
 // Reports the total file count to migrate to the
 // "Cryptohome.DircryptoMigrationTotalFileCount" histogram.
 void ReportDircryptoMigrationTotalFileCount(int total_file_count);
+
+// Reports which topmost priority was reached to fulfill a cleanup request
+// to the "Cryptohome.DiskCleanupProgress" enum histogram.
+void ReportDiskCleanupProgress(DiskCleanupProgress progress);
 
 // The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
 // histogram.

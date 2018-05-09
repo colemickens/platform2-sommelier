@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
+#include <brillo/bind_lambda.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
@@ -96,11 +97,18 @@ void HomeDirs::FreeDiskSpace() {
 }
 
 void HomeDirs::FreeDiskSpaceInternal() {
+  // Count unmounted cryptohomes before we delete any.
+  int unmounted_count = 0;
+  DoForEveryUnmountedCryptohome(base::Bind(
+      [](int* count, const base::FilePath&) { ++(*count); }, &unmounted_count));
+
   // If ephemeral users are enabled, remove all cryptohomes except those
   // currently mounted or belonging to the owner.
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (AreEphemeralUsersEnabled()) {
     RemoveNonOwnerCryptohomes();
+    ReportDiskCleanupProgress(
+        DiskCleanupProgress::kEphemeralUserProfilesCleaned);
     return;
   }
 
@@ -110,6 +118,8 @@ void HomeDirs::FreeDiskSpaceInternal() {
 
   int64_t freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
+    ReportDiskCleanupProgress(
+        DiskCleanupProgress::kBrowserCacheCleanedAboveTarget);
     return;
   }
 
@@ -126,12 +136,16 @@ void HomeDirs::FreeDiskSpaceInternal() {
   }
 
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
+    ReportDiskCleanupProgress(
+        DiskCleanupProgress::kGoogleDriveCacheCleanedAboveTarget);
     return;
   }
 
   if (freeDiskSpace >= kMinFreeSpaceInBytes) {
     // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
     // than the threshold to do more aggressive cleanups.
+    ReportDiskCleanupProgress(
+        DiskCleanupProgress::kGoogleDriveCacheCleanedAboveMinimum);
     return;
   }
 
@@ -142,18 +156,33 @@ void HomeDirs::FreeDiskSpaceInternal() {
 
   freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
+    ReportDiskCleanupProgress(
+        DiskCleanupProgress::kAndroidCacheCleanedAboveTarget);
     return;
   }
 
   if (freeDiskSpace >= kMinFreeSpaceInBytes) {
     // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
     // than the threshold to do more aggressive cleanup by removing users.
+    ReportDiskCleanupProgress(
+        DiskCleanupProgress::kAndroidCacheCleanedAboveMinimum);
     return;
   }
 
   const int deleted_users_count = DeleteUserProfiles();
   if (deleted_users_count > 0) {
     ReportDeletedUserProfiles(deleted_users_count);
+  }
+
+  // We had a chance to delete a user only if any unmounted homes existed.
+  if (unmounted_count > 0) {
+    freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
+    ReportDiskCleanupProgress(
+        freeDiskSpace >= kTargetFreeSpaceAfterCleanup
+            ? DiskCleanupProgress::kWholeUserProfilesCleanedAboveTarget
+            : DiskCleanupProgress::kWholeUserProfilesCleaned);
+  } else {
+    ReportDiskCleanupProgress(DiskCleanupProgress::kNoUnmountedCryptohomes);
   }
 }
 

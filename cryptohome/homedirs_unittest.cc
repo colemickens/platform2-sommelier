@@ -1280,17 +1280,16 @@ TEST_P(FreeDiskSpaceTest, DontCleanUpMountedUser) {
 
   ExpectTrackedDirectoriesEnumeration();
 
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(
-        Property(&FilePath::value, StrEq(user_paths_[0].value()))))
-    .Times(5)  // Cache, GCache, android, mounted dir count, user removal
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, IsDirectoryMounted(Property(
+                             &FilePath::value, StrEq(user_paths_[0].value()))))
+      .Times(6)  // count, Cache, GCache, android, count, user removal
+      .WillRepeatedly(Return(true));
   for (size_t i = 1; i < arraysize(kHomedirs); ++i) {
     EXPECT_CALL(platform_,
-        IsDirectoryMounted(
-          Property(&FilePath::value, StrEq(user_paths_[i].value()))))
-      .Times(4)  // Cache, GCache, android, mounted dir count
-      .WillRepeatedly(Return(false));
+                IsDirectoryMounted(
+                    Property(&FilePath::value, StrEq(user_paths_[i].value()))))
+        .Times(5)  // count, Cache, GCache, android, count
+        .WillRepeatedly(Return(false));
   }
 
   homedirs_.FreeDiskSpace();

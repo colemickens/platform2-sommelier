@@ -51,6 +51,8 @@ constexpr char kCryptohomeDircryptoMigrationTotalByteCountInMbHistogram[] =
     "Cryptohome.DircryptoMigrationTotalByteCountInMb";
 constexpr char kCryptohomeDircryptoMigrationTotalFileCountHistogram[] =
     "Cryptohome.DircryptoMigrationTotalFileCount";
+constexpr char kCryptohomeDiskCleanupProgressHistogram[] =
+    "Cryptohome.DiskCleanupProgress";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
 constexpr char kTPMVersionFingerprint[] = "Platform.TPM.VersionFingerprint";
@@ -319,6 +321,15 @@ void ReportDircryptoMigrationTotalFileCount(int total_file_count) {
   g_metrics->SendToUMA(
       kCryptohomeDircryptoMigrationTotalFileCountHistogram, total_file_count,
       kMin, kMax, kNumBuckets);
+}
+
+void ReportDiskCleanupProgress(DiskCleanupProgress progress) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kCryptohomeDiskCleanupProgressHistogram,
+                           static_cast<int>(progress),
+                           static_cast<int>(DiskCleanupProgress::kNumBuckets));
 }
 
 void ReportHomedirEncryptionType(HomedirEncryptionType type) {
