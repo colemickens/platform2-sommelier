@@ -65,7 +65,7 @@ class CecManager {
   // Called when udev reports that new device has been added.
   void OnDeviceAdded(const base::FilePath& device_path);
 
-  // Called when udev reports that new device has been removed.
+  // Called when udev reports that a device has been removed.
   void OnDeviceRemoved(const base::FilePath& device_path);
 
   // Enumerates and adds all existing devices.

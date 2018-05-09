@@ -20,12 +20,13 @@ namespace cecservice {
 namespace {
 struct cec_msg CreateMessage(uint16_t source_address,
                              uint16_t destination_address) {
-  struct cec_msg message;
   if (source_address == CEC_LOG_ADDR_INVALID) {
-    cec_msg_init(&message, CEC_LOG_ADDR_UNREGISTERED, destination_address);
-  } else {
-    cec_msg_init(&message, source_address, destination_address);
+    source_address = CEC_LOG_ADDR_UNREGISTERED;
   }
+
+  struct cec_msg message;
+  cec_msg_init(&message, source_address, destination_address);
+
   return message;
 }
 

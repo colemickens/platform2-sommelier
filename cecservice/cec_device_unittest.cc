@@ -420,9 +420,7 @@ TEST_F(CecDeviceTest, TestGetTvStatusOnDisconnect) {
 
   TvPowerStatus power_status = kTvPowerStatusUnknown;
 
-  CecDevice::GetTvPowerStatusCallback callback =
-      base::Bind(Copy, &power_status);
-  device_->GetTvPowerStatus(callback);
+  device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
 
   SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
 
@@ -437,9 +435,7 @@ TEST_F(CecDeviceTest, TestGetTvStatusError) {
 
   EXPECT_CALL(*cec_fd_mock_, WriteWatch()).WillOnce(Return(false));
 
-  CecDevice::GetTvPowerStatusCallback callback =
-      base::Bind(Copy, &power_status);
-  device_->GetTvPowerStatus(callback);
+  device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
 
   EXPECT_EQ(kTvPowerStatusError, power_status);
 }

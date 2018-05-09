@@ -105,7 +105,6 @@ bool CecFdImpl::SetEventCallback(const Callback& callback) {
   read_taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
       FROM_HERE, fd_.get(), brillo::MessageLoop::kWatchRead, true,
       base::Bind(&CecFdImpl::OnDataReady, weak_factory_.GetWeakPtr()));
-  read_taskid_ = priority_taskid_;
 
   if (priority_taskid_ == kTaskIdNull || read_taskid_ == kTaskIdNull) {
     LOG_IF(ERROR, priority_taskid_ == kTaskIdNull)
