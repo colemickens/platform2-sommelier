@@ -466,7 +466,7 @@ TEST_F(FakeSambaTest, MoveEntrySuccessfullyMovesEmptyDirectoryIntoDirectory) {
   EXPECT_TRUE(fake_samba_.EntryExists("smb://wdshare/test/cats/dogs"));
 }
 
-TEST_F(FakeSambaTest, MoveEntrySuccessfullyMovesNonEmptryDirectory) {
+TEST_F(FakeSambaTest, MoveEntrySuccessfullyMovesNonEmptyDirectory) {
   fake_samba_.AddDirectory("smb://wdshare/test/dogs");
   fake_samba_.AddFile("smb://wdshare/test/dogs/1.jpg");
   fake_samba_.AddDirectory("smb://wdshare/test/cats");

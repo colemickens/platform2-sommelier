@@ -323,7 +323,7 @@ int32_t FakeSambaInterface::MoveEntry(const std::string& source_path,
 
   FakeEntry* src_entry = GetEntry(source_path);
   if (EntryExists(target_path)) {
-    // If |target_path| exits, check that we can continue with the move.
+    // If |target_path| exists, check that we can continue with the move.
     FakeEntry* target_entry = GetEntry(target_path);
     int32_t result = CheckEntriesValidForMove(src_entry, target_entry);
     if (result != 0) {
