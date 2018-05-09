@@ -51,7 +51,7 @@ class UserCollectorBase : public CrashCollector {
                             pid_t* pid,
                             int* signal,
                             uid_t* uid,
-                            std::string* kernel_supplied_name);
+                            std::string* exec_name);
 
   bool ShouldDump(bool has_owner_consent,
                   bool is_developer,

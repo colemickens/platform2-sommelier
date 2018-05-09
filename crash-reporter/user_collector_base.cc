@@ -21,9 +21,6 @@ using base::StringPrintf;
 
 namespace {
 
-// Define an otherwise invalid value that represents an unknown UID.
-const uid_t kUnknownUid = -1;
-
 const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 const char kStatePrefix[] = "State:\t";
 
@@ -57,9 +54,9 @@ void UserCollectorBase::Initialize(
 bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
                                     const char* force_exec) {
   CHECK(initialized_);
-  pid_t pid = 0;
-  int signal = 0;
-  uid_t supplied_ruid = kUnknownUid;
+  pid_t pid;
+  int signal;
+  uid_t supplied_ruid;
   std::string kernel_supplied_name;
 
   if (!ParseCrashAttributes(crash_attributes, &pid, &signal, &supplied_ruid,
@@ -122,17 +119,9 @@ bool UserCollectorBase::ParseCrashAttributes(
     pid_t* pid,
     int* signal,
     uid_t* uid,
-    std::string* kernel_supplied_name) {
+    std::string* exec_name) {
   pcrecpp::RE re("(\\d+):(\\d+):(\\d+):(.*)");
-  if (re.FullMatch(crash_attributes, pid, signal, uid, kernel_supplied_name))
-    return true;
-
-  LOG(INFO) << "Falling back to parsing crash attributes '" << crash_attributes
-            << "' without UID";
-  pcrecpp::RE re_without_uid("(\\d+):(\\d+):(.*)");
-  *uid = kUnknownUid;
-  return re_without_uid.FullMatch(crash_attributes, pid, signal,
-                                  kernel_supplied_name);
+  return re.FullMatch(crash_attributes, pid, signal, uid, exec_name);
 }
 
 bool UserCollectorBase::ShouldDump(bool has_owner_consent,
@@ -341,16 +330,11 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
       return false;
     }
     uid = id;
-  } else if (supplied_ruid != kUnknownUid) {
+  } else {
     LOG(INFO) << "Using supplied UID " << supplied_ruid
               << " for crashed process [" << pid
               << "] due to error reading status file";
     uid = supplied_ruid;
-  } else {
-    LOG(ERROR) << "Could not read status file and kernel did not supply UID";
-    LOG(INFO) << "Path " << process_path.value()
-              << " DirectoryExists: " << base::DirectoryExists(process_path);
-    return false;
   }
 
   if (!GetCreatedCrashDirectoryByEuid(uid, crash_file_path, out_of_capacity)) {

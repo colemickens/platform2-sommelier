@@ -144,27 +144,27 @@ TEST_F(UserCollectorTest, ParseCrashAttributes) {
   EXPECT_EQ(11, signal);
   EXPECT_EQ(1000, uid);
   EXPECT_EQ("foobar", exec_name);
-  EXPECT_TRUE(collector_.ParseCrashAttributes("4321:6:barfoo", &pid, &signal,
+  EXPECT_TRUE(collector_.ParseCrashAttributes("4321:6:0:barfoo", &pid, &signal,
                                               &uid, &exec_name));
   EXPECT_EQ(4321, pid);
   EXPECT_EQ(6, signal);
-  EXPECT_EQ(-1, uid);
+  EXPECT_EQ(0, uid);
   EXPECT_EQ("barfoo", exec_name);
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:11", &pid, &signal, &uid,
-                                               &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:11:1000", &pid, &signal,
+                                               &uid, &exec_name));
 
-  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:exec:extra", &pid,
+  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:1000:exec:extra", &pid,
                                               &signal, &uid, &exec_name));
   EXPECT_EQ("exec:extra", exec_name);
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("12345p:11:foobar", &pid,
+  EXPECT_FALSE(collector_.ParseCrashAttributes("12345p:11:1000:foobar", &pid,
                                                &signal, &uid, &exec_name));
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:1 :foobar", &pid,
+  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:1 :1000:foobar", &pid,
                                                &signal, &uid, &exec_name));
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456::foobar", &pid, &signal,
+  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:::foobar", &pid, &signal,
                                                &uid, &exec_name));
 }
 
@@ -250,21 +250,21 @@ TEST_F(UserCollectorTest, ShouldDumpUserConsentProductionImage) {
 
 TEST_F(UserCollectorTest, HandleCrashWithoutConsent) {
   s_metrics = false;
-  collector_.HandleCrash("20:10:ignored", "foobar");
+  collector_.HandleCrash("20:10:1000:ignored", "foobar");
   EXPECT_TRUE(FindLog("Received crash notification for foobar[20] sig 10"));
   ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   s_metrics = true;
-  collector_.HandleCrash("5:2:ignored", "chromeos-wm");
+  collector_.HandleCrash("5:2:1000:ignored", "chromeos-wm");
   EXPECT_TRUE(FindLog("Received crash notification for chromeos-wm[5] sig 2"));
   ASSERT_EQ(s_crashes, 1);
 }
 
 TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
   s_metrics = true;
-  collector_.HandleCrash("5:2:ignored", "chrome");
+  collector_.HandleCrash("5:2:1000:ignored", "chrome");
   EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
   ASSERT_EQ(s_crashes, 0);
@@ -272,7 +272,7 @@ TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
 
 TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
   s_metrics = true;
-  collector_.HandleCrash("0:2:chrome", nullptr);
+  collector_.HandleCrash("0:2:1000:chrome", nullptr);
   EXPECT_TRUE(
       FindLog("Received crash notification for supplied_chrome[0] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
@@ -291,7 +291,7 @@ TEST_F(UserCollectorTest, HandleChromeMashCrashWithConsent) {
   EXPECT_CALL(collector_, AddCrashMetaUploadData("prod", "Chrome_ChromeOS"));
   EXPECT_CALL(collector_, AddCrashMetaUploadData("ptype", "mash"));
 
-  collector_.HandleCrash("5:2:ignored", "chrome");
+  collector_.HandleCrash("5:2:1000:ignored", "chrome");
   EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
   EXPECT_TRUE(FindLog("chrome mash process crash"));
   EXPECT_EQ(s_crashes, 1);
