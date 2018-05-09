@@ -79,6 +79,7 @@
         'concierge/container_listener_impl.cc',
         'concierge/mac_address_generator.cc',
         'concierge/service.cc',
+        'concierge/ssh_keys.cc',
         'concierge/startup_listener_impl.cc',
         'concierge/subnet_pool.cc',
         'concierge/virtual_machine.cc',

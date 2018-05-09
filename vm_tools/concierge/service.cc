@@ -48,6 +48,7 @@
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/constants.h"
+#include "vm_tools/concierge/ssh_keys.h"
 
 using std::string;
 
@@ -578,6 +579,7 @@ bool Service::Init() {
       {kStartContainerMethod, &Service::StartContainer},
       {kLaunchContainerApplicationMethod, &Service::LaunchContainerApplication},
       {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
+      {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -1352,6 +1354,13 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     return dbus_response;
   }
 
+  if (!EraseGuestSshKeys(request.cryptohome_id(), request.disk_path())) {
+    // Don't return a failure here, just log an error because this is only a
+    // side effect and not what the real request is about.
+    LOG(ERROR) << "Failed removing guest SSH keys for VM "
+               << request.disk_path();
+  }
+
   if (!base::PathExists(disk_path)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1476,6 +1485,34 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
     return dbus_response;
   }
 
+  std::string guest_private_key;
+  std::string host_public_key;
+  if (!request.cryptohome_id().empty()) {
+    // Get the SSH keys needed by the container.
+    host_public_key = GetHostSshPublicKey(request.cryptohome_id());
+    if (host_public_key.empty()) {
+      LOG(ERROR) << "Failed getting the host ssh public key";
+      response.set_status(CONTAINER_STATUS_FAILURE);
+      response.set_failure_reason(
+          "Failed generating/loading host ssh public key");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    guest_private_key = GetGuestSshPrivateKey(
+        request.cryptohome_id(), request.vm_name(), container_name);
+    if (guest_private_key.empty()) {
+      LOG(ERROR) << "Failed getting the guest ssh private key";
+      response.set_status(CONTAINER_STATUS_FAILURE);
+      response.set_failure_reason(
+          "Failed generating/loading guest ssh private key");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+  } else {
+    LOG(WARNING) << "No cyptohome_id set in the StartContainer call, SSH will "
+                 << "not be started for SFTP mounting";
+  }
+
   // This executes the run_container.sh script in the VM which will startup
   // a container. We need to construct the command for that with the proper
   // parameters.
@@ -1489,6 +1526,12 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
   if (!request.container_username().empty()) {
     container_args.emplace_back("--user");
     container_args.emplace_back(request.container_username());
+  }
+  if (!guest_private_key.empty() && !host_public_key.empty()) {
+    container_args.emplace_back("--guest_private_key");
+    container_args.emplace_back(std::move(guest_private_key));
+    container_args.emplace_back("--host_public_key");
+    container_args.emplace_back(std::move(host_public_key));
   }
 
   // Now execute the startup script in the VM.
@@ -1607,6 +1650,46 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     *icon->mutable_icon() = std::move(container_icon.content);
   }
 
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received GetContainerSshKeys request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ContainerSshKeysRequest request;
+  ContainerSshKeysResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ContainerSshKeysRequest from message";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.cryptohome_id().empty()) {
+    LOG(ERROR) << "Cryptohome ID is not set in ContainerSshKeysRequest";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = vms_.find(request.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  response.set_container_public_key(GetGuestSshPublicKey(
+      request.cryptohome_id(), request.vm_name(),
+      request.container_name().empty() ? kDefaultContainerName
+                                       : request.container_name()));
+  response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

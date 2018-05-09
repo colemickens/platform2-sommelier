@@ -663,7 +663,8 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
 
 int StartContainer(dbus::ObjectProxy* proxy,
                    string name,
-                   string container_name) {
+                   string container_name,
+                   string cryptohome_id) {
   if (name.empty()) {
     LOG(ERROR) << "--name is required";
     return -1;
@@ -684,6 +685,7 @@ int StartContainer(dbus::ObjectProxy* proxy,
   vm_tools::concierge::StartContainerRequest request;
   request.set_vm_name(name);
   request.set_container_name(container_name);
+  request.set_cryptohome_id(cryptohome_id);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode StartContainerRequest protobuf";
@@ -987,7 +989,8 @@ int main(int argc, char** argv) {
                           std::move(FLAGS_image_name));
   } else if (FLAGS_start_container) {
     return StartContainer(proxy, std::move(FLAGS_name),
-                          std::move(FLAGS_container_name));
+                          std::move(FLAGS_container_name),
+                          std::move(FLAGS_cryptohome_id));
   } else if (FLAGS_launch_application) {
     return LaunchApplication(proxy, std::move(FLAGS_name),
                              std::move(FLAGS_container_name),
