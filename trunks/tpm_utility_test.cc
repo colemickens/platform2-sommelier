@@ -406,7 +406,8 @@ TEST_F(TpmUtilityTest, ChangeOwnerPasswordLockoutFailure) {
 }
 
 TEST_F(TpmUtilityTest, StirRandomSuccess) {
-  std::string entropy_data("large test data", 100);
+  std::string entropy_data(
+      "large test data large test data large test data is that enough?");
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.StirRandom(entropy_data, &mock_authorization_delegate_));
 }
