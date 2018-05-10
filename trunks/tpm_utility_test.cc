@@ -2504,14 +2504,13 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_NoDataInNvram) {
 TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_EmptyNvram) {
   uint32_t nv_index = 29360128;
   TPM2B_MAX_NV_BUFFER nvram_data_buffer;
-  std::vector<unsigned char> cert = {};
-  nvram_data_buffer.size = cert.size();
-  memcpy(nvram_data_buffer.buffer, cert.data(), cert.size());
+  nvram_data_buffer.size = 0;
 
   TPM2B_NV_PUBLIC public_area;
-  TPMS_NV_PUBLIC public_data;
-  public_area.nv_public = public_data;
-  public_data.data_size = 0;
+  public_area.size = sizeof(TPMS_NV_PUBLIC);
+  // Note that, in particular, this implies that the size of the NVRAM data,
+  // which is read from the |data_size| field of TPMS_NV_PUBLIC, is zero.
+  memset(&public_area.nv_public, 0, sizeof(TPMS_NV_PUBLIC));
 
   EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nv_index, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
@@ -2527,15 +2526,15 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_EmptyNvram) {
 
 TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_InvalidDataInNvram) {
   uint32_t nv_index = 29360128;
-  TPM2B_MAX_NV_BUFFER nvram_data_buffer;
   std::vector<unsigned char> cert = {1, 2, 3, 4};
+  TPM2B_MAX_NV_BUFFER nvram_data_buffer;
   nvram_data_buffer.size = cert.size();
   memcpy(nvram_data_buffer.buffer, cert.data(), cert.size());
 
   TPM2B_NV_PUBLIC public_area;
-  TPMS_NV_PUBLIC public_data;
-  public_area.nv_public = public_data;
-  public_data.data_size = 4;
+  public_area.size = sizeof(TPMS_NV_PUBLIC);
+  memset(&public_area.nv_public, 0, sizeof(TPMS_NV_PUBLIC));
+  public_area.nv_public.data_size = 4;
 
   EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nv_index, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
@@ -2587,14 +2586,13 @@ TEST_F(TpmUtilityTest,
 
   uint32_t nv_index = 29360128;
   TPM2B_MAX_NV_BUFFER nvram_data_buffer;
-
   nvram_data_buffer.size = cert.size();
   memcpy(nvram_data_buffer.buffer, cert.data(), cert.size());
 
   TPM2B_NV_PUBLIC public_area;
-  TPMS_NV_PUBLIC public_data;
-  public_data.data_size = cert.size();
-  public_area.nv_public = public_data;
+  public_area.size = sizeof(TPMS_NV_PUBLIC);
+  memset(&public_area.nv_public, 0, sizeof(TPMS_NV_PUBLIC));
+  public_area.nv_public.data_size = cert.size();
 
   EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nv_index, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
