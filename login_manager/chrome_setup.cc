@@ -347,13 +347,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
-  if (builder->UseFlagIsSet("eve"))
-    builder->AddArg("--force-clamshell-power-button");
-  if (builder->UseFlagIsSet("kevin")) {
-    // TODO(jdufault): Remove this once quick unlock launches on all boards.
-    builder->AddFeatureEnableOverride("QuickUnlockPin");
-  }
-
   // Chromebox for meetings devices need to start with this flag till
   // crbug.com/653531 gets fixed. TODO(pbos): Remove this once this feature is
   // enabled by default.
@@ -429,12 +422,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
   builder->AddArg("--enterprise-enrollment-initial-modulus=15");
   builder->AddArg("--enterprise-enrollment-modulus-limit=19");
-
-  // This flag is only used in M49 to enable bootstrapping for ChromeBit. All
-  // Chrome OS devices will be eligible for bootstrapping starting from M50.
-  // TODO(xdai): Remove this after it's cherry-picked in M49.
-  if (builder->UseFlagIsSet("veyron_mickey"))
-    builder->AddArg("--oobe-bootstrapping-slave");
 }
 
 // Adds patterns to the --vmodule flag.
@@ -448,8 +435,8 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("webui_login_view=2");
   builder->AddVmodulePattern("power_button_observer=2");
 
-  // Turn on logging for Night Light.
-  // See crbug.com/768902.
+  // TODO(afakhry): Remove after Night Light has launched:
+  // https://crbug.com/841846
   builder->AddVmodulePattern("*night_light*=1");
 
   // Turn on logging about external displays being connected and disconnected.
@@ -460,37 +447,17 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // Turn on basic logging for Ozone platform implementations.
   builder->AddVmodulePattern("*/ui/ozone/*=1");
 
-  // Turn on plugin loading failure logging for crbug.com/314301.
-  builder->AddVmodulePattern("*zygote*=1");
-  builder->AddVmodulePattern("*plugin*=2");
-
   // Needed for investigating auto-enrollment issues.
   // TODO(tnagel): Remove after switching to device_event_log:
   // http://crbug.com/636184
   builder->AddVmodulePattern("auto_enrollment_controller=1");
 
-  // There is a mysterious offline login failure. Turn on logging on
-  // the login code path.
-  // TODO(xiyuan): Remove after http://crbug.com/547857 is resolved.
+  // TODO(jdufault): Remove after Views-based login has launched:
+  // https://crbug.com/784495
   builder->AddVmodulePattern("*chromeos/login/*=1");
 
-  // Used to evaluate different experimental flag settings for
-  // http://crbug.com/736936. Nothing is logged unless the flags are set via
-  // chrome://flags.
-  // TODO(derat): Remove after http://crbug.com/736936 is closed.
-  builder->AddVmodulePattern("tablet_power_button_controller=1");
-
-  // Used to investigate issue with broken automatic reboots.
-  // TODO(poromov): Remove after http://b/69546724 is resolved.
-  builder->AddVmodulePattern("automatic_reboot_manager=1");
-
-  if (builder->UseFlagIsSet("cheets")) {
+  if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
-
-    // Used to investigate issue with restarting ARC kiosk app.
-    // TODO(poromov): Remove after http://crbug.com/812594 is resolved.
-    builder->AddVmodulePattern("arc_kiosk*=2");
-  }
 }
 
 }  // namespace
