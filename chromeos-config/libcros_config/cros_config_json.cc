@@ -38,7 +38,7 @@ bool CrosConfigJson::SelectConfigByIdentity(
   } else {
     identity = identity_x86;
   }
-  const std::string& find_whitelabel_name = identity->GetCustomizationId();
+  const std::string& find_whitelabel_name = identity->GetVpdId();
 
   const base::DictionaryValue* root_dict = nullptr;
   if (json_config_->GetAsDictionary(&root_dict)) {

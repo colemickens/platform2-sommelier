@@ -23,6 +23,7 @@
 namespace {
 const char kSmbiosTablePath[] = "/run/cros_config/SMBIOS";
 const char kCustomizationId[] = "/sys/firmware/vpd/ro/customization_id";
+const char kWhitelabelTag[] = "/sys/firmware/vpd/ro/whitelabel_tag";
 const char kDeviceTreeCompatiblePath[] = "/proc/device-tree/compatible";
 const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kConfigJsonPath[] = "/usr/share/chromeos-config/config.json";
@@ -93,7 +94,10 @@ bool CrosConfig::InitModel() {
     init_config = InitCrosConfig(dtb_path);
   }
   const std::string system_arch = base::SysInfo::OperatingSystemArchitecture();
-  base::FilePath vpd_file(kCustomizationId);
+  base::FilePath vpd_file(kWhitelabelTag);
+  if (!base::PathExists(vpd_file)) {
+    vpd_file = base::FilePath(kCustomizationId);
+  }
   if (system_arch == "x86_64" || system_arch == "x86") {
     base::FilePath smbios_file(kSmbiosTablePath);
     return init_config && SelectConfigByIdentityX86(smbios_file, vpd_file);
@@ -146,10 +150,10 @@ bool CrosConfig::SelectConfigByIdentityX86(const base::FilePath& mem_file,
   }
   if (!cros_config_->SelectConfigByIdentityX86(identity)) {
     CROS_CONFIG_LOG(ERROR) << "Cannot find config for"
-                           << " name " << identity.GetName()
-                           << " SKU ID " << identity.GetSkuId()
-                           << " Customization ID "
-                           << identity.GetCustomizationId();
+                           << " name: " << identity.GetName()
+                           << " SKU ID: " << identity.GetSkuId()
+                           << " VPD ID from " << vpd_file.MaybeAsASCII() << ": "
+                           << identity.GetVpdId();
     return false;
   }
 
@@ -173,8 +177,8 @@ bool CrosConfig::SelectConfigByIdentityArm(
   if (!cros_config_->SelectConfigByIdentityArm(identity)) {
     CROS_CONFIG_LOG(ERROR) << "Cannot find config for device-tree compatible "
                            << "string " << identity.GetCompatibleDeviceString()
-                           << " Customization ID "
-                           << identity.GetCustomizationId();
+                           << " with VPD ID from " << vpd_file.MaybeAsASCII()
+                           << ": " << identity.GetVpdId();
     return false;
   }
 

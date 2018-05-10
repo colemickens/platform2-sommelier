@@ -20,11 +20,11 @@ CrosConfigIdentity::CrosConfigIdentity() {}
 
 CrosConfigIdentity::~CrosConfigIdentity() {}
 
-bool CrosConfigIdentity::FakeVpd(const std::string& customization_id,
-                                         base::FilePath* vpd_file_out) {
+bool CrosConfigIdentity::FakeVpd(const std::string& vpd_id,
+                                 base::FilePath* vpd_file_out) {
   *vpd_file_out = base::FilePath("vpd");
-  if (base::WriteFile(*vpd_file_out, customization_id.c_str(),
-                      customization_id.length()) != customization_id.length()) {
+  if (base::WriteFile(*vpd_file_out, vpd_id.c_str(), vpd_id.length()) !=
+      vpd_id.length()) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write VPD file";
     return false;
   }
@@ -33,13 +33,13 @@ bool CrosConfigIdentity::FakeVpd(const std::string& customization_id,
 }
 
 bool CrosConfigIdentity::ReadVpd(const base::FilePath& vpd_file) {
-  if (!base::ReadFileToString(vpd_file, &customization_id_)) {
-    CROS_CONFIG_LOG(WARNING) << "No customization_id in VPD";
+  if (!base::ReadFileToString(vpd_file, &vpd_id_)) {
+    CROS_CONFIG_LOG(WARNING) << "No identifier in VPD";
     // This file is only used for whitelabels, so may be missing. Without it
     // we rely on just the name and SKU ID.
   }
-  CROS_CONFIG_LOG(INFO) << "Read VPD identity - customization_id: "
-                        << customization_id_;
+  CROS_CONFIG_LOG(INFO) << "Read VPD identity from  " << vpd_file.MaybeAsASCII()
+                        << ": " << vpd_id_;
   return true;
 }
 
