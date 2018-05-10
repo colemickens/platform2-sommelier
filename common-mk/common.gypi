@@ -26,6 +26,7 @@
     # default settings.  The platform python build helpers set them up.
     'USE_cheets%': 0,
     'USE_amd64%': 0,
+    'USE_arm%': 0,
     'USE_attestation%': 0,
     'USE_binder%': 0,
     'USE_buffet%': 0,
