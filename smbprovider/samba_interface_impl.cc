@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/smbprovider_helper.h"
@@ -58,7 +59,7 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
                                   pw, pwlen);
       });
 
-  return std::unique_ptr<SambaInterfaceImpl>(new SambaInterfaceImpl(context));
+  return base::WrapUnique(new SambaInterfaceImpl(context));
 }
 
 int32_t SambaInterfaceImpl::CloseFile(int32_t file_id) {
