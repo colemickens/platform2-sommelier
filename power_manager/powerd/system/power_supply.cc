@@ -237,22 +237,31 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   std::string output;
   switch (status.external_power) {
     case PowerSupplyProperties_ExternalPower_AC:
-    case PowerSupplyProperties_ExternalPower_USB:
+    case PowerSupplyProperties_ExternalPower_USB: {
       output = base::StringPrintf("On %s (%s",
                                   ExternalPowerToString(status.external_power),
                                   status.line_power_type.c_str());
-      if (status.line_power_current || status.line_power_voltage) {
-        output +=
-            base::StringPrintf(", %.3fA at %.1fV", status.line_power_current,
-                               status.line_power_voltage);
-        if (status.line_power_max_current && status.line_power_max_voltage) {
-          output += base::StringPrintf(", max %.1fA at %.1fV",
-                                       status.line_power_max_current,
-                                       status.line_power_max_voltage);
-        }
+
+      // Add details in the form ", 1.253A at 14.7V, max 2.0A at 15.0V",
+      // omitting unavailable data.
+      std::string details;
+      if (status.has_line_power_current)
+        details = base::StringPrintf("%.3fA", status.line_power_current);
+      if (status.has_line_power_voltage) {
+        details += (details.empty() ? "" : " at ") +
+                   base::StringPrintf("%.1fV", status.line_power_voltage);
       }
+      if (status.line_power_max_current && status.line_power_max_voltage) {
+        details += (details.empty() ? "" : ", ") +
+                   base::StringPrintf("max %.1fA at %.1fV",
+                                      status.line_power_max_current,
+                                      status.line_power_max_voltage);
+      }
+      if (!details.empty())
+        output += ", " + details;
+
       output += ") with battery at ";
-      break;
+    } break;
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
       output = "On battery at ";
       break;
@@ -801,10 +810,16 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   status->line_power_on = true;
   status->line_power_path = path.value();
   status->line_power_type = port->type;
-  status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
   status->line_power_max_voltage = max_voltage;
-  status->line_power_current = ReadScaledDouble(path, "current_now");
   status->line_power_max_current = max_current;
+  if (base::PathExists(path.Append("voltage_now"))) {
+    status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
+    status->has_line_power_voltage = true;
+  }
+  if (base::PathExists(path.Append("current_now"))) {
+    status->line_power_current = ReadScaledDouble(path, "current_now");
+    status->has_line_power_current = true;
+  }
 
   // The USB PD driver reports the maximum power as being 0 watts while it's
   // being determined; avoid reporting a low-power charger in that case.

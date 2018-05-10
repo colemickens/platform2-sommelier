@@ -125,8 +125,17 @@ int main(int argc, char** argv) {
     default:
       display.PrintStringValue("enum type", "Unknown");
   }
-  display.PrintValue("voltage (V)", status.line_power_voltage);
-  display.PrintValue("current (A)", status.line_power_current);
+
+  if (status.has_line_power_voltage)
+    display.PrintValue("voltage (V)", status.line_power_voltage);
+  else
+    display.PrintValue("voltage (V)", "unknown");
+
+  if (status.has_line_power_current)
+    display.PrintValue("current (A)", status.line_power_current);
+  else
+    display.PrintValue("current (A)", "unknown");
+
   display.PrintValue("max voltage (V)", status.line_power_max_voltage);
   display.PrintValue("max current (A)", status.line_power_max_current);
 
