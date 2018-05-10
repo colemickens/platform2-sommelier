@@ -1,4 +1,16 @@
 {
+  'conditions': [
+    ['USE_amd64 == 1', {
+      'variables': {
+        'peer_cmd_prefix%': '"/opt/google/cros-containers/lib/ld-linux-x86-64.so.2 --library-path /opt/google/cros-containers/lib --inhibit-rpath \\"\\""',
+      },
+    }],
+    ['USE_arm == 1', {
+      'variables': {
+        'peer_cmd_prefix%': '"/opt/google/cros-containers/lib/ld-linux-armhf.so.3 --library-path /opt/google/cros-containers/lib --inhibit-rpath \\"\\""',
+      },
+    }],
+  ],
   'variables': {
     # Set this to the Xwayland path.
     'xwayland_path%': '"/opt/google/cros-containers/bin/Xwayland"',
@@ -8,9 +20,6 @@
 
     # Set this to the virtwl device.
     'virtwl_device%': '"/dev/wl0"',
-
-    # Set this to the peer command prefix.
-    'peer_cmd_prefix%': '"/opt/google/cros-containers/lib/ld-linux-x86-64.so.2 --library-path /opt/google/cros-containers/lib --inhibit-rpath \\"\\""',
   },
   'targets': [
     {
