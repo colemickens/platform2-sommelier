@@ -96,7 +96,7 @@ class SessionManagerImpl
   static const char kArcBridgeSocketGroup[];
 
   // Android container messages.
-  static const char kStartArcInstanceForLoginScreenImpulse[];
+  static const char kStartArcInstanceImpulse[];
   static const char kStopArcInstanceImpulse[];
   static const char kContinueArcBootImpulse[];
   static const char kStartArcNetworkImpulse[];

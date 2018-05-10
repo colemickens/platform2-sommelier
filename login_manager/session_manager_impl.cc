@@ -97,8 +97,8 @@ constexpr char SessionManagerImpl::kArcBridgeSocketPath[] =
 constexpr char SessionManagerImpl::kArcBridgeSocketGroup[] = "arc-bridge";
 
 // ARC related impulse (systemd unit start or Upstart signal).
-constexpr char SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse[] =
-    "start-arc-instance-for-login-screen";
+constexpr char SessionManagerImpl::kStartArcInstanceImpulse[] =
+    "start-arc-instance";
 constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
     "stop-arc-instance";
 constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
@@ -1591,8 +1591,8 @@ bool SessionManagerImpl::StartArcMiniContainerInternal(
       base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
                          request.native_bridge_experiment())};
 
-  std::string container_instance_id = StartArcContainer(
-      kStartArcInstanceForLoginScreenImpulse, keyvals, error_out);
+  std::string container_instance_id =
+      StartArcContainer(kStartArcInstanceImpulse, keyvals, error_out);
   if (container_instance_id.empty()) {
     DCHECK(*error_out);
     return false;

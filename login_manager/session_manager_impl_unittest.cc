@@ -591,7 +591,7 @@ class SessionManagerImplTest : public ::testing::Test,
   std::string SetUpArcMiniContainer() {
     EXPECT_CALL(*init_controller_,
                 TriggerImpulseInternal(
-                    SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                    SessionManagerImpl::kStartArcInstanceImpulse,
                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                                 "NATIVE_BRIDGE_EXPERIMENT=0"),
                     InitDaemonController::TriggerMode::ASYNC))
@@ -2015,7 +2015,7 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
 
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                  SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
@@ -2075,7 +2075,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
   // First, start ARC for login screen.
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                  SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
@@ -2169,7 +2169,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   // First, start ARC for login screen.
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                  SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
@@ -2258,7 +2258,7 @@ INSTANTIATE_TEST_CASE_P(
 TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                  SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=1"),
                   InitDaemonController::TriggerMode::ASYNC))
@@ -2321,7 +2321,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
 
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                  SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
@@ -2529,7 +2529,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateless) {
 
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+                  SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
