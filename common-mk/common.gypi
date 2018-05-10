@@ -12,9 +12,6 @@
     # Set this to 1 if you'd like to enable debugging flags.
     'debug%': 0,
 
-    # Set this to 0 if you'd like to disable -clang-syntax.
-    'clang_syntax%': 1,
-
     # Set this to 1 if your C++ code throws or catches exceptions.
     'enable_exceptions%': 0,
 
@@ -160,11 +157,6 @@
           '_LARGEFILE64_SOURCE',
           # Default to 64bit variants (off_t is defined as off64_t).
           '_FILE_OFFSET_BITS=64',
-        ],
-      }],
-      ['USE_cros_host == 0 and clang_syntax == 1', {
-        'cflags': [
-          '-clang-syntax',
         ],
       }],
       ['enable_exceptions == 0', {
