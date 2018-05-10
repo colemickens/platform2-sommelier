@@ -44,6 +44,9 @@
 #ifndef XWAYLAND_SHM_DRIVER
 #error XWAYLAND_SHM_DRIVER must be defined
 #endif
+#ifndef SHM_DRIVER
+#error SHM_DRIVER must be defined
+#endif
 #ifndef VIRTWL_DEVICE
 #error VIRTWL_DEVICE must be defined
 #endif
@@ -441,6 +444,7 @@ enum {
   SHM_DRIVER_NOOP,
   SHM_DRIVER_DMABUF,
   SHM_DRIVER_VIRTWL,
+  SHM_DRIVER_VIRTWL_DMABUF,
 };
 
 enum {
@@ -1364,7 +1368,6 @@ static void sl_host_surface_attach(struct wl_client* client,
     if (!host->current_buffer) {
       size_t width = host_buffer->width;
       size_t height = host_buffer->height;
-      size_t size = host_buffer->shm_mmap->size;
       uint32_t shm_format = host_buffer->shm_format;
       size_t bpp = sl_bpp_for_shm_format(shm_format);
 
@@ -1409,27 +1412,58 @@ static void sl_host_surface_attach(struct wl_client* client,
           gbm_bo_destroy(bo);
         } break;
         case SHM_DRIVER_VIRTWL: {
-          struct virtwl_ioctl_new new_alloc = {.type = VIRTWL_IOCTL_NEW_ALLOC,
+          size_t size = host_buffer->shm_mmap->size;
+          struct virtwl_ioctl_new ioctl_new = {.type = VIRTWL_IOCTL_NEW_ALLOC,
                                                .fd = -1,
                                                .flags = 0,
                                                .size = size};
           struct wl_shm_pool* pool;
           int rv;
 
-          rv = ioctl(host->ctx->virtwl_fd, VIRTWL_IOCTL_NEW, &new_alloc);
+          rv = ioctl(host->ctx->virtwl_fd, VIRTWL_IOCTL_NEW, &ioctl_new);
           assert(rv == 0);
           UNUSED(rv);
 
           pool =
-              wl_shm_create_pool(host->ctx->shm->internal, new_alloc.fd, size);
+              wl_shm_create_pool(host->ctx->shm->internal, ioctl_new.fd, size);
           host->current_buffer->internal = wl_shm_pool_create_buffer(
               pool, 0, width, height, host_buffer->shm_mmap->stride,
               shm_format);
+          wl_shm_pool_destroy(pool);
 
           host->current_buffer->mmap = sl_mmap_create(
-              new_alloc.fd, size, 0, host_buffer->shm_mmap->stride, bpp);
+              ioctl_new.fd, size, 0, host_buffer->shm_mmap->stride, bpp);
+        } break;
+        case SHM_DRIVER_VIRTWL_DMABUF: {
+          uint32_t drm_format = sl_drm_format_for_shm_format(shm_format);
+          struct virtwl_ioctl_new ioctl_new = {
+              .type = VIRTWL_IOCTL_NEW_DMABUF,
+              .fd = -1,
+              .flags = 0,
+              .dmabuf = {
+                  .width = width, .height = height, .format = drm_format}};
+          struct zwp_linux_buffer_params_v1* buffer_params;
+          int rv;
 
-          wl_shm_pool_destroy(pool);
+          rv = ioctl(host->ctx->virtwl_fd, VIRTWL_IOCTL_NEW, &ioctl_new);
+          if (rv) {
+            fprintf(stderr, "error: virtwl dmabuf allocation failed: %s\n",
+                    strerror(errno));
+            _exit(EXIT_FAILURE);
+          }
+
+          buffer_params = zwp_linux_dmabuf_v1_create_params(
+              host->ctx->linux_dmabuf->internal);
+          zwp_linux_buffer_params_v1_add(buffer_params, ioctl_new.fd, 0, 0,
+                                         ioctl_new.dmabuf.stride0, 0, 0);
+          host->current_buffer->internal =
+              zwp_linux_buffer_params_v1_create_immed(buffer_params, width,
+                                                      height, drm_format, 0);
+          zwp_linux_buffer_params_v1_destroy(buffer_params);
+
+          host->current_buffer->mmap =
+              sl_mmap_create(ioctl_new.fd, ioctl_new.dmabuf.stride0 * height, 0,
+                             ioctl_new.dmabuf.stride0, bpp);
         } break;
       }
 
@@ -2109,6 +2143,7 @@ static void sl_shm_create_host_pool(struct wl_client* client,
       break;
     case SHM_DRIVER_DMABUF:
     case SHM_DRIVER_VIRTWL:
+    case SHM_DRIVER_VIRTWL_DMABUF:
       host_shm_pool->fd = fd;
       break;
   }
@@ -2557,7 +2592,7 @@ static void sl_aura_output_scale(void* data,
     case ZAURA_OUTPUT_SCALE_FACTOR_5000:
       break;
     default:
-      fprintf(stderr, "Warning: Unknown scale factor: %d\n", scale);
+      fprintf(stderr, "warning: unknown scale factor: %d\n", scale);
       break;
   }
 
@@ -3601,7 +3636,8 @@ static void sl_drm_callback_done(void* data,
                                  uint32_t serial) {
   struct sl_host_drm* host = wl_callback_get_user_data(callback);
 
-  wl_drm_send_device(host->resource, host->linux_dmabuf->ctx->drm_device);
+  if (host->linux_dmabuf->ctx->drm_device)
+    wl_drm_send_device(host->resource, host->linux_dmabuf->ctx->drm_device);
   wl_drm_send_format(host->resource, WL_DRM_FORMAT_ARGB8888);
   wl_drm_send_format(host->resource, WL_DRM_FORMAT_XRGB8888);
   wl_drm_send_format(host->resource, WL_DRM_FORMAT_RGB565);
@@ -4849,9 +4885,8 @@ static void sl_registry_handler(void* data,
     assert(!ctx->linux_dmabuf);
     ctx->linux_dmabuf = linux_dmabuf;
 
-    // Register wl_drm global if DRM device is available and DMABuf interface
-    // version is sufficient.
-    if (ctx->drm_device && linux_dmabuf->version >= 2) {
+    // Register wl_drm global if DMABuf interface version is sufficient.
+    if (linux_dmabuf->version >= 2) {
       linux_dmabuf->host_drm_global = sl_global_create(
           ctx, &wl_drm_interface, 2, linux_dmabuf, sl_bind_host_drm);
     }
@@ -7412,8 +7447,8 @@ int main(int argc, char **argv) {
     ctx.drm_device = drm_device;
   }
 
-  if (ctx.xwayland && !shm_driver)
-    shm_driver = XWAYLAND_SHM_DRIVER;
+  if (!shm_driver)
+    shm_driver = ctx.xwayland ? XWAYLAND_SHM_DRIVER : SHM_DRIVER;
 
   if (shm_driver) {
     if (strcmp(shm_driver, "dmabuf") == 0) {
@@ -7422,17 +7457,19 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
       }
       ctx.shm_driver = SHM_DRIVER_DMABUF;
-    } else if (strcmp(shm_driver, "virtwl") == 0) {
+    } else if (strcmp(shm_driver, "virtwl") == 0 ||
+               strcmp(shm_driver, "virtwl-dmabuf") == 0) {
       if (ctx.virtwl_fd == -1) {
         fprintf(stderr, "error: need device for virtwl driver\n");
         return EXIT_FAILURE;
       }
-      ctx.shm_driver = SHM_DRIVER_VIRTWL;
+      ctx.shm_driver = strcmp(shm_driver, "virtwl") ? SHM_DRIVER_VIRTWL_DMABUF
+                                                    : SHM_DRIVER_VIRTWL;
     }
   } else if (ctx.drm_device) {
     ctx.shm_driver = SHM_DRIVER_DMABUF;
   } else if (ctx.virtwl_fd != -1) {
-    ctx.shm_driver = SHM_DRIVER_VIRTWL;
+    ctx.shm_driver = SHM_DRIVER_VIRTWL_DMABUF;
   }
 
   if (data_driver) {

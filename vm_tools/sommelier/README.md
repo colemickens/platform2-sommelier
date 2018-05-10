@@ -70,10 +70,21 @@ surface, and copies minimal damaged areas from the client’s standard shared
 memory buffers into the virtwl buffers that can be shared with the host
 compositor.
 
+### VirtWL-DMABuf
+
+The `virtwl-dmabuf` works the same way as the `virtwl` driver but allocates
+buffers that can be shared with the host compositor using the linux_dmabuf
+protocol. The benefits of using this driver over the basic `virtwl` driver
+are:
+
+* Larger set of supported formats (E.g NV12).
+* Host compositor can avoid expensive texture uploads.
+* HW overlays can be used for presentation if support by the host compositor.
+
 ### DMABuf
 
-The `dmabuf` driver is similar to the `virtwl` driver. It creates a set of
-intermediate buffers for each surface and copies minimal damaged areas from
+The `dmabuf` driver is similar to the `virtwl-dmabuf` driver. It creates a set
+of intermediate buffers for each surface and copies minimal damaged areas from
 the client’s standard shared memory buffer into the DMABuf buffer. However,
 the buffer is allocated using a DRM device and a prime FD is used to access
 buffer memory inside the container. Intermediate buffers are shared with the

@@ -16,7 +16,10 @@
     'xwayland_path%': '"/opt/google/cros-containers/bin/Xwayland"',
 
     # Set this to the shm driver to use for Xwayland.
-    'xwayland_shm_driver%': '"noop"',
+    'xwayland_shm_driver%': '"virtwl"',
+
+    # Set this to the shm driver to use for wayland clients.
+    'shm_driver%': '"virtwl-dmabuf"',
 
     # Set this to the virtwl device.
     'virtwl_device%': '"/dev/wl0"',
@@ -74,6 +77,7 @@
         'WL_HIDE_DEPRECATED',
         'XWAYLAND_PATH=<@(xwayland_path)',
         'XWAYLAND_SHM_DRIVER=<@(xwayland_shm_driver)',
+        'SHM_DRIVER=<@(shm_driver)',
         'VIRTWL_DEVICE=<@(virtwl_device)',
         'PEER_CMD_PREFIX=<@(peer_cmd_prefix)',
       ],
