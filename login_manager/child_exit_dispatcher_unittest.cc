@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/child_exit_handler.h"
+#include "login_manager/child_exit_dispatcher.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -30,7 +31,6 @@ class FakeJobManager : public JobManagerInterface {
   FakeJobManager() = default;
   ~FakeJobManager() override = default;
 
-  pid_t managed_pid() { return 0; }
   const siginfo_t& last_status() { return last_status_; }
 
   // Implementation of JobManagerInterface.
@@ -46,17 +46,16 @@ class FakeJobManager : public JobManagerInterface {
   DISALLOW_COPY_AND_ASSIGN(FakeJobManager);
 };
 
-class ChildExitHandlerTest : public ::testing::Test {
+class ChildExitDispatcherTest : public ::testing::Test {
  public:
-  ChildExitHandlerTest() = default;
-  ~ChildExitHandlerTest() override = default;
+  ChildExitDispatcherTest() = default;
+  ~ChildExitDispatcherTest() override = default;
 
   void SetUp() override {
     brillo_loop_.SetAsCurrent();
-    std::vector<JobManagerInterface*> managers;
-    managers.push_back(&fake_manager_);
     signal_handler_.Init();
-    handler_.Init(&signal_handler_, managers);
+    dispatcher_ = std::make_unique<ChildExitDispatcher>(
+        &signal_handler_, std::vector<JobManagerInterface*>{&fake_manager_});
   }
 
  protected:
@@ -64,14 +63,14 @@ class ChildExitHandlerTest : public ::testing::Test {
   brillo::BaseMessageLoop brillo_loop_{&loop_};
   SystemUtilsImpl system_utils_;
   brillo::AsynchronousSignalHandler signal_handler_;
-  ChildExitHandler handler_;
   FakeJobManager fake_manager_;
+  std::unique_ptr<ChildExitDispatcher> dispatcher_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ChildExitHandlerTest);
+  DISALLOW_COPY_AND_ASSIGN(ChildExitDispatcherTest);
 };
 
-TEST_F(ChildExitHandlerTest, ChildExit) {
+TEST_F(ChildExitDispatcherTest, ChildExit) {
   // Fork off a child process that exits immediately.
   pid_t child_pid = system_utils_.fork();
   if (child_pid == 0) {

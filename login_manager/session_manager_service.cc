@@ -34,7 +34,7 @@
 #include <dbus/scoped_dbus_error.h>
 
 #include "login_manager/browser_job.h"
-#include "login_manager/child_exit_handler.h"
+#include "login_manager/child_exit_dispatcher.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
@@ -385,13 +385,12 @@ void SessionManagerService::SetUpHandlers() {
   action.sa_handler = DoNothing;
   CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0);
 
-  std::vector<JobManagerInterface*> job_managers;
-  job_managers.push_back(this);
-  job_managers.push_back(&key_gen_);
-  job_managers.push_back(&vpd_process_);
-  job_managers.push_back(android_container_.get());
   signal_handler_.Init();
-  child_exit_handler_.Init(&signal_handler_, job_managers);
+  DCHECK(!child_exit_dispatcher_.get());
+  child_exit_dispatcher_ = std::make_unique<ChildExitDispatcher>(
+      &signal_handler_,
+      std::vector<JobManagerInterface*>{this, &key_gen_, &vpd_process_,
+                                        android_container_.get()});
   for (int i = 0; i < kNumSignals; ++i) {
     signal_handler_.RegisterHandler(
         kSignals[i], base::Bind(&SessionManagerService::OnTerminationSignal,
@@ -468,7 +467,7 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   exit_code_ = code;
   impl_->AnnounceSessionStoppingIfNeeded();
 
-  child_exit_handler_.Reset();
+  child_exit_dispatcher_.reset();
   liveness_checker_->Stop();
   CleanupChildren(GetKillTimeout(), code);
   impl_->AnnounceSessionStopped();

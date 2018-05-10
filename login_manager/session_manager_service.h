@@ -21,7 +21,6 @@
 #include <install_attributes/libinstallattributes.h>
 
 #include "login_manager/android_oci_wrapper.h"
-#include "login_manager/child_exit_handler.h"
 #include "login_manager/crossystem_impl.h"
 #include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
@@ -40,6 +39,7 @@ class MessageLoop;
 namespace login_manager {
 
 class BrowserJobInterface;
+class ChildExitDispatcher;
 class LoginMetrics;
 class NssUtil;
 class SystemUtils;
@@ -238,7 +238,7 @@ class SessionManagerService
   std::unique_ptr<SessionManagerInterface> impl_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
-  ChildExitHandler child_exit_handler_;
+  std::unique_ptr<ChildExitDispatcher> child_exit_dispatcher_;
   bool shutting_down_;
   bool shutdown_already_;
   ExitCode exit_code_;
