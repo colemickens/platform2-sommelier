@@ -2496,9 +2496,11 @@ TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Failure) {
 }
 
 TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_NoDataInNvram) {
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(_, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
   std::string ekm;
-  EXPECT_EQ(SAPI_RC_CORRUPTED_DATA,
-            utility_.GetPublicRSAEndorsementKeyModulus(&ekm));
+  EXPECT_NE(TPM_RC_SUCCESS, utility_.GetPublicRSAEndorsementKeyModulus(&ekm));
 }
 
 TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_EmptyNvram) {
