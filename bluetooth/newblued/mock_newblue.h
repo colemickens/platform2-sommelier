@@ -18,6 +18,9 @@ class MockNewblue : public Newblue {
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD1(ListenReadyForUp, void(base::Closure));
   MOCK_METHOD0(BringUp, bool());
+
+  MOCK_METHOD1(StartDiscovery, bool(DeviceDiscoveredCallback));
+  MOCK_METHOD0(StopDiscovery, bool());
 };
 
 }  // namespace bluetooth

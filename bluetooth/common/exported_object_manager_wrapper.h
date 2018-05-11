@@ -34,11 +34,22 @@ class ExportedInterface {
   // Unexports the interface and all its exported properties.
   void Unexport();
 
-  // Adds a method handler for |method_name| in this interface.
+  // Adds a raw method handler for |method_name| in this interface.
   void AddRawMethodHandler(
       const std::string& method_name,
       const base::Callback<void(
           dbus::MethodCall*, dbus::ExportedObject::ResponseSender)>& handler);
+
+  // Adds a method handler for |method_name| in this interface.
+  template <typename Instance, typename Class, typename... Args>
+  void AddSimpleMethodHandlerWithErrorAndMessage(
+      const std::string& method_name,
+      Instance instance,
+      bool (Class::*handler)(brillo::ErrorPtr*, dbus::Message*, Args...)) {
+    dbus_object_->AddOrGetInterface(interface_name_)
+        ->AddSimpleMethodHandlerWithErrorAndMessage(method_name, instance,
+                                                    handler);
+  }
 
   // Copies the value of the property having name |property_name| to the
   // corresponding exported property. Doesn't own |property_base| and

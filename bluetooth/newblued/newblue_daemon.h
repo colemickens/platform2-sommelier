@@ -5,7 +5,9 @@
 #ifndef BLUETOOTH_NEWBLUED_NEWBLUE_DAEMON_H_
 #define BLUETOOTH_NEWBLUED_NEWBLUE_DAEMON_H_
 
+#include <map>
 #include <memory>
+#include <string>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
@@ -44,6 +46,20 @@ class NewblueDaemon : public BluetoothDaemon {
   // calls, e.g. StartDiscovery(), StopDiscovery().
   void ExportAdapterInterface();
 
+  // Installs org.bluez.Adapter1 method handlers.
+  void AddAdapterMethodHandlers(ExportedInterface* adapter_interface);
+
+  // D-Bus method handlers for adapter object.
+  bool HandleStartDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
+  bool HandleStopDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
+
+  // D-Bus method handlers for device objects.
+  bool HandlePair(brillo::ErrorPtr* error, dbus::Message* message);
+  bool HandleConnect(brillo::ErrorPtr* error, dbus::Message* message);
+
+  // Called when an update of a device info is received.
+  void OnDeviceDiscovered(const Device& device);
+
   scoped_refptr<dbus::Bus> bus_;
 
   std::unique_ptr<ExportedObjectManagerWrapper>
@@ -52,6 +68,10 @@ class NewblueDaemon : public BluetoothDaemon {
   std::unique_ptr<Newblue> newblue_;
 
   DBusDaemon* dbus_daemon_;
+
+  // Keeps the discovered devices.
+  // TODO(sonnysasaka): Clear old devices according to BlueZ mechanism.
+  std::map<std::string, Device> discovered_devices_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

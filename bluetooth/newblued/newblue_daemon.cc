@@ -11,6 +11,7 @@
 #include <sysexits.h>
 
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -22,6 +23,8 @@ namespace {
 // Chrome OS device has only 1 Bluetooth adapter, so the name is always hci0.
 // TODO(sonnysasaka): Add support for more than 1 adapters.
 constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
+
+constexpr char kErrorBluezFailed[] = "org.bluez.Failed";
 
 // Called when an interface of a D-Bus object is exported.
 void OnInterfaceExported(std::string object_path,
@@ -131,9 +134,167 @@ void NewblueDaemon::ExportAdapterInterface() {
           bluetooth_adapter::kPoweredProperty)
       ->SetValue(true);
 
+  AddAdapterMethodHandlers(adapter_interface);
+
   adapter_interface->ExportAsync(
       base::Bind(&OnInterfaceExported, adapter_object_path.value(),
                  bluetooth_adapter::kBluetoothAdapterInterface));
+}
+
+void NewblueDaemon::AddAdapterMethodHandlers(
+    ExportedInterface* adapter_interface) {
+  adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+      bluetooth_adapter::kStartDiscovery, base::Unretained(this),
+      &NewblueDaemon::HandleStartDiscovery);
+  adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+      bluetooth_adapter::kStopDiscovery, base::Unretained(this),
+      &NewblueDaemon::HandleStopDiscovery);
+}
+
+bool NewblueDaemon::HandleStartDiscovery(brillo::ErrorPtr* error,
+                                         dbus::Message* message) {
+  VLOG(1) << __func__;
+  bool ret = newblue_->StartDiscovery(
+      base::Bind(&NewblueDaemon::OnDeviceDiscovered, base::Unretained(this)));
+  if (!ret) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         kErrorBluezFailed, "Failed to start discovery");
+  }
+  return ret;
+}
+
+bool NewblueDaemon::HandleStopDiscovery(brillo::ErrorPtr* error,
+                                        dbus::Message* message) {
+  VLOG(1) << __func__;
+  bool ret = newblue_->StopDiscovery();
+  if (!ret) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         kErrorBluezFailed, "Failed to start discovery");
+  }
+  return ret;
+}
+
+bool NewblueDaemon::HandlePair(brillo::ErrorPtr* error,
+                               dbus::Message* message) {
+  // TODO(sonnysasaka): Implement org.bluez.Device1.Pair.
+  VLOG(1) << "Handling Pair for object " << message->GetPath().value();
+  bool ret = false;
+  if (!ret) {
+    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                   kErrorBluezFailed, "Failed to pair");
+  }
+  return ret;
+}
+
+bool NewblueDaemon::HandleConnect(brillo::ErrorPtr* error,
+                                  dbus::Message* message) {
+  // TODO(sonnysasaka): Implement org.bluez.Device1.Connect.
+  VLOG(1) << "Handling Connect for object " << message->GetPath().value();
+  bool ret = false;
+  if (!ret) {
+    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                   kErrorBluezFailed, "Failed to connect");
+  }
+  return ret;
+}
+
+void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
+  VLOG(1) << "Discovered device "
+          << base::StringPrintf("address = %s, rssi = %d, addr type = %s",
+                                device.address.c_str(), device.rssi,
+                                device.is_random_addr ? "random" : "public");
+
+  std::string device_path_string = base::StringPrintf(
+      "%s/dev_%s", kAdapterObjectPath, device.address.c_str());
+  std::replace(device_path_string.begin(), device_path_string.end(), ':', '_');
+  dbus::ObjectPath device_path(device_path_string);
+
+  ExportedInterface* device_interface =
+      exported_object_manager_wrapper_->GetExportedInterface(
+          device_path, bluetooth_device::kBluetoothDeviceInterface);
+  // The first time a device of this address is discovered, create the D-Bus
+  // object representing that device.
+  if (device_interface == nullptr) {
+    exported_object_manager_wrapper_->AddExportedInterface(
+        device_path, bluetooth_device::kBluetoothDeviceInterface);
+
+    device_interface = exported_object_manager_wrapper_->GetExportedInterface(
+        device_path, bluetooth_device::kBluetoothDeviceInterface);
+
+    device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+        bluetooth_device::kPair, base::Unretained(this),
+        &NewblueDaemon::HandlePair);
+    device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+        bluetooth_device::kConnect, base::Unretained(this),
+        &NewblueDaemon::HandleConnect);
+
+    // The "Adapter" property of this device object has to be set before
+    // ExportAsync() below. This is to make sure that as soon as a client
+    // realizes that this object is exported, it can immediately check this
+    // property value. This at least satisfies Chrome's behavior which checks
+    // whether this device belongs to the adapter it's interested in.
+    device_interface
+        ->EnsureExportedPropertyRegistered<dbus::ObjectPath>(
+            bluetooth_device::kAdapterProperty)
+        ->SetValue(dbus::ObjectPath(kAdapterObjectPath));
+
+    device_interface->ExportAsync(
+        base::Bind(&OnInterfaceExported, device_path.value(),
+                   bluetooth_device::kBluetoothDeviceInterface));
+  }
+
+  // Update the device object's properties.
+  device_interface
+      ->EnsureExportedPropertyRegistered<std::string>(
+          bluetooth_device::kAddressProperty)
+      ->SetValue(device.address);
+  device_interface
+      ->EnsureExportedPropertyRegistered<std::string>(
+          bluetooth_device::kNameProperty)
+      ->SetValue(device.name);
+  device_interface
+      ->EnsureExportedPropertyRegistered<int16_t>(
+          bluetooth_device::kRSSIProperty)
+      ->SetValue(device.rssi);
+  device_interface
+      ->EnsureExportedPropertyRegistered<uint32_t>(
+          bluetooth_device::kClassProperty)
+      ->SetValue(device.eir_class);
+  device_interface
+      ->EnsureExportedPropertyRegistered<uint16_t>(
+          bluetooth_device::kAppearanceProperty)
+      ->SetValue(device.appearance);
+
+  // These are properties that are required to exist (bluez: doc/device-api.txt)
+  // But newblued doesn't support these yet, so assign static values.
+  device_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_device::kPairedProperty)
+      ->SetValue(false);
+  device_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_device::kConnectedProperty)
+      ->SetValue(false);
+  device_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_device::kTrustedProperty)
+      ->SetValue(false);
+  device_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_device::kBlockedProperty)
+      ->SetValue(false);
+  device_interface
+      ->EnsureExportedPropertyRegistered<std::string>(
+          bluetooth_device::kAliasProperty)
+      ->SetValue("");
+  device_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_device::kLegacyPairingProperty)
+      ->SetValue(false);
+  device_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_device::kServicesResolvedProperty)
+      ->SetValue(false);
 }
 
 }  // namespace bluetooth

@@ -112,6 +112,7 @@ ExportedObject::~ExportedObject() {
 
 ExportedInterface* ExportedObject::GetExportedInterface(
     const std::string& interface_name) {
+  CHECK(base::ContainsKey(exported_interfaces_, interface_name));
   return exported_interfaces_.find(interface_name)->second.get();
 }
 
