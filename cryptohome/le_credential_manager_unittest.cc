@@ -45,7 +45,7 @@ class LECredentialManagerUnitTest : public testing::Test {
   LECredentialManagerUnitTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     base::FilePath cred_manager_dir =
-        temp_dir_.path().Append("low_entropy_creds");
+        temp_dir_.GetPath().Append("low_entropy_creds");
     le_mgr_ =
         std::make_unique<LECredentialManager>(&fake_backend_, cred_manager_dir);
   }

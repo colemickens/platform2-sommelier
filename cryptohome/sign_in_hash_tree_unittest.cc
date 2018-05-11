@@ -75,7 +75,7 @@ TEST(SignInHashTreeUnitTest, GetAuxiliaryLabelsTest) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  SignInHashTree tree(4, 1, temp_dir.path());
+  SignInHashTree tree(4, 1, temp_dir.GetPath());
 
   // Convert the string labels into Label which the code understands.
   uint64_t key_val = static_cast<uint64_t>(std::stoi(kAuxKey4_2_1, nullptr, 2));
@@ -92,7 +92,7 @@ TEST(SignInHashTreeUnitTest, GetAuxiliaryLabelsTest) {
   base::ScopedTempDir temp_dir2;
   ASSERT_TRUE(temp_dir2.CreateUniqueTempDir());
 
-  SignInHashTree tree2(6, 2, temp_dir2.path());
+  SignInHashTree tree2(6, 2, temp_dir2.GetPath());
 
   key_val = static_cast<uint64_t>(std::stoi(kAuxKey6_4_1, nullptr, 2));
   label = SignInHashTree::Label(key_val, 6, 2);
@@ -112,7 +112,7 @@ TEST(SignInHashTreeUnitTest, GenerateAndStoreHashCacheFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  SignInHashTree tree(4, 1, temp_dir.path());
+  SignInHashTree tree(4, 1, temp_dir.GetPath());
   tree.GenerateAndStoreHashCache();
 
   // Check that the root hash was calculated successfully.
@@ -148,7 +148,7 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  auto tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.path());
+  auto tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.GetPath());
   tree->GenerateAndStoreHashCache();
 
   ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 6, 2), kSampleHash1,
@@ -171,7 +171,7 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   // Now clear the tree object, create it again, and see if everything is what
   // it was.
   tree.reset();
-  tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.path());
+  tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.GetPath());
 
   returned_hash.clear();
   cred_data.clear();
@@ -188,7 +188,7 @@ TEST(SignInHashTreeUnitTest, UpdateHashCacheOnInsertRemove) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Create initial table and HashCache.
-  auto tree = std::make_unique<SignInHashTree>(14, 2, temp_dir.path());
+  auto tree = std::make_unique<SignInHashTree>(14, 2, temp_dir.GetPath());
   tree->GenerateAndStoreHashCache();
 
   std::vector<uint8_t> returned_hash, cred_data;

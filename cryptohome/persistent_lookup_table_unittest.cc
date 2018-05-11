@@ -43,7 +43,7 @@ TEST(PersistentLookupTableTest, CreateDirStoreValues) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   std::unique_ptr<Platform> platform(new Platform());
-  PersistentLookupTable lookup_table(platform.get(), temp_dir.path());
+  PersistentLookupTable lookup_table(platform.get(), temp_dir.GetPath());
   lookup_table.InitOnBoot();
 
   // Verify basic Store and Get.
@@ -73,7 +73,8 @@ TEST(PersistentLookupTableTest, RestoreTable) {
 
   std::unique_ptr<Platform> platform(new Platform());
   std::unique_ptr<PersistentLookupTable> lookup_table =
-      std::make_unique<PersistentLookupTable>(platform.get(), temp_dir.path());
+      std::make_unique<PersistentLookupTable>(platform.get(),
+                                              temp_dir.GetPath());
   lookup_table->InitOnBoot();
 
   // Add some entries.
@@ -86,8 +87,8 @@ TEST(PersistentLookupTableTest, RestoreTable) {
   // table.
   lookup_table.reset();
   platform.reset(new Platform());
-  lookup_table =
-      std::make_unique<PersistentLookupTable>(platform.get(), temp_dir.path());
+  lookup_table = std::make_unique<PersistentLookupTable>(platform.get(),
+                                                         temp_dir.GetPath());
   lookup_table->InitOnBoot();
 
   ASSERT_EQ(PLT_SUCCESS, lookup_table->StoreValue(kKey1, kValue1_3));
@@ -98,8 +99,8 @@ TEST(PersistentLookupTableTest, RestoreTable) {
   // Destroy it one last time, then reload it.
   lookup_table.reset();
   platform.reset(new Platform());
-  lookup_table =
-      std::make_unique<PersistentLookupTable>(platform.get(), temp_dir.path());
+  lookup_table = std::make_unique<PersistentLookupTable>(platform.get(),
+                                                         temp_dir.GetPath());
   lookup_table->InitOnBoot();
 
   // Check that the values are as expected.
@@ -125,7 +126,7 @@ TEST(PersistentLookupTableTest, DeleteKeys) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   std::unique_ptr<Platform> platform(new Platform());
-  PersistentLookupTable lookup_table(platform.get(), temp_dir.path());
+  PersistentLookupTable lookup_table(platform.get(), temp_dir.GetPath());
   lookup_table.InitOnBoot();
 
   ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_1));
@@ -150,7 +151,7 @@ TEST(PersistentLookupTableTest, GetUsedKeys) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   std::unique_ptr<Platform> platform(new Platform());
-  PersistentLookupTable lookup_table(platform.get(), temp_dir.path());
+  PersistentLookupTable lookup_table(platform.get(), temp_dir.GetPath());
   lookup_table.InitOnBoot();
 
   ASSERT_EQ(PLT_SUCCESS, lookup_table.StoreValue(kKey1, kValue1_1));
