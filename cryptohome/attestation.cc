@@ -1633,7 +1633,7 @@ void Attestation::ClearIdentity(IdentityBinding* binding, IdentityKey* key) {
 }
 
 void Attestation::ClearString(std::string* s) {
-  brillo::SecureMemset(string_as_array(s), 0, s->length());
+  brillo::SecureMemset(base::string_as_array(s), 0, s->length());
   s->clear();
 }
 

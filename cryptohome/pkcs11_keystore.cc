@@ -385,21 +385,14 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
-    {CKA_CLASS, &object_class, sizeof(object_class)},
-    {
-      CKA_LABEL,
-      string_as_array(const_cast<std::string*>(&key_name)),
-      key_name.size()
-    },
-    {
-      CKA_APPLICATION,
-      const_cast<char*>(kApplicationID),
-      arraysize(kApplicationID)
-    },
-    {CKA_TOKEN, &true_value, sizeof(true_value)},
-    {CKA_PRIVATE, &true_value, sizeof(true_value)},
-    {CKA_MODIFIABLE, &false_value, sizeof(false_value)}
-  };
+      {CKA_CLASS, &object_class, sizeof(object_class)},
+      {CKA_LABEL, base::string_as_array(const_cast<std::string*>(&key_name)),
+       key_name.size()},
+      {CKA_APPLICATION, const_cast<char*>(kApplicationID),
+       arraysize(kApplicationID)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_MODIFIABLE, &false_value, sizeof(false_value)}};
   CK_OBJECT_HANDLE key_handle = CK_INVALID_HANDLE;
   CK_ULONG count = 0;
   if ((C_FindObjectsInit(session_handle,
@@ -485,7 +478,7 @@ bool Pkcs11KeyStore::GetKeyName(CK_SESSION_HANDLE session_handle,
     return false;
   }
   key_name->resize(attribute.ulValueLen);
-  attribute.pValue = string_as_array(key_name);
+  attribute.pValue = base::string_as_array(key_name);
   if (C_GetAttributeValue(session_handle, object_handle, &attribute, 1) !=
       CKR_OK) {
     LOG(ERROR) << "C_GetAttributeValue(CKA_LABEL) failed.";
