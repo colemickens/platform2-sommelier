@@ -569,13 +569,6 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
 bool SessionManagerImpl::SaveLoginPassword(
     brillo::ErrorPtr* error, const base::ScopedFD& in_password_fd) {
-  if (!device_policy_->InstallAttributesEnterpriseMode()) {
-    // We only allow passwords to be saved for enterprise enrolled devices.
-    LOG(ERROR) << "Attempting to save user password for non-enterprise "
-                  "enrolled device.";
-    return false;
-  }
-
   size_t data_size = 0;
   if (!base::ReadFromFD(in_password_fd.get(),
                         reinterpret_cast<char*>(&data_size), sizeof(size_t))) {

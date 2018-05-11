@@ -1030,10 +1030,7 @@ TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
   EXPECT_FALSE(error.get());
 }
 
-TEST_F(SessionManagerImplTest, SaveLoginPasswordForEnterpriseCustomer) {
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillOnce(Return(true));
-
+TEST_F(SessionManagerImplTest, SaveLoginPassword) {
   const string kPassword("thepassword");
   base::ScopedFD password_fd = WriteSizeAndDataToPipe(kPassword);
   brillo::ErrorPtr error;
@@ -1041,22 +1038,6 @@ TEST_F(SessionManagerImplTest, SaveLoginPasswordForEnterpriseCustomer) {
   EXPECT_FALSE(error.get());
 
   EXPECT_TRUE(password_provider_->password_saved());
-
-  VerifyAndClearExpectations();
-}
-
-TEST_F(SessionManagerImplTest, SaveLoginPasswordForNonEnterpriseCustomer) {
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillOnce(Return(false));
-
-  const string kPassword("thepassword");
-  base::ScopedFD password_fd = WriteSizeAndDataToPipe(kPassword);
-
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->SaveLoginPassword(&error, password_fd));
-  EXPECT_FALSE(password_provider_->password_saved());
-
-  VerifyAndClearExpectations();
 }
 
 TEST_F(SessionManagerImplTest, DiscardPasswordOnStopSession) {
