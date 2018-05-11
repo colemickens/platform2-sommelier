@@ -496,6 +496,12 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
     LOG(ERROR) << "JEA returns " << status << ". Fall back to SW encode.";
   }
 
+  if (test_enabled_) {
+    // In test mode, don't fall back to SW encode.
+    LOG(ERROR) << "Test is enabled and JEA failed.";
+    return false;
+  }
+
   uint32_t jpeg_data_size = 0;
   if (!compressor.CompressImage(
           in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),

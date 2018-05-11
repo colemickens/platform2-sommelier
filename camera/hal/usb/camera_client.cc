@@ -722,7 +722,10 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
   if (ret) {
     return -EINVAL;
   }
-  input_frame_.Convert(metadata, &output_frame);
+  ret = input_frame_.Convert(metadata, &output_frame);
+  if (ret) {
+    return -EINVAL;
+  }
 
   // Return v4l2 buffer when last stream buffer is handled.
   if (stream_index + 1 == num_streams) {
