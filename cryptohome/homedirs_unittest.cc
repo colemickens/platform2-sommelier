@@ -92,14 +92,6 @@ const struct homedir kHomedirs[] = {
   { "973b9640e86f6073c6b6e2759ff3cf3084515e61", { 2011, 3, 2, 1 } },
   { kOwner, { 2011, 4, 5, 1 } }
 };
-const base::Time::Exploded jan1st2011_exploded = { 2011, 1, 6, 1 };
-const base::Time time_jan1 = base::Time::FromUTCExploded(jan1st2011_exploded);
-const base::Time::Exploded feb1st2011_exploded = { 2011, 2, 2, 1 };
-const base::Time time_feb1 = base::Time::FromUTCExploded(feb1st2011_exploded);
-const base::Time::Exploded mar1st2011_exploded = { 2011, 3, 2, 1 };
-const base::Time time_mar1 = base::Time::FromUTCExploded(mar1st2011_exploded);
-const base::Time::Exploded apr5th2011_exploded = { 2011, 4, 5, 1 };
-const base::Time time_apr5 = base::Time::FromUTCExploded(apr5th2011_exploded);
 
 NiceMock<MockFileEnumerator>* CreateMockFileEnumerator() {
   return new NiceMock<MockFileEnumerator>;
