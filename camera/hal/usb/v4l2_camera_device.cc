@@ -162,8 +162,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   control.value = constant_frame_rate ? 0 : 1;
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_CTRL, &control));
   if (ret < 0) {
-    LOGF(ERROR) << "Failed to set V4L2_CID_EXPOSURE_AUTO_PRIORITY";
-    return -EINVAL;
+    LOGF(WARNING) << "Failed to set V4L2_CID_EXPOSURE_AUTO_PRIORITY";
   }
 
   // Some drivers use rational time per frame instead of float frame rate, this
