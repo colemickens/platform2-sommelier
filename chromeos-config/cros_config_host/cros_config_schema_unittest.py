@@ -126,6 +126,43 @@ class TransformConfigTests(unittest.TestCase):
     self.assertEqual('/etc/cras/basking/dsp.ini',
                      model.audio.main.files[0].destination)
 
+  def testTemplateVariableScope(self):
+    scoped_config = """
+audio_common: &audio_common
+  main:
+    $ucm: "default"
+    $cras: "default"
+    ucm-suffix: "{{$ucm}}"
+    cras-config-dir: "{{$cras}}"
+chromeos:
+  devices:
+    - $name: "some"
+      $ucm: "overridden-by-device-scope"
+      products:
+        - $key-id: 'SOME-KEY'
+          $brand-code: 'SOME-BRAND'
+          $cras: "overridden-by-product-scope"
+      skus:
+        - $sku-id: 0
+          config:
+            audio: *audio_common
+            brand-code: '{{$brand-code}}'
+            identity:
+              platform-name: "Some"
+              smbios-name-match: "Some"
+            name: '{{$name}}'
+            firmware:
+              no-firmware: True
+"""
+    result = cros_config_schema.TransformConfig(scoped_config)
+    json_dict = json.loads(result)
+    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    config = json_obj.chromeos.configs[0]
+    self.assertEqual(
+        'overridden-by-product-scope', config.audio.main.cras_config_dir)
+    self.assertEqual(
+        'overridden-by-device-scope', config.audio.main.ucm_suffix)
+
 
 class ValidateConfigSchemaTests(unittest.TestCase):
 

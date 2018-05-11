@@ -266,11 +266,14 @@ def TransformConfig(config):
   if DEVICES in json_config[CHROMEOS]:
     for device in json_config[CHROMEOS][DEVICES]:
       template_vars = {}
-      _SetTemplateVars(device, template_vars)
       for product in device.get(PRODUCTS, [{}]):
-        _SetTemplateVars(product, template_vars)
         for sku in device[SKUS]:
+          # Template variables scope is config, then device, then product
+          # This allows shared configs to define defaults using anchors, which
+          # can then be easily overridden by the product/device scope.
           _SetTemplateVars(sku, template_vars)
+          _SetTemplateVars(device, template_vars)
+          _SetTemplateVars(product, template_vars)
           while _HasTemplateVariables(template_vars):
             _ApplyTemplateVars(template_vars, template_vars)
           sku_clone = copy.deepcopy(sku)

@@ -64,11 +64,14 @@ that allow for even better re-use and expressiveness in the YAML config.
     Valid template variables are any YAML elements that are currently in scope.
     When generating config, scope is evaluated in the following order:
 
-    1.  device
-    2.  product
-    3.  sku
-    4.  config (this is recursive ... any variable at any level can be
+    1.  sku
+    2.  config (this is recursive ... any variable at any level can be
         referenced)
+    3.  device
+    4.  product
+
+    This order allows shared anchors to define default variables that are then
+    optionally overridden by either the device or product scope.
 
 2.  Local Variables - These are variables that are only used for templating and
     are dropped in the final JSON output. Variables starting with '$' are
@@ -171,13 +174,13 @@ evaluated/de-normalized form accomplishes a couple things:
 The transform algorithm works as follows:
 
 * FOREACH device in chromeos/devices
-    * device variables are put into scope
     * FOREACH product in device/products
-        * product variables are put into scope
         * FOREACH sku in device/skus
             * sku varibles are put into scope
+            * config variables are put into scope
+            * device variables are put into scope
+            * product variables are put into scope
             * with sku/config
-                * config variables are put into scope
                 * config template variables are evaluated
                 * the config contents are captured and stored in the resulting json
 
