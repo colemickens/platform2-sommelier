@@ -748,7 +748,9 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   BiometricsManager::AttemptMatches matches;
   std::vector<std::string> records;
 
-  LOG(INFO) << __func__ << " result: " << match_result;
+  uint32_t match_idx = EC_MKBP_FP_MATCH_IDX(event);
+  LOG(INFO) << __func__ << " result: " << match_result
+            << " (finger: " << match_idx << ")";
   switch (match_result) {
     case EC_MKBP_FP_ERR_MATCH_NO:
       // This is the API: empty matches but still SCAN_RESULT_SUCCESS.
@@ -758,14 +760,13 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
       result = ScanResult::SCAN_RESULT_SUCCESS;
-      std::transform(
-          dirty_list.begin(), dirty_list.end(), std::back_inserter(records),
-          [this](int idx) -> std::string { return records_[idx].record_id; });
-      // when we don't know which one, use the first one ?
-      if (!records.size())
-        records.push_back(records_[0].record_id);
-      // TODO(vpalatin): FIXME for multi-user ?
-      matches.emplace(records_[0].user_id, std::move(records));
+
+      if (match_idx < records_.size()) {
+        records.push_back(records_[match_idx].record_id);
+        matches.emplace(records_[match_idx].user_id, std::move(records));
+      } else {
+        LOG(ERROR) << "Invalid finger index " << match_idx;
+      }
       break;
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
       result = ScanResult::SCAN_RESULT_INSUFFICIENT;
