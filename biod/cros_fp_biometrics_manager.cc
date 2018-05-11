@@ -437,12 +437,22 @@ bool CrosFpBiometricsManager::Record::Remove() {
 
   std::vector<InternalRecord>::iterator record =
       biometrics_manager_->records_.begin() + index_;
+  std::string user_id = record->user_id;
 
-  if (!biometrics_manager_->biod_storage_.DeleteRecord(record->user_id,
+  if (!biometrics_manager_->biod_storage_.DeleteRecord(user_id,
                                                        record->record_id))
     return false;
-  biometrics_manager_->records_.erase(record);
-  return true;
+
+  // We cannot remove only one record if we want to stay in sync with the MCU,
+  // Clear and reload everything.
+  // TODO(vpalatin): as per b/77568272, proper multi-user support
+  // for now, arbitrarily use the first one in the set.
+  std::unordered_set<std::string> user_ids;
+  user_ids.emplace(user_id);
+
+  biometrics_manager_->records_.clear();
+  biometrics_manager_->cros_dev_->SetContext(user_id);
+  return biometrics_manager_->biod_storage_.ReadRecords(user_ids);
 }
 
 std::unique_ptr<BiometricsManager> CrosFpBiometricsManager::Create() {
