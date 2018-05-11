@@ -1332,7 +1332,8 @@ bool Tpm2Impl::RemoveOwnerDependency(
   tpm_manager::RemoveOwnerDependencyRequest request;
   SetOwnerDependency(dependency, request.mutable_owner_dependency());
   if (request.owner_dependency().empty()) {
-    VLOG(1) << "Ignoring unused owner dependency " << dependency;
+    VLOG(1) << "Ignoring unused owner dependency "
+            << static_cast<int>(dependency);
     return true;
   }
   auto method =
@@ -1384,7 +1385,8 @@ bool Tpm2Impl::GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) {
 }
 
 bool Tpm2Impl::SetUserType(Tpm::UserType type) {
-  VLOG(1) << __func__ << ": " << cur_user_type_ << " -> " << type;
+  VLOG(1) << __func__ << ": " << static_cast<int>(cur_user_type_) << " -> "
+          << static_cast<int>(type);
   if (cur_user_type_ == UserType::NonOwner || cur_user_type_ == type) {
     // It's not possible to transition from NonOwner to Owner, so don't even
     // try. Also, if we are already in the desired state, no reason to

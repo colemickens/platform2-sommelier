@@ -251,7 +251,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
     switch (state) {
       case dircrypto::KeyState::UNKNOWN:
       case dircrypto::KeyState::ENCRYPTED:
-        LOG(ERROR) << "Unexpected state " << state;
+        LOG(ERROR) << "Unexpected state " << static_cast<int>(state);
         return false;
       case dircrypto::KeyState::NOT_SUPPORTED:
         mount_type_ = MountType::ECRYPTFS;
@@ -507,7 +507,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       mount_args.to_migrate_from_ecryptfs;
   const bool should_mount_dircrypto = mount_type_ == MountType::DIR_CRYPTO;
   if (!should_mount_ecryptfs && !should_mount_dircrypto) {
-    NOTREACHED() << "Unexpected mount type " << mount_type_;
+    NOTREACHED() << "Unexpected mount type " << static_cast<int>(mount_type_);
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -697,7 +697,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       break;
     default:
       // We're only interested in encrypted home directories.
-      NOTREACHED() << "Unknown homedir encryption type: " << mount_type_;
+      NOTREACHED() << "Unknown homedir encryption type: "
+                   << static_cast<int>(mount_type_);
       break;
   }
 
