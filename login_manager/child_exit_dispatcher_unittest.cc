@@ -20,30 +20,30 @@
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/job_manager.h"
+#include "login_manager/child_exit_handler.h"
 #include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 
-// A fake job manager implementation for testing.
-class FakeJobManager : public JobManagerInterface {
+// A fake child exit handler implementation for testing.
+class FakeChildExitHandler : public ChildExitHandler {
  public:
-  FakeJobManager() = default;
-  ~FakeJobManager() override = default;
+  FakeChildExitHandler() = default;
+  ~FakeChildExitHandler() override = default;
 
   const siginfo_t& last_status() { return last_status_; }
 
-  // Implementation of JobManagerInterface.
-  bool IsManagedJob(pid_t pid) override { return true; }
-  void HandleExit(const siginfo_t& s) override {
+  // ChildExitHandler overrides.
+  bool HandleExit(const siginfo_t& s) override {
     last_status_ = s;
     brillo::MessageLoop::current()->BreakLoop();
+    return true;
   }
 
  private:
   siginfo_t last_status_;
 
-  DISALLOW_COPY_AND_ASSIGN(FakeJobManager);
+  DISALLOW_COPY_AND_ASSIGN(FakeChildExitHandler);
 };
 
 class ChildExitDispatcherTest : public ::testing::Test {
@@ -55,7 +55,7 @@ class ChildExitDispatcherTest : public ::testing::Test {
     brillo_loop_.SetAsCurrent();
     signal_handler_.Init();
     dispatcher_ = std::make_unique<ChildExitDispatcher>(
-        &signal_handler_, std::vector<JobManagerInterface*>{&fake_manager_});
+        &signal_handler_, std::vector<ChildExitHandler*>{&fake_handler_});
   }
 
  protected:
@@ -63,7 +63,7 @@ class ChildExitDispatcherTest : public ::testing::Test {
   brillo::BaseMessageLoop brillo_loop_{&loop_};
   SystemUtilsImpl system_utils_;
   brillo::AsynchronousSignalHandler signal_handler_;
-  FakeJobManager fake_manager_;
+  FakeChildExitHandler fake_handler_;
   std::unique_ptr<ChildExitDispatcher> dispatcher_;
 
  private:
@@ -80,11 +80,11 @@ TEST_F(ChildExitDispatcherTest, ChildExit) {
   // Spin the message loop.
   brillo_loop_.Run();
 
-  // Verify child termination has been reported to |fake_manager|.
-  EXPECT_EQ(child_pid, fake_manager_.last_status().si_pid);
-  EXPECT_EQ(SIGCHLD, fake_manager_.last_status().si_signo);
-  EXPECT_EQ(static_cast<int>(CLD_EXITED), fake_manager_.last_status().si_code);
-  EXPECT_EQ(EXIT_SUCCESS, fake_manager_.last_status().si_status);
+  // Verify child termination has been reported to |fake_handler_|.
+  EXPECT_EQ(child_pid, fake_handler_.last_status().si_pid);
+  EXPECT_EQ(SIGCHLD, fake_handler_.last_status().si_signo);
+  EXPECT_EQ(static_cast<int>(CLD_EXITED), fake_handler_.last_status().si_code);
+  EXPECT_EQ(EXIT_SUCCESS, fake_handler_.last_status().si_status);
 }
 
 }  // namespace login_manager

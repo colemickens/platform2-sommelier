@@ -77,6 +77,7 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
   std::string fake_key_contents("stuff");
   siginfo_t fake_info;
   memset(&fake_info, 0, sizeof(siginfo_t));
+  fake_info.si_pid = kDummyPid;
 
   KeyGenerator keygen(getuid(), &utils_);
   keygen.set_delegate(&handler);

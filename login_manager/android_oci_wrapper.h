@@ -27,9 +27,8 @@ class AndroidOciWrapper : public ContainerManagerInterface {
                     const base::FilePath& containers_directory);
   ~AndroidOciWrapper() override;
 
-  // JobManagerInterface:
-  bool IsManagedJob(pid_t pid) override;
-  void HandleExit(const siginfo_t& status) override;
+  // ChildExitHandler:
+  bool HandleExit(const siginfo_t& status) override;
 
   // ContainerManagerInterface:
   bool StartContainer(const std::vector<std::string>& env,

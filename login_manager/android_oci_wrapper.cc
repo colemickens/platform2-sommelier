@@ -43,16 +43,13 @@ AndroidOciWrapper::AndroidOciWrapper(SystemUtils* system_utils,
 
 AndroidOciWrapper::~AndroidOciWrapper() = default;
 
-bool AndroidOciWrapper::IsManagedJob(pid_t pid) {
-  return container_pid_ == pid;
-}
-
-void AndroidOciWrapper::HandleExit(const siginfo_t& status) {
-  if (!container_pid_)
-    return;
+bool AndroidOciWrapper::HandleExit(const siginfo_t& status) {
+  if (!container_pid_ || status.si_pid != container_pid_)
+    return false;
 
   stateful_mode_ = StatefulMode::STATELESS;
   CleanUpContainer();
+  return true;
 }
 
 void AndroidOciWrapper::RequestJobExit(ArcContainerStopReason reason) {

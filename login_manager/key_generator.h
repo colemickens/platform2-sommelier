@@ -15,14 +15,14 @@
 #include <base/macros.h>
 #include <base/time/time.h>
 
+#include "login_manager/child_exit_handler.h"
 #include "login_manager/generator_job.h"
-#include "login_manager/job_manager.h"
 
 namespace login_manager {
 
 class SystemUtils;
 
-class KeyGenerator : public JobManagerInterface {
+class KeyGenerator : public ChildExitHandler {
  public:
   class Delegate {
    public:
@@ -50,9 +50,8 @@ class KeyGenerator : public JobManagerInterface {
   // The job must be destroyed within the timeout.
   void EnsureJobExit(base::TimeDelta timeout);
 
-  // Implementation of JobManagerInterface.
-  bool IsManagedJob(pid_t pid) override;
-  void HandleExit(const siginfo_t& status) override;
+  // ChildExitHandler overrides.
+  bool HandleExit(const siginfo_t& status) override;
 
   void InjectJobFactory(std::unique_ptr<GeneratorJobFactoryInterface> factory);
 

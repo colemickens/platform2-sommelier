@@ -14,15 +14,15 @@
 #include <base/logging.h>
 #include <brillo/asynchronous_signal_handler.h>
 
+#include "login_manager/child_exit_handler.h"
 #include "login_manager/child_job.h"
-#include "login_manager/job_manager.h"
 
 namespace login_manager {
 
 ChildExitDispatcher::ChildExitDispatcher(
     brillo::AsynchronousSignalHandler* signal_handler,
-    const std::vector<JobManagerInterface*>& managers)
-    : signal_handler_(signal_handler), managers_(managers) {
+    const std::vector<ChildExitHandler*>& handlers)
+    : signal_handler_(signal_handler), handlers_(handlers) {
   signal_handler_->RegisterHandler(
       SIGCHLD,
       base::Bind(&ChildExitDispatcher::OnSigChld, base::Unretained(this)));
@@ -56,17 +56,6 @@ bool ChildExitDispatcher::OnSigChld(const struct signalfd_siginfo& sig_info) {
 }
 
 void ChildExitDispatcher::Dispatch(const siginfo_t& info) {
-  // Find the manager whose child has exited.
-  pid_t pid = info.si_pid;
-  auto iter = std::find_if(managers_.begin(), managers_.end(),
-                           [pid](JobManagerInterface* manager) {
-                             return manager->IsManagedJob(pid);
-                           });
-  if (iter == managers_.end()) {
-    DLOG(INFO) << info.si_pid << " is not a managed job.";
-    return;
-  }
-
   LOG(INFO) << "Handling " << info.si_pid << " exit.";
   if (info.si_code == CLD_EXITED) {
     LOG_IF(ERROR, info.si_status != 0)
@@ -77,7 +66,15 @@ void ChildExitDispatcher::Dispatch(const siginfo_t& info) {
   } else {
     LOG(ERROR) << "  Exited with signal " << info.si_status;
   }
-  (*iter)->HandleExit(info);
+
+  for (auto* handler : handlers_) {
+    if (handler->HandleExit(info)) {
+      return;
+    }
+  }
+
+  // No handler handles the exit.
+  DLOG(INFO) << info.si_pid << " is not a managed job.";
 }
 
 }  // namespace login_manager

@@ -8,11 +8,9 @@ namespace login_manager {
 
 FakeContainerManager::FakeContainerManager(pid_t pid) : pid_(pid) {}
 
-bool FakeContainerManager::IsManagedJob(pid_t pid) {
-  return running_ && pid_ == pid;
+bool FakeContainerManager::HandleExit(const siginfo_t& status) {
+  return running_ && status.si_pid == pid_;
 }
-
-void FakeContainerManager::HandleExit(const siginfo_t& status) {}
 
 void FakeContainerManager::RequestJobExit(ArcContainerStopReason reason) {
   LOG_IF(FATAL, !running_) << "Trying to stop an already stopped container";

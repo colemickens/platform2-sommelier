@@ -12,9 +12,10 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "login_manager/job_manager.h"
+#include "login_manager/child_exit_handler.h"
 
 namespace login_manager {
 
@@ -26,7 +27,7 @@ enum class StatefulMode {
 // Provides methods for running and stopping containers.
 //
 // Containers can only be run from the verified rootfs.
-class ContainerManagerInterface : public JobManagerInterface {
+class ContainerManagerInterface : public ChildExitHandler {
  public:
   using ExitCallback =
       base::Callback<void(pid_t, ArcContainerStopReason reason)>;

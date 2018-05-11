@@ -15,8 +15,6 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 
-#include "login_manager/job_manager.h"
-
 namespace login_manager {
 
 class ChildOutputCollector;

@@ -22,8 +22,7 @@ class FakeContainerManager : public ContainerManagerInterface {
 
   bool running() const { return running_; }
 
-  bool IsManagedJob(pid_t pid) override;
-  void HandleExit(const siginfo_t& status) override;
+  bool HandleExit(const siginfo_t& status) override;
   void RequestJobExit(ArcContainerStopReason reason) override;
   void EnsureJobExit(base::TimeDelta timeout) override;
 

@@ -71,13 +71,13 @@ void KeyGenerator::EnsureJobExit(base::TimeDelta timeout) {
     keygen_job_->WaitAndAbort(timeout);
 }
 
-bool KeyGenerator::IsManagedJob(pid_t pid) {
-  return (keygen_job_ && keygen_job_->CurrentPid() > 0 &&
-          keygen_job_->CurrentPid() == pid);
-}
-
-void KeyGenerator::HandleExit(const siginfo_t& info) {
+bool KeyGenerator::HandleExit(const siginfo_t& info) {
   CHECK(delegate_) << "Must set a delegate before exit can be handled.";
+  if (!keygen_job_ || keygen_job_->CurrentPid() <= 0 ||
+      keygen_job_->CurrentPid() != info.si_pid) {
+    return false;
+  }
+
   if (info.si_status == 0) {
     base::FilePath key_file(temporary_key_filename_);
     delegate_->OnKeyGenerated(key_owner_username_, key_file);
@@ -85,6 +85,7 @@ void KeyGenerator::HandleExit(const siginfo_t& info) {
     DLOG(WARNING) << "Key generation failed with " << info.si_status;
   }
   Reset();
+  return true;
 }
 
 void KeyGenerator::InjectJobFactory(

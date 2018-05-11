@@ -67,12 +67,12 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
   return true;
 }
 
-bool VpdProcessImpl::IsManagedJob(pid_t pid) {
-  return subprocess_ && subprocess_->GetPid() > 0 &&
-         subprocess_->GetPid() == pid;
-}
+bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
+  if (!subprocess_ || subprocess_->GetPid() <= 0 ||
+      subprocess_->GetPid() != info.si_pid) {
+    return false;
+  }
 
-void VpdProcessImpl::HandleExit(const siginfo_t& info) {
   MetricsLibrary metrics;
   metrics.Init();
   metrics.SendSparseToUMA(kVpdUpdateMetric, info.si_status);
@@ -80,12 +80,10 @@ void VpdProcessImpl::HandleExit(const siginfo_t& info) {
   const bool success = (info.si_status == 0);
   LOG_IF(ERROR, !success) << "Failed to update VPD, code = " << info.si_status;
 
-  if (completion_.is_null())
-    return;
-
   // Reset the completion to ensure we won't call it again.
-  auto completion = base::ResetAndReturn(&completion_);
-  completion.Run(success);
+  if (!completion_.is_null())
+    base::ResetAndReturn(&completion_).Run(success);
+  return true;
 }
 
 }  // namespace login_manager

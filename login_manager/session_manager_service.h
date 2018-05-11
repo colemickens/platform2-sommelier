@@ -21,8 +21,8 @@
 #include <install_attributes/libinstallattributes.h>
 
 #include "login_manager/android_oci_wrapper.h"
+#include "login_manager/child_exit_handler.h"
 #include "login_manager/crossystem_impl.h"
-#include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
 #include "login_manager/policy_key.h"
@@ -54,7 +54,7 @@ class SystemUtils;
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public SessionManagerImpl::Delegate,
-      public JobManagerInterface,
+      public ChildExitHandler,
       public ProcessManagerServiceInterface {
  public:
   enum ExitCode {
@@ -151,15 +151,14 @@ class SessionManagerService
                        const std::vector<std::string>& flags) override;
   bool IsBrowser(pid_t pid) override;
 
-  // JobManagerInterface:
-  // Actually just an alias for IsBrowser
-  bool IsManagedJob(pid_t pid) override;
+  // ChildExitHandler overrides:
+  // Handles only browser exit (i.e. IsBrowser(pid) returns true).
   // Re-runs the browser, unless one of the following is true:
   //  The screen is supposed to be locked,
   //  UI shutdown is in progress,
   //  The child indicates that it should not run anymore, or
   //  ShouldRunBrowser() indicates the browser should not run anymore.
-  void HandleExit(const siginfo_t& info) override;
+  bool HandleExit(const siginfo_t& info) override;
 
   // Set all changed signal handlers back to the default behavior.
   static void RevertHandlers();

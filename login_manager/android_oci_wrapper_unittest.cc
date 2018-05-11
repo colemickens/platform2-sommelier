@@ -130,12 +130,6 @@ TEST_F(AndroidOciWrapperTest, KillOnLaunchTimeOut) {
   EXPECT_FALSE(CallStartContainer());
 }
 
-TEST_F(AndroidOciWrapperTest, ContainerIsManaged) {
-  StartContainerAsParent();
-
-  EXPECT_TRUE(impl_->IsManagedJob(container_pid_));
-}
-
 TEST_F(AndroidOciWrapperTest, GetContainerPID) {
   StartContainerAsParent();
 
@@ -152,7 +146,8 @@ TEST_F(AndroidOciWrapperTest, CleanUpOnExit) {
   ExpectDestroy(0 /* exit_code */);
 
   siginfo_t status;
-  impl_->HandleExit(status);
+  status.si_pid = container_pid_;
+  EXPECT_TRUE(impl_->HandleExit(status));
 
   EXPECT_TRUE(callback_called_);
   EXPECT_EQ(ArcContainerStopReason::CRASH, exit_reason_);

@@ -12,14 +12,14 @@
 
 #include <base/callback.h>
 
-#include "login_manager/job_manager.h"
+#include "login_manager/child_exit_handler.h"
 #include "login_manager/subprocess.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/vpd_process.h"
 
 namespace login_manager {
 
-class VpdProcessImpl : public VpdProcess, public JobManagerInterface {
+class VpdProcessImpl : public VpdProcess, public ChildExitHandler {
  public:
   explicit VpdProcessImpl(SystemUtils* system_utils);
 
@@ -35,9 +35,8 @@ class VpdProcessImpl : public VpdProcess, public JobManagerInterface {
                        bool sync_cache,
                        const CompletionCallback& completion) override;
 
-  // Implementation of JobManagerInterface.
-  bool IsManagedJob(pid_t pid) override;
-  void HandleExit(const siginfo_t& status) override;
+  // Implementation of ChildExitHandler.
+  bool HandleExit(const siginfo_t& status) override;
 
  private:
   // The subprocess tracked by this job.

@@ -19,28 +19,29 @@ class AsynchronousSignalHandler;
 }
 
 namespace login_manager {
-class JobManagerInterface;
+class ChildExitHandler;
 
 // Listen for SIGCHLD and informs the appropriate object that manages that
 // child.
 class ChildExitDispatcher {
  public:
   ChildExitDispatcher(brillo::AsynchronousSignalHandler* signal_handler,
-                      const std::vector<JobManagerInterface*>& managers);
+                      const std::vector<ChildExitHandler*>& managers);
   ~ChildExitDispatcher();
 
  private:
   // Called by the |AsynchronousSignalHandler| when a new SIGCHLD is received.
   bool OnSigChld(const struct signalfd_siginfo& info);
 
-  // Determines which JobManagers' child exited, and handles appropriately.
+  // Notifies ChildExitHandlers one at a time about the child exiting until
+  // one reports that it's handled the exit.
   void Dispatch(const siginfo_t& info);
 
   // Handler that notifies of signals. Owned by the caller.
   brillo::AsynchronousSignalHandler* const signal_handler_;
 
-  // Objects that are managing a child job.
-  const std::vector<JobManagerInterface*> managers_;
+  // Handlers that will be notified about child exit events.
+  const std::vector<ChildExitHandler*> handlers_;
 
   DISALLOW_COPY_AND_ASSIGN(ChildExitDispatcher);
 };

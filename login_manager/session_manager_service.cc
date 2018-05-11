@@ -101,8 +101,9 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
     info.si_status = WTERMSIG(status);
   }
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&SessionManagerService::HandleExit,
-                            session_manager_service_, info));
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SessionManagerService::HandleExit),
+                 session_manager_service_, info));
 }
 
 SessionManagerService::SessionManagerService(
@@ -289,11 +290,10 @@ bool SessionManagerService::IsBrowser(pid_t pid) {
   return (browser_->CurrentPid() > 0 && pid == browser_->CurrentPid());
 }
 
-bool SessionManagerService::IsManagedJob(pid_t pid) {
-  return IsBrowser(pid);
-}
+bool SessionManagerService::HandleExit(const siginfo_t& status) {
+  if (!IsBrowser(status.si_pid))
+    return false;
 
-void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   LOG(INFO) << "Exiting process is " << browser_->GetName() << ".";
 
   // Clears up the whole job's process group.
@@ -307,14 +307,14 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
 
   // Do nothing if already shutting down.
   if (shutting_down_)
-    return;
+    return true;
 
   liveness_checker_->Stop();
 
   if (impl_->ShouldEndSession()) {
     LOG(ERROR) << "Choosing to end session rather than restart browser.";
     SetExitAndScheduleShutdown(CRASH_WHILE_RESTART_DISABLED);
-    return;
+    return true;
   }
 
   if (browser_->ShouldStop()) {
@@ -327,6 +327,8 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
     LOG(INFO) << "Should NOT run " << browser_->GetName() << " again.";
     AllowGracefulExitOrRunForever();
   }
+
+  return true;
 }
 
 DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
@@ -389,8 +391,8 @@ void SessionManagerService::SetUpHandlers() {
   DCHECK(!child_exit_dispatcher_.get());
   child_exit_dispatcher_ = std::make_unique<ChildExitDispatcher>(
       &signal_handler_,
-      std::vector<JobManagerInterface*>{this, &key_gen_, &vpd_process_,
-                                        android_container_.get()});
+      std::vector<ChildExitHandler*>{this, &key_gen_, &vpd_process_,
+                                     android_container_.get()});
   for (int i = 0; i < kNumSignals; ++i) {
     signal_handler_.RegisterHandler(
         kSignals[i], base::Bind(&SessionManagerService::OnTerminationSignal,
