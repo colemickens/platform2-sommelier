@@ -68,6 +68,14 @@ def PopulateTypeDef(name, type_def, ref_types, output):
     attrs_by_group[group_name] = group_attrs
     group_index = group_index + 1
 
+  additional_props = type_def.get('additionalProperties', False)
+  if additional_props:
+    output.append(
+        '| [ANY] | N/A | N/A | N/A| N/A | '
+        'This type allows additional properties not governed by the schema. '
+        'See the type description for details on these additional properties.|')
+
+
   for attr_group_name, attrs in attrs_by_group.iteritems():
     for attr in attrs:
       attr_name = attr

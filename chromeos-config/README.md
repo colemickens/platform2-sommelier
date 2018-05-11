@@ -218,7 +218,7 @@ The schema definition is below:
 | identity | [identity](#identity) |  | False |  | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | Unique name for the given model. |
 | oem-id | string | ```[0-9]+``` | False |  | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's devices.  |
-| power | [power](#power) |  | False |  | Contains power_manager device settings.  This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Each property corresponds to a power_manager preference defined in https://cs.corp.google.com/chromeos_public/src/platform2/power_manager/common/power_constants.h |
+| power | [power](#power) |  | False |  | WARNING -- This config contains unvalidated settings, which is not a correct usage pattern, but this will be used in the interim until a longer term solution can be put in place where the overall schema can be single sourced (for the YAML and C++ that uses it); likely though some type of code generation. SUMMARY -- Contains power_manager device settings.  This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Power manager will first check for a property in this config, else it will revert to the file based mechanism (via the powerd-prefs setting). This provides more flexibility in sharing power settings across different devices that share the same build overlay. Any property can be overridden from - src/platform2/power_manager/default_prefs or src/platform2/power_manager/optional_prefs For details about each setting property, see - src/platform2/power_manager/common/power_constants.h For examples on setting these properties (including multiline examples), see the power config example in libcros_config/test.yaml |
 | powerd-prefs | string |  | False |  | Powerd config that should be used. |
 | test-label | string |  | False |  | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  |  |
@@ -314,12 +314,7 @@ The schema definition is below:
 ### power
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
-| charging-ports | string |  | False |  | String describing charging port positions. The format expects a newline character per port line.  YAML multiline strings or explicit newline characters in the string will support this. See test.yaml for sample usage. |
-| keyboard-backlight-no-als-brightness | string | ```^[0-9]{1,3}.[0-9]?``` | False |  | Initial brightness for the keyboard backlight for systems without ambient light sensors, in the range [0.0, 100.0]. |
-| low-battery-shutdown-percent | string | ```^[0-9]{1,3}.[0-9]?``` | False |  | Battery percentage threshold at which the system should shut down automatically, in the range [0.0, 100.0]. |
-| power-supply-full-factor | string | ```^[0-1].[0-9]?``` | False |  | Fraction of the battery's total charge at which it should be reported as full in the UI, in the range (0.0, 1.0]. |
-| set-wifi-transmit-power-for-tablet-mode | string | ```^[0-1]$``` | False |  | If true (1), update wifi transmit power when in tablet vs. clamshell mode. |
-| suspend-to-idle | string | ```^[0-1]$``` | False |  | If true (1), suspend to idle by writing freeze to /sys/power/state. |
+| [ANY] | N/A | N/A | N/A| N/A | This type allows additional properties not governed by the schema. See the type description for details on these additional properties.|
 
 ### thermal
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
