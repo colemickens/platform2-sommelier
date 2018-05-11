@@ -1005,7 +1005,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
   if (!response) {
     LOG(ERROR) << system_clock::kSystemClockInterface << "."
                << system_clock::kSystemLastSyncInfo << " request failed.";
-    base::MessageLoop::current()->PostDelayedTask(
+    base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                    weak_ptr_factory_.GetWeakPtr()),
@@ -1028,7 +1028,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
       state_key_generator_->RequestStateKeys(callback);
     pending_state_key_callbacks_.clear();
   } else {
-    base::MessageLoop::current()->PostDelayedTask(
+    base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                    weak_ptr_factory_.GetWeakPtr()),
