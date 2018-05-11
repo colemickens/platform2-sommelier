@@ -5,6 +5,7 @@
         'dbus-1',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'newblue',
         # system_api depends on protobuf (or protobuf-lite). It must appear
         # before protobuf here or the linker flags won't be in the right
         # order.
@@ -42,6 +43,7 @@
       'target_name': 'libnewblued',
       'type': 'static_library',
       'sources': [
+        'newblued/newblue.cc',
         'newblued/newblue_daemon.cc',
       ],
     },

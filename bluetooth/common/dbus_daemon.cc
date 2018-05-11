@@ -14,7 +14,9 @@ DBusDaemon::DBusDaemon(std::unique_ptr<BluetoothDaemon> bluetooth_daemon)
     : bluetooth_daemon_(std::move(bluetooth_daemon)) {}
 
 int DBusDaemon::OnInit() {
-  brillo::Daemon::OnInit();
+  int exit_code = brillo::Daemon::OnInit();
+  if (exit_code != EX_OK)
+    return exit_code;
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;

@@ -20,8 +20,8 @@ namespace bluetooth {
 
 class NewblueDaemon : public BluetoothDaemon {
  public:
-  NewblueDaemon();
-  ~NewblueDaemon() = default;
+  explicit NewblueDaemon(std::unique_ptr<Newblue> newblue);
+  ~NewblueDaemon() override = default;
 
   // Initializes D-Bus and NewBlue stack.
   bool Init(scoped_refptr<dbus::Bus> bus) override;

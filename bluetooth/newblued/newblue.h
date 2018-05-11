@@ -5,6 +5,10 @@
 #ifndef BLUETOOTH_NEWBLUED_NEWBLUE_H_
 #define BLUETOOTH_NEWBLUED_NEWBLUE_H_
 
+#include <memory>
+
+#include "bluetooth/newblued/libnewblue.h"
+
 namespace bluetooth {
 
 // A higher-level API wrapper of the low-level libnewblue C interface.
@@ -12,16 +16,16 @@ namespace bluetooth {
 // event handling model that is compatible with libchrome's main loop.
 class Newblue {
  public:
-  Newblue() = default;
-  ~Newblue() = default;
+  explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
+  virtual ~Newblue() = default;
 
   // Initializes the LE stack (blocking call).
   // Returns true if initialization succeeds, false otherwise.
-  // TODO(sonnysasaka): Add real implementations when libnewblue is ready for
-  // integration.
-  bool Init() { return true; }
+  virtual bool Init();
 
  private:
+  std::unique_ptr<LibNewblue> libnewblue_;
+
   DISALLOW_COPY_AND_ASSIGN(Newblue);
 };
 

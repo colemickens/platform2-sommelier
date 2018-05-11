@@ -2,8 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
+#include "bluetooth/newblued/newblue_daemon.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
@@ -11,7 +15,8 @@
 #include <dbus/object_manager.h>
 #include <gtest/gtest.h>
 
-#include "bluetooth/newblued/newblue_daemon.h"
+#include "bluetooth/newblued/mock_libnewblue.h"
+#include "bluetooth/newblued/mock_newblue.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -30,13 +35,19 @@ class NewblueDaemonTest : public ::testing::Test {
   void SetUp() override {
     bus_ = new dbus::MockBus(dbus::Bus::Options());
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
-    newblued_ = std::make_unique<NewblueDaemon>();
+    auto libnewblue = std::make_unique<MockLibNewblue>();
+    libnewblue_ = libnewblue.get();
+    auto newblue = std::make_unique<MockNewblue>(std::move(libnewblue));
+    newblue_ = newblue.get();
+    newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue));
   }
 
  protected:
   base::MessageLoop message_loop_;
   scoped_refptr<dbus::MockBus> bus_;
-  std::unique_ptr<NewblueDaemon> newblued_;
+  std::unique_ptr<NewblueDaemon> newblue_daemon_;
+  MockNewblue* newblue_;
+  MockLibNewblue* libnewblue_;
 };
 
 TEST_F(NewblueDaemonTest, Default) {
@@ -97,13 +108,15 @@ TEST_F(NewblueDaemonTest, Default) {
       ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesSet, _, _))
       .Times(AnyNumber());
 
-  newblued_->Init(bus_);
+  EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
+
+  newblue_daemon_->Init(bus_);
 
   EXPECT_CALL(*exported_adapter_object, Unregister()).Times(1);
   EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
   // Shutdown now to make sure ExportedObjectManagerWrapper is destructed first
   // before the mocked objects.
-  newblued_->Shutdown();
+  newblue_daemon_->Shutdown();
 }
 
 }  // namespace bluetooth

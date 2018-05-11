@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "bluetooth/newblued/libnewblue.h"
+
 namespace {
 
 // Chrome OS device has only 1 Bluetooth adapter, so the name is always hci0.
@@ -29,8 +31,8 @@ void OnInterfaceExported(std::string object_path,
 
 namespace bluetooth {
 
-NewblueDaemon::NewblueDaemon()
-    : newblue_(std::make_unique<Newblue>()), weak_ptr_factory_(this) {}
+NewblueDaemon::NewblueDaemon(std::unique_ptr<Newblue> newblue)
+    : newblue_(std::move(newblue)), weak_ptr_factory_(this) {}
 
 bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus) {
   bus_ = bus;

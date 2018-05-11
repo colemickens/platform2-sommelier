@@ -6,6 +6,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "bluetooth/common/dbus_daemon.h"
+#include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/newblue_daemon.h"
 
 int main(int argc, char** argv) {
@@ -14,6 +15,8 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  bluetooth::DBusDaemon daemon(std::make_unique<bluetooth::NewblueDaemon>());
+  bluetooth::DBusDaemon daemon(std::make_unique<bluetooth::NewblueDaemon>(
+      std::make_unique<bluetooth::Newblue>(
+          std::make_unique<bluetooth::LibNewblue>())));
   return daemon.Run();
 }
