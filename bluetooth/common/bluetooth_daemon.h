@@ -10,6 +10,8 @@
 
 namespace bluetooth {
 
+class DBusDaemon;
+
 // The interface of bluetooth::DBusDaemon's delegate.
 class BluetoothDaemon {
  public:
@@ -18,7 +20,9 @@ class BluetoothDaemon {
 
   // Initializes the daemon's D-Bus operation.
   // Returns true if succeeds, false otherwise.
-  virtual bool Init(scoped_refptr<dbus::Bus> bus) = 0;
+  // |bus| is the main D-Bus connection provided by DBusDaemon.
+  // |dbus_daemon| refers to the delegator (DBusDaemon). Pointer is not owned.
+  virtual bool Init(scoped_refptr<dbus::Bus> bus, DBusDaemon* dbus_daemon) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BluetoothDaemon);

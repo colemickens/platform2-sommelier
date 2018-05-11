@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/at_exit.h>
-#include <base/logging.h>
-#include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 

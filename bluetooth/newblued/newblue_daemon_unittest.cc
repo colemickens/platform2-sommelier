@@ -110,7 +110,10 @@ TEST_F(NewblueDaemonTest, Default) {
 
   EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
 
-  newblue_daemon_->Init(bus_);
+  EXPECT_CALL(*newblue_, ListenReadyForUp(_)).Times(1);
+  newblue_daemon_->Init(bus_, nullptr /* no need to access the delegator */);
+  EXPECT_CALL(*newblue_, BringUp()).WillOnce(Return(true));
+  newblue_daemon_->OnHciReadyForUp();
 
   EXPECT_CALL(*exported_adapter_object, Unregister()).Times(1);
   EXPECT_CALL(*exported_root_object, Unregister()).Times(1);

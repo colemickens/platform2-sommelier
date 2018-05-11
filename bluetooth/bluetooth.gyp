@@ -87,6 +87,7 @@
             'dispatcher/object_manager_interface_multiplexer_unittest.cc',
             'dispatcher/suspend_manager_unittest.cc',
             'newblued/newblue_daemon_unittest.cc',
+            'newblued/newblue_unittest.cc',
           ],
         },
       ],

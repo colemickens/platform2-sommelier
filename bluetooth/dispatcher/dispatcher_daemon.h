@@ -18,10 +18,10 @@ class DispatcherDaemon : public BluetoothDaemon {
  public:
   // |passthrough_mode|: Pure D-Bus forwarding to/from BlueZ or NewBlue.
   explicit DispatcherDaemon(PassthroughMode passthrough_mode);
-  ~DispatcherDaemon() = default;
+  ~DispatcherDaemon() override = default;
 
   // Initializes the daemon D-Bus operations.
-  bool Init(scoped_refptr<dbus::Bus> bus) override;
+  bool Init(scoped_refptr<dbus::Bus> bus, DBusDaemon* dbus_daemon) override;
 
  private:
   // The suspend/resume handler for pausing/unpausing discovery during system

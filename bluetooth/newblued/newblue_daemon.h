@@ -23,11 +23,14 @@ class NewblueDaemon : public BluetoothDaemon {
   explicit NewblueDaemon(std::unique_ptr<Newblue> newblue);
   ~NewblueDaemon() override = default;
 
-  // Initializes D-Bus and NewBlue stack.
-  bool Init(scoped_refptr<dbus::Bus> bus) override;
+  // BluetoothDaemon override:
+  bool Init(scoped_refptr<dbus::Bus> bus, DBusDaemon* dbus_daemon) override;
 
   // Frees up all resources. Currently only needed in test.
   void Shutdown();
+
+  // Called when NewBlue is ready to be brought up.
+  void OnHciReadyForUp();
 
  private:
   // Registers GetAll/Get/Set method handlers.
@@ -47,6 +50,8 @@ class NewblueDaemon : public BluetoothDaemon {
       exported_object_manager_wrapper_;
 
   std::unique_ptr<Newblue> newblue_;
+
+  DBusDaemon* dbus_daemon_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

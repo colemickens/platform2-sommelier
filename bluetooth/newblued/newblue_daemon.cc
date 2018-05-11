@@ -8,9 +8,13 @@
 #include <string>
 #include <utility>
 
+#include <sysexits.h>
+
 #include <base/logging.h>
+#include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "bluetooth/common/dbus_daemon.h"
 #include "bluetooth/newblued/libnewblue.h"
 
 namespace {
@@ -34,8 +38,10 @@ namespace bluetooth {
 NewblueDaemon::NewblueDaemon(std::unique_ptr<Newblue> newblue)
     : newblue_(std::move(newblue)), weak_ptr_factory_(this) {}
 
-bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus) {
+bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
+                         DBusDaemon* dbus_daemon) {
   bus_ = bus;
+  dbus_daemon_ = dbus_daemon;
 
   if (!bus_->RequestOwnershipAndBlock(
           newblue_object_manager::kNewblueObjectManagerServiceName,
@@ -62,7 +68,9 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus) {
     return false;
   }
 
-  ExportAdapterInterface();
+  newblue_->ListenReadyForUp(
+      base::Bind(&NewblueDaemon::OnHciReadyForUp, base::Unretained(this)));
+
   LOG(INFO) << "newblued initialized";
   return true;
 }
@@ -70,6 +78,24 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus) {
 void NewblueDaemon::Shutdown() {
   newblue_.reset();
   exported_object_manager_wrapper_.reset();
+}
+
+void NewblueDaemon::OnHciReadyForUp() {
+  VLOG(1) << "NewBlue ready for up";
+
+  // Workaround to avoid immediately bringing up the stack as this may result
+  // in chip hang.
+  // TODO(sonnysasaka): Remove this sleep when the kernel LE splitter bug
+  // is fixed(https://crbug.com/852446).
+  base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(1));
+
+  if (!newblue_->BringUp()) {
+    LOG(ERROR) << "error bringing up NewBlue";
+    dbus_daemon_->QuitWithExitCode(EX_UNAVAILABLE);
+    return;
+  }
+  ExportAdapterInterface();
+  LOG(INFO) << "NewBlue is up";
 }
 
 void NewblueDaemon::SetupPropertyMethodHandlers(

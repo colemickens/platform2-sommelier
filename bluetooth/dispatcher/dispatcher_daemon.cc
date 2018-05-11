@@ -11,7 +11,8 @@ namespace bluetooth {
 DispatcherDaemon::DispatcherDaemon(PassthroughMode passthrough_mode)
     : passthrough_mode_(passthrough_mode) {}
 
-bool DispatcherDaemon::Init(scoped_refptr<dbus::Bus> bus) {
+bool DispatcherDaemon::Init(scoped_refptr<dbus::Bus> bus,
+                            DBusDaemon* dbus_daemon) {
   LOG(INFO) << "Bluetooth daemon started";
 
   suspend_manager_ = std::make_unique<SuspendManager>(bus);
