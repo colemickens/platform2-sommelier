@@ -9,6 +9,7 @@
 
 #include <base/message_loop/message_loop.h>
 #include <brillo/bind_lambda.h>
+#include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
@@ -19,7 +20,6 @@
 #include <gtest/gtest.h>
 
 #include "bluetooth/dispatcher/mock_dbus_connection_factory.h"
-#include "bluetooth/dispatcher/more_mock_bus.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -82,7 +82,7 @@ class TestInterfaceHandler : public InterfaceHandler {
 class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
  public:
   void SetUp() override {
-    bus_ = new MoreMockBus(dbus::Bus::Options());
+    bus_ = new dbus::MockBus(dbus::Bus::Options());
     dbus_connection_factory_ = std::make_unique<MockDBusConnectionFactory>();
     EXPECT_CALL(*bus_, GetDBusTaskRunner())
         .Times(1)
@@ -218,7 +218,7 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
       const std::string& interface_name,
       const std::string& method_name,
       const dbus::ObjectPath object_path,
-      scoped_refptr<MoreMockBus> forwarding_bus,
+      scoped_refptr<dbus::MockBus> forwarding_bus,
       dbus::ExportedObject::MethodCallCallback* tested_method_handler,
       void (ImpersonationObjectManagerInterfaceTest::*stub_method_handler)(
           dbus::MethodCall*,
@@ -288,7 +288,7 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
   }
 
   base::MessageLoop message_loop_;
-  scoped_refptr<MoreMockBus> bus_;
+  scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> object_manager_object_proxy_;
   scoped_refptr<dbus::MockObjectProxy> object_proxy_;
   scoped_refptr<dbus::MockObjectManager> object_manager_;
@@ -640,7 +640,8 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MethodHandler) {
       .Times(1);
   impersonation_om_interface->ObjectAdded(kTestServiceName, object_path1,
                                           kTestInterfaceName1);
-  scoped_refptr<MoreMockBus> client_bus = new MoreMockBus(dbus::Bus::Options());
+  scoped_refptr<dbus::MockBus> client_bus =
+      new dbus::MockBus(dbus::Bus::Options());
   EXPECT_CALL(*dbus_connection_factory_, GetNewBus())
       .WillOnce(Return(client_bus));
   // Tests that method call should be forwarding to the source service via

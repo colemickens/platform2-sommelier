@@ -9,12 +9,12 @@
 
 #include <base/strings/stringprintf.h>
 #include <brillo/bind_lambda.h>
+#include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 
 #include "bluetooth/dispatcher/dbus_connection_factory.h"
 #include "bluetooth/dispatcher/mock_dbus_connection_factory.h"
-#include "bluetooth/dispatcher/more_mock_bus.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -39,7 +39,7 @@ constexpr char kNameOwnerChangedMember[] = "NameOwnerChanged";
 class DispatcherClientTest : public ::testing::Test {
  public:
   void SetUp() override {
-    bus_ = new MoreMockBus(dbus::Bus::Options());
+    bus_ = new dbus::MockBus(dbus::Bus::Options());
     dbus_connection_factory_ = std::make_unique<MockDBusConnectionFactory>();
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
   }
@@ -49,7 +49,7 @@ class DispatcherClientTest : public ::testing::Test {
   void OnClientUnavailable() { client_unavailable_callback_count_++; }
 
  protected:
-  scoped_refptr<MoreMockBus> bus_;
+  scoped_refptr<dbus::MockBus> bus_;
   std::unique_ptr<MockDBusConnectionFactory> dbus_connection_factory_;
 
   int client_unavailable_callback_count_ = 0;
@@ -98,7 +98,8 @@ TEST_F(DispatcherClientTest, WatchClientUnavailable) {
 }
 
 TEST_F(DispatcherClientTest, GetClientBus) {
-  scoped_refptr<MoreMockBus> client_bus = new MoreMockBus(dbus::Bus::Options());
+  scoped_refptr<dbus::MockBus> client_bus =
+      new dbus::MockBus(dbus::Bus::Options());
 
   EXPECT_CALL(*dbus_connection_factory_, GetNewBus())
       .WillOnce(Return(client_bus));
