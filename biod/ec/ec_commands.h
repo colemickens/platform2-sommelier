@@ -1248,6 +1248,10 @@ enum ec_feature_code {
 	EC_FEATURE_UNIFIED_WAKE_MASKS = 32,
 	/* EC supports 64-bit host events */
 	EC_FEATURE_HOST_EVENT64 = 33,
+	/* EC runs code in RAM (not in place, a.k.a. XIP) */
+	EC_FEATURE_EXEC_IN_RAM = 34,
+	/* EC supports CEC commands */
+	EC_FEATURE_CEC = 35,
 };
 
 #define EC_FEATURE_MASK_0(event_code) (1UL << (event_code % 32))
@@ -2275,6 +2279,9 @@ enum motionsensor_chip {
 	MOTIONSENSE_CHIP_OPT3001 = 10,
 	MOTIONSENSE_CHIP_BH1730 = 11,
 	MOTIONSENSE_CHIP_GPIO = 12,
+	MOTIONSENSE_CHIP_LIS2DH = 13,
+	MOTIONSENSE_CHIP_LSM6DSM = 14,
+	MOTIONSENSE_CHIP_MAX,
 };
 
 /* List of orientation positions */
@@ -3164,6 +3171,9 @@ enum ec_mkbp_event {
 	 */
 	EC_MKBP_EVENT_HOST_EVENT64 = 7,
 
+	/* Notify the AP that something happened on CEC */
+	EC_MKBP_EVENT_CEC = 8,
+
 	/* Number of MKBP events */
 	EC_MKBP_EVENT_COUNT,
 };
@@ -3188,6 +3198,9 @@ union __ec_align_offset1 ec_response_get_next_data {
 	uint32_t fp_events;
 
 	uint32_t sysrq;
+
+	/* CEC events from enum mkbp_cec_event */
+	uint32_t cec_events;
 };
 
 struct __ec_align1 ec_response_get_next_event {
@@ -3220,6 +3233,10 @@ struct __ec_align2 ec_response_keyboard_factory_test {
 #define EC_MKBP_FP_ENROLL_PROGRESS_OFFSET 4
 #define EC_MKBP_FP_ENROLL_PROGRESS(fpe) (((fpe) & 0x00000FF0) \
 					 >> EC_MKBP_FP_ENROLL_PROGRESS_OFFSET)
+#define EC_MKBP_FP_MATCH_IDX_OFFSET 12
+#define EC_MKBP_FP_MATCH_IDX_MASK 0x0000F000
+#define EC_MKBP_FP_MATCH_IDX(fpe) (((fpe) & EC_MKBP_FP_MATCH_IDX_MASK) \
+					 >> EC_MKBP_FP_MATCH_IDX_OFFSET)
 #define EC_MKBP_FP_ENROLL               (1 << 27)
 #define EC_MKBP_FP_MATCH                (1 << 28)
 #define EC_MKBP_FP_FINGER_DOWN          (1 << 29)
@@ -4078,6 +4095,68 @@ struct __ec_align1 ec_params_i2c_passthru_protect {
 
 struct __ec_align1 ec_response_i2c_passthru_protect {
 	uint8_t status;		/* Status flags (0: unlocked, 1: locked) */
+};
+
+
+/*****************************************************************************/
+/*
+ *  HDMI CEC commands
+ *
+ * These commands are for sending and receiving message via HDMI CEC
+ */
+
+#define MAX_CEC_MSG_LEN 16
+
+/* CEC message from the AP to be written on the CEC bus */
+#define EC_CMD_CEC_WRITE_MSG 0x00B8
+
+/* Message to write to the CEC bus */
+struct __ec_align1 ec_params_cec_write {
+	uint8_t msg[MAX_CEC_MSG_LEN];
+};
+
+/* CEC message from a CEC sink reported back to the AP */
+#define EC_CMD_CEC_READ_MSG 0x00B9
+
+/* Message read from to the CEC bus */
+struct __ec_align1 ec_response_cec_read {
+	uint8_t msg[MAX_CEC_MSG_LEN];
+};
+
+/* Set various CEC parameters */
+#define EC_CMD_CEC_SET 0x00BA
+
+struct __ec_align1 ec_params_cec_set {
+	uint8_t cmd; /* enum cec_command */
+	uint8_t val;
+};
+
+/* Read various CEC parameters */
+#define EC_CMD_CEC_GET 0x00BB
+
+struct __ec_align1 ec_params_cec_get {
+	uint8_t cmd; /* enum cec_command */
+};
+
+struct __ec_align1 ec_response_cec_get {
+	uint8_t val;
+};
+
+enum cec_command {
+	/* CEC reading, writing and events enable */
+	CEC_CMD_ENABLE,
+	/* CEC logical address  */
+	CEC_CMD_LOGICAL_ADDRESS,
+};
+
+/* Events from CEC to AP */
+enum mkbp_cec_event {
+	/* Outgoing message was acknowledged by a follower */
+	EC_MKBP_CEC_SEND_OK			= 1 << 0,
+	/* Outgoing message was not acknowledged */
+	EC_MKBP_CEC_SEND_FAILED			= 1 << 1,
+	/* Incoming message can be read out by AP */
+	EC_MKBP_CEC_HAVE_DATA			= 1 << 2,
 };
 
 /*****************************************************************************/
