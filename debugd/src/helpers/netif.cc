@@ -71,7 +71,6 @@
 
 using base::DictionaryValue;
 using base::ListValue;
-using base::StringValue;
 using base::Value;
 
 std::string getmac(int fd, const char *ifname) {
@@ -131,7 +130,7 @@ std::unique_ptr<ListValue> flags2list(unsigned int flags) {
   auto lv = std::make_unique<ListValue>();
   for (unsigned int i = 0; i < arraysize(ifflags); ++i) {
     if (flags & ifflags[i].bit)
-      lv->Append(std::make_unique<StringValue>(ifflags[i].name));
+      lv->Append(std::make_unique<Value>(ifflags[i].name));
   }
   if (lv->empty())
     return nullptr;
@@ -180,7 +179,7 @@ void NetInterface::AddAddressTo(DictionaryValue *dv, struct sockaddr *sa) {
     dv->Set("addrs", std::make_unique<ListValue>());
   ListValue *lv;
   dv->Get("addrs", reinterpret_cast<Value**>(&lv));
-  lv->Append(std::make_unique<StringValue>(sockaddr2str(sa)));
+  lv->Append(std::make_unique<Value>(sockaddr2str(sa)));
 }
 
 void NetInterface::AddAddress(struct ifaddrs *ifa) {
@@ -195,12 +194,12 @@ void NetInterface::AddAddress(struct ifaddrs *ifa) {
     AddAddressTo(ipv4_.get(), ifa->ifa_addr);
     if (!ipv4_->HasKey("mask")) {
       ipv4_->Set("mask",
-                 std::make_unique<StringValue>(sockaddr2str(ifa->ifa_netmask)));
+                 std::make_unique<Value>(sockaddr2str(ifa->ifa_netmask)));
     }
     if (!ipv4_->HasKey("destination")) {
       ipv4_->Set(
           "destination",
-          std::make_unique<StringValue>(sockaddr2str(ifa->ifa_broadaddr)));
+          std::make_unique<Value>(sockaddr2str(ifa->ifa_broadaddr)));
     }
   } else if (ifa->ifa_addr->sa_family == AF_INET6) {
     // An IPv6 address.
@@ -220,7 +219,7 @@ std::unique_ptr<Value> NetInterface::ToValue() const {
     dv->Set("flags", flags_->CreateDeepCopy());
   if (signal_strengths_)
     dv->Set("signal-strengths", signal_strengths_->CreateDeepCopy());
-  dv->Set("mac", std::make_unique<StringValue>(mac_));
+  dv->Set("mac", std::make_unique<Value>(mac_));
   return std::move(dv);
 }
 
