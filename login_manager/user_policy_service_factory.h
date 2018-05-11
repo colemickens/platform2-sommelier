@@ -23,7 +23,7 @@ class SystemUtils;
 // in the root-owned part of the user's cryptohome.
 class UserPolicyServiceFactory {
  public:
-  UserPolicyServiceFactory(uid_t uid, NssUtil* nss, SystemUtils* system_utils);
+  UserPolicyServiceFactory(NssUtil* nss, SystemUtils* system_utils);
   virtual ~UserPolicyServiceFactory();
 
   // Creates a new user policy service instance.
@@ -39,9 +39,6 @@ class UserPolicyServiceFactory {
   // persisting key copies in a directory keyed by sanitized |username|.
   std::unique_ptr<PolicyService> CreateInternal(
       const std::string& username, const base::FilePath& policy_dir);
-
-  // UID to check for.
-  uid_t uid_;
 
   NssUtil* nss_;
   SystemUtils* system_utils_;

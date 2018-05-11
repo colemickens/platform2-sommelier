@@ -427,7 +427,7 @@ bool SessionManagerImpl::Initialize() {
 
     DCHECK(!user_policy_factory_);
     user_policy_factory_ =
-        std::make_unique<UserPolicyServiceFactory>(getuid(), nss_, system_);
+        std::make_unique<UserPolicyServiceFactory>(nss_, system_);
 
     device_local_account_manager_ = std::make_unique<DeviceLocalAccountManager>(
         base::FilePath(kDeviceLocalAccountStateDir), owner_key_),

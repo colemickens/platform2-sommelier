@@ -94,7 +94,7 @@ MockSystemUtils::MockSystemUtils() = default;
 MockSystemUtils::~MockSystemUtils() = default;
 
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
-    : UserPolicyServiceFactory(0, nullptr, nullptr) {}
+    : UserPolicyServiceFactory(nullptr, nullptr) {}
 MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() = default;
 
 }  // namespace login_manager

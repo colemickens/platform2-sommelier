@@ -49,10 +49,9 @@ const base::FilePath::CharType kPolicyKeyCopyFile[] =
 
 }  // namespace
 
-UserPolicyServiceFactory::UserPolicyServiceFactory(uid_t uid,
-                                                   NssUtil* nss,
+UserPolicyServiceFactory::UserPolicyServiceFactory(NssUtil* nss,
                                                    SystemUtils* system_utils)
-    : uid_(uid), nss_(nss), system_utils_(system_utils) {}
+    : nss_(nss), system_utils_(system_utils) {}
 
 UserPolicyServiceFactory::~UserPolicyServiceFactory() {}
 
