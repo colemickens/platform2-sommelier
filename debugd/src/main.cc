@@ -27,24 +27,6 @@ void enter_vfs_namespace() {
   minijail_destroy(j);
 }
 
-// @brief Sets up a tmpfs visible to this program and its descendants.
-//
-// The created tmpfs is mounted at /debugd.
-void make_tmpfs() {
-  int r = mount("none", "/debugd", "tmpfs", MS_NODEV | MS_NOSUID | MS_NOEXEC,
-                nullptr);
-  if (r < 0)
-    PLOG(FATAL) << "mount() failed";
-}
-
-// @brief Sets up directories needed by helper programs.
-//
-void setup_dirs() {
-  int r = mkdir("/debugd/touchpad", S_IRWXU);
-  if (r < 0)
-    PLOG(FATAL) << "mkdir(\"/debugd/touchpad\") failed";
-}
-
 class Daemon : public brillo::DBusServiceDaemon {
  public:
   Daemon() : DBusServiceDaemon(debugd::kDebugdServiceName) {}
@@ -69,8 +51,6 @@ int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   enter_vfs_namespace();
-  make_tmpfs();
-  setup_dirs();
   Daemon().Run();
   return 0;
 }
