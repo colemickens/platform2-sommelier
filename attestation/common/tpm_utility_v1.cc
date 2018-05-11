@@ -65,7 +65,7 @@ std::string GetFirstByte(const char* file_name) {
 }
 
 BYTE* StringAsTSSBuffer(std::string* s) {
-  return reinterpret_cast<BYTE*>(string_as_array(s));
+  return reinterpret_cast<BYTE*>(base::string_as_array(s));
 }
 
 std::string TSSBufferAsString(const BYTE* buffer, size_t length) {
@@ -719,7 +719,7 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
   }
   public_key_der->resize(der_length);
   unsigned char* der_buffer =
-      reinterpret_cast<unsigned char*>(string_as_array(public_key_der));
+      reinterpret_cast<unsigned char*>(base::string_as_array(public_key_der));
   der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
