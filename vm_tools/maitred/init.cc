@@ -263,7 +263,7 @@ constexpr struct {
     },
     {
         .path = "/run/sshd",
-        .mode = 0755,
+        .mode = 01777,
     },
     {
         .path = "/run/tokens",
