@@ -159,9 +159,12 @@ def _GetVarTemplateValue(val, template_input, template_vars):
   for template_var in TEMPLATE_PATTERN.findall(val):
     replace_string = '{{%s}}' % template_var
     if template_var not in template_vars:
+      formatted_vars = json.dumps(template_vars, sort_keys=True, indent=2)
+      formatted_input = json.dumps(template_input, sort_keys=True, indent=2)
+      error_vals = (template_var, val, formatted_input, formatted_vars)
       raise ValidationError("Referenced template variable '%s' doesn't "
-                            "exist string '%s'.\nInput: %s\nVariables:%s" %
-                            (template_var, val, template_input, template_vars))
+                            "exist string '%s'.\nInput:\n %s\nVariables:\n%s" %
+                            error_vals)
     var_value = template_vars[template_var]
 
     # This is an ugly side effect of templating with primitive values.
