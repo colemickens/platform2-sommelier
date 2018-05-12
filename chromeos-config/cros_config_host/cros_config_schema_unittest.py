@@ -39,10 +39,10 @@ chromeos:
                 $card: 'bxtda7219max'
                 cras-config-dir: '{{$name}}'
                 ucm-suffix: '{{$name}}'
-                $dsp-ini: "{{cras-config-dir}}/dsp.ini"
                 files:
                   - source: "{{$dsp-ini}}"
                     destination: "/etc/cras/{{$dsp-ini}}"
+                    $dsp-ini: "{{cras-config-dir}}/dsp.ini"
             brand-code: '{{$brand-code}}'
             identity:
               platform-name: "Reef"

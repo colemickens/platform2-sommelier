@@ -195,16 +195,17 @@ def _ApplyTemplateVars(template_input, template_vars):
     template_input: Input that will be updated based on the templating schema.
     template_vars: A mapping of all the variables values available.
   """
-  to_walk = []
+  maps = []
+  lists = []
   for key in template_input.keys():
     val = template_input[key]
     if isinstance(val, collections.Mapping):
-      to_walk.append(val)
+      maps.append(val)
     elif isinstance(val, list):
       index = 0
       for list_val in val:
         if isinstance(list_val, collections.Mapping):
-          to_walk.append(list_val)
+          lists.append(list_val)
         elif isinstance(list_val, basestring):
           val[index] = _GetVarTemplateValue(list_val, template_input,
                                             template_vars)
@@ -214,8 +215,16 @@ def _ApplyTemplateVars(template_input, template_vars):
                                                  template_vars)
 
   # Do this last so all variables from the parent are in scope first.
-  for value in to_walk:
+  for value in maps:
     _ApplyTemplateVars(value, template_vars)
+
+  # Object lists need their variables put in scope on a per list item basis
+  for value in lists:
+    list_item_vars = copy.deepcopy(template_vars)
+    _SetTemplateVars(value, list_item_vars)
+    while _HasTemplateVariables(list_item_vars):
+      _ApplyTemplateVars(list_item_vars, list_item_vars)
+    _ApplyTemplateVars(value, list_item_vars)
 
 
 def _DeleteTemplateOnlyVars(template_input):
@@ -229,6 +238,10 @@ def _DeleteTemplateOnlyVars(template_input):
     val = template_input[key]
     if isinstance(val, collections.Mapping):
       _DeleteTemplateOnlyVars(val)
+    elif type(val) is list:
+      for v in val:
+        if isinstance(v, collections.Mapping):
+          _DeleteTemplateOnlyVars(v)
     elif key.startswith('$'):
       to_delete.append(key)
 
