@@ -7468,7 +7468,11 @@ int main(int argc, char **argv) {
       virtwl_display_fd = vws[1];
 
       rv = ioctl(xwl.virtwl_fd, VIRTWL_IOCTL_NEW, &new_ctx);
-      assert(!rv);
+      if (rv) {
+        fprintf(stderr, "error: failed to create virtwl context: %s\n",
+                strerror(errno));
+        return EXIT_FAILURE;
+      }
 
       xwl.virtwl_ctx_fd = new_ctx.fd;
 
