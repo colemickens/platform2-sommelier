@@ -1153,6 +1153,7 @@ static void xwl_window_update(struct xwl_window *window) {
       zxdg_surface_v6_destroy(window->xdg_surface);
       window->xdg_surface = NULL;
     }
+    window->realized = 0;
     return;
   }
 
@@ -5235,6 +5236,13 @@ static void xwl_handle_reparent_notify(struct xwl *xwl,
     int width = 1;
     int height = 1;
     int border_width = 0;
+
+    // Return early if window is already tracked. This happens when we
+    // reparent an unampped window back to the root window.
+    window = xwl_lookup_window(xwl, event->window);
+    if (window)
+      return;
+
     xcb_get_geometry_reply_t *geometry_reply = xcb_get_geometry_reply(
         xwl->connection, xcb_get_geometry(xwl->connection, event->window),
         NULL);
@@ -5310,18 +5318,12 @@ static void xwl_handle_map_request(struct xwl *xwl,
     }
   }
 
-  if (window->name) {
-    free(window->name);
-    window->name = NULL;
-  }
-  if (window->clazz) {
-    free(window->clazz);
-    window->clazz = NULL;
-  }
-  if (window->startup_id) {
-    free(window->startup_id);
-    window->startup_id = NULL;
-  }
+  free(window->name);
+  window->name = NULL;
+  free(window->clazz);
+  window->clazz = NULL;
+  free(window->startup_id);
+  window->startup_id = NULL;
   window->transient_for = XCB_WINDOW_NONE;
   window->client_leader = XCB_WINDOW_NONE;
   window->decorated = 1;
@@ -5518,8 +5520,19 @@ static void xwl_handle_unmap_notify(struct xwl *xwl,
 
   xwl_window_set_wm_state(window, WM_STATE_WITHDRAWN);
 
-  if (window->frame_id != XCB_WINDOW_NONE)
-    xcb_unmap_window(xwl->connection, window->frame_id);
+  // Reparent window and destroy frame if it exists.
+  if (window->frame_id != XCB_WINDOW_NONE) {
+    xcb_reparent_window(xwl->connection, window->id, xwl->screen->root,
+                        window->x, window->y);
+    xcb_destroy_window(xwl->connection, window->frame_id);
+    window->frame_id = XCB_WINDOW_NONE;
+  }
+
+  // Reset properties to unmanaged state in case the window transitions to
+  // an override-redirect window.
+  window->managed = 0;
+  window->decorated = 0;
+  window->size_flags = P_POSITION;
 }
 
 static void xwl_handle_configure_request(struct xwl *xwl,
