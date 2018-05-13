@@ -5424,16 +5424,8 @@ static void xwl_handle_map_request(struct xwl *xwl,
 
   window->border_width = 0;
   xwl_adjust_window_size_for_screen_size(window);
-  if (window->size_flags & (US_POSITION | P_POSITION)) {
-    // x/y fields are obsolete but some clients still expect them to be
-    // honored so use them if greater than zero.
-    if (size_hints.x > 0)
-      window->x = size_hints.x;
-    if (size_hints.y > 0)
-      window->y = size_hints.y;
-  } else {
+  if (!(window->size_flags & (US_POSITION | P_POSITION)))
     xwl_adjust_window_position_for_screen_size(window);
-  }
 
   values[0] = window->width;
   values[1] = window->height;
