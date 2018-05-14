@@ -15,8 +15,8 @@
 void ProgressCallback(cert_provision::Status status,
                       int progress,
                       const std::string& message) {
-  LOG(INFO) << "ProgressCallback: " << status << ", " << progress << "%: "
-            << message;
+  LOG(INFO) << "ProgressCallback: " << static_cast<int>(status) << ", "
+            << progress << "%: " << message;
 }
 
 void PrintHelp() {
@@ -83,19 +83,19 @@ int main(int argc, char** argv) {
         cert_profile,
         base::Bind(&ProgressCallback));
     if (sts != cert_provision::Status::Success) {
-      LOG(ERROR) << "ProvisionCertificate returned " << sts;
+      LOG(ERROR) << "ProvisionCertificate returned " << static_cast<int>(sts);
       return 3;
     }
-    VLOG(1) << "ProvisionCertificate returned " << sts;
+    VLOG(1) << "ProvisionCertificate returned " << static_cast<int>(sts);
   } else if (cl->HasSwitch("get")) {
     std::string certificate;
     sts = cert_provision::GetCertificate(
         cert_label, cl->HasSwitch("include_chain"), &certificate);
     if (sts != cert_provision::Status::Success) {
-      LOG(ERROR) << "GetCertificate returned " << sts;
+      LOG(ERROR) << "GetCertificate returned " << static_cast<int>(sts);
       return 3;
     }
-    VLOG(1) << "GetCertificate returned " << sts;
+    VLOG(1) << "GetCertificate returned " << static_cast<int>(sts);
     base::FilePath out(cl->GetSwitchValueASCII("out"));
     if (!out.empty()) {
       if (base::WriteFile(out, certificate.data(), certificate.size()) < 0) {
@@ -132,10 +132,10 @@ int main(int argc, char** argv) {
     sts = cert_provision::Sign(cert_label, sign_mechanism,
                                data, &sig);
     if (sts != cert_provision::Status::Success) {
-      LOG(ERROR) << "Sign returned " << sts;
+      LOG(ERROR) << "Sign returned " << static_cast<int>(sts);
       return 3;
     }
-    VLOG(1) << "Sign returned " << sts;
+    VLOG(1) << "Sign returned " << static_cast<int>(sts);
     base::FilePath out(cl->GetSwitchValueASCII("out"));
     if (!out.empty()) {
       if (base::WriteFile(out, sig.data(), sig.size()) < 0) {
