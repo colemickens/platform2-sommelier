@@ -305,7 +305,8 @@ Request* ProtocolHandler::GetRequest(const std::string& request_id) const {
 // on particular socket file descriptor.
 class ProtocolHandler::Watcher final : public base::MessageLoopForIO::Watcher {
  public:
-  Watcher(ProtocolHandler* handler, int fd) : fd_{fd}, handler_{handler} {}
+  Watcher(ProtocolHandler* handler, int fd)
+      : fd_{fd}, handler_{handler}, controller_{FROM_HERE} {}
 
   void Watch(bool read, bool write) {
     if (read == watching_read_ && write == watching_write_ && !triggered_)
