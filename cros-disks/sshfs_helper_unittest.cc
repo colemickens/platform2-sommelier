@@ -132,10 +132,13 @@ TEST_F(SshfsHelperTest, CreateMounter_CopyFiles) {
       .WillOnce(Return(true));
   auto mounter = helper_.CreateMounter(
       kWorkingDir, kSomeSource, kMountDir,
-      {"IdentityFile=/foo/bar", "UserKnownHostsFile=/foo/baz"});
+      {"IdentityFile=/foo/bar", "UserKnownHostsFile=/foo/baz",
+       "HostName=localhost", "Port=2222"});
   string opts = mounter->mount_options().ToString();
   EXPECT_THAT(opts, HasSubstr("IdentityFile=/wkdir/bar"));
   EXPECT_THAT(opts, HasSubstr("UserKnownHostsFile=/wkdir/baz"));
+  EXPECT_THAT(opts, HasSubstr("HostName=localhost"));
+  EXPECT_THAT(opts, HasSubstr("Port=2222"));
   EXPECT_THAT(opts, Not(HasSubstr("/foo/bar")));
   EXPECT_THAT(opts, Not(HasSubstr("/foo/baz")));
 }

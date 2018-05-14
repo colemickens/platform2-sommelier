@@ -27,6 +27,8 @@ const char kType[] = "sshfs";
 const char kOptionFollowSymlinks[] = "follow_symlinks";
 const char kOptionIdentityFile[] = "IdentityFile=";
 const char kOptionUserKnownHostsFile[] = "UserKnownHostsFile=";
+const char kOptionHostName[] = "HostName=";
+const char kOptionPort[] = "Port=";
 
 const char* const kEnforcedOptions[] = {
     "KbdInteractiveAuthentication=no",
@@ -73,6 +75,8 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
   mount_options.WhitelistOption(kOptionFollowSymlinks);
   mount_options.WhitelistOptionPrefix(kOptionIdentityFile);
   mount_options.WhitelistOptionPrefix(kOptionUserKnownHostsFile);
+  mount_options.WhitelistOptionPrefix(kOptionHostName);
+  mount_options.WhitelistOptionPrefix(kOptionPort);
   mount_options.Initialize(opts, true, base::IntToString(files_uid),
                            base::IntToString(files_gid));
 
