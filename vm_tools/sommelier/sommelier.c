@@ -681,8 +681,6 @@ struct xwl_mwm_hints {
 
 #define SEND_EVENT_MASK 0x80
 
-#define CAPTION_HEIGHT 32
-
 #define MIN_SCALE 0.1
 #define MAX_SCALE 10.0
 
@@ -5442,9 +5440,12 @@ static void xwl_handle_map_request(struct xwl *xwl,
                        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
                            XCB_CONFIG_WINDOW_BORDER_WIDTH,
                        values);
+  // This needs to match the frame extents of the X11 frame window used
+  // for reparenting or applications tend to be confused. The actual window
+  // frame size used by the host compositor can be different.
   values[0] = 0;
   values[1] = 0;
-  values[2] = window->decorated ? CAPTION_HEIGHT * xwl->scale : 0;
+  values[2] = 0;
   values[3] = 0;
   xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE, window->id,
                       xwl->atoms[ATOM_NET_FRAME_EXTENTS].value,
