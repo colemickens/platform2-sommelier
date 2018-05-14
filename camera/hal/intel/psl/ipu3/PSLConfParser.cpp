@@ -557,6 +557,40 @@ void PSLConfParser::handleSensorInfo(const char *name, const char **atts)
         readNvmData();
     } else if (strcmp(name, "testPattern.bayerFormat") == 0) {
         info->mTestPatternBayerFormat = atts[1];
+    } else if (strcmp(name, "sensor.testPatternMap") == 0) {
+        int size = strlen(atts[1]);
+        char src[size + 1];
+        memset(src, 0, sizeof(src));
+        MEMCPY_S(src, size, atts[1], size);
+        char *savePtr, *tablePtr;
+        int mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+
+        tablePtr = strtok_r(src, ",", &savePtr);
+        while (tablePtr) {
+            if (strcmp(tablePtr, "Off") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+            } else if (strcmp(tablePtr, "ColorBars") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS;
+            } else if (strcmp(tablePtr, "SolidColor") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_SOLID_COLOR;
+            } else if (strcmp(tablePtr, "ColorBarsFadeToGray") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY;
+            } else if (strcmp(tablePtr, "PN9") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_PN9;
+            } else if (strcmp(tablePtr, "Custom1") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_CUSTOM1;
+            } else {
+                LOGE("Test pattern string %s is unknown, please check", tablePtr);
+                return;
+            }
+
+            tablePtr = strtok_r(nullptr, ",", &savePtr);
+            CheckError(tablePtr == nullptr, VOID_VALUE, "Driver test pattern is nullptr");
+
+            info->mTestPatternMap[mode] = atoi(tablePtr);
+
+            tablePtr = strtok_r(nullptr, ",", &savePtr);
+        }
     }
 }
 

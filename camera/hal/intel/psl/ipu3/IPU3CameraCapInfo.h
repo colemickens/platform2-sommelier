@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #ifndef _CAMERA3_HAL_IPU3CAMERACAPINFO_H_
 #define _CAMERA3_HAL_IPU3CAMERACAPINFO_H_
 
+#include <unordered_map>
 #include <string>
 #include <vector>
 #include "PlatformData.h"
@@ -47,6 +48,7 @@ public:
     const ia_binary_data getNvmData(void) const { return mNvmData; };
     const std::string& getGraphSettingsFile(void) const { return mGraphSettingsFile; };
     const std::string getTestPatternBayerFormat(void) const { return mTestPatternBayerFormat; };
+    int getSensorTestPatternMode(int mode) const;
 
     const std::string getMediaCtlEntityName(std::string type) const;
     const std::vector<std::string> getMediaCtlEntityNames(std::string type) const;
@@ -69,6 +71,8 @@ public:
     ia_binary_data mNvmData;
     std::string mGraphSettingsFile;
     std::string mTestPatternBayerFormat;
+    std::unordered_map<int, int> mTestPatternMap; /* key: Android standard test pattern mode
+                                                     value: sensor test pattern mode */
 
 private:
     friend class PSLConfParser;

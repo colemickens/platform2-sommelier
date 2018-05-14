@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,16 @@ const IPU3CameraCapInfo *getIPU3CameraCapInfo(int cameraId)
         cameraId = 0;
     }
     return (IPU3CameraCapInfo *)(PlatformData::getCameraCapInfo(cameraId));
+}
+
+int IPU3CameraCapInfo::getSensorTestPatternMode(int mode) const
+{
+    if (mTestPatternMap.find(mode) == mTestPatternMap.end()) {
+        LOGW("Test pattern mode %d wasn't found in configuration file, return 0", mode);
+        return 0;
+    }
+
+    return mTestPatternMap.at(mode);
 }
 
 const string IPU3CameraCapInfo::getMediaCtlEntityName(string type) const
