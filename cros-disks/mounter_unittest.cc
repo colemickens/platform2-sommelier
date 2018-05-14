@@ -56,16 +56,6 @@ TEST_F(MounterTest, MountReadOnlySucceeded) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
 }
 
-TEST_F(MounterTest, MountReadOnlyFailed) {
-  mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
-                           mount_options_);
-
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_INTERNAL));
-  EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
-}
-
 TEST_F(MounterTest, MountReadWriteSucceeded) {
   options_.push_back("rw");
   mount_options_.Initialize(options_, false, "", "");
@@ -77,32 +67,14 @@ TEST_F(MounterTest, MountReadWriteSucceeded) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
 }
 
-TEST_F(MounterTest, MountReadWriteFailedButReadOnlySucceeded) {
-  options_.push_back("rw");
+TEST_F(MounterTest, MountFailed) {
   mount_options_.Initialize(options_, false, "", "");
   MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
                            mount_options_);
 
   EXPECT_CALL(mounter, MountImpl())
-      .WillOnce(Return(MOUNT_ERROR_INTERNAL))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
-  EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
-}
-
-TEST_F(MounterTest, MountReadWriteAndReadOnlyFailed) {
-  options_.push_back("rw");
-  mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
-                           mount_options_);
-
-  EXPECT_CALL(mounter, MountImpl())
-      .WillOnce(Return(MOUNT_ERROR_INTERNAL))
       .WillOnce(Return(MOUNT_ERROR_INTERNAL));
-  EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
   EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
-  EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
 }
 
 }  // namespace cros_disks

@@ -26,14 +26,6 @@ Mounter::Mounter(const string& source_path,
 
 MountErrorType Mounter::Mount() {
   MountErrorType error = MountImpl();
-  if (error != MOUNT_ERROR_NONE) {
-    // Try to mount the filesystem read-only if mounting it read-write failed.
-    if (!mount_options_.IsReadOnlyOptionSet()) {
-      LOG(INFO) << "Trying to mount '" << source_path_ << "' read-only";
-      mount_options_.SetReadOnlyOption();
-      error = MountImpl();
-    }
-  }
 
   if (error == MOUNT_ERROR_NONE) {
     LOG(INFO) << "Mounted '" << source_path_ << "' to '" << target_path_

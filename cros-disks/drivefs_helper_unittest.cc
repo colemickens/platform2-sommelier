@@ -230,8 +230,7 @@ TEST_F(DrivefsHelperTest, CreateMounter_BindMountFails) {
       .WillOnce(Return(true));
   EXPECT_CALL(platform_,
               Mount("/foo/bar", "/tmp/working_dir", _, HasBindBitSet(), _))
-      .Times(2)
-      .WillRepeatedly(Return(false));
+      .WillOnce(Return(false));
 
   EXPECT_FALSE(helper_.CreateMounter(
       base::FilePath("/tmp/working_dir"), Uri::Parse("drivefs://id"),

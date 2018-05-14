@@ -501,6 +501,18 @@ MountErrorType DiskManager::DoMount(const string& source_path,
   CHECK(mounter) << "Failed to create a mounter";
 
   MountErrorType error_type = mounter->Mount();
+  if (error_type != MOUNT_ERROR_NONE) {
+    // Try to mount the filesystem read-only if mounting it read-write failed.
+    if (!mounter->mount_options().IsReadOnlyOptionSet()) {
+      LOG(INFO) << "Trying to mount '" << source_path << "' read-only";
+      vector<string> ro_options = options;
+      ro_options.push_back("ro");
+      mounter = CreateMounter(disk, *filesystem, mount_path, ro_options);
+      CHECK(mounter) << "Failed to create a 'ro' mounter";
+      error_type = mounter->Mount();
+    }
+  }
+
   if (error_type == MOUNT_ERROR_NONE) {
     ScheduleEjectOnUnmount(mount_path, disk);
   }
