@@ -40,6 +40,8 @@ extern const char kAndroidCacheFilesAttribute[];
 extern const char kAndroidCacheInodeAttribute[];
 extern const char kAndroidCodeCacheInodeAttribute[];
 extern const char kTrackedDirectoryNameAttribute[];
+extern const base::FilePath::CharType kVaultDir[];
+extern const base::FilePath::CharType kMountDir[];
 
 class Credentials;
 class Platform;
@@ -113,6 +115,24 @@ class HomeDirs {
 
   // Returns true if a path exists for the Credentials (username).
   virtual bool Exists(const Credentials& credentials) const;
+
+  // Checks if a cryptohome vault exists for the given Credentials.
+  virtual bool CryptohomeExists(const Credentials& credentials) const;
+
+  // Checks if a eCryptfs cryptohome vault exists for the given Credentials.
+  virtual bool EcryptfsCryptohomeExists(const Credentials& credentials) const;
+
+  // Checks if a dircrypto cryptohome vault exists for the given Credentials.
+  virtual bool DircryptoCryptohomeExists(const Credentials& credentials) const;
+
+  // Gets the user's eCryptfs vault directory for the given obfuscated username.
+  base::FilePath GetEcryptfsUserVaultPath(
+      const std::string& obfuscated_username) const;
+
+  // Gets the directory to mount the user's cryptohome at. The user is specified
+  // by its obfuscated username.
+  base::FilePath GetUserMountDirectory(
+      const std::string& obfuscated_username) const;
 
   // Returns true if a valid keyset can be decrypted with |creds|.  If true,
   // |vk| will contain the decrypted value. If false, |vk| will contain the

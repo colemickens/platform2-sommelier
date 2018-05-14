@@ -137,6 +137,7 @@ class MountTest
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
     homedirs_.set_shadow_root(kImageDir);
+    EXPECT_TRUE(homedirs_.GetSystemSalt(nullptr /* blob */));
     set_policy(false, "", false);
   }
 

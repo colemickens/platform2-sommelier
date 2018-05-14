@@ -56,12 +56,8 @@ extern const base::FilePath::CharType kGCacheDir[];
 extern const base::FilePath::CharType kGCacheVersionDir[];
 // subdir of kGCacheVersionDir
 extern const base::FilePath::CharType kGCacheTmpDir[];
-// Name of the vault directory.
-extern const base::FilePath::CharType kVaultDir[];
 extern const char kUserHomeSuffix[];
 extern const char kRootHomeSuffix[];
-// Name of the mount directory.
-extern const base::FilePath::CharType kMountDir[];
 // Name of the temporary mount directory.
 extern const base::FilePath::CharType kTemporaryMountDir[];
 // Name of the key file.
@@ -350,29 +346,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   friend class ChapsDirectoryTest;
 
  private:
-  // Checks if the cryptohome vault exists for the given credentials
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user whose cryptohome
-  //     should be checked.
-  virtual bool DoesCryptohomeExist(const Credentials& credentials) const;
-
-  // Specialized version of DoesCryptohomeExist only deals with Ecryptfs.
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user whose cryptohome
-  //     should be checked.
-  virtual bool DoesEcryptfsCryptohomeExist(
-      const Credentials& credentials) const;
-
-  // Specialized version of DoesCryptohomeExist only deals with Dircrypto.
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user whose cryptohome
-  //     should be checked.
-  virtual bool DoesDircryptoCryptohomeExist(
-      const Credentials& credentials) const;
-
   // Returns the names of all tracked subdirectories.
   static std::vector<base::FilePath> GetTrackedSubdirectories();
 
@@ -525,19 +498,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   obfuscated_username - Obfuscated username field of the Credentials
   base::FilePath GetUserDirectoryForUser(
-      const std::string& obfuscated_username) const;
-
-  // Gets the user's vault directory
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the credentials.
-  base::FilePath GetUserVaultPath(const std::string& obfuscated_username) const;
-
-  // Gets the directory to mount the user's cryptohome at
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the credentials.
-  base::FilePath GetUserMountDirectory(
       const std::string& obfuscated_username) const;
 
   // Gets the directory to mount the user's ephemeral cryptohome at.

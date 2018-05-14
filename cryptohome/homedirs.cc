@@ -24,6 +24,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/dircrypto_util.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
@@ -52,6 +53,10 @@ const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
 const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
 const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
+// Name of the vault directory which is used with eCryptfs cryptohome.
+const FilePath::CharType kVaultDir[] = "vault";
+// Name of the mount directory.
+const FilePath::CharType kMountDir[] = "mount";
 
 HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
@@ -328,6 +333,36 @@ bool HomeDirs::Exists(const Credentials& credentials) const {
   std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
   FilePath user_dir = shadow_root_.Append(obfuscated);
   return platform_->DirectoryExists(user_dir);
+}
+
+bool HomeDirs::CryptohomeExists(const Credentials& credentials) const {
+  return EcryptfsCryptohomeExists(credentials) ||
+         DircryptoCryptohomeExists(credentials);
+}
+
+bool HomeDirs::EcryptfsCryptohomeExists(const Credentials& credentials) const {
+  // Check for the presence of a vault directory for ecryptfs.
+  return platform_->DirectoryExists(GetEcryptfsUserVaultPath(
+      credentials.GetObfuscatedUsername(system_salt_)));
+}
+
+bool HomeDirs::DircryptoCryptohomeExists(const Credentials& credentials) const {
+  // Check for the presence of an encrypted mount directory for dircrypto.
+  FilePath mount_path =
+      GetUserMountDirectory(credentials.GetObfuscatedUsername(system_salt_));
+  return platform_->DirectoryExists(mount_path) &&
+         platform_->GetDirCryptoKeyState(mount_path) ==
+             dircrypto::KeyState::ENCRYPTED;
+}
+
+FilePath HomeDirs::GetEcryptfsUserVaultPath(
+    const std::string& obfuscated_username) const {
+  return shadow_root_.Append(obfuscated_username).Append(kVaultDir);
+}
+
+FilePath HomeDirs::GetUserMountDirectory(
+    const std::string& obfuscated_username) const {
+  return shadow_root_.Append(obfuscated_username).Append(kMountDir);
 }
 
 VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
@@ -943,8 +978,8 @@ bool HomeDirs::GetTrackedDirectory(
     return true;
   }
   // This is dircrypto. Use the xattr to locate the directory.
-  return GetTrackedDirectoryForDirCrypto(
-      user_dir.Append(kMountDir), tracked_dir_name, out);
+  return GetTrackedDirectoryForDirCrypto(user_dir.Append(kMountDir),
+                                         tracked_dir_name, out);
 }
 
 bool HomeDirs::GetTrackedDirectoryForDirCrypto(

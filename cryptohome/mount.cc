@@ -72,7 +72,6 @@ const gid_t kMountOwnerGid = 0;
 const char kIncognitoUser[] = "incognito";
 // Tracked directories - special sub-directories of the cryptohome
 // vault, that are visible even if not mounted. Contents is still encrypted.
-const FilePath::CharType kVaultDir[] = "vault";
 const FilePath::CharType kCacheDir[] = "Cache";
 const FilePath::CharType kDownloadsDir[] = "Downloads";
 const FilePath::CharType kGCacheDir[] = "GCache";
@@ -81,7 +80,6 @@ const FilePath::CharType kGCacheBlobsDir[] = "blobs";
 const FilePath::CharType kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
-const FilePath::CharType kMountDir[] = "mount";
 const FilePath::CharType kEphemeralMountDir[] = "ephemeral_mount";
 const FilePath::CharType kTemporaryMountDir[] = "temporary_mount";
 const FilePath::CharType kKeyFile[] = "master";
@@ -219,9 +217,9 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
     }
   }
   // Now check for the presence of a cryptohome.
-  if (DoesCryptohomeExist(credentials)) {
+  if (homedirs_->CryptohomeExists(credentials)) {
     // Now check for the presence of a vault directory.
-    FilePath vault_path = GetUserVaultPath(
+    FilePath vault_path = homedirs_->GetEcryptfsUserVaultPath(
         credentials.GetObfuscatedUsername(system_salt_));
     if (platform_->DirectoryExists(vault_path)) {
       if (mount_args.to_migrate_from_ecryptfs) {
@@ -263,26 +261,6 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
   }
   *created = CreateCryptohome(credentials);
   return *created;
-}
-
-bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
-  return DoesEcryptfsCryptohomeExist(credentials) ||
-      DoesDircryptoCryptohomeExist(credentials);
-}
-
-bool Mount::DoesEcryptfsCryptohomeExist(const Credentials& credentials) const {
-  // Check for the presence of a vault directory for ecryptfs.
-  return platform_->DirectoryExists(GetUserVaultPath(
-      credentials.GetObfuscatedUsername(system_salt_)));
-}
-
-bool Mount::DoesDircryptoCryptohomeExist(const Credentials& credentials) const {
-  // Check for the presence of an encrypted mount directory for dircrypto.
-  FilePath mount_path = GetUserMountDirectory(
-      credentials.GetObfuscatedUsername(system_salt_));
-  return platform_->DirectoryExists(mount_path) &&
-      platform_->GetDirCryptoKeyState(mount_path) ==
-      dircrypto::KeyState::ENCRYPTED;
 }
 
 bool Mount::MountCryptohome(const Credentials& credentials,
@@ -398,7 +376,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  if (!mount_args.create_if_missing && !DoesCryptohomeExist(credentials)) {
+  if (!mount_args.create_if_missing &&
+      !homedirs_->CryptohomeExists(credentials)) {
     LOG(ERROR) << "Asked to mount nonexistent user";
     *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
     return false;
@@ -479,8 +458,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // Checks whether migration from ecryptfs to dircrypto is needed, and returns
   // an error when necessary. Do this after the check by DecryptVaultKeyset,
   // because a correct credential is required before switching to migration UI.
-  if (DoesEcryptfsCryptohomeExist(credentials) &&
-      DoesDircryptoCryptohomeExist(credentials) &&
+  if (homedirs_->EcryptfsCryptohomeExists(credentials) &&
+      homedirs_->DircryptoCryptohomeExists(credentials) &&
       !mount_args.to_migrate_from_ecryptfs) {
     // If both types of home directory existed, it implies that the migration
     // attempt was aborted in the middle before doing clean up.
@@ -558,9 +537,10 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   std::string obfuscated_username =
     credentials.GetObfuscatedUsername(system_salt_);
-  FilePath vault_path = GetUserVaultPath(obfuscated_username);
+  FilePath vault_path =
+      homedirs_->GetEcryptfsUserVaultPath(obfuscated_username);
 
-  mount_point_ = GetUserMountDirectory(obfuscated_username);
+  mount_point_ = homedirs_->GetUserMountDirectory(obfuscated_username);
   if (!platform_->CreateDirectory(mount_point_)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point_.value();
     UnmountAll();
@@ -1016,7 +996,7 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
 
   if (mount_type_ == MountType::ECRYPTFS) {
     // Create the user's vault.
-    FilePath vault_path = GetUserVaultPath(
+    FilePath vault_path = homedirs_->GetEcryptfsUserVaultPath(
         credentials.GetObfuscatedUsername(system_salt_));
     if (!platform_->CreateDirectory(vault_path)) {
       LOG(ERROR) << "Couldn't create vault path: " << vault_path.value();
@@ -1056,15 +1036,17 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   // Add the subdirectories if they do not exist.
   const std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
-  const FilePath dest_dir(mount_type_ == MountType::ECRYPTFS ?
-                          GetUserVaultPath(obfuscated_username) :
-                          GetUserMountDirectory(obfuscated_username));
+  const FilePath dest_dir(
+      mount_type_ == MountType::ECRYPTFS
+          ? homedirs_->GetEcryptfsUserVaultPath(obfuscated_username)
+          : homedirs_->GetUserMountDirectory(obfuscated_username));
   if (!platform_->DirectoryExists(dest_dir)) {
      LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
      return false;
   }
 
-  const FilePath mount_dir(GetUserMountDirectory(obfuscated_username));
+  const FilePath mount_dir(
+      homedirs_->GetUserMountDirectory(obfuscated_username));
 
   // The call is allowed to partially fail if directory creation fails, but we
   // want to have as many of the specified tracked directories created as
@@ -1528,16 +1510,6 @@ FilePath Mount::GetUserKeyFileForUser(
                      .Append(kKeyFile).AddExtension(safe_label);
 }
 
-FilePath Mount::GetUserVaultPath(
-    const std::string& obfuscated_username) const {
-  return shadow_root_.Append(obfuscated_username).Append(kVaultDir);
-}
-
-FilePath Mount::GetUserMountDirectory(
-    const std::string& obfuscated_username) const {
-  return shadow_root_.Append(obfuscated_username).Append(kMountDir);
-}
-
 FilePath Mount::GetUserEphemeralMountDirectory(
     const std::string& obfuscated_username) const {
   return FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir)
@@ -1559,12 +1531,14 @@ FilePath Mount::VaultPathToRootPath(const FilePath& vault) const {
 
 FilePath Mount::GetMountedUserHomePath(
     const std::string& obfuscated_username) const {
-  return GetUserMountDirectory(obfuscated_username).Append(kUserHomeSuffix);
+  return homedirs_->GetUserMountDirectory(obfuscated_username)
+      .Append(kUserHomeSuffix);
 }
 
 FilePath Mount::GetMountedRootHomePath(
     const std::string& obfuscated_username) const {
-  return GetUserMountDirectory(obfuscated_username).Append(kRootHomeSuffix);
+  return homedirs_->GetUserMountDirectory(obfuscated_username)
+      .Append(kRootHomeSuffix);
 }
 
 FilePath Mount::GetMountedEphemeralUserHomePath(
@@ -2109,7 +2083,8 @@ bool Mount::MigrateToDircrypto(
     return false;
   }
   // Clean up.
-  FilePath vault_path = GetUserVaultPath(obfuscated_username);
+  FilePath vault_path =
+      homedirs_->GetEcryptfsUserVaultPath(obfuscated_username);
   if (!platform_->DeleteFile(temporary_mount, true /* recursive */) ||
       !platform_->DeleteFile(vault_path, true /* recursive */)) {
     LOG(ERROR) << "Failed to delete the old vault.";
