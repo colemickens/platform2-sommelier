@@ -92,7 +92,8 @@ bool FillReportFromCommandline(FeedbackCommon* report) {
 }
 
 bool SendReport(FeedbackServiceInterface* interface, FeedbackCommon* report) {
-  base::WaitableEvent event(false, false);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool status;
 
   report->CompressLogs();
