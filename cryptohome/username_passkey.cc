@@ -4,13 +4,10 @@
 
 #include "cryptohome/username_passkey.h"
 
-#include <openssl/sha.h>
-
-#include <base/logging.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/obfuscated_username.h"
 
 namespace cryptohome {
 using brillo::SecureBlob;
@@ -47,20 +44,7 @@ std::string UsernamePasskey::username() const {
 
 std::string UsernamePasskey::GetObfuscatedUsername(
     const brillo::Blob &system_salt) const {
-  CHECK(!username_.empty());
-
-  SHA_CTX ctx;
-  unsigned char md_value[SHA_DIGEST_LENGTH];
-
-  SHA1_Init(&ctx);
-  SHA1_Update(&ctx, system_salt.data(), system_salt.size());
-  SHA1_Update(&ctx, username_.c_str(), username_.length());
-  SHA1_Final(md_value, &ctx);
-
-  brillo::Blob md_blob(md_value,
-               md_value + (SHA_DIGEST_LENGTH * sizeof(unsigned char)));
-
-  return CryptoLib::BlobToHex(md_blob);
+  return BuildObfuscatedUsername(username_, system_salt);
 }
 
 void UsernamePasskey::GetPasskey(SecureBlob* passkey) const {

@@ -462,6 +462,7 @@
             'mount_stack_unittest.cc',
             'mount_task_unittest.cc',
             'mount_unittest.cc',
+            'obfuscated_username_unittest.cc',
             'persistent_lookup_table_unittest.cc',
             'pkcs11_keystore_unittest.cc',
             'platform_unittest.cc',

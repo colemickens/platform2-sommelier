@@ -306,6 +306,7 @@
         'mount_factory.cc',
         'mount_stack.cc',
         'mount_task.cc',
+        'obfuscated_username.cc',
         'persistent_lookup_table.cc',
         'service.cc',
         'service_monolithic.cc',
