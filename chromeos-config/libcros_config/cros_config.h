@@ -89,12 +89,15 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
  private:
   // Common initialization function based on x86 identity.
-  // @smbios_file: File containing memory to scan (typically this is /dev/mem)
+  // @product_name_file: File containing the product name.
+  // @product_sku_file: File containing the SKU string.
   // @vpd_file: File containing the customization_id from VPD. Typically this
   //     is '/sys/firmware/vpd/ro/customization_id'.
   //   results for every query
-  bool SelectConfigByIdentityX86(const base::FilePath& smbios_file,
-                                 const base::FilePath& vpd_file);
+  bool SelectConfigByIdentityX86(
+      const base::FilePath& product_name_file,
+      const base::FilePath& product_sku_file,
+      const base::FilePath& vpd_file);
 
   // Common initialization function based on ARM identity.
   // @dt_compatible_file: ARM based device-tree compatible file

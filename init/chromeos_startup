@@ -108,12 +108,6 @@ fi
 # processes.
 sysctl -q --system
 
-# Write SMBIOS info to disk, where non-root cros_config can read it.
-mkdir -p /run/cros_config
-if [ -e /sys/firmware/dmi/tables/DMI ]; then
-  cat /sys/firmware/dmi/tables/DMI > /run/cros_config/SMBIOS
-fi
-
 # CROS_DEBUG equals one if we've booted in developer mode or we've
 # booted a developer image.
 crossystem "cros_debug?1"
