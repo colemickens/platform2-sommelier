@@ -54,7 +54,7 @@ const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
 const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 // Name of the vault directory which is used with eCryptfs cryptohome.
-const FilePath::CharType kVaultDir[] = "vault";
+const FilePath::CharType kEcryptfsVaultDir[] = "vault";
 // Name of the mount directory.
 const FilePath::CharType kMountDir[] = "mount";
 
@@ -357,7 +357,7 @@ bool HomeDirs::DircryptoCryptohomeExists(const Credentials& credentials) const {
 
 FilePath HomeDirs::GetEcryptfsUserVaultPath(
     const std::string& obfuscated_username) const {
-  return shadow_root_.Append(obfuscated_username).Append(kVaultDir);
+  return shadow_root_.Append(obfuscated_username).Append(kEcryptfsVaultDir);
 }
 
 FilePath HomeDirs::GetUserMountDirectory(
@@ -971,10 +971,10 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
 
 bool HomeDirs::GetTrackedDirectory(
     const FilePath& user_dir, const FilePath& tracked_dir_name, FilePath* out) {
-  FilePath vault_path = user_dir.Append(kVaultDir);
+  FilePath vault_path = user_dir.Append(kEcryptfsVaultDir);
   if (platform_->DirectoryExists(vault_path)) {
     // On Ecryptfs, tracked directories' names are not encrypted.
-    *out = user_dir.Append(kVaultDir).Append(tracked_dir_name);
+    *out = user_dir.Append(kEcryptfsVaultDir).Append(tracked_dir_name);
     return true;
   }
   // This is dircrypto. Use the xattr to locate the directory.
@@ -1480,7 +1480,7 @@ bool HomeDirs::NeedsDircryptoMigration(const Credentials& credentials) const {
   const std::string obfuscated =
       credentials.GetObfuscatedUsername(system_salt_);
   const FilePath user_ecryptfs_vault_dir =
-      shadow_root_.Append(obfuscated).Append(kVaultDir);
+      shadow_root_.Append(obfuscated).Append(kEcryptfsVaultDir);
   return platform_->DirectoryExists(user_ecryptfs_vault_dir);
 }
 
