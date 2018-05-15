@@ -102,8 +102,14 @@ constexpr char kDownloadsDir[] = "Downloads";
 // File extenstion for qcow2 disk types
 constexpr char kQcowImageExtension[] = ".qcow2";
 
+// Default name for a virtual machine.
+constexpr char kDefaultVmName[] = "termina";
+
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
+
+// Hostname for the default VM/container.
+constexpr char kDefaultContainerHostname[] = "linuxhost";
 
 // Path to process file descriptors.
 constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
@@ -409,6 +415,14 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   LOG(INFO) << "Startup of container " << container_name << " at IP "
             << string_ip << " for VM " << vm_name << " completed.";
 
+  // Register this with the hostname resolver.
+  RegisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
+                                      vm_name.c_str()),
+                   string_ip);
+  if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
+    RegisterHostname(kDefaultContainerHostname, string_ip);
+  }
+
   // Send the D-Bus signal out to indicate the container is ready.
   dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
   ContainerStartedSignal proto;
@@ -469,6 +483,13 @@ void Service::ContainerShutdown(const std::string& container_token,
     event->Signal();
     return;
   }
+  // Unregister this with the hostname resolver.
+  UnregisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
+                                        vm_name.c_str()));
+  if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
+    UnregisterHostname(kDefaultContainerHostname);
+  }
+
   LOG(INFO) << "Shutdown of container " << container_name << " for VM "
             << vm_name;
   *result = true;
@@ -617,6 +638,16 @@ bool Service::Init() {
                << chromeos::kUrlHandlerServiceName;
     return false;
   }
+  crosdns_service_proxy_ =
+      bus_->GetObjectProxy(crosdns::kCrosDnsServiceName,
+                           dbus::ObjectPath(crosdns::kCrosDnsServicePath));
+  if (!crosdns_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << crosdns::kCrosDnsServiceName;
+    return false;
+  }
+  crosdns_service_proxy_->WaitForServiceToBeAvailable(base::Bind(
+      &Service::OnCrosDnsServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
 
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(&grpc_thread_vm_, startup_listener_.get(),
@@ -1021,6 +1052,8 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     return dbus_response;
   }
 
+  UnregisterVmHostnames(iter->second.get(), iter->first);
+
   if (!iter->second->Shutdown()) {
     LOG(ERROR) << "Unable to shut down VM";
 
@@ -1046,6 +1079,8 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
 
   // Spawn a thread for each VM to shut it down.
   for (auto& pair : vms_) {
+    UnregisterVmHostnames(pair.second.get(), pair.first);
+
     // By resetting the unique_ptr, each thread calls the destructor for that
     // VM, which will shut it down.
     threads.emplace_back([](std::unique_ptr<VirtualMachine> vm) { vm.reset(); },
@@ -1710,6 +1745,83 @@ bool Service::GetVirtualMachineForContainerIp(uint32_t container_ip,
     return true;
   }
   return false;
+}
+
+void Service::RegisterHostname(const std::string& hostname,
+                               const std::string& ip) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  dbus::MethodCall method_call(crosdns::kCrosDnsInterfaceName,
+                               crosdns::kSetHostnameIpMappingMethod);
+  dbus::MessageWriter writer(&method_call);
+  // Params are hostname, IPv4, IPv6 (but we don't have IPv6 yet).
+  writer.AppendString(hostname);
+  writer.AppendString(ip);
+  writer.AppendString("");
+  std::unique_ptr<dbus::Response> dbus_response =
+      crosdns_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    // If there's some issue with the resolver service, don't make that
+    // propagate to a higher level failure and just log it. We have logic for
+    // setting this up again if that service restarts.
+    LOG(WARNING)
+        << "Failed to send dbus message to crosdns to register hostname";
+  } else {
+    hostname_mappings_[hostname] = ip;
+  }
+}
+
+void Service::UnregisterVmHostnames(VirtualMachine* vm,
+                                    const std::string& vm_name) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  if (!vm)
+    return;
+  std::vector<std::string> containers = vm->GetContainerNames();
+  for (auto& container_name : containers) {
+    UnregisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
+                                          vm_name.c_str()));
+    if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
+      UnregisterHostname(kDefaultContainerHostname);
+    }
+  }
+}
+
+void Service::UnregisterHostname(const std::string& hostname) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  dbus::MethodCall method_call(crosdns::kCrosDnsInterfaceName,
+                               crosdns::kRemoveHostnameIpMappingMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(hostname);
+  std::unique_ptr<dbus::Response> dbus_response =
+      crosdns_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    // If there's some issue with the resolver service, don't make that
+    // propagate to a higher level failure and just log it. We have logic for
+    // setting this up again if that service restarts.
+    LOG(WARNING) << "Failed to send dbus message to crosdns to unregister "
+                 << "hostname";
+  } else {
+    hostname_mappings_.erase(hostname);
+  }
+}
+
+void Service::OnCrosDnsNameOwnerChanged(const std::string& old_owner,
+                                        const std::string& new_owner) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  if (!new_owner.empty()) {
+    // Re-register everything in our map.
+    for (auto& pair : hostname_mappings_) {
+      RegisterHostname(pair.first, pair.second);
+    }
+  }
+}
+
+void Service::OnCrosDnsServiceAvailable(bool service_is_available) {
+  if (service_is_available) {
+    crosdns_service_proxy_->SetNameOwnerChangedCallback(base::Bind(
+        &Service::OnCrosDnsNameOwnerChanged, weak_ptr_factory_.GetWeakPtr()));
+  }
 }
 
 }  // namespace concierge

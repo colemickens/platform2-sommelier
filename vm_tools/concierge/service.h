@@ -162,6 +162,26 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                        VirtualMachine** vm_out,
                                        std::string* name_out);
 
+  // Registers |hostname| and |ip| with the hostname resolver service so that
+  // the container is reachable from a known hostname.
+  void RegisterHostname(const std::string& hostname, const std::string& ip);
+
+  // Unregisters all the hostnames that were registered for this |vm| with
+  // |vm_name| with the hostname resolver service.
+  void UnregisterVmHostnames(VirtualMachine* vm, const std::string& vm_name);
+
+  // Unregisters |hostname| with the hostname resolver service.
+  void UnregisterHostname(const std::string& hostname);
+
+  // Callback for when the crosdns D-Bus service goes online (or is online
+  // already) so we can then register the NameOnwerChanged callback.
+  void OnCrosDnsServiceAvailable(bool service_is_available);
+
+  // Callback for when the crosdns D-Bus service restarts so we can
+  // re-register any of our hostnames that are active.
+  void OnCrosDnsNameOwnerChanged(const std::string& old_owner,
+                                 const std::string& new_owner);
+
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;
   SubnetPool subnet_pool_;
@@ -176,9 +196,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* exported_object_;  // Owned by |bus_|.
+  dbus::ExportedObject* exported_object_;             // Owned by |bus_|.
   dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* url_handler_service_proxy_;      // Owned by |bus_|.
+  dbus::ObjectProxy* crosdns_service_proxy_;          // Owned by |bus_|.
 
   // The StartupListener service.
   std::unique_ptr<StartupListenerImpl> startup_listener_;
@@ -204,6 +225,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;
+
+  // Map of hostnames/IPs we have registered so we can re-register them if the
+  // resolver service restarts.
+  std::map<std::string, std::string> hostname_mappings_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

@@ -209,6 +209,9 @@ class VirtualMachine {
                            uint32_t scale,
                            std::vector<Icon>* icons);
 
+  // Gets a list of all the active container names in this VM.
+  std::vector<std::string> GetContainerNames();
+
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
       std::unique_ptr<SubnetPool::Subnet> subnet,

@@ -656,5 +656,12 @@ bool VirtualMachine::IsContainerRunning(const std::string& container_name) {
          channel_state == GRPC_CHANNEL_READY;
 }
 
+std::vector<std::string> VirtualMachine::GetContainerNames() {
+  std::vector<std::string> retval;
+  for (auto& container_entry : container_name_to_garcon_stub_) {
+    retval.emplace_back(container_entry.first);
+  }
+  return retval;
+}
 }  // namespace concierge
 }  // namespace vm_tools
