@@ -359,6 +359,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     }
   }
 
+  // Force-enable the Touch-Optimized UI feature for touch centric devices.
+  if (builder->UseFlagIsSet("touch_centric_device"))
+    builder->AddFeatureEnableOverride("TouchOptimizedUi");
+
   if (builder->UseFlagIsSet("rialto")) {
     builder->AddArg("--enterprise-enable-zero-touch-enrollment=hands-off");
     builder->AddArg("--disable-machine-cert-request");
