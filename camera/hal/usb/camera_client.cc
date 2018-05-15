@@ -487,7 +487,13 @@ void CameraClient::RequestHandler::HandleRequest(
   }
 
   capture_result.partial_result = 1;
-  capture_result.result = metadata->release();
+
+  // The HAL retains ownership of result structure, which only needs to be valid
+  // to access during process_capture_result. The framework will copy whatever
+  // it needs before process_capture_result returns. Hence we use getAndLock()
+  // instead of release() here, and the underlying buffer would be freed when
+  // metadata is out of scope.
+  capture_result.result = metadata->getAndLock();
 
   // After process_capture_result, HAL cannot access the output buffer in
   // camera3_stream_buffer anymore unless the release fence is not -1.
