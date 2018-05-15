@@ -33,7 +33,7 @@ constexpr char kSeccompFilterPath[] =
 
 HelperProcessReceiver::HelperProcessReceiver(base::ScopedFD control_fd)
     : control_fd_(std::move(control_fd)),
-      control_watcher_(),
+      control_watcher_(FROM_HERE),
       pending_fd_(-1),
       mounter_() {}
 
