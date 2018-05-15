@@ -4,7 +4,10 @@
 
 #include "power_manager/powerd/system/arc_timer_manager.h"
 
+#include <time.h>
+
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -36,6 +39,65 @@ bool CreateSocketPair(base::ScopedFD* one, base::ScopedFD* two) {
   return true;
 }
 
+std::vector<base::ScopedFD> WriteCreateTimersDBusRequest(
+    const std::string& tag,
+    const std::vector<clockid_t>& clocks,
+    dbus::MessageWriter* writer) {
+  // Create D-Bus arguments i.e. tag followed by array of
+  // {int32_t clock_id, base::ScopedFD expiration_fd}.
+  writer->AppendString(tag);
+  dbus::MessageWriter array_writer(nullptr);
+  writer->OpenArray("(ih)", &array_writer);
+  std::vector<base::ScopedFD> result;
+  for (clockid_t clock_id : clocks) {
+    // Create a socket pair for each clock. One socket will be part of the
+    // mojo argument and will be used by the host to indicate when the timer
+    // expires. The other socket will be used to detect the expiration of the
+    // timer by epolling / reading.
+    base::ScopedFD read_fd;
+    base::ScopedFD write_fd;
+    if (!CreateSocketPair(&read_fd, &write_fd)) {
+      LOG(ERROR) << "Failed to create socket pair for ARC timers";
+      return result;
+    }
+    result.push_back(std::move(read_fd));
+
+    dbus::MessageWriter struct_writer(nullptr);
+    array_writer.OpenStruct(&struct_writer);
+    struct_writer.AppendInt32(static_cast<int32_t>(clock_id));
+    struct_writer.AppendFileDescriptor(write_fd.get());
+    array_writer.CloseContainer(&struct_writer);
+  }
+  writer->CloseContainer(&array_writer);
+  return result;
+}
+
+std::vector<ArcTimerManager::TimerId> ReadTimerIds(
+    std::unique_ptr<dbus::Response> response) {
+  dbus::MessageReader reader(response.get());
+  dbus::MessageReader array_reader(nullptr);
+  std::vector<ArcTimerManager::TimerId> result;
+  if (!reader.PopArray(&array_reader)) {
+    LOG(ERROR) << "No timer ids returned";
+    return result;
+  }
+  std::vector<ArcTimerManager::TimerId> timer_ids;
+  while (array_reader.HasMoreData()) {
+    ArcTimerManager::TimerId timer_id;
+    if (!array_reader.PopInt32(&timer_id)) {
+      LOG(ERROR) << "Failed to pop timer id";
+      return result;
+    }
+    result.push_back(timer_id);
+  }
+  return result;
+}
+
+bool IsResponseValid(dbus::Response* response) {
+  return response && response->GetMessageType() ==
+                         dbus::Message::MessageType::MESSAGE_METHOD_RETURN;
+}
+
 }  // namespace
 
 class ArcTimerManagerTest : public ::testing::Test,
@@ -46,7 +108,6 @@ class ArcTimerManagerTest : public ::testing::Test,
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override {
     VLOG(1) << "Fd readable";
-    DCHECK(arc_timer_store_.HasFd(fd));
     // The fd watched in |WaitForExpiration| is now ready to read. Call the quit
     // closure so that |WaitForExpiration| can go on to read the fd.
     loop_runner_.StopLoop();
@@ -54,67 +115,83 @@ class ArcTimerManagerTest : public ::testing::Test,
   void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  protected:
-  bool CreateTimers(const std::vector<int32_t>& clocks) WARN_UNUSED_RESULT {
+  bool CreateTimers(const std::string& tag,
+                    const std::vector<clockid_t>& clocks) WARN_UNUSED_RESULT {
     dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                  power_manager::kCreateArcTimersMethod);
-    // Create D-Bus arguments i.e. array of
-    // {int32_t clock_id, base::ScopedFD expiration_fd}.
     dbus::MessageWriter writer(&method_call);
-    dbus::MessageWriter array_writer(nullptr);
-    writer.OpenArray("(ih)", &array_writer);
-    for (int32_t clock_id : clocks) {
-      // Create a socket pair for each clock. One socket will be part of the
-      // mojo argument and will be used by the host to indicate when the timer
-      // expires. The other socket will be used to detect the expiration of the
-      // timer by epolling / reading.
-      base::ScopedFD read_fd;
-      base::ScopedFD write_fd;
-      if (!CreateSocketPair(&read_fd, &write_fd)) {
-        ADD_FAILURE() << "Failed to create socket pair for ARC timers";
-        return false;
-      }
-
-      // Create an entry for each clock in the local store. This will be used to
-      // retrieve the fd to wait on for a timer expiration.
-      if (!arc_timer_store_.AddTimer(clock_id, std::move(read_fd))) {
-        ADD_FAILURE() << "Failed to create timer entry";
-        arc_timer_store_.ClearTimers();
-        return false;
-      }
-
-      dbus::MessageWriter struct_writer(nullptr);
-      array_writer.OpenStruct(&struct_writer);
-      struct_writer.AppendInt32(clock_id);
-      struct_writer.AppendFileDescriptor(write_fd.get());
-      array_writer.CloseContainer(&struct_writer);
+    std::vector<base::ScopedFD> read_fds =
+        WriteCreateTimersDBusRequest(tag, clocks, &writer);
+    size_t clocks_size = clocks.size();
+    if (read_fds.size() != clocks_size) {
+      LOG(ERROR) << "Failed to create D-Bus request";
+      return false;
     }
-    writer.CloseContainer(&array_writer);
 
     std::unique_ptr<dbus::Response> response =
         dbus_wrapper_.CallExportedMethodSync(&method_call);
-    if (!response) {
-      ADD_FAILURE() << power_manager::kCreateArcTimersMethod << " call failed";
-      arc_timer_store_.ClearTimers();
+    if (!IsResponseValid(response.get())) {
+      LOG(ERROR) << power_manager::kCreateArcTimersMethod << " call failed";
       return false;
     }
+
+    // Parse timer ids returned from the response.
+    std::vector<ArcTimerManager::TimerId> timer_ids =
+        ReadTimerIds(std::move(response));
+    if (timer_ids.size() != clocks_size) {
+      LOG(ERROR) << "Expected timer ids size=" << clocks_size
+                 << " got size=" << timer_ids.size();
+      return false;
+    }
+
+    // Map each clock id to its corresponding timer id. Also, map each timer id
+    // to its corresponding read fd that will indicate timer expiration.
+    auto timer_id_iter = timer_ids.begin();
+    auto read_fd_iter = read_fds.begin();
+    auto arc_timer_store = std::make_unique<ArcTimerStore>();
+    for (clockid_t clock_id : clocks) {
+      VLOG(1) << "Adding entry for clock=" << clock_id
+              << " timer id=" << *timer_id_iter;
+      if (!arc_timer_store->AddTimerEntry(clock_id, *timer_id_iter,
+                                          std::move(*read_fd_iter))) {
+        return false;
+      }
+      timer_id_iter++;
+      read_fd_iter++;
+    }
+    // It's okay to overwrite a |tag|'s value here to support tests that
+    // create-delete-create with the same tag.
+    arc_timer_stores_[tag] = std::move(arc_timer_store);
     return true;
   }
 
-  bool StartTimer(int32_t clock_id,
+  bool StartTimer(const std::string& tag,
+                  clockid_t clock_id,
                   base::TimeTicks absolute_expiration_time) WARN_UNUSED_RESULT {
     dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                  power_manager::kStartArcTimerMethod);
 
-    // Write clock id and 64-bit expiration time ticks value as a DBus message.
+    if (arc_timer_stores_.find(tag) == arc_timer_stores_.end()) {
+      LOG(ERROR) << "Tag=" << tag << " not created";
+      return false;
+    }
+    const auto& arc_timer_store = arc_timer_stores_[tag];
+
+    // Write timer id corresponding to |clock_id| and 64-bit expiration time
+    // ticks value as a DBus message.
     dbus::MessageWriter writer(&method_call);
-    writer.AppendInt32(clock_id);
+    ArcTimerManager::TimerId timer_id = arc_timer_store->GetTimerId(clock_id);
+    if (timer_id < 0) {
+      LOG(ERROR) << "Timer for clock=" << clock_id << " not created";
+      return false;
+    }
+    writer.AppendInt32(timer_id);
     writer.AppendInt64(
         (absolute_expiration_time - base::TimeTicks()).InMicroseconds());
     std::unique_ptr<dbus::Response> response =
         dbus_wrapper_.CallExportedMethodSync(&method_call);
-    if (!response) {
-      ADD_FAILURE() << power_manager::kStartArcTimerMethod << " call failed";
-      arc_timer_store_.ClearTimers();
+    if (!IsResponseValid(response.get())) {
+      LOG(ERROR) << power_manager::kStartArcTimerMethod << " call failed";
       return false;
     }
     return true;
@@ -122,17 +199,24 @@ class ArcTimerManagerTest : public ::testing::Test,
 
   // Returns true iff the read descriptor of a timer is signalled. If the
   // signalling is incorrect returns false. Blocks otherwise.
-  bool WaitForExpiration(int32_t clock_id) WARN_UNUSED_RESULT {
-    if (!arc_timer_store_.HasTimer(clock_id)) {
-      ADD_FAILURE() << "Timer of type: " << clock_id << " not present";
+  bool WaitForExpiration(const std::string& tag,
+                         clockid_t clock_id) WARN_UNUSED_RESULT {
+    if (arc_timer_stores_.find(tag) == arc_timer_stores_.end()) {
+      LOG(ERROR) << "Tag=" << tag << " not created";
+      return false;
+    }
+    const auto& arc_timer_store = arc_timer_stores_[tag];
+
+    if (!arc_timer_store->HasTimer(clock_id)) {
+      LOG(ERROR) << "Timer of type=" << clock_id << " not present";
       return false;
     }
 
     // Wait for the host to indicate expiration by watching the read end of the
     // socket pair.
-    int timer_read_fd = arc_timer_store_.GetTimerReadFd(clock_id);
+    int timer_read_fd = arc_timer_store->GetTimerReadFd(clock_id);
     if (timer_read_fd < 0) {
-      ADD_FAILURE() << "Clock " << clock_id << " fd not present";
+      LOG(ERROR) << "Clock=" << clock_id << " fd not present";
       return false;
     }
 
@@ -143,12 +227,12 @@ class ArcTimerManagerTest : public ::testing::Test,
     if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
             timer_read_fd, false, base::MessageLoopForIO::WATCH_READ,
             &controller, this)) {
-      ADD_FAILURE() << "Failed to watch read fd";
+      LOG(ERROR) << "Failed to watch read fd";
       return false;
     }
     // Start run loop and error out if the fd isn't readable after a timeout.
     if (!loop_runner_.StartLoop(base::TimeDelta::FromSeconds(30))) {
-      ADD_FAILURE() << "Timed out waiting for expiration";
+      LOG(ERROR) << "Timed out waiting for expiration";
       return false;
     }
 
@@ -158,8 +242,21 @@ class ArcTimerManagerTest : public ::testing::Test,
     uint64_t timer_data = 0;
     ssize_t bytes_read = read(timer_read_fd, &timer_data, sizeof(timer_data));
     if ((bytes_read != sizeof(timer_data)) || (timer_data != 1)) {
-      ADD_FAILURE() << "Bad expiration data: bytes_read " << bytes_read
-                    << " timer_data " << timer_data;
+      LOG(ERROR) << "Bad expiration data: bytes_read=" << bytes_read
+                 << " timer_data=" << timer_data;
+      return false;
+    }
+    return true;
+  }
+
+  bool DeleteTimers(const std::string& tag) WARN_UNUSED_RESULT {
+    dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
+                                 power_manager::kDeleteArcTimersMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendString(tag);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_.CallExportedMethodSync(&method_call);
+    if (!IsResponseValid(response.get())) {
       return false;
     }
     return true;
@@ -173,38 +270,55 @@ class ArcTimerManagerTest : public ::testing::Test,
    public:
     ArcTimerStore() = default;
 
-    bool AddTimer(int32_t clock_id, base::ScopedFD read_fd) {
-      if (!arc_timers_.emplace(clock_id, std::move(read_fd)).second)
-        ADD_FAILURE() << "Failed to create timer entry";
+    bool AddTimerEntry(clockid_t clock_id,
+                       ArcTimerManager::TimerId timer_id,
+                       base::ScopedFD read_fd) {
+      if (!timer_ids_.emplace(clock_id, timer_id).second) {
+        LOG(ERROR) << "Failed to set timer id for clock=" << clock_id;
+        return false;
+      }
+      if (!arc_timers_.emplace(timer_id, std::move(read_fd)).second) {
+        LOG(ERROR) << "Failed to store read fd for timer id=" << timer_id;
+        return false;
+      }
       return true;
     }
 
-    void ClearTimers() { return arc_timers_.clear(); }
-
-    int GetTimerReadFd(int32_t clock_id) {
-      return HasTimer(clock_id) ? arc_timers_[clock_id].get() : -1;
+    void ClearTimers() {
+      timer_ids_.clear();
+      arc_timers_.clear();
     }
 
-    bool HasTimer(int32_t clock_id) const {
-      return arc_timers_.find(clock_id) != arc_timers_.end();
+    int GetTimerReadFd(clockid_t clock_id) {
+      return HasTimer(clock_id) ? arc_timers_[GetTimerId(clock_id)].get() : -1;
     }
 
-    bool HasFd(int fd) const {
-      for (const auto& timer : arc_timers_) {
-        if (timer.second.get() == fd)
-          return true;
-      }
-      return false;
+    bool HasTimer(clockid_t clock_id) const {
+      ArcTimerManager::TimerId timer_id = GetTimerId(clock_id);
+      return timer_id >= 0 && arc_timers_.find(timer_id) != arc_timers_.end();
+    }
+
+    ArcTimerManager::TimerId GetTimerId(clockid_t clock_id) const {
+      auto it = timer_ids_.find(clock_id);
+      return it == timer_ids_.end() ? -1 : it->second;
     }
 
    private:
-    std::map<int32_t, base::ScopedFD> arc_timers_;
+    // Map of clock id to timer id of the associated timer created.
+    std::map<clockid_t, ArcTimerManager::TimerId> timer_ids_;
+
+    // Map of timer id to the read fd that will indicate expiration of the
+    // timer.
+    std::map<ArcTimerManager::TimerId, base::ScopedFD> arc_timers_;
 
     DISALLOW_COPY_AND_ASSIGN(ArcTimerStore);
   };
 
   ArcTimerManager arc_timer_manager_;
-  ArcTimerStore arc_timer_store_;
+
+  // Mapping of a client's tag and the |ArcTimerStore| to use with it.
+  std::map<std::string, std::unique_ptr<ArcTimerStore>> arc_timer_stores_;
+
   DBusWrapperStub dbus_wrapper_;
   // Run loop used in |WaitForExpiration|. Its |StopLoop| method is called in
   // |OnFileCanReadWithoutBlocking|.
@@ -214,15 +328,72 @@ class ArcTimerManagerTest : public ::testing::Test,
 };
 
 TEST_F(ArcTimerManagerTest, CreateAndStartTimer) {
-  std::vector<int32_t> clocks = {CLOCK_REALTIME_ALARM, CLOCK_BOOTTIME_ALARM};
-  VLOG(1) << "Creating timers";
-  ASSERT_TRUE(CreateTimers(clocks));
-  VLOG(1) << "Starting timer";
+  std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM, CLOCK_BOOTTIME_ALARM};
+  const std::string kTag = "Test";
+  ASSERT_TRUE(CreateTimers(kTag, clocks));
   ASSERT_TRUE(StartTimer(
-      CLOCK_BOOTTIME_ALARM,
+      kTag, CLOCK_BOOTTIME_ALARM,
       base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
-  VLOG(1) << "Waiting for expiration";
-  ASSERT_TRUE(WaitForExpiration(CLOCK_BOOTTIME_ALARM));
+  ASSERT_TRUE(WaitForExpiration(kTag, CLOCK_BOOTTIME_ALARM));
+}
+
+TEST_F(ArcTimerManagerTest, CreateAndDeleteTimers) {
+  std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM, CLOCK_BOOTTIME_ALARM};
+  const std::string kTag = "Test";
+  ASSERT_TRUE(CreateTimers(kTag, clocks));
+  // |DeleteTimers| returns success for an unregistered tag.
+  ASSERT_TRUE(DeleteTimers("Foo"));
+  // Delete created timers and then try to start a timer. The call should fail
+  // as the timer doesn't exist.
+  ASSERT_TRUE(DeleteTimers(kTag));
+  ASSERT_FALSE(StartTimer(
+      kTag, CLOCK_BOOTTIME_ALARM,
+      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
+}
+
+TEST_F(ArcTimerManagerTest, CheckInvalidCreateTimersArgs) {
+  std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM, CLOCK_BOOTTIME_ALARM,
+                                   CLOCK_REALTIME_ALARM};
+  // Creating timers should fail when duplicate clock ids are passed in.
+  ASSERT_FALSE(CreateTimers("Test", clocks));
+}
+
+TEST_F(ArcTimerManagerTest, CheckInvalidStartTimerArgs) {
+  std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM};
+  const std::string kTag = "Test";
+  ASSERT_TRUE(CreateTimers(kTag, clocks));
+  // Starting timer for unregistered clock id should fail.
+  ASSERT_FALSE(StartTimer(
+      kTag, CLOCK_BOOTTIME_ALARM,
+      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
+}
+
+TEST_F(ArcTimerManagerTest, CheckMultipleCreateTimers) {
+  std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM};
+  const std::string kTag = "Test1";
+  ASSERT_TRUE(CreateTimers(kTag, clocks));
+  // Create timers should fail if old timers aren't deleted.
+  ASSERT_FALSE(CreateTimers(kTag, clocks));
+  // Creating timers after deleting old timers should succeed.
+  ASSERT_TRUE(DeleteTimers(kTag));
+  ASSERT_TRUE(CreateTimers(kTag, clocks));
+  // Create timers with a different tag should also succeed.
+  ASSERT_TRUE(CreateTimers("Test2", clocks));
+}
+
+TEST_F(ArcTimerManagerTest, CheckDeleteAndStartOther) {
+  // Create timers with two different tags. Delete the first tag and check if
+  // the second tag's timers still start.
+  std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM};
+  const std::string kTag1 = "Test1";
+  ASSERT_TRUE(CreateTimers(kTag1, clocks));
+  const std::string kTag2 = "Test2";
+  ASSERT_TRUE(CreateTimers(kTag2, clocks));
+  ASSERT_TRUE(DeleteTimers(kTag1));
+  ASSERT_TRUE(StartTimer(
+      kTag2, CLOCK_REALTIME_ALARM,
+      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
+  ASSERT_TRUE(WaitForExpiration(kTag2, CLOCK_REALTIME_ALARM));
 }
 
 }  // namespace system

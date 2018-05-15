@@ -6,11 +6,11 @@
 
 #include <fcntl.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 
-#include <string>
+#include <set>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file.h>
@@ -20,6 +20,9 @@
 #include <components/timers/alarm_timer_chromeos.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
+
+namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -31,14 +34,14 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(
 }
 
 // Only wake up alarms are supported.
-bool IsSupportedClock(int32_t clock_id) {
+bool IsSupportedClock(clockid_t clock_id) {
   return clock_id == CLOCK_BOOTTIME_ALARM || clock_id == CLOCK_REALTIME_ALARM;
 }
 
-// Expiration callback for timer of type |clock_id|. |expiration_fd| is the fd
+// Expiration callback for timer of type |timer_id|. |expiration_fd| is the fd
 // to write to to indicate timer expiration to the instance.
-void OnExpiration(int32_t clock_id, int expiration_fd) {
-  DVLOG(1) << "Expiration callback for clock=" << clock_id;
+void OnExpiration(ArcTimerManager::TimerId timer_id, int expiration_fd) {
+  DVLOG(1) << "Expiration callback for timer id=" << timer_id;
   // Write to the |expiration_fd| to indicate to the instance that the timer has
   // expired. The instance expects 8 bytes on the read end similar to what
   // happens on a timerfd expiration. The timerfd API expects this to be the
@@ -94,10 +97,18 @@ base::TimeTicks GetCurrentBootTicks() {
          base::TimeDelta::FromMicroseconds(ClockNow(CLOCK_BOOTTIME));
 }
 
-}  // namespace
+// Writes |timer_ids| as an array of int32s to |writer|.
+void WriteTimerIdsToDBusResponse(
+    const std::vector<ArcTimerManager::TimerId>& timer_ids,
+    dbus::MessageWriter* writer) {
+  dbus::MessageWriter array_writer(nullptr);
+  writer->OpenArray("i", &array_writer);
+  for (auto id : timer_ids)
+    array_writer.AppendInt32(id);
+  writer->CloseContainer(&array_writer);
+}
 
-namespace power_manager {
-namespace system {
+}  // namespace
 
 ArcTimerManager::ArcTimerManager() : weak_ptr_factory_(this) {}
 ArcTimerManager::~ArcTimerManager() = default;
@@ -105,7 +116,7 @@ ArcTimerManager::~ArcTimerManager() = default;
 struct ArcTimerManager::ArcTimerInfo {
   ArcTimerInfo() = default;
   ArcTimerInfo(ArcTimerInfo&&) = default;
-  ArcTimerInfo(int32_t clock_id,
+  ArcTimerInfo(clockid_t clock_id,
                base::ScopedFD expiration_fd,
                std::unique_ptr<timers::SimpleAlarmTimer> timer)
       : clock_id(clock_id),
@@ -113,11 +124,14 @@ struct ArcTimerManager::ArcTimerInfo {
         timer(std::move(timer)) {}
 
   // Clock id associated with this timer.
-  const int32_t clock_id;
+  const clockid_t clock_id;
 
   // The file descriptor which will be written to when |timer| expires.
   const base::ScopedFD expiration_fd;
 
+  // TODO(b/69759087): Make |SimpleAlarmTimer| take a clock id in its
+  // constructor to create timers of different clock types.
+  //
   // The timer that will be scheduled.
   const std::unique_ptr<timers::SimpleAlarmTimer> timer;
 
@@ -141,36 +155,134 @@ void ArcTimerManager::HandleCreateArcTimers(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   DVLOG(1) << "CreateArcTimers";
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
   dbus::MessageReader reader(method_call);
+
+  std::string tag;
+  if (!reader.PopString(&tag)) {
+    LOG(WARNING) << "Failed to pop tag string arg from "
+                 << kCreateArcTimersMethod << " D-Bus method call";
+    response_sender.Run(
+        CreateInvalidArgsError(method_call, "Expected tag string"));
+    return;
+  }
+  DVLOG(1) << "Creating timers for tag=" << tag;
 
   dbus::MessageReader array_reader(nullptr);
   if (!reader.PopArray(&array_reader)) {
-    LOG(ERROR) << "Failed to pop array";
+    LOG(WARNING) << "Failed to pop {clock id, expiration fd} array from "
+                 << kCreateArcTimersMethod << " D-Bus method call";
     response_sender.Run(CreateInvalidArgsError(
-        method_call, "Expected array of clock ids and and expiration fds"));
+        method_call, "Expected array of clock id and descriptors"));
     return;
   }
 
-  // Cancel all previous timers and clean up open descriptors. This is required
-  // if the instance goes down and comes back up again.
-  arc_timers_.clear();
+  // Return error if timers are already created for the client.
+  if (client_timer_ids_.find(tag) != client_timer_ids_.end()) {
+    LOG(WARNING) << "Timers already created for tag=" << tag;
+    response_sender.Run(
+        CreateInvalidArgsError(method_call, "Timers already created"));
+    return;
+  }
 
   // Iterate over the array of |clock_id, expiration_fd| and create an
   // |ArcTimerInfo| entry for each clock.
-  while (array_reader.HasMoreData()) {
-    std::unique_ptr<ArcTimerInfo> arc_timer = CreateArcTimer(&array_reader);
-    if (!arc_timer) {
-      // Clear any set up timers in case of error.
-      arc_timers_.clear();
-      response_sender.Run(CreateInvalidArgsError(
-          method_call, "Invalid clock id or expiration fd"));
-      return;
-    }
-    arc_timers_.emplace(arc_timer->clock_id, std::move(arc_timer));
+  std::vector<std::unique_ptr<ArcTimerInfo>> arc_timers =
+      CreateArcTimers(&array_reader);
+  if (arc_timers.size() == 0) {
+    response_sender.Run(
+        CreateInvalidArgsError(method_call, "Failed to create timers"));
+    return;
   }
-  response_sender.Run(dbus::Response::FromMethodCall(method_call));
+
+  if (ContainsDuplicateClocks(arc_timers)) {
+    response_sender.Run(
+        CreateInvalidArgsError(method_call, "Duplicate clocks not supported"));
+    return;
+  }
+
+  // For each timer:
+  // - Map an entry from a timer id to the timer.
+  // - Push the timer id to the list of ids associated with the client's tag.
+  // Newly generated ids guarantee that there are no key collisions in the first
+  // operation. Earlier checks guarantee that there are no key collisions in the
+  // second operation.
+  for (auto& timer : arc_timers) {
+    DVLOG(1) << "Adding tag=" << tag << " timer id=" << next_timer_id_;
+    CHECK(timers_.emplace(next_timer_id_, std::move(timer)).second);
+    client_timer_ids_[tag].push_back(next_timer_id_);
+    next_timer_id_++;
+  }
+
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  WriteTimerIdsToDBusResponse(client_timer_ids_[tag], &writer);
+  response_sender.Run(std::move(response));
+}
+
+// static:
+std::vector<std::unique_ptr<ArcTimerManager::ArcTimerInfo>>
+ArcTimerManager::CreateArcTimers(dbus::MessageReader* array_reader) {
+  std::vector<std::unique_ptr<ArcTimerInfo>> result;
+  while (array_reader->HasMoreData()) {
+    std::unique_ptr<ArcTimerInfo> arc_timer = CreateArcTimer(array_reader);
+    if (!arc_timer) {
+      result.clear();
+      return result;
+    }
+    result.push_back(std::move(arc_timer));
+  }
+  return result;
+}
+
+// static:
+std::unique_ptr<ArcTimerManager::ArcTimerInfo> ArcTimerManager::CreateArcTimer(
+    dbus::MessageReader* array_reader) {
+  dbus::MessageReader struct_reader(nullptr);
+  if (!array_reader->PopStruct(&struct_reader)) {
+    LOG(WARNING) << "Failed to pop struct";
+    return nullptr;
+  }
+
+  int32_t clock_id;
+  if (!struct_reader.PopInt32(&clock_id)) {
+    LOG(WARNING) << "Failed to pop clock id";
+    return nullptr;
+  }
+
+  // The instance opens clocks of type CLOCK_BOOTTIME_ALARM and
+  // CLOCK_REALTIME_ALARM. However, it uses only CLOCK_BOOTTIME_ALARM to set
+  // wake up alarms. At this point, it's okay to pretend the host supports
+  // CLOCK_REALTIME_ALARM instead of returning an error.
+  if (!IsSupportedClock(static_cast<clockid_t>(clock_id))) {
+    LOG(WARNING) << "Unsupported clock=" << clock_id;
+    return nullptr;
+  }
+
+  base::ScopedFD expiration_fd;
+  if (!struct_reader.PopFileDescriptor(&expiration_fd)) {
+    LOG(WARNING) << "Failed to pop file descriptor for clock=" << clock_id;
+    return nullptr;
+  }
+  if (!expiration_fd.is_valid()) {
+    LOG(WARNING) << "Bad file descriptor for clock=" << clock_id;
+    return nullptr;
+  }
+
+  return std::make_unique<ArcTimerInfo>(
+      clock_id, std::move(expiration_fd),
+      std::make_unique<timers::SimpleAlarmTimer>());
+}
+
+// static.
+bool ArcTimerManager::ContainsDuplicateClocks(
+    const std::vector<std::unique_ptr<ArcTimerInfo>>& arc_timers) {
+  std::set<clockid_t> seen_clock_ids;
+  for (const auto& timer : arc_timers) {
+    if (!seen_clock_ids.emplace(timer->clock_id).second)
+      return true;
+  }
+  return false;
 }
 
 void ArcTimerManager::HandleStartArcTimer(
@@ -178,17 +290,19 @@ void ArcTimerManager::HandleStartArcTimer(
     dbus::ExportedObject::ResponseSender response_sender) {
   dbus::MessageReader reader(method_call);
 
-  int32_t clock_id;
-  if (!reader.PopInt32(&clock_id)) {
-    LOG(ERROR) << "Failed to pop clock id";
+  ArcTimerManager::TimerId timer_id;
+  if (!reader.PopInt32(&timer_id)) {
+    LOG(WARNING) << "Failed to pop timer id from " << kStartArcTimerMethod
+                 << " D-Bus method call";
     response_sender.Run(
-        CreateInvalidArgsError(method_call, "Expected clock id"));
+        CreateInvalidArgsError(method_call, "Expected timer id"));
     return;
   }
 
   int64_t absolute_expiration_time_us;
   if (!reader.PopInt64(&absolute_expiration_time_us)) {
-    LOG(ERROR) << "Failed to pop absolute expiration time";
+    LOG(WARNING) << "Failed to pop absolute expiration time from "
+                 << kStartArcTimerMethod << " D-Bus method call";
     response_sender.Run(CreateInvalidArgsError(
         method_call, "Expected absolute expiration time"));
     return;
@@ -199,10 +313,10 @@ void ArcTimerManager::HandleStartArcTimer(
 
   // If a timer for the given clock is not created prior to this call then
   // return error. Else retrieve the timer associated with it.
-  ArcTimerInfo* arc_timer = FindArcTimerInfo(clock_id);
+  ArcTimerInfo* arc_timer = FindArcTimerInfo(timer_id);
   if (!arc_timer) {
     response_sender.Run(CreateInvalidArgsError(
-        method_call, "Invalid clock " + std::to_string(clock_id)));
+        method_call, "Invalid timer id " + std::to_string(timer_id)));
     return;
   }
 
@@ -217,8 +331,8 @@ void ArcTimerManager::HandleStartArcTimer(
   if (absolute_expiration_time > current_time_ticks)
     delay = absolute_expiration_time - current_time_ticks;
   base::Time current_time = base::Time::Now();
-  DVLOG(1) << "CurrentTime: " << current_time
-           << " NextAlarmAt: " << current_time + delay;
+  DVLOG(1) << "TimerId=" << timer_id << " CurrentTime=" << current_time
+           << " NextAlarmAt=" << current_time + delay;
   // Pass the raw fd to write to when the timer expires. This is safe to do
   // because if the parent object goes away the timers are cleared and all
   // pending callbacks are cancelled. If the instance sets new timers after a
@@ -227,71 +341,46 @@ void ArcTimerManager::HandleStartArcTimer(
   // available in the current version of libchrome.
   arc_timer->timer->Start(
       FROM_HERE, delay,
-      base::Bind(&OnExpiration, clock_id, arc_timer->expiration_fd.get()));
+      base::Bind(&OnExpiration, timer_id, arc_timer->expiration_fd.get()));
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void ArcTimerManager::HandleDeleteArcTimers(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  DVLOG(1) << "DeleteArcTimerInfos";
-  arc_timers_.clear();
+  DVLOG(1) << "DeleteArcTimers";
+  dbus::MessageReader reader(method_call);
+
+  std::string tag;
+  if (!reader.PopString(&tag)) {
+    LOG(WARNING) << "Failed to pop tag string arg from "
+                 << kDeleteArcTimersMethod << " D-Bus method call";
+    response_sender.Run(
+        CreateInvalidArgsError(method_call, "Expected tag string"));
+    return;
+  }
+
+  auto it = client_timer_ids_.find(tag);
+  if (it == client_timer_ids_.end()) {
+    DVLOG(1) << "Tag=" << tag << " not found";
+    response_sender.Run(dbus::Response::FromMethodCall(method_call));
+    return;
+  }
+
+  // Iterate over timer ids associated with |tag| and delete the timers
+  // associated with each timer id.
+  DVLOG(1) << "Deleting timers for tag=" << tag;
+  const auto& timer_ids = it->second;
+  for (auto timer_id : timer_ids)
+    timers_.erase(timer_id);
+  client_timer_ids_.erase(it);
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
-std::unique_ptr<ArcTimerManager::ArcTimerInfo> ArcTimerManager::CreateArcTimer(
-    dbus::MessageReader* array_reader) {
-  dbus::MessageReader struct_reader(nullptr);
-  if (!array_reader->PopStruct(&struct_reader)) {
-    LOG(ERROR) << "Failed to pop struct";
-    return nullptr;
-  }
-
-  int32_t clock_id;
-  if (!struct_reader.PopInt32(&clock_id)) {
-    LOG(ERROR) << "Failed to pop clock id";
-    return nullptr;
-  }
-
-  // TODO(b/69759087): Make |ArcTimer| take |clock_id| to create timers of
-  // different clock types.
-  // The instance opens clocks of type CLOCK_BOOTTIME_ALARM and
-  // CLOCK_REALTIME_ALARM. However, it uses only CLOCK_BOOTTIME_ALARM to set
-  // wake up alarms. At this point, it's okay to pretend the host supports
-  // CLOCK_REALTIME_ALARM instead of returning an error.
-  //
-  // Mojo guarantees to call all callbacks on the task runner that the
-  // mojo::Binding i.e. |ArcTimer| was created on.
-  if (!IsSupportedClock(clock_id)) {
-    LOG(ERROR) << "Unsupported clock " << clock_id;
-    return nullptr;
-  }
-
-  // Each clock can only have a unique entry.
-  if (FindArcTimerInfo(clock_id)) {
-    LOG(ERROR) << "Timer already exists for clock " << clock_id;
-    return nullptr;
-  }
-
-  base::ScopedFD expiration_fd;
-  if (!struct_reader.PopFileDescriptor(&expiration_fd)) {
-    LOG(ERROR) << "Failed to pop file descriptor for clock " << clock_id;
-    return nullptr;
-  }
-  if (!expiration_fd.is_valid()) {
-    LOG(ERROR) << "Bad file descriptor for clock " << clock_id;
-    return nullptr;
-  }
-
-  return std::make_unique<ArcTimerInfo>(
-      clock_id, std::move(expiration_fd),
-      std::make_unique<timers::SimpleAlarmTimer>());
-}
-
 ArcTimerManager::ArcTimerInfo* ArcTimerManager::FindArcTimerInfo(
-    int32_t clock_id) {
-  auto it = arc_timers_.find(clock_id);
-  return (it == arc_timers_.end()) ? nullptr : it->second.get();
+    ArcTimerManager::TimerId timer_id) {
+  auto it = timers_.find(timer_id);
+  return (it == timers_.end()) ? nullptr : it->second.get();
 }
 
 }  // namespace system
