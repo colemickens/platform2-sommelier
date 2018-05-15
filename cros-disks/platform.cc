@@ -116,8 +116,14 @@ bool Platform::CreateTemporaryDirInDir(const std::string& dir,
   return result;
 }
 
-bool Platform::CopyFile(const string& src, const string& dst) const {
-  return base::CopyFile(FilePath(src), FilePath(dst));
+int Platform::WriteFile(const std::string& file,
+                        const char* data,
+                        int size) const {
+  return base::WriteFile(FilePath(file), data, size);
+}
+
+int Platform::ReadFile(const std::string& file, char* data, int size) const {
+  return base::ReadFile(FilePath(file), data, size);
 }
 
 string Platform::GetDirectoryFallbackName(const string& path,

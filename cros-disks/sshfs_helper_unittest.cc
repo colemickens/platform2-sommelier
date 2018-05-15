@@ -76,10 +76,11 @@ class MockPlatform : public Platform {
     return false;
   }
 
-  MOCK_CONST_METHOD2(CopyFile, bool(const string& src, const string& dst));
   MOCK_CONST_METHOD3(SetOwnership,
                      bool(const string& path, uid_t user_id, gid_t group_id));
   MOCK_CONST_METHOD2(SetPermissions, bool(const string& path, mode_t mode));
+  MOCK_CONST_METHOD3(WriteFile,
+                     int(const string& path, const char* data, int size));
 };
 
 }  // namespace
@@ -90,6 +91,7 @@ class SshfsHelperTest : public ::testing::Test {
     ON_CALL(platform_, SetOwnership(_, kMountUID, getgid()))
         .WillByDefault(Return(true));
     ON_CALL(platform_, SetPermissions(_, 0770)).WillByDefault(Return(true));
+    ON_CALL(platform_, WriteFile(_, _, _)).WillByDefault(Return(-1));
   }
 
  protected:
@@ -113,52 +115,38 @@ TEST_F(SshfsHelperTest, CreateMounter_SimpleOptions) {
   EXPECT_THAT(opts, HasSubstr("gid=1501"));
 }
 
-// Verifies that CreateMounter copies files to the working dir when provided.
-TEST_F(SshfsHelperTest, CreateMounter_CopyFiles) {
-  EXPECT_CALL(platform_, CopyFile("/foo/bar", "/wkdir/bar"))
+// Verifies that CreateMounter writes files to the working dir when provided.
+TEST_F(SshfsHelperTest, CreateMounter_WriteFiles) {
+  EXPECT_CALL(platform_, WriteFile("/wkdir/id", StrEq("some key"), 8))
+      .WillOnce(Return(8));
+  EXPECT_CALL(platform_, WriteFile("/wkdir/known_hosts", StrEq("some host"), 9))
+      .WillOnce(Return(9));
+  EXPECT_CALL(platform_, SetPermissions("/wkdir/id", 0600))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CopyFile("/foo/baz", "/wkdir/baz"))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, SetPermissions("/wkdir/bar", 0600))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, SetPermissions("/wkdir/baz", 0600))
+  EXPECT_CALL(platform_, SetPermissions("/wkdir/known_hosts", 0600))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetPermissions("/wkdir", 0770)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, SetOwnership("/wkdir/bar", kMountUID, kMountGID))
+  EXPECT_CALL(platform_, SetOwnership("/wkdir/id", kMountUID, kMountGID))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, SetOwnership("/wkdir/baz", kMountUID, kMountGID))
+  EXPECT_CALL(platform_,
+              SetOwnership("/wkdir/known_hosts", kMountUID, kMountGID))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetOwnership("/wkdir", kMountUID, getgid()))
       .WillOnce(Return(true));
   auto mounter = helper_.CreateMounter(
       kWorkingDir, kSomeSource, kMountDir,
-      {"IdentityFile=/foo/bar", "UserKnownHostsFile=/foo/baz",
+      {"IdentityBase64=c29tZSBrZXk=", "UserKnownHostsBase64=c29tZSBob3N0",
+       "IdentityFile=/foo/bar", "UserKnownHostsFile=/foo/baz",
        "HostName=localhost", "Port=2222"});
   string opts = mounter->mount_options().ToString();
-  EXPECT_THAT(opts, HasSubstr("IdentityFile=/wkdir/bar"));
-  EXPECT_THAT(opts, HasSubstr("UserKnownHostsFile=/wkdir/baz"));
+  EXPECT_THAT(opts, HasSubstr("IdentityFile=/wkdir/id"));
+  EXPECT_THAT(opts, HasSubstr("UserKnownHostsFile=/wkdir/known_hosts"));
   EXPECT_THAT(opts, HasSubstr("HostName=localhost"));
   EXPECT_THAT(opts, HasSubstr("Port=2222"));
+  EXPECT_THAT(opts, Not(HasSubstr("Base64")));
+  EXPECT_THAT(opts, Not(HasSubstr("c29tZSB")));
   EXPECT_THAT(opts, Not(HasSubstr("/foo/bar")));
   EXPECT_THAT(opts, Not(HasSubstr("/foo/baz")));
-}
-
-// Verifies that CreateMounter fails if files are in unsafe format.
-TEST_F(SshfsHelperTest, CreateMounter_CopyUnsafe) {
-  EXPECT_CALL(platform_, CopyFile(_, _)).Times(0);
-  auto mounter = helper_.CreateMounter(
-      kWorkingDir, kSomeSource, kMountDir,
-      {"IdentityFile=foo/bar", "UserKnownHostsFile=/foo/../baz"});
-  EXPECT_FALSE(mounter);
-}
-
-// Verifies that CreateMounter fails if fails to copy identity files.
-TEST_F(SshfsHelperTest, CreateMounter_CopyFails) {
-  EXPECT_CALL(platform_, CopyFile("/foo/bar", "/wkdir/bar"))
-      .WillRepeatedly(Return(false));
-  auto mounter = helper_.CreateMounter(kWorkingDir, kSomeSource, kMountDir,
-                                       {"IdentityFile=/foo/bar"});
-  EXPECT_FALSE(mounter);
 }
 
 // Verifies that CanMount correctly identifies handleable URIs.

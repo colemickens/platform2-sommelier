@@ -62,8 +62,15 @@ class Platform {
                                        const std::string& prefix,
                                        std::string* path) const;
 
-  // Copy contents of the file pointed by path |src| into file pointed by |dst|.
-  virtual bool CopyFile(const std::string& src, const std::string& dst) const;
+  // Writes contents of the |data| to a file. Returns the number of bytes
+  // written, or -1 on error.
+  virtual int WriteFile(const std::string& file,
+                        const char* data,
+                        int size) const;
+
+  // Reads at most |size| bytes from the |file| to a buffer |data| and returns
+  // number of bytes actually read, or -1 on error.
+  virtual int ReadFile(const std::string& file, char* data, int size) const;
 
   // Returns the fallback directory name of |path| using |suffix| as follows:
   //   "|path| (|suffix|)" if |path| ends with a ASCII digit, or

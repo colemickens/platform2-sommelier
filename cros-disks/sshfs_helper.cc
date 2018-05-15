@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -26,7 +27,9 @@ const char kType[] = "sshfs";
 
 const char kOptionFollowSymlinks[] = "follow_symlinks";
 const char kOptionIdentityFile[] = "IdentityFile=";
+const char kOptionIdentityBase64[] = "IdentityBase64=";
 const char kOptionUserKnownHostsFile[] = "UserKnownHostsFile=";
+const char kOptionUserKnownHostsBase64[] = "UserKnownHostsBase64=";
 const char kOptionHostName[] = "HostName=";
 const char kOptionPort[] = "Port=";
 
@@ -38,8 +41,19 @@ const char* const kEnforcedOptions[] = {
     FUSEHelper::kOptionDefaultPermissions,
 };
 
-const char* const kCopiedFiles[] = {
+const char* const kFilteredOptions[] = {
     kOptionIdentityFile, kOptionUserKnownHostsFile,
+};
+
+struct Base64FileMapping {
+  const char* base64_option;
+  const char* file_option;
+  const char* filename;
+};
+
+const Base64FileMapping kWrittenFiles[] = {
+    {kOptionIdentityBase64, kOptionIdentityFile, "id"},
+    {kOptionUserKnownHostsBase64, kOptionUserKnownHostsFile, "known_hosts"},
 };
 
 }  // namespace
@@ -64,6 +78,18 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
   }
 
   std::vector<std::string> opts = options;
+
+  // Remove options that we will set ourselves.
+  for (const auto& filtered : kFilteredOptions) {
+    opts.erase(std::remove_if(opts.begin(), opts.end(),
+                              [&filtered](const auto& opt) {
+                                return base::StartsWith(
+                                    opt, filtered,
+                                    base::CompareCase::SENSITIVE);
+                              }),
+               opts.end());
+  }
+
   if (!PrepareWorkingDirectory(working_dir, sshfs_uid, sshfs_gid, &opts)) {
     return nullptr;
   }
@@ -73,6 +99,7 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
     mount_options.EnforceOption(opt);
   }
   mount_options.WhitelistOption(kOptionFollowSymlinks);
+  // We don't whitelist *Base64 versions as we replace them with files.
   mount_options.WhitelistOptionPrefix(kOptionIdentityFile);
   mount_options.WhitelistOptionPrefix(kOptionUserKnownHostsFile);
   mount_options.WhitelistOptionPrefix(kOptionHostName);
@@ -91,30 +118,34 @@ bool SshfsHelper::PrepareWorkingDirectory(
     gid_t gid,
     std::vector<std::string>* options) const {
   for (auto& opt : *options) {
-    for (const auto& copied : kCopiedFiles) {
-      if (base::StartsWith(opt, copied, base::CompareCase::SENSITIVE)) {
+    for (const auto& written : kWrittenFiles) {
+      if (base::StartsWith(opt, written.base64_option,
+                           base::CompareCase::SENSITIVE)) {
         size_t pos = opt.find('=');
         CHECK_NE(std::string::npos, pos) << "option has no value";
 
-        base::FilePath src(opt.substr(pos + 1));
-        if (!src.IsAbsolute() || src.ReferencesParent()) {
-          LOG(WARNING) << "Insecure path in sshfs options.";
+        std::string decoded;
+        if (!base::Base64Decode(opt.substr(pos + 1), &decoded)) {
+          LOG(ERROR) << "Invalid base64 value in '" << written.base64_option
+                     << "'";
           return false;
         }
 
-        base::FilePath dst = base::FilePath(working_dir).Append(src.BaseName());
-        if (!platform()->CopyFile(src.value(), dst.value())) {
-          LOG(ERROR) << "Can't copy file '" << src.value() << "'";
+        base::FilePath dst =
+            base::FilePath(working_dir).Append(written.filename);
+        int size = decoded.size();
+        if (platform()->WriteFile(dst.value(), decoded.c_str(), size) != size) {
+          PLOG(ERROR) << "Failed to write '" << dst.value() << "'";
           return false;
         }
 
         if (!platform()->SetPermissions(dst.value(), 0600) ||
             !platform()->SetOwnership(dst.value(), uid, gid)) {
-          LOG(ERROR) << "Can't change owner of the file copy '" << dst.value()
-                     << "'";
+          PLOG(ERROR) << "Can't change owner of the file '" << dst.value()
+                      << "'";
           return false;
         }
-        opt.replace(pos + 1, std::string::npos, dst.value());
+        opt.assign(written.file_option + dst.value());
         break;
       }
     }
