@@ -48,6 +48,16 @@ MMC_NAME_MAX=15
 NVME_CMD_0="smartctl -x"
 NVME_CMD_MAX=0
 
+UFS_DIR_NAME_0="string_descriptors"
+UFS_DIR_NAME_1="health_descriptor"
+UFS_DIR_NAME_2="device_descriptor"
+UFS_DIR_NAME_3="flags"
+UFS_DIR_NAME_4="geometry_descriptor"
+UFS_DIR_NAME_5="interconnect_descriptor"
+UFS_DIR_NAME_6="attributes"
+UFS_DIR_NAME_7="power"
+UFS_DIR_NAME_8=""
+UFS_DIR_NAME_MAX=8
 
 # get_ssd_model - Return the model name of an ATA device.
 #
@@ -177,6 +187,44 @@ print_nvme_info() {
   done
 }
 
+# print_ufs_info - Print UFS device information
+#
+# inputs:
+#   device name for instance sdb.
+print_ufs_info() {
+  local dev="$1"
+  local ufs_dir
+  local ufs_name
+  local ufs_path
+  local ufs_result
+  local i
+  local file
+
+  ufs_dir="$(readlink -f "/sys/block/${dev}")"
+
+  while true; do
+    case "$(basename "${ufs_dir}")" in
+      *ufs*)
+        break
+        ;;
+      *)
+        ufs_dir="$(dirname "${ufs_dir}")"
+        ;;
+    esac
+  done
+
+  echo "/sys/block/$1"
+  for i in $(seq 0 ${UFS_DIR_NAME_MAX}); do
+    eval ufs_name=\${UFS_DIR_NAME_${i}}
+    ufs_path="${ufs_dir}/${ufs_name}"
+    echo "${ufs_path}"
+    find "${ufs_path}" -maxdepth 1 -type f -not -name uevent \
+      -exec grep ^ {} + | cut -b"${#ufs_path}-" | \
+      cut -f2 -d"/"
+    echo ""
+  done
+}
+
 # get_storage_info - Print device information.
 #
 # Print device information for all fixed devices in the system.
@@ -193,5 +241,9 @@ get_storage_info() {
 
   for dev in $(list_fixed_nvme_disks); do
     print_nvme_info "${dev}"
+  done
+
+  for dev in $(list_fixed_ufs_disks); do
+    print_ufs_info "${dev}"
   done
 }
