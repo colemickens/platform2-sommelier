@@ -471,9 +471,6 @@ status_t SensorHwOp::setSensorFT(int width, int height)
  * retrieving test pattern mode from sensor driver
  *
  * \param[OUT] mode: sensor test pattern mode
- * 0: TEST_PATTERN_MODE_OFF
- * 1: TEST_PATTERN_MODE_COLOR_BARS
- * 2: TEST_PATTERN_MODE_DEFAULT
  *
  * \return IOCTL return value.
  */
@@ -486,9 +483,6 @@ int SensorHwOp::getTestPattern(int *mode)
  * set test pattern mode to sensor driver
  *
  * \param[IN] mode: test pattern mode
- * 0: TEST_PATTERN_MODE_OFF
- * 1: TEST_PATTERN_MODE_COLOR_BARS
- * 2: TEST_PATTERN_MODE_DEFAULT
  *
  * \return IOCTL return value.
  */
