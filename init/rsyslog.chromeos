@@ -86,9 +86,6 @@ if ($programname startswith 'authpolicy') and $syslogseverity >= '4' then ~
 # The authpriv file has restricted access.
 authpriv.*                                              /var/log/secure
 
-# Everybody gets emergency messages
-*.emerg                                                 *
-
 # Save boot messages also to boot.log
 local7.*                                                /var/log/boot.log
 
