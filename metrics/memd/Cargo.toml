@@ -6,7 +6,7 @@ authors = ["The Chromium OS Authors"]
 [dependencies]
 chrono = "0.4.2"
 dbus = "0.6.1"
-env_logger = "0.5.10"
+env_logger = { version = "0.5.10", default-features = false }
 libc = "0.2.39"
 log = "0.4.1"
 time = "0.1.39"
