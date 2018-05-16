@@ -43,13 +43,14 @@ TvPowerStatus GetPowerStatus(const struct cec_msg& msg) {
     case CEC_OP_POWER_STATUS_TO_STANDBY:
       return kTvPowerStatusToStandBy;
     default:
-      LOG(WARNING) << "Unknown power status:" << power_status << " received.";
       return kTvPowerStatusUnknown;
   }
 }
 }  // namespace
 
-CecDeviceImpl::CecDeviceImpl(std::unique_ptr<CecFd> fd) : fd_(std::move(fd)) {}
+CecDeviceImpl::CecDeviceImpl(std::unique_ptr<CecFd> fd,
+                             const base::FilePath& device_path)
+    : fd_(std::move(fd)), device_path_(device_path) {}
 
 CecDeviceImpl::~CecDeviceImpl() = default;
 
@@ -63,15 +64,16 @@ bool CecDeviceImpl::Init() {
 }
 
 void CecDeviceImpl::GetTvPowerStatus(GetTvPowerStatusCallback callback) {
-  LOG(INFO) << "Getting power status.";
   if (!fd_) {
-    LOG(WARNING) << "Device is disabled due to errors, unable to query.";
+    LOG(WARNING) << device_path_.value()
+                 << ": device is disabled due to errors, unable to query";
     std::move(callback).Run(kTvPowerStatusError);
     return;
   }
 
   if (GetState() == State::kStart) {
-    LOG(INFO) << "Not configured, not querying TV power state.";
+    LOG(INFO) << device_path_.value()
+              << ": not configured, not querying TV power state";
     std::move(callback).Run(kTvPowerStatusAdapterNotConfigured);
     return;
   }
@@ -87,13 +89,15 @@ void CecDeviceImpl::GetTvPowerStatus(GetTvPowerStatusCallback callback) {
 
 void CecDeviceImpl::SetStandBy() {
   if (!fd_) {
-    LOG(WARNING) << "Device in disabled due to previous errors, ignoring "
-                    "standby request.";
+    LOG(WARNING) << device_path_.value()
+                 << ": device is disabled due to previous errors, ignoring "
+                    "standby request";
     return;
   }
 
   if (GetState() == State::kStart) {
-    LOG(INFO) << "Ignoring standby request, we are not connected.";
+    LOG(INFO) << device_path_.value()
+              << ": ignoring standby request, we are not connected";
     return;
   }
 
@@ -108,8 +112,10 @@ void CecDeviceImpl::SetStandBy() {
 
 void CecDeviceImpl::SetWakeUp() {
   if (!fd_) {
-    LOG(WARNING) << "Device in disabled due to previous errors, ignoring wake "
-                    "up request.";
+    LOG(WARNING)
+        << device_path_.value()
+        << ": device in disabled due to previous errors, ignoring wake "
+           "up request";
     return;
   }
 
@@ -130,8 +136,9 @@ void CecDeviceImpl::SetWakeUp() {
       if (SendMessage(&image_view_on_message) == CecFd::TransmitResult::kOk) {
         pending_active_source_broadcast_ = true;
       } else {
-        LOG(WARNING) << "Failed to send image view on message while in start "
-                        "state, we are not able to wake up this TV.";
+        LOG(WARNING) << device_path_.value()
+                     << ": failed to send image view on message while in start "
+                        "state, we are not able to wake up this TV";
         return;
       }
       break;
@@ -151,7 +158,8 @@ void CecDeviceImpl::RequestWriteWatch() {
   }
 
   if (!fd_->WriteWatch()) {
-    LOG(ERROR) << "Failed to request write watch on fd, disabling device.";
+    LOG(ERROR) << device_path_.value()
+               << ": failed to request write watch on fd, disabling device";
     DisableDevice();
   }
 }
@@ -176,8 +184,8 @@ CecDeviceImpl::State CecDeviceImpl::UpdateState(
   }
 
   VLOG(1) << base::StringPrintf(
-      "State update, physical address: 0x%x logical address: 0x%x",
-      static_cast<uint32_t>(physical_address_),
+      "%s: state update, physical address: 0x%x logical address: 0x%x",
+      device_path_.value().c_str(), static_cast<uint32_t>(physical_address_),
       static_cast<uint32_t>(logical_address_));
 
   return GetState();
@@ -185,8 +193,8 @@ CecDeviceImpl::State CecDeviceImpl::UpdateState(
 
 bool CecDeviceImpl::ProcessMessagesLostEvent(
     const struct cec_event_lost_msgs& event) {
-  LOG(WARNING) << "Received event lost message, lost " << event.lost_msgs
-               << " messages";
+  LOG(WARNING) << device_path_.value() << ": received event lost message, lost "
+               << event.lost_msgs << " messages";
   return true;
 }
 
@@ -226,7 +234,8 @@ bool CecDeviceImpl::ProcessEvents() {
     case CEC_EVENT_STATE_CHANGE:
       return ProcessStateChangeEvent(event.state_change);
     default:
-      LOG(WARNING) << base::StringPrintf("Unexpected cec event type: 0x%x",
+      LOG(WARNING) << base::StringPrintf("%s: unexpected cec event type: 0x%x",
+                                         device_path_.value().c_str(),
                                          event.event);
       return true;
   }
@@ -288,10 +297,16 @@ bool CecDeviceImpl::ProcessPowerStatusResponse(const struct cec_msg& msg) {
   TvPowerStatus status;
   if (cec_msg_status_is_ok(&msg)) {
     status = GetPowerStatus(msg);
-  } else if (msg.tx_status & CEC_TX_STATUS_NACK) {
-    status = kTvPowerStatusNoTv;
   } else {
-    status = kTvPowerStatusError;
+    VLOG(1) << base::StringPrintf(
+        "%s: power status query failed, rx_status: 0x%x tx_status: 0x%x",
+        device_path_.value().c_str(), static_cast<uint32_t>(msg.rx_status),
+        static_cast<uint32_t>(msg.tx_status));
+    if (msg.tx_status & CEC_TX_STATUS_NACK) {
+      status = kTvPowerStatusNoTv;
+    } else {
+      status = kTvPowerStatusError;
+    }
   }
 
   std::move(iterator->callback).Run(status);
@@ -306,12 +321,14 @@ void CecDeviceImpl::ProcessSentMessage(const struct cec_msg& msg) {
   }
 
   if (cec_msg_status_is_ok(&msg)) {
-    VLOG(1) << base::StringPrintf("Successfully sent message, opcode: 0x%x",
+    VLOG(1) << base::StringPrintf("%s: successfully sent message, opcode: 0x%x",
+                                  device_path_.value().c_str(),
                                   cec_msg_opcode(&msg));
   } else {
     LOG(WARNING) << base::StringPrintf(
-        "Failed to send message, opcode: 0x%x tx_status: 0x%x",
-        cec_msg_opcode(&msg), static_cast<uint32_t>(msg.tx_status));
+        "%s: failed to send message, opcode: 0x%x tx_status: 0x%x",
+        device_path_.value().c_str(), cec_msg_opcode(&msg),
+        static_cast<uint32_t>(msg.tx_status));
   }
 }
 
@@ -319,43 +336,46 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
   struct cec_msg reply;
   switch (cec_msg_opcode(msg)) {
     case CEC_MSG_REQUEST_ACTIVE_SOURCE:
-      VLOG(1) << "Received active source request.";
+      VLOG(1) << device_path_.value() << ": received active source request";
       if (active_source_) {
-        VLOG(1) << "We are active source, will respond.";
+        VLOG(1) << device_path_.value()
+                << ": we are active source, will respond";
         cec_msg_init(&reply, logical_address_, CEC_LOG_ADDR_BROADCAST);
         cec_msg_active_source(&reply, physical_address_);
         message_queue_.push_back(std::move(reply));
       }
       break;
     case CEC_MSG_ACTIVE_SOURCE:
-      VLOG(1) << "Received active source message.";
+      VLOG(1) << device_path_.value() << ": received active source message";
       if (active_source_) {
-        VLOG(1) << "We ceased to be active source.";
+        VLOG(1) << device_path_.value() << ": we ceased to be active source";
         active_source_ = false;
       }
       break;
     case CEC_MSG_GIVE_DEVICE_POWER_STATUS:
-      VLOG(1) << "Received give power status message.";
+      VLOG(1) << device_path_.value() << ": received give power status message";
       cec_msg_init(&reply, logical_address_, cec_msg_initiator(msg));
       cec_msg_report_power_status(&reply, CEC_OP_POWER_STATUS_ON);
       message_queue_.push_back(reply);
       break;
     default:
-      VLOG(1) << base::StringPrintf("Received message, opcode: 0x%x",
+      VLOG(1) << base::StringPrintf("%s: received message, opcode: 0x%x",
+                                    device_path_.value().c_str(),
                                     cec_msg_opcode(msg));
       if (!cec_msg_is_broadcast(msg)) {
-        VLOG(1) << "Responding with feature abort.";
+        VLOG(1) << device_path_.value() << ": responding with feature abort";
         cec_msg_reply_feature_abort(msg, CEC_OP_ABORT_UNRECOGNIZED_OP);
         message_queue_.push_back(std::move(*msg));
       } else {
-        VLOG(1) << "Ignoring broadcast message.";
+        VLOG(1) << device_path_.value() << ": ignoring broadcast message";
       }
       break;
   }
 }
 
 CecFd::TransmitResult CecDeviceImpl::SendMessage(struct cec_msg* msg) {
-  VLOG(1) << base::StringPrintf("Transmitting message, opcode:0x%x",
+  VLOG(1) << base::StringPrintf("%s: transmitting message, opcode:0x%x",
+                                device_path_.value().c_str(),
                                 cec_msg_opcode(msg));
   return fd_->TransmitMessage(msg);
 }
@@ -443,8 +463,9 @@ std::unique_ptr<CecDevice> CecDeviceFactoryImpl::Create(
     return nullptr;
   }
 
-  LOG(INFO) << base::StringPrintf("CEC adapter driver:%s name:%s caps:0x%x",
-                                  caps.driver, caps.name, caps.capabilities);
+  LOG(INFO) << base::StringPrintf(
+      "CEC adapter: %s, driver:%s name:%s caps:0x%x", path.value().c_str(),
+      caps.driver, caps.name, caps.capabilities);
 
   // At the moment the only adapters supported are the ones that:
   // - handle configuration of physical address on their own (i.e. don't have
@@ -453,18 +474,20 @@ std::unique_ptr<CecDevice> CecDeviceFactoryImpl::Create(
   // set)
   if ((caps.capabilities & CEC_CAP_PHYS_ADDR) ||
       !(caps.capabilities & CEC_CAP_LOG_ADDRS)) {
-    LOG(WARNING) << "Device does not have required capabilities to function "
+    LOG(WARNING) << path.value()
+                 << ": device does not have required capabilities to function "
                     "with this service";
     return nullptr;
   }
 
-  uint32_t mode = CEC_MODE_EXCL_INITIATOR;
+  uint32_t mode = CEC_MODE_EXCL_INITIATOR | CEC_MODE_EXCL_FOLLOWER;
   if (!fd->SetMode(mode)) {
-    LOG(ERROR) << "Failed to set an exclusive initiator mode on the device";
+    LOG(ERROR) << path.value()
+               << ": failed to set an exclusive initiator mode on the device";
     return nullptr;
   }
 
-  auto device = std::make_unique<CecDeviceImpl>(std::move(fd));
+  auto device = std::make_unique<CecDeviceImpl>(std::move(fd), path);
   if (!device->Init()) {
     return nullptr;
   }

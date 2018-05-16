@@ -6,9 +6,10 @@
 
 #include <utility>
 
-#include <base/callback.h>
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/macros.h>
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 #include "cecservice/cec_device.h"
@@ -68,7 +69,8 @@ CecDeviceTest::CecDeviceTest() {
   auto cec_fd_mock = std::make_unique<NiceMock<CecFdMock>>();
 
   cec_fd_mock_ = cec_fd_mock.get();
-  device_ = std::make_unique<CecDeviceImpl>(std::move(cec_fd_mock));
+  device_ = std::make_unique<CecDeviceImpl>(std::move(cec_fd_mock),
+                                            base::FilePath("/fake_path"));
 
   ON_CALL(*cec_fd_mock_, TransmitMessage(_))
       .WillByDefault(DoAll(SaveArgPointee<0>(&sent_message_),

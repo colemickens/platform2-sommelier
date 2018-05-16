@@ -39,7 +39,7 @@ class CecDevice {
 // Actual implementation of CecDevice.
 class CecDeviceImpl : public CecDevice {
  public:
-  explicit CecDeviceImpl(std::unique_ptr<CecFd> fd);
+  CecDeviceImpl(std::unique_ptr<CecFd> fd, const base::FilePath& device_path);
   ~CecDeviceImpl() override;
 
   // Performs object initialization. Returns false if the initialization
@@ -149,6 +149,9 @@ class CecDeviceImpl : public CecDevice {
 
   // The descriptor associated with the device.
   std::unique_ptr<CecFd> fd_;
+
+  // Path to the device, for logging purposes only.
+  const base::FilePath device_path_;
 
   base::WeakPtrFactory<CecDeviceImpl> weak_factory_{this};
 

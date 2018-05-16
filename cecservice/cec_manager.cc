@@ -4,6 +4,7 @@
 //
 #include "cecservice/cec_manager.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -11,8 +12,40 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_util.h>
 
 namespace cecservice {
+
+namespace {
+std::string PowerStatusToString(TvPowerStatus status) {
+  switch (status) {
+    case kTvPowerStatusError:
+      return "error";
+    case kTvPowerStatusAdapterNotConfigured:
+      return "adapter not configured";
+    case kTvPowerStatusNoTv:
+      return "no TV";
+    case kTvPowerStatusOn:
+      return "on";
+    case kTvPowerStatusStandBy:
+      return "standby";
+    case kTvPowerStatusToOn:
+      return "to on";
+    case kTvPowerStatusToStandBy:
+      return "to standby";
+    case kTvPowerStatusUnknown:
+      return "unknown";
+  }
+}
+
+std::string PowerStatusVectorToString(
+    const std::vector<TvPowerStatus>& vector) {
+  std::vector<std::string> strings;
+  std::transform(vector.begin(), vector.end(), std::back_inserter(strings),
+                 PowerStatusToString);
+  return "[" + base::JoinString(strings, ", ") + "]";
+}
+}  // namespace
 
 struct CecManager::TvPowerStatusResult {
   // Set to true if the response has been received from the device.
@@ -35,7 +68,7 @@ CecManager::CecManager(const UdevFactory& udev_factory,
   udev_ = udev_factory.Create(
       base::Bind(&CecManager::OnDeviceAdded, weak_factory_.GetWeakPtr()),
       base::Bind(&CecManager::OnDeviceRemoved, weak_factory_.GetWeakPtr()));
-  LOG_IF(FATAL, !udev_) << "Failed to create udev.";
+  LOG_IF(FATAL, !udev_) << "Failed to create udev";
 
   EnumerateAndAddExistingDevices();
 }
@@ -43,7 +76,7 @@ CecManager::CecManager(const UdevFactory& udev_factory,
 CecManager::~CecManager() = default;
 
 void CecManager::GetTvsPowerStatus(GetTvsPowerStatusCallback callback) {
-  LOG(INFO) << "Received get TVs power status request.";
+  LOG(INFO) << "Received get TVs power status request";
   if (devices_.empty()) {
     std::move(callback).Run({});
     return;
@@ -66,14 +99,14 @@ void CecManager::GetTvsPowerStatus(GetTvsPowerStatusCallback callback) {
 }
 
 void CecManager::SetWakeUp() {
-  LOG(INFO) << "Received wake up request.";
+  LOG(INFO) << "Received wake up request";
   for (auto& kv : devices_) {
     kv.second->SetWakeUp();
   }
 }
 
 void CecManager::SetStandBy() {
-  LOG(INFO) << "Received standby request.";
+  LOG(INFO) << "Received standby request";
   for (auto& kv : devices_) {
     kv.second->SetStandBy();
   }
@@ -104,6 +137,9 @@ bool CecManager::MaybeRespondToTvsPowerStatusQuery(
 
     result.push_back(status.power_status);
   }
+
+  LOG(INFO) << "Responding to power status request with: "
+            << PowerStatusVectorToString(result);
 
   std::move(query.callback).Run(result);
 

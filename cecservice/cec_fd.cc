@@ -28,7 +28,7 @@ CecFdImpl::~CecFdImpl() {
 
 bool CecFdImpl::SetLogicalAddresses(struct cec_log_addrs* addresses) const {
   if (HANDLE_EINTR(ioctl(fd_.get(), CEC_ADAP_S_LOG_ADDRS, addresses))) {
-    PLOG(ERROR) << "Failed to set logical addresses.";
+    PLOG(ERROR) << "Failed to set logical addresses";
     return false;
   }
   return true;
@@ -36,7 +36,7 @@ bool CecFdImpl::SetLogicalAddresses(struct cec_log_addrs* addresses) const {
 
 bool CecFdImpl::GetLogicalAddresses(struct cec_log_addrs* addresses) const {
   if (HANDLE_EINTR(ioctl(fd_.get(), CEC_ADAP_G_LOG_ADDRS, addresses))) {
-    PLOG(ERROR) << "Failed to get logical addresses.";
+    PLOG(ERROR) << "Failed to get logical addresses";
     return false;
   }
   return true;
@@ -44,7 +44,7 @@ bool CecFdImpl::GetLogicalAddresses(struct cec_log_addrs* addresses) const {
 
 bool CecFdImpl::ReceiveMessage(struct cec_msg* message) const {
   if (HANDLE_EINTR(ioctl(fd_.get(), CEC_RECEIVE, message))) {
-    PLOG(ERROR) << "Failed to receive message.";
+    PLOG(ERROR) << "Failed to receive message";
     return false;
   }
   return true;
@@ -52,7 +52,7 @@ bool CecFdImpl::ReceiveMessage(struct cec_msg* message) const {
 
 bool CecFdImpl::ReceiveEvent(struct cec_event* event) const {
   if (HANDLE_EINTR(ioctl(fd_.get(), CEC_DQEVENT, event))) {
-    PLOG(ERROR) << "Failed to read event.";
+    PLOG(ERROR) << "Failed to read event";
     return false;
   }
   return true;
@@ -69,7 +69,7 @@ CecFd::TransmitResult CecFdImpl::TransmitMessage(
       case EINVAL:
         return TransmitResult::kInvalidValue;
       default:
-        PLOG(ERROR) << "Failed to transmit message.";
+        PLOG(ERROR) << "Failed to transmit message";
         return TransmitResult::kError;
     }
   }
@@ -78,7 +78,7 @@ CecFd::TransmitResult CecFdImpl::TransmitMessage(
 
 bool CecFdImpl::GetCapabilities(struct cec_caps* capabilities) const {
   if (HANDLE_EINTR(ioctl(fd_.get(), CEC_ADAP_G_CAPS, capabilities))) {
-    PLOG(ERROR) << "Failed to query capabilities.";
+    PLOG(ERROR) << "Failed to query capabilities";
     return false;
   }
   return true;
@@ -86,7 +86,7 @@ bool CecFdImpl::GetCapabilities(struct cec_caps* capabilities) const {
 
 bool CecFdImpl::SetMode(uint32_t mode) const {
   if (HANDLE_EINTR(ioctl(fd_.get(), CEC_S_MODE, &mode))) {
-    PLOG(ERROR) << "Failed to set device mode.";
+    PLOG(ERROR) << "Failed to set device mode";
     return false;
   }
   return true;
@@ -108,9 +108,9 @@ bool CecFdImpl::SetEventCallback(const Callback& callback) {
 
   if (priority_taskid_ == kTaskIdNull || read_taskid_ == kTaskIdNull) {
     LOG_IF(ERROR, priority_taskid_ == kTaskIdNull)
-        << "Failed to register watcher for epoll FD read readiness.";
+        << "Failed to register watcher for epoll FD read readiness";
     LOG_IF(ERROR, read_taskid_ == kTaskIdNull)
-        << "Failed to register watcher for FD read readiness.";
+        << "Failed to register watcher for FD read readiness";
 
     return false;
   }
@@ -128,7 +128,7 @@ bool CecFdImpl::WriteWatch() {
       base::Bind(&CecFdImpl::OnWriteReady, weak_factory_.GetWeakPtr()));
 
   if (write_taskid_ == kTaskIdNull) {
-    LOG(ERROR) << "Failed to register watcher for FD write readiness.";
+    LOG(ERROR) << "Failed to register watcher for FD write readiness";
     return false;
   }
   return true;
@@ -161,14 +161,14 @@ std::unique_ptr<CecFd> CecFdOpenerImpl::Open(const base::FilePath& path,
 
   base::ScopedFD epoll_fd(epoll_create(1));
   if (!epoll_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to create epoll descriptor.";
+    PLOG(ERROR) << "Failed to create epoll descriptor";
     return nullptr;
   }
 
   epoll_event event;
   event.events = EPOLLPRI;
   if (epoll_ctl(epoll_fd.get(), EPOLL_CTL_ADD, fd.get(), &event)) {
-    PLOG(ERROR) << "Failed to register device fd on epoll fd.";
+    PLOG(ERROR) << "Failed to register device fd on epoll fd";
     return nullptr;
   }
 

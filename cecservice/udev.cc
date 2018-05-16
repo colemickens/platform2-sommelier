@@ -32,24 +32,24 @@ bool UdevImpl::Init(const DeviceCallback& device_added_callback,
 
   udev_.reset(udev_new());
   if (!udev_) {
-    LOG(ERROR) << "Failed to create libudev instance.";
+    LOG(ERROR) << "Failed to create libudev instance";
     return false;
   }
 
   monitor_.reset(udev_monitor_new_from_netlink(udev_.get(), "udev"));
   if (!monitor_) {
-    LOG(ERROR) << "Failed to create udev monitor.";
+    LOG(ERROR) << "Failed to create udev monitor";
     return false;
   }
 
   if (udev_monitor_filter_add_match_subsystem_devtype(monitor_.get(), "cec",
                                                       nullptr) < 0) {
-    LOG(ERROR) << "Failed to create udev filter for cec devices.";
+    LOG(ERROR) << "Failed to create udev filter for cec devices";
     return false;
   }
 
   if (udev_monitor_enable_receiving(monitor_.get()) < 0) {
-    LOG(ERROR) << "Failed to enable receiving on udev monitor.";
+    LOG(ERROR) << "Failed to enable receiving on udev monitor";
     return false;
   }
 
@@ -71,22 +71,22 @@ UdevImpl::~UdevImpl() {
 
 bool UdevImpl::EnumerateDevices(
     std::vector<base::FilePath>* devices_out) const {
-  DCHECK(udev_) << "Udev not initialized.";
+  DCHECK(udev_) << "Udev not initialized";
 
   std::unique_ptr<udev_enumerate, UdevEnumerateDeleter> enumerate(
       udev_enumerate_new(udev_.get()));
   if (!enumerate) {
-    LOG(ERROR) << "Failed to create udev enumeration.";
+    LOG(ERROR) << "Failed to create udev enumeration";
     return false;
   }
 
   if (udev_enumerate_add_match_subsystem(enumerate.get(), "cec") < 0) {
-    LOG(ERROR) << "Failed to add subsytem filter to udev enumeration.";
+    LOG(ERROR) << "Failed to add subsytem filter to udev enumeration";
     return false;
   }
 
   if (udev_enumerate_scan_devices(enumerate.get()) < 0) {
-    LOG(ERROR) << "Failed to scan devices with udev.";
+    LOG(ERROR) << "Failed to scan devices with udev";
     return false;
   }
 
@@ -96,7 +96,7 @@ bool UdevImpl::EnumerateDevices(
   udev_list_entry_foreach(entry, devices_list) {
     const char* name = udev_list_entry_get_name(entry);
     if (!name) {
-      LOG(WARNING) << "Failed to get entry name.";
+      LOG(WARNING) << "Failed to get entry name";
       continue;
     }
 
@@ -127,7 +127,7 @@ void UdevImpl::OnDeviceAction() {
 
   const char* action = udev_device_get_action(device.get());
   if (!action) {
-    LOG(WARNING) << "Failed to get device action.";
+    LOG(WARNING) << "Failed to get device action";
     return;
   }
 
@@ -136,7 +136,7 @@ void UdevImpl::OnDeviceAction() {
   if (path) {
     file_path = base::FilePath(path);
   } else {
-    LOG(WARNING) << "Failed to get device path.";
+    LOG(WARNING) << "Failed to get device path";
     return;
   }
 
