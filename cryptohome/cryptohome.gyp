@@ -430,6 +430,7 @@
             ],
           },
           'sources': [
+            'arc_disk_quota_unittest.cc',
             'attestation_unittest.cc',
             'boot_attributes_unittest.cc',
             'bootlockbox/boot_lockbox_dbus_adaptor.cc',

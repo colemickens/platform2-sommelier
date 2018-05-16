@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/types.h>
 
 #include <map>
 #include <memory>
@@ -295,6 +296,24 @@ class Platform {
   // Parameters
   //   path - the pathname of any file within the mounted file system
   virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const;
+
+  // Returns the current space for the given uid from quotactl syscall, or -1 if
+  // the syscall fails.
+  //
+  // Parameters
+  //   device - The pathname to the block special device
+  //   user_id - The user ID to query for
+  virtual int64_t GetQuotaCurrentSpaceForUid(const base::FilePath& device,
+                                             uid_t user_id) const;
+
+  // Returns the current space for the given gid from quotactl syscall, or -1 if
+  // the syscall fails.
+  //
+  // Parameters
+  //   device - The pathname to the block special device
+  //   group_id - The group ID to query for
+  virtual int64_t GetQuotaCurrentSpaceForGid(const base::FilePath& device,
+                                             gid_t group_id) const;
 
   // Returns true if the specified file exists.
   //

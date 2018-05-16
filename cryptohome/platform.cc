@@ -21,6 +21,7 @@
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/quota.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -520,6 +521,26 @@ bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
 
 int64_t Platform::AmountOfFreeDiskSpace(const FilePath& path) const {
   return base::SysInfo::AmountOfFreeDiskSpace(path);
+}
+
+int64_t Platform::GetQuotaCurrentSpaceForUid(const base::FilePath& device,
+                                             uid_t user_id) const {
+  struct dqblk dq = {};
+  if (quotactl(QCMD(Q_GETQUOTA, USRQUOTA), device.value().c_str(), user_id,
+               reinterpret_cast<char*>(&dq)) != 0) {
+    return -1;
+  }
+  return dq.dqb_curspace;
+}
+
+int64_t Platform::GetQuotaCurrentSpaceForGid(const base::FilePath& device,
+                                             gid_t group_id) const {
+  struct dqblk dq = {};
+  if (quotactl(QCMD(Q_GETQUOTA, GRPQUOTA), device.value().c_str(), group_id,
+               reinterpret_cast<char*>(&dq)) != 0) {
+    return -1;
+  }
+  return dq.dqb_curspace;
 }
 
 bool Platform::FileExists(const FilePath& path) {

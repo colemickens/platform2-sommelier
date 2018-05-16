@@ -289,6 +289,7 @@
         '-Wno-deprecated-register',
       ],
       'sources': [
+        'arc_disk_quota.cc',
         'attestation_task.cc',
         'bootlockbox/boot_attributes.cc',
         'chaps_client_factory.cc',
