@@ -860,6 +860,7 @@ static void xwl_configure_window(struct xwl_window *window) {
   assert(!window->pending_config.serial);
 
   if (window->next_config.mask) {
+    int values[5];
     int x = window->x;
     int y = window->y;
     int i = 0;
@@ -871,19 +872,25 @@ static void xwl_configure_window(struct xwl_window *window) {
       x = window->next_config.values[i++];
     if (window->next_config.mask & XCB_CONFIG_WINDOW_Y)
       y = window->next_config.values[i++];
-
-    assert(window->managed);
-    xcb_configure_window(window->xwl->connection, window->id,
-                         window->next_config.mask &
-                             ~(XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y),
-                         &window->next_config.values[i]);
-
     if (window->next_config.mask & XCB_CONFIG_WINDOW_WIDTH)
       window->width = window->next_config.values[i++];
     if (window->next_config.mask & XCB_CONFIG_WINDOW_HEIGHT)
       window->height = window->next_config.values[i++];
     if (window->next_config.mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
       window->border_width = window->next_config.values[i++];
+
+    // Set x/y to origin in case window gravity is not northwest as expected.
+    assert(window->managed);
+    values[0] = 0;
+    values[1] = 0;
+    values[2] = window->width;
+    values[3] = window->height;
+    values[4] = window->border_width;
+    xcb_configure_window(
+        window->xwl->connection, window->id,
+        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH |
+            XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_BORDER_WIDTH,
+        values);
 
     if (x != window->x || y != window->y) {
       window->x = x;
@@ -5444,6 +5451,11 @@ static void xwl_handle_map_request(struct xwl *xwl,
   xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE, window->id,
                       xwl->atoms[ATOM_NET_FRAME_EXTENTS].value,
                       XCB_ATOM_CARDINAL, 32, 4, values);
+
+  // Remove weird gravities.
+  values[0] = XCB_GRAVITY_NORTH_WEST;
+  xcb_change_window_attributes(xwl->connection, window->id, XCB_CW_WIN_GRAVITY,
+                               values);
 
   if (window->frame_id == XCB_WINDOW_NONE) {
     int depth = window->depth ? window->depth : xwl->screen->root_depth;
