@@ -46,14 +46,12 @@ constexpr char kVshUsage[] =
     "vsh client\n"
     "Usage: vsh [flags] -- ENV1=VALUE1 ENV2=VALUE2 command arg1 arg2...";
 
-bool GetCid(const std::string& vm_name, unsigned int* cid) {
-  dbus::Bus::Options opts;
-  opts.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(opts)));
-
+// Connect to the supplied |bus| and return a dbus::ObjectProxy for
+// the vm_concierge service.
+dbus::ObjectProxy* GetConciergeProxy(const scoped_refptr<dbus::Bus>& bus) {
   if (!bus->Connect()) {
     LOG(ERROR) << "Failed to connect to system bus";
-    return false;
+    return nullptr;
   }
 
   dbus::ObjectProxy* proxy = bus->GetObjectProxy(
@@ -62,9 +60,15 @@ bool GetCid(const std::string& vm_name, unsigned int* cid) {
   if (!proxy) {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << vm_tools::concierge::kVmConciergeServiceName;
-    return false;
+    return nullptr;
   }
 
+  return proxy;
+}
+
+bool GetCid(dbus::ObjectProxy* concierge_proxy,
+            const std::string& vm_name,
+            unsigned int* cid) {
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
                                vm_tools::concierge::kGetVmInfoMethod);
   dbus::MessageWriter writer(&method_call);
@@ -78,7 +82,7 @@ bool GetCid(const std::string& vm_name, unsigned int* cid) {
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+      concierge_proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to concierge service";
     return false;
@@ -100,7 +104,52 @@ bool GetCid(const std::string& vm_name, unsigned int* cid) {
   return true;
 }
 
-bool ListenForVshd(unsigned int port, base::ScopedFD* peer_sock_fd) {
+bool LaunchVshd(dbus::ObjectProxy* concierge_proxy,
+                const std::string& vm_name,
+                const std::string& container_name,
+                unsigned int port) {
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kLaunchVshdMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::LaunchVshdRequest request;
+  request.set_vm_name(vm_name);
+  request.set_container_name(container_name);
+  request.set_port(port);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode LaunchVshdRequest protobuf";
+    return false;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      concierge_proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return false;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::LaunchVshdResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return false;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to launch vshd for " << vm_name << ":"
+               << container_name;
+    return false;
+  }
+
+  return true;
+}
+
+bool ListenForVshd(dbus::ObjectProxy* concierge_proxy,
+                   unsigned int port,
+                   base::ScopedFD* peer_sock_fd,
+                   const std::string& vm_name,
+                   const std::string& container_name) {
   DCHECK(peer_sock_fd);
 
   // Create a socket to listen for incoming vsh connections.
@@ -119,7 +168,14 @@ bool ListenForVshd(unsigned int port, base::ScopedFD* peer_sock_fd) {
 
   if (bind(listen_fd.get(), reinterpret_cast<const struct sockaddr*>(&addr),
            sizeof(addr)) < 0) {
-    PLOG(ERROR) << "Failed to bind vshd port";
+    PLOG(ERROR) << "Failed to bind vsh port";
+    return false;
+  }
+
+  socklen_t addr_len = sizeof(addr);
+  if (getsockname(listen_fd.get(), reinterpret_cast<struct sockaddr*>(&addr),
+                  &addr_len) < 0) {
+    PLOG(ERROR) << "Failed to get bound vsh port";
     return false;
   }
 
@@ -127,23 +183,28 @@ bool ListenForVshd(unsigned int port, base::ScopedFD* peer_sock_fd) {
     PLOG(ERROR) << "Failed to listen";
     return false;
   }
+
+  // The socket is listening. Request that concierge start vshd.
+  if (!LaunchVshd(concierge_proxy, vm_name, container_name, addr.svm_port))
+    return false;
+
   struct pollfd pollfds[] = {
       {listen_fd.get(), POLLIN, 0},
   };
   const int num_pollfds = arraysize(pollfds);
 
-  if (HANDLE_EINTR(poll(pollfds, num_pollfds, -1)) < 0) {
+  if (HANDLE_EINTR(poll(pollfds, num_pollfds, 5000)) < 0) {
     PLOG(ERROR) << "Failed to poll";
     return false;
   }
 
   struct sockaddr_vm peer_addr;
-  socklen_t addr_size;
+  socklen_t addr_size = sizeof(peer_addr);
   peer_sock_fd->reset(HANDLE_EINTR(
       accept4(listen_fd.get(), reinterpret_cast<struct sockaddr*>(&peer_addr),
               &addr_size, SOCK_CLOEXEC)));
   if (!peer_sock_fd->is_valid()) {
-    PLOG(ERROR) << "Failed to accept connection from client";
+    PLOG(ERROR) << "Failed to accept connection from daemon";
     return false;
   }
 
@@ -156,7 +217,7 @@ int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   brillo::InitLog(brillo::kLogToStderrIfTty);
 
-  DEFINE_uint64(listen_port, 0, "Port to listen on");
+  DEFINE_uint64(listen_port, VMADDR_PORT_ANY, "Port to listen on");
   DEFINE_uint64(cid, 0, "Cid of VM");
   DEFINE_string(vm_name, "", "Target VM name");
   DEFINE_string(user, "chronos", "Target user in the VM");
@@ -168,7 +229,11 @@ int main(int argc, char** argv) {
   message_loop.SetAsCurrent();
   std::unique_ptr<VshClient> client;
 
-  if (FLAGS_listen_port != 0 || !FLAGS_target_container.empty()) {
+  dbus::Bus::Options opts;
+  opts.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(opts)));
+
+  if (FLAGS_listen_port != VMADDR_PORT_ANY || !FLAGS_target_container.empty()) {
     unsigned int port = 0;
     if (FLAGS_listen_port != 0) {
       port = static_cast<unsigned int>(FLAGS_listen_port);
@@ -179,8 +244,13 @@ int main(int argc, char** argv) {
       }
     }
 
+    dbus::ObjectProxy* proxy = GetConciergeProxy(bus);
+    if (!proxy)
+      return EXIT_FAILURE;
+
     base::ScopedFD sock_fd;
-    if (!ListenForVshd(port, &sock_fd)) {
+    if (!ListenForVshd(proxy, port, &sock_fd, FLAGS_vm_name,
+                       FLAGS_target_container)) {
       return EXIT_FAILURE;
     }
 
@@ -206,7 +276,10 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
       }
     } else {
-      if (!GetCid(FLAGS_vm_name, &cid))
+      dbus::ObjectProxy* proxy = GetConciergeProxy(bus);
+      if (!proxy)
+        return EXIT_FAILURE;
+      if (!GetCid(proxy, FLAGS_vm_name, &cid))
         return EXIT_FAILURE;
     }
 
