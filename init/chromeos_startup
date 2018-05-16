@@ -211,6 +211,25 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     fi
   fi
 
+  # Enable/disable quota feature.
+  if [ "${FS_FORMAT_STATE}" = "ext4" ]; then
+    if [ -d /proc/sys/fs/quota ]; then
+      # Quota is enabled in the kernel, make sure that quota is enabled in the
+      # filesystem.
+      if ! dumpe2fs -h "${STATE_DEV}" 2>/dev/null | \
+           grep -qe "^Filesystem features:.* quota.*"; then
+        tune2fs -Oquota -Qusrquota,grpquota "${STATE_DEV}" || :
+      fi
+    else
+      # Quota is not enabled in the kernel, make sure that quota is disabled in
+      # the filesystem.
+      if dumpe2fs -h "${STATE_DEV}" 2>/dev/null | \
+           grep -qe "^Filesystem features:.* quota.*"; then
+        tune2fs -O^quota -Q^usrquota,^grpquota "${STATE_DEV}" || :
+      fi
+    fi
+  fi
+
   # Mount stateful partition from STATE_DEV.
   if ! mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
          "${STATE_DEV}" /mnt/stateful_partition; then
