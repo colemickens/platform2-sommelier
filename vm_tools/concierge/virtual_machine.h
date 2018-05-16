@@ -195,6 +195,11 @@ class VirtualMachine {
                                   const std::string& desktop_file_id,
                                   std::string* out_error);
 
+  // Launches vshd.
+  bool LaunchVshd(const std::string& container_name,
+                  uint32_t port,
+                  std::string* out_error);
+
   // Returns whether there is a connected stub to Garcon running inside the
   // named |container_name| within this VM.
   bool IsContainerRunning(const std::string& container_name);

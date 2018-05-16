@@ -601,6 +601,7 @@ bool Service::Init() {
       {kLaunchContainerApplicationMethod, &Service::LaunchContainerApplication},
       {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
+      {kLaunchVshdMethod, &Service::LaunchVshd},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -1729,6 +1730,49 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
       request.container_name().empty() ? kDefaultContainerName
                                        : request.container_name()));
   response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::LaunchVshd(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received LaunchVshd request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  LaunchVshdRequest request;
+  LaunchVshdResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse LaunchVshdRequest from message";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.port() == 0) {
+    LOG(ERROR) << "Port is not set in LaunchVshdRequest";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = vms_.find(request.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  iter->second->LaunchVshd(request.container_name().empty()
+                               ? kDefaultContainerName
+                               : request.container_name(),
+                           request.port(), &error_msg);
+
+  response.set_success(true);
+  response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
