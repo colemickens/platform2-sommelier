@@ -763,6 +763,26 @@ gboolean cryptohome_get_supported_key_policies(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(GetSupportedKeyPolicies, request);
 }
 
+gboolean cryptohome_is_quota_supported(Cryptohome* self,
+                                       gboolean* OUT_quota_supported,
+                                       GError** error) {
+  CRYPTOHOME_WRAP_METHOD(IsQuotaSupported, OUT_quota_supported);
+}
+
+gboolean cryptohome_get_current_space_for_uid(Cryptohome* self,
+                                              guint32 uid,
+                                              gint64* OUT_cur_space,
+                                              GError** error) {
+  CRYPTOHOME_WRAP_METHOD(GetCurrentSpaceForUid, uid, OUT_cur_space);
+}
+
+gboolean cryptohome_get_current_space_for_gid(Cryptohome* self,
+                                              guint32 gid,
+                                              gint64* OUT_cur_space,
+                                              GError** error) {
+  CRYPTOHOME_WRAP_METHOD(GetCurrentSpaceForGid, gid, OUT_cur_space);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

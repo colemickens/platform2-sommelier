@@ -34,6 +34,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/make_tests.h"
+#include "cryptohome/mock_arc_disk_quota.h"
 #include "cryptohome/mock_attestation.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
@@ -148,6 +149,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
     service_.set_boot_attributes(&boot_attributes_);
     service_.set_firmware_management_parameters(&fwmp_);
     service_.set_event_source_sink(&event_sink_);
+    service_.set_arc_disk_quota(&arc_disk_quota_);
     test_helper_.SetUpSystemSalt();
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
@@ -170,6 +172,8 @@ class ServiceTestNotInitialized : public ::testing::Test {
           Property(&FilePath::value, EndsWith("decrypt_stateful")),
           _))
         .WillByDefault(Return(false));
+
+    ON_CALL(arc_disk_quota_, Initialize()).WillByDefault(Return());
   }
 
   void SetupMount(const std::string& username) {
@@ -204,6 +208,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
   NiceMock<MockBootAttributes> boot_attributes_;
   NiceMock<MockFirmwareManagementParameters> fwmp_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockArcDiskQuota> arc_disk_quota_;
   NiceMock<chaps::TokenManagerClientMock> chaps_client_;
   FakeEventSourceSink event_sink_;
   scoped_refptr<MockMount> mount_;
@@ -1668,6 +1673,36 @@ TEST_F(ServiceTestNotInitialized, CheckTpmGetPassword) {
                       res_pwd,
                       pwd2_non_ascii_str_utf8.size()));
   g_free(res_pwd);
+}
+
+TEST_F(ServiceTestNotInitialized, InitializeArcDiskQuota) {
+  EXPECT_CALL(arc_disk_quota_, Initialize()).Times(1);
+  EXPECT_TRUE(service_.Initialize());
+}
+
+TEST_F(ServiceTestNotInitialized, IsQuotaSupported) {
+  EXPECT_CALL(arc_disk_quota_, IsQuotaSupported()).WillOnce(Return(true));
+
+  GError* res_err;
+  gboolean quota_supported;
+  EXPECT_TRUE(service_.IsQuotaSupported(&quota_supported, &res_err));
+  EXPECT_EQ(TRUE, quota_supported);
+}
+
+TEST_F(ServiceTestNotInitialized, GetCurrentSpaceForUid) {
+  EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForUid(10)).WillOnce(Return(20));
+  GError* res_err;
+  gint64 cur_space;
+  EXPECT_TRUE(service_.GetCurrentSpaceForUid(10, &cur_space, &res_err));
+  EXPECT_EQ(20, cur_space);
+}
+
+TEST_F(ServiceTestNotInitialized, GetCurrentSpaceForGid) {
+  EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForGid(10)).WillOnce(Return(20));
+  GError* res_err;
+  gint64 cur_space;
+  EXPECT_TRUE(service_.GetCurrentSpaceForGid(10, &cur_space, &res_err));
+  EXPECT_EQ(20, cur_space);
 }
 
 }  // namespace cryptohome

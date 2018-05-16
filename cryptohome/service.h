@@ -23,6 +23,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus-glib.h>
 
+#include "cryptohome/arc_disk_quota.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/firmware_management_parameters.h"
@@ -138,6 +139,10 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Overrides the Platform implementation for Service.
   virtual void set_platform(cryptohome::Platform *platform) {
     platform_ = platform;
+  }
+
+  virtual void set_arc_disk_quota(cryptohome::ArcDiskQuota* arc_disk_quota) {
+    arc_disk_quota_ = arc_disk_quota;
   }
 
   virtual cryptohome::Crypto* crypto() { return crypto_; }
@@ -633,6 +638,20 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Return the next sequence number.
   int NextSequence();
 
+  // Whether or not quota-based disk usage stats is supported.
+  virtual gboolean IsQuotaSupported(gboolean* OUT_quota_supported,
+                                    GError** error);
+
+  // Get the current disk space usage for the given uid.
+  virtual gboolean GetCurrentSpaceForUid(guint32 uid,
+                                         gint64* OUT_cur_space,
+                                         GError** error);
+
+  // Get the current disk space usage for the given gid.
+  virtual gboolean GetCurrentSpaceForGid(guint gid,
+                                         gint64* OUT_cur_space,
+                                         GError** error);
+
  protected:
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
 
@@ -829,6 +848,8 @@ class Service : public brillo::dbus::AbstractDbusService,
   Pkcs11TaskMap pkcs11_tasks_;
   std::unique_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
+  std::unique_ptr<ArcDiskQuota> default_arc_disk_quota_;
+  ArcDiskQuota* arc_disk_quota_;
   std::string guest_user_;
   bool force_ecryptfs_;
   bool legacy_mount_;

@@ -441,6 +441,19 @@ gboolean cryptohome_get_supported_key_policies(Cryptohome* self,
                                                GArray* request,
                                                DBusGMethodInvocation* resp);
 
+gboolean cryptohome_is_quota_supported(Cryptohome* self,
+                                       gboolean* OUT_quota_supported,
+                                       GError** error);
+
+gboolean cryptohome_get_current_space_for_uid(Cryptohome* self,
+                                              guint32 uid,
+                                              gint64* OUT_cur_space,
+                                              GError** error);
+
+gboolean cryptohome_get_current_space_for_gid(Cryptohome* self,
+                                              guint32 gid,
+                                              gint64* OUT_cur_space,
+                                              GError** error);
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

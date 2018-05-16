@@ -116,6 +116,10 @@ const char kAttestationMode[] = "attestation_mode";
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
 
+const base::FilePath kHome("/home");
+const base::FilePath kShadowRoot(".shadow");
+const base::FilePath kAndroidData("mount/root/android-data");
+
 class TpmInitStatus : public CryptohomeEventBase {
  public:
   TpmInitStatus()
@@ -207,6 +211,9 @@ Service::Service()
       mount_factory_(default_mount_factory_.get()),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
+      default_arc_disk_quota_(new cryptohome::ArcDiskQuota(
+          platform_, kHome, kShadowRoot, kAndroidData)),
+      arc_disk_quota_(default_arc_disk_quota_.get()),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),
       legacy_mount_(true),
@@ -521,6 +528,8 @@ bool Service::Initialize() {
     return false;
   if (!homedirs_->GetSystemSalt(&system_salt_))
     return false;
+
+  arc_disk_quota_->Initialize();
 
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
@@ -3228,6 +3237,26 @@ int Service::NextSequence() {
   // AtomicSequenceNumber is zero-based, so increment so that the sequence ids
   // are one-based.
   return sequence_holder_.GetNext() + 1;
+}
+
+gboolean Service::IsQuotaSupported(gboolean* OUT_quota_supported,
+                                   GError** error) {
+  *OUT_quota_supported = arc_disk_quota_->IsQuotaSupported();
+  return TRUE;
+}
+
+gboolean Service::GetCurrentSpaceForUid(guint32 uid,
+                                        gint64* OUT_cur_space,
+                                        GError** error) {
+  *OUT_cur_space = arc_disk_quota_->GetCurrentSpaceForUid(uid);
+  return TRUE;
+}
+
+gboolean Service::GetCurrentSpaceForGid(guint32 gid,
+                                        gint64* OUT_cur_space,
+                                        GError** error) {
+  *OUT_cur_space = arc_disk_quota_->GetCurrentSpaceForGid(gid);
+  return TRUE;
 }
 
 }  // namespace cryptohome

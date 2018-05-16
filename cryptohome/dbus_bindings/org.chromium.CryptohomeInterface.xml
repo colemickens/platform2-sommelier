@@ -513,6 +513,23 @@
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
     </method>
+    <!-- Whether quota-based disk usage statistics is supported.
+    -->
+    <method name="IsQuotaSupported">
+      <arg type="b" name="quota_supported" direction="out" />
+    </method>
+    <!-- Get the current disk space usage for the given uid.
+    -->
+    <method name="GetCurrentSpaceForUid">
+      <arg type="u" name="uid" direction="in" />
+      <arg type="x" name="cur_space" direction="out" />
+    </method>
+    <!-- Get the current disk space usage for the given uid.
+    -->
+    <method name="GetCurrentSpaceForGid">
+      <arg type="u" name="gid" direction="in" />
+      <arg type="x" name="cur_space" direction="out" />
+    </method>
 
     <!-- Signals:
            TpmInitStatus: Emitted when TPM initialization status changes.
