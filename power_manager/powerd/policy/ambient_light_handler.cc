@@ -38,6 +38,8 @@ BacklightBrightnessChange_Cause AmbientLightHandler::ToProtobufCause(
   return BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED;
 }
 
+constexpr size_t AmbientLightHandler::kNumRecentReadingsToLog;
+
 AmbientLightHandler::AmbientLightHandler(
     system::AmbientLightSensorInterface* sensor, Delegate* delegate)
     : sensor_(sensor),
@@ -52,6 +54,7 @@ AmbientLightHandler::AmbientLightHandler(
       sent_initial_adjustment_(false) {
   DCHECK(sensor_);
   DCHECK(delegate_);
+  recent_lux_readings_.reserve(kNumRecentReadingsToLog);
   sensor_->AddObserver(this);
 }
 
@@ -149,6 +152,17 @@ void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
   }
 }
 
+std::string AmbientLightHandler::GetRecentReadingsString() const {
+  std::string str;
+  for (int i = 0; i < recent_lux_readings_.size(); ++i) {
+    const int index =
+        (recent_lux_start_index_ - i - 1 + recent_lux_readings_.size()) %
+        recent_lux_readings_.size();
+    str += (i ? " " : "") + std::to_string(recent_lux_readings_[index]);
+  }
+  return str;
+}
+
 void AmbientLightHandler::OnAmbientLightUpdated(
     system::AmbientLightSensorInterface* sensor) {
   DCHECK_EQ(sensor, sensor_);
@@ -157,6 +171,15 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   if (raw_lux < 0) {
     LOG(WARNING) << "Sensor doesn't have valid value";
     return;
+  }
+
+  if (recent_lux_readings_.size() < kNumRecentReadingsToLog) {
+    recent_lux_readings_.push_back(raw_lux);
+  } else {
+    // Overwrite the oldest value with the new reading.
+    recent_lux_readings_[recent_lux_start_index_] = raw_lux;
+    recent_lux_start_index_ =
+        (recent_lux_start_index_ + 1) % recent_lux_readings_.size();
   }
 
   UpdateSmoothedLux(raw_lux);
@@ -222,9 +245,13 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   if (hysteresis_count_ >= kHysteresisThreshold) {
     step_index_ = new_step_index;
     double target_percent = GetTargetPercent();
-    LOG(INFO) << "Hysteresis overcome; transitioning to " << target_percent
-              << "% (step " << step_index_ << ") for lux " << new_lux << " ("
-              << name_ << ")";
+    // Log the backlight brightness level that we're suggesting. Note that the
+    // delegate may choose to ignore this suggestion for some other reason
+    // (system is shutting down, user has manually requested a different level,
+    // etc.).
+    LOG(INFO) << "Transitioning " << name_ << " to " << target_percent
+              << "% (step " << step_index_ << ") for lux " << new_lux << " ["
+              << GetRecentReadingsString() << " ...]";
     smoothed_lux_at_last_adjustment_ = new_lux;
     hysteresis_count_ = 1;
     delegate_->SetBrightnessPercentForAmbientLight(

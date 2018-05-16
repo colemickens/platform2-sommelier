@@ -46,10 +46,7 @@ class TestDelegate : public AmbientLightHandler::Delegate {
 class AmbientLightHandlerTest : public ::testing::Test {
  public:
   AmbientLightHandlerTest()
-      : light_sensor_(0),
-        handler_(&light_sensor_, &delegate_),
-        initial_brightness_percent_(0.0),
-        als_smoothing_constant_(1.0) {}
+      : light_sensor_(0), handler_(&light_sensor_, &delegate_) {}
 
   ~AmbientLightHandlerTest() override {}
 
@@ -76,13 +73,13 @@ class AmbientLightHandlerTest : public ::testing::Test {
   std::string steps_pref_;
 
   // Initial light level reported by |light_sensor_|.
-  int initial_lux_;
+  int initial_lux_ = 0;
 
   // Initial backlight brightness level passed to AmbientLightHandler::Init().
-  double initial_brightness_percent_;
+  double initial_brightness_percent_ = 0.0;
 
   // Initial als smoothing constant passed to AmbientLightHandler::Init().
-  double als_smoothing_constant_;
+  double als_smoothing_constant_ = 1.0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AmbientLightHandlerTest);
@@ -225,6 +222,34 @@ TEST_F(AmbientLightHandlerTest, DeferInitialChange) {
   EXPECT_DOUBLE_EQ(30.0, delegate_.percent());
   EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
             delegate_.cause());
+}
+
+TEST_F(AmbientLightHandlerTest, GetRecentReadingsString) {
+  steps_pref_ = "100.0 -1 -1";
+  Init();
+
+  // Report three readings.
+  ASSERT_LT(3, AmbientLightHandler::kNumRecentReadingsToLog);
+  UpdateSensor(20);
+  EXPECT_EQ("20", handler_.GetRecentReadingsString());
+  UpdateSensor(25);
+  EXPECT_EQ("25 20", handler_.GetRecentReadingsString());
+  UpdateSensor(30);
+  EXPECT_EQ("30 25 20", handler_.GetRecentReadingsString());
+
+  // Report enough additional readings to fill the buffer.
+  std::string expected = handler_.GetRecentReadingsString();
+  for (int i = 0; i < AmbientLightHandler::kNumRecentReadingsToLog - 3; ++i) {
+    UpdateSensor(i);
+    expected = std::to_string(i) + " " + expected;
+  }
+  EXPECT_EQ(expected, handler_.GetRecentReadingsString());
+
+  // Log one more value and check that the oldest reading (20) is dropped.
+  UpdateSensor(35);
+  ASSERT_EQ(" 20", expected.substr(expected.size() - 3));
+  EXPECT_EQ("35 " + expected.substr(0, expected.size() - 3),
+            handler_.GetRecentReadingsString());
 }
 
 }  // namespace policy

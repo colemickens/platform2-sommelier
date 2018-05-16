@@ -38,6 +38,10 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   static BacklightBrightnessChange_Cause ToProtobufCause(
       BrightnessChangeCause als_cause);
 
+  // Number of recent light sensor readings to include in log messages.
+  // Public so it can be used in tests.
+  static constexpr size_t kNumRecentReadingsToLog = 10;
+
   // Interface for classes that perform actions on behalf of
   // AmbientLightHandler.
   class Delegate {
@@ -96,6 +100,10 @@ class AmbientLightHandler : public system::AmbientLightObserver {
 
   // Should be called when the power source changes.
   void HandlePowerSourceChange(PowerSource source);
+
+  // Returns a string containing recent ALS readings, space-separated and
+  // newest-to-oldest. Public so it can be called by tests.
+  std::string GetRecentReadingsString() const;
 
   // system::AmbientLightObserver implementation:
   void OnAmbientLightUpdated(
@@ -176,6 +184,12 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // Human-readable name included in logging messages.  Useful for
   // distinguishing between different AmbientLightHandler instances.
   std::string name_;
+
+  // Circular buffer containing recent readings from |sensor_| in
+  // oldest-to-newest order (starting at |recent_lux_start_index_| and wrapping
+  // around). Used for logging.
+  std::vector<int> recent_lux_readings_;
+  int recent_lux_start_index_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightHandler);
 };
