@@ -746,6 +746,13 @@ status_t ControlUnit::fillMetadata(std::shared_ptr<RequestCtrlState> &reqState)
     //# ANDROID_METADATA_Dynamic android.request.pipelineDepth done
     reqState->ctrlUnitResult->update(ANDROID_REQUEST_PIPELINE_DEPTH,
                                      &pipelineDepth, 1);
+    // return 0.0f for the fixed-focus
+     if (!mLensSupported) {
+         float focusDistance = 0.0f;
+         reqState->ctrlUnitResult->update(ANDROID_LENS_FOCUS_DISTANCE,
+                                          &focusDistance, 1);
+     }
+
     return OK;
 }
 
