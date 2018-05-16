@@ -180,7 +180,7 @@ std::unique_ptr<DesktopFile> DesktopFile::ParseDesktopFile(
 // static
 std::vector<base::FilePath> DesktopFile::GetPathsForDesktopFiles() {
   const char* xdg_data_dirs = getenv(kXdgDataDirsEnvVar);
-  if (!xdg_data_dirs || !strlen(xdg_data_dirs)) {
+  if (!xdg_data_dirs || strlen(xdg_data_dirs) == 0) {
     xdg_data_dirs = kDefaultDesktopFilesPath;
   }
   // Now break it up into the paths that we should search.

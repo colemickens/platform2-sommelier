@@ -35,7 +35,7 @@ std::vector<base::FilePath> GetPathsForIcons(int icon_size, int scale) {
         base::StringPrintf("%dx%d@%d", icon_size, icon_size, scale);
   }
   const char* xdg_data_dirs = getenv(kXdgDataDirsEnvVar);
-  if (!xdg_data_dirs || strlen(xdg_data_dirs) != 0) {
+  if (!xdg_data_dirs || strlen(xdg_data_dirs) == 0) {
     xdg_data_dirs = kXdgDataDirsDefault;
   }
   std::vector<base::StringPiece> search_dirs = base::SplitStringPiece(
