@@ -63,6 +63,8 @@ class ImageProcessor {
                      const FrameBuffer& in_frame,
                      FrameBuffer* out_frame);
 
+  void InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size);
+
   int MJPGToI420(const FrameBuffer& in_frame, FrameBuffer* out_frame);
 
   std::unique_ptr<JpegEncodeAccelerator> jpeg_encoder_;

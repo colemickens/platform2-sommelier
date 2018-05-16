@@ -489,7 +489,7 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
     }
     if (status == JpegEncodeAccelerator::ENCODE_OK) {
       memcpy(out_frame->GetData(), output_shm->memory(), encoded_data_size);
-      out_frame->SetDataSize(encoded_data_size);
+      InsertJpegBlob(out_frame, encoded_data_size);
       return true;
     }
 
@@ -504,12 +504,16 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
     LOGF(ERROR) << "JPEG image compression failed";
     return false;
   }
+  InsertJpegBlob(out_frame, jpeg_data_size);
+  return true;
+}
+
+void ImageProcessor::InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size) {
   camera3_jpeg_blob_t blob;
   blob.jpeg_blob_id = CAMERA3_JPEG_BLOB_ID;
   blob.jpeg_size = jpeg_data_size;
   memcpy(out_frame->GetData() + out_frame->GetBufferSize() - sizeof(blob),
          &blob, sizeof(blob));
-  return true;
 }
 
 static bool SetExifTags(const android::CameraMetadata& metadata,
