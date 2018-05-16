@@ -868,6 +868,9 @@ impl SamplerState {
                     self.enqueue_sample(SampleType::EnterLowMem)?;
                     let fd = self.files.low_mem_file_option.as_ref().unwrap().as_raw_fd();
                     self.watcher.clear_fd(fd)?;
+                    // Make this interesting at least until chrome events are
+                    // plumbed, maybe permanently.
+                    event_is_interesting = true;
                 } else if in_low_mem && self.low_mem_watcher.watch(&null_duration)? == 0 {
                     // Refresh time since we may have blocked.  (That should
                     // not happen often because currently we're below the
