@@ -258,11 +258,17 @@ void HostNotifier::SendAppListToHost() {
                      << enum_path.value();
         continue;
       }
+      // If we have already seen this desktop file ID then don't analyze this
+      // one. We want to check this before we do the filtering to allow users
+      // to put .desktop files in local locations to hide applications in
+      // system locations.
+      if (!unique_app_ids.insert(desktop_file->app_id()).second) {
+        continue;
+      }
       // Make sure this .desktop file is one we should send to the host.
       // There are various cases where we do not want to transmit certain
       // .desktop files.
-      if (!desktop_file->ShouldPassToHost() ||
-          !unique_app_ids.insert(desktop_file->app_id()).second) {
+      if (!desktop_file->ShouldPassToHost()) {
         continue;
       }
       // Add this app to the list in the protobuf and populate all of its
