@@ -879,7 +879,9 @@ TEST(TestLogin, LoginFail) {
 
 TEST(TestLogin, LoginNoPrivateWait) {
   ChapsProxyMock proxy(true);
-  SetRetryTimeParameters(10 /* timeout_ms */, 0 /* delay_ms */);
+  // TODO(ejcaruso, crbug.com/844114): explore mocking time so we can turn
+  // this timeout back down and not deal with flakiness here
+  SetRetryTimeParameters(30 /* timeout_ms */, 0 /* delay_ms */);
   EXPECT_CALL(proxy, Login(_, _, _, _))
       .WillOnce(Return(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS))
       .WillRepeatedly(Return(CKR_OK));
