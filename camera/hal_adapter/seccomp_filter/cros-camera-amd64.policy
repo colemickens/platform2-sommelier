@@ -15,6 +15,7 @@ exit: 1
 exit_group: 1
 fcntl: 1
 fstat: 1
+fstatfs: 1
 ftruncate: 1
 futex: 1
 getdents: 1
@@ -36,8 +37,8 @@ mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 munmap: 1
 nanosleep: 1
 open: 1
-pipe: 1
 pipe2: 1
+pipe: 1
 poll: 1
 prctl: 1
 read: 1
@@ -46,6 +47,7 @@ recvmsg: 1
 restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
+sched_setscheduler: 1
 sched_yield: 1
 select: 1
 sendmsg: 1
@@ -59,7 +61,8 @@ socket: arg0 == 1
 socketpair: 1
 stat: 1
 statfs: 1
+tgkill: 1
+uname: 1
 unlink: 1
 wait4: 1
 write: 1
-tgkill: 1
