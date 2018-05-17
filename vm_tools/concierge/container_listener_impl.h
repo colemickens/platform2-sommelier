@@ -10,6 +10,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/sequenced_task_runner.h>
+#include <base/time/time.h>
 #include <grpc++/grpc++.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 
@@ -48,6 +49,12 @@ class ContainerListenerImpl final
  private:
   base::WeakPtr<vm_tools::concierge::Service> service_;  // not owned
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+  // We rate limit the requests to open a URL in Chrome to prevent an
+  // accidental DOS of Chrome from a bad script in Linux. We use a fixed window
+  // rate control algorithm to do this.
+  uint32_t open_url_count_;
+  base::TimeTicks open_url_rate_window_start_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerListenerImpl);
 };

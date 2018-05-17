@@ -19,6 +19,10 @@
 namespace {
 constexpr char kIpv4Prefix[] = "ipv4:";
 constexpr size_t kIpv4PrefixSize = sizeof(kIpv4Prefix) - 1;
+// These rate limit settings ensure that the OpenUrl call can't be made more
+// than 10 times in a 15 second interval approximately.
+constexpr base::TimeDelta kOpenUrlRateWindow = base::TimeDelta::FromSeconds(15);
+constexpr uint32_t kOpenUrlRateLimit = 10;
 
 // Returns 0 on failure, otherwise the parsed 32 bit IP address from an
 // ipv4:aaa.bbb.ccc.ddd:eee string.
@@ -50,7 +54,10 @@ namespace concierge {
 
 ContainerListenerImpl::ContainerListenerImpl(
     base::WeakPtr<vm_tools::concierge::Service> service)
-    : service_(service), task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
+    : service_(service),
+      task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      open_url_count_(0),
+      open_url_rate_window_start_(base::TimeTicks::Now()) {}
 
 grpc::Status ContainerListenerImpl::ContainerReady(
     grpc::ServerContext* ctx,
@@ -170,6 +177,23 @@ grpc::Status ContainerListenerImpl::OpenUrl(
     grpc::ServerContext* ctx,
     const vm_tools::container::OpenUrlRequest* request,
     vm_tools::EmptyMessage* response) {
+  // Check on rate limiting before we process this.
+  base::TimeTicks now = base::TimeTicks::Now();
+  if (now - open_url_rate_window_start_ > kOpenUrlRateWindow) {
+    // Beyond the window, reset the window start time and counter.
+    open_url_rate_window_start_ = now;
+    open_url_count_ = 1;
+  } else {
+    open_url_count_++;
+    if (open_url_count_ > kOpenUrlRateLimit) {
+      // Only log the first one over the limit to prevent log spam if this is
+      // getting hit quickly.
+      LOG_IF(ERROR, open_url_count_ == kOpenUrlRateLimit + 1)
+          << "OpenUrl rate limit hit, blocking requests until window closes";
+      return grpc::Status(grpc::RESOURCE_EXHAUSTED,
+                          "OpenUrl rate limit exceeded, blocking request");
+    }
+  }
   std::string peer_address = ctx->peer();
   uint32_t ip = ExtractIpFromPeerAddress(peer_address);
   if (ip == 0) {
