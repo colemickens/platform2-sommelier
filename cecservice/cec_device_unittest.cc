@@ -26,6 +26,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
+using ::testing::StrEq;
 
 namespace cecservice {
 
@@ -139,6 +140,7 @@ TEST_F(CecDeviceTest, TestConnect) {
           Field(&cec_log_addrs::num_log_addrs, 1),
           Field(&cec_log_addrs::log_addr_type,
                 ElementsAre(uint8_t(CEC_LOG_ADDR_TYPE_PLAYBACK), _, _, _)),
+          Field(&cec_log_addrs::osd_name, StrEq("Chrome OS")),
           Field(&cec_log_addrs::flags, CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK))))
       .WillOnce(Return(true));
 
@@ -283,11 +285,11 @@ TEST_F(CecDeviceTest, TestFeatureAbortResponse) {
   Connect();
 
   // All others, not explicitly supported messages should be responded with
-  // feature abort, let's test it with stand by request.
+  // feature abort, let's test it with 'record off' request.
   EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
       .WillOnce(Invoke([](struct cec_msg* msg) {
         cec_msg_init(msg, kOtherLogicalAddress, kLogicalAddress);
-        cec_msg_standby(msg);
+        cec_msg_record_off(msg, 1);
         return true;
       }));
 

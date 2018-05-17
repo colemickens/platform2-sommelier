@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 
 namespace cecservice {
 
@@ -358,6 +359,9 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
       cec_msg_report_power_status(&reply, CEC_OP_POWER_STATUS_ON);
       message_queue_.push_back(reply);
       break;
+    case CEC_MSG_STANDBY:
+      VLOG(1) << device_path_.value() << ": ignoring standby request";
+      break;
     default:
       VLOG(1) << base::StringPrintf("%s: received message, opcode: 0x%x",
                                     device_path_.value().c_str(),
@@ -395,7 +399,7 @@ bool CecDeviceImpl::SetLogicalAddress() {
   memset(&addresses, 0, sizeof(addresses));
   addresses.cec_version = CEC_OP_CEC_VERSION_1_4;
   addresses.vendor_id = CEC_VENDOR_ID_NONE;
-  addresses.osd_name[0] = 0;
+  base::strlcpy(addresses.osd_name, "Chrome OS", sizeof(addresses.osd_name));
   addresses.num_log_addrs = 1;
   addresses.log_addr_type[0] = CEC_LOG_ADDR_TYPE_PLAYBACK;
   addresses.primary_device_type[0] = CEC_OP_PRIM_DEVTYPE_PLAYBACK;
