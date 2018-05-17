@@ -1929,7 +1929,8 @@ TEST_P(KeysetManagementTest, GetVaultKeysetLabelsOneLabeled) {
 
   serialized_.mutable_key_data()->set_label("a labeled key");
   std::vector<std::string> labels;
-  EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(*up_, &labels));
+  EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(
+      up_->GetObfuscatedUsername(system_salt_), &labels));
   ASSERT_NE(0, labels.size());
   EXPECT_EQ(serialized_.key_data().label(),
             labels[0]);
@@ -1940,7 +1941,8 @@ TEST_P(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
 
   serialized_.clear_key_data();
   std::vector<std::string> labels;
-  EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(*up_, &labels));
+  EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(
+      up_->GetObfuscatedUsername(system_salt_), &labels));
   ASSERT_NE(0, labels.size());
   EXPECT_EQ(StringPrintf("%s%d", kKeyLegacyPrefix, 0),
             labels[0]);

@@ -48,6 +48,7 @@
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/mount.h"
+#include "cryptohome/obfuscated_username.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/tpm.h"
@@ -983,7 +984,7 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
   }
   mounts_lock_.Release();
 
-  if (!homedirs_->Exists(credentials)) {
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   } else if (!homedirs_->AreCredentialsValid(credentials)) {
     // TODO(wad) Should this pass along KEY_NOT_FOUND too?
@@ -1051,7 +1052,7 @@ void Service::DoRemoveKeyEx(AccountIdentifier* identifier,
                                          authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
-  if (!homedirs_->Exists(credentials)) {
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
     return;
@@ -1103,19 +1104,21 @@ void Service::DoListKeysEx(AccountIdentifier* identifier,
     return;
   }
 
-  if (GetAccountId(*identifier).empty()) {
+  const std::string username = GetAccountId(*identifier);
+  if (username.empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
   BaseReply reply;
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(), SecureBlob());
-  if (!homedirs_->Exists(credentials)) {
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(username, system_salt_);
+  if (!homedirs_->Exists(obfuscated_username)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
     return;
   }
   std::vector<std::string> labels;
-  if (!homedirs_->GetVaultKeysetLabels(credentials, &labels)) {
+  if (!homedirs_->GetVaultKeysetLabels(obfuscated_username, &labels)) {
     reply.set_error(CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   }
   ListKeysReply* list_keys_reply = reply.MutableExtension(ListKeysReply::reply);
@@ -1174,17 +1177,18 @@ void Service::DoGetKeyDataEx(AccountIdentifier* identifier,
   }
 
   BaseReply reply;
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(), SecureBlob());
-  if (!homedirs_->Exists(credentials)) {
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(GetAccountId(*identifier), system_salt_);
+  if (!homedirs_->Exists(obfuscated_username)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
     return;
   }
 
   GetKeyDataReply* sub_reply = reply.MutableExtension(GetKeyDataReply::reply);
-  credentials.set_key_data(get_key_data_request->key().data());
   // Requests only support using the key label at present.
-  std::unique_ptr<VaultKeyset> vk(homedirs_->GetVaultKeyset(credentials));
+  std::unique_ptr<VaultKeyset> vk(homedirs_->GetVaultKeyset(
+      obfuscated_username, get_key_data_request->key().data().label()));
   if (vk) {
     KeyData* new_kd = sub_reply->add_key_data();
     *new_kd = vk->serialized().key_data();
@@ -1319,7 +1323,7 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
                                          authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
-  if (!homedirs_->Exists(credentials)) {
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
     return;
@@ -1408,7 +1412,7 @@ void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
                                          authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
-  if (!homedirs_->Exists(credentials)) {
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
     return;
@@ -1890,7 +1894,8 @@ void Service::ContinueMountExWithCredentials(
   if (mounts_.size() == 0)
     other_mounts_active = CleanUpStaleMounts(false);
 
-  if (!request->has_create() && !homedirs_->Exists(*credentials)) {
+  if (!request->has_create() &&
+      !homedirs_->Exists(credentials->GetObfuscatedUsername(system_salt_))) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
     return;
@@ -3118,14 +3123,15 @@ gboolean Service::NeedsDircryptoMigration(const GArray* account_id,
     return FALSE;
   }
 
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(), SecureBlob());
-  if (!homedirs_->Exists(credentials)) {
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(GetAccountId(*identifier), system_salt_);
+  if (!homedirs_->Exists(obfuscated_username)) {
     LOG(ERROR) << "Unknown user.";
     return FALSE;
   }
 
-  *OUT_needs_migration = !force_ecryptfs_ &&
-      homedirs_->NeedsDircryptoMigration(credentials);
+  *OUT_needs_migration = !force_ecryptfs_ && homedirs_->NeedsDircryptoMigration(
+                                                 obfuscated_username);
   return TRUE;
 }
 

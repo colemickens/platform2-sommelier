@@ -38,6 +38,7 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/homedirs.h"
+#include "cryptohome/obfuscated_username.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
@@ -216,11 +217,13 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
       return false;
     }
   }
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
   // Now check for the presence of a cryptohome.
-  if (homedirs_->CryptohomeExists(credentials)) {
+  if (homedirs_->CryptohomeExists(obfuscated_username)) {
     // Now check for the presence of a vault directory.
-    FilePath vault_path = homedirs_->GetEcryptfsUserVaultPath(
-        credentials.GetObfuscatedUsername(system_salt_));
+    FilePath vault_path =
+        homedirs_->GetEcryptfsUserVaultPath(obfuscated_username);
     if (platform_->DirectoryExists(vault_path)) {
       if (mount_args.to_migrate_from_ecryptfs) {
         // When migrating, set the mount_type_ to dircrypto even if there is an
@@ -341,8 +344,11 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (ephemeral_users)
     homedirs_->RemoveNonOwnerCryptohomes();
 
-  bool non_owner = enterprise_owned_ || (!obfuscated_owner.empty() &&
-      credentials.GetObfuscatedUsername(system_salt_) != obfuscated_owner);
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+  bool non_owner =
+      enterprise_owned_ ||
+      (!obfuscated_owner.empty() && obfuscated_username != obfuscated_owner);
 
   // If the user is not the owner and either the ephemeral users policy is
   // enabled or the |ensure_ephemeral| flag is set in the |mount_args|, mount an
@@ -377,7 +383,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   if (!mount_args.create_if_missing &&
-      !homedirs_->CryptohomeExists(credentials)) {
+      !homedirs_->CryptohomeExists(obfuscated_username)) {
     LOG(ERROR) << "Asked to mount nonexistent user";
     *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
     return false;
@@ -458,8 +464,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // Checks whether migration from ecryptfs to dircrypto is needed, and returns
   // an error when necessary. Do this after the check by DecryptVaultKeyset,
   // because a correct credential is required before switching to migration UI.
-  if (homedirs_->EcryptfsCryptohomeExists(credentials) &&
-      homedirs_->DircryptoCryptohomeExists(credentials) &&
+  if (homedirs_->EcryptfsCryptohomeExists(obfuscated_username) &&
+      homedirs_->DircryptoCryptohomeExists(obfuscated_username) &&
       !mount_args.to_migrate_from_ecryptfs) {
     // If both types of home directory existed, it implies that the migration
     // attempt was aborted in the middle before doing clean up.
@@ -535,8 +541,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // /home/user/$hash: owned by chronos
   // /home/root/$hash: owned by root
 
-  std::string obfuscated_username =
-    credentials.GetObfuscatedUsername(system_salt_);
   FilePath vault_path =
       homedirs_->GetEcryptfsUserVaultPath(obfuscated_username);
 
@@ -1559,10 +1563,8 @@ std::string Mount::GetObfuscatedOwner() {
   if (policy_provider_->device_policy_is_loaded())
     policy_provider_->GetDevicePolicy().GetOwner(&owner);
 
-  if (!owner.empty()) {
-    return UsernamePasskey(owner.c_str(), brillo::Blob())
-        .GetObfuscatedUsername(system_salt_);
-  }
+  if (!owner.empty())
+    return BuildObfuscatedUsername(owner, system_salt_);
   return "";
 }
 

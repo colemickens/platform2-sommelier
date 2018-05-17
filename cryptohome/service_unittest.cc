@@ -800,9 +800,10 @@ class ServiceExTest : public ServiceTest {
   ServiceExTest() = default;
   ~ServiceExTest() override = default;
 
-  VaultKeyset* GetNiceMockVaultKeyset(const Credentials& credentials) const {
+  VaultKeyset* GetNiceMockVaultKeyset(const std::string& obfuscated_username,
+                                      const std::string& key_label) const {
     std::unique_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
-    *(mvk->mutable_serialized()->mutable_key_data()) = credentials.key_data();
+    mvk->mutable_serialized()->mutable_key_data()->set_label(key_label);
     return mvk.release();
   }
 
@@ -1398,7 +1399,7 @@ TEST_F(ServiceExTest, GetKeyDataExNoMatch) {
   GetKeyDataRequest req;
   req.mutable_key()->mutable_data()->set_label("non-existent label");
   // Ensure there are no matches.
-  EXPECT_CALL(homedirs_, GetVaultKeyset(_))
+  EXPECT_CALL(homedirs_, GetVaultKeyset(_, _))
       .Times(1)
       .WillRepeatedly(Return(static_cast<VaultKeyset*>(NULL)));
   service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
@@ -1419,7 +1420,7 @@ TEST_F(ServiceExTest, GetKeyDataExOneMatch) {
 
   EXPECT_CALL(homedirs_, Exists(_))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(homedirs_, GetVaultKeyset(_))
+  EXPECT_CALL(homedirs_, GetVaultKeyset(_, _))
       .Times(1)
       .WillRepeatedly(Invoke(this, &ServiceExTest::GetNiceMockVaultKeyset));
 

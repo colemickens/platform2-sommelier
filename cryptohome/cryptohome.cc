@@ -36,6 +36,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount.h"
+#include "cryptohome/obfuscated_username.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/username_passkey.h"
@@ -1341,8 +1342,9 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    cryptohome::UsernamePasskey up(account_id.c_str(), SecureBlob());
-    printf("%s\n", up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
+    printf("%s\n",
+           cryptohome::BuildObfuscatedUsername(account_id, GetSystemSalt(proxy))
+               .c_str());
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_KEYSET],
                      action.c_str())) {
     std::string account_id;
@@ -1351,11 +1353,10 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    cryptohome::UsernamePasskey up(account_id.c_str(), SecureBlob());
-
     FilePath vault_path = FilePath("/home/.shadow")
-        .Append(up.GetObfuscatedUsername(GetSystemSalt(proxy)))
-        .Append("master.0");
+                              .Append(cryptohome::BuildObfuscatedUsername(
+                                  account_id, GetSystemSalt(proxy)))
+                              .Append("master.0");
     brillo::Blob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
       printf("Couldn't load keyset contents: %s.\n",

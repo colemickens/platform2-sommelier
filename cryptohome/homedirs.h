@@ -83,19 +83,20 @@ class HomeDirs {
   virtual bool GetVaultKeysets(const std::string& obfuscated,
                                std::vector<int>* keysets) const;
 
-  // Outputs a list of present keysets by label for a given credential.
+  // Outputs a list of present keysets by label for a given obfuscated username.
   // There is no guarantee the keysets are valid nor is the ordering guaranteed.
   // Returns true on success, false if no keysets are found.
-  virtual bool GetVaultKeysetLabels(const Credentials& credentials,
+  virtual bool GetVaultKeysetLabels(const std::string& obfuscated_username,
                                     std::vector<std::string>* labels) const;
 
-  // Returns a VaultKeyset that matches the label in Credentials.
-  // If Credentials has no label or if no matching keyset is
-  // found, NULL will be returned.
+  // Returns a VaultKeyset that matches the given obfuscated username and the
+  // key label. If the label is empty or if no matching keyset is found, NULL
+  // will be returned.
   //
   // The caller DOES take ownership of the returned VaultKeyset pointer.
   // There is no guarantee the keyset is valid.
-  virtual VaultKeyset* GetVaultKeyset(const Credentials& creds) const;
+  virtual VaultKeyset* GetVaultKeyset(const std::string& obfuscated_username,
+                                      const std::string& key_label) const;
 
   // Removes the cryptohome for the named user.
   virtual bool Remove(const std::string& username);
@@ -113,17 +114,21 @@ class HomeDirs {
   // pair.
   virtual bool AreCredentialsValid(const Credentials& credentials);
 
-  // Returns true if a path exists for the Credentials (username).
-  virtual bool Exists(const Credentials& credentials) const;
+  // Returns true if a path exists for the given obfuscated username.
+  virtual bool Exists(const std::string& obfuscated_username) const;
 
-  // Checks if a cryptohome vault exists for the given Credentials.
-  virtual bool CryptohomeExists(const Credentials& credentials) const;
+  // Checks if a cryptohome vault exists for the given obfuscated username.
+  virtual bool CryptohomeExists(const std::string& obfuscated_username) const;
 
-  // Checks if a eCryptfs cryptohome vault exists for the given Credentials.
-  virtual bool EcryptfsCryptohomeExists(const Credentials& credentials) const;
+  // Checks if a eCryptfs cryptohome vault exists for the given obfuscated
+  // username.
+  virtual bool EcryptfsCryptohomeExists(
+      const std::string& obfuscated_username) const;
 
-  // Checks if a dircrypto cryptohome vault exists for the given Credentials.
-  virtual bool DircryptoCryptohomeExists(const Credentials& credentials) const;
+  // Checks if a dircrypto cryptohome vault exists for the given obfuscated
+  // username.
+  virtual bool DircryptoCryptohomeExists(
+      const std::string& obfuscated_username) const;
 
   // Gets the user's eCryptfs vault directory for the given obfuscated username.
   base::FilePath GetEcryptfsUserVaultPath(
@@ -209,9 +214,10 @@ class HomeDirs {
   virtual base::FilePath GetChapsTokenSaltPath(
       const std::string& username) const;
 
-  // Returns true if the cryptohome for the Credentials (username) should
+  // Returns true if the cryptohome for the given obfuscated username should
   // migrate to dircrypto.
-  virtual bool NeedsDircryptoMigration(const Credentials& credentials) const;
+  virtual bool NeedsDircryptoMigration(
+      const std::string& obfuscated_username) const;
 
   // Attempts to reset all LE credentials associated with a username, given
   // a credential |cred|.

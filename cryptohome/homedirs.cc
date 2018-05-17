@@ -26,6 +26,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/mount.h"
+#include "cryptohome/obfuscated_username.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/username_passkey.h"
@@ -329,27 +330,27 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
   return false;
 }
 
-bool HomeDirs::Exists(const Credentials& credentials) const {
-  std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
-  FilePath user_dir = shadow_root_.Append(obfuscated);
+bool HomeDirs::Exists(const std::string& obfuscated_username) const {
+  FilePath user_dir = shadow_root_.Append(obfuscated_username);
   return platform_->DirectoryExists(user_dir);
 }
 
-bool HomeDirs::CryptohomeExists(const Credentials& credentials) const {
-  return EcryptfsCryptohomeExists(credentials) ||
-         DircryptoCryptohomeExists(credentials);
+bool HomeDirs::CryptohomeExists(const std::string& obfuscated_username) const {
+  return EcryptfsCryptohomeExists(obfuscated_username) ||
+         DircryptoCryptohomeExists(obfuscated_username);
 }
 
-bool HomeDirs::EcryptfsCryptohomeExists(const Credentials& credentials) const {
+bool HomeDirs::EcryptfsCryptohomeExists(
+    const std::string& obfuscated_username) const {
   // Check for the presence of a vault directory for ecryptfs.
-  return platform_->DirectoryExists(GetEcryptfsUserVaultPath(
-      credentials.GetObfuscatedUsername(system_salt_)));
+  return platform_->DirectoryExists(
+      GetEcryptfsUserVaultPath(obfuscated_username));
 }
 
-bool HomeDirs::DircryptoCryptohomeExists(const Credentials& credentials) const {
+bool HomeDirs::DircryptoCryptohomeExists(
+    const std::string& obfuscated_username) const {
   // Check for the presence of an encrypted mount directory for dircrypto.
-  FilePath mount_path =
-      GetUserMountDirectory(credentials.GetObfuscatedUsername(system_salt_));
+  FilePath mount_path = GetUserMountDirectory(obfuscated_username);
   return platform_->DirectoryExists(mount_path) &&
          platform_->GetDirCryptoKeyState(mount_path) ==
              dircrypto::KeyState::ENCRYPTED;
@@ -365,20 +366,20 @@ FilePath HomeDirs::GetUserMountDirectory(
   return shadow_root_.Append(obfuscated_username).Append(kMountDir);
 }
 
-VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
-  if (credentials.key_data().label().empty())
+VaultKeyset* HomeDirs::GetVaultKeyset(const std::string& obfuscated_username,
+                                      const std::string& key_label) const {
+  if (key_label.empty())
     return NULL;
-  std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
 
   // Walk all indices to find a match.
   // We should move to label-derived suffixes to be efficient.
   std::vector<int> key_indices;
-  if (!GetVaultKeysets(obfuscated, &key_indices))
+  if (!GetVaultKeysets(obfuscated_username, &key_indices))
     return NULL;
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
   for (int index : key_indices) {
-    if (!LoadVaultKeysetForUser(obfuscated, index, vk.get())) {
+    if (!LoadVaultKeysetForUser(obfuscated_username, index, vk.get())) {
       continue;
     }
     // Test against the label if the key has a label or create a label
@@ -386,7 +387,7 @@ VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
     std::string label = (vk->serialized().has_key_data() ?
                          vk->serialized().key_data().label() :
                          base::StringPrintf("%s%d", kKeyLegacyPrefix, index));
-    if (label == credentials.key_data().label()) {
+    if (label == key_label) {
       vk->set_legacy_index(index);
       return vk.release();
     }
@@ -429,11 +430,10 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
   return keysets->size() != 0;
 }
 
-bool HomeDirs::GetVaultKeysetLabels(const Credentials& credentials,
+bool HomeDirs::GetVaultKeysetLabels(const std::string& obfuscated_username,
                                     std::vector<std::string>* labels) const {
   CHECK(labels);
-  std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
-  FilePath user_dir = shadow_root_.Append(obfuscated);
+  FilePath user_dir = shadow_root_.Append(obfuscated_username);
 
   std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(user_dir, false /* Not recursive. */,
@@ -458,7 +458,7 @@ bool HomeDirs::GetVaultKeysetLabels(const Credentials& credentials,
       continue;
     }
     // Now parse the keyset to get its label or skip it.
-    if (!LoadVaultKeysetForUser(obfuscated, index, vk.get())) {
+    if (!LoadVaultKeysetForUser(obfuscated_username, index, vk.get())) {
       continue;
     }
     // Test against the label if the key has a label or create a label
@@ -562,13 +562,15 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
     const Credentials& credentials,
     const Key* key_changes,
     const std::string& authorization_signature) {
-
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
   if (!GetValidKeyset(credentials, vk.get())) {
     // Differentiate between failure and non-existent.
     if (!credentials.key_data().label().empty()) {
-      vk.reset(GetVaultKeyset(credentials));
+      vk.reset(
+          GetVaultKeyset(obfuscated_username, credentials.key_data().label()));
       if (!vk.get()) {
         LOG(WARNING) << "UpdateKeyset: key not found";
         return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
@@ -661,7 +663,8 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   if (!GetValidKeyset(existing_credentials, vk.get())) {
     // Differentiate between failure and non-existent.
     if (!existing_credentials.key_data().label().empty()) {
-      vk.reset(GetVaultKeyset(existing_credentials));
+      vk.reset(
+          GetVaultKeyset(obfuscated, existing_credentials.key_data().label()));
       if (!vk.get()) {
         LOG(WARNING) << "AddKeyset: key not found";
         return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
@@ -721,10 +724,8 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   // Before persisting, check, in a racy-way, if there is
   // an existing labeled credential.
   if (new_data) {
-    UsernamePasskey search_cred(existing_credentials.username().c_str(),
-                                SecureBlob());
-    search_cred.set_key_data(*new_data);
-    std::unique_ptr<VaultKeyset> match(GetVaultKeyset(search_cred));
+    std::unique_ptr<VaultKeyset> match(
+        GetVaultKeyset(obfuscated, new_data->label()));
     if (match.get()) {
       LOG(INFO) << "Label already exists.";
       platform_->DeleteFile(vk_path, false);
@@ -764,12 +765,14 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
   if (key_data.label().empty())
     return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
 
+  const std::string obfuscated =
+      credentials.GetObfuscatedUsername(system_salt_);
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
   if (!GetValidKeyset(credentials, vk.get())) {
     // Differentiate between failure and non-existent.
     if (!credentials.key_data().label().empty()) {
-      vk.reset(GetVaultKeyset(credentials));
+      vk.reset(GetVaultKeyset(obfuscated, credentials.key_data().label()));
       if (!vk.get()) {
         LOG(WARNING) << "RemoveKeyset: key not found";
         return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
@@ -787,16 +790,13 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
   }
 
-  UsernamePasskey removal_creds(credentials.username().c_str(), SecureBlob());
-  removal_creds.set_key_data(key_data);
-  std::unique_ptr<VaultKeyset> remove_vk(GetVaultKeyset(removal_creds));
+  std::unique_ptr<VaultKeyset> remove_vk(
+      GetVaultKeyset(obfuscated, key_data.label()));
   if (!remove_vk.get()) {
     LOG(WARNING) << "RemoveKeyset: key to remove not found";
     return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
   }
 
-  std::string obfuscated = credentials.GetObfuscatedUsername(
-    system_salt_);
   if (!ForceRemoveKeyset(obfuscated, remove_vk->legacy_index())) {
     LOG(ERROR) << "RemoveKeyset: failed to remove keyset file";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
@@ -859,7 +859,7 @@ bool HomeDirs::MoveKeyset(const std::string& obfuscated, int src, int dst) {
 }
 
 FilePath HomeDirs::GetVaultKeysetPath(const std::string& obfuscated,
-                                         int index) const {
+                                      int index) const {
   return shadow_root_
     .Append(obfuscated)
     .Append(kKeyFile)
@@ -1196,8 +1196,7 @@ bool HomeDirs::GetOwner(std::string* owner) {
 
   if (!GetSystemSalt(NULL))
     return false;
-  *owner = UsernamePasskey(plain_owner.c_str(), brillo::Blob())
-      .GetObfuscatedUsername(system_salt_);
+  *owner = BuildObfuscatedUsername(plain_owner, system_salt_);
   return true;
 }
 
@@ -1214,8 +1213,7 @@ bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
 }
 
 bool HomeDirs::Remove(const std::string& username) {
-  UsernamePasskey passkey(username.c_str(), SecureBlob());
-  std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated = BuildObfuscatedUsername(username, system_salt_);
   FilePath user_dir = shadow_root_.Append(obfuscated);
   FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
   FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
@@ -1230,10 +1228,10 @@ bool HomeDirs::Rename(const std::string& account_id_from,
     return true;
   }
 
-  UsernamePasskey from(account_id_from.c_str(), SecureBlob());
-  UsernamePasskey to(account_id_to.c_str(), SecureBlob());
-  const std::string obfuscated_from = from.GetObfuscatedUsername(system_salt_);
-  const std::string obfuscated_to = to.GetObfuscatedUsername(system_salt_);
+  const std::string obfuscated_from =
+      BuildObfuscatedUsername(account_id_from, system_salt_);
+  const std::string obfuscated_to =
+      BuildObfuscatedUsername(account_id_to, system_salt_);
 
   const FilePath user_dir_from = shadow_root_.Append(obfuscated_from);
   const FilePath user_path_from =
@@ -1328,8 +1326,7 @@ bool HomeDirs::Rename(const std::string& account_id_from,
 }
 
 int64_t HomeDirs::ComputeSize(const std::string& account_id) {
-  UsernamePasskey passkey(account_id.c_str(), SecureBlob());
-  std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated = BuildObfuscatedUsername(account_id, system_salt_);
   FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
   FilePath user_path = brillo::cryptohome::home::GetUserPath(account_id);
   FilePath root_path = brillo::cryptohome::home::GetRootPath(account_id);
@@ -1465,7 +1462,8 @@ FilePath HomeDirs::GetChapsTokenSaltPath(const std::string& user) const {
   return GetChapsTokenDir(user).Append(kChapsSaltName);
 }
 
-bool HomeDirs::NeedsDircryptoMigration(const Credentials& credentials) const {
+bool HomeDirs::NeedsDircryptoMigration(
+    const std::string& obfuscated_username) const {
   // Bail if dircrypto is not supported.
   const dircrypto::KeyState state =
       platform_->GetDirCryptoKeyState(shadow_root_);
@@ -1477,10 +1475,8 @@ bool HomeDirs::NeedsDircryptoMigration(const Credentials& credentials) const {
   // Use the existence of eCryptfs vault as a single of whether the user needs
   // dircrypto migration. eCryptfs test is adapted from
   // Mount::DoesEcryptfsCryptohomeExist.
-  const std::string obfuscated =
-      credentials.GetObfuscatedUsername(system_salt_);
   const FilePath user_ecryptfs_vault_dir =
-      shadow_root_.Append(obfuscated).Append(kEcryptfsVaultDir);
+      shadow_root_.Append(obfuscated_username).Append(kEcryptfsVaultDir);
   return platform_->DirectoryExists(user_ecryptfs_vault_dir);
 }
 
