@@ -29,6 +29,8 @@
 
 namespace cryptohome {
 
+extern const char kSystemSaltFile[];
+
 class Crypto {
  public:
   enum CryptoError {

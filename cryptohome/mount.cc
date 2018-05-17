@@ -189,7 +189,7 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
 
   // One-time load of the global system salt (used in generating username
   // hashes)
-  FilePath system_salt_file = shadow_root_.Append("salt");
+  FilePath system_salt_file = shadow_root_.Append(kSystemSaltFile);
   if (!crypto_->GetOrCreateSalt(system_salt_file,
                                 CRYPTOHOME_DEFAULT_SALT_LENGTH, false,
                                 &system_salt_)) {

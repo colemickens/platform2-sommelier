@@ -41,6 +41,9 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
+// File name of the system salt file.
+const char kSystemSaltFile[] = "salt";
+
 // Location where we store the Low Entropy (LE) credential manager related
 // state.
 const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";

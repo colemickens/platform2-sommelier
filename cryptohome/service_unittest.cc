@@ -148,6 +148,8 @@ class ServiceTestNotInitialized : public ::testing::Test {
     service_.set_firmware_management_parameters(&fwmp_);
     service_.set_event_source_sink(&event_sink_);
     test_helper_.SetUpSystemSalt();
+    homedirs_.set_crypto(&crypto_);
+    homedirs_.set_platform(&platform_);
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
     ON_CALL(homedirs_, AmountOfFreeDiskSpace()).WillByDefault(
         Return(kNotifyDiskSpaceThreshold));

@@ -93,7 +93,6 @@ bool KeyHasWrappedAuthorizationSecrets(const Key& k) {
 
 }  // anonymous namespace
 
-const char kSaltFile[] = "salt";
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 const char kChapsSystemToken[] = "/var/lib/chaps";
 const int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
@@ -518,6 +517,8 @@ bool Service::Initialize() {
   if (!crypto_->Init(tpm_init_))
     return false;
   if (!homedirs_->Init(platform_, crypto_, user_timestamp_cache_.get()))
+    return false;
+  if (!homedirs_->GetSystemSalt(&system_salt_))
     return false;
 
   // If the TPM is unowned or doesn't exist, it's safe for
@@ -1584,8 +1585,6 @@ void Service::DoGetAccountDiskUsage(AccountIdentifier* identifier,
 }
 
 gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
-  if (!CreateSystemSaltIfNeeded())
-    return FALSE;
   *OUT_salt = g_array_new(false, false, 1);
   g_array_append_vals(*OUT_salt, system_salt_.data(), system_salt_.size());
   return TRUE;
@@ -3021,14 +3020,6 @@ scoped_refptr<cryptohome::Mount> Service::GetMountForUser(
   }
   mounts_lock_.Release();
   return mount;
-}
-
-bool Service::CreateSystemSaltIfNeeded() {
-  if (!system_salt_.empty())
-    return true;
-  FilePath saltfile = homedirs_->shadow_root().Append(kSaltFile);
-  return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
-                                  false, &system_salt_);
 }
 
 bool Service::CreatePublicMountSaltIfNeeded() {

@@ -245,14 +245,12 @@ void ServiceDistributed::AttestationInitialize() {
                            base::Unretained(attestation_interface_));
   PostAndWait(method);
 
-  brillo::SecureBlob system_salt;
-
-  if (!GetSystemSalt(&system_salt)) {
+  if (system_salt_.empty()) {
     LOG(FATAL) << "Failed to get system salt";
     return;
   }
   attestation::SetSystemSaltRequest request;
-  request.set_system_salt(system_salt.char_data(), system_salt.size());
+  request.set_system_salt(system_salt_.char_data(), system_salt_.size());
   attestation::SetSystemSaltReply reply;
   auto set_salt = base::Bind(&AttestationInterface::SetSystemSalt,
                              base::Unretained(attestation_interface_), request);

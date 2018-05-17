@@ -1202,7 +1202,7 @@ bool HomeDirs::GetOwner(std::string* owner) {
 }
 
 bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
-  FilePath salt_file = shadow_root_.Append("salt");
+  FilePath salt_file = shadow_root_.Append(kSystemSaltFile);
   if (!crypto_->GetOrCreateSalt(salt_file, CRYPTOHOME_DEFAULT_SALT_LENGTH,
                                 false, &system_salt_)) {
     LOG(ERROR) << "Failed to create system salt.";
