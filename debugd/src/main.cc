@@ -49,7 +49,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   enter_vfs_namespace();
   Daemon().Run();
   return 0;
