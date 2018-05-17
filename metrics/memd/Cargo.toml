@@ -9,6 +9,7 @@ dbus = "0.6.1"
 env_logger = { version = "0.5.10", default-features = false }
 libc = "0.2.39"
 log = "0.4.1"
+syslog = "4.0.0"
 time = "0.1.39"
 
 [profile.release]

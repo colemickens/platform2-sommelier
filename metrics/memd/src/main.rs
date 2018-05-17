@@ -21,6 +21,7 @@ extern crate dbus;
 
 #[macro_use] extern crate log;
 extern crate env_logger;
+extern crate syslog;
 
 use chrono::prelude::*;
 use {libc::__errno_location, libc::c_void};
@@ -1176,8 +1177,6 @@ fn build_sample_header() -> String {
 }
 
 fn main() {
-    env_logger::init();
-
     let mut testing = false;
     let mut always_poll_fast = false;
 
@@ -1190,6 +1189,15 @@ fn main() {
             "always-poll-fast" => always_poll_fast = true,
             _ => panic!("usage: memd [test|always-poll-fast]*")
         }
+    }
+
+    // Send log messages to stdout in test mode, to syslog otherwise.
+    if testing {
+	env_logger::init();
+    } else {
+        syslog::init(syslog::Facility::LOG_USER,
+                     log::LevelFilter::Warn,
+                     Some("memd")).expect("cannot initialize syslog");
     }
 
     let paths = make_paths!(
