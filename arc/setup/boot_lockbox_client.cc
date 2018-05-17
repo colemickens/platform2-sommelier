@@ -8,12 +8,10 @@
 #include <vector>
 
 #include <base/timer/elapsed_timer.h>
-#include <brillo/glib/object.h>
 #include <cryptohome-client/cryptohome/dbus-proxies.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus.h>  // NOLINT - sort not stable
+#include <dbus/dbus.h>
 
 namespace arc {
 
