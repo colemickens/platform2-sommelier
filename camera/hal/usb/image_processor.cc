@@ -14,12 +14,12 @@
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 
-#include <cros-camera/constants.h>
-#include <cros-camera/exif_utils.h>
-#include <cros-camera/jpeg_compressor.h>
 #include <hardware/camera3.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/constants.h"
+#include "cros-camera/exif_utils.h"
+#include "cros-camera/jpeg_compressor.h"
 #include "hal/usb/common_types.h"
 
 namespace cros {
