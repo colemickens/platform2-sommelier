@@ -12,7 +12,7 @@ namespace chromeos_metrics {
 
 void PersistentIntegerTestBase::SetUp() {
   CHECK(test_dir_.CreateUniqueTempDir());
-  std::string dirname = test_dir_.path().MaybeAsASCII() + "/";
+  std::string dirname = test_dir_.GetPath().MaybeAsASCII() + "/";
   CHECK(!dirname.empty());
   PersistentInteger::SetTestingMode(dirname);
 }

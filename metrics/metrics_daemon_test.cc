@@ -66,7 +66,7 @@ class MetricsDaemonTest : public testing::Test {
     CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath), 10000000);
 
     CHECK(test_dir_.CreateUniqueTempDir());
-    std::string test_dir_name = test_dir_.path().MaybeAsASCII() + "/";
+    std::string test_dir_name = test_dir_.GetPath().MaybeAsASCII() + "/";
     CHECK(!test_dir_name.empty());
     PersistentInteger::SetTestingMode(test_dir_name);
     chromeos_metrics::PersistentInteger::SetTestingMode(test_dir_name);

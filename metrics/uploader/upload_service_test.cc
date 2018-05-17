@@ -42,7 +42,7 @@ class UploadServiceTest : public testing::Test {
 
   virtual void SetUp() {
     CHECK(dir_.CreateUniqueTempDir());
-    std::string dirname = dir_.path().MaybeAsASCII() + "/";
+    std::string dirname = dir_.GetPath().MaybeAsASCII() + "/";
     CHECK(!dirname.empty());
     upload_service_.GatherHistograms();
     upload_service_.Reset();
