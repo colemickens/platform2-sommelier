@@ -9,9 +9,11 @@
 #include <unistd.h>
 
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/posix/unix_domain_socket_linux.h>
 #include <base/time/time.h>
 
 namespace {
@@ -45,6 +47,15 @@ int IpHelper::OnInit() {
 }
 
 void IpHelper::InitialSetup() {
+  // Ensure that the parent is alive before trying to continue the setup.
+  char buffer = 0;
+  if (!base::UnixDomainSocket::SendMsg(control_fd_.get(), &buffer,
+                                       sizeof(buffer), std::vector<int>())) {
+    LOG(ERROR) << "Aborting setup flow because the parent died";
+    Quit();
+    return;
+  }
+
   if (!arc_ip_config_->ContainerInit()) {
     if (++con_init_tries_ >= kMaxContainerRetries) {
       LOG(FATAL) << "Container failed to come up";
