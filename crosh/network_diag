@@ -813,9 +813,14 @@ diag_hosts () {
     "clients3.google.com"
     "clients4.google.com"
     "commondatastorage.googleapis.com"
+    "cros-omahaproxy.appspot.com"
     "dl.google.com"
+    "dl-ssl.google.com"
     "gweb-gettingstartedguide.appspot.com"
     "m.google.com"
+    "omahaproxy.appspot.com"
+    "pack.google.com"
+    "policies.google.com"
     "safebrowsing-cache.google.com"
     "safebrowsing.google.com"
     "ssl.gstatic.com"
@@ -829,6 +834,7 @@ diag_hosts () {
     "lh4.ggpht.com"
     "lh5.ggpht.com"
     "lh6.ggpht.com"
+    "connectivitycheck.android.com"
   )
   for host in "${hosts[@]}"; do
     run_hosts_webget "${host}" "${proxy}"
