@@ -217,6 +217,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
  private:
   friend class TpmUtilityTest;
+  friend class NVTpmUtilityTest;
 
   const TrunksFactory& factory_;
   std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;

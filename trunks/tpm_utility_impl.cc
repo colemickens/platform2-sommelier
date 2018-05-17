@@ -1608,6 +1608,12 @@ TPM_RC TpmUtilityImpl::GetNVSpacePublicArea(uint32_t index,
                << GetErrorString(result);
     return result;
   }
+  if (!public_area.size) {
+    LOG(ERROR)
+        << __func__
+        << ": Error reading non-volatile space public information - empty data";
+    return TPM_RC_FAILURE;
+  }
   *public_data = public_area.nv_public;
   nvram_public_area_map_[index] = public_area.nv_public;
   return TPM_RC_SUCCESS;
