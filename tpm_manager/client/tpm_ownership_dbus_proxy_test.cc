@@ -71,8 +71,8 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const GetTpmStatusReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count, const GetTpmStatusReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.enabled());
     EXPECT_TRUE(reply.owned());
@@ -82,7 +82,7 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     EXPECT_EQ(5, reply.dictionary_attack_lockout_seconds_remaining());
   };
   GetTpmStatusRequest request;
-  proxy_.GetTpmStatus(request, base::Bind(callback));
+  proxy_.GetTpmStatus(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -107,12 +107,12 @@ TEST_F(TpmOwnershipDBusProxyTest, TakeOwnership) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const TakeOwnershipReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count, const TakeOwnershipReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
   };
   TakeOwnershipRequest request;
-  proxy_.TakeOwnership(request, base::Bind(callback));
+  proxy_.TakeOwnership(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -140,13 +140,14 @@ TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const RemoveOwnerDependencyReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const RemoveOwnerDependencyReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
   };
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(owner_dependency);
-  proxy_.RemoveOwnerDependency(request, base::Bind(callback));
+  proxy_.RemoveOwnerDependency(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -171,13 +172,14 @@ TEST_F(TpmOwnershipDBusProxyTest, ClearStoredOwnerPassword) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback =
-      [&callback_count](const ClearStoredOwnerPasswordReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const ClearStoredOwnerPasswordReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
   };
   ClearStoredOwnerPasswordRequest request;
-  proxy_.ClearStoredOwnerPassword(request, base::Bind(callback));
+  proxy_.ClearStoredOwnerPassword(request,
+                                  base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 

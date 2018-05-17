@@ -212,13 +212,13 @@ TEST_F(TpmNvramDBusProxyTest, LockSpace) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const LockSpaceReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count, const LockSpaceReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
   LockSpaceRequest request;
   request.set_index(nvram_index);
-  proxy_.LockSpace(request, base::Bind(callback));
+  proxy_.LockSpace(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
