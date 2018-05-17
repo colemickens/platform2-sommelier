@@ -233,8 +233,8 @@ impl FileWatcher {
     fn watch(&mut self, timeout: &Duration) -> Result<usize> {
         self.inout_read_fds = self.read_fds;
         let mut libc_timeout = libc::timeval {
-            tv_sec: timeout.as_secs() as i64,
-            tv_usec: timeout.subsec_nanos() as i64 / 1000,
+            tv_sec: timeout.as_secs() as libc::time_t,
+            tv_usec: (timeout.subsec_nanos() / 1000) as libc::suseconds_t,
         };
         let null = std::ptr::null_mut();
         // We're passing valid values and addresses.
