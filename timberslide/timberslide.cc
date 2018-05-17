@@ -37,7 +37,9 @@ class TimberSlide : public brillo::Daemon,
   TimberSlide(const std::string& ec_type,
               base::File device_file,
               const base::FilePath& log_dir)
-      : device_file_(std::move(device_file)), total_size_(0) {
+      : device_file_(std::move(device_file)),
+        fd_watcher_(FROM_HERE),
+        total_size_(0) {
     current_log_ = log_dir.Append(ec_type + kCurrentLogExt);
     previous_log_ = log_dir.Append(ec_type + kPreviousLogExt);
   }
