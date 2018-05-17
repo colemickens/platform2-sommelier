@@ -74,7 +74,7 @@ class AsyncFileReaderTest : public ::testing::Test {
         got_error_(false) {
     CHECK(temp_dir_->CreateUniqueTempDir());
     CHECK(temp_dir_->IsValid());
-    path_ = temp_dir_->path().Append(kDummyFileName);
+    path_ = temp_dir_->GetPath().Append(kDummyFileName);
   }
   ~AsyncFileReaderTest() override {}
 

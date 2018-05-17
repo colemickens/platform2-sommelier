@@ -83,7 +83,7 @@ class PrefsTest : public testing::Test {
       temp_dir_generators_[i].reset(new base::ScopedTempDir());
       ASSERT_TRUE(temp_dir_generators_[i]->CreateUniqueTempDir());
       EXPECT_TRUE(temp_dir_generators_[i]->IsValid());
-      paths_.push_back(temp_dir_generators_[i]->path());
+      paths_.push_back(temp_dir_generators_[i]->GetPath());
     }
 
     // By default, don't defer writes.
