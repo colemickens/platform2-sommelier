@@ -318,7 +318,7 @@ TYPED_TEST(MessageLoopTest, AllTasksAreEqual) {
          base::Closure* timeout_callback, MessageLoop::TaskId* timeout_task) {
       (*timeout_called)++;
       (*total_calls)++;
-      *timeout_task = loop->PostTask(FROM_HERE, Bind(*timeout_callback));
+      *timeout_task = loop->PostTask(FROM_HERE, *timeout_callback);
       if (*total_calls > 100)
         loop->BreakLoop();
       },

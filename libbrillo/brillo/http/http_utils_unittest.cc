@@ -315,8 +315,7 @@ TEST(HttpUtils, PostText) {
   }, fake_data);
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
-  transport->AddHandler(
-      kFakeUrl, request_type::kPost, base::Bind(post_handler));
+  transport->AddHandler(kFakeUrl, request_type::kPost, post_handler);
 
   auto response = http::PostTextAndBlock(kFakeUrl,
                                          fake_data,

@@ -25,6 +25,37 @@ using dbus::MessageReader;
 using dbus::MessageWriter;
 using dbus::Response;
 
+namespace {
+
+void SuccessCallback(const std::string& expected_result,
+                     int* counter,
+                     const std::string& actual_result) {
+  (*counter)++;
+  EXPECT_EQ(expected_result, actual_result);
+}
+
+void SimpleSuccessCallback(int* counter, const std::string& result) {
+  (*counter)++;
+}
+
+void ErrorCallback(const std::string& domain,
+                   const std::string& code,
+                   const std::string& message,
+                   int* counter,
+                   brillo::Error* error) {
+  (*counter)++;
+  ASSERT_NE(nullptr, error);
+  EXPECT_EQ(domain, error->GetDomain());
+  EXPECT_EQ(code, error->GetCode());
+  EXPECT_EQ(message, error->GetMessage());
+}
+
+void SimpleErrorCallback(int* counter, brillo::Error* error) {
+  (*counter)++;
+}
+
+}  // namespace
+
 namespace brillo {
 namespace dbus_utils {
 
@@ -247,46 +278,6 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
     LOG(FATAL) << "Unexpected method call: " << method_call->ToString();
   }
 
-  struct SuccessCallback {
-    SuccessCallback(const std::string& in_result, int* in_counter)
-        : result(in_result), counter(in_counter) {}
-
-    explicit SuccessCallback(int* in_counter) : counter(in_counter) {}
-
-    void operator()(const std::string& actual_result) {
-      (*counter)++;
-      EXPECT_EQ(result, actual_result);
-    }
-    std::string result;
-    int* counter;
-  };
-
-  struct ErrorCallback {
-    ErrorCallback(const std::string& in_domain,
-                  const std::string& in_code,
-                  const std::string& in_message,
-                  int* in_counter)
-        : domain(in_domain),
-          code(in_code),
-          message(in_message),
-          counter(in_counter) {}
-
-    explicit ErrorCallback(int* in_counter) : counter(in_counter) {}
-
-    void operator()(brillo::Error* error) {
-      (*counter)++;
-      EXPECT_NE(nullptr, error);
-      EXPECT_EQ(domain, error->GetDomain());
-      EXPECT_EQ(code, error->GetCode());
-      EXPECT_EQ(message, error->GetMessage());
-    }
-
-    std::string domain;
-    std::string code;
-    std::string message;
-    int* counter;
-  };
-
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
 };
@@ -298,22 +289,22 @@ TEST_F(AsyncDBusMethodInvokerTest, TestSuccess) {
       mock_object_proxy_.get(),
       kTestInterface,
       kTestMethod1,
-      base::Bind(SuccessCallback{"4", &success_count}),
-      base::Bind(ErrorCallback{&error_count}),
+      base::Bind(SuccessCallback, "4", &success_count),
+      base::Bind(SimpleErrorCallback, &error_count),
       2, 2);
   brillo::dbus_utils::CallMethod(
       mock_object_proxy_.get(),
       kTestInterface,
       kTestMethod1,
-      base::Bind(SuccessCallback{"10", &success_count}),
-      base::Bind(ErrorCallback{&error_count}),
+      base::Bind(SuccessCallback, "10", &success_count),
+      base::Bind(SimpleErrorCallback, &error_count),
       3, 7);
   brillo::dbus_utils::CallMethod(
       mock_object_proxy_.get(),
       kTestInterface,
       kTestMethod1,
-      base::Bind(SuccessCallback{"-4", &success_count}),
-      base::Bind(ErrorCallback{&error_count}),
+      base::Bind(SuccessCallback, "-4", &success_count),
+      base::Bind(SimpleErrorCallback, &error_count),
       13, -17);
   EXPECT_EQ(0, error_count);
   EXPECT_EQ(3, success_count);
@@ -326,11 +317,12 @@ TEST_F(AsyncDBusMethodInvokerTest, TestFailure) {
       mock_object_proxy_.get(),
       kTestInterface,
       kTestMethod2,
-      base::Bind(SuccessCallback{&success_count}),
-      base::Bind(ErrorCallback{brillo::errors::dbus::kDomain,
-                               "org.MyError",
-                               "My error message",
-                               &error_count}),
+      base::Bind(SimpleSuccessCallback, &success_count),
+      base::Bind(ErrorCallback,
+                 brillo::errors::dbus::kDomain,
+                 "org.MyError",
+                 "My error message",
+                 &error_count),
       2, 2);
   EXPECT_EQ(1, error_count);
   EXPECT_EQ(0, success_count);
