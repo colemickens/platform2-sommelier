@@ -158,6 +158,18 @@
             'garcon/icon_index_file_unittest.cc',
           ],
         },
+        {
+          'target_name': 'garcon_icon_finder_test',
+          'type': 'executable',
+          'dependencies': [
+            'libgarcon',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'garcon/icon_finder_unittest.cc',
+          ],
+        },
       ],
     }],
   ],
