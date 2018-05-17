@@ -1552,7 +1552,11 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
   // a container. We need to construct the command for that with the proper
   // parameters.
   std::vector<std::string> container_args = {
-      "run_container.sh",
+      "/sbin/minijail0",
+      "-u",
+      "chronos",
+      "-G",
+      "/usr/bin/run_container.sh",
       "--container_name",
       container_name,
       "--container_token",
