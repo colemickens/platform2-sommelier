@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/macros.h>
 #include <brillo/secure_blob.h>
 
 #include "chaps/chaps_utility.h"
@@ -23,7 +24,10 @@ namespace chaps {
 
 TokenFileManager::TokenFileManager(uid_t chapsd_uid, gid_t chapsd_gid)
     : chapsd_uid_(chapsd_uid),
-      chapsd_gid_(chapsd_gid) { }
+      chapsd_gid_(chapsd_gid) {
+  ignore_result(chapsd_uid_);
+  ignore_result(chapsd_gid_);
+}
 
 TokenFileManager::~TokenFileManager() { }
 
