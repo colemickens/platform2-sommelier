@@ -29,11 +29,17 @@ class SELinuxViolationCollector : public CrashCollector {
     violation_report_path_ = file_path;
   }
 
+  void set_developer_image_for_testing() {
+    developer_image_for_testing_ = true;
+  }
+
  private:
   friend class SELinuxViolationCollectorTest;
   FRIEND_TEST(SELinuxViolationCollectorTest, CollectOK);
 
   base::FilePath violation_report_path_;
+  bool developer_image_for_testing_ = false;
+
   bool LoadSELinuxViolation(std::string* content,
                             std::string* signature,
                             std::map<std::string, std::string>* extra_metadata);

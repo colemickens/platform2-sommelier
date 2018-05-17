@@ -65,14 +65,13 @@ bool SELinuxViolationCollector::LoadSELinuxViolation(
 bool SELinuxViolationCollector::Collect() {
   std::string reason = "do not collect";
   bool feedback = false;
-  if (IsDeveloperImage()) {
+  // Only collect on developer image until .
+  // TODO(crbug.com/842751): re-enable the collection after we find a way
+  // not to flood the reporting.
+  if (IsDeveloperImage() || developer_image_for_testing_) {
     feedback = true;
     reason = "always collect from developer builds";
-  } else if (is_feedback_allowed_function_()) {
-    reason = "user consented normal collection";
-    feedback = true;
   }
-
   LOG(INFO) << "Processing selinux violation: " << reason;
 
   if (!feedback)

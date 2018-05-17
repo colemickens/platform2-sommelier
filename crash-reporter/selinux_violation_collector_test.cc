@@ -92,6 +92,7 @@ class SELinuxViolationCollectorTest : public ::testing::Test {
 
 TEST_F(SELinuxViolationCollectorTest, CollectOK) {
   // Collector produces a violation report.
+  collector_.set_developer_image_for_testing();
   WriteStringToFile(test_path_, TestSELinuxViolationMessage);
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
