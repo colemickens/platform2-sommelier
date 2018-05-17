@@ -103,5 +103,28 @@
         },
       ],
     }],
+    # Fuzzer target.
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'firewall_fuzzer',
+          'type': 'executable',
+          'includes': [
+            '../common-mk/common_fuzzer.gypi',
+          ],
+          'dependencies': [
+            'libpermission_broker',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'firewall_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
