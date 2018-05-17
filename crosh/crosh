@@ -771,7 +771,7 @@ cmd_network_diag() (
     # files here as this is a user generated request, and we scope the filename
     # to this specific use case.
     local downloads_dir="/home/${USER}/user/Downloads"
-    local timestamp="$(date +'%Y-%m-%d.%H:%M:%S')"
+    local timestamp="$(date +'%Y-%m-%d.%H-%M-%S')"
     local logname="network_diagnostics_${timestamp}.txt"
     local logpath="${downloads_dir}/${logname}"
     rm -f "${logpath}"
