@@ -139,7 +139,7 @@ class ArcTimerManagerTest : public ::testing::Test,
     // Set up a watcher to watch for the timer's read fd to become readable.
     // Make this non-persistent as the callback shouldn't fire multiple times
     // before the data is read.
-    base::MessageLoopForIO::FileDescriptorWatcher controller;
+    base::MessageLoopForIO::FileDescriptorWatcher controller(FROM_HERE);
     if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
             timer_read_fd, false, base::MessageLoopForIO::WATCH_READ,
             &controller, this)) {
