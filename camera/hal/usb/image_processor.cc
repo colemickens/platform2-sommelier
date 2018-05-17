@@ -514,7 +514,8 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
   return true;
 }
 
-void ImageProcessor::InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size) {
+void ImageProcessor::InsertJpegBlob(FrameBuffer* out_frame,
+                                    uint32_t jpeg_data_size) {
   camera3_jpeg_blob_t blob;
   blob.jpeg_blob_id = CAMERA3_JPEG_BLOB_ID;
   blob.jpeg_size = jpeg_data_size;
@@ -653,7 +654,7 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
 
   if (time_available) {
     char str[4];
-    if (snprintf(str, sizeof(str), "%03d", tp.tv_nsec / 1000000) < 0) {
+    if (snprintf(str, sizeof(str), "%03ld", tp.tv_nsec / 1000000) < 0) {
       LOGF(ERROR) << "Subsec is invalid: " << tp.tv_nsec;
       return false;
     }
