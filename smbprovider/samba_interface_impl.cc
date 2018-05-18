@@ -144,8 +144,19 @@ int32_t SambaInterfaceImpl::GetDirectoryEntries(int32_t dir_id,
 
 int32_t SambaInterfaceImpl::GetDirectoryEntryWithMetadata(
     int32_t dir_id, const struct libsmb_file_info** file_info) {
-  NOTREACHED();
-  return -1;
+  DCHECK(file_info);
+
+  SMBCFILE* dir = GetFile(dir_id);
+  if (!dir) {
+    return EBADF;
+  }
+
+  // errno must be set to 0 before the call because the function returns
+  // nullptr in both the error case and when there are no more files. When
+  // there are no more files errno remains untouched.
+  errno = 0;
+  *file_info = smbc_readdirplus_ctx_(context_, dir);
+  return errno;
 }
 
 int32_t SambaInterfaceImpl::GetEntryStatus(const std::string& full_path,
@@ -374,6 +385,7 @@ SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {
   smbc_open_ctx_ = smbc_getFunctionOpen(context);
   smbc_opendir_ctx_ = smbc_getFunctionOpendir(context);
   smbc_read_ctx_ = smbc_getFunctionRead(context);
+  smbc_readdirplus_ctx_ = smbc_getFunctionReaddirPlus(context);
   smbc_rename_ctx_ = smbc_getFunctionRename(context);
   smbc_rmdir_ctx_ = smbc_getFunctionRmdir(context);
   smbc_splice_ctx_ = smbc_getFunctionSplice(context);
