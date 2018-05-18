@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <brillo/any.h>
 
+#include "smbprovider/constants.h"
 #include "smbprovider/smbprovider.h"
 #include "smbprovider/smbprovider_helper.h"
 
@@ -38,7 +39,10 @@ bool IsTargetInsideSource(const std::string& target,
 }  // namespace
 
 FakeSambaInterface::FakeSambaInterface()
-    : root(std::make_unique<FakeDirectory>("smb://")) {}
+    : root(std::make_unique<FakeDirectory>("smb://")) {
+  // Initialize the |file_info_| struct.
+  memset(&file_info_, 0, sizeof(file_info_));
+}
 
 FakeSambaInterface::~FakeSambaInterface() = default;
 
@@ -101,8 +105,25 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
 
 int32_t FakeSambaInterface::GetDirectoryEntryWithMetadata(
     int32_t dir_id, const struct libsmb_file_info** file_info) {
-  NOTREACHED();
-  return -1;
+  DCHECK(file_info);
+  *file_info = nullptr;
+  if (!IsDirectoryFDOpen(dir_id)) {
+    return EBADF;
+  }
+
+  OpenInfo& open_info = FindOpenFD(dir_id)->second;
+  FakeDirectory* directory = GetDirectory(RemoveURLScheme(open_info.full_path));
+  DCHECK(directory);
+
+  if (open_info.current_index >= directory->entries.size()) {
+    // Reached the end of directory.
+    return 0;
+  }
+
+  FakeEntry* entry = directory->entries[open_info.current_index].get();
+  *file_info = PopulateFileInfo(*entry);
+  open_info.current_index++;
+  return 0;
 }
 
 int32_t FakeSambaInterface::GetEntryStatus(const std::string& entry_path,
@@ -894,6 +915,21 @@ void FakeSambaInterface::RemoveEntryAndResetIndicies(
   const int32_t deleted_index = parent->RemoveEntry(GetFileName(full_path));
   DCHECK_GE(deleted_index, 0);
   RewindOpenInfoIndicesIfNeccessary(GetDirPath(full_path), deleted_index);
+}
+
+const struct libsmb_file_info* FakeSambaInterface::PopulateFileInfo(
+    const FakeEntry& entry) {
+  file_info_.size = entry.size;
+  file_info_.mtime_ts.tv_sec = entry.date;
+  file_info_.attrs =
+      (entry.smbc_type == SMBC_FILE) ? 0 : kFileAttributeDirectory;
+
+  // The libsmb_file_info struct has a non-const char* so even through only
+  // a const pointer is ever returned, the member variable backing it is
+  // not const.
+  file_info_.name = const_cast<char*>(entry.name.c_str());
+
+  return &file_info_;
 }
 
 }  // namespace smbprovider

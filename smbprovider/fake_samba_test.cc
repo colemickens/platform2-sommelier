@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include "smbprovider/constants.h"
 #include "smbprovider/fake_samba_interface.h"
 
 namespace smbprovider {
@@ -342,6 +343,72 @@ TEST_F(FakeSambaTest, OpenDirectoryFailsOnLockedDirectory) {
   EXPECT_EQ(EACCES,
             fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
   EXPECT_EQ(-1, dir_id);
+}
+
+TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataEmptyDir) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
+  EXPECT_GE(dir_id, 0);
+
+  const struct libsmb_file_info* file_info = nullptr;
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
+  EXPECT_EQ(nullptr, file_info);
+}
+
+TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataOneFile) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+  const std::string filename = GetDefaultDirectoryPath() + "/file";
+  constexpr size_t expected_size = 7;
+  constexpr uint64_t expected_date = 999333222;
+
+  fake_samba_.AddFile(filename, expected_size, expected_date);
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
+  EXPECT_GE(dir_id, 0);
+
+  const struct libsmb_file_info* file_info = nullptr;
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
+  EXPECT_NE(nullptr, file_info);
+  EXPECT_EQ(expected_size, file_info->size);
+  EXPECT_EQ(expected_date, file_info->mtime_ts.tv_sec);
+  EXPECT_EQ(0, file_info->attrs & kFileAttributeDirectory);
+
+  // No more files.
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
+  EXPECT_EQ(nullptr, file_info);
+}
+
+TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataOneDirectory) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+  const std::string directory_name = GetDefaultDirectoryPath() + "/dir";
+
+  fake_samba_.AddDirectory(directory_name);
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
+  EXPECT_GE(dir_id, 0);
+
+  const struct libsmb_file_info* file_info = nullptr;
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
+  EXPECT_NE(nullptr, file_info);
+  EXPECT_EQ(kFileAttributeDirectory,
+            file_info->attrs & kFileAttributeDirectory);
+
+  // No more entries.
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
+  EXPECT_EQ(nullptr, file_info);
+}
+
+TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataInvalidDirId) {
+  const struct libsmb_file_info* file_info;
+
+  // Invalid dir id.
+  int32_t dir_id = 0;
+  EXPECT_EQ(EBADF,
+            fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
 }
 
 TEST_F(FakeSambaTest, GetEntryStatusFailsOnLockedEntries) {

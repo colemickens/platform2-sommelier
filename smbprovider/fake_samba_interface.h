@@ -365,6 +365,9 @@ class FakeSambaInterface : public SambaInterface {
       FakeDirectory** source_parent,
       FakeDirectory** target_parent) const;
 
+  // Populates the |file_info_| member struct and returns a pointer to it.
+  const struct libsmb_file_info* PopulateFileInfo(const FakeEntry& entry);
+
   // Counter for assigning file descriptor when opening.
   uint32_t next_fd = 0;
 
@@ -383,6 +386,15 @@ class FakeSambaInterface : public SambaInterface {
   // Key: fd of the file/directory.
   // Value: OpenInfo that corresponds with the key.
   OpenEntries open_fds;
+
+  // Struct to hold a single entry from readdir plus. The real API
+  // stores these in a list correlated to the open directory and returns
+  // a pointer into that list. This means that GetDirectoryEntryWithMetadata
+  // returns a pointer and the caller is not expected to free it. The fake
+  // only maintains the state for a single call to
+  // GetDirectoryEntryWithMetadata. Subsequent calls overwrite the values
+  // in this struct.
+  struct libsmb_file_info file_info_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeSambaInterface);
 };

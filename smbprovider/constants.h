@@ -9,6 +9,8 @@
 #include <stddef.h> /* for size_t */
 #include <sys/stat.h> /* for mode_t */
 
+#include <cstdint>
+
 namespace smbprovider {
 
 // Buffer size used for reading a directory.
@@ -19,6 +21,9 @@ constexpr int kCreateFileFlags = O_CREAT | O_WRONLY | O_TRUNC | O_EXCL;
 
 // Default permissions for created entries.
 constexpr mode_t kCreateEntryPermissions = 0755;
+
+// Windows/DOS file attribute for a directory.
+constexpr uint16_t kFileAttributeDirectory = 0x10;
 
 // SMB Url scheme
 constexpr char kSmbUrlScheme[] = "smb://";
