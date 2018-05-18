@@ -19,7 +19,6 @@
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/exif_utils.h"
-#include "cros-camera/jpeg_compressor.h"
 #include "hal/usb/common_types.h"
 
 namespace cros {
@@ -74,7 +73,7 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
 static const int kRationalPrecision = 10000;
 
 ImageProcessor::ImageProcessor() :
-    jpeg_encoder_(nullptr), jpeg_encoder_started_(false) {
+    jpeg_compressor_(JpegCompressor::GetInstance()) {
   const base::FilePath kCrosCameraTestModePath(
       constants::kCrosCameraTestModePathString);
   test_enabled_ = base::PathExists(kCrosCameraTestModePath);
@@ -413,8 +412,6 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
     thumbnail_jpeg_quality = jpeg_quality;
   }
 
-  JpegCompressor compressor;
-
   // Generate thumbnail
   std::vector<uint8_t> thumbnail;
   if (metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
@@ -430,7 +427,7 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
     } else {
       uint32_t thumbnail_data_size = 0;
       thumbnail.resize(thumbnail_width * thumbnail_height * 1.5);
-      if (compressor.GenerateThumbnail(
+      if (jpeg_compressor_->GenerateThumbnail(
               in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
               thumbnail_width, thumbnail_height, thumbnail_jpeg_quality,
               thumbnail.size(), thumbnail.data(), &thumbnail_data_size)) {
@@ -448,65 +445,13 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
     return false;
   }
 
-  if (!jpeg_encoder_) {
-    jpeg_encoder_ = JpegEncodeAccelerator::CreateInstance();
-    jpeg_encoder_started_ = jpeg_encoder_->Start();
-  }
-
-  if (jpeg_encoder_ && jpeg_encoder_started_) {
-    // Create SharedMemory for output buffer.
-    std::unique_ptr<base::SharedMemory> output_shm =
-        base::WrapUnique(new base::SharedMemory);
-    if (!output_shm->CreateAndMapAnonymous(out_frame->GetBufferSize())) {
-      LOGF(WARNING) << "CreateAndMapAnonymous for output buffer failed, size="
-          << out_frame->GetBufferSize();
-      return false;
-    }
-
-    // Utilize HW Jpeg encode through IPC.
-    uint32_t encoded_data_size = 0;
-    int status = jpeg_encoder_->EncodeSync(
-        in_frame.GetFd(), in_frame.GetDataSize(),
-        in_frame.GetWidth(), in_frame.GetHeight(),
-        utils.GetApp1Buffer(), utils.GetApp1Length(),
-        output_shm->handle().fd, out_frame->GetBufferSize(),
-        &encoded_data_size);
-    if (status == JpegEncodeAccelerator::TRY_START_AGAIN) {
-      // There might be some mojo errors. We will give a second try.
-      // But if it fails again, we will fall back to SW encode.
-      LOG(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
-      jpeg_encoder_started_ = jpeg_encoder_->Start();
-      if (jpeg_encoder_started_) {
-        status = jpeg_encoder_->EncodeSync(
-            in_frame.GetFd(), in_frame.GetDataSize(),
-            in_frame.GetWidth(), in_frame.GetHeight(),
-            utils.GetApp1Buffer(), utils.GetApp1Length(),
-            output_shm->handle().fd, out_frame->GetBufferSize(),
-            &encoded_data_size);
-      } else {
-        LOG(ERROR) << "JPEG encode accelerator can't be started.";
-      }
-    }
-    if (status == JpegEncodeAccelerator::ENCODE_OK) {
-      memcpy(out_frame->GetData(), output_shm->memory(), encoded_data_size);
-      InsertJpegBlob(out_frame, encoded_data_size);
-      return true;
-    }
-
-    LOG(ERROR) << "JEA returns " << status << ". Fall back to SW encode.";
-  }
-
-  if (test_enabled_) {
-    // In test mode, don't fall back to SW encode.
-    LOG(ERROR) << "Test is enabled and JEA failed.";
-    return false;
-  }
-
   uint32_t jpeg_data_size = 0;
-  if (!compressor.CompressImage(
+  if (!jpeg_compressor_->CompressImage(
           in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
           jpeg_quality, utils.GetApp1Buffer(), utils.GetApp1Length(),
-          out_frame->GetBufferSize(), out_frame->GetData(), &jpeg_data_size)) {
+          out_frame->GetBufferSize(), out_frame->GetData(), &jpeg_data_size,
+          test_enabled_ ? JpegCompressor::Mode::kHwOnly :
+                          JpegCompressor::Mode::kDefault)) {
     LOGF(ERROR) << "JPEG image compression failed";
     return false;
   }

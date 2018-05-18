@@ -10,6 +10,8 @@
 #include <sys/mman.h>
 #include <utility>
 
+#include <algorithm>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -121,6 +123,7 @@ void JpegEncodeAcceleratorImpl::OnJpegEncodeAcceleratorError() {
 }
 
 int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
+                                          const uint8_t* input_buffer,
                                           uint32_t input_buffer_size,
                                           int32_t coded_size_width,
                                           int32_t coded_size_height,
@@ -141,9 +144,10 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&JpegEncodeAcceleratorImpl::EncodeOnIpcThread,
-                 base::Unretained(this), buffer_id, input_fd, input_buffer_size,
-                 coded_size_width, coded_size_height, exif_buffer, exif_buffer_size,
-                 output_fd, output_buffer_size, std::move(callback)));
+                 base::Unretained(this), buffer_id, input_fd, input_buffer,
+                 input_buffer_size, coded_size_width, coded_size_height,
+                 exif_buffer, exif_buffer_size, output_fd, output_buffer_size,
+                 std::move(callback)));
 
   if (!future->Wait()) {
     if (!jea_ptr_.is_bound()) {
@@ -157,16 +161,18 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
   return future->Get();
 }
 
-void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(int32_t buffer_id,
-                                                  int input_fd,
-                                                  uint32_t input_buffer_size,
-                                                  int32_t coded_size_width,
-                                                  int32_t coded_size_height,
-                                                  const uint8_t* exif_buffer,
-                                                  uint32_t exif_buffer_size,
-                                                  int output_fd,
-                                                  uint32_t output_buffer_size,
-                                                  EncodeWithFDCallback callback) {
+void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
+    int32_t buffer_id,
+    int input_fd,
+    const uint8_t* input_buffer,
+    uint32_t input_buffer_size,
+    int32_t coded_size_width,
+    int32_t coded_size_height,
+    const uint8_t* exif_buffer,
+    uint32_t exif_buffer_size,
+    int output_fd,
+    uint32_t output_buffer_size,
+    EncodeWithFDCallback callback) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   DCHECK_EQ(input_shm_map_.count(buffer_id), 0);
   DCHECK_EQ(exif_shm_map_.count(buffer_id), 0);
@@ -183,29 +189,37 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(int32_t buffer_id,
     callback.Run(buffer_id, 0, SHARED_MEMORY_FAIL);
     return;
   }
-  // Copy content from input file descriptor to shared memory.
-  uint8_t* mmap_buf = static_cast<uint8_t*>(
-      mmap(NULL, input_buffer_size, PROT_READ, MAP_SHARED, input_fd, 0));
+  // Copy content from input buffer or file descriptor to shared memory.
+  if (input_buffer) {
+    memcpy(input_shm->memory(), input_buffer, input_buffer_size);
+  } else {
+    uint8_t* mmap_buf = static_cast<uint8_t*>(
+        mmap(NULL, input_buffer_size, PROT_READ, MAP_SHARED, input_fd, 0));
 
-  if (mmap_buf == MAP_FAILED) {
-    LOGF(WARNING) << "MMAP for input_fd:" << input_fd << " Failed.";
-    callback.Run(buffer_id, 0, MMAP_FAIL);
-    return;
+    if (mmap_buf == MAP_FAILED) {
+      LOGF(WARNING) << "MMAP for input_fd:" << input_fd << " Failed.";
+      callback.Run(buffer_id, 0, MMAP_FAIL);
+      return;
+    }
+
+    memcpy(input_shm->memory(), mmap_buf, input_buffer_size);
+    munmap(mmap_buf, input_buffer_size);
   }
-
-  memcpy(input_shm->memory(), mmap_buf, input_buffer_size);
-  munmap(mmap_buf, input_buffer_size);
 
   // Create SharedMemory for Exif buffer and copy data into it.
   std::unique_ptr<base::SharedMemory> exif_shm =
       base::WrapUnique(new base::SharedMemory);
-  if (!exif_shm->CreateAndMapAnonymous(exif_buffer_size)) {
+  // Create a dummy |exif_shm| even if |exif_buffer_size| is 0.
+  uint32_t exif_shm_size = std::max(exif_buffer_size, 1u);
+  if (!exif_shm->CreateAndMapAnonymous(exif_shm_size)) {
     LOGF(WARNING) << "CreateAndMapAnonymous for exif failed, size="
-                  << exif_buffer_size;
+                  << exif_shm_size;
     callback.Run(buffer_id, 0, SHARED_MEMORY_FAIL);
     return;
   }
-  memcpy(exif_shm->memory(), exif_buffer, exif_buffer_size);
+  if (exif_buffer_size) {
+    memcpy(exif_shm->memory(), exif_buffer, exif_buffer_size);
+  }
 
   int dup_input_fd = dup(input_shm->handle().fd);
   int dup_exif_fd = dup(exif_shm->handle().fd);

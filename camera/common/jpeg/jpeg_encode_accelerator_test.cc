@@ -195,12 +195,12 @@ double JpegEncodeAcceleratorTest::GetMeanAbsoluteDifference(
 }
 
 bool JpegEncodeAcceleratorTest::GetSoftwareEncodeResult(Frame* frame) {
-  JpegCompressor compressor;
-  if (!compressor.CompressImage(
-      frame->in_shm->memory(), frame->width, frame->height,
-      kJpegDefaultQuality, nullptr, 0,
-      frame->sw_out_shm->mapped_size(), frame->sw_out_shm->memory(),
-      &frame->sw_out_size)) {
+  std::unique_ptr<JpegCompressor> compressor(JpegCompressor::GetInstance());
+  if (!compressor->CompressImage(
+          frame->in_shm->memory(), frame->width, frame->height,
+          kJpegDefaultQuality, nullptr, 0, frame->sw_out_shm->mapped_size(),
+          frame->sw_out_shm->memory(), &frame->sw_out_size,
+          JpegCompressor::Mode::kSwOnly)) {
     LOG(ERROR) << "Software encode failed.";
     return false;
   }
@@ -275,13 +275,10 @@ void JpegEncodeAcceleratorTest::EncodeTest(Frame* frame) {
 
   // Pretend the shared memory as DMA buffer. Since we use mmap to get the user
   // space address, it won't cause any problems.
-  status = jpeg_encoder_->EncodeSync(input_fd, frame->in_shm->mapped_size(),
-                                     frame->width, frame->height,
-                                     utils.GetApp1Buffer(),
-                                     utils.GetApp1Length(),
-                                     output_fd,
-                                     frame->hw_out_shm->mapped_size(),
-                                     &frame->hw_out_size);
+  status = jpeg_encoder_->EncodeSync(
+      input_fd, nullptr, frame->in_shm->mapped_size(), frame->width,
+      frame->height, utils.GetApp1Buffer(), utils.GetApp1Length(), output_fd,
+      frame->hw_out_shm->mapped_size(), &frame->hw_out_size);
   EXPECT_EQ(status, JpegEncodeAccelerator::ENCODE_OK);
   if (status == static_cast<int>(JpegEncodeAccelerator::ENCODE_OK)) {
     if (g_env->save_to_file_) {

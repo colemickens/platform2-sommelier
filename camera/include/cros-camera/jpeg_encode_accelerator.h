@@ -69,7 +69,7 @@ class JpegEncodeAccelerator {
   virtual bool Start() = 0;
 
   // Encodes the given buffer that contains one I420 image.
-  // The image is encoded from memory of |input_fd| with size
+  // The image is encoded from memory of |input_fd| or |input_buffer| with size
   // |input_buffer_size|. The resolution of I420 image is |coded_size_width| and
   // |coded_size_height|. |exif_buffer| with |exif_buffer_size| will be inserted
   // into the encoded JPEG image.
@@ -77,7 +77,10 @@ class JpegEncodeAccelerator {
   // with actual image size as |output_data_size|.
   //
   // Args:
-  //    |input_fd|: A file descriptor of shared buffer.
+  //    |input_fd|: A file descriptor of shared buffer. Either this field or
+  //        |input_buffer| has to be filled.
+  //    |input_buffer|: A buffer containing input data. Either this field or
+  //        |input_fd| has to be filled.
   //    |input_buffer_size|: Size of input buffer.
   //    |coded_size_width|: Width of I420 image.
   //    |coded_size_height|: Height of I420 image.
@@ -85,14 +88,16 @@ class JpegEncodeAccelerator {
   //    |exif_buffer_size|: Size of the Exif buffer.
   //    |output_fd|: A file descriptor of shared memory.
   //    |output_buffer_size|: Size of output buffer.
-  //    |output_data_size|: Actual size of the encoded image. Will be filled by the
-  //    method.
+  //    |output_data_size|: Actual size of the encoded image. Will be filled by
+  //    the
+  //        method.
   //
   // Returns:
   //    Returns |status| to notify the encode status.
   //    If the return code is TRY_START_AGAIN, user can call Start() again and
   //    use this API.
   virtual int EncodeSync(int input_fd,
+                         const uint8_t* input_buffer,
                          uint32_t input_buffer_size,
                          int32_t coded_size_width,
                          int32_t coded_size_height,

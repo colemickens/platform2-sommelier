@@ -36,6 +36,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
   bool Start() override;
 
   int EncodeSync(int input_fd,
+                 const uint8_t* input_buffer,
                  uint32_t input_buffer_size,
                  int32_t coded_size_width,
                  int32_t coded_size_height,
@@ -61,8 +62,10 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
   void OnJpegEncodeAcceleratorError();
 
   // Process encode request in IPC thread.
+  // Either |input_fd| or |input_buffer| has to be filled up.
   void EncodeOnIpcThread(int32_t buffer_id,
                          int input_fd,
+                         const uint8_t* input_buffer,
                          uint32_t input_buffer_size,
                          int32_t coded_size_width,
                          int32_t coded_size_height,

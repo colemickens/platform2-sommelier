@@ -4,41 +4,52 @@
  * found in the LICENSE file.
  */
 
-#include "cros-camera/jpeg_compressor.h"
+#include "common/jpeg_compressor_impl.h"
 
 #include <memory>
 
 #include <errno.h>
 #include <libyuv.h>
 
+#include <base/memory/ptr_util.h>
+#include <base/memory/shared_memory.h>
 #include "cros-camera/common.h"
+#include "cros-camera/jpeg_encode_accelerator.h"
 
 namespace cros {
 
-// The destination manager that can access members in JpegCompressor.
+// The destination manager that can access members in JpegCompressorImpl.
 struct destination_mgr {
  public:
   struct jpeg_destination_mgr mgr;
-  JpegCompressor* compressor;
+  JpegCompressorImpl* compressor;
 };
 
-JpegCompressor::JpegCompressor()
-    : out_buffer_ptr_(nullptr),
+// static
+std::unique_ptr<JpegCompressor> JpegCompressor::GetInstance() {
+  return std::make_unique<JpegCompressorImpl>();
+}
+
+JpegCompressorImpl::JpegCompressorImpl()
+    : hw_encoder_(nullptr),
+      hw_encoder_started_(false),
+      out_buffer_ptr_(nullptr),
       out_buffer_size_(0),
       out_data_size_(0),
       is_encode_success_(false) {}
 
-JpegCompressor::~JpegCompressor() {}
+JpegCompressorImpl::~JpegCompressorImpl() {}
 
-bool JpegCompressor::CompressImage(const void* image,
-                                   int width,
-                                   int height,
-                                   int quality,
-                                   const void* app1_buffer,
-                                   uint32_t app1_size,
-                                   uint32_t out_buffer_size,
-                                   void* out_buffer,
-                                   uint32_t* out_data_size) {
+bool JpegCompressorImpl::CompressImage(const void* image,
+                                       int width,
+                                       int height,
+                                       int quality,
+                                       const void* app1_buffer,
+                                       uint32_t app1_size,
+                                       uint32_t out_buffer_size,
+                                       void* out_buffer,
+                                       uint32_t* out_data_size,
+                                       JpegCompressor::Mode mode) {
   if (width % 8 != 0 || height % 2 != 0) {
     LOGF(ERROR) << "Image size can not be handled: " << width << "x" << height;
     return false;
@@ -49,6 +60,19 @@ bool JpegCompressor::CompressImage(const void* image,
     return false;
   }
 
+  uint32_t input_data_size = static_cast<uint32_t>(width * height * 3 / 2);
+  if (mode != JpegCompressor::Mode::kSwOnly &&
+      EncodeHw(static_cast<const uint8_t*>(image), input_data_size, width,
+               height, static_cast<const uint8_t*>(app1_buffer), app1_size,
+               out_buffer_size, out_buffer, out_data_size)) {
+    return true;
+  }
+
+  if (mode == JpegCompressor::Mode::kHwOnly) {
+    return false;
+  }
+
+  LOGF(INFO) << "HW encode failed. Fallback to SW encode.";
   if (!Encode(image, width, height, quality, app1_buffer, app1_size,
               out_buffer_size, out_buffer, out_data_size)) {
     return false;
@@ -58,15 +82,15 @@ bool JpegCompressor::CompressImage(const void* image,
   return true;
 }
 
-bool JpegCompressor::GenerateThumbnail(const void* image,
-                                       int image_width,
-                                       int image_height,
-                                       int thumbnail_width,
-                                       int thumbnail_height,
-                                       int quality,
-                                       uint32_t out_buffer_size,
-                                       void* out_buffer,
-                                       uint32_t* out_data_size) {
+bool JpegCompressorImpl::GenerateThumbnail(const void* image,
+                                           int image_width,
+                                           int image_height,
+                                           int thumbnail_width,
+                                           int thumbnail_height,
+                                           int quality,
+                                           uint32_t out_buffer_size,
+                                           void* out_buffer,
+                                           uint32_t* out_data_size) {
   if (thumbnail_width == 0 || thumbnail_height == 0) {
     LOGF(ERROR) << "Invalid thumbnail resolution " << thumbnail_width << "x"
                 << thumbnail_height;
@@ -106,20 +130,21 @@ bool JpegCompressor::GenerateThumbnail(const void* image,
     return false;
   }
 
-  // Compress thumbnail to JPEG.
+  // Compress thumbnail to JPEG. Since thumbnail size is small, SW performs
+  // better than HW.
   return CompressImage(scaled_buffer.data(), thumbnail_width, thumbnail_height,
                        quality, nullptr, 0, out_buffer_size, out_buffer,
-                       out_data_size);
+                       out_data_size, JpegCompressor::Mode::kSwOnly);
 }
 
-void JpegCompressor::InitDestination(j_compress_ptr cinfo) {
+void JpegCompressorImpl::InitDestination(j_compress_ptr cinfo) {
   destination_mgr* dest = reinterpret_cast<destination_mgr*>(cinfo->dest);
   dest->mgr.next_output_byte = dest->compressor->out_buffer_ptr_;
   dest->mgr.free_in_buffer = dest->compressor->out_buffer_size_;
   dest->compressor->is_encode_success_ = true;
 }
 
-boolean JpegCompressor::EmptyOutputBuffer(j_compress_ptr cinfo) {
+boolean JpegCompressorImpl::EmptyOutputBuffer(j_compress_ptr cinfo) {
   destination_mgr* dest = reinterpret_cast<destination_mgr*>(cinfo->dest);
   dest->mgr.next_output_byte = dest->compressor->out_buffer_ptr_;
   dest->mgr.free_in_buffer = dest->compressor->out_buffer_size_;
@@ -132,13 +157,13 @@ boolean JpegCompressor::EmptyOutputBuffer(j_compress_ptr cinfo) {
   return true;
 }
 
-void JpegCompressor::TerminateDestination(j_compress_ptr cinfo) {
+void JpegCompressorImpl::TerminateDestination(j_compress_ptr cinfo) {
   destination_mgr* dest = reinterpret_cast<destination_mgr*>(cinfo->dest);
   dest->compressor->out_data_size_ =
       dest->compressor->out_buffer_size_ - dest->mgr.free_in_buffer;
 }
 
-void JpegCompressor::OutputErrorMessage(j_common_ptr cinfo) {
+void JpegCompressorImpl::OutputErrorMessage(j_common_ptr cinfo) {
   char buffer[JMSG_LENGTH_MAX];
 
   /* Create the message */
@@ -146,15 +171,73 @@ void JpegCompressor::OutputErrorMessage(j_common_ptr cinfo) {
   LOGF(ERROR) << buffer;
 }
 
-bool JpegCompressor::Encode(const void* inYuv,
-                            int width,
-                            int height,
-                            int jpeg_quality,
-                            const void* app1_buffer,
-                            unsigned int app1_size,
-                            uint32_t out_buffer_size,
-                            void* out_buffer,
-                            uint32_t* out_data_size) {
+bool JpegCompressorImpl::EncodeHw(const uint8_t* input_buffer,
+                                  uint32_t input_buffer_size,
+                                  int width,
+                                  int height,
+                                  const uint8_t* app1_buffer,
+                                  uint32_t app1_buffer_size,
+                                  uint32_t out_buffer_size,
+                                  void* out_buffer,
+                                  uint32_t* out_data_size) {
+  if (!hw_encoder_) {
+    hw_encoder_ = cros::JpegEncodeAccelerator::CreateInstance();
+    hw_encoder_started_ = hw_encoder_->Start();
+  }
+
+  if (!hw_encoder_ || !hw_encoder_started_) {
+    return false;
+  }
+
+  // Create SharedMemory for output buffer.
+  std::unique_ptr<base::SharedMemory> output_shm =
+      base::WrapUnique(new base::SharedMemory);
+  if (!output_shm->CreateAndMapAnonymous(out_buffer_size)) {
+    LOGF(ERROR) << "CreateAndMapAnonymous for output buffer failed, size="
+                << out_buffer_size;
+    return false;
+  }
+
+  // Utilize HW Jpeg encode through IPC.
+  int status = hw_encoder_->EncodeSync(
+      -1, input_buffer, input_buffer_size, static_cast<int32_t>(width),
+      static_cast<int32_t>(height), app1_buffer, app1_buffer_size,
+      output_shm->handle().fd, static_cast<uint32_t>(out_buffer_size),
+      out_data_size);
+  if (status == cros::JpegEncodeAccelerator::TRY_START_AGAIN) {
+    // There might be some mojo errors. We will give a second try.
+    LOG(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
+    hw_encoder_started_ = hw_encoder_->Start();
+    if (hw_encoder_started_) {
+      status = hw_encoder_->EncodeSync(
+          -1, input_buffer, input_buffer_size, static_cast<int32_t>(width),
+          static_cast<int32_t>(height), app1_buffer, app1_buffer_size,
+          output_shm->handle().fd, static_cast<uint32_t>(out_buffer_size),
+          out_data_size);
+    } else {
+      LOGF(ERROR) << "JPEG encode accelerator can't be started.";
+    }
+  }
+  if (status == cros::JpegEncodeAccelerator::ENCODE_OK) {
+    memcpy(static_cast<unsigned char*>(out_buffer), output_shm->memory(),
+           *out_data_size);
+    return true;
+  } else {
+    LOGF(ERROR) << "HW encode failed with " << status;
+  }
+
+  return false;
+}
+
+bool JpegCompressorImpl::Encode(const void* inYuv,
+                                int width,
+                                int height,
+                                int jpeg_quality,
+                                const void* app1_buffer,
+                                unsigned int app1_size,
+                                uint32_t out_buffer_size,
+                                void* out_buffer,
+                                uint32_t* out_data_size) {
   out_buffer_ptr_ = static_cast<JOCTET*>(out_buffer);
   out_buffer_size_ = out_buffer_size;
 
@@ -184,7 +267,7 @@ bool JpegCompressor::Encode(const void* inYuv,
   return is_encode_success_;
 }
 
-void JpegCompressor::SetJpegDestination(jpeg_compress_struct* cinfo) {
+void JpegCompressorImpl::SetJpegDestination(jpeg_compress_struct* cinfo) {
   destination_mgr* dest =
       static_cast<struct destination_mgr*>((*cinfo->mem->alloc_small)(
           (j_common_ptr)cinfo, JPOOL_PERMANENT, sizeof(destination_mgr)));
@@ -195,10 +278,10 @@ void JpegCompressor::SetJpegDestination(jpeg_compress_struct* cinfo) {
   cinfo->dest = reinterpret_cast<struct jpeg_destination_mgr*>(dest);
 }
 
-void JpegCompressor::SetJpegCompressStruct(int width,
-                                           int height,
-                                           int quality,
-                                           jpeg_compress_struct* cinfo) {
+void JpegCompressorImpl::SetJpegCompressStruct(int width,
+                                               int height,
+                                               int quality,
+                                               jpeg_compress_struct* cinfo) {
   cinfo->image_width = width;
   cinfo->image_height = height;
   cinfo->input_components = 3;
@@ -220,7 +303,7 @@ void JpegCompressor::SetJpegCompressStruct(int width,
   cinfo->comp_info[2].v_samp_factor = 1;
 }
 
-bool JpegCompressor::Compress(jpeg_compress_struct* cinfo, const uint8_t* yuv) {
+bool JpegCompressorImpl::Compress(jpeg_compress_struct* cinfo, const uint8_t* yuv) {
   JSAMPROW y[kCompressBatchSize];
   JSAMPROW cb[kCompressBatchSize / 2];
   JSAMPROW cr[kCompressBatchSize / 2];

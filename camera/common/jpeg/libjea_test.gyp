@@ -9,8 +9,6 @@
         'libcamera_exif',
         'libcamera_ipc',
         'libcamera_jpeg',
-        'libjea',
-        'libmojo-<(libbase_ver)',
         'libyuv',
       ],
     },
@@ -24,6 +22,7 @@
       ],
       'dependencies': [
         '../libcamera_ipc.gyp:libcamera_ipc',
+        'libjea.gyp:libjea',
       ],
       'libraries': [
         '-ljpeg',
