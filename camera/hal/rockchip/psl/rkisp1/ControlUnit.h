@@ -73,6 +73,7 @@ public:  /* private types */
         int requestId;
         int64_t tv_sec;
         int64_t tv_usec;
+        int64_t sequence;
     };
 
     struct MessageRequestDone {

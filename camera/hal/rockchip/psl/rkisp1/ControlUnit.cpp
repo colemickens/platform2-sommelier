@@ -971,6 +971,9 @@ status_t ControlUnit::handleNewShutter(MessageShutter msg)
     reqState->captureSettings->timestamp = ts;
     mShutterDoneReqId = reqId;
 
+    reqState->ctrlUnitResult->update(ANDROID_SYNC_FRAME_NUMBER, &msg.sequence,
+                                     1);
+
     return NO_ERROR;
 }
 
@@ -1104,6 +1107,7 @@ ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
             msg.requestId = captureMsg->data.event.reqId;
             msg.tv_sec = captureMsg->data.event.timestamp.tv_sec;
             msg.tv_usec = captureMsg->data.event.timestamp.tv_usec;
+            msg.sequence = captureMsg->data.event.sequence;
             base::Callback<status_t()> closure =
                     base::Bind(&ControlUnit::handleNewShutter,
                                base::Unretained(this),
