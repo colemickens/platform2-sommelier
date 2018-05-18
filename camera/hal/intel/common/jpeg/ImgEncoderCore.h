@@ -22,6 +22,7 @@
 #include "CommonBuffer.h"
 #include "EXIFMaker.h"
 #include "base/macros.h"
+#include "cros-camera/jpeg_compressor.h"
 
 NAMESPACE_DECLARATION {
 /**
@@ -106,10 +107,13 @@ private:  /* Methods */
     status_t allocateBufferAndDownScale(EncodePackage & pkg);
     void thumbBufferDownScale(EncodePackage & pkg);
     void mainBufferDownScale(EncodePackage & pkg);
-    int doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
-                   int quality,
-                   std::shared_ptr<CommonBuffer> destBuf,
-                   unsigned int destOffset = 0);
+    int doEncode(std::shared_ptr<CommonBuffer> srcBuf,
+                 int quality,
+                 std::shared_ptr<CommonBuffer> destBuf,
+                 unsigned int destOffset = 0);
+    // Converts |srcBuf| to plain YUV420 format. The result will be in
+    // |mInternalYU12|.
+    bool convertToP411(std::shared_ptr<CommonBuffer> srcBuf);
     status_t getJpegSettings(EncodePackage & pkg, ExifMetaData& metaData);
     DISALLOW_COPY_AND_ASSIGN(ImgEncoderCore);
 
@@ -128,6 +132,8 @@ private:  /* Members */
     // so a temporary intermediate buffer is needed.
     std::unique_ptr<char[]> mInternalYU12;
     unsigned int mInternalYU12Size;
+
+    std::unique_ptr<cros::JpegCompressor> mJpegCompressor;
 };
 
 } NAMESPACE_DECLARATION_END

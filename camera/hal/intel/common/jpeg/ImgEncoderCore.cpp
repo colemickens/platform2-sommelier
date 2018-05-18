@@ -25,7 +25,8 @@
 #include "Exif.h"
 
 #include "ColorConverter.h"
-#include <cros-camera/jpeg_compressor.h>
+#include <base/memory/ptr_util.h>
+#include <base/memory/shared_memory.h>
 
 NAMESPACE_DECLARATION {
 ImgEncoderCore::ImgEncoderCore() :
@@ -33,7 +34,8 @@ ImgEncoderCore::ImgEncoderCore() :
     mJpegDataBuf(nullptr),
     mMainScaled(nullptr),
     mThumbScaled(nullptr),
-    mJpegSetting(nullptr)
+    mJpegSetting(nullptr),
+    mJpegCompressor(cros::JpegCompressor::GetInstance())
 {
     LOG1("@%s", __FUNCTION__);
 
@@ -277,15 +279,8 @@ status_t ImgEncoderCore::getJpegSettings(EncodePackage & pkg, ExifMetaData& meta
     return status;
 }
 
-int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
-                               int quality,
-                               std::shared_ptr<CommonBuffer> destBuf,
-                               unsigned int destOffset)
+bool ImgEncoderCore::convertToP411(std::shared_ptr<CommonBuffer> srcBuf)
 {
-    LOG2("@%s", __FUNCTION__);
-
-    cros::JpegCompressor jpegCompressor;
-
     int width = srcBuf->width();
     int height = srcBuf->height();
     int stride = srcBuf->stride();
@@ -299,32 +294,48 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
     void* tempBuf = mInternalYU12.get();
 
     switch (srcBuf->v4l2Fmt()) {
-    case V4L2_PIX_FMT_YUYV:
-        YUY2ToP411(width, height, stride, srcY, tempBuf);
-        break;
-    case V4L2_PIX_FMT_NV12:
-        NV12ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
-        break;
-    case V4L2_PIX_FMT_NV21:
-        NV21ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
-        break;
-    default:
-        LOGE("%s Unsupported format %d", __FUNCTION__, srcBuf->v4l2Fmt());
+        case V4L2_PIX_FMT_YUYV:
+            YUY2ToP411(width, height, stride, srcY, tempBuf);
+            break;
+        case V4L2_PIX_FMT_NV12:
+            NV12ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
+            break;
+        case V4L2_PIX_FMT_NV21:
+            NV21ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
+            break;
+        default:
+            LOGE("%s Unsupported format %d", __FUNCTION__, srcBuf->v4l2Fmt());
+            return false;
+    }
+    return true;
+}
+
+int ImgEncoderCore::doEncode(std::shared_ptr<CommonBuffer> srcBuf,
+                             int quality,
+                             std::shared_ptr<CommonBuffer> destBuf,
+                             unsigned int destOffset)
+{
+    LOG2("@%s", __FUNCTION__);
+
+    if (!convertToP411(srcBuf)) {
         return 0;
     }
+    void* tempBuf = mInternalYU12.get();
+    int width = srcBuf->width();
+    int height = srcBuf->height();
 
     uint32_t outSize = 0;
     nsecs_t startTime = systemTime();
     void* pDst = static_cast<unsigned char*>(destBuf->data()) + destOffset;
-    bool ret = jpegCompressor.CompressImage(tempBuf,
-                                            width, height, quality,
-                                            nullptr, 0,
-                                            destBuf->size(), pDst,
-                                            &outSize);
+    bool ret = mJpegCompressor->CompressImage(tempBuf,
+                                              width, height, quality,
+                                              nullptr, 0,
+                                              destBuf->size(), pDst,
+                                              &outSize);
     LOG1("%s: encoding ret:%d, %dx%d need %" PRId64 "ms, jpeg size %u, quality %d)",
          __FUNCTION__, ret, destBuf->width(), destBuf->height(),
          (systemTime() - startTime) / 1000000, outSize, quality);
-    CheckError(ret == false, 0, "@%s, jpegCompressor.CompressImage() fails",
+    CheckError(ret == false, 0, "@%s, mJpegCompressor->CompressImage() fails",
                __FUNCTION__);
 
     return outSize;
@@ -345,7 +356,7 @@ status_t ImgEncoderCore::encodeSync(EncodePackage & package, ExifMetaData& metaD
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = NO_ERROR;
     int mainSize = 0;
-    int thumbSize = 0;
+    uint32_t thumbSize = 0;
 
     std::lock_guard<std::mutex> l(mEncodeLock);
 
@@ -366,17 +377,26 @@ status_t ImgEncoderCore::encodeSync(EncodePackage & package, ExifMetaData& metaD
     // downscale the buffer for main if scaling is needed
     allocateBufferAndDownScale(package);
 
-    // Encode thumbnail as JPEG in parallel with the HW encoding started earlier
     if (package.thumb && mThumbOutBuf) {
-        do {
-            LOG2("Encoding thumbnail with quality %d",
-                 mJpegSetting->jpegThumbnailQuality);
-            thumbSize = doSwEncode(package.thumb,
-                                   mJpegSetting->jpegThumbnailQuality,
-                                   mThumbOutBuf);
-            mJpegSetting->jpegThumbnailQuality -= 5;
-        } while (thumbSize > 0 && mJpegSetting->jpegThumbnailQuality > 0 &&
-                thumbSize > THUMBNAIL_SIZE_LIMITATION);
+        if (!convertToP411(package.thumb)) {
+            thumbSize = 0;
+        } else {
+            do {
+                LOG2("Encoding thumbnail with quality %d",
+                    mJpegSetting->jpegThumbnailQuality);
+                mJpegCompressor->GenerateThumbnail(mInternalYU12.get(),
+                                                   package.thumb->width(),
+                                                   package.thumb->height(),
+                                                   package.thumb->width(),
+                                                   package.thumb->height(),
+                                                   mJpegSetting->jpegThumbnailQuality,
+                                                   mThumbOutBuf->size(),
+                                                   mThumbOutBuf->data(),
+                                                   &thumbSize);
+                mJpegSetting->jpegThumbnailQuality -= 5;
+            } while (thumbSize > 0 && mJpegSetting->jpegThumbnailQuality > 0 &&
+                     thumbSize > THUMBNAIL_SIZE_LIMITATION);
+        }
 
         if (thumbSize > 0) {
             package.thumbOut = mThumbOutBuf;
@@ -392,12 +412,9 @@ status_t ImgEncoderCore::encodeSync(EncodePackage & package, ExifMetaData& metaD
 
     if (package.encodeAll) {
         status = NO_ERROR;
-        // Encode main picture with SW encoder
-        mainSize = doSwEncode(package.main,
-                              mJpegSetting->jpegQuality,
-                              mJpegDataBuf);
+        mainSize = doEncode(package.main, mJpegSetting->jpegQuality, mJpegDataBuf);
         if (mainSize <= 0) {
-           LOGE("Error while SW encoding JPEG");
+           LOGE("Error while encoding JPEG");
            status = INVALID_OPERATION;
         }
 
