@@ -154,6 +154,11 @@ int32_t BaseDirectoryIterator::ReadEntriesWithMetadataToVector() {
   return -1;
 }
 
+void BaseDirectoryIterator::ClearVector() {
+  entries_.clear();
+  current_entry_index_ = 0;
+}
+
 int32_t BaseDirectoryIterator::ReadEntriesToBuffer(int32_t* bytes_read) {
   return samba_interface_->GetDirectoryEntries(
       dir_id_, GetDirentFromBuffer(dir_buf_.data()), dir_buf_.size(),
@@ -161,8 +166,7 @@ int32_t BaseDirectoryIterator::ReadEntriesToBuffer(int32_t* bytes_read) {
 }
 
 void BaseDirectoryIterator::ConvertBufferToVector(int32_t bytes_read) {
-  entries_.clear();
-  current_entry_index_ = 0;
+  ClearVector();
   const smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
 
   int32_t bytes_left = bytes_read;

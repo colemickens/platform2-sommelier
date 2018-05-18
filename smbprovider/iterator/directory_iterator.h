@@ -75,6 +75,9 @@ class BaseDirectoryIterator {
   // Reads entries that include metadata in the |entries_| vector.
   int32_t ReadEntriesWithMetadataToVector();
 
+  // Clears the |entries_| vector and resets |current_entry_index_| to 0.
+  void ClearVector();
+
   // Converts the buffer into the vector of entries. Also resets
   // |current_entry_index_|.
   void ConvertBufferToVector(int32_t bytes_read);
