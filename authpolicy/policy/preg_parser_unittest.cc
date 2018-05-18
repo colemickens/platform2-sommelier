@@ -82,8 +82,7 @@ testing::AssertionResult RegistryDictEquals(const RegistryDict& a,
 }
 
 void SetInteger(RegistryDict* dict, const std::string& name, int value) {
-  dict->SetValue(
-      name, base::WrapUnique<base::Value>(new base::FundamentalValue(value)));
+  dict->SetValue(name, std::make_unique<base::Value>(value));
 }
 
 void SetString(RegistryDict* dict,
