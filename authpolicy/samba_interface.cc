@@ -129,6 +129,8 @@ const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
 const char kKeyEncTypeNotSupported[] = "KDC has no support for encryption type";
+const char kKeyEncTypeNotSupported2[] =
+    "The encryption type requested is not supported by the KDC";
 
 // Replacement strings for anonymization.
 const char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
@@ -232,7 +234,8 @@ WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
     LOG(ERROR) << error_msg << "setting computer OU failed, unspecified error";
     return ERROR_SETTING_OU_FAILED;
   }
-  if (Contains(net_out, kKeyEncTypeNotSupported)) {
+  if (Contains(net_out, kKeyEncTypeNotSupported) ||
+      Contains(net_out, kKeyEncTypeNotSupported2)) {
     LOG(ERROR) << error_msg << "KDC does not support encryption type";
     return ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE;
   }
@@ -692,7 +695,7 @@ ErrorType SambaInterface::JoinMachine(
 
   // Call net ads join to join the machine to the Active Directory domain.
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "join", kUserParam,
-                           normalized_upn, kConfigParam,
+                           normalized_upn, kKerberosParam, kConfigParam,
                            paths_->Get(Path::DEVICE_SMB_CONF), kDebugParam,
                            flags_.net_log_level(), kMachinepassStdinParam});
   if (!machine_ou.empty()) {
