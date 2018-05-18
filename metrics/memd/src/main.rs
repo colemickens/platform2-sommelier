@@ -409,11 +409,11 @@ fn get_runnables(runnables_file: &File) -> Result<u32> {
     let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
     let content = pread(runnables_file, &mut buffer[..])?;
     // Example: "0.81 0.66 0.86 22/3873 7043" (22 runnables here).  The format is
-    // fixed, so just skip the first 15 characters.
+    // fixed, so just skip the first 14 characters.
     if content.len() < 16 {
         return Err("unexpected /proc/loadavg format".into());
     }
-    let (value, _) = parse_int_prefix(&content[15..])?;
+    let (value, _) = parse_int_prefix(&content[14..])?;
     Ok(value)
 }
 
@@ -422,7 +422,8 @@ fn get_runnables(runnables_file: &File) -> Result<u32> {
 fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
     let mut result = 0;
     let mut count = 0;
-    for c in s.chars() {
+    // Skip whitespace first.
+    for c in s.trim_left().chars() {
         let x = c.to_digit(10);
         match x {
             Some (d) => {
@@ -433,7 +434,7 @@ fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
         }
     }
     if count == 0 {
-        Err("cannot parse int".into())
+        Err(format!("parse_int_prefix: not an int: {}", s).into())
     } else {
         Ok((result, count))
     }
