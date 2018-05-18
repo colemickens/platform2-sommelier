@@ -211,7 +211,6 @@ struct xwl_host_output {
   int current_scale;
   int preferred_scale;
   int device_scale_factor;
-  int max_scale;
   int expecting_scale;
   struct wl_list link;
 };
@@ -719,6 +718,8 @@ struct xwl_mwm_hints {
 #define CONTROL_MASK (1 << 0)
 #define ALT_MASK (1 << 1)
 #define SHIFT_MASK (1 << 2)
+
+#define MIN_AURA_SHELL_VERSION 6
 
 struct dma_buf_sync {
   __u64 flags;
@@ -1238,40 +1239,32 @@ static void xwl_window_update(struct xwl_window *window) {
                                       ? ZAURA_SURFACE_FRAME_TYPE_NONE
                                       : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
 
-    if (xwl->has_frame_color &&
-        xwl->aura_shell->version >=
-            ZAURA_SURFACE_SET_FRAME_COLORS_SINCE_VERSION) {
+    if (xwl->has_frame_color) {
       zaura_surface_set_frame_colors(window->aura_surface, xwl->frame_color,
                                      xwl->frame_color);
     }
 
-    if (xwl->aura_shell->version >= ZAURA_SURFACE_SET_STARTUP_ID_SINCE_VERSION)
-      zaura_surface_set_startup_id(window->aura_surface, window->startup_id);
+    zaura_surface_set_startup_id(window->aura_surface, window->startup_id);
 
-    if (xwl->aura_shell->version >=
-        ZAURA_SURFACE_SET_APPLICATION_ID_SINCE_VERSION) {
-      if (xwl->application_id) {
-        zaura_surface_set_application_id(window->aura_surface,
-                                         xwl->application_id);
+    if (xwl->application_id) {
+      zaura_surface_set_application_id(window->aura_surface,
+                                       xwl->application_id);
+    } else {
+      char application_id_str[128];
 
+      if (window->clazz) {
+        snprintf(application_id_str, sizeof(application_id_str),
+                 WM_CLASS_APPLICATION_ID_FORMAT, window->clazz);
+      } else if (window->client_leader != XCB_WINDOW_NONE) {
+        snprintf(application_id_str, sizeof(application_id_str),
+                 WM_CLIENT_LEADER_APPLICATION_ID_FORMAT, window->client_leader);
       } else {
-        char application_id_str[128];
-
-        if (window->clazz) {
-          snprintf(application_id_str, sizeof(application_id_str),
-                   WM_CLASS_APPLICATION_ID_FORMAT, window->clazz);
-        } else if (window->client_leader != XCB_WINDOW_NONE) {
-          snprintf(application_id_str, sizeof(application_id_str),
-                   WM_CLIENT_LEADER_APPLICATION_ID_FORMAT,
-                   window->client_leader);
-        } else {
-          snprintf(application_id_str, sizeof(application_id_str),
-                   XID_APPLICATION_ID_FORMAT, window->id);
-        }
-
-        zaura_surface_set_application_id(window->aura_surface,
-                                         application_id_str);
+        snprintf(application_id_str, sizeof(application_id_str),
+                 XID_APPLICATION_ID_FORMAT, window->id);
       }
+
+      zaura_surface_set_application_id(window->aura_surface,
+                                       application_id_str);
     }
   }
 
@@ -1321,8 +1314,7 @@ static void xwl_window_update(struct xwl_window *window) {
   }
 
   if ((window->size_flags & (US_POSITION | P_POSITION)) && parent &&
-      xwl->aura_shell &&
-      xwl->aura_shell->version >= ZAURA_SURFACE_SET_PARENT_SINCE_VERSION) {
+      xwl->aura_shell) {
     zaura_surface_set_parent(window->aura_surface, parent->aura_surface,
                              (window->x - parent->x) / xwl->scale,
                              (window->y - parent->y) / xwl->scale);
@@ -2482,8 +2474,8 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
   double preferred_scale =
       xwl_aura_scale_factor_to_double(host->preferred_scale);
   double current_scale = xwl_aura_scale_factor_to_double(host->current_scale);
-  double ideal_scale_factor;
-  double scale_factor;
+  double ideal_scale_factor = 1.0;
+  double scale_factor = host->scale_factor;
   int scale;
   int physical_width;
   int physical_height;
@@ -2492,28 +2484,13 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
   int width;
   int height;
 
-  if (host->output->xwl->aura_shell &&
-      host->output->xwl->aura_shell->version >=
-          ZAURA_OUTPUT_DEVICE_SCALE_FACTOR_SINCE_VERSION) {
+  // Use the scale factor we received from aura shell protocol when available.
+  if (host->output->xwl->aura_shell) {
     double device_scale_factor =
         xwl_aura_scale_factor_to_double(host->device_scale_factor);
 
-    // Version 5 and below has inverted scale.
-    // TODO(reveman): Remove this conditional when version 6 or above can
-    // be a requirement.
-    if (host->output->xwl->aura_shell->version >= 6) {
-      ideal_scale_factor = device_scale_factor * preferred_scale;
-      scale_factor = device_scale_factor * current_scale;
-    } else {
-      ideal_scale_factor = device_scale_factor / preferred_scale;
-      scale_factor = device_scale_factor / current_scale;
-    }
-  } else {
-    double max_scale = xwl_aura_scale_factor_to_double(host->max_scale);
-
-    // This assumes that max scale is the native resolution.
-    ideal_scale_factor = max_scale / preferred_scale;
-    scale_factor = ideal_scale_factor / current_scale;
+    ideal_scale_factor = device_scale_factor * preferred_scale;
+    scale_factor = device_scale_factor * current_scale;
   }
 
   // Always use scale=1 and adjust geometry and mode based on ideal
@@ -2647,8 +2624,6 @@ static void xwl_aura_output_scale(void *data, struct zaura_output *output,
   if (flags & ZAURA_OUTPUT_SCALE_PROPERTY_PREFERRED)
     host->preferred_scale = scale;
 
-  host->max_scale = MAX(host->max_scale, scale);
-
   host->expecting_scale = 0;
 }
 
@@ -2725,20 +2700,17 @@ static void xwl_bind_host_output(struct wl_client *client, void *data,
   host->scale_factor = 1;
   host->current_scale = 1000;
   host->preferred_scale = 1000;
-  host->max_scale = 1000;
   host->device_scale_factor = 1000;
   host->expecting_scale = 0;
   wl_list_insert(xwl->host_outputs.prev, &host->link);
-  if (xwl->aura_shell &&
-      (xwl->aura_shell->version >= ZAURA_SHELL_GET_AURA_OUTPUT_SINCE_VERSION)) {
+  if (xwl->aura_shell) {
     host->expecting_scale = 1;
+    host->internal = 0;
     host->aura_output =
         zaura_shell_get_aura_output(xwl->aura_shell->internal, host->proxy);
     zaura_output_set_user_data(host->aura_output, host);
     zaura_output_add_listener(host->aura_output, &xwl_aura_output_listener,
                               host);
-    if (xwl->aura_shell->version >= ZAURA_OUTPUT_CONNECTION_SINCE_VERSION)
-      host->internal = 0;
   }
 }
 
@@ -4657,10 +4629,7 @@ static void xwl_gtk_surface_set_dbus_properties(
     const char* unique_bus_name) {
   struct xwl_host_gtk_surface* host = wl_resource_get_user_data(resource);
 
-  if (host->aura_shell->version >=
-      ZAURA_SURFACE_SET_APPLICATION_ID_SINCE_VERSION) {
-    zaura_surface_set_application_id(host->proxy, application_id);
-  }
+  zaura_surface_set_application_id(host->proxy, application_id);
 }
 
 static void xwl_gtk_surface_set_modal(struct wl_client *client,
@@ -4707,25 +4676,20 @@ xwl_gtk_shell_get_gtk_surface(struct wl_client *client,
       host_gtk_surface, xwl_destroy_host_gtk_surface);
   host_gtk_surface->proxy =
       zaura_shell_get_aura_surface(host->proxy, host_surface->proxy);
-
-  if (host->aura_shell->version >= ZAURA_SURFACE_SET_STARTUP_ID_SINCE_VERSION)
-    zaura_surface_set_startup_id(host_gtk_surface->proxy, host->startup_id);
+  zaura_surface_set_startup_id(host_gtk_surface->proxy, host->startup_id);
 }
 
 static void xwl_gtk_shell_set_startup_id(struct wl_client *client,
                                          struct wl_resource *resource,
                                          const char *startup_id) {
   struct xwl_host_gtk_shell *host = wl_resource_get_user_data(resource);
+  struct xwl_host_gtk_surface* surface;
 
   free(host->startup_id);
   host->startup_id = startup_id ? strdup(startup_id) : NULL;
 
-  if (host->aura_shell->version >= ZAURA_SURFACE_SET_STARTUP_ID_SINCE_VERSION) {
-    struct xwl_host_gtk_surface *surface;
-
-    wl_list_for_each(surface, &host->surfaces, link)
-        zaura_surface_set_startup_id(surface->proxy, host->startup_id);
-  }
+  wl_list_for_each(surface, &host->surfaces, link)
+      zaura_surface_set_startup_id(surface->proxy, host->startup_id);
 }
 
 static void xwl_gtk_shell_system_bell(struct wl_client *client,
@@ -4925,18 +4889,20 @@ static void xwl_registry_handler(void *data, struct wl_registry *registry,
     assert(!xwl->xdg_shell);
     xwl->xdg_shell = xdg_shell;
   } else if (strcmp(interface, "zaura_shell") == 0) {
-    struct xwl_aura_shell *aura_shell = malloc(sizeof(struct xwl_aura_shell));
-    assert(aura_shell);
-    aura_shell->xwl = xwl;
-    aura_shell->id = id;
-    aura_shell->version = MIN(6, version);
-    aura_shell->host_gtk_shell_global = NULL;
-    aura_shell->internal = wl_registry_bind(
-        registry, id, &zaura_shell_interface, aura_shell->version);
-    assert(!xwl->aura_shell);
-    xwl->aura_shell = aura_shell;
-    aura_shell->host_gtk_shell_global = xwl_global_create(
-        xwl, &gtk_shell1_interface, 1, aura_shell, xwl_bind_host_gtk_shell);
+    if (version >= MIN_AURA_SHELL_VERSION) {
+      struct xwl_aura_shell* aura_shell = malloc(sizeof(struct xwl_aura_shell));
+      assert(aura_shell);
+      aura_shell->xwl = xwl;
+      aura_shell->id = id;
+      aura_shell->version = MIN(6, version);
+      aura_shell->host_gtk_shell_global = NULL;
+      aura_shell->internal = wl_registry_bind(
+          registry, id, &zaura_shell_interface, aura_shell->version);
+      assert(!xwl->aura_shell);
+      xwl->aura_shell = aura_shell;
+      aura_shell->host_gtk_shell_global = xwl_global_create(
+          xwl, &gtk_shell1_interface, 1, aura_shell, xwl_bind_host_gtk_shell);
+    }
   } else if (strcmp(interface, "wp_viewporter") == 0) {
     struct xwl_viewporter *viewporter = malloc(sizeof(struct xwl_viewporter));
     assert(viewporter);
@@ -6668,18 +6634,11 @@ static void xwl_calculate_scale_for_xwayland(struct xwl* xwl) {
       double preferred_scale =
           xwl_aura_scale_factor_to_double(output->preferred_scale);
 
-      if (xwl->aura_shell &&
-          xwl->aura_shell->version >=
-              ZAURA_OUTPUT_DEVICE_SCALE_FACTOR_SINCE_VERSION) {
+      if (xwl->aura_shell) {
         double device_scale_factor =
             xwl_aura_scale_factor_to_double(output->device_scale_factor);
 
         default_scale_factor = device_scale_factor * preferred_scale;
-      } else {
-        double max_scale = xwl_aura_scale_factor_to_double(output->max_scale);
-        // Max scale is expected to be the native resolution and preferred scale
-        // is the default. The difference is the device scale factor.
-        default_scale_factor = max_scale / preferred_scale;
       }
       break;
     }
