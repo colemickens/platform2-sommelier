@@ -48,7 +48,31 @@
 			"type": "bind",
 			"source": "/opt/google/containers/android/rootfs/android-data/data",
 			"options": [
-				"rbind"
+				"bind"
+			]
+		},
+		{
+			"destination": "/data/dalvik-cache/arm",
+			"type": "bind",
+			"source": "/mnt/stateful_partition/unencrypted/art-data/dalvik-cache/arm",
+			"options": [
+				"bind"
+			]
+		},
+		{
+			"destination": "/data/dalvik-cache/x86",
+			"type": "bind",
+			"source": "/mnt/stateful_partition/unencrypted/art-data/dalvik-cache/x86",
+			"options": [
+				"bind"
+			]
+		},
+		{
+			"destination": "/data/dalvik-cache/x86_64",
+			"type": "bind",
+			"source": "/mnt/stateful_partition/unencrypted/art-data/dalvik-cache/x86_64",
+			"options": [
+				"bind"
 			]
 		},
 		{

@@ -237,19 +237,6 @@ std::vector<base::FilePath> PrependPath(It first,
   return result;
 }
 
-bool MaybeLogUnexpectedMountInfoLine(const std::string& mount_path,
-                                     const std::string& line) {
-  LOG_IF(ERROR, line.find(mount_path) != std::string::npos)
-      << "Unexpected mount info: " << line;
-  // To record all found lines, always return false.
-  return false;
-}
-
-void MaybeLogUnexpectedMountInfo(const std::string& mount_path) {
-  FindLine(base::FilePath("/proc/self/mountinfo"),
-           base::Bind(&MaybeLogUnexpectedMountInfoLine, mount_path));
-}
-
 AndroidSdkVersion SdkVersionFromString(const std::string& version_str) {
   int version;
   if (base::StringToInt(version_str, &version)) {
@@ -643,52 +630,6 @@ void ArcSetup::SetUpGservicesCache() {
             << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
 }
 
-void ArcSetup::SetUpDalvikCacheInternal(
-    const base::FilePath& dalvik_cache_directory,
-    const base::FilePath& isa_relative) {
-  const base::FilePath dest_directory =
-      arc_paths_->android_mutable_source.Append("data/dalvik-cache")
-          .Append(isa_relative);
-  LOG(INFO) << "Setting up " << dest_directory.value();
-  EXIT_IF(!base::PathExists(dest_directory));
-  // TODO(crbug.com/834479): Remove this after the cause of the bug is
-  // identified.
-  MaybeLogUnexpectedMountInfo(Realpath(dest_directory).value());
-
-  base::FilePath src_directory = dalvik_cache_directory.Append(isa_relative);
-  EXIT_IF(!arc_mounter_->BindMount(src_directory, dest_directory));
-}
-
-void ArcSetup::SetUpDalvikCache() {
-  const base::FilePath& dalvik_cache_directory =
-      arc_paths_->art_dalvik_cache_directory;
-  if (!base::PathExists(dalvik_cache_directory)) {
-    LOG(INFO) << dalvik_cache_directory.value() << " does not exist.";
-    return;
-  }
-
-  base::FileEnumerator directories(dalvik_cache_directory,
-                                   false /* recursive */,
-                                   base::FileEnumerator::FileType::DIRECTORIES);
-  for (base::FilePath name = directories.Next(); !name.empty();
-       name = directories.Next()) {
-    SetUpDalvikCacheInternal(dalvik_cache_directory, name.BaseName());
-  }
-}
-
-void ArcSetup::CleanUpDalvikCache() {
-  const base::FilePath dalvik_cache_directory =
-      arc_paths_->android_mutable_source.Append("data/dalvik-cache");
-  for (const auto* isa : {"arm", "x86", "x86_64"}) {
-    const base::FilePath mount_path = dalvik_cache_directory.Append(isa);
-    LOG(INFO) << "Unmounting: " << mount_path.value();
-    IGNORE_ERRORS(arc_mounter_->UmountLazily(mount_path));
-    // TODO(crbug.com/834479): Remove this after the cause of the bug is
-    // identified.
-    MaybeLogUnexpectedMountInfo(mount_path.value());
-  }
-}
-
 void ArcSetup::CreateContainerFilesAndDirectories() {
   EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
                             base::FilePath("/run/arc")));
@@ -896,6 +837,11 @@ bool ArcSetup::GenerateHostSideCode(
   arc_setup_metrics_->SendCodeRelocationResult(
       result ? ArcCodeRelocationResult::SUCCESS
              : ArcCodeRelocationResult::ERROR_UNABLE_TO_RELOCATE);
+
+  // Make sure directories for all ISA are there just to make config.json happy.
+  for (const auto* isa : {"arm", "x86", "x86_64"})
+    EXIT_IF(!MkdirRecursively(host_dalvik_cache_directory.Append(isa)));
+
   return result;
 }
 
@@ -963,13 +909,15 @@ bool ArcSetup::InstallLinksToHostSideCode() {
   for (auto src_isa_directory = src_directory_iter.Next();
        !src_isa_directory.empty();
        src_isa_directory = src_directory_iter.Next()) {
+    if (IsDirectoryEmpty(src_isa_directory))
+      continue;
     const std::string isa = src_isa_directory.BaseName().value();
     if (!InstallLinksToHostSideCodeInternal(src_isa_directory,
                                             dest_directory.Append(isa), isa)) {
       result = false;
-      LOG(INFO) << "InstallLinksToHostSideCodeInternal() for " << isa
-                << " failed. "
-                << "Deleting container's /data/dalvik-cache...";
+      LOG(ERROR) << "InstallLinksToHostSideCodeInternal() for " << isa
+                 << " failed. "
+                 << "Deleting container's /data/dalvik-cache...";
       DeleteExecutableFilesInData(true, /* delete dalvik cache */
                                   false /* delete data app executables */);
       break;
@@ -1889,7 +1837,6 @@ void ArcSetup::OnSetup() {
   // boot*.art files because of b/67912719. Once TPM is enabled, this will
   // report the total time spend on code verification + [relocation + sign]
   arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
-  SetUpDalvikCache();
 
   SetUpSharedMountPoints();
   CreateContainerFilesAndDirectories();
@@ -1946,7 +1893,6 @@ void ArcSetup::OnBootContinue() {
                               &should_delete_data_app_executables);
   DeleteExecutableFilesInData(should_delete_data_dalvik_cache_directory,
                               should_delete_data_app_executables);
-  CleanUpDalvikCache();
 
   // The socket isn't created when the mini-container is started, so the
   // arc-setup --pre-chroot call won't label it. Label it here instead.
@@ -1984,7 +1930,6 @@ void ArcSetup::OnBootContinue() {
 
 void ArcSetup::OnStop() {
   CleanUpBinFmtMiscSetUp();
-  CleanUpDalvikCache();
   UnmountOnStop();
   RemoveBugreportPipe();
   RemoveAndroidKmsgFifo();
