@@ -87,6 +87,7 @@ using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::IsEmpty;
+using ::testing::Matcher;
 using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
@@ -2098,20 +2099,20 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              StartsWith("ANDROID_DATA_DIR="),
-                              StartsWith("ANDROID_DATA_OLD_DIR="),
-                              std::string("CHROMEOS_USER=") + kSaneEmail,
-                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                              "ENABLE_VENDOR_PRIVILEGED=1",
-                              // The upgrade signal has a PID.
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                              ExpectedSkipPackagesCacheSetupFlagValue(false),
-                              ExpectedCopyPackagesCacheFlagValue(false)),
-                  InitDaemonController::TriggerMode::SYNC))
+  const std::vector<Matcher<std::string>> expected_continue_boot_args = {
+      "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+      StartsWith("ANDROID_DATA_DIR="), StartsWith("ANDROID_DATA_OLD_DIR="),
+      std::string("CHROMEOS_USER=") + kSaneEmail,
+      "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=1",
+      // The upgrade signal has a PID.
+      "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
+      ExpectedCopyPackagesCacheFlagValue(false)};
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             ElementsAreArray(expected_continue_boot_args),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2198,22 +2199,20 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   }
 
   // Then, upgrade it to a fully functional one.
+  const std::vector<Matcher<std::string>> expected_continue_boot_args = {
+      "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+      StartsWith("ANDROID_DATA_DIR="), StartsWith("ANDROID_DATA_OLD_DIR="),
+      std::string("CHROMEOS_USER=") + kSaneEmail,
+      "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=1",
+      // The upgrade signal has a PID.
+      "CONTAINER_PID=" + std::to_string(kAndroidPid), "DEMO_SESSION_APPS_PATH=",
+      ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_setup),
+      ExpectedCopyPackagesCacheFlagValue(copy_cache_setup)};
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      StartsWith("ANDROID_DATA_DIR="),
-                      StartsWith("ANDROID_DATA_OLD_DIR="),
-                      std::string("CHROMEOS_USER=") + kSaneEmail,
-                      "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                      "ENABLE_VENDOR_PRIVILEGED=1",
-                      // The upgrade signal has a PID.
-                      "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                      ExpectedSkipPackagesCacheSetupFlagValue(
-                          skip_packages_cache_setup),
-                      ExpectedCopyPackagesCacheFlagValue(copy_cache_setup)),
-          InitDaemonController::TriggerMode::SYNC))
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             ElementsAreArray(expected_continue_boot_args),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2254,6 +2253,83 @@ INSTANTIATE_TEST_CASE_P(
         {UpgradeArcContainerRequest_PackageCacheMode_DEFAULT,
          UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT,
          UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT}));
+
+TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcInstanceImpulse,
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  brillo::ErrorPtr error;
+  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
+  std::string container_instance_id;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(
+      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
+      &container_instance_id));
+  EXPECT_FALSE(container_instance_id.empty());
+
+  // Then, upgrade it to a fully functional one.
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_FALSE(impl_->GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
+  }
+
+  const std::vector<Matcher<std::string>> expected_continue_boot_args = {
+      "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+      StartsWith("ANDROID_DATA_DIR="), StartsWith("ANDROID_DATA_OLD_DIR="),
+      std::string("CHROMEOS_USER=") + kSaneEmail,
+      "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
+      // The upgrade signal has a PID.
+      "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "DEMO_SESSION_APPS_PATH=/run/imageloader/0.1/demo_apps/img.squash",
+      ExpectedSkipPackagesCacheSetupFlagValue(false),
+      ExpectedCopyPackagesCacheFlagValue(false)};
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             ElementsAreArray(expected_continue_boot_args),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                  InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcNetworkImpulse,
+                  ElementsAre(std::string("CONTAINER_NAME=") +
+                                  SessionManagerImpl::kArcContainerName,
+                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
+                                     ElementsAre(),
+                                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_demo_session_apps_path(
+      "/run/imageloader/0.1/demo_apps/img.squash");
+  ExpectUpgradeArcContainer();
+  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
+  EXPECT_TRUE(impl_->UpgradeArcContainer(
+      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(android_container_.running());
+
+  EXPECT_TRUE(impl_->StopArcInstance(&error));
+  EXPECT_FALSE(android_container_.running());
+}
 
 TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
   EXPECT_CALL(*init_controller_,
@@ -2326,20 +2402,20 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
                               "NATIVE_BRIDGE_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
-                              StartsWith("ANDROID_DATA_DIR="),
-                              StartsWith("ANDROID_DATA_OLD_DIR="),
-                              std::string("CHROMEOS_USER=") + kSaneEmail,
-                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                              "ENABLE_VENDOR_PRIVILEGED=0",
-                              // The upgrade signal has a PID.
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                              ExpectedSkipPackagesCacheSetupFlagValue(false),
-                              ExpectedCopyPackagesCacheFlagValue(false)),
-                  InitDaemonController::TriggerMode::SYNC))
+  const std::vector<Matcher<std::string>> expected_continue_boot_args = {
+      "CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
+      StartsWith("ANDROID_DATA_DIR="), StartsWith("ANDROID_DATA_OLD_DIR="),
+      std::string("CHROMEOS_USER=") + kSaneEmail,
+      "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
+      // The upgrade signal has a PID.
+      "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
+      ExpectedCopyPackagesCacheFlagValue(false)};
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             ElementsAreArray(expected_continue_boot_args),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2564,19 +2640,20 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
 
   SetUpArcMiniContainer();
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              StartsWith("ANDROID_DATA_DIR="),
-                              StartsWith("ANDROID_DATA_OLD_DIR="),
-                              std::string("CHROMEOS_USER=") + kSaneEmail,
-                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                              "ENABLE_VENDOR_PRIVILEGED=0",
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                              ExpectedSkipPackagesCacheSetupFlagValue(false),
-                              ExpectedCopyPackagesCacheFlagValue(false)),
-                  InitDaemonController::TriggerMode::SYNC))
+  const std::vector<Matcher<std::string>> expected_continue_boot_args = {
+      "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+      StartsWith("ANDROID_DATA_DIR="), StartsWith("ANDROID_DATA_OLD_DIR="),
+      std::string("CHROMEOS_USER=") + kSaneEmail,
+      "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
+      // The upgrade signal has a PID.
+      "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
+      ExpectedCopyPackagesCacheFlagValue(false)};
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             ElementsAreArray(expected_continue_boot_args),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2615,19 +2692,20 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
 
   std::string container_instance_id = SetUpArcMiniContainer();
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kContinueArcBootImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              StartsWith("ANDROID_DATA_DIR="),
-                              StartsWith("ANDROID_DATA_OLD_DIR="),
-                              std::string("CHROMEOS_USER=") + kSaneEmail,
-                              "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                              "ENABLE_VENDOR_PRIVILEGED=0",
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid),
-                              ExpectedSkipPackagesCacheSetupFlagValue(false),
-                              ExpectedCopyPackagesCacheFlagValue(false)),
-                  InitDaemonController::TriggerMode::SYNC))
+  const std::vector<Matcher<std::string>> expected_continue_boot_args = {
+      "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+      StartsWith("ANDROID_DATA_DIR="), StartsWith("ANDROID_DATA_OLD_DIR="),
+      std::string("CHROMEOS_USER=") + kSaneEmail,
+      "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
+      // The upgrade signal has a PID.
+      "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
+      ExpectedCopyPackagesCacheFlagValue(false)};
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             ElementsAreArray(expected_continue_boot_args),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(

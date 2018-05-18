@@ -1664,7 +1664,9 @@ bool SessionManagerImpl::UpgradeArcContainerInternal(
                          request.skip_boot_completed_broadcast()),
       base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
                          request.scan_vendor_priv_app()),
-      base::StringPrintf("CONTAINER_PID=%d", pid)};
+      base::StringPrintf("CONTAINER_PID=%d", pid),
+      base::StringPrintf("DEMO_SESSION_APPS_PATH=%s",
+                         request.demo_session_apps_path().c_str())};
 
   switch (request.packages_cache_mode()) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
