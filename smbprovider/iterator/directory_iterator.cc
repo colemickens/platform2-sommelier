@@ -20,13 +20,27 @@ constexpr int32_t kNoMoreEntriesError = -1;
 
 BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
                                              SambaInterface* samba_interface)
-    : BaseDirectoryIterator(dir_path, samba_interface, kDirEntBufferSize) {}
+    : BaseDirectoryIterator(dir_path,
+                            samba_interface,
+                            kDirEntBufferSize,
+                            false /* include_metadata */) {}
 
 BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
                                              SambaInterface* samba_interface,
                                              size_t buffer_size)
+    : BaseDirectoryIterator(dir_path,
+                            samba_interface,
+                            buffer_size,
+                            false /* include_metadata */) {}
+
+BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
+                                             SambaInterface* samba_interface,
+                                             size_t buffer_size,
+                                             bool include_metadata)
     : dir_path_(dir_path),
-      dir_buf_(buffer_size),
+      dir_buf_(include_metadata ? 0 : buffer_size),
+      batch_size_(include_metadata ? buffer_size : 0),
+      include_metadata_(include_metadata),
       samba_interface_(samba_interface) {}
 
 BaseDirectoryIterator::BaseDirectoryIterator(BaseDirectoryIterator&& other)
@@ -34,9 +48,11 @@ BaseDirectoryIterator::BaseDirectoryIterator(BaseDirectoryIterator&& other)
       dir_buf_(std::move(other.dir_buf_)),
       entries_(std::move(other.entries_)),
       current_entry_index_(other.current_entry_index_),
+      batch_size_(other.batch_size_),
       dir_id_(other.dir_id_),
       is_done_(other.is_done_),
       is_initialized_(other.is_initialized_),
+      include_metadata_(other.include_metadata_),
       samba_interface_(other.samba_interface_) {
   other.dir_id_ = -1;
   other.is_initialized_ = false;
@@ -103,13 +119,12 @@ void BaseDirectoryIterator::CloseDirectory() {
 }
 
 int32_t BaseDirectoryIterator::FillBuffer() {
-  int32_t bytes_read;
-  int32_t fetch_error = ReadEntriesToBuffer(&bytes_read);
+  int32_t fetch_error = include_metadata_ ? ReadEntriesWithMetadataToVector()
+                                          : ReadEntriesToVector();
+
   if (fetch_error != 0) {
     return fetch_error;
   }
-
-  ConvertBufferToVector(bytes_read);
 
   if (entries_.empty()) {
     // Succeeded but nothing valid left to read.
@@ -118,6 +133,25 @@ int32_t BaseDirectoryIterator::FillBuffer() {
   }
 
   return 0;
+}
+
+int32_t BaseDirectoryIterator::ReadEntriesToVector() {
+  DCHECK(!include_metadata_);
+
+  int32_t bytes_read;
+  int32_t fetch_error = ReadEntriesToBuffer(&bytes_read);
+  if (fetch_error != 0) {
+    return fetch_error;
+  }
+
+  ConvertBufferToVector(bytes_read);
+  return 0;
+}
+
+int32_t BaseDirectoryIterator::ReadEntriesWithMetadataToVector() {
+  DCHECK(include_metadata_);
+  NOTREACHED();
+  return -1;
 }
 
 int32_t BaseDirectoryIterator::ReadEntriesToBuffer(int32_t* bytes_read) {

@@ -30,6 +30,11 @@ class BaseDirectoryIterator {
  public:
   BaseDirectoryIterator(const std::string& dir_path,
                         SambaInterface* samba_interface,
+                        size_t buffer_size,
+                        bool include_metadata);
+
+  BaseDirectoryIterator(const std::string& dir_path,
+                        SambaInterface* samba_interface,
                         size_t buffer_size);
 
   BaseDirectoryIterator(const std::string& dir_path,
@@ -63,6 +68,13 @@ class BaseDirectoryIterator {
   // fetch. Returns 0 on success.
   int32_t FillBuffer();
 
+  // Reads entries without metadata into |dir_buf_| then converts the raw
+  // buffer into the |entries_| vector.
+  int32_t ReadEntriesToVector();
+
+  // Reads entries that include metadata in the |entries_| vector.
+  int32_t ReadEntriesWithMetadataToVector();
+
   // Converts the buffer into the vector of entries. Also resets
   // |current_entry_index_|.
   void ConvertBufferToVector(int32_t bytes_read);
@@ -89,12 +101,18 @@ class BaseDirectoryIterator {
   std::vector<uint8_t> dir_buf_;
   std::vector<DirectoryEntry> entries_;
   uint32_t current_entry_index_ = 0;
+  // When include_metadata_ is true |batch_size_| is the number of entries to
+  // populate at one time. It is 0 when include_metadata_ is false.
+  size_t batch_size_ = 0;
   // |dir_id_| represents the fd for the open directory at |dir_path_|.
   int32_t dir_id_ = -1;
   // |is_done_| is set to true when no entries left to read.
   bool is_done_ = false;
   // |is_initialized_| is set to true once Init() executes successfully.
   bool is_initialized_ = false;
+  // |include_metadata| uses readdirplus to populate metadata while reading
+  // the directory.
+  bool include_metadata_ = false;
 
   SambaInterface* samba_interface_;  // not owned.
 
