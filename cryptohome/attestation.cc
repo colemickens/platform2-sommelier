@@ -5,7 +5,9 @@
 #include "cryptohome/attestation.h"
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -56,6 +58,9 @@ class ScopedBool {
 }  // namespace
 
 namespace cryptohome {
+
+// Indexes of PCRs which the created TPM delegate should be bound to.
+const uint32_t kDelegateBoundPcrs[] = {0};
 
 const size_t Attestation::kQuoteExternalDataSize = 20;
 const size_t Attestation::kCipherKeySize = 32;
@@ -492,11 +497,13 @@ void Attestation::PrepareForEnrollment() {
   }
 
   // Create a delegate so we can activate the AIK later.
+  const std::set<uint32_t> bound_pcrs(std::begin(kDelegateBoundPcrs),
+                                      std::end(kDelegateBoundPcrs));
   SecureBlob delegate_blob;
   SecureBlob delegate_secret;
-  if (!tpm_->CreateDelegate(
-          {} /* bound_pcrs */, Tpm::kDefaultDelegateFamilyLabel,
-          Tpm::kDefaultDelegateLabel, &delegate_blob, &delegate_secret)) {
+  if (!tpm_->CreateDelegate(bound_pcrs, Tpm::kDefaultDelegateFamilyLabel,
+                            Tpm::kDefaultDelegateLabel, &delegate_blob,
+                            &delegate_secret)) {
     LOG(ERROR) << "Attestation: Failed to create delegate.";
     return;
   }
