@@ -97,6 +97,10 @@ class BaseDirectoryIterator {
   // a DirectoryEntry.
   void AddEntryIfValid(const smbc_dirent& dirent);
 
+  // Helper method to transform and add |file_info| to the |entries_| vector as
+  // a DirectoryEntry.
+  void AddEntryIfValid(const struct libsmb_file_info& file_info);
+
   const std::string dir_path_;
   // |dir_buf_| is used as the buffer for reading directory entries from Samba
   // interface. Its initial capacity is specified in the BaseDirectoryIterator

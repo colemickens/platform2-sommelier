@@ -35,6 +35,14 @@ TEST_F(DirectoryIteratorTest, InitFailsOnNonExistantDir) {
   EXPECT_EQ(ENOENT, it.Init());
 }
 
+// DirectoryIterator fails to initialize on a non-existant directory.
+TEST_F(DirectoryIteratorTest, InitFailsOnNonExistantDirWithMetadata) {
+  DirectoryIterator it("smb://non-existant-path/", &fake_samba_,
+                       1 /* batch_size */, true /* include_metadata */);
+
+  EXPECT_EQ(ENOENT, it.Init());
+}
+
 // DirectoryIterator fails to initialize on a file.
 TEST_F(DirectoryIteratorTest, InitFailsOnFile) {
   CreateDefaultMountRoot();
@@ -72,6 +80,20 @@ TEST_F(DirectoryIteratorTest, InitSucceedsAndSetsDoneOnEmptyDirectory) {
   EXPECT_TRUE(it.IsDone());
 }
 
+// DirectoryIterator succeeds and sets is_done on an empty directory.
+TEST_F(DirectoryIteratorTest,
+       InitSucceedsAndSetsDoneOnEmptyDirectoryWithMetadata) {
+  CreateDefaultMountRoot();
+
+  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
+
+  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_,
+                       1 /* batch_size */, true /* include_metadata */);
+
+  EXPECT_EQ(0, it.Init());
+  EXPECT_TRUE(it.IsDone());
+}
+
 TEST_F(DirectoryIteratorTest, InitSucceedsAndSetsDoneOnSelfAndParentEntries) {
   CreateDefaultMountRoot();
 
@@ -99,6 +121,30 @@ TEST_F(DirectoryIteratorTest, InitSucceedsOnNonEmptyDirectory) {
 
   EXPECT_EQ("dog.jpg", it.Get().name);
   EXPECT_FALSE(it.Get().is_directory);
+
+  EXPECT_EQ(0, it.Next());
+  EXPECT_TRUE(it.IsDone());
+}
+
+// DirectoryIterator initializes correctly on a directory with one entry.
+TEST_F(DirectoryIteratorTest, InitSucceedsOnNonEmptyDirectoryWithMetadata) {
+  CreateDefaultMountRoot();
+
+  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
+
+  const uint64_t expected_size = 99;
+  const uint64_t expected_date = 88882222222;
+  fake_samba_.AddFile(GetAddedFullFilePath(), expected_size, expected_date);
+
+  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_,
+                       1 /* batch_size */, true /* include_metadata */);
+  EXPECT_EQ(0, it.Init());
+  EXPECT_FALSE(it.IsDone());
+
+  EXPECT_EQ("dog.jpg", it.Get().name);
+  EXPECT_FALSE(it.Get().is_directory);
+  EXPECT_EQ(expected_size, it.Get().size);
+  EXPECT_EQ(expected_date, it.Get().last_modified_time);
 
   EXPECT_EQ(0, it.Next());
   EXPECT_TRUE(it.IsDone());

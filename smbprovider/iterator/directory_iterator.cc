@@ -150,8 +150,31 @@ int32_t BaseDirectoryIterator::ReadEntriesToVector() {
 
 int32_t BaseDirectoryIterator::ReadEntriesWithMetadataToVector() {
   DCHECK(include_metadata_);
-  NOTREACHED();
-  return -1;
+  DCHECK_GT(batch_size_, 0);
+
+  ClearVector();
+
+  for (size_t i = 0; i < batch_size_; i++) {
+    const struct libsmb_file_info* file_info = nullptr;
+    int fetch_error =
+        samba_interface_->GetDirectoryEntryWithMetadata(dir_id_, &file_info);
+    if (fetch_error) {
+      return fetch_error;
+    }
+
+    if (!file_info) {
+      // There are no more files, but this is not an error. The next call to
+      // refill the buffer will hit this case on the first iteration of the
+      // loop and will return an empty vector which will cause FillBuffer()
+      // to set |done_| and return |kNoMoreEntriesError|.
+      return 0;
+    }
+
+    AddEntryIfValid(*file_info);
+  }
+
+  // Completed the batch successfully.
+  return 0;
 }
 
 void BaseDirectoryIterator::ClearVector() {
@@ -193,6 +216,21 @@ void BaseDirectoryIterator::AddEntryIfValid(const smbc_dirent& dirent) {
   bool is_directory =
       dirent.smbc_type == SMBC_DIR || dirent.smbc_type == SMBC_FILE_SHARE;
   entries_.emplace_back(is_directory, name, AppendPath(dir_path_, name));
+}
+
+void BaseDirectoryIterator::AddEntryIfValid(
+    const struct libsmb_file_info& file_info) {
+  const std::string name(file_info.name);
+  // Ignore "." and ".." entries.
+  // TODO(zentaro): Investigate how this API deals with directories that are
+  // file shares.
+  if (IsSelfOrParentDir(name)) {
+    return;
+  }
+
+  bool is_directory = file_info.attrs & kFileAttributeDirectory;
+  entries_.emplace_back(is_directory, name, AppendPath(dir_path_, name),
+                        file_info.size, file_info.mtime_ts.tv_sec);
 }
 
 }  // namespace smbprovider
