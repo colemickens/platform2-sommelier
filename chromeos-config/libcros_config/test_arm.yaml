@@ -23,6 +23,8 @@ chromeos:
           $wallpaper: "whitelabel1-wallpaper"
         - $whitelabel-tag: "whitelabel2"
           $wallpaper: "whitelabel2-wallpaper"
+        - $wallpaper: "whitelabel-default-wallpaper"
+          $whitelabel-tag: "" # Default when no VPD value is set.
       skus:
         - config:
             name: "{{$name}}"

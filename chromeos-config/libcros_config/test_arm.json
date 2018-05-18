@@ -23,6 +23,14 @@
         },
         "name": "whitelabel",
         "wallpaper": "whitelabel2-wallpaper"
+      },
+      {
+        "identity": {
+          "device-tree-compatible-match": "google,whitelabel",
+          "whitelabel-tag": ""
+        },
+        "name": "whitelabel",
+        "wallpaper": "whitelabel-default-wallpaper"
       }
     ]
   }

@@ -83,28 +83,19 @@ bool CrosConfigJson::SelectConfigByIdentity(
                 platform_specific_match = dt_compatible_match;
               }
 
-              bool whitelabel_tag_match = true;
-              std::string current_whitelabel_tag;
-              if (identity_dict->GetString("whitelabel-tag",
-                                           &current_whitelabel_tag) &&
-                  !current_whitelabel_tag.empty()) {
-                whitelabel_tag_match =
-                    current_whitelabel_tag == find_whitelabel_name;
-              }
-
-              bool customization_id_match = true;
-              std::string current_customization_id;
-              if (identity_dict->GetString("customization-id",
-                                           &current_customization_id) &&
-                  !current_customization_id.empty()) {
+              bool vpd_tag_match = true;
+              std::string current_vpd_tag;
+              if ((identity_dict->GetString("whitelabel-tag",
+                                           &current_vpd_tag) ||
+                  identity_dict->GetString("customization-id",
+                                           &current_vpd_tag)) &&
+                  !current_vpd_tag.empty()) {
                 // Currently, the find_whitelabel_name can be either the
                 // whitelabel-tag or the customization-id.
-                customization_id_match =
-                    current_customization_id == find_whitelabel_name;
+                vpd_tag_match = current_vpd_tag == find_whitelabel_name;
               }
 
-              if (platform_specific_match && whitelabel_tag_match &&
-                  customization_id_match) {
+              if (platform_specific_match && vpd_tag_match) {
                 model_dict_ = model_dict;
                 break;
               }
