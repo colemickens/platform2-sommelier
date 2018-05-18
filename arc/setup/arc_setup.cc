@@ -1102,6 +1102,21 @@ void ArcSetup::SetUpMountPointForDebugFilesystem(bool is_dev_mode) {
   EXIT_IF(!arc_mounter_->BindMount(tracing_directory, tracing_mount_directory));
 }
 
+void ArcSetup::MountDemoApps(const base::FilePath& demo_apps_image,
+                             const base::FilePath& demo_apps_mount_directory) {
+  // Verify that the demo apps image is under an imageloader mount point.
+  EXIT_IF(demo_apps_image.ReferencesParent());
+  EXIT_IF(!base::FilePath("/run/imageloader").IsParent(demo_apps_image));
+
+  // Create the target mount point directory.
+  EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
+                            demo_apps_mount_directory));
+
+  EXIT_IF(!arc_mounter_->LoopMount(demo_apps_image.value(),
+                                   demo_apps_mount_directory,
+                                   MS_RDONLY | MS_NODEV | MS_NOEXEC));
+}
+
 void ArcSetup::SetUpMountPointForRemovableMedia() {
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_mount_directory));
   EXIT_IF(!InstallDirectory(0755, kRootUid, kSystemGid,
@@ -1411,6 +1426,8 @@ void ArcSetup::UnmountOnStop() {
       arc_paths_->shared_mount_directory.Append("cache")));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(
       arc_paths_->shared_mount_directory.Append("data")));
+  IGNORE_ERRORS(arc_mounter_->LoopUmount(
+      arc_paths_->shared_mount_directory.Append("demo_apps")));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->adbd_mount_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_dest_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_mount_directory));
@@ -1616,6 +1633,13 @@ void ArcSetup::MountSharedAndroidDirectories() {
   // not needed for non-master builds, but it doesn't hurt either.
   EXIT_IF(!arc_mounter_->Mount(data_directory.value(), shared_data_directory,
                                nullptr, MS_BIND | MS_REC, nullptr));
+
+  const std::string demo_session_apps =
+      GetEnvOrDie(arc_paths_->env.get(), "DEMO_SESSION_APPS_PATH");
+  if (!demo_session_apps.empty()) {
+    MountDemoApps(base::FilePath(demo_session_apps),
+                  arc_paths_->shared_mount_directory.Append("demo_apps"));
+  }
 }
 
 void ArcSetup::UnmountSharedAndroidDirectories() {
@@ -1625,10 +1649,13 @@ void ArcSetup::UnmountSharedAndroidDirectories() {
       arc_paths_->shared_mount_directory.Append("cache");
   const base::FilePath shared_data_directory =
       arc_paths_->shared_mount_directory.Append("data");
+  const base::FilePath shared_demo_apps_directory =
+      arc_paths_->shared_mount_directory.Append("demo_apps");
 
   IGNORE_ERRORS(arc_mounter_->UmountLazily(data_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(shared_cache_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(shared_data_directory));
+  IGNORE_ERRORS(arc_mounter_->LoopUmount(shared_demo_apps_directory));
   IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->shared_mount_directory));
 }
 
@@ -1662,6 +1689,9 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
                                      const std::string& serialnumber) {
   constexpr char kCommand[] = "/system/bin/arcbootcontinue";
 
+  const bool mount_demo_apps =
+      !GetEnvOrDie(arc_paths_->env.get(), "DEMO_SESSION_APPS_PATH").empty();
+
   // Run |kCommand| on the container side. The binary does the following:
   // * Bind-mount the actual cache and data in /var/arc/shared_mounts to /cache
   //   and /data.
@@ -1693,6 +1723,7 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       // initialization stage of PackageManagerService.
       "--copy-packages-cache",
       GetEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"),
+      "--mount-demo-apps", mount_demo_apps ? "1" : "0",
   };
 
   base::ElapsedTimer timer;
@@ -1911,8 +1942,8 @@ void ArcSetup::OnBootContinue() {
         ArcBootContinueCodeInstallationResult::SUCCESS);
   }
 
-  // Set up /run/arc/shared_mounts/{cache,data} to expose the user's data to
-  // the container.
+  // Set up /run/arc/shared_mounts/{cache,data,demo_apps} to expose the user's
+  // data to the container. Demo apps are setup only for demo sessions.
   MountSharedAndroidDirectories();
 
   MaybeStartUreadaheadInTracingMode();

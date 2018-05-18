@@ -253,8 +253,17 @@ class ArcSetup {
   // Returns a serial number for the user.
   std::string GetSerialNumber();
 
+  // Mounts pre-installed demo apps to the shared mount point that will be
+  // passed into the container.
+  // |demo_apps_image| - path to the image containing set of demo session apps.
+  // |demo_apps_mount_directory| - the path to which demo apps should be
+  // mounted.
+  void MountDemoApps(const base::FilePath& demo_apps_image,
+                     const base::FilePath& demo_apps_mount_directory);
+
   // Bind-mounts the user's /data and /cache to the shared mount point to pass
-  // them into the container.
+  // them into the container. For demo sessions, it additionally mounts demo
+  // apps that should be loaded as pre-installed by the container.
   void MountSharedAndroidDirectories();
 
   // Unmounts the user's /data and /cache bind-mounted to the shared mount
