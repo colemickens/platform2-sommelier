@@ -16,6 +16,13 @@
 
 namespace smbprovider {
 
+const smbc_dirent* AdvanceConstDirEnt(const smbc_dirent* dirp) {
+  DCHECK(dirp);
+  DCHECK_GE(dirp->dirlen, sizeof(smbc_dirent));
+  return reinterpret_cast<const smbc_dirent*>(
+      reinterpret_cast<const uint8_t*>(dirp) + dirp->dirlen);
+}
+
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp) {
   DCHECK(dirp);
   DCHECK_GE(dirp->dirlen, sizeof(smbc_dirent));

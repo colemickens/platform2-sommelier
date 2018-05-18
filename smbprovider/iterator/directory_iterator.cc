@@ -129,35 +129,32 @@ int32_t BaseDirectoryIterator::ReadEntriesToBuffer(int32_t* bytes_read) {
 void BaseDirectoryIterator::ConvertBufferToVector(int32_t bytes_read) {
   entries_.clear();
   current_entry_index_ = 0;
-  smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
+  const smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
 
   int32_t bytes_left = bytes_read;
   while (bytes_left > 0) {
-    AddEntryIfValid(*dirent, &entries_, dir_path_);
+    AddEntryIfValid(*dirent);
     DCHECK_GT(dirent->dirlen, 0);
     DCHECK_GE(bytes_left, dirent->dirlen);
 
     bytes_left -= dirent->dirlen;
-    dirent = AdvanceDirEnt(dirent);
+    dirent = AdvanceConstDirEnt(dirent);
     DCHECK(dirent);
   }
   DCHECK_EQ(bytes_left, 0);
 }
 
-void BaseDirectoryIterator::AddEntryIfValid(
-    const smbc_dirent& dirent,
-    std::vector<DirectoryEntry>* directory_entries,
-    const std::string& parent_dir_path) {
+void BaseDirectoryIterator::AddEntryIfValid(const smbc_dirent& dirent) {
   const std::string name(dirent.name);
   // Ignore "." and ".." entries.
   // TODO(allenvic): Handle SMBC_LINK
   if (IsSelfOrParentDir(name) || !ShouldIncludeEntryType(dirent.smbc_type)) {
     return;
   }
+
   bool is_directory =
       dirent.smbc_type == SMBC_DIR || dirent.smbc_type == SMBC_FILE_SHARE;
-  directory_entries->emplace_back(is_directory, name,
-                                  AppendPath(parent_dir_path, name));
+  entries_.emplace_back(is_directory, name, AppendPath(dir_path_, name));
 }
 
 }  // namespace smbprovider

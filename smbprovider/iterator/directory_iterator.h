@@ -78,10 +78,9 @@ class BaseDirectoryIterator {
   // Attempts to Close the directory with |dir_id_|. Logs on failure.
   void CloseDirectory();
 
-  // Helper method to transform and add |dirent| to a DirectoryEntryListProto.
-  void AddEntryIfValid(const smbc_dirent& dirent,
-                       std::vector<DirectoryEntry>* directory_entries,
-                       const std::string& full_path);
+  // Helper method to transform and add |dirent| to the |entries_| vector as
+  // a DirectoryEntry.
+  void AddEntryIfValid(const smbc_dirent& dirent);
 
   const std::string dir_path_;
   // |dir_buf_| is used as the buffer for reading directory entries from Samba

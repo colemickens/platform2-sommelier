@@ -25,7 +25,8 @@ namespace smbprovider {
 
 using PathParts = const std::vector<std::string>;
 
-// Helper method to advance |dirp| to the next entry.
+// Helper methods to advance |dirp| to the next entry.
+const smbc_dirent* AdvanceConstDirEnt(const smbc_dirent* dirp);
 smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp);
 
 // Helper method that appends a |base_path| to a |relative_path|. Base path may
