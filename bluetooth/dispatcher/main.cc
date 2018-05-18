@@ -9,7 +9,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "bluetooth/dispatcher/daemon.h"
+#include "bluetooth/common/dbus_daemon.h"
+#include "bluetooth/dispatcher/dispatcher_daemon.h"
 
 int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv,
@@ -17,23 +18,6 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  base::AtExitManager exit_manager;
-  base::MessageLoopForIO message_loop;
-
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-
-  if (!bus->Connect()) {
-    LOG(ERROR) << "Failed to connect to system bus";
-    return 1;
-  }
-
-  VLOG(1) << "D-Bus connection name = " << bus->GetConnectionName();
-
-  bluetooth::Daemon daemon(bus);
-  daemon.Init();
-
-  base::RunLoop().Run();
-  return 0;
+  bluetooth::DBusDaemon daemon(std::make_unique<bluetooth::DispatcherDaemon>());
+  return daemon.Run();
 }

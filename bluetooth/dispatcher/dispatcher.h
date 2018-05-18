@@ -23,7 +23,7 @@ class Dispatcher {
   ~Dispatcher();
 
   // Initializes the daemon D-Bus operations.
-  void Init();
+  bool Init();
 
   // Frees up all resources, stopping all D-Bus operations.
   // Currently only needed in test.

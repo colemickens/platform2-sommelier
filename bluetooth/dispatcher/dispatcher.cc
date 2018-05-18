@@ -20,11 +20,12 @@ Dispatcher::Dispatcher(scoped_refptr<dbus::Bus> bus)
 
 Dispatcher::~Dispatcher() = default;
 
-void Dispatcher::Init() {
+bool Dispatcher::Init() {
   if (!bus_->RequestOwnershipAndBlock(
           bluetooth_object_manager::kBluetoothObjectManagerServiceName,
           dbus::Bus::REQUIRE_PRIMARY)) {
     LOG(ERROR) << "Failed to acquire D-Bus name ownership";
+    return false;
   }
 
   auto exported_object_manager =
@@ -81,6 +82,8 @@ void Dispatcher::Init() {
     impersonation_object_manager_interfaces_.emplace(interface_name,
                                                      std::move(interface));
   }
+
+  return true;
 }
 
 void Dispatcher::Shutdown() {

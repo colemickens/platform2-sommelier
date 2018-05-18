@@ -28,10 +28,10 @@
       'type': 'static_library',
       'sources': [
         'dispatcher/bluez_interface_handler.cc',
-        'dispatcher/daemon.cc',
         'dispatcher/dbus_connection_factory.cc',
         'dispatcher/dispatcher.cc',
         'dispatcher/dispatcher_client.cc',
+        'dispatcher/dispatcher_daemon.cc',
         'dispatcher/impersonation_object_manager_interface.cc',
         'dispatcher/object_manager_interface_multiplexer.cc',
         'dispatcher/service_watcher.cc',
