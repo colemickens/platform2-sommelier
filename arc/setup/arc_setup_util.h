@@ -302,6 +302,9 @@ base::ScopedFD OpenFifoSafely(const base::FilePath& path,
 bool CopyWithAttributes(const base::FilePath& from_readonly_path,
                         const base::FilePath& to_path);
 
+// Returns true if the process with |pid| is alive or zombie.
+bool IsProcessAlive(pid_t pid);
+
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_

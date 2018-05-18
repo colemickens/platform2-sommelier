@@ -13,6 +13,7 @@
 #include <net/if_arp.h>
 #include <selinux/restorecon.h>
 #include <selinux/selinux.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1244,6 +1245,10 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
   }
 
   return true;
+}
+
+bool IsProcessAlive(pid_t pid) {
+  return kill(pid, 0 /* sig */) == 0;
 }
 
 }  // namespace arc

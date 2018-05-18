@@ -250,6 +250,42 @@ void MaybeLogUnexpectedMountInfo(const std::string& mount_path) {
            base::Bind(&MaybeLogUnexpectedMountInfoLine, mount_path));
 }
 
+void CheckProcessIsAliveOrDie(const std::string& pid_str) {
+  pid_t pid;
+  EXIT_IF(!base::StringToInt(pid_str, &pid));
+  EXIT_IF(!IsProcessAlive(pid));
+  LOG(INFO) << "Process " << pid << " is still alive, at least as a zombie";
+}
+
+void CheckNamespacesAvailableOrDie(const std::string& pid_str) {
+  const base::FilePath proc("/proc");
+  const base::FilePath ns = proc.Append(pid_str).Append("ns");
+  EXIT_IF(!base::PathExists(ns));
+  for (const char* entry :
+       {"cgroup", "ipc", "mnt", "net", "pid", "user", "uts"}) {
+    // Use the same syscall, open, as nsenter. Other syscalls like lstat may
+    // succeed when open doesn't.
+    const base::FilePath path_to_check = ns.Append(entry);
+    base::ScopedFD fd(open(path_to_check.value().c_str(), O_RDONLY));
+    PLOG_IF(FATAL, !fd.is_valid())
+        << "Failed to open " << path_to_check.value();
+  }
+  LOG(INFO) << "Process " << pid_str << " still has all namespace entries";
+}
+
+void CheckOtherProcEntriesOrDie(const std::string& pid_str) {
+  const base::FilePath proc("/proc");
+  const base::FilePath proc_pid = proc.Append(pid_str);
+  for (const char* entry : {"cwd", "root"}) {
+    // Use open for the same reason as CheckNamespacesAvailableOrDie().
+    const base::FilePath path_to_check = proc_pid.Append(entry);
+    base::ScopedFD fd(open(path_to_check.value().c_str(), O_RDONLY));
+    PLOG_IF(FATAL, !fd.is_valid())
+        << "Failed to open " << path_to_check.value();
+  }
+  LOG(INFO) << "Process " << pid_str << " still has other proc entries";
+}
+
 }  // namespace
 
 struct ArcPaths {
@@ -1622,9 +1658,10 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   // instead run the command with UID 0 (host's root) because our goal is to
   // remove or reduce [u]mount operations from the container, especially from
   // its /init, and then to enforce it with SELinux.
+  const std::string pid_str =
+      GetEnvOrDie(arc_paths_->env.get(), "CONTAINER_PID");
   const std::vector<std::string> command_line = {
-      "/usr/bin/nsenter", "-t",
-      GetEnvOrDie(arc_paths_->env.get(), "CONTAINER_PID"),
+      "/usr/bin/nsenter", "-t", pid_str,
       "-m",  // enter mount namespace
       "-U",  // enter user namespace
       "-i",  // enter System V IPC namespace
@@ -1645,7 +1682,16 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   };
 
   base::ElapsedTimer timer;
-  EXIT_IF(!LaunchAndWait(command_line));
+  if (!LaunchAndWait(command_line)) {
+    auto elapsed = timer.Elapsed().InMillisecondsRoundedUp();
+    // ContinueContainerBoot() failed. Try to find out why it failed and abort
+    // differently. This will give us slightly better crash stats.
+    CheckProcessIsAliveOrDie(pid_str);
+    CheckNamespacesAvailableOrDie(pid_str);
+    CheckOtherProcEntriesOrDie(pid_str);
+    LOG(FATAL) << kCommand << " failed for unknown reason after" << elapsed
+               << "ms";
+  }
   LOG(INFO) << "Running " << kCommand << " took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
 }
@@ -1850,10 +1896,12 @@ void ArcSetup::OnBootContinue() {
   // the container.
   MountSharedAndroidDirectories();
 
-  // Asks the container to continue boot.
   MaybeStartUreadaheadInTracingMode();
   MaybeStartAdbdProxy(is_dev_mode, is_inside_vm, serialnumber);
+
+  // Asks the container to continue boot.
   ContinueContainerBoot(boot_type, serialnumber);
+
   // Unmount /run/arc/shared_mounts and its children. They are unnecessary at
   // this point.
   UnmountSharedAndroidDirectories();

@@ -17,6 +17,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <limits>
+
 #include <base/bind.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
@@ -969,6 +971,13 @@ TEST(ArcSetupUtil, TestSetFingerprintForPackagesCache) {
       &new_content);
   EXPECT_EQ(strlen(kFingerintAfter), new_content.length());
   EXPECT_EQ(kFingerintAfter, new_content);
+}
+
+TEST(ArcSetupUtil, TestIsProcessAlive) {
+  EXPECT_TRUE(IsProcessAlive(getpid()));
+  // We can reasonably expect that a process with a large enough pid doesn't
+  // exist.
+  EXPECT_FALSE(IsProcessAlive(std::numeric_limits<pid_t>::max()));
 }
 
 }  // namespace arc
