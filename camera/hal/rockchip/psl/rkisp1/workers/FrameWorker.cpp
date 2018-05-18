@@ -72,9 +72,9 @@ status_t FrameWorker::setWorkerDeviceFormat(FrameInfo &frame)
     return OK;
 }
 
-status_t FrameWorker::setWorkerDeviceBuffers(int memType)
+status_t FrameWorker::setWorkerDeviceBuffers(int memType, size_t extraBufferCount)
 {
-    for (unsigned int i = 0; i < mPipelineDepth; i++) {
+    for (unsigned int i = 0; i < mPipelineDepth + extraBufferCount; i++) {
         V4L2Buffer buffer;
         mBuffers.push_back(buffer);
     }

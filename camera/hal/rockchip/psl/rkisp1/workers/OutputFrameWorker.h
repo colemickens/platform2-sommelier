@@ -118,12 +118,15 @@ private:
     bool checkListenerBuffer(Camera3Request* request);
     std::shared_ptr<CameraBuffer> getOutputBufferForListener();
     status_t allocListenerProcessBuffers();
+    status_t allocDummyBuffer();
     status_t handleMessageProcess(MessageProcess msg);
     void returnBuffers(bool returnListenerBuffers);
 
 private:
     std::vector<std::shared_ptr<CameraBuffer>> mOutputBuffers;
     std::vector<std::shared_ptr<CameraBuffer>> mWorkingBuffers;
+    std::shared_ptr<CameraBuffer> mDummyBuffer;
+    size_t mDummyIndex;
     std::shared_ptr<CameraBuffer> mOutputBuffer;
     std::shared_ptr<CameraBuffer> mWorkingBuffer;
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */

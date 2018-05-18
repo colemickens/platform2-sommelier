@@ -31,6 +31,8 @@ namespace camera2 {
 OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
                 camera3_stream_t* stream, NodeTypes nodeName, size_t pipelineDepth) :
                 FrameWorker(node, cameraId, pipelineDepth, "OutputFrameWorker"),
+                mDummyBuffer(nullptr),
+                mDummyIndex(0),
                 mOutputBuffer(nullptr),
                 mWorkingBuffer(nullptr),
                 mStream(stream),
@@ -117,6 +119,20 @@ status_t OutputFrameWorker::allocListenerProcessBuffers()
     return OK;
 }
 
+status_t OutputFrameWorker::allocDummyBuffer()
+{
+    auto buffer = MemoryUtils::allocateHandleBuffer(
+            mFormat.width(), mFormat.height(),
+            HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+            GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
+            mCameraId);
+    if (!buffer) {
+        return NO_MEMORY;
+    }
+    mDummyBuffer = std::move(buffer);
+    return OK;
+}
+
 status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
@@ -138,12 +154,18 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     mNeedPostProcess = mProcessor.needPostProcess();
 
     mIndex = 0;
+    mDummyIndex = 0;
     mOutputBuffers.resize(mPipelineDepth);
     mWorkingBuffers.resize(mPipelineDepth);
 
+    // Allocate extra slots for the dummy buffer.
     ret = setWorkerDeviceBuffers(
-        mNeedPostProcess ? V4L2_MEMORY_MMAP : getDefaultMemoryType(mNodeName));
+        mNeedPostProcess ? V4L2_MEMORY_MMAP : getDefaultMemoryType(mNodeName), mPipelineDepth);
     CheckError((ret != OK), ret, "@%s set worker device buffers failed.",
+               __FUNCTION__);
+
+    ret = allocDummyBuffer();
+    CheckError((ret != OK), ret, "@%s failed to allocate dummy buffer.",
                __FUNCTION__);
 
     // Allocate internal buffer.
@@ -174,9 +196,10 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     mMsg = msg;
     status_t status = NO_ERROR;
+    size_t bufIndex = mIndex;
 
-    mOutputBuffers[mIndex] = nullptr;
-    mPollMe = false;
+    mOutputBuffers[bufIndex] = nullptr;
+    mPollMe = true;
 
     if (!mStream)
         return NO_ERROR;
@@ -206,23 +229,36 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
             goto exit;
         }
 
-        mOutputBuffers[mIndex] = buffer;
-        mPollMe = true;
+        mOutputBuffers[bufIndex] = buffer;
     } else if (checkListenerBuffer(request)) {
         // Work for listeners
         LOG2("%s: stream %p works for listener only in req %d",
              __FUNCTION__, mStream, request->getId());
-        mPollMe = true;
     } else {
-        LOG2("No work for this worker mStream: %p", mStream);
-        mPollMe = false;
-        return NO_ERROR;
+        LOG2("No work for this worker mStream: %p; use dummy buffer", mStream);
+        bufIndex = mPipelineDepth + mDummyIndex;
+        mDummyIndex = (mDummyIndex + 1) % mPipelineDepth;
     }
 
     /*
      * store the buffer in a map where the key is the terminal UID
      */
-    if (!mNeedPostProcess) {
+    if (bufIndex >= mPipelineDepth) {
+        switch (mNode->getMemoryType()) {
+        case V4L2_MEMORY_DMABUF:
+            mBuffers[bufIndex].setFd(mDummyBuffer->dmaBufFd(), 0);
+            LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, bufIndex, mBuffers[bufIndex].fd());
+            break;
+        case V4L2_MEMORY_MMAP:
+            LOG2("%s mBuffers[%d].offset: 0x%x",
+                __FUNCTION__, bufIndex, mBuffers[bufIndex].offset());
+            break;
+        default:
+            LOGE("%s unsupported memory type.", __FUNCTION__);
+            status = BAD_VALUE;
+            goto exit;
+        }
+    } else if (!mNeedPostProcess) {
         // Use stream buffer for zero-copy
         unsigned long userptr;
         if (buffer.get() == nullptr) {
@@ -233,30 +269,32 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         switch (mNode->getMemoryType()) {
         case V4L2_MEMORY_USERPTR:
             userptr = reinterpret_cast<unsigned long>(buffer->data());
-            mBuffers[mIndex].userptr(userptr);
+            mBuffers[bufIndex].userptr(userptr);
             LOG2("%s mBuffers[%d].userptr: 0x%lx",
-                __FUNCTION__, mIndex, mBuffers[mIndex].userptr());
+                __FUNCTION__, bufIndex, mBuffers[bufIndex].userptr());
             break;
         case V4L2_MEMORY_DMABUF:
-            mBuffers[mIndex].setFd(buffer->dmaBufFd(), 0);
-            LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].fd());
+            mBuffers[bufIndex].setFd(buffer->dmaBufFd(), 0);
+            LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, bufIndex, mBuffers[bufIndex].fd());
             break;
         case V4L2_MEMORY_MMAP:
             LOG2("%s mBuffers[%d].offset: 0x%x",
-                __FUNCTION__, mIndex, mBuffers[mIndex].offset());
+                __FUNCTION__, bufIndex, mBuffers[bufIndex].offset());
             break;
         default:
             LOGE("%s unsupported memory type.", __FUNCTION__);
             status = BAD_VALUE;
             goto exit;
         }
-        mWorkingBuffers[mIndex] = buffer;
+        mWorkingBuffers[bufIndex] = buffer;
     } else {
-        mWorkingBuffers[mIndex] = mCameraBuffers[mIndex];
+        mWorkingBuffers[bufIndex] = mCameraBuffers[bufIndex];
     }
-    status |= mNode->putFrame(mBuffers[mIndex]);
-    LOG2("%s:%d:instance(%p), requestId(%d), index(%d)", __func__, __LINE__, this, request->getId(), mIndex);
-    mIndex = (mIndex + 1) % mPipelineDepth;
+    status |= mNode->putFrame(mBuffers[bufIndex]);
+    LOG2("%s:%d:instance(%p), requestId(%d), index(%d)", __func__, __LINE__, this, request->getId(), bufIndex);
+    if (bufIndex < mPipelineDepth) {
+        mIndex = (mIndex + 1) % mPipelineDepth;
+    }
 
 exit:
     if (status < 0)
@@ -275,6 +313,12 @@ status_t OutputFrameWorker::run()
     if (!mDevError)
         status = mNode->grabFrame(&outBuf);
 
+    int index = outBuf.vbuffer.index();
+
+    if (index >= mPipelineDepth) {
+        // Dummy buffer. We don't need to do anything.
+        return NO_ERROR;
+    }
 
     // Update request sequence if needed
     Camera3Request* request = mMsg->cbMetadataMsg.request;
@@ -282,7 +326,6 @@ status_t OutputFrameWorker::run()
     if (request->sequenceId() < sequence)
         request->setSequenceId(sequence);
 
-    int index = outBuf.vbuffer.index();
     if (mDevError) {
         for (int i = 0; i < mPipelineDepth; i++)
             if (mOutputBuffers[(i + mIndex) % mPipelineDepth]) {
