@@ -148,6 +148,7 @@ const char kDomainPlaceholder[] = "<DOMAIN>";
 const char kServerNamePlaceholder[] = "<SERVER_NAME>";
 const char kSiteNamePlaceholder[] = "<SITE_NAME>";
 const char kIpAddressPlaceholder[] = "<IP_ADDRESS>";
+const char kPasswordPlaceholder[] = "<PASSWORD>";
 
 // Keys for net ads searches.
 const char kKeyWorkgroup[] = "Workgroup";
@@ -705,6 +706,7 @@ ErrorType SambaInterface::JoinMachine(
 
   // The machine password and the user password are read from stdin.
   const std::string machine_pass = GenerateRandomMachinePassword();
+  anonymizer_->SetReplacement(machine_pass, kPasswordPlaceholder);
   base::ScopedFD passwords_pipe =
       WriteStringAndPipeToPipe(machine_pass + "\n", password_fd);
   net_cmd.SetInputFile(passwords_pipe.get());
@@ -1713,9 +1715,12 @@ ErrorType SambaInterface::CheckMachinePasswordChange() {
   base::TimeDelta password_age =
       device_account_.server_time - file_info.last_modified;
   if (password_age < password_change_rate_) {
-    int days_left = (password_change_rate_ - password_age).InDays();
-    LOG(INFO) << "No need to change machine password (" << days_left
-              << " days left)";
+    int total_hours_left = (password_change_rate_ - password_age).InHours();
+    int days_left = total_hours_left / base::Time::kHoursPerDay;
+    int hours_left = total_hours_left % base::Time::kHoursPerDay;
+
+    LOG(INFO) << "No need to change machine password (" << days_left << " days "
+              << hours_left << " hours left)";
     return ERROR_NONE;
   }
 
@@ -1813,8 +1818,8 @@ void SambaInterface::AnonymizeRealm(const std::string& realm,
 
   std::vector<std::string> parts = base::SplitString(
       realm, ".", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (size_t n = 0; n < parts.size(); ++n)
-    anonymizer_->SetReplacementAllCases(parts[n], placeholder);
+  for (const auto& part : parts)
+    anonymizer_->SetReplacementAllCases(part, placeholder);
 }
 
 bool SambaInterface::IsDeviceJoined() const {
