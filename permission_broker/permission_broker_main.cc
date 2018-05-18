@@ -18,22 +18,19 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon(std::string access_group, std::string udev_run_path, int poll_interval)
+  Daemon(std::string udev_run_path, int poll_interval)
       : DBusServiceDaemon(kPermissionBrokerServiceName),
-        access_group_(access_group),
         udev_run_path_(udev_run_path),
         poll_interval_(poll_interval) {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    broker_.reset(new PermissionBroker{bus_, access_group_, udev_run_path_,
-                                       poll_interval_});
+    broker_.reset(new PermissionBroker{bus_, udev_run_path_, poll_interval_});
     broker_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
  private:
   std::unique_ptr<PermissionBroker> broker_;
-  std::string access_group_;
   std::string udev_run_path_;
   int poll_interval_;
 
@@ -43,9 +40,6 @@ class Daemon : public brillo::DBusServiceDaemon {
 }  // namespace permission_broker
 
 int main(int argc, char** argv) {
-  DEFINE_string(access_group, "",
-                "The group which has resource access granted to it. "
-                "Must not be empty.");
   DEFINE_int32(poll_interval, 100,
                "The interval at which to poll for udev events.");
   DEFINE_string(udev_run_path, "/run/udev",
@@ -54,7 +48,6 @@ int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Permission Broker");
   brillo::InitLog(brillo::kLogToSyslog);
 
-  permission_broker::Daemon daemon(FLAGS_access_group, FLAGS_udev_run_path,
-                                   FLAGS_poll_interval);
+  permission_broker::Daemon daemon(FLAGS_udev_run_path, FLAGS_poll_interval);
   return daemon.Run();
 }

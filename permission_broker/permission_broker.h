@@ -33,7 +33,6 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
   PermissionBroker(scoped_refptr<dbus::Bus> bus,
-                   const std::string& access_group,
                    const std::string& udev_run_path,
                    int poll_interval_msecs);
   ~PermissionBroker();
@@ -45,8 +44,6 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
  private:
   // D-Bus methods.
   bool CheckPathAccess(const std::string& in_path) override;
-  bool RequestPathAccess(const std::string& in_path,
-                         int32_t in_interface_id) override;
   bool OpenPath(brillo::ErrorPtr* error,
                 const std::string& in_path,
                 brillo::dbus_utils::FileDescriptor* out_fd) override;
@@ -70,14 +67,9 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
       uint16_t in_pid,
       int64_t in_delay) override;
 
-  // Grants access to |path|, which is accomplished by changing the owning group
-  // on the path to the one specified numerically by the 'access_group' flag.
-  virtual bool GrantAccess(const std::string& path);
-
   std::unique_ptr<device_jail::DeviceJailServer> jail_server_;
   RuleEngine rule_engine_;
   brillo::dbus_utils::DBusObject dbus_object_;
-  gid_t access_group_;
   Firewall firewall_;
   PortTracker port_tracker_;
   UsbControl usb_control_;

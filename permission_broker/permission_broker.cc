@@ -89,7 +89,6 @@ class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
 #endif  // USE_CONTAINERS
 
 PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
-                                   const std::string& access_group_name,
                                    const std::string& udev_run_path,
                                    int poll_interval_msecs)
     : org::chromium::PermissionBrokerAdaptor(this),
@@ -98,8 +97,6 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
       port_tracker_(&firewall_),
       usb_control_(std::make_unique<UsbDeviceManager>()) {
-  CHECK(brillo::userdb::GetGroupInfo(access_group_name, &access_group_))
-      << "You must specify a group name via the --access_group flag.";
   rule_engine_.AddRule(new AllowUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
   rule_engine_.AddRule(new DenyClaimedUsbDeviceRule());
@@ -139,14 +136,6 @@ bool PermissionBroker::CheckPathAccess(const std::string& in_path) {
   Rule::Result result = rule_engine_.ProcessPath(in_path);
   return result == Rule::ALLOW || result == Rule::ALLOW_WITH_LOCKDOWN
       || result == Rule::ALLOW_WITH_DETACH;
-}
-
-bool PermissionBroker::RequestPathAccess(const std::string& in_path,
-                                         int32_t in_interface_id) {
-  if (rule_engine_.ProcessPath(in_path) == Rule::ALLOW) {
-    return GrantAccess(in_path);
-  }
-  return false;
 }
 
 bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
@@ -247,14 +236,6 @@ void PermissionBroker::PowerCycleUsbPorts(
       in_vid,
       in_pid,
       base::TimeDelta::FromInternalValue(in_delay));
-}
-
-bool PermissionBroker::GrantAccess(const std::string& path) {
-  if (chown(path.c_str(), -1, access_group_)) {
-    PLOG(INFO) << "Could not grant access to " << path;
-    return false;
-  }
-  return true;
 }
 
 }  // namespace permission_broker

@@ -8,12 +8,6 @@
       <arg name="allowed" type="b" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <method name="RequestPathAccess">
-      <arg name="path" type="s" direction="in"/>
-      <arg name="interface_id" type="i" direction="in"/>
-      <arg name="allowed" type="b" direction="out"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
     <method name="OpenPath">
       <arg name="path" type="s" direction="in"/>
       <arg type="h" name="fd" direction="out"/>
