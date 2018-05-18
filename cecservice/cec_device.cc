@@ -335,52 +335,49 @@ void CecDeviceImpl::ProcessSentMessage(const struct cec_msg& msg) {
 
 void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
   struct cec_msg reply;
+
+  VLOG(1) << base::StringPrintf(
+      "%s: received message, opcode:0x%x from:0x%x to:0x%x",
+      device_path_.value().c_str(), cec_msg_opcode(msg),
+      static_cast<unsigned>(cec_msg_initiator(msg)),
+      static_cast<unsigned>(cec_msg_destination(msg)));
+
   switch (cec_msg_opcode(msg)) {
     case CEC_MSG_REQUEST_ACTIVE_SOURCE:
-      VLOG(1) << device_path_.value() << ": received active source request";
       if (active_source_) {
-        VLOG(1) << device_path_.value()
-                << ": we are active source, will respond";
         cec_msg_init(&reply, logical_address_, CEC_LOG_ADDR_BROADCAST);
         cec_msg_active_source(&reply, physical_address_);
         message_queue_.push_back(std::move(reply));
       }
       break;
     case CEC_MSG_ACTIVE_SOURCE:
-      VLOG(1) << device_path_.value() << ": received active source message";
       if (active_source_) {
         VLOG(1) << device_path_.value() << ": we ceased to be active source";
         active_source_ = false;
       }
       break;
     case CEC_MSG_GIVE_DEVICE_POWER_STATUS:
-      VLOG(1) << device_path_.value() << ": received give power status message";
       cec_msg_init(&reply, logical_address_, cec_msg_initiator(msg));
       cec_msg_report_power_status(&reply, CEC_OP_POWER_STATUS_ON);
       message_queue_.push_back(reply);
       break;
     case CEC_MSG_STANDBY:
-      VLOG(1) << device_path_.value() << ": ignoring standby request";
+      // Ignore standby.
       break;
     default:
-      VLOG(1) << base::StringPrintf("%s: received message, opcode: 0x%x",
-                                    device_path_.value().c_str(),
-                                    cec_msg_opcode(msg));
       if (!cec_msg_is_broadcast(msg)) {
-        VLOG(1) << device_path_.value() << ": responding with feature abort";
         cec_msg_reply_feature_abort(msg, CEC_OP_ABORT_UNRECOGNIZED_OP);
         message_queue_.push_back(std::move(*msg));
-      } else {
-        VLOG(1) << device_path_.value() << ": ignoring broadcast message";
       }
       break;
   }
 }
 
 CecFd::TransmitResult CecDeviceImpl::SendMessage(struct cec_msg* msg) {
-  VLOG(1) << base::StringPrintf("%s: transmitting message, opcode:0x%x",
-                                device_path_.value().c_str(),
-                                cec_msg_opcode(msg));
+  VLOG(1) << base::StringPrintf(
+      "%s: transmitting message, opcode:0x%x to:0x%x",
+      device_path_.value().c_str(), cec_msg_opcode(msg),
+      static_cast<unsigned>(cec_msg_destination(msg)));
   return fd_->TransmitMessage(msg);
 }
 
