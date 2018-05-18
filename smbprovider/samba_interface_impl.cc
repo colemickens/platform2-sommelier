@@ -142,6 +142,12 @@ int32_t SambaInterfaceImpl::GetDirectoryEntries(int32_t dir_id,
   return 0;
 }
 
+int32_t SambaInterfaceImpl::GetDirectoryEntryWithMetadata(
+    int32_t dir_id, const struct libsmb_file_info** file_info) {
+  NOTREACHED();
+  return -1;
+}
+
 int32_t SambaInterfaceImpl::GetEntryStatus(const std::string& full_path,
                                            struct stat* stat) {
   DCHECK(stat);

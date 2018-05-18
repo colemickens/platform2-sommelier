@@ -57,6 +57,19 @@ class SambaInterface {
                                       int32_t* bytes_read)
       WARN_UNUSED_RESULT = 0;
 
+  // Gets the next directory entry with all metadata attached for |dir_id|.
+  // |file_info| will be nullptr on failure or to indicate that there are
+  // no more entries.
+  //
+  // When there are no more entries the return value will be 0 and on failure
+  // it will be errno.
+  // |dir_id| is the directory_id from OpenDirectory().
+  // |file_info| is assigned a const pointer to info about the file. It is
+  // invalidated on the next operation on the directory handle.
+  virtual int32_t GetDirectoryEntryWithMetadata(
+      int32_t dir_id,
+      const struct libsmb_file_info** file_info) WARN_UNUSED_RESULT = 0;
+
   // Gets information about a file or directory.
   // Returns 0 on success, and errno on failure.
   // |full_path| is the smb url to get information for.

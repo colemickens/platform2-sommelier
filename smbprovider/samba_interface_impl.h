@@ -53,6 +53,9 @@ class SambaInterfaceImpl : public SambaInterface {
                               int32_t dirp_buffer_size,
                               int32_t* bytes_read) override;
 
+  int32_t GetDirectoryEntryWithMetadata(
+      int32_t dir_id, const struct libsmb_file_info** file_info) override;
+
   int32_t GetEntryStatus(const std::string& full_path,
                          struct stat* stat) override;
 
