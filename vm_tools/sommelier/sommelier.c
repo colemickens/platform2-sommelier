@@ -55,10 +55,10 @@
 #error PEER_CMD_PREFIX must be defined
 #endif
 
-struct xwl;
+struct sl_context;
 
-struct xwl_global {
-  struct xwl *xwl;
+struct sl_global {
+  struct sl_context* ctx;
   const struct wl_interface *interface;
   uint32_t name;
   uint32_t version;
@@ -67,28 +67,28 @@ struct xwl_global {
   struct wl_list link;
 };
 
-struct xwl_host_registry {
-  struct xwl *xwl;
+struct sl_host_registry {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_list link;
 };
 
-struct xwl_host_callback {
+struct sl_host_callback {
   struct wl_resource *resource;
   struct wl_callback *proxy;
 };
 
-struct xwl_compositor {
-  struct xwl *xwl;
+struct sl_compositor {
+  struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
   struct wl_compositor *internal;
 };
 
-typedef void (*xwl_begin_end_access_func_t)(int fd);
+typedef void (*sl_begin_end_access_func_t)(int fd);
 
-struct xwl_mmap {
+struct sl_mmap {
   int refcount;
   int fd;
   void *addr;
@@ -96,101 +96,101 @@ struct xwl_mmap {
   size_t offset;
   size_t stride;
   size_t bpp;
-  xwl_begin_end_access_func_t begin_access;
-  xwl_begin_end_access_func_t end_access;
+  sl_begin_end_access_func_t begin_access;
+  sl_begin_end_access_func_t end_access;
   struct wl_resource *buffer_resource;
 };
 
-struct xwl_output_buffer;
+struct sl_output_buffer;
 
-struct xwl_host_surface {
-  struct xwl *xwl;
+struct sl_host_surface {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_surface *proxy;
   struct wp_viewport *viewport;
   uint32_t contents_width;
   uint32_t contents_height;
   int32_t contents_scale;
-  struct xwl_mmap *contents_shm_mmap;
+  struct sl_mmap* contents_shm_mmap;
   int has_role;
   int has_output;
   uint32_t last_event_serial;
-  struct xwl_output_buffer *current_buffer;
+  struct sl_output_buffer* current_buffer;
   struct wl_list released_buffers;
   struct wl_list busy_buffers;
 };
 
-struct xwl_output_buffer {
+struct sl_output_buffer {
   struct wl_list link;
   uint32_t width;
   uint32_t height;
   uint32_t format;
   struct wl_buffer *internal;
-  struct xwl_mmap *mmap;
+  struct sl_mmap* mmap;
   struct pixman_region32 damage;
-  struct xwl_host_surface *surface;
+  struct sl_host_surface* surface;
 };
 
-struct xwl_host_region {
-  struct xwl *xwl;
+struct sl_host_region {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_region *proxy;
 };
 
-struct xwl_host_compositor {
-  struct xwl_compositor *compositor;
+struct sl_host_compositor {
+  struct sl_compositor* compositor;
   struct wl_resource *resource;
   struct wl_compositor *proxy;
 };
 
-struct xwl_host_buffer {
+struct sl_host_buffer {
   struct wl_resource *resource;
   struct wl_buffer *proxy;
   uint32_t width;
   uint32_t height;
-  struct xwl_mmap *shm_mmap;
+  struct sl_mmap* shm_mmap;
   uint32_t shm_format;
 };
 
-struct xwl_host_shm_pool {
-  struct xwl_shm *shm;
+struct sl_host_shm_pool {
+  struct sl_shm* shm;
   struct wl_resource *resource;
   struct wl_shm_pool *proxy;
   int fd;
 };
 
-struct xwl_host_shm {
-  struct xwl_shm *shm;
+struct sl_host_shm {
+  struct sl_shm* shm;
   struct wl_resource *resource;
   struct wl_shm *proxy;
 };
 
-struct xwl_shm {
-  struct xwl *xwl;
+struct sl_shm {
+  struct sl_context* ctx;
   uint32_t id;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
   struct wl_shm *internal;
 };
 
-struct xwl_host_shell_surface {
+struct sl_host_shell_surface {
   struct wl_resource *resource;
   struct wl_shell_surface *proxy;
 };
 
-struct xwl_host_shell {
-  struct xwl_shell *shell;
+struct sl_host_shell {
+  struct sl_shell* shell;
   struct wl_resource *resource;
   struct wl_shell *proxy;
 };
 
-struct xwl_shell {
-  struct xwl *xwl;
+struct sl_shell {
+  struct sl_context* ctx;
   uint32_t id;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
 };
 
-struct xwl_host_output {
-  struct xwl_output *output;
+struct sl_host_output {
+  struct sl_output* output;
   struct wl_resource *resource;
   struct wl_output *proxy;
   struct zaura_output *aura_output;
@@ -215,25 +215,25 @@ struct xwl_host_output {
   struct wl_list link;
 };
 
-struct xwl_output {
-  struct xwl *xwl;
+struct sl_output {
+  struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
   struct wl_list link;
 };
 
-struct xwl_seat {
-  struct xwl *xwl;
+struct sl_seat {
+  struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
   uint32_t last_serial;
   struct wl_list link;
 };
 
-struct xwl_host_pointer {
-  struct xwl_seat *seat;
+struct sl_host_pointer {
+  struct sl_seat* seat;
   struct wl_resource *resource;
   struct wl_pointer *proxy;
   struct wl_resource *focus_resource;
@@ -241,8 +241,8 @@ struct xwl_host_pointer {
   uint32_t focus_serial;
 };
 
-struct xwl_host_keyboard {
-  struct xwl_seat *seat;
+struct sl_host_keyboard {
+  struct sl_seat* seat;
   struct wl_resource *resource;
   struct wl_keyboard *proxy;
   struct zcr_extended_keyboard_v1 *extended_keyboard_proxy;
@@ -258,127 +258,127 @@ struct xwl_host_keyboard {
   struct wl_array pressed_keys;
 };
 
-struct xwl_host_touch {
-  struct xwl_seat *seat;
+struct sl_host_touch {
+  struct sl_seat* seat;
   struct wl_resource *resource;
   struct wl_touch *proxy;
   struct wl_resource *focus_resource;
   struct wl_listener focus_resource_listener;
 };
 
-struct xwl_host_seat {
-  struct xwl_seat *seat;
+struct sl_host_seat {
+  struct sl_seat* seat;
   struct wl_resource *resource;
   struct wl_seat *proxy;
 };
 
-struct xwl_data_device_manager {
-  struct xwl *xwl;
+struct sl_data_device_manager {
+  struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
   struct wl_data_device_manager *internal;
 };
 
-struct xwl_host_data_device_manager {
-  struct xwl *xwl;
+struct sl_host_data_device_manager {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_data_device_manager *proxy;
 };
 
-struct xwl_host_data_device {
-  struct xwl *xwl;
+struct sl_host_data_device {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_data_device *proxy;
 };
 
-struct xwl_host_data_source {
+struct sl_host_data_source {
   struct wl_resource *resource;
   struct wl_data_source *proxy;
 };
 
-struct xwl_host_data_offer {
-  struct xwl *xwl;
+struct sl_host_data_offer {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_data_offer *proxy;
 };
 
-struct xwl_data_offer {
-  struct xwl *xwl;
+struct sl_data_offer {
+  struct sl_context* ctx;
   struct wl_data_offer *internal;
   int utf8_text;
 };
 
-struct xwl_data_source {
-  struct xwl *xwl;
+struct sl_data_source {
+  struct sl_context* ctx;
   struct wl_data_source *internal;
 };
 
-struct xwl_xdg_shell {
-  struct xwl *xwl;
+struct sl_xdg_shell {
+  struct sl_context* ctx;
   uint32_t id;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
   struct zxdg_shell_v6 *internal;
 };
 
-struct xwl_host_xdg_shell {
-  struct xwl_xdg_shell *xdg_shell;
+struct sl_host_xdg_shell {
+  struct sl_xdg_shell* xdg_shell;
   struct wl_resource *resource;
   struct zxdg_shell_v6 *proxy;
 };
 
-struct xwl_host_xdg_surface {
-  struct xwl *xwl;
+struct sl_host_xdg_surface {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct zxdg_surface_v6 *proxy;
 };
 
-struct xwl_host_xdg_toplevel {
-  struct xwl *xwl;
+struct sl_host_xdg_toplevel {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct zxdg_toplevel_v6 *proxy;
 };
 
-struct xwl_host_xdg_popup {
-  struct xwl *xwl;
+struct sl_host_xdg_popup {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct zxdg_popup_v6 *proxy;
 };
 
-struct xwl_host_xdg_positioner {
-  struct xwl *xwl;
+struct sl_host_xdg_positioner {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct zxdg_positioner_v6 *proxy;
 };
 
-struct xwl_subcompositor {
-  struct xwl *xwl;
+struct sl_subcompositor {
+  struct sl_context* ctx;
   uint32_t id;
-  struct xwl_global *host_global;
+  struct sl_global* host_global;
 };
 
-struct xwl_host_subcompositor {
-  struct xwl *xwl;
+struct sl_host_subcompositor {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_subcompositor *proxy;
 };
 
-struct xwl_host_subsurface {
-  struct xwl *xwl;
+struct sl_host_subsurface {
+  struct sl_context* ctx;
   struct wl_resource *resource;
   struct wl_subsurface *proxy;
 };
 
-struct xwl_aura_shell {
-  struct xwl *xwl;
+struct sl_aura_shell {
+  struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
-  struct xwl_global *host_gtk_shell_global;
+  struct sl_global* host_gtk_shell_global;
   struct zaura_shell *internal;
 };
 
-struct xwl_host_gtk_shell {
-  struct xwl_aura_shell *aura_shell;
+struct sl_host_gtk_shell {
+  struct sl_aura_shell* aura_shell;
   struct wl_resource *resource;
   struct zaura_shell *proxy;
   struct wl_callback *callback;
@@ -386,41 +386,41 @@ struct xwl_host_gtk_shell {
   struct wl_list surfaces;
 };
 
-struct xwl_host_gtk_surface {
+struct sl_host_gtk_surface {
   struct wl_resource *resource;
   struct zaura_surface *proxy;
   struct wl_list link;
-  struct xwl_aura_shell* aura_shell;
+  struct sl_aura_shell* aura_shell;
 };
 
-struct xwl_viewporter {
-  struct xwl *xwl;
+struct sl_viewporter {
+  struct sl_context* ctx;
   uint32_t id;
   struct wp_viewporter *internal;
 };
 
-struct xwl_linux_dmabuf {
-  struct xwl *xwl;
+struct sl_linux_dmabuf {
+  struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
-  struct xwl_global *host_drm_global;
+  struct sl_global* host_drm_global;
   struct zwp_linux_dmabuf_v1 *internal;
 };
 
-struct xwl_host_drm {
-  struct xwl_linux_dmabuf *linux_dmabuf;
+struct sl_host_drm {
+  struct sl_linux_dmabuf* linux_dmabuf;
   uint32_t version;
   struct wl_resource *resource;
   struct wl_callback *callback;
 };
 
-struct xwl_keyboard_extension {
-  struct xwl *xwl;
+struct sl_keyboard_extension {
+  struct sl_context* ctx;
   uint32_t id;
   struct zcr_keyboard_extension_v1 *internal;
 };
 
-struct xwl_config {
+struct sl_config {
   uint32_t serial;
   uint32_t mask;
   uint32_t values[5];
@@ -428,8 +428,8 @@ struct xwl_config {
   uint32_t states[3];
 };
 
-struct xwl_window {
-  struct xwl *xwl;
+struct sl_window {
+  struct sl_context* ctx;
   xcb_window_t id;
   xcb_window_t frame_id;
   uint32_t host_surface_id;
@@ -455,8 +455,8 @@ struct xwl_window {
   int min_height;
   int max_width;
   int max_height;
-  struct xwl_config next_config;
-  struct xwl_config pending_config;
+  struct sl_config next_config;
+  struct sl_config pending_config;
   struct zxdg_surface_v6 *xdg_surface;
   struct zxdg_toplevel_v6 *xdg_toplevel;
   struct zxdg_popup_v6 *xdg_popup;
@@ -493,13 +493,13 @@ enum {
   ATOM_LAST = ATOM_WL_SELECTION,
 };
 
-struct xwl_accelerator {
+struct sl_accelerator {
   struct wl_list link;
   uint32_t modifiers;
   xkb_keysym_t symbol;
 };
 
-struct xwl_data_transfer {
+struct sl_data_transfer {
   int read_fd;
   int write_fd;
   size_t offset;
@@ -509,21 +509,21 @@ struct xwl_data_transfer {
   struct wl_event_source *write_event_source;
 };
 
-struct xwl {
+struct sl_context {
   char **runprog;
   struct wl_display *display;
   struct wl_display *host_display;
   struct wl_client *client;
-  struct xwl_compositor *compositor;
-  struct xwl_subcompositor *subcompositor;
-  struct xwl_shm *shm;
-  struct xwl_shell *shell;
-  struct xwl_data_device_manager *data_device_manager;
-  struct xwl_xdg_shell *xdg_shell;
-  struct xwl_aura_shell *aura_shell;
-  struct xwl_viewporter *viewporter;
-  struct xwl_linux_dmabuf *linux_dmabuf;
-  struct xwl_keyboard_extension *keyboard_extension;
+  struct sl_compositor* compositor;
+  struct sl_subcompositor* subcompositor;
+  struct sl_shm* shm;
+  struct sl_shell* shell;
+  struct sl_data_device_manager* data_device_manager;
+  struct sl_xdg_shell* xdg_shell;
+  struct sl_aura_shell* aura_shell;
+  struct sl_viewporter* viewporter;
+  struct sl_linux_dmabuf* linux_dmabuf;
+  struct sl_keyboard_extension* keyboard_extension;
   struct wl_list outputs;
   struct wl_list seats;
   struct wl_event_source *display_event_source;
@@ -534,9 +534,9 @@ struct xwl {
   int data_driver;
   int wm_fd;
   int virtwl_fd;
-  int virtwl_ctx_fd;
+  int virtwl_sl_fd;
   int virtwl_socket_fd;
-  struct wl_event_source *virtwl_ctx_event_source;
+  struct wl_event_source* virtwl_sl_event_source;
   struct wl_event_source *virtwl_socket_event_source;
   const char *drm_device;
   struct gbm_device *gbm;
@@ -556,7 +556,7 @@ struct xwl {
   xcb_screen_t *screen;
   xcb_window_t window;
   struct wl_list windows, unpaired_windows;
-  struct xwl_window *host_focus_window;
+  struct sl_window* host_focus_window;
   int needs_set_input_focus;
   double desired_scale;
   double scale;
@@ -566,15 +566,15 @@ struct xwl {
   int clipboard_manager;
   uint32_t frame_color;
   int has_frame_color;
-  struct xwl_host_seat *default_seat;
+  struct sl_host_seat* default_seat;
   xcb_window_t selection_window;
   xcb_window_t selection_owner;
   int selection_incremental_transfer;
   xcb_selection_request_event_t selection_request;
   xcb_timestamp_t selection_timestamp;
   struct wl_data_device *selection_data_device;
-  struct xwl_data_offer *selection_data_offer;
-  struct xwl_data_source *selection_data_source;
+  struct sl_data_offer* selection_data_offer;
+  struct sl_data_source* selection_data_source;
   int selection_data_source_send_fd;
   struct wl_event_source *selection_send_event_source;
   xcb_get_property_reply_t *selection_property_reply;
@@ -624,7 +624,7 @@ enum {
 #define P_BASE_SIZE (1L << 8)
 #define P_WIN_GRAVITY (1L << 9)
 
-struct xwl_wm_size_hints {
+struct sl_wm_size_hints {
   uint32_t flags;
   int32_t x, y;
   int32_t width, height;
@@ -652,7 +652,7 @@ struct xwl_wm_size_hints {
 #define MWM_DECOR_MINIMIZE (1L << 5)
 #define MWM_DECOR_MAXIMIZE (1L << 6)
 
-struct xwl_mwm_hints {
+struct sl_mwm_hints {
   uint32_t flags;
   uint32_t functions;
   uint32_t decorations;
@@ -734,7 +734,7 @@ struct dma_buf_sync {
 #define DMA_BUF_BASE 'b'
 #define DMA_BUF_IOCTL_SYNC _IOW(DMA_BUF_BASE, 0, struct dma_buf_sync)
 
-static void xwl_dmabuf_sync(int fd, __u64 flags) {
+static void sl_dmabuf_sync(int fd, __u64 flags) {
   struct dma_buf_sync sync = {0};
   int rv;
 
@@ -744,17 +744,17 @@ static void xwl_dmabuf_sync(int fd, __u64 flags) {
   } while (rv == -1 && errno == EINTR);
 }
 
-static void xwl_dmabuf_begin_access(int fd) {
-  xwl_dmabuf_sync(fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_RW);
+static void sl_dmabuf_begin_access(int fd) {
+  sl_dmabuf_sync(fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_RW);
 }
 
-static void xwl_dmabuf_end_access(int fd) {
-  xwl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW);
+static void sl_dmabuf_end_access(int fd) {
+  sl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW);
 }
 
-static struct xwl_mmap *xwl_mmap_create(int fd, size_t size, size_t offset,
-                                        size_t stride, size_t bpp) {
-  struct xwl_mmap *map;
+static struct sl_mmap* sl_mmap_create(
+    int fd, size_t size, size_t offset, size_t stride, size_t bpp) {
+  struct sl_mmap* map;
 
   map = malloc(sizeof(*map));
   map->refcount = 1;
@@ -773,12 +773,12 @@ static struct xwl_mmap *xwl_mmap_create(int fd, size_t size, size_t offset,
   return map;
 }
 
-static struct xwl_mmap *xwl_mmap_ref(struct xwl_mmap *map) {
+static struct sl_mmap* sl_mmap_ref(struct sl_mmap* map) {
   map->refcount++;
   return map;
 }
 
-static void xwl_mmap_unref(struct xwl_mmap *map) {
+static void sl_mmap_unref(struct sl_mmap* map) {
   if (map->refcount-- == 1) {
     munmap(map->addr, map->size + map->offset);
     close(map->fd);
@@ -786,17 +786,17 @@ static void xwl_mmap_unref(struct xwl_mmap *map) {
   }
 }
 
-static void xwl_output_buffer_destroy(struct xwl_output_buffer *buffer) {
+static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   wl_buffer_destroy(buffer->internal);
-  xwl_mmap_unref(buffer->mmap);
+  sl_mmap_unref(buffer->mmap);
   pixman_region32_fini(&buffer->damage);
   wl_list_remove(&buffer->link);
 }
 
-static void xwl_output_buffer_release(void *data, struct wl_buffer *buffer) {
-  struct xwl_output_buffer *output_buffer = wl_buffer_get_user_data(buffer);
-  struct xwl_output_buffer *item, *next;
-  struct xwl_host_surface *host_surface = output_buffer->surface;
+static void sl_output_buffer_release(void* data, struct wl_buffer* buffer) {
+  struct sl_output_buffer* output_buffer = wl_buffer_get_user_data(buffer);
+  struct sl_output_buffer *item, *next;
+  struct sl_host_surface* host_surface = output_buffer->surface;
 
   wl_list_remove(&output_buffer->link);
   wl_list_insert(&host_surface->released_buffers, &output_buffer->link);
@@ -804,23 +804,23 @@ static void xwl_output_buffer_release(void *data, struct wl_buffer *buffer) {
   // Remove unused buffers.
   wl_list_for_each_safe(item, next, &host_surface->released_buffers, link) {
     if (item != output_buffer && item != host_surface->current_buffer)
-      xwl_output_buffer_destroy(item);
+      sl_output_buffer_destroy(item);
   }
 }
 
-static const struct wl_buffer_listener xwl_output_buffer_listener = {
-    xwl_output_buffer_release};
+static const struct wl_buffer_listener sl_output_buffer_listener = {
+    sl_output_buffer_release};
 
-static void xwl_internal_xdg_shell_ping(void *data,
-                                        struct zxdg_shell_v6 *xdg_shell,
-                                        uint32_t serial) {
+static void sl_internal_xdg_shell_ping(void* data,
+                                       struct zxdg_shell_v6* xdg_shell,
+                                       uint32_t serial) {
   zxdg_shell_v6_pong(xdg_shell, serial);
 }
 
-static const struct zxdg_shell_v6_listener xwl_internal_xdg_shell_listener = {
-    xwl_internal_xdg_shell_ping};
+static const struct zxdg_shell_v6_listener sl_internal_xdg_shell_listener = {
+    sl_internal_xdg_shell_ping};
 
-static void xwl_send_configure_notify(struct xwl_window *window) {
+static void sl_send_configure_notify(struct sl_window* window) {
   xcb_configure_notify_event_t event = {
       .response_type = XCB_CONFIGURE_NOTIFY,
       .event = window->id,
@@ -836,28 +836,28 @@ static void xwl_send_configure_notify(struct xwl_window *window) {
       .pad1 = 0,
   };
 
-  xcb_send_event(window->xwl->connection, 0, window->id,
-                 XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char *)&event);
+  xcb_send_event(window->ctx->connection, 0, window->id,
+                 XCB_EVENT_MASK_STRUCTURE_NOTIFY, (char*)&event);
 }
 
-static void xwl_adjust_window_size_for_screen_size(struct xwl_window *window) {
-  struct xwl *xwl = window->xwl;
+static void sl_adjust_window_size_for_screen_size(struct sl_window* window) {
+  struct sl_context* ctx = window->ctx;
 
   // Clamp size to screen.
-  window->width = MIN(window->width, xwl->screen->width_in_pixels);
-  window->height = MIN(window->height, xwl->screen->height_in_pixels);
+  window->width = MIN(window->width, ctx->screen->width_in_pixels);
+  window->height = MIN(window->height, ctx->screen->height_in_pixels);
 }
 
-static void
-xwl_adjust_window_position_for_screen_size(struct xwl_window *window) {
-  struct xwl *xwl = window->xwl;
+static void sl_adjust_window_position_for_screen_size(
+    struct sl_window* window) {
+  struct sl_context* ctx = window->ctx;
 
   // Center horizontally/vertically.
-  window->x = xwl->screen->width_in_pixels / 2 - window->width / 2;
-  window->y = xwl->screen->height_in_pixels / 2 - window->height / 2;
+  window->x = ctx->screen->width_in_pixels / 2 - window->width / 2;
+  window->y = ctx->screen->height_in_pixels / 2 - window->height / 2;
 }
 
-static void xwl_configure_window(struct xwl_window *window) {
+static void sl_configure_window(struct sl_window* window) {
   assert(!window->pending_config.serial);
 
   if (window->next_config.mask) {
@@ -866,7 +866,7 @@ static void xwl_configure_window(struct xwl_window *window) {
     int y = window->y;
     int i = 0;
 
-    xcb_configure_window(window->xwl->connection, window->frame_id,
+    xcb_configure_window(window->ctx->connection, window->frame_id,
                          window->next_config.mask, window->next_config.values);
 
     if (window->next_config.mask & XCB_CONFIG_WINDOW_X)
@@ -888,7 +888,7 @@ static void xwl_configure_window(struct xwl_window *window) {
     values[3] = window->height;
     values[4] = window->border_width;
     xcb_configure_window(
-        window->xwl->connection, window->id,
+        window->ctx->connection, window->id,
         XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH |
             XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_BORDER_WIDTH,
         values);
@@ -896,13 +896,13 @@ static void xwl_configure_window(struct xwl_window *window) {
     if (x != window->x || y != window->y) {
       window->x = x;
       window->y = y;
-      xwl_send_configure_notify(window);
+      sl_send_configure_notify(window);
     }
   }
 
   if (window->managed) {
-    xcb_change_property(window->xwl->connection, XCB_PROP_MODE_REPLACE,
-                        window->id, window->xwl->atoms[ATOM_NET_WM_STATE].value,
+    xcb_change_property(window->ctx->connection, XCB_PROP_MODE_REPLACE,
+                        window->id, window->ctx->atoms[ATOM_NET_WM_STATE].value,
                         XCB_ATOM_ATOM, 32, window->next_config.states_length,
                         window->next_config.states);
   }
@@ -913,38 +913,40 @@ static void xwl_configure_window(struct xwl_window *window) {
   window->next_config.states_length = 0;
 }
 
-static void xwl_set_input_focus(struct xwl *xwl, struct xwl_window *window) {
+static void sl_set_input_focus(struct sl_context* ctx,
+                               struct sl_window* window) {
   if (window) {
     xcb_client_message_event_t event = {
         .response_type = XCB_CLIENT_MESSAGE,
         .format = 32,
         .window = window->id,
-        .type = xwl->atoms[ATOM_WM_PROTOCOLS].value,
+        .type = ctx->atoms[ATOM_WM_PROTOCOLS].value,
         .data.data32 =
             {
-                xwl->atoms[ATOM_WM_TAKE_FOCUS].value, XCB_CURRENT_TIME,
+                ctx->atoms[ATOM_WM_TAKE_FOCUS].value, XCB_CURRENT_TIME,
             },
     };
 
     if (!window->managed)
       return;
 
-    xcb_send_event(xwl->connection, 0, window->id,
-                   XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (char *)&event);
+    xcb_send_event(ctx->connection, 0, window->id,
+                   XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (char*)&event);
 
-    xcb_set_input_focus(xwl->connection, XCB_INPUT_FOCUS_NONE, window->id,
+    xcb_set_input_focus(ctx->connection, XCB_INPUT_FOCUS_NONE, window->id,
                         XCB_CURRENT_TIME);
   } else {
-    xcb_set_input_focus(xwl->connection, XCB_INPUT_FOCUS_NONE, XCB_NONE,
+    xcb_set_input_focus(ctx->connection, XCB_INPUT_FOCUS_NONE, XCB_NONE,
                         XCB_CURRENT_TIME);
   }
 }
 
-static void xwl_restack_windows(struct xwl *xwl, uint32_t focus_resource_id) {
-  struct xwl_window *sibling;
+static void sl_restack_windows(struct sl_context* ctx,
+                               uint32_t focus_resource_id) {
+  struct sl_window* sibling;
   uint32_t values[1];
 
-  wl_list_for_each(sibling, &xwl->windows, link) {
+  wl_list_for_each(sibling, &ctx->windows, link) {
     if (!sibling->managed)
       continue;
 
@@ -952,19 +954,18 @@ static void xwl_restack_windows(struct xwl *xwl, uint32_t focus_resource_id) {
     values[0] = sibling->host_surface_id == focus_resource_id
                     ? XCB_STACK_MODE_ABOVE
                     : XCB_STACK_MODE_BELOW;
-    xcb_configure_window(xwl->connection, sibling->frame_id,
+    xcb_configure_window(ctx->connection, sibling->frame_id,
                          XCB_CONFIG_WINDOW_STACK_MODE, values);
   }
 }
 
-static void xwl_roundtrip(struct xwl *xwl) {
-  free(xcb_get_input_focus_reply(xwl->connection,
-                                 xcb_get_input_focus(xwl->connection), NULL));
+static void sl_roundtrip(struct sl_context* ctx) {
+  free(xcb_get_input_focus_reply(ctx->connection,
+                                 xcb_get_input_focus(ctx->connection), NULL));
 }
 
-static int
-xwl_process_pending_configure_acks(struct xwl_window *window,
-                                   struct xwl_host_surface *host_surface) {
+static int sl_process_pending_configure_acks(
+    struct sl_window* window, struct sl_host_surface* host_surface) {
   if (!window->pending_config.serial)
     return 0;
 
@@ -986,41 +987,44 @@ xwl_process_pending_configure_acks(struct xwl_window *window,
   window->pending_config.serial = 0;
 
   if (window->next_config.serial)
-    xwl_configure_window(window);
+    sl_configure_window(window);
 
   return 1;
 }
 
-static void xwl_internal_xdg_surface_configure(
-    void *data, struct zxdg_surface_v6 *xdg_surface, uint32_t serial) {
-  struct xwl_window *window = zxdg_surface_v6_get_user_data(xdg_surface);
+static void sl_internal_xdg_surface_configure(
+    void* data, struct zxdg_surface_v6* xdg_surface, uint32_t serial) {
+  struct sl_window* window = zxdg_surface_v6_get_user_data(xdg_surface);
 
   window->next_config.serial = serial;
   if (!window->pending_config.serial) {
     struct wl_resource *host_resource;
-    struct xwl_host_surface *host_surface = NULL;
+    struct sl_host_surface* host_surface = NULL;
 
     host_resource =
-        wl_client_get_object(window->xwl->client, window->host_surface_id);
+        wl_client_get_object(window->ctx->client, window->host_surface_id);
     if (host_resource)
       host_surface = wl_resource_get_user_data(host_resource);
 
-    xwl_configure_window(window);
+    sl_configure_window(window);
 
-    if (xwl_process_pending_configure_acks(window, host_surface)) {
+    if (sl_process_pending_configure_acks(window, host_surface)) {
       if (host_surface)
         wl_surface_commit(host_surface->proxy);
     }
   }
 }
 
-static const struct zxdg_surface_v6_listener xwl_internal_xdg_surface_listener =
-    {xwl_internal_xdg_surface_configure};
+static const struct zxdg_surface_v6_listener sl_internal_xdg_surface_listener =
+    {sl_internal_xdg_surface_configure};
 
-static void xwl_internal_xdg_toplevel_configure(
-    void *data, struct zxdg_toplevel_v6 *xdg_toplevel, int32_t width,
-    int32_t height, struct wl_array *states) {
-  struct xwl_window *window = zxdg_toplevel_v6_get_user_data(xdg_toplevel);
+static void sl_internal_xdg_toplevel_configure(
+    void* data,
+    struct zxdg_toplevel_v6* xdg_toplevel,
+    int32_t width,
+    int32_t height,
+    struct wl_array* states) {
+  struct sl_window* window = zxdg_toplevel_v6_get_user_data(xdg_toplevel);
   int activated = 0;
   uint32_t *state;
   int i = 0;
@@ -1029,8 +1033,8 @@ static void xwl_internal_xdg_toplevel_configure(
     return;
 
   if (width && height) {
-    int32_t width_in_pixels = width * window->xwl->scale;
-    int32_t height_in_pixels = height * window->xwl->scale;
+    int32_t width_in_pixels = width * window->ctx->scale;
+    int32_t height_in_pixels = height * window->ctx->scale;
     int i = 0;
 
     window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
@@ -1039,9 +1043,9 @@ static void xwl_internal_xdg_toplevel_configure(
     if (!(window->size_flags & (US_POSITION | P_POSITION))) {
       window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
       window->next_config.values[i++] =
-          window->xwl->screen->width_in_pixels / 2 - width_in_pixels / 2;
+          window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
       window->next_config.values[i++] =
-          window->xwl->screen->height_in_pixels / 2 - height_in_pixels / 2;
+          window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
     }
     window->next_config.values[i++] = width_in_pixels;
     window->next_config.values[i++] = height_in_pixels;
@@ -1053,14 +1057,14 @@ static void xwl_internal_xdg_toplevel_configure(
     if (*state == ZXDG_TOPLEVEL_V6_STATE_FULLSCREEN) {
       window->allow_resize = 0;
       window->next_config.states[i++] =
-          window->xwl->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
+          window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
     }
     if (*state == ZXDG_TOPLEVEL_V6_STATE_MAXIMIZED) {
       window->allow_resize = 0;
       window->next_config.states[i++] =
-          window->xwl->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
+          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
       window->next_config.states[i++] =
-          window->xwl->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
     }
     if (*state == ZXDG_TOPLEVEL_V6_STATE_ACTIVATED)
       activated = 1;
@@ -1069,9 +1073,9 @@ static void xwl_internal_xdg_toplevel_configure(
   }
 
   if (activated != window->activated) {
-    if (activated != (window->xwl->host_focus_window == window)) {
-      window->xwl->host_focus_window = activated ? window : NULL;
-      window->xwl->needs_set_input_focus = 1;
+    if (activated != (window->ctx->host_focus_window == window)) {
+      window->ctx->host_focus_window = activated ? window : NULL;
+      window->ctx->needs_set_input_focus = 1;
     }
     window->activated = activated;
   }
@@ -1079,68 +1083,69 @@ static void xwl_internal_xdg_toplevel_configure(
   window->next_config.states_length = i;
 }
 
-static void
-xwl_internal_xdg_toplevel_close(void *data,
-                                struct zxdg_toplevel_v6 *xdg_toplevel) {
-  struct xwl_window *window = zxdg_toplevel_v6_get_user_data(xdg_toplevel);
+static void sl_internal_xdg_toplevel_close(
+    void* data, struct zxdg_toplevel_v6* xdg_toplevel) {
+  struct sl_window* window = zxdg_toplevel_v6_get_user_data(xdg_toplevel);
   xcb_client_message_event_t event = {
       .response_type = XCB_CLIENT_MESSAGE,
       .format = 32,
       .window = window->id,
-      .type = window->xwl->atoms[ATOM_WM_PROTOCOLS].value,
+      .type = window->ctx->atoms[ATOM_WM_PROTOCOLS].value,
       .data.data32 =
           {
-              window->xwl->atoms[ATOM_WM_DELETE_WINDOW].value, XCB_CURRENT_TIME,
+              window->ctx->atoms[ATOM_WM_DELETE_WINDOW].value, XCB_CURRENT_TIME,
           },
   };
 
-  xcb_send_event(window->xwl->connection, 0, window->id,
-                 XCB_EVENT_MASK_NO_EVENT, (const char *)&event);
+  xcb_send_event(window->ctx->connection, 0, window->id,
+                 XCB_EVENT_MASK_NO_EVENT, (const char*)&event);
 }
 
 static const struct zxdg_toplevel_v6_listener
-    xwl_internal_xdg_toplevel_listener = {xwl_internal_xdg_toplevel_configure,
-                                          xwl_internal_xdg_toplevel_close};
+    sl_internal_xdg_toplevel_listener = {sl_internal_xdg_toplevel_configure,
+                                         sl_internal_xdg_toplevel_close};
 
-static void xwl_internal_xdg_popup_configure(void *data,
-                                             struct zxdg_popup_v6 *xdg_popup,
-                                             int32_t x, int32_t y,
-                                             int32_t width, int32_t height) {}
+static void sl_internal_xdg_popup_configure(void* data,
+                                            struct zxdg_popup_v6* xdg_popup,
+                                            int32_t x,
+                                            int32_t y,
+                                            int32_t width,
+                                            int32_t height) {}
 
-static void xwl_internal_xdg_popup_done(void *data,
-                                        struct zxdg_popup_v6 *zxdg_popup_v6) {}
+static void sl_internal_xdg_popup_done(void* data,
+                                       struct zxdg_popup_v6* zxdg_popup_v6) {}
 
-static const struct zxdg_popup_v6_listener xwl_internal_xdg_popup_listener = {
-    xwl_internal_xdg_popup_configure, xwl_internal_xdg_popup_done};
+static const struct zxdg_popup_v6_listener sl_internal_xdg_popup_listener = {
+    sl_internal_xdg_popup_configure, sl_internal_xdg_popup_done};
 
-static void xwl_window_set_wm_state(struct xwl_window *window, int state) {
-  struct xwl *xwl = window->xwl;
+static void sl_window_set_wm_state(struct sl_window* window, int state) {
+  struct sl_context* ctx = window->ctx;
   uint32_t values[2];
 
   values[0] = state;
   values[1] = XCB_WINDOW_NONE;
 
-  xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE, window->id,
-                      xwl->atoms[ATOM_WM_STATE].value,
-                      xwl->atoms[ATOM_WM_STATE].value, 32, 2, values);
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, window->id,
+                      ctx->atoms[ATOM_WM_STATE].value,
+                      ctx->atoms[ATOM_WM_STATE].value, 32, 2, values);
 }
 
-static void xwl_window_update(struct xwl_window *window) {
+static void sl_window_update(struct sl_window* window) {
   struct wl_resource *host_resource = NULL;
-  struct xwl_host_surface *host_surface;
-  struct xwl *xwl = window->xwl;
-  struct xwl_window *parent = NULL;
+  struct sl_host_surface* host_surface;
+  struct sl_context* ctx = window->ctx;
+  struct sl_window* parent = NULL;
 
   if (window->host_surface_id) {
-    host_resource = wl_client_get_object(xwl->client, window->host_surface_id);
+    host_resource = wl_client_get_object(ctx->client, window->host_surface_id);
     if (host_resource && window->unpaired) {
       wl_list_remove(&window->link);
-      wl_list_insert(&xwl->windows, &window->link);
+      wl_list_insert(&ctx->windows, &window->link);
       window->unpaired = 0;
     }
   } else if (!window->unpaired) {
     wl_list_remove(&window->link);
-    wl_list_insert(&xwl->unpaired_windows, &window->link);
+    wl_list_insert(&ctx->unpaired_windows, &window->link);
     window->unpaired = 1;
   }
 
@@ -1169,14 +1174,14 @@ static void xwl_window_update(struct xwl_window *window) {
   assert(host_surface);
   assert(!host_surface->has_role);
 
-  assert(xwl->xdg_shell);
-  assert(xwl->xdg_shell->internal);
+  assert(ctx->xdg_shell);
+  assert(ctx->xdg_shell->internal);
 
   if (window->managed) {
     if (window->transient_for != XCB_WINDOW_NONE) {
-      struct xwl_window *sibling;
+      struct sl_window* sibling;
 
-      wl_list_for_each(sibling, &xwl->windows, link) {
+      wl_list_for_each(sibling, &ctx->windows, link) {
         if (sibling->id == window->transient_for) {
           if (sibling->xdg_toplevel)
             parent = sibling;
@@ -1185,18 +1190,18 @@ static void xwl_window_update(struct xwl_window *window) {
       }
     }
   } else {
-    struct xwl_window *sibling;
+    struct sl_window* sibling;
     uint32_t parent_last_event_serial = 0;
 
-    wl_list_for_each(sibling, &xwl->windows, link) {
+    wl_list_for_each(sibling, &ctx->windows, link) {
       struct wl_resource *sibling_host_resource;
-      struct xwl_host_surface *sibling_host_surface;
+      struct sl_host_surface* sibling_host_surface;
 
       if (!sibling->realized)
         continue;
 
       sibling_host_resource =
-          wl_client_get_object(xwl->client, sibling->host_surface_id);
+          wl_client_get_object(ctx->client, sibling->host_surface_id);
       if (!sibling_host_resource)
         continue;
 
@@ -1211,8 +1216,8 @@ static void xwl_window_update(struct xwl_window *window) {
   }
 
   if (!window->depth) {
-    xcb_get_geometry_reply_t *geometry_reply = xcb_get_geometry_reply(
-        xwl->connection, xcb_get_geometry(xwl->connection, window->id), NULL);
+    xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
+        ctx->connection, xcb_get_geometry(ctx->connection, window->id), NULL);
     if (geometry_reply) {
       window->depth = geometry_reply->depth;
       free(geometry_reply);
@@ -1221,16 +1226,16 @@ static void xwl_window_update(struct xwl_window *window) {
 
   if (!window->xdg_surface) {
     window->xdg_surface = zxdg_shell_v6_get_xdg_surface(
-        xwl->xdg_shell->internal, host_surface->proxy);
+        ctx->xdg_shell->internal, host_surface->proxy);
     zxdg_surface_v6_set_user_data(window->xdg_surface, window);
     zxdg_surface_v6_add_listener(window->xdg_surface,
-                                 &xwl_internal_xdg_surface_listener, window);
+                                 &sl_internal_xdg_surface_listener, window);
   }
 
-  if (xwl->aura_shell) {
+  if (ctx->aura_shell) {
     if (!window->aura_surface) {
       window->aura_surface = zaura_shell_get_aura_surface(
-          xwl->aura_shell->internal, host_surface->proxy);
+          ctx->aura_shell->internal, host_surface->proxy);
     }
     zaura_surface_set_frame(window->aura_surface,
                             window->decorated
@@ -1239,16 +1244,16 @@ static void xwl_window_update(struct xwl_window *window) {
                                       ? ZAURA_SURFACE_FRAME_TYPE_NONE
                                       : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
 
-    if (xwl->has_frame_color) {
-      zaura_surface_set_frame_colors(window->aura_surface, xwl->frame_color,
-                                     xwl->frame_color);
+    if (ctx->has_frame_color) {
+      zaura_surface_set_frame_colors(window->aura_surface, ctx->frame_color,
+                                     ctx->frame_color);
     }
 
     zaura_surface_set_startup_id(window->aura_surface, window->startup_id);
 
-    if (xwl->application_id) {
+    if (ctx->application_id) {
       zaura_surface_set_application_id(window->aura_surface,
-                                       xwl->application_id);
+                                       ctx->application_id);
     } else {
       char application_id_str[128];
 
@@ -1272,8 +1277,8 @@ static void xwl_window_update(struct xwl_window *window) {
     if (!window->xdg_toplevel) {
       window->xdg_toplevel = zxdg_surface_v6_get_toplevel(window->xdg_surface);
       zxdg_toplevel_v6_set_user_data(window->xdg_toplevel, window);
-      zxdg_toplevel_v6_add_listener(
-          window->xdg_toplevel, &xwl_internal_xdg_toplevel_listener, window);
+      zxdg_toplevel_v6_add_listener(window->xdg_toplevel,
+                                    &sl_internal_xdg_toplevel_listener, window);
     }
     if (parent)
       zxdg_toplevel_v6_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
@@ -1281,18 +1286,18 @@ static void xwl_window_update(struct xwl_window *window) {
       zxdg_toplevel_v6_set_title(window->xdg_toplevel, window->name);
     if (window->size_flags & P_MIN_SIZE) {
       zxdg_toplevel_v6_set_min_size(window->xdg_toplevel,
-                                    window->min_width / xwl->scale,
-                                    window->min_height / xwl->scale);
+                                    window->min_width / ctx->scale,
+                                    window->min_height / ctx->scale);
     }
     if (window->size_flags & P_MAX_SIZE) {
       zxdg_toplevel_v6_set_max_size(window->xdg_toplevel,
-                                    window->max_width / xwl->scale,
-                                    window->max_height / xwl->scale);
+                                    window->max_width / ctx->scale,
+                                    window->max_height / ctx->scale);
     }
   } else if (!window->xdg_popup) {
     struct zxdg_positioner_v6 *positioner;
 
-    positioner = zxdg_shell_v6_create_positioner(xwl->xdg_shell->internal);
+    positioner = zxdg_shell_v6_create_positioner(ctx->xdg_shell->internal);
     assert(positioner);
     zxdg_positioner_v6_set_anchor(positioner,
                                   ZXDG_POSITIONER_V6_ANCHOR_TOP |
@@ -1301,23 +1306,23 @@ static void xwl_window_update(struct xwl_window *window) {
                                    ZXDG_POSITIONER_V6_GRAVITY_BOTTOM |
                                        ZXDG_POSITIONER_V6_GRAVITY_RIGHT);
     zxdg_positioner_v6_set_anchor_rect(
-        positioner, (window->x - parent->x) / xwl->scale,
-        (window->y - parent->y) / xwl->scale, 1, 1);
+        positioner, (window->x - parent->x) / ctx->scale,
+        (window->y - parent->y) / ctx->scale, 1, 1);
 
     window->xdg_popup = zxdg_surface_v6_get_popup(
         window->xdg_surface, parent->xdg_surface, positioner);
     zxdg_popup_v6_set_user_data(window->xdg_popup, window);
     zxdg_popup_v6_add_listener(window->xdg_popup,
-                               &xwl_internal_xdg_popup_listener, window);
+                               &sl_internal_xdg_popup_listener, window);
 
     zxdg_positioner_v6_destroy(positioner);
   }
 
   if ((window->size_flags & (US_POSITION | P_POSITION)) && parent &&
-      xwl->aura_shell) {
+      ctx->aura_shell) {
     zaura_surface_set_parent(window->aura_surface, parent->aura_surface,
-                             (window->x - parent->x) / xwl->scale,
-                             (window->y - parent->y) / xwl->scale);
+                             (window->x - parent->x) / ctx->scale,
+                             (window->y - parent->y) / ctx->scale);
   }
 
   wl_surface_commit(host_surface->proxy);
@@ -1325,7 +1330,7 @@ static void xwl_window_update(struct xwl_window *window) {
     window->realized = 1;
 }
 
-static int xwl_supported_shm_format(uint32_t format) {
+static int sl_supported_shm_format(uint32_t format) {
   switch (format) {
   case WL_SHM_FORMAT_RGB565:
   case WL_SHM_FORMAT_ARGB8888:
@@ -1337,7 +1342,7 @@ static int xwl_supported_shm_format(uint32_t format) {
   return 0;
 }
 
-static size_t xwl_bpp_for_shm_format(uint32_t format) {
+static size_t sl_bpp_for_shm_format(uint32_t format) {
   switch (format) {
   case WL_SHM_FORMAT_RGB565:
     return 2;
@@ -1351,7 +1356,7 @@ static size_t xwl_bpp_for_shm_format(uint32_t format) {
   return 0;
 }
 
-static uint32_t xwl_gbm_format_for_shm_format(uint32_t format) {
+static uint32_t sl_gbm_format_for_shm_format(uint32_t format) {
   switch (format) {
   case WL_SHM_FORMAT_RGB565:
     return GBM_FORMAT_RGB565;
@@ -1368,7 +1373,7 @@ static uint32_t xwl_gbm_format_for_shm_format(uint32_t format) {
   return 0;
 }
 
-static uint32_t xwl_drm_format_for_shm_format(int format) {
+static uint32_t sl_drm_format_for_shm_format(int format) {
   switch (format) {
   case WL_SHM_FORMAT_RGB565:
     return WL_DRM_FORMAT_RGB565;
@@ -1385,7 +1390,7 @@ static uint32_t xwl_drm_format_for_shm_format(int format) {
   return 0;
 }
 
-static void xwl_data_transfer_destroy(struct xwl_data_transfer *transfer) {
+static void sl_data_transfer_destroy(struct sl_data_transfer* transfer) {
   if (transfer->read_event_source)
     wl_event_source_remove(transfer->read_event_source);
   assert(transfer->write_event_source);
@@ -1395,8 +1400,8 @@ static void xwl_data_transfer_destroy(struct xwl_data_transfer *transfer) {
   free(transfer);
 }
 
-static int xwl_handle_data_transfer_read(int fd, uint32_t mask, void *data) {
-  struct xwl_data_transfer *transfer = (struct xwl_data_transfer *)data;
+static int sl_handle_data_transfer_read(int fd, uint32_t mask, void* data) {
+  struct sl_data_transfer* transfer = (struct sl_data_transfer*)data;
 
   if ((mask & WL_EVENT_READABLE) == 0) {
     assert(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR));
@@ -1414,19 +1419,19 @@ static int xwl_handle_data_transfer_read(int fd, uint32_t mask, void *data) {
     wl_event_source_fd_update(transfer->read_event_source, 0);
     wl_event_source_fd_update(transfer->write_event_source, WL_EVENT_WRITABLE);
   } else {
-    xwl_data_transfer_destroy(transfer);
+    sl_data_transfer_destroy(transfer);
   }
 
   return 0;
 }
 
-static int xwl_handle_data_transfer_write(int fd, uint32_t mask, void *data) {
-  struct xwl_data_transfer *transfer = (struct xwl_data_transfer *)data;
+static int sl_handle_data_transfer_write(int fd, uint32_t mask, void* data) {
+  struct sl_data_transfer* transfer = (struct sl_data_transfer*)data;
   int rv;
 
   if ((mask & WL_EVENT_WRITABLE) == 0) {
     assert(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR));
-    xwl_data_transfer_destroy(transfer);
+    sl_data_transfer_destroy(transfer);
     return 0;
   }
 
@@ -1448,7 +1453,7 @@ static int xwl_handle_data_transfer_write(int fd, uint32_t mask, void *data) {
     if (transfer->read_event_source) {
       wl_event_source_fd_update(transfer->read_event_source, WL_EVENT_READABLE);
     } else {
-      xwl_data_transfer_destroy(transfer);
+      sl_data_transfer_destroy(transfer);
     }
     return 0;
   }
@@ -1456,9 +1461,10 @@ static int xwl_handle_data_transfer_write(int fd, uint32_t mask, void *data) {
   return 1;
 }
 
-static void xwl_data_transfer_create(struct wl_event_loop *event_loop,
-                                     int read_fd, int write_fd) {
-  struct xwl_data_transfer *transfer;
+static void sl_data_transfer_create(struct wl_event_loop* event_loop,
+                                    int read_fd,
+                                    int write_fd) {
+  struct sl_data_transfer* transfer;
   int flags;
   int rv;
 
@@ -1475,30 +1481,31 @@ static void xwl_data_transfer_create(struct wl_event_loop *event_loop,
   transfer->bytes_left = 0;
   transfer->read_event_source =
       wl_event_loop_add_fd(event_loop, read_fd, WL_EVENT_READABLE,
-                           xwl_handle_data_transfer_read, transfer);
+                           sl_handle_data_transfer_read, transfer);
   transfer->write_event_source = wl_event_loop_add_fd(
-      event_loop, write_fd, 0, xwl_handle_data_transfer_write, transfer);
+      event_loop, write_fd, 0, sl_handle_data_transfer_write, transfer);
 }
 
-static void xwl_host_surface_destroy(struct wl_client *client,
-                                     struct wl_resource *resource) {
+static void sl_host_surface_destroy(struct wl_client* client,
+                                    struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_host_surface_attach(struct wl_client *client,
-                                    struct wl_resource *resource,
-                                    struct wl_resource *buffer_resource,
-                                    int32_t x, int32_t y) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_buffer *host_buffer =
+static void sl_host_surface_attach(struct wl_client* client,
+                                   struct wl_resource* resource,
+                                   struct wl_resource* buffer_resource,
+                                   int32_t x,
+                                   int32_t y) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_buffer* host_buffer =
       buffer_resource ? wl_resource_get_user_data(buffer_resource) : NULL;
   struct wl_buffer *buffer_proxy = NULL;
-  struct xwl_window *window;
-  double scale = host->xwl->scale;
+  struct sl_window* window;
+  double scale = host->ctx->scale;
 
   host->current_buffer = NULL;
   if (host->contents_shm_mmap) {
-    xwl_mmap_unref(host->contents_shm_mmap);
+    sl_mmap_unref(host->contents_shm_mmap);
     host->contents_shm_mmap = NULL;
   }
 
@@ -1507,7 +1514,7 @@ static void xwl_host_surface_attach(struct wl_client *client,
     host->contents_height = host_buffer->height;
     buffer_proxy = host_buffer->proxy;
     if (host_buffer->shm_mmap)
-      host->contents_shm_mmap = xwl_mmap_ref(host_buffer->shm_mmap);
+      host->contents_shm_mmap = sl_mmap_ref(host_buffer->shm_mmap);
   }
 
   if (host->contents_shm_mmap) {
@@ -1521,7 +1528,7 @@ static void xwl_host_surface_attach(struct wl_client *client,
         break;
       }
 
-      xwl_output_buffer_destroy(host->current_buffer);
+      sl_output_buffer_destroy(host->current_buffer);
       host->current_buffer = NULL;
     }
 
@@ -1531,9 +1538,9 @@ static void xwl_host_surface_attach(struct wl_client *client,
       size_t height = host_buffer->height;
       size_t size = host_buffer->shm_mmap->size;
       uint32_t shm_format = host_buffer->shm_format;
-      size_t bpp = xwl_bpp_for_shm_format(shm_format);
+      size_t bpp = sl_bpp_for_shm_format(shm_format);
 
-      host->current_buffer = malloc(sizeof(struct xwl_output_buffer));
+      host->current_buffer = malloc(sizeof(struct sl_output_buffer));
       assert(host->current_buffer);
       wl_list_insert(&host->released_buffers, &host->current_buffer->link);
       host->current_buffer->width = width;
@@ -1543,54 +1550,59 @@ static void xwl_host_surface_attach(struct wl_client *client,
       pixman_region32_init_rect(&host->current_buffer->damage, 0, 0, MAX_SIZE,
                                 MAX_SIZE);
 
-      switch (host->xwl->shm_driver) {
-      case SHM_DRIVER_DMABUF: {
-        struct zwp_linux_buffer_params_v1 *buffer_params;
-        struct gbm_bo *bo;
-        int stride0;
-        int fd;
+      switch (host->ctx->shm_driver) {
+        case SHM_DRIVER_DMABUF: {
+          struct zwp_linux_buffer_params_v1* buffer_params;
+          struct gbm_bo* bo;
+          int stride0;
+          int fd;
 
-        bo = gbm_bo_create(host->xwl->gbm, width, height,
-                           xwl_gbm_format_for_shm_format(shm_format),
-                           GBM_BO_USE_SCANOUT | GBM_BO_USE_LINEAR);
-        stride0 = gbm_bo_get_stride(bo);
-        fd = gbm_bo_get_fd(bo);
+          bo = gbm_bo_create(host->ctx->gbm, width, height,
+                             sl_gbm_format_for_shm_format(shm_format),
+                             GBM_BO_USE_SCANOUT | GBM_BO_USE_LINEAR);
+          stride0 = gbm_bo_get_stride(bo);
+          fd = gbm_bo_get_fd(bo);
 
-        buffer_params = zwp_linux_dmabuf_v1_create_params(
-            host->xwl->linux_dmabuf->internal);
-        zwp_linux_buffer_params_v1_add(buffer_params, fd, 0, 0, stride0, 0, 0);
-        host->current_buffer->internal =
-            zwp_linux_buffer_params_v1_create_immed(
-                buffer_params, width, height,
-                xwl_drm_format_for_shm_format(shm_format), 0);
-        zwp_linux_buffer_params_v1_destroy(buffer_params);
+          buffer_params = zwp_linux_dmabuf_v1_create_params(
+              host->ctx->linux_dmabuf->internal);
+          zwp_linux_buffer_params_v1_add(buffer_params, fd, 0, 0, stride0, 0,
+                                         0);
+          host->current_buffer->internal =
+              zwp_linux_buffer_params_v1_create_immed(
+                  buffer_params, width, height,
+                  sl_drm_format_for_shm_format(shm_format), 0);
+          zwp_linux_buffer_params_v1_destroy(buffer_params);
 
-        host->current_buffer->mmap =
-            xwl_mmap_create(fd, height * stride0, 0, stride0, bpp);
-        host->current_buffer->mmap->begin_access = xwl_dmabuf_begin_access;
-        host->current_buffer->mmap->end_access = xwl_dmabuf_end_access;
+          host->current_buffer->mmap =
+              sl_mmap_create(fd, height * stride0, 0, stride0, bpp);
+          host->current_buffer->mmap->begin_access = sl_dmabuf_begin_access;
+          host->current_buffer->mmap->end_access = sl_dmabuf_end_access;
 
-        gbm_bo_destroy(bo);
-      } break;
-      case SHM_DRIVER_VIRTWL: {
-        struct virtwl_ioctl_new new_alloc = {
-            .type = VIRTWL_IOCTL_NEW_ALLOC, .fd = -1, .flags = 0, .size = size};
-        struct wl_shm_pool *pool;
-        int rv;
+          gbm_bo_destroy(bo);
+        } break;
+        case SHM_DRIVER_VIRTWL: {
+          struct virtwl_ioctl_new new_alloc = {.type = VIRTWL_IOCTL_NEW_ALLOC,
+                                               .fd = -1,
+                                               .flags = 0,
+                                               .size = size};
+          struct wl_shm_pool* pool;
+          int rv;
 
-        rv = ioctl(host->xwl->virtwl_fd, VIRTWL_IOCTL_NEW, &new_alloc);
-        assert(rv == 0);
-        UNUSED(rv);
+          rv = ioctl(host->ctx->virtwl_fd, VIRTWL_IOCTL_NEW, &new_alloc);
+          assert(rv == 0);
+          UNUSED(rv);
 
-        pool = wl_shm_create_pool(host->xwl->shm->internal, new_alloc.fd, size);
-        host->current_buffer->internal = wl_shm_pool_create_buffer(
-            pool, 0, width, height, host_buffer->shm_mmap->stride, shm_format);
+          pool =
+              wl_shm_create_pool(host->ctx->shm->internal, new_alloc.fd, size);
+          host->current_buffer->internal = wl_shm_pool_create_buffer(
+              pool, 0, width, height, host_buffer->shm_mmap->stride,
+              shm_format);
 
-        host->current_buffer->mmap = xwl_mmap_create(
-            new_alloc.fd, size, 0, host_buffer->shm_mmap->stride, bpp);
+          host->current_buffer->mmap = sl_mmap_create(
+              new_alloc.fd, size, 0, host_buffer->shm_mmap->stride, bpp);
 
-        wl_shm_pool_destroy(pool);
-      } break;
+          wl_shm_pool_destroy(pool);
+        } break;
       }
 
       assert(host->current_buffer->internal);
@@ -1599,7 +1611,7 @@ static void xwl_host_surface_attach(struct wl_client *client,
       wl_buffer_set_user_data(host->current_buffer->internal,
                               host->current_buffer);
       wl_buffer_add_listener(host->current_buffer->internal,
-                             &xwl_output_buffer_listener, host->current_buffer);
+                             &sl_output_buffer_listener, host->current_buffer);
     }
   }
 
@@ -1613,9 +1625,9 @@ static void xwl_host_surface_attach(struct wl_client *client,
     wl_surface_attach(host->proxy, buffer_proxy, x, y);
   }
 
-  wl_list_for_each(window, &host->xwl->windows, link) {
+  wl_list_for_each(window, &host->ctx->windows, link) {
     if (window->host_surface_id == wl_resource_get_id(resource)) {
-      while (xwl_process_pending_configure_acks(window, host))
+      while (sl_process_pending_configure_acks(window, host))
         continue;
 
       break;
@@ -1623,12 +1635,15 @@ static void xwl_host_surface_attach(struct wl_client *client,
   }
 }
 
-static void xwl_host_surface_damage(struct wl_client *client,
-                                    struct wl_resource *resource, int32_t x,
-                                    int32_t y, int32_t width, int32_t height) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
-  struct xwl_output_buffer *buffer;
+static void sl_host_surface_damage(struct wl_client* client,
+                                   struct wl_resource* resource,
+                                   int32_t x,
+                                   int32_t y,
+                                   int32_t width,
+                                   int32_t height) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
+  struct sl_output_buffer* buffer;
   int64_t x1, y1, x2, y2;
 
   wl_list_for_each(buffer, &host->busy_buffers, link) {
@@ -1655,30 +1670,31 @@ static void xwl_host_surface_damage(struct wl_client *client,
   wl_surface_damage(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
-static void xwl_frame_callback_done(void *data, struct wl_callback *callback,
-                                    uint32_t time) {
-  struct xwl_host_callback *host = wl_callback_get_user_data(callback);
+static void sl_frame_callback_done(void* data,
+                                   struct wl_callback* callback,
+                                   uint32_t time) {
+  struct sl_host_callback* host = wl_callback_get_user_data(callback);
 
   wl_callback_send_done(host->resource, time);
   wl_resource_destroy(host->resource);
 }
 
-static const struct wl_callback_listener xwl_frame_callback_listener = {
-    xwl_frame_callback_done};
+static const struct wl_callback_listener sl_frame_callback_listener = {
+    sl_frame_callback_done};
 
-static void xwl_host_callback_destroy(struct wl_resource *resource) {
-  struct xwl_host_callback *host = wl_resource_get_user_data(resource);
+static void sl_host_callback_destroy(struct wl_resource* resource) {
+  struct sl_host_callback* host = wl_resource_get_user_data(resource);
 
   wl_callback_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_host_surface_frame(struct wl_client *client,
-                                   struct wl_resource *resource,
-                                   uint32_t callback) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_callback *host_callback;
+static void sl_host_surface_frame(struct wl_client* client,
+                                  struct wl_resource* resource,
+                                  uint32_t callback) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_callback* host_callback;
 
   host_callback = malloc(sizeof(*host_callback));
   assert(host_callback);
@@ -1686,41 +1702,41 @@ static void xwl_host_surface_frame(struct wl_client *client,
   host_callback->resource =
       wl_resource_create(client, &wl_callback_interface, 1, callback);
   wl_resource_set_implementation(host_callback->resource, NULL, host_callback,
-                                 xwl_host_callback_destroy);
+                                 sl_host_callback_destroy);
   host_callback->proxy = wl_surface_frame(host->proxy);
   wl_callback_set_user_data(host_callback->proxy, host_callback);
-  wl_callback_add_listener(host_callback->proxy, &xwl_frame_callback_listener,
+  wl_callback_add_listener(host_callback->proxy, &sl_frame_callback_listener,
                            host_callback);
 }
 
-static void
-xwl_host_surface_set_opaque_region(struct wl_client *client,
-                                   struct wl_resource *resource,
-                                   struct wl_resource *region_resource) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_region *host_region =
+static void sl_host_surface_set_opaque_region(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    struct wl_resource* region_resource) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_region* host_region =
       region_resource ? wl_resource_get_user_data(region_resource) : NULL;
 
   wl_surface_set_opaque_region(host->proxy,
                                host_region ? host_region->proxy : NULL);
 }
 
-static void
-xwl_host_surface_set_input_region(struct wl_client *client,
-                                  struct wl_resource *resource,
-                                  struct wl_resource *region_resource) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_region *host_region =
+static void sl_host_surface_set_input_region(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    struct wl_resource* region_resource) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_region* host_region =
       region_resource ? wl_resource_get_user_data(region_resource) : NULL;
 
   wl_surface_set_input_region(host->proxy,
                               host_region ? host_region->proxy : NULL);
 }
 
-static void xwl_host_surface_commit(struct wl_client *client,
-                                    struct wl_resource *resource) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_window *window;
+static void sl_host_surface_commit(struct wl_client* client,
+                                   struct wl_resource* resource) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  struct sl_window* window;
 
   if (host->contents_shm_mmap) {
     uint8_t *src_base =
@@ -1777,7 +1793,7 @@ static void xwl_host_surface_commit(struct wl_client *client,
   }
 
   if (host->contents_width && host->contents_height) {
-    double scale = host->xwl->scale * host->contents_scale;
+    double scale = host->ctx->scale * host->contents_scale;
 
     if (host->viewport) {
       wp_viewport_set_destination(host->viewport,
@@ -1798,9 +1814,9 @@ static void xwl_host_surface_commit(struct wl_client *client,
     // internal output. TODO(reveman): Remove this when surface-output tracking
     // has been implemented in Chrome.
     if (!host->has_output) {
-      struct xwl_host_output* output;
+      struct sl_host_output* output;
 
-      wl_list_for_each(output, &host->xwl->host_outputs, link) {
+      wl_list_for_each(output, &host->ctx->host_outputs, link) {
         if (output->internal) {
           wl_surface_send_enter(host->resource, output->resource);
           host->has_output = 1;
@@ -1811,7 +1827,7 @@ static void xwl_host_surface_commit(struct wl_client *client,
   } else {
     // Commit if surface is associated with a window. Otherwise, defer
     // commit until window is created.
-    wl_list_for_each(window, &host->xwl->windows, link) {
+    wl_list_for_each(window, &host->ctx->windows, link) {
       if (window->host_surface_id == wl_resource_get_id(resource)) {
         if (window->xdg_surface) {
           wl_surface_commit(host->proxy);
@@ -1826,52 +1842,54 @@ static void xwl_host_surface_commit(struct wl_client *client,
   if (host->contents_shm_mmap) {
     if (host->contents_shm_mmap->buffer_resource)
       wl_buffer_send_release(host->contents_shm_mmap->buffer_resource);
-    xwl_mmap_unref(host->contents_shm_mmap);
+    sl_mmap_unref(host->contents_shm_mmap);
     host->contents_shm_mmap = NULL;
   }
 }
 
-static void xwl_host_surface_set_buffer_transform(struct wl_client *client,
-                                                  struct wl_resource *resource,
-                                                  int32_t transform) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
+static void sl_host_surface_set_buffer_transform(struct wl_client* client,
+                                                 struct wl_resource* resource,
+                                                 int32_t transform) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
 
   wl_surface_set_buffer_transform(host->proxy, transform);
 }
 
-static void xwl_host_surface_set_buffer_scale(struct wl_client *client,
-                                              struct wl_resource *resource,
-                                              int32_t scale) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
+static void sl_host_surface_set_buffer_scale(struct wl_client* client,
+                                             struct wl_resource* resource,
+                                             int32_t scale) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
 
   host->contents_scale = scale;
 }
 
-static void xwl_host_surface_damage_buffer(struct wl_client *client,
-                                           struct wl_resource *resource,
-                                           int32_t x, int32_t y, int32_t width,
-                                           int32_t height) {
+static void sl_host_surface_damage_buffer(struct wl_client* client,
+                                          struct wl_resource* resource,
+                                          int32_t x,
+                                          int32_t y,
+                                          int32_t width,
+                                          int32_t height) {
   assert(0);
 }
 
-static const struct wl_surface_interface xwl_surface_implementation = {
-    xwl_host_surface_destroy,
-    xwl_host_surface_attach,
-    xwl_host_surface_damage,
-    xwl_host_surface_frame,
-    xwl_host_surface_set_opaque_region,
-    xwl_host_surface_set_input_region,
-    xwl_host_surface_commit,
-    xwl_host_surface_set_buffer_transform,
-    xwl_host_surface_set_buffer_scale,
-    xwl_host_surface_damage_buffer};
+static const struct wl_surface_interface sl_surface_implementation = {
+    sl_host_surface_destroy,
+    sl_host_surface_attach,
+    sl_host_surface_damage,
+    sl_host_surface_frame,
+    sl_host_surface_set_opaque_region,
+    sl_host_surface_set_input_region,
+    sl_host_surface_commit,
+    sl_host_surface_set_buffer_transform,
+    sl_host_surface_set_buffer_scale,
+    sl_host_surface_damage_buffer};
 
-static void xwl_destroy_host_surface(struct wl_resource *resource) {
-  struct xwl_host_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_window *window, *surface_window = NULL;
-  struct xwl_output_buffer *buffer;
+static void sl_destroy_host_surface(struct wl_resource* resource) {
+  struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  struct sl_window *window, *surface_window = NULL;
+  struct sl_output_buffer* buffer;
 
-  wl_list_for_each(window, &host->xwl->windows, link) {
+  wl_list_for_each(window, &host->ctx->windows, link) {
     if (window->host_surface_id == wl_resource_get_id(resource)) {
       surface_window = window;
       break;
@@ -1880,19 +1898,19 @@ static void xwl_destroy_host_surface(struct wl_resource *resource) {
 
   if (surface_window) {
     surface_window->host_surface_id = 0;
-    xwl_window_update(surface_window);
+    sl_window_update(surface_window);
   }
 
   if (host->contents_shm_mmap)
-    xwl_mmap_unref(host->contents_shm_mmap);
+    sl_mmap_unref(host->contents_shm_mmap);
 
   while (!wl_list_empty(&host->released_buffers)) {
     buffer = wl_container_of(host->released_buffers.next, buffer, link);
-    xwl_output_buffer_destroy(buffer);
+    sl_output_buffer_destroy(buffer);
   }
   while (!wl_list_empty(&host->busy_buffers)) {
     buffer = wl_container_of(host->busy_buffers.next, buffer, link);
-    xwl_output_buffer_destroy(buffer);
+    sl_output_buffer_destroy(buffer);
   }
 
   if (host->viewport)
@@ -1902,38 +1920,41 @@ static void xwl_destroy_host_surface(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_surface_enter(void* data,
-                              struct wl_surface* surface,
-                              struct wl_output* output) {
-  struct xwl_host_surface* host = wl_surface_get_user_data(surface);
-  struct xwl_host_output* host_output = wl_output_get_user_data(output);
+static void sl_surface_enter(void* data,
+                             struct wl_surface* surface,
+                             struct wl_output* output) {
+  struct sl_host_surface* host = wl_surface_get_user_data(surface);
+  struct sl_host_output* host_output = wl_output_get_user_data(output);
 
   wl_surface_send_enter(host->resource, host_output->resource);
   host->has_output = 1;
 }
 
-static void xwl_surface_leave(void* data,
-                              struct wl_surface* surface,
-                              struct wl_output* output) {
-  struct xwl_host_surface* host = wl_surface_get_user_data(surface);
-  struct xwl_host_output* host_output = wl_output_get_user_data(output);
+static void sl_surface_leave(void* data,
+                             struct wl_surface* surface,
+                             struct wl_output* output) {
+  struct sl_host_surface* host = wl_surface_get_user_data(surface);
+  struct sl_host_output* host_output = wl_output_get_user_data(output);
 
   wl_surface_send_leave(host->resource, host_output->resource);
 }
 
-static const struct wl_surface_listener xwl_surface_listener = {
-    xwl_surface_enter, xwl_surface_leave};
+static const struct wl_surface_listener sl_surface_listener = {
+    sl_surface_enter, sl_surface_leave};
 
-static void xwl_region_destroy(struct wl_client *client,
-                               struct wl_resource *resource) {
+static void sl_region_destroy(struct wl_client* client,
+                              struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_region_add(struct wl_client *client,
-                           struct wl_resource *resource, int32_t x, int32_t y,
-                           int32_t width, int32_t height) {
-  struct xwl_host_region *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
+static void sl_region_add(struct wl_client* client,
+                          struct wl_resource* resource,
+                          int32_t x,
+                          int32_t y,
+                          int32_t width,
+                          int32_t height) {
+  struct sl_host_region* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
   int32_t x1, y1, x2, y2;
 
   x1 = x / scale;
@@ -1944,11 +1965,14 @@ static void xwl_region_add(struct wl_client *client,
   wl_region_add(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
-static void xwl_region_subtract(struct wl_client *client,
-                                struct wl_resource *resource, int32_t x,
-                                int32_t y, int32_t width, int32_t height) {
-  struct xwl_host_region *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
+static void sl_region_subtract(struct wl_client* client,
+                               struct wl_resource* resource,
+                               int32_t x,
+                               int32_t y,
+                               int32_t width,
+                               int32_t height) {
+  struct sl_host_region* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
   int32_t x1, y1, x2, y2;
 
   x1 = x / scale;
@@ -1959,28 +1983,28 @@ static void xwl_region_subtract(struct wl_client *client,
   wl_region_subtract(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
-static const struct wl_region_interface xwl_region_implementation = {
-    xwl_region_destroy, xwl_region_add, xwl_region_subtract};
+static const struct wl_region_interface sl_region_implementation = {
+    sl_region_destroy, sl_region_add, sl_region_subtract};
 
-static void xwl_destroy_host_region(struct wl_resource *resource) {
-  struct xwl_host_region *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_region(struct wl_resource* resource) {
+  struct sl_host_region* host = wl_resource_get_user_data(resource);
 
   wl_region_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_compositor_create_host_surface(struct wl_client *client,
-                                               struct wl_resource *resource,
-                                               uint32_t id) {
-  struct xwl_host_compositor *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_surface;
-  struct xwl_window *window, *unpaired_window = NULL;
+static void sl_compositor_create_host_surface(struct wl_client* client,
+                                              struct wl_resource* resource,
+                                              uint32_t id) {
+  struct sl_host_compositor* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_surface;
+  struct sl_window *window, *unpaired_window = NULL;
 
   host_surface = malloc(sizeof(*host_surface));
   assert(host_surface);
 
-  host_surface->xwl = host->compositor->xwl;
+  host_surface->ctx = host->compositor->ctx;
   host_surface->contents_width = 0;
   host_surface->contents_height = 0;
   host_surface->contents_scale = 1;
@@ -1994,19 +2018,19 @@ static void xwl_compositor_create_host_surface(struct wl_client *client,
   host_surface->resource = wl_resource_create(
       client, &wl_surface_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_surface->resource,
-                                 &xwl_surface_implementation, host_surface,
-                                 xwl_destroy_host_surface);
+                                 &sl_surface_implementation, host_surface,
+                                 sl_destroy_host_surface);
   host_surface->proxy = wl_compositor_create_surface(host->proxy);
   wl_surface_set_user_data(host_surface->proxy, host_surface);
-  wl_surface_add_listener(host_surface->proxy, &xwl_surface_listener,
+  wl_surface_add_listener(host_surface->proxy, &sl_surface_listener,
                           host_surface);
   host_surface->viewport = NULL;
-  if (host_surface->xwl->viewporter) {
+  if (host_surface->ctx->viewporter) {
     host_surface->viewport = wp_viewporter_get_viewport(
-        host_surface->xwl->viewporter->internal, host_surface->proxy);
+        host_surface->ctx->viewporter->internal, host_surface->proxy);
   }
 
-  wl_list_for_each(window, &host->compositor->xwl->unpaired_windows, link) {
+  wl_list_for_each(window, &host->compositor->ctx->unpaired_windows, link) {
     if (window->host_surface_id == id) {
       unpaired_window = window;
       break;
@@ -2014,95 +2038,98 @@ static void xwl_compositor_create_host_surface(struct wl_client *client,
   }
 
   if (unpaired_window)
-    xwl_window_update(window);
+    sl_window_update(window);
 }
 
-static void xwl_compositor_create_host_region(struct wl_client *client,
-                                              struct wl_resource *resource,
-                                              uint32_t id) {
-  struct xwl_host_compositor *host = wl_resource_get_user_data(resource);
-  struct xwl_host_region *host_region;
+static void sl_compositor_create_host_region(struct wl_client* client,
+                                             struct wl_resource* resource,
+                                             uint32_t id) {
+  struct sl_host_compositor* host = wl_resource_get_user_data(resource);
+  struct sl_host_region* host_region;
 
   host_region = malloc(sizeof(*host_region));
   assert(host_region);
 
-  host_region->xwl = host->compositor->xwl;
+  host_region->ctx = host->compositor->ctx;
   host_region->resource = wl_resource_create(
       client, &wl_region_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_region->resource,
-                                 &xwl_region_implementation, host_region,
-                                 xwl_destroy_host_region);
+                                 &sl_region_implementation, host_region,
+                                 sl_destroy_host_region);
   host_region->proxy = wl_compositor_create_region(host->proxy);
   wl_region_set_user_data(host_region->proxy, host_region);
 }
 
-static const struct wl_compositor_interface xwl_compositor_implementation = {
-    xwl_compositor_create_host_surface, xwl_compositor_create_host_region};
+static const struct wl_compositor_interface sl_compositor_implementation = {
+    sl_compositor_create_host_surface, sl_compositor_create_host_region};
 
-static void xwl_destroy_host_compositor(struct wl_resource *resource) {
-  struct xwl_host_compositor *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_compositor(struct wl_resource* resource) {
+  struct sl_host_compositor* host = wl_resource_get_user_data(resource);
 
   wl_compositor_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_bind_host_compositor(struct wl_client *client, void *data,
-                                     uint32_t version, uint32_t id) {
-  struct xwl_compositor *compositor = (struct xwl_compositor *)data;
-  struct xwl_host_compositor *host;
+static void sl_bind_host_compositor(struct wl_client* client,
+                                    void* data,
+                                    uint32_t version,
+                                    uint32_t id) {
+  struct sl_compositor* compositor = (struct sl_compositor*)data;
+  struct sl_host_compositor* host;
 
   host = malloc(sizeof(*host));
   assert(host);
   host->compositor = compositor;
   host->resource = wl_resource_create(client, &wl_compositor_interface,
                                       MIN(version, compositor->version), id);
-  wl_resource_set_implementation(host->resource, &xwl_compositor_implementation,
-                                 host, xwl_destroy_host_compositor);
+  wl_resource_set_implementation(host->resource, &sl_compositor_implementation,
+                                 host, sl_destroy_host_compositor);
   host->proxy = wl_registry_bind(
-      wl_display_get_registry(compositor->xwl->display), compositor->id,
+      wl_display_get_registry(compositor->ctx->display), compositor->id,
       &wl_compositor_interface, compositor->version);
   wl_compositor_set_user_data(host->proxy, host);
 }
 
-static void xwl_host_buffer_destroy(struct wl_client *client,
-                                    struct wl_resource *resource) {
+static void sl_host_buffer_destroy(struct wl_client* client,
+                                   struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static const struct wl_buffer_interface xwl_buffer_implementation = {
-    xwl_host_buffer_destroy};
+static const struct wl_buffer_interface sl_buffer_implementation = {
+    sl_host_buffer_destroy};
 
-static void xwl_buffer_release(void *data, struct wl_buffer *buffer) {
-  struct xwl_host_buffer *host = wl_buffer_get_user_data(buffer);
+static void sl_buffer_release(void* data, struct wl_buffer* buffer) {
+  struct sl_host_buffer* host = wl_buffer_get_user_data(buffer);
 
   wl_buffer_send_release(host->resource);
 }
 
-static const struct wl_buffer_listener xwl_buffer_listener = {
-    xwl_buffer_release};
+static const struct wl_buffer_listener sl_buffer_listener = {sl_buffer_release};
 
-static void xwl_destroy_host_buffer(struct wl_resource *resource) {
-  struct xwl_host_buffer *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_buffer(struct wl_resource* resource) {
+  struct sl_host_buffer* host = wl_resource_get_user_data(resource);
 
   if (host->proxy)
     wl_buffer_destroy(host->proxy);
   if (host->shm_mmap) {
     host->shm_mmap->buffer_resource = NULL;
-    xwl_mmap_unref(host->shm_mmap);
+    sl_mmap_unref(host->shm_mmap);
   }
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_host_shm_pool_create_host_buffer(struct wl_client *client,
-                                                 struct wl_resource *resource,
-                                                 uint32_t id, int32_t offset,
-                                                 int32_t width, int32_t height,
-                                                 int32_t stride,
-                                                 uint32_t format) {
-  struct xwl_host_shm_pool *host = wl_resource_get_user_data(resource);
-  struct xwl_host_buffer *host_buffer;
+static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
+                                                struct wl_resource* resource,
+                                                uint32_t id,
+                                                int32_t offset,
+                                                int32_t width,
+                                                int32_t height,
+                                                int32_t stride,
+                                                uint32_t format) {
+  struct sl_host_shm_pool* host = wl_resource_get_user_data(resource);
+  struct sl_host_buffer* host_buffer;
 
   host_buffer = malloc(sizeof(*host_buffer));
   assert(host_buffer);
@@ -2112,48 +2139,48 @@ static void xwl_host_shm_pool_create_host_buffer(struct wl_client *client,
   host_buffer->resource =
       wl_resource_create(client, &wl_buffer_interface, 1, id);
   wl_resource_set_implementation(host_buffer->resource,
-                                 &xwl_buffer_implementation, host_buffer,
-                                 xwl_destroy_host_buffer);
+                                 &sl_buffer_implementation, host_buffer,
+                                 sl_destroy_host_buffer);
 
-  if (host->shm->xwl->shm_driver == SHM_DRIVER_NOOP) {
+  if (host->shm->ctx->shm_driver == SHM_DRIVER_NOOP) {
     assert(host->proxy);
     host_buffer->shm_mmap = NULL;
     host_buffer->shm_format = 0;
     host_buffer->proxy = wl_shm_pool_create_buffer(host->proxy, offset, width,
                                                    height, stride, format);
     wl_buffer_set_user_data(host_buffer->proxy, host_buffer);
-    wl_buffer_add_listener(host_buffer->proxy, &xwl_buffer_listener,
+    wl_buffer_add_listener(host_buffer->proxy, &sl_buffer_listener,
                            host_buffer);
   } else {
     host_buffer->proxy = NULL;
     host_buffer->shm_format = format;
     host_buffer->shm_mmap =
-        xwl_mmap_create(dup(host->fd), height * stride, offset, stride,
-                        xwl_bpp_for_shm_format(format));
+        sl_mmap_create(dup(host->fd), height * stride, offset, stride,
+                       sl_bpp_for_shm_format(format));
     host_buffer->shm_mmap->buffer_resource = host_buffer->resource;
   }
 }
 
-static void xwl_host_shm_pool_destroy(struct wl_client *client,
-                                      struct wl_resource *resource) {
+static void sl_host_shm_pool_destroy(struct wl_client* client,
+                                     struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_host_shm_pool_resize(struct wl_client *client,
-                                     struct wl_resource *resource,
-                                     int32_t size) {
-  struct xwl_host_shm_pool *host = wl_resource_get_user_data(resource);
+static void sl_host_shm_pool_resize(struct wl_client* client,
+                                    struct wl_resource* resource,
+                                    int32_t size) {
+  struct sl_host_shm_pool* host = wl_resource_get_user_data(resource);
 
   if (host->proxy)
     wl_shm_pool_resize(host->proxy, size);
 }
 
-static const struct wl_shm_pool_interface xwl_shm_pool_implementation = {
-    xwl_host_shm_pool_create_host_buffer, xwl_host_shm_pool_destroy,
-    xwl_host_shm_pool_resize};
+static const struct wl_shm_pool_interface sl_shm_pool_implementation = {
+    sl_host_shm_pool_create_host_buffer, sl_host_shm_pool_destroy,
+    sl_host_shm_pool_resize};
 
-static void xwl_destroy_host_shm_pool(struct wl_resource *resource) {
-  struct xwl_host_shm_pool *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_shm_pool(struct wl_resource* resource) {
+  struct sl_host_shm_pool* host = wl_resource_get_user_data(resource);
 
   if (host->fd >= 0)
     close(host->fd);
@@ -2163,11 +2190,13 @@ static void xwl_destroy_host_shm_pool(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_shm_create_host_pool(struct wl_client *client,
-                                     struct wl_resource *resource, uint32_t id,
-                                     int fd, int32_t size) {
-  struct xwl_host_shm *host = wl_resource_get_user_data(resource);
-  struct xwl_host_shm_pool *host_shm_pool;
+static void sl_shm_create_host_pool(struct wl_client* client,
+                                    struct wl_resource* resource,
+                                    uint32_t id,
+                                    int fd,
+                                    int32_t size) {
+  struct sl_host_shm* host = wl_resource_get_user_data(resource);
+  struct sl_host_shm_pool* host_shm_pool;
 
   host_shm_pool = malloc(sizeof(*host_shm_pool));
   assert(host_shm_pool);
@@ -2178,267 +2207,283 @@ static void xwl_shm_create_host_pool(struct wl_client *client,
   host_shm_pool->resource =
       wl_resource_create(client, &wl_shm_pool_interface, 1, id);
   wl_resource_set_implementation(host_shm_pool->resource,
-                                 &xwl_shm_pool_implementation, host_shm_pool,
-                                 xwl_destroy_host_shm_pool);
+                                 &sl_shm_pool_implementation, host_shm_pool,
+                                 sl_destroy_host_shm_pool);
 
-  switch (host->shm->xwl->shm_driver) {
-  case SHM_DRIVER_NOOP:
-    host_shm_pool->proxy = wl_shm_create_pool(host->proxy, fd, size);
-    wl_shm_pool_set_user_data(host_shm_pool->proxy, host_shm_pool);
-    close(fd);
-    break;
-  case SHM_DRIVER_DMABUF:
-  case SHM_DRIVER_VIRTWL:
-    host_shm_pool->fd = fd;
-    break;
+  switch (host->shm->ctx->shm_driver) {
+    case SHM_DRIVER_NOOP:
+      host_shm_pool->proxy = wl_shm_create_pool(host->proxy, fd, size);
+      wl_shm_pool_set_user_data(host_shm_pool->proxy, host_shm_pool);
+      close(fd);
+      break;
+    case SHM_DRIVER_DMABUF:
+    case SHM_DRIVER_VIRTWL:
+      host_shm_pool->fd = fd;
+      break;
   }
 }
 
-static const struct wl_shm_interface xwl_shm_implementation = {
-    xwl_shm_create_host_pool};
+static const struct wl_shm_interface sl_shm_implementation = {
+    sl_shm_create_host_pool};
 
-static void xwl_shm_format(void *data, struct wl_shm *shm, uint32_t format) {
-  struct xwl_host_shm *host = wl_shm_get_user_data(shm);
+static void sl_shm_format(void* data, struct wl_shm* shm, uint32_t format) {
+  struct sl_host_shm* host = wl_shm_get_user_data(shm);
 
-  if (xwl_supported_shm_format(format))
+  if (sl_supported_shm_format(format))
     wl_shm_send_format(host->resource, format);
 }
 
-static const struct wl_shm_listener xwl_shm_listener = {xwl_shm_format};
+static const struct wl_shm_listener sl_shm_listener = {sl_shm_format};
 
-static void xwl_destroy_host_shm(struct wl_resource *resource) {
-  struct xwl_host_shm *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_shm(struct wl_resource* resource) {
+  struct sl_host_shm* host = wl_resource_get_user_data(resource);
 
   wl_shm_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_bind_host_shm(struct wl_client *client, void *data,
-                              uint32_t version, uint32_t id) {
-  struct xwl_shm *shm = (struct xwl_shm *)data;
-  struct xwl_host_shm *host;
+static void sl_bind_host_shm(struct wl_client* client,
+                             void* data,
+                             uint32_t version,
+                             uint32_t id) {
+  struct sl_shm* shm = (struct sl_shm*)data;
+  struct sl_host_shm* host;
 
   host = malloc(sizeof(*host));
   assert(host);
   host->shm = shm;
   host->resource = wl_resource_create(client, &wl_shm_interface, 1, id);
-  wl_resource_set_implementation(host->resource, &xwl_shm_implementation, host,
-                                 xwl_destroy_host_shm);
-  host->proxy = wl_registry_bind(wl_display_get_registry(shm->xwl->display),
+  wl_resource_set_implementation(host->resource, &sl_shm_implementation, host,
+                                 sl_destroy_host_shm);
+  host->proxy = wl_registry_bind(wl_display_get_registry(shm->ctx->display),
                                  shm->id, &wl_shm_interface,
                                  wl_resource_get_version(host->resource));
   wl_shm_set_user_data(host->proxy, host);
-  wl_shm_add_listener(host->proxy, &xwl_shm_listener, host);
+  wl_shm_add_listener(host->proxy, &sl_shm_listener, host);
 }
 
-static void xwl_shell_surface_pong(struct wl_client *client,
-                                   struct wl_resource *resource,
-                                   uint32_t serial) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
+static void sl_shell_surface_pong(struct wl_client* client,
+                                  struct wl_resource* resource,
+                                  uint32_t serial) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
 
   wl_shell_surface_pong(host->proxy, serial);
 }
 
-static void xwl_shell_surface_move(struct wl_client *client,
-                                   struct wl_resource *resource,
-                                   struct wl_resource *seat_resource,
-                                   uint32_t serial) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat = wl_resource_get_user_data(seat_resource);
+static void sl_shell_surface_move(struct wl_client* client,
+                                  struct wl_resource* resource,
+                                  struct wl_resource* seat_resource,
+                                  uint32_t serial) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_seat* host_seat = wl_resource_get_user_data(seat_resource);
 
   wl_shell_surface_move(host->proxy, host_seat->proxy, serial);
 }
 
-static void xwl_shell_surface_resize(struct wl_client *client,
-                                     struct wl_resource *resource,
-                                     struct wl_resource *seat_resource,
-                                     uint32_t serial, uint32_t edges) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat = wl_resource_get_user_data(seat_resource);
+static void sl_shell_surface_resize(struct wl_client* client,
+                                    struct wl_resource* resource,
+                                    struct wl_resource* seat_resource,
+                                    uint32_t serial,
+                                    uint32_t edges) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_seat* host_seat = wl_resource_get_user_data(seat_resource);
 
   wl_shell_surface_resize(host->proxy, host_seat->proxy, serial, edges);
 }
 
-static void xwl_shell_surface_set_toplevel(struct wl_client *client,
-                                           struct wl_resource *resource) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
+static void sl_shell_surface_set_toplevel(struct wl_client* client,
+                                          struct wl_resource* resource) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
 
   wl_shell_surface_set_toplevel(host->proxy);
 }
 
-static void xwl_shell_surface_set_transient(struct wl_client *client,
-                                            struct wl_resource *resource,
-                                            struct wl_resource *parent_resource,
-                                            int32_t x, int32_t y,
-                                            uint32_t flags) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_parent =
+static void sl_shell_surface_set_transient(struct wl_client* client,
+                                           struct wl_resource* resource,
+                                           struct wl_resource* parent_resource,
+                                           int32_t x,
+                                           int32_t y,
+                                           uint32_t flags) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_parent =
       wl_resource_get_user_data(parent_resource);
 
   wl_shell_surface_set_transient(host->proxy, host_parent->proxy, x, y, flags);
 }
 
-static void xwl_shell_surface_set_fullscreen(
-    struct wl_client *client, struct wl_resource *resource, uint32_t method,
-    uint32_t framerate, struct wl_resource *output_resource) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_output *host_output =
+static void sl_shell_surface_set_fullscreen(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    uint32_t method,
+    uint32_t framerate,
+    struct wl_resource* output_resource) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_output* host_output =
       output_resource ? wl_resource_get_user_data(output_resource) : NULL;
 
   wl_shell_surface_set_fullscreen(host->proxy, method, framerate,
                                   host_output ? host_output->proxy : NULL);
 }
 
-static void xwl_shell_surface_set_popup(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        struct wl_resource *seat_resource,
-                                        uint32_t serial,
-                                        struct wl_resource *parent_resource,
-                                        int32_t x, int32_t y, uint32_t flags) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat = wl_resource_get_user_data(seat_resource);
-  struct xwl_host_surface *host_parent =
+static void sl_shell_surface_set_popup(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       struct wl_resource* seat_resource,
+                                       uint32_t serial,
+                                       struct wl_resource* parent_resource,
+                                       int32_t x,
+                                       int32_t y,
+                                       uint32_t flags) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_seat* host_seat = wl_resource_get_user_data(seat_resource);
+  struct sl_host_surface* host_parent =
       wl_resource_get_user_data(parent_resource);
 
   wl_shell_surface_set_popup(host->proxy, host_seat->proxy, serial,
                              host_parent->proxy, x, y, flags);
 }
 
-static void
-xwl_shell_surface_set_maximized(struct wl_client *client,
-                                struct wl_resource *resource,
-                                struct wl_resource *output_resource) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_output *host_output =
+static void sl_shell_surface_set_maximized(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    struct wl_resource* output_resource) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_output* host_output =
       output_resource ? wl_resource_get_user_data(output_resource) : NULL;
 
   wl_shell_surface_set_maximized(host->proxy,
                                  host_output ? host_output->proxy : NULL);
 }
 
-static void xwl_shell_surface_set_title(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        const char *title) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
+static void sl_shell_surface_set_title(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       const char* title) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
 
   wl_shell_surface_set_title(host->proxy, title);
 }
 
-static void xwl_shell_surface_set_class(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        const char *clazz) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
+static void sl_shell_surface_set_class(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       const char* clazz) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
 
   wl_shell_surface_set_class(host->proxy, clazz);
 }
 
-static const struct wl_shell_surface_interface
-    xwl_shell_surface_implementation = {
-        xwl_shell_surface_pong,          xwl_shell_surface_move,
-        xwl_shell_surface_resize,        xwl_shell_surface_set_toplevel,
-        xwl_shell_surface_set_transient, xwl_shell_surface_set_fullscreen,
-        xwl_shell_surface_set_popup,     xwl_shell_surface_set_maximized,
-        xwl_shell_surface_set_title,     xwl_shell_surface_set_class};
+static const struct wl_shell_surface_interface sl_shell_surface_implementation =
+    {sl_shell_surface_pong,          sl_shell_surface_move,
+     sl_shell_surface_resize,        sl_shell_surface_set_toplevel,
+     sl_shell_surface_set_transient, sl_shell_surface_set_fullscreen,
+     sl_shell_surface_set_popup,     sl_shell_surface_set_maximized,
+     sl_shell_surface_set_title,     sl_shell_surface_set_class};
 
-static void xwl_shell_surface_ping(void *data,
-                                   struct wl_shell_surface *shell_surface,
-                                   uint32_t serial) {
-  struct xwl_host_shell_surface *host =
+static void sl_shell_surface_ping(void* data,
+                                  struct wl_shell_surface* shell_surface,
+                                  uint32_t serial) {
+  struct sl_host_shell_surface* host =
       wl_shell_surface_get_user_data(shell_surface);
 
   wl_shell_surface_send_ping(host->resource, serial);
 }
 
-static void xwl_shell_surface_configure(void *data,
-                                        struct wl_shell_surface *shell_surface,
-                                        uint32_t edges, int32_t width,
-                                        int32_t height) {
-  struct xwl_host_shell_surface *host =
+static void sl_shell_surface_configure(void* data,
+                                       struct wl_shell_surface* shell_surface,
+                                       uint32_t edges,
+                                       int32_t width,
+                                       int32_t height) {
+  struct sl_host_shell_surface* host =
       wl_shell_surface_get_user_data(shell_surface);
 
   wl_shell_surface_send_configure(host->resource, edges, width, height);
 }
 
-static void
-xwl_shell_surface_popup_done(void *data,
-                             struct wl_shell_surface *shell_surface) {
-  struct xwl_host_shell_surface *host =
+static void sl_shell_surface_popup_done(
+    void* data, struct wl_shell_surface* shell_surface) {
+  struct sl_host_shell_surface* host =
       wl_shell_surface_get_user_data(shell_surface);
 
   wl_shell_surface_send_popup_done(host->resource);
 }
 
-static const struct wl_shell_surface_listener xwl_shell_surface_listener = {
-    xwl_shell_surface_ping, xwl_shell_surface_configure,
-    xwl_shell_surface_popup_done};
+static const struct wl_shell_surface_listener sl_shell_surface_listener = {
+    sl_shell_surface_ping, sl_shell_surface_configure,
+    sl_shell_surface_popup_done};
 
-static void xwl_destroy_host_shell_surface(struct wl_resource *resource) {
-  struct xwl_host_shell_surface *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_shell_surface(struct wl_resource* resource) {
+  struct sl_host_shell_surface* host = wl_resource_get_user_data(resource);
 
   wl_shell_surface_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void
-xwl_host_shell_get_shell_surface(struct wl_client *client,
-                                 struct wl_resource *resource, uint32_t id,
-                                 struct wl_resource *surface_resource) {
-  struct xwl_host_shell *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_surface =
+static void sl_host_shell_get_shell_surface(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    uint32_t id,
+    struct wl_resource* surface_resource) {
+  struct sl_host_shell* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_surface =
       wl_resource_get_user_data(surface_resource);
-  struct xwl_host_shell_surface *host_shell_surface;
+  struct sl_host_shell_surface* host_shell_surface;
 
   host_shell_surface = malloc(sizeof(*host_shell_surface));
   assert(host_shell_surface);
   host_shell_surface->resource =
       wl_resource_create(client, &wl_shell_surface_interface, 1, id);
   wl_resource_set_implementation(
-      host_shell_surface->resource, &xwl_shell_surface_implementation,
-      host_shell_surface, xwl_destroy_host_shell_surface);
+      host_shell_surface->resource, &sl_shell_surface_implementation,
+      host_shell_surface, sl_destroy_host_shell_surface);
   host_shell_surface->proxy =
       wl_shell_get_shell_surface(host->proxy, host_surface->proxy);
   wl_shell_surface_set_user_data(host_shell_surface->proxy, host_shell_surface);
   wl_shell_surface_add_listener(host_shell_surface->proxy,
-                                &xwl_shell_surface_listener,
-                                host_shell_surface);
+                                &sl_shell_surface_listener, host_shell_surface);
   host_surface->has_role = 1;
 }
 
-static const struct wl_shell_interface xwl_shell_implementation = {
-    xwl_host_shell_get_shell_surface};
+static const struct wl_shell_interface sl_shell_implementation = {
+    sl_host_shell_get_shell_surface};
 
-static void xwl_destroy_host_shell(struct wl_resource *resource) {
-  struct xwl_host_shell *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_shell(struct wl_resource* resource) {
+  struct sl_host_shell* host = wl_resource_get_user_data(resource);
 
   wl_shell_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_bind_host_shell(struct wl_client *client, void *data,
-                                uint32_t version, uint32_t id) {
-  struct xwl_shell *shell = (struct xwl_shell *)data;
-  struct xwl_host_shell *host;
+static void sl_bind_host_shell(struct wl_client* client,
+                               void* data,
+                               uint32_t version,
+                               uint32_t id) {
+  struct sl_shell* shell = (struct sl_shell*)data;
+  struct sl_host_shell* host;
 
   host = malloc(sizeof(*host));
   assert(host);
   host->shell = shell;
   host->resource = wl_resource_create(client, &wl_shell_interface, 1, id);
-  wl_resource_set_implementation(host->resource, &xwl_shell_implementation,
-                                 host, xwl_destroy_host_shell);
-  host->proxy = wl_registry_bind(wl_display_get_registry(shell->xwl->display),
+  wl_resource_set_implementation(host->resource, &sl_shell_implementation, host,
+                                 sl_destroy_host_shell);
+  host->proxy = wl_registry_bind(wl_display_get_registry(shell->ctx->display),
                                  shell->id, &wl_shell_interface,
                                  wl_resource_get_version(host->resource));
   wl_shell_set_user_data(host->proxy, host);
 }
 
-static void xwl_output_geometry(void *data, struct wl_output *output, int x,
-                                int y, int physical_width, int physical_height,
-                                int subpixel, const char *make,
-                                const char *model, int transform) {
-  struct xwl_host_output *host = wl_output_get_user_data(output);
+static void sl_output_geometry(void* data,
+                               struct wl_output* output,
+                               int x,
+                               int y,
+                               int physical_width,
+                               int physical_height,
+                               int subpixel,
+                               const char* make,
+                               const char* model,
+                               int transform) {
+  struct sl_host_output* host = wl_output_get_user_data(output);
 
   host->x = x;
   host->y = y;
@@ -2452,10 +2497,13 @@ static void xwl_output_geometry(void *data, struct wl_output *output, int x,
   host->transform = transform;
 }
 
-static void xwl_output_mode(void *data, struct wl_output *output,
-                            uint32_t flags, int width, int height,
-                            int refresh) {
-  struct xwl_host_output *host = wl_output_get_user_data(output);
+static void sl_output_mode(void* data,
+                           struct wl_output* output,
+                           uint32_t flags,
+                           int width,
+                           int height,
+                           int refresh) {
+  struct sl_host_output* host = wl_output_get_user_data(output);
 
   host->flags = flags;
   host->width = width;
@@ -2463,17 +2511,17 @@ static void xwl_output_mode(void *data, struct wl_output *output,
   host->refresh = refresh;
 }
 
-static double xwl_aura_scale_factor_to_double(int scale_factor) {
+static double sl_aura_scale_factor_to_double(int scale_factor) {
   // Aura scale factor is an enum that for all currently know values
   // is a scale value multipled by 1000. For example, enum value for
   // 1.25 scale factor is 1250.
   return scale_factor / 1000.0;
 }
 
-static void xwl_send_host_output_state(struct xwl_host_output* host) {
+static void sl_send_host_output_state(struct sl_host_output* host) {
   double preferred_scale =
-      xwl_aura_scale_factor_to_double(host->preferred_scale);
-  double current_scale = xwl_aura_scale_factor_to_double(host->current_scale);
+      sl_aura_scale_factor_to_double(host->preferred_scale);
+  double current_scale = sl_aura_scale_factor_to_double(host->current_scale);
   double ideal_scale_factor = 1.0;
   double scale_factor = host->scale_factor;
   int scale;
@@ -2485,9 +2533,9 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
   int height;
 
   // Use the scale factor we received from aura shell protocol when available.
-  if (host->output->xwl->aura_shell) {
+  if (host->output->ctx->aura_shell) {
     double device_scale_factor =
-        xwl_aura_scale_factor_to_double(host->device_scale_factor);
+        sl_aura_scale_factor_to_double(host->device_scale_factor);
 
     ideal_scale_factor = device_scale_factor * preferred_scale;
     scale_factor = device_scale_factor * current_scale;
@@ -2496,7 +2544,7 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
   // Always use scale=1 and adjust geometry and mode based on ideal
   // scale factor for Xwayland client. For other clients, pick an optimal
   // scale and adjust geometry and mode based on it.
-  if (host->output->xwl->xwayland) {
+  if (host->output->ctx->xwayland) {
     scale = 1;
     physical_width = host->physical_width * ideal_scale_factor / scale_factor;
     physical_height = host->physical_height * ideal_scale_factor / scale_factor;
@@ -2505,27 +2553,27 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
     // pointer events can always be dispatched to the visible region of the
     // window.
     x = y = 0;
-    width = host->width * host->output->xwl->scale / scale_factor;
-    height = host->height * host->output->xwl->scale / scale_factor;
+    width = host->width * host->output->ctx->scale / scale_factor;
+    height = host->height * host->output->ctx->scale / scale_factor;
   } else {
     scale =
-        MIN(ceil(scale_factor / host->output->xwl->scale), MAX_OUTPUT_SCALE);
+        MIN(ceil(scale_factor / host->output->ctx->scale), MAX_OUTPUT_SCALE);
     physical_width = host->physical_width;
     physical_height = host->physical_height;
     // Should x/y be affected by scale?
     x = host->x;
     y = host->y;
-    width = host->width * host->output->xwl->scale * scale / scale_factor;
-    height = host->height * host->output->xwl->scale * scale / scale_factor;
+    width = host->width * host->output->ctx->scale * scale / scale_factor;
+    height = host->height * host->output->ctx->scale * scale / scale_factor;
   }
 
-  if (host->output->xwl->dpi.size) {
+  if (host->output->ctx->dpi.size) {
     int dpi = (width * INCH_IN_MM) / physical_width;
-    int adjusted_dpi = *((int*)host->output->xwl->dpi.data);
+    int adjusted_dpi = *((int*)host->output->ctx->dpi.data);
     double mmpd;
     int* p;
 
-    wl_array_for_each(p, &host->output->xwl->dpi) {
+    wl_array_for_each(p, &host->output->ctx->dpi) {
       if (*p > dpi)
         break;
 
@@ -2548,33 +2596,36 @@ static void xwl_send_host_output_state(struct xwl_host_output* host) {
     wl_output_send_done(host->resource);
 }
 
-static void xwl_output_done(void* data, struct wl_output* output) {
-  struct xwl_host_output* host = wl_output_get_user_data(output);
+static void sl_output_done(void* data, struct wl_output* output) {
+  struct sl_host_output* host = wl_output_get_user_data(output);
 
   // Early out if scale is expected but not yet know.
   if (host->expecting_scale)
     return;
 
-  xwl_send_host_output_state(host);
+  sl_send_host_output_state(host);
 
   // Expect scale if aura output exists.
   if (host->aura_output)
     host->expecting_scale = 1;
 }
 
-static void xwl_output_scale(void *data, struct wl_output *output,
-                             int32_t scale_factor) {
-  struct xwl_host_output *host = wl_output_get_user_data(output);
+static void sl_output_scale(void* data,
+                            struct wl_output* output,
+                            int32_t scale_factor) {
+  struct sl_host_output* host = wl_output_get_user_data(output);
 
   host->scale_factor = scale_factor;
 }
 
-static const struct wl_output_listener xwl_output_listener = {
-    xwl_output_geometry, xwl_output_mode, xwl_output_done, xwl_output_scale};
+static const struct wl_output_listener sl_output_listener = {
+    sl_output_geometry, sl_output_mode, sl_output_done, sl_output_scale};
 
-static void xwl_aura_output_scale(void *data, struct zaura_output *output,
-                                  uint32_t flags, uint32_t scale) {
-  struct xwl_host_output *host = zaura_output_get_user_data(output);
+static void sl_aura_output_scale(void* data,
+                                 struct zaura_output* output,
+                                 uint32_t flags,
+                                 uint32_t scale) {
+  struct sl_host_output* host = zaura_output_get_user_data(output);
 
   switch (scale) {
     case ZAURA_OUTPUT_SCALE_FACTOR_0400:
@@ -2627,28 +2678,28 @@ static void xwl_aura_output_scale(void *data, struct zaura_output *output,
   host->expecting_scale = 0;
 }
 
-static void xwl_aura_output_connection(void* data,
-                                       struct zaura_output* output,
-                                       uint32_t connection) {
-  struct xwl_host_output* host = zaura_output_get_user_data(output);
+static void sl_aura_output_connection(void* data,
+                                      struct zaura_output* output,
+                                      uint32_t connection) {
+  struct sl_host_output* host = zaura_output_get_user_data(output);
 
   host->internal = connection == ZAURA_OUTPUT_CONNECTION_TYPE_INTERNAL;
 }
 
-static void xwl_aura_output_device_scale_factor(void* data,
-                                                struct zaura_output* output,
-                                                uint32_t device_scale_factor) {
-  struct xwl_host_output* host = zaura_output_get_user_data(output);
+static void sl_aura_output_device_scale_factor(void* data,
+                                               struct zaura_output* output,
+                                               uint32_t device_scale_factor) {
+  struct sl_host_output* host = zaura_output_get_user_data(output);
 
   host->device_scale_factor = device_scale_factor;
 }
 
-static const struct zaura_output_listener xwl_aura_output_listener = {
-    xwl_aura_output_scale, xwl_aura_output_connection,
-    xwl_aura_output_device_scale_factor};
+static const struct zaura_output_listener sl_aura_output_listener = {
+    sl_aura_output_scale, sl_aura_output_connection,
+    sl_aura_output_device_scale_factor};
 
-static void xwl_destroy_host_output(struct wl_resource *resource) {
-  struct xwl_host_output *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_output(struct wl_resource* resource) {
+  struct sl_host_output* host = wl_resource_get_user_data(resource);
 
   if (host->aura_output)
     zaura_output_destroy(host->aura_output);
@@ -2664,11 +2715,13 @@ static void xwl_destroy_host_output(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_bind_host_output(struct wl_client *client, void *data,
-                                 uint32_t version, uint32_t id) {
-  struct xwl_output *output = (struct xwl_output *)data;
-  struct xwl *xwl = output->xwl;
-  struct xwl_host_output *host;
+static void sl_bind_host_output(struct wl_client* client,
+                                void* data,
+                                uint32_t version,
+                                uint32_t id) {
+  struct sl_output* output = (struct sl_output*)data;
+  struct sl_context* ctx = output->ctx;
+  struct sl_host_output* host;
 
   host = malloc(sizeof(*host));
   assert(host);
@@ -2676,15 +2729,15 @@ static void xwl_bind_host_output(struct wl_client *client, void *data,
   host->resource = wl_resource_create(client, &wl_output_interface,
                                       MIN(version, output->version), id);
   wl_resource_set_implementation(host->resource, NULL, host,
-                                 xwl_destroy_host_output);
-  host->proxy = wl_registry_bind(wl_display_get_registry(xwl->display),
+                                 sl_destroy_host_output);
+  host->proxy = wl_registry_bind(wl_display_get_registry(ctx->display),
                                  output->id, &wl_output_interface,
                                  wl_resource_get_version(host->resource));
   wl_output_set_user_data(host->proxy, host);
-  wl_output_add_listener(host->proxy, &xwl_output_listener, host);
+  wl_output_add_listener(host->proxy, &sl_output_listener, host);
   host->aura_output = NULL;
   // We assume that first output is internal by default.
-  host->internal = wl_list_empty(&xwl->host_outputs);
+  host->internal = wl_list_empty(&ctx->host_outputs);
   host->x = 0;
   host->y = 0;
   host->physical_width = 0;
@@ -2702,131 +2755,131 @@ static void xwl_bind_host_output(struct wl_client *client, void *data,
   host->preferred_scale = 1000;
   host->device_scale_factor = 1000;
   host->expecting_scale = 0;
-  wl_list_insert(xwl->host_outputs.prev, &host->link);
-  if (xwl->aura_shell) {
+  wl_list_insert(ctx->host_outputs.prev, &host->link);
+  if (ctx->aura_shell) {
     host->expecting_scale = 1;
     host->internal = 0;
     host->aura_output =
-        zaura_shell_get_aura_output(xwl->aura_shell->internal, host->proxy);
+        zaura_shell_get_aura_output(ctx->aura_shell->internal, host->proxy);
     zaura_output_set_user_data(host->aura_output, host);
-    zaura_output_add_listener(host->aura_output, &xwl_aura_output_listener,
+    zaura_output_add_listener(host->aura_output, &sl_aura_output_listener,
                               host);
   }
 }
 
-static void xwl_internal_data_offer_destroy(struct xwl_data_offer *host) {
+static void sl_internal_data_offer_destroy(struct sl_data_offer* host) {
   wl_data_offer_destroy(host->internal);
   free(host);
 }
 
-static void xwl_set_selection(struct xwl *xwl,
-                              struct xwl_data_offer *data_offer) {
-
-  if (xwl->selection_data_offer) {
-    xwl_internal_data_offer_destroy(xwl->selection_data_offer);
-    xwl->selection_data_offer = NULL;
+static void sl_set_selection(struct sl_context* ctx,
+                             struct sl_data_offer* data_offer) {
+  if (ctx->selection_data_offer) {
+    sl_internal_data_offer_destroy(ctx->selection_data_offer);
+    ctx->selection_data_offer = NULL;
   }
 
-  if (xwl->clipboard_manager) {
+  if (ctx->clipboard_manager) {
     if (!data_offer) {
-      if (xwl->selection_owner == xwl->selection_window)
-        xcb_set_selection_owner(xwl->connection, XCB_ATOM_NONE,
-                                xwl->atoms[ATOM_CLIPBOARD].value,
-                                xwl->selection_timestamp);
+      if (ctx->selection_owner == ctx->selection_window)
+        xcb_set_selection_owner(ctx->connection, XCB_ATOM_NONE,
+                                ctx->atoms[ATOM_CLIPBOARD].value,
+                                ctx->selection_timestamp);
       return;
     }
 
-    xcb_set_selection_owner(xwl->connection, xwl->selection_window,
-                            xwl->atoms[ATOM_CLIPBOARD].value, XCB_CURRENT_TIME);
+    xcb_set_selection_owner(ctx->connection, ctx->selection_window,
+                            ctx->atoms[ATOM_CLIPBOARD].value, XCB_CURRENT_TIME);
   }
 
-  xwl->selection_data_offer = data_offer;
+  ctx->selection_data_offer = data_offer;
 }
 
-static const char *xwl_utf8_mime_type = "text/plain;charset=utf-8";
+static const char* sl_utf8_mime_type = "text/plain;charset=utf-8";
 
-static void xwl_internal_data_offer_offer(void *data,
-                                          struct wl_data_offer *data_offer,
-                                          const char *type) {
-  struct xwl_data_offer *host = data;
+static void sl_internal_data_offer_offer(void* data,
+                                         struct wl_data_offer* data_offer,
+                                         const char* type) {
+  struct sl_data_offer* host = data;
 
-  if (strcmp(type, xwl_utf8_mime_type) == 0)
+  if (strcmp(type, sl_utf8_mime_type) == 0)
     host->utf8_text = 1;
 }
 
-static void xwl_internal_data_offer_source_actions(
-    void *data, struct wl_data_offer *data_offer, uint32_t source_actions) {}
+static void sl_internal_data_offer_source_actions(
+    void* data, struct wl_data_offer* data_offer, uint32_t source_actions) {}
 
-static void xwl_internal_data_offer_action(void *data,
-                                           struct wl_data_offer *data_offer,
-                                           uint32_t dnd_action) {}
+static void sl_internal_data_offer_action(void* data,
+                                          struct wl_data_offer* data_offer,
+                                          uint32_t dnd_action) {}
 
-static const struct wl_data_offer_listener xwl_internal_data_offer_listener = {
-    xwl_internal_data_offer_offer, xwl_internal_data_offer_source_actions,
-    xwl_internal_data_offer_action};
+static const struct wl_data_offer_listener sl_internal_data_offer_listener = {
+    sl_internal_data_offer_offer, sl_internal_data_offer_source_actions,
+    sl_internal_data_offer_action};
 
-static void
-xwl_internal_data_device_data_offer(void *data,
-                                    struct wl_data_device *data_device,
-                                    struct wl_data_offer *data_offer) {
-  struct xwl *xwl = (struct xwl *)data;
-  struct xwl_data_offer *host_data_offer;
+static void sl_internal_data_device_data_offer(
+    void* data,
+    struct wl_data_device* data_device,
+    struct wl_data_offer* data_offer) {
+  struct sl_context* ctx = (struct sl_context*)data;
+  struct sl_data_offer* host_data_offer;
 
   host_data_offer = malloc(sizeof(*host_data_offer));
   assert(host_data_offer);
 
-  host_data_offer->xwl = xwl;
+  host_data_offer->ctx = ctx;
   host_data_offer->internal = data_offer;
   host_data_offer->utf8_text = 0;
 
   wl_data_offer_add_listener(host_data_offer->internal,
-                             &xwl_internal_data_offer_listener,
-                             host_data_offer);
+                             &sl_internal_data_offer_listener, host_data_offer);
 }
 
-static void xwl_internal_data_device_enter(void *data,
-                                           struct wl_data_device *data_device,
-                                           uint32_t serial,
-                                           struct wl_surface *surface,
-                                           wl_fixed_t x, wl_fixed_t y,
-                                           struct wl_data_offer *data_offer) {}
+static void sl_internal_data_device_enter(void* data,
+                                          struct wl_data_device* data_device,
+                                          uint32_t serial,
+                                          struct wl_surface* surface,
+                                          wl_fixed_t x,
+                                          wl_fixed_t y,
+                                          struct wl_data_offer* data_offer) {}
 
-static void xwl_internal_data_device_leave(void *data,
-                                           struct wl_data_device *data_device) {
-}
+static void sl_internal_data_device_leave(void* data,
+                                          struct wl_data_device* data_device) {}
 
-static void xwl_internal_data_device_motion(void *data,
-                                            struct wl_data_device *data_device,
-                                            uint32_t time, wl_fixed_t x,
-                                            wl_fixed_t y) {}
+static void sl_internal_data_device_motion(void* data,
+                                           struct wl_data_device* data_device,
+                                           uint32_t time,
+                                           wl_fixed_t x,
+                                           wl_fixed_t y) {}
 
-static void xwl_internal_data_device_drop(void *data,
-                                          struct wl_data_device *data_device) {}
+static void sl_internal_data_device_drop(void* data,
+                                         struct wl_data_device* data_device) {}
 
-static void
-xwl_internal_data_device_selection(void *data,
-                                   struct wl_data_device *data_device,
-                                   struct wl_data_offer *data_offer) {
-  struct xwl *xwl = (struct xwl *)data;
-  struct xwl_data_offer *host_data_offer =
+static void sl_internal_data_device_selection(
+    void* data,
+    struct wl_data_device* data_device,
+    struct wl_data_offer* data_offer) {
+  struct sl_context* ctx = (struct sl_context*)data;
+  struct sl_data_offer* host_data_offer =
       data_offer ? wl_data_offer_get_user_data(data_offer) : NULL;
 
-  xwl_set_selection(xwl, host_data_offer);
+  sl_set_selection(ctx, host_data_offer);
 }
 
-static const struct wl_data_device_listener xwl_internal_data_device_listener =
-    {xwl_internal_data_device_data_offer, xwl_internal_data_device_enter,
-     xwl_internal_data_device_leave,      xwl_internal_data_device_motion,
-     xwl_internal_data_device_drop,       xwl_internal_data_device_selection};
+static const struct wl_data_device_listener sl_internal_data_device_listener = {
+    sl_internal_data_device_data_offer, sl_internal_data_device_enter,
+    sl_internal_data_device_leave,      sl_internal_data_device_motion,
+    sl_internal_data_device_drop,       sl_internal_data_device_selection};
 
-static void xwl_host_pointer_set_cursor(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        uint32_t serial,
-                                        struct wl_resource *surface_resource,
-                                        int32_t hotspot_x, int32_t hotspot_y) {
-  struct xwl_host_pointer *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_surface = NULL;
-  double scale = host->seat->xwl->scale;
+static void sl_host_pointer_set_cursor(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       uint32_t serial,
+                                       struct wl_resource* surface_resource,
+                                       int32_t hotspot_x,
+                                       int32_t hotspot_y) {
+  struct sl_host_pointer* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_surface = NULL;
+  double scale = host->seat->ctx->scale;
 
   if (surface_resource) {
     host_surface = wl_resource_get_user_data(surface_resource);
@@ -2840,26 +2893,27 @@ static void xwl_host_pointer_set_cursor(struct wl_client *client,
                         hotspot_x / scale, hotspot_y / scale);
 }
 
-static void xwl_host_pointer_release(struct wl_client *client,
-                                     struct wl_resource *resource) {
+static void sl_host_pointer_release(struct wl_client* client,
+                                    struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static const struct wl_pointer_interface xwl_pointer_implementation = {
-    xwl_host_pointer_set_cursor, xwl_host_pointer_release};
+static const struct wl_pointer_interface sl_pointer_implementation = {
+    sl_host_pointer_set_cursor, sl_host_pointer_release};
 
-static void xwl_set_last_event_serial(struct wl_resource *surface_resource,
-                                      uint32_t serial) {
-  struct xwl_host_surface *host_surface =
+static void sl_set_last_event_serial(struct wl_resource* surface_resource,
+                                     uint32_t serial) {
+  struct sl_host_surface* host_surface =
       wl_resource_get_user_data(surface_resource);
 
   host_surface->last_event_serial = serial;
 }
 
-static void xwl_pointer_set_focus(struct xwl_host_pointer *host,
-                                  uint32_t serial,
-                                  struct xwl_host_surface *host_surface,
-                                  wl_fixed_t x, wl_fixed_t y) {
+static void sl_pointer_set_focus(struct sl_host_pointer* host,
+                                 uint32_t serial,
+                                 struct sl_host_surface* host_surface,
+                                 wl_fixed_t x,
+                                 wl_fixed_t y) {
   struct wl_resource *surface_resource =
       host_surface ? host_surface->resource : NULL;
 
@@ -2875,13 +2929,12 @@ static void xwl_pointer_set_focus(struct xwl_host_pointer *host,
   host->focus_serial = serial;
 
   if (surface_resource) {
-    double scale = host->seat->xwl->scale;
+    double scale = host->seat->ctx->scale;
 
-    if (host->seat->xwl->xwayland) {
+    if (host->seat->ctx->xwayland) {
       // Make sure focus surface is on top before sending enter event.
-      xwl_restack_windows(host->seat->xwl,
-                          wl_resource_get_id(surface_resource));
-      xwl_roundtrip(host->seat->xwl);
+      sl_restack_windows(host->seat->ctx, wl_resource_get_id(surface_resource));
+      sl_roundtrip(host->seat->ctx);
     }
 
     wl_resource_add_destroy_listener(surface_resource,
@@ -2892,101 +2945,123 @@ static void xwl_pointer_set_focus(struct xwl_host_pointer *host,
   }
 }
 
-static void xwl_pointer_enter(void *data, struct wl_pointer *pointer,
-                              uint32_t serial, struct wl_surface *surface,
-                              wl_fixed_t x, wl_fixed_t y) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
-  struct xwl_host_surface *host_surface =
+static void sl_pointer_enter(void* data,
+                             struct wl_pointer* pointer,
+                             uint32_t serial,
+                             struct wl_surface* surface,
+                             wl_fixed_t x,
+                             wl_fixed_t y) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
+  struct sl_host_surface* host_surface =
       surface ? wl_surface_get_user_data(surface) : NULL;
 
   if (!host_surface)
     return;
 
-  xwl_pointer_set_focus(host, serial, host_surface, x, y);
+  sl_pointer_set_focus(host, serial, host_surface, x, y);
 
   if (host->focus_resource)
-    xwl_set_last_event_serial(host->focus_resource, serial);
+    sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
 }
 
-static void xwl_pointer_leave(void *data, struct wl_pointer *pointer,
-                              uint32_t serial, struct wl_surface *surface) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
+static void sl_pointer_leave(void* data,
+                             struct wl_pointer* pointer,
+                             uint32_t serial,
+                             struct wl_surface* surface) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
 
-  xwl_pointer_set_focus(host, serial, NULL, 0, 0);
+  sl_pointer_set_focus(host, serial, NULL, 0, 0);
 }
 
-static void xwl_pointer_motion(void *data, struct wl_pointer *pointer,
-                               uint32_t time, wl_fixed_t x, wl_fixed_t y) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
-  double scale = host->seat->xwl->scale;
+static void sl_pointer_motion(void* data,
+                              struct wl_pointer* pointer,
+                              uint32_t time,
+                              wl_fixed_t x,
+                              wl_fixed_t y) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
+  double scale = host->seat->ctx->scale;
 
   wl_pointer_send_motion(host->resource, time, x * scale, y * scale);
 }
 
-static void xwl_pointer_button(void *data, struct wl_pointer *pointer,
-                               uint32_t serial, uint32_t time, uint32_t button,
-                               uint32_t state) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
+static void sl_pointer_button(void* data,
+                              struct wl_pointer* pointer,
+                              uint32_t serial,
+                              uint32_t time,
+                              uint32_t button,
+                              uint32_t state) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
 
   wl_pointer_send_button(host->resource, serial, time, button, state);
 
   if (host->focus_resource)
-    xwl_set_last_event_serial(host->focus_resource, serial);
+    sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
 }
 
-static void xwl_pointer_axis(void *data, struct wl_pointer *pointer,
-                             uint32_t time, uint32_t axis, wl_fixed_t value) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
-  double scale = host->seat->xwl->scale;
+static void sl_pointer_axis(void* data,
+                            struct wl_pointer* pointer,
+                            uint32_t time,
+                            uint32_t axis,
+                            wl_fixed_t value) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
+  double scale = host->seat->ctx->scale;
 
   wl_pointer_send_axis(host->resource, time, axis, value * scale);
 }
 
-static void xwl_pointer_frame(void *data, struct wl_pointer *pointer) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
+static void sl_pointer_frame(void* data, struct wl_pointer* pointer) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
 
   wl_pointer_send_frame(host->resource);
 }
 
-void xwl_pointer_axis_source(void *data, struct wl_pointer *pointer,
-                             uint32_t axis_source) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
+void sl_pointer_axis_source(void* data,
+                            struct wl_pointer* pointer,
+                            uint32_t axis_source) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
 
   wl_pointer_send_axis_source(host->resource, axis_source);
 }
 
-static void xwl_pointer_axis_stop(void *data, struct wl_pointer *pointer,
-                                  uint32_t time, uint32_t axis) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
+static void sl_pointer_axis_stop(void* data,
+                                 struct wl_pointer* pointer,
+                                 uint32_t time,
+                                 uint32_t axis) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
 
   wl_pointer_send_axis_stop(host->resource, time, axis);
 }
 
-static void xwl_pointer_axis_discrete(void *data, struct wl_pointer *pointer,
-                                      uint32_t axis, int32_t discrete) {
-  struct xwl_host_pointer *host = wl_pointer_get_user_data(pointer);
+static void sl_pointer_axis_discrete(void* data,
+                                     struct wl_pointer* pointer,
+                                     uint32_t axis,
+                                     int32_t discrete) {
+  struct sl_host_pointer* host = wl_pointer_get_user_data(pointer);
 
   wl_pointer_send_axis_discrete(host->resource, axis, discrete);
 }
 
-static const struct wl_pointer_listener xwl_pointer_listener = {
-    xwl_pointer_enter,       xwl_pointer_leave,     xwl_pointer_motion,
-    xwl_pointer_button,      xwl_pointer_axis,      xwl_pointer_frame,
-    xwl_pointer_axis_source, xwl_pointer_axis_stop, xwl_pointer_axis_discrete};
+static const struct wl_pointer_listener sl_pointer_listener = {
+    sl_pointer_enter,       sl_pointer_leave,     sl_pointer_motion,
+    sl_pointer_button,      sl_pointer_axis,      sl_pointer_frame,
+    sl_pointer_axis_source, sl_pointer_axis_stop, sl_pointer_axis_discrete};
 
-static void xwl_host_keyboard_release(struct wl_client *client,
-                                      struct wl_resource *resource) {
+static void sl_host_keyboard_release(struct wl_client* client,
+                                     struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static const struct wl_keyboard_interface xwl_keyboard_implementation = {
-    xwl_host_keyboard_release};
+static const struct wl_keyboard_interface sl_keyboard_implementation = {
+    sl_host_keyboard_release};
 
-static void xwl_keyboard_keymap(void *data, struct wl_keyboard *keyboard,
-                                uint32_t format, int32_t fd, uint32_t size) {
-  struct xwl_host_keyboard *host = wl_keyboard_get_user_data(keyboard);
+static void sl_keyboard_keymap(void* data,
+                               struct wl_keyboard* keyboard,
+                               uint32_t format,
+                               int32_t fd,
+                               uint32_t size) {
+  struct sl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
 
   wl_keyboard_send_keymap(host->resource, format, fd, size);
 
@@ -2999,7 +3074,7 @@ static void xwl_keyboard_keymap(void *data, struct wl_keyboard *keyboard,
       xkb_keymap_unref(host->keymap);
 
     host->keymap = xkb_keymap_new_from_string(
-        host->seat->xwl->xkb_context, data, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
+        host->seat->ctx->xkb_context, data, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
     assert(host->keymap);
 
     munmap(data, size);
@@ -3017,10 +3092,10 @@ static void xwl_keyboard_keymap(void *data, struct wl_keyboard *keyboard,
   close(fd);
 }
 
-static void xwl_keyboard_set_focus(struct xwl_host_keyboard *host,
-                                   uint32_t serial,
-                                   struct xwl_host_surface *host_surface,
-                                   struct wl_array *keys) {
+static void sl_keyboard_set_focus(struct sl_host_keyboard* host,
+                                  uint32_t serial,
+                                  struct sl_host_surface* host_surface,
+                                  struct wl_array* keys) {
   struct wl_resource *surface_resource =
       host_surface ? host_surface->resource : NULL;
 
@@ -3044,32 +3119,36 @@ static void xwl_keyboard_set_focus(struct xwl_host_keyboard *host,
   host->seat->last_serial = serial;
 }
 
-static void xwl_keyboard_enter(void *data, struct wl_keyboard *keyboard,
-                               uint32_t serial, struct wl_surface *surface,
-                               struct wl_array *keys) {
-  struct xwl_host_keyboard *host = wl_keyboard_get_user_data(keyboard);
-  struct xwl_host_surface *host_surface =
+static void sl_keyboard_enter(void* data,
+                              struct wl_keyboard* keyboard,
+                              uint32_t serial,
+                              struct wl_surface* surface,
+                              struct wl_array* keys) {
+  struct sl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
+  struct sl_host_surface* host_surface =
       surface ? wl_surface_get_user_data(surface) : NULL;
 
   if (!host_surface)
     return;
 
   wl_array_copy(&host->pressed_keys, keys);
-  xwl_keyboard_set_focus(host, serial, host_surface, keys);
+  sl_keyboard_set_focus(host, serial, host_surface, keys);
 
   host->seat->last_serial = serial;
 }
 
-static void xwl_keyboard_leave(void *data, struct wl_keyboard *keyboard,
-                               uint32_t serial, struct wl_surface *surface) {
-  struct xwl_host_keyboard *host = wl_keyboard_get_user_data(keyboard);
+static void sl_keyboard_leave(void* data,
+                              struct wl_keyboard* keyboard,
+                              uint32_t serial,
+                              struct wl_surface* surface) {
+  struct sl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
   struct wl_array array;
 
   wl_array_init(&array);
-  xwl_keyboard_set_focus(host, serial, NULL, &array);
+  sl_keyboard_set_focus(host, serial, NULL, &array);
 }
 
-static int xwl_array_set_add(struct wl_array* array, uint32_t key) {
+static int sl_array_set_add(struct wl_array* array, uint32_t key) {
   uint32_t* k;
 
   wl_array_for_each(k, array) {
@@ -3082,7 +3161,7 @@ static int xwl_array_set_add(struct wl_array* array, uint32_t key) {
   return 1;
 }
 
-static int xwl_array_set_remove(struct wl_array* array, uint32_t key) {
+static int sl_array_set_remove(struct wl_array* array, uint32_t key) {
   uint32_t* k;
 
   wl_array_for_each(k, array) {
@@ -3097,13 +3176,13 @@ static int xwl_array_set_remove(struct wl_array* array, uint32_t key) {
   return 0;
 }
 
-static void xwl_keyboard_key(void* data,
-                             struct wl_keyboard* keyboard,
-                             uint32_t serial,
-                             uint32_t time,
-                             uint32_t key,
-                             uint32_t state) {
-  struct xwl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
+static void sl_keyboard_key(void* data,
+                            struct wl_keyboard* keyboard,
+                            uint32_t serial,
+                            uint32_t time,
+                            uint32_t key,
+                            uint32_t state) {
+  struct sl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
   int handled = 1;
 
   if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
@@ -3112,13 +3191,13 @@ static void xwl_keyboard_key(void* data,
       uint32_t num_symbols;
       xkb_keysym_t symbol = XKB_KEY_NoSymbol;
       uint32_t code = key + 8;
-      struct xwl_accelerator* accelerator;
+      struct sl_accelerator* accelerator;
 
       num_symbols = xkb_state_key_get_syms(host->state, code, &symbols);
       if (num_symbols == 1)
         symbol = symbols[0];
 
-      wl_list_for_each(accelerator, &host->seat->xwl->accelerators, link) {
+      wl_list_for_each(accelerator, &host->seat->ctx->accelerators, link) {
         if (host->modifiers != accelerator->modifiers)
           continue;
         if (symbol != accelerator->symbol)
@@ -3132,18 +3211,18 @@ static void xwl_keyboard_key(void* data,
     // Forward key pressed event if it should be handled and not
     // already pressed.
     if (handled) {
-      if (xwl_array_set_add(&host->pressed_keys, key))
+      if (sl_array_set_add(&host->pressed_keys, key))
         wl_keyboard_send_key(host->resource, serial, time, key, state);
     }
   } else {
     // Forward key release event if currently pressed.
-    handled = xwl_array_set_remove(&host->pressed_keys, key);
+    handled = sl_array_set_remove(&host->pressed_keys, key);
     if (handled)
       wl_keyboard_send_key(host->resource, serial, time, key, state);
   }
 
   if (host->focus_resource)
-    xwl_set_last_event_serial(host->focus_resource, serial);
+    sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
 
   if (host->extended_keyboard_proxy) {
@@ -3154,18 +3233,21 @@ static void xwl_keyboard_key(void* data,
   }
 }
 
-static void xwl_keyboard_modifiers(void *data, struct wl_keyboard *keyboard,
-                                   uint32_t serial, uint32_t mods_depressed,
-                                   uint32_t mods_latched, uint32_t mods_locked,
-                                   uint32_t group) {
-  struct xwl_host_keyboard *host = wl_keyboard_get_user_data(keyboard);
+static void sl_keyboard_modifiers(void* data,
+                                  struct wl_keyboard* keyboard,
+                                  uint32_t serial,
+                                  uint32_t mods_depressed,
+                                  uint32_t mods_latched,
+                                  uint32_t mods_locked,
+                                  uint32_t group) {
+  struct sl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
   xkb_mod_mask_t mask;
 
   wl_keyboard_send_modifiers(host->resource, serial, mods_depressed,
                              mods_latched, mods_locked, group);
 
   if (host->focus_resource)
-    xwl_set_last_event_serial(host->focus_resource, serial);
+    sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
 
   if (!host->keymap)
@@ -3184,33 +3266,39 @@ static void xwl_keyboard_modifiers(void *data, struct wl_keyboard *keyboard,
     host->modifiers |= SHIFT_MASK;
 }
 
-static void xwl_keyboard_repeat_info(void *data, struct wl_keyboard *keyboard,
-                                     int32_t rate, int32_t delay) {
-  struct xwl_host_keyboard *host = wl_keyboard_get_user_data(keyboard);
+static void sl_keyboard_repeat_info(void* data,
+                                    struct wl_keyboard* keyboard,
+                                    int32_t rate,
+                                    int32_t delay) {
+  struct sl_host_keyboard* host = wl_keyboard_get_user_data(keyboard);
 
   wl_keyboard_send_repeat_info(host->resource, rate, delay);
 }
 
-static const struct wl_keyboard_listener xwl_keyboard_listener = {
-    xwl_keyboard_keymap, xwl_keyboard_enter,     xwl_keyboard_leave,
-    xwl_keyboard_key,    xwl_keyboard_modifiers, xwl_keyboard_repeat_info};
+static const struct wl_keyboard_listener sl_keyboard_listener = {
+    sl_keyboard_keymap, sl_keyboard_enter,     sl_keyboard_leave,
+    sl_keyboard_key,    sl_keyboard_modifiers, sl_keyboard_repeat_info};
 
-static void xwl_host_touch_release(struct wl_client *client,
-                                   struct wl_resource *resource) {
+static void sl_host_touch_release(struct wl_client* client,
+                                  struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static const struct wl_touch_interface xwl_touch_implementation = {
-    xwl_host_touch_release};
+static const struct wl_touch_interface sl_touch_implementation = {
+    sl_host_touch_release};
 
-static void xwl_host_touch_down(void *data, struct wl_touch *touch,
-                                uint32_t serial, uint32_t time,
-                                struct wl_surface *surface, int32_t id,
-                                wl_fixed_t x, wl_fixed_t y) {
-  struct xwl_host_touch *host = wl_touch_get_user_data(touch);
-  struct xwl_host_surface *host_surface =
+static void sl_host_touch_down(void* data,
+                               struct wl_touch* touch,
+                               uint32_t serial,
+                               uint32_t time,
+                               struct wl_surface* surface,
+                               int32_t id,
+                               wl_fixed_t x,
+                               wl_fixed_t y) {
+  struct sl_host_touch* host = wl_touch_get_user_data(touch);
+  struct sl_host_surface* host_surface =
       surface ? wl_surface_get_user_data(surface) : NULL;
-  double scale = host->seat->xwl->scale;
+  double scale = host->seat->ctx->scale;
 
   if (!host_surface)
     return;
@@ -3223,24 +3311,27 @@ static void xwl_host_touch_down(void *data, struct wl_touch *touch,
                                      &host->focus_resource_listener);
   }
 
-  if (host->seat->xwl->xwayland) {
+  if (host->seat->ctx->xwayland) {
     // Make sure focus surface is on top before sending down event.
-    xwl_restack_windows(host->seat->xwl,
-                        wl_resource_get_id(host_surface->resource));
-    xwl_roundtrip(host->seat->xwl);
+    sl_restack_windows(host->seat->ctx,
+                       wl_resource_get_id(host_surface->resource));
+    sl_roundtrip(host->seat->ctx);
   }
 
   wl_touch_send_down(host->resource, serial, time, host_surface->resource, id,
                      x * scale, y * scale);
 
   if (host->focus_resource)
-    xwl_set_last_event_serial(host->focus_resource, serial);
+    sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
 }
 
-static void xwl_host_touch_up(void *data, struct wl_touch *touch,
-                              uint32_t serial, uint32_t time, int32_t id) {
-  struct xwl_host_touch *host = wl_touch_get_user_data(touch);
+static void sl_host_touch_up(void* data,
+                             struct wl_touch* touch,
+                             uint32_t serial,
+                             uint32_t time,
+                             int32_t id) {
+  struct sl_host_touch* host = wl_touch_get_user_data(touch);
 
   wl_list_remove(&host->focus_resource_listener.link);
   wl_list_init(&host->focus_resource_listener.link);
@@ -3249,37 +3340,40 @@ static void xwl_host_touch_up(void *data, struct wl_touch *touch,
   wl_touch_send_up(host->resource, serial, time, id);
 
   if (host->focus_resource)
-    xwl_set_last_event_serial(host->focus_resource, serial);
+    sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
 }
 
-static void xwl_host_touch_motion(void *data, struct wl_touch *touch,
-                                  uint32_t time, int32_t id, wl_fixed_t x,
-                                  wl_fixed_t y) {
-  struct xwl_host_touch *host = wl_touch_get_user_data(touch);
-  double scale = host->seat->xwl->scale;
+static void sl_host_touch_motion(void* data,
+                                 struct wl_touch* touch,
+                                 uint32_t time,
+                                 int32_t id,
+                                 wl_fixed_t x,
+                                 wl_fixed_t y) {
+  struct sl_host_touch* host = wl_touch_get_user_data(touch);
+  double scale = host->seat->ctx->scale;
 
   wl_touch_send_motion(host->resource, time, id, x * scale, y * scale);
 }
 
-static void xwl_host_touch_frame(void *data, struct wl_touch *touch) {
-  struct xwl_host_touch *host = wl_touch_get_user_data(touch);
+static void sl_host_touch_frame(void* data, struct wl_touch* touch) {
+  struct sl_host_touch* host = wl_touch_get_user_data(touch);
 
   wl_touch_send_frame(host->resource);
 }
 
-static void xwl_host_touch_cancel(void *data, struct wl_touch *touch) {
-  struct xwl_host_touch *host = wl_touch_get_user_data(touch);
+static void sl_host_touch_cancel(void* data, struct wl_touch* touch) {
+  struct sl_host_touch* host = wl_touch_get_user_data(touch);
 
   wl_touch_send_cancel(host->resource);
 }
 
-static const struct wl_touch_listener xwl_touch_listener = {
-    xwl_host_touch_down, xwl_host_touch_up, xwl_host_touch_motion,
-    xwl_host_touch_frame, xwl_host_touch_cancel};
+static const struct wl_touch_listener sl_touch_listener = {
+    sl_host_touch_down, sl_host_touch_up, sl_host_touch_motion,
+    sl_host_touch_frame, sl_host_touch_cancel};
 
-static void xwl_destroy_host_pointer(struct wl_resource *resource) {
-  struct xwl_host_pointer *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_pointer(struct wl_resource* resource) {
+  struct sl_host_pointer* host = wl_resource_get_user_data(resource);
 
   if (wl_pointer_get_version(host->proxy) >= WL_POINTER_RELEASE_SINCE_VERSION) {
     wl_pointer_release(host->proxy);
@@ -3291,19 +3385,19 @@ static void xwl_destroy_host_pointer(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_pointer_focus_resource_destroyed(struct wl_listener *listener,
-                                                 void *data) {
-  struct xwl_host_pointer *host;
+static void sl_pointer_focus_resource_destroyed(struct wl_listener* listener,
+                                                void* data) {
+  struct sl_host_pointer* host;
 
   host = wl_container_of(listener, host, focus_resource_listener);
-  xwl_pointer_set_focus(host, host->focus_serial, NULL, 0, 0);
+  sl_pointer_set_focus(host, host->focus_serial, NULL, 0, 0);
 }
 
-static void xwl_host_seat_get_host_pointer(struct wl_client *client,
-                                           struct wl_resource *resource,
-                                           uint32_t id) {
-  struct xwl_host_seat *host = wl_resource_get_user_data(resource);
-  struct xwl_host_pointer *host_pointer;
+static void sl_host_seat_get_host_pointer(struct wl_client* client,
+                                          struct wl_resource* resource,
+                                          uint32_t id) {
+  struct sl_host_seat* host = wl_resource_get_user_data(resource);
+  struct sl_host_pointer* host_pointer;
 
   host_pointer = malloc(sizeof(*host_pointer));
   assert(host_pointer);
@@ -3312,21 +3406,21 @@ static void xwl_host_seat_get_host_pointer(struct wl_client *client,
   host_pointer->resource = wl_resource_create(
       client, &wl_pointer_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_pointer->resource,
-                                 &xwl_pointer_implementation, host_pointer,
-                                 xwl_destroy_host_pointer);
+                                 &sl_pointer_implementation, host_pointer,
+                                 sl_destroy_host_pointer);
   host_pointer->proxy = wl_seat_get_pointer(host->proxy);
   wl_pointer_set_user_data(host_pointer->proxy, host_pointer);
-  wl_pointer_add_listener(host_pointer->proxy, &xwl_pointer_listener,
+  wl_pointer_add_listener(host_pointer->proxy, &sl_pointer_listener,
                           host_pointer);
   wl_list_init(&host_pointer->focus_resource_listener.link);
   host_pointer->focus_resource_listener.notify =
-      xwl_pointer_focus_resource_destroyed;
+      sl_pointer_focus_resource_destroyed;
   host_pointer->focus_resource = NULL;
   host_pointer->focus_serial = 0;
 }
 
-static void xwl_destroy_host_keyboard(struct wl_resource *resource) {
-  struct xwl_host_keyboard *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_keyboard(struct wl_resource* resource) {
+  struct sl_host_keyboard* host = wl_resource_get_user_data(resource);
 
   if (host->extended_keyboard_proxy)
     zcr_extended_keyboard_v1_destroy(host->extended_keyboard_proxy);
@@ -3349,21 +3443,21 @@ static void xwl_destroy_host_keyboard(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_keyboard_focus_resource_destroyed(struct wl_listener *listener,
-                                                  void *data) {
-  struct xwl_host_keyboard *host;
+static void sl_keyboard_focus_resource_destroyed(struct wl_listener* listener,
+                                                 void* data) {
+  struct sl_host_keyboard* host;
   struct wl_array array;
 
   host = wl_container_of(listener, host, focus_resource_listener);
   wl_array_init(&array);
-  xwl_keyboard_set_focus(host, host->focus_serial, NULL, &array);
+  sl_keyboard_set_focus(host, host->focus_serial, NULL, &array);
 }
 
-static void xwl_host_seat_get_host_keyboard(struct wl_client *client,
-                                            struct wl_resource *resource,
-                                            uint32_t id) {
-  struct xwl_host_seat *host = wl_resource_get_user_data(resource);
-  struct xwl_host_keyboard *host_keyboard;
+static void sl_host_seat_get_host_keyboard(struct wl_client* client,
+                                           struct wl_resource* resource,
+                                           uint32_t id) {
+  struct sl_host_seat* host = wl_resource_get_user_data(resource);
+  struct sl_host_keyboard* host_keyboard;
 
   host_keyboard = malloc(sizeof(*host_keyboard));
   assert(host_keyboard);
@@ -3372,15 +3466,15 @@ static void xwl_host_seat_get_host_keyboard(struct wl_client *client,
   host_keyboard->resource = wl_resource_create(
       client, &wl_keyboard_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_keyboard->resource,
-                                 &xwl_keyboard_implementation, host_keyboard,
-                                 xwl_destroy_host_keyboard);
+                                 &sl_keyboard_implementation, host_keyboard,
+                                 sl_destroy_host_keyboard);
   host_keyboard->proxy = wl_seat_get_keyboard(host->proxy);
   wl_keyboard_set_user_data(host_keyboard->proxy, host_keyboard);
-  wl_keyboard_add_listener(host_keyboard->proxy, &xwl_keyboard_listener,
+  wl_keyboard_add_listener(host_keyboard->proxy, &sl_keyboard_listener,
                            host_keyboard);
   wl_list_init(&host_keyboard->focus_resource_listener.link);
   host_keyboard->focus_resource_listener.notify =
-      xwl_keyboard_focus_resource_destroyed;
+      sl_keyboard_focus_resource_destroyed;
   host_keyboard->focus_resource = NULL;
   host_keyboard->focus_serial = 0;
   host_keyboard->keymap = NULL;
@@ -3391,18 +3485,18 @@ static void xwl_host_seat_get_host_keyboard(struct wl_client *client,
   host_keyboard->modifiers = 0;
   wl_array_init(&host_keyboard->pressed_keys);
 
-  if (host->seat->xwl->keyboard_extension) {
+  if (host->seat->ctx->keyboard_extension) {
     host_keyboard->extended_keyboard_proxy =
         zcr_keyboard_extension_v1_get_extended_keyboard(
-            host->seat->xwl->keyboard_extension->internal,
+            host->seat->ctx->keyboard_extension->internal,
             host_keyboard->proxy);
   } else {
     host_keyboard->extended_keyboard_proxy = NULL;
   }
 }
 
-static void xwl_destroy_host_touch(struct wl_resource *resource) {
-  struct xwl_host_touch *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_touch(struct wl_resource* resource) {
+  struct sl_host_touch* host = wl_resource_get_user_data(resource);
 
   if (wl_touch_get_version(host->proxy) >= WL_TOUCH_RELEASE_SINCE_VERSION) {
     wl_touch_release(host->proxy);
@@ -3413,9 +3507,9 @@ static void xwl_destroy_host_touch(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_touch_focus_resource_destroyed(struct wl_listener *listener,
-                                               void *data) {
-  struct xwl_host_touch *host;
+static void sl_touch_focus_resource_destroyed(struct wl_listener* listener,
+                                              void* data) {
+  struct sl_host_touch* host;
 
   host = wl_container_of(listener, host, focus_resource_listener);
   wl_list_remove(&host->focus_resource_listener.link);
@@ -3423,11 +3517,11 @@ static void xwl_touch_focus_resource_destroyed(struct wl_listener *listener,
   host->focus_resource = NULL;
 }
 
-static void xwl_host_seat_get_host_touch(struct wl_client *client,
-                                         struct wl_resource *resource,
-                                         uint32_t id) {
-  struct xwl_host_seat *host = wl_resource_get_user_data(resource);
-  struct xwl_host_touch *host_touch;
+static void sl_host_seat_get_host_touch(struct wl_client* client,
+                                        struct wl_resource* resource,
+                                        uint32_t id) {
+  struct sl_host_seat* host = wl_resource_get_user_data(resource);
+  struct sl_host_touch* host_touch;
 
   host_touch = malloc(sizeof(*host_touch));
   assert(host_touch);
@@ -3435,51 +3529,51 @@ static void xwl_host_seat_get_host_touch(struct wl_client *client,
   host_touch->seat = host->seat;
   host_touch->resource = wl_resource_create(
       client, &wl_touch_interface, wl_resource_get_version(resource), id);
-  wl_resource_set_implementation(host_touch->resource,
-                                 &xwl_touch_implementation, host_touch,
-                                 xwl_destroy_host_touch);
+  wl_resource_set_implementation(host_touch->resource, &sl_touch_implementation,
+                                 host_touch, sl_destroy_host_touch);
   host_touch->proxy = wl_seat_get_touch(host->proxy);
   wl_touch_set_user_data(host_touch->proxy, host_touch);
-  wl_touch_add_listener(host_touch->proxy, &xwl_touch_listener, host_touch);
+  wl_touch_add_listener(host_touch->proxy, &sl_touch_listener, host_touch);
   wl_list_init(&host_touch->focus_resource_listener.link);
   host_touch->focus_resource_listener.notify =
-      xwl_touch_focus_resource_destroyed;
+      sl_touch_focus_resource_destroyed;
   host_touch->focus_resource = NULL;
 }
 
-static void xwl_host_seat_release(struct wl_client *client,
-                                  struct wl_resource *resource) {
-  struct xwl_host_seat *host = wl_resource_get_user_data(resource);
+static void sl_host_seat_release(struct wl_client* client,
+                                 struct wl_resource* resource) {
+  struct sl_host_seat* host = wl_resource_get_user_data(resource);
 
   wl_seat_release(host->proxy);
 }
 
-static const struct wl_seat_interface xwl_seat_implementation = {
-    xwl_host_seat_get_host_pointer, xwl_host_seat_get_host_keyboard,
-    xwl_host_seat_get_host_touch, xwl_host_seat_release};
+static const struct wl_seat_interface sl_seat_implementation = {
+    sl_host_seat_get_host_pointer, sl_host_seat_get_host_keyboard,
+    sl_host_seat_get_host_touch, sl_host_seat_release};
 
-static void xwl_seat_capabilities(void *data, struct wl_seat *seat,
-                                  uint32_t capabilities) {
-  struct xwl_host_seat *host = wl_seat_get_user_data(seat);
+static void sl_seat_capabilities(void* data,
+                                 struct wl_seat* seat,
+                                 uint32_t capabilities) {
+  struct sl_host_seat* host = wl_seat_get_user_data(seat);
 
   wl_seat_send_capabilities(host->resource, capabilities);
 }
 
-static void xwl_seat_name(void *data, struct wl_seat *seat, const char *name) {
-  struct xwl_host_seat *host = wl_seat_get_user_data(seat);
+static void sl_seat_name(void* data, struct wl_seat* seat, const char* name) {
+  struct sl_host_seat* host = wl_seat_get_user_data(seat);
 
   if (wl_resource_get_version(host->resource) >= WL_SEAT_NAME_SINCE_VERSION)
     wl_seat_send_name(host->resource, name);
 }
 
-static const struct wl_seat_listener xwl_seat_listener = {xwl_seat_capabilities,
-                                                          xwl_seat_name};
+static const struct wl_seat_listener sl_seat_listener = {sl_seat_capabilities,
+                                                         sl_seat_name};
 
-static void xwl_destroy_host_seat(struct wl_resource *resource) {
-  struct xwl_host_seat *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_seat(struct wl_resource* resource) {
+  struct sl_host_seat* host = wl_resource_get_user_data(resource);
 
-  if (host->seat->xwl->default_seat == host)
-    host->seat->xwl->default_seat = NULL;
+  if (host->seat->ctx->default_seat == host)
+    host->seat->ctx->default_seat = NULL;
 
   if (wl_seat_get_version(host->proxy) >= WL_SEAT_RELEASE_SINCE_VERSION)
     wl_seat_release(host->proxy);
@@ -3489,62 +3583,84 @@ static void xwl_destroy_host_seat(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_bind_host_seat(struct wl_client *client, void *data,
-                               uint32_t version, uint32_t id) {
-  struct xwl_seat *seat = (struct xwl_seat *)data;
-  struct xwl_host_seat *host;
+static void sl_bind_host_seat(struct wl_client* client,
+                              void* data,
+                              uint32_t version,
+                              uint32_t id) {
+  struct sl_seat* seat = (struct sl_seat*)data;
+  struct sl_host_seat* host;
 
   host = malloc(sizeof(*host));
   assert(host);
   host->seat = seat;
   host->resource = wl_resource_create(client, &wl_seat_interface,
                                       MIN(version, seat->version), id);
-  wl_resource_set_implementation(host->resource, &xwl_seat_implementation, host,
-                                 xwl_destroy_host_seat);
-  host->proxy = wl_registry_bind(wl_display_get_registry(seat->xwl->display),
+  wl_resource_set_implementation(host->resource, &sl_seat_implementation, host,
+                                 sl_destroy_host_seat);
+  host->proxy = wl_registry_bind(wl_display_get_registry(seat->ctx->display),
                                  seat->id, &wl_seat_interface,
                                  wl_resource_get_version(host->resource));
   wl_seat_set_user_data(host->proxy, host);
-  wl_seat_add_listener(host->proxy, &xwl_seat_listener, host);
+  wl_seat_add_listener(host->proxy, &sl_seat_listener, host);
 
-  if (!seat->xwl->default_seat) {
-    seat->xwl->default_seat = host;
-    if (seat->xwl->data_device_manager &&
-        seat->xwl->data_device_manager->internal) {
-      seat->xwl->selection_data_device = wl_data_device_manager_get_data_device(
-          seat->xwl->data_device_manager->internal, host->proxy);
-      wl_data_device_add_listener(seat->xwl->selection_data_device,
-                                  &xwl_internal_data_device_listener,
-                                  seat->xwl);
+  if (!seat->ctx->default_seat) {
+    seat->ctx->default_seat = host;
+    if (seat->ctx->data_device_manager &&
+        seat->ctx->data_device_manager->internal) {
+      seat->ctx->selection_data_device = wl_data_device_manager_get_data_device(
+          seat->ctx->data_device_manager->internal, host->proxy);
+      wl_data_device_add_listener(seat->ctx->selection_data_device,
+                                  &sl_internal_data_device_listener, seat->ctx);
     }
   }
 }
 
-static void xwl_drm_authenticate(struct wl_client *client,
-                                 struct wl_resource *resource, uint32_t id) {}
+static void sl_drm_authenticate(struct wl_client* client,
+                                struct wl_resource* resource,
+                                uint32_t id) {}
 
-static void xwl_drm_create_buffer(struct wl_client *client,
-                                  struct wl_resource *resource, uint32_t id,
-                                  uint32_t name, int32_t width, int32_t height,
-                                  uint32_t stride, uint32_t format) {
+static void sl_drm_create_buffer(struct wl_client* client,
+                                 struct wl_resource* resource,
+                                 uint32_t id,
+                                 uint32_t name,
+                                 int32_t width,
+                                 int32_t height,
+                                 uint32_t stride,
+                                 uint32_t format) {
   assert(0);
 }
 
-static void xwl_drm_create_planar_buffer(
-    struct wl_client *client, struct wl_resource *resource, uint32_t id,
-    uint32_t name, int32_t width, int32_t height, uint32_t format,
-    int32_t offset0, int32_t stride0, int32_t offset1, int32_t stride1,
-    int32_t offset2, int32_t stride2) {
+static void sl_drm_create_planar_buffer(struct wl_client* client,
+                                        struct wl_resource* resource,
+                                        uint32_t id,
+                                        uint32_t name,
+                                        int32_t width,
+                                        int32_t height,
+                                        uint32_t format,
+                                        int32_t offset0,
+                                        int32_t stride0,
+                                        int32_t offset1,
+                                        int32_t stride1,
+                                        int32_t offset2,
+                                        int32_t stride2) {
   assert(0);
 }
 
-static void xwl_drm_create_prime_buffer(
-    struct wl_client *client, struct wl_resource *resource, uint32_t id,
-    int32_t name, int32_t width, int32_t height, uint32_t format,
-    int32_t offset0, int32_t stride0, int32_t offset1, int32_t stride1,
-    int32_t offset2, int32_t stride2) {
-  struct xwl_host_drm *host = wl_resource_get_user_data(resource);
-  struct xwl_host_buffer *host_buffer;
+static void sl_drm_create_prime_buffer(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       uint32_t id,
+                                       int32_t name,
+                                       int32_t width,
+                                       int32_t height,
+                                       uint32_t format,
+                                       int32_t offset0,
+                                       int32_t stride0,
+                                       int32_t offset1,
+                                       int32_t stride1,
+                                       int32_t offset2,
+                                       int32_t stride2) {
+  struct sl_host_drm* host = wl_resource_get_user_data(resource);
+  struct sl_host_buffer* host_buffer;
   struct zwp_linux_buffer_params_v1 *buffer_params;
 
   assert(name >= 0);
@@ -3563,8 +3679,8 @@ static void xwl_drm_create_prime_buffer(
   host_buffer->resource =
       wl_resource_create(client, &wl_buffer_interface, 1, id);
   wl_resource_set_implementation(host_buffer->resource,
-                                 &xwl_buffer_implementation, host_buffer,
-                                 xwl_destroy_host_buffer);
+                                 &sl_buffer_implementation, host_buffer,
+                                 sl_destroy_host_buffer);
   buffer_params =
       zwp_linux_dmabuf_v1_create_params(host->linux_dmabuf->internal);
   zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, stride0, 0,
@@ -3574,26 +3690,27 @@ static void xwl_drm_create_prime_buffer(
   zwp_linux_buffer_params_v1_destroy(buffer_params);
   close(name);
   wl_buffer_set_user_data(host_buffer->proxy, host_buffer);
-  wl_buffer_add_listener(host_buffer->proxy, &xwl_buffer_listener, host_buffer);
+  wl_buffer_add_listener(host_buffer->proxy, &sl_buffer_listener, host_buffer);
 }
 
-static const struct wl_drm_interface xwl_drm_implementation = {
-    xwl_drm_authenticate, xwl_drm_create_buffer, xwl_drm_create_planar_buffer,
-    xwl_drm_create_prime_buffer};
+static const struct wl_drm_interface sl_drm_implementation = {
+    sl_drm_authenticate, sl_drm_create_buffer, sl_drm_create_planar_buffer,
+    sl_drm_create_prime_buffer};
 
-static void xwl_destroy_host_drm(struct wl_resource *resource) {
-  struct xwl_host_drm *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_drm(struct wl_resource* resource) {
+  struct sl_host_drm* host = wl_resource_get_user_data(resource);
 
   wl_callback_destroy(host->callback);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_drm_callback_done(void *data, struct wl_callback *callback,
-                                  uint32_t serial) {
-  struct xwl_host_drm *host = wl_callback_get_user_data(callback);
+static void sl_drm_callback_done(void* data,
+                                 struct wl_callback* callback,
+                                 uint32_t serial) {
+  struct sl_host_drm* host = wl_callback_get_user_data(callback);
 
-  wl_drm_send_device(host->resource, host->linux_dmabuf->xwl->drm_device);
+  wl_drm_send_device(host->resource, host->linux_dmabuf->ctx->drm_device);
   wl_drm_send_format(host->resource, WL_DRM_FORMAT_ARGB8888);
   wl_drm_send_format(host->resource, WL_DRM_FORMAT_XRGB8888);
   wl_drm_send_format(host->resource, WL_DRM_FORMAT_RGB565);
@@ -3601,13 +3718,15 @@ static void xwl_drm_callback_done(void *data, struct wl_callback *callback,
     wl_drm_send_capabilities(host->resource, WL_DRM_CAPABILITY_PRIME);
 }
 
-static const struct wl_callback_listener xwl_drm_callback_listener = {
-    xwl_drm_callback_done};
+static const struct wl_callback_listener sl_drm_callback_listener = {
+    sl_drm_callback_done};
 
-static void xwl_bind_host_drm(struct wl_client *client, void *data,
-                              uint32_t version, uint32_t id) {
-  struct xwl_linux_dmabuf *linux_dmabuf = (struct xwl_linux_dmabuf *)data;
-  struct xwl_host_drm *host;
+static void sl_bind_host_drm(struct wl_client* client,
+                             void* data,
+                             uint32_t version,
+                             uint32_t id) {
+  struct sl_linux_dmabuf* linux_dmabuf = (struct sl_linux_dmabuf*)data;
+  struct sl_host_drm* host;
 
   host = malloc(sizeof(*host));
   assert(host);
@@ -3615,34 +3734,37 @@ static void xwl_bind_host_drm(struct wl_client *client, void *data,
   host->version = MIN(version, 2);
   host->resource =
       wl_resource_create(client, &wl_drm_interface, host->version, id);
-  wl_resource_set_implementation(host->resource, &xwl_drm_implementation, host,
-                                 xwl_destroy_host_drm);
+  wl_resource_set_implementation(host->resource, &sl_drm_implementation, host,
+                                 sl_destroy_host_drm);
 
-  host->callback = wl_display_sync(linux_dmabuf->xwl->display);
+  host->callback = wl_display_sync(linux_dmabuf->ctx->display);
   wl_callback_set_user_data(host->callback, host);
-  wl_callback_add_listener(host->callback, &xwl_drm_callback_listener, host);
+  wl_callback_add_listener(host->callback, &sl_drm_callback_listener, host);
 }
 
-static void xwl_xdg_positioner_destroy(struct wl_client *client,
-                                       struct wl_resource *resource) {
+static void sl_xdg_positioner_destroy(struct wl_client* client,
+                                      struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_xdg_positioner_set_size(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        int32_t width, int32_t height) {
-  struct xwl_host_xdg_positioner *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
+static void sl_xdg_positioner_set_size(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       int32_t width,
+                                       int32_t height) {
+  struct sl_host_xdg_positioner* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
 
   zxdg_positioner_v6_set_size(host->proxy, width / scale, height / scale);
 }
 
-static void xwl_xdg_positioner_set_anchor_rect(struct wl_client *client,
-                                               struct wl_resource *resource,
-                                               int32_t x, int32_t y,
-                                               int32_t width, int32_t height) {
-  struct xwl_host_xdg_positioner *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
+static void sl_xdg_positioner_set_anchor_rect(struct wl_client* client,
+                                              struct wl_resource* resource,
+                                              int32_t x,
+                                              int32_t y,
+                                              int32_t width,
+                                              int32_t height) {
+  struct sl_host_xdg_positioner* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
   int32_t x1, y1, x2, y2;
 
   x1 = x / scale;
@@ -3653,82 +3775,86 @@ static void xwl_xdg_positioner_set_anchor_rect(struct wl_client *client,
   zxdg_positioner_v6_set_anchor_rect(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
-static void xwl_xdg_positioner_set_anchor(struct wl_client *client,
-                                          struct wl_resource *resource,
-                                          uint32_t anchor) {
-  struct xwl_host_xdg_positioner *host = wl_resource_get_user_data(resource);
+static void sl_xdg_positioner_set_anchor(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         uint32_t anchor) {
+  struct sl_host_xdg_positioner* host = wl_resource_get_user_data(resource);
 
   zxdg_positioner_v6_set_anchor(host->proxy, anchor);
 }
 
-static void xwl_xdg_positioner_set_gravity(struct wl_client *client,
-                                           struct wl_resource *resource,
-                                           uint32_t gravity) {
-  struct xwl_host_xdg_positioner *host = wl_resource_get_user_data(resource);
+static void sl_xdg_positioner_set_gravity(struct wl_client* client,
+                                          struct wl_resource* resource,
+                                          uint32_t gravity) {
+  struct sl_host_xdg_positioner* host = wl_resource_get_user_data(resource);
 
   zxdg_positioner_v6_set_gravity(host->proxy, gravity);
 }
 
-static void
-xwl_xdg_positioner_set_constraint_adjustment(struct wl_client *client,
-                                             struct wl_resource *resource,
-                                             uint32_t constraint_adjustment) {
-  struct xwl_host_xdg_positioner *host = wl_resource_get_user_data(resource);
+static void sl_xdg_positioner_set_constraint_adjustment(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    uint32_t constraint_adjustment) {
+  struct sl_host_xdg_positioner* host = wl_resource_get_user_data(resource);
 
   zxdg_positioner_v6_set_constraint_adjustment(host->proxy,
                                                constraint_adjustment);
 }
 
-static void xwl_xdg_positioner_set_offset(struct wl_client *client,
-                                          struct wl_resource *resource,
-                                          int32_t x, int32_t y) {
-  struct xwl_host_xdg_positioner *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
+static void sl_xdg_positioner_set_offset(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         int32_t x,
+                                         int32_t y) {
+  struct sl_host_xdg_positioner* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
 
   zxdg_positioner_v6_set_offset(host->proxy, x / scale, y / scale);
 }
 
 static const struct zxdg_positioner_v6_interface
-    xwl_xdg_positioner_implementation = {
-        xwl_xdg_positioner_destroy,
-        xwl_xdg_positioner_set_size,
-        xwl_xdg_positioner_set_anchor_rect,
-        xwl_xdg_positioner_set_anchor,
-        xwl_xdg_positioner_set_gravity,
-        xwl_xdg_positioner_set_constraint_adjustment,
-        xwl_xdg_positioner_set_offset};
+    sl_xdg_positioner_implementation = {
+        sl_xdg_positioner_destroy,
+        sl_xdg_positioner_set_size,
+        sl_xdg_positioner_set_anchor_rect,
+        sl_xdg_positioner_set_anchor,
+        sl_xdg_positioner_set_gravity,
+        sl_xdg_positioner_set_constraint_adjustment,
+        sl_xdg_positioner_set_offset};
 
-static void xwl_destroy_host_xdg_positioner(struct wl_resource *resource) {
-  struct xwl_host_xdg_positioner *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_xdg_positioner(struct wl_resource* resource) {
+  struct sl_host_xdg_positioner* host = wl_resource_get_user_data(resource);
 
   zxdg_positioner_v6_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_xdg_popup_destroy(struct wl_client *client,
-                                  struct wl_resource *resource) {
+static void sl_xdg_popup_destroy(struct wl_client* client,
+                                 struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_xdg_popup_grab(struct wl_client *client,
-                               struct wl_resource *resource,
-                               struct wl_resource *seat_resource,
-                               uint32_t serial) {
-  struct xwl_host_xdg_popup *host = wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat = wl_resource_get_user_data(seat_resource);
+static void sl_xdg_popup_grab(struct wl_client* client,
+                              struct wl_resource* resource,
+                              struct wl_resource* seat_resource,
+                              uint32_t serial) {
+  struct sl_host_xdg_popup* host = wl_resource_get_user_data(resource);
+  struct sl_host_seat* host_seat = wl_resource_get_user_data(seat_resource);
 
   zxdg_popup_v6_grab(host->proxy, host_seat->proxy, serial);
 }
 
-static const struct zxdg_popup_v6_interface xwl_xdg_popup_implementation = {
-    xwl_xdg_popup_destroy, xwl_xdg_popup_grab};
+static const struct zxdg_popup_v6_interface sl_xdg_popup_implementation = {
+    sl_xdg_popup_destroy, sl_xdg_popup_grab};
 
-static void xwl_xdg_popup_configure(void *data, struct zxdg_popup_v6 *xdg_popup,
-                                    int32_t x, int32_t y, int32_t width,
-                                    int32_t height) {
-  struct xwl_host_xdg_popup *host = zxdg_popup_v6_get_user_data(xdg_popup);
-  double scale = host->xwl->scale;
+static void sl_xdg_popup_configure(void* data,
+                                   struct zxdg_popup_v6* xdg_popup,
+                                   int32_t x,
+                                   int32_t y,
+                                   int32_t width,
+                                   int32_t height) {
+  struct sl_host_xdg_popup* host = zxdg_popup_v6_get_user_data(xdg_popup);
+  double scale = host->ctx->scale;
   int32_t x1, y1, x2, y2;
 
   x1 = x * scale;
@@ -3739,248 +3865,256 @@ static void xwl_xdg_popup_configure(void *data, struct zxdg_popup_v6 *xdg_popup,
   zxdg_popup_v6_send_configure(host->resource, x1, y1, x2 - x1, y2 - y1);
 }
 
-static void xwl_xdg_popup_popup_done(void *data,
-                                     struct zxdg_popup_v6 *xdg_popup) {
-  struct xwl_host_xdg_popup *host = zxdg_popup_v6_get_user_data(xdg_popup);
+static void sl_xdg_popup_popup_done(void* data,
+                                    struct zxdg_popup_v6* xdg_popup) {
+  struct sl_host_xdg_popup* host = zxdg_popup_v6_get_user_data(xdg_popup);
 
   zxdg_popup_v6_send_popup_done(host->resource);
 }
 
-static const struct zxdg_popup_v6_listener xwl_xdg_popup_listener = {
-    xwl_xdg_popup_configure, xwl_xdg_popup_popup_done};
+static const struct zxdg_popup_v6_listener sl_xdg_popup_listener = {
+    sl_xdg_popup_configure, sl_xdg_popup_popup_done};
 
-static void xwl_destroy_host_xdg_popup(struct wl_resource *resource) {
-  struct xwl_host_xdg_popup *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_xdg_popup(struct wl_resource* resource) {
+  struct sl_host_xdg_popup* host = wl_resource_get_user_data(resource);
 
   zxdg_popup_v6_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_xdg_toplevel_destroy(struct wl_client *client,
-                                     struct wl_resource *resource) {
+static void sl_xdg_toplevel_destroy(struct wl_client* client,
+                                    struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_xdg_toplevel_set_parent(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        struct wl_resource *parent_resource) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
-  struct xwl_host_xdg_toplevel *host_parent =
+static void sl_xdg_toplevel_set_parent(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       struct wl_resource* parent_resource) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
+  struct sl_host_xdg_toplevel* host_parent =
       parent_resource ? wl_resource_get_user_data(parent_resource) : NULL;
 
   zxdg_toplevel_v6_set_parent(host->proxy,
                               host_parent ? host_parent->proxy : NULL);
 }
 
-static void xwl_xdg_toplevel_set_title(struct wl_client *client,
-                                       struct wl_resource *resource,
-                                       const char *title) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_set_title(struct wl_client* client,
+                                      struct wl_resource* resource,
+                                      const char* title) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_set_title(host->proxy, title);
 }
 
-static void xwl_xdg_toplevel_set_app_id(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        const char *app_id) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_set_app_id(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       const char* app_id) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_set_app_id(host->proxy, app_id);
 }
 
-static void xwl_xdg_toplevel_show_window_menu(struct wl_client *client,
-                                              struct wl_resource *resource,
-                                              struct wl_resource *seat_resource,
-                                              uint32_t serial, int32_t x,
-                                              int32_t y) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat =
+static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
+                                             struct wl_resource* resource,
+                                             struct wl_resource* seat_resource,
+                                             uint32_t serial,
+                                             int32_t x,
+                                             int32_t y) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
+  struct sl_host_seat* host_seat =
       seat_resource ? wl_resource_get_user_data(seat_resource) : NULL;
 
   zxdg_toplevel_v6_show_window_menu(
       host->proxy, host_seat ? host_seat->proxy : NULL, serial, x, y);
 }
 
-static void xwl_xdg_toplevel_move(struct wl_client *client,
-                                  struct wl_resource *resource,
-                                  struct wl_resource *seat_resource,
-                                  uint32_t serial) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat =
+static void sl_xdg_toplevel_move(struct wl_client* client,
+                                 struct wl_resource* resource,
+                                 struct wl_resource* seat_resource,
+                                 uint32_t serial) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
+  struct sl_host_seat* host_seat =
       seat_resource ? wl_resource_get_user_data(seat_resource) : NULL;
 
   zxdg_toplevel_v6_move(host->proxy, host_seat ? host_seat->proxy : NULL,
                         serial);
 }
 
-static void xwl_xdg_toplevel_resize(struct wl_client *client,
-                                    struct wl_resource *resource,
-                                    struct wl_resource *seat_resource,
-                                    uint32_t serial, uint32_t edges) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat =
+static void sl_xdg_toplevel_resize(struct wl_client* client,
+                                   struct wl_resource* resource,
+                                   struct wl_resource* seat_resource,
+                                   uint32_t serial,
+                                   uint32_t edges) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
+  struct sl_host_seat* host_seat =
       seat_resource ? wl_resource_get_user_data(seat_resource) : NULL;
 
   zxdg_toplevel_v6_resize(host->proxy, host_seat ? host_seat->proxy : NULL,
                           serial, edges);
 }
 
-static void xwl_xdg_toplevel_set_max_size(struct wl_client *client,
-                                          struct wl_resource *resource,
-                                          int32_t width, int32_t height) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_set_max_size(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         int32_t width,
+                                         int32_t height) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_set_max_size(host->proxy, width, height);
 }
 
-static void xwl_xdg_toplevel_set_min_size(struct wl_client *client,
-                                          struct wl_resource *resource,
-                                          int32_t width, int32_t height) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_set_min_size(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         int32_t width,
+                                         int32_t height) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_set_min_size(host->proxy, width, height);
 }
 
-static void xwl_xdg_toplevel_set_maximized(struct wl_client *client,
-                                           struct wl_resource *resource) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_set_maximized(struct wl_client* client,
+                                          struct wl_resource* resource) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_set_maximized(host->proxy);
 }
 
-static void xwl_xdg_toplevel_unset_maximized(struct wl_client *client,
-                                             struct wl_resource *resource) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_unset_maximized(struct wl_client* client,
+                                            struct wl_resource* resource) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_unset_maximized(host->proxy);
 }
 
-static void
-xwl_xdg_toplevel_set_fullscreen(struct wl_client *client,
-                                struct wl_resource *resource,
-                                struct wl_resource *output_resource) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
-  struct xwl_host_output *host_output =
+static void sl_xdg_toplevel_set_fullscreen(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    struct wl_resource* output_resource) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
+  struct sl_host_output* host_output =
       output_resource ? wl_resource_get_user_data(resource) : NULL;
 
   zxdg_toplevel_v6_set_fullscreen(host->proxy,
                                   host_output ? host_output->proxy : NULL);
 }
 
-static void xwl_xdg_toplevel_unset_fullscreen(struct wl_client *client,
-                                              struct wl_resource *resource) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_unset_fullscreen(struct wl_client* client,
+                                             struct wl_resource* resource) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_unset_fullscreen(host->proxy);
 }
 
-static void xwl_xdg_toplevel_set_minimized(struct wl_client *client,
-                                           struct wl_resource *resource) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_xdg_toplevel_set_minimized(struct wl_client* client,
+                                          struct wl_resource* resource) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_set_minimized(host->proxy);
 }
 
-static const struct zxdg_toplevel_v6_interface xwl_xdg_toplevel_implementation =
-    {xwl_xdg_toplevel_destroy,          xwl_xdg_toplevel_set_parent,
-     xwl_xdg_toplevel_set_title,        xwl_xdg_toplevel_set_app_id,
-     xwl_xdg_toplevel_show_window_menu, xwl_xdg_toplevel_move,
-     xwl_xdg_toplevel_resize,           xwl_xdg_toplevel_set_max_size,
-     xwl_xdg_toplevel_set_min_size,     xwl_xdg_toplevel_set_maximized,
-     xwl_xdg_toplevel_unset_maximized,  xwl_xdg_toplevel_set_fullscreen,
-     xwl_xdg_toplevel_unset_fullscreen, xwl_xdg_toplevel_set_minimized};
+static const struct zxdg_toplevel_v6_interface sl_xdg_toplevel_implementation =
+    {sl_xdg_toplevel_destroy,          sl_xdg_toplevel_set_parent,
+     sl_xdg_toplevel_set_title,        sl_xdg_toplevel_set_app_id,
+     sl_xdg_toplevel_show_window_menu, sl_xdg_toplevel_move,
+     sl_xdg_toplevel_resize,           sl_xdg_toplevel_set_max_size,
+     sl_xdg_toplevel_set_min_size,     sl_xdg_toplevel_set_maximized,
+     sl_xdg_toplevel_unset_maximized,  sl_xdg_toplevel_set_fullscreen,
+     sl_xdg_toplevel_unset_fullscreen, sl_xdg_toplevel_set_minimized};
 
-static void xwl_xdg_toplevel_configure(void *data,
-                                       struct zxdg_toplevel_v6 *xdg_toplevel,
-                                       int32_t width, int32_t height,
-                                       struct wl_array *states) {
-  struct xwl_host_xdg_toplevel *host =
+static void sl_xdg_toplevel_configure(void* data,
+                                      struct zxdg_toplevel_v6* xdg_toplevel,
+                                      int32_t width,
+                                      int32_t height,
+                                      struct wl_array* states) {
+  struct sl_host_xdg_toplevel* host =
       zxdg_toplevel_v6_get_user_data(xdg_toplevel);
-  double scale = host->xwl->scale;
+  double scale = host->ctx->scale;
 
   zxdg_toplevel_v6_send_configure(host->resource, width * scale, height * scale,
                                   states);
 }
 
-static void xwl_xdg_toplevel_close(void *data,
-                                   struct zxdg_toplevel_v6 *xdg_toplevel) {
-  struct xwl_host_xdg_toplevel *host =
+static void sl_xdg_toplevel_close(void* data,
+                                  struct zxdg_toplevel_v6* xdg_toplevel) {
+  struct sl_host_xdg_toplevel* host =
       zxdg_toplevel_v6_get_user_data(xdg_toplevel);
 
   zxdg_toplevel_v6_send_close(host->resource);
 }
 
-static const struct zxdg_toplevel_v6_listener xwl_xdg_toplevel_listener = {
-    xwl_xdg_toplevel_configure, xwl_xdg_toplevel_close};
+static const struct zxdg_toplevel_v6_listener sl_xdg_toplevel_listener = {
+    sl_xdg_toplevel_configure, sl_xdg_toplevel_close};
 
-static void xwl_destroy_host_xdg_toplevel(struct wl_resource *resource) {
-  struct xwl_host_xdg_toplevel *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_xdg_toplevel(struct wl_resource* resource) {
+  struct sl_host_xdg_toplevel* host = wl_resource_get_user_data(resource);
 
   zxdg_toplevel_v6_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_xdg_surface_destroy(struct wl_client *client,
-                                    struct wl_resource *resource) {
+static void sl_xdg_surface_destroy(struct wl_client* client,
+                                   struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_xdg_surface_get_toplevel(struct wl_client *client,
-                                         struct wl_resource *resource,
-                                         uint32_t id) {
-  struct xwl_host_xdg_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_xdg_toplevel *host_xdg_toplevel;
+static void sl_xdg_surface_get_toplevel(struct wl_client* client,
+                                        struct wl_resource* resource,
+                                        uint32_t id) {
+  struct sl_host_xdg_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_xdg_toplevel* host_xdg_toplevel;
 
   host_xdg_toplevel = malloc(sizeof(*host_xdg_toplevel));
   assert(host_xdg_toplevel);
 
-  host_xdg_toplevel->xwl = host->xwl;
+  host_xdg_toplevel->ctx = host->ctx;
   host_xdg_toplevel->resource =
       wl_resource_create(client, &zxdg_toplevel_v6_interface, 1, id);
   wl_resource_set_implementation(
-      host_xdg_toplevel->resource, &xwl_xdg_toplevel_implementation,
-      host_xdg_toplevel, xwl_destroy_host_xdg_toplevel);
+      host_xdg_toplevel->resource, &sl_xdg_toplevel_implementation,
+      host_xdg_toplevel, sl_destroy_host_xdg_toplevel);
   host_xdg_toplevel->proxy = zxdg_surface_v6_get_toplevel(host->proxy);
   zxdg_toplevel_v6_set_user_data(host_xdg_toplevel->proxy, host_xdg_toplevel);
   zxdg_toplevel_v6_add_listener(host_xdg_toplevel->proxy,
-                                &xwl_xdg_toplevel_listener, host_xdg_toplevel);
+                                &sl_xdg_toplevel_listener, host_xdg_toplevel);
 }
 
-static void xwl_xdg_surface_get_popup(struct wl_client *client,
-                                      struct wl_resource *resource, uint32_t id,
-                                      struct wl_resource *parent_resource,
-                                      struct wl_resource *positioner_resource) {
-  struct xwl_host_xdg_surface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_xdg_surface *host_parent =
+static void sl_xdg_surface_get_popup(struct wl_client* client,
+                                     struct wl_resource* resource,
+                                     uint32_t id,
+                                     struct wl_resource* parent_resource,
+                                     struct wl_resource* positioner_resource) {
+  struct sl_host_xdg_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_xdg_surface* host_parent =
       wl_resource_get_user_data(parent_resource);
-  struct xwl_host_xdg_positioner *host_positioner =
+  struct sl_host_xdg_positioner* host_positioner =
       wl_resource_get_user_data(positioner_resource);
-  struct xwl_host_xdg_popup *host_xdg_popup;
+  struct sl_host_xdg_popup* host_xdg_popup;
 
   host_xdg_popup = malloc(sizeof(*host_xdg_popup));
   assert(host_xdg_popup);
 
-  host_xdg_popup->xwl = host->xwl;
+  host_xdg_popup->ctx = host->ctx;
   host_xdg_popup->resource =
       wl_resource_create(client, &zxdg_popup_v6_interface, 1, id);
   wl_resource_set_implementation(host_xdg_popup->resource,
-                                 &xwl_xdg_popup_implementation, host_xdg_popup,
-                                 xwl_destroy_host_xdg_popup);
+                                 &sl_xdg_popup_implementation, host_xdg_popup,
+                                 sl_destroy_host_xdg_popup);
   host_xdg_popup->proxy = zxdg_surface_v6_get_popup(
       host->proxy, host_parent->proxy, host_positioner->proxy);
   zxdg_popup_v6_set_user_data(host_xdg_popup->proxy, host_xdg_popup);
-  zxdg_popup_v6_add_listener(host_xdg_popup->proxy, &xwl_xdg_popup_listener,
+  zxdg_popup_v6_add_listener(host_xdg_popup->proxy, &sl_xdg_popup_listener,
                              host_xdg_popup);
 }
 
-static void xwl_xdg_surface_set_window_geometry(struct wl_client *client,
-                                                struct wl_resource *resource,
-                                                int32_t x, int32_t y,
-                                                int32_t width, int32_t height) {
-  struct xwl_host_xdg_surface *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
+static void sl_xdg_surface_set_window_geometry(struct wl_client* client,
+                                               struct wl_resource* resource,
+                                               int32_t x,
+                                               int32_t y,
+                                               int32_t width,
+                                               int32_t height) {
+  struct sl_host_xdg_surface* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
   int32_t x1, y1, x2, y2;
 
   x1 = x / scale;
@@ -3991,306 +4125,314 @@ static void xwl_xdg_surface_set_window_geometry(struct wl_client *client,
   zxdg_surface_v6_set_window_geometry(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
-static void xwl_xdg_surface_ack_configure(struct wl_client *client,
-                                          struct wl_resource *resource,
-                                          uint32_t serial) {
-  struct xwl_host_xdg_surface *host = wl_resource_get_user_data(resource);
+static void sl_xdg_surface_ack_configure(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         uint32_t serial) {
+  struct sl_host_xdg_surface* host = wl_resource_get_user_data(resource);
 
   zxdg_surface_v6_ack_configure(host->proxy, serial);
 }
 
-static const struct zxdg_surface_v6_interface xwl_xdg_surface_implementation = {
-    xwl_xdg_surface_destroy, xwl_xdg_surface_get_toplevel,
-    xwl_xdg_surface_get_popup, xwl_xdg_surface_set_window_geometry,
-    xwl_xdg_surface_ack_configure};
+static const struct zxdg_surface_v6_interface sl_xdg_surface_implementation = {
+    sl_xdg_surface_destroy, sl_xdg_surface_get_toplevel,
+    sl_xdg_surface_get_popup, sl_xdg_surface_set_window_geometry,
+    sl_xdg_surface_ack_configure};
 
-static void xwl_xdg_surface_configure(void *data,
-                                      struct zxdg_surface_v6 *xdg_surface,
-                                      uint32_t serial) {
-  struct xwl_host_xdg_surface *host =
-      zxdg_surface_v6_get_user_data(xdg_surface);
+static void sl_xdg_surface_configure(void* data,
+                                     struct zxdg_surface_v6* xdg_surface,
+                                     uint32_t serial) {
+  struct sl_host_xdg_surface* host = zxdg_surface_v6_get_user_data(xdg_surface);
 
   zxdg_surface_v6_send_configure(host->resource, serial);
 }
 
-static const struct zxdg_surface_v6_listener xwl_xdg_surface_listener = {
-    xwl_xdg_surface_configure};
+static const struct zxdg_surface_v6_listener sl_xdg_surface_listener = {
+    sl_xdg_surface_configure};
 
-static void xwl_destroy_host_xdg_surface(struct wl_resource *resource) {
-  struct xwl_host_xdg_surface *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_xdg_surface(struct wl_resource* resource) {
+  struct sl_host_xdg_surface* host = wl_resource_get_user_data(resource);
 
   zxdg_surface_v6_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_xdg_shell_destroy(struct wl_client *client,
-                                  struct wl_resource *resource) {
+static void sl_xdg_shell_destroy(struct wl_client* client,
+                                 struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_xdg_shell_create_positioner(struct wl_client *client,
-                                            struct wl_resource *resource,
-                                            uint32_t id) {
-  struct xwl_host_xdg_shell *host = wl_resource_get_user_data(resource);
-  struct xwl_host_xdg_positioner *host_xdg_positioner;
+static void sl_xdg_shell_create_positioner(struct wl_client* client,
+                                           struct wl_resource* resource,
+                                           uint32_t id) {
+  struct sl_host_xdg_shell* host = wl_resource_get_user_data(resource);
+  struct sl_host_xdg_positioner* host_xdg_positioner;
 
   host_xdg_positioner = malloc(sizeof(*host_xdg_positioner));
   assert(host_xdg_positioner);
 
-  host_xdg_positioner->xwl = host->xdg_shell->xwl;
+  host_xdg_positioner->ctx = host->xdg_shell->ctx;
   host_xdg_positioner->resource =
       wl_resource_create(client, &zxdg_positioner_v6_interface, 1, id);
   wl_resource_set_implementation(
-      host_xdg_positioner->resource, &xwl_xdg_positioner_implementation,
-      host_xdg_positioner, xwl_destroy_host_xdg_positioner);
+      host_xdg_positioner->resource, &sl_xdg_positioner_implementation,
+      host_xdg_positioner, sl_destroy_host_xdg_positioner);
   host_xdg_positioner->proxy = zxdg_shell_v6_create_positioner(host->proxy);
   zxdg_positioner_v6_set_user_data(host_xdg_positioner->proxy,
                                    host_xdg_positioner);
 }
 
-static void
-xwl_xdg_shell_get_xdg_surface(struct wl_client *client,
-                              struct wl_resource *resource, uint32_t id,
-                              struct wl_resource *surface_resource) {
-  struct xwl_host_xdg_shell *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_surface =
+static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         uint32_t id,
+                                         struct wl_resource* surface_resource) {
+  struct sl_host_xdg_shell* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_surface =
       wl_resource_get_user_data(surface_resource);
-  struct xwl_host_xdg_surface *host_xdg_surface;
+  struct sl_host_xdg_surface* host_xdg_surface;
 
   host_xdg_surface = malloc(sizeof(*host_xdg_surface));
   assert(host_xdg_surface);
 
-  host_xdg_surface->xwl = host->xdg_shell->xwl;
+  host_xdg_surface->ctx = host->xdg_shell->ctx;
   host_xdg_surface->resource =
       wl_resource_create(client, &zxdg_surface_v6_interface, 1, id);
-  wl_resource_set_implementation(
-      host_xdg_surface->resource, &xwl_xdg_surface_implementation,
-      host_xdg_surface, xwl_destroy_host_xdg_surface);
+  wl_resource_set_implementation(host_xdg_surface->resource,
+                                 &sl_xdg_surface_implementation,
+                                 host_xdg_surface, sl_destroy_host_xdg_surface);
   host_xdg_surface->proxy =
       zxdg_shell_v6_get_xdg_surface(host->proxy, host_surface->proxy);
   zxdg_surface_v6_set_user_data(host_xdg_surface->proxy, host_xdg_surface);
   zxdg_surface_v6_add_listener(host_xdg_surface->proxy,
-                               &xwl_xdg_surface_listener, host_xdg_surface);
+                               &sl_xdg_surface_listener, host_xdg_surface);
   host_surface->has_role = 1;
 }
 
-static void xwl_xdg_shell_pong(struct wl_client *client,
-                               struct wl_resource *resource, uint32_t serial) {
-  struct xwl_host_xdg_shell *host = wl_resource_get_user_data(resource);
+static void sl_xdg_shell_pong(struct wl_client* client,
+                              struct wl_resource* resource,
+                              uint32_t serial) {
+  struct sl_host_xdg_shell* host = wl_resource_get_user_data(resource);
 
   zxdg_shell_v6_pong(host->proxy, serial);
 }
 
-static const struct zxdg_shell_v6_interface xwl_xdg_shell_implementation = {
-    xwl_xdg_shell_destroy, xwl_xdg_shell_create_positioner,
-    xwl_xdg_shell_get_xdg_surface, xwl_xdg_shell_pong};
+static const struct zxdg_shell_v6_interface sl_xdg_shell_implementation = {
+    sl_xdg_shell_destroy, sl_xdg_shell_create_positioner,
+    sl_xdg_shell_get_xdg_surface, sl_xdg_shell_pong};
 
-static void xwl_xdg_shell_ping(void *data, struct zxdg_shell_v6 *xdg_shell,
-                               uint32_t serial) {
-  struct xwl_host_xdg_shell *host = zxdg_shell_v6_get_user_data(xdg_shell);
+static void sl_xdg_shell_ping(void* data,
+                              struct zxdg_shell_v6* xdg_shell,
+                              uint32_t serial) {
+  struct sl_host_xdg_shell* host = zxdg_shell_v6_get_user_data(xdg_shell);
 
   zxdg_shell_v6_send_ping(host->resource, serial);
 }
 
-static const struct zxdg_shell_v6_listener xwl_xdg_shell_listener = {
-    xwl_xdg_shell_ping};
+static const struct zxdg_shell_v6_listener sl_xdg_shell_listener = {
+    sl_xdg_shell_ping};
 
-static void xwl_destroy_host_xdg_shell(struct wl_resource *resource) {
-  struct xwl_host_xdg_shell *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_xdg_shell(struct wl_resource* resource) {
+  struct sl_host_xdg_shell* host = wl_resource_get_user_data(resource);
 
   zxdg_shell_v6_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_bind_host_xdg_shell(struct wl_client *client, void *data,
-                                    uint32_t version, uint32_t id) {
-  struct xwl_xdg_shell *xdg_shell = (struct xwl_xdg_shell *)data;
-  struct xwl_host_xdg_shell *host;
+static void sl_bind_host_xdg_shell(struct wl_client* client,
+                                   void* data,
+                                   uint32_t version,
+                                   uint32_t id) {
+  struct sl_xdg_shell* xdg_shell = (struct sl_xdg_shell*)data;
+  struct sl_host_xdg_shell* host;
 
   host = malloc(sizeof(*host));
   assert(host);
   host->xdg_shell = xdg_shell;
   host->resource = wl_resource_create(client, &zxdg_shell_v6_interface, 1, id);
-  wl_resource_set_implementation(host->resource, &xwl_xdg_shell_implementation,
-                                 host, xwl_destroy_host_xdg_shell);
+  wl_resource_set_implementation(host->resource, &sl_xdg_shell_implementation,
+                                 host, sl_destroy_host_xdg_shell);
   host->proxy =
-      wl_registry_bind(wl_display_get_registry(xdg_shell->xwl->display),
+      wl_registry_bind(wl_display_get_registry(xdg_shell->ctx->display),
                        xdg_shell->id, &zxdg_shell_v6_interface, 1);
   zxdg_shell_v6_set_user_data(host->proxy, host);
-  zxdg_shell_v6_add_listener(host->proxy, &xwl_xdg_shell_listener, host);
+  zxdg_shell_v6_add_listener(host->proxy, &sl_xdg_shell_listener, host);
 }
 
-static void xwl_data_offer_accept(struct wl_client *client,
-                                  struct wl_resource *resource, uint32_t serial,
-                                  const char *mime_type) {
-  struct xwl_host_data_offer *host = wl_resource_get_user_data(resource);
+static void sl_data_offer_accept(struct wl_client* client,
+                                 struct wl_resource* resource,
+                                 uint32_t serial,
+                                 const char* mime_type) {
+  struct sl_host_data_offer* host = wl_resource_get_user_data(resource);
 
   wl_data_offer_accept(host->proxy, serial, mime_type);
 }
 
-static void xwl_data_offer_receive(struct wl_client *client,
-                                   struct wl_resource *resource,
-                                   const char *mime_type, int32_t fd) {
-  struct xwl_host_data_offer *host = wl_resource_get_user_data(resource);
+static void sl_data_offer_receive(struct wl_client* client,
+                                  struct wl_resource* resource,
+                                  const char* mime_type,
+                                  int32_t fd) {
+  struct sl_host_data_offer* host = wl_resource_get_user_data(resource);
 
-  switch (host->xwl->data_driver) {
-  case DATA_DRIVER_VIRTWL: {
-    struct virtwl_ioctl_new new_pipe = {
-        .type = VIRTWL_IOCTL_NEW_PIPE_READ, .fd = -1, .flags = 0, .size = 0,
-    };
-    int rv;
+  switch (host->ctx->data_driver) {
+    case DATA_DRIVER_VIRTWL: {
+      struct virtwl_ioctl_new new_pipe = {
+          .type = VIRTWL_IOCTL_NEW_PIPE_READ, .fd = -1, .flags = 0, .size = 0,
+      };
+      int rv;
 
-    rv = ioctl(host->xwl->virtwl_fd, VIRTWL_IOCTL_NEW, &new_pipe);
-    if (rv) {
-      fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
-              strerror(errno));
+      rv = ioctl(host->ctx->virtwl_fd, VIRTWL_IOCTL_NEW, &new_pipe);
+      if (rv) {
+        fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
+                strerror(errno));
+        close(fd);
+        return;
+      }
+
+      sl_data_transfer_create(
+          wl_display_get_event_loop(host->ctx->host_display), new_pipe.fd, fd);
+
+      wl_data_offer_receive(host->proxy, mime_type, new_pipe.fd);
+    } break;
+    case DATA_DRIVER_NOOP:
+      wl_data_offer_receive(host->proxy, mime_type, fd);
       close(fd);
-      return;
-    }
-
-    xwl_data_transfer_create(wl_display_get_event_loop(host->xwl->host_display),
-                             new_pipe.fd, fd);
-
-    wl_data_offer_receive(host->proxy, mime_type, new_pipe.fd);
-  } break;
-  case DATA_DRIVER_NOOP:
-    wl_data_offer_receive(host->proxy, mime_type, fd);
-    close(fd);
-    break;
+      break;
   }
 }
 
-static void xwl_data_offer_destroy(struct wl_client *client,
-                                   struct wl_resource *resource) {
+static void sl_data_offer_destroy(struct wl_client* client,
+                                  struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_data_offer_finish(struct wl_client *client,
-                                  struct wl_resource *resource) {
-  struct xwl_host_data_offer *host = wl_resource_get_user_data(resource);
+static void sl_data_offer_finish(struct wl_client* client,
+                                 struct wl_resource* resource) {
+  struct sl_host_data_offer* host = wl_resource_get_user_data(resource);
 
   wl_data_offer_finish(host->proxy);
 }
 
-static void xwl_data_offer_set_actions(struct wl_client *client,
-                                       struct wl_resource *resource,
-                                       uint32_t dnd_actions,
-                                       uint32_t preferred_action) {
-  struct xwl_host_data_offer *host = wl_resource_get_user_data(resource);
+static void sl_data_offer_set_actions(struct wl_client* client,
+                                      struct wl_resource* resource,
+                                      uint32_t dnd_actions,
+                                      uint32_t preferred_action) {
+  struct sl_host_data_offer* host = wl_resource_get_user_data(resource);
 
   wl_data_offer_set_actions(host->proxy, dnd_actions, preferred_action);
 }
 
-static const struct wl_data_offer_interface xwl_data_offer_implementation = {
-    xwl_data_offer_accept, xwl_data_offer_receive, xwl_data_offer_destroy,
-    xwl_data_offer_finish, xwl_data_offer_set_actions};
+static const struct wl_data_offer_interface sl_data_offer_implementation = {
+    sl_data_offer_accept, sl_data_offer_receive, sl_data_offer_destroy,
+    sl_data_offer_finish, sl_data_offer_set_actions};
 
-static void xwl_data_offer_offer(void *data, struct wl_data_offer *data_offer,
-                                 const char *mime_type) {
-  struct xwl_host_data_offer *host = wl_data_offer_get_user_data(data_offer);
+static void sl_data_offer_offer(void* data,
+                                struct wl_data_offer* data_offer,
+                                const char* mime_type) {
+  struct sl_host_data_offer* host = wl_data_offer_get_user_data(data_offer);
 
   wl_data_offer_send_offer(host->resource, mime_type);
 }
 
-static void xwl_data_offer_source_actions(void *data,
-                                          struct wl_data_offer *data_offer,
-                                          uint32_t source_actions) {
-  struct xwl_host_data_offer *host = wl_data_offer_get_user_data(data_offer);
+static void sl_data_offer_source_actions(void* data,
+                                         struct wl_data_offer* data_offer,
+                                         uint32_t source_actions) {
+  struct sl_host_data_offer* host = wl_data_offer_get_user_data(data_offer);
 
   wl_data_offer_send_source_actions(host->resource, source_actions);
 }
 
-static void xwl_data_offer_action(void *data, struct wl_data_offer *data_offer,
-                                  uint32_t dnd_action) {
-  struct xwl_host_data_offer *host = wl_data_offer_get_user_data(data_offer);
+static void sl_data_offer_action(void* data,
+                                 struct wl_data_offer* data_offer,
+                                 uint32_t dnd_action) {
+  struct sl_host_data_offer* host = wl_data_offer_get_user_data(data_offer);
 
   wl_data_offer_send_action(host->resource, dnd_action);
 }
 
-static const struct wl_data_offer_listener xwl_data_offer_listener = {
-    xwl_data_offer_offer, xwl_data_offer_source_actions, xwl_data_offer_action};
+static const struct wl_data_offer_listener sl_data_offer_listener = {
+    sl_data_offer_offer, sl_data_offer_source_actions, sl_data_offer_action};
 
-static void xwl_destroy_host_data_offer(struct wl_resource *resource) {
-  struct xwl_host_data_offer *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_data_offer(struct wl_resource* resource) {
+  struct sl_host_data_offer* host = wl_resource_get_user_data(resource);
 
   wl_data_offer_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_data_source_offer(struct wl_client *client,
-                                  struct wl_resource *resource,
-                                  const char *mime_type) {
-  struct xwl_host_data_source *host = wl_resource_get_user_data(resource);
+static void sl_data_source_offer(struct wl_client* client,
+                                 struct wl_resource* resource,
+                                 const char* mime_type) {
+  struct sl_host_data_source* host = wl_resource_get_user_data(resource);
 
   wl_data_source_offer(host->proxy, mime_type);
 }
 
-static void xwl_data_source_destroy(struct wl_client *client,
-                                    struct wl_resource *resource) {
+static void sl_data_source_destroy(struct wl_client* client,
+                                   struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_data_source_set_actions(struct wl_client *client,
-                                        struct wl_resource *resource,
-                                        uint32_t dnd_actions) {
-  struct xwl_host_data_source *host = wl_resource_get_user_data(resource);
+static void sl_data_source_set_actions(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       uint32_t dnd_actions) {
+  struct sl_host_data_source* host = wl_resource_get_user_data(resource);
 
   wl_data_source_set_actions(host->proxy, dnd_actions);
 }
 
-static const struct wl_data_source_interface xwl_data_source_implementation = {
-    xwl_data_source_offer, xwl_data_source_destroy,
-    xwl_data_source_set_actions};
+static const struct wl_data_source_interface sl_data_source_implementation = {
+    sl_data_source_offer, sl_data_source_destroy, sl_data_source_set_actions};
 
-static void xwl_data_source_target(void *data,
-                                   struct wl_data_source *data_source,
-                                   const char *mime_type) {
-  struct xwl_host_data_source *host = wl_data_source_get_user_data(data_source);
+static void sl_data_source_target(void* data,
+                                  struct wl_data_source* data_source,
+                                  const char* mime_type) {
+  struct sl_host_data_source* host = wl_data_source_get_user_data(data_source);
 
   wl_data_source_send_target(host->resource, mime_type);
 }
 
-static void xwl_data_source_send(void *data, struct wl_data_source *data_source,
-                                 const char *mime_type, int32_t fd) {
-  struct xwl_host_data_source *host = wl_data_source_get_user_data(data_source);
+static void sl_data_source_send(void* data,
+                                struct wl_data_source* data_source,
+                                const char* mime_type,
+                                int32_t fd) {
+  struct sl_host_data_source* host = wl_data_source_get_user_data(data_source);
 
   wl_data_source_send_send(host->resource, mime_type, fd);
   close(fd);
 }
 
-static void xwl_data_source_cancelled(void *data,
-                                      struct wl_data_source *data_source) {
-  struct xwl_host_data_source *host = wl_data_source_get_user_data(data_source);
+static void sl_data_source_cancelled(void* data,
+                                     struct wl_data_source* data_source) {
+  struct sl_host_data_source* host = wl_data_source_get_user_data(data_source);
 
   wl_data_source_send_cancelled(host->resource);
 }
 
-static const struct wl_data_source_listener xwl_data_source_listener = {
-    xwl_data_source_target, xwl_data_source_send, xwl_data_source_cancelled};
+static const struct wl_data_source_listener sl_data_source_listener = {
+    sl_data_source_target, sl_data_source_send, sl_data_source_cancelled};
 
-static void xwl_destroy_host_data_source(struct wl_resource *resource) {
-  struct xwl_host_data_source *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_data_source(struct wl_resource* resource) {
+  struct sl_host_data_source* host = wl_resource_get_user_data(resource);
 
   wl_data_source_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_data_device_start_drag(struct wl_client *client,
-                                       struct wl_resource *resource,
-                                       struct wl_resource *source_resource,
-                                       struct wl_resource *origin_resource,
-                                       struct wl_resource *icon_resource,
-                                       uint32_t serial) {
-  struct xwl_host_data_device *host = wl_resource_get_user_data(resource);
-  struct xwl_host_data_source *host_source =
+static void sl_data_device_start_drag(struct wl_client* client,
+                                      struct wl_resource* resource,
+                                      struct wl_resource* source_resource,
+                                      struct wl_resource* origin_resource,
+                                      struct wl_resource* icon_resource,
+                                      uint32_t serial) {
+  struct sl_host_data_device* host = wl_resource_get_user_data(resource);
+  struct sl_host_data_source* host_source =
       source_resource ? wl_resource_get_user_data(source_resource) : NULL;
-  struct xwl_host_surface *host_origin =
+  struct sl_host_surface* host_origin =
       origin_resource ? wl_resource_get_user_data(origin_resource) : NULL;
-  struct xwl_host_surface *host_icon =
+  struct sl_host_surface* host_icon =
       icon_resource ? wl_resource_get_user_data(icon_resource) : NULL;
 
   wl_data_device_start_drag(host->proxy,
@@ -4299,61 +4441,63 @@ static void xwl_data_device_start_drag(struct wl_client *client,
                             host_icon ? host_icon->proxy : NULL, serial);
 }
 
-static void xwl_data_device_set_selection(struct wl_client *client,
-                                          struct wl_resource *resource,
-                                          struct wl_resource *source_resource,
-                                          uint32_t serial) {
-  struct xwl_host_data_device *host = wl_resource_get_user_data(resource);
-  struct xwl_host_data_source *host_source =
+static void sl_data_device_set_selection(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         struct wl_resource* source_resource,
+                                         uint32_t serial) {
+  struct sl_host_data_device* host = wl_resource_get_user_data(resource);
+  struct sl_host_data_source* host_source =
       source_resource ? wl_resource_get_user_data(source_resource) : NULL;
 
   wl_data_device_set_selection(host->proxy,
                                host_source ? host_source->proxy : NULL, serial);
 }
 
-static void xwl_data_device_release(struct wl_client *client,
-                                    struct wl_resource *resource) {
+static void sl_data_device_release(struct wl_client* client,
+                                   struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static const struct wl_data_device_interface xwl_data_device_implementation = {
-    xwl_data_device_start_drag, xwl_data_device_set_selection,
-    xwl_data_device_release};
+static const struct wl_data_device_interface sl_data_device_implementation = {
+    sl_data_device_start_drag, sl_data_device_set_selection,
+    sl_data_device_release};
 
-static void xwl_data_device_data_offer(void *data,
-                                       struct wl_data_device *data_device,
-                                       struct wl_data_offer *data_offer) {
-  struct xwl_host_data_device *host = wl_data_device_get_user_data(data_device);
-  struct xwl_host_data_offer *host_data_offer;
+static void sl_data_device_data_offer(void* data,
+                                      struct wl_data_device* data_device,
+                                      struct wl_data_offer* data_offer) {
+  struct sl_host_data_device* host = wl_data_device_get_user_data(data_device);
+  struct sl_host_data_offer* host_data_offer;
 
   host_data_offer = malloc(sizeof(*host_data_offer));
   assert(host_data_offer);
 
-  host_data_offer->xwl = host->xwl;
+  host_data_offer->ctx = host->ctx;
   host_data_offer->resource = wl_resource_create(
       wl_resource_get_client(host->resource), &wl_data_offer_interface,
       wl_resource_get_version(host->resource), 0);
   wl_resource_set_implementation(host_data_offer->resource,
-                                 &xwl_data_offer_implementation,
-                                 host_data_offer, xwl_destroy_host_data_offer);
+                                 &sl_data_offer_implementation, host_data_offer,
+                                 sl_destroy_host_data_offer);
   host_data_offer->proxy = data_offer;
   wl_data_offer_set_user_data(host_data_offer->proxy, host_data_offer);
-  wl_data_offer_add_listener(host_data_offer->proxy, &xwl_data_offer_listener,
+  wl_data_offer_add_listener(host_data_offer->proxy, &sl_data_offer_listener,
                              host_data_offer);
 
   wl_data_device_send_data_offer(host->resource, host_data_offer->resource);
 }
 
-static void xwl_data_device_enter(void *data,
-                                  struct wl_data_device *data_device,
-                                  uint32_t serial, struct wl_surface *surface,
-                                  wl_fixed_t x, wl_fixed_t y,
-                                  struct wl_data_offer *data_offer) {
-  struct xwl_host_data_device *host = wl_data_device_get_user_data(data_device);
-  struct xwl_host_surface *host_surface = wl_surface_get_user_data(surface);
-  struct xwl_host_data_offer *host_data_offer =
+static void sl_data_device_enter(void* data,
+                                 struct wl_data_device* data_device,
+                                 uint32_t serial,
+                                 struct wl_surface* surface,
+                                 wl_fixed_t x,
+                                 wl_fixed_t y,
+                                 struct wl_data_offer* data_offer) {
+  struct sl_host_data_device* host = wl_data_device_get_user_data(data_device);
+  struct sl_host_surface* host_surface = wl_surface_get_user_data(surface);
+  struct sl_host_data_offer* host_data_offer =
       wl_data_offer_get_user_data(data_offer);
-  double scale = host->xwl->scale;
+  double scale = host->ctx->scale;
 
   wl_data_device_send_enter(host->resource, serial, host_surface->resource,
                             wl_fixed_from_double(wl_fixed_to_double(x) * scale),
@@ -4361,48 +4505,49 @@ static void xwl_data_device_enter(void *data,
                             host_data_offer->resource);
 }
 
-static void xwl_data_device_leave(void *data,
-                                  struct wl_data_device *data_device) {
-  struct xwl_host_data_device *host = wl_data_device_get_user_data(data_device);
+static void sl_data_device_leave(void* data,
+                                 struct wl_data_device* data_device) {
+  struct sl_host_data_device* host = wl_data_device_get_user_data(data_device);
 
   wl_data_device_send_leave(host->resource);
 }
 
-static void xwl_data_device_motion(void *data,
-                                   struct wl_data_device *data_device,
-                                   uint32_t time, wl_fixed_t x, wl_fixed_t y) {
-  struct xwl_host_data_device *host = wl_data_device_get_user_data(data_device);
-  double scale = host->xwl->scale;
+static void sl_data_device_motion(void* data,
+                                  struct wl_data_device* data_device,
+                                  uint32_t time,
+                                  wl_fixed_t x,
+                                  wl_fixed_t y) {
+  struct sl_host_data_device* host = wl_data_device_get_user_data(data_device);
+  double scale = host->ctx->scale;
 
   wl_data_device_send_motion(
       host->resource, time, wl_fixed_from_double(wl_fixed_to_double(x) * scale),
       wl_fixed_from_double(wl_fixed_to_double(y) * scale));
 }
 
-static void xwl_data_device_drop(void *data,
-                                 struct wl_data_device *data_device) {
-  struct xwl_host_data_device *host = wl_data_device_get_user_data(data_device);
+static void sl_data_device_drop(void* data,
+                                struct wl_data_device* data_device) {
+  struct sl_host_data_device* host = wl_data_device_get_user_data(data_device);
 
   wl_data_device_send_drop(host->resource);
 }
 
-static void xwl_data_device_selection(void *data,
-                                      struct wl_data_device *data_device,
-                                      struct wl_data_offer *data_offer) {
-  struct xwl_host_data_device *host = wl_data_device_get_user_data(data_device);
-  struct xwl_host_data_offer *host_data_offer =
+static void sl_data_device_selection(void* data,
+                                     struct wl_data_device* data_device,
+                                     struct wl_data_offer* data_offer) {
+  struct sl_host_data_device* host = wl_data_device_get_user_data(data_device);
+  struct sl_host_data_offer* host_data_offer =
       wl_data_offer_get_user_data(data_offer);
 
   wl_data_device_send_selection(host->resource, host_data_offer->resource);
 }
 
-static const struct wl_data_device_listener xwl_data_device_listener = {
-    xwl_data_device_data_offer, xwl_data_device_enter,
-    xwl_data_device_leave,      xwl_data_device_motion,
-    xwl_data_device_drop,       xwl_data_device_selection};
+static const struct wl_data_device_listener sl_data_device_listener = {
+    sl_data_device_data_offer, sl_data_device_enter, sl_data_device_leave,
+    sl_data_device_motion,     sl_data_device_drop,  sl_data_device_selection};
 
-static void xwl_destroy_host_data_device(struct wl_resource *resource) {
-  struct xwl_host_data_device *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_data_device(struct wl_resource* resource) {
+  struct sl_host_data_device* host = wl_resource_get_user_data(resource);
 
   if (wl_data_device_get_version(host->proxy) >=
       WL_DATA_DEVICE_RELEASE_SINCE_VERSION) {
@@ -4414,58 +4559,60 @@ static void xwl_destroy_host_data_device(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_data_device_manager_create_data_source(
-    struct wl_client *client, struct wl_resource *resource, uint32_t id) {
-  struct xwl_host_data_device_manager *host =
+static void sl_data_device_manager_create_data_source(
+    struct wl_client* client, struct wl_resource* resource, uint32_t id) {
+  struct sl_host_data_device_manager* host =
       wl_resource_get_user_data(resource);
-  struct xwl_host_data_source *host_data_source;
+  struct sl_host_data_source* host_data_source;
 
   host_data_source = malloc(sizeof(*host_data_source));
   assert(host_data_source);
 
   host_data_source->resource = wl_resource_create(
       client, &wl_data_source_interface, wl_resource_get_version(resource), id);
-  wl_resource_set_implementation(
-      host_data_source->resource, &xwl_data_source_implementation,
-      host_data_source, xwl_destroy_host_data_source);
+  wl_resource_set_implementation(host_data_source->resource,
+                                 &sl_data_source_implementation,
+                                 host_data_source, sl_destroy_host_data_source);
   host_data_source->proxy =
       wl_data_device_manager_create_data_source(host->proxy);
   wl_data_source_set_user_data(host_data_source->proxy, host_data_source);
-  wl_data_source_add_listener(host_data_source->proxy,
-                              &xwl_data_source_listener, host_data_source);
+  wl_data_source_add_listener(host_data_source->proxy, &sl_data_source_listener,
+                              host_data_source);
 }
 
-static void xwl_data_device_manager_get_data_device(
-    struct wl_client *client, struct wl_resource *resource, uint32_t id,
-    struct wl_resource *seat_resource) {
-  struct xwl_host_data_device_manager *host =
+static void sl_data_device_manager_get_data_device(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    uint32_t id,
+    struct wl_resource* seat_resource) {
+  struct sl_host_data_device_manager* host =
       wl_resource_get_user_data(resource);
-  struct xwl_host_seat *host_seat = wl_resource_get_user_data(seat_resource);
-  struct xwl_host_data_device *host_data_device;
+  struct sl_host_seat* host_seat = wl_resource_get_user_data(seat_resource);
+  struct sl_host_data_device* host_data_device;
 
   host_data_device = malloc(sizeof(*host_data_device));
   assert(host_data_device);
 
-  host_data_device->xwl = host->xwl;
+  host_data_device->ctx = host->ctx;
   host_data_device->resource = wl_resource_create(
       client, &wl_data_device_interface, wl_resource_get_version(resource), id);
-  wl_resource_set_implementation(
-      host_data_device->resource, &xwl_data_device_implementation,
-      host_data_device, xwl_destroy_host_data_device);
+  wl_resource_set_implementation(host_data_device->resource,
+                                 &sl_data_device_implementation,
+                                 host_data_device, sl_destroy_host_data_device);
   host_data_device->proxy =
       wl_data_device_manager_get_data_device(host->proxy, host_seat->proxy);
   wl_data_device_set_user_data(host_data_device->proxy, host_data_device);
-  wl_data_device_add_listener(host_data_device->proxy,
-                              &xwl_data_device_listener, host_data_device);
+  wl_data_device_add_listener(host_data_device->proxy, &sl_data_device_listener,
+                              host_data_device);
 }
 
 static const struct wl_data_device_manager_interface
-    xwl_data_device_manager_implementation = {
-        xwl_data_device_manager_create_data_source,
-        xwl_data_device_manager_get_data_device};
+    sl_data_device_manager_implementation = {
+        sl_data_device_manager_create_data_source,
+        sl_data_device_manager_get_data_device};
 
-static void xwl_destroy_host_data_device_manager(struct wl_resource *resource) {
-  struct xwl_host_data_device_manager *host =
+static void sl_destroy_host_data_device_manager(struct wl_resource* resource) {
+  struct sl_host_data_device_manager* host =
       wl_resource_get_user_data(resource);
 
   wl_data_device_manager_destroy(host->proxy);
@@ -4473,152 +4620,158 @@ static void xwl_destroy_host_data_device_manager(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_bind_host_data_device_manager(struct wl_client *client,
-                                              void *data, uint32_t version,
-                                              uint32_t id) {
-  struct xwl_data_device_manager *data_device_manager =
-      (struct xwl_data_device_manager *)data;
-  struct xwl_host_data_device_manager *host;
+static void sl_bind_host_data_device_manager(struct wl_client* client,
+                                             void* data,
+                                             uint32_t version,
+                                             uint32_t id) {
+  struct sl_data_device_manager* data_device_manager =
+      (struct sl_data_device_manager*)data;
+  struct sl_host_data_device_manager* host;
 
   host = malloc(sizeof(*host));
   assert(host);
-  host->xwl = data_device_manager->xwl;
+  host->ctx = data_device_manager->ctx;
   host->resource =
       wl_resource_create(client, &wl_data_device_manager_interface,
                          MIN(version, data_device_manager->version), id);
   wl_resource_set_implementation(host->resource,
-                                 &xwl_data_device_manager_implementation, host,
-                                 xwl_destroy_host_data_device_manager);
+                                 &sl_data_device_manager_implementation, host,
+                                 sl_destroy_host_data_device_manager);
   host->proxy = wl_registry_bind(
-      wl_display_get_registry(data_device_manager->xwl->display),
+      wl_display_get_registry(data_device_manager->ctx->display),
       data_device_manager->id, &wl_data_device_manager_interface,
       data_device_manager->version);
   wl_data_device_manager_set_user_data(host->proxy, host);
 }
 
-static void xwl_subsurface_destroy(struct wl_client *client,
-                                   struct wl_resource *resource) {
+static void sl_subsurface_destroy(struct wl_client* client,
+                                  struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_subsurface_set_position(struct wl_client *client,
-                                        struct wl_resource *resource, int32_t x,
-                                        int32_t y) {
-  struct xwl_host_subsurface *host = wl_resource_get_user_data(resource);
-  double scale = host->xwl->scale;
+static void sl_subsurface_set_position(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       int32_t x,
+                                       int32_t y) {
+  struct sl_host_subsurface* host = wl_resource_get_user_data(resource);
+  double scale = host->ctx->scale;
 
   wl_subsurface_set_position(host->proxy, x / scale, y / scale);
 }
 
-static void xwl_subsurface_place_above(struct wl_client *client,
-                                       struct wl_resource *resource,
-                                       struct wl_resource *sibling_resource) {
-  struct xwl_host_subsurface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_sibling =
+static void sl_subsurface_place_above(struct wl_client* client,
+                                      struct wl_resource* resource,
+                                      struct wl_resource* sibling_resource) {
+  struct sl_host_subsurface* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_sibling =
       wl_resource_get_user_data(sibling_resource);
 
   wl_subsurface_place_above(host->proxy, host_sibling->proxy);
 }
 
-static void xwl_subsurface_place_below(struct wl_client *client,
-                                       struct wl_resource *resource,
-                                       struct wl_resource *sibling_resource) {
-  struct xwl_host_subsurface *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_sibling =
+static void sl_subsurface_place_below(struct wl_client* client,
+                                      struct wl_resource* resource,
+                                      struct wl_resource* sibling_resource) {
+  struct sl_host_subsurface* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_sibling =
       wl_resource_get_user_data(sibling_resource);
 
   wl_subsurface_place_below(host->proxy, host_sibling->proxy);
 }
 
-static void xwl_subsurface_set_sync(struct wl_client *client,
-                                    struct wl_resource *resource) {
-  struct xwl_host_subsurface *host = wl_resource_get_user_data(resource);
+static void sl_subsurface_set_sync(struct wl_client* client,
+                                   struct wl_resource* resource) {
+  struct sl_host_subsurface* host = wl_resource_get_user_data(resource);
 
   wl_subsurface_set_sync(host->proxy);
 }
 
-static void xwl_subsurface_set_desync(struct wl_client *client,
-                                      struct wl_resource *resource) {
-  struct xwl_host_subsurface *host = wl_resource_get_user_data(resource);
+static void sl_subsurface_set_desync(struct wl_client* client,
+                                     struct wl_resource* resource) {
+  struct sl_host_subsurface* host = wl_resource_get_user_data(resource);
 
   wl_subsurface_set_desync(host->proxy);
 }
 
-static const struct wl_subsurface_interface xwl_subsurface_implementation = {
-    xwl_subsurface_destroy,     xwl_subsurface_set_position,
-    xwl_subsurface_place_above, xwl_subsurface_place_below,
-    xwl_subsurface_set_sync,    xwl_subsurface_set_desync};
+static const struct wl_subsurface_interface sl_subsurface_implementation = {
+    sl_subsurface_destroy,     sl_subsurface_set_position,
+    sl_subsurface_place_above, sl_subsurface_place_below,
+    sl_subsurface_set_sync,    sl_subsurface_set_desync};
 
-static void xwl_destroy_host_subsurface(struct wl_resource *resource) {
-  struct xwl_host_subsurface *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_subsurface(struct wl_resource* resource) {
+  struct sl_host_subsurface* host = wl_resource_get_user_data(resource);
 
   wl_subsurface_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_subcompositor_destroy(struct wl_client *client,
-                                      struct wl_resource *resource) {
+static void sl_subcompositor_destroy(struct wl_client* client,
+                                     struct wl_resource* resource) {
   wl_resource_destroy(resource);
 }
 
-static void xwl_subcompositor_get_subsurface(
-    struct wl_client *client, struct wl_resource *resource, uint32_t id,
-    struct wl_resource *surface_resource, struct wl_resource *parent_resource) {
-  struct xwl_host_subcompositor *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_surface =
+static void sl_subcompositor_get_subsurface(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    uint32_t id,
+    struct wl_resource* surface_resource,
+    struct wl_resource* parent_resource) {
+  struct sl_host_subcompositor* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_surface =
       wl_resource_get_user_data(surface_resource);
-  struct xwl_host_surface *host_parent =
+  struct sl_host_surface* host_parent =
       wl_resource_get_user_data(parent_resource);
-  struct xwl_host_subsurface *host_subsurface;
+  struct sl_host_subsurface* host_subsurface;
 
   host_subsurface = malloc(sizeof(*host_subsurface));
   assert(host_subsurface);
 
-  host_subsurface->xwl = host->xwl;
+  host_subsurface->ctx = host->ctx;
   host_subsurface->resource =
       wl_resource_create(client, &wl_subsurface_interface, 1, id);
   wl_resource_set_implementation(host_subsurface->resource,
-                                 &xwl_subsurface_implementation,
-                                 host_subsurface, xwl_destroy_host_subsurface);
+                                 &sl_subsurface_implementation, host_subsurface,
+                                 sl_destroy_host_subsurface);
   host_subsurface->proxy = wl_subcompositor_get_subsurface(
       host->proxy, host_surface->proxy, host_parent->proxy);
   wl_subsurface_set_user_data(host_subsurface->proxy, host_subsurface);
   host_surface->has_role = 1;
 }
 
-static const struct wl_subcompositor_interface
-    xwl_subcompositor_implementation = {xwl_subcompositor_destroy,
-                                        xwl_subcompositor_get_subsurface};
+static const struct wl_subcompositor_interface sl_subcompositor_implementation =
+    {sl_subcompositor_destroy, sl_subcompositor_get_subsurface};
 
-static void xwl_destroy_host_subcompositor(struct wl_resource *resource) {
-  struct xwl_host_subcompositor *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_subcompositor(struct wl_resource* resource) {
+  struct sl_host_subcompositor* host = wl_resource_get_user_data(resource);
 
   wl_subcompositor_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
 
-static void xwl_bind_host_subcompositor(struct wl_client *client, void *data,
-                                        uint32_t version, uint32_t id) {
-  struct xwl_subcompositor *subcompositor = (struct xwl_subcompositor *)data;
-  struct xwl_host_subcompositor *host;
+static void sl_bind_host_subcompositor(struct wl_client* client,
+                                       void* data,
+                                       uint32_t version,
+                                       uint32_t id) {
+  struct sl_subcompositor* subcompositor = (struct sl_subcompositor*)data;
+  struct sl_host_subcompositor* host;
 
   host = malloc(sizeof(*host));
   assert(host);
-  host->xwl = subcompositor->xwl;
+  host->ctx = subcompositor->ctx;
   host->resource =
       wl_resource_create(client, &wl_subcompositor_interface, 1, id);
   wl_resource_set_implementation(host->resource,
-                                 &xwl_subcompositor_implementation, host,
-                                 xwl_destroy_host_subcompositor);
+                                 &sl_subcompositor_implementation, host,
+                                 sl_destroy_host_subcompositor);
   host->proxy =
-      wl_registry_bind(wl_display_get_registry(subcompositor->xwl->display),
+      wl_registry_bind(wl_display_get_registry(subcompositor->ctx->display),
                        subcompositor->id, &wl_subcompositor_interface, 1);
   wl_subcompositor_set_user_data(host->proxy, host);
 }
 
-static void xwl_gtk_surface_set_dbus_properties(
+static void sl_gtk_surface_set_dbus_properties(
     struct wl_client* client,
     struct wl_resource* resource,
     const char* application_id,
@@ -4627,27 +4780,27 @@ static void xwl_gtk_surface_set_dbus_properties(
     const char* window_object_path,
     const char* application_object_path,
     const char* unique_bus_name) {
-  struct xwl_host_gtk_surface* host = wl_resource_get_user_data(resource);
+  struct sl_host_gtk_surface* host = wl_resource_get_user_data(resource);
 
   zaura_surface_set_application_id(host->proxy, application_id);
 }
 
-static void xwl_gtk_surface_set_modal(struct wl_client *client,
-                                      struct wl_resource *resource) {}
+static void sl_gtk_surface_set_modal(struct wl_client* client,
+                                     struct wl_resource* resource) {}
 
-static void xwl_gtk_surface_unset_modal(struct wl_client *client,
-                                        struct wl_resource *resource) {}
+static void sl_gtk_surface_unset_modal(struct wl_client* client,
+                                       struct wl_resource* resource) {}
 
-static void xwl_gtk_surface_present(struct wl_client *client,
-                                    struct wl_resource *resource,
-                                    uint32_t time) {}
+static void sl_gtk_surface_present(struct wl_client* client,
+                                   struct wl_resource* resource,
+                                   uint32_t time) {}
 
-static const struct gtk_surface1_interface xwl_gtk_surface_implementation = {
-    xwl_gtk_surface_set_dbus_properties, xwl_gtk_surface_set_modal,
-    xwl_gtk_surface_unset_modal, xwl_gtk_surface_present};
+static const struct gtk_surface1_interface sl_gtk_surface_implementation = {
+    sl_gtk_surface_set_dbus_properties, sl_gtk_surface_set_modal,
+    sl_gtk_surface_unset_modal, sl_gtk_surface_present};
 
-static void xwl_destroy_host_gtk_surface(struct wl_resource *resource) {
-  struct xwl_host_gtk_surface *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_gtk_surface(struct wl_resource* resource) {
+  struct sl_host_gtk_surface* host = wl_resource_get_user_data(resource);
 
   zaura_surface_destroy(host->proxy);
   wl_list_remove(&host->link);
@@ -4655,14 +4808,14 @@ static void xwl_destroy_host_gtk_surface(struct wl_resource *resource) {
   free(host);
 }
 
-static void
-xwl_gtk_shell_get_gtk_surface(struct wl_client *client,
-                              struct wl_resource *resource, uint32_t id,
-                              struct wl_resource *surface_resource) {
-  struct xwl_host_gtk_shell *host = wl_resource_get_user_data(resource);
-  struct xwl_host_surface *host_surface =
+static void sl_gtk_shell_get_gtk_surface(struct wl_client* client,
+                                         struct wl_resource* resource,
+                                         uint32_t id,
+                                         struct wl_resource* surface_resource) {
+  struct sl_host_gtk_shell* host = wl_resource_get_user_data(resource);
+  struct sl_host_surface* host_surface =
       wl_resource_get_user_data(surface_resource);
-  struct xwl_host_gtk_surface *host_gtk_surface;
+  struct sl_host_gtk_surface* host_gtk_surface;
 
   host_gtk_surface = malloc(sizeof(*host_gtk_surface));
   assert(host_gtk_surface);
@@ -4671,19 +4824,19 @@ xwl_gtk_shell_get_gtk_surface(struct wl_client *client,
   host_gtk_surface->aura_shell = host->aura_shell;
   host_gtk_surface->resource =
       wl_resource_create(client, &gtk_surface1_interface, 1, id);
-  wl_resource_set_implementation(
-      host_gtk_surface->resource, &xwl_gtk_surface_implementation,
-      host_gtk_surface, xwl_destroy_host_gtk_surface);
+  wl_resource_set_implementation(host_gtk_surface->resource,
+                                 &sl_gtk_surface_implementation,
+                                 host_gtk_surface, sl_destroy_host_gtk_surface);
   host_gtk_surface->proxy =
       zaura_shell_get_aura_surface(host->proxy, host_surface->proxy);
   zaura_surface_set_startup_id(host_gtk_surface->proxy, host->startup_id);
 }
 
-static void xwl_gtk_shell_set_startup_id(struct wl_client *client,
-                                         struct wl_resource *resource,
-                                         const char *startup_id) {
-  struct xwl_host_gtk_shell *host = wl_resource_get_user_data(resource);
-  struct xwl_host_gtk_surface* surface;
+static void sl_gtk_shell_set_startup_id(struct wl_client* client,
+                                        struct wl_resource* resource,
+                                        const char* startup_id) {
+  struct sl_host_gtk_shell* host = wl_resource_get_user_data(resource);
+  struct sl_host_gtk_surface* surface;
 
   free(host->startup_id);
   host->startup_id = startup_id ? strdup(startup_id) : NULL;
@@ -4692,16 +4845,16 @@ static void xwl_gtk_shell_set_startup_id(struct wl_client *client,
       zaura_surface_set_startup_id(surface->proxy, host->startup_id);
 }
 
-static void xwl_gtk_shell_system_bell(struct wl_client *client,
-                                      struct wl_resource *resource,
-                                      struct wl_resource *surface_resource) {}
+static void sl_gtk_shell_system_bell(struct wl_client* client,
+                                     struct wl_resource* resource,
+                                     struct wl_resource* surface_resource) {}
 
-static const struct gtk_shell1_interface xwl_gtk_shell_implementation = {
-    xwl_gtk_shell_get_gtk_surface, xwl_gtk_shell_set_startup_id,
-    xwl_gtk_shell_system_bell};
+static const struct gtk_shell1_interface sl_gtk_shell_implementation = {
+    sl_gtk_shell_get_gtk_surface, sl_gtk_shell_set_startup_id,
+    sl_gtk_shell_system_bell};
 
-static void xwl_destroy_host_gtk_shell(struct wl_resource *resource) {
-  struct xwl_host_gtk_shell *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_gtk_shell(struct wl_resource* resource) {
+  struct sl_host_gtk_shell* host = wl_resource_get_user_data(resource);
 
   free(host->startup_id);
   wl_callback_destroy(host->callback);
@@ -4710,21 +4863,23 @@ static void xwl_destroy_host_gtk_shell(struct wl_resource *resource) {
   free(host);
 }
 
-static void xwl_gtk_shell_callback_done(void *data,
-                                        struct wl_callback *callback,
-                                        uint32_t serial) {
-  struct xwl_host_gtk_shell *host = wl_callback_get_user_data(callback);
+static void sl_gtk_shell_callback_done(void* data,
+                                       struct wl_callback* callback,
+                                       uint32_t serial) {
+  struct sl_host_gtk_shell* host = wl_callback_get_user_data(callback);
 
   gtk_shell1_send_capabilities(host->resource, 0);
 }
 
-static const struct wl_callback_listener xwl_gtk_shell_callback_listener = {
-    xwl_gtk_shell_callback_done};
+static const struct wl_callback_listener sl_gtk_shell_callback_listener = {
+    sl_gtk_shell_callback_done};
 
-static void xwl_bind_host_gtk_shell(struct wl_client *client, void *data,
-                                    uint32_t version, uint32_t id) {
-  struct xwl_aura_shell *aura_shell = (struct xwl_aura_shell *)data;
-  struct xwl_host_gtk_shell *host;
+static void sl_bind_host_gtk_shell(struct wl_client* client,
+                                   void* data,
+                                   uint32_t version,
+                                   uint32_t id) {
+  struct sl_aura_shell* aura_shell = (struct sl_aura_shell*)data;
+  struct sl_host_gtk_shell* host;
 
   host = malloc(sizeof(*host));
   assert(host);
@@ -4732,24 +4887,26 @@ static void xwl_bind_host_gtk_shell(struct wl_client *client, void *data,
   host->startup_id = NULL;
   wl_list_init(&host->surfaces);
   host->resource = wl_resource_create(client, &gtk_shell1_interface, 1, id);
-  wl_resource_set_implementation(host->resource, &xwl_gtk_shell_implementation,
-                                 host, xwl_destroy_host_gtk_shell);
+  wl_resource_set_implementation(host->resource, &sl_gtk_shell_implementation,
+                                 host, sl_destroy_host_gtk_shell);
   host->proxy = wl_registry_bind(
-      wl_display_get_registry(aura_shell->xwl->display), aura_shell->id,
+      wl_display_get_registry(aura_shell->ctx->display), aura_shell->id,
       &zaura_shell_interface, aura_shell->version);
   zaura_shell_set_user_data(host->proxy, host);
 
-  host->callback = wl_display_sync(aura_shell->xwl->display);
+  host->callback = wl_display_sync(aura_shell->ctx->display);
   wl_callback_set_user_data(host->callback, host);
-  wl_callback_add_listener(host->callback, &xwl_gtk_shell_callback_listener,
+  wl_callback_add_listener(host->callback, &sl_gtk_shell_callback_listener,
                            host);
 }
 
-static struct xwl_global *
-xwl_global_create(struct xwl *xwl, const struct wl_interface *interface,
-                  int version, void *data, wl_global_bind_func_t bind) {
-  struct xwl_host_registry *registry;
-  struct xwl_global *global;
+static struct sl_global* sl_global_create(struct sl_context* ctx,
+                                          const struct wl_interface* interface,
+                                          int version,
+                                          void* data,
+                                          wl_global_bind_func_t bind) {
+  struct sl_host_registry* registry;
+  struct sl_global* global;
 
   assert(version > 0);
   assert(version <= interface->version);
@@ -4757,15 +4914,15 @@ xwl_global_create(struct xwl *xwl, const struct wl_interface *interface,
   global = malloc(sizeof *global);
   assert(global);
 
-  global->xwl = xwl;
-  global->name = xwl->next_global_id++;
+  global->ctx = ctx;
+  global->name = ctx->next_global_id++;
   global->interface = interface;
   global->version = version;
   global->data = data;
   global->bind = bind;
-  wl_list_insert(xwl->globals.prev, &global->link);
+  wl_list_insert(ctx->globals.prev, &global->link);
 
-  wl_list_for_each(registry, &xwl->registries, link) {
+  wl_list_for_each(registry, &ctx->registries, link) {
     wl_resource_post_event(registry->resource, WL_REGISTRY_GLOBAL, global->name,
                            global->interface->name, global->version);
   }
@@ -4773,268 +4930,271 @@ xwl_global_create(struct xwl *xwl, const struct wl_interface *interface,
   return global;
 }
 
-static void xwl_global_destroy(struct xwl_global *global) {
-  struct xwl_host_registry *registry;
+static void sl_global_destroy(struct sl_global* global) {
+  struct sl_host_registry* registry;
 
-  wl_list_for_each(registry, &global->xwl->registries, link)
+  wl_list_for_each(registry, &global->ctx->registries, link)
       wl_resource_post_event(registry->resource, WL_REGISTRY_GLOBAL_REMOVE,
                              global->name);
   wl_list_remove(&global->link);
   free(global);
 }
 
-static void xwl_registry_handler(void *data, struct wl_registry *registry,
-                                 uint32_t id, const char *interface,
-                                 uint32_t version) {
-  struct xwl *xwl = (struct xwl *)data;
+static void sl_registry_handler(void* data,
+                                struct wl_registry* registry,
+                                uint32_t id,
+                                const char* interface,
+                                uint32_t version) {
+  struct sl_context* ctx = (struct sl_context*)data;
 
   if (strcmp(interface, "wl_compositor") == 0) {
-    struct xwl_compositor *compositor = malloc(sizeof(struct xwl_compositor));
+    struct sl_compositor* compositor = malloc(sizeof(struct sl_compositor));
     assert(compositor);
-    compositor->xwl = xwl;
+    compositor->ctx = ctx;
     compositor->id = id;
     assert(version >= 3);
     compositor->version = 3;
     compositor->host_global =
-        xwl_global_create(xwl, &wl_compositor_interface, compositor->version,
-                          compositor, xwl_bind_host_compositor);
+        sl_global_create(ctx, &wl_compositor_interface, compositor->version,
+                         compositor, sl_bind_host_compositor);
     compositor->internal = wl_registry_bind(
         registry, id, &wl_compositor_interface, compositor->version);
-    assert(!xwl->compositor);
-    xwl->compositor = compositor;
+    assert(!ctx->compositor);
+    ctx->compositor = compositor;
   } else if (strcmp(interface, "wl_subcompositor") == 0) {
-    struct xwl_subcompositor *subcompositor =
-        malloc(sizeof(struct xwl_subcompositor));
+    struct sl_subcompositor* subcompositor =
+        malloc(sizeof(struct sl_subcompositor));
     assert(subcompositor);
-    subcompositor->xwl = xwl;
+    subcompositor->ctx = ctx;
     subcompositor->id = id;
     subcompositor->host_global =
-        xwl_global_create(xwl, &wl_subcompositor_interface, 1, subcompositor,
-                          xwl_bind_host_subcompositor);
-    xwl->subcompositor = subcompositor;
+        sl_global_create(ctx, &wl_subcompositor_interface, 1, subcompositor,
+                         sl_bind_host_subcompositor);
+    ctx->subcompositor = subcompositor;
   } else if (strcmp(interface, "wl_shm") == 0) {
-    struct xwl_shm *shm = malloc(sizeof(struct xwl_shm));
+    struct sl_shm* shm = malloc(sizeof(struct sl_shm));
     assert(shm);
-    shm->xwl = xwl;
+    shm->ctx = ctx;
     shm->id = id;
     shm->host_global =
-        xwl_global_create(xwl, &wl_shm_interface, 1, shm, xwl_bind_host_shm);
+        sl_global_create(ctx, &wl_shm_interface, 1, shm, sl_bind_host_shm);
     shm->internal = wl_registry_bind(registry, id, &wl_shm_interface, 1);
-    assert(!xwl->shm);
-    xwl->shm = shm;
+    assert(!ctx->shm);
+    ctx->shm = shm;
   } else if (strcmp(interface, "wl_shell") == 0) {
-    struct xwl_shell *shell = malloc(sizeof(struct xwl_shell));
+    struct sl_shell* shell = malloc(sizeof(struct sl_shell));
     assert(shell);
-    shell->xwl = xwl;
+    shell->ctx = ctx;
     shell->id = id;
-    shell->host_global = xwl_global_create(xwl, &wl_shell_interface, 1, shell,
-                                           xwl_bind_host_shell);
-    assert(!xwl->shell);
-    xwl->shell = shell;
+    shell->host_global = sl_global_create(ctx, &wl_shell_interface, 1, shell,
+                                          sl_bind_host_shell);
+    assert(!ctx->shell);
+    ctx->shell = shell;
   } else if (strcmp(interface, "wl_output") == 0) {
-    struct xwl_output *output = malloc(sizeof(struct xwl_output));
+    struct sl_output* output = malloc(sizeof(struct sl_output));
     assert(output);
-    output->xwl = xwl;
+    output->ctx = ctx;
     output->id = id;
     output->version = MIN(3, version);
     output->host_global =
-        xwl_global_create(xwl, &wl_output_interface, output->version, output,
-                          xwl_bind_host_output);
-    wl_list_insert(&xwl->outputs, &output->link);
+        sl_global_create(ctx, &wl_output_interface, output->version, output,
+                         sl_bind_host_output);
+    wl_list_insert(&ctx->outputs, &output->link);
   } else if (strcmp(interface, "wl_seat") == 0) {
-    struct xwl_seat *seat = malloc(sizeof(struct xwl_seat));
+    struct sl_seat* seat = malloc(sizeof(struct sl_seat));
     assert(seat);
-    seat->xwl = xwl;
+    seat->ctx = ctx;
     seat->id = id;
     seat->version = MIN(5, version);
-    seat->host_global = xwl_global_create(
-        xwl, &wl_seat_interface, seat->version, seat, xwl_bind_host_seat);
+    seat->host_global = sl_global_create(ctx, &wl_seat_interface, seat->version,
+                                         seat, sl_bind_host_seat);
     seat->last_serial = 0;
-    wl_list_insert(&xwl->seats, &seat->link);
+    wl_list_insert(&ctx->seats, &seat->link);
   } else if (strcmp(interface, "wl_data_device_manager") == 0) {
-    struct xwl_data_device_manager *data_device_manager =
-        malloc(sizeof(struct xwl_data_device_manager));
+    struct sl_data_device_manager* data_device_manager =
+        malloc(sizeof(struct sl_data_device_manager));
     assert(data_device_manager);
-    data_device_manager->xwl = xwl;
+    data_device_manager->ctx = ctx;
     data_device_manager->id = id;
     data_device_manager->version = MIN(3, version);
-    if (xwl->xwayland) {
+    if (ctx->xwayland) {
       data_device_manager->host_global = NULL;
       data_device_manager->internal =
           wl_registry_bind(registry, id, &wl_data_device_manager_interface,
                            data_device_manager->version);
     } else {
       data_device_manager->internal = NULL;
-      data_device_manager->host_global = xwl_global_create(
-          xwl, &wl_data_device_manager_interface, data_device_manager->version,
-          data_device_manager, xwl_bind_host_data_device_manager);
+      data_device_manager->host_global = sl_global_create(
+          ctx, &wl_data_device_manager_interface, data_device_manager->version,
+          data_device_manager, sl_bind_host_data_device_manager);
     }
-    xwl->data_device_manager = data_device_manager;
+    ctx->data_device_manager = data_device_manager;
   } else if (strcmp(interface, "zxdg_shell_v6") == 0) {
-    struct xwl_xdg_shell *xdg_shell = malloc(sizeof(struct xwl_xdg_shell));
+    struct sl_xdg_shell* xdg_shell = malloc(sizeof(struct sl_xdg_shell));
     assert(xdg_shell);
-    xdg_shell->xwl = xwl;
+    xdg_shell->ctx = ctx;
     xdg_shell->id = id;
-    if (xwl->xwayland) {
+    if (ctx->xwayland) {
       xdg_shell->host_global = NULL;
       xdg_shell->internal =
           wl_registry_bind(registry, id, &zxdg_shell_v6_interface, 1);
       zxdg_shell_v6_add_listener(xdg_shell->internal,
-                                 &xwl_internal_xdg_shell_listener, NULL);
+                                 &sl_internal_xdg_shell_listener, NULL);
     } else {
       xdg_shell->internal = NULL;
-      xdg_shell->host_global = xwl_global_create(
-          xwl, &zxdg_shell_v6_interface, 1, xdg_shell, xwl_bind_host_xdg_shell);
+      xdg_shell->host_global = sl_global_create(
+          ctx, &zxdg_shell_v6_interface, 1, xdg_shell, sl_bind_host_xdg_shell);
     }
-    assert(!xwl->xdg_shell);
-    xwl->xdg_shell = xdg_shell;
+    assert(!ctx->xdg_shell);
+    ctx->xdg_shell = xdg_shell;
   } else if (strcmp(interface, "zaura_shell") == 0) {
     if (version >= MIN_AURA_SHELL_VERSION) {
-      struct xwl_aura_shell* aura_shell = malloc(sizeof(struct xwl_aura_shell));
+      struct sl_aura_shell* aura_shell = malloc(sizeof(struct sl_aura_shell));
       assert(aura_shell);
-      aura_shell->xwl = xwl;
+      aura_shell->ctx = ctx;
       aura_shell->id = id;
       aura_shell->version = MIN(6, version);
       aura_shell->host_gtk_shell_global = NULL;
       aura_shell->internal = wl_registry_bind(
           registry, id, &zaura_shell_interface, aura_shell->version);
-      assert(!xwl->aura_shell);
-      xwl->aura_shell = aura_shell;
-      aura_shell->host_gtk_shell_global = xwl_global_create(
-          xwl, &gtk_shell1_interface, 1, aura_shell, xwl_bind_host_gtk_shell);
+      assert(!ctx->aura_shell);
+      ctx->aura_shell = aura_shell;
+      aura_shell->host_gtk_shell_global = sl_global_create(
+          ctx, &gtk_shell1_interface, 1, aura_shell, sl_bind_host_gtk_shell);
     }
   } else if (strcmp(interface, "wp_viewporter") == 0) {
-    struct xwl_viewporter *viewporter = malloc(sizeof(struct xwl_viewporter));
+    struct sl_viewporter* viewporter = malloc(sizeof(struct sl_viewporter));
     assert(viewporter);
-    viewporter->xwl = xwl;
+    viewporter->ctx = ctx;
     viewporter->id = id;
     viewporter->internal =
         wl_registry_bind(registry, id, &wp_viewporter_interface, 1);
-    assert(!xwl->viewporter);
-    xwl->viewporter = viewporter;
+    assert(!ctx->viewporter);
+    ctx->viewporter = viewporter;
     // Allow non-integer scale.
-    xwl->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, xwl->desired_scale));
+    ctx->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, ctx->desired_scale));
   } else if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0) {
-    struct xwl_linux_dmabuf *linux_dmabuf =
-        malloc(sizeof(struct xwl_linux_dmabuf));
+    struct sl_linux_dmabuf* linux_dmabuf =
+        malloc(sizeof(struct sl_linux_dmabuf));
     assert(linux_dmabuf);
-    linux_dmabuf->xwl = xwl;
+    linux_dmabuf->ctx = ctx;
     linux_dmabuf->id = id;
     linux_dmabuf->version = MIN(2, version);
     linux_dmabuf->host_drm_global = NULL;
     linux_dmabuf->internal = wl_registry_bind(
         registry, id, &zwp_linux_dmabuf_v1_interface, linux_dmabuf->version);
-    assert(!xwl->linux_dmabuf);
-    xwl->linux_dmabuf = linux_dmabuf;
+    assert(!ctx->linux_dmabuf);
+    ctx->linux_dmabuf = linux_dmabuf;
 
     // Register wl_drm global if DRM device is available and DMABuf interface
     // version is sufficient.
-    if (xwl->drm_device && linux_dmabuf->version >= 2) {
-      linux_dmabuf->host_drm_global = xwl_global_create(
-          xwl, &wl_drm_interface, 2, linux_dmabuf, xwl_bind_host_drm);
+    if (ctx->drm_device && linux_dmabuf->version >= 2) {
+      linux_dmabuf->host_drm_global = sl_global_create(
+          ctx, &wl_drm_interface, 2, linux_dmabuf, sl_bind_host_drm);
     }
   } else if (strcmp(interface, "zcr_keyboard_extension_v1") == 0) {
-    struct xwl_keyboard_extension *keyboard_extension =
-        malloc(sizeof(struct xwl_keyboard_extension));
+    struct sl_keyboard_extension* keyboard_extension =
+        malloc(sizeof(struct sl_keyboard_extension));
     assert(keyboard_extension);
-    keyboard_extension->xwl = xwl;
+    keyboard_extension->ctx = ctx;
     keyboard_extension->id = id;
     keyboard_extension->internal =
         wl_registry_bind(registry, id, &zcr_keyboard_extension_v1_interface, 1);
-    assert(!xwl->keyboard_extension);
-    xwl->keyboard_extension = keyboard_extension;
+    assert(!ctx->keyboard_extension);
+    ctx->keyboard_extension = keyboard_extension;
   }
 }
 
-static void xwl_registry_remover(void *data, struct wl_registry *registry,
-                                 uint32_t id) {
-  struct xwl *xwl = (struct xwl *)data;
-  struct xwl_output *output;
-  struct xwl_seat *seat;
+static void sl_registry_remover(void* data,
+                                struct wl_registry* registry,
+                                uint32_t id) {
+  struct sl_context* ctx = (struct sl_context*)data;
+  struct sl_output* output;
+  struct sl_seat* seat;
 
-  if (xwl->compositor && xwl->compositor->id == id) {
-    xwl_global_destroy(xwl->compositor->host_global);
-    wl_compositor_destroy(xwl->compositor->internal);
-    free(xwl->compositor);
-    xwl->compositor = NULL;
+  if (ctx->compositor && ctx->compositor->id == id) {
+    sl_global_destroy(ctx->compositor->host_global);
+    wl_compositor_destroy(ctx->compositor->internal);
+    free(ctx->compositor);
+    ctx->compositor = NULL;
     return;
   }
-  if (xwl->subcompositor && xwl->subcompositor->id == id) {
-    xwl_global_destroy(xwl->subcompositor->host_global);
-    wl_shm_destroy(xwl->shm->internal);
-    free(xwl->subcompositor);
-    xwl->subcompositor = NULL;
+  if (ctx->subcompositor && ctx->subcompositor->id == id) {
+    sl_global_destroy(ctx->subcompositor->host_global);
+    wl_shm_destroy(ctx->shm->internal);
+    free(ctx->subcompositor);
+    ctx->subcompositor = NULL;
     return;
   }
-  if (xwl->shm && xwl->shm->id == id) {
-    xwl_global_destroy(xwl->shm->host_global);
-    free(xwl->shm);
-    xwl->shm = NULL;
+  if (ctx->shm && ctx->shm->id == id) {
+    sl_global_destroy(ctx->shm->host_global);
+    free(ctx->shm);
+    ctx->shm = NULL;
     return;
   }
-  if (xwl->shell && xwl->shell->id == id) {
-    xwl_global_destroy(xwl->shell->host_global);
-    free(xwl->shell);
-    xwl->shell = NULL;
+  if (ctx->shell && ctx->shell->id == id) {
+    sl_global_destroy(ctx->shell->host_global);
+    free(ctx->shell);
+    ctx->shell = NULL;
     return;
   }
-  if (xwl->data_device_manager && xwl->data_device_manager->id == id) {
-    if (xwl->data_device_manager->host_global)
-      xwl_global_destroy(xwl->data_device_manager->host_global);
-    if (xwl->data_device_manager->internal)
-      wl_data_device_manager_destroy(xwl->data_device_manager->internal);
-    free(xwl->data_device_manager);
-    xwl->data_device_manager = NULL;
+  if (ctx->data_device_manager && ctx->data_device_manager->id == id) {
+    if (ctx->data_device_manager->host_global)
+      sl_global_destroy(ctx->data_device_manager->host_global);
+    if (ctx->data_device_manager->internal)
+      wl_data_device_manager_destroy(ctx->data_device_manager->internal);
+    free(ctx->data_device_manager);
+    ctx->data_device_manager = NULL;
     return;
   }
-  if (xwl->xdg_shell && xwl->xdg_shell->id == id) {
-    if (xwl->xdg_shell->host_global)
-      xwl_global_destroy(xwl->xdg_shell->host_global);
-    if (xwl->xdg_shell->internal)
-      zxdg_shell_v6_destroy(xwl->xdg_shell->internal);
-    free(xwl->xdg_shell);
-    xwl->xdg_shell = NULL;
+  if (ctx->xdg_shell && ctx->xdg_shell->id == id) {
+    if (ctx->xdg_shell->host_global)
+      sl_global_destroy(ctx->xdg_shell->host_global);
+    if (ctx->xdg_shell->internal)
+      zxdg_shell_v6_destroy(ctx->xdg_shell->internal);
+    free(ctx->xdg_shell);
+    ctx->xdg_shell = NULL;
     return;
   }
-  if (xwl->aura_shell && xwl->aura_shell->id == id) {
-    if (xwl->aura_shell->host_gtk_shell_global)
-      xwl_global_destroy(xwl->aura_shell->host_gtk_shell_global);
-    zaura_shell_destroy(xwl->aura_shell->internal);
-    free(xwl->aura_shell);
-    xwl->aura_shell = NULL;
+  if (ctx->aura_shell && ctx->aura_shell->id == id) {
+    if (ctx->aura_shell->host_gtk_shell_global)
+      sl_global_destroy(ctx->aura_shell->host_gtk_shell_global);
+    zaura_shell_destroy(ctx->aura_shell->internal);
+    free(ctx->aura_shell);
+    ctx->aura_shell = NULL;
     return;
   }
-  if (xwl->viewporter && xwl->viewporter->id == id) {
-    wp_viewporter_destroy(xwl->viewporter->internal);
-    free(xwl->viewporter);
-    xwl->viewporter = NULL;
+  if (ctx->viewporter && ctx->viewporter->id == id) {
+    wp_viewporter_destroy(ctx->viewporter->internal);
+    free(ctx->viewporter);
+    ctx->viewporter = NULL;
     return;
   }
-  if (xwl->linux_dmabuf && xwl->linux_dmabuf->id == id) {
-    if (xwl->linux_dmabuf->host_drm_global)
-      xwl_global_destroy(xwl->linux_dmabuf->host_drm_global);
-    zwp_linux_dmabuf_v1_destroy(xwl->linux_dmabuf->internal);
-    free(xwl->linux_dmabuf);
-    xwl->linux_dmabuf = NULL;
+  if (ctx->linux_dmabuf && ctx->linux_dmabuf->id == id) {
+    if (ctx->linux_dmabuf->host_drm_global)
+      sl_global_destroy(ctx->linux_dmabuf->host_drm_global);
+    zwp_linux_dmabuf_v1_destroy(ctx->linux_dmabuf->internal);
+    free(ctx->linux_dmabuf);
+    ctx->linux_dmabuf = NULL;
     return;
   }
-  if (xwl->keyboard_extension && xwl->keyboard_extension->id == id) {
-    zcr_keyboard_extension_v1_destroy(xwl->keyboard_extension->internal);
-    free(xwl->keyboard_extension);
-    xwl->keyboard_extension = NULL;
+  if (ctx->keyboard_extension && ctx->keyboard_extension->id == id) {
+    zcr_keyboard_extension_v1_destroy(ctx->keyboard_extension->internal);
+    free(ctx->keyboard_extension);
+    ctx->keyboard_extension = NULL;
     return;
   }
-  wl_list_for_each(output, &xwl->outputs, link) {
+  wl_list_for_each(output, &ctx->outputs, link) {
     if (output->id == id) {
-      xwl_global_destroy(output->host_global);
+      sl_global_destroy(output->host_global);
       wl_list_remove(&output->link);
       free(output);
       return;
     }
   }
-  wl_list_for_each(seat, &xwl->seats, link) {
+  wl_list_for_each(seat, &ctx->seats, link) {
     if (seat->id == id) {
-      xwl_global_destroy(seat->host_global);
+      sl_global_destroy(seat->host_global);
       wl_list_remove(&seat->link);
       free(seat);
       return;
@@ -5045,37 +5205,42 @@ static void xwl_registry_remover(void *data, struct wl_registry *registry,
   assert(0);
 }
 
-static const struct wl_registry_listener xwl_registry_listener = {
-    xwl_registry_handler, xwl_registry_remover};
+static const struct wl_registry_listener sl_registry_listener = {
+    sl_registry_handler, sl_registry_remover};
 
-static int xwl_handle_event(int fd, uint32_t mask, void *data) {
-  struct xwl *xwl = (struct xwl *)data;
+static int sl_handle_event(int fd, uint32_t mask, void* data) {
+  struct sl_context* ctx = (struct sl_context*)data;
   int count = 0;
 
   if ((mask & WL_EVENT_HANGUP) || (mask & WL_EVENT_ERROR)) {
-    wl_client_flush(xwl->client);
+    wl_client_flush(ctx->client);
     exit(EXIT_SUCCESS);
   }
 
   if (mask & WL_EVENT_READABLE)
-    count = wl_display_dispatch(xwl->display);
+    count = wl_display_dispatch(ctx->display);
   if (mask & WL_EVENT_WRITABLE)
-    wl_display_flush(xwl->display);
+    wl_display_flush(ctx->display);
 
   if (mask == 0) {
-    count = wl_display_dispatch_pending(xwl->display);
-    wl_display_flush(xwl->display);
+    count = wl_display_dispatch_pending(ctx->display);
+    wl_display_flush(ctx->display);
   }
 
   return count;
 }
 
-static void xwl_create_window(struct xwl *xwl, xcb_window_t id, int x, int y,
-                              int width, int height, int border_width) {
-  struct xwl_window *window = malloc(sizeof(struct xwl_window));
+static void sl_create_window(struct sl_context* ctx,
+                             xcb_window_t id,
+                             int x,
+                             int y,
+                             int width,
+                             int height,
+                             int border_width) {
+  struct sl_window* window = malloc(sizeof(struct sl_window));
   uint32_t values[1];
   assert(window);
-  window->xwl = xwl;
+  window->ctx = ctx;
   window->id = id;
   window->frame_id = XCB_WINDOW_NONE;
   window->host_surface_id = 0;
@@ -5111,19 +5276,19 @@ static void xwl_create_window(struct xwl *xwl, xcb_window_t id, int x, int y,
   window->pending_config.serial = 0;
   window->pending_config.mask = 0;
   window->pending_config.states_length = 0;
-  wl_list_insert(&xwl->unpaired_windows, &window->link);
+  wl_list_insert(&ctx->unpaired_windows, &window->link);
   values[0] = XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE;
-  xcb_change_window_attributes(xwl->connection, window->id, XCB_CW_EVENT_MASK,
+  xcb_change_window_attributes(ctx->connection, window->id, XCB_CW_EVENT_MASK,
                                values);
 }
 
-static void xwl_destroy_window(struct xwl_window *window) {
+static void sl_destroy_window(struct sl_window* window) {
   if (window->frame_id != XCB_WINDOW_NONE)
-    xcb_destroy_window(window->xwl->connection, window->frame_id);
+    xcb_destroy_window(window->ctx->connection, window->frame_id);
 
-  if (window->xwl->host_focus_window == window) {
-    window->xwl->host_focus_window = NULL;
-    window->xwl->needs_set_input_focus = 1;
+  if (window->ctx->host_focus_window == window) {
+    window->ctx->host_focus_window = NULL;
+    window->ctx->needs_set_input_focus = 1;
   }
 
   if (window->xdg_popup)
@@ -5146,7 +5311,7 @@ static void xwl_destroy_window(struct xwl_window *window) {
   free(window);
 }
 
-static int xwl_is_window(struct xwl_window *window, xcb_window_t id) {
+static int sl_is_window(struct sl_window* window, xcb_window_t id) {
   if (window->id == id)
     return 1;
 
@@ -5158,66 +5323,67 @@ static int xwl_is_window(struct xwl_window *window, xcb_window_t id) {
   return 0;
 }
 
-static struct xwl_window *xwl_lookup_window(struct xwl *xwl, xcb_window_t id) {
-  struct xwl_window *window;
+static struct sl_window* sl_lookup_window(struct sl_context* ctx,
+                                          xcb_window_t id) {
+  struct sl_window* window;
 
-  wl_list_for_each(window, &xwl->windows, link) {
-    if (xwl_is_window(window, id))
+  wl_list_for_each(window, &ctx->windows, link) {
+    if (sl_is_window(window, id))
       return window;
   }
-  wl_list_for_each(window, &xwl->unpaired_windows, link) {
-    if (xwl_is_window(window, id))
+  wl_list_for_each(window, &ctx->unpaired_windows, link) {
+    if (sl_is_window(window, id))
       return window;
   }
   return NULL;
 }
 
-static int xwl_is_our_window(struct xwl *xwl, xcb_window_t id) {
-  const xcb_setup_t *setup = xcb_get_setup(xwl->connection);
+static int sl_is_our_window(struct sl_context* ctx, xcb_window_t id) {
+  const xcb_setup_t* setup = xcb_get_setup(ctx->connection);
 
   return (id & ~setup->resource_id_mask) == setup->resource_id_base;
 }
 
-static void xwl_handle_create_notify(struct xwl *xwl,
-                                     xcb_create_notify_event_t *event) {
-  if (xwl_is_our_window(xwl, event->window))
+static void sl_handle_create_notify(struct sl_context* ctx,
+                                    xcb_create_notify_event_t* event) {
+  if (sl_is_our_window(ctx, event->window))
     return;
 
-  xwl_create_window(xwl, event->window, event->x, event->y, event->width,
-                    event->height, event->border_width);
+  sl_create_window(ctx, event->window, event->x, event->y, event->width,
+                   event->height, event->border_width);
 }
 
-static void xwl_handle_destroy_notify(struct xwl *xwl,
-                                      xcb_destroy_notify_event_t *event) {
-  struct xwl_window *window;
+static void sl_handle_destroy_notify(struct sl_context* ctx,
+                                     xcb_destroy_notify_event_t* event) {
+  struct sl_window* window;
 
-  if (xwl_is_our_window(xwl, event->window))
+  if (sl_is_our_window(ctx, event->window))
     return;
 
-  window = xwl_lookup_window(xwl, event->window);
+  window = sl_lookup_window(ctx, event->window);
   if (!window)
     return;
 
-  xwl_destroy_window(window);
+  sl_destroy_window(window);
 }
 
-static void xwl_handle_reparent_notify(struct xwl *xwl,
-                                       xcb_reparent_notify_event_t *event) {
-  struct xwl_window *window;
+static void sl_handle_reparent_notify(struct sl_context* ctx,
+                                      xcb_reparent_notify_event_t* event) {
+  struct sl_window* window;
 
-  if (event->parent == xwl->screen->root) {
+  if (event->parent == ctx->screen->root) {
     int width = 1;
     int height = 1;
     int border_width = 0;
 
     // Return early if window is already tracked. This happens when we
     // reparent an unampped window back to the root window.
-    window = xwl_lookup_window(xwl, event->window);
+    window = sl_lookup_window(ctx, event->window);
     if (window)
       return;
 
-    xcb_get_geometry_reply_t *geometry_reply = xcb_get_geometry_reply(
-        xwl->connection, xcb_get_geometry(xwl->connection, event->window),
+    xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
+        ctx->connection, xcb_get_geometry(ctx->connection, event->window),
         NULL);
 
     if (geometry_reply) {
@@ -5226,24 +5392,24 @@ static void xwl_handle_reparent_notify(struct xwl *xwl,
       border_width = geometry_reply->border_width;
       free(geometry_reply);
     }
-    xwl_create_window(xwl, event->window, event->x, event->y, width, height,
-                      border_width);
+    sl_create_window(ctx, event->window, event->x, event->y, width, height,
+                     border_width);
     return;
   }
 
-  if (xwl_is_our_window(xwl, event->parent))
+  if (sl_is_our_window(ctx, event->parent))
     return;
 
-  window = xwl_lookup_window(xwl, event->window);
+  window = sl_lookup_window(ctx, event->window);
   if (!window)
     return;
 
-  xwl_destroy_window(window);
+  sl_destroy_window(window);
 }
 
-static void xwl_handle_map_request(struct xwl *xwl,
-                                   xcb_map_request_event_t *event) {
-  struct xwl_window *window = xwl_lookup_window(xwl, event->window);
+static void sl_handle_map_request(struct sl_context* ctx,
+                                  xcb_map_request_event_t* event) {
+  struct sl_window* window = sl_lookup_window(ctx, event->window);
   struct {
     int type;
     xcb_atom_t atom;
@@ -5252,35 +5418,35 @@ static void xwl_handle_map_request(struct xwl *xwl,
       {PROPERTY_WM_CLASS, XCB_ATOM_WM_CLASS},
       {PROPERTY_WM_TRANSIENT_FOR, XCB_ATOM_WM_TRANSIENT_FOR},
       {PROPERTY_WM_NORMAL_HINTS, XCB_ATOM_WM_NORMAL_HINTS},
-      {PROPERTY_WM_CLIENT_LEADER, xwl->atoms[ATOM_WM_CLIENT_LEADER].value},
-      {PROPERTY_MOTIF_WM_HINTS, xwl->atoms[ATOM_MOTIF_WM_HINTS].value},
-      {PROPERTY_NET_STARTUP_ID, xwl->atoms[ATOM_NET_STARTUP_ID].value},
+      {PROPERTY_WM_CLIENT_LEADER, ctx->atoms[ATOM_WM_CLIENT_LEADER].value},
+      {PROPERTY_MOTIF_WM_HINTS, ctx->atoms[ATOM_MOTIF_WM_HINTS].value},
+      {PROPERTY_NET_STARTUP_ID, ctx->atoms[ATOM_NET_STARTUP_ID].value},
   };
   xcb_get_geometry_cookie_t geometry_cookie;
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
-  struct xwl_wm_size_hints size_hints = {0};
-  struct xwl_mwm_hints mwm_hints = {0};
+  struct sl_wm_size_hints size_hints = {0};
+  struct sl_mwm_hints mwm_hints = {0};
   uint32_t values[5];
   int i;
 
   if (!window)
     return;
 
-  assert(!xwl_is_our_window(xwl, event->window));
+  assert(!sl_is_our_window(ctx, event->window));
 
   window->managed = 1;
   if (window->frame_id == XCB_WINDOW_NONE)
-    geometry_cookie = xcb_get_geometry(xwl->connection, window->id);
+    geometry_cookie = xcb_get_geometry(ctx->connection, window->id);
 
   for (i = 0; i < ARRAY_SIZE(properties); ++i) {
     property_cookies[i] =
-        xcb_get_property(xwl->connection, 0, window->id, properties[i].atom,
+        xcb_get_property(ctx->connection, 0, window->id, properties[i].atom,
                          XCB_ATOM_ANY, 0, 2048);
   }
 
   if (window->frame_id == XCB_WINDOW_NONE) {
-    xcb_get_geometry_reply_t *geometry_reply =
-        xcb_get_geometry_reply(xwl->connection, geometry_cookie, NULL);
+    xcb_get_geometry_reply_t* geometry_reply =
+        xcb_get_geometry_reply(ctx->connection, geometry_cookie, NULL);
     if (geometry_reply) {
       window->x = geometry_reply->x;
       window->y = geometry_reply->y;
@@ -5303,8 +5469,8 @@ static void xwl_handle_map_request(struct xwl *xwl,
   window->size_flags = 0;
 
   for (i = 0; i < ARRAY_SIZE(properties); ++i) {
-    xcb_get_property_reply_t *reply =
-        xcb_get_property_reply(xwl->connection, property_cookies[i], NULL);
+    xcb_get_property_reply_t* reply =
+        xcb_get_property_reply(ctx->connection, property_cookies[i], NULL);
 
     if (!reply)
       continue;
@@ -5370,10 +5536,10 @@ static void xwl_handle_map_request(struct xwl *xwl,
 
   // If startup ID is not set, then try the client leader window.
   if (!window->startup_id && window->client_leader) {
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(
-        xwl->connection,
-        xcb_get_property(xwl->connection, 0, window->client_leader,
-                         xwl->atoms[ATOM_NET_STARTUP_ID].value, XCB_ATOM_ANY, 0,
+    xcb_get_property_reply_t* reply = xcb_get_property_reply(
+        ctx->connection,
+        xcb_get_property(ctx->connection, 0, window->client_leader,
+                         ctx->atoms[ATOM_NET_STARTUP_ID].value, XCB_ATOM_ANY, 0,
                          2048),
         NULL);
     if (reply) {
@@ -5396,14 +5562,14 @@ static void xwl_handle_map_request(struct xwl *xwl,
   }
 
   window->border_width = 0;
-  xwl_adjust_window_size_for_screen_size(window);
+  sl_adjust_window_size_for_screen_size(window);
   if (!(window->size_flags & (US_POSITION | P_POSITION)))
-    xwl_adjust_window_position_for_screen_size(window);
+    sl_adjust_window_position_for_screen_size(window);
 
   values[0] = window->width;
   values[1] = window->height;
   values[2] = 0;
-  xcb_configure_window(xwl->connection, window->id,
+  xcb_configure_window(ctx->connection, window->id,
                        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
                            XCB_CONFIG_WINDOW_BORDER_WIDTH,
                        values);
@@ -5414,33 +5580,33 @@ static void xwl_handle_map_request(struct xwl *xwl,
   values[1] = 0;
   values[2] = 0;
   values[3] = 0;
-  xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE, window->id,
-                      xwl->atoms[ATOM_NET_FRAME_EXTENTS].value,
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, window->id,
+                      ctx->atoms[ATOM_NET_FRAME_EXTENTS].value,
                       XCB_ATOM_CARDINAL, 32, 4, values);
 
   // Remove weird gravities.
   values[0] = XCB_GRAVITY_NORTH_WEST;
-  xcb_change_window_attributes(xwl->connection, window->id, XCB_CW_WIN_GRAVITY,
+  xcb_change_window_attributes(ctx->connection, window->id, XCB_CW_WIN_GRAVITY,
                                values);
 
   if (window->frame_id == XCB_WINDOW_NONE) {
-    int depth = window->depth ? window->depth : xwl->screen->root_depth;
+    int depth = window->depth ? window->depth : ctx->screen->root_depth;
 
-    values[0] = xwl->screen->black_pixel;
+    values[0] = ctx->screen->black_pixel;
     values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
                 XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
-    values[2] = xwl->colormaps[depth];
+    values[2] = ctx->colormaps[depth];
 
-    window->frame_id = xcb_generate_id(xwl->connection);
+    window->frame_id = xcb_generate_id(ctx->connection);
     xcb_create_window(
-        xwl->connection, depth, window->frame_id, xwl->screen->root, window->x,
+        ctx->connection, depth, window->frame_id, ctx->screen->root, window->x,
         window->y, window->width, window->height, 0,
-        XCB_WINDOW_CLASS_INPUT_OUTPUT, xwl->visual_ids[depth],
+        XCB_WINDOW_CLASS_INPUT_OUTPUT, ctx->visual_ids[depth],
         XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
     values[0] = XCB_STACK_MODE_BELOW;
-    xcb_configure_window(xwl->connection, window->frame_id,
+    xcb_configure_window(ctx->connection, window->frame_id,
                          XCB_CONFIG_WINDOW_STACK_MODE, values);
-    xcb_reparent_window(xwl->connection, window->id, window->frame_id, 0, 0);
+    xcb_reparent_window(ctx->connection, window->id, window->frame_id, 0, 0);
   } else {
     values[0] = window->x;
     values[1] = window->y;
@@ -5448,53 +5614,53 @@ static void xwl_handle_map_request(struct xwl *xwl,
     values[3] = window->height;
     values[4] = XCB_STACK_MODE_BELOW;
     xcb_configure_window(
-        xwl->connection, window->frame_id,
+        ctx->connection, window->frame_id,
         XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH |
             XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_STACK_MODE,
         values);
   }
 
-  xwl_window_set_wm_state(window, WM_STATE_NORMAL);
-  xwl_send_configure_notify(window);
+  sl_window_set_wm_state(window, WM_STATE_NORMAL);
+  sl_send_configure_notify(window);
 
-  xcb_map_window(xwl->connection, window->id);
-  xcb_map_window(xwl->connection, window->frame_id);
+  xcb_map_window(ctx->connection, window->id);
+  xcb_map_window(ctx->connection, window->frame_id);
 }
 
-static void xwl_handle_map_notify(struct xwl *xwl,
-                                  xcb_map_notify_event_t *event) {}
+static void sl_handle_map_notify(struct sl_context* ctx,
+                                 xcb_map_notify_event_t* event) {}
 
-static void xwl_handle_unmap_notify(struct xwl *xwl,
-                                    xcb_unmap_notify_event_t *event) {
-  struct xwl_window *window;
+static void sl_handle_unmap_notify(struct sl_context* ctx,
+                                   xcb_unmap_notify_event_t* event) {
+  struct sl_window* window;
 
-  if (xwl_is_our_window(xwl, event->window))
+  if (sl_is_our_window(ctx, event->window))
     return;
 
   if (event->response_type & SEND_EVENT_MASK)
     return;
 
-  window = xwl_lookup_window(xwl, event->window);
+  window = sl_lookup_window(ctx, event->window);
   if (!window)
     return;
 
-  if (xwl->host_focus_window == window) {
-    xwl->host_focus_window = NULL;
-    xwl->needs_set_input_focus = 1;
+  if (ctx->host_focus_window == window) {
+    ctx->host_focus_window = NULL;
+    ctx->needs_set_input_focus = 1;
   }
 
   if (window->host_surface_id) {
     window->host_surface_id = 0;
-    xwl_window_update(window);
+    sl_window_update(window);
   }
 
-  xwl_window_set_wm_state(window, WM_STATE_WITHDRAWN);
+  sl_window_set_wm_state(window, WM_STATE_WITHDRAWN);
 
   // Reparent window and destroy frame if it exists.
   if (window->frame_id != XCB_WINDOW_NONE) {
-    xcb_reparent_window(xwl->connection, window->id, xwl->screen->root,
+    xcb_reparent_window(ctx->connection, window->id, ctx->screen->root,
                         window->x, window->y);
-    xcb_destroy_window(xwl->connection, window->frame_id);
+    xcb_destroy_window(ctx->connection, window->frame_id);
     window->frame_id = XCB_WINDOW_NONE;
   }
 
@@ -5505,14 +5671,14 @@ static void xwl_handle_unmap_notify(struct xwl *xwl,
   window->size_flags = P_POSITION;
 }
 
-static void xwl_handle_configure_request(struct xwl *xwl,
-                                         xcb_configure_request_event_t *event) {
-  struct xwl_window *window = xwl_lookup_window(xwl, event->window);
+static void sl_handle_configure_request(struct sl_context* ctx,
+                                        xcb_configure_request_event_t* event) {
+  struct sl_window* window = sl_lookup_window(ctx, event->window);
   int width = window->width;
   int height = window->height;
   uint32_t values[7];
 
-  assert(!xwl_is_our_window(xwl, event->window));
+  assert(!sl_is_our_window(ctx, event->window));
 
   if (!window->managed) {
     int i = 0;
@@ -5532,7 +5698,7 @@ static void xwl_handle_configure_request(struct xwl *xwl,
     if (event->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
       values[i++] = event->stack_mode;
 
-    xcb_configure_window(xwl->connection, window->id, event->value_mask,
+    xcb_configure_window(ctx->connection, window->id, event->value_mask,
                          values);
     return;
   }
@@ -5568,18 +5734,18 @@ static void xwl_handle_configure_request(struct xwl *xwl,
       window->height = event->height;
   }
 
-  xwl_adjust_window_size_for_screen_size(window);
+  sl_adjust_window_size_for_screen_size(window);
   if (window->size_flags & (US_POSITION | P_POSITION))
-    xwl_window_update(window);
+    sl_window_update(window);
   else
-    xwl_adjust_window_position_for_screen_size(window);
+    sl_adjust_window_position_for_screen_size(window);
 
   values[0] = window->x;
   values[1] = window->y;
   values[2] = window->width;
   values[3] = window->height;
   values[4] = 0;
-  xcb_configure_window(xwl->connection, window->frame_id,
+  xcb_configure_window(ctx->connection, window->frame_id,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
                            XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
                        values);
@@ -5589,29 +5755,29 @@ static void xwl_handle_configure_request(struct xwl *xwl,
   // - Moving the window without resizing it or changing its border width.
   if (width != window->width || height != window->height ||
       window->border_width) {
-    xcb_configure_window(xwl->connection, window->id,
+    xcb_configure_window(ctx->connection, window->id,
                          XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
                              XCB_CONFIG_WINDOW_BORDER_WIDTH,
                          &values[2]);
     window->border_width = 0;
   } else {
-    xwl_send_configure_notify(window);
+    sl_send_configure_notify(window);
   }
 }
 
-static void xwl_handle_configure_notify(struct xwl *xwl,
-                                        xcb_configure_notify_event_t *event) {
-  struct xwl_window *window;
+static void sl_handle_configure_notify(struct sl_context* ctx,
+                                       xcb_configure_notify_event_t* event) {
+  struct sl_window* window;
 
-  if (xwl_is_our_window(xwl, event->window))
+  if (sl_is_our_window(ctx, event->window))
     return;
 
-  if (event->window == xwl->screen->root) {
-    xcb_get_geometry_reply_t *geometry_reply = xcb_get_geometry_reply(
-        xwl->connection, xcb_get_geometry(xwl->connection, event->window),
+  if (event->window == ctx->screen->root) {
+    xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
+        ctx->connection, xcb_get_geometry(ctx->connection, event->window),
         NULL);
-    int width = xwl->screen->width_in_pixels;
-    int height = xwl->screen->height_in_pixels;
+    int width = ctx->screen->width_in_pixels;
+    int height = ctx->screen->height_in_pixels;
 
     if (geometry_reply) {
       width = geometry_reply->width;
@@ -5619,16 +5785,16 @@ static void xwl_handle_configure_notify(struct xwl *xwl,
       free(geometry_reply);
     }
 
-    if (width == xwl->screen->width_in_pixels ||
-        height == xwl->screen->height_in_pixels) {
+    if (width == ctx->screen->width_in_pixels ||
+        height == ctx->screen->height_in_pixels) {
       return;
     }
 
-    xwl->screen->width_in_pixels = width;
-    xwl->screen->height_in_pixels = height;
+    ctx->screen->width_in_pixels = width;
+    ctx->screen->height_in_pixels = height;
 
     // Re-center managed windows.
-    wl_list_for_each(window, &xwl->windows, link) {
+    wl_list_for_each(window, &ctx->windows, link) {
       int x, y;
 
       if (window->size_flags & (US_POSITION | P_POSITION))
@@ -5636,21 +5802,21 @@ static void xwl_handle_configure_notify(struct xwl *xwl,
 
       x = window->x;
       y = window->y;
-      xwl_adjust_window_position_for_screen_size(window);
+      sl_adjust_window_position_for_screen_size(window);
       if (window->x != x || window->y != y) {
         uint32_t values[2];
 
         values[0] = window->x;
         values[1] = window->y;
-        xcb_configure_window(xwl->connection, window->frame_id,
+        xcb_configure_window(ctx->connection, window->frame_id,
                              XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, values);
-        xwl_send_configure_notify(window);
+        sl_send_configure_notify(window);
       }
     }
     return;
   }
 
-  window = xwl_lookup_window(xwl, event->window);
+  window = sl_lookup_window(ctx, event->window);
   if (!window)
     return;
 
@@ -5663,11 +5829,11 @@ static void xwl_handle_configure_notify(struct xwl *xwl,
   if (event->x != window->x || event->y != window->y) {
     window->x = event->x;
     window->y = event->y;
-    xwl_window_update(window);
+    sl_window_update(window);
   }
 }
 
-static uint32_t xwl_resize_edge(int net_wm_moveresize_size) {
+static uint32_t sl_resize_edge(int net_wm_moveresize_size) {
   switch (net_wm_moveresize_size) {
   case NET_WM_MOVERESIZE_SIZE_TOPLEFT:
     return ZXDG_TOPLEVEL_V6_RESIZE_EDGE_TOP_LEFT;
@@ -5690,13 +5856,13 @@ static uint32_t xwl_resize_edge(int net_wm_moveresize_size) {
   }
 }
 
-static void xwl_handle_client_message(struct xwl *xwl,
-                                      xcb_client_message_event_t *event) {
-  if (event->type == xwl->atoms[ATOM_WL_SURFACE_ID].value) {
-    struct xwl_window *window, *unpaired_window = NULL;
+static void sl_handle_client_message(struct sl_context* ctx,
+                                     xcb_client_message_event_t* event) {
+  if (event->type == ctx->atoms[ATOM_WL_SURFACE_ID].value) {
+    struct sl_window *window, *unpaired_window = NULL;
 
-    wl_list_for_each(window, &xwl->unpaired_windows, link) {
-      if (xwl_is_window(window, event->window)) {
+    wl_list_for_each(window, &ctx->unpaired_windows, link) {
+      if (sl_is_window(window, event->window)) {
         unpaired_window = window;
         break;
       }
@@ -5704,13 +5870,13 @@ static void xwl_handle_client_message(struct xwl *xwl,
 
     if (unpaired_window) {
       unpaired_window->host_surface_id = event->data.data32[0];
-      xwl_window_update(unpaired_window);
+      sl_window_update(unpaired_window);
     }
-  } else if (event->type == xwl->atoms[ATOM_NET_WM_MOVERESIZE].value) {
-    struct xwl_window *window = xwl_lookup_window(xwl, event->window);
+  } else if (event->type == ctx->atoms[ATOM_NET_WM_MOVERESIZE].value) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
 
     if (window && window->xdg_toplevel) {
-      struct xwl_host_seat *seat = window->xwl->default_seat;
+      struct sl_host_seat* seat = window->ctx->default_seat;
 
       if (!seat)
         return;
@@ -5719,7 +5885,7 @@ static void xwl_handle_client_message(struct xwl *xwl,
         zxdg_toplevel_v6_move(window->xdg_toplevel, seat->proxy,
                               seat->seat->last_serial);
       } else {
-        uint32_t edge = xwl_resize_edge(event->data.data32[2]);
+        uint32_t edge = sl_resize_edge(event->data.data32[2]);
 
         if (edge == ZXDG_TOPLEVEL_V6_RESIZE_EDGE_NONE)
           return;
@@ -5728,17 +5894,17 @@ static void xwl_handle_client_message(struct xwl *xwl,
                                 seat->seat->last_serial, edge);
       }
     }
-  } else if (event->type == xwl->atoms[ATOM_NET_WM_STATE].value) {
-    struct xwl_window *window = xwl_lookup_window(xwl, event->window);
+  } else if (event->type == ctx->atoms[ATOM_NET_WM_STATE].value) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
 
     if (window && window->xdg_toplevel) {
       int changed[ATOM_LAST + 1];
       uint32_t action = event->data.data32[0];
       int i;
 
-      for (i = 0; i < ARRAY_SIZE(xwl->atoms); ++i) {
-        changed[i] = event->data.data32[1] == xwl->atoms[i].value ||
-                     event->data.data32[2] == xwl->atoms[i].value;
+      for (i = 0; i < ARRAY_SIZE(ctx->atoms); ++i) {
+        changed[i] = event->data.data32[1] == ctx->atoms[i].value ||
+                     event->data.data32[2] == ctx->atoms[i].value;
       }
 
       if (changed[ATOM_NET_WM_STATE_FULLSCREEN]) {
@@ -5759,147 +5925,149 @@ static void xwl_handle_client_message(struct xwl *xwl,
   }
 }
 
-static void xwl_handle_focus_in(struct xwl *xwl, xcb_focus_in_event_t *event) {}
+static void sl_handle_focus_in(struct sl_context* ctx,
+                               xcb_focus_in_event_t* event) {}
 
-static void xwl_handle_focus_out(struct xwl *xwl,
-                                 xcb_focus_out_event_t *event) {}
+static void sl_handle_focus_out(struct sl_context* ctx,
+                                xcb_focus_out_event_t* event) {}
 
-static int xwl_handle_selection_fd_writable(int fd, uint32_t mask, void *data) {
-  struct xwl *xwl = data;
+static int sl_handle_selection_fd_writable(int fd, uint32_t mask, void* data) {
+  struct sl_context* ctx = data;
   uint8_t *value;
   int bytes, bytes_left;
 
-  value = xcb_get_property_value(xwl->selection_property_reply);
-  bytes_left = xcb_get_property_value_length(xwl->selection_property_reply) -
-               xwl->selection_property_offset;
+  value = xcb_get_property_value(ctx->selection_property_reply);
+  bytes_left = xcb_get_property_value_length(ctx->selection_property_reply) -
+               ctx->selection_property_offset;
 
-  bytes = write(fd, value + xwl->selection_property_offset, bytes_left);
+  bytes = write(fd, value + ctx->selection_property_offset, bytes_left);
   if (bytes == -1) {
     fprintf(stderr, "write error to target fd: %m\n");
     close(fd);
   } else if (bytes == bytes_left) {
-    if (xwl->selection_incremental_transfer) {
-      xcb_delete_property(xwl->connection, xwl->selection_window,
-                          xwl->atoms[ATOM_WL_SELECTION].value);
+    if (ctx->selection_incremental_transfer) {
+      xcb_delete_property(ctx->connection, ctx->selection_window,
+                          ctx->atoms[ATOM_WL_SELECTION].value);
     } else {
       close(fd);
     }
   } else {
-    xwl->selection_property_offset += bytes;
+    ctx->selection_property_offset += bytes;
     return 1;
   }
 
-  free(xwl->selection_property_reply);
-  xwl->selection_property_reply = NULL;
-  if (xwl->selection_send_event_source) {
-    wl_event_source_remove(xwl->selection_send_event_source);
-    xwl->selection_send_event_source = NULL;
+  free(ctx->selection_property_reply);
+  ctx->selection_property_reply = NULL;
+  if (ctx->selection_send_event_source) {
+    wl_event_source_remove(ctx->selection_send_event_source);
+    ctx->selection_send_event_source = NULL;
   }
   return 1;
 }
 
-static void xwl_write_selection_property(struct xwl *xwl,
-                                         xcb_get_property_reply_t *reply) {
-  xwl->selection_property_offset = 0;
-  xwl->selection_property_reply = reply;
-  xwl_handle_selection_fd_writable(xwl->selection_data_source_send_fd,
-                                   WL_EVENT_WRITABLE, xwl);
+static void sl_write_selection_property(struct sl_context* ctx,
+                                        xcb_get_property_reply_t* reply) {
+  ctx->selection_property_offset = 0;
+  ctx->selection_property_reply = reply;
+  sl_handle_selection_fd_writable(ctx->selection_data_source_send_fd,
+                                  WL_EVENT_WRITABLE, ctx);
 
-  if (!xwl->selection_property_reply)
+  if (!ctx->selection_property_reply)
     return;
 
-  assert(!xwl->selection_send_event_source);
-  xwl->selection_send_event_source = wl_event_loop_add_fd(
-      wl_display_get_event_loop(xwl->host_display),
-      xwl->selection_data_source_send_fd, WL_EVENT_WRITABLE,
-      xwl_handle_selection_fd_writable, xwl);
+  assert(!ctx->selection_send_event_source);
+  ctx->selection_send_event_source = wl_event_loop_add_fd(
+      wl_display_get_event_loop(ctx->host_display),
+      ctx->selection_data_source_send_fd, WL_EVENT_WRITABLE,
+      sl_handle_selection_fd_writable, ctx);
 }
 
-static void xwl_send_selection_notify(struct xwl *xwl, xcb_atom_t property) {
+static void sl_send_selection_notify(struct sl_context* ctx,
+                                     xcb_atom_t property) {
   xcb_selection_notify_event_t event = {
       .response_type = XCB_SELECTION_NOTIFY,
       .sequence = 0,
-      .time = xwl->selection_request.time,
-      .requestor = xwl->selection_request.requestor,
-      .selection = xwl->selection_request.selection,
-      .target = xwl->selection_request.target,
+      .time = ctx->selection_request.time,
+      .requestor = ctx->selection_request.requestor,
+      .selection = ctx->selection_request.selection,
+      .target = ctx->selection_request.target,
       .property = property,
       .pad0 = 0};
 
-  xcb_send_event(xwl->connection, 0, xwl->selection_request.requestor,
-                 XCB_EVENT_MASK_NO_EVENT, (char *)&event);
+  xcb_send_event(ctx->connection, 0, ctx->selection_request.requestor,
+                 XCB_EVENT_MASK_NO_EVENT, (char*)&event);
 }
 
-static void xwl_send_selection_data(struct xwl *xwl) {
-  assert(!xwl->selection_data_ack_pending);
+static void sl_send_selection_data(struct sl_context* ctx) {
+  assert(!ctx->selection_data_ack_pending);
   xcb_change_property(
-      xwl->connection, XCB_PROP_MODE_REPLACE, xwl->selection_request.requestor,
-      xwl->selection_request.property, xwl->atoms[ATOM_UTF8_STRING].value, 8,
-      xwl->selection_data.size, xwl->selection_data.data);
-  xwl->selection_data_ack_pending = 1;
-  xwl->selection_data.size = 0;
+      ctx->connection, XCB_PROP_MODE_REPLACE, ctx->selection_request.requestor,
+      ctx->selection_request.property, ctx->atoms[ATOM_UTF8_STRING].value, 8,
+      ctx->selection_data.size, ctx->selection_data.data);
+  ctx->selection_data_ack_pending = 1;
+  ctx->selection_data.size = 0;
 }
 
-static const uint32_t xwl_incr_chunk_size = 64 * 1024;
+static const uint32_t sl_incr_chunk_size = 64 * 1024;
 
-static int xwl_handle_selection_fd_readable(int fd, uint32_t mask, void *data) {
-  struct xwl *xwl = data;
+static int sl_handle_selection_fd_readable(int fd, uint32_t mask, void* data) {
+  struct sl_context* ctx = data;
   int bytes, offset, bytes_left;
   void *p;
 
-  offset = xwl->selection_data.size;
-  if (xwl->selection_data.size < xwl_incr_chunk_size)
-    p = wl_array_add(&xwl->selection_data, xwl_incr_chunk_size);
+  offset = ctx->selection_data.size;
+  if (ctx->selection_data.size < sl_incr_chunk_size)
+    p = wl_array_add(&ctx->selection_data, sl_incr_chunk_size);
   else
-    p = (char *)xwl->selection_data.data + xwl->selection_data.size;
-  bytes_left = xwl->selection_data.alloc - offset;
+    p = (char*)ctx->selection_data.data + ctx->selection_data.size;
+  bytes_left = ctx->selection_data.alloc - offset;
 
   bytes = read(fd, p, bytes_left);
   if (bytes == -1) {
     fprintf(stderr, "read error from data source: %m\n");
-    xwl_send_selection_notify(xwl, XCB_ATOM_NONE);
-    xwl->selection_data_offer_receive_fd = -1;
+    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
+    ctx->selection_data_offer_receive_fd = -1;
     close(fd);
   } else {
-    xwl->selection_data.size = offset + bytes;
-    if (xwl->selection_data.size >= xwl_incr_chunk_size) {
-      if (!xwl->selection_incremental_transfer) {
-        xwl->selection_incremental_transfer = 1;
+    ctx->selection_data.size = offset + bytes;
+    if (ctx->selection_data.size >= sl_incr_chunk_size) {
+      if (!ctx->selection_incremental_transfer) {
+        ctx->selection_incremental_transfer = 1;
         xcb_change_property(
-            xwl->connection, XCB_PROP_MODE_REPLACE,
-            xwl->selection_request.requestor, xwl->selection_request.property,
-            xwl->atoms[ATOM_INCR].value, 32, 1, &xwl_incr_chunk_size);
-        xwl->selection_data_ack_pending = 1;
-        xwl_send_selection_notify(xwl, xwl->selection_request.property);
-      } else if (!xwl->selection_data_ack_pending) {
-        xwl_send_selection_data(xwl);
+            ctx->connection, XCB_PROP_MODE_REPLACE,
+            ctx->selection_request.requestor, ctx->selection_request.property,
+            ctx->atoms[ATOM_INCR].value, 32, 1, &sl_incr_chunk_size);
+        ctx->selection_data_ack_pending = 1;
+        sl_send_selection_notify(ctx, ctx->selection_request.property);
+      } else if (!ctx->selection_data_ack_pending) {
+        sl_send_selection_data(ctx);
       }
     } else if (bytes == 0) {
-      if (!xwl->selection_data_ack_pending)
-        xwl_send_selection_data(xwl);
-      if (!xwl->selection_incremental_transfer) {
-        xwl_send_selection_notify(xwl, xwl->selection_request.property);
-        xwl->selection_request.requestor = XCB_NONE;
-        wl_array_release(&xwl->selection_data);
+      if (!ctx->selection_data_ack_pending)
+        sl_send_selection_data(ctx);
+      if (!ctx->selection_incremental_transfer) {
+        sl_send_selection_notify(ctx, ctx->selection_request.property);
+        ctx->selection_request.requestor = XCB_NONE;
+        wl_array_release(&ctx->selection_data);
       }
-      xcb_flush(xwl->connection);
-      xwl->selection_data_offer_receive_fd = -1;
+      xcb_flush(ctx->connection);
+      ctx->selection_data_offer_receive_fd = -1;
       close(fd);
     } else {
-      xwl->selection_data.size = offset + bytes;
+      ctx->selection_data.size = offset + bytes;
       return 1;
     }
   }
 
-  wl_event_source_remove(xwl->selection_event_source);
-  xwl->selection_event_source = NULL;
+  wl_event_source_remove(ctx->selection_event_source);
+  ctx->selection_event_source = NULL;
   return 1;
 }
 
-static void xwl_handle_property_notify(struct xwl *xwl,
-                                       xcb_property_notify_event_t *event) {
+static void sl_handle_property_notify(struct sl_context* ctx,
+                                      xcb_property_notify_event_t* event) {
   if (event->atom == XCB_ATOM_WM_NAME) {
-    struct xwl_window *window = xwl_lookup_window(xwl, event->window);
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (!window)
       return;
 
@@ -5909,9 +6077,9 @@ static void xwl_handle_property_notify(struct xwl *xwl,
     }
 
     if (event->state != XCB_PROPERTY_DELETE) {
-      xcb_get_property_reply_t *reply = xcb_get_property_reply(
-          xwl->connection,
-          xcb_get_property(xwl->connection, 0, window->id, XCB_ATOM_WM_NAME,
+      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+          ctx->connection,
+          xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_NAME,
                            XCB_ATOM_ANY, 0, 2048),
           NULL);
       if (reply) {
@@ -5930,17 +6098,17 @@ static void xwl_handle_property_notify(struct xwl *xwl,
       zxdg_toplevel_v6_set_title(window->xdg_toplevel, "");
     }
   } else if (event->atom == XCB_ATOM_WM_NORMAL_HINTS) {
-    struct xwl_window* window = xwl_lookup_window(xwl, event->window);
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (!window)
       return;
 
     window->size_flags &= ~(P_MIN_SIZE | P_MAX_SIZE);
 
     if (event->state != XCB_PROPERTY_DELETE) {
-      struct xwl_wm_size_hints size_hints = {0};
+      struct sl_wm_size_hints size_hints = {0};
       xcb_get_property_reply_t* reply = xcb_get_property_reply(
-          xwl->connection,
-          xcb_get_property(xwl->connection, 0, window->id,
+          ctx->connection,
+          xcb_get_property(ctx->connection, 0, window->id,
                            XCB_ATOM_WM_NORMAL_HINTS, XCB_ATOM_ANY, 0,
                            sizeof(size_hints)),
           NULL);
@@ -5965,21 +6133,21 @@ static void xwl_handle_property_notify(struct xwl *xwl,
 
     if (window->size_flags & P_MIN_SIZE) {
       zxdg_toplevel_v6_set_min_size(window->xdg_toplevel,
-                                    window->min_width / xwl->scale,
-                                    window->min_height / xwl->scale);
+                                    window->min_width / ctx->scale,
+                                    window->min_height / ctx->scale);
     } else {
       zxdg_toplevel_v6_set_min_size(window->xdg_toplevel, 0, 0);
     }
 
     if (window->size_flags & P_MAX_SIZE) {
       zxdg_toplevel_v6_set_max_size(window->xdg_toplevel,
-                                    window->max_width / xwl->scale,
-                                    window->max_height / xwl->scale);
+                                    window->max_width / ctx->scale,
+                                    window->max_height / ctx->scale);
     } else {
       zxdg_toplevel_v6_set_max_size(window->xdg_toplevel, 0, 0);
     }
-  } else if (event->atom == xwl->atoms[ATOM_MOTIF_WM_HINTS].value) {
-    struct xwl_window* window = xwl_lookup_window(xwl, event->window);
+  } else if (event->atom == ctx->atoms[ATOM_MOTIF_WM_HINTS].value) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (!window)
       return;
 
@@ -5987,11 +6155,11 @@ static void xwl_handle_property_notify(struct xwl *xwl,
     window->decorated = window->managed;
 
     if (event->state != XCB_PROPERTY_DELETE) {
-      struct xwl_mwm_hints mwm_hints = {0};
+      struct sl_mwm_hints mwm_hints = {0};
       xcb_get_property_reply_t* reply = xcb_get_property_reply(
-          xwl->connection,
-          xcb_get_property(xwl->connection, 0, window->id,
-                           xwl->atoms[ATOM_MOTIF_WM_HINTS].value, XCB_ATOM_ANY,
+          ctx->connection,
+          xcb_get_property(ctx->connection, 0, window->id,
+                           ctx->atoms[ATOM_MOTIF_WM_HINTS].value, XCB_ATOM_ANY,
                            0, sizeof(mwm_hints)),
           NULL);
       if (reply) {
@@ -6013,14 +6181,14 @@ static void xwl_handle_property_notify(struct xwl *xwl,
                                 : window->depth == 32
                                       ? ZAURA_SURFACE_FRAME_TYPE_NONE
                                       : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
-  } else if (event->atom == xwl->atoms[ATOM_WL_SELECTION].value) {
-    if (event->window == xwl->selection_window &&
+  } else if (event->atom == ctx->atoms[ATOM_WL_SELECTION].value) {
+    if (event->window == ctx->selection_window &&
         event->state == XCB_PROPERTY_NEW_VALUE &&
-        xwl->selection_incremental_transfer) {
-      xcb_get_property_reply_t *reply = xcb_get_property_reply(
-          xwl->connection,
-          xcb_get_property(xwl->connection, 0, xwl->selection_window,
-                           xwl->atoms[ATOM_WL_SELECTION].value,
+        ctx->selection_incremental_transfer) {
+      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+          ctx->connection,
+          xcb_get_property(ctx->connection, 0, ctx->selection_window,
+                           ctx->atoms[ATOM_WL_SELECTION].value,
                            XCB_GET_PROPERTY_TYPE_ANY, 0, 0x1fffffff),
           NULL);
 
@@ -6028,102 +6196,102 @@ static void xwl_handle_property_notify(struct xwl *xwl,
         return;
 
       if (xcb_get_property_value_length(reply) > 0) {
-        xwl_write_selection_property(xwl, reply);
+        sl_write_selection_property(ctx, reply);
       } else {
-        assert(!xwl->selection_send_event_source);
-        close(xwl->selection_data_source_send_fd);
+        assert(!ctx->selection_send_event_source);
+        close(ctx->selection_data_source_send_fd);
         free(reply);
       }
     }
-  } else if (event->atom == xwl->selection_request.property) {
-    if (event->window == xwl->selection_request.requestor &&
+  } else if (event->atom == ctx->selection_request.property) {
+    if (event->window == ctx->selection_request.requestor &&
         event->state == XCB_PROPERTY_DELETE &&
-        xwl->selection_incremental_transfer) {
-      int data_size = xwl->selection_data.size;
+        ctx->selection_incremental_transfer) {
+      int data_size = ctx->selection_data.size;
 
-      xwl->selection_data_ack_pending = 0;
+      ctx->selection_data_ack_pending = 0;
 
       // Handle the case when there's more data to be received.
-      if (xwl->selection_data_offer_receive_fd >= 0) {
+      if (ctx->selection_data_offer_receive_fd >= 0) {
         // Avoid sending empty data until transfer is complete.
         if (data_size)
-          xwl_send_selection_data(xwl);
+          sl_send_selection_data(ctx);
 
-        if (!xwl->selection_event_source) {
-          xwl->selection_event_source = wl_event_loop_add_fd(
-              wl_display_get_event_loop(xwl->host_display),
-              xwl->selection_data_offer_receive_fd, WL_EVENT_READABLE,
-              xwl_handle_selection_fd_readable, xwl);
+        if (!ctx->selection_event_source) {
+          ctx->selection_event_source = wl_event_loop_add_fd(
+              wl_display_get_event_loop(ctx->host_display),
+              ctx->selection_data_offer_receive_fd, WL_EVENT_READABLE,
+              sl_handle_selection_fd_readable, ctx);
         }
         return;
       }
 
-      xwl_send_selection_data(xwl);
+      sl_send_selection_data(ctx);
 
       // Release data if transfer is complete.
       if (!data_size) {
-        xwl->selection_request.requestor = XCB_NONE;
-        wl_array_release(&xwl->selection_data);
+        ctx->selection_request.requestor = XCB_NONE;
+        wl_array_release(&ctx->selection_data);
       }
     }
   }
 }
 
-static void xwl_internal_data_source_target(void *data,
-                                            struct wl_data_source *data_source,
-                                            const char *mime_type) {}
+static void sl_internal_data_source_target(void* data,
+                                           struct wl_data_source* data_source,
+                                           const char* mime_type) {}
 
-static void xwl_internal_data_source_send(void *data,
-                                          struct wl_data_source *data_source,
-                                          const char *mime_type, int32_t fd) {
-  struct xwl_data_source *host = data;
-  struct xwl *xwl = host->xwl;
+static void sl_internal_data_source_send(void* data,
+                                         struct wl_data_source* data_source,
+                                         const char* mime_type,
+                                         int32_t fd) {
+  struct sl_data_source* host = data;
+  struct sl_context* ctx = host->ctx;
 
-  if (strcmp(mime_type, xwl_utf8_mime_type) == 0) {
+  if (strcmp(mime_type, sl_utf8_mime_type) == 0) {
     int flags;
     int rv;
 
     xcb_convert_selection(
-        xwl->connection, xwl->selection_window,
-        xwl->atoms[ATOM_CLIPBOARD].value, xwl->atoms[ATOM_UTF8_STRING].value,
-        xwl->atoms[ATOM_WL_SELECTION].value, XCB_CURRENT_TIME);
+        ctx->connection, ctx->selection_window,
+        ctx->atoms[ATOM_CLIPBOARD].value, ctx->atoms[ATOM_UTF8_STRING].value,
+        ctx->atoms[ATOM_WL_SELECTION].value, XCB_CURRENT_TIME);
 
     flags = fcntl(fd, F_GETFL, 0);
     rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
     assert(!rv);
     UNUSED(rv);
 
-    xwl->selection_data_source_send_fd = fd;
+    ctx->selection_data_source_send_fd = fd;
   } else {
     close(fd);
   }
 }
 
-static void
-xwl_internal_data_source_cancelled(void *data,
-                                   struct wl_data_source *data_source) {
-  struct xwl_data_source *host = data;
+static void sl_internal_data_source_cancelled(
+    void* data, struct wl_data_source* data_source) {
+  struct sl_data_source* host = data;
 
-  if (host->xwl->selection_data_source == host)
-    host->xwl->selection_data_source = NULL;
+  if (host->ctx->selection_data_source == host)
+    host->ctx->selection_data_source = NULL;
 
   wl_data_source_destroy(data_source);
 }
 
-static const struct wl_data_source_listener xwl_internal_data_source_listener =
-    {xwl_internal_data_source_target, xwl_internal_data_source_send,
-     xwl_internal_data_source_cancelled};
+static const struct wl_data_source_listener sl_internal_data_source_listener = {
+    sl_internal_data_source_target, sl_internal_data_source_send,
+    sl_internal_data_source_cancelled};
 
-static void xwl_get_selection_targets(struct xwl *xwl) {
-  struct xwl_data_source *data_source = NULL;
+static void sl_get_selection_targets(struct sl_context* ctx) {
+  struct sl_data_source* data_source = NULL;
   xcb_get_property_reply_t *reply;
   xcb_atom_t *value;
   uint32_t i;
 
   reply = xcb_get_property_reply(
-      xwl->connection,
-      xcb_get_property(xwl->connection, 1, xwl->selection_window,
-                       xwl->atoms[ATOM_WL_SELECTION].value,
+      ctx->connection,
+      xcb_get_property(ctx->connection, 1, ctx->selection_window,
+                       ctx->atoms[ATOM_WL_SELECTION].value,
                        XCB_GET_PROPERTY_TYPE_ANY, 0, 4096),
       NULL);
   if (!reply)
@@ -6134,259 +6302,258 @@ static void xwl_get_selection_targets(struct xwl *xwl) {
     return;
   }
 
-  if (xwl->data_device_manager) {
+  if (ctx->data_device_manager) {
     data_source = malloc(sizeof(*data_source));
     assert(data_source);
 
-    data_source->xwl = xwl;
+    data_source->ctx = ctx;
     data_source->internal = wl_data_device_manager_create_data_source(
-        xwl->data_device_manager->internal);
-    wl_data_source_add_listener(
-        data_source->internal, &xwl_internal_data_source_listener, data_source);
+        ctx->data_device_manager->internal);
+    wl_data_source_add_listener(data_source->internal,
+                                &sl_internal_data_source_listener, data_source);
 
     value = xcb_get_property_value(reply);
     for (i = 0; i < reply->value_len; i++) {
-      if (value[i] == xwl->atoms[ATOM_UTF8_STRING].value)
-        wl_data_source_offer(data_source->internal, xwl_utf8_mime_type);
+      if (value[i] == ctx->atoms[ATOM_UTF8_STRING].value)
+        wl_data_source_offer(data_source->internal, sl_utf8_mime_type);
     }
 
-    if (xwl->selection_data_device && xwl->default_seat) {
-      wl_data_device_set_selection(xwl->selection_data_device,
+    if (ctx->selection_data_device && ctx->default_seat) {
+      wl_data_device_set_selection(ctx->selection_data_device,
                                    data_source->internal,
-                                   xwl->default_seat->seat->last_serial);
+                                   ctx->default_seat->seat->last_serial);
     }
 
-    if (xwl->selection_data_source) {
-      wl_data_source_destroy(xwl->selection_data_source->internal);
-      free(xwl->selection_data_source);
+    if (ctx->selection_data_source) {
+      wl_data_source_destroy(ctx->selection_data_source->internal);
+      free(ctx->selection_data_source);
     }
-    xwl->selection_data_source = data_source;
+    ctx->selection_data_source = data_source;
   }
 
   free(reply);
 }
 
-static void xwl_get_selection_data(struct xwl *xwl) {
-  xcb_get_property_reply_t *reply = xcb_get_property_reply(
-      xwl->connection,
-      xcb_get_property(xwl->connection, 1, xwl->selection_window,
-                       xwl->atoms[ATOM_WL_SELECTION].value,
+static void sl_get_selection_data(struct sl_context* ctx) {
+  xcb_get_property_reply_t* reply = xcb_get_property_reply(
+      ctx->connection,
+      xcb_get_property(ctx->connection, 1, ctx->selection_window,
+                       ctx->atoms[ATOM_WL_SELECTION].value,
                        XCB_GET_PROPERTY_TYPE_ANY, 0, 0x1fffffff),
       NULL);
   if (!reply)
     return;
 
-  if (reply->type == xwl->atoms[ATOM_INCR].value) {
-    xwl->selection_incremental_transfer = 1;
+  if (reply->type == ctx->atoms[ATOM_INCR].value) {
+    ctx->selection_incremental_transfer = 1;
     free(reply);
   } else {
-    xwl->selection_incremental_transfer = 0;
-    xwl_write_selection_property(xwl, reply);
+    ctx->selection_incremental_transfer = 0;
+    sl_write_selection_property(ctx, reply);
   }
 }
 
-static void xwl_handle_selection_notify(struct xwl *xwl,
-                                        xcb_selection_notify_event_t *event) {
+static void sl_handle_selection_notify(struct sl_context* ctx,
+                                       xcb_selection_notify_event_t* event) {
   if (event->property == XCB_ATOM_NONE)
     return;
 
-  if (event->target == xwl->atoms[ATOM_TARGETS].value)
-    xwl_get_selection_targets(xwl);
+  if (event->target == ctx->atoms[ATOM_TARGETS].value)
+    sl_get_selection_targets(ctx);
   else
-    xwl_get_selection_data(xwl);
+    sl_get_selection_data(ctx);
 }
 
-static void xwl_send_targets(struct xwl *xwl) {
+static void sl_send_targets(struct sl_context* ctx) {
   xcb_atom_t targets[] = {
-      xwl->atoms[ATOM_TIMESTAMP].value, xwl->atoms[ATOM_TARGETS].value,
-      xwl->atoms[ATOM_UTF8_STRING].value, xwl->atoms[ATOM_TEXT].value,
+      ctx->atoms[ATOM_TIMESTAMP].value, ctx->atoms[ATOM_TARGETS].value,
+      ctx->atoms[ATOM_UTF8_STRING].value, ctx->atoms[ATOM_TEXT].value,
   };
 
-  xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE,
-                      xwl->selection_request.requestor,
-                      xwl->selection_request.property, XCB_ATOM_ATOM, 32,
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE,
+                      ctx->selection_request.requestor,
+                      ctx->selection_request.property, XCB_ATOM_ATOM, 32,
                       ARRAY_SIZE(targets), targets);
 
-  xwl_send_selection_notify(xwl, xwl->selection_request.property);
+  sl_send_selection_notify(ctx, ctx->selection_request.property);
 }
 
-static void xwl_send_timestamp(struct xwl *xwl) {
-  xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE,
-                      xwl->selection_request.requestor,
-                      xwl->selection_request.property, XCB_ATOM_INTEGER, 32, 1,
-                      &xwl->selection_timestamp);
+static void sl_send_timestamp(struct sl_context* ctx) {
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE,
+                      ctx->selection_request.requestor,
+                      ctx->selection_request.property, XCB_ATOM_INTEGER, 32, 1,
+                      &ctx->selection_timestamp);
 
-  xwl_send_selection_notify(xwl, xwl->selection_request.property);
+  sl_send_selection_notify(ctx, ctx->selection_request.property);
 }
 
-static void xwl_send_data(struct xwl *xwl) {
+static void sl_send_data(struct sl_context* ctx) {
   int rv;
 
-  if (!xwl->selection_data_offer || !xwl->selection_data_offer->utf8_text) {
-    xwl_send_selection_notify(xwl, XCB_ATOM_NONE);
+  if (!ctx->selection_data_offer || !ctx->selection_data_offer->utf8_text) {
+    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
     return;
   }
 
-  if (xwl->selection_event_source) {
+  if (ctx->selection_event_source) {
     fprintf(stderr, "error: selection transfer already pending\n");
-    xwl_send_selection_notify(xwl, XCB_ATOM_NONE);
+    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
     return;
   }
 
-  wl_array_init(&xwl->selection_data);
-  xwl->selection_data_ack_pending = 0;
+  wl_array_init(&ctx->selection_data);
+  ctx->selection_data_ack_pending = 0;
 
-  switch (xwl->data_driver) {
-  case DATA_DRIVER_VIRTWL: {
-    struct virtwl_ioctl_new new_pipe = {
-        .type = VIRTWL_IOCTL_NEW_PIPE_READ, .fd = -1, .flags = 0, .size = 0,
-    };
+  switch (ctx->data_driver) {
+    case DATA_DRIVER_VIRTWL: {
+      struct virtwl_ioctl_new new_pipe = {
+          .type = VIRTWL_IOCTL_NEW_PIPE_READ, .fd = -1, .flags = 0, .size = 0,
+      };
 
-    rv = ioctl(xwl->virtwl_fd, VIRTWL_IOCTL_NEW, &new_pipe);
-    if (rv) {
-      fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
-              strerror(errno));
-      xwl_send_selection_notify(xwl, XCB_ATOM_NONE);
-      return;
-    }
+      rv = ioctl(ctx->virtwl_fd, VIRTWL_IOCTL_NEW, &new_pipe);
+      if (rv) {
+        fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
+                strerror(errno));
+        sl_send_selection_notify(ctx, XCB_ATOM_NONE);
+        return;
+      }
 
-    xwl->selection_data_offer_receive_fd = new_pipe.fd;
-    wl_data_offer_receive(xwl->selection_data_offer->internal,
-                          xwl_utf8_mime_type, new_pipe.fd);
-  } break;
-  case DATA_DRIVER_NOOP: {
-    int p[2];
+      ctx->selection_data_offer_receive_fd = new_pipe.fd;
+      wl_data_offer_receive(ctx->selection_data_offer->internal,
+                            sl_utf8_mime_type, new_pipe.fd);
+    } break;
+    case DATA_DRIVER_NOOP: {
+      int p[2];
 
-    rv = pipe2(p, O_CLOEXEC | O_NONBLOCK);
-    assert(!rv);
+      rv = pipe2(p, O_CLOEXEC | O_NONBLOCK);
+      assert(!rv);
 
-    xwl->selection_data_offer_receive_fd = p[0];
-    wl_data_offer_receive(xwl->selection_data_offer->internal,
-                          xwl_utf8_mime_type, p[1]);
-    close(p[1]);
-  } break;
+      ctx->selection_data_offer_receive_fd = p[0];
+      wl_data_offer_receive(ctx->selection_data_offer->internal,
+                            sl_utf8_mime_type, p[1]);
+      close(p[1]);
+    } break;
   }
 
-  xwl->selection_event_source = wl_event_loop_add_fd(
-      wl_display_get_event_loop(xwl->host_display),
-      xwl->selection_data_offer_receive_fd, WL_EVENT_READABLE,
-      xwl_handle_selection_fd_readable, xwl);
+  ctx->selection_event_source = wl_event_loop_add_fd(
+      wl_display_get_event_loop(ctx->host_display),
+      ctx->selection_data_offer_receive_fd, WL_EVENT_READABLE,
+      sl_handle_selection_fd_readable, ctx);
 }
 
-static void xwl_handle_selection_request(struct xwl *xwl,
-                                         xcb_selection_request_event_t *event) {
-  xwl->selection_request = *event;
-  xwl->selection_incremental_transfer = 0;
+static void sl_handle_selection_request(struct sl_context* ctx,
+                                        xcb_selection_request_event_t* event) {
+  ctx->selection_request = *event;
+  ctx->selection_incremental_transfer = 0;
 
-  if (event->selection == xwl->atoms[ATOM_CLIPBOARD_MANAGER].value) {
-    xwl_send_selection_notify(xwl, xwl->selection_request.property);
+  if (event->selection == ctx->atoms[ATOM_CLIPBOARD_MANAGER].value) {
+    sl_send_selection_notify(ctx, ctx->selection_request.property);
     return;
   }
 
-  if (event->target == xwl->atoms[ATOM_TARGETS].value) {
-    xwl_send_targets(xwl);
-  } else if (event->target == xwl->atoms[ATOM_TIMESTAMP].value) {
-    xwl_send_timestamp(xwl);
-  } else if (event->target == xwl->atoms[ATOM_UTF8_STRING].value ||
-             event->target == xwl->atoms[ATOM_TEXT].value) {
-    xwl_send_data(xwl);
+  if (event->target == ctx->atoms[ATOM_TARGETS].value) {
+    sl_send_targets(ctx);
+  } else if (event->target == ctx->atoms[ATOM_TIMESTAMP].value) {
+    sl_send_timestamp(ctx);
+  } else if (event->target == ctx->atoms[ATOM_UTF8_STRING].value ||
+             event->target == ctx->atoms[ATOM_TEXT].value) {
+    sl_send_data(ctx);
   } else {
-    xwl_send_selection_notify(xwl, XCB_ATOM_NONE);
+    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
   }
 }
 
-static void
-xwl_handle_xfixes_selection_notify(struct xwl *xwl,
-                                   xcb_xfixes_selection_notify_event_t *event) {
-  if (event->selection != xwl->atoms[ATOM_CLIPBOARD].value)
+static void sl_handle_xfixes_selection_notify(
+    struct sl_context* ctx, xcb_xfixes_selection_notify_event_t* event) {
+  if (event->selection != ctx->atoms[ATOM_CLIPBOARD].value)
     return;
 
   if (event->owner == XCB_WINDOW_NONE) {
     // If client selection is gone. Set NULL selection for each seat.
-    if (xwl->selection_owner != xwl->selection_window) {
-      if (xwl->selection_data_device && xwl->default_seat) {
-        wl_data_device_set_selection(xwl->selection_data_device, NULL,
-                                     xwl->default_seat->seat->last_serial);
+    if (ctx->selection_owner != ctx->selection_window) {
+      if (ctx->selection_data_device && ctx->default_seat) {
+        wl_data_device_set_selection(ctx->selection_data_device, NULL,
+                                     ctx->default_seat->seat->last_serial);
       }
     }
-    xwl->selection_owner = XCB_WINDOW_NONE;
+    ctx->selection_owner = XCB_WINDOW_NONE;
     return;
   }
 
-  xwl->selection_owner = event->owner;
+  ctx->selection_owner = event->owner;
 
   // Save timestamp if it's our selection.
-  if (event->owner == xwl->selection_window) {
-    xwl->selection_timestamp = event->timestamp;
+  if (event->owner == ctx->selection_window) {
+    ctx->selection_timestamp = event->timestamp;
     return;
   }
 
-  xwl->selection_incremental_transfer = 0;
-  xcb_convert_selection(xwl->connection, xwl->selection_window,
-                        xwl->atoms[ATOM_CLIPBOARD].value,
-                        xwl->atoms[ATOM_TARGETS].value,
-                        xwl->atoms[ATOM_WL_SELECTION].value, event->timestamp);
+  ctx->selection_incremental_transfer = 0;
+  xcb_convert_selection(ctx->connection, ctx->selection_window,
+                        ctx->atoms[ATOM_CLIPBOARD].value,
+                        ctx->atoms[ATOM_TARGETS].value,
+                        ctx->atoms[ATOM_WL_SELECTION].value, event->timestamp);
 }
 
-static int xwl_handle_x_connection_event(int fd, uint32_t mask, void *data) {
-  struct xwl *xwl = (struct xwl *)data;
+static int sl_handle_x_connection_event(int fd, uint32_t mask, void* data) {
+  struct sl_context* ctx = (struct sl_context*)data;
   xcb_generic_event_t *event;
   uint32_t count = 0;
 
   if ((mask & WL_EVENT_HANGUP) || (mask & WL_EVENT_ERROR))
     return 0;
 
-  while ((event = xcb_poll_for_event(xwl->connection))) {
+  while ((event = xcb_poll_for_event(ctx->connection))) {
     switch (event->response_type & ~SEND_EVENT_MASK) {
     case XCB_CREATE_NOTIFY:
-      xwl_handle_create_notify(xwl, (xcb_create_notify_event_t *)event);
+      sl_handle_create_notify(ctx, (xcb_create_notify_event_t*)event);
       break;
     case XCB_DESTROY_NOTIFY:
-      xwl_handle_destroy_notify(xwl, (xcb_destroy_notify_event_t *)event);
+      sl_handle_destroy_notify(ctx, (xcb_destroy_notify_event_t*)event);
       break;
     case XCB_REPARENT_NOTIFY:
-      xwl_handle_reparent_notify(xwl, (xcb_reparent_notify_event_t *)event);
+      sl_handle_reparent_notify(ctx, (xcb_reparent_notify_event_t*)event);
       break;
     case XCB_MAP_REQUEST:
-      xwl_handle_map_request(xwl, (xcb_map_request_event_t *)event);
+      sl_handle_map_request(ctx, (xcb_map_request_event_t*)event);
       break;
     case XCB_MAP_NOTIFY:
-      xwl_handle_map_notify(xwl, (xcb_map_notify_event_t *)event);
+      sl_handle_map_notify(ctx, (xcb_map_notify_event_t*)event);
       break;
     case XCB_UNMAP_NOTIFY:
-      xwl_handle_unmap_notify(xwl, (xcb_unmap_notify_event_t *)event);
+      sl_handle_unmap_notify(ctx, (xcb_unmap_notify_event_t*)event);
       break;
     case XCB_CONFIGURE_REQUEST:
-      xwl_handle_configure_request(xwl, (xcb_configure_request_event_t *)event);
+      sl_handle_configure_request(ctx, (xcb_configure_request_event_t*)event);
       break;
     case XCB_CONFIGURE_NOTIFY:
-      xwl_handle_configure_notify(xwl, (xcb_configure_notify_event_t *)event);
+      sl_handle_configure_notify(ctx, (xcb_configure_notify_event_t*)event);
       break;
     case XCB_CLIENT_MESSAGE:
-      xwl_handle_client_message(xwl, (xcb_client_message_event_t *)event);
+      sl_handle_client_message(ctx, (xcb_client_message_event_t*)event);
       break;
     case XCB_FOCUS_IN:
-      xwl_handle_focus_in(xwl, (xcb_focus_in_event_t *)event);
+      sl_handle_focus_in(ctx, (xcb_focus_in_event_t*)event);
       break;
     case XCB_FOCUS_OUT:
-      xwl_handle_focus_out(xwl, (xcb_focus_out_event_t *)event);
+      sl_handle_focus_out(ctx, (xcb_focus_out_event_t*)event);
       break;
     case XCB_PROPERTY_NOTIFY:
-      xwl_handle_property_notify(xwl, (xcb_property_notify_event_t *)event);
+      sl_handle_property_notify(ctx, (xcb_property_notify_event_t*)event);
       break;
     case XCB_SELECTION_NOTIFY:
-      xwl_handle_selection_notify(xwl, (xcb_selection_notify_event_t *)event);
+      sl_handle_selection_notify(ctx, (xcb_selection_notify_event_t*)event);
       break;
     case XCB_SELECTION_REQUEST:
-      xwl_handle_selection_request(xwl, (xcb_selection_request_event_t *)event);
+      sl_handle_selection_request(ctx, (xcb_selection_request_event_t*)event);
       break;
     }
 
-    switch (event->response_type - xwl->xfixes_extension->first_event) {
-    case XCB_XFIXES_SELECTION_NOTIFY:
-      xwl_handle_xfixes_selection_notify(
-          xwl, (xcb_xfixes_selection_notify_event_t *)event);
-      break;
+    switch (event->response_type - ctx->xfixes_extension->first_event) {
+      case XCB_XFIXES_SELECTION_NOTIFY:
+        sl_handle_xfixes_selection_notify(
+            ctx, (xcb_xfixes_selection_notify_event_t*)event);
+        break;
     }
 
     free(event);
@@ -6394,12 +6561,12 @@ static int xwl_handle_x_connection_event(int fd, uint32_t mask, void *data) {
   }
 
   if ((mask & ~WL_EVENT_WRITABLE) == 0)
-    xcb_flush(xwl->connection);
+    xcb_flush(ctx->connection);
 
   return count;
 }
 
-static void xwl_connect(struct xwl *xwl) {
+static void sl_connect(struct sl_context* ctx) {
   const char wm_name[] = "Sommelier";
   const xcb_setup_t *setup;
   xcb_screen_iterator_t screen_iterator;
@@ -6412,41 +6579,41 @@ static void xwl_connect(struct xwl *xwl) {
   const xcb_query_extension_reply_t *composite_extension;
   unsigned i;
 
-  xwl->connection = xcb_connect_to_fd(xwl->wm_fd, NULL);
-  assert(!xcb_connection_has_error(xwl->connection));
+  ctx->connection = xcb_connect_to_fd(ctx->wm_fd, NULL);
+  assert(!xcb_connection_has_error(ctx->connection));
 
-  xcb_prefetch_extension_data(xwl->connection, &xcb_xfixes_id);
-  xcb_prefetch_extension_data(xwl->connection, &xcb_composite_id);
+  xcb_prefetch_extension_data(ctx->connection, &xcb_xfixes_id);
+  xcb_prefetch_extension_data(ctx->connection, &xcb_composite_id);
 
-  for (i = 0; i < ARRAY_SIZE(xwl->atoms); ++i) {
-    const char *name = xwl->atoms[i].name;
-    xwl->atoms[i].cookie =
-        xcb_intern_atom(xwl->connection, 0, strlen(name), name);
+  for (i = 0; i < ARRAY_SIZE(ctx->atoms); ++i) {
+    const char* name = ctx->atoms[i].name;
+    ctx->atoms[i].cookie =
+        xcb_intern_atom(ctx->connection, 0, strlen(name), name);
   }
 
-  setup = xcb_get_setup(xwl->connection);
+  setup = xcb_get_setup(ctx->connection);
   screen_iterator = xcb_setup_roots_iterator(setup);
-  xwl->screen = screen_iterator.data;
+  ctx->screen = screen_iterator.data;
 
   // Select for substructure redirect.
   values[0] = XCB_EVENT_MASK_STRUCTURE_NOTIFY |
               XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
               XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
   change_attributes_cookie = xcb_change_window_attributes(
-      xwl->connection, xwl->screen->root, XCB_CW_EVENT_MASK, values);
+      ctx->connection, ctx->screen->root, XCB_CW_EVENT_MASK, values);
 
-  xwl->connection_event_source = wl_event_loop_add_fd(
-      wl_display_get_event_loop(xwl->host_display),
-      xcb_get_file_descriptor(xwl->connection), WL_EVENT_READABLE,
-      &xwl_handle_x_connection_event, xwl);
+  ctx->connection_event_source = wl_event_loop_add_fd(
+      wl_display_get_event_loop(ctx->host_display),
+      xcb_get_file_descriptor(ctx->connection), WL_EVENT_READABLE,
+      &sl_handle_x_connection_event, ctx);
 
-  xwl->xfixes_extension =
-      xcb_get_extension_data(xwl->connection, &xcb_xfixes_id);
-  assert(xwl->xfixes_extension->present);
+  ctx->xfixes_extension =
+      xcb_get_extension_data(ctx->connection, &xcb_xfixes_id);
+  assert(ctx->xfixes_extension->present);
 
   xfixes_query_version_reply = xcb_xfixes_query_version_reply(
-      xwl->connection,
-      xcb_xfixes_query_version(xwl->connection, XCB_XFIXES_MAJOR_VERSION,
+      ctx->connection,
+      xcb_xfixes_query_version(ctx->connection, XCB_XFIXES_MAJOR_VERSION,
                                XCB_XFIXES_MINOR_VERSION),
       NULL);
   assert(xfixes_query_version_reply);
@@ -6454,92 +6621,92 @@ static void xwl_connect(struct xwl *xwl) {
   free(xfixes_query_version_reply);
 
   composite_extension =
-      xcb_get_extension_data(xwl->connection, &xcb_composite_id);
+      xcb_get_extension_data(ctx->connection, &xcb_composite_id);
   assert(composite_extension->present);
   UNUSED(composite_extension);
 
   redirect_subwindows_cookie = xcb_composite_redirect_subwindows_checked(
-      xwl->connection, xwl->screen->root, XCB_COMPOSITE_REDIRECT_MANUAL);
+      ctx->connection, ctx->screen->root, XCB_COMPOSITE_REDIRECT_MANUAL);
 
   // Another window manager should not be running.
-  error = xcb_request_check(xwl->connection, change_attributes_cookie);
+  error = xcb_request_check(ctx->connection, change_attributes_cookie);
   assert(!error);
 
   // Redirecting subwindows of root for compositing should have succeeded.
-  error = xcb_request_check(xwl->connection, redirect_subwindows_cookie);
+  error = xcb_request_check(ctx->connection, redirect_subwindows_cookie);
   assert(!error);
 
-  xwl->window = xcb_generate_id(xwl->connection);
-  xcb_create_window(xwl->connection, 0, xwl->window, xwl->screen->root, 0, 0, 1,
+  ctx->window = xcb_generate_id(ctx->connection);
+  xcb_create_window(ctx->connection, 0, ctx->window, ctx->screen->root, 0, 0, 1,
                     1, 0, XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, 0,
                     NULL);
 
-  for (i = 0; i < ARRAY_SIZE(xwl->atoms); ++i) {
+  for (i = 0; i < ARRAY_SIZE(ctx->atoms); ++i) {
     atom_reply =
-        xcb_intern_atom_reply(xwl->connection, xwl->atoms[i].cookie, &error);
+        xcb_intern_atom_reply(ctx->connection, ctx->atoms[i].cookie, &error);
     assert(!error);
-    xwl->atoms[i].value = atom_reply->atom;
+    ctx->atoms[i].value = atom_reply->atom;
     free(atom_reply);
   }
 
-  depth_iterator = xcb_screen_allowed_depths_iterator(xwl->screen);
+  depth_iterator = xcb_screen_allowed_depths_iterator(ctx->screen);
   while (depth_iterator.rem > 0) {
     int depth = depth_iterator.data->depth;
-    if (depth == xwl->screen->root_depth) {
-      xwl->visual_ids[depth] = xwl->screen->root_visual;
-      xwl->colormaps[depth] = xwl->screen->default_colormap;
+    if (depth == ctx->screen->root_depth) {
+      ctx->visual_ids[depth] = ctx->screen->root_visual;
+      ctx->colormaps[depth] = ctx->screen->default_colormap;
     } else {
       xcb_visualtype_iterator_t visualtype_iterator =
           xcb_depth_visuals_iterator(depth_iterator.data);
 
-      xwl->visual_ids[depth] = visualtype_iterator.data->visual_id;
-      xwl->colormaps[depth] = xcb_generate_id(xwl->connection);
-      xcb_create_colormap(xwl->connection, XCB_COLORMAP_ALLOC_NONE,
-                          xwl->colormaps[depth], xwl->screen->root,
-                          xwl->visual_ids[depth]);
+      ctx->visual_ids[depth] = visualtype_iterator.data->visual_id;
+      ctx->colormaps[depth] = xcb_generate_id(ctx->connection);
+      xcb_create_colormap(ctx->connection, XCB_COLORMAP_ALLOC_NONE,
+                          ctx->colormaps[depth], ctx->screen->root,
+                          ctx->visual_ids[depth]);
     }
     xcb_depth_next(&depth_iterator);
   }
-  assert(xwl->visual_ids[xwl->screen->root_depth]);
+  assert(ctx->visual_ids[ctx->screen->root_depth]);
 
-  if (xwl->clipboard_manager) {
+  if (ctx->clipboard_manager) {
     values[0] = XCB_EVENT_MASK_PROPERTY_CHANGE;
-    xwl->selection_window = xcb_generate_id(xwl->connection);
-    xcb_create_window(xwl->connection, XCB_COPY_FROM_PARENT,
-                      xwl->selection_window, xwl->screen->root, 0, 0, 1, 1, 0,
-                      XCB_WINDOW_CLASS_INPUT_OUTPUT, xwl->screen->root_visual,
+    ctx->selection_window = xcb_generate_id(ctx->connection);
+    xcb_create_window(ctx->connection, XCB_COPY_FROM_PARENT,
+                      ctx->selection_window, ctx->screen->root, 0, 0, 1, 1, 0,
+                      XCB_WINDOW_CLASS_INPUT_OUTPUT, ctx->screen->root_visual,
                       XCB_CW_EVENT_MASK, values);
-    xcb_set_selection_owner(xwl->connection, xwl->selection_window,
-                            xwl->atoms[ATOM_CLIPBOARD_MANAGER].value,
+    xcb_set_selection_owner(ctx->connection, ctx->selection_window,
+                            ctx->atoms[ATOM_CLIPBOARD_MANAGER].value,
                             XCB_CURRENT_TIME);
     xcb_xfixes_select_selection_input(
-        xwl->connection, xwl->selection_window,
-        xwl->atoms[ATOM_CLIPBOARD].value,
+        ctx->connection, ctx->selection_window,
+        ctx->atoms[ATOM_CLIPBOARD].value,
         XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER |
             XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_WINDOW_DESTROY |
             XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_CLIENT_CLOSE);
-    xwl_set_selection(xwl, NULL);
+    sl_set_selection(ctx, NULL);
   }
 
-  xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE, xwl->window,
-                      xwl->atoms[ATOM_NET_SUPPORTING_WM_CHECK].value,
-                      XCB_ATOM_WINDOW, 32, 1, &xwl->window);
-  xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE, xwl->window,
-                      xwl->atoms[ATOM_NET_WM_NAME].value,
-                      xwl->atoms[ATOM_UTF8_STRING].value, 8, strlen(wm_name),
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, ctx->window,
+                      ctx->atoms[ATOM_NET_SUPPORTING_WM_CHECK].value,
+                      XCB_ATOM_WINDOW, 32, 1, &ctx->window);
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, ctx->window,
+                      ctx->atoms[ATOM_NET_WM_NAME].value,
+                      ctx->atoms[ATOM_UTF8_STRING].value, 8, strlen(wm_name),
                       wm_name);
-  xcb_change_property(xwl->connection, XCB_PROP_MODE_REPLACE, xwl->screen->root,
-                      xwl->atoms[ATOM_NET_SUPPORTING_WM_CHECK].value,
-                      XCB_ATOM_WINDOW, 32, 1, &xwl->window);
-  xcb_set_selection_owner(xwl->connection, xwl->window,
-                          xwl->atoms[ATOM_WM_S0].value, XCB_CURRENT_TIME);
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, ctx->screen->root,
+                      ctx->atoms[ATOM_NET_SUPPORTING_WM_CHECK].value,
+                      XCB_ATOM_WINDOW, 32, 1, &ctx->window);
+  xcb_set_selection_owner(ctx->connection, ctx->window,
+                          ctx->atoms[ATOM_WM_S0].value, XCB_CURRENT_TIME);
 
-  xcb_set_input_focus(xwl->connection, XCB_INPUT_FOCUS_NONE, XCB_NONE,
+  xcb_set_input_focus(ctx->connection, XCB_INPUT_FOCUS_NONE, XCB_NONE,
                       XCB_CURRENT_TIME);
-  xcb_flush(xwl->connection);
+  xcb_flush(ctx->connection);
 }
 
-static void xwl_sd_notify(const char* state) {
+static void sl_sd_notify(const char* state) {
   const char* socket_name;
   struct msghdr msghdr;
   struct iovec iovec;
@@ -6573,28 +6740,28 @@ static void xwl_sd_notify(const char* state) {
   UNUSED(rv);
 }
 
-static int xwl_handle_sigchld(int signal_number, void *data) {
-  struct xwl *xwl = (struct xwl *)data;
+static int sl_handle_sigchld(int signal_number, void* data) {
+  struct sl_context* ctx = (struct sl_context*)data;
   int status;
   pid_t pid;
 
   while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-    if (pid == xwl->child_pid) {
-      xwl->child_pid = -1;
+    if (pid == ctx->child_pid) {
+      ctx->child_pid = -1;
       if (WIFEXITED(status) && WEXITSTATUS(status)) {
         fprintf(stderr, "Child exited with status: %d\n", WEXITSTATUS(status));
       }
-      if (xwl->exit_with_child) {
-        if (xwl->xwayland_pid >= 0)
-          kill(xwl->xwayland_pid, SIGTERM);
+      if (ctx->exit_with_child) {
+        if (ctx->xwayland_pid >= 0)
+          kill(ctx->xwayland_pid, SIGTERM);
       } else {
         // Notify systemd that we are ready to accept connections now that
         // child process has finished running and all environment is ready.
-        if (xwl->sd_notify)
-          xwl_sd_notify(xwl->sd_notify);
+        if (ctx->sd_notify)
+          sl_sd_notify(ctx->sd_notify);
       }
-    } else if (pid == xwl->xwayland_pid) {
-      xwl->xwayland_pid = -1;
+    } else if (pid == ctx->xwayland_pid) {
+      ctx->xwayland_pid = -1;
       if (WIFEXITED(status) && WEXITSTATUS(status)) {
         fprintf(stderr, "Xwayland exited with status: %d\n",
                 WEXITSTATUS(status));
@@ -6606,8 +6773,9 @@ static int xwl_handle_sigchld(int signal_number, void *data) {
   return 1;
 }
 
-static void xwl_execvp(const char *file, char *const argv[],
-                       int wayland_socked_fd) {
+static void sl_execvp(const char* file,
+                      char* const argv[],
+                      int wayland_socked_fd) {
   if (wayland_socked_fd >= 0) {
     char fd_str[8];
     int fd;
@@ -6623,20 +6791,20 @@ static void xwl_execvp(const char *file, char *const argv[],
   perror(file);
 }
 
-static void xwl_calculate_scale_for_xwayland(struct xwl* xwl) {
-  struct xwl_host_output* output;
+static void sl_calculate_scale_for_xwayland(struct sl_context* ctx) {
+  struct sl_host_output* output;
   double default_scale_factor = 1.0;
   double scale;
 
   // Find internal output and determine preferred scale factor.
-  wl_list_for_each(output, &xwl->host_outputs, link) {
+  wl_list_for_each(output, &ctx->host_outputs, link) {
     if (output->internal) {
       double preferred_scale =
-          xwl_aura_scale_factor_to_double(output->preferred_scale);
+          sl_aura_scale_factor_to_double(output->preferred_scale);
 
-      if (xwl->aura_shell) {
+      if (ctx->aura_shell) {
         double device_scale_factor =
-            xwl_aura_scale_factor_to_double(output->device_scale_factor);
+            sl_aura_scale_factor_to_double(output->device_scale_factor);
 
         default_scale_factor = device_scale_factor * preferred_scale;
       }
@@ -6647,22 +6815,22 @@ static void xwl_calculate_scale_for_xwayland(struct xwl* xwl) {
   // We use the default scale factor multipled by desired scale set by the
   // user. This gives us HiDPI support by default but the user can still
   // adjust it if higher or lower density is preferred.
-  scale = xwl->desired_scale * default_scale_factor;
+  scale = ctx->desired_scale * default_scale_factor;
 
   // Round to integer scale if wp_viewporter interface is not present.
-  if (!xwl->viewporter)
+  if (!ctx->viewporter)
     scale = round(scale);
 
   // Clamp and set scale.
-  xwl->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, scale));
+  ctx->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, scale));
 
   // Scale affects output state. Send updated output state to xwayland.
-  wl_list_for_each(output, &xwl->host_outputs, link)
-      xwl_send_host_output_state(output);
+  wl_list_for_each(output, &ctx->host_outputs, link)
+      sl_send_host_output_state(output);
 }
 
-static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
-  struct xwl *xwl = (struct xwl *)data;
+static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
+  struct sl_context* ctx = (struct sl_context*)data;
   char display_name[9];
   char xcursor_size_str[8];
   int bytes_read = 0;
@@ -6689,81 +6857,84 @@ static int xwl_handle_display_ready_event(int fd, uint32_t mask, void *data) {
   display_name[bytes_read] = '\0';
   setenv("DISPLAY", display_name, 1);
 
-  xwl_connect(xwl);
+  sl_connect(ctx);
 
-  wl_event_source_remove(xwl->display_ready_event_source);
-  xwl->display_ready_event_source = NULL;
+  wl_event_source_remove(ctx->display_ready_event_source);
+  ctx->display_ready_event_source = NULL;
   close(fd);
 
   // Calculate scale now that the default scale factor is known. This also
   // happens to workaround an issue in Xwayland where an output update is
   // needed for DPI to be set correctly.
-  xwl_calculate_scale_for_xwayland(xwl);
-  wl_display_flush_clients(xwl->host_display);
+  sl_calculate_scale_for_xwayland(ctx);
+  wl_display_flush_clients(ctx->host_display);
 
   snprintf(xcursor_size_str, sizeof(xcursor_size_str), "%d",
-           (int)(XCURSOR_SIZE_BASE * xwl->scale + 0.5));
+           (int)(XCURSOR_SIZE_BASE * ctx->scale + 0.5));
   setenv("XCURSOR_SIZE", xcursor_size_str, 1);
 
   pid = fork();
   assert(pid >= 0);
   if (pid == 0) {
-    xwl_execvp(xwl->runprog[0], xwl->runprog, -1);
+    sl_execvp(ctx->runprog[0], ctx->runprog, -1);
     _exit(EXIT_FAILURE);
   }
 
-  xwl->child_pid = pid;
+  ctx->child_pid = pid;
 
   return 1;
 }
 
-static void xwl_sigchld_handler(int signal) {
+static void sl_sigchld_handler(int signal) {
   while (waitpid(-1, NULL, WNOHANG) > 0)
     continue;
 }
 
-static void xwl_client_destroy_notify(struct wl_listener *listener,
-                                      void *data) {
+static void sl_client_destroy_notify(struct wl_listener* listener, void* data) {
   exit(0);
 }
 
-static void xwl_registry_bind(struct wl_client *client,
-                              struct wl_resource *resource, uint32_t name,
-                              const char *interface, uint32_t version,
-                              uint32_t id) {
-  struct xwl_host_registry *host = wl_resource_get_user_data(resource);
-  struct xwl_global *global;
+static void sl_registry_bind(struct wl_client* client,
+                             struct wl_resource* resource,
+                             uint32_t name,
+                             const char* interface,
+                             uint32_t version,
+                             uint32_t id) {
+  struct sl_host_registry* host = wl_resource_get_user_data(resource);
+  struct sl_global* global;
 
-  wl_list_for_each(global, &host->xwl->globals, link) {
+  wl_list_for_each(global, &host->ctx->globals, link) {
     if (global->name == name)
       break;
   }
 
-  assert(&global->link != &host->xwl->globals);
+  assert(&global->link != &host->ctx->globals);
   assert(version != 0);
   assert(global->version >= version);
 
   global->bind(client, global->data, version, id);
 }
 
-static const struct wl_registry_interface xwl_registry_implementation = {
-    xwl_registry_bind};
+static const struct wl_registry_interface sl_registry_implementation = {
+    sl_registry_bind};
 
-static void xwl_sync_callback_done(void *data, struct wl_callback *callback,
-                                   uint32_t serial) {
-  struct xwl_host_callback *host = wl_callback_get_user_data(callback);
+static void sl_sync_callback_done(void* data,
+                                  struct wl_callback* callback,
+                                  uint32_t serial) {
+  struct sl_host_callback* host = wl_callback_get_user_data(callback);
 
   wl_callback_send_done(host->resource, serial);
   wl_resource_destroy(host->resource);
 }
 
-static const struct wl_callback_listener xwl_sync_callback_listener = {
-    xwl_sync_callback_done};
+static const struct wl_callback_listener sl_sync_callback_listener = {
+    sl_sync_callback_done};
 
-static void xwl_display_sync(struct wl_client *client,
-                             struct wl_resource *resource, uint32_t id) {
-  struct xwl *xwl = wl_resource_get_user_data(resource);
-  struct xwl_host_callback *host_callback;
+static void sl_display_sync(struct wl_client* client,
+                            struct wl_resource* resource,
+                            uint32_t id) {
+  struct sl_context* ctx = wl_resource_get_user_data(resource);
+  struct sl_host_callback* host_callback;
 
   host_callback = malloc(sizeof(*host_callback));
   assert(host_callback);
@@ -6771,54 +6942,54 @@ static void xwl_display_sync(struct wl_client *client,
   host_callback->resource =
       wl_resource_create(client, &wl_callback_interface, 1, id);
   wl_resource_set_implementation(host_callback->resource, NULL, host_callback,
-                                 xwl_host_callback_destroy);
-  host_callback->proxy = wl_display_sync(xwl->display);
+                                 sl_host_callback_destroy);
+  host_callback->proxy = wl_display_sync(ctx->display);
   wl_callback_set_user_data(host_callback->proxy, host_callback);
-  wl_callback_add_listener(host_callback->proxy, &xwl_sync_callback_listener,
+  wl_callback_add_listener(host_callback->proxy, &sl_sync_callback_listener,
                            host_callback);
 }
 
-static void xwl_destroy_host_registry(struct wl_resource *resource) {
-  struct xwl_host_registry *host = wl_resource_get_user_data(resource);
+static void sl_destroy_host_registry(struct wl_resource* resource) {
+  struct sl_host_registry* host = wl_resource_get_user_data(resource);
 
   wl_list_remove(&host->link);
   free(host);
 }
 
-static void xwl_display_get_registry(struct wl_client *client,
-                                     struct wl_resource *resource,
-                                     uint32_t id) {
-  struct xwl *xwl = wl_resource_get_user_data(resource);
-  struct xwl_host_registry *host_registry;
-  struct xwl_global *global;
+static void sl_display_get_registry(struct wl_client* client,
+                                    struct wl_resource* resource,
+                                    uint32_t id) {
+  struct sl_context* ctx = wl_resource_get_user_data(resource);
+  struct sl_host_registry* host_registry;
+  struct sl_global* global;
 
   host_registry = malloc(sizeof(*host_registry));
   assert(host_registry);
 
-  host_registry->xwl = xwl;
+  host_registry->ctx = ctx;
   host_registry->resource =
       wl_resource_create(client, &wl_registry_interface, 1, id);
-  wl_list_insert(&xwl->registries, &host_registry->link);
+  wl_list_insert(&ctx->registries, &host_registry->link);
   wl_resource_set_implementation(host_registry->resource,
-                                 &xwl_registry_implementation, host_registry,
-                                 xwl_destroy_host_registry);
+                                 &sl_registry_implementation, host_registry,
+                                 sl_destroy_host_registry);
 
-  wl_list_for_each(global, &xwl->globals, link) {
+  wl_list_for_each(global, &ctx->globals, link) {
     wl_resource_post_event(host_registry->resource, WL_REGISTRY_GLOBAL,
                            global->name, global->interface->name,
                            global->version);
   }
 }
 
-static const struct wl_display_interface xwl_display_implementation = {
-    xwl_display_sync, xwl_display_get_registry};
+static const struct wl_display_interface sl_display_implementation = {
+    sl_display_sync, sl_display_get_registry};
 
-static enum wl_iterator_result
-xwl_set_display_implementation(struct wl_resource *resource, void *user_data) {
-  struct xwl *xwl = (struct xwl *)user_data;
+static enum wl_iterator_result sl_set_display_implementation(
+    struct wl_resource* resource, void* user_data) {
+  struct sl_context* ctx = (struct sl_context*)user_data;
 
   if (strcmp(wl_resource_get_class(resource), "wl_display") == 0) {
-    wl_resource_set_implementation(resource, &xwl_display_implementation, xwl,
+    wl_resource_set_implementation(resource, &sl_display_implementation, ctx,
                                    NULL);
     return WL_ITERATOR_STOP;
   }
@@ -6826,8 +6997,8 @@ xwl_set_display_implementation(struct wl_resource *resource, void *user_data) {
   return WL_ITERATOR_CONTINUE;
 }
 
-static int xwl_handle_virtwl_ctx_event(int fd, uint32_t mask, void *data) {
-  struct xwl *xwl = (struct xwl *)data;
+static int sl_handle_virtwl_sl_event(int fd, uint32_t mask, void* data) {
+  struct sl_context* ctx = (struct sl_context*)data;
   uint8_t ioctl_buffer[4096];
   struct virtwl_ioctl_txn *ioctl_recv = (struct virtwl_ioctl_txn *)ioctl_buffer;
   void *recv_data = ioctl_buffer + sizeof(struct virtwl_ioctl_txn);
@@ -6842,8 +7013,8 @@ static int xwl_handle_virtwl_ctx_event(int fd, uint32_t mask, void *data) {
   ioctl_recv->len = max_recv_size;
   rv = ioctl(fd, VIRTWL_IOCTL_RECV, ioctl_recv);
   if (rv) {
-    close(xwl->virtwl_socket_fd);
-    xwl->virtwl_socket_fd = -1;
+    close(ctx->virtwl_socket_fd);
+    ctx->virtwl_socket_fd = -1;
     return 0;
   }
 
@@ -6874,7 +7045,7 @@ static int xwl_handle_virtwl_ctx_event(int fd, uint32_t mask, void *data) {
     msg.msg_controllen = cmsg->cmsg_len;
   }
 
-  bytes = sendmsg(xwl->virtwl_socket_fd, &msg, MSG_NOSIGNAL);
+  bytes = sendmsg(ctx->virtwl_socket_fd, &msg, MSG_NOSIGNAL);
   assert(bytes == ioctl_recv->len);
   UNUSED(bytes);
 
@@ -6884,8 +7055,8 @@ static int xwl_handle_virtwl_ctx_event(int fd, uint32_t mask, void *data) {
   return 1;
 }
 
-static int xwl_handle_virtwl_socket_event(int fd, uint32_t mask, void *data) {
-  struct xwl *xwl = (struct xwl *)data;
+static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
+  struct sl_context* ctx = (struct sl_context*)data;
   uint8_t ioctl_buffer[4096];
   struct virtwl_ioctl_txn *ioctl_send = (struct virtwl_ioctl_txn *)ioctl_buffer;
   void *send_data = ioctl_buffer + sizeof(struct virtwl_ioctl_txn);
@@ -6907,7 +7078,7 @@ static int xwl_handle_virtwl_socket_event(int fd, uint32_t mask, void *data) {
   msg.msg_control = fd_buffer;
   msg.msg_controllen = sizeof(fd_buffer);
 
-  bytes = recvmsg(xwl->virtwl_socket_fd, &msg, 0);
+  bytes = recvmsg(ctx->virtwl_socket_fd, &msg, 0);
   assert(bytes > 0);
 
   // If there were any FDs recv'd by recvmsg, there will be some data in the
@@ -6935,7 +7106,7 @@ static int xwl_handle_virtwl_socket_event(int fd, uint32_t mask, void *data) {
   // The FDs and data were extracted from the recvmsg call into the ioctl_send
   // structure which we now pass along to the kernel.
   ioctl_send->len = bytes;
-  rv = ioctl(xwl->virtwl_ctx_fd, VIRTWL_IOCTL_SEND, ioctl_send);
+  rv = ioctl(ctx->virtwl_sl_fd, VIRTWL_IOCTL_SEND, ioctl_send);
   assert(!rv);
   UNUSED(rv);
 
@@ -6948,7 +7119,7 @@ static int xwl_handle_virtwl_socket_event(int fd, uint32_t mask, void *data) {
 // Break |str| into a sequence of zero or more nonempty arguments. No more
 // than |argc| arguments will be added to |argv|. Returns the total number of
 // argments found in |str|.
-static int xwl_parse_cmd_prefix(char *str, int argc, char **argv) {
+static int sl_parse_cmd_prefix(char* str, int argc, char** argv) {
   char *s = str;
   int n = 0;
   int delim = 0;
@@ -6985,7 +7156,7 @@ static int xwl_parse_cmd_prefix(char *str, int argc, char **argv) {
   return n;
 }
 
-static void xwl_print_usage() {
+static void sl_print_usage() {
   printf(
       "usage: sommelier [options] [program] [args...]\n\n"
       "options:\n"
@@ -7013,7 +7184,7 @@ static void xwl_print_usage() {
 }
 
 int main(int argc, char **argv) {
-  struct xwl xwl = {
+  struct sl_context ctx = {
       .runprog = NULL,
       .display = NULL,
       .host_display = NULL,
@@ -7035,9 +7206,9 @@ int main(int argc, char **argv) {
       .data_driver = DATA_DRIVER_NOOP,
       .wm_fd = -1,
       .virtwl_fd = -1,
-      .virtwl_ctx_fd = -1,
+      .virtwl_sl_fd = -1,
       .virtwl_socket_fd = -1,
-      .virtwl_ctx_event_source = NULL,
+      .virtwl_sl_event_source = NULL,
       .virtwl_socket_event_source = NULL,
       .drm_device = NULL,
       .gbm = NULL,
@@ -7128,7 +7299,7 @@ int main(int argc, char **argv) {
   const char *runtime_dir;
   struct wl_event_loop *event_loop;
   struct wl_listener client_destroy_listener = {.notify =
-                                                    xwl_client_destroy_notify};
+                                                    sl_client_destroy_notify};
   int sv[2];
   pid_t pid;
   int virtwl_display_fd = -1;
@@ -7142,7 +7313,7 @@ int main(int argc, char **argv) {
     const char *arg = argv[i];
     if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0 ||
         strcmp(arg, "-?") == 0) {
-      xwl_print_usage();
+      sl_print_usage();
       return EXIT_SUCCESS;
     }
     if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0) {
@@ -7170,7 +7341,7 @@ int main(int argc, char **argv) {
     } else if (strstr(arg, "--peer-pid") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
-      xwl.peer_pid = atoi(s);
+      ctx.peer_pid = atoi(s);
     } else if (strstr(arg, "--peer-cmd-prefix") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
@@ -7198,25 +7369,25 @@ int main(int argc, char **argv) {
     } else if (strstr(arg, "--application-id") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
-      xwl.application_id = s;
+      ctx.application_id = s;
     } else if (strstr(arg, "-X") == arg) {
-      xwl.xwayland = 1;
+      ctx.xwayland = 1;
     } else if (strstr(arg, "--x-display") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
       xdisplay = atoi(s);
       // Automatically enable X forwarding if X display is specified.
-      xwl.xwayland = 1;
+      ctx.xwayland = 1;
     } else if (strstr(arg, "--xwayland-path") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
       xwayland_path = s;
     } else if (strstr(arg, "--no-exit-with-child") == arg) {
-      xwl.exit_with_child = 0;
+      ctx.exit_with_child = 0;
     } else if (strstr(arg, "--sd-notify") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
-      xwl.sd_notify = s;
+      ctx.sd_notify = s;
     } else if (strstr(arg, "--no-clipboard-manager") == arg) {
       clipboard_manager = "0";
     } else if (strstr(arg, "--frame-color") == arg) {
@@ -7238,10 +7409,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Option `%s' is unknown.\n", arg);
         return EXIT_FAILURE;
       }
-      xwl.runprog = &argv[i + 1];
+      ctx.runprog = &argv[i + 1];
       break;
     } else {
-      xwl.runprog = &argv[i];
+      ctx.runprog = &argv[i];
       break;
     }
   }
@@ -7296,14 +7467,14 @@ int main(int argc, char **argv) {
     rv = listen(sock_fd, 128);
     assert(rv >= 0);
 
-    sa.sa_handler = xwl_sigchld_handler;
+    sa.sa_handler = sl_sigchld_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     rv = sigaction(SIGCHLD, &sa, NULL);
     assert(rv >= 0);
 
-    if (xwl.sd_notify)
-      xwl_sd_notify(xwl.sd_notify);
+    if (ctx.sd_notify)
+      sl_sd_notify(ctx.sd_notify);
 
     do {
       struct ucred ucred;
@@ -7337,7 +7508,7 @@ int main(int argc, char **argv) {
           snprintf(peer_cmd_prefix_str, sizeof(peer_cmd_prefix_str), "%s",
                    peer_cmd_prefix);
 
-          i = xwl_parse_cmd_prefix(peer_cmd_prefix_str, 32, args);
+          i = sl_parse_cmd_prefix(peer_cmd_prefix_str, 32, args);
           if (i > 32) {
             fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
             i = 0;
@@ -7378,41 +7549,41 @@ int main(int argc, char **argv) {
   }
 
   if (client_fd == -1) {
-    if (!xwl.runprog || !xwl.runprog[0]) {
-      xwl_print_usage();
+    if (!ctx.runprog || !ctx.runprog[0]) {
+      sl_print_usage();
       return EXIT_FAILURE;
     }
   }
 
-  if (xwl.xwayland) {
+  if (ctx.xwayland) {
     assert(client_fd == -1);
 
-    xwl.clipboard_manager = 1;
+    ctx.clipboard_manager = 1;
     if (clipboard_manager)
-      xwl.clipboard_manager = !!strcmp(clipboard_manager, "0");
+      ctx.clipboard_manager = !!strcmp(clipboard_manager, "0");
   }
 
   if (scale) {
-    xwl.desired_scale = atof(scale);
+    ctx.desired_scale = atof(scale);
     // Round to integer scale until we detect wp_viewporter support.
-    xwl.scale = MIN(MAX_SCALE, MAX(MIN_SCALE, round(xwl.desired_scale)));
+    ctx.scale = MIN(MAX_SCALE, MAX(MIN_SCALE, round(ctx.desired_scale)));
   }
 
   if (frame_color) {
     int r, g, b;
     if (sscanf(frame_color, "#%02x%02x%02x", &r, &g, &b) == 3) {
-      xwl.frame_color = 0xff000000 | (r << 16) | (g << 8) | (b << 0);
-      xwl.has_frame_color = 1;
+      ctx.frame_color = 0xff000000 | (r << 16) | (g << 8) | (b << 0);
+      ctx.has_frame_color = 1;
     }
   }
 
   // Handle broken pipes without signals that kill the entire process.
   signal(SIGPIPE, SIG_IGN);
 
-  xwl.host_display = wl_display_create();
-  assert(xwl.host_display);
+  ctx.host_display = wl_display_create();
+  assert(ctx.host_display);
 
-  event_loop = wl_display_get_event_loop(xwl.host_display);
+  event_loop = wl_display_get_event_loop(ctx.host_display);
 
   if (!virtwl_device)
     virtwl_device = VIRTWL_DEVICE;
@@ -7422,8 +7593,8 @@ int main(int argc, char **argv) {
         .type = VIRTWL_IOCTL_NEW_CTX, .fd = -1, .flags = 0, .size = 0,
     };
 
-    xwl.virtwl_fd = open(virtwl_device, O_RDWR);
-    if (xwl.virtwl_fd == -1) {
+    ctx.virtwl_fd = open(virtwl_device, O_RDWR);
+    if (ctx.virtwl_fd == -1) {
       fprintf(stderr, "error: could not open %s (%s)\n", virtwl_device,
               strerror(errno));
       return EXIT_FAILURE;
@@ -7440,24 +7611,24 @@ int main(int argc, char **argv) {
       rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, vws);
       assert(!rv);
 
-      xwl.virtwl_socket_fd = vws[0];
+      ctx.virtwl_socket_fd = vws[0];
       virtwl_display_fd = vws[1];
 
-      rv = ioctl(xwl.virtwl_fd, VIRTWL_IOCTL_NEW, &new_ctx);
+      rv = ioctl(ctx.virtwl_fd, VIRTWL_IOCTL_NEW, &new_ctx);
       if (rv) {
         fprintf(stderr, "error: failed to create virtwl context: %s\n",
                 strerror(errno));
         return EXIT_FAILURE;
       }
 
-      xwl.virtwl_ctx_fd = new_ctx.fd;
+      ctx.virtwl_sl_fd = new_ctx.fd;
 
-      xwl.virtwl_socket_event_source = wl_event_loop_add_fd(
-          event_loop, xwl.virtwl_socket_fd, WL_EVENT_READABLE,
-          xwl_handle_virtwl_socket_event, &xwl);
-      xwl.virtwl_ctx_event_source =
-          wl_event_loop_add_fd(event_loop, xwl.virtwl_ctx_fd, WL_EVENT_READABLE,
-                               xwl_handle_virtwl_ctx_event, &xwl);
+      ctx.virtwl_socket_event_source = wl_event_loop_add_fd(
+          event_loop, ctx.virtwl_socket_fd, WL_EVENT_READABLE,
+          sl_handle_virtwl_socket_event, &ctx);
+      ctx.virtwl_sl_event_source =
+          wl_event_loop_add_fd(event_loop, ctx.virtwl_sl_fd, WL_EVENT_READABLE,
+                               sl_handle_virtwl_sl_event, &ctx);
     }
   }
 
@@ -7469,62 +7640,62 @@ int main(int argc, char **argv) {
       return EXIT_FAILURE;
     }
 
-    xwl.gbm = gbm_create_device(drm_fd);
-    if (!xwl.gbm) {
+    ctx.gbm = gbm_create_device(drm_fd);
+    if (!ctx.gbm) {
       fprintf(stderr, "error: couldn't get display device\n");
       return EXIT_FAILURE;
     }
 
-    xwl.drm_device = drm_device;
+    ctx.drm_device = drm_device;
   }
 
-  if (xwl.xwayland && !shm_driver)
+  if (ctx.xwayland && !shm_driver)
     shm_driver = XWAYLAND_SHM_DRIVER;
 
   if (shm_driver) {
     if (strcmp(shm_driver, "dmabuf") == 0) {
-      if (!xwl.drm_device) {
+      if (!ctx.drm_device) {
         fprintf(stderr, "error: need drm device for dmabuf driver\n");
         return EXIT_FAILURE;
       }
-      xwl.shm_driver = SHM_DRIVER_DMABUF;
+      ctx.shm_driver = SHM_DRIVER_DMABUF;
     } else if (strcmp(shm_driver, "virtwl") == 0) {
-      if (xwl.virtwl_fd == -1) {
+      if (ctx.virtwl_fd == -1) {
         fprintf(stderr, "error: need device for virtwl driver\n");
         return EXIT_FAILURE;
       }
-      xwl.shm_driver = SHM_DRIVER_VIRTWL;
+      ctx.shm_driver = SHM_DRIVER_VIRTWL;
     }
-  } else if (xwl.drm_device) {
-    xwl.shm_driver = SHM_DRIVER_DMABUF;
-  } else if (xwl.virtwl_fd != -1) {
-    xwl.shm_driver = SHM_DRIVER_VIRTWL;
+  } else if (ctx.drm_device) {
+    ctx.shm_driver = SHM_DRIVER_DMABUF;
+  } else if (ctx.virtwl_fd != -1) {
+    ctx.shm_driver = SHM_DRIVER_VIRTWL;
   }
 
   if (data_driver) {
     if (strcmp(data_driver, "virtwl") == 0) {
-      if (xwl.virtwl_fd == -1) {
+      if (ctx.virtwl_fd == -1) {
         fprintf(stderr, "error: need device for virtwl driver\n");
         return EXIT_FAILURE;
       }
-      xwl.data_driver = DATA_DRIVER_VIRTWL;
+      ctx.data_driver = DATA_DRIVER_VIRTWL;
     }
-  } else if (xwl.virtwl_fd != -1) {
-    xwl.data_driver = DATA_DRIVER_VIRTWL;
+  } else if (ctx.virtwl_fd != -1) {
+    ctx.data_driver = DATA_DRIVER_VIRTWL;
   }
 
   // Use well known values for DPI by default with Xwayland.
-  if (!dpi && xwl.xwayland)
+  if (!dpi && ctx.xwayland)
     dpi = "72,96,160,240,320,480";
 
-  wl_array_init(&xwl.dpi);
+  wl_array_init(&ctx.dpi);
   if (dpi) {
     char* str = strdup(dpi);
     char* token = strtok(str, ",");
     int* p;
 
     while (token) {
-      p = wl_array_add(&xwl.dpi, sizeof *p);
+      p = wl_array_add(&ctx.dpi, sizeof *p);
       assert(p);
       *p = MAX(MIN_DPI, MIN(atoi(token), MAX_DPI));
       token = strtok(NULL, ",");
@@ -7532,7 +7703,7 @@ int main(int argc, char **argv) {
     free(str);
   }
 
-  if (xwl.runprog || xwl.xwayland) {
+  if (ctx.runprog || ctx.xwayland) {
     // Wayland connection from client.
     rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
     assert(!rv);
@@ -7541,36 +7712,36 @@ int main(int argc, char **argv) {
   }
 
   // The success of this depends on xkb-data being installed.
-  xwl.xkb_context = xkb_context_new(0);
-  if (!xwl.xkb_context) {
+  ctx.xkb_context = xkb_context_new(0);
+  if (!ctx.xkb_context) {
     fprintf(stderr, "error: xkb_context_new failed. xkb-data missing?\n");
     return EXIT_FAILURE;
   }
 
   if (virtwl_display_fd != -1) {
-    xwl.display = wl_display_connect_to_fd(virtwl_display_fd);
+    ctx.display = wl_display_connect_to_fd(virtwl_display_fd);
   } else {
     if (display == NULL)
       display = getenv("WAYLAND_DISPLAY");
     if (display == NULL)
       display = "wayland-0";
 
-    xwl.display = wl_display_connect(display);
+    ctx.display = wl_display_connect(display);
   }
 
-  if (!xwl.display) {
+  if (!ctx.display) {
     fprintf(stderr, "error: failed to connect to %s\n", display);
     return EXIT_FAILURE;
   }
 
-  wl_list_init(&xwl.accelerators);
-  wl_list_init(&xwl.registries);
-  wl_list_init(&xwl.globals);
-  wl_list_init(&xwl.outputs);
-  wl_list_init(&xwl.seats);
-  wl_list_init(&xwl.windows);
-  wl_list_init(&xwl.unpaired_windows);
-  wl_list_init(&xwl.host_outputs);
+  wl_list_init(&ctx.accelerators);
+  wl_list_init(&ctx.registries);
+  wl_list_init(&ctx.globals);
+  wl_list_init(&ctx.outputs);
+  wl_list_init(&ctx.seats);
+  wl_list_init(&ctx.windows);
+  wl_list_init(&ctx.unpaired_windows);
+  wl_list_init(&ctx.host_outputs);
 
   // Parse the list of accelerators that should be reserved by the
   // compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a
@@ -7597,7 +7768,7 @@ int main(int argc, char **argv) {
           return EXIT_FAILURE;
         }
       } else {
-        struct xwl_accelerator *accelerator;
+        struct sl_accelerator* accelerator;
         const char *end = strchrnul(accelerators, ',');
         char *name = strndup(accelerators, end - accelerators);
 
@@ -7610,7 +7781,7 @@ int main(int argc, char **argv) {
           return EXIT_FAILURE;
         }
 
-        wl_list_insert(&xwl.accelerators, &accelerator->link);
+        wl_list_insert(&ctx.accelerators, &accelerator->link);
 
         modifiers = 0;
         accelerators = end;
@@ -7619,39 +7790,39 @@ int main(int argc, char **argv) {
     }
   }
 
-  xwl.display_event_source =
-      wl_event_loop_add_fd(event_loop, wl_display_get_fd(xwl.display),
-                           WL_EVENT_READABLE, xwl_handle_event, &xwl);
+  ctx.display_event_source =
+      wl_event_loop_add_fd(event_loop, wl_display_get_fd(ctx.display),
+                           WL_EVENT_READABLE, sl_handle_event, &ctx);
 
-  wl_registry_add_listener(wl_display_get_registry(xwl.display),
-                           &xwl_registry_listener, &xwl);
+  wl_registry_add_listener(wl_display_get_registry(ctx.display),
+                           &sl_registry_listener, &ctx);
 
-  xwl.client = wl_client_create(xwl.host_display, client_fd);
+  ctx.client = wl_client_create(ctx.host_display, client_fd);
 
   // Replace the core display implementation. This is needed in order to
   // implement sync handler properly.
-  wl_client_for_each_resource(xwl.client, xwl_set_display_implementation, &xwl);
+  wl_client_for_each_resource(ctx.client, sl_set_display_implementation, &ctx);
 
-  if (xwl.runprog || xwl.xwayland) {
-    xwl.sigchld_event_source =
-        wl_event_loop_add_signal(event_loop, SIGCHLD, xwl_handle_sigchld, &xwl);
+  if (ctx.runprog || ctx.xwayland) {
+    ctx.sigchld_event_source =
+        wl_event_loop_add_signal(event_loop, SIGCHLD, sl_handle_sigchld, &ctx);
 
-    if (xwl.xwayland) {
+    if (ctx.xwayland) {
       int ds[2], wm[2];
 
       // Xwayland display ready socket.
       rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, ds);
       assert(!rv);
 
-      xwl.display_ready_event_source =
+      ctx.display_ready_event_source =
           wl_event_loop_add_fd(event_loop, ds[0], WL_EVENT_READABLE,
-                               xwl_handle_display_ready_event, &xwl);
+                               sl_handle_display_ready_event, &ctx);
 
       // X connection to Xwayland.
       rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, wm);
       assert(!rv);
 
-      xwl.wm_fd = wm[0];
+      ctx.wm_fd = wm[0];
 
       pid = fork();
       assert(pid != -1);
@@ -7667,7 +7838,7 @@ int main(int argc, char **argv) {
           snprintf(xwayland_cmd_prefix_str, sizeof(xwayland_cmd_prefix_str),
                    "%s", xwayland_cmd_prefix);
 
-          i = xwl_parse_cmd_prefix(xwayland_cmd_prefix_str, 32, args);
+          i = sl_parse_cmd_prefix(xwayland_cmd_prefix_str, 32, args);
           if (i > 32) {
             fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
             i = 0;
@@ -7690,7 +7861,7 @@ int main(int argc, char **argv) {
         args[i++] = "-nolisten";
         args[i++] = "tcp";
         args[i++] = "-rootless";
-        if (xwl.drm_device) {
+        if (ctx.drm_device) {
           // Use DRM and software rendering unless glamor is enabled.
           if (!glamor || !strcmp(glamor, "0"))
             args[i++] = "-drm";
@@ -7703,35 +7874,35 @@ int main(int argc, char **argv) {
         args[i++] = wm_fd_str;
         args[i++] = NULL;
 
-        xwl_execvp(args[0], args, sv[1]);
+        sl_execvp(args[0], args, sv[1]);
         _exit(EXIT_FAILURE);
       }
       close(wm[1]);
-      xwl.xwayland_pid = pid;
+      ctx.xwayland_pid = pid;
     } else {
       pid = fork();
       assert(pid != -1);
       if (pid == 0) {
-        xwl_execvp(xwl.runprog[0], xwl.runprog, sv[1]);
+        sl_execvp(ctx.runprog[0], ctx.runprog, sv[1]);
         _exit(EXIT_FAILURE);
       }
-      xwl.child_pid = pid;
+      ctx.child_pid = pid;
     }
     close(sv[1]);
   }
 
-  wl_client_add_destroy_listener(xwl.client, &client_destroy_listener);
+  wl_client_add_destroy_listener(ctx.client, &client_destroy_listener);
 
   do {
-    wl_display_flush_clients(xwl.host_display);
-    if (xwl.connection) {
-      if (xwl.needs_set_input_focus) {
-        xwl_set_input_focus(&xwl, xwl.host_focus_window);
-        xwl.needs_set_input_focus = 0;
+    wl_display_flush_clients(ctx.host_display);
+    if (ctx.connection) {
+      if (ctx.needs_set_input_focus) {
+        sl_set_input_focus(&ctx, ctx.host_focus_window);
+        ctx.needs_set_input_focus = 0;
       }
-      xcb_flush(xwl.connection);
+      xcb_flush(ctx.connection);
     }
-    if (wl_display_flush(xwl.display) < 0)
+    if (wl_display_flush(ctx.display) < 0)
       return EXIT_FAILURE;
   } while (wl_event_loop_dispatch(event_loop, -1) != -1);
 
