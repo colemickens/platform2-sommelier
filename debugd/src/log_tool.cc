@@ -227,6 +227,11 @@ const Log kCommandLogs[] = {
   // /proc/slabinfo is owned by root and has 0400 permission.
   { "slabinfo", "/bin/cat /proc/slabinfo", kRoot, kRoot, },
   { "storage_info", "/bin/cat /var/log/storage_info.txt" },
+  { "swap_info",
+    "/usr/share/cros/init/swap.sh status 2>/dev/null",
+    SandboxedProcess::kDefaultUser,
+    kDebugfsGroup
+  },
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs /var/log/messages" },
   { "system_log_stats", "echo 'BLOCK_SIZE=1024'; "
     "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
