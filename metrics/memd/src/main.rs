@@ -752,8 +752,7 @@ impl SamplerState {
         let mut out = &mut OpenOptions::new()
             .write(true)
             .create(true)
-            .open(&self.paths.static_parameters)
-            .unwrap();
+            .open(&self.paths.static_parameters)?;
         fprint_datetime(out)?;
         let low_mem_margin = read_int(&self.paths.low_mem_margin).unwrap_or(0);
         writeln!(out, "margin {}", low_mem_margin)?;
@@ -1248,8 +1247,8 @@ fn main() {
     watcher.set(&trace_pipe_file).expect("cannot watch trace_pipe");
 
     let files = Files {
-        vmstat_file: File::open(&paths.vmstat).unwrap(),
-        runnables_file: File::open(&paths.runnables).unwrap(),
+        vmstat_file: File::open(&paths.vmstat).expect("cannot open vmstat"),
+        runnables_file: File::open(&paths.runnables).expect("cannot open loadavg"),
         available_file_option: open_with_flags(&paths.available, None)
             .expect("error opening available file"),
         trace_pipe_file,
