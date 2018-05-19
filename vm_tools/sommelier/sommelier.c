@@ -25,16 +25,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <wayland-client.h>
-#include <wayland-server.h>
-#include <wayland-util.h>
 #include <xcb/composite.h>
-#include <xcb/xcb.h>
 #include <xcb/xfixes.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include "aura-shell-client-protocol.h"
 #include "drm-server-protocol.h"
-#include "gtk-shell-server-protocol.h"
 #include "keyboard-extension-unstable-v1-client-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
@@ -54,8 +50,6 @@
 #ifndef PEER_CMD_PREFIX
 #error PEER_CMD_PREFIX must be defined
 #endif
-
-struct sl_context;
 
 struct sl_global {
   struct sl_context* ctx;
@@ -102,23 +96,6 @@ struct sl_mmap {
 };
 
 struct sl_output_buffer;
-
-struct sl_host_surface {
-  struct sl_context* ctx;
-  struct wl_resource *resource;
-  struct wl_surface *proxy;
-  struct wp_viewport *viewport;
-  uint32_t contents_width;
-  uint32_t contents_height;
-  int32_t contents_scale;
-  struct sl_mmap* contents_shm_mmap;
-  int has_role;
-  int has_output;
-  uint32_t last_event_serial;
-  struct sl_output_buffer* current_buffer;
-  struct wl_list released_buffers;
-  struct wl_list busy_buffers;
-};
 
 struct sl_output_buffer {
   struct wl_list link;
@@ -369,30 +346,6 @@ struct sl_host_subsurface {
   struct wl_subsurface *proxy;
 };
 
-struct sl_aura_shell {
-  struct sl_context* ctx;
-  uint32_t id;
-  uint32_t version;
-  struct sl_global* host_gtk_shell_global;
-  struct zaura_shell *internal;
-};
-
-struct sl_host_gtk_shell {
-  struct sl_aura_shell* aura_shell;
-  struct wl_resource *resource;
-  struct zaura_shell *proxy;
-  struct wl_callback *callback;
-  char *startup_id;
-  struct wl_list surfaces;
-};
-
-struct sl_host_gtk_surface {
-  struct wl_resource *resource;
-  struct zaura_surface *proxy;
-  struct wl_list link;
-  struct sl_aura_shell* aura_shell;
-};
-
 struct sl_viewporter {
   struct sl_context* ctx;
   uint32_t id;
@@ -464,35 +417,6 @@ struct sl_window {
   struct wl_list link;
 };
 
-enum {
-  ATOM_WM_S0,
-  ATOM_WM_PROTOCOLS,
-  ATOM_WM_STATE,
-  ATOM_WM_DELETE_WINDOW,
-  ATOM_WM_TAKE_FOCUS,
-  ATOM_WM_CLIENT_LEADER,
-  ATOM_WL_SURFACE_ID,
-  ATOM_UTF8_STRING,
-  ATOM_MOTIF_WM_HINTS,
-  ATOM_NET_FRAME_EXTENTS,
-  ATOM_NET_STARTUP_ID,
-  ATOM_NET_SUPPORTING_WM_CHECK,
-  ATOM_NET_WM_NAME,
-  ATOM_NET_WM_MOVERESIZE,
-  ATOM_NET_WM_STATE,
-  ATOM_NET_WM_STATE_FULLSCREEN,
-  ATOM_NET_WM_STATE_MAXIMIZED_VERT,
-  ATOM_NET_WM_STATE_MAXIMIZED_HORZ,
-  ATOM_CLIPBOARD,
-  ATOM_CLIPBOARD_MANAGER,
-  ATOM_TARGETS,
-  ATOM_TIMESTAMP,
-  ATOM_TEXT,
-  ATOM_INCR,
-  ATOM_WL_SELECTION,
-  ATOM_LAST = ATOM_WL_SELECTION,
-};
-
 struct sl_accelerator {
   struct wl_list link;
   uint32_t modifiers;
@@ -507,89 +431,6 @@ struct sl_data_transfer {
   uint8_t data[4096];
   struct wl_event_source *read_event_source;
   struct wl_event_source *write_event_source;
-};
-
-struct sl_context {
-  char **runprog;
-  struct wl_display *display;
-  struct wl_display *host_display;
-  struct wl_client *client;
-  struct sl_compositor* compositor;
-  struct sl_subcompositor* subcompositor;
-  struct sl_shm* shm;
-  struct sl_shell* shell;
-  struct sl_data_device_manager* data_device_manager;
-  struct sl_xdg_shell* xdg_shell;
-  struct sl_aura_shell* aura_shell;
-  struct sl_viewporter* viewporter;
-  struct sl_linux_dmabuf* linux_dmabuf;
-  struct sl_keyboard_extension* keyboard_extension;
-  struct wl_list outputs;
-  struct wl_list seats;
-  struct wl_event_source *display_event_source;
-  struct wl_event_source *display_ready_event_source;
-  struct wl_event_source *sigchld_event_source;
-  struct wl_array dpi;
-  int shm_driver;
-  int data_driver;
-  int wm_fd;
-  int virtwl_fd;
-  int virtwl_sl_fd;
-  int virtwl_socket_fd;
-  struct wl_event_source* virtwl_sl_event_source;
-  struct wl_event_source *virtwl_socket_event_source;
-  const char *drm_device;
-  struct gbm_device *gbm;
-  int xwayland;
-  pid_t xwayland_pid;
-  pid_t child_pid;
-  pid_t peer_pid;
-  struct xkb_context *xkb_context;
-  struct wl_list accelerators;
-  struct wl_list registries;
-  struct wl_list globals;
-  struct wl_list host_outputs;
-  int next_global_id;
-  xcb_connection_t *connection;
-  struct wl_event_source *connection_event_source;
-  const xcb_query_extension_reply_t *xfixes_extension;
-  xcb_screen_t *screen;
-  xcb_window_t window;
-  struct wl_list windows, unpaired_windows;
-  struct sl_window* host_focus_window;
-  int needs_set_input_focus;
-  double desired_scale;
-  double scale;
-  const char* application_id;
-  int exit_with_child;
-  const char *sd_notify;
-  int clipboard_manager;
-  uint32_t frame_color;
-  int has_frame_color;
-  struct sl_host_seat* default_seat;
-  xcb_window_t selection_window;
-  xcb_window_t selection_owner;
-  int selection_incremental_transfer;
-  xcb_selection_request_event_t selection_request;
-  xcb_timestamp_t selection_timestamp;
-  struct wl_data_device *selection_data_device;
-  struct sl_data_offer* selection_data_offer;
-  struct sl_data_source* selection_data_source;
-  int selection_data_source_send_fd;
-  struct wl_event_source *selection_send_event_source;
-  xcb_get_property_reply_t *selection_property_reply;
-  int selection_property_offset;
-  struct wl_event_source *selection_event_source;
-  struct wl_array selection_data;
-  int selection_data_offer_receive_fd;
-  int selection_data_ack_pending;
-  union {
-    const char *name;
-    xcb_intern_atom_cookie_t cookie;
-    xcb_atom_t value;
-  } atoms[ATOM_LAST + 1];
-  xcb_visualid_t visual_ids[256];
-  xcb_colormap_t colormaps[256];
 };
 
 enum {
@@ -4771,140 +4612,11 @@ static void sl_bind_host_subcompositor(struct wl_client* client,
   wl_subcompositor_set_user_data(host->proxy, host);
 }
 
-static void sl_gtk_surface_set_dbus_properties(
-    struct wl_client* client,
-    struct wl_resource* resource,
-    const char* application_id,
-    const char* app_menu_path,
-    const char* menubar_path,
-    const char* window_object_path,
-    const char* application_object_path,
-    const char* unique_bus_name) {
-  struct sl_host_gtk_surface* host = wl_resource_get_user_data(resource);
-
-  zaura_surface_set_application_id(host->proxy, application_id);
-}
-
-static void sl_gtk_surface_set_modal(struct wl_client* client,
-                                     struct wl_resource* resource) {}
-
-static void sl_gtk_surface_unset_modal(struct wl_client* client,
-                                       struct wl_resource* resource) {}
-
-static void sl_gtk_surface_present(struct wl_client* client,
-                                   struct wl_resource* resource,
-                                   uint32_t time) {}
-
-static const struct gtk_surface1_interface sl_gtk_surface_implementation = {
-    sl_gtk_surface_set_dbus_properties, sl_gtk_surface_set_modal,
-    sl_gtk_surface_unset_modal, sl_gtk_surface_present};
-
-static void sl_destroy_host_gtk_surface(struct wl_resource* resource) {
-  struct sl_host_gtk_surface* host = wl_resource_get_user_data(resource);
-
-  zaura_surface_destroy(host->proxy);
-  wl_list_remove(&host->link);
-  wl_resource_set_user_data(resource, NULL);
-  free(host);
-}
-
-static void sl_gtk_shell_get_gtk_surface(struct wl_client* client,
-                                         struct wl_resource* resource,
-                                         uint32_t id,
-                                         struct wl_resource* surface_resource) {
-  struct sl_host_gtk_shell* host = wl_resource_get_user_data(resource);
-  struct sl_host_surface* host_surface =
-      wl_resource_get_user_data(surface_resource);
-  struct sl_host_gtk_surface* host_gtk_surface;
-
-  host_gtk_surface = malloc(sizeof(*host_gtk_surface));
-  assert(host_gtk_surface);
-
-  wl_list_insert(&host->surfaces, &host_gtk_surface->link);
-  host_gtk_surface->aura_shell = host->aura_shell;
-  host_gtk_surface->resource =
-      wl_resource_create(client, &gtk_surface1_interface, 1, id);
-  wl_resource_set_implementation(host_gtk_surface->resource,
-                                 &sl_gtk_surface_implementation,
-                                 host_gtk_surface, sl_destroy_host_gtk_surface);
-  host_gtk_surface->proxy =
-      zaura_shell_get_aura_surface(host->proxy, host_surface->proxy);
-  zaura_surface_set_startup_id(host_gtk_surface->proxy, host->startup_id);
-}
-
-static void sl_gtk_shell_set_startup_id(struct wl_client* client,
-                                        struct wl_resource* resource,
-                                        const char* startup_id) {
-  struct sl_host_gtk_shell* host = wl_resource_get_user_data(resource);
-  struct sl_host_gtk_surface* surface;
-
-  free(host->startup_id);
-  host->startup_id = startup_id ? strdup(startup_id) : NULL;
-
-  wl_list_for_each(surface, &host->surfaces, link)
-      zaura_surface_set_startup_id(surface->proxy, host->startup_id);
-}
-
-static void sl_gtk_shell_system_bell(struct wl_client* client,
-                                     struct wl_resource* resource,
-                                     struct wl_resource* surface_resource) {}
-
-static const struct gtk_shell1_interface sl_gtk_shell_implementation = {
-    sl_gtk_shell_get_gtk_surface, sl_gtk_shell_set_startup_id,
-    sl_gtk_shell_system_bell};
-
-static void sl_destroy_host_gtk_shell(struct wl_resource* resource) {
-  struct sl_host_gtk_shell* host = wl_resource_get_user_data(resource);
-
-  free(host->startup_id);
-  wl_callback_destroy(host->callback);
-  zaura_shell_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
-  free(host);
-}
-
-static void sl_gtk_shell_callback_done(void* data,
-                                       struct wl_callback* callback,
-                                       uint32_t serial) {
-  struct sl_host_gtk_shell* host = wl_callback_get_user_data(callback);
-
-  gtk_shell1_send_capabilities(host->resource, 0);
-}
-
-static const struct wl_callback_listener sl_gtk_shell_callback_listener = {
-    sl_gtk_shell_callback_done};
-
-static void sl_bind_host_gtk_shell(struct wl_client* client,
+struct sl_global* sl_global_create(struct sl_context* ctx,
+                                   const struct wl_interface* interface,
+                                   int version,
                                    void* data,
-                                   uint32_t version,
-                                   uint32_t id) {
-  struct sl_aura_shell* aura_shell = (struct sl_aura_shell*)data;
-  struct sl_host_gtk_shell* host;
-
-  host = malloc(sizeof(*host));
-  assert(host);
-  host->aura_shell = aura_shell;
-  host->startup_id = NULL;
-  wl_list_init(&host->surfaces);
-  host->resource = wl_resource_create(client, &gtk_shell1_interface, 1, id);
-  wl_resource_set_implementation(host->resource, &sl_gtk_shell_implementation,
-                                 host, sl_destroy_host_gtk_shell);
-  host->proxy = wl_registry_bind(
-      wl_display_get_registry(aura_shell->ctx->display), aura_shell->id,
-      &zaura_shell_interface, aura_shell->version);
-  zaura_shell_set_user_data(host->proxy, host);
-
-  host->callback = wl_display_sync(aura_shell->ctx->display);
-  wl_callback_set_user_data(host->callback, host);
-  wl_callback_add_listener(host->callback, &sl_gtk_shell_callback_listener,
-                           host);
-}
-
-static struct sl_global* sl_global_create(struct sl_context* ctx,
-                                          const struct wl_interface* interface,
-                                          int version,
-                                          void* data,
-                                          wl_global_bind_func_t bind) {
+                                   wl_global_bind_func_t bind) {
   struct sl_host_registry* registry;
   struct sl_global* global;
 
@@ -5059,8 +4771,7 @@ static void sl_registry_handler(void* data,
           registry, id, &zaura_shell_interface, aura_shell->version);
       assert(!ctx->aura_shell);
       ctx->aura_shell = aura_shell;
-      aura_shell->host_gtk_shell_global = sl_global_create(
-          ctx, &gtk_shell1_interface, 1, aura_shell, sl_bind_host_gtk_shell);
+      aura_shell->host_gtk_shell_global = sl_gtk_shell_global_create(ctx);
     }
   } else if (strcmp(interface, "wp_viewporter") == 0) {
     struct sl_viewporter* viewporter = malloc(sizeof(struct sl_viewporter));

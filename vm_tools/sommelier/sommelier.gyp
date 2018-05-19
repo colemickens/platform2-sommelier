@@ -65,6 +65,7 @@
         'sommelier-protocol',
       ],
       'sources': [
+        'sommelier-gtk-shell.c',
         'sommelier.c',
       ],
       'defines': [
