@@ -346,12 +346,6 @@ struct sl_host_subsurface {
   struct wl_subsurface *proxy;
 };
 
-struct sl_viewporter {
-  struct sl_context* ctx;
-  uint32_t id;
-  struct wp_viewporter *internal;
-};
-
 struct sl_linux_dmabuf {
   struct sl_context* ctx;
   uint32_t id;
@@ -1570,7 +1564,11 @@ static void sl_host_surface_set_input_region(
 static void sl_host_surface_commit(struct wl_client* client,
                                    struct wl_resource* resource) {
   struct sl_host_surface* host = wl_resource_get_user_data(resource);
+  struct sl_viewport* viewport = NULL;
   struct sl_window* window;
+
+  if (!wl_list_empty(&host->contents_viewport))
+    viewport = wl_container_of(host->contents_viewport.next, viewport, link);
 
   if (host->contents_shm_mmap) {
     uint8_t *src_base =
@@ -1580,8 +1578,38 @@ static void sl_host_surface_commit(struct wl_client* client,
     size_t src_stride = host->contents_shm_mmap->stride;
     size_t dst_stride = host->current_buffer->mmap->stride;
     size_t bpp = host->contents_shm_mmap->bpp;
+    double contents_scale_x = host->contents_scale;
+    double contents_scale_y = host->contents_scale;
+    double contents_offset_x = 0.0;
+    double contents_offset_y = 0.0;
     pixman_box32_t *rect;
     int n;
+
+    // Determine scale and offset for damage based on current viewport.
+    if (viewport) {
+      double contents_width = host->contents_width;
+      double contents_height = host->contents_height;
+
+      if (viewport->src_x >= 0 && viewport->src_y >= 0) {
+        contents_offset_x = wl_fixed_to_double(viewport->src_x);
+        contents_offset_y = wl_fixed_to_double(viewport->src_y);
+      }
+
+      if (viewport->dst_width > 0 && viewport->dst_height > 0) {
+        contents_scale_x *= contents_width / viewport->dst_width;
+        contents_scale_y *= contents_height / viewport->dst_height;
+
+        // Take source rectangle into account when both destionation size and
+        // source rectangle are set. If only source rectangle is set, then
+        // it determines the surface size so it can be ignored.
+        if (viewport->src_width >= 0 && viewport->src_height >= 0) {
+          contents_scale_x *=
+              wl_fixed_to_double(viewport->src_width) / contents_width;
+          contents_scale_y *=
+              wl_fixed_to_double(viewport->src_height) / contents_height;
+        }
+      }
+    }
 
     if (host->current_buffer->mmap->begin_access)
       host->current_buffer->mmap->begin_access(host->current_buffer->mmap->fd);
@@ -1590,10 +1618,11 @@ static void sl_host_surface_commit(struct wl_client* client,
     while (n--) {
       int32_t x1, y1, x2, y2;
 
-      x1 = rect->x1 * host->contents_scale;
-      y1 = rect->y1 * host->contents_scale;
-      x2 = rect->x2 * host->contents_scale;
-      y2 = rect->y2 * host->contents_scale;
+      // Enclosing rect after applying scale and offset.
+      x1 = rect->x1 * contents_scale_x + contents_offset_x;
+      y1 = rect->y1 * contents_scale_y + contents_offset_y;
+      x2 = rect->x2 * contents_scale_x + contents_offset_x + 0.5;
+      y2 = rect->y2 * contents_scale_y + contents_offset_y + 0.5;
 
       x1 = MAX(0, x1);
       y1 = MAX(0, y1);
@@ -1630,9 +1659,34 @@ static void sl_host_surface_commit(struct wl_client* client,
     double scale = host->ctx->scale * host->contents_scale;
 
     if (host->viewport) {
-      wp_viewport_set_destination(host->viewport,
-                                  ceil(host->contents_width / scale),
-                                  ceil(host->contents_height / scale));
+      int width = host->contents_width;
+      int height = host->contents_height;
+
+      // We need to take the client's viewport into account while still
+      // making sure our scale is accounted for.
+      if (viewport) {
+        if (viewport->src_x >= 0 && viewport->src_y >= 0 &&
+            viewport->src_width >= 0 && viewport->src_height >= 0) {
+          wp_viewport_set_source(host->viewport, viewport->src_x,
+                                 viewport->src_y, viewport->src_width,
+                                 viewport->src_height);
+
+          // If the source rectangle is set and the destination size is not
+          // set, then src_width and src_height should be integers, and the
+          // surface size becomes the source rectangle size.
+          width = wl_fixed_to_int(viewport->src_width);
+          height = wl_fixed_to_int(viewport->src_height);
+        }
+
+        // Use destination size as surface size when set.
+        if (viewport->dst_width >= 0 && viewport->dst_height >= 0) {
+          width = viewport->dst_width;
+          height = viewport->dst_height;
+        }
+      }
+
+      wp_viewport_set_destination(host->viewport, ceil(width / scale),
+                                  ceil(height / scale));
     } else {
       wl_surface_set_buffer_scale(host->proxy, scale);
     }
@@ -1746,6 +1800,8 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
     buffer = wl_container_of(host->busy_buffers.next, buffer, link);
     sl_output_buffer_destroy(buffer);
   }
+  while (!wl_list_empty(&host->contents_viewport))
+    wl_list_remove(host->contents_viewport.next);
 
   if (host->viewport)
     wp_viewport_destroy(host->viewport);
@@ -1842,6 +1898,7 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->contents_width = 0;
   host_surface->contents_height = 0;
   host_surface->contents_scale = 1;
+  wl_list_init(&host_surface->contents_viewport);
   host_surface->contents_shm_mmap = NULL;
   host_surface->has_role = 0;
   host_surface->has_output = 0;
@@ -4771,10 +4828,12 @@ static void sl_registry_handler(void* data,
     assert(viewporter);
     viewporter->ctx = ctx;
     viewporter->id = id;
+    viewporter->host_viewporter_global = NULL;
     viewporter->internal =
         wl_registry_bind(registry, id, &wp_viewporter_interface, 1);
     assert(!ctx->viewporter);
     ctx->viewporter = viewporter;
+    viewporter->host_viewporter_global = sl_viewporter_global_create(ctx);
     // Allow non-integer scale.
     ctx->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, ctx->desired_scale));
   } else if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0) {

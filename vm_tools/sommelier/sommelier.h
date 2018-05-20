@@ -140,6 +140,16 @@ struct sl_context {
   xcb_colormap_t colormaps[256];
 };
 
+struct sl_viewport {
+  struct wl_list link;
+  wl_fixed_t src_x;
+  wl_fixed_t src_y;
+  wl_fixed_t src_width;
+  wl_fixed_t src_height;
+  int32_t dst_width;
+  int32_t dst_height;
+};
+
 struct sl_host_surface {
   struct sl_context* ctx;
   struct wl_resource* resource;
@@ -148,6 +158,7 @@ struct sl_host_surface {
   uint32_t contents_width;
   uint32_t contents_height;
   int32_t contents_scale;
+  struct wl_list contents_viewport;
   struct sl_mmap* contents_shm_mmap;
   int has_role;
   int has_output;
@@ -155,6 +166,13 @@ struct sl_host_surface {
   struct sl_output_buffer* current_buffer;
   struct wl_list released_buffers;
   struct wl_list busy_buffers;
+};
+
+struct sl_viewporter {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_viewporter_global;
+  struct wp_viewporter* internal;
 };
 
 struct sl_aura_shell {
@@ -170,6 +188,8 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
                                    int version,
                                    void* data,
                                    wl_global_bind_func_t bind);
+
+struct sl_global* sl_viewporter_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 

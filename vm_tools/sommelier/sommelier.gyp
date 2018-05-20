@@ -66,6 +66,7 @@
       ],
       'sources': [
         'sommelier-gtk-shell.c',
+        'sommelier-viewporter.c',
         'sommelier.c',
       ],
       'defines': [
