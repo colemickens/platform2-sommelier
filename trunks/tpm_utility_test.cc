@@ -167,6 +167,7 @@ class TpmUtilityTest : public testing::Test {
 
 class NVTpmUtilityTest : public TpmUtilityTest {
  protected:
+  // Constants with some valid NVRAM data.
   const uint32_t kNvIndex = 53;
   const uint32_t kNvTpmIndex = NV_INDEX_FIRST + kNvIndex;
   const TPMI_ALG_HASH kNvNameAlg = TPM_ALG_SHA256;
@@ -176,6 +177,8 @@ class NVTpmUtilityTest : public TpmUtilityTest {
   const TPM2B_NV_PUBLIC kTpm2bNvPublic = MakeTpm2bNvPublic();
   const TPM2B_NV_PUBLIC kEmptyTpm2bNvPublic = MakeEmptyTpm2bNvPublic();
   const TPM2B_MAX_NV_BUFFER kTpm2bMaxNvBuffer = MakeTpm2bMaxNvBuffer();
+  // Constants with invalid NVRAM data, for use in negative tests.
+  const uint32_t kNvBadIndex = 1 << 29;
 
   NVTpmUtilityTest() = default;
   ~NVTpmUtilityTest() = default;
@@ -2039,23 +2042,28 @@ TEST_F(NVTpmUtilityTest, DefineNVSpaceSuccess) {
 }
 
 TEST_F(NVTpmUtilityTest, DefineNVSpaceBadLength) {
-  size_t bad_length = 3000;
+  size_t bad_length = MAX_NV_INDEX_SIZE + 1;
+  EXPECT_CALL(mock_tpm_, NV_DefineSpaceSync(_, _, _, _, _)).Times(0);
+
   EXPECT_EQ(SAPI_RC_BAD_SIZE,
             utility_.DefineNVSpace(kNvIndex, bad_length, kNvAttributes, "", "",
                                    &mock_authorization_delegate_));
 }
 
 TEST_F(NVTpmUtilityTest, DefineNVSpaceBadIndex) {
-  uint32_t bad_index = 1 << 29;
+  EXPECT_CALL(mock_tpm_, NV_DefineSpaceSync(_, _, _, _, _)).Times(0);
+
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.DefineNVSpace(bad_index, kNvDataSize, kNvAttributes, "",
+            utility_.DefineNVSpace(kNvBadIndex, kNvDataSize, kNvAttributes, "",
                                    "", &mock_authorization_delegate_));
 }
 
 TEST_F(NVTpmUtilityTest, DefineNVSpaceBadSession) {
-  EXPECT_EQ(
-      SAPI_RC_INVALID_SESSIONS,
-      utility_.DefineNVSpace(0, kNvDataSize, kNvAttributes, "", "", nullptr));
+  EXPECT_CALL(mock_tpm_, NV_DefineSpaceSync(_, _, _, _, _)).Times(0);
+
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
+            utility_.DefineNVSpace(kNvIndex, kNvDataSize, kNvAttributes, "", "",
+                                   nullptr));
 }
 
 TEST_F(NVTpmUtilityTest, DefineNVSpaceFail) {
@@ -2079,12 +2087,16 @@ TEST_F(NVTpmUtilityTest, DestroyNVSpaceSuccess) {
 }
 
 TEST_F(NVTpmUtilityTest, DestroyNVSpaceBadIndex) {
-  uint32_t bad_index = 1 << 29;
-  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.DestroyNVSpace(bad_index, &mock_authorization_delegate_));
+  EXPECT_CALL(mock_tpm_, NV_UndefineSpaceSync(_, _, _, _, _)).Times(0);
+
+  EXPECT_EQ(
+      SAPI_RC_BAD_PARAMETER,
+      utility_.DestroyNVSpace(kNvBadIndex, &mock_authorization_delegate_));
 }
 
 TEST_F(NVTpmUtilityTest, DestroyNVSpaceBadSession) {
+  EXPECT_CALL(mock_tpm_, NV_UndefineSpaceSync(_, _, _, _, _)).Times(0);
+
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
             utility_.DestroyNVSpace(kNvIndex, nullptr));
 }
@@ -2174,9 +2186,11 @@ TEST_F(NVTpmUtilityTest, LockNVSpaceBothNotOwner) {
 }
 
 TEST_F(NVTpmUtilityTest, LockNVSpaceBadIndex) {
-  uint32_t bad_index = 1 << 24;
+  EXPECT_CALL(mock_tpm_, NV_WriteLockSync(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(mock_tpm_, NV_ReadLockSync(_, _, _, _, _)).Times(0);
+
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.LockNVSpace(bad_index, true, true, true,
+            utility_.LockNVSpace(kNvBadIndex, true, true, true,
                                  &mock_authorization_delegate_));
 }
 
@@ -2239,16 +2253,19 @@ TEST_F(NVTpmUtilityTest, ExtendNVSpace) {
 }
 
 TEST_F(NVTpmUtilityTest, WriteNVSpaceBadSize) {
-  std::string nvram_data(1025, 0);
+  std::string nvram_data(MAX_NV_INDEX_SIZE + 1, 0);
+  EXPECT_CALL(mock_tpm_, NV_ExtendSync(_, _, _, _, _, _)).Times(0);
+
   EXPECT_EQ(SAPI_RC_BAD_SIZE,
             utility_.WriteNVSpace(kNvIndex, 0, nvram_data, true, false,
                                   &mock_authorization_delegate_));
 }
 
 TEST_F(NVTpmUtilityTest, WriteNVSpaceBadIndex) {
-  uint32_t bad_index = 1 << 24;
+  EXPECT_CALL(mock_tpm_, NV_WriteSync(_, _, _, _, _, _, _)).Times(0);
+
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.WriteNVSpace(bad_index, 0, "", true, false,
+            utility_.WriteNVSpace(kNvBadIndex, 0, "", true, false,
                                   &mock_authorization_delegate_));
 }
 
@@ -2301,7 +2318,9 @@ TEST_F(NVTpmUtilityTest, ReadNVSpaceOwner) {
 }
 
 TEST_F(NVTpmUtilityTest, ReadNVSpaceBadReadLength) {
-  size_t length = 1025;
+  size_t length = MAX_NV_BUFFER_SIZE + 1;
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(_, _, _, _, _, _, _, _)).Times(0);
+
   std::string nvram_data;
   EXPECT_EQ(SAPI_RC_BAD_SIZE,
             utility_.ReadNVSpace(kNvIndex, 0, length, true, &nvram_data,
@@ -2309,10 +2328,11 @@ TEST_F(NVTpmUtilityTest, ReadNVSpaceBadReadLength) {
 }
 
 TEST_F(NVTpmUtilityTest, ReadNVSpaceBadIndex) {
-  uint32_t bad_index = 1 << 24;
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(_, _, _, _, _, _, _, _)).Times(0);
+
   std::string nvram_data;
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.ReadNVSpace(bad_index, 0, 5, true, &nvram_data,
+            utility_.ReadNVSpace(kNvBadIndex, 0, 5, true, &nvram_data,
                                  &mock_authorization_delegate_));
 }
 
