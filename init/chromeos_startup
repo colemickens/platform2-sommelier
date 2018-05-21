@@ -324,9 +324,15 @@ RESET_FILE="/mnt/stateful_partition/factory_install_reset"
 # development use cases, most especially prototype units or booting Chromium OS
 # on non-Chrome hardware. And because crossystem is slow on some platforms, we
 # want to do the additional checks only after verified DEV_MODE_FILE existence.
-if [ -O ${RESET_FILE} ]; then
-  # Wipe requested on previous boot.
+CLOBBER_ARGS=''
+if [ -L "${RESET_FILE}" ] || [ -e "${RESET_FILE}" ]; then
   chromeos-boot-alert power_wash
+  # If it's not a plain file owned by us, force a powerwash.
+  if [ ! -O "${RESET_FILE}" ] || [ ! -f "${RESET_FILE}" ]; then
+    CLOBBER_ARGS='keepimg'
+  else
+    CLOBBER_ARGS="$(cat "${RESET_FILE}")"
+  fi
 elif [ -z "${STATE_DEV}" ] || dev_is_debug_build; then
   # No physical stateful partition available, usually due to initramfs
   # (recovery image, factory install shim or netboot), or running from a
@@ -339,21 +345,20 @@ elif crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
     # When coming back from developer mode, we don't need to
     # clobber as aggressively.  Fast will do the trick.
     chromeos-boot-alert leave_dev
-    echo "fast keepimg" >"${RESET_FILE}"
+    CLOBBER_ARGS='fast keepimg'
     clobber-log -- "Leave developer mode"
   fi
 elif crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
   if [ ! -O "${DEV_MODE_FILE}" ]; then
     # We're transitioning from verified boot to dev mode.
     chromeos-boot-alert enter_dev
-    echo "keepimg" >"${RESET_FILE}"
+    CLOBBER_ARGS='keepimg'
     clobber-log -- "Enter developer mode"
   fi
 fi
 
-if [ -O ${RESET_FILE} ]; then
-  ARGS="$(cat ${RESET_FILE})"
-  exec clobber-state "$ARGS"
+if [ -n "${CLOBBER_ARGS}" ]; then
+  exec clobber-state "${CLOBBER_ARGS}"
 fi
 
 # Walk the specified path and reset any file attributes (like immutable bit).
