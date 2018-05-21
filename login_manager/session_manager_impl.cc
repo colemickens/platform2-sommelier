@@ -337,35 +337,6 @@ SessionManagerImpl::~SessionManagerImpl() {
 
 #if USE_CHEETS
 // static
-bool SessionManagerImpl::ValidateStartArcInstanceRequest(
-    const StartArcInstanceRequest& request, brillo::ErrorPtr* error) {
-  if (request.for_login_screen()) {
-    // If this request is for login screen, following params are just
-    // irrelevant so no value should be passed.
-    if (request.has_account_id() ||
-        request.has_skip_boot_completed_broadcast() ||
-        request.has_scan_vendor_priv_app()) {
-      *error = CreateError(DBUS_ERROR_INVALID_ARGS,
-                           "StartArcInstanceRquest has invalid argument(s).");
-      return false;
-    }
-  } else {
-    // If this request is after user sign in, following params are required.
-    if (!request.has_account_id() ||
-        !request.has_skip_boot_completed_broadcast() ||
-        !request.has_scan_vendor_priv_app()) {
-      *error = CreateError(
-          DBUS_ERROR_INVALID_ARGS,
-          "StartArcInstanceRequest has required argument(s) missing.");
-      return false;
-    }
-  }
-
-  // All checks passed.
-  return true;
-}
-
-// static
 base::FilePath SessionManagerImpl::GetAndroidDataDirForUser(
     const std::string& normalized_account_id) {
   return GetRootPath(normalized_account_id).Append(kAndroidDataDirName);
@@ -1050,73 +1021,6 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
     return false;
   }
   return true;
-}
-
-bool SessionManagerImpl::StartArcInstance(
-    brillo::ErrorPtr* error,
-    const std::vector<uint8_t>& in_request,
-    std::string* out_container_instance_id,
-    brillo::dbus_utils::FileDescriptor* out_fd) {
-#if USE_CHEETS
-  // Stop the existing instance if it fails to continue to boot an existing
-  // container. Using Unretained() is okay because the closure will be called
-  // before this function returns. If container was not running, this is no op.
-  base::ScopedClosureRunner scoped_runner(base::Bind(
-      &SessionManagerImpl::OnContinueArcBootFailed, base::Unretained(this)));
-
-  StartArcInstanceRequest request;
-  if (!request.ParseFromArray(in_request.data(), in_request.size())) {
-    *error = CreateError(DBUS_ERROR_INVALID_ARGS,
-                         "StartArcInstanceRequest parsing failed.");
-    return false;
-  }
-  if (!ValidateStartArcInstanceRequest(request, error)) {
-    DCHECK(*error);
-    return false;
-  }
-
-  if (request.for_login_screen()) {
-    // Redirect to Mini Container start.
-    StartArcMiniContainerRequest mini_container_request;
-    mini_container_request.set_native_bridge_experiment(
-        request.native_bridge_experiment());
-    if (!StartArcMiniContainerInternal(mini_container_request,
-                                       out_container_instance_id, error)) {
-      DCHECK(*error);
-      return false;
-    }
-    // There is nothing to do here, but since passing an invalid handle is not
-    // allowed by the dbus binding, open /dev/null and return a handle to the
-    // file.
-    base::ScopedFD server_socket(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
-    DCHECK(server_socket.is_valid());
-    *out_fd = server_socket.get();
-
-    ignore_result(scoped_runner.Release());
-    return true;
-  }
-
-  // Redirect to Container Upgrade.
-  UpgradeArcContainerRequest upgrade_request;
-  upgrade_request.set_account_id(request.account_id());
-  upgrade_request.set_skip_boot_completed_broadcast(
-      request.skip_boot_completed_broadcast());
-  upgrade_request.set_scan_vendor_priv_app(request.scan_vendor_priv_app());
-  upgrade_request.set_packages_cache_mode(
-      static_cast<UpgradeArcContainerRequest::PackageCacheMode>(
-          request.packages_cache_mode()));
-  if (!UpgradeArcContainerInternal(upgrade_request, &scoped_runner, out_fd,
-                                   error)) {
-    DCHECK(*error);
-    return false;
-  }
-
-  ignore_result(scoped_runner.Release());
-  return true;
-#else
-  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
-  return false;
-#endif  // !USE_CHEETS
 }
 
 bool SessionManagerImpl::StartArcMiniContainer(

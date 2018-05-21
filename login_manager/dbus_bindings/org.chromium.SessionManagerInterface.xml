@@ -569,34 +569,6 @@
     </method>
 
     <!--
-        StartArcInstance:
-        @request: Serialized StartArcInstanceRequest proto message containing
-                  ARC startup options.
-        @container_instance_id: Output parameter containing an opaque
-                  identifier for the container instance. The
-                  ArcInstanceStopped signal will contain the same identifier.
-                  An empty ID is returned when the container is not started
-                  but is just turned from a limited purpose one (for login
-                  screen) into a fully functional one.
-        @fd: Output parameter containing a file descriptor. Chrome can listen
-             to the server socket to establish a connection to the container's
-             arcbridgeservice. A dummy FD is returned when
-             |request.for_login_screen| is set. It is caller's responsibility
-             to close the returned FD regardless of whether it is dummy or not.
-
-        Starts an ARC instance. Only one instance of ARC can be executing at a
-        given point in time. When StartArcInstance is called when a limited
-        purpose container already exists, that container is turned into a fully
-        functional one. This method is only available if the board supports ARC.
-        This method gets invoked by Chrome.
-    -->
-    <method name="StartArcInstance">
-      <arg type="ay" name="request" direction="in" />
-      <arg type="s" name="container_instance_id" direction="out" />
-      <arg type="h" name="fd" direction="out" />
-    </method>
-
-    <!--
         StartArcMiniContainer:
         @request: Serialized StartArcMiniContainerRequest proto message
                   containing ARC startup options.

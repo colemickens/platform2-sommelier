@@ -49,7 +49,6 @@ class NssUtil;
 class PolicyDescriptor;
 class PolicyKey;
 class ProcessManagerServiceInterface;
-class StartArcInstanceRequest;
 class StartArcMiniContainerRequest;
 class UpgradeArcContainerRequest;
 class SystemUtils;
@@ -140,12 +139,6 @@ class SessionManagerImpl
   ~SessionManagerImpl() override;
 
 #if USE_CHEETS
-  // Validates if the given |request| satisfies the requirement of the
-  // StartArcInstance input. Returns true on success. Otherwise false,
-  // and brillo::Error instance is set to |error|.
-  static bool ValidateStartArcInstanceRequest(
-      const StartArcInstanceRequest& request, brillo::ErrorPtr* error);
-
   // Returns the Android data directory for |normalized_account_id|.
   static base::FilePath GetAndroidDataDirForUser(
       const std::string& normalized_account_id);
@@ -282,10 +275,6 @@ class SessionManagerImpl
 
   bool InitMachineInfo(brillo::ErrorPtr* error,
                        const std::string& in_data) override;
-  bool StartArcInstance(brillo::ErrorPtr* error,
-                        const std::vector<uint8_t>& in_request,
-                        std::string* out_container_instance_id,
-                        brillo::dbus_utils::FileDescriptor* out_fd) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
                              const std::vector<uint8_t>& in_request,
                              std::string* out_container_instance_id) override;
