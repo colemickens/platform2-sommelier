@@ -37,11 +37,8 @@ if [ -n "$CHROME_LOGOUT_STARTED" ]; then
   record_delta $CHROME_UI_POST_STOP $CHROME_PROCESSES_TERMINATED \
                Uptime.UIStopToProcessesTerminatedAfterLogout
 
-  record_delta $CHROME_PROCESSES_TERMINATED $CHROME_X_TERMINATED \
-               Uptime.ProcessesTerminatedToXTerminatedAfterLogout
-
-  record_delta $CHROME_X_TERMINATED $CHROME_EXEC \
-               Uptime.XTerminatedToChromeExecAfterLogout
+  record_delta $CHROME_PROCESSES_TERMINATED $CHROME_EXEC \
+               Uptime.OtherProcessesTerminatedToChromeExecAfterLogout
 
   record_delta $CHROME_EXEC $CHROME_LOGIN_PROMPT_VISIBLE \
                Uptime.ChromeExecToLoginPromptVisibleAfterLogout
