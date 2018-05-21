@@ -6,6 +6,7 @@
 #define SMBPROVIDER_SMBPROVIDER_TEST_HELPER_H_
 
 #include <string>
+#include <vector>
 
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/files/file_util.h>
@@ -191,6 +192,26 @@ void ExpectFileEqual(const std::string& path,
 // Expects that the file at |path| does not contain |expected_contents|.
 void ExpectFileNotEqual(const std::string& path,
                         const std::string expected_contents);
+
+// Creates a NetBios Name Query response packet. |hostnames| may contain well
+// formed (18 byte) or malformed hostnames. For a well-formed packet,
+// |name_length| must be equal to the length of |name|.
+std::vector<uint8_t> CreateNetBiosResponsePacket(
+    const std::vector<std::vector<uint8_t>>& hostnames,
+    uint8_t name_length,
+    std::vector<uint8_t> name,
+    uint16_t transaction_id,
+    uint8_t response_type);
+std::vector<uint8_t> CreateNetBiosResponsePacket(
+    const std::vector<std::vector<uint8_t>>& hostnames,
+    std::vector<uint8_t> name,
+    uint16_t transaction_id,
+    uint8_t response_type);
+
+// Creates a valid NetBios Hostname as a vector of bytes. |hostname_in| must be
+// less than or equal to 15 bytes.
+std::vector<uint8_t> CreateValidNetBiosHostname(const std::string& hostname,
+                                                uint8_t type);
 
 }  // namespace smbprovider
 

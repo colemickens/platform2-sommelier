@@ -4,10 +4,11 @@
 
 #include "smbprovider/smbprovider_test_helper.h"
 
-#include <vector>
+#include <algorithm>
 
 #include <gtest/gtest.h>
 
+#include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/temp_file_manager.h"
 
@@ -338,6 +339,73 @@ void ExpectFileNotEqual(const std::string& path,
   EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
 
   EXPECT_NE(expected_contents, actual_contents);
+}
+
+std::vector<uint8_t> CreateNetBiosResponsePacket(
+    const std::vector<std::vector<uint8_t>>& hostnames,
+    uint8_t name_length,
+    std::vector<uint8_t> name,
+    uint16_t transaction_id,
+    uint8_t response_type) {
+  // Build the prefix of the packet.
+  std::vector<uint8_t> packet = {0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00,
+                                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+  // Set Transaction ID in Big Endian representation.
+  packet[0] = transaction_id >> 8;
+  packet[1] = transaction_id & 0xFF;
+
+  // Add the name section.
+  packet.push_back(name_length);
+  packet.insert(packet.end(), name.begin(), name.end());
+
+  // Add the next section
+  std::vector<uint8_t> middle_section = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+                                         0x00, 0x00, 0x00, 0x00, 0x00};
+  // Set the response_type.
+  middle_section[2] = response_type;
+
+  packet.insert(packet.end(), middle_section.begin(), middle_section.end());
+
+  // Set number of address list entries.
+  packet.push_back(hostnames.size());
+
+  // Add the address list entries.
+  for (const auto& hostname : hostnames) {
+    packet.insert(packet.end(), hostname.begin(), hostname.end());
+  }
+
+  return packet;
+}
+
+std::vector<uint8_t> CreateNetBiosResponsePacket(
+    const std::vector<std::vector<uint8_t>>& hostnames,
+    std::vector<uint8_t> name,
+    uint16_t transaction_id,
+    uint8_t response_type) {
+  return CreateNetBiosResponsePacket(hostnames, name.size(), name,
+                                     transaction_id, response_type);
+}
+
+std::vector<uint8_t> CreateValidNetBiosHostname(const std::string& hostname,
+                                                uint8_t type) {
+  DCHECK_LE(hostname.size(), netbios::kServerNameLength);
+
+  std::vector<uint8_t> hostname_bytes(netbios::kServerEntrySize);
+  std::copy(hostname.begin(), hostname.end(), hostname_bytes.begin());
+
+  // Fill the rest of the name with spaces.
+  std::fill(hostname_bytes.begin() + hostname.size(),
+            hostname_bytes.begin() + netbios::kServerNameLength, 0x20);
+
+  // Set the type.
+  hostname_bytes[15] = type;
+
+  // Set two nulls for the flags.
+  hostname_bytes[16] = 0x00;
+  hostname_bytes[17] = 0x00;
+
+  return hostname_bytes;
 }
 
 }  // namespace smbprovider
