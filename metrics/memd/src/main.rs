@@ -130,20 +130,34 @@ fn strerror(err: i32) -> String {
     }
 }
 
-// Opens a file with optional mode flags (unfortunately named OpenOptions).  If
-// the file does not exist, returns None.
-fn open_with_flags(path: &Path, options_or_none: Option<&OpenOptions>) -> Result<Option<File>> {
+// Opens a file.  Returns an error which includes the file name.
+fn open(path: &Path) -> Result<File> {
+    Ok(File::open(path).map_err(|e| format!("{:?}: {}", path, e))?)
+}
+
+// Opens a file if it exists, otherwise returns none.
+fn open_maybe(path: &Path) -> Result<Option<File>> {
     if !path.exists() {
         Ok(None)
     } else {
-        let file = if let Some(ref options) = options_or_none {
-            options.open(path)?
-        } else {
-            File::open(path)?
-        };
-        Ok(Some(file))
+        Ok(Some(open(path)?))
     }
 }
+
+// Opens a file with mode flags (unfortunately named OpenOptions).
+fn open_with_flags(path: &Path, options: &OpenOptions) -> Result<File> {
+    Ok(options.open(path).map_err(|e| format!("{:?}: {}", path, e))?)
+}
+
+// Opens a file with mode flags.  If the file does not exist, returns None.
+fn open_with_flags_maybe(path: &Path, options: &OpenOptions) -> Result<Option<File>> {
+    if !path.exists() {
+        Ok(None)
+    } else {
+        Ok(Some(open_with_flags(&path, &options)?))
+    }
+}
+
 
 // Converts the result of an integer expression |e| to modulo |n|. |e| may be
 // negative. This differs from plain "%" in that the result of this function
@@ -169,7 +183,7 @@ fn now() -> i64 {
 // Reads a string from the file named by |path|, representing a u32, and
 // returns the value the strings represents.
 fn read_int(path: &Path) -> Result<u32> {
-    let mut file = File::open(path)?;
+    let mut file = open(path)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
     Ok(content.trim().parse::<u32>()?)
@@ -443,7 +457,7 @@ fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
 // Writes string |string| to file |path|, in append mode if |append| is true.
 // Panics on errors.
 fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
-    let mut f = OpenOptions::new().write(true).append(append).open(path)?;
+    let mut f = open_with_flags(&path, OpenOptions::new().write(true).append(append))?;
     f.write_all(string.as_bytes())?;
     Ok(())
 }
@@ -762,7 +776,7 @@ impl SamplerState {
         log_from_procfs(&mut out, psv, "min_free_kbytes")?;
         log_from_procfs(&mut out, psv, "extra_free_kbytes")?;
 
-        let mut zoneinfo = ZoneinfoFile { 0: File::open(&self.paths.zoneinfo)? };
+        let mut zoneinfo = ZoneinfoFile { 0: open(&self.paths.zoneinfo)? };
         let watermarks = zoneinfo.read_watermarks()?;
         writeln!(out, "min_water_mark_kbytes {}", watermarks.min * 4)?;
         writeln!(out, "low_water_mark_kbytes {}", watermarks.low * 4)?;
@@ -1019,11 +1033,11 @@ impl SamplerState {
 fn oom_trace_setup(paths: &Paths, testing: bool) -> Result<File> {
     write_string("function", &paths.current_tracer, false)?;
     write_string("oom_kill_process", &paths.set_ftrace_filter, true)?;
-    let tracing_enabled_file = File::open(&paths.tracing_enabled)?;
+    let tracing_enabled_file = open(&paths.tracing_enabled)?;
     if pread_u32(&tracing_enabled_file)? != 1 {
         return Err("tracing is disabled".into());
     }
-    let tracing_on_file = File::open(&paths.tracing_on)?;
+    let tracing_on_file = open(&paths.tracing_on)?;
     if pread_u32(&tracing_on_file)? != 1 {
         return Err("tracing is off".into());
     }
@@ -1230,7 +1244,7 @@ fn main() {
     let mut low_mem_file_flags = OpenOptions::new();
     low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
     low_mem_file_flags.read(true);
-    let low_mem_file_option = open_with_flags(&paths.low_mem_device, Some(&low_mem_file_flags))
+    let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device, &low_mem_file_flags)
         .expect("error opening low-mem file");
     let mut watcher = FileWatcher::new();
     let mut low_mem_watcher = FileWatcher::new();
@@ -1247,10 +1261,9 @@ fn main() {
     watcher.set(&trace_pipe_file).expect("cannot watch trace_pipe");
 
     let files = Files {
-        vmstat_file: File::open(&paths.vmstat).expect("cannot open vmstat"),
-        runnables_file: File::open(&paths.runnables).expect("cannot open loadavg"),
-        available_file_option: open_with_flags(&paths.available, None)
-            .expect("error opening available file"),
+        vmstat_file: open(&paths.vmstat).expect("cannot open vmstat"),
+        runnables_file: open(&paths.runnables).expect("cannot open loadavg"),
+        available_file_option: open_maybe(&paths.available).expect("error opening available file"),
         trace_pipe_file,
         low_mem_file_option,
     };
