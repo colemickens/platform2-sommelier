@@ -216,7 +216,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
     platform_->DeleteFile(GetUserDirectory(credentials), true);
   }
   if (!mount_args.shadow_only) {
-    if (!EnsureUserMountPoints(credentials)) {
+    if (!EnsureUserMountPoints(credentials.username())) {
       return false;
     }
   }
@@ -371,7 +371,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       return false;
     }
 
-    if (!MountEphemeralCryptohome(credentials)) {
+    if (!MountEphemeralCryptohome(credentials.username())) {
       homedirs_->Remove(credentials.username());
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
@@ -711,12 +711,12 @@ void Mount::CleanUpEphemeral() {
   }
 }
 
-bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
+bool Mount::MountEphemeralCryptohome(const std::string& username) {
   // Ephemeral cryptohome can't be mounted twice.
   CHECK(ephemeral_file_path_.empty());
   CHECK(ephemeral_loop_device_.empty());
 
-  bool mounted = MountEphemeralCryptohomeInner(credentials);
+  bool mounted = MountEphemeralCryptohomeInner(username);
   if (!mounted) {
     UnmountAll();
     CleanUpEphemeral();
@@ -724,7 +724,7 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   return mounted;
 }
 
-bool Mount::MountEphemeralCryptohomeInner(const Credentials& credentials) {
+bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
   // Underlying sparse file will be created in a temporary directory in RAM.
   const FilePath ephemeral_root(kEphemeralCryptohomeDir);
 
@@ -738,7 +738,7 @@ bool Mount::MountEphemeralCryptohomeInner(const Credentials& credentials) {
 
   // Create underlying sparse file
   const std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
+      BuildObfuscatedUsername(username, system_salt_);
   const FilePath sparse_file = GetEphemeralSparseFile(obfuscated_username);
   if (!platform_->CreateDirectory(sparse_file.DirName())) {
     LOG(ERROR) << "Can't create directory for ephemeral sparse files";
@@ -781,7 +781,7 @@ bool Mount::MountEphemeralCryptohomeInner(const Credentials& credentials) {
 
   // Create user & root directories.
   MigrateToUserHome(mount_point);
-  if (!EnsureUserMountPoints(credentials)) {
+  if (!EnsureUserMountPoints(username)) {
     return false;
   }
 
@@ -789,7 +789,6 @@ bool Mount::MountEphemeralCryptohomeInner(const Credentials& credentials) {
       GetMountedEphemeralUserHomePath(obfuscated_username);
   const FilePath root_home =
       GetMountedEphemeralRootHomePath(obfuscated_username);
-  const std::string username = credentials.username();
   const FilePath user_multi_home = GetUserPath(username);
   const FilePath root_multi_home = GetRootPath(username);
   if (!SetUpEphemeralCryptohome(user_home, user_multi_home))
@@ -1473,10 +1472,8 @@ bool Mount::MountGuestCryptohome() {
     LOG(WARNING) << "Failed to finalize boot lockbox.";
   }
 
-  std::string guest = kGuestUserName;
-  UsernamePasskey guest_creds(guest.c_str(), brillo::Blob(0));
   current_user_->Reset();
-  return MountEphemeralCryptohome(guest_creds);
+  return MountEphemeralCryptohome(kGuestUserName);
 }
 
 FilePath Mount::GetUserDirectory(
@@ -1913,8 +1910,7 @@ bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
   return true;
 }
 
-bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
-  const std::string username = credentials.username();
+bool Mount::EnsureUserMountPoints(const std::string& username) const {
   FilePath root_path = GetRootPath(username);
   FilePath user_path = GetUserPath(username);
   FilePath temp_path(GetNewUserPath(username));

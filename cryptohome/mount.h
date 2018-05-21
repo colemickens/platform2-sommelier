@@ -575,17 +575,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Mounts and populates an ephemeral cryptohome backed by tmpfs for the given
   // user.
-  //
-  // Parameters
-  //   credentials - The credentials representing the user.
-  bool MountEphemeralCryptohome(const Credentials& credentials);
+  bool MountEphemeralCryptohome(const std::string& username);
 
   // Implementation of ephemeral cryptohome mount that doesn't clean up after
   // failure and return false in this case.
-  //
-  // Parameters
-  //   credentials - The credentials representing the user.
-  bool MountEphemeralCryptohomeInner(const Credentials& credentials);
+  bool MountEphemeralCryptohomeInner(const std::string& username);
 
   // Sets up a freshly mounted ephemeral cryptohome by adjusting its permissions
   // and populating it with a skeleton directory and file structure.
@@ -646,10 +640,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Ensures that root and user mountpoints for the specified user are present.
   // Returns false if the mountpoints were not present and could not be created.
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  bool EnsureUserMountPoints(const Credentials& credentials) const;
+  bool EnsureUserMountPoints(const std::string& username) const;
 
   // Mount a mount point, remembering it for later unmounting
   // Returns true if the mount succeeds, false otherwise
