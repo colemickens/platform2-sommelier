@@ -483,7 +483,10 @@ status_t Rk3aPlus::fillAwbInputParams(const CameraMetadata *settings,
 
     CameraWindow awbRegion;
     //# METADATA_Control control.awbRegion done
-    parseMeteringRegion(settings, ANDROID_CONTROL_AWB_REGIONS, &awbRegion);
+    entry = settings->find(ANDROID_CONTROL_AWB_REGIONS);
+    if (entry.count) {
+        parseMeteringRegion(settings, ANDROID_CONTROL_AWB_REGIONS, &awbRegion);
+    }
 
     if (awbRegion.isValid()) {
         awbCfg->window->h_offset = awbRegion.left();
