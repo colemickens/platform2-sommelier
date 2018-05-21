@@ -4,6 +4,7 @@
  */
 
 #include <signal.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -32,6 +33,7 @@ int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  int kCameraProcessPriority = -20;
 
   int log_flags = brillo::kLogToSyslog;
   if (cl->HasSwitch("foreground")) {
@@ -40,6 +42,11 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(log_flags);
   // Override the log items set by brillo::InitLog.
   SetLogItems();
+
+  int ret = setpriority(PRIO_PROCESS, 0, kCameraProcessPriority);
+  if (ret) {
+    LOGF(WARNING) << "Failed to set process priority";
+  }
 
   pid_t pid = fork();
 
