@@ -5,6 +5,7 @@
  */
 
 #include <fcntl.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 
@@ -23,12 +24,18 @@
 
 int main(int argc, char** argv) {
   static base::AtExitManager exit_manager;
+  int kCameraProcessPriority = -20;
 
   // Set up logging so we can enable VLOGs with -v / --vmodule.
   base::CommandLine::Init(argc, argv);
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   LOG_ASSERT(logging::InitLogging(settings));
+
+  int ret = setpriority(PRIO_PROCESS, 0, kCameraProcessPriority);
+  if (ret) {
+    LOGF(WARNING) << "Failed to set process priority";
+  }
 
   // Socket file is in the root directory after minijail chroot
   std::string socket_name("/");
