@@ -226,7 +226,6 @@ class Platform2(object):
         '-Dbuild_root=%s' % self.get_buildroot(),
         '-Dplatform2_root=%s' % self.get_platform2_root(),
         '-Dlibbase_ver=%s' % libbase_ver,
-        '-Dclang_syntax=%s' % os.environ.get('CROS_WORKON_CLANG', ''),
         '-Denable_exceptions=%s' % os.environ.get('CXXEXCEPTIONS', '0'),
         '-Dexternal_cflags=%s' % os.environ.get('CFLAGS', ''),
         '-Dexternal_cxxflags=%s' % os.environ.get('CXXFLAGS', ''),
