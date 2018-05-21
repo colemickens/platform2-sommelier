@@ -1241,7 +1241,7 @@ int container_config_add_hook(struct container_config* c,
 }
 
 int container_config_inherit_fds(struct container_config* c,
-                                 int* inherited_fds,
+                                 const int* inherited_fds,
                                  size_t inherited_fd_count) {
   if (!c->inherited_fds.empty()) {
     errno = EINVAL;

@@ -317,7 +317,7 @@ BRILLO_EXPORT int container_config_add_hook(struct container_config* c,
  * Sets the set of file descriptors to inherit.
  */
 BRILLO_EXPORT int container_config_inherit_fds(struct container_config* c,
-                                               int* inherited_fds,
+                                               const int* inherited_fds,
                                                size_t inherited_fd_count);
 
 /* Container manipulation. */
