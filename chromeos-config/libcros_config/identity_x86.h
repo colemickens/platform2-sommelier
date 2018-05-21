@@ -28,6 +28,10 @@ class CrosConfigIdentityX86 : public CrosConfigIdentity {
   // @return SKU ID value read via ReadSmbios
   int GetSkuId() const { return sku_id_; }
 
+  // Initially, the SKU ID will be read from smbios but if user would like to
+  // have the identify with different SKU ID then you can overwrite it here.
+  void SetSkuId(const int sku_id) { sku_id_ = sku_id; }
+
   // Read the device identity infromation from the kernel files.
   // This information is set up by AP firmware, so in effect AP firmware
   // sets the device identity.

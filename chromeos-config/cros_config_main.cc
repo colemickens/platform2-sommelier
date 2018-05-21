@@ -19,7 +19,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(test_database, "",
                 "Override path to system config database for testing.");
   DEFINE_string(test_name, "", "Override platform name for testing.");
-  DEFINE_int32(test_sku_id, -1, "Override SKU ID for testing.");
+  DEFINE_int32(test_sku_id, brillo::kDefaultSkuId,
+               "Override SKU ID for testing.");
   DEFINE_string(whitelabel_tag, "", "Override whitelabel tag for testing.");
 
   std::string usage = "Chrome OS Model Configuration\n\nUsage: " +
@@ -41,7 +42,7 @@ int main(int argc, char* argv[]) {
 
   brillo::CrosConfig cros_config;
   if (FLAGS_test_database.empty()) {
-    if (!cros_config.Init()) {
+    if (!cros_config.Init(FLAGS_test_sku_id)) {
       return 1;
     }
   } else {

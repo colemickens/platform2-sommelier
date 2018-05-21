@@ -46,6 +46,10 @@ bool CrosConfig::InitCheck() const {
   return true;
 }
 
+bool CrosConfig::Init(const int sku_id) {
+  return InitModel(sku_id);
+}
+
 bool CrosConfig::Init() {
   return InitModel();
 }
@@ -87,6 +91,10 @@ bool CrosConfig::InitForTestArm(const base::FilePath& filepath,
 }
 
 bool CrosConfig::InitModel() {
+  return InitModel(kDefaultSkuId);
+}
+
+bool CrosConfig::InitModel(const int sku_id) {
   base::FilePath json_path(kConfigJsonPath);
   bool init_config = false;
   if (base::PathExists(json_path)) {
@@ -107,8 +115,13 @@ bool CrosConfig::InitModel() {
     base::FilePath product_name_file(kProductName);
     base::FilePath product_sku_file(kProductSku);
     return SelectConfigByIdentityX86(product_name_file, product_sku_file,
-                                     vpd_file);
+                                     vpd_file, sku_id);
   } else {
+    if (sku_id != kDefaultSkuId) {
+      CROS_CONFIG_LOG(ERROR) << "Argument - test_sku_id is only for x86 or "
+                             << "x86_64 system.";
+      return false;
+    }
     base::FilePath dt_compatible_file(kDeviceTreeCompatiblePath);
     return SelectConfigByIdentityArm(dt_compatible_file, vpd_file);
   }
@@ -145,7 +158,8 @@ bool CrosConfig::GetAbsPath(const std::string& path,
 bool CrosConfig::SelectConfigByIdentityX86(
     const base::FilePath& product_name_file,
     const base::FilePath& product_sku_file,
-    const base::FilePath& vpd_file) {
+    const base::FilePath& vpd_file,
+    const int sku_id) {
   CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read X86 identity";
   CrosConfigIdentityX86 identity;
   if (!identity.ReadVpd(vpd_file)) {
@@ -155,6 +169,11 @@ bool CrosConfig::SelectConfigByIdentityX86(
   if (!identity.ReadInfo(product_name_file, product_sku_file)) {
     CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS identity";
     return false;
+  }
+  if (sku_id != kDefaultSkuId) {
+    identity.SetSkuId(sku_id);
+    CROS_CONFIG_LOG(INFO) << "Set sku_id to explicitly assigned value "
+                          << sku_id;
   }
   if (!cros_config_->SelectConfigByIdentityX86(identity)) {
     CROS_CONFIG_LOG(ERROR) << "Cannot find config for"
@@ -171,7 +190,8 @@ bool CrosConfig::SelectConfigByIdentityX86(
 }
 
 bool CrosConfig::SelectConfigByIdentityArm(
-    const base::FilePath& dt_compatible_file, const base::FilePath& vpd_file) {
+    const base::FilePath& dt_compatible_file,
+    const base::FilePath& vpd_file) {
   CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read ARM identity";
   CrosConfigIdentityArm identity;
   if (!identity.ReadVpd(vpd_file)) {

@@ -27,19 +27,29 @@ class FilePath;
 
 namespace brillo {
 
+static const int kDefaultSkuId = -1;
+
 class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
  public:
   CrosConfig();
   ~CrosConfig() override;
 
-  // Prepare the configuration system for for access to the configuration for
+  // Prepare the configuration system for access to the configuration for
   // the model this is running on. This reads the configuration file into
   // memory.
   // @return true if OK, false on error.
   bool InitModel();
+  // If the different configuration other then the model this device running on
+  // is intended to check then the explicit sku_id can be assigned.
+  // @sku_id: If sku_id is kDefaultSkuId  then the default one returned by
+  //     'mosys platform id' would be assigned. Or the value here will be used
+  //     to match the configuration.
+  // @return true if OK, false on error.
+  bool InitModel(const int sku_id);
 
   // Alias for the above, since this is used by several clients.
   bool Init();
+  bool Init(const int sku_id);
 
   // Prepare the configuration system for testing on X86 devices.
   // This reads in the given configuration file and selects the config
@@ -93,11 +103,15 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @product_sku_file: File containing the SKU string.
   // @vpd_file: File containing the customization_id from VPD. Typically this
   //     is '/sys/firmware/vpd/ro/customization_id'.
+  // @sku_id:If value is kDefaultSkuId then identity will extract sku_id from
+  //     smbios_file which is the same with `mosys platform id`. Or this value
+  //     will be set into identity to replace the default one from smbios.
   //   results for every query
   bool SelectConfigByIdentityX86(
       const base::FilePath& product_name_file,
       const base::FilePath& product_sku_file,
-      const base::FilePath& vpd_file);
+      const base::FilePath& vpd_file,
+      const int sku_id = kDefaultSkuId);
 
   // Common initialization function based on ARM identity.
   // @dt_compatible_file: ARM based device-tree compatible file
