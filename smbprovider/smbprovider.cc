@@ -391,6 +391,11 @@ void SmbProvider::HandleSetupKerberosResponse(SetupKerberosCallback callback,
   callback->Return(result);
 }
 
+ProtoBlob SmbProvider::ParseNetBiosPacket(const std::vector<uint8_t>& packet,
+                                          uint16_t transaction_id) {
+  return ProtoBlob();
+}
+
 template <typename Proto>
 bool SmbProvider::GetFullPath(const Proto* options,
                               std::string* full_path) const {

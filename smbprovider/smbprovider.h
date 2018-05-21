@@ -113,6 +113,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   void SetupKerberos(SetupKerberosCallback callback,
                      const std::string& account_id) override;
 
+  ProtoBlob ParseNetBiosPacket(const std::vector<uint8_t>& packet,
+                               uint16_t transaction_id) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);

@@ -369,5 +369,28 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
 
+    <method name="ParseNetBiosPacket">
+      <tp:docstring>
+        Parses a NetBios Name Request Response packet.
+      </tp:docstring>
+      <arg name="packet" type="ay" direction="in">
+        <tp:docstring>
+          Packet received as a repsonse to a NetBios Name Request.
+        </tp:docstring>
+      </arg>
+      <arg name="transaction_id" type="q" direction="in">
+        <tp:docstring>
+          Transaction ID for the NetBios Name Request. Any packet that does not
+          contain a matching transaction ID is ignored.
+        </tp:docstring>
+      </arg>
+      <arg name="hostnames" type="ay" direction="out">
+        <tp:docstring>
+          Serialized Hostnames protobuf.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
   </interface>
 </node>
