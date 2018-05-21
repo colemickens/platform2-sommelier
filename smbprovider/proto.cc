@@ -248,4 +248,9 @@ void AddToDeleteList(const std::string& entry_path, DeleteListProto* proto) {
   proto->add_entries(entry_path);
 }
 
+void AddToHostnamesProto(const std::string& hostname, HostnamesProto* proto) {
+  DCHECK(proto);
+  proto->add_hostnames(hostname);
+}
+
 }  // namespace smbprovider

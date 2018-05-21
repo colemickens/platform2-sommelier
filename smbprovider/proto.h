@@ -136,6 +136,8 @@ void ConvertToProto(const DirectoryEntry& entry, DirectoryEntryProto* proto);
 
 void AddToDeleteList(const std::string& entry_path, DeleteListProto* proto);
 
+void AddToHostnamesProto(const std::string& hostname, HostnamesProto* proto);
+
 }  // namespace smbprovider
 
 #endif  // SMBPROVIDER_PROTO_H_
