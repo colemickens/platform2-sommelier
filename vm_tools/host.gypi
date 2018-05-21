@@ -110,6 +110,13 @@
         'concierge/client.cc',
       ],
     },
+    {
+      'target_name': 'vm_cicerone',
+      'type': 'executable',
+      'sources': [
+        'cicerone/main.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
