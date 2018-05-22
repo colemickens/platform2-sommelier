@@ -1,0 +1,49 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Use this to generate a starting list of syscalls:
+#
+# strace -f minijail0 -i /usr/bin/memd always-poll-fast >& /tmp/memd.strace & sleep 3; dbus-send --system --type=signal / org.chromium.EventLogger.ChromeEvent string:tab-discard
+
+access: 1
+arch_prctl: 1
+brk: 1
+clock_getres: 1
+close: 1
+connect: 1
+fcntl: 1
+fstat: 1
+geteuid: 1
+getresgid: 1
+getresuid: 1
+getrlimit: 1
+getsockname: 1
+# TCGETS gets tty settings, FIOCLEX is close on exec.
+ioctl: arg1 == TCGETS || arg1 == FIOCLEX
+lseek: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mmap: arg1 in 0xfffffffb || arg1 in 0xfffffffd
+mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+munmap: 1
+nanosleep: 1
+open: 1
+poll: 1
+pread64: 1
+read: 1
+readlink: 1
+recvmsg: 1
+rt_sigaction: 1
+rt_sigprocmask: 1
+sched_getaffinity: 1
+select: 1
+sendmsg: 1
+sendto: 1
+set_robust_list: 1
+set_tid_address: 1
+sigaltstack: 1
+# For D-Bus and syslog.
+socket: arg0 == AF_UNIX
+stat: 1
+sysinfo: 1
+write: 1
