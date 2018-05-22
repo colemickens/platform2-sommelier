@@ -122,6 +122,14 @@ class Platform {
   // Unmounts |path|. Returns true on success.
   virtual bool Unmount(const std::string& path) const;
 
+  // Mounts the |source| filesystem of type |filesystem_type| at |target| with
+  // |options| and |data|. Returns true on success; otherwise sets errno.
+  virtual bool Mount(const std::string& source,
+                     const std::string& target,
+                     const std::string& filesystem_type,
+                     unsigned long options,  // NOLINT(runtime/int)
+                     const std::string& data) const;
+
   gid_t mount_group_id() const { return mount_group_id_; }
 
   uid_t mount_user_id() const { return mount_user_id_; }

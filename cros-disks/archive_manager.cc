@@ -146,7 +146,7 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   extended_options.push_back(MountOptions::kOptionBind);
   MountOptions mount_options;
   mount_options.Initialize(extended_options, false, "", "");
-  SystemMounter mounter(avfs_path, mount_path, "", mount_options);
+  SystemMounter mounter(avfs_path, mount_path, "", mount_options, platform());
 
   MountErrorType error_type = mounter.Mount();
   if (error_type == MOUNT_ERROR_NONE) {

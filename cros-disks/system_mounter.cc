@@ -12,6 +12,8 @@
 
 #include <base/logging.h>
 
+#include "cros-disks/platform.h"
+
 using std::pair;
 using std::string;
 
@@ -22,19 +24,16 @@ const char SystemMounter::kMounterType[] = "";
 SystemMounter::SystemMounter(const string& source_path,
                              const string& target_path,
                              const string& filesystem_type,
-                             const MountOptions& mount_options)
-    : Mounter(source_path, target_path, filesystem_type, mount_options) {}
+                             const MountOptions& mount_options,
+                             const Platform* platform)
+    : Mounter(source_path, target_path, filesystem_type, mount_options),
+      platform_(platform) {}
 
 MountErrorType SystemMounter::MountImpl() {
   pair<MountOptions::Flags, string> flags_and_data =
       mount_options().ToMountFlagsAndData();
-  if (mount(source_path().c_str(), target_path().c_str(),
-            filesystem_type().c_str(), flags_and_data.first,
-            flags_and_data.second.c_str()) != 0) {
-    PLOG(WARNING) << "mount('" << source_path() << "', '" << target_path()
-                  << "', '" << filesystem_type() << "', "
-                  << flags_and_data.first << ", '" << flags_and_data.second
-                  << "') failed";
+  if (!platform_->Mount(source_path(), target_path(), filesystem_type(),
+                        flags_and_data.first, flags_and_data.second)) {
     switch (errno) {
       case ENODEV:
         return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;

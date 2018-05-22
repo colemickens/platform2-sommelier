@@ -9,6 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
+#include "cros-disks/drivefs_helper.h"
 #include "cros-disks/fuse_helper.h"
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/platform.h"
@@ -46,6 +47,7 @@ bool FUSEMountManager::Initialize() {
   }
 
   // Register specific FUSE mount helpers here.
+  RegisterHelper(std::make_unique<DrivefsHelper>(platform()));
   RegisterHelper(std::make_unique<SshfsHelper>(platform()));
 
   return true;

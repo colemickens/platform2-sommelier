@@ -425,8 +425,9 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
   }
 
   if (filesystem.mounter_type == SystemMounter::kMounterType)
-    return std::make_unique<SystemMounter>(
-        disk.device_file, target_path, filesystem.mount_type, mount_options);
+    return std::make_unique<SystemMounter>(disk.device_file, target_path,
+                                           filesystem.mount_type, mount_options,
+                                           platform());
 
   if (filesystem.mounter_type == ExFATMounter::kMounterType)
     return std::make_unique<ExFATMounter>(disk.device_file, target_path,

@@ -255,4 +255,21 @@ bool Platform::Unmount(const string& path) const {
   return true;
 }
 
+bool Platform::Mount(const string& source_path,
+                     const string& target_path,
+                     const string& filesystem_type,
+                     unsigned long options,  // NOLINT(runtime/int)
+                     const std::string& data) const {
+  if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
+            options, data.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to mount '" << source_path << "' '" << target_path
+                << "' '" << filesystem_type << "' " << options << " '" << data
+                << "'";
+    return false;
+  }
+  LOG(INFO) << "Mount '" << source_path << "' '" << target_path << "' '"
+            << filesystem_type << "' " << options << " '" << data << "'";
+  return true;
+}
+
 }  // namespace cros_disks

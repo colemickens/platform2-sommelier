@@ -70,17 +70,7 @@ class FUSEHelper {
       const base::FilePath& target_path,
       const std::vector<std::string>& options) const;
 
- protected:
-  // Make sure the dir is set up to be used by FUSE's helper user.
-  // Some FUSE modules may need secure and/or persistent storage of cached
-  // data somewhere in cryptohome. This method provides implementations
-  // with a shortcut for doing this.
-  // This is approximately `chown user:chronos-access |dirpath|'.
-  bool SetupDirectoryForFUSEAccess(const base::FilePath& dirpath) const;
-
  private:
-  friend class FUSEHelperTest;
-
   const std::string fuse_type_;
   const Platform* const platform_;
   const base::FilePath mount_program_path_;

@@ -1,0 +1,148 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "cros-disks/drivefs_helper.h"
+
+#include <base/files/file_path.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+
+#include "cros-disks/fuse_mounter.h"
+#include "cros-disks/mount_options.h"
+#include "cros-disks/platform.h"
+#include "cros-disks/system_mounter.h"
+#include "cros-disks/uri.h"
+
+namespace cros_disks {
+namespace {
+
+const char kDataDirOptionPrefix[] = "datadir=";
+const char kIdentityOptionPrefix[] = "identity=";
+
+const char kUserName[] = "fuse-drivefs";
+const char kHelperTool[] = "/opt/google/drive-file-stream/drivefs";
+const char kType[] = "drivefs";
+
+}  // namespace
+
+DrivefsHelper::DrivefsHelper(const Platform* platform)
+    : FUSEHelper(kType, platform, base::FilePath(kHelperTool), kUserName) {}
+
+DrivefsHelper::~DrivefsHelper() = default;
+
+std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
+    const base::FilePath& working_dir,
+    const Uri& source,
+    const base::FilePath& target_path,
+    const std::vector<std::string>& options) const {
+  const std::string& identity = source.path();
+
+  // Enforced by FUSEHelper::CanMount().
+  DCHECK(!identity.empty());
+
+  auto data_dir = GetValidatedDataDir(options);
+  if (data_dir.empty()) {
+    return nullptr;
+  }
+
+  uid_t files_uid;
+  gid_t files_gid;
+  if (!platform()->GetUserAndGroupId(kFilesUser, &files_uid, nullptr) ||
+      !platform()->GetGroupId(kFilesGroup, &files_gid)) {
+    LOG(ERROR) << "Invalid user configuration.";
+    return nullptr;
+  }
+  if (!SetupDirectoryForFUSEAccess(data_dir) ||
+      !BindMount(data_dir, working_dir)) {
+    return nullptr;
+  }
+  MountOptions mount_options;
+  mount_options.EnforceOption(kDataDirOptionPrefix + working_dir.value());
+  mount_options.EnforceOption(kIdentityOptionPrefix + identity);
+  mount_options.Initialize(options, true, base::IntToString(files_uid),
+                           base::IntToString(files_gid));
+
+  return std::make_unique<FUSEMounter>("", target_path.value(), type(),
+                                       mount_options, platform(),
+                                       program_path().value(), user(), true);
+}
+
+base::FilePath DrivefsHelper::GetValidatedDataDir(
+    const std::vector<std::string>& options) const {
+  for (const auto& option : options) {
+    if (base::StartsWith(option, kDataDirOptionPrefix,
+                         base::CompareCase::SENSITIVE)) {
+      std::string path_string = option.substr(strlen(kDataDirOptionPrefix));
+      base::FilePath data_dir(path_string);
+      if (data_dir.empty() || !data_dir.IsAbsolute() ||
+          data_dir.ReferencesParent()) {
+        LOG(ERROR) << "Invalid DriveFS option datadir=" << path_string;
+        return {};
+      }
+      if (!platform()->GetRealPath(path_string, &path_string)) {
+        return {};
+      }
+      return base::FilePath(path_string);
+    }
+  }
+  return {};
+}
+
+bool DrivefsHelper::SetupDirectoryForFUSEAccess(
+    const base::FilePath& dir) const {
+  CHECK(dir.IsAbsolute() && !dir.ReferencesParent())
+      << "unsafe path '" << dir.value() << "'";
+
+  uid_t files_uid, mounter_uid;
+  gid_t files_gid;
+  if (!platform()->GetUserAndGroupId(user(), &mounter_uid, nullptr) ||
+      !platform()->GetUserAndGroupId(kFilesUser, &files_uid, nullptr) ||
+      !platform()->GetGroupId(kFilesGroup, &files_gid)) {
+    LOG(ERROR) << "Invalid user configuration.";
+    return false;
+  }
+  std::string path = dir.value();
+
+  if (platform()->DirectoryExists(path)) {
+    uid_t current_uid;
+    gid_t current_gid;
+    if (!platform()->GetOwnership(path, &current_uid, &current_gid)) {
+      LOG(WARNING) << "Can't access datadir '" << path << "'";
+      return false;
+    }
+    if (current_uid != mounter_uid || current_gid != files_gid) {
+      LOG(WARNING) << "Existing datadir '" << path << "' has unexpected owner "
+                   << current_uid << ":" << current_gid;
+      return false;
+    }
+    return true;
+  }
+  if (!platform()->CreateDirectory(path)) {
+    LOG(ERROR) << "Failed to create datadir '" << path << "'";
+    return false;
+  }
+  if (!platform()->SetPermissions(path, 0770)) {
+    LOG(ERROR) << "Can't chmod datadir '" << path << "'";
+    return false;
+  }
+  if (!platform()->SetOwnership(path, mounter_uid, files_gid)) {
+    LOG(ERROR) << "Can't chown datadir '" << path << "'";
+    return false;
+  }
+  return true;
+}
+
+bool DrivefsHelper::BindMount(const base::FilePath& source,
+                              const base::FilePath& target) const {
+  std::vector<std::string> options = {MountOptions::kOptionBind,
+                                      MountOptions::kOptionReadWrite};
+  MountOptions mount_options;
+  mount_options.Initialize(options, false, "", "");
+  return SystemMounter(source.value(), target.value(), "", mount_options,
+                       platform())
+             .Mount() == MOUNT_ERROR_NONE;
+}
+
+}  // namespace cros_disks

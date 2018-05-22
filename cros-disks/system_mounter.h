@@ -7,9 +7,13 @@
 
 #include <string>
 
+#include <base/macros.h>
+
 #include "cros-disks/mounter.h"
 
 namespace cros_disks {
+
+class Platform;
 
 // A class for mounting a device file using the system mount() call.
 class SystemMounter : public Mounter {
@@ -20,11 +24,17 @@ class SystemMounter : public Mounter {
   SystemMounter(const std::string& source_path,
                 const std::string& target_path,
                 const std::string& filesystem_type,
-                const MountOptions& mount_options);
+                const MountOptions& mount_options,
+                const Platform* platform);
 
  protected:
   // Mounts a device file using the system mount() call.
   MountErrorType MountImpl() override;
+
+ private:
+  const Platform* const platform_;
+
+  DISALLOW_COPY_AND_ASSIGN(SystemMounter);
 };
 
 }  // namespace cros_disks
