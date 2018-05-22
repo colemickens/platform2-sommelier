@@ -16,6 +16,7 @@
 #include "smbprovider/iterator/post_depth_first_iterator.h"
 #include "smbprovider/iterator/share_iterator.h"
 #include "smbprovider/mount_manager.h"
+#include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/samba_interface_impl.h"
@@ -393,7 +394,24 @@ void SmbProvider::HandleSetupKerberosResponse(SetupKerberosCallback callback,
 
 ProtoBlob SmbProvider::ParseNetBiosPacket(const std::vector<uint8_t>& packet,
                                           uint16_t transaction_id) {
-  return ProtoBlob();
+  const std::vector<std::string> servers =
+      netbios::ParsePacket(packet, transaction_id);
+
+  const HostnamesProto hostnames_proto = BuildHostnamesProto(servers);
+  std::vector<uint8_t> out_blob;
+  if (!SerializeProtoToBlob(hostnames_proto, &out_blob)) {
+    return ProtoBlob();
+  }
+  return out_blob;
+}
+
+HostnamesProto SmbProvider::BuildHostnamesProto(
+    const std::vector<std::string>& hostnames) const {
+  HostnamesProto hostnames_proto;
+  for (const auto& hostname : hostnames) {
+    AddToHostnamesProto(hostname, &hostnames_proto);
+  }
+  return hostnames_proto;
 }
 
 template <typename Proto>

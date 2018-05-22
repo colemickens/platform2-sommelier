@@ -16,6 +16,7 @@
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/mount_manager.h"
+#include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/smbprovider.h"
 #include "smbprovider/smbprovider_helper.h"
@@ -70,6 +71,13 @@ DirectoryEntryListProto GetDirectoryEntryListProtoFromBlob(
   EXPECT_TRUE(entries.ParseFromArray(blob.data(), blob.size()));
 
   return entries;
+}
+
+HostnamesProto GetHostnamesProtoFromBlob(const ProtoBlob& blob) {
+  HostnamesProto hostnames_proto;
+  EXPECT_TRUE(hostnames_proto.ParseFromArray(blob.data(), blob.size()));
+
+  return hostnames_proto;
 }
 
 void ExpectKerberosCallback(bool expected_result,
@@ -2636,6 +2644,39 @@ TEST_F(SmbProviderTest, SetupKerberosFailsWhenKerberosFilesDoNotExist) {
           base::Bind(&ExpectKerberosCallback, false /* expected_result*/));
 
   smbprovider_->SetupKerberos(std::move(callback), user);
+}
+
+TEST_F(SmbProviderTest, ParseNetBiosPacketSucceedsOnValidPacket) {
+  const std::string name_string("testname");
+  const std::vector<uint8_t> name(name_string.begin(), name_string.end());
+  const uint8_t name_length(name.size());
+  const uint16_t transaction_id(123);
+  const std::string hostname_1 = "hostname1";
+  const std::string hostname_2 = "hostname2";
+  const std::vector<std::vector<uint8_t>> hostnames = {
+      CreateValidNetBiosHostname(hostname_1, netbios::kFileServerNodeType),
+      CreateValidNetBiosHostname(hostname_2, netbios::kFileServerNodeType)};
+
+  const std::vector<uint8_t> valid_packet = CreateNetBiosResponsePacket(
+      hostnames, name_length, name, transaction_id, 0x20 /* response_type */);
+
+  ProtoBlob blob =
+      smbprovider_->ParseNetBiosPacket(valid_packet, transaction_id);
+
+  const HostnamesProto hostnames_proto = GetHostnamesProtoFromBlob(blob);
+  EXPECT_EQ(2, hostnames_proto.hostnames().size());
+  EXPECT_EQ(hostname_1, hostnames_proto.hostnames(0));
+  EXPECT_EQ(hostname_2, hostnames_proto.hostnames(1));
+}
+
+TEST_F(SmbProviderTest, ParseNetBiosPacketFailsOnInvalidPacket) {
+  const std::vector<uint8_t> invalid_packet;
+
+  ProtoBlob blob =
+      smbprovider_->ParseNetBiosPacket(invalid_packet, 0 /* transaction_id */);
+
+  const HostnamesProto hostnames_proto = GetHostnamesProtoFromBlob(blob);
+  EXPECT_EQ(0, hostnames_proto.hostnames().size());
 }
 
 }  // namespace smbprovider

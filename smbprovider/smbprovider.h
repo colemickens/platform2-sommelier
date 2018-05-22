@@ -373,6 +373,10 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Callback handler for SetupKerberos.
   void HandleSetupKerberosResponse(SetupKerberosCallback callback, bool result);
 
+  // Creates a HostnamesProto from a list of |hostnames|.
+  HostnamesProto BuildHostnamesProto(
+      const std::vector<std::string>& hostnames) const;
+
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
