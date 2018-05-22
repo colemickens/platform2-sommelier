@@ -1724,6 +1724,12 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       "--copy-packages-cache",
       GetEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"),
       "--mount-demo-apps", mount_demo_apps ? "1" : "0",
+      // Whether ARC should transition the supervision setup
+      //   "0": No transition necessary.
+      //   "1": Child -> regular transition, should disable supervision.
+      //   "2": Regular -> child transition, should enable supervision.
+      "--supervision-transition",
+      GetEnvOrDie(arc_paths_->env.get(), "SUPERVISION_TRANSITION"),
   };
 
   base::ElapsedTimer timer;

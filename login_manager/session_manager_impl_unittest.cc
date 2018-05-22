@@ -2087,6 +2087,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
       "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=1",
       // The upgrade signal has a PID.
       "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "SUPERVISION_TRANSITION=0",
       "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
       ExpectedCopyPackagesCacheFlagValue(false)};
   EXPECT_CALL(
@@ -2186,7 +2187,8 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
       std::string("CHROMEOS_USER=") + kSaneEmail,
       "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=1",
       // The upgrade signal has a PID.
-      "CONTAINER_PID=" + std::to_string(kAndroidPid), "DEMO_SESSION_APPS_PATH=",
+      "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "SUPERVISION_TRANSITION=0", "DEMO_SESSION_APPS_PATH=",
       ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_setup),
       ExpectedCopyPackagesCacheFlagValue(copy_cache_setup)};
   EXPECT_CALL(
@@ -2271,6 +2273,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
       "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
       // The upgrade signal has a PID.
       "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "SUPERVISION_TRANSITION=0",
       "DEMO_SESSION_APPS_PATH=/run/imageloader/0.1/demo_apps/img.squash",
       ExpectedSkipPackagesCacheSetupFlagValue(false),
       ExpectedCopyPackagesCacheFlagValue(false)};
@@ -2390,6 +2393,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
       "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
       // The upgrade signal has a PID.
       "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "SUPERVISION_TRANSITION=0",
       "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
       ExpectedCopyPackagesCacheFlagValue(false)};
   EXPECT_CALL(
@@ -2628,6 +2632,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
       "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
       // The upgrade signal has a PID.
       "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "SUPERVISION_TRANSITION=0",
       "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
       ExpectedCopyPackagesCacheFlagValue(false)};
   EXPECT_CALL(
@@ -2680,6 +2685,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
       "DISABLE_BOOT_COMPLETED_BROADCAST=0", "ENABLE_VENDOR_PRIVILEGED=0",
       // The upgrade signal has a PID.
       "CONTAINER_PID=" + std::to_string(kAndroidPid),
+      "SUPERVISION_TRANSITION=0",
       "DEMO_SESSION_APPS_PATH=", ExpectedSkipPackagesCacheSetupFlagValue(false),
       ExpectedCopyPackagesCacheFlagValue(false)};
   EXPECT_CALL(
