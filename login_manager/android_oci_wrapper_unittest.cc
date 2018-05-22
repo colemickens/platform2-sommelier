@@ -40,8 +40,8 @@ class AndroidOciWrapperTest : public ::testing::Test {
     containers_directory_ = std::make_unique<base::ScopedTempDir>();
     ASSERT_TRUE(containers_directory_->CreateUniqueTempDir());
 
-    impl_ = std::make_unique<AndroidOciWrapper>(&system_utils_,
-                                                containers_directory_->path());
+    impl_ = std::make_unique<AndroidOciWrapper>(
+        &system_utils_, containers_directory_->GetPath());
   }
 
  protected:
@@ -226,7 +226,7 @@ TEST_F(AndroidOciWrapperTest, StartContainerChildProcess) {
       .WillOnce(Return(true));
 
   base::FilePath container_absolute_path =
-      containers_directory_->path().Append("android");
+      containers_directory_->GetPath().Append("android");
   EXPECT_CALL(system_utils_, chdir(container_absolute_path))
       .WillOnce(Return(0));
 
