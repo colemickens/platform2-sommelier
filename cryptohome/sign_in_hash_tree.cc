@@ -17,7 +17,7 @@
 #include "hash_tree_leaf_data.pb.h"  // NOLINT(build/include)
 
 namespace {
-const char kHashCacheFileName[] = "hashcache";
+const char kLeafCacheFileName[] = "leafcache";
 }
 
 namespace cryptohome {
@@ -46,22 +46,30 @@ SignInHashTree::SignInHashTree(uint32_t leaf_length,
   // This can be collapsed into the closed form expression:
   // num_entries(H) = (fan_out^(H + 1) - 1) / (fan_out - 1)
   uint32_t height = leaf_length_ / bits_per_level_;
+  // We use |height - 1| since we only want to store the inner hashes, not
+  // the leaves.
+  height -= 1;
   uint32_t num_entries =
       ((1 << (bits_per_level_ * (height + 1))) - 1) / (fan_out_ - 1);
 
-  // Ensure a hash cache file of the right size exists, so that we can mmap it
-  // correctly later.
-  base::FilePath hash_cache_file = basedir.Append(kHashCacheFileName);
-  auto hash_cache_fd = std::make_unique<base::ScopedFD>(open(
-      hash_cache_file.value().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR));
-  CHECK(hash_cache_fd->is_valid());
-  CHECK(!ftruncate(hash_cache_fd->get(), num_entries * kHashSize));
-  hash_cache_fd.reset();
+  // Inner hash cache initialized to all 0's.
+  inner_hash_vector_.assign(num_entries * kHashSize, 0);
+  inner_hash_array_ =
+      reinterpret_cast<decltype(inner_hash_array_)>(inner_hash_vector_.data());
 
-  CHECK(hash_cache_.Initialize(hash_cache_file,
+  // Ensure a leaf cache file of the right size exists, so that we can mmap it
+  // correctly later.
+  base::FilePath leaf_cache_file = basedir.Append(kLeafCacheFileName);
+  auto leaf_cache_fd = std::make_unique<base::ScopedFD>(open(
+      leaf_cache_file.value().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR));
+  CHECK(leaf_cache_fd->is_valid());
+  CHECK(!ftruncate(leaf_cache_fd->get(), (1 << leaf_length_) * kHashSize));
+  leaf_cache_fd.reset();
+
+  CHECK(leaf_cache_.Initialize(leaf_cache_file,
                                base::MemoryMappedFile::READ_WRITE));
-  hash_cache_array_ =
-      reinterpret_cast<decltype(hash_cache_array_)>(hash_cache_.data());
+  leaf_cache_array_ =
+      reinterpret_cast<decltype(leaf_cache_array_)>(leaf_cache_.data());
 }
 
 SignInHashTree::~SignInHashTree() {}
@@ -85,9 +93,7 @@ std::vector<SignInHashTree::Label> SignInHashTree::GetAuxiliaryLabels(
   return aux_labels;
 }
 
-void SignInHashTree::GenerateAndStoreHashCache() {
-  // First, call a GetLabel() on each leaf node and update
-  // the corresponding |hash_cache_| indices.
+void SignInHashTree::PopulateLeafCache() {
   for (uint64_t i = 0; i < (1 << leaf_length_); i++) {
     std::vector<uint8_t> hmac, cred_metadata;
     Label label(i, leaf_length_, bits_per_level_);
@@ -95,8 +101,12 @@ void SignInHashTree::GenerateAndStoreHashCache() {
       LOG(ERROR) << "Error getting leaf HMAC, can't regenerate HashCache.";
       return;
     }
-    UpdateHashCache(label.cache_index(), hmac.data(), hmac.size());
+    UpdateLeafCache(label.value(), hmac.data(), hmac.size());
   }
+}
+
+void SignInHashTree::GenerateAndStoreHashCache() {
+  PopulateLeafCache();
 
   // Then, calculate all the inner label hashes.
   CalculateHash(Label(0, 0, bits_per_level_));
@@ -126,9 +136,11 @@ bool SignInHashTree::StoreLabel(const Label& label,
       LOG(ERROR) << "Couldn't store label: " << label.value() << " in PLT.";
       return false;
     }
+    UpdateLeafCache(label.value(), hmac.data(), hmac.size());
+  } else {
+    UpdateInnerHashArray(label.cache_index(), hmac.data(), hmac.size());
   }
 
-  UpdateHashCache(label.cache_index(), hmac.data(), hmac.size());
   UpdateHashCacheLabelPath(label);
   return true;
 }
@@ -146,7 +158,7 @@ bool SignInHashTree::RemoveLabel(const Label& label) {
   }
 
   std::vector<uint8_t> hmac(kHashSize, 0);
-  UpdateHashCache(label.cache_index(), hmac.data(), hmac.size());
+  UpdateLeafCache(label.value(), hmac.data(), hmac.size());
   UpdateHashCacheLabelPath(label);
   return true;
 }
@@ -186,8 +198,8 @@ bool SignInHashTree::GetLabelData(const Label& label,
                           leaf_data.credential_metadata().end());
   } else {
     // If it is a inner leaf, get the value from the HashCache file.
-    hmac->assign(hash_cache_array_[label.cache_index()],
-                 hash_cache_array_[label.cache_index()] + kHashSize);
+    hmac->assign(inner_hash_array_[label.cache_index()],
+                 inner_hash_array_[label.cache_index()] + kHashSize);
   }
   return true;
 }
@@ -224,8 +236,8 @@ SignInHashTree::Label SignInHashTree::GetFreeLabel() {
 std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
   std::vector<uint8_t> ret_val;
   if (IsLeafLabel(label)) {
-    ret_val.assign(hash_cache_array_[label.cache_index()],
-                   hash_cache_array_[label.cache_index()] + kHashSize);
+    ret_val.assign(leaf_cache_array_[label.value()],
+                   leaf_cache_array_[label.value()] + kHashSize);
     return ret_val;
   }
 
@@ -241,7 +253,7 @@ std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
   ret_val.assign(result_hash.begin(), result_hash.end());
 
   // Update the hash cache with the new value.
-  UpdateHashCache(label.cache_index(), ret_val.data(), ret_val.size());
+  UpdateInnerHashArray(label.cache_index(), ret_val.data(), ret_val.size());
   return ret_val;
 }
 
@@ -252,23 +264,36 @@ void SignInHashTree::UpdateHashCacheLabelPath(const Label& label) {
     std::vector<uint8_t> input_buffer;
     for (uint64_t i = 0; i < fan_out_; i++) {
       Label child_label = parent.Extend(i);
-      input_buffer.insert(
-          input_buffer.end(), hash_cache_array_[child_label.cache_index()],
-          hash_cache_array_[child_label.cache_index()] + kHashSize);
+      uint8_t* array_address;
+      if (IsLeafLabel(child_label)) {
+        array_address = leaf_cache_array_[child_label.value()];
+      } else {
+        array_address = inner_hash_array_[child_label.cache_index()];
+      }
+      input_buffer.insert(input_buffer.end(), array_address,
+                          array_address + kHashSize);
     }
     brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
-    UpdateHashCache(parent.cache_index(), result_hash.data(),
-                    result_hash.size());
+    UpdateInnerHashArray(parent.cache_index(), result_hash.data(),
+                         result_hash.size());
     cur_label = parent;
   }
 }
 
-void SignInHashTree::UpdateHashCache(uint32_t index,
+void SignInHashTree::UpdateInnerHashArray(uint32_t index,
+                                          const uint8_t* data,
+                                          size_t size) {
+  CHECK_EQ(kHashSize, size);
+  CHECK_LT(index, inner_hash_vector_.size() / kHashSize);
+  memcpy(inner_hash_array_[index], data, kHashSize);
+}
+
+void SignInHashTree::UpdateLeafCache(uint32_t index,
                                      const uint8_t* data,
                                      size_t size) {
   CHECK_EQ(kHashSize, size);
-  CHECK_LT(index, hash_cache_.length() / kHashSize);
-  memcpy(hash_cache_array_[index], data, kHashSize);
+  CHECK_LT(index, leaf_cache_.length() / kHashSize);
+  memcpy(leaf_cache_array_[index], data, kHashSize);
 }
 
 }  // namespace cryptohome

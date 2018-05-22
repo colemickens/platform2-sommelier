@@ -167,17 +167,6 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
                                  &cred_data));
   EXPECT_EQ(kRootHash6_4_1, returned_hash);
-
-  // Now clear the tree object, create it again, and see if everything is what
-  // it was.
-  tree.reset();
-  tree = std::make_unique<SignInHashTree>(6, 2, temp_dir.GetPath());
-
-  returned_hash.clear();
-  cred_data.clear();
-  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
-                                 &cred_data));
-  EXPECT_EQ(kRootHash6_4_1, returned_hash);
 }
 
 // Test another hash tree, and check that when you insert / remove a label,

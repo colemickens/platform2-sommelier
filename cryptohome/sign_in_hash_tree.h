@@ -15,7 +15,6 @@
 #include <base/files/file_path.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/files/scoped_file.h>
-
 #include <base/logging.h>
 
 #include "cryptohome/persistent_lookup_table.h"
@@ -47,13 +46,28 @@ namespace cryptohome {
 //  leaf_length = n * log2(fan_out), where n is any non-negative integer.
 //
 // The recalculation of the entire hash tree given the leaf nodes can be
-// time consuming. To avoid that, this class also maintains a "HashCache" file.
-// This file will store the hashes of all the inner nodes of the hash tree.
-// Once this file is generated, we can index into the file to find the
-// relevant inner node hash. NOTE: The HashCache file is considered to be
-// completely redundant. If there is any detected discrepancy between the root
-// hash on the HashCache file, and the root hash on the Cr50, we will
-// reconstruct the HashCache file from scratch.
+// time consuming. To avoid that, this class also maintains a "HashCache".
+// Conceptually, the HashCache stores the hashes of each node of the hash
+// tree for easy access without the need to recompute them on every operation.
+// Practically, it is implemented in two parts:
+// - LeafCache: This file will store the MACs of all the leaf nodes of the
+//   hash tree. It is expected to persist across reboots, and will be accessible
+//   via a memory mapped file descriptor. The LeafCache avoids having to read
+//   all the leaves from disk to obtain their hashes, which would be slow.
+// - InnerHashArray: This in-memory array will store the hashes of all the inner
+//   nodes of the hash tree. It is expected to be regenerated on the first
+//   operation after a reboot. When a SignInHashTree object is created, the
+//   InnerHashArray will consist of an all-zero array. This can be used to
+//   determine whether the InnerHashArray has been initialized or not.
+//
+// Once the HashCache is generated, we can index into the file or array to find
+// the relevant node's hash. NOTE: The HashCache is considered to be completely
+// redundant. If there is any detected discrepancy between the root hash on the
+// InnerHashArray, and the root hash on the Cr50, we will reconstruct the
+// HashCache from scratch.
+//
+// While calculating the inner nodes' hashes, the LeafCache will be used to
+// get the corresponding leaf MAC values.
 //
 // The SignInHashTree needs a persistent consistent storage on disk, and this
 // will be provided by the PersistentLookupTable (referred to as PLT in the
@@ -170,10 +184,10 @@ class SignInHashTree {
   // coupled with knowledge of the credential label in question.
   std::vector<Label> GetAuxiliaryLabels(const Label& leaf_label);
 
-  // Compute all the inner hashes of the hash tree, and store these
-  // in the hashcache file once we are done.
-  // This function first updates the |hash_cache_| with all the leaf
-  // HMACs, and then calculates all inner hashes.
+  // Compute all the hashes of the hash tree.
+  //
+  // This function first calls PopulateLeafCache(), and then calculates all
+  // inner hashes and updates the |inner_hash_array_|.
   void GenerateAndStoreHashCache();
 
   // Store the credential data for label |label| in the Hash Tree.
@@ -185,7 +199,10 @@ class SignInHashTree {
   // - Concat the HMAC and credential metadata blobs together and store it
   //   in the underlying PersistentLookupTable pointed by |plt_|, with the
   //   key |label.value()|.
-  // - Store the HMAC in the hash cache file.
+  // - Store the MAC in the |leaf_cache_| file if it is a leaf label, or update
+  //   the |inner_hash_array_| otherwise.
+  // - This function will also update the HashCache (i.e all the hashes along
+  //   the path to the root hash) as well.
   //
   // NOTE: The SignInHashTree will write over any previous value for a
   // particular label. Ensure that the label is available before invoking this
@@ -203,14 +220,20 @@ class SignInHashTree {
   // contain the relevant credential metadata, and |hmac| will be filled with
   // the associated HMAC, which will be taken directly from the table.
   // If |label| refers to an inner node, then the |hmac| will be filled with the
-  // hash obtained from the |hashcache_| array.
+  // hash obtained from the |inner_hash_array_|.
   //
   // |hmac| and |cred_data| are expected to be pointers to empty vectors. The
   // function will ensure that the corresponding vectors have sufficient space.
   //
-  // Note that the hash returned may be incorrect if the hashcache file is stale
+  // Note that the hash returned may be incorrect if the HashCache is stale
   // or erroneous, and a failure will necessitate the regeneration of the
-  // HashCacheFile.
+  // HashCache.
+  //
+  // Note that this function does NOT update the |leaf_cache_|. Therefore, in
+  // the event that the |leaf_cache_| is inconsistent with the on-disk table
+  // contents, the values retrieved from GetLabelData() and |leaf_cache_| may
+  // be different.
+  //
   // Returns true on success, false otherwise.
   bool GetLabelData(const Label& label,
                     std::vector<uint8_t>* hmac,
@@ -219,6 +242,9 @@ class SignInHashTree {
   // Remove the credential metadata associated with label |label| from the hash
   // tree. The |label| must refer to a leaf node; if a label for a inner node is
   // provided, or if the underlying PLT has an issue, an error will be returned.
+  //
+  // The function will update the HashCache after removing the label.
+  //
   // Returns true on success, false otherwise.
   bool RemoveLabel(const Label& label);
 
@@ -231,24 +257,36 @@ class SignInHashTree {
  private:
   // Recursive function which is used to calculate the hashes for the hash tree,
   // starting node |label|. The resultant hash is returned.
-  // This function assumes that the leaf HMAC values have already been updated
-  // in the |hash_cache_|.
+  // This function assumes that the leaf MAC values have already been updated
+  // in the |leaf_cache_|.
   //
   // In addition to calculating the hash for |label|, this function will
-  // also update the |hash_cache_| with the new value.
+  // also update the |inner_hash_array_| with the new value.
   std::vector<uint8_t> CalculateHash(const Label& label);
 
   // Helper function to determine whether a Label corresponds to a leaf
   // node of the hash tree.
   bool IsLeafLabel(const Label& l) { return l.length() == leaf_length_; }
 
-  // Update the hash cache associated with the path for |label|.
+  // Update the HashCache associated with the path for |label|, and in doing
+  // so modifies the |inner_hash_array_|.
   // This function is typically called after an update is made to the
   // underlying PLT.
+  // This function assumes that the |leaf_cache_| is up to date,
   void UpdateHashCacheLabelPath(const Label& label);
 
-  // Update the hash cache with the provided value.
-  void UpdateHashCache(uint32_t index, const uint8_t* data, size_t size);
+  // Update the |inner_hash_array_| with the provided value.
+  // This function does NOT update the entire HashCache label path to the root
+  // for this index.
+  void UpdateInnerHashArray(uint32_t index, const uint8_t* data, size_t size);
+
+  // Update the |leaf_cache_| with the provided value.
+  // This function does NOT update the entire HashCache label path to the root
+  // for this index.
+  void UpdateLeafCache(uint32_t index, const uint8_t* data, size_t size);
+
+  // Populate the |leaf_cache_| with the MAC values of all leaf labels.
+  void PopulateLeafCache();
 
   // Length of the leaf node label.
   uint32_t leaf_length_;
@@ -256,11 +294,15 @@ class SignInHashTree {
   uint32_t fan_out_;
   // Number of bits per level of the hash tree.
   uint8_t bits_per_level_;
-  // Memory mapped file pointing to the HashCache file on disk.
-  base::MemoryMappedFile hash_cache_;
-  // Pointer to the |hash_cache_| file data.
+  // Memory mapped file pointing to the LeafCache file on disk.
+  base::MemoryMappedFile leaf_cache_;
+  // Pointer to the |leaf_cache_| file data.
   // Each element is a 32-byte hash.
-  uint8_t (*hash_cache_array_)[kHashSize];
+  uint8_t (*leaf_cache_array_)[kHashSize];
+  // In-memory array used to store inner node hash values.
+  std::vector<uint8_t> inner_hash_vector_;
+  // Pointer to the |inner_hash_vector_| data.
+  uint8_t (*inner_hash_array_)[kHashSize];
 
   // This is used to actually store and retrieve data from the backing disk
   // storage.
