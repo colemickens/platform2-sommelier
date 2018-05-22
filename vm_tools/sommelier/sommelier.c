@@ -636,17 +636,10 @@ static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
 
 static void sl_output_buffer_release(void* data, struct wl_buffer* buffer) {
   struct sl_output_buffer* output_buffer = wl_buffer_get_user_data(buffer);
-  struct sl_output_buffer *item, *next;
   struct sl_host_surface* host_surface = output_buffer->surface;
 
   wl_list_remove(&output_buffer->link);
   wl_list_insert(&host_surface->released_buffers, &output_buffer->link);
-
-  // Remove unused buffers.
-  wl_list_for_each_safe(item, next, &host_surface->released_buffers, link) {
-    if (item != output_buffer && item != host_surface->current_buffer)
-      sl_output_buffer_destroy(item);
-  }
 }
 
 static const struct wl_buffer_listener sl_output_buffer_listener = {
