@@ -78,6 +78,9 @@ class HomeDirs {
   virtual bool GetOwner(std::string* owner);
   virtual bool GetPlainOwner(std::string* owner);
 
+  // Returns whether the ephemeral users policy is enabled.
+  virtual bool AreEphemeralUsersEnabled();
+
   // Returns a list of present keyset indices for an obfuscated username.
   // There is no guarantee the keysets are valid.
   virtual bool GetVaultKeysets(const std::string& obfuscated,
@@ -253,7 +256,6 @@ class HomeDirs {
 
  private:
   base::TimeDelta GetUserInactivityThresholdForRemoval();
-  bool AreEphemeralUsersEnabled();
   // Loads the device policy, either by initializing it or reloading the
   // existing one.
   void LoadDevicePolicy();

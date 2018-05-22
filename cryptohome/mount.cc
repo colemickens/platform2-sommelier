@@ -152,9 +152,11 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
   homedirs_->set_shadow_root(FilePath(shadow_root_));
   homedirs_->set_enterprise_owned(enterprise_owned_);
 
-  // Make sure both we and |homedirs_| have a proper device policy object.
-  EnsureDevicePolicyLoaded(false);
-  homedirs_->set_policy_provider(policy_provider_.get());
+  // Make sure |homedirs_| uses the same PolicyProvider instance as we in case
+  // it was set by a test.
+  if (policy_provider_)
+    homedirs_->set_policy_provider(policy_provider_.get());
+
   if (!homedirs_->Init(platform, crypto, user_timestamp_cache_))
     result = false;
 
@@ -338,9 +340,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return MountGuestCryptohome();
   }
 
-  ReloadDevicePolicy();
-  bool ephemeral_users = AreEphemeralUsersEnabled();
-  const std::string obfuscated_owner = GetObfuscatedOwner();
+  bool ephemeral_users = homedirs_->AreEphemeralUsersEnabled();
+  std::string obfuscated_owner;
+  homedirs_->GetOwner(&obfuscated_owner);
   if (ephemeral_users)
     homedirs_->RemoveNonOwnerCryptohomes();
 
@@ -937,8 +939,7 @@ bool Mount::UnmountCryptohome() {
 
   UnmountAll();
   CleanUpEphemeral();
-  ReloadDevicePolicy();
-  if (AreEphemeralUsersEnabled())
+  if (homedirs_->AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
   else
     UpdateCurrentUserActivityTimestamp(0);
@@ -1123,15 +1124,6 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
     return true;
   }
   return false;
-}
-
-void Mount::EnsureDevicePolicyLoaded(bool force_reload) {
-  if (!policy_provider_.get()) {
-    policy_provider_.reset(new policy::PolicyProvider());
-    homedirs_->set_policy_provider(policy_provider_.get());
-  } else if (force_reload) {
-    policy_provider_->Reload();
-  }
 }
 
 bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
@@ -1557,31 +1549,6 @@ FilePath Mount::GetMountedEphemeralRootHomePath(
       .Append(kRootHomeSuffix);
 }
 
-std::string Mount::GetObfuscatedOwner() {
-  EnsureDevicePolicyLoaded(false);
-  std::string owner;
-  if (policy_provider_->device_policy_is_loaded())
-    policy_provider_->GetDevicePolicy().GetOwner(&owner);
-
-  if (!owner.empty())
-    return BuildObfuscatedUsername(owner, system_salt_);
-  return "";
-}
-
-bool Mount::AreEphemeralUsersEnabled() {
-  EnsureDevicePolicyLoaded(false);
-  // If the policy cannot be loaded, default to non-ephemeral users.
-  bool ephemeral_users_enabled = false;
-  if (policy_provider_->device_policy_is_loaded())
-    policy_provider_->GetDevicePolicy().GetEphemeralUsersEnabled(
-        &ephemeral_users_enabled);
-  return ephemeral_users_enabled;
-}
-
-void Mount::ReloadDevicePolicy() {
-  EnsureDevicePolicyLoaded(true);
-}
-
 bool Mount::CheckChapsDirectory(const FilePath& dir,
                                 const FilePath& legacy_dir) {
   const Platform::Permissions kChapsDirPermissions = {
@@ -1992,7 +1959,9 @@ std::unique_ptr<base::Value> Mount::GetStatus() {
   }
   dv->Set("keysets", std::move(keysets));
   dv->SetBoolean("mounted", IsMounted());
-  dv->SetString("owner", GetObfuscatedOwner());
+  std::string obfuscated_owner;
+  homedirs_->GetOwner(&obfuscated_owner);
+  dv->SetString("owner", obfuscated_owner);
   dv->SetBoolean("enterprise", enterprise_owned_);
 
   std::string mount_type_string;

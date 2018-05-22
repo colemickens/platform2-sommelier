@@ -539,21 +539,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::FilePath GetMountedEphemeralRootHomePath(
       const std::string& obfuscated_username) const;
 
-  // Get the owner user's obfuscated hash. This is empty if the owner has not
-  // been set yet or the device is enterprise owned.
-  // The value is cached. It is the caller's responsibility to invoke
-  // ReloadDevicePolicy() whenever a refresh of the cache is desired.
-  std::string GetObfuscatedOwner();
-
-  // Returns the state of the ephemeral users policy. Defaults to non-ephemeral
-  // users by returning false if the policy cannot be loaded.
-  // The value is cached. It is the caller's responsibility to invoke
-  // ReloadDevicePolicy() whenever a refresh of the cache is desired.
-  bool AreEphemeralUsersEnabled();
-
-  // Reloads the device policy.
-  void ReloadDevicePolicy();
-
   // Checks Chaps Directory and makes sure that it has the correct
   // permissions, owner uid and gid. If any of these values are
   // incorrect, the correct values are set. If the directory
@@ -568,12 +553,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   legacy_dir - legacy directory location
   bool CheckChapsDirectory(const base::FilePath& dir,
                            const base::FilePath& legacy_dir);
-
-  // Ensures that the device policy is loaded.
-  //
-  // Parameters
-  //   force_reload - Whether to force a reload to pick up any policy changes.
-  void EnsureDevicePolicyLoaded(bool force_reload);
 
   // Same as MountCryptohome but specifies if the cryptohome directory should be
   // recreated on a fatal error
@@ -784,7 +763,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Cache of last access timestamp for existing users.
   UserOldestActivityTimestampCache* user_timestamp_cache_;
 
-  // Used to retrieve the owner user.
+  // Used to retrieve the owner user.  Currently used only for tests.
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
 
   // True if the machine is enterprise owned, false if not or we have
