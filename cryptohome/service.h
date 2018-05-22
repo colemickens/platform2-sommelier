@@ -800,7 +800,17 @@ class Service : public brillo::dbus::AbstractDbusService,
       std::unique_ptr<AuthorizationRequest> authorization,
       std::unique_ptr<MountRequest> request,
       std::unique_ptr<Credentials> credentials,
+      const Mount::MountArgs& mount_args,
       DBusGMethodInvocation* context);
+
+  // Determines whether the mount request should be ephemeral. On error, returns
+  // false and sets the error code in |error|. Otherwise, returns true and fills
+  // the result in |is_ephemeral|.
+  bool GetShouldMountAsEphemeral(const std::string& account_id,
+                                 bool is_ephemeral_mount_requested,
+                                 bool has_create_request,
+                                 bool* is_ephemeral,
+                                 MountError* error) const;
 
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string, scoped_refptr<cryptohome::Mount>>

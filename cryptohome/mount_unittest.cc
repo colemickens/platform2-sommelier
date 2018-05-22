@@ -2170,6 +2170,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2180,26 +2181,26 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
       .WillOnce(Return(true));
 }
 
-TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
+TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountIsEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, a mount request with the |ensure_ephemeral| flag set fails.
-  TestUser *user = &helper_.users[0];
+  TestUser* user = &helper_.users[0];
 
   EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
   EXPECT_CALL(tpm_, SetUserType(_)).Times(0);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
-  mount_args.ensure_ephemeral = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(MOUNT_ERROR_FATAL, error);
 }
 
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
   // Checks that when a device is enterprise enrolled, a mount request with the
-  // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted and no
+  // |is_ephemeral| flag set causes a tmpfs cryptohome to be mounted and no
   // regular vault to be created.
   set_policy(true, "", false);
   mount_->set_enterprise_owned(true);
@@ -2218,7 +2219,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
-  mount_args.ensure_ephemeral = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2267,6 +2268,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2291,6 +2293,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2321,6 +2324,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2357,6 +2361,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2390,6 +2395,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2431,6 +2437,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2479,6 +2486,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
@@ -2512,9 +2520,9 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
+TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountIsEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
-  // a mount request for a non-owner user with the |ensure_ephemeral| flag set
+  // a mount request for a non-owner user with the |is_ephemeral| flag set
   // causes a tmpfs cryptohome to be mounted and no regular vault to be created.
   TestUser* owner = &helper_.users[3];
   TestUser* user = &helper_.users[0];
@@ -2538,7 +2546,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
-  mount_args.ensure_ephemeral = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
@@ -2548,7 +2556,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
       .WillOnce(Return(true));
 }
 
-TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
+TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountIsEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // a mount request for the owner with the |ensure_ephemeral| flag set fails.
   TestUser* owner = &helper_.users[3];
@@ -2560,7 +2568,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
-  mount_args.ensure_ephemeral = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(MOUNT_ERROR_FATAL, error);
@@ -2742,6 +2750,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
@@ -2846,6 +2855,7 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
@@ -2948,9 +2958,9 @@ TEST_P(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
+TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountIsEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
-  // a mount request for a non-owner user with the |ensure_ephemeral| flag set
+  // a mount request for a non-owner user with the |is_ephemeral| flag set
   // causes a tmpfs cryptohome to be mounted, even if a regular vault exists for
   // the user.
   // Since ephemeral users aren't enabled, no vaults will be deleted.
@@ -3020,14 +3030,14 @@ TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
-  mount_args.ensure_ephemeral = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
-TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
+TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
   // Checks that when a device is enterprise enrolled, a mount request with the
-  // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted, even
+  // |is_ephemeral| flag set causes a tmpfs cryptohome to be mounted, even
   // if a regular vault exists for the user.
   // Since ephemeral users aren't enabled, no vaults will be deleted.
   set_policy(true, "", false);
@@ -3099,7 +3109,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
-  mount_args.ensure_ephemeral = true;
+  mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }

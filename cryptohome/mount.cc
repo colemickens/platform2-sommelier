@@ -340,26 +340,33 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return MountGuestCryptohome();
   }
 
-  bool ephemeral_users = homedirs_->AreEphemeralUsersEnabled();
-  std::string obfuscated_owner;
-  homedirs_->GetOwner(&obfuscated_owner);
-  if (ephemeral_users)
+  // Remove all existing cryptohomes, except for the owner's one, if the
+  // ephemeral users policy is on.
+  // Note that a fresh policy value is read here, which in theory can conflict
+  // with the one used for calculation of |mount_args.is_ephemeral|. However,
+  // this inconsistency (whose probability is anyway pretty low in practice)
+  // should only lead to insignificant transient glitches, like an attempt to
+  // mount a non existing anymore cryptohome.
+  if (homedirs_->AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
 
   const std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
-  bool non_owner =
-      enterprise_owned_ ||
-      (!obfuscated_owner.empty() && obfuscated_username != obfuscated_owner);
+  const bool is_owner = homedirs_->IsOrWillBeOwner(username);
 
-  // If the user is not the owner and either the ephemeral users policy is
-  // enabled or the |ensure_ephemeral| flag is set in the |mount_args|, mount an
-  // ephemeral cryptohome.
-  if (non_owner && (ephemeral_users || mount_args.ensure_ephemeral)) {
+  // Process ephemeral mounts in a special manner.
+  if (mount_args.is_ephemeral) {
     if (!mount_args.create_if_missing) {
-      LOG(ERROR) << "An ephemeral cryptohome can only be mounted when its "
-                 << "creation on-the-fly is allowed.";
-      *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
+      NOTREACHED() << "An ephemeral cryptohome can only be mounted when its "
+                      "creation on-the-fly is allowed.";
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
+
+    if (is_owner) {
+      LOG(ERROR) << "An ephemeral cryptohome can only be mounted when the user "
+                    "is not the owner.";
+      *mount_error = MOUNT_ERROR_FATAL;
       return false;
     }
 
@@ -373,15 +380,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     current_user_->SetUser(credentials);
     *mount_error = MOUNT_ERROR_NONE;
     return true;
-  }
-
-  // If the |ensure_ephemeral| flag is set in the |mount_args|, never mount a
-  // non-ephemeral cryptohome. Fail with an error instead.
-  if (mount_args.ensure_ephemeral) {
-    LOG(ERROR) << "An ephemeral cryptohome can only be mounted when the user "
-               << "is not the owner.";
-    *mount_error = MOUNT_ERROR_FATAL;
-    return false;
   }
 
   if (!mount_args.create_if_missing &&
@@ -662,7 +660,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
   }
 
-  if (!UserSignInEffects(true /* is_mount */, !non_owner)) {
+  if (!UserSignInEffects(true /* is_mount */, is_owner)) {
     LOG(ERROR) << "Failed to set user type, aborting mount";
     UnmountAll();
     *mount_error = MOUNT_ERROR_TPM_COMM_ERROR;

@@ -78,6 +78,10 @@ class HomeDirs {
   virtual bool GetOwner(std::string* owner);
   virtual bool GetPlainOwner(std::string* owner);
 
+  // Returns whether the given user is a non-enterprise owner, or if it will
+  // become such in case it signs in now.
+  bool IsOrWillBeOwner(const std::string& account_id);
+
   // Returns whether the ephemeral users policy is enabled.
   virtual bool AreEphemeralUsersEnabled();
 

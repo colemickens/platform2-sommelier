@@ -88,7 +88,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   struct MountArgs {
     bool create_if_missing = false;
-    bool ensure_ephemeral = false;
+    // Whether the mount has to be ephemeral.
+    bool is_ephemeral = false;
     // When creating a new cryptohome from scratch, use ecryptfs.
     bool create_as_ecryptfs = false;
     // Forces dircrypto, i.e., makes it an error to mount ecryptfs.

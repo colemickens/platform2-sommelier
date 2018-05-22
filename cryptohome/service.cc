@@ -1677,13 +1677,23 @@ gboolean Service::Mount(const gchar *userid,
     return TRUE;
   }
 
+  // Determine whether the mount should be ephemeral.
+  bool is_ephemeral = false;
+  MountError mount_error = MOUNT_ERROR_NONE;
+  if (!GetShouldMountAsEphemeral(userid, ensure_ephemeral, create_if_missing,
+                                 &is_ephemeral, &mount_error)) {
+    *OUT_error_code = mount_error;
+    *OUT_result = FALSE;
+    return TRUE;
+  }
+
   // If a cryptohome is mounted for the user already, reuse that mount unless
-  // the |ensure_ephemeral| flag prevents it: When |ensure_ephemeral| is
+  // the |is_ephemeral| flag prevents it: When |is_ephemeral| is
   // |true|, a cryptohome backed by tmpfs is required. If the currently
   // mounted cryptohome is backed by a vault, it must be unmounted and
   // remounted with a tmpfs backend.
   scoped_refptr<cryptohome::Mount> user_mount = GetOrCreateMountForUser(userid);
-  if (ensure_ephemeral && user_mount->IsNonEphemeralMounted()) {
+  if (is_ephemeral && user_mount->IsNonEphemeralMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
     if (!user_mount->UnmountCryptohome()) {
@@ -1743,7 +1753,7 @@ gboolean Service::Mount(const gchar *userid,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
-  mount_args.ensure_ephemeral = ensure_ephemeral;
+  mount_args.is_ephemeral = is_ephemeral;
   mount_args.create_as_ecryptfs = force_ecryptfs_;
   // TODO(kinaba): Currently Mount is not used for type of accounts that
   // we need to force dircrypto. Add an option when it becomes necessary.
@@ -1794,15 +1804,15 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
   // At present, we only enforce non-empty email addresses.
   // In the future, we may wish to canonicalize if we don't move
   // to requiring a IdP-unique identifier.
-  if (GetAccountId(*identifier).empty()) {
+  const std::string& account_id = GetAccountId(*identifier);
+  if (account_id.empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
 
   if (request->public_mount()) {
     std::string public_mount_passkey;
-    if (!GetPublicMountPassKey(GetAccountId(*identifier),
-                               &public_mount_passkey)) {
+    if (!GetPublicMountPassKey(account_id, &public_mount_passkey)) {
       LOG(ERROR) << "Could not get public mount passkey.";
       reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
       SendReply(context, reply);
@@ -1863,15 +1873,38 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
   }
 
   auto username_passkey = std::make_unique<UsernamePasskey>(
-      GetAccountId(*identifier).c_str(),
-      SecureBlob(authorization->key().secret().begin(),
-                 authorization->key().secret().end()));
+      account_id.c_str(), SecureBlob(authorization->key().secret().begin(),
+                                     authorization->key().secret().end()));
   // Everything else can be the default.
   username_passkey->set_key_data(authorization->key().data());
 
+  // Determine whether the mount should be ephemeral.
+  bool is_ephemeral = false;
+  MountError mount_error = MOUNT_ERROR_NONE;
+  if (!GetShouldMountAsEphemeral(account_id, request->require_ephemeral(),
+                                 request->has_create(), &is_ephemeral,
+                                 &mount_error)) {
+    reply.set_error(MountErrorToCryptohomeError(mount_error));
+    SendReply(context, reply);
+    return;
+  }
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = request->has_create();
+  mount_args.is_ephemeral = is_ephemeral;
+  mount_args.create_as_ecryptfs =
+      force_ecryptfs_ ||
+      (request->has_create() && request->create().force_ecryptfs());
+  mount_args.to_migrate_from_ecryptfs = request->to_migrate_from_ecryptfs();
+  // Force_ecryptfs_ wins.
+  mount_args.force_dircrypto =
+      !force_ecryptfs_ && request->force_dircrypto_if_available();
+  mount_args.shadow_only = request->hidden_mount();
+
   ContinueMountExWithCredentials(
       std::move(identifier), std::move(authorization), std::move(request),
-      std::unique_ptr<Credentials>(std::move(username_passkey)), context);
+      std::unique_ptr<Credentials>(std::move(username_passkey)), mount_args,
+      context);
 }
 
 void Service::ContinueMountExWithCredentials(
@@ -1879,6 +1912,7 @@ void Service::ContinueMountExWithCredentials(
     std::unique_ptr<AuthorizationRequest> authorization,
     std::unique_ptr<MountRequest> request,
     std::unique_ptr<Credentials> credentials,
+    const Mount::MountArgs& mount_args,
     DBusGMethodInvocation* context) {
   CleanUpHiddenMounts();
 
@@ -1947,7 +1981,7 @@ void Service::ContinueMountExWithCredentials(
   }
 
   // Don't overlay an ephemeral mount over a file-backed one.
-  if (request->require_ephemeral() && user_mount->IsNonEphemeralMounted()) {
+  if (mount_args.is_ephemeral && user_mount->IsNonEphemeralMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
     if (!user_mount->UnmountCryptohome()) {
@@ -1989,16 +2023,6 @@ void Service::ContinueMountExWithCredentials(
   // MountCryptohome() not in the other areas prior.
   ReportTimerStart(kMountExTimer);
   MountError code = MOUNT_ERROR_NONE;
-  Mount::MountArgs mount_args;
-  mount_args.create_if_missing = request->has_create();
-  mount_args.ensure_ephemeral = request->require_ephemeral();
-  mount_args.create_as_ecryptfs = force_ecryptfs_ ||
-      (request->has_create() && request->create().force_ecryptfs());
-  mount_args.to_migrate_from_ecryptfs = request->to_migrate_from_ecryptfs();
-  // Force_ecryptfs_ wins.
-  mount_args.force_dircrypto =
-      !force_ecryptfs_ && request->force_dircrypto_if_available();
-  mount_args.shadow_only = request->hidden_mount();
   bool status = user_mount->MountCryptohome(*credentials, mount_args, &code);
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
 
@@ -3168,6 +3192,30 @@ void Service::DoGetSupportedKeyPolicies(const std::string& request,
   }
 
   SendReply(context, reply);
+}
+
+bool Service::GetShouldMountAsEphemeral(const std::string& account_id,
+                                        bool is_ephemeral_mount_requested,
+                                        bool has_create_request,
+                                        bool* is_ephemeral,
+                                        MountError* error) const {
+  const bool is_or_will_be_owner = homedirs_->IsOrWillBeOwner(account_id);
+  if (is_ephemeral_mount_requested && is_or_will_be_owner) {
+    LOG(ERROR) << "An ephemeral cryptohome can only be mounted when the user "
+                  "is not the owner.";
+    *error = MOUNT_ERROR_FATAL;
+    return false;
+  }
+  *is_ephemeral =
+      !is_or_will_be_owner &&
+      (homedirs_->AreEphemeralUsersEnabled() || is_ephemeral_mount_requested);
+  if (*is_ephemeral && !has_create_request) {
+    LOG(ERROR) << "An ephemeral cryptohome can only be mounted when its "
+                  "creation on-the-fly is allowed.";
+    *error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace cryptohome

@@ -1200,6 +1200,12 @@ bool HomeDirs::GetOwner(std::string* owner) {
   return true;
 }
 
+bool HomeDirs::IsOrWillBeOwner(const std::string& account_id) {
+  std::string owner;
+  GetPlainOwner(&owner);
+  return !enterprise_owned_ && (owner.empty() || account_id == owner);
+}
+
 bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
   FilePath salt_file = shadow_root_.Append(kSystemSaltFile);
   if (!crypto_->GetOrCreateSalt(salt_file, CRYPTOHOME_DEFAULT_SALT_LENGTH,
