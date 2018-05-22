@@ -114,7 +114,7 @@ constexpr char kTypeFileDataMMC[] = "/sys/devices/mmc_host/mmc0/type";
 TEST(StorageToolTest, TestGetDevice) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataExample,
                   sizeof(kMountsDataExample));
 
@@ -127,7 +127,7 @@ TEST(StorageToolTest, TestGetDevice) {
 TEST(StorageToolTest, TestGetDeviceMMC) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataExampleMMC,
                   sizeof(kMountsDataExampleMMC));
 
@@ -140,7 +140,7 @@ TEST(StorageToolTest, TestGetDeviceMMC) {
 TEST(StorageToolTest, TestGetDeviceMMCRepeatedNumber) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataExampleMMCRepeatedNumber,
                   sizeof(kMountsDataExampleMMCRepeatedNumber));
 
@@ -153,7 +153,7 @@ TEST(StorageToolTest, TestGetDeviceMMCRepeatedNumber) {
 TEST(StorageToolTest, TestGetDeviceDM) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataExampleDM,
                   sizeof(kMountsDataExampleDM));
 
@@ -166,7 +166,7 @@ TEST(StorageToolTest, TestGetDeviceDM) {
 TEST(StorageToolTest, TestGetDeviceNVME) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataExampleNVME,
                   sizeof(kMountsDataExampleNVME));
 
@@ -179,7 +179,7 @@ TEST(StorageToolTest, TestGetDeviceNVME) {
 TEST(StorageToolTest, TestGetDeviceLoop) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataExampleLOOP,
                   sizeof(kMountsDataExampleLOOP));
 
@@ -192,7 +192,7 @@ TEST(StorageToolTest, TestGetDeviceLoop) {
 TEST(StorageToolTest, TestGetDeviceNoMounts) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
 
   debugd::StorageTool sTool;
   const base::FilePath device =
@@ -203,7 +203,7 @@ TEST(StorageToolTest, TestGetDeviceNoMounts) {
 TEST(StorageToolTest, TestGetDeviceForNone) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataForNone,
                   sizeof(kMountsDataForNone));
 
@@ -216,7 +216,7 @@ TEST(StorageToolTest, TestGetDeviceForNone) {
 TEST(StorageToolTest, TestGetDeviceSamePrefix) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath mounts = temp_dir.path().Append("mounts");
+  base::FilePath mounts = temp_dir.GetPath().Append("mounts");
   base::WriteFile(mounts, kMountsDataForSamePrefix,
                   sizeof(kMountsDataForSamePrefix));
 
@@ -229,8 +229,8 @@ TEST(StorageToolTest, TestGetDeviceSamePrefix) {
 TEST(StorageToolTest, TestIsSupportedNoTypeLink) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath typeFile = temp_dir.path().Append("type");
-  base::FilePath vendFile = temp_dir.path().Append("vendor");
+  base::FilePath typeFile = temp_dir.GetPath().Append("type");
+  base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
 
   debugd::StorageTool sTool;
   std::string msg;
@@ -242,8 +242,8 @@ TEST(StorageToolTest, TestIsSupportedNoTypeLink) {
 TEST(StorageToolTest, TestIsSupportedMMC) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath typeFile = temp_dir.path().Append("mmc_type");
-  base::FilePath vendFile = temp_dir.path().Append("vendor");
+  base::FilePath typeFile = temp_dir.GetPath().Append("mmc_type");
+  base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
   base::WriteFile(typeFile, kTypeFileDataMMC,
                   sizeof(kTypeFileDataMMC));
 
@@ -257,8 +257,8 @@ TEST(StorageToolTest, TestIsSupportedMMC) {
 TEST(StorageToolTest, TestIsSupportedNoVend) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath typeFile = temp_dir.path().Append("target_type");
-  base::FilePath vendFile = temp_dir.path().Append("vendor");
+  base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
+  base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
   base::WriteFile(typeFile, kTypeFileDataTarget,
                   sizeof(kTypeFileDataTarget));
 
@@ -272,8 +272,8 @@ TEST(StorageToolTest, TestIsSupportedNoVend) {
 TEST(StorageToolTest, TestIsSupportedVendEmpty) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath typeFile = temp_dir.path().Append("target_type");
-  base::FilePath vendFile = temp_dir.path().Append("vendor");
+  base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
+  base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
   base::WriteFile(typeFile, kTypeFileDataTarget,
                   sizeof(kTypeFileDataTarget));
 
@@ -290,8 +290,8 @@ TEST(StorageToolTest, TestIsSupportedVendEmpty) {
 TEST(StorageToolTest, TestIsSupportedOther) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath typeFile = temp_dir.path().Append("target_type");
-  base::FilePath vendFile = temp_dir.path().Append("vendor");
+  base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
+  base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
   base::WriteFile(typeFile, kTypeFileDataTarget,
                   sizeof(kTypeFileDataTarget));
 
@@ -309,8 +309,8 @@ TEST(StorageToolTest, TestIsSupportedOther) {
 TEST(StorageToolTest, TestIsSupportedATA) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath typeFile = temp_dir.path().Append("target_type");
-  base::FilePath vendFile = temp_dir.path().Append("vendor");
+  base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
+  base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
   base::WriteFile(typeFile, kTypeFileDataTarget,
                   sizeof(kTypeFileDataTarget));
 
