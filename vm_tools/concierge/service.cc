@@ -250,8 +250,7 @@ bool GetDiskPathFromName(const std::string& disk_path,
                          base::FilePath* path_out) {
   // Base64 encode the given disk name to ensure it only has valid characters.
   std::string disk_name;
-  base::Base64UrlEncode(disk_path,
-                        base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+  base::Base64UrlEncode(disk_path, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
                         &disk_name);
 
   if (storage_location == STORAGE_CRYPTOHOME_ROOT) {
@@ -390,12 +389,15 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   CHECK(result);
   CHECK(event);
   *result = false;
-  VirtualMachine* vm;
-  std::string vm_name;
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &vm_name)) {
+
+  auto vm_it = GetVirtualMachineForContainerIp(container_ip);
+  if (vm_it == vms_.end()) {
     event->Signal();
     return;
   }
+  VirtualMachine* vm = vm_it->second.get();
+  const std::string& owner_id = vm_it->first.first;
+  const std::string& vm_name = vm_it->first.second;
 
   // Found the VM with a matching container subnet, register the IP address
   // for the container with that VM object.
@@ -415,12 +417,14 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   LOG(INFO) << "Startup of container " << container_name << " at IP "
             << string_ip << " for VM " << vm_name << " completed.";
 
-  // Register this with the hostname resolver.
-  RegisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
-                                      vm_name.c_str()),
-                   string_ip);
-  if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
-    RegisterHostname(kDefaultContainerHostname, string_ip);
+  if (owner_id == principal_owner_id_) {
+    // Register this with the hostname resolver.
+    RegisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
+                                        vm_name.c_str()),
+                     string_ip);
+    if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
+      RegisterHostname(kDefaultContainerHostname, string_ip);
+    }
   }
 
   // Send the D-Bus signal out to indicate the container is ready.
@@ -437,26 +441,27 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
 void Service::ContainerStartupFailed(const std::string& container_name,
                                      const uint32_t cid) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  std::string vm_name;
+  VmMap::key_type vm_key;
   for (auto& vm : vms_) {
     if (vm.second->cid() == cid) {
-      vm_name = vm.first;
+      vm_key = vm.first;
       break;
     }
   }
-  if (vm_name.empty()) {
+  if (vm_key.second.empty()) {
     LOG(ERROR) << "Received indication container startup failed but could not "
                << "match to VM cid: " << cid;
     return;
   }
 
-  LOG(ERROR) << "Startup of container " << container_name << " for VM "
-             << vm_name << " failed.";
+  LOG(ERROR) << "Startup of container " << container_name << " for owner "
+             << vm_key.first << " VM " << vm_key.second << " failed.";
 
   // Send the D-Bus signal out to indicate the container startup failed.
   dbus::Signal signal(kVmConciergeInterface, kContainerStartupFailedSignal);
   ContainerStartedSignal proto;
-  proto.set_vm_name(vm_name);
+  proto.set_owner_id(vm_key.first);
+  proto.set_vm_name(vm_key.second);
   proto.set_container_name(container_name);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
@@ -470,12 +475,15 @@ void Service::ContainerShutdown(const std::string& container_token,
   CHECK(result);
   CHECK(event);
   *result = false;
-  VirtualMachine* vm;
-  std::string vm_name;
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &vm_name)) {
+
+  auto vm_it = GetVirtualMachineForContainerIp(container_ip);
+  if (vm_it == vms_.end()) {
     event->Signal();
     return;
   }
+  VirtualMachine* vm = vm_it->second.get();
+  const std::string& owner_id = vm_it->first.first;
+  const std::string& vm_name = vm_it->first.second;
   std::string container_name = vm->GetContainerNameForToken(container_token);
   if (!vm->UnregisterContainerIp(container_token)) {
     LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
@@ -483,11 +491,13 @@ void Service::ContainerShutdown(const std::string& container_token,
     event->Signal();
     return;
   }
-  // Unregister this with the hostname resolver.
-  UnregisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
-                                        vm_name.c_str()));
-  if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
-    UnregisterHostname(kDefaultContainerHostname);
+  if (owner_id == principal_owner_id_) {
+    // Unregister this with the hostname resolver.
+    UnregisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
+                                          vm_name.c_str()));
+    if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
+      UnregisterHostname(kDefaultContainerHostname);
+    }
   }
 
   LOG(INFO) << "Shutdown of container " << container_name << " for VM "
@@ -506,12 +516,14 @@ void Service::UpdateApplicationList(const std::string& container_token,
   CHECK(result);
   CHECK(event);
   *result = false;
-  std::string vm_name;
-  VirtualMachine* vm;
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &vm_name)) {
+  auto vm_it = GetVirtualMachineForContainerIp(container_ip);
+  if (vm_it == vms_.end()) {
     event->Signal();
     return;
   }
+  VirtualMachine* vm = vm_it->second.get();
+  const std::string& owner_id = vm_it->first.first;
+  const std::string& vm_name = vm_it->first.second;
   std::string container_name = vm->GetContainerNameForToken(container_token);
   if (container_name.empty()) {
     event->Signal();
@@ -519,6 +531,7 @@ void Service::UpdateApplicationList(const std::string& container_token,
   }
   app_list->set_vm_name(vm_name);
   app_list->set_container_name(container_name);
+  app_list->set_owner_id(owner_id);
   dbus::MethodCall method_call(
       vm_tools::apps::kVmApplicationsServiceInterface,
       vm_tools::apps::kVmApplicationsServiceUpdateApplicationListMethod);
@@ -716,10 +729,10 @@ void Service::HandleChildExit() {
     }
 
     // See if this is a process we launched.
-    string name;
+    VmMap::key_type key;
     for (const auto& pair : vms_) {
       if (pid == pair.second->pid()) {
-        name = pair.first;
+        key = pair.first;
         break;
       }
     }
@@ -737,7 +750,7 @@ void Service::HandleChildExit() {
     }
 
     // Remove this process from the our set of VMs.
-    vms_.erase(std::move(name));
+    vms_.erase(std::move(key));
   }
 }
 
@@ -778,7 +791,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.name());
+  auto iter = FindVm(request.owner_id(), request.name());
   if (iter != vms_.end()) {
     LOG(INFO) << "VM with requested name is already running";
     auto& vm = iter->second;
@@ -867,8 +880,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     }
 
     base::FilePath fd_path = base::FilePath(kProcFileDescriptorsPath)
-              .Append(base::IntToString(raw_fd));
-    disks.emplace_back(VirtualMachine::Disk {
+                                 .Append(base::IntToString(raw_fd));
+    disks.emplace_back(VirtualMachine::Disk{
         .path = std::move(fd_path),
         .writable = true,
         .image_type = VirtualMachine::DiskImageType::QCOW2,
@@ -1018,7 +1031,10 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_cid(vsock_cid);
   writer.AppendProtoAsArrayOfBytes(response);
 
-  vms_[request.name()] = std::move(vm);
+  vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
+  if (request.name() == kDefaultVmName && principal_owner_id_.empty()) {
+    principal_owner_id_ = request.owner_id();
+  }
 
   return dbus_response;
 }
@@ -1044,7 +1060,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.name());
+  auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
 
@@ -1053,7 +1069,8 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     return dbus_response;
   }
 
-  UnregisterVmHostnames(iter->second.get(), iter->first);
+  UnregisterVmHostnames(iter->second.get(), iter->first.first,
+                        iter->first.second);
 
   if (!iter->second->Shutdown()) {
     LOG(ERROR) << "Unable to shut down VM";
@@ -1079,13 +1096,14 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
   threads.reserve(vms_.size());
 
   // Spawn a thread for each VM to shut it down.
-  for (auto& pair : vms_) {
-    UnregisterVmHostnames(pair.second.get(), pair.first);
+  for (auto& iter : vms_) {
+    UnregisterVmHostnames(iter.second.get(), iter.first.first,
+                          iter.first.second);
 
     // By resetting the unique_ptr, each thread calls the destructor for that
     // VM, which will shut it down.
     threads.emplace_back([](std::unique_ptr<VirtualMachine> vm) { vm.reset(); },
-                         std::move(pair.second));
+                         std::move(iter.second));
   }
 
   // Wait for all VMs to shutdown.
@@ -1119,7 +1137,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.name());
+  auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
 
@@ -1142,7 +1160,6 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
 bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Starting lxd";
-
 
   // Set up the stateful disk. This will format the disk if necessary, then
   // mount it.
@@ -1501,7 +1518,7 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.vm_name());
+  auto iter = FindVm(request.cryptohome_id(), request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     response.set_status(CONTAINER_STATUS_FAILURE);
@@ -1608,7 +1625,7 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.vm_name());
+  auto iter = FindVm(request.owner_id(), request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     response.set_success(false);
@@ -1654,7 +1671,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.vm_name());
+  auto iter = FindVm(request.owner_id(), request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1718,7 +1735,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.vm_name());
+  auto iter = FindVm(request.cryptohome_id(), request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1758,7 +1775,8 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
     return dbus_response;
   }
 
-  auto iter = vms_.find(request.vm_name());
+  // TODO(nverne): request.owner_id() when that's added to service.proto.
+  auto iter = FindVm(principal_owner_id_, request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1775,24 +1793,6 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
-}
-
-bool Service::GetVirtualMachineForContainerIp(uint32_t container_ip,
-                                              VirtualMachine** vm_out,
-                                              std::string* name_out) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(vm_out);
-  CHECK(name_out);
-  for (auto& vm : vms_) {
-    const uint32_t netmask = vm.second->ContainerNetmask();
-    if ((vm.second->ContainerSubnet() & netmask) != (container_ip & netmask)) {
-      continue;
-    }
-    *name_out = vm.first;
-    *vm_out = vm.second.get();
-    return true;
-  }
-  return false;
 }
 
 void Service::RegisterHostname(const std::string& hostname,
@@ -1820,9 +1820,10 @@ void Service::RegisterHostname(const std::string& hostname,
 }
 
 void Service::UnregisterVmHostnames(VirtualMachine* vm,
+                                    const std::string& owner_id,
                                     const std::string& vm_name) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!vm)
+  if (!vm || owner_id != principal_owner_id_)
     return;
   std::vector<std::string> containers = vm->GetContainerNames();
   for (auto& container_name : containers) {
@@ -1870,6 +1871,31 @@ void Service::OnCrosDnsServiceAvailable(bool service_is_available) {
     crosdns_service_proxy_->SetNameOwnerChangedCallback(base::Bind(
         &Service::OnCrosDnsNameOwnerChanged, weak_ptr_factory_.GetWeakPtr()));
   }
+}
+
+Service::VmMap::iterator Service::FindVm(std::string owner_id,
+                                         std::string vm_name) {
+  auto it = vms_.find(std::make_pair(owner_id, vm_name));
+  // TODO(nverne): remove this fallback when Chrome is correctly seting owner_id
+  if (it == vms_.end()) {
+    return vms_.find(std::make_pair("", vm_name));
+  }
+  return it;
+}
+
+Service::VmMap::const_iterator Service::GetVirtualMachineForContainerIp(
+    uint32_t container_ip) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  for (VmMap::const_iterator vm_it = vms_.cbegin(); vm_it != vms_.end();
+       ++vm_it) {
+    const uint32_t netmask = vm_it->second->ContainerNetmask();
+    if ((vm_it->second->ContainerSubnet() & netmask) !=
+        (container_ip & netmask)) {
+      continue;
+    }
+    return vm_it;
+  }
+  return vms_.cend();
 }
 
 }  // namespace concierge

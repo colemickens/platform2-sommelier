@@ -64,6 +64,7 @@ void IPv4AddressToString(uint32_t addr, string* address) {
 }
 
 int StartVm(dbus::ObjectProxy* proxy,
+            string owner_id,
             string name,
             string kernel,
             string rootfs,
@@ -101,6 +102,7 @@ int StartVm(dbus::ObjectProxy* proxy,
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::StartVmRequest request;
+  request.set_owner_id(std::move(owner_id));
   request.set_name(std::move(name));
 
   request.mutable_vm()->set_kernel(std::move(kernel));
@@ -227,7 +229,7 @@ int StartVm(dbus::ObjectProxy* proxy,
   return 0;
 }
 
-int StopVm(dbus::ObjectProxy* proxy, string name) {
+int StopVm(dbus::ObjectProxy* proxy, string owner_id, string name) {
   if (name.empty()) {
     LOG(ERROR) << "--name is required";
     return -1;
@@ -240,6 +242,7 @@ int StopVm(dbus::ObjectProxy* proxy, string name) {
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::StopVmRequest request;
+  request.set_owner_id(std::move(owner_id));
   request.set_name(std::move(name));
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
@@ -287,7 +290,7 @@ int StopAllVms(dbus::ObjectProxy* proxy) {
   return 0;
 }
 
-int GetVmInfo(dbus::ObjectProxy* proxy, string name) {
+int GetVmInfo(dbus::ObjectProxy* proxy, string owner_id, string name) {
   LOG(INFO) << "Getting VM info";
 
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
@@ -295,6 +298,7 @@ int GetVmInfo(dbus::ObjectProxy* proxy, string name) {
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::GetVmInfoRequest request;
+  request.set_owner_id(std::move(owner_id));
   request.set_name(std::move(name));
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
@@ -530,7 +534,8 @@ int ListDiskImages(dbus::ObjectProxy* proxy,
   return 0;
 }
 
-int CreateExternalDiskImage(string removable_media, string name,
+int CreateExternalDiskImage(string removable_media,
+                            string name,
                             uint64_t disk_size) {
   if (disk_size < kMinimumDiskSize) {
     LOG(ERROR) << "Disk size must be greater than one megabyte";
@@ -541,12 +546,11 @@ int CreateExternalDiskImage(string removable_media, string name,
     return -1;
   }
 
-  base::FilePath media_path = base::FilePath(kRemovableMediaRoot)
-                                .Append(removable_media);
+  base::FilePath media_path =
+      base::FilePath(kRemovableMediaRoot).Append(removable_media);
   base::FilePath disk_path = media_path.Append(name);
 
-  if (disk_path.ReferencesParent() ||
-      !base::DirectoryExists(media_path)) {
+  if (disk_path.ReferencesParent() || !base::DirectoryExists(media_path)) {
     LOG(ERROR) << "Invalid Removable Media path";
     return -1;
   }
@@ -575,16 +579,15 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
 
   if (!cryptohome_id.empty()) {
     int64_t disk_size =
-      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
+        base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
     disk_size = (disk_size * 9) / 10;
 
     if (disk_size < kMinimumDiskSize)
       disk_size = kMinimumDiskSize;
 
     string disk_path;
-    if (CreateDiskImage(proxy, std::move(cryptohome_id), name,
-                        disk_size, kImageTypeQcow2, kStorageCryptohomeRoot,
-                        &disk_path) != 0) {
+    if (CreateDiskImage(proxy, cryptohome_id, name, disk_size, kImageTypeQcow2,
+                        kStorageCryptohomeRoot, &disk_path) != 0) {
       return -1;
     }
 
@@ -594,6 +597,7 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
     disk_image->set_writable(true);
     disk_image->set_do_mount(false);
 
+    request.set_owner_id(std::move(cryptohome_id));
     request.set_name(std::move(name));
     if (!writer.AppendProtoAsArrayOfBytes(request)) {
       LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
@@ -605,14 +609,14 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
       return -1;
     }
     base::FilePath disk_path = base::FilePath(kRemovableMediaRoot)
-      .Append(removable_media)
-      .Append(image_name);
+                                   .Append(removable_media)
+                                   .Append(image_name);
     if (disk_path.ReferencesParent()) {
       LOG(ERROR) << "Invalid removable_vm_path";
       return -1;
     }
-    base::ScopedFD disk_fd(HANDLE_EINTR(open(disk_path.value().c_str(),
-                                             O_RDWR | O_NOFOLLOW)));
+    base::ScopedFD disk_fd(
+        HANDLE_EINTR(open(disk_path.value().c_str(), O_RDWR | O_NOFOLLOW)));
     if (!disk_fd.is_valid()) {
       LOG(ERROR) << "Failed opening VM disk state";
       return -1;
@@ -732,6 +736,7 @@ int StartContainer(dbus::ObjectProxy* proxy,
 }
 
 int LaunchApplication(dbus::ObjectProxy* proxy,
+                      string owner_id,
                       string name,
                       string container_name,
                       string application) {
@@ -759,6 +764,7 @@ int LaunchApplication(dbus::ObjectProxy* proxy,
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::LaunchContainerApplicationRequest request;
+  request.set_owner_id(owner_id);
   request.set_vm_name(name);
   request.set_container_name(container_name);
   request.set_desktop_file_id(application);
@@ -802,6 +808,7 @@ void Write(const std::string& output_filepath, const std::string& content) {
 }
 
 int GetIcon(dbus::ObjectProxy* proxy,
+            string owner_id,
             string name,
             string container_name,
             string application,
@@ -836,6 +843,7 @@ int GetIcon(dbus::ObjectProxy* proxy,
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::ContainerAppIconRequest request;
+  request.set_owner_id(owner_id);
   request.set_vm_name(name);
   request.set_container_name(container_name);
   request.add_desktop_file_ids(application);
@@ -958,14 +966,16 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_start) {
-    return StartVm(proxy, std::move(FLAGS_name), std::move(FLAGS_kernel),
-                   std::move(FLAGS_rootfs), std::move(FLAGS_extra_disks));
+    return StartVm(proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name),
+                   std::move(FLAGS_kernel), std::move(FLAGS_rootfs),
+                   std::move(FLAGS_extra_disks));
   } else if (FLAGS_stop) {
-    return StopVm(proxy, std::move(FLAGS_name));
+    return StopVm(proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name));
   } else if (FLAGS_stop_all) {
     return StopAllVms(proxy);
   } else if (FLAGS_get_vm_info) {
-    return GetVmInfo(proxy, std::move(FLAGS_name));
+    return GetVmInfo(proxy, std::move(FLAGS_cryptohome_id),
+                     std::move(FLAGS_name));
   } else if (FLAGS_create_disk) {
     return CreateDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_disk_path), FLAGS_disk_size,
@@ -983,20 +993,19 @@ int main(int argc, char** argv) {
     return ListDiskImages(proxy, std::move(FLAGS_cryptohome_id),
                           std::move(FLAGS_storage_location));
   } else if (FLAGS_start_termina_vm) {
-    return StartTerminaVm(proxy, std::move(FLAGS_name),
-                          std::move(FLAGS_cryptohome_id),
-                          std::move(FLAGS_removable_media),
-                          std::move(FLAGS_image_name));
+    return StartTerminaVm(
+        proxy, std::move(FLAGS_name), std::move(FLAGS_cryptohome_id),
+        std::move(FLAGS_removable_media), std::move(FLAGS_image_name));
   } else if (FLAGS_start_container) {
     return StartContainer(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_container_name),
                           std::move(FLAGS_cryptohome_id));
   } else if (FLAGS_launch_application) {
-    return LaunchApplication(proxy, std::move(FLAGS_name),
-                             std::move(FLAGS_container_name),
-                             std::move(FLAGS_application));
+    return LaunchApplication(
+        proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name),
+        std::move(FLAGS_container_name), std::move(FLAGS_application));
   } else if (FLAGS_get_icon) {
-    return GetIcon(proxy, std::move(FLAGS_name),
+    return GetIcon(proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name),
                    std::move(FLAGS_container_name),
                    std::move(FLAGS_application), FLAGS_icon_size, FLAGS_scale,
                    std::move(FLAGS_output_filepath));

@@ -67,6 +67,7 @@ dbus::ObjectProxy* GetConciergeProxy(const scoped_refptr<dbus::Bus>& bus) {
 }
 
 bool GetCid(dbus::ObjectProxy* concierge_proxy,
+            const std::string& owner_id,
             const std::string& vm_name,
             unsigned int* cid) {
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
@@ -74,6 +75,7 @@ bool GetCid(dbus::ObjectProxy* concierge_proxy,
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::GetVmInfoRequest request;
+  request.set_owner_id(owner_id);
   request.set_name(vm_name);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
@@ -219,6 +221,7 @@ int main(int argc, char** argv) {
 
   DEFINE_uint64(listen_port, VMADDR_PORT_ANY, "Port to listen on");
   DEFINE_uint64(cid, 0, "Cid of VM");
+  DEFINE_string(owner_id, "", "Owner of the VM. Usually user cryptohome_id");
   DEFINE_string(vm_name, "", "Target VM name");
   DEFINE_string(user, "chronos", "Target user in the VM");
   DEFINE_string(target_container, "", "Target container");
@@ -279,7 +282,7 @@ int main(int argc, char** argv) {
       dbus::ObjectProxy* proxy = GetConciergeProxy(bus);
       if (!proxy)
         return EXIT_FAILURE;
-      if (!GetCid(proxy, FLAGS_vm_name, &cid))
+      if (!GetCid(proxy, FLAGS_owner_id, FLAGS_vm_name, &cid))
         return EXIT_FAILURE;
     }
 

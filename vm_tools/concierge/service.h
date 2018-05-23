@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
@@ -134,8 +135,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
       dbus::MethodCall* method_call);
 
   // Handles a request to list existing disk images.
-  std::unique_ptr<dbus::Response> ListVmDisks(
-      dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> ListVmDisks(dbus::MethodCall* method_call);
 
   // Handles a request to start a container in a VM.
   std::unique_ptr<dbus::Response> StartContainer(dbus::MethodCall* method_call);
@@ -158,20 +158,15 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
 
-  // Gets the VirtualMachine that corresponds to a container at |container_ip|
-  // and sets |vm_out| to the VirtualMachine and |name_out| to the name of the
-  // VM. Returns false if no such mapping exists.
-  bool GetVirtualMachineForContainerIp(uint32_t container_ip,
-                                       VirtualMachine** vm_out,
-                                       std::string* name_out);
-
   // Registers |hostname| and |ip| with the hostname resolver service so that
   // the container is reachable from a known hostname.
   void RegisterHostname(const std::string& hostname, const std::string& ip);
 
   // Unregisters all the hostnames that were registered for this |vm| with
   // |vm_name| with the hostname resolver service.
-  void UnregisterVmHostnames(VirtualMachine* vm, const std::string& vm_name);
+  void UnregisterVmHostnames(VirtualMachine* vm,
+                             const std::string& owner_id,
+                             const std::string& vm_name);
 
   // Unregisters |hostname| with the hostname resolver service.
   void UnregisterHostname(const std::string& hostname);
@@ -185,6 +180,18 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnCrosDnsNameOwnerChanged(const std::string& old_owner,
                                  const std::string& new_owner);
 
+  using VmMap = std::map<std::pair<std::string, std::string>,
+                         std::unique_ptr<VirtualMachine>>;
+
+  // Returns an iterator to vm with key (|owner_id|, |vm_name|). If no such
+  // element exists, tries the former with |owner_id| equal to empty string.
+  VmMap::iterator FindVm(std::string owner_id, std::string vm_name);
+
+  // Gets the VirtualMachine that corresponds to a container at |container_ip|
+  // and returns an iterator. Returns |vms_.end()| if no sutch mapping exists.
+  // VM. Returns false if no such mapping exists.
+  VmMap::const_iterator GetVirtualMachineForContainerIp(uint32_t container_ip);
+
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;
   SubnetPool subnet_pool_;
@@ -194,8 +201,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
   base::ScopedFD signal_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher watcher_;
 
-  // Active VMs.
-  std::map<std::string, std::unique_ptr<VirtualMachine>> vms_;
+  // Active VMs keyed by (owner_id, vm_name).
+  VmMap vms_;
+
+  // Owner of the first started vm with name kDefaultVmName
+  std::string principal_owner_id_;
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;

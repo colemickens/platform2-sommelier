@@ -436,7 +436,7 @@ cmd_vmc() (
 
     # Actually start the VM.
     concierge_client --start_termina_vm --name="${name}" \
-                     --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
+      --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "Unable to start VM"
       return 1
@@ -445,7 +445,8 @@ cmd_vmc() (
     metrics_client -v "Vm.VmcStartSuccess"
 
     # Give the user a shell in the VM.
-    vsh --vm_name="${name}" -- LXD_DIR=/mnt/stateful/lxd \
+    vsh --vm_name="${name}" --owner_id="${CROS_USER_ID_HASH}" -- \
+      LXD_DIR=/mnt/stateful/lxd \
       LXD_CONF=/mnt/stateful/lxd_conf
     ;;
   stop)
@@ -454,7 +455,8 @@ cmd_vmc() (
       return 1
     fi
     local name="$1"; shift
-    concierge_client --stop --name="${name}" 2>/dev/null
+    concierge_client --stop --name="${name}" \
+      --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "Unable to stop vm"
       return 1
@@ -467,7 +469,7 @@ cmd_vmc() (
     fi
     local name="$1"; shift
     concierge_client --destroy_disk --name="${name}" \
-                     --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
+      --cryptohome_id="${CROS_USER_ID_HASH}" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "Unable to delete vm"
 
@@ -504,7 +506,8 @@ cmd_vsh() (
 
   local name="$1"; shift
 
-  vsh --vm_name="${name}" -- LXD_DIR=/mnt/stateful/lxd \
+  vsh --vm_name="${name}" --owner_id="${CROS_USER_ID_HASH}" -- \
+    LXD_DIR=/mnt/stateful/lxd \
     LXD_CONF=/mnt/stateful/lxd_conf
 )
 
