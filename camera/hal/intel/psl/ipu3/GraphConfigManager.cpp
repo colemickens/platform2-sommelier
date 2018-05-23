@@ -709,7 +709,7 @@ GraphConfigManager::getGraphConfig(Camera3Request &request)
     status_t status = OK;
 
     status = mGraphConfigPool.acquireItem(gc);
-    if (CC_UNLIKELY(status != OK)) {
+    if (CC_UNLIKELY(status != OK) || gc == nullptr) {
         LOGE("Failed to acquire GraphConfig from pool!!- BUG");
         return gc;
     }

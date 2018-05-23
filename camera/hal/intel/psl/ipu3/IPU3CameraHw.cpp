@@ -368,6 +368,8 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
     status_t status = NO_ERROR;
     // Check reconfiguration
     UseCase newUseCase = checkUseCase(request);
+    CheckError(newUseCase == USECASE_NONE, UNKNOWN_ERROR, "@%s: none usecase", __FUNCTION__);
+
     int32_t testPatternMode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
     status = getTestPatternMode(request, &testPatternMode);
     CheckError(status != NO_ERROR, status, "@%s: failed to get test pattern mode", __FUNCTION__);
@@ -395,6 +397,8 @@ IPU3CameraHw::UseCase IPU3CameraHw::checkUseCase(Camera3Request* request) const
         return USECASE_VIDEO;
     }
     const std::vector<camera3_stream_buffer>* buffers = request->getOutputBuffers();
+    CheckError(buffers == nullptr, USECASE_NONE, "@%s: output buffer is nullptr", __FUNCTION__);
+
     for (const auto & buf : *buffers) {
         if (buf.stream == mStreamsStill[0]) {
             return USECASE_STILL;

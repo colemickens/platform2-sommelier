@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,14 +45,14 @@ static void fillIpcParams(const cmc_parsed_analog_gain_conversion_t& gain_conver
         params->gain_conversion.cmc_analog_gain_conversion = *base->cmc_analog_gain_conversion;
 
     // cmc_analog_gain_segment_t fields
-    if (base->cmc_analog_gain_segments)
+    if (base->cmc_analog_gain_segments && base->cmc_analog_gain_conversion)
         MEMCPY_S(&params->gain_conversion.cmc_analog_gain_segments,
                 base->cmc_analog_gain_conversion->num_segments * sizeof(cmc_analog_gain_segment_t),
                 base->cmc_analog_gain_segments,
                 base->cmc_analog_gain_conversion->num_segments * sizeof(cmc_analog_gain_segment_t));
 
     //cmc_analog_gain_pair_t fields
-    if (base->cmc_analog_gain_pairs)
+    if (base->cmc_analog_gain_pairs && base->cmc_analog_gain_conversion)
         MEMCPY_S(&params->gain_conversion.cmc_analog_gain_pairs,
                 base->cmc_analog_gain_conversion->num_pairs * sizeof(cmc_analog_gain_pair_t),
                 base->cmc_analog_gain_pairs,

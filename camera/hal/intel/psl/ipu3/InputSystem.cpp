@@ -331,10 +331,6 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
             LOGE("failed to acquire Isys Request");
             return UNKNOWN_ERROR;
         }
-        if (isysReq == nullptr) {
-            LOGE("failed to acquire Isys Request(nullptr)");
-            return UNKNOWN_ERROR;
-        }
 
         // clear potential reused Nodes
         isysReq->configuredNodesForRequest.clear();
@@ -358,6 +354,7 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
         return UNKNOWN_ERROR;
     }
 
+    CheckError(isysReq == nullptr, UNKNOWN_ERROR, "@%s: isysReq is nullptr", __FUNCTION__);
     isysReq->configuredNodesForRequest.push_back(videoNode);
     isysReq->numNodesForRequest = isysReq->configuredNodesForRequest.size();
     if (newReq) {
@@ -504,6 +501,7 @@ status_t InputSystem::handleEnqueueMediaRequest(
     }
 
     currentRequest = mPendingIsysRequests.at(reqId);
+    CheckError(currentRequest == nullptr, UNKNOWN_ERROR, "@%s: currentRequest is nullptr", __FUNCTION__);
     mMediaCtl->enqueueMediaRequest(currentRequest->mediaRequestId);
     return OK;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,8 @@ class IPU3CameraHw: public ICameraHw {
  private:
     enum UseCase {
         USECASE_STILL,
-        USECASE_VIDEO
+        USECASE_VIDEO,
+        USECASE_NONE
     };
  // prevent copy constructor and assignment operator
  private:

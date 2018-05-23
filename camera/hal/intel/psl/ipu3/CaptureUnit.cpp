@@ -793,6 +793,7 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
         return UNKNOWN_ERROR;
     }
     state = it->second;
+    CheckError(state == nullptr, UNKNOWN_ERROR, "@%s: state is nullptr", __FUNCTION__);
 
     gc = state->graphConfig;
     // notify shutter event

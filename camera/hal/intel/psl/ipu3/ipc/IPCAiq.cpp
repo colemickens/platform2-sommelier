@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,17 +69,17 @@ bool IPCAiq::clientFlattenInit(const ia_binary_data* aiqb_data, unsigned int aiq
     params->cmcRemoteHandle = cmc;
 
     ptr += sizeof(aiq_init_params);
-    if (aiqbSize) {
+    if (aiqbSize && aiqb_data) {
         MEMCPY_S(ptr, aiqbSize, aiqb_data->data, aiqbSize);
     }
 
     ptr += aiqbSize;
-    if (nvmSize) {
+    if (nvmSize && nvm_data) {
         MEMCPY_S(ptr, nvmSize, nvm_data->data, nvmSize);
     }
 
     ptr += nvmSize;
-    if (aiqdSize) {
+    if (aiqdSize && aiqd_data) {
         MEMCPY_S(ptr, aiqdSize, aiqd_data->data, aiqdSize);
     }
 

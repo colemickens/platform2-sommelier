@@ -424,10 +424,14 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
         CLEAR(result);
 
         pendingBuf = reqState->pendingBuffers[i];
+        CheckError(pendingBuf == nullptr, VOID_VALUE, "@%s: pendingBuf is nullptr, index: %d",
+            __FUNCTION__, i);
+
         if (!request->isInputBuffer(pendingBuf)) {
             result.num_output_buffers = 1;
         }
         result.frame_number = reqState->reqId;
+
         buf.status = pendingBuf->status();
         buf.stream = pendingBuf->getOwner()->getStream();
         buf.buffer = pendingBuf->getBufferHandle();

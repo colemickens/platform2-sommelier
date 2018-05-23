@@ -671,6 +671,7 @@ status_t ImguUnit::processNextRequest()
     }
 
     msg = mMessagesPending[0];
+    CheckError(msg == nullptr, BAD_VALUE, "@%s: mMessagePending[0] is nullptr", __FUNCTION__);
     mMessagesPending.erase(mMessagesPending.begin());
 
     // update and return metadata firstly
