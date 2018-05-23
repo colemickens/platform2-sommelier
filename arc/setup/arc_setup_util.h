@@ -188,12 +188,15 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
                          const std::string& prop_name,
                          std::string* out_prop);
 
-// Reads Android's packages.xml at |packages_xml_path| and stores the OS
-// fingerprint for the internal storage found in the XML in |out_fingerprint|.
+// Reads Android's packages.xml at |packages_xml_path|, fills
+// |out_fingerprint| and |out_sdk_version| with the OS fingerprint and the SDK
+// version for the internal storage found in the XML.
 // If the file does not exist or no fingerprint is found in the file, returns
 // false.
-bool GetFingerprintFromPackagesXml(const base::FilePath& packages_xml_path,
-                                   std::string* out_fingerprint);
+bool GetFingerprintAndSdkVersionFromPackagesXml(
+    const base::FilePath& packages_xml_path,
+    std::string* out_fingerprint,
+    std::string* out_sdk_version);
 
 // Creates |file_path| with |mode|. If the file already exists, this function
 // sets the file size to 0 and mode to |mode|. Returns true on success.

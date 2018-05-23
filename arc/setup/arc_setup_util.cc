@@ -49,6 +49,8 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <crypto/sha2.h>
 
+using base::StringPiece;
+
 namespace arc {
 
 namespace {
@@ -141,13 +143,29 @@ bool FindProperty(const std::string& line_prefix_to_find,
   return false;
 }
 
-// A callback function for GetFingerprintFromPackagesXml. This checks if the
-// |line| is like
+// Helper function for extracting an attribute value from an XML line.
+// Expects |key| to be suffixed with '=\"' (e.g. ' sdkVersion=\"').
+StringPiece GetAttributeValue(const StringPiece& line, const StringPiece& key) {
+  StringPiece::size_type key_begin_pos = line.find(key);
+  if (key_begin_pos == StringPiece::npos)
+    return StringPiece();
+  StringPiece::size_type value_begin_pos = key_begin_pos + key.length();
+  StringPiece::size_type value_end_pos = line.find('"', value_begin_pos);
+  if (value_end_pos == StringPiece::npos)
+    return StringPiece();
+  return line.substr(value_begin_pos, value_end_pos - value_begin_pos);
+}
+
+// A callback function for GetFingerprintAndSdkVersionFromPackagesXml.
+// This checks if the |line| is like
 //    <version sdkVersion="25" databaseVersion="3" fingerprint="..." />
-// and store the fingerprint part in |out_fingerprint| if it is. Ignore a line
-// with a volumeUuid attribute which means that the line is for an external
-// storage. What we need is a fingerprint for an internal storage.
-bool FindFingerprint(std::string* out_fingerprint, const std::string& line) {
+// and store the fingerprint part in |out_fingerprint| and the sdkVersion part
+// in |out_sdk_version| if it is. Ignore a line with a volumeUuid attribute
+// which means that the line is for an external storage.
+// What we need is a fingerprint and a sdk version for an internal storage.
+bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
+                                  std::string* out_sdk_version,
+                                  const std::string& line) {
   constexpr char kAttributeVolumeUuid[] = " volumeUuid=\"";
   constexpr char kAttributeSdkVersion[] = " sdkVersion=\"";
   constexpr char kAttributeDatabaseVersion[] = " databaseVersion=\"";
@@ -159,32 +177,31 @@ bool FindFingerprint(std::string* out_fingerprint, const std::string& line) {
   // to certain places like endTag.
   // TODO(yusukes): Check Android P's writeLPr() and FastXmlSerializer although
   // they unlikely change.
-  std::string trimmed;
-  base::TrimWhitespaceASCII(line, base::TRIM_ALL, &trimmed);
+  StringPiece trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
   if (!base::StartsWith(trimmed, kElementVersion, base::CompareCase::SENSITIVE))
     return false;  // Not a <version> element. Ignoring.
 
   if (trimmed.find(kAttributeVolumeUuid) != std::string::npos)
     return false;  // This is for an external storage. Ignoring.
 
-  std::string::size_type pos = trimmed.find(kAttributeFingerprint);
-  if (pos == std::string::npos ||
-      // Do some more sanity checks.
-      trimmed.find(kAttributeSdkVersion) == std::string::npos ||
-      trimmed.find(kAttributeDatabaseVersion) == std::string::npos) {
-    LOG(WARNING) << "Unexpected <version> format: " << trimmed;
-    return false;
-  }
-
-  // Found the line we need.
-  std::string fingerprint = trimmed.substr(pos + strlen(kAttributeFingerprint));
-  pos = fingerprint.find('"');
-  if (pos == std::string::npos) {
+  StringPiece fingerprint = GetAttributeValue(trimmed, kAttributeFingerprint);
+  if (fingerprint.empty()) {
     LOG(WARNING) << "<version> doesn't have a valid fingerprint: " << trimmed;
     return false;
   }
+  StringPiece sdk_version = GetAttributeValue(trimmed, kAttributeSdkVersion);
+  if (sdk_version.empty()) {
+    LOG(WARNING) << "<version> doesn't have a valid sdkVersion: " << trimmed;
+    return false;
+  }
+  // Also checks existence of databaseVersion.
+  if (GetAttributeValue(trimmed, kAttributeDatabaseVersion).empty()) {
+    LOG(WARNING) << "<version> doesn't have a databaseVersion: " << trimmed;
+    return false;
+  }
 
-  *out_fingerprint = fingerprint.substr(0, pos);
+  fingerprint.CopyToString(out_fingerprint);
+  sdk_version.CopyToString(out_sdk_version);
   return true;
 }
 
@@ -729,10 +746,13 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
   return false;
 }
 
-bool GetFingerprintFromPackagesXml(const base::FilePath& packages_xml_path,
-                                   std::string* out_fingerprint) {
+bool GetFingerprintAndSdkVersionFromPackagesXml(
+    const base::FilePath& packages_xml_path,
+    std::string* out_fingerprint,
+    std::string* out_sdk_version) {
   if (FindLine(packages_xml_path,
-               base::Bind(&FindFingerprint, out_fingerprint))) {
+               base::Bind(&FindFingerprintAndSdkVersion, out_fingerprint,
+                          out_sdk_version))) {
     return true;  // found it.
   }
   LOG(WARNING) << "No fingerprint found in " << packages_xml_path.value();

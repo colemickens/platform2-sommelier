@@ -230,8 +230,12 @@ class ArcSetup {
   // image, the operation should never fail.
   std::string GetSystemImageFingerprint();
 
-  // Returns the boot type.
-  ArcBootType GetBootType();
+  // Fills |out_boot_type| with the boot type.
+  // If Android's packages.xml exists, fills |out_data_sdk_version| with the SDK
+  // version for the internal storage found in the XML. If packages.xml doesn't
+  // exist, fills it with AndroidSdkVersion::UNKNOWN.
+  void GetBootTypeAndDataSdkVersion(ArcBootType* out_boot_type,
+                                    AndroidSdkVersion* out_data_sdk_version);
 
   // Checks if arc-setup should clobber /data/dalvik-cache and /data/app/*/oat
   // before starting the container.

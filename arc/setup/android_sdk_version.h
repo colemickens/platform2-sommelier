@@ -9,6 +9,7 @@ namespace arc {
 
 enum class AndroidSdkVersion {
   UNKNOWN = 0,
+  ANDROID_M = 23,
   ANDROID_N_MR1 = 25,
   ANDROID_P = 28,
 };

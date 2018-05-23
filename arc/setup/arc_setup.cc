@@ -250,6 +250,26 @@ void MaybeLogUnexpectedMountInfo(const std::string& mount_path) {
            base::Bind(&MaybeLogUnexpectedMountInfoLine, mount_path));
 }
 
+AndroidSdkVersion SdkVersionFromString(const std::string& version_str) {
+  int version;
+  if (base::StringToInt(version_str, &version)) {
+    // TODO(yusukes): What 27 actually means is O-MR1, not P. Once our image
+    // starts using 28, remove 'case 27:'.
+    switch (version) {
+      case 23:
+        return AndroidSdkVersion::ANDROID_M;
+      case 25:
+        return AndroidSdkVersion::ANDROID_N_MR1;
+      case 27:
+      case 28:
+        return AndroidSdkVersion::ANDROID_P;
+    }
+  }
+
+  LOG(ERROR) << "Unknown SDK version : " << version_str;
+  return AndroidSdkVersion::UNKNOWN;
+}
+
 void CheckProcessIsAliveOrDie(const std::string& pid_str) {
   pid_t pid;
   EXIT_IF(!base::StringToInt(pid_str, &pid));
@@ -1382,22 +1402,10 @@ AndroidSdkVersion ArcSetup::GetSdkVersion() {
       !GetPropertyFromFile(build_prop, "ro.build.version.sdk", &version_str));
   LOG(INFO) << "SDK version string: " << version_str;
 
-  int version;
-  EXIT_IF(!base::StringToInt(version_str, &version));
-  LOG(INFO) << "SDK version: " << version;
-
-  // TODO(yusukes): What 27 actually means is O-MR1, not P. Once our image
-  // starts using 28, remove 'case 27:'.
-  switch (version) {
-    case 25:
-      return AndroidSdkVersion::ANDROID_N_MR1;
-    case 27:
-    case 28:
-      return AndroidSdkVersion::ANDROID_P;
-  }
-
-  CHECK(false) << "Unknown SDK version.";
-  return AndroidSdkVersion::UNKNOWN;
+  const AndroidSdkVersion version = SdkVersionFromString(version_str);
+  if (version == AndroidSdkVersion::UNKNOWN)
+    LOG(FATAL) << "Unknown SDK version: " << version_str;
+  return version;
 }
 
 void ArcSetup::UnmountOnStop() {
@@ -1455,7 +1463,8 @@ std::string ArcSetup::GetSystemImageFingerprint() {
   return system_fingerprint_;
 }
 
-ArcBootType ArcSetup::GetBootType() {
+void ArcSetup::GetBootTypeAndDataSdkVersion(
+    ArcBootType* out_boot_type, AndroidSdkVersion* out_data_sdk_version) {
   const std::string system_fingerprint = GetSystemImageFingerprint();
 
   // Note: The XML file name has to match com.android.server.pm.Settings's
@@ -1468,22 +1477,27 @@ ArcBootType ArcSetup::GetBootType() {
     // This path is taken when /data is empty, which is not an error.
     LOG(INFO) << packages_xml.value()
               << " does not exist. This is the very first boot aka opt-in.";
-    return ArcBootType::FIRST_BOOT;
+    *out_boot_type = ArcBootType::FIRST_BOOT;
+    *out_data_sdk_version = AndroidSdkVersion::UNKNOWN;
+    return;
   }
 
   // Get a fingerprint from /data/system/packages.xml.
   std::string data_fingerprint;
-  if (!GetFingerprintFromPackagesXml(packages_xml, &data_fingerprint)) {
+  std::string data_sdk_version;
+  if (!GetFingerprintAndSdkVersionFromPackagesXml(
+          packages_xml, &data_fingerprint, &data_sdk_version)) {
     LOG(ERROR) << "Failed to get a fingerprint from " << packages_xml.value();
     // Return kFirstBootAfterUpdate so the caller invalidates art/oat files
     // which is safer than returning kRegularBoot.
-    return ArcBootType::FIRST_BOOT_AFTER_UPDATE;
+    *out_boot_type = ArcBootType::FIRST_BOOT_AFTER_UPDATE;
+    *out_data_sdk_version = AndroidSdkVersion::UNKNOWN;
+    return;
   }
 
   // If two fingerprints don't match, this is the first boot after OTA.
   // Android's PackageManagerService.isUpgrade(), at least on M, N, and
   // O releases, does exactly the same to detect OTA.
-  // TODO(yusukes): Check Android P's behavior when it is ready.
   const bool ota_detected = system_fingerprint != data_fingerprint;
   if (!ota_detected) {
     LOG(INFO) << "This is regular boot.";
@@ -1491,8 +1505,10 @@ ArcBootType ArcSetup::GetBootType() {
     LOG(INFO) << "This is the first boot after OTA: system="
               << system_fingerprint << ", data=" << data_fingerprint;
   }
-  return ota_detected ? ArcBootType::FIRST_BOOT_AFTER_UPDATE
-                      : ArcBootType::REGULAR_BOOT;
+  LOG(INFO) << "Data SDK version " << data_sdk_version;
+  *out_boot_type = ota_detected ? ArcBootType::FIRST_BOOT_AFTER_UPDATE
+                                : ArcBootType::REGULAR_BOOT;
+  *out_data_sdk_version = SdkVersionFromString(data_sdk_version);
 }
 
 void ArcSetup::ShouldDeleteDataExecutables(
@@ -1556,6 +1572,7 @@ void ArcSetup::MountSharedAndroidDirectories() {
 
   switch (sdk_version()) {
     case AndroidSdkVersion::UNKNOWN:
+    case AndroidSdkVersion::ANDROID_M:
       NOTREACHED();
       break;
     case AndroidSdkVersion::ANDROID_N_MR1:
@@ -1587,6 +1604,7 @@ void ArcSetup::MountSharedAndroidDirectories() {
   // |cache_directory| as part of |data_directory| instead.
   switch (sdk_version()) {
     case AndroidSdkVersion::UNKNOWN:
+    case AndroidSdkVersion::ANDROID_M:
       NOTREACHED();
       break;
     case AndroidSdkVersion::ANDROID_N_MR1:
@@ -1863,7 +1881,14 @@ void ArcSetup::OnBootContinue() {
   const bool is_inside_vm =
       GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_INSIDE_VM");
   const std::string serialnumber = GetSerialNumber();
-  const ArcBootType boot_type = GetBootType();
+
+  ArcBootType boot_type;
+  AndroidSdkVersion data_sdk_version;
+  GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
+
+  // TODO(niwa): Compare sdk_version_ with data_sdk_version and clear /data
+  //             if skip-upgrade (M->P) or downgrade (P->N) is detected.
+
   bool should_delete_data_dalvik_cache_directory;
   bool should_delete_data_app_executables;
   ShouldDeleteDataExecutables(boot_type,

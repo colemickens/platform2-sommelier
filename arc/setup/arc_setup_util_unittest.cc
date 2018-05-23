@@ -293,7 +293,7 @@ TEST(ArcSetupUtil, TestGetPropertyFromFile) {
   EXPECT_FALSE(GetPropertyFromFile(prop_file, "k4", &v));
 }
 
-TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
+TEST(ArcSetupUtil, TestGetFingerprintAndSdkVersionFromPackagesXml) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
   base::FilePath packages_file =
@@ -309,8 +309,11 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
       "sdkVersion=\"25\" databaseVersion=\"25\" fingerprint=\"f2\">\n"
       "</packages>"));
   std::string fingerprint;
-  EXPECT_TRUE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  std::string sdk_version;
+  EXPECT_TRUE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
   EXPECT_EQ("f1", fingerprint);
+  EXPECT_EQ("25", sdk_version);
 
   ASSERT_TRUE(WriteToFile(
       packages_file, 0700,
@@ -322,8 +325,11 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
       "  <version sdkVersion=\"25\" databaseVersion=\"3\" fingerprint=\"f1\">\n"
       "</packages>"));
   fingerprint.clear();
-  EXPECT_TRUE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  sdk_version.clear();
+  EXPECT_TRUE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
   EXPECT_EQ("f1", fingerprint);
+  EXPECT_EQ("25", sdk_version);
 
   // Test invalid <version>s.
   ASSERT_TRUE(WriteToFile(
@@ -334,7 +340,8 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
       "  <version volumeUuid=\"primary_physical\" "
       "sdkVersion=\"25\" databaseVersion=\"25\" fingerprint=\"f2\">\n"
       "</packages>"));
-  EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
 
   ASSERT_TRUE(
       WriteToFile(packages_file, 0700,
@@ -343,7 +350,8 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
                   "<packages>\n"
                   "  <version databaseVersion=\"3\" fingerprint=\"f1\">\n"
                   "</packages>"));
-  EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
 
   ASSERT_TRUE(
       WriteToFile(packages_file, 0700,
@@ -352,7 +360,8 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
                   "<packages>\n"
                   "  <version sdkVersion=\"25\" fingerprint=\"f1\">\n"
                   "</packages>"));
-  EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
 
   ASSERT_TRUE(
       WriteToFile(packages_file, 0700,
@@ -361,7 +370,8 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
                   "<packages>\n"
                   "  <version sdkVersion=\"25\" databaseVersion=\"3\">\n"
                   "</packages>"));
-  EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
 
   ASSERT_TRUE(WriteToFile(
       packages_file, 0700,
@@ -370,19 +380,22 @@ TEST(ArcSetupUtil, TestGetFingerprintFromPackagesXml) {
       "<packages>\n"
       "  <version sdkVersion=\"25\" databaseVersion=\"3\" fingerprint=\"X>\n"
       "</packages>"));
-  EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
 
   ASSERT_TRUE(
       WriteToFile(packages_file, 0700,
                   // No <version> elements.
                   "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>\n"
                   "<packages/>\n"));
-  EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
 
   ASSERT_TRUE(WriteToFile(packages_file, 0700,
                           // Empty file.
                           ""));
-  EXPECT_FALSE(GetFingerprintFromPackagesXml(packages_file, &fingerprint));
+  EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
 }
 
 TEST(ArcSetupUtil, TestFindLine) {
