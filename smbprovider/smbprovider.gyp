@@ -126,5 +126,23 @@
         },
       ],
     }],
+    # Fuzzer target.
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'netbios_packet_fuzzer',
+          'type': 'executable',
+          'dependencies': [
+            'libsmbprovider',
+          ],
+          'includes': ['../common-mk/common_fuzzer.gypi'],
+          'sources': [
+            'netbios_packet_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
+
+
   ],
 }
