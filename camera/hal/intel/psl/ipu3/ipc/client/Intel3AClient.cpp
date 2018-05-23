@@ -36,13 +36,27 @@ Intel3AClient::Intel3AClient():
 
     pthread_condattr_t attr;
     int ret = pthread_condattr_init(&attr);
-    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
 
     ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
-    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
 
     ret = pthread_cond_init(&mCbCond, &attr);
-    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    pthread_condattr_destroy(&attr);
 
     ret = pthread_mutex_init(&mCbLock, NULL);
     CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_mutex_init fails, ret:%d", __FUNCTION__, ret);

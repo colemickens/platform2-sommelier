@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -572,93 +572,6 @@ GraphCameraUtil::getProgramGroups(ia_uid uid,
             pgs.push_back(static_cast<IGraphConfig*>(allProgramGroups[i]));
         }
     }
-    return css_err_none;
-}
-
-css_err_t GraphCameraUtil::kernelGetValues(const IGraphConfig *kernelNode,
-                                          int32_t *palUuid,
-                                          int32_t *kernelId,
-                                          uint32_t *metadata,
-                                          int32_t *enable,
-                                          int32_t *rcb,
-                                          int32_t *branchPoint,
-                                          int32_t *sinkPort)
-{
-    css_err_t ret = css_err_none;
-    std::string metadataStr;
-
-    if (!kernelNode)
-        return css_err_argument;
-
-    // Metadata (optional)
-    if (metadata) {
-        ret = kernelNode->getValue(GCSS_KEY_METADATA, metadataStr);
-
-        if (ret == css_err_none) {
-            std::size_t pos = 0;
-            std::string resultStr, remainingStr = metadataStr;
-
-            bool split = true;
-            uint32_t loops = 0;
-
-            unsigned int val;
-            while (split) {
-                if ((pos = remainingStr.find(",")) == string::npos) {
-                    val = (uint32_t)std::stoi(remainingStr);
-                    split = false;
-                } else {
-                    resultStr = remainingStr.substr(0, pos);
-                    remainingStr = remainingStr.substr(pos + 1);
-                    val = (uint32_t)std::stoi(resultStr);
-                }
-                metadata[loops] = val;
-                loops++;
-            }
-        }
-    }
-
-    // Resolution changing block flag (optional)
-    if (rcb) {
-        ret = kernelNode->getValue(GCSS_KEY_RCB, *rcb);
-        if (css_err_none != ret)
-            *rcb = 0;
-    }
-
-    if (branchPoint) {
-        ret = kernelNode->getValue(GCSS_KEY_BRANCH_POINT, *branchPoint);
-        if (css_err_none != ret)
-            *branchPoint = 0;
-    }
-    // Enabled (optional)
-    if (enable) {
-       ret = kernelNode->getValue(GCSS_KEY_ENABLED, *enable);
-        if (ret != css_err_none)
-            *enable = 1;
-    }
-    // Pal Uuid
-    if (palUuid) {
-        ret = kernelNode->getValue(GCSS_KEY_PAL_UUID, *palUuid);
-        if (css_err_none != ret) {
-            LOGE("ERROR: Couldn't get pal_uuid");
-            return ret;
-        }
-    }
-    // Kernel id
-    if (kernelId) {
-        ret = kernelNode->getValue(GCSS_KEY_ID, *kernelId);
-        if (css_err_none != ret) {
-            LOGE("Couldn't get kernel id");
-            return ret;
-        }
-    }
-
-    // Sink Port
-    if (sinkPort) {
-        ret = kernelNode->getValue(GCSS_KEY_SINK_PORT, *sinkPort);
-        if (css_err_none != ret)
-            *sinkPort = -1;
-    }
-
     return css_err_none;
 }
 

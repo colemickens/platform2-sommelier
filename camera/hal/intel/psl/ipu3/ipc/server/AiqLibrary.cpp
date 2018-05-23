@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -256,6 +256,7 @@ status_t AiqLibrary::aiq_get_version(void* pData, int dataSize)
 
     const char* version = ia_aiq_get_version();
     strncpy(params->data, version, sizeof(params->data));
+    params->data[MAX_IA_AIQ_VERSION_PARAMS_DATA_SIZE - 1] = '\0';
     params->size = MIN(strlen(version), sizeof(params->data));
     LOG2("@%s, aiq version:%s, size:%d", __FUNCTION__, version, params->size);
 

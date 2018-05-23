@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2016-2018 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -120,6 +120,7 @@ status_t AicLibrary::getAicVersion(void* pData, int dataSize)
 
     ia_aic_version_params* params = static_cast<ia_aic_version_params*>(pData);
     strncpy(params->data, version.c_str(), sizeof(params->data));
+    params->data[MAX_IA_AIC_VERSION_PARAMS_DATA_SIZE - 1] = '\0';
     params->size = MIN(version.size(), sizeof(params->data));
     LOG2("@%s, aic version:%s, size:%d", __FUNCTION__, version.c_str(), params->size);
 

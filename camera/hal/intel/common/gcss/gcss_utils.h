@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Intel Corporation
+ * Copyright (C) 2015-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -241,28 +241,6 @@ public:
                                      const GCSS::IGraphConfig *GCHandle,
                                      std::vector<IGraphConfig*> &pgs);
 
-    /**
-     * Helper function to get values from the kernel settings
-     * \todo Moved to bxt aic utils, will be removed from here after hal has
-     *       adapted to changes.
-     * \ingroup gcss
-     *
-     * \param[in] kernelNode
-     * \param[out] palUuid
-     * \param[out] kernelId
-     * \param[out] metadata
-     * \param[out] enable
-     * \param[out] rcb
-     * \param[out] branchPoint
-     */
-    static css_err_t kernelGetValues(const IGraphConfig *kernelNode,
-                                    int32_t *palUuid = nullptr,
-                                    int32_t *kernelId = nullptr,
-                                    uint32_t *metadata = nullptr,
-                                    int32_t *enable = nullptr,
-                                    int32_t *rcb = nullptr,
-                                    int32_t *branchPoint = nullptr,
-                                    int32_t *sinkPort = nullptr);
     /**
      * Debug utils
      */
