@@ -75,8 +75,9 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKey) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const CreateGoogleAttestedKeyReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const CreateGoogleAttestedKeyReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("certificate", reply.certificate_chain());
     EXPECT_EQ("server_error", reply.server_error());
@@ -88,7 +89,8 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKey) {
   request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
   request.set_username("user");
   request.set_origin("origin");
-  proxy_.CreateGoogleAttestedKey(request, base::Bind(callback));
+  proxy_.CreateGoogleAttestedKey(request,
+                                 base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -121,8 +123,8 @@ TEST_F(DBusProxyTest, GetKeyInfo) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const GetKeyInfoReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count, const GetKeyInfoReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(KEY_TYPE_ECC, reply.key_type());
     EXPECT_EQ(KEY_USAGE_SIGN, reply.key_usage());
@@ -134,7 +136,7 @@ TEST_F(DBusProxyTest, GetKeyInfo) {
   GetKeyInfoRequest request;
   request.set_key_label("label");
   request.set_username("username");
-  proxy_.GetKeyInfo(request, base::Bind(callback));
+  proxy_.GetKeyInfo(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -162,15 +164,16 @@ TEST_F(DBusProxyTest, GetEndorsementInfo) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const GetEndorsementInfoReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const GetEndorsementInfoReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.ek_public_key());
     EXPECT_EQ("certificate", reply.ek_certificate());
   };
   GetEndorsementInfoRequest request;
   request.set_key_type(KEY_TYPE_ECC);
-  proxy_.GetEndorsementInfo(request, base::Bind(callback));
+  proxy_.GetEndorsementInfo(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -201,8 +204,9 @@ TEST_F(DBusProxyTest, GetAttestationKeyInfo) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const GetAttestationKeyInfoReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const GetAttestationKeyInfoReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.public_key());
     EXPECT_EQ("public_key_tpm_format", reply.public_key_tpm_format());
@@ -212,7 +216,7 @@ TEST_F(DBusProxyTest, GetAttestationKeyInfo) {
   };
   GetAttestationKeyInfoRequest request;
   request.set_key_type(KEY_TYPE_ECC);
-  proxy_.GetAttestationKeyInfo(request, base::Bind(callback));
+  proxy_.GetAttestationKeyInfo(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -244,8 +248,9 @@ TEST_F(DBusProxyTest, ActivateAttestationKey) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const ActivateAttestationKeyReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const ActivateAttestationKeyReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("certificate", reply.certificate());
   };
@@ -254,7 +259,7 @@ TEST_F(DBusProxyTest, ActivateAttestationKey) {
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.set_save_certificate(true);
-  proxy_.ActivateAttestationKey(request, base::Bind(callback));
+  proxy_.ActivateAttestationKey(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -286,8 +291,9 @@ TEST_F(DBusProxyTest, CreateCertifiableKey) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const CreateCertifiableKeyReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const CreateCertifiableKeyReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.public_key());
     EXPECT_EQ("certify_info", reply.certify_info());
@@ -298,7 +304,7 @@ TEST_F(DBusProxyTest, CreateCertifiableKey) {
   request.set_key_type(KEY_TYPE_ECC);
   request.set_key_usage(KEY_USAGE_SIGN);
   request.set_username("user");
-  proxy_.CreateCertifiableKey(request, base::Bind(callback));
+  proxy_.CreateCertifiableKey(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -327,8 +333,8 @@ TEST_F(DBusProxyTest, Decrypt) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const DecryptReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count, const DecryptReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("data", reply.decrypted_data());
   };
@@ -336,7 +342,7 @@ TEST_F(DBusProxyTest, Decrypt) {
   request.set_key_label("label");
   request.set_username("user");
   request.set_encrypted_data("data");
-  proxy_.Decrypt(request, base::Bind(callback));
+  proxy_.Decrypt(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -365,8 +371,8 @@ TEST_F(DBusProxyTest, Sign) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const SignReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count, const SignReply& reply) {
+    (*callback_count)++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("signature", reply.signature());
   };
@@ -374,7 +380,7 @@ TEST_F(DBusProxyTest, Sign) {
   request.set_key_label("label");
   request.set_username("user");
   request.set_data_to_sign("data");
-  proxy_.Sign(request, base::Bind(callback));
+  proxy_.Sign(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 
@@ -401,15 +407,16 @@ TEST_F(DBusProxyTest, RegisterKeyWithChapsToken) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback =
-      [&callback_count](const RegisterKeyWithChapsTokenReply& reply) {
-        callback_count++;
-        EXPECT_EQ(STATUS_SUCCESS, reply.status());
-      };
+  auto callback = [](int* callback_count,
+                     const RegisterKeyWithChapsTokenReply& reply) {
+    (*callback_count)++;
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
-  proxy_.RegisterKeyWithChapsToken(request, base::Bind(callback));
+  proxy_.RegisterKeyWithChapsToken(request,
+                                   base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 

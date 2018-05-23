@@ -47,6 +47,67 @@ using testing::SetArgPointee;
 
 namespace attestation {
 
+namespace {
+
+#ifndef USE_TPM2
+constexpr TpmVersion kTpmVersionUnderTest = TPM_1_2;
+#else
+constexpr TpmVersion kTpmVersionUnderTest = TPM_2_0;
+#endif
+
+std::string CreateChallenge(const std::string& prefix) {
+  Challenge challenge;
+  challenge.set_prefix(prefix);
+  challenge.set_nonce("nonce");
+  challenge.set_timestamp(100500);
+  std::string serialized;
+  challenge.SerializeToString(&serialized);
+  return serialized;
+}
+
+std::string CreateSignedChallenge(const std::string& prefix) {
+  SignedData signed_data;
+  signed_data.set_data(CreateChallenge(prefix));
+  signed_data.set_signature("challenge_signature");
+  std::string serialized;
+  signed_data.SerializeToString(&serialized);
+  return serialized;
+}
+
+EncryptedData MockEncryptedData(std::string data) {
+  EncryptedData encrypted_data;
+  encrypted_data.set_wrapped_key("wrapped_key");
+  encrypted_data.set_iv("iv");
+  encrypted_data.set_mac("mac");
+  encrypted_data.set_encrypted_data(data);
+  encrypted_data.set_wrapping_key_id("wrapping_key_id");
+  return encrypted_data;
+}
+
+KeyInfo CreateChallengeKeyInfo() {
+  KeyInfo key_info;
+  key_info.set_key_type(EUK);
+  key_info.set_domain("domain");
+  key_info.set_device_id("device_id");
+  key_info.set_certificate("");
+  return key_info;
+}
+
+std::string GetFakeCertificateChain() {
+  const std::string kBeginCertificate = "-----BEGIN CERTIFICATE-----\n";
+  const std::string kEndCertificate = "-----END CERTIFICATE-----";
+  std::string pem = kBeginCertificate;
+  pem += brillo::data_encoding::Base64EncodeWrapLines("fake_cert");
+  pem += kEndCertificate + "\n" + kBeginCertificate;
+  pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert");
+  pem += kEndCertificate + "\n" + kBeginCertificate;
+  pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert2");
+  pem += kEndCertificate;
+  return pem;
+}
+
+}  // namespace
+
 // MessageLoopIdleEvent: waits for the moment when the message loop becomes
 // idle. Note: it is still possible that there are deferred tasks.
 //
@@ -134,12 +195,6 @@ class AttestationServiceTest : public testing::Test {
     kBadMessageID,    // Valid successful response but a message ID mismatch.
   };
 
-#ifndef USE_TPM2
-  const TpmVersion kTpmVersionUnderTest = TPM_1_2;
-#else
-  const TpmVersion kTpmVersionUnderTest = TPM_2_0;
-#endif
-
   ~AttestationServiceTest() override = default;
 
   void SetUp() override {
@@ -180,19 +235,6 @@ class AttestationServiceTest : public testing::Test {
         brillo::http::request_type::kPost,
         base::Bind(&AttestationServiceTest::FakeCASign, base::Unretained(this),
                    state));
-  }
-
-  std::string GetFakeCertificateChain() {
-    const std::string kBeginCertificate = "-----BEGIN CERTIFICATE-----\n";
-    const std::string kEndCertificate = "-----END CERTIFICATE-----";
-    std::string pem = kBeginCertificate;
-    pem += brillo::data_encoding::Base64EncodeWrapLines("fake_cert");
-    pem += kEndCertificate + "\n" + kBeginCertificate;
-    pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert");
-    pem += kEndCertificate + "\n" + kBeginCertificate;
-    pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert2");
-    pem += kEndCertificate;
-    return pem;
   }
 
   CreateGoogleAttestedKeyRequest GetCreateRequest() {
@@ -272,49 +314,41 @@ class AttestationServiceTest : public testing::Test {
     return pca_request;
   }
 
-  std::string CreateChallenge(const std::string& prefix) {
-    Challenge challenge;
-    challenge.set_prefix(prefix);
-    challenge.set_nonce("nonce");
-    challenge.set_timestamp(100500);
-    std::string serialized;
-    challenge.SerializeToString(&serialized);
-    return serialized;
+  void CreateGoogleAttestedKeySuccess(
+      const CreateGoogleAttestedKeyRequest& request) {
+    service_->CreateGoogleAttestedKey(
+        GetCreateRequest(),
+        base::Bind(&AttestationServiceTest::CreateGoogleAttestedKeyCallback,
+                   base::Unretained(this), STATUS_SUCCESS, ""));
+    Run();
   }
 
-  std::string CreateSignedChallenge(const std::string& prefix) {
-    SignedData signed_data;
-    signed_data.set_data(CreateChallenge(prefix));
-    signed_data.set_signature("challenge_signature");
-    std::string serialized;
-    signed_data.SerializeToString(&serialized);
-    return serialized;
+  void CreateGoogleAttestedKeyFailure(
+      const CreateGoogleAttestedKeyRequest& request,
+      AttestationStatus expected_status,
+      const std::string& expected_error) {
+    service_->CreateGoogleAttestedKey(
+        GetCreateRequest(),
+        base::Bind(&AttestationServiceTest::CreateGoogleAttestedKeyCallback,
+                   base::Unretained(this), expected_status, expected_error));
+    Run();
   }
 
-  EncryptedData MockEncryptedData(std::string data) {
-    EncryptedData encrypted_data;
-    encrypted_data.set_wrapped_key("wrapped_key");
-    encrypted_data.set_iv("iv");
-    encrypted_data.set_mac("mac");
-    encrypted_data.set_encrypted_data(data);
-    encrypted_data.set_wrapping_key_id("wrapping_key_id");
-    return encrypted_data;
-  }
-
-  KeyInfo CreateChallengeKeyInfo() {
-    KeyInfo key_info;
-    key_info.set_key_type(EUK);
-    key_info.set_domain("domain");
-    key_info.set_device_id("device_id");
-    key_info.set_certificate("");
-    return key_info;
+  void CreateGoogleAttestedKeyClientError(
+      const CreateGoogleAttestedKeyRequest& request) {
+    service_->CreateGoogleAttestedKey(
+        GetCreateRequest(),
+        base::Bind(
+            &AttestationServiceTest::CreateGoogleAttestedKeyClientErrorCallback,
+            base::Unretained(this)));
+    Run();
   }
 
   void Run() { run_loop_.Run(); }
 
   void RunUntilIdle() { run_loop_.RunUntilIdle(); }
 
-  void Quit() { run_loop_.Quit(); }
+  base::Closure QuitClosure() { return run_loop_.QuitClosure(); }
 
   void WaitUntilIdleForTesting() {
     MessageLoopIdleEvent idle_event(service_->worker_thread_->message_loop());
@@ -388,127 +422,82 @@ class AttestationServiceTest : public testing::Test {
                         brillo::mime::application::kOctet_stream);
   }
 
+  void CreateGoogleAttestedKeyCallback(
+      AttestationStatus expected_status,
+      const std::string& expected_error,
+      const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(expected_status, reply.status());
+    if (expected_status == STATUS_SUCCESS) {
+      EXPECT_EQ(GetFakeCertificateChain(), reply.certificate_chain());
+      EXPECT_FALSE(reply.has_server_error());
+    } else {
+      EXPECT_FALSE(reply.has_certificate_chain());
+      EXPECT_EQ(expected_error, reply.server_error());
+    }
+    run_loop_.Quit();
+  }
+
+  void CreateGoogleAttestedKeyClientErrorCallback(
+      const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_FALSE(reply.has_server_error());
+    run_loop_.Quit();
+  }
+
   base::MessageLoop message_loop_;
   base::RunLoop run_loop_;
 };
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeySuccess) {
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(GetFakeCertificateChain(), reply.certificate_chain());
-    EXPECT_FALSE(reply.has_server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeySuccess(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeySuccessNoUser) {
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(GetFakeCertificateChain(), reply.certificate_chain());
-    EXPECT_FALSE(reply.has_server_error());
-    Quit();
-  };
   CreateGoogleAttestedKeyRequest request = GetCreateRequest();
   request.clear_username();
-  service_->CreateGoogleAttestedKey(request, base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeySuccess(request);
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithEnrollHttpError) {
   SetupFakeCAEnroll(kHttpFailure);
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(STATUS_CA_NOT_AVAILABLE, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyFailure(GetCreateRequest(), STATUS_CA_NOT_AVAILABLE,
+                                 "");
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithSignHttpError) {
   SetupFakeCASign(kHttpFailure);
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(STATUS_CA_NOT_AVAILABLE, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyFailure(GetCreateRequest(), STATUS_CA_NOT_AVAILABLE,
+                                 "");
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithCAEnrollFailure) {
   SetupFakeCAEnroll(kCommandFailure);
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("fake_enroll_error", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyFailure(
+      GetCreateRequest(), STATUS_REQUEST_DENIED_BY_CA, "fake_enroll_error");
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithCASignFailure) {
   SetupFakeCASign(kCommandFailure);
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("fake_sign_error", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyFailure(
+      GetCreateRequest(), STATUS_REQUEST_DENIED_BY_CA, "fake_sign_error");
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithBadCAMessageID) {
   SetupFakeCASign(kBadMessageID);
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithNoEKCertificate) {
   // Remove the default credential setup.
   mock_database_.GetMutableProtobuf()->clear_credentials();
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure) {
   EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
       .WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure2) {
@@ -516,69 +505,29 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure2) {
   EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
       .WillOnce(Return(true))
       .WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailure) {
   EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailureNoUser) {
   EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
   CreateGoogleAttestedKeyRequest request = GetCreateRequest();
   request.clear_username();
-  service_->CreateGoogleAttestedKey(request, base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(request);
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithKeyWriteFailure) {
   EXPECT_CALL(mock_key_store_, Write(_, _, _)).WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmNotReady) {
   EXPECT_CALL(mock_tpm_utility_, IsTpmReady()).WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmActivateFailure) {
@@ -586,38 +535,24 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmActivateFailure) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, ActivateIdentityForTpm2(_, _, _, _, _, _))
       .WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmCreateFailure) {
   EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
-  Run();
+  CreateGoogleAttestedKeyClientError(GetCreateRequest());
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel) {
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const CreateGoogleAttestedKeyReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const CreateGoogleAttestedKeyReply& reply) {
+    (*callback_count)++;
   };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(),
+                                    base::Bind(callback, &callback_count));
   // Bring down the service, which should cancel any callbacks.
   service_.reset();
   EXPECT_EQ(0, callback_count);
@@ -626,10 +561,12 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel) {
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel2) {
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const CreateGoogleAttestedKeyReply& reply) {
-    callback_count++;
+  auto callback = [](int* callback_count,
+                     const CreateGoogleAttestedKeyReply& reply) {
+    (*callback_count)++;
   };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(),
+                                    base::Bind(callback, &callback_count));
   // Give threads a chance to run.
   base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
   // Bring down the service, which should cancel any callbacks.
@@ -657,7 +594,8 @@ TEST_F(AttestationServiceTest, GetKeyInfoSuccess) {
       .WillOnce(DoAll(SetArgPointee<2>(key_bytes), Return(true)));
 
   // Set expectations on the outputs.
-  auto callback = [this](const GetKeyInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(KEY_TYPE_RSA, reply.key_type());
     EXPECT_EQ(KEY_USAGE_SIGN, reply.key_usage());
@@ -665,12 +603,12 @@ TEST_F(AttestationServiceTest, GetKeyInfoSuccess) {
     EXPECT_EQ("certify_info", reply.certify_info());
     EXPECT_EQ("signature", reply.certify_info_signature());
     EXPECT_EQ(GetFakeCertificateChain(), reply.certificate());
-    Quit();
+    quit_closure.Run();
   };
   GetKeyInfoRequest request;
   request.set_key_label("label");
   request.set_username("user");
-  service_->GetKeyInfo(request, base::Bind(callback));
+  service_->GetKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -688,7 +626,8 @@ TEST_F(AttestationServiceTest, GetKeyInfoSuccessNoUser) {
   key.set_key_usage(KEY_USAGE_SIGN);
 
   // Set expectations on the outputs.
-  auto callback = [this](const GetKeyInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(KEY_TYPE_RSA, reply.key_type());
     EXPECT_EQ(KEY_USAGE_SIGN, reply.key_usage());
@@ -696,11 +635,11 @@ TEST_F(AttestationServiceTest, GetKeyInfoSuccessNoUser) {
     EXPECT_EQ("certify_info", reply.certify_info());
     EXPECT_EQ("signature", reply.certify_info_signature());
     EXPECT_EQ(GetFakeCertificateChain(), reply.certificate());
-    Quit();
+    quit_closure.Run();
   };
   GetKeyInfoRequest request;
   request.set_key_label("label");
-  service_->GetKeyInfo(request, base::Bind(callback));
+  service_->GetKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -709,14 +648,15 @@ TEST_F(AttestationServiceTest, GetKeyInfoNoKey) {
       .WillRepeatedly(Return(false));
 
   // Set expectations on the outputs.
-  auto callback = [this](const GetKeyInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_INVALID_PARAMETER, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   GetKeyInfoRequest request;
   request.set_key_label("label");
   request.set_username("user");
-  service_->GetKeyInfo(request, base::Bind(callback));
+  service_->GetKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -725,14 +665,15 @@ TEST_F(AttestationServiceTest, GetKeyInfoBadPublicKey) {
       .WillRepeatedly(Return(false));
 
   // Set expectations on the outputs.
-  auto callback = [this](const GetKeyInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetKeyInfoReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   GetKeyInfoRequest request;
   request.set_key_label("label");
   request.set_username("user");
-  service_->GetKeyInfo(request, base::Bind(callback));
+  service_->GetKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -741,15 +682,16 @@ TEST_F(AttestationServiceTest, GetEndorsementInfoSuccess) {
   database->mutable_credentials()->set_endorsement_public_key("public_key");
   database->mutable_credentials()->set_endorsement_credential("certificate");
   // Set expectations on the outputs.
-  auto callback = [this](const GetEndorsementInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetEndorsementInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.ek_public_key());
     EXPECT_EQ("certificate", reply.ek_certificate());
-    Quit();
+    quit_closure.Run();
   };
   GetEndorsementInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
-  service_->GetEndorsementInfo(request, base::Bind(callback));
+  service_->GetEndorsementInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -757,15 +699,16 @@ TEST_F(AttestationServiceTest, GetEndorsementInfoNoInfo) {
   EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const GetEndorsementInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetEndorsementInfoReply& reply) {
     EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
     EXPECT_FALSE(reply.has_ek_public_key());
     EXPECT_FALSE(reply.has_ek_certificate());
-    Quit();
+    quit_closure.Run();
   };
   GetEndorsementInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
-  service_->GetEndorsementInfo(request, base::Bind(callback));
+  service_->GetEndorsementInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -773,15 +716,16 @@ TEST_F(AttestationServiceTest, GetEndorsementInfoNoCert) {
   AttestationDatabase* database = mock_database_.GetMutableProtobuf();
   database->mutable_credentials()->set_endorsement_public_key("public_key");
   // Set expectations on the outputs.
-  auto callback = [this](const GetEndorsementInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetEndorsementInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.ek_public_key());
     EXPECT_FALSE(reply.has_ek_certificate());
-    Quit();
+    quit_closure.Run();
   };
   GetEndorsementInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
-  service_->GetEndorsementInfo(request, base::Bind(callback));
+  service_->GetEndorsementInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -793,35 +737,37 @@ TEST_F(AttestationServiceTest, GetAttestationKeyInfoSuccess) {
   database->mutable_pcr1_quote()->set_quote("pcr1");
   database->mutable_identity_binding()->set_identity_public_key("public_key2");
   // Set expectations on the outputs.
-  auto callback = [this](const GetAttestationKeyInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetAttestationKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.public_key());
     EXPECT_EQ("public_key2", reply.public_key_tpm_format());
     EXPECT_EQ("certificate", reply.certificate());
     EXPECT_EQ("pcr0", reply.pcr0_quote().quote());
     EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
-    Quit();
+    quit_closure.Run();
   };
   GetAttestationKeyInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
-  service_->GetAttestationKeyInfo(request, base::Bind(callback));
+  service_->GetAttestationKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, GetAttestationKeyInfoNoInfo) {
   // Set expectations on the outputs.
-  auto callback = [this](const GetAttestationKeyInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetAttestationKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
     EXPECT_FALSE(reply.has_public_key());
     EXPECT_FALSE(reply.has_public_key_tpm_format());
     EXPECT_FALSE(reply.has_certificate());
     EXPECT_FALSE(reply.has_pcr0_quote());
     EXPECT_FALSE(reply.has_pcr1_quote());
-    Quit();
+    quit_closure.Run();
   };
   GetAttestationKeyInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
-  service_->GetAttestationKeyInfo(request, base::Bind(callback));
+  service_->GetAttestationKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -830,18 +776,19 @@ TEST_F(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
   database->mutable_identity_key()->set_identity_credential("certificate");
   database->mutable_pcr1_quote()->set_quote("pcr1");
   // Set expectations on the outputs.
-  auto callback = [this](const GetAttestationKeyInfoReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const GetAttestationKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_public_key());
     EXPECT_FALSE(reply.has_public_key_tpm_format());
     EXPECT_EQ("certificate", reply.certificate());
     EXPECT_FALSE(reply.has_pcr0_quote());
     EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
-    Quit();
+    quit_closure.Run();
   };
   GetAttestationKeyInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
-  service_->GetAttestationKeyInfo(request, base::Bind(callback));
+  service_->GetAttestationKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -860,10 +807,11 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccess) {
                         Return(true)));
   }
   // Set expectations on the outputs.
-  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const ActivateAttestationKeyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("certificate", reply.certificate());
-    Quit();
+    quit_closure.Run();
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
@@ -877,7 +825,8 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccess) {
       ->mutable_wrapped_certificate()
       ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
-  service_->ActivateAttestationKey(request, base::Bind(callback));
+  service_->ActivateAttestationKey(request,
+                                   base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -897,10 +846,11 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
                         Return(true)));
   }
   // Set expectations on the outputs.
-  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const ActivateAttestationKeyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("certificate", reply.certificate());
-    Quit();
+    quit_closure.Run();
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
@@ -914,16 +864,18 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
       ->mutable_wrapped_certificate()
       ->set_wrapped_key("wrapped");
   request.set_save_certificate(false);
-  service_->ActivateAttestationKey(request, base::Bind(callback));
+  service_->ActivateAttestationKey(request,
+                                   base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
   EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const ActivateAttestationKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
@@ -937,7 +889,8 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
       ->mutable_wrapped_certificate()
       ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
-  service_->ActivateAttestationKey(request, base::Bind(callback));
+  service_->ActivateAttestationKey(request,
+                                   base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -950,9 +903,10 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
       ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const ActivateAttestationKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
@@ -966,7 +920,8 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
       ->mutable_wrapped_certificate()
       ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
-  service_->ActivateAttestationKey(request, base::Bind(callback));
+  service_->ActivateAttestationKey(request,
+                                   base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -983,19 +938,20 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccess) {
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_key_store_, Write("user", "label", _)).Times(1);
   // Set expectations on the outputs.
-  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.public_key());
     EXPECT_EQ("certify_info", reply.certify_info());
     EXPECT_EQ("certify_info_signature", reply.certify_info_signature());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
   request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   request.set_username("user");
-  service_->CreateCertifiableKey(request, base::Bind(callback));
+  service_->CreateCertifiableKey(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1012,18 +968,19 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
   // Set expectations on the outputs.
-  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.public_key());
     EXPECT_EQ("certify_info", reply.certify_info());
     EXPECT_EQ("certify_info_signature", reply.certify_info_signature());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
   request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
-  service_->CreateCertifiableKey(request, base::Bind(callback));
+  service_->CreateCertifiableKey(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1031,18 +988,19 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeyRNGFailure) {
   EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_public_key());
     EXPECT_FALSE(reply.has_certify_info());
     EXPECT_FALSE(reply.has_certify_info_signature());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
   request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
-  service_->CreateCertifiableKey(request, base::Bind(callback));
+  service_->CreateCertifiableKey(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1050,87 +1008,92 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
   EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_public_key());
     EXPECT_FALSE(reply.has_certify_info());
     EXPECT_FALSE(reply.has_certify_info_signature());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
   request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
-  service_->CreateCertifiableKey(request, base::Bind(callback));
+  service_->CreateCertifiableKey(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateCertifiableKeyDBFailure) {
   EXPECT_CALL(mock_key_store_, Write(_, _, _)).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_public_key());
     EXPECT_FALSE(reply.has_certify_info());
     EXPECT_FALSE(reply.has_certify_info_signature());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
   request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   request.set_username("username");
-  service_->CreateCertifiableKey(request, base::Bind(callback));
+  service_->CreateCertifiableKey(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateCertifiableKeyDBFailureNoUser) {
   EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_public_key());
     EXPECT_FALSE(reply.has_certify_info());
     EXPECT_FALSE(reply.has_certify_info_signature());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
   request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
-  service_->CreateCertifiableKey(request, base::Bind(callback));
+  service_->CreateCertifiableKey(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, DecryptSuccess) {
   // Set expectations on the outputs.
-  auto callback = [this](const DecryptReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const DecryptReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(MockTpmUtility::Transform("Unbind", "data"),
               reply.decrypted_data());
-    Quit();
+    quit_closure.Run();
   };
   DecryptRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_encrypted_data("data");
-  service_->Decrypt(request, base::Bind(callback));
+  service_->Decrypt(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, DecryptSuccessNoUser) {
   mock_database_.GetMutableProtobuf()->add_device_keys()->set_key_name("label");
   // Set expectations on the outputs.
-  auto callback = [this](const DecryptReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const DecryptReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(MockTpmUtility::Transform("Unbind", "data"),
               reply.decrypted_data());
-    Quit();
+    quit_closure.Run();
   };
   DecryptRequest request;
   request.set_key_label("label");
   request.set_encrypted_data("data");
-  service_->Decrypt(request, base::Bind(callback));
+  service_->Decrypt(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1138,76 +1101,81 @@ TEST_F(AttestationServiceTest, DecryptKeyNotFound) {
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const DecryptReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const DecryptReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_decrypted_data());
-    Quit();
+    quit_closure.Run();
   };
   DecryptRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_encrypted_data("data");
-  service_->Decrypt(request, base::Bind(callback));
+  service_->Decrypt(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, DecryptKeyNotFoundNoUser) {
   // Set expectations on the outputs.
-  auto callback = [this](const DecryptReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const DecryptReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_decrypted_data());
-    Quit();
+    quit_closure.Run();
   };
   DecryptRequest request;
   request.set_key_label("label");
   request.set_encrypted_data("data");
-  service_->Decrypt(request, base::Bind(callback));
+  service_->Decrypt(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, DecryptUnbindFailure) {
   EXPECT_CALL(mock_tpm_utility_, Unbind(_, _, _)).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const DecryptReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const DecryptReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_decrypted_data());
-    Quit();
+    quit_closure.Run();
   };
   DecryptRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_encrypted_data("data");
-  service_->Decrypt(request, base::Bind(callback));
+  service_->Decrypt(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, SignSuccess) {
   // Set expectations on the outputs.
-  auto callback = [this](const SignReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(MockTpmUtility::Transform("Sign", "data"), reply.signature());
-    Quit();
+    quit_closure.Run();
   };
   SignRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_data_to_sign("data");
-  service_->Sign(request, base::Bind(callback));
+  service_->Sign(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, SignSuccessNoUser) {
   mock_database_.GetMutableProtobuf()->add_device_keys()->set_key_name("label");
   // Set expectations on the outputs.
-  auto callback = [this](const SignReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(MockTpmUtility::Transform("Sign", "data"), reply.signature());
-    Quit();
+    quit_closure.Run();
   };
   SignRequest request;
   request.set_key_label("label");
   request.set_data_to_sign("data");
-  service_->Sign(request, base::Bind(callback));
+  service_->Sign(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1215,46 +1183,49 @@ TEST_F(AttestationServiceTest, SignKeyNotFound) {
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const SignReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_signature());
-    Quit();
+    quit_closure.Run();
   };
   SignRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_data_to_sign("data");
-  service_->Sign(request, base::Bind(callback));
+  service_->Sign(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, SignKeyNotFoundNoUser) {
   // Set expectations on the outputs.
-  auto callback = [this](const SignReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_signature());
-    Quit();
+    quit_closure.Run();
   };
   SignRequest request;
   request.set_key_label("label");
   request.set_data_to_sign("data");
-  service_->Sign(request, base::Bind(callback));
+  service_->Sign(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, SignUnbindFailure) {
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _)).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const SignReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_signature());
-    Quit();
+    quit_closure.Run();
   };
   SignRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_data_to_sign("data");
-  service_->Sign(request, base::Bind(callback));
+  service_->Sign(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1283,14 +1254,16 @@ TEST_F(AttestationServiceTest, RegisterSuccess) {
       .Times(0);
   EXPECT_CALL(mock_key_store_, Delete("user", "label")).Times(1);
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(request,
+                                      base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1314,14 +1287,16 @@ TEST_F(AttestationServiceTest, RegisterSuccessNoUser) {
   EXPECT_CALL(mock_key_store_, RegisterCertificate(_, _))
       .Times(0);
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure, Database* database,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(0, mock_database_.GetMutableProtobuf()->device_keys_size());
-    Quit();
+    EXPECT_EQ(0, database->GetMutableProtobuf()->device_keys_size());
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(
+      request, base::Bind(callback, QuitClosure(), &mock_database_));
   Run();
 }
 
@@ -1352,15 +1327,17 @@ TEST_F(AttestationServiceTest, RegisterSuccessWithCertificates) {
       .Times(1);
   EXPECT_CALL(mock_key_store_, Delete("user", "label")).Times(1);
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_include_certificates(true);
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(request,
+                                      base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1386,15 +1363,17 @@ TEST_F(AttestationServiceTest, RegisterSuccessNoUserWithCertificates) {
   EXPECT_CALL(mock_key_store_, RegisterCertificate("", "fake_ca_cert2"))
       .Times(1);
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure, Database* database,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(0, mock_database_.GetMutableProtobuf()->device_keys_size());
-    Quit();
+    EXPECT_EQ(0, database->GetMutableProtobuf()->device_keys_size());
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_include_certificates(true);
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(
+      request, base::Bind(callback, QuitClosure(), &mock_database_));
   Run();
 }
 
@@ -1402,26 +1381,30 @@ TEST_F(AttestationServiceTest, RegisterNoKey) {
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(request,
+                                      base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, RegisterNoKeyNoUser) {
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(request,
+                                      base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1436,14 +1419,16 @@ TEST_F(AttestationServiceTest, RegisterFailure) {
   EXPECT_CALL(mock_key_store_, Register(_, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(request,
+                                      base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1459,15 +1444,17 @@ TEST_F(AttestationServiceTest, RegisterIntermediateFailure) {
   EXPECT_CALL(mock_key_store_, RegisterCertificate(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_include_certificates(true);
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(request,
+                                      base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1483,15 +1470,17 @@ TEST_F(AttestationServiceTest, RegisterAdditionalFailure) {
   EXPECT_CALL(mock_key_store_, RegisterCertificate(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const RegisterKeyWithChapsTokenReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
   request.set_include_certificates(true);
-  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  service_->RegisterKeyWithChapsToken(request,
+                                      base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1591,7 +1580,8 @@ TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithoutAbeData) {
   database->mutable_identity_binding()->set_identity_public_key("public_key");
   database->mutable_pcr0_quote()->set_quote("pcr0");
   database->mutable_pcr1_quote()->set_quote("pcr1");
-  auto callback = [this](const CreateEnrollRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateEnrollRequestReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_pca_request());
     AttestationEnrollmentRequest pca_request;
@@ -1603,10 +1593,10 @@ TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithoutAbeData) {
     EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
     EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
     EXPECT_FALSE(pca_request.has_enterprise_enrollment_nonce());
-    Quit();
+    quit_closure.Run();
   };
   CreateEnrollRequestRequest request;
-  service_->CreateEnrollRequest(request, base::Bind(callback));
+  service_->CreateEnrollRequest(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1618,7 +1608,8 @@ TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithEmptyAbeData) {
   database->mutable_identity_binding()->set_identity_public_key("public_key");
   database->mutable_pcr0_quote()->set_quote("pcr0");
   database->mutable_pcr1_quote()->set_quote("pcr1");
-  auto callback = [this](const CreateEnrollRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateEnrollRequestReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_pca_request());
     AttestationEnrollmentRequest pca_request;
@@ -1630,12 +1621,12 @@ TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithEmptyAbeData) {
     EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
     EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
     EXPECT_FALSE(pca_request.has_enterprise_enrollment_nonce());
-    Quit();
+    quit_closure.Run();
   };
   brillo::SecureBlob abe_data;
   service_->set_abe_data(&abe_data);
   CreateEnrollRequestRequest request;
-  service_->CreateEnrollRequest(request, base::Bind(callback));
+  service_->CreateEnrollRequest(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1647,7 +1638,8 @@ TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithAbeData) {
   database->mutable_identity_binding()->set_identity_public_key("public_key");
   database->mutable_pcr0_quote()->set_quote("pcr0");
   database->mutable_pcr1_quote()->set_quote("pcr1");
-  auto callback = [this](const CreateEnrollRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateEnrollRequestReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_pca_request());
     AttestationEnrollmentRequest pca_request;
@@ -1662,48 +1654,51 @@ TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithAbeData) {
 
     // Mocked CryptoUtility->HmacSha256 returns always a zeroed buffer.
     EXPECT_EQ(std::string(32, '\0'), pca_request.enterprise_enrollment_nonce());
-    Quit();
+    quit_closure.Run();
   };
 
   CreateEnrollRequestRequest request;
   brillo::SecureBlob abe_data(0xCA, 32);
   service_->set_abe_data(&abe_data);
-  service_->CreateEnrollRequest(request, base::Bind(callback));
+  service_->CreateEnrollRequest(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateEnrollRequestNotReady) {
   // Empty database - not prepared for enrollment
   mock_database_.GetMutableProtobuf()->Clear();
-  auto callback = [this](const CreateEnrollRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateEnrollRequestReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_pca_request());
-    Quit();
+    quit_closure.Run();
   };
   CreateEnrollRequestRequest request;
-  service_->CreateEnrollRequest(request, base::Bind(callback));
+  service_->CreateEnrollRequest(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, FinishEnrollSuccess) {
-  auto callback = [this](const FinishEnrollReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const FinishEnrollReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   FinishEnrollRequest request;
   request.set_pca_response(CreateCAEnrollResponse(true));
-  service_->FinishEnroll(request, base::Bind(callback));
+  service_->FinishEnroll(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, FinishEnrollFailure) {
-  auto callback = [this](const FinishEnrollReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const FinishEnrollReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
-    Quit();
+    quit_closure.Run();
   };
   FinishEnrollRequest request;
   request.set_pca_response(CreateCAEnrollResponse(false));
-  service_->FinishEnroll(request, base::Bind(callback));
+  service_->FinishEnroll(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1711,7 +1706,8 @@ TEST_F(AttestationServiceTest, CreateCertificateRequestSuccess) {
   // Populate identity credential
   AttestationDatabase* database = mock_database_.GetMutableProtobuf();
   database->mutable_identity_key()->set_identity_credential("cert");
-  auto callback = [this](const CreateCertificateRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertificateRequestReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_pca_request());
     AttestationCertificateRequest pca_request;
@@ -1719,13 +1715,14 @@ TEST_F(AttestationServiceTest, CreateCertificateRequestSuccess) {
     EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_MACHINE_CERTIFICATE, pca_request.profile());
     EXPECT_EQ("cert", pca_request.identity_credential());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertificateRequestRequest request;
   request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
   request.set_username("user");
   request.set_request_origin("origin");
-  service_->CreateCertificateRequest(request, base::Bind(callback));
+  service_->CreateCertificateRequest(request,
+                                     base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1735,40 +1732,45 @@ TEST_F(AttestationServiceTest, CreateCertificateRequestInternalFailure) {
   database->mutable_identity_key()->set_identity_credential("cert");
   EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
       .WillRepeatedly(Return(false));
-  auto callback = [this](const CreateCertificateRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertificateRequestReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_pca_request());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertificateRequestRequest request;
   request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
   request.set_username("user");
   request.set_request_origin("origin");
-  service_->CreateCertificateRequest(request, base::Bind(callback));
+  service_->CreateCertificateRequest(request,
+                                     base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateCertificateRequestNotEnrolled) {
   // Empty database - not enrolled
   mock_database_.GetMutableProtobuf()->Clear();
-  auto callback = [this](const CreateCertificateRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertificateRequestReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_pca_request());
-    Quit();
+    quit_closure.Run();
   };
   CreateCertificateRequestRequest request;
   request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
   request.set_username("user");
   request.set_request_origin("origin");
-  service_->CreateCertificateRequest(request, base::Bind(callback));
+  service_->CreateCertificateRequest(request,
+                                     base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, FinishCertificateRequestSuccess) {
-  auto callback = [this](const FinishCertificateRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const FinishCertificateRequestReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_certificate());
-    Quit();
+    quit_closure.Run();
   };
   AttestationCertificateRequest pca_request = GenerateCACertRequest();
   FinishCertificateRequestRequest request;
@@ -1776,16 +1778,18 @@ TEST_F(AttestationServiceTest, FinishCertificateRequestSuccess) {
   request.set_key_label("label");
   request.set_pca_response(
       CreateCACertResponse(true, pca_request.message_id()));
-  service_->FinishCertificateRequest(request, base::Bind(callback));
+  service_->FinishCertificateRequest(request,
+                                     base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, FinishCertificateRequestInternalFailure) {
   EXPECT_CALL(mock_key_store_, Write(_, _, _)).WillRepeatedly(Return(false));
-  auto callback = [this](const FinishCertificateRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const FinishCertificateRequestReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_certificate());
-    Quit();
+    quit_closure.Run();
   };
   AttestationCertificateRequest pca_request = GenerateCACertRequest();
   FinishCertificateRequestRequest request;
@@ -1793,15 +1797,17 @@ TEST_F(AttestationServiceTest, FinishCertificateRequestInternalFailure) {
   request.set_key_label("label");
   request.set_pca_response(
       CreateCACertResponse(true, pca_request.message_id()));
-  service_->FinishCertificateRequest(request, base::Bind(callback));
+  service_->FinishCertificateRequest(request,
+                                     base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, FinishCertificateRequestWrongMessageId) {
-  auto callback = [this](const FinishCertificateRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const FinishCertificateRequestReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_certificate());
-    Quit();
+    quit_closure.Run();
   };
   // Generate some request to populate pending_requests, but ignore its fields.
   GenerateCACertRequest();
@@ -1809,15 +1815,17 @@ TEST_F(AttestationServiceTest, FinishCertificateRequestWrongMessageId) {
   request.set_username("user");
   request.set_key_label("label");
   request.set_pca_response(CreateCACertResponse(true, "wrong_id"));
-  service_->FinishCertificateRequest(request, base::Bind(callback));
+  service_->FinishCertificateRequest(request,
+                                     base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, FinishCertificateRequestServerFailure) {
-  auto callback = [this](const FinishCertificateRequestReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const FinishCertificateRequestReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_certificate());
-    Quit();
+    quit_closure.Run();
   };
   // Generate some request to populate pending_requests, but ignore its fields.
   GenerateCACertRequest();
@@ -1825,7 +1833,8 @@ TEST_F(AttestationServiceTest, FinishCertificateRequestServerFailure) {
   request.set_username("user");
   request.set_key_label("label");
   request.set_pca_response(CreateCACertResponse(false, ""));
-  service_->FinishCertificateRequest(request, base::Bind(callback));
+  service_->FinishCertificateRequest(request,
+                                     base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1833,7 +1842,8 @@ TEST_F(AttestationServiceTest, SignSimpleChallengeSuccess) {
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(std::string("signature")),
                       Return(true)));
-  auto callback = [this](const SignSimpleChallengeReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignSimpleChallengeReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_challenge_response());
     SignedData signed_data;
@@ -1841,29 +1851,30 @@ TEST_F(AttestationServiceTest, SignSimpleChallengeSuccess) {
     EXPECT_EQ("signature", signed_data.signature());
     EXPECT_EQ(0, signed_data.data().find("challenge"));
     EXPECT_NE("challenge", signed_data.data());
-    Quit();
+    quit_closure.Run();
   };
   SignSimpleChallengeRequest request;
   request.set_username("user");
   request.set_key_label("label");
   request.set_challenge("challenge");
-  service_->SignSimpleChallenge(request, base::Bind(callback));
+  service_->SignSimpleChallenge(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
 TEST_F(AttestationServiceTest, SignSimpleChallengeInternalFailure) {
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
       .WillRepeatedly(Return(false));
-  auto callback = [this](const SignSimpleChallengeReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignSimpleChallengeReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_challenge_response());
-    Quit();
+    quit_closure.Run();
   };
   SignSimpleChallengeRequest request;
   request.set_username("user");
   request.set_key_label("label");
   request.set_challenge("challenge");
-  service_->SignSimpleChallenge(request, base::Bind(callback));
+  service_->SignSimpleChallenge(request, base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1887,7 +1898,8 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeSuccess) {
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(std::string("signature")),
                       Return(true)));
-  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignEnterpriseChallengeReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_challenge_response());
     SignedData signed_data;
@@ -1902,7 +1914,7 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeSuccess) {
     key_info.SerializeToString(&key_info_str);
     EXPECT_EQ(key_info_str,
               response_pb.encrypted_key_info().encrypted_data());
-    Quit();
+    quit_closure.Run();
   };
   SignEnterpriseChallengeRequest request;
   request.set_va_type(GetParam());
@@ -1912,7 +1924,8 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeSuccess) {
   request.set_device_id(key_info.device_id());
   request.set_include_signed_public_key(false);
   request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
-  service_->SignEnterpriseChallenge(request, base::Bind(callback));
+  service_->SignEnterpriseChallenge(request,
+                                    base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1937,7 +1950,8 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeSuccess) {
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(std::string("signature")),
                       Return(true)));
-  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignEnterpriseChallengeReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_challenge_response());
     SignedData signed_data;
@@ -1952,7 +1966,7 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeSuccess) {
     key_info.SerializeToString(&key_info_str);
     EXPECT_EQ(key_info_str,
               response_pb.encrypted_key_info().encrypted_data());
-    Quit();
+    quit_closure.Run();
   };
   SignEnterpriseChallengeRequest request;
   request.set_username("user");
@@ -1961,7 +1975,8 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeSuccess) {
   request.set_device_id(key_info.device_id());
   request.set_include_signed_public_key(false);
   request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
-  service_->SignEnterpriseChallenge(request, base::Bind(callback));
+  service_->SignEnterpriseChallenge(request,
+                                    base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1973,10 +1988,11 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeInternalFailure) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
       .WillRepeatedly(Return(false));
-  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignEnterpriseChallengeReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_challenge_response());
-    Quit();
+    quit_closure.Run();
   };
   SignEnterpriseChallengeRequest request;
   request.set_username("user");
@@ -1985,7 +2001,8 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeInternalFailure) {
   request.set_device_id(key_info.device_id());
   request.set_include_signed_public_key(false);
   request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
-  service_->SignEnterpriseChallenge(request, base::Bind(callback));
+  service_->SignEnterpriseChallenge(request,
+                                    base::Bind(callback, QuitClosure()));
   Run();
 }
 
@@ -1995,10 +2012,11 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeBadPrefix) {
   key_info.SerializeToString(&key_info_str);
   EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _))
       .WillRepeatedly(Return(true));
-  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+  auto callback = [](const base::Closure& quit_closure,
+                     const SignEnterpriseChallengeReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_challenge_response());
-    Quit();
+    quit_closure.Run();
   };
   SignEnterpriseChallengeRequest request;
   request.set_username("user");
@@ -2007,7 +2025,8 @@ TEST_F(AttestationServiceTest, SignEnterpriseChallengeBadPrefix) {
   request.set_device_id(key_info.device_id());
   request.set_include_signed_public_key(false);
   request.set_challenge(CreateSignedChallenge("bad_prefix"));
-  service_->SignEnterpriseChallenge(request, base::Bind(callback));
+  service_->SignEnterpriseChallenge(request,
+                                    base::Bind(callback, QuitClosure()));
   Run();
 }
 
