@@ -8,6 +8,8 @@
 #include <base/run_loop.h>
 #include <brillo/syslog_logging.h>
 
+#include "vm_tools/cicerone/service.h"
+
 int main(int argc, char** argv) {
   base::AtExitManager at_exit;
   base::MessageLoopForIO message_loop;
@@ -21,7 +23,8 @@ int main(int argc, char** argv) {
 
   base::RunLoop run_loop;
 
-  // TODO(jkardatzke): Run the actual service implementation.
+  auto service = vm_tools::cicerone::Service::Create(run_loop.QuitClosure());
+  CHECK(service);
 
   run_loop.Run();
 

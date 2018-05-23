@@ -8,7 +8,7 @@ and for providing any services those VMs may need while they are running.
 ## vm_concierge
 
 `vm_concierge` is a system daemon that runs in Chrome OS userspace and is
-responsible for managing the lifetime of all VMs.  It exposes a [DBus
+responsible for managing the lifetime of all VMs.  It exposes a [D-Bus
 API](https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/vm_concierge/)
 for starting and stopping VMs.
 
@@ -21,8 +21,21 @@ Once the VM has started up `vm_concierge` communicates with the `maitred`
 instance inside the VM to finish setting it up.  This includes configuring the
 network and mounting disk images.
 
-`vm_concierge` also can communicate with containers running inside of the VMs
-by interacting with the `garcon` component running in the container.
+## vm_cicerone
+
+`vm_cicerone` is a system daemon that runs in Chrome OS userspace and is
+responsible for all communication directly with the container in a VM. It
+exposes a [D-Bus API]
+(https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/vm_cicerone)
+for doing things such as launching applications in containers, getting icons
+from containers and other container related functionality as it is extended. It
+also sends out signals for starting/stopping of containers.
+
+`vm_concierge` communicates with `vm_cicerone` to keep the list of running VMs
+in sync and also to retrieve status of containers and get security tokens.
+
+When `vm_cicerone` communicates with a container, it is interacting with the
+`garcon` component running inside of that container and is doing so over gRPC.
 
 ## maitred
 
@@ -38,12 +51,12 @@ out as pid 1.
 ## garcon
 
 `garcon` is a daemon that runs inside of a container within a VM. gRPC is used
-to communicate between `vm_concierge` and `garcon`. It is used to control/query
+to communicate between `vm_cicerone` and `garcon`. It is used to control/query
 things inside the contaienr such as application launching, accessibility,
 handling intents, opening files, etc. The communication is bi-directional. It
 uses TCP/IP for the transport and firewall rules ensure that only the container
 IPs are allowed to connect to the corresponding port for `garcon` that is open
-in `vm_concierge`.
+in `vm_cicerone`.
 
 ## vsh
 

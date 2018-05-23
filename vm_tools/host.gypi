@@ -112,8 +112,39 @@
       ],
     },
     {
+      'target_name': 'libcicerone',
+      'type': 'static_library',
+      'dependencies': [
+        'container-rpcs',
+      ],
+      'variables': {
+        'exported_deps': [
+          'system_api',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
+      },
+      'link_settings': {
+        'libraries': [
+          '-lgpr',
+        ],
+      },
+      'sources': [
+        'cicerone/container_listener_impl.cc',
+        'cicerone/service.cc',
+        'cicerone/virtual_machine.cc',
+      ],
+    },
+    {
       'target_name': 'vm_cicerone',
       'type': 'executable',
+      'dependencies': [
+        'libcicerone',
+      ],
       'sources': [
         'cicerone/main.cc',
       ],
@@ -133,6 +164,18 @@
           'sources': [
             'syslog/forwarder_unittest.cc',
             'syslog/scrubber_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'cicerone_test',
+          'type': 'executable',
+          'dependencies': [
+            'libcicerone',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'cicerone/virtual_machine_unittest.cc',
           ],
         },
         {
