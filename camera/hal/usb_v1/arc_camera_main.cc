@@ -13,6 +13,7 @@
 
 int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
+  brillo::OpenLog("arc-camera-service", true /* log_pid */);
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
