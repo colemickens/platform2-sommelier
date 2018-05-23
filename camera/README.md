@@ -71,6 +71,11 @@ We provide the following packages that are required to build the camera HAL:
   A package that installs all the necessary Android headers files required by
   the camera HAL.
 
+- `media-libs/cros-camera-libcab`
+
+  Provides functions to access the isolated camera 3A library if the camera HAL
+  requires it to work.
+
 - `media-libs/cros-camera-libcbm`
 
   A replacement for Android gralloc. The library provides [APIs](
@@ -84,6 +89,10 @@ We provide the following packages that are required to build the camera HAL:
 - `media-libs/cros-camera-libcamera_metadata`
 
   A port of the Android `libcamera_metadata`.
+
+- `media-libs/cros-camera-libcamera_v4l2_device`
+
+  Provides functions to access camera V4L2 devices.
 
 - `media-libs/libsync`
 
