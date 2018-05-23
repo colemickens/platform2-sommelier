@@ -27,7 +27,7 @@ EventDispatcher* EventDispatcher::GetInstance() {
 bool EventDispatcher::PostTask(const base::Closure& task) {
   if (!base::MessageLoop::current())
     return false;
-  base::MessageLoop::current()->PostTask(FROM_HERE, task);
+  base::MessageLoop::current()->task_runner()->PostTask(FROM_HERE, task);
   return true;
 }
 
@@ -35,7 +35,7 @@ bool EventDispatcher::PostDelayedTask(const base::Closure& task,
                                       int64_t delay_ms) {
   if (!base::MessageLoop::current())
     return false;
-  base::MessageLoop::current()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
   return true;
 }
