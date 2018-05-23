@@ -82,9 +82,9 @@ struct sl_context {
   int data_driver;
   int wm_fd;
   int virtwl_fd;
-  int virtwl_sl_fd;
+  int virtwl_ctx_fd;
   int virtwl_socket_fd;
-  struct wl_event_source* virtwl_sl_event_source;
+  struct wl_event_source* virtwl_ctx_event_source;
   struct wl_event_source* virtwl_socket_event_source;
   const char* drm_device;
   struct gbm_device* gbm;

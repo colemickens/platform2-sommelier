@@ -6795,7 +6795,7 @@ static enum wl_iterator_result sl_set_display_implementation(
   return WL_ITERATOR_CONTINUE;
 }
 
-static int sl_handle_virtwl_sl_event(int fd, uint32_t mask, void* data) {
+static int sl_handle_virtwl_ctx_event(int fd, uint32_t mask, void* data) {
   struct sl_context* ctx = (struct sl_context*)data;
   uint8_t ioctl_buffer[4096];
   struct virtwl_ioctl_txn *ioctl_recv = (struct virtwl_ioctl_txn *)ioctl_buffer;
@@ -6904,7 +6904,7 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   // The FDs and data were extracted from the recvmsg call into the ioctl_send
   // structure which we now pass along to the kernel.
   ioctl_send->len = bytes;
-  rv = ioctl(ctx->virtwl_sl_fd, VIRTWL_IOCTL_SEND, ioctl_send);
+  rv = ioctl(ctx->virtwl_ctx_fd, VIRTWL_IOCTL_SEND, ioctl_send);
   assert(!rv);
   UNUSED(rv);
 
@@ -7004,9 +7004,9 @@ int main(int argc, char **argv) {
       .data_driver = DATA_DRIVER_NOOP,
       .wm_fd = -1,
       .virtwl_fd = -1,
-      .virtwl_sl_fd = -1,
+      .virtwl_ctx_fd = -1,
       .virtwl_socket_fd = -1,
-      .virtwl_sl_event_source = NULL,
+      .virtwl_ctx_event_source = NULL,
       .virtwl_socket_event_source = NULL,
       .drm_device = NULL,
       .gbm = NULL,
@@ -7419,14 +7419,14 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
       }
 
-      ctx.virtwl_sl_fd = new_ctx.fd;
+      ctx.virtwl_ctx_fd = new_ctx.fd;
 
       ctx.virtwl_socket_event_source = wl_event_loop_add_fd(
           event_loop, ctx.virtwl_socket_fd, WL_EVENT_READABLE,
           sl_handle_virtwl_socket_event, &ctx);
-      ctx.virtwl_sl_event_source =
-          wl_event_loop_add_fd(event_loop, ctx.virtwl_sl_fd, WL_EVENT_READABLE,
-                               sl_handle_virtwl_sl_event, &ctx);
+      ctx.virtwl_ctx_event_source =
+          wl_event_loop_add_fd(event_loop, ctx.virtwl_ctx_fd, WL_EVENT_READABLE,
+                               sl_handle_virtwl_ctx_event, &ctx);
     }
   }
 
