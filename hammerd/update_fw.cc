@@ -466,47 +466,59 @@ bool FirmwareUpdater::SendSubcommandReceiveResponse(
 }
 
 bool FirmwareUpdater::SendFirstPdu() {
-  LOG(INFO) << ">>> SendFirstPdu";
   UpdateFrameHeader ufh;
-  memset(&ufh, 0, sizeof(ufh));
-  ufh.block_size = htobe32(sizeof(ufh));
-  if (endpoint_->Send(&ufh, sizeof(ufh)) != sizeof(ufh)) {
-    LOG(ERROR) << "Send first update frame header failed.";
-    return false;
-  }
-
-  // We got something. Check for errors in response.
   FirstResponsePdu rpdu;
-  size_t rxed_size = endpoint_->Receive(&rpdu, sizeof(rpdu), true);
-  const size_t kMinimumResponseSize = 8;
-  if (rxed_size < kMinimumResponseSize) {
-    LOG(ERROR) << "Unexpected response size: " << rxed_size
-               << ". Response content: "
-               << base::HexEncode(reinterpret_cast<uint8_t*>(&rpdu), rxed_size);
-    return false;
-  }
+  uint32_t return_value;
 
-  // Convert endian of the response.
-  uint32_t return_value = be32toh(rpdu.return_value);
-  targ_.header_type = be16toh(rpdu.header_type);
-  targ_.protocol_version = be16toh(rpdu.protocol_version);
-  targ_.maximum_pdu_size = be32toh(rpdu.maximum_pdu_size);
-  targ_.flash_protection = be32toh(rpdu.flash_protection);
-  targ_.offset = be32toh(rpdu.offset);
-  memcpy(targ_.version, rpdu.version, sizeof(rpdu.version));
-  targ_.min_rollback = be32toh(rpdu.min_rollback);
-  targ_.key_version = be32toh(rpdu.key_version);
+  constexpr unsigned int kMaximumRunCount = 100;
+  constexpr unsigned int kWaitTimeMs = 10;  // Time to wait in between attempts.
+  // Retry with ~1000ms timeout to wait for EC to calculate RW signature.
+  for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
+    LOG(INFO) << ">>> SendFirstPdu (attempt " << run_count << ")";
+    memset(&ufh, 0, sizeof(ufh));
+    ufh.block_size = htobe32(sizeof(ufh));
+    if (endpoint_->Send(&ufh, sizeof(ufh)) != sizeof(ufh)) {
+      LOG(ERROR) << "Send first update frame header failed.";
+      return false;
+    }
 
-  LOG(INFO) << "target running protocol version " << targ_.protocol_version
-            << " (type " << targ_.header_type << ")";
-  if (targ_.protocol_version != 6) {
-    LOG(ERROR) << "Unsupported protocol version " << targ_.protocol_version;
-    return false;
-  }
-  if (targ_.header_type !=
-      static_cast<int>(FirstResponsePduHeaderType::kCommon)) {
-    LOG(ERROR) << "Unsupported header type " << targ_.header_type;
-    return false;
+    // We got something. Check for errors in response.
+    size_t rxed_size = endpoint_->Receive(&rpdu, sizeof(rpdu), true);
+    const size_t kMinimumResponseSize = 8;
+    if (rxed_size < kMinimumResponseSize) {
+      LOG(ERROR) << "Unexpected response size: " << rxed_size
+                 << ". Response content: "
+                 << base::HexEncode(reinterpret_cast<uint8_t*>(&rpdu), rxed_size);
+      return false;
+    }
+
+    // Convert endian of the response.
+    return_value = be32toh(rpdu.return_value);
+    targ_.header_type = be16toh(rpdu.header_type);
+    targ_.protocol_version = be16toh(rpdu.protocol_version);
+    targ_.maximum_pdu_size = be32toh(rpdu.maximum_pdu_size);
+    targ_.flash_protection = be32toh(rpdu.flash_protection);
+    targ_.offset = be32toh(rpdu.offset);
+    memcpy(targ_.version, rpdu.version, sizeof(rpdu.version));
+    targ_.min_rollback = be32toh(rpdu.min_rollback);
+    targ_.key_version = be32toh(rpdu.key_version);
+
+    LOG(INFO) << "target running protocol version " << targ_.protocol_version
+              << " (type " << targ_.header_type << ")";
+    if (targ_.protocol_version != 6) {
+      LOG(ERROR) << "Unsupported protocol version " << targ_.protocol_version;
+      return false;
+    }
+    if (targ_.header_type !=
+        static_cast<int>(FirstResponsePduHeaderType::kCommon)) {
+      LOG(ERROR) << "Unsupported header type " << targ_.header_type;
+      return false;
+    }
+    if (return_value !=
+        static_cast<int>(UpdateCommandResponseStatus::kRwsigBusy))
+      break;
+    LOG(WARNING) << "EC still calculating RW signature, retrying...";
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kWaitTimeMs));
   }
   if (return_value) {
     LOG(ERROR) << "Target reporting error " << return_value;

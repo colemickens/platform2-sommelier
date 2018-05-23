@@ -52,6 +52,20 @@ enum class FirstResponsePduHeaderType {
   kCommon = 1,
 };
 
+enum class UpdateCommandResponseStatus : uint32_t {
+  kSuccess = 0,
+  kBadAddr = 1,
+  kEraseFailure = 2,
+  kDataError = 3,
+  kWriteFailure = 4,
+  kVerifyError = 5,
+  kGenError = 6,
+  kMallocError = 7,
+  kRollbackError = 8,
+  kRateLimitError = 9,
+  kRwsigBusy = 10,
+};
+
 // The extra vendor subcommand.
 enum class UpdateExtraCommand : uint16_t {
   kImmediateReset = 0,
@@ -376,8 +390,9 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUsb_FAIL);
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUsb_FetchVersion_Legacy);
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUsb_FetchVersion_FAIL);
-  FRIEND_TEST(FirmwareUpdaterTest, SendFirstPdu);
   FRIEND_TEST(FirmwareUpdaterTest, SendDone);
+  FRIEND_TEST(FirmwareUpdaterTest, SendFirstPdu);
+  FRIEND_TEST(FirmwareUpdaterTest, SendFirstPdu_RwsigBusy);
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_InjectEntropy);
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_Reset);
   FRIEND_TEST(FirmwareUpdaterTest, TransferImage);

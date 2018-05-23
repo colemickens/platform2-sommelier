@@ -20,10 +20,11 @@
 #include "hammerd/usb_utils.h"
 
 using testing::_;
-using testing::Invoke;
-using testing::InSequence;
-using testing::AtLeast;
 using testing::AnyNumber;
+using testing::Assign;
+using testing::AtLeast;
+using testing::InSequence;
+using testing::Invoke;
 using testing::Return;
 using testing::ReturnArg;
 
@@ -40,7 +41,8 @@ class FirmwareUpdaterTest : public testing::Test {
     fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
     targ_ = &(fw_updater_->targ_);
 
-    good_rpdu_.return_value = htobe32(0);
+    good_rpdu_.return_value =
+        htobe16(static_cast<int>(UpdateCommandResponseStatus::kSuccess));
     good_rpdu_.header_type =
         htobe16(static_cast<int>(FirstResponsePduHeaderType::kCommon));
     good_rpdu_.protocol_version = htobe16(6);
@@ -249,13 +251,31 @@ TEST_F(FirmwareUpdaterTest, SendDone) {
   fw_updater_->SendDone();
 }
 
-// Send first PDU and get the good response.
+// Send first PDU and get a good response.
 TEST_F(FirmwareUpdaterTest, SendFirstPdu) {
   InSequence dummy;
   EXPECT_CALL(*endpoint_, SendHelper(first_header_, _, _))
       .WillOnce(ReturnArg<2>());
   EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_rpdu_), true, _))
       .WillOnce(WriteBuf(&good_rpdu_));
+
+  ASSERT_EQ(fw_updater_->SendFirstPdu(), true);
+}
+
+// Send first PDU when EC is still calculating RW signature.
+TEST_F(FirmwareUpdaterTest, SendFirstPdu_RwsigBusy) {
+  InSequence dummy;
+  good_rpdu_.return_value =
+      htobe32(static_cast<int>(UpdateCommandResponseStatus::kRwsigBusy));
+  ON_CALL(*endpoint_, SendHelper(first_header_, _, _))
+      .WillByDefault(ReturnArg<2>());
+  EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_rpdu_), true, _))
+      .WillOnce(WriteBuf(&good_rpdu_));
+  EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_rpdu_), true, _))
+      .WillOnce(DoAll(Assign(&good_rpdu_.return_value,
+                             htobe32(static_cast<int>(
+                                 UpdateCommandResponseStatus::kSuccess))),
+                      WriteBuf(&good_rpdu_)));
 
   ASSERT_EQ(fw_updater_->SendFirstPdu(), true);
 }
