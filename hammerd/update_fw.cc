@@ -22,6 +22,8 @@
 
 namespace hammerd {
 
+constexpr unsigned int kTransferTimeoutMs = 3000;
+
 const char* ToString(UpdateExtraCommand subcommand) {
   switch (subcommand) {
     case UpdateExtraCommand::kImmediateReset:
@@ -606,7 +608,8 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
 
   // Now get the reply.
   uint32_t reply;
-  if (endpoint_->Receive(&reply, sizeof(reply), true) == -1) {
+  if (endpoint_->Receive(&reply, sizeof(reply), true,
+                         kTransferTimeoutMs) == -1) {
     return false;
   }
   reply = *(reinterpret_cast<uint8_t*>(&reply));
