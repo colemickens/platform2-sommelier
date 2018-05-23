@@ -59,7 +59,7 @@ class DeviceInfoTest : public testing::Test {
   virtual void SetUp() {
     // Setup temporary directory for device info files.
     CHECK(temp_dir_.CreateUniqueTempDir());
-    device_info_root_ = temp_dir_.path().Append("sys/class/net");
+    device_info_root_ = temp_dir_.GetPath().Append("sys/class/net");
     device_info_.device_info_root_ = device_info_root_;
 
     // Setup mock pointers;
