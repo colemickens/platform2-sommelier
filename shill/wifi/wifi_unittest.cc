@@ -463,14 +463,20 @@ class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
       : metrics_(nullptr),
-        device_(
-            new WiFi(control_interface(), dispatcher(), &metrics_,
-                     manager(), "wifi", "", kInterfaceIndex)) {
+        device_(new WiFi(control_interface(),
+                         dispatcher(),
+                         &metrics_,
+                         manager(),
+                         "wifi",
+                         "",
+                         kInterfaceIndex,
+                         std::make_unique<MockWakeOnWiFi>())) {
   }
   virtual ~WiFiPropertyTest() {}
 
  protected:
   MockMetrics metrics_;
+  MockNetlinkManager netlink_manager_;
   WiFiRefPtr device_;
 };
 
@@ -568,7 +574,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                        &manager_,
                        kDeviceName,
                        kDeviceAddress,
-                       kInterfaceIndex)),
+                       kInterfaceIndex,
+                       std::make_unique<MockWakeOnWiFi>())),
         bss_counter_(0),
         mac80211_monitor_(new StrictMock<MockMac80211Monitor>(
             event_dispatcher_.get(),
@@ -641,6 +648,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->all_scan_frequencies_.insert(kRandomScanFrequency1);
     wifi_->all_scan_frequencies_.insert(kRandomScanFrequency2);
     wifi_->all_scan_frequencies_.insert(kRandomScanFrequency3);
+
+    wake_on_wifi_ = static_cast<MockWakeOnWiFi*>(wifi_->wake_on_wifi_.get());
   }
 
   void SetUp() override {
@@ -652,10 +661,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
     EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
-    // Must be called here instead of in the constructor so that the destructor
-    // of SimpleAlarmTimer will not be invoked before the EventDispatcher is
-    // properly constructed (crbug.com/509138).
-    InstallMockWakeOnWiFi();
   }
 
   void TearDown() override {
@@ -688,11 +693,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   size_t GetScanFrequencyCount() const {
     return wifi_->all_scan_frequencies_.size();
-  }
-
-  void InstallMockWakeOnWiFi() {
-    wake_on_wifi_ = new MockWakeOnWiFi();
-    wifi_->wake_on_wifi_.reset(wake_on_wifi_);
   }
 
   void SetScanState(WiFi::ScanState new_state,
@@ -1307,6 +1307,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
   MockTime time_;
+  MockNetlinkManager netlink_manager_;
 
  private:
   NiceMockControl control_interface_;
@@ -1338,7 +1339,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // and manager so we can perform expectations against them.
   DeviceMockAdaptor* adaptor_;
   MockSupplicantEAPStateHandler* eap_state_handler_;
-  MockNetlinkManager netlink_manager_;
 
  private:
   std::unique_ptr<SupplicantInterfaceProxyInterface>

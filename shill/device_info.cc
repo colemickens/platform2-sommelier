@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_enumerator.h>
@@ -1334,9 +1335,20 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
               << " at interface index "
               << interface_index;
   string address = info->mac_address.HexEncode();
-  DeviceRefPtr device =
-      new WiFi(control_interface_, dispatcher_, metrics_, manager_,
-               info->name, address, interface_index);
+  auto wake_on_wifi = std::make_unique<WakeOnWiFi>(
+      netlink_manager_,
+      dispatcher_,
+      metrics_,
+      address,
+      base::Bind(&Manager::RecordDarkResumeWakeReason, manager_->AsWeakPtr()));
+  DeviceRefPtr device = new WiFi(control_interface_,
+                                 dispatcher_,
+                                 metrics_,
+                                 manager_,
+                                 info->name,
+                                 address,
+                                 interface_index,
+                                 std::move(wake_on_wifi));
   device->EnableIPv6Privacy();
   RegisterDevice(device);
 }

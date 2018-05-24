@@ -30,10 +30,12 @@
 
 #include "shill/mock_log.h"
 #include "shill/net/ieee80211.h"
+#include "shill/net/mock_netlink_manager.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/tethering.h"
+#include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 
 using std::map;
@@ -47,17 +49,21 @@ using ::testing::NiceMock;
 
 namespace shill {
 
+// Fake MAC address.
+constexpr char kDeviceAddress[] = "aabbccddeeff";
+
 class WiFiEndpointTest : public PropertyStoreTest {
  public:
-  WiFiEndpointTest() : wifi_(
-      new NiceMock<MockWiFi>(
-          control_interface(),
-          dispatcher(),
-          metrics(),
-          manager(),
-          "wifi",
-          "aabbccddeeff",  // fake mac
-          0)) {}
+  WiFiEndpointTest()
+      : wifi_(new NiceMock<MockWiFi>(
+            control_interface(),
+            dispatcher(),
+            metrics(),
+            manager(),
+            "wifi",
+            kDeviceAddress,
+            0,
+            new MockWakeOnWiFi())) {}
   virtual ~WiFiEndpointTest() {}
 
  protected:
@@ -230,6 +236,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
 
  private:
+  MockNetlinkManager netlink_manager_;
   scoped_refptr<MockWiFi> wifi_;
 };
 

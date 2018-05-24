@@ -130,7 +130,8 @@ WiFi::WiFi(ControlInterface* control_interface,
            Manager* manager,
            const string& link,
            const string& address,
-           int interface_index)
+           int interface_index,
+           std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi)
     : Device(control_interface,
              dispatcher,
              metrics,
@@ -143,10 +144,9 @@ WiFi::WiFi(ControlInterface* control_interface,
       weak_ptr_factory_(this),
       time_(Time::GetInstance()),
       supplicant_present_(false),
-      supplicant_process_proxy_(
-          control_interface->CreateSupplicantProcessProxy(
-              Bind(&WiFi::OnSupplicantAppear, Unretained(this)),
-              Bind(&WiFi::OnSupplicantVanish, Unretained(this)))),
+      supplicant_process_proxy_(control_interface->CreateSupplicantProcessProxy(
+          Bind(&WiFi::OnSupplicantAppear, Unretained(this)),
+          Bind(&WiFi::OnSupplicantVanish, Unretained(this)))),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       supplicant_disconnect_reason_(kDefaultDisconnectReason),
@@ -158,13 +158,13 @@ WiFi::WiFi(ControlInterface* control_interface,
       is_roaming_in_progress_(false),
       is_debugging_connection_(false),
       eap_state_handler_(new SupplicantEAPStateHandler()),
-      mac80211_monitor_(new Mac80211Monitor(
-          dispatcher,
-          link,
-          kStuckQueueLengthThreshold,
-          base::Bind(&WiFi::RestartFastScanAttempts,
-                     weak_ptr_factory_.GetWeakPtr()),
-          metrics)),
+      mac80211_monitor_(
+          new Mac80211Monitor(dispatcher,
+                              link,
+                              kStuckQueueLengthThreshold,
+                              base::Bind(&WiFi::RestartFastScanAttempts,
+                                         weak_ptr_factory_.GetWeakPtr()),
+                              metrics)),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       roam_threshold_db_(kDefaultRoamThresholdDb),
@@ -177,12 +177,7 @@ WiFi::WiFi(ControlInterface* control_interface,
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
       wiphy_index_(kDefaultWiphyIndex),
-      wake_on_wifi_(new WakeOnWiFi(netlink_manager_,
-                                   dispatcher,
-                                   metrics,
-                                   address,
-                                   Bind(&Manager::RecordDarkResumeWakeReason,
-                                        manager->AsWeakPtr()))) {
+      wake_on_wifi_(std::move(wake_on_wifi)) {
   PropertyStore* store = this->mutable_store();
   store->RegisterDerivedString(kBgscanMethodProperty,
                                StringAccessor(new CustomAccessor<WiFi, string>(

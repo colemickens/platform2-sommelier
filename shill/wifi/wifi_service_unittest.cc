@@ -40,12 +40,14 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
+#include "shill/net/mock_netlink_manager.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/tethering.h"
+#include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/wifi_endpoint.h"
@@ -73,14 +75,15 @@ class WiFiServiceTest : public PropertyStoreTest {
  public:
   WiFiServiceTest()
       : mock_manager_(control_interface(), dispatcher(), metrics()),
-        wifi_(
-            new NiceMock<MockWiFi>(control_interface(),
-                                   dispatcher(),
-                                   metrics(),
-                                   manager(),
-                                   "wifi",
-                                   fake_mac,
-                                   0)),
+        wifi_(new NiceMock<MockWiFi>(
+            control_interface(),
+            dispatcher(),
+            metrics(),
+            manager(),
+            "wifi",
+            fake_mac,
+            0,
+            new MockWakeOnWiFi())),
         simple_ssid_(1, 'a'),
         simple_ssid_string_("a") {}
   virtual ~WiFiServiceTest() {}
@@ -176,7 +179,8 @@ class WiFiServiceTest : public PropertyStoreTest {
                                   manager(),
                                   link_name,
                                   fake_mac,
-                                  0);
+                                  0,
+                                  new MockWakeOnWiFi());
   }
   ServiceMockAdaptor* GetAdaptor(WiFiService* service) {
     return static_cast<ServiceMockAdaptor*>(service->adaptor());
@@ -207,6 +211,7 @@ class WiFiServiceTest : public PropertyStoreTest {
 
  private:
   MockManager mock_manager_;
+  MockNetlinkManager netlink_manager_;
   scoped_refptr<MockWiFi> wifi_;
   MockWiFiProvider provider_;
   const vector<uint8_t> simple_ssid_;

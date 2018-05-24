@@ -136,7 +136,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
        Manager* manager,
        const std::string& link,
        const std::string& address,
-       int interface_index);
+       int interface_index,
+       std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi);
   ~WiFi() override;
 
   void Start(Error* error,

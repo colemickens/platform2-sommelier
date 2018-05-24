@@ -24,6 +24,7 @@
 
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
+#include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
@@ -36,13 +37,17 @@ class EventDispatcher;
 
 class MockWiFi : public WiFi {
  public:
+  // MockWiFi takes ownership of the wake_on_wifi pointer passed to it.
+  // This is not exposed in the constructor type because gmock doesn't
+  // provide the ability to forward arguments that aren't const &...
   MockWiFi(ControlInterface* control_interface,
            EventDispatcher* dispatcher,
            Metrics* metrics,
            Manager* manager,
            const std::string& link_name,
            const std::string& address,
-           int interface_index);
+           int interface_index,
+           WakeOnWiFiInterface* wake_on_wifi);
   ~MockWiFi() override;
 
   MOCK_METHOD2(Start, void(Error* error,
