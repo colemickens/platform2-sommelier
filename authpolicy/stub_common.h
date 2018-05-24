@@ -129,6 +129,8 @@ extern const char kExpectKeytabMachineName[];
 // Triggers net ads info to print a server time later than password write time +
 // kDefaultMachinePasswordChangeRateDays, which should cause a password change.
 extern const char kChangePasswordMachineName[];
+// Triggers ADS server ping to fail, which causes GetUserStatus to return error.
+extern const char kPingServerFailMachineName[];
 // Triggers kinit to be retried a few times for the machine TGT (simulates that
 // the account hasn't propagated yet).
 extern const char kPropagationRetryMachineName[];

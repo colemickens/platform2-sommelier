@@ -253,6 +253,10 @@ class SambaInterface {
   // refresh the values if they are already set.
   ErrorType UpdateAccountData(AccountData* account) WARN_UNUSED_RESULT;
 
+  // Checks whether the ADS server for |account| is available. Currently
+  // implementing by calling net ads workgroup.
+  ErrorType PingServer(AccountData* account) WARN_UNUSED_RESULT;
+
   // Acquire a Kerberos ticket-granting-ticket for the user account.
   // |password_fd| is a file descriptor containing the user's password.
   ErrorType AcquireUserTgt(int password_fd) WARN_UNUSED_RESULT;

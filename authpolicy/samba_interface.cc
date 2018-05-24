@@ -663,6 +663,14 @@ ErrorType SambaInterface::GetUserStatus(
   // the TGT to authenticate. Thus, just return the TGT status and the last auth
   // error.
   if (tgt_status != ActiveDirectoryUserStatus::TGT_VALID) {
+    // Just try to ping the server here. Otherwise, Chrome shows a popup that
+    // the user has to relog in order to get a new TGT, but AuthenticateUser()
+    // fails if the server is unavailable and the popup is shown again.
+    // See crbug.com/844662.
+    error = PingServer(&user_account_);
+    if (error != ERROR_NONE)
+      return error;
+
     user_status->set_tgt_status(tgt_status);
     user_status->set_last_auth_error(last_auth_error_);
     return ERROR_NONE;
@@ -804,7 +812,7 @@ ErrorType SambaInterface::FetchUserGpos(
   SetUser(account_id);
 
   if (!user_logged_in_) {
-    LOG(ERROR) << "User not logged in. Please call AuthenticateUser() first.";
+    LOG(ERROR) << "User not logged in. Did AuthenticateUser() fail?";
     return ERROR_NOT_LOGGED_IN;
   }
   DCHECK(!user_account_.user_name.empty());
@@ -813,8 +821,7 @@ ErrorType SambaInterface::FetchUserGpos(
   // We need user_policy_mode_ to properly fetch user policy, which is read from
   // device policy.
   if (!has_device_policy_) {
-    LOG(ERROR)
-        << "Unknown user policy mode. Please call FetchDeviceGpos() first.";
+    LOG(ERROR) << "Unknown user policy mode. Did FetchDeviceGpos() fail?";
     return ERROR_NO_DEVICE_POLICY;
   }
 
@@ -1178,6 +1185,22 @@ ErrorType SambaInterface::UpdateAccountData(AccountData* account) {
     return error;
 
   return ERROR_NONE;
+}
+
+ErrorType SambaInterface::PingServer(AccountData* account) {
+  // Write smb.conf for UpdateWorkgroup().
+  ErrorType error = WriteSmbConf(*account);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Update |account|->workgroup. Make sure to invalidate the workgroup, so that
+  // the server is actually hit.
+  std::string prev_workgroup;
+  prev_workgroup.swap(account->workgroup);
+  error = UpdateWorkgroup(account);
+  if (error != ERROR_NONE)
+    prev_workgroup.swap(account->workgroup);
+  return error;
 }
 
 ErrorType SambaInterface::AcquireUserTgt(int password_fd) {

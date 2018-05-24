@@ -85,6 +85,7 @@ const char kDisableUserFlagMachineName[] = "disableuserflag";
 const char kLoopbackGpoMachineName[] = "loopback";
 const char kExpectKeytabMachineName[] = "expectkeytab";
 const char kChangePasswordMachineName[] = "changepassword";
+const char kPingServerFailMachineName[] = "pingfail";
 const char kPropagationRetryMachineName[] = "propagat.nretry";
 
 const char kGpo1Guid[] = "{11111111-1111-1111-1111-111111111111}";

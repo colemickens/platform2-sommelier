@@ -27,6 +27,8 @@ const char kSmbConfDevice[] = "smb_device.conf";
 const char kSmbConfUser[] = "smb_user.conf";
 const char kMachinePass[] = "machine_pass";
 const char kStateDir[] = "state";
+const char kSambaDir[] = "samba";
+const char kKrb5CCUser[] = "krb5cc_user";
 
 // Various stub error messages.
 const char kSmbConfArgMissingError[] =
@@ -302,6 +304,24 @@ bool GetNetAdsJoinPasswords(std::string* user_password,
   return true;
 }
 
+// Reads the contents of the (stub) user Kerberos credentials cache. Returns an
+// empty string if the file does not exist.
+std::string GetUserKrb5CCData(const std::string& smb_conf_path) {
+  // Note: Can't use GetKrb5CCFilePath() here since the env var is not defined,
+  // so figure it out from |smb_conf_path|.
+  // smb.conf is at <basepath>/temp/smb_*.conf.
+  // krb5cc   is at <basepath>/temp/samba/krb5cc_user.
+  const base::FilePath krb5cc_path = base::FilePath(smb_conf_path)
+                                         .DirName()
+                                         .Append(kSambaDir)
+                                         .Append(kKrb5CCUser);
+  std::string krb5cc_data;
+  if (!base::PathExists(krb5cc_path))
+    return std::string();
+  CHECK(base::ReadFileToString(krb5cc_path, &krb5cc_data));
+  return krb5cc_data;
+}
+
 // Reads the smb.conf file at |smb_conf_path| and extracts the netbios name.
 std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
   // We need the device smb.conf here, the user smb.conf doesn't contain the
@@ -384,8 +404,21 @@ std::string FormatServerTime(const base::Time& time) {
   return std::string(str);
 }
 
-// Handles a stub 'net ads workgroup' call. Just returns a fake workgroup.
-int HandleWorkgroup() {
+// Handles a stub 'net ads workgroup' call. Different behavior is triggered by
+// passing different machine names (in smb.conf) and user credential caches.
+int HandleWorkgroup(const std::string& smb_conf_path) {
+  // Read machine name from smb.conf.
+  const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
+
+  // Stub server ping error when the TGT is expired (to get certain behavior in
+  // GetUserStatus()). Note that SambaInterface::PingServer currently calls net
+  // ads workgroup to check if the server is available.
+  if (machine_name == base::ToUpperASCII(kPingServerFailMachineName) &&
+      GetUserKrb5CCData(smb_conf_path) == kExpiredKrb5CCData) {
+    WriteOutput("", kNetworkError);
+    return kExitCodeError;
+  }
+
   WriteOutput("Workgroup: WOKGROUP", "");
   return kExitCodeOk;
 }
@@ -597,7 +630,7 @@ int HandleCommandLine(const std::string& command_line,
 
   // Stub net ads workgroup.
   if (StartsWithCaseSensitive(command_line, "ads workgroup"))
-    return HandleWorkgroup();
+    return HandleWorkgroup(smb_conf_path);
 
   // Stub net ads join.
   if (StartsWithCaseSensitive(command_line, "ads join"))

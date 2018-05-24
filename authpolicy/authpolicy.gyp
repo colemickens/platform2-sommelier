@@ -175,6 +175,11 @@
           'dependencies': [
             'libauthpolicy',
             'stub_common',
+            'stub_kinit',
+            'stub_klist',
+            'stub_kpasswd',
+            'stub_net',
+            'stub_smbclient',
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'variables': {

@@ -1292,13 +1292,23 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtNotFound) {
   EXPECT_FALSE(status.has_password_status());
 }
 
-// GetUserStatus succeeds with join and auth, but with an expired TGT.
-TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtExpired) {
+// GetUserStatus succeeds with join and auth, but with an expired TGT and
+// available server.
+TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtExpiredServerAvailable) {
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_EXPIRED, status.tgt_status());
+}
+
+// GetUserStatus succeeds with join and auth, but with an expired TGT and
+// unavailable server.
+TEST_F(AuthPolicyTest, GetUserStatusFailsTgtExpiredServerUnavailable) {
+  EXPECT_EQ(ERROR_NONE,
+            Join(kPingServerFailMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
+  EXPECT_EQ(ERROR_NETWORK_PROBLEM, GetUserStatus(kUserPrincipal, kAccountId));
 }
 
 // GetUserStatus succeeds with join and auth.
