@@ -104,11 +104,6 @@ class UserCollector : public UserCollectorBase {
 
   bool RunFilter(pid_t pid);
 
-  // Returns true if process |pid| is a chrome mojo service process (e.g. the
-  // "ash" system UI). This does not include the content_browser service or its
-  // children (e.g. renderers) which handle their own stack dumping internally.
-  bool IsChromeMashProcess(int pid) const;
-
   bool ShouldDump(pid_t pid,
                   bool has_owner_consent,
                   bool is_developer,
@@ -125,7 +120,6 @@ class UserCollector : public UserCollectorBase {
                                   const base::FilePath& container_dir,
                                   const base::FilePath& core_path,
                                   const base::FilePath& minidump_path) override;
-  void AddExtraMetadata(const std::string& exec, pid_t pid) override;
 
   std::string core_pattern_file_;
   std::string core_pipe_limit_file_;

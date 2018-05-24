@@ -46,8 +46,6 @@ class UserCollectorMock : public UserCollector {
  public:
   MOCK_METHOD0(SetUpDBus, void());
   MOCK_CONST_METHOD1(GetCommandLine, std::vector<std::string>(pid_t pid));
-  MOCK_METHOD2(AddCrashMetaUploadData,
-               void(const std::string& key, const std::string& value));
 };
 
 class UserCollectorTest : public ::testing::Test {
@@ -277,24 +275,6 @@ TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
       FindLog("Received crash notification for supplied_chrome[0] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
   ASSERT_EQ(s_crashes, 0);
-}
-
-// Verifies chrome --mash crashes are handled by crash_reporter, not chrome.
-TEST_F(UserCollectorTest, HandleChromeMashCrashWithConsent) {
-  s_metrics = true;
-  const std::vector<std::string> chrome_mash_command_line = {
-      "/opt/google/chrome", "--foo", "--mash-service-name=ash", "--bar"};
-  EXPECT_CALL(collector_, GetCommandLine(testing::_))
-      .WillRepeatedly(testing::Return(chrome_mash_command_line));
-
-  // Verify crashes have the chrome product name and mash process type.
-  EXPECT_CALL(collector_, AddCrashMetaUploadData("prod", "Chrome_ChromeOS"));
-  EXPECT_CALL(collector_, AddCrashMetaUploadData("ptype", "mash"));
-
-  collector_.HandleCrash("5:2:1000:ignored", "chrome");
-  EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
-  EXPECT_TRUE(FindLog("chrome mash process crash"));
-  EXPECT_EQ(s_crashes, 1);
 }
 
 TEST_F(UserCollectorTest, GetProcessPath) {

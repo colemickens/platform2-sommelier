@@ -9,10 +9,8 @@
 #include <fcntl.h>
 #include <stdint.h>
 
-#include <algorithm>
 #include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -37,21 +35,6 @@ const char kCorePipeLimit[] = "4";
 const char kCoreToMinidumpConverterPath[] = "/usr/bin/core2md";
 
 const char kFilterPath[] = "/opt/google/crash-reporter/filter";
-
-// Metadata fields for crash server.
-const char kProductNameField[] = "prod";
-const char kProcessTypeField[] = "ptype";
-
-// Product name of Chrome for Chrome OS on the crash server. See
-// ChromeCrashReporterClient::GetProductNameAndVersion().
-const char kChromeProductName[] = "Chrome_ChromeOS";
-
-// Process type for chrome --mash crashes.
-const char kMashProcessType[] = "mash";
-
-// Flag must be kept in sync with chrome's switches::kMashServiceName, see
-// src/chrome/common/chrome_switches.cc
-const char kMashServiceName[] = "--mash-service-name";
 
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
@@ -271,18 +254,6 @@ bool UserCollector::RunFilter(pid_t pid) {
   return filter.Run() == 0;
 }
 
-bool UserCollector::IsChromeMashProcess(int pid) const {
-  std::vector<std::string> args = GetCommandLine(pid);
-  return std::any_of(args.begin(), args.end(), [](const std::string& arg) {
-    // A mash process for service 'foo' has an arg "--mash-service-name=foo".
-    // Scan the entire string because some chrome child process have a single
-    // arg with the switches glued together with spaces. This happens because
-    // the zygote uses setproctitle() to change the command from /proc/self/exe
-    // to /opt/google/chrome.
-    return arg.find(kMashServiceName) != std::string::npos;
-  });
-}
-
 bool UserCollector::ShouldDump(pid_t pid,
                                bool has_owner_consent,
                                bool is_developer,
@@ -300,15 +271,10 @@ bool UserCollector::ShouldDump(pid_t pid,
   // crashes towards user crashes, so user crashes really mean non-Chrome
   // user-space crashes.
   if (!handle_chrome_crashes && IsChromeExecName(exec)) {
-    if (!IsChromeMashProcess(pid)) {
-      *reason =
-          "ignoring call by kernel - chrome crash; "
-          "waiting for chrome to call us directly";
-      return false;
-    }
-    // For mustash, chrome --mash and its non-browser mojo services are
-    // considered system services and are handled as user crashes.
-    LOG(INFO) << "chrome mash process crash";
+    *reason =
+        "ignoring call by kernel - chrome crash; "
+        "waiting for chrome to call us directly";
+    return false;
   }
 
   if (!RunFilter(pid)) {
@@ -361,17 +327,6 @@ UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
   }
 
   return kErrorNone;
-}
-
-void UserCollector::AddExtraMetadata(const std::string& exec, pid_t pid) {
-  if (!IsChromeExecName(exec) || !IsChromeMashProcess(pid))
-    return;
-
-  // For mustash, chrome --mash crash reports are handled as user crashes but
-  // are tagged as the chrome product on crash server so the crash dashboard
-  // can show chrome tooling and they show up in chrome crash triage.
-  AddCrashMetaUploadData(kProductNameField, kChromeProductName);
-  AddCrashMetaUploadData(kProcessTypeField, kMashProcessType);
 }
 
 namespace {
