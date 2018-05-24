@@ -943,11 +943,15 @@ int main(int argc, char* argv[]) {
       remove_pending();
     }
 
-    bool owned = false;
-    NvramSpace* lockbox_space = tpm.GetLockboxSpace();
-    if (tpm.IsOwned(&owned) == RESULT_SUCCESS && owned &&
-        lockbox_space->is_valid()) {
-      nvram_export(lockbox_space->contents());
+    bool lockbox_valid = false;
+    if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
+      NvramSpace* lockbox_space = tpm.GetLockboxSpace();
+      if (lockbox_valid && lockbox_space->is_valid()) {
+        LOG(INFO) << "Lockbox is valid, exporting.";
+        nvram_export(lockbox_space->contents());
+      }
+    } else {
+      LOG(ERROR) << "Lockbox validity check error.";
     }
   }
 

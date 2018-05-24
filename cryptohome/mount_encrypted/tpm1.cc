@@ -140,6 +140,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   result_code SetupTpm() override;
   result_code GenerateForPreservation(brillo::SecureBlob* previous_key,
                                       brillo::SecureBlob* fresh_key) override;
+  result_code CheckLockbox(bool* valid) override;
 
  private:
   // Gets a pointer to the EncStatefulArea structure backed by NVRAM.
@@ -304,36 +305,6 @@ void Tpm1SystemKeyLoader::Lock() {
   }
   if (encstateful_space->ReadLock() != RESULT_SUCCESS) {
     LOG(ERROR) << "Failed to read-lock NVRAM area.";
-  }
-
-  // Check whether the encstateful space contains a valid lockbox MAC. Check the
-  // actual lockbox contents against the MAC, reset the lockbox space to invalid
-  // so subsequent code won't use it (specifically, the lockbox space won't get
-  // exported for OS consumption).
-  //
-  // This addresses the scenario where the TPM is left in unowned state or owned
-  // with the well-known password after preservation. The requirement is that
-  // the lockbox contents may only change at full device reset (e.g. implying
-  // stateful file system loss). However, stateful preservation carries over
-  // state, so it needs to ensure the lockbox stays locked. Due to the TPM
-  // state, the lockbox space could get redefined and thus written to after
-  // preservation. The MAC check here doesn't disallow this, but it ensures
-  // tamper-evidence: Modified lockbox contents will cause MAC validation
-  // failure, so the lockbox will be considered invalid. Note that attempts at
-  // adjusting the MAC to match tampered lockbox contents are prevented by
-  // locking the encstateful space after boot.
-  const EncStatefulArea* area = nullptr;
-  if (LoadEncStatefulArea(&area) == RESULT_SUCCESS) {
-    if (area->test_flag(EncStatefulArea::Flag::kLockboxMacValid)) {
-      NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
-      if (lockbox_space->is_valid()) {
-        brillo::SecureBlob mac = cryptohome::CryptoLib::HmacSha256(
-            area->DeriveKey(kLabelLockboxMAC), lockbox_space->contents());
-        if (brillo::SecureMemcmp(area->lockbox_mac, mac.data(), mac.size())) {
-          lockbox_space->Reset();
-        }
-      }
-    }
   }
 }
 
@@ -660,6 +631,60 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   }
 
   return true;
+}
+
+result_code Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
+  *valid = false;
+
+  bool space_properly_defined = false;
+  result_code rc = IsEncStatefulSpaceProperlyDefined(&space_properly_defined);
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
+
+  if (space_properly_defined) {
+    // Check whether the encstateful space contains a valid lockbox MAC. Check
+    // the actual lockbox contents against the MAC, reset the lockbox space to
+    // invalid so subsequent code won't use it (specifically, the lockbox space
+    // won't get exported for OS consumption).
+    //
+    // This addresses the scenario where the TPM is left in unowned state or
+    // owned with the well-known password after preservation. The requirement is
+    // that the lockbox contents may only change at full device reset (e.g.
+    // implying stateful file system loss). However, stateful preservation
+    // carries over state, so it needs to ensure the lockbox stays locked. Due
+    // to the TPM state, the lockbox space could get redefined and thus written
+    // to after preservation. The MAC check here doesn't disallow this, but it
+    // ensures tamper-evidence: Modified lockbox contents will cause MAC
+    // validation failure, so the lockbox will be considered invalid. Note that
+    // attempts at adjusting the MAC to match tampered lockbox contents are
+    // prevented by locking the encstateful space after boot.
+    const EncStatefulArea* area = nullptr;
+    rc = LoadEncStatefulArea(&area);
+    switch (rc) {
+      case RESULT_SUCCESS:
+        if (area->test_flag(EncStatefulArea::Flag::kLockboxMacValid)) {
+          NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
+          if (lockbox_space->is_valid()) {
+            brillo::SecureBlob mac = cryptohome::CryptoLib::HmacSha256(
+                area->DeriveKey(kLabelLockboxMAC), lockbox_space->contents());
+            *valid = brillo::SecureMemcmp(area->lockbox_mac, mac.data(),
+                                          mac.size()) == 0;
+            return RESULT_SUCCESS;
+          }
+        }
+        break;
+      case RESULT_FAIL_FATAL:
+        // Encstateful contents invalid, so lockbox MAC doesn't apply.
+        break;
+      default:
+        return rc;
+    }
+  }
+
+  // In case there is no encstateful space, the lockbox space is only valid once
+  // cryptohomed has taken TPM ownership and recreated the space.
+  return tpm_->IsOwned(valid);
 }
 
 std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(

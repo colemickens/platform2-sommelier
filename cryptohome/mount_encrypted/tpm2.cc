@@ -69,6 +69,7 @@ class Tpm2SystemKeyLoader : public SystemKeyLoader {
   result_code SetupTpm() override;
   result_code GenerateForPreservation(brillo::SecureBlob* previous_key,
                                       brillo::SecureBlob* fresh_key) override;
+  result_code CheckLockbox(bool* valid) override;
 
  private:
   Tpm* tpm_ = nullptr;
@@ -206,6 +207,11 @@ result_code Tpm2SystemKeyLoader::GenerateForPreservation(
     brillo::SecureBlob* previous_key, brillo::SecureBlob* fresh_key) {
   LOG(FATAL) << "Preservation not implemented for TPM 2.0";
   return RESULT_FAIL_FATAL;
+}
+
+result_code Tpm2SystemKeyLoader::CheckLockbox(bool* valid) {
+  // Lockbox is valid only once the TPM is owned.
+  return tpm_->IsOwned(valid);
 }
 
 std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(

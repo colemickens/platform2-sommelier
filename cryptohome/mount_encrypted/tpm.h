@@ -247,6 +247,9 @@ class SystemKeyLoader {
   // the system is not eligible or there is an error.
   virtual result_code GenerateForPreservation(
       brillo::SecureBlob* previous_key, brillo::SecureBlob* fresh_key) = 0;
+
+  // Checks whether the lockbox space contents are considered valid.
+  virtual result_code CheckLockbox(bool* valid) = 0;
 };
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_

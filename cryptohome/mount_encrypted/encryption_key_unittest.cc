@@ -290,6 +290,12 @@ class EncryptionKeyTest : public testing::Test {
     EXPECT_FALSE(key_->is_fresh());
   }
 
+  void ExpectLockboxValid(bool valid_expected) {
+    bool valid_actual = !valid_expected;
+    EXPECT_EQ(RESULT_SUCCESS, loader_->CheckLockbox(&valid_actual));
+    EXPECT_EQ(valid_expected, valid_actual);
+  }
+
   void CheckSpace(uint32_t index, uint32_t attributes, uint32_t size) {
     TlclStub::NvramSpaceData* space = tlcl_.GetSpace(index);
     EXPECT_EQ(attributes, space->attributes);
@@ -310,7 +316,7 @@ class EncryptionKeyTest : public testing::Test {
     ResetLoader();
     key_->LoadChromeOSSystemKey();
     key_->LoadEncryptionKey();
-    EXPECT_FALSE(tpm_->GetLockboxSpace()->is_valid());
+    ExpectLockboxValid(false);
   }
 #endif
 
@@ -495,6 +501,7 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearExisting) {
   EXPECT_EQ(RESULT_SUCCESS, tpm_->HasSystemKeyInitializedFlag(&initialized));
   EXPECT_TRUE(initialized);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  ExpectLockboxValid(false);
 
   TlclStub::NvramSpaceData* space = tlcl_.GetSpace(kEncStatefulIndex);
   EXPECT_NE(space->contents,
@@ -527,7 +534,7 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedExisting) {
   EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
-  EXPECT_TRUE(tpm_->GetLockboxSpace()->is_valid());
+  ExpectLockboxValid(true);
   EXPECT_EQ(
       std::vector<uint8_t>(kLockboxV2Contents,
                            kLockboxV2Contents + sizeof(kLockboxV2Contents)),
@@ -583,6 +590,7 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedBadSpaceLockboxFallback) {
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
+  ExpectLockboxValid(true);
 }
 
 TEST_F(EncryptionKeyTest, EncStatefulLockboxMACFailure) {
@@ -597,7 +605,7 @@ TEST_F(EncryptionKeyTest, EncStatefulLockboxMACFailure) {
   EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
-  EXPECT_FALSE(tpm_->GetLockboxSpace()->is_valid());
+  ExpectLockboxValid(false);
 }
 
 TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
@@ -612,6 +620,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
   ExpectFinalized(false);
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  ExpectLockboxValid(true);
 
   // Perform another TPM clear and verify that a second preservation succeeds.
   ClearTPM();
@@ -623,6 +632,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
   EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  ExpectLockboxValid(true);
 
   CheckLockboxTampering();
 }
@@ -640,6 +650,8 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessEncstateful) {
   EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
+  ExpectLockboxValid(true);
+
   CheckLockboxTampering();
 }
 
@@ -654,6 +666,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorNotEligible) {
   EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+  ExpectLockboxValid(false);
 }
 
 TEST_F(EncryptionKeyTest, StatefulPreservationErrorUpdateLocatorFailure) {
