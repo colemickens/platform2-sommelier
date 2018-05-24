@@ -1511,7 +1511,7 @@ void WiFi::ScanDoneTask() {
   // Unsets this flag if it was set in InitiateScanInDarkResume since that scan
   // has completed.
   manager()->set_suppress_autoconnect(false);
-  if (wake_on_wifi_->in_dark_resume()) {
+  if (wake_on_wifi_->InDarkResume()) {
     metrics()->NotifyDarkResumeScanResultsReceived();
   }
   // Post |UpdateScanStateAfterScanDone| so it runs after any pending scan

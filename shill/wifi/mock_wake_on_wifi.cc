@@ -16,17 +16,10 @@
 
 #include "shill/wifi/mock_wake_on_wifi.h"
 
-#include <gmock/gmock.h>
-
 namespace shill {
 
-MockWakeOnWiFi::MockWakeOnWiFi(NetlinkManager* netlink_manager,
-                               EventDispatcher* dispatcher,
-                               Metrics* metrics,
-                               const std::string& hardware_address)
-    : WakeOnWiFi(netlink_manager, dispatcher, metrics, hardware_address,
-                 RecordWakeReasonCallback()) {}
+MockWakeOnWiFi::MockWakeOnWiFi() = default;
 
-MockWakeOnWiFi::~MockWakeOnWiFi() {}
+MockWakeOnWiFi::~MockWakeOnWiFi() = default;
 
 }  // namespace shill

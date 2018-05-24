@@ -39,6 +39,7 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
+#include "shill/wifi/wake_on_wifi_interface.h"
 #include "shill/wifi/wifi.h"
 
 namespace shill {
@@ -169,63 +170,51 @@ class SetWakeOnPacketConnMessage;
 // dark resume, and both the wake to scan timer and DHCP lease renewal timers
 // are stopped.
 
-class WakeOnWiFi {
+class WakeOnWiFi : public WakeOnWiFiInterface {
  public:
-  using InitiateScanCallback = base::Callback<void(const WiFi::FreqSet&)>;
-  // Callback used to report the wake reason for the current dark resume to
-  // powerd.
-  using RecordWakeReasonCallback = base::Callback<void(const std::string&)>;
-
-  // Types of triggers that we can program the NIC to wake the WiFi device.
-  enum WakeOnWiFiTrigger {
-    kWakeTriggerUnsupported = 0,  // Used for reporting, not programming NIC.
-    kWakeTriggerPattern = 1,
-    kWakeTriggerDisconnect = 2,
-    kWakeTriggerSSID = 3
-  };
-
   WakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
              Metrics* metrics, const std::string& hardware_address,
              RecordWakeReasonCallback record_wake_reason_callback);
-  virtual ~WakeOnWiFi();
+  ~WakeOnWiFi() override;
 
   // Registers |store| with properties related to wake on WiFi.
-  void InitPropertyStore(PropertyStore* store);
+  void InitPropertyStore(PropertyStore* store) override;
 
   // Starts |metrics_timer_| so that wake on WiFi related metrics are
   // periodically collected.
-  void StartMetricsTimer();
+  void StartMetricsTimer() override;
 
   // Enables the NIC to wake on packets received from |ip_endpoint|.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
-  void AddWakeOnPacketConnection(const std::string& ip_endpoint, Error* error);
+  void AddWakeOnPacketConnection(const std::string& ip_endpoint,
+                                 Error* error) override;
   // Enables the NIC to wake on packets(IPv4/IPv6) with IP protocol
   // belonging to |packet_types|.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
   void AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                              Error* error);
+                              Error* error) override;
   // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
   void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
-                                    Error* error);
+                                    Error* error) override;
   // Remove rule to wake on packets(IPv4/IPv6) with IP protocol
   // belonging to |packet_types|.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
   void RemoveWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                                 Error* error);
+                                 Error* error) override;
   // Remove all rules to wake on incoming packets from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
-  void RemoveAllWakeOnPacketConnections(Error* error);
+  void RemoveAllWakeOnPacketConnections(Error* error) override;
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
   // wake on WiFi capabilities of the NIC and set relevant members of this
   // WakeOnWiFi object to reflect the supported capbilities.
-  virtual void ParseWakeOnWiFiCapabilities(
-      const Nl80211Message& nl80211_message);
+  void ParseWakeOnWiFiCapabilities(
+      const Nl80211Message& nl80211_message) override;
   // Callback invoked when the system reports its wakeup reason.
   //
   // Arguments:
@@ -234,7 +223,7 @@ class WakeOnWiFi {
   //
   // Note: Assumes only one wakeup reason is received. If more than one is
   // received, the only first one parsed will be handled.
-  virtual void OnWakeupReasonReceived(const NetlinkMessage& netlink_message);
+  void OnWakeupReasonReceived(const NetlinkMessage& netlink_message);
   // Performs pre-suspend actions relevant to wake on WiFi functionality.
   //
   // Arguments:
@@ -250,16 +239,15 @@ class WakeOnWiFi {
   //  - |have_dhcp_lease|: whether or not there is a DHCP lease to renew.
   //  - |time_to_next_lease_renewal|: number of seconds until next DHCP lease
   //    renewal is due.
-  virtual void OnBeforeSuspend(
-      bool is_connected,
-      const std::vector<ByteString>& ssid_whitelist,
-      const ResultCallback& done_callback,
-      const base::Closure& renew_dhcp_lease_callback,
-      const base::Closure& remove_supplicant_networks_callback,
-      bool have_dhcp_lease,
-      uint32_t time_to_next_lease_renewal);
+  void OnBeforeSuspend(bool is_connected,
+                       const std::vector<ByteString>& ssid_whitelist,
+                       const ResultCallback& done_callback,
+                       const base::Closure& renew_dhcp_lease_callback,
+                       const base::Closure& remove_supplicant_networks_callback,
+                       bool have_dhcp_lease,
+                       uint32_t time_to_next_lease_renewal) override;
   // Performs post-resume actions relevant to wake on wireless functionality.
-  virtual void OnAfterResume();
+  void OnAfterResume() override;
   // Performs and post actions to be performed in dark resume.
   //
   // Arguments:
@@ -273,39 +261,39 @@ class WakeOnWiFi {
   //  - |initate_scan_callback|: callback to invoke to initiate a scan.
   //  - |remove_supplicant_networks_callback|: callback to invoke
   //    to remove all networks from WPA supplicant.
-  virtual void OnDarkResume(
+  void OnDarkResume(
       bool is_connected,
       const std::vector<ByteString>& ssid_whitelist,
       const ResultCallback& done_callback,
       const base::Closure& renew_dhcp_lease_callback,
       const InitiateScanCallback& initiate_scan_callback,
-      const base::Closure& remove_supplicant_networks_callback);
+      const base::Closure& remove_supplicant_networks_callback) override;
   // Called when we the current service is connected, and we have IP
   // reachability. Calls WakeOnWiFi::BeforeSuspendActions if we are in dark
   // resume to end the current dark resume. Otherwise, does nothing.
-  virtual void OnConnectedAndReachable(bool start_lease_renewal_timer,
-                                       uint32_t time_to_next_lease_renewal);
+  void OnConnectedAndReachable(bool start_lease_renewal_timer,
+                               uint32_t time_to_next_lease_renewal) override;
   // Callback invoked to report whether this WiFi device is connected to
   // a service after waking from suspend.
-  virtual void ReportConnectedToServiceAfterWake(bool is_connected,
-          int seconds_in_suspend);
+  void ReportConnectedToServiceAfterWake(bool is_connected,
+                                         int seconds_in_suspend) override;
   // Called in WiFi::ScanDoneTask when there are no WiFi services available
   // for auto-connect after a scan. |initiate_scan_callback| is used for dark
   // resume scan retries.
-  virtual void OnNoAutoConnectableServicesAfterScan(
+  void OnNoAutoConnectableServicesAfterScan(
       const std::vector<ByteString>& ssid_whitelist,
       const base::Closure& remove_supplicant_networks_callback,
-      const InitiateScanCallback& initiate_scan_callback);
+      const InitiateScanCallback& initiate_scan_callback) override;
   // Called by WiFi when it is notified by the kernel that a scan has started.
   // If |is_active_scan| is true, the scan is an active scan. Otherwise, the
   // scan is a passive scan.
-  virtual void OnScanStarted(bool is_active_scan);
+  void OnScanStarted(bool is_active_scan) override;
 
-  bool in_dark_resume() { return in_dark_resume_; }
+  bool InDarkResume() override { return in_dark_resume_; }
 
-  bool connected_before_suspend() { return connected_before_suspend_;}
+  bool connected_before_suspend() { return connected_before_suspend_; }
 
-  virtual void OnWiphyIndexReceived(uint32_t index);
+  void OnWiphyIndexReceived(uint32_t index) override;
 
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests
@@ -614,9 +602,9 @@ class WakeOnWiFi {
   int num_set_wake_on_packet_retries_;
   // Keeps track of triggers that the NIC will be programmed to wake from
   // while suspended.
-  std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_;
+  std::set<WakeOnWiFiTrigger> wake_on_wifi_triggers_;
   // Keeps track of what wake on wifi triggers this WiFi device supports.
-  std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_supported_;
+  std::set<WakeOnWiFiTrigger> wake_on_wifi_triggers_supported_;
   // Max number of patterns this WiFi device can be programmed to wake on at one
   // time.
   size_t wake_on_wifi_max_patterns_;

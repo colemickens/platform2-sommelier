@@ -22,18 +22,33 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/error.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/wifi/wake_on_wifi.h"
+#include "shill/property_store.h"
+#include "shill/wifi/wake_on_wifi_interface.h"
 
 namespace shill {
 
-class MockWakeOnWiFi : public WakeOnWiFi {
+class MockWakeOnWiFi : public WakeOnWiFiInterface {
  public:
-  MockWakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
-                 Metrics* metrics, const std::string& hardware_address);
+  MockWakeOnWiFi();
   ~MockWakeOnWiFi() override;
 
-  MOCK_METHOD0(OnAfterResume, void());
+  MOCK_METHOD1(InitPropertyStore, void(PropertyStore* store));
+  MOCK_METHOD0(StartMetricsTimer, void());
+  MOCK_METHOD2(AddWakeOnPacketConnection,
+               void(const std::string& ip_endpoint, Error* error));
+  MOCK_METHOD2(AddWakeOnPacketOfTypes,
+               void(const std::vector<std::string>& packet_types,
+                    Error* error));
+  MOCK_METHOD2(RemoveWakeOnPacketConnection,
+               void(const std::string& ip_endpoint, Error* error));
+  MOCK_METHOD2(RemoveWakeOnPacketOfTypes,
+               void(const std::vector<std::string>& packet_types,
+                    Error* error));
+  MOCK_METHOD1(RemoveAllWakeOnPacketConnections, void(Error* error));
+  MOCK_METHOD1(ParseWakeOnWiFiCapabilities,
+               void(const Nl80211Message& nl80211_message));
   MOCK_METHOD7(OnBeforeSuspend,
                void(bool is_connected,
                     const std::vector<ByteString>& ssid_whitelist,
@@ -41,6 +56,7 @@ class MockWakeOnWiFi : public WakeOnWiFi {
                     const base::Closure& renew_dhcp_lease_callback,
                     const base::Closure& remove_supplicant_networks_callback,
                     bool have_dhcp_lease, uint32_t time_to_next_lease_renewal));
+  MOCK_METHOD0(OnAfterResume, void());
   MOCK_METHOD6(OnDarkResume,
                void(bool is_connected,
                     const std::vector<ByteString>& ssid_whitelist,
@@ -57,15 +73,9 @@ class MockWakeOnWiFi : public WakeOnWiFi {
                void(const std::vector<ByteString>& ssid_whitelist,
                     const base::Closure& remove_supplicant_networks_callback,
                     const InitiateScanCallback& initiate_scan_callback));
-  MOCK_METHOD1(OnWakeupReasonReceived,
-               void(const NetlinkMessage& netlink_message));
-  MOCK_METHOD0(NotifyWakeupReasonReceived, void());
-  MOCK_METHOD1(NotifyWakeOnWiFiOnDarkResume,
-               void(WakeOnWiFi::WakeOnWiFiTrigger reason));
-  MOCK_METHOD1(OnWiphyIndexReceived, void(uint32_t));
-  MOCK_METHOD1(ParseWakeOnWiFiCapabilities,
-               void(const Nl80211Message& nl80211_message));
   MOCK_METHOD1(OnScanStarted, void(bool is_active_scan));
+  MOCK_METHOD0(InDarkResume, bool());
+  MOCK_METHOD1(OnWiphyIndexReceived, void(uint32_t));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWakeOnWiFi);

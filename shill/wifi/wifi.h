@@ -121,7 +121,7 @@ class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class TDLSManager;
-class WakeOnWiFi;
+class WakeOnWiFiInterface;
 class WiFiProvider;
 class WiFiService;
 
@@ -724,7 +724,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Wiphy interface index of this WiFi device.
   uint32_t wiphy_index_;
 
-  std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
+  std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi_;
 
   std::unique_ptr<TDLSManager> tdls_manager_;
 

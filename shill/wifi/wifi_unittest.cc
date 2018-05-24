@@ -691,8 +691,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
   void InstallMockWakeOnWiFi() {
-    wake_on_wifi_ = new MockWakeOnWiFi(
-        &netlink_manager_, event_dispatcher_.get(), &metrics_, kDeviceAddress);
+    wake_on_wifi_ = new MockWakeOnWiFi();
     wifi_->wake_on_wifi_.reset(wake_on_wifi_);
   }
 
