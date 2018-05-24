@@ -315,9 +315,7 @@ class MountTaskMount : public MountTask {
                  Mount* mount,
                  const UsernamePasskey& credentials,
                  const Mount::MountArgs& mount_args)
-      : MountTask(observer, mount, credentials) {
-    mount_args_.CopyFrom(mount_args);
-  }
+      : MountTask(observer, mount, credentials), mount_args_(mount_args) {}
   virtual ~MountTaskMount() { }
 
   virtual void Run();

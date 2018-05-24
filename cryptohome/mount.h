@@ -87,35 +87,18 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   };
 
   struct MountArgs {
-    bool create_if_missing;
-    bool ensure_ephemeral;
+    bool create_if_missing = false;
+    bool ensure_ephemeral = false;
     // When creating a new cryptohome from scratch, use ecryptfs.
-    bool create_as_ecryptfs;
+    bool create_as_ecryptfs = false;
     // Forces dircrypto, i.e., makes it an error to mount ecryptfs.
-    bool force_dircrypto;
+    bool force_dircrypto = false;
     // Mount the existing ecryptfs vault to a temporary location while setting
     // up a new dircrypto directory.
-    bool to_migrate_from_ecryptfs;
+    bool to_migrate_from_ecryptfs = false;
     // Only mount in shadow tree, don't expose the usual /home/(user)
     // directories.
-    bool shadow_only;
-
-    MountArgs()
-        : create_if_missing(false),
-          ensure_ephemeral(false),
-          create_as_ecryptfs(false),
-          force_dircrypto(false),
-          to_migrate_from_ecryptfs(false),
-          shadow_only(false) {}
-
-    void CopyFrom(const MountArgs& rhs) {
-      this->create_if_missing = rhs.create_if_missing;
-      this->ensure_ephemeral = rhs.ensure_ephemeral;
-      this->create_as_ecryptfs = rhs.create_as_ecryptfs;
-      this->force_dircrypto = rhs.force_dircrypto;
-      this->to_migrate_from_ecryptfs = rhs.to_migrate_from_ecryptfs;
-      this->shadow_only = rhs.shadow_only;
-    }
+    bool shadow_only = false;
   };
 
   // Sets up Mount with the default locations, username, etc., as defined above.
