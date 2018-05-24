@@ -657,6 +657,103 @@ TEST(ArcSetupUtil, TestGetArtCompilationOffsetSeed) {
   EXPECT_NE(seed3, seed1);
 }
 
+TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir) {
+  base::ScopedTempDir test_dir;
+  ASSERT_TRUE(test_dir.CreateUniqueTempDir());
+  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
+
+  // Create android-data/path/to/file and run MoveDataDirIntoDataOldDir.
+  ASSERT_TRUE(
+      MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
+  ASSERT_TRUE(CreateOrTruncate(
+      test_dir.GetPath().Append("android-data/path/to/file"), 0755));
+  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+
+  // android-data has been cleared.
+  // Create android-data/path/to/file and run MoveDataDirIntoDataOldDir again.
+  ASSERT_TRUE(
+      MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
+  ASSERT_TRUE(CreateOrTruncate(
+      test_dir.GetPath().Append("android-data/path/to/file"), 0755));
+  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+
+  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+  ASSERT_TRUE(base::DirectoryExists(data_old_dir));
+
+  // There should be two temp dirs in android-data-old now.
+  // Both temp dirs should contain path/to/file.
+  base::FileEnumerator temp_dir_iter(data_old_dir, false,
+                                     base::FileEnumerator::DIRECTORIES);
+  base::FilePath temp_dir;
+  int temp_dir_count = 0;
+  while (!(temp_dir = temp_dir_iter.Next()).empty()) {
+    EXPECT_TRUE(base::PathExists(temp_dir.Append("path/to/file")));
+    ++temp_dir_count;
+  }
+  EXPECT_EQ(2, temp_dir_count);
+}
+
+TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir_AndroidDataDirDoesNotExist) {
+  base::ScopedTempDir test_dir;
+  ASSERT_TRUE(test_dir.CreateUniqueTempDir());
+
+  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
+
+  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+
+  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(data_old_dir));
+}
+
+TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir_AndroidDataDirIsEmpty) {
+  base::ScopedTempDir test_dir;
+  ASSERT_TRUE(test_dir.CreateUniqueTempDir());
+
+  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
+
+  ASSERT_TRUE(MkdirRecursively(test_dir.GetPath().Append("android-data")));
+
+  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+
+  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(data_old_dir));
+}
+
+TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir_AndroidDataOldIsFile) {
+  base::ScopedTempDir test_dir;
+  ASSERT_TRUE(test_dir.CreateUniqueTempDir());
+
+  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
+
+  ASSERT_TRUE(
+      MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
+  ASSERT_TRUE(CreateOrTruncate(
+      test_dir.GetPath().Append("android-data/path/to/file"), 0755));
+
+  // Create a file (not a directory) named android-data-old.
+  ASSERT_TRUE(
+      CreateOrTruncate(test_dir.GetPath().Append("android-data-old"), 0755));
+
+  // This should remove the file named android-data-old and create
+  // android-data-old dir instead.
+  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+
+  base::FileEnumerator temp_dir_iter(data_old_dir, false,
+                                     base::FileEnumerator::DIRECTORIES);
+  base::FilePath temp_dir;
+  int temp_dir_count = 0;
+  while (!(temp_dir = temp_dir_iter.Next()).empty()) {
+    EXPECT_TRUE(base::PathExists(temp_dir.Append("path/to/file")));
+    ++temp_dir_count;
+  }
+  EXPECT_EQ(1, temp_dir_count);
+}
+
 TEST(ArcSetupUtil, TestMoveDataAppOatDirectory) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());

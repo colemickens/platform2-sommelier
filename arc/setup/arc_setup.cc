@@ -267,6 +267,20 @@ AndroidSdkVersion SdkVersionFromString(const std::string& version_str) {
   return AndroidSdkVersion::UNKNOWN;
 }
 
+// Checks whether to clear entire android data directory before starting the
+// container by comparing |system_sdk_version| from the current boot against
+// |data_sdk_version| from the previous boot.
+bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
+                             AndroidSdkVersion data_sdk_version) {
+  // Downgraded from P to N. (b/80113276)
+  if (data_sdk_version == AndroidSdkVersion::ANDROID_P &&
+      system_sdk_version == AndroidSdkVersion::ANDROID_N_MR1) {
+    return true;
+  }
+  // TODO(niwa): Clear data if upgraded from M to P, skipping N. (b/77591360)
+  return false;
+}
+
 void CheckProcessIsAliveOrDie(const std::string& pid_str) {
   pid_t pid;
   EXIT_IF(!base::StringToInt(pid_str, &pid));
@@ -1920,8 +1934,10 @@ void ArcSetup::OnBootContinue() {
   AndroidSdkVersion data_sdk_version;
   GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
 
-  // TODO(niwa): Compare sdk_version_ with data_sdk_version and clear /data
-  //             if skip-upgrade (M->P) or downgrade (P->N) is detected.
+  if (ShouldDeleteAndroidData(sdk_version_, data_sdk_version)) {
+    EXIT_IF(!MoveDataDirIntoDataOldDir(arc_paths_->android_data_directory,
+                                       arc_paths_->android_data_old_directory));
+  }
 
   bool should_delete_data_dalvik_cache_directory;
   bool should_delete_data_app_executables;
