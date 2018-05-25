@@ -52,6 +52,14 @@ InstallAttributes::~InstallAttributes() {
 }
 
 bool InstallAttributes::PrepareSystem() {
+  // If install attributes are already locked, there's nothing to do. This can
+  // happen when we reset the TPM but preserve system state, such as for TPM
+  // firmware updates.
+  brillo::Blob blob;
+  if (platform_->ReadFile(cache_file_, &blob)) {
+    return true;
+  }
+
   set_is_first_install(true);
   Lockbox::ErrorId error_id;
   // Delete the attributes file if it exists.
