@@ -11,6 +11,7 @@
 #include <base/location.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/authpolicy_flags.h"
@@ -265,16 +266,14 @@ std::string GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
 
 }  // namespace
 
-TgtManager::TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-                       const PathService* path_service,
+TgtManager::TgtManager(const PathService* path_service,
                        AuthPolicyMetrics* metrics,
                        const protos::DebugFlags* flags,
                        const JailHelper* jail_helper,
                        Anonymizer* anonymizer,
                        Path config_path,
                        Path credential_cache_path)
-    : task_runner_(task_runner),
-      paths_(path_service),
+    : paths_(path_service),
       metrics_(metrics),
       flags_(flags),
       jail_helper_(jail_helper),
@@ -629,7 +628,7 @@ void TgtManager::UpdateTgtAutoRenewal() {
 
         tgt_renewal_callback_.Reset(
             base::Bind(&TgtManager::AutoRenewTgt, base::Unretained(this)));
-        task_runner_->PostDelayedTask(
+        base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
             FROM_HERE, tgt_renewal_callback_.callback(),
             base::TimeDelta::FromSeconds(delay_seconds));
       }

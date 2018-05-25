@@ -9,7 +9,6 @@
 
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
-#include <base/single_thread_task_runner.h>
 
 #include "authpolicy/path_service.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
@@ -33,8 +32,7 @@ class ProcessExecutor;
 // or a keytab file.
 class TgtManager {
  public:
-  TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-             const PathService* path_service,
+  TgtManager(const PathService* path_service,
              AuthPolicyMetrics* metrics,
              const protos::DebugFlags* flags,
              const JailHelper* jail_helper,
@@ -148,7 +146,6 @@ class TgtManager {
   // Runs |kerberos_files_changed_| if |kerberos_files_dirty_| is set.
   void MaybeTriggerKerberosFilesChanged();
 
-  const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   const PathService* const paths_ = nullptr;    // File paths, not owned.
   AuthPolicyMetrics* const metrics_ = nullptr;  // UMA statistics, not owned.
   const protos::DebugFlags* const flags_ = nullptr;  // Debug flags, not owned.

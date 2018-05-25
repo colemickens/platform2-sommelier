@@ -48,8 +48,7 @@ class ProcessExecutor;
 
 class SambaInterface {
  public:
-  SambaInterface(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-                 AuthPolicyMetrics* metrics,
+  SambaInterface(AuthPolicyMetrics* metrics,
                  const PathService* path_service,
                  const base::Closure& user_kerberos_files_changed);
 

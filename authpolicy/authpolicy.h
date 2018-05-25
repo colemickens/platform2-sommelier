@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>

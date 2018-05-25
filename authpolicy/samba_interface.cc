@@ -15,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/memory/ptr_util.h>
-#include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -415,27 +414,23 @@ base::TimeDelta GetMachinePasswordChangeRate(
 
 }  // namespace
 
-SambaInterface::SambaInterface(
-    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-    AuthPolicyMetrics* metrics,
-    const PathService* path_service,
-    const base::Closure& user_kerberos_files_changed)
+SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
+                               const PathService* path_service,
+                               const base::Closure& user_kerberos_files_changed)
     : user_account_(Path::USER_SMB_CONF),
       device_account_(Path::DEVICE_SMB_CONF),
       metrics_(metrics),
       paths_(path_service),
       anonymizer_(std::make_unique<Anonymizer>()),
       jail_helper_(paths_, &flags_, anonymizer_.get()),
-      user_tgt_manager_(task_runner,
-                        paths_,
+      user_tgt_manager_(paths_,
                         metrics_,
                         &flags_,
                         &jail_helper_,
                         anonymizer_.get(),
                         Path::USER_KRB5_CONF,
                         Path::USER_CREDENTIAL_CACHE),
-      device_tgt_manager_(task_runner,
-                          paths_,
+      device_tgt_manager_(paths_,
                           metrics_,
                           &flags_,
                           &jail_helper_,

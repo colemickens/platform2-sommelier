@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <base/memory/ptr_util.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <install_attributes/libinstallattributes.h>
@@ -30,7 +31,8 @@ class Daemon : public brillo::DBusServiceDaemon {
  public:
   explicit Daemon(bool device_is_locked)
       : DBusServiceDaemon(kAuthPolicyServiceName, kObjectServicePath),
-        device_is_locked_(device_is_locked) {}
+        device_is_locked_(device_is_locked),
+        weak_ptr_factory_(this) {}
 
   // Cleans the authpolicy daemon state directory. Returns true if all files
   // were cleared.
@@ -41,9 +43,25 @@ class Daemon : public brillo::DBusServiceDaemon {
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
+    AsyncEventSequencer::Handler handler =
+        sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true);
     auth_policy_.RegisterAsync(
         AuthPolicy::GetDBusObject(object_manager_.get()),
-        sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true));
+        base::Bind(&Daemon::OnAuthPolicyRegistered,
+                   weak_ptr_factory_.GetWeakPtr(), handler));
+  }
+
+ private:
+  void OnAuthPolicyRegistered(const AsyncEventSequencer::Handler& handler,
+                              bool success) {
+    // If it wasn't successful, the sequencer handler should print an error and
+    // exit.
+    handler.Run(success);
+    CHECK(success);
+    LOG(INFO) << "authpolicyd started";
+
+    // Initialize authpolicy here, so that stuff like the machine password check
+    // happens after the daemon is registered.
     ErrorType error = auth_policy_.Initialize(device_is_locked_);
     if (error != ERROR_NONE) {
       LOG(ERROR) << "SambaInterface failed to initialize with error code "
@@ -52,11 +70,6 @@ class Daemon : public brillo::DBusServiceDaemon {
     }
   }
 
-  void OnShutdown(int* return_code) override {
-    DBusServiceDaemon::OnShutdown(return_code);
-  }
-
- private:
   bool device_is_locked_;
 
   // Keep this order! auth_policy_ must be last as it depends on the other two.
@@ -64,6 +77,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   PathService path_service_;
   AuthPolicy auth_policy_{&metrics_, &path_service_};
 
+  base::WeakPtrFactory<Daemon> weak_ptr_factory_;
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 

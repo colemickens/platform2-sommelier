@@ -167,8 +167,7 @@ AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
                        const PathService* path_service)
     : org::chromium::AuthPolicyAdaptor(this),
       metrics_(metrics),
-      samba_(base::ThreadTaskRunnerHandle::Get(),
-             metrics,
+      samba_(metrics,
              path_service,
              base::Bind(&AuthPolicy::OnUserKerberosFilesChanged,
                         base::Unretained(this))),
@@ -184,11 +183,9 @@ void AuthPolicy::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
   DCHECK(!dbus_object_);
   dbus_object_ = std::move(dbus_object);
-  // Make sure the task runner passed to |samba_| in the constructor is actually
-  // the D-Bus task runner. This guarantees that automatic TGT renewal won't
-  // interfere with D-Bus calls. Note that |GetDBusTaskRunner()| returns a
-  // TaskRunner, which is a base class of SingleThreadTaskRunner accepted by
-  // |samba_|.
+  // Make sure the task runner used in some places is actually the D-Bus task
+  // runner. This guarantees that tasks scheduled on the task runner won't
+  // interfere with D-Bus calls.
   CHECK_EQ(base::ThreadTaskRunnerHandle::Get(),
            dbus_object_->GetBus()->GetDBusTaskRunner());
   RegisterWithDBusObject(dbus_object_.get());
