@@ -811,6 +811,10 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   LOG(INFO) << __func__ << " result: " << match_result
             << " (finger: " << match_idx << ")";
   switch (match_result) {
+    case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
+      LOG(ERROR) << "Internal error when matching templates: " << std::hex
+                 << event;
+    // Fall-through.
     case EC_MKBP_FP_ERR_MATCH_NO:
       // This is the API: empty matches but still SCAN_RESULT_SUCCESS.
       result = ScanResult::SCAN_RESULT_SUCCESS;
@@ -833,7 +837,6 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE:
       result = ScanResult::SCAN_RESULT_PARTIAL;
       break;
-    case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
     default:
       LOG(ERROR) << "Unexpected result from matching templates: " << std::hex
                  << event;
