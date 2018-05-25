@@ -627,22 +627,18 @@ ImguUnit::kickstart()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = OK;
 
-    for (const auto &it : mCurPipeConfig->deviceWorkers) {
-        status = (*it).startWorker();
+    // start parameter stream and queue the first parameter buffer before
+    // all frame streams are started in order to make sure the ISP initial setting
+    // is correct in driver.
+    std::vector<std::shared_ptr<IDeviceWorker>>::iterator firstit = mFirstWorkers.begin();
+    for (;firstit != mFirstWorkers.end(); ++firstit) {
+        status = (*firstit)->startWorker();
         if (status != OK) {
-            LOGE("Failed to start workers.");
-            return status;
-        }
-    }
-    for (const auto &it : mMetaConfig.deviceWorkers) {
-        status = (*it).startWorker();
-        if (status != OK) {
-            LOGE("Failed to start meta workers.");
+            LOGE("Failed to start %s worker.", (*firstit)->getNode()->name());
             return status;
         }
     }
 
-    std::vector<std::shared_ptr<IDeviceWorker>>::iterator firstit = mFirstWorkers.begin();
     firstit = mFirstWorkers.begin();
     for (;firstit != mFirstWorkers.end(); ++firstit) {
         status |= (*firstit)->prepareRun(mMessagesUnderwork[0]);
@@ -665,6 +661,25 @@ ImguUnit::kickstart()
     }
     if (status != OK) {
         return status;
+    }
+
+    for (const auto &it : mCurPipeConfig->deviceWorkers) {
+        // parameter work has been started before
+        if (typeid(*it) == typeid(ParameterWorker))
+            continue ;
+        status = (*it).startWorker();
+        if (status != OK) {
+            LOGE("Failed to start workers.");
+            return status;
+        }
+    }
+
+    for (const auto &it : mMetaConfig.deviceWorkers) {
+        status = (*it).startWorker();
+        if (status != OK) {
+            LOGE("Failed to start meta workers.");
+            return status;
+        }
     }
 
     mFirstRequest = false;
