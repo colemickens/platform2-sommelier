@@ -855,7 +855,14 @@ void SambaInterface::SetDevicePolicyImplForTesting(
   device_policy_impl_for_testing = std::move(policy_impl);
 }
 
-ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
+ErrorType SambaInterface::UpdateKdcIpAndServerTime(AccountData* account) const {
+  // Use cached KDC IP and server time. Caching server time seems weird since it
+  // changes constantly, but most code doesn't need server time. If an
+  // up-to-date server time is needed, just reset it to base::Time() before
+  // calling UpdateAccountData();
+  if (!account->kdc_ip.empty() && !account->server_time.is_null())
+    return ERROR_NONE;
+
   // Call net ads info to get the KDC IP.
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
@@ -907,6 +914,10 @@ ErrorType SambaInterface::UpdateKdcIp(AccountData* account) const {
 }
 
 ErrorType SambaInterface::UpdateDcName(AccountData* account) const {
+  // Use cached DC name.
+  if (!account->dc_name.empty())
+    return ERROR_NONE;
+
   // Call net ads lookup to get the domain controller name.
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "lookup",
@@ -1008,6 +1019,10 @@ ActiveDirectoryUserStatus::PasswordStatus SambaInterface::GetUserPasswordStatus(
 }
 
 ErrorType SambaInterface::UpdateWorkgroup(AccountData* account) {
+  // Use cached workgroup.
+  if (!account->workgroup.empty())
+    return ERROR_NONE;
+
   const std::string& smb_conf_path = paths_->Get(account->smb_conf_path);
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup",
                            kConfigParam, smb_conf_path, kDebugParam,
@@ -1092,8 +1107,9 @@ ErrorType SambaInterface::UpdateAccountData(AccountData* account) {
       return error;
   }
 
-  // Query the key distribution center IP and store it in |account|->kdc_ip.
-  error = UpdateKdcIp(account);
+  // Query the key distribution center IP and server time and store them in
+  // |account|->kdc_ip and |account|->server_time, respectively.
+  error = UpdateKdcIpAndServerTime(account);
   if (error != ERROR_NONE)
     return error;
 
@@ -1696,7 +1712,9 @@ void SambaInterface::AutoCheckMachinePasswordChange() {
 }
 
 ErrorType SambaInterface::CheckMachinePasswordChange() {
-  // Get the latest server time.
+  // Get the latest server time and KDC IP. Reset |server_time| to enforce an
+  // update (otherwise, the cached values are kept).
+  device_account_.server_time = base::Time();
   ErrorType error = UpdateAccountData(&device_account_);
   if (error != ERROR_NONE)
     return error;
@@ -1719,8 +1737,8 @@ ErrorType SambaInterface::CheckMachinePasswordChange() {
     int days_left = total_hours_left / base::Time::kHoursPerDay;
     int hours_left = total_hours_left % base::Time::kHoursPerDay;
 
-    LOG(INFO) << "No need to change machine password (" << days_left << " days "
-              << hours_left << " hours left)";
+    LOG(INFO) << "No need to change machine password (" << days_left << "d "
+              << hours_left << "h left)";
     return ERROR_NONE;
   }
 

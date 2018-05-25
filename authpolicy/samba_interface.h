@@ -230,11 +230,14 @@ class SambaInterface {
   // |account|->workgroup.
   ErrorType UpdateWorkgroup(AccountData* account) WARN_UNUSED_RESULT;
 
-  // Queries the IP of the key distribution center (KDC) for the given |account|
-  // and stores it in |account|->kdc_ip. The KDC address is required to speed up
-  // network communication and to get rid of waiting for the machine account
-  // propagation after Active Directory domain join.
-  ErrorType UpdateKdcIp(AccountData* account) const WARN_UNUSED_RESULT;
+  // Queries the IP of the key distribution center (KDC) and server time for the
+  // given |account| and stores them in |account|->kdc_ip and
+  // |account|->server_time, respectively. The KDC address is required to speed
+  // up network communication and to get rid of waiting for the machine account
+  // propagation after Active Directory domain join. The server time is required
+  // to keep track of the machine password age.
+  ErrorType UpdateKdcIpAndServerTime(AccountData* account) const
+      WARN_UNUSED_RESULT;
 
   // Queries the DNS domain name of the domain controller (DC) for the given
   // |account| and stores it in |account|->dc_name. The DC name is required as
@@ -243,7 +246,8 @@ class SambaInterface {
   ErrorType UpdateDcName(AccountData* account) const WARN_UNUSED_RESULT;
 
   // Writes the Samba configuration file for the given |account| and updates
-  // the account's kdc_ip, dc_name and workgroup.
+  // the account's |kdc_ip|, |server_time|, |dc_name| and |workgroup|. Does not
+  // refresh the values if they are already set.
   ErrorType UpdateAccountData(AccountData* account) WARN_UNUSED_RESULT;
 
   // Acquire a Kerberos ticket-granting-ticket for the user account.
