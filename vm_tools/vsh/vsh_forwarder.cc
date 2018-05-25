@@ -117,8 +117,13 @@ bool VshForwarder::Init() {
   }
 
   const std::string target = connection_request.target();
-  const std::string user = connection_request.user();
+  std::string user = connection_request.user();
   if (target == kVmShell) {
+    // The default user for VM shells should be chronos.
+    if (user.empty()) {
+      user = "chronos";
+    }
+
     if (user != "chronos" && !IsTestImage()) {
       LOG(ERROR) << "Only chronos is allowed login on the VM shell";
       SendConnectionResponse(FAILED,

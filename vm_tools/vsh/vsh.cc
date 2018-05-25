@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
   DEFINE_uint64(cid, 0, "Cid of VM");
   DEFINE_string(owner_id, "", "Owner of the VM. Usually user cryptohome_id");
   DEFINE_string(vm_name, "", "Target VM name");
-  DEFINE_string(user, "chronos", "Target user in the VM");
+  DEFINE_string(user, "", "Target user in the VM");
   DEFINE_string(target_container, "", "Target container");
 
   brillo::FlagHelper::Init(argc, argv, kVshUsage);
@@ -305,8 +305,10 @@ int main(int argc, char** argv) {
       return EXIT_FAILURE;
     }
 
-    client = VshClient::Create(std::move(sock_fd), FLAGS_user,
-                               FLAGS_target_container);
+    string user =
+        FLAGS_user.empty() ? string("chronos") : std::move(FLAGS_user);
+    client =
+        VshClient::Create(std::move(sock_fd), user, FLAGS_target_container);
   }
 
   if (!client) {
