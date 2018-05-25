@@ -69,8 +69,8 @@ class ScopedTpmOwnerPasswordSetter {
 
 TpmLiveTest::TpmLiveTest() : tpm_(Tpm::GetSingleton()) {}
 
-bool TpmLiveTest::RunLiveTests(SecureBlob owner_password) {
-  // First we run tests that do not need the owner_password
+bool TpmLiveTest::RunLiveTests(const SecureBlob& owner_password,
+                               bool tpm2_use_system_owner_password) {
   if (!PCRKeyTest()) {
     LOG(ERROR) << "Error running PCRKeyTest.";
     return false;
@@ -83,13 +83,15 @@ bool TpmLiveTest::RunLiveTests(SecureBlob owner_password) {
     LOG(ERROR) << "Error running Decryption test.";
     return false;
   }
-  if (tpm_->GetVersion() == Tpm::TPM_1_2 && !owner_password.empty()) {
+  const Tpm::TpmVersion tpm_version = tpm_->GetVersion();
+  if ((tpm_version == Tpm::TPM_1_2 && !owner_password.empty()) ||
+      (tpm_version == Tpm::TPM_2_0 && tpm2_use_system_owner_password)) {
     if (!NvramTest(owner_password)) {
       LOG(ERROR) << "Error running NvramTest.";
       return false;
     }
   }
-  if (tpm_->GetVersion() != Tpm::TPM_1_2 || !owner_password.empty()) {
+  if (tpm_version != Tpm::TPM_1_2 || !owner_password.empty()) {
     if (!SignatureSealedSecretTest(owner_password)) {
       LOG(ERROR) << "Error running SignatureSealedSecretTest.";
       return false;

@@ -23,10 +23,12 @@ class TpmLiveTest {
   TpmLiveTest();
   ~TpmLiveTest() = default;
 
-  // This method runs all the live tests in this class, if the owner_password
-  // is provided. If the owner_password is empty, this method runs
-  // all the tests that do not require the owner password.
-  bool RunLiveTests(brillo::SecureBlob owner_password);
+  // This method runs all or a subset of all tests, depending on the supplied
+  // parameters. On TPM 1.2, some tests are only running when |owner_password|
+  // is non-empty. On TPM 2.0, some tests run only when
+  // |tpm2_use_system_owner_password| is true.
+  bool RunLiveTests(const brillo::SecureBlob& owner_password,
+                    bool tpm2_use_system_owner_password);
 
  private:
   // Helper method to try to sign some data.
