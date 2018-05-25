@@ -183,6 +183,7 @@ void DebugModeTool::GetAllModemManagers(std::vector<std::string>* managers) {
 void DebugModeTool::SetModemManagerLogging(const std::string& service_name,
                                            const std::string& service_path,
                                            const std::string& level) {
+#if USE_CELLULAR
   dbus::ObjectProxy* proxy =
       bus_->GetObjectProxy(service_name, dbus::ObjectPath(service_path));
   dbus::MethodCall method_call(service_name, kSetLogging);
@@ -190,6 +191,7 @@ void DebugModeTool::SetModemManagerLogging(const std::string& service_name,
   writer.AppendString(level);
   proxy->CallMethodAndBlock(&method_call,
                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+#endif  // USE_CELLULAR
 }
 
 void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
