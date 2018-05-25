@@ -253,14 +253,11 @@ void MaybeLogUnexpectedMountInfo(const std::string& mount_path) {
 AndroidSdkVersion SdkVersionFromString(const std::string& version_str) {
   int version;
   if (base::StringToInt(version_str, &version)) {
-    // TODO(yusukes): What 27 actually means is O-MR1, not P. Once our image
-    // starts using 28, remove 'case 27:'.
     switch (version) {
       case 23:
         return AndroidSdkVersion::ANDROID_M;
       case 25:
         return AndroidSdkVersion::ANDROID_N_MR1;
-      case 27:
       case 28:
         return AndroidSdkVersion::ANDROID_P;
     }
