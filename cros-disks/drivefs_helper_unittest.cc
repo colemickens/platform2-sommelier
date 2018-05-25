@@ -45,6 +45,7 @@ class MockPlatform : public Platform {
     ON_CALL(*this, GetRealPath(_, _))
         .WillByDefault(Invoke(this, &MockPlatform::GetRealPathImpl));
     ON_CALL(*this, IsDirectoryEmpty(_)).WillByDefault(Return(true));
+    ON_CALL(*this, DirectoryExists(_)).WillByDefault(Return(true));
   }
 
   MOCK_CONST_METHOD2(GetRealPath, bool(const std::string&, std::string*));
@@ -167,6 +168,33 @@ TEST_F(DrivefsHelperTest, CreateMounter) {
   EXPECT_THAT(options_string, HasSubstr("gid=1501"));
 }
 
+TEST_F(DrivefsHelperTest, CreateMounter_CreateDataDir) {
+  EXPECT_CALL(platform_, DirectoryExists("/foo//bar/")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetRealPath("/foo", _))
+      .WillOnce(DoAll(SetArgPointee<1>("/foo"), Return(true)));
+  EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(base::FilePath("/foo/bar")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              Mount("/foo/bar", "/tmp/working_dir", "", HasBindBitSet(), _))
+      .WillOnce(Return(true));
+
+  auto mounter = helper_.CreateMounter(
+      base::FilePath("/tmp/working_dir"), Uri::Parse("drivefs://id"),
+      base::FilePath("/media/fuse/drivefs/id"),
+      {"rw", "datadir=/foo//bar/", "datadir=/ignored/second/datadir/value"});
+  ASSERT_TRUE(mounter);
+
+  EXPECT_EQ("drivefs", mounter->filesystem_type());
+  EXPECT_TRUE(mounter->source_path().empty());
+  EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path());
+  auto options_string = mounter->mount_options().ToString();
+  EXPECT_THAT(options_string, HasSubstr("datadir=/tmp/working_dir"));
+  EXPECT_THAT(options_string, HasSubstr("identity=id"));
+  EXPECT_THAT(options_string, HasSubstr("rw"));
+  EXPECT_THAT(options_string, HasSubstr("uid=700"));
+  EXPECT_THAT(options_string, HasSubstr("gid=1501"));
+}
+
 TEST_F(DrivefsHelperTest, CreateMounter_GetUserAndGroupIdFails) {
   EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _)).WillOnce(Return(false));
   EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(base::FilePath("/foo/bar")))
@@ -187,8 +215,18 @@ TEST_F(DrivefsHelperTest, CreateMounter_GetAndGroupIdFails) {
       base::FilePath("/media/fuse/drivefs/id"), {"rw", "datadir=/foo/bar"}));
 }
 
-TEST_F(DrivefsHelperTest, CreateMounter_GetRealPathFails) {
-  EXPECT_CALL(platform_, GetRealPath(_, _)).WillOnce(Return(false));
+TEST_F(DrivefsHelperTest, CreateMounter_GetRealPathFails_DirectoryExists) {
+  EXPECT_CALL(platform_, GetRealPath("/foo/bar", _)).WillOnce(Return(false));
+  EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(_)).Times(0);
+
+  EXPECT_FALSE(helper_.CreateMounter(
+      base::FilePath("/tmp/working_dir"), Uri::Parse("drivefs://id"),
+      base::FilePath("/media/fuse/drivefs/id"), {"rw", "datadir=/foo/bar"}));
+}
+
+TEST_F(DrivefsHelperTest, CreateMounter_GetRealPathFails_DirectoryDoesntExist) {
+  EXPECT_CALL(platform_, DirectoryExists("/foo/bar")).WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetRealPath("/foo", _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetGroupId(_, _)).Times(0);
   EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(_)).Times(0);
 

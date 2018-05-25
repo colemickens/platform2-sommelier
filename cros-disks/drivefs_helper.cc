@@ -81,10 +81,17 @@ base::FilePath DrivefsHelper::GetValidatedDataDir(
         LOG(ERROR) << "Invalid DriveFS option datadir=" << path_string;
         return {};
       }
-      if (!platform()->GetRealPath(path_string, &path_string)) {
+      base::FilePath suffix_component;
+      // If the datadir doesn't exist, canonicalize the parent directory
+      // instead, and append the last path component to that path.
+      if (!platform()->DirectoryExists(data_dir.value())) {
+        suffix_component = data_dir.BaseName();
+        data_dir = data_dir.DirName();
+      }
+      if (!platform()->GetRealPath(data_dir.value(), &path_string)) {
         return {};
       }
-      return base::FilePath(path_string);
+      return base::FilePath(path_string).Append(suffix_component);
     }
   }
   return {};
