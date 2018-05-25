@@ -2747,7 +2747,7 @@ bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::SecureBlob* pcr_value) {
   TSS_RESULT result = Tspi_TPM_PcrRead(tpm_handle, pcr_index,
                                        &pcr_len, pcr_value_buffer.ptr());
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not read PCR0 value";
+    TPM_LOG(ERROR, result) << "Could not read PCR " << pcr_index << " value";
     return false;
   }
   SecureBlob tmp(pcr_value_buffer.value(), pcr_value_buffer.value() + pcr_len);
