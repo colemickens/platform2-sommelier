@@ -1,0 +1,26 @@
+# Life begins with the kernel.
+type kernel, chromeos_domain, domain, mlstrustedobject;
+
+r_dir_file(kernel, rootfs)
+r_dir_file(kernel, sysfs)
+
+allow kernel selinuxfs:dir r_dir_perms;
+allow kernel selinuxfs:file rw_file_perms;
+allow kernel self:security setcheckreqprot;
+
+allow kernel unlabeled:dir search;
+allow kernel unlabeled:file { execute execute_no_trans };
+
+# TODO: label device file in more detail.
+allow kernel device:dir { search write };
+allow kernel device:chr_file execute; # For /dev/console
+allow kernel device:chr_file { create setattr };
+allow kernel device:dir add_name; # for dm-X device.
+allow kernel device:blk_file create_file_perms;
+
+allow kernel self:global_capability_class_set sys_nice;
+allow kernel self:capability *;
+
+allow kernel unlabeled:system module_load; # TODO label modules. and modprobe.
+
+neverallow * kernel:process { transition dyntransition };

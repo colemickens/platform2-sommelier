@@ -1,0 +1,32 @@
+allow chromeos_domain selinuxfs:dir search;
+allow chromeos_domain selinuxfs:file getattr;
+allow chromeos_domain selinuxfs:filesystem getattr;
+
+allow chromeos_domain self:process {
+    fork
+    sigchld
+    sigkill
+    sigstop
+    signull
+    signal
+    getsched
+    setsched
+    getsession
+    getpgid
+    setpgid
+    getcap
+    setcap
+    getattr
+    setrlimit
+};
+
+allow chromeos_domain self:unix_stream_socket { create_stream_socket_perms connectto };
+allow chromeos_domain self:{ fifo_file file } rw_file_perms;
+
+r_dir_file(chromeos_domain, self)
+r_dir_file(chromeos_domain, proc)
+
+
+# TODO: delete this.
+r_dir_file(chromeos_domain, unlabeled)
+

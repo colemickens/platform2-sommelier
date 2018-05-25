@@ -1,0 +1,5 @@
+allow fs_type self:filesystem associate;
+allow file_type labeledfs:filesystem associate;
+allow tmpfs labeledfs:filesystem associate;
+allow chromeos_domain tmpfs:dir { getattr read setattr };
+allow chromeos_domain tmpfs:dir create_dir_perms;

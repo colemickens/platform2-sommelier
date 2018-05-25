@@ -1,0 +1,2 @@
+type kernel, domain, mlstrustedobject;
+neverallow * kernel:process { transition dyntransition };

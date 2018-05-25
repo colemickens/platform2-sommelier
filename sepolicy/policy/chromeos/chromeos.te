@@ -1,0 +1,24 @@
+# chromeos domain
+type chromeos, chromeos_domain, domain, mlstrustedsubject;
+net_domain(chromeos)
+
+permissive chromeos;
+
+type chromeos_init_exec, exec_type, file_type;
+
+# Transition from kernel to chromeos by executing chromeos's init.
+domain_auto_trans(kernel, chromeos_init_exec, chromeos)
+
+r_dir_file(chromeos, sysfs);
+
+allow kernel chromeos:process { share };
+allow chromeos kernel:fd { use };
+allow chromeos device:chr_file { read write };
+
+allow chromeos self:capability { dac_override sys_boot };
+allow chromeos device:chr_file ioctl;
+allow chromeos proc:file write;
+allow chromeos self:capability sys_resource;
+
+allow chromeos fs_type:dir mounton;
+

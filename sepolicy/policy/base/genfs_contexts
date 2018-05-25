@@ -1,0 +1,11 @@
+# Label inodes with the fs label.
+genfscon rootfs / u:object_r:rootfs:s0
+
+# proc labeling can be further refined (longest matching prefix).
+genfscon proc / u:object_r:proc:s0
+
+# selinuxfs booleans can be individually labeled.
+genfscon selinuxfs / u:object_r:selinuxfs:s0
+
+# sysfs labeling
+genfscon sysfs / u:object_r:sysfs:s0
