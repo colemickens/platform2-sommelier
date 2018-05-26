@@ -80,6 +80,8 @@ static void sl_dmabuf_end_access(int fd) {
 
 static uint32_t sl_gbm_format_for_shm_format(uint32_t format) {
   switch (format) {
+    case WL_SHM_FORMAT_NV12:
+      return GBM_FORMAT_NV12;
     case WL_SHM_FORMAT_RGB565:
       return GBM_FORMAT_RGB565;
     case WL_SHM_FORMAT_ARGB8888:
@@ -97,6 +99,8 @@ static uint32_t sl_gbm_format_for_shm_format(uint32_t format) {
 
 static uint32_t sl_drm_format_for_shm_format(int format) {
   switch (format) {
+    case WL_SHM_FORMAT_NV12:
+      return WL_DRM_FORMAT_NV12;
     case WL_SHM_FORMAT_RGB565:
       return WL_DRM_FORMAT_RGB565;
     case WL_SHM_FORMAT_ARGB8888:
@@ -182,6 +186,7 @@ static void sl_host_surface_attach(struct wl_client* client,
       size_t height = host_buffer->height;
       uint32_t shm_format = host_buffer->shm_format;
       size_t bpp = sl_shm_bpp_for_shm_format(shm_format);
+      size_t num_planes = sl_shm_num_planes_for_shm_format(shm_format);
 
       host->current_buffer = malloc(sizeof(struct sl_output_buffer));
       assert(host->current_buffer);
@@ -216,8 +221,8 @@ static void sl_host_surface_attach(struct wl_client* client,
                   sl_drm_format_for_shm_format(shm_format), 0);
           zwp_linux_buffer_params_v1_destroy(buffer_params);
 
-          host->current_buffer->mmap =
-              sl_mmap_create(fd, height * stride0, 0, stride0, bpp);
+          host->current_buffer->mmap = sl_mmap_create(
+              fd, height * stride0, bpp, 1, 0, stride0, 0, 0, 1, 0);
           host->current_buffer->mmap->begin_access = sl_dmabuf_begin_access;
           host->current_buffer->mmap->end_access = sl_dmabuf_end_access;
 
@@ -239,12 +244,17 @@ static void sl_host_surface_attach(struct wl_client* client,
           pool =
               wl_shm_create_pool(host->ctx->shm->internal, ioctl_new.fd, size);
           host->current_buffer->internal = wl_shm_pool_create_buffer(
-              pool, 0, width, height, host_buffer->shm_mmap->stride,
+              pool, 0, width, height, host_buffer->shm_mmap->stride[0],
               shm_format);
           wl_shm_pool_destroy(pool);
 
           host->current_buffer->mmap = sl_mmap_create(
-              ioctl_new.fd, size, 0, host_buffer->shm_mmap->stride, bpp);
+              ioctl_new.fd, size, bpp, num_planes, 0,
+              host_buffer->shm_mmap->stride[0],
+              host_buffer->shm_mmap->offset[1] -
+                  host_buffer->shm_mmap->offset[0],
+              host_buffer->shm_mmap->stride[1], host_buffer->shm_mmap->y_ss[0],
+              host_buffer->shm_mmap->y_ss[1]);
         } break;
         case SHM_DRIVER_VIRTWL_DMABUF: {
           uint32_t drm_format = sl_drm_format_for_shm_format(shm_format);
@@ -255,6 +265,7 @@ static void sl_host_surface_attach(struct wl_client* client,
               .dmabuf = {
                   .width = width, .height = height, .format = drm_format}};
           struct zwp_linux_buffer_params_v1* buffer_params;
+          size_t size;
           int rv;
 
           rv = ioctl(host->ctx->virtwl_fd, VIRTWL_IOCTL_NEW, &ioctl_new);
@@ -264,18 +275,30 @@ static void sl_host_surface_attach(struct wl_client* client,
             _exit(EXIT_FAILURE);
           }
 
+          size = ioctl_new.dmabuf.stride0 * height;
           buffer_params = zwp_linux_dmabuf_v1_create_params(
               host->ctx->linux_dmabuf->internal);
-          zwp_linux_buffer_params_v1_add(buffer_params, ioctl_new.fd, 0, 0,
+          zwp_linux_buffer_params_v1_add(buffer_params, ioctl_new.fd, 0,
+                                         ioctl_new.dmabuf.offset0,
                                          ioctl_new.dmabuf.stride0, 0, 0);
+          if (num_planes > 1) {
+            zwp_linux_buffer_params_v1_add(buffer_params, ioctl_new.fd, 1,
+                                           ioctl_new.dmabuf.offset1,
+                                           ioctl_new.dmabuf.stride1, 0, 0);
+            size = MAX(size, ioctl_new.dmabuf.offset1 +
+                                 ioctl_new.dmabuf.stride1 * height /
+                                     host_buffer->shm_mmap->y_ss[1]);
+          }
           host->current_buffer->internal =
               zwp_linux_buffer_params_v1_create_immed(buffer_params, width,
                                                       height, drm_format, 0);
           zwp_linux_buffer_params_v1_destroy(buffer_params);
 
-          host->current_buffer->mmap =
-              sl_mmap_create(ioctl_new.fd, ioctl_new.dmabuf.stride0 * height, 0,
-                             ioctl_new.dmabuf.stride0, bpp);
+          host->current_buffer->mmap = sl_mmap_create(
+              ioctl_new.fd, size, bpp, num_planes, ioctl_new.dmabuf.offset0,
+              ioctl_new.dmabuf.stride0, ioctl_new.dmabuf.offset1,
+              ioctl_new.dmabuf.stride1, host_buffer->shm_mmap->y_ss[0],
+              host_buffer->shm_mmap->y_ss[1]);
         } break;
       }
 
@@ -417,13 +440,15 @@ static void sl_host_surface_commit(struct wl_client* client,
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
 
   if (host->contents_shm_mmap) {
-    uint8_t* src_base =
-        host->contents_shm_mmap->addr + host->contents_shm_mmap->offset;
-    uint8_t* dst_base =
-        host->current_buffer->mmap->addr + host->current_buffer->mmap->offset;
-    size_t src_stride = host->contents_shm_mmap->stride;
-    size_t dst_stride = host->current_buffer->mmap->stride;
+    uint8_t* src_addr = host->contents_shm_mmap->addr;
+    uint8_t* dst_addr = host->current_buffer->mmap->addr;
+    size_t* src_offset = host->contents_shm_mmap->offset;
+    size_t* dst_offset = host->current_buffer->mmap->offset;
+    size_t* src_stride = host->contents_shm_mmap->stride;
+    size_t* dst_stride = host->current_buffer->mmap->stride;
+    size_t* y_ss = host->contents_shm_mmap->y_ss;
     size_t bpp = host->contents_shm_mmap->bpp;
+    size_t num_planes = host->contents_shm_mmap->num_planes;
     double contents_scale_x = host->contents_scale;
     double contents_scale_y = host->contents_scale;
     double contents_offset_x = 0.0;
@@ -476,16 +501,22 @@ static void sl_host_surface_commit(struct wl_client* client,
       y2 = MIN(host->contents_height, y2);
 
       if (x1 < x2 && y1 < y2) {
-        uint8_t* src = src_base + y1 * src_stride + x1 * bpp;
-        uint8_t* dst = dst_base + y1 * dst_stride + x1 * bpp;
-        int32_t width = x2 - x1;
-        int32_t height = y2 - y1;
-        size_t bytes = width * bpp;
+        size_t i;
 
-        while (height--) {
-          memcpy(dst, src, bytes);
-          dst += dst_stride;
-          src += src_stride;
+        for (i = 0; i < num_planes; ++i) {
+          uint8_t* src_base = src_addr + src_offset[i];
+          uint8_t* dst_base = dst_addr + dst_offset[i];
+          uint8_t* src = src_base + y1 * src_stride[i] + x1 * bpp;
+          uint8_t* dst = dst_base + y1 * dst_stride[i] + x1 * bpp;
+          int32_t width = x2 - x1;
+          int32_t height = (y2 - y1) / y_ss[i];
+          size_t bytes = width * bpp;
+
+          while (height--) {
+            memcpy(dst, src, bytes);
+            dst += dst_stride[i];
+            src += src_stride[i];
+          }
         }
       }
 

@@ -28,6 +28,8 @@ struct sl_host_shm {
 
 size_t sl_shm_bpp_for_shm_format(uint32_t format) {
   switch (format) {
+    case WL_SHM_FORMAT_NV12:
+      return 1;
     case WL_SHM_FORMAT_RGB565:
       return 2;
     case WL_SHM_FORMAT_ARGB8888:
@@ -38,6 +40,85 @@ size_t sl_shm_bpp_for_shm_format(uint32_t format) {
   }
   assert(0);
   return 0;
+}
+
+size_t sl_shm_num_planes_for_shm_format(uint32_t format) {
+  switch (format) {
+    case WL_SHM_FORMAT_NV12:
+      return 2;
+    case WL_SHM_FORMAT_RGB565:
+    case WL_SHM_FORMAT_ARGB8888:
+    case WL_SHM_FORMAT_ABGR8888:
+    case WL_SHM_FORMAT_XRGB8888:
+    case WL_SHM_FORMAT_XBGR8888:
+      return 1;
+  }
+  assert(0);
+  return 0;
+}
+
+static size_t sl_y_subsampling_for_shm_format_plane(uint32_t format,
+                                                    size_t plane) {
+  switch (format) {
+    case WL_SHM_FORMAT_NV12: {
+      const size_t subsampling[] = {1, 2};
+
+      assert(plane < ARRAY_SIZE(subsampling));
+      return subsampling[plane];
+    }
+    case WL_SHM_FORMAT_RGB565:
+    case WL_SHM_FORMAT_ARGB8888:
+    case WL_SHM_FORMAT_ABGR8888:
+    case WL_SHM_FORMAT_XRGB8888:
+    case WL_SHM_FORMAT_XBGR8888:
+      return 1;
+  }
+  assert(0);
+  return 0;
+}
+
+static int sl_offset_for_shm_format_plane(uint32_t format,
+                                          size_t height,
+                                          size_t stride,
+                                          size_t plane) {
+  switch (format) {
+    case WL_SHM_FORMAT_NV12: {
+      const size_t offset[] = {0, 1};
+
+      assert(plane < ARRAY_SIZE(offset));
+      return offset[plane] * height * stride;
+    }
+    case WL_SHM_FORMAT_RGB565:
+    case WL_SHM_FORMAT_ARGB8888:
+    case WL_SHM_FORMAT_ABGR8888:
+    case WL_SHM_FORMAT_XRGB8888:
+    case WL_SHM_FORMAT_XBGR8888:
+      return 0;
+  }
+  assert(0);
+  return 0;
+}
+
+static size_t sl_size_for_shm_format_plane(uint32_t format,
+                                           size_t height,
+                                           size_t stride,
+                                           size_t plane) {
+  return height / sl_y_subsampling_for_shm_format_plane(format, plane) * stride;
+}
+
+static size_t sl_size_for_shm_format(uint32_t format,
+                                     size_t height,
+                                     size_t stride) {
+  size_t i, num_planes = sl_shm_num_planes_for_shm_format(format);
+  size_t total_size = 0;
+
+  for (i = 0; i < num_planes; ++i) {
+    size_t size = sl_size_for_shm_format_plane(format, height, stride, i);
+    size_t offset = sl_offset_for_shm_format_plane(format, height, stride, i);
+    total_size = MAX(total_size, size + offset);
+  }
+
+  return total_size;
 }
 
 static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
@@ -61,9 +142,13 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
         sl_create_host_buffer(client, id, NULL, width, height);
 
     host_buffer->shm_format = format;
-    host_buffer->shm_mmap =
-        sl_mmap_create(dup(host->fd), height * stride, offset, stride,
-                       sl_shm_bpp_for_shm_format(format));
+    host_buffer->shm_mmap = sl_mmap_create(
+        dup(host->fd), sl_size_for_shm_format(format, height, stride),
+        sl_shm_bpp_for_shm_format(format),
+        sl_shm_num_planes_for_shm_format(format), offset, stride,
+        offset + sl_offset_for_shm_format_plane(format, height, stride, 1),
+        stride, sl_y_subsampling_for_shm_format_plane(format, 0),
+        sl_y_subsampling_for_shm_format_plane(format, 1));
     host_buffer->shm_mmap->buffer_resource = host_buffer->resource;
   }
 }
@@ -158,6 +243,9 @@ static void sl_drm_format(void* data,
 
   // Forward SHM versions of supported formats.
   switch (format) {
+    case WL_DRM_FORMAT_NV12:
+      wl_shm_send_format(host->resource, WL_SHM_FORMAT_NV12);
+      break;
     case WL_DRM_FORMAT_RGB565:
       wl_shm_send_format(host->resource, WL_SHM_FORMAT_RGB565);
       break;

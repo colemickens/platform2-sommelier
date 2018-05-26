@@ -16,6 +16,8 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
 #define UNUSED(x) ((void)(x))
 
 #define CONTROL_MASK (1 << 0)
@@ -344,9 +346,11 @@ struct sl_mmap {
   int fd;
   void* addr;
   size_t size;
-  size_t offset;
-  size_t stride;
   size_t bpp;
+  size_t num_planes;
+  size_t offset[2];
+  size_t stride[2];
+  size_t y_ss[2];
   sl_begin_end_access_func_t begin_access;
   sl_begin_end_access_func_t end_access;
   struct wl_resource* buffer_resource;
@@ -412,6 +416,8 @@ struct sl_global* sl_compositor_global_create(struct sl_context* ctx);
 
 size_t sl_shm_bpp_for_shm_format(uint32_t format);
 
+size_t sl_shm_num_planes_for_shm_format(uint32_t format);
+
 struct sl_global* sl_shm_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_subcompositor_global_create(struct sl_context* ctx);
@@ -436,8 +442,16 @@ struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_drm_global_create(struct sl_context* ctx);
 
-struct sl_mmap* sl_mmap_create(
-    int fd, size_t size, size_t offset, size_t stride, size_t bpp);
+struct sl_mmap* sl_mmap_create(int fd,
+                               size_t size,
+                               size_t bpp,
+                               size_t num_planes,
+                               size_t offset0,
+                               size_t stride0,
+                               size_t offset1,
+                               size_t stride1,
+                               size_t y_ss0,
+                               size_t y_ss1);
 struct sl_mmap* sl_mmap_ref(struct sl_mmap* map);
 void sl_mmap_unref(struct sl_mmap* map);
 
