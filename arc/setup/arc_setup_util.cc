@@ -481,6 +481,9 @@ class ArcMounterImpl : public ArcMounter {
     // Substitute the removal of the device number by disassociating |source|
     // from the loop device, such that the autoclear flag on |device_num| can
     // automatically remove the loop device.
+    // Note: Releasing the existing callback first to prevent it from running
+    // (ScopedClosureRunner::Reset runs the previous callback).
+    ignore_result(loop_device_cleanup.Release());
     loop_device_cleanup.Reset(base::Bind(
         &DisassociateLoopDevice, scoped_loop_fd.get(), source, device_path));
 
