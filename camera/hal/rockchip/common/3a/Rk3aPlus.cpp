@@ -280,7 +280,10 @@ status_t Rk3aPlus::fillAeInputParams(const CameraMetadata *settings,
     if (aeRegion && croppingRegion) {
         // ******** exposure_window
         //# METADATA_Control control.aeRegions done
-        parseMeteringRegion(settings, ANDROID_CONTROL_AE_REGIONS, aeRegion);
+        entry = settings->find(ANDROID_CONTROL_AE_REGIONS);
+        if (entry.count) {
+            parseMeteringRegion(settings, ANDROID_CONTROL_AE_REGIONS, aeRegion);
+        }
         if (aeRegion->isValid()) {
             // Clip the region to the crop rectangle
             if (croppingRegion->isValid())
