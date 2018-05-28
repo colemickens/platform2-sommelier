@@ -55,6 +55,21 @@ is_var_full() {
   [ ${var_avail} -lt 10000 ]
 }
 
+# Returns if the TPM is owned.
+is_tpm_owned() {
+  local tpm_owned
+  # Depending on the kernel version, the file containing tpm owned information
+  # can be in one of two locations. Specifically, for kernel versions 3.10 and
+  # 3.14 the folder misc is used (/sys/class/misc/tpm0/device/owned). Starting
+  # from version 3.18 the folder tpm is used.
+  if [ -e /sys/class/misc/tpm0/device/owned ]; then
+    tpm_owned=$(cat /sys/class/misc/tpm0/device/owned)
+  else
+    tpm_owned=$(cat /sys/class/tpm/tpm0/device/owned)
+  fi
+  [ "${tpm_owned}" = "1" ]
+}
+
 # Sanity check the date in case the RTC battery died and it initialized to
 # something old (https://crbug.com/195715).  This doesn't need to be perfect,
 # just somewhat recent/sane.  We'll recover later via tlsdate.
@@ -271,6 +286,10 @@ sanity_check_clock
 # to dev mode.
 DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
 
+# This file is created after the TPM is initialized and the device is owned.
+INSTALL_ATTRIBUTES_FILE=\
+"/mnt/stateful_partition/home/.shadow/install_attributes.pb"
+
 # Checks if developer mode is blocked.
 dev_check_block_dev_mode "${DEV_MODE_FILE}"
 
@@ -314,7 +333,8 @@ elif [ -z "${STATE_DEV}" ] || dev_is_debug_build; then
   # (recovery image, factory install shim or netboot), or running from a
   # debug build image. Do not wipe.
   :
-elif [ -O "${DEV_MODE_FILE}" ]; then
+elif [ -O "${DEV_MODE_FILE}" ] ||
+     ( ! is_tpm_owned && [ -O "${INSTALL_ATTRIBUTES_FILE}" ]); then
   if crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
     # We're transitioning from dev mode to verified boot.
     # When coming back from developer mode, we don't need to
