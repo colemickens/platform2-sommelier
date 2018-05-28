@@ -498,7 +498,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
   int tries, failed_tries = 0;
   for (tries = 1; tries <= max_tries; ++tries) {
     // Sleep between subsequent tries (probably a propagation issue).
-    if (tries > 1 && kinit_retry_sleep_enabled_) {
+    if (tries > 1 && !kinit_retry_sleep_disabled_for_testing_) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kKinitRetryWaitSeconds));
     }

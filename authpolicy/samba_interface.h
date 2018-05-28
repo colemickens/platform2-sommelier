@@ -147,8 +147,12 @@ class SambaInterface {
 
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() {
-    smbclient_retry_sleep_enabled_ = false;
+    retry_sleep_disabled_for_testing_ = true;
     device_tgt_manager_.DisableRetrySleepForTesting();
+  }
+
+  void SetFixedAuthTriesForTesting(int auth_tries) {
+    auth_tries_for_testing_ = auth_tries;
   }
 
   // Returns the anonymizer.
@@ -458,8 +462,13 @@ class SambaInterface {
   // For testing only. Used/consumed during Initialize().
   std::unique_ptr<policy::DevicePolicyImpl> device_policy_impl_for_testing;
 
-  // Whether to sleep when retrying smbclient (disable for testing).
-  bool smbclient_retry_sleep_enabled_ = true;
+  // Disables sleeping when retrying net or smbclient (to prevent slowdowns in
+  // tests).
+  bool retry_sleep_disabled_for_testing_ = false;
+
+  // If set to a value > 0, AuthenticateUser() will retry this number of times
+  // in case of network errors. Only used for testing.
+  int auth_tries_for_testing_ = -1;
 
   // Keeps track of whether AutoCheckMachinePasswordChange() ran or not.
   bool did_password_change_check_run_for_testing_ = false;

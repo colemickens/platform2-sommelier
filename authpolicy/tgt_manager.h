@@ -108,7 +108,9 @@ class TgtManager {
   Path GetCredentialCachePath() const { return credential_cache_path_; }
 
   // Disable retry sleep for unit tests.
-  void DisableRetrySleepForTesting() { kinit_retry_sleep_enabled_ = false; }
+  void DisableRetrySleepForTesting() {
+    kinit_retry_sleep_disabled_for_testing_ = true;
+  }
 
   // Returns whether TGT auto renewal is active, see EnableTgtAutoRenewal().
   bool IsTgtAutoRenewalEnabledForTesting() { return tgt_autorenewal_enabled_; }
@@ -180,8 +182,8 @@ class TgtManager {
   // haven't propagated yet.
   bool kinit_retry_ = false;
 
-  // Whether to sleep when retrying kinit (disable for testing).
-  bool kinit_retry_sleep_enabled_ = true;
+  // Disables sleeping when retrying kinit (to prevent slowdowns in tests).
+  bool kinit_retry_sleep_disabled_for_testing_ = false;
 
   // Encryption types to use for kinit.
   KerberosEncryptionTypes encryption_types_ = ENC_TYPES_STRONG;
