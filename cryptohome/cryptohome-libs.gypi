@@ -292,6 +292,7 @@
         'arc_disk_quota.cc',
         'attestation_task.cc',
         'bootlockbox/boot_attributes.cc',
+        'challenge_credentials/challenge_credentials_helper.cc',
         'chaps_client_factory.cc',
         'crypto.cc',
         'cryptohome_event_source.cc',
