@@ -68,6 +68,7 @@
         'sommelier-protocol',
       ],
       'sources': [
+        'sommelier-drm.c',
         'sommelier-gtk-shell.c',
         'sommelier-viewporter.c',
         'sommelier.c',

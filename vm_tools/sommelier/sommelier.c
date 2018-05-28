@@ -123,15 +123,6 @@ struct sl_host_compositor {
   struct wl_compositor *proxy;
 };
 
-struct sl_host_buffer {
-  struct wl_resource *resource;
-  struct wl_buffer *proxy;
-  uint32_t width;
-  uint32_t height;
-  struct sl_mmap* shm_mmap;
-  uint32_t shm_format;
-};
-
 struct sl_host_shm_pool {
   struct sl_shm* shm;
   struct wl_resource *resource;
@@ -141,8 +132,9 @@ struct sl_host_shm_pool {
 
 struct sl_host_shm {
   struct sl_shm* shm;
-  struct wl_resource *resource;
-  struct wl_shm *proxy;
+  struct wl_resource* resource;
+  struct wl_shm* shm_proxy;
+  struct zwp_linux_dmabuf_v1* linux_dmabuf_proxy;
 };
 
 struct sl_shm {
@@ -349,21 +341,6 @@ struct sl_host_subsurface {
   struct wl_subsurface *proxy;
 };
 
-struct sl_linux_dmabuf {
-  struct sl_context* ctx;
-  uint32_t id;
-  uint32_t version;
-  struct sl_global* host_drm_global;
-  struct zwp_linux_dmabuf_v1 *internal;
-};
-
-struct sl_host_drm {
-  struct sl_linux_dmabuf* linux_dmabuf;
-  uint32_t version;
-  struct wl_resource *resource;
-  struct wl_callback *callback;
-};
-
 struct sl_keyboard_extension {
   struct sl_context* ctx;
   uint32_t id;
@@ -534,8 +511,6 @@ struct sl_mwm_hints {
 #define MIN_SIZE (INT_MIN / 10)
 #define MAX_SIZE (INT_MAX / 10)
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
 #define UNUSED(x) ((void)(x))
@@ -1160,18 +1135,6 @@ static void sl_window_update(struct sl_window* window) {
   wl_surface_commit(host_surface->proxy);
   if (host_surface->contents_width && host_surface->contents_height)
     window->realized = 1;
-}
-
-static int sl_supported_shm_format(uint32_t format) {
-  switch (format) {
-  case WL_SHM_FORMAT_RGB565:
-  case WL_SHM_FORMAT_ARGB8888:
-  case WL_SHM_FORMAT_ABGR8888:
-  case WL_SHM_FORMAT_XRGB8888:
-  case WL_SHM_FORMAT_XBGR8888:
-    return 1;
-  }
-  return 0;
 }
 
 static size_t sl_bpp_for_shm_format(uint32_t format) {
@@ -2045,15 +2008,11 @@ static void sl_destroy_host_buffer(struct wl_resource* resource) {
   free(host);
 }
 
-static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
-                                                struct wl_resource* resource,
-                                                uint32_t id,
-                                                int32_t offset,
-                                                int32_t width,
-                                                int32_t height,
-                                                int32_t stride,
-                                                uint32_t format) {
-  struct sl_host_shm_pool* host = wl_resource_get_user_data(resource);
+struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
+                                             uint32_t id,
+                                             struct wl_buffer* proxy,
+                                             int32_t width,
+                                             int32_t height) {
   struct sl_host_buffer* host_buffer;
 
   host_buffer = malloc(sizeof(*host_buffer));
@@ -2066,18 +2025,38 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
   wl_resource_set_implementation(host_buffer->resource,
                                  &sl_buffer_implementation, host_buffer,
                                  sl_destroy_host_buffer);
-
-  if (host->shm->ctx->shm_driver == SHM_DRIVER_NOOP) {
-    assert(host->proxy);
-    host_buffer->shm_mmap = NULL;
-    host_buffer->shm_format = 0;
-    host_buffer->proxy = wl_shm_pool_create_buffer(host->proxy, offset, width,
-                                                   height, stride, format);
+  host_buffer->shm_mmap = NULL;
+  host_buffer->shm_format = 0;
+  host_buffer->proxy = proxy;
+  if (host_buffer->proxy) {
     wl_buffer_set_user_data(host_buffer->proxy, host_buffer);
     wl_buffer_add_listener(host_buffer->proxy, &sl_buffer_listener,
                            host_buffer);
+  }
+
+  return host_buffer;
+}
+
+static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
+                                                struct wl_resource* resource,
+                                                uint32_t id,
+                                                int32_t offset,
+                                                int32_t width,
+                                                int32_t height,
+                                                int32_t stride,
+                                                uint32_t format) {
+  struct sl_host_shm_pool* host = wl_resource_get_user_data(resource);
+
+  if (host->shm->ctx->shm_driver == SHM_DRIVER_NOOP) {
+    assert(host->proxy);
+    sl_create_host_buffer(client, id,
+                          wl_shm_pool_create_buffer(host->proxy, offset, width,
+                                                    height, stride, format),
+                          width, height);
   } else {
-    host_buffer->proxy = NULL;
+    struct sl_host_buffer* host_buffer =
+        sl_create_host_buffer(client, id, NULL, width, height);
+
     host_buffer->shm_format = format;
     host_buffer->shm_mmap =
         sl_mmap_create(dup(host->fd), height * stride, offset, stride,
@@ -2137,7 +2116,7 @@ static void sl_shm_create_host_pool(struct wl_client* client,
 
   switch (host->shm->ctx->shm_driver) {
     case SHM_DRIVER_NOOP:
-      host_shm_pool->proxy = wl_shm_create_pool(host->proxy, fd, size);
+      host_shm_pool->proxy = wl_shm_create_pool(host->shm_proxy, fd, size);
       wl_shm_pool_set_user_data(host_shm_pool->proxy, host_shm_pool);
       close(fd);
       break;
@@ -2155,16 +2134,61 @@ static const struct wl_shm_interface sl_shm_implementation = {
 static void sl_shm_format(void* data, struct wl_shm* shm, uint32_t format) {
   struct sl_host_shm* host = wl_shm_get_user_data(shm);
 
-  if (sl_supported_shm_format(format))
-    wl_shm_send_format(host->resource, format);
+  switch (format) {
+    case WL_SHM_FORMAT_RGB565:
+    case WL_SHM_FORMAT_ARGB8888:
+    case WL_SHM_FORMAT_ABGR8888:
+    case WL_SHM_FORMAT_XRGB8888:
+    case WL_SHM_FORMAT_XBGR8888:
+      wl_shm_send_format(host->resource, format);
+    default:
+      break;
+  }
 }
 
 static const struct wl_shm_listener sl_shm_listener = {sl_shm_format};
 
+static void sl_drm_format(void* data,
+                          struct zwp_linux_dmabuf_v1* linux_dmabuf,
+                          uint32_t format) {
+  struct sl_host_shm* host = zwp_linux_dmabuf_v1_get_user_data(linux_dmabuf);
+
+  // Forward SHM versions of supported formats.
+  switch (format) {
+    case WL_DRM_FORMAT_RGB565:
+      wl_shm_send_format(host->resource, WL_SHM_FORMAT_RGB565);
+      break;
+    case WL_DRM_FORMAT_ARGB8888:
+      wl_shm_send_format(host->resource, WL_SHM_FORMAT_ARGB8888);
+      break;
+    case WL_DRM_FORMAT_ABGR8888:
+      wl_shm_send_format(host->resource, WL_SHM_FORMAT_ABGR8888);
+      break;
+    case WL_DRM_FORMAT_XRGB8888:
+      wl_shm_send_format(host->resource, WL_SHM_FORMAT_XRGB8888);
+      break;
+    case WL_DRM_FORMAT_XBGR8888:
+      wl_shm_send_format(host->resource, WL_SHM_FORMAT_XBGR8888);
+      break;
+  }
+}
+
+static void sl_drm_modifier(void* data,
+                            struct zwp_linux_dmabuf_v1* linux_dmabuf,
+                            uint32_t format,
+                            uint32_t modifier_hi,
+                            uint32_t modifier_lo) {}
+
+static const struct zwp_linux_dmabuf_v1_listener sl_linux_dmabuf_listener = {
+    sl_drm_format, sl_drm_modifier};
+
 static void sl_destroy_host_shm(struct wl_resource* resource) {
   struct sl_host_shm* host = wl_resource_get_user_data(resource);
 
-  wl_shm_destroy(host->proxy);
+  if (host->shm_proxy)
+    wl_shm_destroy(host->shm_proxy);
+  if (host->linux_dmabuf_proxy)
+    zwp_linux_dmabuf_v1_destroy(host->linux_dmabuf_proxy);
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
@@ -2179,14 +2203,33 @@ static void sl_bind_host_shm(struct wl_client* client,
   host = malloc(sizeof(*host));
   assert(host);
   host->shm = shm;
+  host->shm_proxy = NULL;
+  host->linux_dmabuf_proxy = NULL;
   host->resource = wl_resource_create(client, &wl_shm_interface, 1, id);
   wl_resource_set_implementation(host->resource, &sl_shm_implementation, host,
                                  sl_destroy_host_shm);
-  host->proxy = wl_registry_bind(wl_display_get_registry(shm->ctx->display),
-                                 shm->id, &wl_shm_interface,
-                                 wl_resource_get_version(host->resource));
-  wl_shm_set_user_data(host->proxy, host);
-  wl_shm_add_listener(host->proxy, &sl_shm_listener, host);
+
+  switch (shm->ctx->shm_driver) {
+    case SHM_DRIVER_NOOP:
+    case SHM_DRIVER_VIRTWL:
+      host->shm_proxy = wl_registry_bind(
+          wl_display_get_registry(shm->ctx->display), shm->id,
+          &wl_shm_interface, wl_resource_get_version(host->resource));
+      wl_shm_set_user_data(host->shm_proxy, host);
+      wl_shm_add_listener(host->shm_proxy, &sl_shm_listener, host);
+      break;
+    case SHM_DRIVER_VIRTWL_DMABUF:
+    case SHM_DRIVER_DMABUF:
+      assert(shm->ctx->linux_dmabuf);
+      host->linux_dmabuf_proxy = wl_registry_bind(
+          wl_display_get_registry(shm->ctx->display),
+          shm->ctx->linux_dmabuf->id, &zwp_linux_dmabuf_v1_interface,
+          wl_resource_get_version(host->resource));
+      zwp_linux_dmabuf_v1_set_user_data(host->linux_dmabuf_proxy, host);
+      zwp_linux_dmabuf_v1_add_listener(host->linux_dmabuf_proxy,
+                                       &sl_linux_dmabuf_listener, host);
+      break;
+  }
 }
 
 static void sl_shell_surface_pong(struct wl_client* client,
@@ -3541,134 +3584,6 @@ static void sl_bind_host_seat(struct wl_client* client,
   }
 }
 
-static void sl_drm_authenticate(struct wl_client* client,
-                                struct wl_resource* resource,
-                                uint32_t id) {}
-
-static void sl_drm_create_buffer(struct wl_client* client,
-                                 struct wl_resource* resource,
-                                 uint32_t id,
-                                 uint32_t name,
-                                 int32_t width,
-                                 int32_t height,
-                                 uint32_t stride,
-                                 uint32_t format) {
-  assert(0);
-}
-
-static void sl_drm_create_planar_buffer(struct wl_client* client,
-                                        struct wl_resource* resource,
-                                        uint32_t id,
-                                        uint32_t name,
-                                        int32_t width,
-                                        int32_t height,
-                                        uint32_t format,
-                                        int32_t offset0,
-                                        int32_t stride0,
-                                        int32_t offset1,
-                                        int32_t stride1,
-                                        int32_t offset2,
-                                        int32_t stride2) {
-  assert(0);
-}
-
-static void sl_drm_create_prime_buffer(struct wl_client* client,
-                                       struct wl_resource* resource,
-                                       uint32_t id,
-                                       int32_t name,
-                                       int32_t width,
-                                       int32_t height,
-                                       uint32_t format,
-                                       int32_t offset0,
-                                       int32_t stride0,
-                                       int32_t offset1,
-                                       int32_t stride1,
-                                       int32_t offset2,
-                                       int32_t stride2) {
-  struct sl_host_drm* host = wl_resource_get_user_data(resource);
-  struct sl_host_buffer* host_buffer;
-  struct zwp_linux_buffer_params_v1 *buffer_params;
-
-  assert(name >= 0);
-  assert(!offset1);
-  assert(!stride1);
-  assert(!offset2);
-  assert(!stride2);
-
-  host_buffer = malloc(sizeof(*host_buffer));
-  assert(host_buffer);
-
-  host_buffer->width = width;
-  host_buffer->height = height;
-  host_buffer->shm_mmap = NULL;
-  host_buffer->shm_format = 0;
-  host_buffer->resource =
-      wl_resource_create(client, &wl_buffer_interface, 1, id);
-  wl_resource_set_implementation(host_buffer->resource,
-                                 &sl_buffer_implementation, host_buffer,
-                                 sl_destroy_host_buffer);
-  buffer_params =
-      zwp_linux_dmabuf_v1_create_params(host->linux_dmabuf->internal);
-  zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, stride0, 0,
-                                 0);
-  host_buffer->proxy = zwp_linux_buffer_params_v1_create_immed(
-      buffer_params, width, height, format, 0);
-  zwp_linux_buffer_params_v1_destroy(buffer_params);
-  close(name);
-  wl_buffer_set_user_data(host_buffer->proxy, host_buffer);
-  wl_buffer_add_listener(host_buffer->proxy, &sl_buffer_listener, host_buffer);
-}
-
-static const struct wl_drm_interface sl_drm_implementation = {
-    sl_drm_authenticate, sl_drm_create_buffer, sl_drm_create_planar_buffer,
-    sl_drm_create_prime_buffer};
-
-static void sl_destroy_host_drm(struct wl_resource* resource) {
-  struct sl_host_drm* host = wl_resource_get_user_data(resource);
-
-  wl_callback_destroy(host->callback);
-  wl_resource_set_user_data(resource, NULL);
-  free(host);
-}
-
-static void sl_drm_callback_done(void* data,
-                                 struct wl_callback* callback,
-                                 uint32_t serial) {
-  struct sl_host_drm* host = wl_callback_get_user_data(callback);
-
-  if (host->linux_dmabuf->ctx->drm_device)
-    wl_drm_send_device(host->resource, host->linux_dmabuf->ctx->drm_device);
-  wl_drm_send_format(host->resource, WL_DRM_FORMAT_ARGB8888);
-  wl_drm_send_format(host->resource, WL_DRM_FORMAT_XRGB8888);
-  wl_drm_send_format(host->resource, WL_DRM_FORMAT_RGB565);
-  if (host->version >= WL_DRM_CREATE_PRIME_BUFFER_SINCE_VERSION)
-    wl_drm_send_capabilities(host->resource, WL_DRM_CAPABILITY_PRIME);
-}
-
-static const struct wl_callback_listener sl_drm_callback_listener = {
-    sl_drm_callback_done};
-
-static void sl_bind_host_drm(struct wl_client* client,
-                             void* data,
-                             uint32_t version,
-                             uint32_t id) {
-  struct sl_linux_dmabuf* linux_dmabuf = (struct sl_linux_dmabuf*)data;
-  struct sl_host_drm* host;
-
-  host = malloc(sizeof(*host));
-  assert(host);
-  host->linux_dmabuf = linux_dmabuf;
-  host->version = MIN(version, 2);
-  host->resource =
-      wl_resource_create(client, &wl_drm_interface, host->version, id);
-  wl_resource_set_implementation(host->resource, &sl_drm_implementation, host,
-                                 sl_destroy_host_drm);
-
-  host->callback = wl_display_sync(linux_dmabuf->ctx->display);
-  wl_callback_set_user_data(host->callback, host);
-  wl_callback_add_listener(host->callback, &sl_drm_callback_listener, host);
-}
-
 static void sl_xdg_positioner_destroy(struct wl_client* client,
                                       struct wl_resource* resource) {
   wl_resource_destroy(resource);
@@ -4879,17 +4794,11 @@ static void sl_registry_handler(void* data,
     linux_dmabuf->ctx = ctx;
     linux_dmabuf->id = id;
     linux_dmabuf->version = MIN(2, version);
-    linux_dmabuf->host_drm_global = NULL;
     linux_dmabuf->internal = wl_registry_bind(
         registry, id, &zwp_linux_dmabuf_v1_interface, linux_dmabuf->version);
     assert(!ctx->linux_dmabuf);
     ctx->linux_dmabuf = linux_dmabuf;
-
-    // Register wl_drm global if DMABuf interface version is sufficient.
-    if (linux_dmabuf->version >= 2) {
-      linux_dmabuf->host_drm_global = sl_global_create(
-          ctx, &wl_drm_interface, 2, linux_dmabuf, sl_bind_host_drm);
-    }
+    linux_dmabuf->host_drm_global = sl_drm_global_create(ctx);
   } else if (strcmp(interface, "zcr_keyboard_extension_v1") == 0) {
     struct sl_keyboard_extension* keyboard_extension =
         malloc(sizeof(struct sl_keyboard_extension));

@@ -12,6 +12,9 @@
 
 #define SOMMELIER_VERSION "0.20"
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 struct sl_global;
 struct sl_compositor;
 struct sl_shm;
@@ -168,6 +171,15 @@ struct sl_host_surface {
   struct wl_list busy_buffers;
 };
 
+struct sl_host_buffer {
+  struct wl_resource* resource;
+  struct wl_buffer* proxy;
+  uint32_t width;
+  uint32_t height;
+  struct sl_mmap* shm_mmap;
+  uint32_t shm_format;
+};
+
 struct sl_viewporter {
   struct sl_context* ctx;
   uint32_t id;
@@ -183,6 +195,20 @@ struct sl_aura_shell {
   struct zaura_shell* internal;
 };
 
+struct sl_linux_dmabuf {
+  struct sl_context* ctx;
+  uint32_t id;
+  uint32_t version;
+  struct sl_global* host_drm_global;
+  struct zwp_linux_dmabuf_v1* internal;
+};
+
+struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
+                                             uint32_t id,
+                                             struct wl_buffer* proxy,
+                                             int32_t width,
+                                             int32_t height);
+
 struct sl_global* sl_global_create(struct sl_context* ctx,
                                    const struct wl_interface* interface,
                                    int version,
@@ -192,5 +218,7 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
 struct sl_global* sl_viewporter_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
+
+struct sl_global* sl_drm_global_create(struct sl_context* ctx);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_H_
