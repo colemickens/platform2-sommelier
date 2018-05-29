@@ -15,6 +15,11 @@ namespace brillo {
 
 using Blob = std::vector<uint8_t>;
 
+// Conversion of Blob to/from std::string, where the string holds raw byte
+// contents.
+BRILLO_EXPORT std::string BlobToString(const Blob& blob);
+BRILLO_EXPORT Blob BlobFromString(const std::string& bytes);
+
 // SecureBlob erases the contents on destruction.  It does not guarantee erasure
 // on resize, assign, etc.
 class BRILLO_EXPORT SecureBlob : public Blob {

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <limits>
 #include <numeric>
 
 #include <base/logging.h>
@@ -16,6 +17,18 @@
 
 namespace brillo {
 using std::string;
+
+// Tests BlobToString() and BlobFromString().
+TEST(BlobTest, StringConversions) {
+  const char kTestBytes[] = {'\0', '\x1', 'a', std::numeric_limits<char>::min(),
+                             std::numeric_limits<char>::max()};
+  const Blob blob(std::begin(kTestBytes), std::end(kTestBytes));
+  const string obtained_string = BlobToString(blob);
+  EXPECT_EQ(string(std::begin(kTestBytes), std::end(kTestBytes)),
+            obtained_string);
+  const Blob obtained_blob = BlobFromString(obtained_string);
+  EXPECT_EQ(blob, obtained_blob);
+}
 
 class SecureBlobTest : public ::testing::Test {
  public:

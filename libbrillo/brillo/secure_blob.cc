@@ -10,6 +10,14 @@
 
 namespace brillo {
 
+std::string BlobToString(const Blob& blob) {
+  return std::string(blob.begin(), blob.end());
+}
+
+Blob BlobFromString(const std::string& bytes) {
+  return Blob(bytes.begin(), bytes.end());
+}
+
 SecureBlob::SecureBlob(const Blob& blob)
     : SecureBlob(blob.begin(), blob.end()) {}
 
