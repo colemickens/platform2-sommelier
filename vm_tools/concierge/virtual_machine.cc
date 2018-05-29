@@ -42,6 +42,9 @@ constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
 // Name of the control socket used for controlling crosvm.
 constexpr char kCrosvmSocket[] = "crosvm.sock";
 
+// Path to the logger(1) binary.
+constexpr char kLoggerBin[] = "/usr/bin/logger";
+
 // Path to the wayland socket.
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 
@@ -240,9 +243,35 @@ bool VirtualMachine::Start(base::FilePath kernel,
   // whole process group doesn't kill us as well.
   process_.SetPreExecCallback(base::Bind(&SetPgid));
 
+  // Redirect STDOUT to a pipe.
+  process_.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
+
   if (!process_.Start()) {
     LOG(ERROR) << "Failed to start VM process";
     return false;
+  }
+
+  // Setup kernel logger process.
+
+  // Setup logger arguments.
+  std::vector<string> logger_args = {
+      kLoggerBin,
+      // Host syslog deamon requires priority to be set.
+      "-p", "auth.info", "--skip-empty",
+      // Tag each to specify the VM number.
+      "--tag", base::StringPrintf("VMBOOT(%u)", vsock_cid_),
+  };
+
+  for (string& arg : logger_args) {
+    logger_process_.AddArg(std::move(arg));
+  }
+
+  // Bind crosvm's output pipe to the logger's input pipe.
+  logger_process_.BindFd(process_.GetPipe(STDOUT_FILENO), STDIN_FILENO);
+
+  // If the Logger file fails to start, just leave a warning.
+  if (!logger_process_.Start()) {
+    LOG(ERROR) << "Failed to start the logger process for VM " << vsock_cid_;
   }
 
   // Create a stub for talking to the maitre'd instance inside the VM.
