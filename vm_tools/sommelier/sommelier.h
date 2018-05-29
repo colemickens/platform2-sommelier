@@ -15,6 +15,8 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+#define UNUSED(x) ((void)(x))
+
 struct sl_global;
 struct sl_compositor;
 struct sl_shm;
@@ -58,6 +60,11 @@ enum {
   ATOM_INCR,
   ATOM_WL_SELECTION,
   ATOM_LAST = ATOM_WL_SELECTION,
+};
+
+enum {
+  DATA_DRIVER_NOOP,
+  DATA_DRIVER_VIRTWL,
 };
 
 struct sl_context {
@@ -212,6 +219,14 @@ struct sl_host_seat {
   struct wl_seat* proxy;
 };
 
+struct sl_data_device_manager {
+  struct sl_context* ctx;
+  uint32_t id;
+  uint32_t version;
+  struct sl_global* host_global;
+  struct wl_data_device_manager* internal;
+};
+
 struct sl_viewporter {
   struct sl_context* ctx;
   uint32_t id;
@@ -253,6 +268,8 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
                                    int version,
                                    void* data,
                                    wl_global_bind_func_t bind);
+
+struct sl_global* sl_data_device_manager_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_viewporter_global_create(struct sl_context* ctx);
 
