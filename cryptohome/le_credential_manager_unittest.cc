@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest_prod.h>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/le_credential_manager.h"
 
@@ -44,6 +45,10 @@ class LECredentialManagerUnitTest : public testing::Test {
  public:
   LECredentialManagerUnitTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
+    InitLEManager();
+  }
+
+  void InitLEManager() {
     base::FilePath cred_manager_dir =
         temp_dir_.GetPath().Append("low_entropy_creds");
     le_mgr_ =
@@ -67,6 +72,21 @@ class LECredentialManagerUnitTest : public testing::Test {
                 le_mgr_->CheckCredential(label, kHeSecret1, &he_secret));
     }
     return label;
+  }
+
+  void CorruptLeafCache() {
+    // Fill the leafcache file with random data.
+    int64_t file_size;
+    base::FilePath leaf_cache = temp_dir_.GetPath()
+                                    .Append("low_entropy_creds")
+                                    .Append(kLeafCacheFileName);
+    ASSERT_TRUE(base::GetFileSize(leaf_cache, &file_size));
+    std::vector<uint8_t> random_data(file_size);
+    CryptoLib::GetSecureRandom(random_data.data(), file_size);
+    ASSERT_EQ(
+        file_size,
+        base::WriteFile(leaf_cache, reinterpret_cast<char*>(random_data.data()),
+                        file_size));
   }
 
   base::ScopedTempDir temp_dir_;
@@ -184,6 +204,46 @@ TEST_F(LECredentialManagerUnitTest, ResetSecretNegative) {
   // Make sure that Check still fails.
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
             le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+}
+
+// Corrupt the hash cache, and see if subsequent LE operations succeed.
+// The two cases being tested are removal after corruption, and insertion
+// after corruption.
+TEST_F(LECredentialManagerUnitTest, InsertRemoveCorruptHashCache) {
+  uint64_t label1;
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+
+  le_mgr_.reset();
+  CorruptLeafCache();
+  // Now re-initialize the LE Manager.
+  InitLEManager();
+
+  // We should be able to regenerate the HashCache.
+  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+
+  // Now let's reinsert the same credential.
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+
+  le_mgr_.reset();
+  CorruptLeafCache();
+  // Now re-initialize the LE Manager.
+  InitLEManager();
+
+  // Let's make sure future operations work.
+  uint64_t label2;
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+  brillo::SecureBlob he_secret;
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label2));
 }
 
 }  // namespace cryptohome

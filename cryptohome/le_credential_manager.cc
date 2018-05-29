@@ -39,7 +39,7 @@ LECredError LECredentialManager::InsertCredential(
     const brillo::SecureBlob& reset_secret,
     const DelaySchedule& delay_sched,
     uint64_t* ret_label) {
-  if (is_locked_) {
+  if (!Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
 
@@ -103,7 +103,7 @@ LECredError LECredentialManager::ResetCredential(
 }
 
 LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
-  if (is_locked_) {
+  if (!Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
 
@@ -144,7 +144,7 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
                                              const brillo::SecureBlob& secret,
                                              brillo::SecureBlob* he_secret,
                                              bool is_le_secret) {
-  if (is_locked_) {
+  if (!Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
 
@@ -255,6 +255,44 @@ LECredError LECredentialManager::ConvertTpmError(LECredBackendError err) {
   }
 
   return LE_CRED_ERROR_HASH_TREE;
+}
+
+bool LECredentialManager::Sync() {
+  if (is_locked_) {
+    return false;
+  }
+
+  std::vector<uint8_t> disk_root_hash;
+  hash_tree_->GetRootHash(&disk_root_hash);
+
+  // If we don't have it, get the root hash from the LE Backend.
+  if (root_hash_.empty()) {
+    if (!le_tpm_backend_->GetLog(disk_root_hash, &root_hash_)) {
+      LOG(ERROR) << "Couldn't get LE Log.";
+      is_locked_ = true;
+      return false;
+    }
+  }
+
+  if (disk_root_hash == root_hash_) {
+    return true;
+  }
+
+  LOG(WARNING) << "LE HashCache is stale; reconstructing.";
+  // TODO(crbug.com/809749): Add UMA logging for this event.
+  hash_tree_->GenerateAndStoreHashCache();
+  disk_root_hash.clear();
+  hash_tree_->GetRootHash(&disk_root_hash);
+
+  if (disk_root_hash == root_hash_) {
+    return true;
+  }
+
+  // TODO(b/809710): Add log replay functionality here..
+  LOG(ERROR) << "Failed to Synchronize LE disk state after log replay.";
+  // TODO(crbug.com/809749): Add UMA logging for this event.
+  is_locked_ = true;
+  return false;
 }
 
 }  // namespace cryptohome

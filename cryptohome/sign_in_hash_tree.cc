@@ -16,10 +16,6 @@
 
 #include "hash_tree_leaf_data.pb.h"  // NOLINT(build/include)
 
-namespace {
-const char kLeafCacheFileName[] = "leafcache";
-}
-
 namespace cryptohome {
 
 constexpr size_t SignInHashTree::kHashSize;
@@ -107,8 +103,10 @@ void SignInHashTree::PopulateLeafCache() {
 
 void SignInHashTree::GenerateAndStoreHashCache() {
   PopulateLeafCache();
+  GenerateInnerHashArray();
+}
 
-  // Then, calculate all the inner label hashes.
+void SignInHashTree::GenerateInnerHashArray() {
   CalculateHash(Label(0, 0, bits_per_level_));
 }
 
@@ -231,6 +229,11 @@ SignInHashTree::Label SignInHashTree::GetFreeLabel() {
   CHECK(!plt_.KeyExists(new_label));
 
   return Label(new_label, leaf_length_, bits_per_level_);
+}
+
+void SignInHashTree::GetRootHash(std::vector<uint8_t>* root_hash) {
+  GenerateInnerHashArray();
+  root_hash->assign(inner_hash_array_[0], inner_hash_array_[0] + kHashSize);
 }
 
 std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {

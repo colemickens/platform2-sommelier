@@ -206,6 +206,23 @@ bool PinweaverLECredentialBackend::RemoveCredential(
       });
 }
 
+bool PinweaverLECredentialBackend::GetLog(
+    const std::vector<uint8_t>& cur_disk_root_hash,
+    std::vector<uint8_t>* root_hash) {
+  return PerformPinweaverOperation(
+      "GetLog", nullptr, [&](trunks::TpmUtility* tpm_utility) {
+        uint32_t pinweaver_status;
+        std::string cur_root = BlobToString(cur_disk_root_hash);
+        std::string root;
+        std::vector<trunks::PinWeaverLogEntry> log;
+        trunks::TPM_RC result = tpm_utility->PinWeaverGetLog(
+            cur_root, &pinweaver_status, &root, &log);
+        *root_hash = StringToBlob(root);
+        // TODO(b/809710): Fix the handling/conversion of log data.
+        return std::make_pair(result, pinweaver_status);
+      });
+}
+
 template <typename Operation>
 bool PinweaverLECredentialBackend::PerformPinweaverOperation(
     const std::string& name, LECredBackendError* err, Operation op) {

@@ -221,6 +221,14 @@ bool FakeLECredentialBackend::RemoveCredential(
   return true;
 }
 
+bool FakeLECredentialBackend::GetLog(
+    const std::vector<uint8_t>& cur_disk_root_hash,
+    std::vector<uint8_t>* root_hash) {
+  root_hash->assign(fake_root_hash_.begin(), fake_root_hash_.end());
+  // TODO(b/809710): Mimick the log functionality of PinWeaver.
+  return true;
+}
+
 std::vector<uint8_t> FakeLECredentialBackend::RecalculateRootHash(
     const uint64_t label,
     const std::vector<uint8_t>& leaf_mac,

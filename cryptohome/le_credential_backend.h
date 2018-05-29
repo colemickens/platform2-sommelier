@@ -162,6 +162,18 @@ class LECredentialBackend {
                                 const std::vector<std::vector<uint8_t>>& h_aux,
                                 const std::vector<uint8_t>& mac,
                                 std::vector<uint8_t>* new_root) = 0;
+
+  // Retrieves the replay log.
+  //
+  // The current on-disk root hash is supplied via |cur_disk_root_hash|.
+  // The LE backend's current root hash is returned in |root_hash|
+  //
+  // Returns true on success (was able to communicate with the backend), and
+  // false otherwise.
+  // TODO(crbug.com/809710): Add a |log_data| vector which should return log
+  // entries in already-parsed form.
+  virtual bool GetLog(const std::vector<uint8_t>& cur_disk_root_hash,
+                      std::vector<uint8_t>* root_hash) = 0;
 };
 
 }  // namespace cryptohome

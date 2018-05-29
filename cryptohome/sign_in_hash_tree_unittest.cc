@@ -167,6 +167,9 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
                                  &cred_data));
   EXPECT_EQ(kRootHash6_4_1, returned_hash);
+  returned_hash.clear();
+  tree->GetRootHash(&returned_hash);
+  EXPECT_EQ(kRootHash6_4_1, returned_hash);
 }
 
 // Test another hash tree, and check that when you insert / remove a label,
@@ -189,17 +192,13 @@ TEST(SignInHashTreeUnitTest, UpdateHashCacheOnInsertRemove) {
   ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 14, 2), kSampleHash1,
                                kSampleCredData1));
   returned_hash.clear();
-  cred_data.clear();
-  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
-                                 &cred_data));
+  tree->GetRootHash(&returned_hash);
   EXPECT_EQ(kRootHash14_4_2, returned_hash);
 
   // Remove the label; the root hash should be what it was earlier.
   ASSERT_TRUE(tree->RemoveLabel(SignInHashTree::Label(21, 14, 2)));
   returned_hash.clear();
-  cred_data.clear();
-  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
-                                 &cred_data));
+  tree->GetRootHash(&returned_hash);
   EXPECT_EQ(kRootHash14_4_1, returned_hash);
 }
 

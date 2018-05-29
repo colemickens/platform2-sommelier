@@ -151,6 +151,15 @@ class LECredentialManager {
   // LECredError.
   LECredError ConvertTpmError(LECredBackendError err);
 
+  // Performs checks to ensure the SignInHashTree is in sync with the tree
+  // state in the LECredentialBackend. If there is an out-of-sync situation,
+  // this function also attempts to get the HashTree back in sync.
+  //
+  // Returns true on successful synchronization, and false on failure. On
+  // failure, |is_locked_| will be set to true, to prevent further
+  // operations during the class lifecycle.
+  bool Sync();
+
   // Last resort flag which prevents any further Low Entropy operations from
   // occuring, till the next time the class is instantiated.
   // This is used in a situation where an operation succeeds on the TPM,

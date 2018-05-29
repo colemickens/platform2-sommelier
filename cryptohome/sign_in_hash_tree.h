@@ -16,10 +16,13 @@
 #include <base/files/memory_mapped_file.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <gtest/gtest_prod.h>
 
 #include "cryptohome/persistent_lookup_table.h"
 
 namespace cryptohome {
+
+const char kLeafCacheFileName[] = "leafcache";
 
 // This class represents the hash tree which is used to store and manage the
 // various credentials used to access the system. It is used to represent
@@ -190,6 +193,11 @@ class SignInHashTree {
   // inner hashes and updates the |inner_hash_array_|.
   void GenerateAndStoreHashCache();
 
+  // Compute all the inner hashes of the hash tree (i.e all levels of the hash
+  // tree except for the leaf level). This function calls CalculateHash() on the
+  // root hash.
+  void GenerateInnerHashArray();
+
   // Store the credential data for label |label| in the Hash Tree.
   // The HMAC and the credential metadata are provided as two parameters,
   // |hmac| and |cred_data| respectively.
@@ -253,6 +261,10 @@ class SignInHashTree {
   // function will return an empty Label (i.e value_ = length_ =
   // bits_per_per_level_ = 0);
   Label GetFreeLabel();
+
+  // Fills the current root hash from |inner_hash_array_| into
+  // |root_hash|. Before that, it regenerates the entire |inner_hash_array_|.
+  void GetRootHash(std::vector<uint8_t>* root_hash);
 
  private:
   // Recursive function which is used to calculate the hashes for the hash tree,

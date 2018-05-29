@@ -56,6 +56,8 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
                         const std::vector<std::vector<uint8_t>>& h_aux,
                         const std::vector<uint8_t>& mac,
                         std::vector<uint8_t>* new_root) override;
+  bool GetLog(const std::vector<uint8_t>& cur_disk_root_hash,
+              std::vector<uint8_t>* root_hash) override;
 
  private:
   // Convenience wrapper implementing common boilerplate for all types of
