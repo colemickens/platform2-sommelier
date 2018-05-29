@@ -73,6 +73,7 @@
         'sommelier-gtk-shell.c',
         'sommelier-output.c',
         'sommelier-seat.c',
+        'sommelier-shell.c',
         'sommelier-viewporter.c',
         'sommelier-xdg-shell.c',
         'sommelier.c',

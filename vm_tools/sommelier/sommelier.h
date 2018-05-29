@@ -202,6 +202,12 @@ struct sl_host_buffer {
   uint32_t shm_format;
 };
 
+struct sl_shell {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_global;
+};
+
 struct sl_output {
   struct sl_context* ctx;
   uint32_t id;
@@ -309,6 +315,8 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
                                    int version,
                                    void* data,
                                    wl_global_bind_func_t bind);
+
+struct sl_global* sl_shell_global_create(struct sl_context* ctx);
 
 double sl_output_aura_scale_factor_to_double(int scale_factor);
 
