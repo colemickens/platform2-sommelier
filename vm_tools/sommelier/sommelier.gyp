@@ -71,6 +71,7 @@
         'sommelier-data-device-manager.c',
         'sommelier-drm.c',
         'sommelier-gtk-shell.c',
+        'sommelier-output.c',
         'sommelier-seat.c',
         'sommelier-viewporter.c',
         'sommelier-xdg-shell.c',

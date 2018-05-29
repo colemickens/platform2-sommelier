@@ -202,6 +202,14 @@ struct sl_host_buffer {
   uint32_t shm_format;
 };
 
+struct sl_output {
+  struct sl_context* ctx;
+  uint32_t id;
+  uint32_t version;
+  struct sl_global* host_global;
+  struct wl_list link;
+};
+
 struct sl_host_output {
   struct sl_output* output;
   struct wl_resource* resource;
@@ -301,6 +309,12 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
                                    int version,
                                    void* data,
                                    wl_global_bind_func_t bind);
+
+double sl_output_aura_scale_factor_to_double(int scale_factor);
+
+void sl_output_send_host_output_state(struct sl_host_output* host);
+
+struct sl_global* sl_output_global_create(struct sl_output* output);
 
 struct sl_global* sl_seat_global_create(struct sl_seat* seat);
 
