@@ -69,6 +69,13 @@ enum {
 };
 
 enum {
+  SHM_DRIVER_NOOP,
+  SHM_DRIVER_DMABUF,
+  SHM_DRIVER_VIRTWL,
+  SHM_DRIVER_VIRTWL_DMABUF,
+};
+
+enum {
   DATA_DRIVER_NOOP,
   DATA_DRIVER_VIRTWL,
 };
@@ -154,6 +161,13 @@ struct sl_context {
   } atoms[ATOM_LAST + 1];
   xcb_visualid_t visual_ids[256];
   xcb_colormap_t colormaps[256];
+};
+
+struct sl_shm {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_global;
+  struct wl_shm* internal;
 };
 
 struct sl_seat {
@@ -310,6 +324,21 @@ struct sl_linux_dmabuf {
   struct zwp_linux_dmabuf_v1* internal;
 };
 
+typedef void (*sl_begin_end_access_func_t)(int fd);
+
+struct sl_mmap {
+  int refcount;
+  int fd;
+  void* addr;
+  size_t size;
+  size_t offset;
+  size_t stride;
+  size_t bpp;
+  sl_begin_end_access_func_t begin_access;
+  sl_begin_end_access_func_t end_access;
+  struct wl_resource* buffer_resource;
+};
+
 struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
                                              uint32_t id,
                                              struct wl_buffer* proxy,
@@ -321,6 +350,10 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
                                    int version,
                                    void* data,
                                    wl_global_bind_func_t bind);
+
+size_t sl_shm_bpp_for_shm_format(uint32_t format);
+
+struct sl_global* sl_shm_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_subcompositor_global_create(struct sl_context* ctx);
 
@@ -343,6 +376,9 @@ struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_drm_global_create(struct sl_context* ctx);
+
+struct sl_mmap* sl_mmap_create(
+    int fd, size_t size, size_t offset, size_t stride, size_t bpp);
 
 void sl_host_seat_added(struct sl_host_seat* host);
 void sl_host_seat_removed(struct sl_host_seat* host);

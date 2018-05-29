@@ -74,6 +74,7 @@
         'sommelier-output.c',
         'sommelier-seat.c',
         'sommelier-shell.c',
+        'sommelier-shm.c',
         'sommelier-subcompositor.c',
         'sommelier-viewporter.c',
         'sommelier-xdg-shell.c',
