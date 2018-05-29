@@ -1810,8 +1810,6 @@ void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
 
 void ArcSetup::CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs) {
   const base::FilePath coldboot_done = rootfs.Append("dev/.coldboot_done");
-  // TODO(yusukes): Once N finishes migrating to run_oci, add an auto test for
-  // checking this file to cheets_LoginScreen.
   EXIT_IF(!CreateOrTruncate(coldboot_done, 0755));
   EXIT_IF(!Chown(kRootUid, kRootGid, coldboot_done));
 }
