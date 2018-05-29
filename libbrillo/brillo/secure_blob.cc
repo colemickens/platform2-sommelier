@@ -10,6 +10,9 @@
 
 namespace brillo {
 
+SecureBlob::SecureBlob(const Blob& blob)
+    : SecureBlob(blob.begin(), blob.end()) {}
+
 SecureBlob::SecureBlob(const std::string& data)
     : SecureBlob(data.begin(), data.end()) {}
 

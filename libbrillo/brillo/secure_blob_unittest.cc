@@ -43,6 +43,15 @@ class SecureBlobTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(SecureBlobTest);
 };
 
+// Test construction of SecureBlob from Blob.
+TEST_F(SecureBlobTest, BlobConstructorTest) {
+  const std::vector<uint8_t> bytes = {0, 1, 255};
+  const Blob blob(bytes);
+  const SecureBlob secure_blob(blob);
+  EXPECT_EQ(bytes,
+            std::vector<uint8_t>(secure_blob.begin(), secure_blob.end()));
+}
+
 TEST_F(SecureBlobTest, AllocationSizeTest) {
   // Check that allocating a SecureBlob of a specified size works
   SecureBlob blob(32);

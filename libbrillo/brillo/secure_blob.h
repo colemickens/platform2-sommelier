@@ -21,6 +21,7 @@ class BRILLO_EXPORT SecureBlob : public Blob {
  public:
   SecureBlob() = default;
   using Blob::vector;  // Inherit standard constructors from vector.
+  explicit SecureBlob(const Blob& blob);
   explicit SecureBlob(const std::string& data);
   ~SecureBlob();
 
