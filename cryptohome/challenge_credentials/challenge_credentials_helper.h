@@ -10,7 +10,11 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
+#include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
+
+#include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 
 #include "key.pb.h"           // NOLINT(build/include)
 #include "rpc.pb.h"           // NOLINT(build/include)
@@ -18,6 +22,8 @@
 
 namespace cryptohome {
 
+class KeyChallengeService;
+class ChallengeCredentialsOperation;
 class Tpm;
 class UsernamePasskey;
 
@@ -33,33 +39,12 @@ class UsernamePasskey;
 // Verify()) at a time. Starting a new operation before the previous one
 // completes will lead to cancellation of the previous operation (i.e., the
 // old operation will complete with a failure).
+//
+// This class must be used on a single thread only.
 class ChallengeCredentialsHelper final {
  public:
   using KeysetSignatureChallengeInfo =
       SerializedVaultKeyset_SignatureChallengeInfo;
-
-  // This callback is called with a response for a challenge request made via
-  // |KeyChallengeCallback|. In real use cases, this callback delivers the
-  // response of an IPC request made to the service that talks to the
-  // cryptographic token with the challenged key.
-  //
-  // In case of error, |response| will be null; otherwise, it will contain the
-  // challenge response data.
-  using KeyChallengeResponseCallback = base::Callback<void(
-      std::unique_ptr<KeyChallengeResponse> /* response */)>;
-
-  // This callback performs a challenge request against the specified
-  // cryptographic key. In real use cases, this callback will make an IPC
-  // request to the server that talks to the cryptographic token with the
-  // challenged key.
-  //
-  // The challenge data is passed via |key_challenge_request|, and
-  // |account_id| specifies the account whom the vault keyset in question
-  // belongs. The result is reported via |response_callback|.
-  using KeyChallengeCallback = base::Callback<void(
-      const AccountIdentifier& /* account_id */,
-      std::unique_ptr<KeyChallengeRequest> /* key_challenge_request */,
-      const KeyChallengeResponseCallback& /* response_callback */)>;
 
   // This callback reports results of a GenerateNew() call.
   //
@@ -87,11 +72,13 @@ class ChallengeCredentialsHelper final {
   // the provided key is valid for decryption of the given vault keyset.
   using VerifyCallback = base::Callback<void(bool /* is_key_valid */)>;
 
-  // |tpm| is a non-owned pointer that must stay valid for the whole lifetime
-  // of the created object. |delegate_blob| and |delegate_secret| should
-  // correspond to a TPM delegate that allows doing signature-sealing
-  // operations (currently used only on TPM 1.2).
+  // |tpm| and |key_challenge_service| are non-owned pointers that must stay
+  // valid for the whole lifetime of the created object.
+  // |delegate_blob| and |delegate_secret| should correspond to a TPM delegate
+  // that allows doing signature-sealing operations (currently used only on TPM
+  // 1.2).
   ChallengeCredentialsHelper(Tpm* tpm,
+                             KeyChallengeService* key_challenge_service,
                              const brillo::Blob& delegate_blob,
                              const brillo::Blob& delegate_secret);
 
@@ -105,14 +92,10 @@ class ChallengeCredentialsHelper final {
   //
   // |public_key_info| describes the cryptographic key.
   // |salt| is the vault keyset's randomly generated salt.
-  // |key_challenge_callback| should be a callback that implements requesting
-  // key challenges; in real use cases it will make IPC requests to the
-  // service that talks to the cryptographic token with the challenged key.
   // The result is reported via |callback|.
   void GenerateNew(const std::string& account_id,
                    const ChallengePublicKeyInfo& public_key_info,
                    const brillo::Blob& salt,
-                   const KeyChallengeCallback& key_challenge_callback,
                    const GenerateNewCallback& callback);
 
   // Builds credentials for the given user, based on the encrypted
@@ -127,15 +110,11 @@ class ChallengeCredentialsHelper final {
   // |salt| is the vault keyset's salt.
   // |keyset_challenge_info| is the encrypted representation of secrets as
   // created via GenerateNew().
-  // |key_challenge_callback| should be a callback that implements requesting
-  // key challenges; in real use cases it will make IPC requests to the
-  // service that talks to the cryptographic token with the challenged key.
   // The result is reported via |callback|.
   void Decrypt(const std::string& account_id,
                const ChallengePublicKeyInfo& public_key_info,
                const brillo::Blob& salt,
                const KeysetSignatureChallengeInfo& keyset_challenge_info,
-               const KeyChallengeCallback& key_challenge_callback,
                const DecryptCallback& callback);
 
   // Verifies whether the specified cryptographic key may be used to decrypt
@@ -147,22 +126,34 @@ class ChallengeCredentialsHelper final {
   // |public_key_info| describes the cryptographic key.
   // |keyset_challenge_info| is the encrypted representation of secrets as
   // created via GenerateNew().
-  // |key_challenge_callback| should be a callback that implements requesting
-  // key challenges; in real use cases it will make IPC requests to the
-  // service that talks to the cryptographic token with the challenged key.
   // The result is reported via |callback|.
   void VerifyKey(const std::string& account_id,
                  const ChallengePublicKeyInfo& public_key_info,
                  const KeysetSignatureChallengeInfo& keyset_challenge_info,
-                 const KeyChallengeCallback& key_challenge_callback,
                  const VerifyCallback& callback);
 
  private:
+  // Aborts the currently running operation, if any, and destroys all resources
+  // associated with it.
+  void CancelRunningOperation();
+
+  // Wrapper for the completion callback of Decrypt(). Cleans up resources
+  // associated with the operation and forwards results to the original
+  // callback.
+  void OnDecryptCompleted(const DecryptCallback& original_callback,
+                          std::unique_ptr<UsernamePasskey> username_passkey);
+
   // Non-owned.
   Tpm* const tpm_;
+  // Non-owned.
+  KeyChallengeService* const key_challenge_service_;
   // TPM delegate that was passed to the constructor.
   const brillo::Blob delegate_blob_;
   const brillo::Blob delegate_secret_;
+  // The state of the currently running operation, if any.
+  std::unique_ptr<ChallengeCredentialsOperation> operation_;
+
+  base::ThreadChecker thread_checker_;
 
   DISALLOW_COPY_AND_ASSIGN(ChallengeCredentialsHelper);
 };
