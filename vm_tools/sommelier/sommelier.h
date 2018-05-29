@@ -9,6 +9,7 @@
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <xcb/xcb.h>
+#include <xkbcommon/xkbcommon.h>
 
 #define SOMMELIER_VERSION "0.20"
 
@@ -16,6 +17,10 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #define UNUSED(x) ((void)(x))
+
+#define CONTROL_MASK (1 << 0)
+#define ALT_MASK (1 << 1)
+#define SHIFT_MASK (1 << 2)
 
 struct sl_global;
 struct sl_compositor;
@@ -32,6 +37,7 @@ struct sl_linux_dmabuf;
 struct sl_keyboard_extension;
 struct sl_window;
 struct zaura_shell;
+struct zcr_keyboard_extension_v1;
 
 enum {
   ATOM_WM_S0,
@@ -150,6 +156,15 @@ struct sl_context {
   xcb_colormap_t colormaps[256];
 };
 
+struct sl_seat {
+  struct sl_context* ctx;
+  uint32_t id;
+  uint32_t version;
+  struct sl_global* host_global;
+  uint32_t last_serial;
+  struct wl_list link;
+};
+
 struct sl_viewport {
   struct wl_list link;
   wl_fixed_t src_x;
@@ -219,12 +234,30 @@ struct sl_host_seat {
   struct wl_seat* proxy;
 };
 
+struct sl_accelerator {
+  struct wl_list link;
+  uint32_t modifiers;
+  xkb_keysym_t symbol;
+};
+
+struct sl_keyboard_extension {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct zcr_keyboard_extension_v1* internal;
+};
+
 struct sl_data_device_manager {
   struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
   struct sl_global* host_global;
   struct wl_data_device_manager* internal;
+};
+
+struct sl_data_offer {
+  struct sl_context* ctx;
+  struct wl_data_offer* internal;
+  int utf8_text;
 };
 
 struct sl_viewporter {
@@ -269,6 +302,8 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
                                    void* data,
                                    wl_global_bind_func_t bind);
 
+struct sl_global* sl_seat_global_create(struct sl_seat* seat);
+
 struct sl_global* sl_data_device_manager_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_viewporter_global_create(struct sl_context* ctx);
@@ -278,5 +313,12 @@ struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_drm_global_create(struct sl_context* ctx);
+
+void sl_host_seat_added(struct sl_host_seat* host);
+void sl_host_seat_removed(struct sl_host_seat* host);
+
+void sl_restack_windows(struct sl_context* ctx, uint32_t focus_resource_id);
+
+void sl_roundtrip(struct sl_context* ctx);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_H_
