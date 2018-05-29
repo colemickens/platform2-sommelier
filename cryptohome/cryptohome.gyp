@@ -457,6 +457,7 @@
             'mock_pkcs11_init.cc',
             'mock_platform.cc',
             'mock_service.cc',
+            'mock_signature_sealing_backend.cc',
             'mock_tpm.cc',
             'mock_tpm_init.cc',
             'mock_user_oldest_activity_timestamp_cache.cc',
