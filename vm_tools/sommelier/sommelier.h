@@ -180,11 +180,50 @@ struct sl_host_buffer {
   uint32_t shm_format;
 };
 
+struct sl_host_output {
+  struct sl_output* output;
+  struct wl_resource* resource;
+  struct wl_output* proxy;
+  struct zaura_output* aura_output;
+  int internal;
+  int x;
+  int y;
+  int physical_width;
+  int physical_height;
+  int subpixel;
+  char* make;
+  char* model;
+  int transform;
+  uint32_t flags;
+  int width;
+  int height;
+  int refresh;
+  int scale_factor;
+  int current_scale;
+  int preferred_scale;
+  int device_scale_factor;
+  int expecting_scale;
+  struct wl_list link;
+};
+
+struct sl_host_seat {
+  struct sl_seat* seat;
+  struct wl_resource* resource;
+  struct wl_seat* proxy;
+};
+
 struct sl_viewporter {
   struct sl_context* ctx;
   uint32_t id;
   struct sl_global* host_viewporter_global;
   struct wp_viewporter* internal;
+};
+
+struct sl_xdg_shell {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_global;
+  struct zxdg_shell_v6* internal;
 };
 
 struct sl_aura_shell {
@@ -216,6 +255,8 @@ struct sl_global* sl_global_create(struct sl_context* ctx,
                                    wl_global_bind_func_t bind);
 
 struct sl_global* sl_viewporter_global_create(struct sl_context* ctx);
+
+struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 

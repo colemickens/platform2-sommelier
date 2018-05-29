@@ -71,6 +71,7 @@
         'sommelier-drm.c',
         'sommelier-gtk-shell.c',
         'sommelier-viewporter.c',
+        'sommelier-xdg-shell.c',
         'sommelier.c',
       ],
       'defines': [
