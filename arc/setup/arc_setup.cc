@@ -1730,6 +1730,9 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       //   "2": Regular -> child transition, should enable supervision.
       "--supervision-transition",
       GetEnvOrDie(arc_paths_->env.get(), "SUPERVISION_TRANSITION"),
+      "--locale", GetEnvOrDie(arc_paths_->env.get(), "LOCALE"),
+      "--preferred-languages",
+      GetEnvOrDie(arc_paths_->env.get(), "PREFERRED_LANGUAGES")
   };
 
   base::ElapsedTimer timer;

@@ -1664,6 +1664,23 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       NOTREACHED() << "Wrong packages cache mode: "
                    << request.packages_cache_mode() << ".";
   }
+
+  if (request.has_locale()) {
+    env_vars.emplace_back("LOCALE=" + request.locale());
+  } else {
+    // TODO(khmel): Remove once Chrome is updated.
+    LOG(WARNING) << "Locale is not set, using default en_US";
+    env_vars.emplace_back("LOCALE=en_US");
+  }
+
+  std::string preferred_languages;
+  for (int i = 0; i < request.preferred_languages_size(); ++i) {
+    if (i != 0)
+      preferred_languages += ",";
+    preferred_languages += request.preferred_languages(i);
+  }
+  env_vars.emplace_back("PREFERRED_LANGUAGES=" + preferred_languages);
+
   return env_vars;
 }
 
