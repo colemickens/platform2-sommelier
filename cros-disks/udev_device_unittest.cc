@@ -239,10 +239,6 @@ TEST_F(UdevDeviceTest, GetPartitionCount) {
     UdevDevice device(partitioned_device_);
     EXPECT_NE(0, device.GetPartitionCount());
   }
-  if (loop_device_) {
-    UdevDevice device(loop_device_);
-    EXPECT_EQ(0, device.GetPartitionCount());
-  }
 }
 
 TEST_F(UdevDeviceTest, IsAutoMountable) {
