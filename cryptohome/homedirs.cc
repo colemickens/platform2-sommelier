@@ -1037,9 +1037,11 @@ void HomeDirs::DeleteCacheCallback(const FilePath& user_dir) {
 bool HomeDirs::FindGCacheFilesDir(const FilePath& user_dir, FilePath* dir) {
   // Start search from GCache/v1.
   base::FilePath gcache_dir;
-  if (!GetTrackedDirectory(
-          user_dir, FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
-              kGCacheVersionDir), &gcache_dir)) {
+  if (!GetTrackedDirectory(user_dir,
+                           FilePath(kUserHomeSuffix)
+                               .Append(kGCacheDir)
+                               .Append(kGCacheVersion1Dir),
+                           &gcache_dir)) {
     return false;
   }
   std::unique_ptr<FileEnumerator> enumerator(
@@ -1059,9 +1061,12 @@ bool HomeDirs::FindGCacheFilesDir(const FilePath& user_dir, FilePath* dir) {
 
 void HomeDirs::DeleteGCacheTmpCallback(const FilePath& user_dir) {
   FilePath gcachetmp;
-  if (!GetTrackedDirectory(
-          user_dir, FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
-              kGCacheVersionDir).Append(kGCacheTmpDir), &gcachetmp)) {
+  if (!GetTrackedDirectory(user_dir,
+                           FilePath(kUserHomeSuffix)
+                               .Append(kGCacheDir)
+                               .Append(kGCacheVersion1Dir)
+                               .Append(kGCacheTmpDir),
+                           &gcachetmp)) {
     LOG(ERROR) << "Failed to locate the GCache tmp directory.";
     return;
   }

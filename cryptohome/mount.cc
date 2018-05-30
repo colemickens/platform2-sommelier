@@ -76,7 +76,8 @@ const char kIncognitoUser[] = "incognito";
 const FilePath::CharType kCacheDir[] = "Cache";
 const FilePath::CharType kDownloadsDir[] = "Downloads";
 const FilePath::CharType kGCacheDir[] = "GCache";
-const FilePath::CharType kGCacheVersionDir[] = "v1";
+const FilePath::CharType kGCacheVersion1Dir[] = "v1";
+const FilePath::CharType kGCacheVersion2Dir[] = "v2";
 const FilePath::CharType kGCacheBlobsDir[] = "blobs";
 const FilePath::CharType kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
@@ -1016,19 +1017,21 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
 // static
 std::vector<FilePath> Mount::GetTrackedSubdirectories() {
   return std::vector<FilePath>{
-    FilePath(kRootHomeSuffix),
-    FilePath(kUserHomeSuffix),
-    FilePath(kUserHomeSuffix).Append(kCacheDir),
-    FilePath(kUserHomeSuffix).Append(kDownloadsDir),
-    FilePath(kUserHomeSuffix).Append(kGCacheDir),
-    FilePath(kUserHomeSuffix).Append(kGCacheDir)
-                             .Append(kGCacheVersionDir),
-    FilePath(kUserHomeSuffix).Append(kGCacheDir)
-                             .Append(kGCacheVersionDir)
-                             .Append(kGCacheBlobsDir),
-    FilePath(kUserHomeSuffix).Append(kGCacheDir)
-                             .Append(kGCacheVersionDir)
-                             .Append(kGCacheTmpDir),
+      FilePath(kRootHomeSuffix),
+      FilePath(kUserHomeSuffix),
+      FilePath(kUserHomeSuffix).Append(kCacheDir),
+      FilePath(kUserHomeSuffix).Append(kDownloadsDir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
+      FilePath(kUserHomeSuffix)
+          .Append(kGCacheDir)
+          .Append(kGCacheVersion1Dir)
+          .Append(kGCacheBlobsDir),
+      FilePath(kUserHomeSuffix)
+          .Append(kGCacheDir)
+          .Append(kGCacheVersion1Dir)
+          .Append(kGCacheTmpDir),
   };
 }
 
@@ -1130,25 +1133,34 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
   //   {home_dir}/Downloads
   //   {home_dir}/GCache (only if it exists)
   //   {home_dir}/GCache/v1 (only if it exists)
+  //
+  // Make the following directories group accessible and writable by other
+  // system daemons:
+  //   {home_dir}/GCache/v2 (only if it exists)
   const struct {
     FilePath path;
-    bool optional;
+    bool optional = false;
+    bool group_writable = false;
   } kGroupAccessiblePaths[] = {
-    { home_dir },
-    { home_dir.Append(kDownloadsDir), false },
-    { home_dir.Append(kGCacheDir), true },
-    { home_dir.Append(kGCacheDir).Append(kGCacheVersionDir), true },
+      {home_dir},
+      {home_dir.Append(kDownloadsDir)},
+      {home_dir.Append(kGCacheDir), true},
+      {home_dir.Append(kGCacheDir).Append(kGCacheVersion1Dir), true},
+      {home_dir.Append(kGCacheDir).Append(kGCacheVersion2Dir), true, true},
   };
 
-  mode_t mode = S_IXGRP;
+  constexpr mode_t kDefaultMode = S_IXGRP;
+  constexpr mode_t kWritableMode = kDefaultMode | S_IWGRP;
   for (const auto& accessible : kGroupAccessiblePaths) {
     if (!platform_->FileExists(accessible.path) &&
         accessible.optional)
       continue;
 
-    if (!platform_->SetGroupAccessible(accessible.path,
-                                       default_access_group_, mode))
+    if (!platform_->SetGroupAccessible(
+            accessible.path, default_access_group_,
+            accessible.group_writable ? kWritableMode : kDefaultMode)) {
       return false;
+    }
   }
   return true;
 }

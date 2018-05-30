@@ -53,8 +53,9 @@ extern const base::FilePath::CharType kCacheDir[];
 extern const base::FilePath::CharType kDownloadsDir[];
 extern const base::FilePath::CharType kGCacheDir[];
 // subdir of kGCacheDir
-extern const base::FilePath::CharType kGCacheVersionDir[];
-// subdir of kGCacheVersionDir
+extern const base::FilePath::CharType kGCacheVersion1Dir[];
+extern const base::FilePath::CharType kGCacheVersion2Dir[];
+// subdir of kGCacheVersion1Dir
 extern const base::FilePath::CharType kGCacheTmpDir[];
 extern const char kUserHomeSuffix[];
 extern const char kRootHomeSuffix[];

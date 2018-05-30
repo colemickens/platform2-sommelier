@@ -541,9 +541,10 @@ bool MigrationHelper::ShouldMigrateFile(const base::FilePath& child) {
     // confuses the migrator. Never try migration. Just delete it. This is fine
     // because Cryptohomed anyway creates a pass-through directory at this path
     // and Chrome never uses contents of the directory left by old sessions.
-    if (child == base::FilePath(kUserHomeSuffix).Append(kGCacheDir)
-                                                .Append(kGCacheVersionDir)
-                                                .Append(kGCacheTmpDir)) {
+    if (child == base::FilePath(kUserHomeSuffix)
+                     .Append(kGCacheDir)
+                     .Append(kGCacheVersion1Dir)
+                     .Append(kGCacheTmpDir)) {
       return false;
     }
 

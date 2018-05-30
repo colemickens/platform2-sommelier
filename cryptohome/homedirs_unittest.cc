@@ -338,11 +338,12 @@ class FreeDiskSpaceTest : public HomeDirsTest {
       FilePath root = mount.Append(kRootHomeSuffix);
       FilePath cache = user.Append(kCacheDir);
       FilePath gcache = user.Append(kGCacheDir);
-      FilePath gcache_version = gcache.Append(kGCacheVersionDir);
-      FilePath gcache_tmp = gcache_version.Append(kGCacheTmpDir);
+      FilePath gcache_version1 = gcache.Append(kGCacheVersion1Dir);
+      FilePath gcache_version2 = gcache.Append(kGCacheVersion2Dir);
+      FilePath gcache_tmp = gcache_version1.Append(kGCacheTmpDir);
       ExpectTrackedDirectoryEnumeration({user, root});
       ExpectTrackedDirectoryEnumeration({cache, gcache});
-      ExpectTrackedDirectoryEnumeration({gcache_version});
+      ExpectTrackedDirectoryEnumeration({gcache_version1, gcache_version2});
       ExpectTrackedDirectoryEnumeration({gcache_tmp});
     }
   }
