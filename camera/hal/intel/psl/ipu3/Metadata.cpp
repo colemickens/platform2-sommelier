@@ -248,75 +248,73 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
         return;
     }
 
-    if (reqState.aaaControls.ae.aeMode != ANDROID_CONTROL_AE_MODE_OFF) {
-        /**
-         * If we assume parameter accuracy the results for this request are already
-         * in the reqState.
-         * It would be safer to take this from the embda once we have it
-         */
-        AeExpResult = reqState.captureSettings->aiqResults.aeResults.exposures;
-        if (CC_UNLIKELY(AeExpResult == nullptr)) {
-            LOGW("AE exposure results are not present!");
-            return;
-        }
-
-        // Calculate frame duration from AE results and sensor descriptor
-        pixels_per_line = AeExpResult[0].sensor_exposure->line_length_pixels;
-        lines_per_frame = AeExpResult[0].sensor_exposure->frame_length_lines;
-
-        /*
-         * Android wants the frame duration in nanoseconds
-         */
-        int64_t frameDuration = (pixels_per_line * lines_per_frame) /
-                                mSensorDescriptor.pixel_clock_freq_mhz;
-        frameDuration *= 1000;
-        reqState.ctrlUnitResult->update(ANDROID_SENSOR_FRAME_DURATION,
-                                             &frameDuration, 1);
-
-        /*
-         * AE reports exposure in usecs but Android wants it in nsecs
-         * In manual mode, use input value if delta to expResult is small.
-         */
-        exposureTime = AeExpResult[0].exposure->exposure_time_us;
-        ia_aiq_ae_input_params &inParams = reqState.aiqInputParams.aeInputParams;
-
-        if (inParams.manual_exposure_time_us != nullptr)
-            manualExpTime = inParams.manual_exposure_time_us[0];
-
-        if (exposureTime == 0 ||
-            (manualExpTime > 0 &&
-            fabs((float)exposureTime/manualExpTime - 1) < ONE_PERCENT)) {
-
-            if (exposureTime == 0)
-                LOGW("sensor exposure time is Zero, copy input value");
-            // copy input value
-            exposureTime = manualExpTime;
-        }
-        exposureTime = exposureTime * 1000; // to ns.
-        reqState.ctrlUnitResult->update(ANDROID_SENSOR_EXPOSURE_TIME,
-                                         &exposureTime, 1);
-
-        /*
-         * Android wants the sensitivity in iso arithmetic unit.
-         */
-        int16_t manualIso = 100;
-        if (reqState.aiqInputParams.aeInputParams.manual_iso != nullptr)
-            manualIso = reqState.aiqInputParams.aeInputParams.manual_iso[0];
-
-        int32_t inputSensitivity = m3aWrapper->mapRealIso2UiIso(manualIso);
-        sensitivity = m3aWrapper->mapRealIso2UiIso(AeExpResult[0].exposure->iso);
-
-        if (sensitivity == 0) {
-            LOGW("Sensor sensitivity result is Zero, copy metadata input value");
-            sensitivity = inputSensitivity;
-        } else if (inputSensitivity > 0 && abs(inputSensitivity - sensitivity) <= DELTA_ISO) {
-            // due to rounding issue, aec can give a slight difference than manual request
-            sensitivity = inputSensitivity;
-        }
-
-        reqState.ctrlUnitResult->update(ANDROID_SENSOR_SENSITIVITY,
-                                             &sensitivity, 1);
+    /**
+     * If we assume parameter accuracy the results for this request are already
+     * in the reqState.
+     * It would be safer to take this from the embda once we have it
+     */
+    AeExpResult = reqState.captureSettings->aiqResults.aeResults.exposures;
+    if (CC_UNLIKELY(AeExpResult == nullptr)) {
+        LOGW("AE exposure results are not present!");
+        return;
     }
+
+    // Calculate frame duration from AE results and sensor descriptor
+    pixels_per_line = AeExpResult[0].sensor_exposure->line_length_pixels;
+    lines_per_frame = AeExpResult[0].sensor_exposure->frame_length_lines;
+
+    /*
+     * Android wants the frame duration in nanoseconds
+     */
+    int64_t frameDuration = (pixels_per_line * lines_per_frame) /
+                            mSensorDescriptor.pixel_clock_freq_mhz;
+    frameDuration *= 1000;
+    reqState.ctrlUnitResult->update(ANDROID_SENSOR_FRAME_DURATION,
+                                         &frameDuration, 1);
+
+    /*
+     * AE reports exposure in usecs but Android wants it in nsecs
+     * In manual mode, use input value if delta to expResult is small.
+     */
+    exposureTime = AeExpResult[0].exposure->exposure_time_us;
+    ia_aiq_ae_input_params &inParams = reqState.aiqInputParams.aeInputParams;
+
+    if (inParams.manual_exposure_time_us != nullptr)
+        manualExpTime = inParams.manual_exposure_time_us[0];
+
+    if (exposureTime == 0 ||
+        (manualExpTime > 0 &&
+        fabs((float)exposureTime/manualExpTime - 1) < ONE_PERCENT)) {
+
+        if (exposureTime == 0)
+            LOGW("sensor exposure time is Zero, copy input value");
+        // copy input value
+        exposureTime = manualExpTime;
+    }
+    exposureTime = exposureTime * 1000; // to ns.
+    reqState.ctrlUnitResult->update(ANDROID_SENSOR_EXPOSURE_TIME,
+                                     &exposureTime, 1);
+
+    /*
+     * Android wants the sensitivity in iso arithmetic unit.
+     */
+    int16_t manualIso = 100;
+    if (reqState.aiqInputParams.aeInputParams.manual_iso != nullptr)
+        manualIso = reqState.aiqInputParams.aeInputParams.manual_iso[0];
+
+    int32_t inputSensitivity = m3aWrapper->mapRealIso2UiIso(manualIso);
+    sensitivity = m3aWrapper->mapRealIso2UiIso(AeExpResult[0].exposure->iso);
+
+    if (sensitivity == 0) {
+        LOGW("Sensor sensitivity result is Zero, copy metadata input value");
+        sensitivity = inputSensitivity;
+    } else if (inputSensitivity > 0 && abs(inputSensitivity - sensitivity) <= DELTA_ISO) {
+        // due to rounding issue, aec can give a slight difference than manual request
+        sensitivity = inputSensitivity;
+    }
+
+    reqState.ctrlUnitResult->update(ANDROID_SENSOR_SENSITIVITY,
+                                         &sensitivity, 1);
 
     int32_t value = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
     entry = settings->find(ANDROID_SENSOR_TEST_PATTERN_MODE);
