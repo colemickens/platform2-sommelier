@@ -487,13 +487,10 @@ bool Service::Init() {
       &Service::OnCrosDnsServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
 
   // Setup & start the gRPC listener services.
-  // TODO(jkardatzke): Enable this after we have updated concierge to no longer
-  // host this server. This is left here to make the code review easier to
-  // understand for now.
-  if (false && !SetupListenerService(
-                   &grpc_thread_container_, container_listener_.get(),
-                   base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
-                   &grpc_server_container_)) {
+  if (!SetupListenerService(
+          &grpc_thread_container_, container_listener_.get(),
+          base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
+          &grpc_server_container_)) {
     LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
@@ -615,17 +612,15 @@ std::unique_ptr<dbus::Response> Service::GetContainerToken(
     return dbus_response;
   }
 
-  VmKey vm_key =
-      std::make_pair(std::move(request.owner_id()), request.vm_name());
-  auto iter = vms_.find(vm_key);
-  if (iter == vms_.end()) {
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  response.set_container_token(iter->second->GenerateContainerToken(
-      std::move(request.container_name())));
+  response.set_container_token(
+      vm->GenerateContainerToken(std::move(request.container_name())));
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -649,17 +644,15 @@ std::unique_ptr<dbus::Response> Service::IsContainerRunning(
     return dbus_response;
   }
 
-  VmKey vm_key =
-      std::make_pair(std::move(request.owner_id()), request.vm_name());
-  auto iter = vms_.find(vm_key);
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist: " << request.vm_name();
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
   response.set_container_running(
-      iter->second->IsContainerRunning(std::move(request.container_name())));
+      vm->IsContainerRunning(std::move(request.container_name())));
   writer.AppendProtoAsArrayOfBytes(response);
 
   return dbus_response;
@@ -687,10 +680,8 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
     return dbus_response;
   }
 
-  VmKey vm_key =
-      std::make_pair(std::move(request.owner_id()), request.vm_name());
-  auto iter = vms_.find(vm_key);
-  if (iter == vms_.end()) {
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     response.set_success(false);
     response.set_failure_reason("Requested VM does not exist");
@@ -708,7 +699,7 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
   }
 
   std::string error_msg;
-  response.set_success(iter->second->LaunchContainerApplication(
+  response.set_success(vm->LaunchContainerApplication(
       request.container_name().empty() ? kDefaultContainerName
                                        : request.container_name(),
       request.desktop_file_id(), &error_msg));
@@ -735,10 +726,8 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     return dbus_response;
   }
 
-  VmKey vm_key =
-      std::make_pair(std::move(request.owner_id()), request.vm_name());
-  auto iter = vms_.find(vm_key);
-  if (iter == vms_.end()) {
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -758,11 +747,11 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
   std::vector<VirtualMachine::Icon> icons;
   icons.reserve(desktop_file_ids.size());
 
-  if (!iter->second->GetContainerAppIcon(
-          request.container_name().empty() ? kDefaultContainerName
-                                           : request.container_name(),
-          std::move(desktop_file_ids), request.size(), request.scale(),
-          &icons)) {
+  if (!vm->GetContainerAppIcon(request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name(),
+                               std::move(desktop_file_ids), request.size(),
+                               request.scale(), &icons)) {
     LOG(ERROR) << "GetContainerAppIcon failed";
   }
 
@@ -806,19 +795,17 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
   std::string owner_id = request.owner_id().empty()
                              ? primary_owner_id_
                              : std::move(request.owner_id());
-  VmKey vm_key = std::make_pair(std::move(owner_id), request.vm_name());
-  auto iter = vms_.find(vm_key);
-  if (iter == vms_.end()) {
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
   std::string error_msg;
-  iter->second->LaunchVshd(request.container_name().empty()
-                               ? kDefaultContainerName
-                               : request.container_name(),
-                           request.port(), &error_msg);
+  vm->LaunchVshd(request.container_name().empty() ? kDefaultContainerName
+                                                  : request.container_name(),
+                 request.port(), &error_msg);
 
   response.set_success(true);
   response.set_failure_reason(error_msg);
@@ -942,6 +929,23 @@ void Service::OnCrosDnsServiceAvailable(bool service_is_available) {
     crosdns_service_proxy_->SetNameOwnerChangedCallback(base::Bind(
         &Service::OnCrosDnsNameOwnerChanged, weak_ptr_factory_.GetWeakPtr()));
   }
+}
+
+VirtualMachine* Service::FindVm(const std::string& owner_id,
+                                const std::string& vm_name) {
+  VmKey vm_key = std::make_pair(owner_id, vm_name);
+  auto iter = vms_.find(vm_key);
+  if (iter != vms_.end())
+    return iter->second.get();
+  if (!owner_id.empty()) {
+    // TODO(jkardatzke): Remove this empty owner check once the other CLs land
+    // for setting this everywhere.
+    vm_key = std::make_pair("", vm_name);
+    auto iter = vms_.find(vm_key);
+    if (iter != vms_.end())
+      return iter->second.get();
+  }
+  return nullptr;
 }
 
 }  // namespace cicerone

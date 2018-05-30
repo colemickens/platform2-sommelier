@@ -18,25 +18,17 @@
 #include <base/message_loop/message_loop.h>
 #include <base/sequence_checker.h>
 #include <base/synchronization/lock.h>
-#include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <grpc++/grpc++.h>
 
-#include "vm_tools/concierge/container_listener_impl.h"
 #include "vm_tools/concierge/mac_address_generator.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/virtual_machine.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
-
-namespace vm_tools {
-namespace apps {
-class ApplicationList;
-}  // namespace apps
-}  // namespace vm_tools
 
 namespace vm_tools {
 namespace concierge {
@@ -54,50 +46,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
-  // Notifies the service that a container with |container_token| and IP of
-  // |container_ip| has completed startup. Sets |result| to true if this maps to
-  // a subnet inside a currently running VM and |container_token| matches a
-  // security token for that VM; false otherwise. Signals |event| when done.
-  void ContainerStartupCompleted(const std::string& container_token,
-                                 const uint32_t container_ip,
-                                 bool* result,
-                                 base::WaitableEvent* event);
-
   // Notifies the service that a container with |container_name| and VSOCK
   // |cid| has failed startup.
   void ContainerStartupFailed(const std::string& container_name,
                               const uint32_t cid);
-
-  // Notifies the service that a container with |container_token| and IP of
-  // |container_ip| is shutting down. Sets |result| to true if this maps to
-  // a subnet inside a currently running VM and |container_token| matches a
-  // security token for that VM; false otherwise. Signals |event| when done.
-  void ContainerShutdown(const std::string& container_token,
-                         const uint32_t container_ip,
-                         bool* result,
-                         base::WaitableEvent* event);
-
-  // This will send a D-Bus message to Chrome to inform it of the current
-  // installed application list for a container. It will use |container_ip| to
-  // resolve the request to a VM and then |container_token| to resolve it to a
-  // container. |app_list| should be populated with the list of installed
-  // applications but the vm & container names should be left blank; it must
-  // remain valid for the lifetime of this call. |result| is set to true on
-  // success, false otherwise. Signals |event| when done.
-  void UpdateApplicationList(const std::string& container_token,
-                             const uint32_t container_ip,
-                             vm_tools::apps::ApplicationList* app_list,
-                             bool* result,
-                             base::WaitableEvent* event);
-
-  // Sends a D-Bus message to Chrome to tell it to open the |url| in a new tab.
-  // |container_ip| should be the IP address of the container the request is
-  // coming form. |result| is set to true on success, false otherwise. Signals
-  // |event| when done.
-  void OpenUrl(const std::string& url,
-               uint32_t container_ip,
-               bool* result,
-               base::WaitableEvent* event);
 
  private:
   explicit Service(base::Closure quit_closure);
@@ -141,10 +93,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> StartContainer(dbus::MethodCall* method_call);
 
   // Handles a request to launch an application in a container.
+  // TODO(jkardatzke): Remove this one Chrome is migrated to cicerone.
   std::unique_ptr<dbus::Response> LaunchContainerApplication(
       dbus::MethodCall* method_call);
 
   // Handles a request to get application icons in a container.
+  // TODO(jkardatzke): Remove this one Chrome is migrated to cicerone.
   std::unique_ptr<dbus::Response> GetContainerAppIcon(
       dbus::MethodCall* method_call);
 
@@ -158,27 +112,20 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
 
-  // Registers |hostname| and |ip| with the hostname resolver service so that
-  // the container is reachable from a known hostname.
-  void RegisterHostname(const std::string& hostname, const std::string& ip);
-
-  // Unregisters all the hostnames that were registered for this |vm| with
-  // |vm_name| with the hostname resolver service.
-  void UnregisterVmHostnames(VirtualMachine* vm,
-                             const std::string& owner_id,
-                             const std::string& vm_name);
-
-  // Unregisters |hostname| with the hostname resolver service.
-  void UnregisterHostname(const std::string& hostname);
-
-  // Callback for when the crosdns D-Bus service goes online (or is online
-  // already) so we can then register the NameOnwerChanged callback.
-  void OnCrosDnsServiceAvailable(bool service_is_available);
-
-  // Callback for when the crosdns D-Bus service restarts so we can
-  // re-register any of our hostnames that are active.
-  void OnCrosDnsNameOwnerChanged(const std::string& old_owner,
-                                 const std::string& new_owner);
+  // Helpers for notifying cicerone of VM started/stopped events, generating
+  // container tokens and querying if a container is running.
+  void NotifyCiceroneOfVmStarted(const std::string& owner_id,
+                                 const std::string& vm_name,
+                                 uint32_t container_subnet,
+                                 uint32_t container_netmask);
+  void NotifyCiceroneOfVmStopped(const std::string& owner_id,
+                                 const std::string& vm_name);
+  std::string GetContainerToken(const std::string& owner_id,
+                                const std::string& vm_name,
+                                const std::string& container_name);
+  bool IsContainerRunning(const std::string& owner_id,
+                          const std::string& vm_name,
+                          const std::string& container_name);
 
   using VmMap = std::map<std::pair<std::string, std::string>,
                          std::unique_ptr<VirtualMachine>>;
@@ -186,11 +133,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Returns an iterator to vm with key (|owner_id|, |vm_name|). If no such
   // element exists, tries the former with |owner_id| equal to empty string.
   VmMap::iterator FindVm(std::string owner_id, std::string vm_name);
-
-  // Gets the VirtualMachine that corresponds to a container at |container_ip|
-  // and returns an iterator. Returns |vms_.end()| if no sutch mapping exists.
-  // VM. Returns false if no such mapping exists.
-  VmMap::const_iterator GetVirtualMachineForContainerIp(uint32_t container_ip);
 
   // Resource allocators for VMs.
   MacAddressGenerator mac_address_generator_;
@@ -204,33 +146,19 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Active VMs keyed by (owner_id, vm_name).
   VmMap vms_;
 
-  // Owner of the first started vm with name kDefaultVmName
-  std::string principal_owner_id_;
-
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;             // Owned by |bus_|.
-  dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
-  dbus::ObjectProxy* url_handler_service_proxy_;      // Owned by |bus_|.
-  dbus::ObjectProxy* crosdns_service_proxy_;          // Owned by |bus_|.
+  dbus::ObjectProxy* cicerone_service_proxy_;         // Owned by |bus_|.
 
   // The StartupListener service.
   std::unique_ptr<StartupListenerImpl> startup_listener_;
 
-  // The ContainerListener service.
-  std::unique_ptr<ContainerListenerImpl> container_listener_;
-
   // Thread on which the StartupListener service lives.
   base::Thread grpc_thread_vm_{"gRPC VM Server Thread"};
 
-  // Thread on which the ContainerListener service lives.
-  base::Thread grpc_thread_container_{"gRPC Container Server Thread"};
-
   // The server where the StartupListener service lives.
   std::shared_ptr<grpc::Server> grpc_server_vm_;
-
-  // The server where the ContainerListener service lives.
-  std::shared_ptr<grpc::Server> grpc_server_container_;
 
   // Closure that's posted to the current thread's TaskRunner when the service
   // receives a SIGTERM.
@@ -238,10 +166,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;
-
-  // Map of hostnames/IPs we have registered so we can re-register them if the
-  // resolver service restarts.
-  std::map<std::string, std::string> hostname_mappings_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

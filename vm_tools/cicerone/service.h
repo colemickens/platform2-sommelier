@@ -150,6 +150,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnCrosDnsNameOwnerChanged(const std::string& old_owner,
                                  const std::string& new_owner);
 
+  // Gets a VirtualMachine pointer to the registered VM with corresponding
+  // |owner_id| and |vm_name|. Returns a nullptr if not found.
+  VirtualMachine* FindVm(const std::string& owner_id,
+                         const std::string& vm_name);
+
   // File descriptor for the SIGTERM event.
   base::ScopedFD signal_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher watcher_;

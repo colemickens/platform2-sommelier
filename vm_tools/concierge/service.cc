@@ -38,13 +38,14 @@
 #include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/synchronization/waitable_event.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crosvm/qcow_utils.h>
 #include <dbus/object_proxy.h>
-#include <vm_applications/proto_bindings/apps.pb.h>
+#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/constants.h"
@@ -102,14 +103,8 @@ constexpr char kDownloadsDir[] = "Downloads";
 // File extenstion for qcow2 disk types
 constexpr char kQcowImageExtension[] = ".qcow2";
 
-// Default name for a virtual machine.
-constexpr char kDefaultVmName[] = "termina";
-
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
-
-// Hostname for the default VM/container.
-constexpr char kDefaultContainerHostname[] = "linuxhost";
 
 // Path to process file descriptors.
 constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
@@ -120,13 +115,6 @@ const std::map<string, string> kLxdEnv = {
     {"LXD_CONF", "/mnt/stateful/lxd_conf"},
     {"LXD_UNPRIVILEGED_ONLY", "true"},
 };
-
-// Delimiter for the end of a URL scheme.
-constexpr char kUrlSchemeDelimiter[] = "://";
-
-// Hostnames we replace with the container IP if they are sent over in URLs to
-// be opened by the host.
-const char* const kLocalhostReplaceNames[] = {"localhost", "127.0.0.1"};
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -283,50 +271,6 @@ bool GetDiskPathFromName(const std::string& disk_path,
   return true;
 }
 
-// Replaces either localhost or 127.0.0.1 in the hostname part of a URL with the
-// IP address of the container itself.
-std::string ReplaceLocalhostInUrl(const std::string& url,
-                                  const std::string& alt_host) {
-  // We don't have any URL parsing libraries at our disposal here without
-  // integrating something new, so just do some basic URL parsing ourselves.
-  // First find where the scheme ends, which'll be after the first :// string.
-  // Then search for the next / char, which will start the path for the URL, the
-  // hostname will be in the string between those two.
-  // Also check for an @ symbol, which may have a user/pass before the hostname
-  // and then check for a : at the end for an optional port.
-  // scheme://[user:pass@]hostname[:port]/path
-  auto front = url.find(kUrlSchemeDelimiter);
-  if (front == std::string::npos) {
-    return url;
-  }
-  front += sizeof(kUrlSchemeDelimiter) - 1;
-  auto back = url.find('/', front);
-  if (back == std::string::npos) {
-    // This isn't invalid, such as http://google.com.
-    back = url.length();
-  }
-  auto at_check = url.find('@', front);
-  if (at_check != std::string::npos && at_check < back) {
-    front = at_check + 1;
-  }
-  auto port_check = url.find(':', front);
-  if (port_check != std::string::npos && port_check < back) {
-    back = port_check;
-  }
-  // We don't care about URL validity, but our logic should ensure that front
-  // is less than back at this point and this checks that.
-  CHECK_LE(front, back);
-  std::string hostname = url.substr(front, back - front);
-  for (const auto host_check : kLocalhostReplaceNames) {
-    if (hostname == host_check) {
-      // Replace the hostname with the alternate hostname which will be the
-      // container's IP address.
-      return url.substr(0, front) + alt_host + url.substr(back);
-    }
-  }
-  return url;
-}
-
 }  // namespace
 
 std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
@@ -345,14 +289,9 @@ Service::Service(base::Closure quit_closure)
       weak_ptr_factory_(this) {
   startup_listener_ =
       std::make_unique<StartupListenerImpl>(weak_ptr_factory_.GetWeakPtr());
-  container_listener_ =
-      std::make_unique<ContainerListenerImpl>(weak_ptr_factory_.GetWeakPtr());
 }
 
 Service::~Service() {
-  if (grpc_server_container_) {
-    grpc_server_container_->Shutdown();
-  }
   if (grpc_server_vm_) {
     grpc_server_vm_->Shutdown();
   }
@@ -379,63 +318,6 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
 
 void Service::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
-}
-
-void Service::ContainerStartupCompleted(const std::string& container_token,
-                                        const uint32_t container_ip,
-                                        bool* result,
-                                        base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(result);
-  CHECK(event);
-  *result = false;
-
-  auto vm_it = GetVirtualMachineForContainerIp(container_ip);
-  if (vm_it == vms_.end()) {
-    event->Signal();
-    return;
-  }
-  VirtualMachine* vm = vm_it->second.get();
-  const std::string& owner_id = vm_it->first.first;
-  const std::string& vm_name = vm_it->first.second;
-
-  // Found the VM with a matching container subnet, register the IP address
-  // for the container with that VM object.
-  std::string string_ip;
-  if (!IPv4AddressToString(container_ip, &string_ip)) {
-    LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
-    event->Signal();
-    return;
-  }
-  if (!vm->RegisterContainerIp(container_token, string_ip)) {
-    LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
-               << " of " << container_token;
-    event->Signal();
-    return;
-  }
-  std::string container_name = vm->GetContainerNameForToken(container_token);
-  LOG(INFO) << "Startup of container " << container_name << " at IP "
-            << string_ip << " for VM " << vm_name << " completed.";
-
-  if (owner_id == principal_owner_id_) {
-    // Register this with the hostname resolver.
-    RegisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
-                                        vm_name.c_str()),
-                     string_ip);
-    if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
-      RegisterHostname(kDefaultContainerHostname, string_ip);
-    }
-  }
-
-  // Send the D-Bus signal out to indicate the container is ready.
-  dbus::Signal signal(kVmConciergeInterface, kContainerStartedSignal);
-  ContainerStartedSignal proto;
-  proto.set_vm_name(vm_name);
-  proto.set_container_name(container_name);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
-  *result = true;
-  event->Signal();
 }
 
 void Service::ContainerStartupFailed(const std::string& container_name,
@@ -467,122 +349,6 @@ void Service::ContainerStartupFailed(const std::string& container_name,
   exported_object_->SendSignal(&signal);
 }
 
-void Service::ContainerShutdown(const std::string& container_token,
-                                const uint32_t container_ip,
-                                bool* result,
-                                base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(result);
-  CHECK(event);
-  *result = false;
-
-  auto vm_it = GetVirtualMachineForContainerIp(container_ip);
-  if (vm_it == vms_.end()) {
-    event->Signal();
-    return;
-  }
-  VirtualMachine* vm = vm_it->second.get();
-  const std::string& owner_id = vm_it->first.first;
-  const std::string& vm_name = vm_it->first.second;
-  std::string container_name = vm->GetContainerNameForToken(container_token);
-  if (!vm->UnregisterContainerIp(container_token)) {
-    LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
-               << " of " << container_token;
-    event->Signal();
-    return;
-  }
-  if (owner_id == principal_owner_id_) {
-    // Unregister this with the hostname resolver.
-    UnregisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
-                                          vm_name.c_str()));
-    if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
-      UnregisterHostname(kDefaultContainerHostname);
-    }
-  }
-
-  LOG(INFO) << "Shutdown of container " << container_name << " for VM "
-            << vm_name;
-  *result = true;
-  event->Signal();
-}
-
-void Service::UpdateApplicationList(const std::string& container_token,
-                                    const uint32_t container_ip,
-                                    vm_tools::apps::ApplicationList* app_list,
-                                    bool* result,
-                                    base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(app_list);
-  CHECK(result);
-  CHECK(event);
-  *result = false;
-  auto vm_it = GetVirtualMachineForContainerIp(container_ip);
-  if (vm_it == vms_.end()) {
-    event->Signal();
-    return;
-  }
-  VirtualMachine* vm = vm_it->second.get();
-  const std::string& owner_id = vm_it->first.first;
-  const std::string& vm_name = vm_it->first.second;
-  std::string container_name = vm->GetContainerNameForToken(container_token);
-  if (container_name.empty()) {
-    event->Signal();
-    return;
-  }
-  app_list->set_vm_name(vm_name);
-  app_list->set_container_name(container_name);
-  app_list->set_owner_id(owner_id);
-  dbus::MethodCall method_call(
-      vm_tools::apps::kVmApplicationsServiceInterface,
-      vm_tools::apps::kVmApplicationsServiceUpdateApplicationListMethod);
-  dbus::MessageWriter writer(&method_call);
-
-  if (!writer.AppendProtoAsArrayOfBytes(*app_list)) {
-    LOG(ERROR) << "Failed to encode ApplicationList protobuf";
-    event->Signal();
-    return;
-  }
-
-  std::unique_ptr<dbus::Response> dbus_response =
-      vm_applications_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to send dbus message to crostini app registry";
-  } else {
-    *result = true;
-  }
-  event->Signal();
-}
-
-void Service::OpenUrl(const std::string& url,
-                      uint32_t container_ip,
-                      bool* result,
-                      base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(result);
-  CHECK(event);
-  *result = false;
-  dbus::MethodCall method_call(chromeos::kUrlHandlerServiceInterface,
-                               chromeos::kUrlHandlerServiceOpenUrlMethod);
-  dbus::MessageWriter writer(&method_call);
-  std::string container_ip_str;
-  if (!IPv4AddressToString(container_ip, &container_ip_str)) {
-    LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
-    event->Signal();
-    return;
-  }
-  writer.AppendString(ReplaceLocalhostInUrl(url, container_ip_str));
-  std::unique_ptr<dbus::Response> dbus_response =
-      url_handler_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to send dbus message to Chrome for OpenUrl";
-  } else {
-    *result = true;
-  }
-  event->Signal();
-}
-
 bool Service::Init() {
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
@@ -611,9 +377,11 @@ bool Service::Init() {
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kStartContainerMethod, &Service::StartContainer},
+      {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
+      // TODO(jkardatzke): Remove the next 3 lines after Chrome is migrated to
+      // cicerone.
       {kLaunchContainerApplicationMethod, &Service::LaunchContainerApplication},
       {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
-      {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kLaunchVshdMethod, &Service::LaunchVshd},
   };
 
@@ -634,48 +402,22 @@ bool Service::Init() {
     return false;
   }
 
-  // Get the D-Bus proxy for communicating with the crostini registry in Chrome
-  // and for the URL handler service.
-  vm_applications_service_proxy_ = bus_->GetObjectProxy(
-      vm_tools::apps::kVmApplicationsServiceName,
-      dbus::ObjectPath(vm_tools::apps::kVmApplicationsServicePath));
-  if (!vm_applications_service_proxy_) {
+  // Get the D-Bus proxy for communicating with cicerone.
+  cicerone_service_proxy_ = bus_->GetObjectProxy(
+      vm_tools::cicerone::kVmCiceroneServiceName,
+      dbus::ObjectPath(vm_tools::cicerone::kVmCiceroneServicePath));
+  if (!cicerone_service_proxy_) {
     LOG(ERROR) << "Unable to get dbus proxy for "
-               << vm_tools::apps::kVmApplicationsServiceName;
+               << vm_tools::cicerone::kVmCiceroneServiceName;
     return false;
   }
-  url_handler_service_proxy_ =
-      bus_->GetObjectProxy(chromeos::kUrlHandlerServiceName,
-                           dbus::ObjectPath(chromeos::kUrlHandlerServicePath));
-  if (!url_handler_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << chromeos::kUrlHandlerServiceName;
-    return false;
-  }
-  crosdns_service_proxy_ =
-      bus_->GetObjectProxy(crosdns::kCrosDnsServiceName,
-                           dbus::ObjectPath(crosdns::kCrosDnsServicePath));
-  if (!crosdns_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << crosdns::kCrosDnsServiceName;
-    return false;
-  }
-  crosdns_service_proxy_->WaitForServiceToBeAvailable(base::Bind(
-      &Service::OnCrosDnsServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
 
-  // Setup & start the gRPC listener services.
+  // Setup & start the gRPC listener service.
   if (!SetupListenerService(&grpc_thread_vm_, startup_listener_.get(),
                             base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
                                                vm_tools::kStartupListenerPort),
                             &grpc_server_vm_)) {
     LOG(ERROR) << "Failed to setup/startup the VM grpc server";
-    return false;
-  }
-  if (!SetupListenerService(
-          &grpc_thread_container_, container_listener_.get(),
-          base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
-          &grpc_server_container_)) {
-    LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
 
@@ -1024,6 +766,10 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   LOG(INFO) << "Started VM with pid " << vm->pid();
 
+  // Notify cicerone that we have started a VM.
+  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(),
+                            vm->ContainerSubnet(), vm->ContainerNetmask());
+
   VmInfo* vm_info = response.mutable_vm_info();
   response.set_success(true);
   vm_info->set_ipv4_address(vm->IPv4Address());
@@ -1032,10 +778,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   writer.AppendProtoAsArrayOfBytes(response);
 
   vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
-  if (request.name() == kDefaultVmName && principal_owner_id_.empty()) {
-    principal_owner_id_ = request.owner_id();
-  }
-
   return dbus_response;
 }
 
@@ -1069,9 +811,6 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     return dbus_response;
   }
 
-  UnregisterVmHostnames(iter->second.get(), iter->first.first,
-                        iter->first.second);
-
   if (!iter->second->Shutdown()) {
     LOG(ERROR) << "Unable to shut down VM";
 
@@ -1079,6 +818,9 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+
+  // Notify cicerone that we have stopped a VM.
+  NotifyCiceroneOfVmStopped(request.owner_id(), request.name());
 
   vms_.erase(iter);
   response.set_success(true);
@@ -1097,8 +839,8 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
 
   // Spawn a thread for each VM to shut it down.
   for (auto& iter : vms_) {
-    UnregisterVmHostnames(iter.second.get(), iter.first.first,
-                          iter.first.second);
+    // Notify cicerone that we have stopped a VM.
+    NotifyCiceroneOfVmStopped(iter.first.first, iter.first.second);
 
     // By resetting the unique_ptr, each thread calls the destructor for that
     // VM, which will shut it down.
@@ -1536,7 +1278,8 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
                                    ? kDefaultContainerName
                                    : request.container_name();
   LOG(INFO) << "Checking if container " << container_name << " is running";
-  if (iter->second->IsContainerRunning(container_name)) {
+  if (IsContainerRunning(request.cryptohome_id(), request.vm_name(),
+                         container_name)) {
     LOG(INFO) << "Container " << container_name << " is already running.";
     response.set_status(CONTAINER_STATUS_RUNNING);
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1574,6 +1317,18 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
   // This executes the run_container.sh script in the VM which will startup
   // a container. We need to construct the command for that with the proper
   // parameters.
+  std::string container_token = GetContainerToken(
+      request.cryptohome_id(), request.vm_name(), container_name);
+  if (container_token.empty()) {
+    // If we don't have a valid container token, then we will never be able to
+    // notify the caller of successful container startup so don't even try.
+    LOG(ERROR) << "Failed to get a container token from cicerone";
+    response.set_status(CONTAINER_STATUS_FAILURE);
+    response.set_failure_reason(
+        "Failed getting a container token from cicerone");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
   std::vector<std::string> container_args = {
       "/sbin/minijail0",
       "-u",
@@ -1583,7 +1338,7 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
       "--container_name",
       container_name,
       "--container_token",
-      iter->second->GenerateContainerToken(container_name),
+      container_token,
   };
   if (!request.container_username().empty()) {
     container_args.emplace_back("--user");
@@ -1608,6 +1363,7 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
   return dbus_response;
 }
 
+// TODO(jkardatzke): Remove this when we migrate Chrome to cicerone.
 std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -1618,46 +1374,53 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
-  LaunchContainerApplicationRequest request;
   LaunchContainerApplicationResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse LaunchContainerApplicationRequest from "
+
+  // Just proxy the bytes in the protobuf directly. The protobufs in cicerone
+  // and concierge have the exact same structures and this is just temporary.
+  const uint8_t* protobuf_bytes;
+  size_t protobuf_length;
+  if (!reader.PopArrayOfBytes(&protobuf_bytes, &protobuf_length)) {
+    LOG(ERROR) << "Unable to extract LaunchContainerApplicationRequest from "
                << "message";
     response.set_success(false);
     response.set_failure_reason(
-        "Unable to parse LaunchContainerApplicationRequest");
+        "Unable to extract LaunchContainerApplicationRequest");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+  // Proxy this call over to cicerone.
+  dbus::MethodCall proxy_method_call(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kLaunchContainerApplicationMethod);
+  dbus::MessageWriter proxy_writer(&proxy_method_call);
+  proxy_writer.AppendArrayOfBytes(protobuf_bytes, protobuf_length);
+  std::unique_ptr<dbus::Response> proxy_dbus_response =
+      cicerone_service_proxy_->CallMethodAndBlock(
+          &proxy_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!proxy_dbus_response) {
+    LOG(ERROR) << "Failed proxying LaunchContainerApplication to cicerone";
     response.set_success(false);
-    response.set_failure_reason("Requested VM does not exist");
+    response.set_failure_reason("Failure in D-Bus call to cicerone");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-
-  if (request.desktop_file_id().empty()) {
-    LOG(ERROR) << "LaunchContainerApplicationRequest had an empty "
-               << "desktop_file_id";
+  dbus::MessageReader proxy_reader(proxy_dbus_response.get());
+  if (!proxy_reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed parsing protobuf response from cicerone";
     response.set_success(false);
-    response.set_failure_reason("Empty desktop_file_id in request");
+    response.set_failure_reason(
+        "Failure parsing protobuf response from cicerone");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  std::string error_msg;
-  response.set_success(iter->second->LaunchContainerApplication(
-      request.container_name().empty() ? kDefaultContainerName
-                                       : request.container_name(),
-      request.desktop_file_id(), &error_msg));
-  response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
+// TODO(jkardatzke): Remove this when we migrate Chrome to cicerone.
 std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -1668,48 +1431,38 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
-  ContainerAppIconRequest request;
   ContainerAppIconResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ContainerAppIconRequest from message";
+
+  // Just proxy the bytes in the protobuf directly. The protobufs in cicerone
+  // and concierge have the exact same structures and this is just temporary.
+  const uint8_t* protobuf_bytes;
+  size_t protobuf_length;
+  if (!reader.PopArrayOfBytes(&protobuf_bytes, &protobuf_length)) {
+    LOG(ERROR) << "Unable to extract ContainerAppIconRequest from "
+               << "message";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+  // Proxy this call over to cicerone.
+  dbus::MethodCall proxy_method_call(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kGetContainerAppIconMethod);
+  dbus::MessageWriter proxy_writer(&proxy_method_call);
+  proxy_writer.AppendArrayOfBytes(protobuf_bytes, protobuf_length);
+  std::unique_ptr<dbus::Response> proxy_dbus_response =
+      cicerone_service_proxy_->CallMethodAndBlock(
+          &proxy_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!proxy_dbus_response) {
+    LOG(ERROR) << "Failed proxying GetContainerAppIcon to cicerone";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-
-  if (request.desktop_file_ids().size() == 0) {
-    LOG(ERROR) << "ContainerAppIconRequest had an empty desktop_file_ids";
+  dbus::MessageReader proxy_reader(proxy_dbus_response.get());
+  if (!proxy_reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed parsing protobuf response from cicerone";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
-  }
-
-  std::vector<std::string> desktop_file_ids;
-  for (std::string& id : *request.mutable_desktop_file_ids()) {
-    desktop_file_ids.emplace_back(std::move(id));
-  }
-
-  std::vector<VirtualMachine::Icon> icons;
-  icons.reserve(desktop_file_ids.size());
-
-  if (!iter->second->GetContainerAppIcon(
-          request.container_name().empty() ? kDefaultContainerName
-                                           : request.container_name(),
-          std::move(desktop_file_ids), request.size(), request.scale(),
-          &icons)) {
-    LOG(ERROR) << "GetContainerAppIcon failed";
-  }
-
-  for (auto& container_icon : icons) {
-    auto* icon = response.add_icons();
-    *icon->mutable_desktop_file_id() =
-        std::move(container_icon.desktop_file_id);
-    *icon->mutable_icon() = std::move(container_icon.content);
   }
 
   writer.AppendProtoAsArrayOfBytes(response);
@@ -1756,6 +1509,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
   return dbus_response;
 }
 
+// TODO(jkardatzke): Remove this when we migrate Chrome to cicerone.
 std::unique_ptr<dbus::Response> Service::LaunchVshd(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -1768,114 +1522,135 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
 
   LaunchVshdRequest request;
   LaunchVshdResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse LaunchVshdRequest from message";
+  // Just proxy the bytes in the protobuf directly. The protobufs in cicerone
+  // and concierge have the exact same structures and this is just temporary.
+  const uint8_t* protobuf_bytes;
+  size_t protobuf_length;
+  if (!reader.PopArrayOfBytes(&protobuf_bytes, &protobuf_length)) {
+    LOG(ERROR) << "Unable to extract ContainerAppIconRequest from "
+               << "message";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  if (request.port() == 0) {
-    LOG(ERROR) << "Port is not set in LaunchVshdRequest";
+  // Proxy this call over to cicerone.
+  dbus::MethodCall proxy_method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                                     vm_tools::cicerone::kLaunchVshdMethod);
+  dbus::MessageWriter proxy_writer(&proxy_method_call);
+  proxy_writer.AppendArrayOfBytes(protobuf_bytes, protobuf_length);
+  std::unique_ptr<dbus::Response> proxy_dbus_response =
+      cicerone_service_proxy_->CallMethodAndBlock(
+          &proxy_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!proxy_dbus_response) {
+    LOG(ERROR) << "Failed proxying LaunchVshd to cicerone";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  dbus::MessageReader proxy_reader(proxy_dbus_response.get());
+  if (!proxy_reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed parsing protobuf response from cicerone";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  // TODO(nverne): request.owner_id() when that's added to service.proto.
-  auto iter = FindVm(principal_owner_id_, request.vm_name());
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  std::string error_msg;
-  iter->second->LaunchVshd(request.container_name().empty()
-                               ? kDefaultContainerName
-                               : request.container_name(),
-                           request.port(), &error_msg);
-
-  response.set_success(true);
-  response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
-void Service::RegisterHostname(const std::string& hostname,
-                               const std::string& ip) {
+void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
+                                        const std::string& vm_name,
+                                        uint32_t container_subnet,
+                                        uint32_t container_netmask) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  dbus::MethodCall method_call(crosdns::kCrosDnsInterfaceName,
-                               crosdns::kSetHostnameIpMappingMethod);
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kNotifyVmStartedMethod);
   dbus::MessageWriter writer(&method_call);
-  // Params are hostname, IPv4, IPv6 (but we don't have IPv6 yet).
-  writer.AppendString(hostname);
-  writer.AppendString(ip);
-  writer.AppendString("");
+  vm_tools::cicerone::NotifyVmStartedRequest request;
+  request.set_owner_id(owner_id);
+  request.set_vm_name(vm_name);
+  request.set_container_ipv4_subnet(container_subnet);
+  request.set_container_ipv4_netmask(container_netmask);
+  writer.AppendProtoAsArrayOfBytes(request);
   std::unique_ptr<dbus::Response> dbus_response =
-      crosdns_service_proxy_->CallMethodAndBlock(
+      cicerone_service_proxy_->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
-    // If there's some issue with the resolver service, don't make that
-    // propagate to a higher level failure and just log it. We have logic for
-    // setting this up again if that service restarts.
-    LOG(WARNING)
-        << "Failed to send dbus message to crosdns to register hostname";
-  } else {
-    hostname_mappings_[hostname] = ip;
+    LOG(ERROR) << "Failed notifying cicerone of VM startup";
   }
 }
 
-void Service::UnregisterVmHostnames(VirtualMachine* vm,
-                                    const std::string& owner_id,
-                                    const std::string& vm_name) {
+void Service::NotifyCiceroneOfVmStopped(const std::string& owner_id,
+                                        const std::string& vm_name) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!vm || owner_id != principal_owner_id_)
-    return;
-  std::vector<std::string> containers = vm->GetContainerNames();
-  for (auto& container_name : containers) {
-    UnregisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
-                                          vm_name.c_str()));
-    if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
-      UnregisterHostname(kDefaultContainerHostname);
-    }
-  }
-}
-
-void Service::UnregisterHostname(const std::string& hostname) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  dbus::MethodCall method_call(crosdns::kCrosDnsInterfaceName,
-                               crosdns::kRemoveHostnameIpMappingMethod);
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kNotifyVmStoppedMethod);
   dbus::MessageWriter writer(&method_call);
-  writer.AppendString(hostname);
+  vm_tools::cicerone::NotifyVmStoppedRequest request;
+  request.set_owner_id(owner_id);
+  request.set_vm_name(vm_name);
+  writer.AppendProtoAsArrayOfBytes(request);
   std::unique_ptr<dbus::Response> dbus_response =
-      crosdns_service_proxy_->CallMethodAndBlock(
+      cicerone_service_proxy_->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
-    // If there's some issue with the resolver service, don't make that
-    // propagate to a higher level failure and just log it. We have logic for
-    // setting this up again if that service restarts.
-    LOG(WARNING) << "Failed to send dbus message to crosdns to unregister "
-                 << "hostname";
-  } else {
-    hostname_mappings_.erase(hostname);
+    LOG(ERROR) << "Failed notifying cicerone of VM stopped";
   }
 }
 
-void Service::OnCrosDnsNameOwnerChanged(const std::string& old_owner,
-                                        const std::string& new_owner) {
+std::string Service::GetContainerToken(const std::string& owner_id,
+                                       const std::string& vm_name,
+                                       const std::string& container_name) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!new_owner.empty()) {
-    // Re-register everything in our map.
-    for (auto& pair : hostname_mappings_) {
-      RegisterHostname(pair.first, pair.second);
-    }
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kGetContainerTokenMethod);
+  dbus::MessageWriter writer(&method_call);
+  vm_tools::cicerone::ContainerTokenRequest request;
+  vm_tools::cicerone::ContainerTokenResponse response;
+  request.set_owner_id(owner_id);
+  request.set_vm_name(vm_name);
+  request.set_container_name(container_name);
+  writer.AppendProtoAsArrayOfBytes(request);
+  std::unique_ptr<dbus::Response> dbus_response =
+      cicerone_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed getting container token from cicerone";
+    return "";
   }
+  dbus::MessageReader reader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed parsing proto response";
+    return "";
+  }
+  return response.container_token();
 }
 
-void Service::OnCrosDnsServiceAvailable(bool service_is_available) {
-  if (service_is_available) {
-    crosdns_service_proxy_->SetNameOwnerChangedCallback(base::Bind(
-        &Service::OnCrosDnsNameOwnerChanged, weak_ptr_factory_.GetWeakPtr()));
+bool Service::IsContainerRunning(const std::string& owner_id,
+                                 const std::string& vm_name,
+                                 const std::string& container_name) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kIsContainerRunningMethod);
+  dbus::MessageWriter writer(&method_call);
+  vm_tools::cicerone::IsContainerRunningRequest request;
+  vm_tools::cicerone::IsContainerRunningResponse response;
+  request.set_owner_id(owner_id);
+  request.set_vm_name(vm_name);
+  request.set_container_name(container_name);
+  writer.AppendProtoAsArrayOfBytes(request);
+  std::unique_ptr<dbus::Response> dbus_response =
+      cicerone_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed querying cicerone for container running";
+    return false;
   }
+  dbus::MessageReader reader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed parsing proto response";
+    return false;
+  }
+  return response.container_running();
 }
 
 Service::VmMap::iterator Service::FindVm(std::string owner_id,
@@ -1886,21 +1661,6 @@ Service::VmMap::iterator Service::FindVm(std::string owner_id,
     return vms_.find(std::make_pair("", vm_name));
   }
   return it;
-}
-
-Service::VmMap::const_iterator Service::GetVirtualMachineForContainerIp(
-    uint32_t container_ip) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  for (VmMap::const_iterator vm_it = vms_.cbegin(); vm_it != vms_.end();
-       ++vm_it) {
-    const uint32_t netmask = vm_it->second->ContainerNetmask();
-    if ((vm_it->second->ContainerSubnet() & netmask) !=
-        (container_ip & netmask)) {
-      continue;
-    }
-    return vm_it;
-  }
-  return vms_.cend();
 }
 
 }  // namespace concierge

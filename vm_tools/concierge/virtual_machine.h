@@ -23,7 +23,6 @@
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
-#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
@@ -78,12 +77,6 @@ class VirtualMachine {
 
     // Type of the disk image.
     DiskImageType image_type;
-  };
-
-  // Linux application ID and its icon content.
-  struct Icon {
-    std::string desktop_file_id;
-    std::string content;
   };
 
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
@@ -168,55 +161,6 @@ class VirtualMachine {
   // Returns INADDR_ANY if there is no container subnet.
   uint32_t ContainerSubnet() const;
 
-  // Register the IP address for a container token within this VM. Returns true
-  // if the token is valid, false otherwise.
-  bool RegisterContainerIp(const std::string& container_token,
-                           const std::string& container_ip);
-
-  // Unregister the IP address for a container token within this VM. Returns
-  // true if the token is valid, false otherwise.
-  bool UnregisterContainerIp(const std::string& container_token);
-
-  // Generates a random token string that should be passed into the container
-  // which can then be used by the container to identify itself when it
-  // communicates back with us.
-  std::string GenerateContainerToken(const std::string& container_name);
-
-  // Returns the name of the container associated with the passed in
-  // |container_token|. Returns the empty string if no such mapping exists. This
-  // will only return a name that has been confirmed after calling
-  // RegisterContainerIp.
-  std::string GetContainerNameForToken(const std::string& container_token);
-
-  // Launches the application associated with |desktop_file_id| in the container
-  // named |container_name| within this VM. Returns true on success, false
-  // otherwise and fills out |out_error| on failure.
-  bool LaunchContainerApplication(const std::string& container_name,
-                                  const std::string& desktop_file_id,
-                                  std::string* out_error);
-
-  // Launches vshd.
-  bool LaunchVshd(const std::string& container_name,
-                  uint32_t port,
-                  std::string* out_error);
-
-  // Returns whether there is a connected stub to Garcon running inside the
-  // named |container_name| within this VM.
-  bool IsContainerRunning(const std::string& container_name);
-
-  // Gets icons of those applications with their desktop file IDs specified
-  // by |desktop_file_ids| from the container named |container_name| within
-  // this VM. The icons should have size of |icon_size| and designed scale of
-  // |scale|. The icons are returned through the paramenter |icons|.
-  bool GetContainerAppIcon(const std::string& container_name,
-                           std::vector<std::string> desktop_file_ids,
-                           uint32_t icon_size,
-                           uint32_t scale,
-                           std::vector<Icon>* icons);
-
-  // Gets a list of all the active container names in this VM.
-  std::vector<std::string> GetContainerNames();
-
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
       std::unique_ptr<SubnetPool::Subnet> subnet,
@@ -256,27 +200,6 @@ class VirtualMachine {
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
-
-  // Mapping of container tokens to names. The tokens are used to securely
-  // identify a container when it connects back to concierge to identify itself.
-  std::map<std::string, std::string> container_token_to_name_;
-
-  // Pending map of container tokens to names. The tokens are put in here when
-  // they are generated and removed once we have a connection from the
-  // container. We do not immediately put them in the contaienr_token_to_name_
-  // map because we may get redundant requests to start a container that is
-  // already running and we don't want to invalidate an in-use token.
-  std::map<std::string, std::string> pending_container_token_to_name_;
-
-  // Mapping of container names to a stub for making RPC requests to the garcon
-  // process inside the container.
-  std::map<std::string, std::unique_ptr<vm_tools::container::Garcon::Stub>>
-      container_name_to_garcon_stub_;
-
-  // Mapping of container names to a grpc Channel to the garcon process inside
-  // the container, which we can test for connectedness.
-  std::map<std::string, std::shared_ptr<grpc::Channel>>
-      container_name_to_garcon_channel_;
 
   // Runtime directory for this VM.
   base::ScopedTempDir runtime_dir_;
