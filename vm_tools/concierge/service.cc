@@ -1473,6 +1473,7 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
     return dbus_response;
   }
 
+  uint64_t total_size = 0;
   // Returns *.qcow2 in the given storage area.
   base::FileEnumerator dir_enum(image_dir, false, base::FileEnumerator::FILES,
                                 "*.qcow2");
@@ -1491,7 +1492,11 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
     }
     std::string* name = response.add_images();
     *name = std::move(image_name);
+    int64_t file_size;
+    if (base::GetFileSize(path, &file_size))
+      total_size += file_size;
   }
+  response.set_total_size(total_size);
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
