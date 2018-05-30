@@ -529,7 +529,7 @@ install_stateful() {
   # When adding to the whitelist, consider the need for related changes in
   # src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
   #
-  local dirlist="unencrypted/import_extensions"
+  local dirlist="unencrypted/import_extensions oobe_auto_config"
   if crossystem 'cros_debug?1'; then
     dirlist="
       ${dirlist}
