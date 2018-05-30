@@ -1171,6 +1171,8 @@ static void sl_registry_remover(void* data,
     return;
   }
   if (ctx->viewporter && ctx->viewporter->id == id) {
+    if (ctx->viewporter->host_viewporter_global)
+      sl_global_destroy(ctx->viewporter->host_viewporter_global);
     wp_viewporter_destroy(ctx->viewporter->internal);
     free(ctx->viewporter);
     ctx->viewporter = NULL;
