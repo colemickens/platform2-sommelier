@@ -3481,14 +3481,29 @@ int main(int argc, char **argv) {
     rv = listen(sock_fd, 128);
     assert(rv >= 0);
 
+    // Spawn optional child process before we notify systemd that we're ready
+    // to accept connections. WAYLAND_DISPLAY will be set but any attempt to
+    // connect to this socket at this time will fail.
+    if (ctx.runprog && ctx.runprog[0]) {
+      pid = fork();
+      assert(pid != -1);
+      if (pid == 0) {
+        setenv("WAYLAND_DISPLAY", socket_name, 1);
+        sl_execvp(ctx.runprog[0], ctx.runprog, -1);
+        _exit(EXIT_FAILURE);
+      }
+      while (waitpid(-1, NULL, WNOHANG) != pid)
+        continue;
+    }
+
+    if (ctx.sd_notify)
+      sl_sd_notify(ctx.sd_notify);
+
     sa.sa_handler = sl_sigchld_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     rv = sigaction(SIGCHLD, &sa, NULL);
     assert(rv >= 0);
-
-    if (ctx.sd_notify)
-      sl_sd_notify(ctx.sd_notify);
 
     do {
       struct ucred ucred;
