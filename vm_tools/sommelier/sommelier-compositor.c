@@ -121,6 +121,7 @@ static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   sl_mmap_unref(buffer->mmap);
   pixman_region32_fini(&buffer->damage);
   wl_list_remove(&buffer->link);
+  free(buffer);
 }
 
 static void sl_output_buffer_release(void* data, struct wl_buffer* buffer) {
