@@ -106,6 +106,22 @@ TEST_F(SELinuxViolationCollectorTest, CollectOK) {
   EXPECT_STREQ(content.c_str(), TestSELinuxViolationMessageContent);
 }
 
+TEST_F(SELinuxViolationCollectorTest, CollectSample) {
+  // Collector produces a violation report.
+  collector_.set_fake_random_for_statistic_sampling(1);
+  WriteStringToFile(test_path_, TestSELinuxViolationMessage);
+  EXPECT_TRUE(collector_.Collect());
+  EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
+  EXPECT_TRUE(DirectoryHasFileWithPattern(test_crash_directory_,
+                                          "selinux_violation.*.meta", NULL));
+  FilePath file_path;
+  EXPECT_TRUE(DirectoryHasFileWithPattern(
+      test_crash_directory_, "selinux_violation.*.log", &file_path));
+  std::string content;
+  base::ReadFileToString(file_path, &content);
+  EXPECT_STREQ(content.c_str(), TestSELinuxViolationMessageContent);
+}
+
 TEST_F(SELinuxViolationCollectorTest, FailureReportDoesNotExist) {
   // SELinux violation report file doesn't exist.
   EXPECT_TRUE(collector_.Collect());
@@ -123,6 +139,14 @@ TEST_F(SELinuxViolationCollectorTest, EmptyFailureReport) {
 TEST_F(SELinuxViolationCollectorTest, FeedbackNotAllowed) {
   // Feedback not allowed.
   s_metrics = false;
+  WriteStringToFile(test_path_, TestSELinuxViolationMessage);
+  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
+}
+
+TEST_F(SELinuxViolationCollectorTest, DroppedSample) {
+  // Drop sample.
+  collector_.set_fake_random_for_statistic_sampling(999);
   WriteStringToFile(test_path_, TestSELinuxViolationMessage);
   EXPECT_TRUE(collector_.Collect());
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));

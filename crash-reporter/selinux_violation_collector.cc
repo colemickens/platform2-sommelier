@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
 
 namespace {
@@ -63,14 +64,17 @@ bool SELinuxViolationCollector::LoadSELinuxViolation(
 }
 
 bool SELinuxViolationCollector::Collect() {
-  std::string reason = "do not collect";
-  bool feedback = false;
-  // Only collect on developer image until .
-  // TODO(crbug.com/842751): re-enable the collection after we find a way
-  // not to flood the reporting.
+  std::string reason = "normal collection";
+  bool feedback = true;
   if (IsDeveloperImage() || developer_image_for_testing_) {
     feedback = true;
     reason = "always collect from developer builds";
+  } else if (!is_feedback_allowed_function_()) {
+    reason = "no user consent";
+    feedback = false;
+  } else if (ShouldDropThisReport()) {
+    reason = "dropped sample";
+    feedback = false;
   }
   LOG(INFO) << "Processing selinux violation: " << reason;
 
@@ -105,4 +109,11 @@ bool SELinuxViolationCollector::Collect() {
   WriteCrashMetaData(meta_path, kExecName, log_path.value());
 
   return true;
+}
+
+bool SELinuxViolationCollector::ShouldDropThisReport() {
+  int random = fake_random_for_statistic_sampling_;
+  if (fake_random_for_statistic_sampling_ <= 0)
+    random = base::RandInt(1, 1000);
+  return random != 1;
 }

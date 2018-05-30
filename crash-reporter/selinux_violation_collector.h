@@ -33,16 +33,25 @@ class SELinuxViolationCollector : public CrashCollector {
     developer_image_for_testing_ = true;
   }
 
+  void set_fake_random_for_statistic_sampling(int fake_random) {
+    fake_random_for_statistic_sampling_ = fake_random;
+  }
+
  private:
   friend class SELinuxViolationCollectorTest;
   FRIEND_TEST(SELinuxViolationCollectorTest, CollectOK);
+  FRIEND_TEST(SELinuxViolationCollectorTest, CollectSample);
+  FRIEND_TEST(SELinuxViolationCollectorTest, DroppedSample);
 
   base::FilePath violation_report_path_;
   bool developer_image_for_testing_ = false;
+  int fake_random_for_statistic_sampling_ = -1;
 
   bool LoadSELinuxViolation(std::string* content,
                             std::string* signature,
                             std::map<std::string, std::string>* extra_metadata);
+
+  bool ShouldDropThisReport();
 
   DISALLOW_COPY_AND_ASSIGN(SELinuxViolationCollector);
 };
