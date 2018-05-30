@@ -239,8 +239,6 @@ const Log kCommandLogs[] = {
   { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
   { "top thread", "/usr/bin/top -Hb -n 1 | head -n 40"},
   { "top memory", "/usr/bin/top -o \"+%MEM\" -bn 1 | head -n 57"},
-  { "touchpad", "/opt/google/touchpad/tpcontrol status" },
-  { "touchpad_activity", "/opt/google/input/cmt_feedback alt" },
   { "touch_fw_version", "grep -E"
               " -e 'synaptics: Touchpad model'"
               " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
