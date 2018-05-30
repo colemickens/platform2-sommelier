@@ -179,8 +179,10 @@ class Tpm {
   bool ownership_checked_ = false;
   bool owned_ = false;
 
+#if !USE_TPM2
   bool initialized_flag_checked_ = false;
   bool initialized_flag_ = false;
+#endif  // !USE_TPM2
 
   std::map<uint32_t, std::vector<uint8_t>> pcr_values_;
 
