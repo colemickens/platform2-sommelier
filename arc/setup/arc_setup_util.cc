@@ -175,8 +175,6 @@ bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
   // writeLPr(), and the write function always uses Android's FastXmlSerializer.
   // The serializer does not try to pretty-print the XML, and inserts '\n' only
   // to certain places like endTag.
-  // TODO(yusukes): Check Android P's writeLPr() and FastXmlSerializer although
-  // they unlikely change.
   StringPiece trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
   if (!base::StartsWith(trimmed, kElementVersion, base::CompareCase::SENSITIVE))
     return false;  // Not a <version> element. Ignoring.
