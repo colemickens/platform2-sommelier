@@ -43,7 +43,7 @@ MATCHER_P3(PropertySignalEq,
   brillo::VariantDictionary dict;
   dbus::MessageReader reader(arg);
 
-  // Tries to read the message payload.
+  // Try to read the message payload.
   if (!brillo::dbus_utils::PopValueFromReader(&reader, &property_interface))
     return false;
   if (!brillo::dbus_utils::PopValueFromReader(&reader, &dict))
@@ -51,13 +51,13 @@ MATCHER_P3(PropertySignalEq,
   if (dict.empty())
     return false;
 
-  // Reads the property name and value from the dictionary (second argument).
+  // Read the property name and value from the dictionary (second argument).
   auto kv = *dict.begin();
   std::string property_name = kv.first;
   decltype(expected_property_value) property_value =
       kv.second.Get<decltype(expected_property_value)>();
 
-  // Checks if everything matches with expectations.
+  // Check if everything matches with expectations.
   return (arg->GetInterface() == dbus::kPropertiesInterface &&
           arg->GetMember() == dbus::kPropertiesChanged &&
           property_interface == expected_property_interface &&
@@ -121,7 +121,7 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedInterface) {
       .Times(1);
   interface->ExportAsync(base::Bind([](bool success) {}));
 
-  // Registers a property to the interface.
+  // Register a property to the interface.
   PropertyFactory<int> property_factory;
   brillo::dbus_utils::ExportedPropertyBase* exported_property_base =
       interface->EnsureExportedPropertyRegistered(kTestPropertyName,
@@ -130,7 +130,7 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedInterface) {
       static_cast<brillo::dbus_utils::ExportedProperty<int>*>(
           exported_property_base);
   int set_value = 7;
-  // Checks that signal is emitted when the registered property changes value.
+  // Check that signal is emitted when the registered property changes value.
   EXPECT_CALL(*exported_object,
               SendSignal(PropertySignalEq(kTestInterfaceName1,
                                           kTestPropertyName, set_value)))
@@ -149,7 +149,7 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedInterface) {
   interface->Unexport();
   EXPECT_TRUE(dbus_object->FindInterface(kTestInterfaceName1) == nullptr);
 
-  // Checks that signal is no longer emitted when property changes value.
+  // Check that signal is no longer emitted when property changes value.
   // This makes sure that the property is unregistered after Unexport() above.
   EXPECT_CALL(*exported_object, SendSignal(_)).Times(0);
   exported_property->SetValue(set_value + 1);
@@ -166,7 +166,7 @@ TEST_F(ExportedObjectManagerWrapperTest, CopyProperty) {
   // underlying DBusObject.
   EXPECT_TRUE(dbus_object->FindInterface(kTestInterfaceName1) != nullptr);
 
-  // Prepares property for testing.
+  // Prepare property for testing.
   PropertyFactory<int> property_factory;
   std::unique_ptr<dbus::PropertyBase> property_base =
       property_factory.CreateProperty();
@@ -185,7 +185,7 @@ TEST_F(ExportedObjectManagerWrapperTest, CopyProperty) {
   interface->CopyPropertyToExportedProperty(
       kTestPropertyName, property_base.get(), &property_factory);
 
-  // Checks that the property is exported and the exported property has the
+  // Check that the property is exported and the exported property has the
   // same value as the origin property.
   brillo::dbus_utils::ExportedPropertyBase* exported_property_base =
       interface->EnsureExportedPropertyRegistered(
@@ -214,7 +214,7 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedObject) {
       .Times(1);
   object->RegisterAsync(base::Bind([](bool success) {}));
 
-  // Adds an exported interface.
+  // Add an exported interface.
   object->AddExportedInterface(kTestInterfaceName1);
   ExportedInterface* interface =
       object->GetExportedInterface(kTestInterfaceName1);

@@ -33,7 +33,7 @@ DispatcherClient::DispatcherClient(
       weak_ptr_factory_(this) {}
 
 DispatcherClient::~DispatcherClient() {
-  // Cleans up the match rule that has been added before.
+  // Clean up the match rule that has been added before.
   if (!client_availability_match_rule_.empty()) {
     dbus::ScopedDBusError error;
     bus_->RemoveMatch(client_availability_match_rule_, error.get());
@@ -44,11 +44,11 @@ DispatcherClient::~DispatcherClient() {
     client_availability_match_rule_.clear();
   }
 
-  // Stops listening for any messages from D-Bus daemon.
+  // Stop listening for any messages from D-Bus daemon.
   if (!client_unavailable_callback_.is_null())
     bus_->RemoveFilterFunction(&DispatcherClient::HandleMessageThunk, this);
 
-  // Closes the connection before this object is destructed.
+  // Close the connection before this object is destructed.
   if (client_bus_)
     client_bus_->ShutdownAndBlock();
 }
@@ -81,11 +81,11 @@ void DispatcherClient::WatchClientUnavailable(
 
   client_unavailable_callback_ = client_unavailable_callback;
 
-  // Listens to messages from D-Bus daemon.
+  // Listen to messages from D-Bus daemon.
   bus_->AddFilterFunction(&DispatcherClient::HandleMessageThunk, this);
 
   // We are only interested in the signal about the client becoming unavailable.
-  // Adds a filter here to be notified only for signals about the client's
+  // Add a filter here to be notified only for signals about the client's
   // NameOwnerChanged events.
   client_availability_match_rule_ = base::StringPrintf(
       "type='signal',interface='%s',member='%s',path='%s',sender='%s',"

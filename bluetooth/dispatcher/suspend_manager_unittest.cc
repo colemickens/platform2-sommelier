@@ -48,7 +48,7 @@ class SuspendManagerTest : public ::testing::Test {
   }
 
   void SetupMockBus() {
-    // Mocks power manager and bluez D-Bus proxy.
+    // Mock power manager and bluez D-Bus proxy.
     power_manager_proxy_ = new CompleteMockObjectProxy(
         bus_.get(), power_manager::kPowerManagerServiceName,
         dbus::ObjectPath(power_manager::kPowerManagerServicePath));
@@ -66,7 +66,7 @@ class SuspendManagerTest : public ::testing::Test {
                                   SuspendManager::kBluetoothAdapterObjectPath)))
         .WillOnce(Return(bluez_proxy_.get()));
 
-    // Saves the callbacks of various power manager events so we can call them
+    // Save the callbacks of various power manager events so we can call them
     // to test later.
     EXPECT_CALL(*power_manager_proxy_, WaitForServiceToBeAvailable(_))
         .WillOnce(SaveArg<0>(&power_manager_available_callback_));
@@ -81,10 +81,10 @@ class SuspendManagerTest : public ::testing::Test {
                                 power_manager::kSuspendDoneSignal, _, _))
         .WillOnce(SaveArg<2>(&suspend_done_signal_callback_));
 
-    // Initializes the suspend manager. This should trigger it to register
+    // Initialize the suspend manager. This should trigger it to register
     // callbacks to power manager events.
     suspend_manager_->Init();
-    // Checks that it really has registered the callbacks and we saved them.
+    // Check that it really has registered the callbacks and we saved them.
     ASSERT_FALSE(power_manager_available_callback_.is_null());
     ASSERT_FALSE(suspend_imminent_signal_callback_.is_null());
     ASSERT_FALSE(suspend_done_signal_callback_.is_null());
@@ -100,14 +100,14 @@ class SuspendManagerTest : public ::testing::Test {
     if (!expected_bluez_method_call_)
       FAIL() << "Bluez shouldn't receive any method call.";
 
-    // Sets any fake message serial.
+    // Set any fake message serial.
     method_call->SetSerial(kDBusSerial);
 
     if (method_call->GetInterface() ==
             bluetooth_adapter::kBluetoothAdapterInterface &&
         method_call->GetMember() == *expected_bluez_method_call_) {
       if (simulates_bluez_long_return_) {
-        // Pretends that bluez can't call the callback now.
+        // Pretend that bluez can't call the callback now.
         bluez_callback_ = base::Bind(
             callback, dbus::Response::FromMethodCall(method_call).get());
       } else {
@@ -133,7 +133,7 @@ class SuspendManagerTest : public ::testing::Test {
     if (!is_power_manager_available_)
       FAIL() << "Power manager is not available.";
 
-    // Sets any fake message serial.
+    // Set any fake message serial.
     method_call->SetSerial(kDBusSerial);
 
     if (method_call->GetInterface() == power_manager::kPowerManagerInterface) {
@@ -382,7 +382,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Trigger suspend done signal.
   EmitSuspendDoneSignal(kSuspendId);
 
-  // Simulates power manager losing name owner. The subsequent SuspendImminent
+  // Simulate power manager losing name owner. The subsequent SuspendImminent
   // signal should be ignored before power manager is alive again.
   TriggerPowerManagerNameOwnerChanged(":1.234", "");
 
@@ -393,7 +393,7 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Trigger suspend imminent signal.
   EmitSuspendImminentSignal(kSuspendId);
 
-  // Simulates power manager getting name ownership.
+  // Simulate power manager getting name ownership.
   // Power manager should receive RegisterSuspendDelay after it's available.
   EXPECT_CALL(*power_manager_proxy_, CallMethod(_, _, _))
       .WillOnce(Invoke(this, &SuspendManagerTest::StubPowerManagerCallMethod));
@@ -408,7 +408,7 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarly) {
   // Start with power manager available event.
   TriggerPowerManagerAvailable(true);
 
-  // Tells our bluez stub to pretend to not return immediately so that we can
+  // Tell our bluez stub to pretend to not return immediately so that we can
   // exercise bluez in-progress scenarios.
   simulates_bluez_long_return_ = true;
 
@@ -453,7 +453,7 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
   // Start with power manager available event.
   TriggerPowerManagerAvailable(true);
 
-  // Tells our bluez stub to pretend to not return immediately so that we can
+  // Tell our bluez stub to pretend to not return immediately so that we can
   // exercise bluez in-progress scenarios.
   simulates_bluez_long_return_ = true;
 

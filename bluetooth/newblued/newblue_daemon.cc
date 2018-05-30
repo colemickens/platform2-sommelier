@@ -65,10 +65,15 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus) {
   return true;
 }
 
+void NewblueDaemon::Shutdown() {
+  newblue_.reset();
+  exported_object_manager_wrapper_.reset();
+}
+
 void NewblueDaemon::SetupPropertyMethodHandlers(
     brillo::dbus_utils::DBusInterface* prop_interface,
     brillo::dbus_utils::ExportedPropertySet* property_set) {
-  // Installs standard property handlers.
+  // Install standard property handlers.
   prop_interface->AddSimpleMethodHandler(
       dbus::kPropertiesGetAll, base::Unretained(property_set),
       &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
@@ -88,7 +93,7 @@ void NewblueDaemon::ExportAdapterInterface() {
       exported_object_manager_wrapper_->GetExportedInterface(
           adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);
 
-  // Exposes the "Powered" property of the adapter. This property is only
+  // Expose the "Powered" property of the adapter. This property is only
   // controlled by BlueZ, so newblued's "Powered" property is ignored by
   // btdispatch. However, it is useful to have the dummy "Powered" property
   // for testing when Chrome (or any client) connects directly to newblued
@@ -101,11 +106,6 @@ void NewblueDaemon::ExportAdapterInterface() {
   adapter_interface->ExportAsync(
       base::Bind(&OnInterfaceExported, adapter_object_path.value(),
                  bluetooth_adapter::kBluetoothAdapterInterface));
-}
-
-void NewblueDaemon::Shutdown() {
-  newblue_.reset();
-  exported_object_manager_wrapper_.reset();
 }
 
 }  // namespace bluetooth

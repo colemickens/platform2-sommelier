@@ -98,7 +98,7 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
         .WillOnce(Return(object_manager_object_proxy_.get()));
     object_manager_ = new dbus::MockObjectManager(bus_.get(), kTestServiceName,
                                                   object_manager_path);
-    // Forces MessageLoop to run pending tasks as effect of instantiating
+    // Force MessageLoop to run pending tasks as effect of instantiating
     // MockObjectManager. Needed to avoid memory leaks because pending tasks
     // are unowned pointers that will only self destruct after being run.
     message_loop_.RunUntilIdle();
@@ -251,7 +251,7 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     std::string saved_response_string;
     dbus::MessageReader reader(saved_response.get());
     reader.PopString(&saved_response_string);
-    // Checks that the response is the forwarded response of the stub method
+    // Check that the response is the forwarded response of the stub method
     // handler.
     EXPECT_EQ(kTestSender, saved_response->GetDestination());
     EXPECT_EQ(kTestSerial, saved_response->GetReplySerial());
@@ -473,7 +473,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
   impersonation_om_interface2->ObjectRemoved(kTestServiceName, object_path,
                                              kTestInterfaceName2);
 
-  // Makes sure that the Unregister actually happens on ObjectRemoved above and
+  // Make sure that the Unregister actually happens on ObjectRemoved above and
   // not due to its automatic deletion when this test case finishes.
   Mock::VerifyAndClearExpectations(exported_object.get());
 }
@@ -494,7 +494,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
           dbus_connection_factory_.get());
 
   // ObjectAdded event happens before CreateProperties. This shouldn't happen.
-  // Makes sure we only ignore the event and don't crash if this happens.
+  // Make sure we only ignore the event and don't crash if this happens.
   EXPECT_CALL(*exported_object_manager_,
               ClaimInterface(object_path, dbus::kPropertiesInterface, _))
       .Times(1);
@@ -505,7 +505,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
                                           kTestInterfaceName1);
 
   // ObjectRemoved event happens before CreateProperties. This shouldn't happen.
-  // Makes sure we only ignore the event and don't crash if this happens.
+  // Make sure we only ignore the event and don't crash if this happens.
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path, dbus::kPropertiesInterface))
       .Times(0);
@@ -532,7 +532,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
   ASSERT_NE(nullptr, property_set->GetProperty(kBoolPropertyName));
 
   // ObjectRemoved event happens before ObjectAdded. This shouldn't happen.
-  // Makes sure we still handle this gracefully.
+  // Make sure we still handle this gracefully.
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path, dbus::kPropertiesInterface))
       .Times(1);
@@ -543,7 +543,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
   impersonation_om_interface->ObjectRemoved(kTestServiceName, object_path,
                                             kTestInterfaceName1);
 
-  // Makes sure that the Unregister actually happens on ObjectRemoved above and
+  // Make sure that the Unregister actually happens on ObjectRemoved above and
   // not due to its automatic deletion when this test case finishes.
   Mock::VerifyAndClearExpectations(exported_object.get());
 }
@@ -586,7 +586,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
   ASSERT_TRUE(property_set1->GetProperty(kIntPropertyName) != nullptr);
   ASSERT_TRUE(property_set1->GetProperty(kBoolPropertyName) != nullptr);
 
-  // Tests that Properties.Set handler should forward the message to the source
+  // Test that Properties.Set handler should forward the message to the source
   // service and forward the response back to the caller.
   TestMethodForwarding(
       dbus::kPropertiesInterface, dbus::kPropertiesSet, object_path1, bus_,
@@ -644,7 +644,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MethodHandler) {
       new dbus::MockBus(dbus::Bus::Options());
   EXPECT_CALL(*dbus_connection_factory_, GetNewBus())
       .WillOnce(Return(client_bus));
-  // Tests that method call should be forwarding to the source service via
+  // Test that method call should be forwarding to the source service via
   // |client_bus|.
   TestMethodForwarding(
       kTestInterfaceName1, kTestMethodName1, object_path1, client_bus,

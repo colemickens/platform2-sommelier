@@ -46,7 +46,7 @@ bool Dispatcher::Init() {
   // interface name to be registered.
   std::map<std::string, std::unique_ptr<InterfaceHandler>> interface_handlers;
 
-  // Defines which interface handler should impersonate which interface name.
+  // Define which interface handler should impersonate which interface name.
   interface_handlers[bluetooth_adapter::kBluetoothAdapterInterface] =
       std::make_unique<BluezAdapterInterfaceHandler>();
   interface_handlers[bluetooth_device::kBluetoothDeviceInterface] =
@@ -70,7 +70,7 @@ bool Dispatcher::Init() {
       [bluetooth_media_transport::kBluetoothMediaTransportInterface] =
           std::make_unique<BluezMediaTransportInterfaceHandler>();
 
-  // Registers the interfaces.
+  // Register the interfaces.
   for (auto& kv : interface_handlers) {
     std::string interface_name = kv.first;
     auto interface = std::make_unique<ImpersonationObjectManagerInterface>(

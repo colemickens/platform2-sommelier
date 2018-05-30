@@ -44,7 +44,7 @@ class DispatcherTest : public ::testing::Test {
     bluez_object_manager_ = new dbus::MockObjectManager(
         bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
         object_manager_path);
-    // Forces MessageLoop to run pending tasks as effect of instantiating
+    // Force MessageLoop to run pending tasks as effect of instantiating
     // MockObjectManager. Needed to avoid memory leaks because pending tasks
     // are unowned pointers that will only self destruct after being run.
     message_loop_.RunUntilIdle();
@@ -122,7 +122,7 @@ TEST_F(DispatcherTest, Default) {
     EXPECT_CALL(*bluez_object_manager_, RegisterInterface(interface_name, _));
   dispatcher_->Init();
 
-  // Frees up all resources.
+  // Free up all resources.
   EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
   for (const std::string& interface_name : bluez_interfaces)
     EXPECT_CALL(*bluez_object_manager_, UnregisterInterface(interface_name));

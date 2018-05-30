@@ -56,7 +56,7 @@ class ObjectManagerInterfaceMultiplexerTest : public ::testing::Test {
         bus_.get(), kTestServiceName1, root_service_path);
     object_manager2_ = new dbus::MockObjectManager(
         bus_.get(), kTestServiceName2, root_service_path);
-    // Forces MessageLoop to run all pending tasks as an effect of instantiating
+    // Force MessageLoop to run all pending tasks as an effect of instantiating
     // MockObjectManager. This is needed to avoid memory leak as pending tasks
     // hold pointers.
     message_loop_.RunUntilIdle();

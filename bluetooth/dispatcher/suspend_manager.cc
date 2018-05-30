@@ -48,7 +48,7 @@ SuspendManager::SuspendManager(scoped_refptr<dbus::Bus> bus)
 SuspendManager::~SuspendManager() = default;
 
 void SuspendManager::Init() {
-  // Initializes D-Bus proxies.
+  // Initialize D-Bus proxies.
   power_manager_dbus_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
@@ -62,7 +62,7 @@ void SuspendManager::Init() {
       base::Bind(&SuspendManager::HandlePowerManagerAvailableOrRestarted,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  // Prepares power manager event handlers.
+  // Prepare power manager event handlers.
   power_manager_dbus_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
@@ -103,7 +103,7 @@ void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
 void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {
   VLOG(1) << "Received SuspendImminent signal from powerd";
 
-  // Does nothing if we haven't registered a suspend delay with power manager.
+  // Do nothing if we haven't registered a suspend delay with power manager.
   if (!suspend_delay_id_)
     return;
 
@@ -120,7 +120,7 @@ void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {
 void SuspendManager::HandleSuspendDoneSignal(dbus::Signal* signal) {
   VLOG(1) << "Received SuspendDone signal from powerd";
 
-  // Does nothing if we haven't registered a suspend delay with power manager.
+  // Do nothing if we haven't registered a suspend delay with power manager.
   if (!suspend_delay_id_)
     return;
 
@@ -185,7 +185,7 @@ void SuspendManager::OnDiscoveryUnpaused(dbus::Response* response) {
 }
 
 void SuspendManager::InitiatePauseDiscovery(int new_suspend_id) {
-  // Updates the current suspend id.
+  // Update the current suspend id.
   suspend_id_ = new_suspend_id;
 
   // PauseDiscovery/UnpauseDiscovery is in progress, just let it finish and
@@ -208,7 +208,7 @@ void SuspendManager::InitiatePauseDiscovery(int new_suspend_id) {
 }
 
 void SuspendManager::InitiateUnpauseDiscovery() {
-  // Resets suspend_id_ to 0 before initiating the suspend preparation undo.
+  // Reset suspend_id_ to 0 before initiating the suspend preparation undo.
   // Needed to reflect that we are not in a suspend imminent state anymore.
   suspend_id_ = 0;
 

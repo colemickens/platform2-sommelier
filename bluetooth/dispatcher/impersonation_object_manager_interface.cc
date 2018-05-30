@@ -35,7 +35,7 @@ void OnMessageForwardResponse(
 void OnMessageForwardError(dbus::MethodCall* method_call,
                            dbus::ExportedObject::ResponseSender response_sender,
                            dbus::ErrorResponse* response) {
-  // Relays the error return back to the original client.
+  // Relay the error return back to the original client.
   OnMessageForwardResponse(method_call, response_sender, response);
 }
 
@@ -110,7 +110,7 @@ void ImpersonationObjectManagerInterface::ObjectAdded(
   if (!exported_interface)
     return;
 
-  // Exports the methods that are defined by |interface_handler_|.
+  // Export the methods that are defined by |interface_handler_|.
   // Any method call will be forwarded the the impersonated service via a
   // specific per-client D-Bus connection.
   for (const std::string& method_name : interface_handler_->GetMethodNames())
@@ -174,7 +174,7 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
 void ImpersonationObjectManagerInterface::HandlePropertiesChanged(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  // Does nothing, needed only to suppress unhandled signal warning.
+  // Do nothing, needed only to suppress unhandled signal warning.
 }
 
 void ImpersonationObjectManagerInterface::HandleForwardMessage(
@@ -216,7 +216,7 @@ void ImpersonationObjectManagerInterface::
 void ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers(
     brillo::dbus_utils::DBusInterface* prop_interface,
     brillo::dbus_utils::ExportedPropertySet* property_set) {
-  // Installs standard property handlers.
+  // Install standard property handlers.
   prop_interface->AddSimpleMethodHandler(
       dbus::kPropertiesGetAll, base::Unretained(property_set),
       &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
@@ -228,7 +228,7 @@ void ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers(
       base::Bind(&ImpersonationObjectManagerInterface::HandleForwardMessage,
                  weak_ptr_factory_.GetWeakPtr(), bus_));
 
-  // Suppresses unhandled method warning by installing a no-op handler for
+  // Suppress unhandled method warning by installing a no-op handler for
   // PropertiesChanged signals.
   prop_interface->AddRawMethodHandler(
       dbus::kPropertiesChanged, weak_ptr_factory_.GetWeakPtr(),
