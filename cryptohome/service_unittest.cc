@@ -16,6 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/sys_string_conversions.h>
+#include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/bind_lambda.h>
@@ -169,11 +170,6 @@ class ServiceTestNotInitialized : public ::testing::Test {
           Property(&FilePath::value, EndsWith("decrypt_stateful")),
           _))
         .WillByDefault(Return(false));
-
-    // Expose Platform::GetCurrentTime() as a variable so tests can control time
-    EXPECT_CALL(platform_, GetCurrentTime()).WillRepeatedly(Invoke([this]() {
-      return current_time_;
-    }));
   }
 
   void SetupMount(const std::string& username) {
@@ -199,8 +195,6 @@ class ServiceTestNotInitialized : public ::testing::Test {
 
   void ClearReplies() { event_sink_.ClearReplies(); }
 
-  // The current_time_ lifetime scope should include platform_ lifetime.
-  base::Time current_time_;
   MakeTests test_helper_;
   NiceMock<MockCrypto> crypto_;
   NiceMock<MockAttestation> attest_;
@@ -363,21 +357,48 @@ TEST_F(ServiceTest, GetSanitizedUsername) {
 
 TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallback) {
   // Checks that DoAutoCleanup() is called periodically.
-  // Service will schedule periodic clean-ups. Wait 48+ hours and make
-  // sure that we had at least 48 executed.
-  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(AtLeast(48));
+  // Service will schedule periodic clean-ups.
   SetupMount("some-user-to-clean-up");
-  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(0)).Times(AtLeast(2));
 
-  service_.set_low_disk_notification_period_ms(1);
+  // Check that UpdateCurrentUserActivityTimestamp happens daily.
+  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(0)).Times(AtLeast(1));
+
+  // These are shared between Mount and Platform threads, guarded by the lock.
+  int free_disk_space_count = 0;
+  base::Time current_time;
+  base::Lock lock;
+
+  // These will be invoked from the mount thread.
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).WillRepeatedly(Invoke([&]() {
+    base::AutoLock scoped_lock(lock);
+    ++free_disk_space_count;
+  }));
+  EXPECT_CALL(platform_, GetCurrentTime()).WillRepeatedly(Invoke([&]() {
+    base::AutoLock scoped_lock(lock);
+    return current_time;
+  }));
+
+  const int period_ms = 1;
+
+  service_.set_low_disk_notification_period_ms(period_ms);
   service_.Initialize();
 
-  // Sleep for 160 * 30 minutes = 80 testing hours.
-  for (int i = 0; i < 160; ++i) {
-    // 1ms == 30 minutes.
-    current_time_ += base::TimeDelta::FromMinutes(30);
-    PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(1));
+  // Make sure that we have at least 48 FreeDiskSpace calls executed.
+  // (48 hourly callbacks == two days,
+  // at least 1 UpdateCurrentUserActivityTimestamp)
+  for (int count = 0; count < 48;) {
+    {
+      base::AutoLock scoped_lock(lock);
+      // Advance platform time. Let each period_ms = 30 minutes.
+      current_time += base::TimeDelta::FromMinutes(30);
+      count = free_disk_space_count;
+    }
+    PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(period_ms));
   }
+
+  // Cleanup invokable lambdas so they don't capture this test variables anymore
+  Mock::VerifyAndClear(&homedirs_);
+  Mock::VerifyAndClear(&platform_);
 }
 
 TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallbackFirst) {
