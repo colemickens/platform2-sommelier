@@ -281,7 +281,8 @@ class _ParseStringSetAction(argparse.Action):
     setattr(namespace, self.dest, set(values.split()))
 
 
-def main(argv):
+def GetParser():
+  """Return a command line parser."""
   actions = ['configure', 'compile', 'deviterate']
 
   parser = argparse.ArgumentParser()
@@ -307,6 +308,11 @@ def main(argv):
                       help='enable verbose log output')
   parser.add_argument('args', nargs='*')
 
+  return parser
+
+
+def main(argv):
+  parser = GetParser()
   options = parser.parse_args(argv)
 
   if options.host and options.board:

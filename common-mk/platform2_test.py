@@ -454,7 +454,8 @@ class _ParseStringSetAction(argparse.Action):
     setattr(namespace, self.dest, set(values.split()))
 
 
-def main(argv):
+def GetParser():
+  """Return a command line parser."""
   actions = ['pre_test', 'post_test', 'run']
 
   parser = argparse.ArgumentParser()
@@ -487,6 +488,11 @@ def main(argv):
                       help=argparse.SUPPRESS)
   parser.add_argument('cmdline', nargs='*')
 
+  return parser
+
+
+def main(argv):
+  parser = GetParser()
   options = parser.parse_args(argv)
 
   if options.action == 'run' and ((not options.bin or len(options.bin) == 0)
