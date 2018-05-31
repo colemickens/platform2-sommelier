@@ -13,7 +13,6 @@ from __future__ import print_function
 
 import glob
 import os
-import shutil
 
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
@@ -191,8 +190,8 @@ class Platform2(object):
     if not os.path.isdir(self.get_buildroot()):
       os.makedirs(self.get_buildroot())
 
-    if not self.incremental and os.path.isdir(self.get_products_path()):
-      shutil.rmtree(self.get_products_path())
+    if not self.incremental:
+      osutils.RmDir(self.get_products_path(), ignore_missing=True)
 
     targets = [os.path.join(self.get_src_dir(), 'platform.gyp')]
     if args:
