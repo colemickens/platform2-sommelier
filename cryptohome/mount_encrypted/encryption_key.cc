@@ -351,9 +351,6 @@ void EncryptionKey::Finalize() {
     shred(needs_finalization_path_.value().c_str());
     base::DeleteFile(needs_finalization_path_, false /* recursive */);
   }
-
-  // Lock the system key to prevent subsequent manipulation.
-  loader_->Lock();
 }
 
 bool EncryptionKey::RewrapPreviousEncryptionKey() {

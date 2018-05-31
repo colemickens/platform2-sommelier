@@ -139,7 +139,8 @@ result_code NvramSpace::ReadLock() {
 
   uint32_t result = TlclReadLock(index_);
   if (result != TPM_SUCCESS) {
-    LOG(ERROR) << "Failed to set read lock on NVRAM space " << index_;
+    LOG(ERROR) << "Failed to set read lock on NVRAM space " << index_ << ": "
+               << result;
     return RESULT_FAIL_FATAL;
   }
 
@@ -153,7 +154,8 @@ result_code NvramSpace::WriteLock() {
 
   uint32_t result = TlclWriteLock(index_);
   if (result != TPM_SUCCESS) {
-    LOG(ERROR) << "Failed to set write lock on NVRAM space " << index_;
+    LOG(ERROR) << "Failed to set write lock on NVRAM space " << index_ << ": "
+               << result;
     return RESULT_FAIL_FATAL;
   }
 
