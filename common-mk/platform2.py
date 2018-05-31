@@ -11,13 +11,13 @@ Takes care of running gyp/ninja/etc... with all the right values.
 
 from __future__ import print_function
 
-import argparse
 import glob
 import os
 import shutil
-import sys
 
+from chromite.lib import commandline
 from chromite.lib import cros_build_lib
+from chromite.lib import cros_logging as logging
 from chromite.lib import osutils
 
 
@@ -115,7 +115,8 @@ class Platform2(object):
     # If a variable isn't found in the config files, portageq will exit 1,
     # so ignore that.  We already hve fallbacks variables.
     ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True,
-                                    redirect_stderr=True, error_code_ok=True)
+                                    redirect_stderr=True, error_code_ok=True,
+                                    debug_level=logging.DEBUG)
     if ret.returncode > 1 or ret.error:
       raise cros_build_lib.RunCommandError('unknown error', ret)
 
@@ -274,18 +275,11 @@ class Platform2(object):
     self.compile(args)
 
 
-class _ParseStringSetAction(argparse.Action):
-  """Helper for turning a string argument into a list"""
-
-  def __call__(self, parser, namespace, values, option_string=None):
-    setattr(namespace, self.dest, set(values.split()))
-
-
 def GetParser():
   """Return a command line parser."""
   actions = ['configure', 'compile', 'deviterate']
 
-  parser = argparse.ArgumentParser()
+  parser = commandline.ArgumentParser(description=__doc__)
   parser.add_argument('--action', default='deviterate',
                       choices=actions, help='action to run')
   parser.add_argument('--board',
@@ -301,7 +295,7 @@ def GetParser():
   parser.add_argument('--libdir',
                       help='the libdir for the specific board, eg /usr/lib64')
   parser.add_argument('--use_flags',
-                      action=_ParseStringSetAction, help='USE flags to enable')
+                      action='split_extend', help='USE flags to enable')
   parser.add_argument('-j', '--jobs', type=int, default=None,
                       help='number of jobs to run in parallel')
   parser.add_argument('--verbose', action='store_true', default=None,
@@ -329,4 +323,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  main(sys.argv[1:])
+  commandline.ScriptWrapperMain(lambda _: main)

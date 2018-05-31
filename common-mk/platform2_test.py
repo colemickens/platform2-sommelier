@@ -24,6 +24,7 @@ import signal
 import sys
 import tempfile
 
+from chromite.lib import commandline
 from chromite.lib import cros_build_lib
 from chromite.lib import namespaces
 from chromite.lib import osutils
@@ -447,18 +448,11 @@ def _ReExecuteIfNeeded(argv, ns_net=True, ns_pid=True):
     namespaces.SimpleUnshare(net=ns_net, pid=ns_pid)
 
 
-class _ParseStringSetAction(argparse.Action):
-  """Support flags that store into a set (vs a list)."""
-
-  def __call__(self, parser, namespace, values, option_string=None):
-    setattr(namespace, self.dest, set(values.split()))
-
-
 def GetParser():
   """Return a command line parser."""
   actions = ['pre_test', 'post_test', 'run']
 
-  parser = argparse.ArgumentParser()
+  parser = commandline.ArgumentParser(description=__doc__)
   group = parser.add_argument_group('Namespaces')
   group.add_argument('--no-ns-net', dest='ns_net',
                      default=True, action='store_false',
@@ -523,4 +517,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  main(sys.argv[1:])
+  commandline.ScriptWrapperMain(lambda _: main)
