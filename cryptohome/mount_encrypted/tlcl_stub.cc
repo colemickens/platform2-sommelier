@@ -201,7 +201,7 @@ uint32_t TlclStub::Read(uint32_t index, void* data, uint32_t length) {
   return WithSpace(index, [=](NvramSpaceData* space) {
 #if USE_TPM2
     if ((space->attributes & TPMA_NV_WRITTEN) != TPMA_NV_WRITTEN) {
-      return TPM_E_BADINDEX;
+      return TPM_E_INTERNAL_ERROR;  // should be TPM_RC_NV_UNINITIALIZED
     }
 #endif
     if (length > space->contents.size()) {
