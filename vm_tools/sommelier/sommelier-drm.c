@@ -172,5 +172,5 @@ struct sl_global* sl_drm_global_create(struct sl_context* ctx) {
   if (ctx->linux_dmabuf->version < 2)
     return NULL;
 
-  return sl_global_create(ctx, &wl_drm_interface, 1, ctx, sl_bind_host_drm);
+  return sl_global_create(ctx, &wl_drm_interface, 2, ctx, sl_bind_host_drm);
 }
