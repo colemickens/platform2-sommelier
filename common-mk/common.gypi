@@ -92,7 +92,6 @@
       '<(INTERMEDIATE_DIR)/include',
       '<(SHARED_INTERMEDIATE_DIR)/include',
       '<(platform2_root)',
-      '<(platform2_root)/../platform', # src/platform
     ],
     'cflags': [
       '-Wall',
