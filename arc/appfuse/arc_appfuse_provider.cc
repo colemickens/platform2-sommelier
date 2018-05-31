@@ -4,8 +4,12 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
+#include <string>
+#include <utility>
 
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -15,14 +19,25 @@
 #include <dbus/bus.h>
 
 #include "appfuse/dbus_adaptors/org.chromium.ArcAppfuseProvider.h"
+#include "arc/appfuse/appfuse_mount.h"
 
 namespace {
+
+constexpr char kMountRoot[] = "mount_root";
+
+brillo::ErrorPtr CreateDBusError(const std::string& code,
+                                 const std::string& message) {
+  return brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain, code,
+                               message);
+}
 
 class DBusAdaptor : public org::chromium::ArcAppfuseProviderAdaptor,
                     public org::chromium::ArcAppfuseProviderInterface {
  public:
   explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus)
       : org::chromium::ArcAppfuseProviderAdaptor(this),
+        mount_root_(base::CommandLine::ForCurrentProcess()->GetSwitchValuePath(
+            kMountRoot)),
         dbus_object_(
             nullptr,
             bus,
@@ -38,32 +53,85 @@ class DBusAdaptor : public org::chromium::ArcAppfuseProviderAdaptor,
 
   // org::chromium::ArcAppfuseProviderInterface overrides:
   bool Mount(brillo::ErrorPtr* error,
-             int32_t uid,
+             uint32_t uid,
              int32_t mount_id,
              brillo::dbus_utils::FileDescriptor* out_fd) override {
-    NOTIMPLEMENTED();
+    // Remove existing mount.
+    auto it = mounts_.find(std::make_pair(uid, mount_id));
+    if (it != mounts_.end()) {
+      LOG(INFO) << "Unmounting an existing mount for a new mount: " << uid
+                << " " << mount_id;
+      if (!it->second->Unmount()) {
+        LOG(ERROR) << "Failed to unmount an existing mount for a new mount: "
+                   << uid << " " << mount_id;
+        *error = CreateDBusError(DBUS_ERROR_FAILED, "Failed to unmount");
+        return false;
+      }
+      mounts_.erase(it);
+    }
+    // Create a new mount.
+    auto mount = std::make_unique<arc::appfuse::AppfuseMount>(mount_root_, uid,
+                                                              mount_id);
+    base::ScopedFD fd = mount->Mount();
+    if (!fd.is_valid()) {
+      LOG(ERROR) << "Failed to mount: " << uid << " " << mount_id;
+      *error = CreateDBusError(DBUS_ERROR_FAILED, "Failed to mount");
+      return false;
+    }
+    mounts_[std::make_pair(uid, mount_id)] = std::move(mount);
+    *out_fd = std::move(fd);
     return true;
   }
 
   bool Unmount(brillo::ErrorPtr* error,
-               int32_t uid,
+               uint32_t uid,
                int32_t mount_id) override {
-    NOTIMPLEMENTED();
+    auto it = mounts_.find(std::make_pair(uid, mount_id));
+    if (it == mounts_.end()) {
+      LOG(ERROR) << "No mount found: " << uid << " " << mount_id;
+      *error = CreateDBusError(DBUS_ERROR_FAILED, "No mount found");
+      return false;
+    }
+    if (!it->second->Unmount()) {
+      LOG(ERROR) << "Failed to unmount: " << uid << " " << mount_id;
+      *error = CreateDBusError(DBUS_ERROR_FAILED, "Failed to unmount");
+      return false;
+    }
+    mounts_.erase(it);
     return true;
   }
 
   bool OpenFile(brillo::ErrorPtr* error,
-                int32_t uid,
+                uint32_t uid,
                 int32_t mount_id,
                 int32_t file_id,
                 int32_t flags,
                 brillo::dbus_utils::FileDescriptor* out_fd) override {
-    NOTIMPLEMENTED();
+    auto it = mounts_.find(std::make_pair(uid, mount_id));
+    if (it == mounts_.end()) {
+      LOG(ERROR) << "No mount found: " << uid << " " << mount_id;
+      *error = CreateDBusError(DBUS_ERROR_FAILED, "No mount found");
+      return false;
+    }
+    base::ScopedFD fd = it->second->OpenFile(file_id, flags);
+    if (!fd.is_valid()) {
+      LOG(ERROR) << "Failed to open: " << uid << " " << mount_id;
+      *error = CreateDBusError(DBUS_ERROR_FAILED, "Failed to open");
+      return false;
+    }
+    *out_fd = std::move(fd);
     return true;
   }
 
  private:
+  const base::FilePath mount_root_;
   brillo::dbus_utils::DBusObject dbus_object_;
+
+  // Maps (UID, mount ID) to AppfuseMount.
+  using UIDMountIDPair = std::pair<uid_t, int>;
+  using AppfuseMountMap =
+      std::map<UIDMountIDPair, std::unique_ptr<arc::appfuse::AppfuseMount>>;
+  AppfuseMountMap mounts_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };
@@ -90,6 +158,9 @@ class Daemon : public brillo::DBusServiceDaemon {
 }  // namespace
 
 int main(int argc, char** argv) {
+  base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  CHECK(base::CommandLine::ForCurrentProcess()->HasSwitch(kMountRoot))
+      << "--" << kMountRoot << " must be specified.";
   return Daemon().Run();
 }

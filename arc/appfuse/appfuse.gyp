@@ -32,6 +32,7 @@
         'arc-appfuse-provider-adaptors',
       ],
       'sources': [
+        'appfuse_mount.cc',
         'arc_appfuse_provider.cc',
       ],
     },

@@ -8,7 +8,7 @@
         Mounts a new appfuse file system and returns a filtered /dev/fuse FD
         associated with the mounted file system.
       </tp:docstring>
-      <arg name="uid" type="i" direction="in">
+      <arg name="uid" type="u" direction="in">
         <tp:docstring>
           UID of the requester process.
         </tp:docstring>
@@ -29,7 +29,7 @@
       <tp:docstring>
         Unmounts the specified appfuse file system.
       </tp:docstring>
-      <arg name="uid" type="i" direction="in">
+      <arg name="uid" type="u" direction="in">
         <tp:docstring>
           UID of the requester process.
         </tp:docstring>
@@ -45,7 +45,7 @@
       <tp:docstring>
         Opens a file under the specified appfuse file system.
       </tp:docstring>
-      <arg name="uid" type="i" direction="in">
+      <arg name="uid" type="u" direction="in">
         <tp:docstring>
           UID of the requester process.
         </tp:docstring>
