@@ -82,6 +82,7 @@
         'concierge/ssh_keys.cc',
         'concierge/startup_listener_impl.cc',
         'concierge/subnet_pool.cc',
+        'concierge/tap_device_builder.cc',
         'concierge/virtual_machine.cc',
         'concierge/vsock_cid_pool.cc',
       ],

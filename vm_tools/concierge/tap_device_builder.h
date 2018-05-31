@@ -1,0 +1,27 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef VM_TOOLS_CONCIERGE_TAP_DEVICE_BUILDER_H_
+#define VM_TOOLS_CONCIERGE_TAP_DEVICE_BUILDER_H_
+
+#include <stdint.h>
+
+#include <base/files/scoped_file.h>
+#include <base/macros.h>
+
+#include "vm_tools/concierge/mac_address_generator.h"
+
+namespace vm_tools {
+namespace concierge {
+
+// Builds and configures a tap device.  If the returned ScopedFD is valid then
+// the device has been properly configured.
+base::ScopedFD BuildTapDevice(const MacAddress& mac_addr,
+                              uint32_t ipv4_addr,
+                              uint32_t ipv4_netmask);
+
+}  //  namespace concierge
+}  //  namespace vm_tools
+
+#endif  // VM_TOOLS_CONCIERGE_TAP_DEVICE_BUILDER_H_

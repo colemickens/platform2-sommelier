@@ -25,6 +25,7 @@
 #include <grpc++/grpc++.h>
 
 #include "vm_tools/common/constants.h"
+#include "vm_tools/concierge/tap_device_builder.h"
 
 using std::string;
 
@@ -73,26 +74,6 @@ string GetVmMemoryMiB() {
   vm_memory_mb *= 3;
 
   return std::to_string(vm_memory_mb);
-}
-
-// Converts an EUI-48 mac address into string representation.
-string MacAddressToString(const MacAddress& addr) {
-  constexpr char kMacAddressFormat[] =
-      "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx";
-  return base::StringPrintf(kMacAddressFormat, addr[0], addr[1], addr[2],
-                            addr[3], addr[4], addr[5]);
-}
-
-// Converts an IPv4 address to a string.
-bool IPv4AddressToString(const uint32_t address, std::string* str) {
-  CHECK(str);
-
-  char result[INET_ADDRSTRLEN];
-  if (inet_ntop(AF_INET, &address, result, sizeof(result)) != result) {
-    return false;
-  }
-  *str = std::string(result);
-  return true;
 }
 
 // Sets the pgid of the current process to its pid.  This is needed because
@@ -184,16 +165,11 @@ std::unique_ptr<VirtualMachine> VirtualMachine::Create(
 bool VirtualMachine::Start(base::FilePath kernel,
                            base::FilePath rootfs,
                            std::vector<VirtualMachine::Disk> disks) {
-  std::string host_ip;
-  std::string netmask;
-
-  if (!IPv4AddressToString(subnet_->AddressAtOffset(kHostAddressOffset),
-                           &host_ip)) {
-    LOG(ERROR) << "Failed to convert host IP to string";
-    return false;
-  }
-  if (!IPv4AddressToString(subnet_->Netmask(), &netmask)) {
-    LOG(ERROR) << "Failed to convert netmask to string";
+  // Set up the tap device.
+  base::ScopedFD tap_fd =
+      BuildTapDevice(mac_addr_, GatewayAddress(), Netmask());
+  if (!tap_fd.is_valid()) {
+    LOG(ERROR) << "Unable to build and configure TAP device";
     return false;
   }
 
@@ -204,9 +180,7 @@ bool VirtualMachine::Start(base::FilePath kernel,
       "--cpus",         std::to_string(base::SysInfo::NumberOfProcessors()),
       "--mem",          GetVmMemoryMiB(),
       "--root",         rootfs.value(),
-      "--mac",          MacAddressToString(mac_addr_),
-      "--host_ip",      std::move(host_ip),
-      "--netmask",      std::move(netmask),
+      "--tap-fd",       std::to_string(tap_fd.get()),
       "--cid",          std::to_string(vsock_cid_),
       "--socket",       runtime_dir_.path().Append(kCrosvmSocket).value(),
       "--wayland-sock", kWaylandSocket,
