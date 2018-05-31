@@ -81,7 +81,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
           portal_check_interval_seconds(0),
           arp_gateway(true),
           connection_id_salt(0),
-          minimum_mtu(IPConfig::kUndefinedMTU) {}
+          minimum_mtu(IPConfig::kUndefinedMTU),
+          jail_vpn_clients(false) {}
     bool offline_mode;
     std::string check_portal_list;
     std::string country;
@@ -106,6 +107,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     int connection_id_salt;
     // The minimum MTU value that will be respected in DHCP responses.
     int minimum_mtu;
+    // Whether to run third party VPN client programs in a minijail.
+    bool jail_vpn_clients;
   };
 
   Manager(ControlInterface* control_interface,
@@ -388,6 +391,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
   virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
+
+  virtual bool GetJailVpnClients() const { return props_.jail_vpn_clients; }
+  virtual void SetJailVpnClients(bool jail_vpn_clients)
+                                { props_.jail_vpn_clients = jail_vpn_clients; }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
