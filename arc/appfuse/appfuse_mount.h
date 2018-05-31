@@ -11,6 +11,8 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 
+#include "arc/appfuse/data_filter.h"
+
 namespace arc {
 namespace appfuse {
 
@@ -20,8 +22,8 @@ class AppfuseMount {
   AppfuseMount(const base::FilePath& mount_root, uid_t uid, int mount_id);
   ~AppfuseMount();
 
-  // Mounts an appfuse file system and returns the /dev/fuse FD associated with
-  // the mounted appfuse file system.
+  // Mounts an appfuse file system and returns the filtered /dev/fuse FD
+  // associated with the mounted appfuse file system.
   base::ScopedFD Mount();
 
   // Unmounts the appfuse file system and returns true on success.
@@ -35,6 +37,8 @@ class AppfuseMount {
   const uid_t uid_;
   const int mount_id_;
   const base::FilePath mount_point_;
+
+  DataFilter data_filter_;
 
   DISALLOW_COPY_AND_ASSIGN(AppfuseMount);
 };

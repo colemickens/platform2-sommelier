@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <sys/mount.h>
 
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -56,8 +58,7 @@ base::ScopedFD AppfuseMount::Mount() {
     PLOG(ERROR) << "Failed to mount " << mount_point_.value();
     return base::ScopedFD();
   }
-  // TODO(hashimoto): Implement filtering and return a filtered FD instead.
-  return dev_fuse;
+  return data_filter_.Start(std::move(dev_fuse));
 }
 
 bool AppfuseMount::Unmount() {

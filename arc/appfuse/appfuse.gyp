@@ -34,6 +34,7 @@
       'sources': [
         'appfuse_mount.cc',
         'arc_appfuse_provider.cc',
+        'data_filter.cc',
       ],
     },
   ],
