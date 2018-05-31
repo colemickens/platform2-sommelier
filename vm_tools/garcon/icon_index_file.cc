@@ -37,6 +37,9 @@ constexpr char kDirectoryThreshold[] = "Threshold";
 // Icon directory types.
 constexpr char kDirectoryTypeThreshold[] = "Threshold";
 constexpr char kDirectoryTypeScalable[] = "Scalable";
+// Valid types of directory entries in index files.
+const char* const kValidDirectoryContexts[] = {"Applications", "MimeTypes"};
+const char* const kValidDirectorySuffixes[] = {"apps", "mimetypes"};
 }  // namespace
 
 namespace vm_tools {
@@ -121,14 +124,6 @@ std::vector<base::FilePath> IconIndexFile::GetPathsForSizeAndScale(
 
 bool IconIndexFile::CloseIconThemeSection(
     std::unique_ptr<IconThemeEntry> icon_theme_entry) {
-  // Check that we are only looking for hicolor theme icons.
-  auto theme_name = icon_theme_entry->locale_name_map.find("");
-  if (theme_name == icon_theme_entry->locale_name_map.end() ||
-      theme_name->second != "Hicolor") {
-    LOG(ERROR) << "Failed parsing icon index file due to missing or wrong"
-                  "theme name";
-    return false;
-  }
   for (std::string& directory : icon_theme_entry->directories) {
     directories_.emplace(std::move(directory));
   }
@@ -161,8 +156,22 @@ bool IconIndexFile::CloseDirectorySection(
                << " not appearing in icon theme section directories";
     return false;
   }
-  if (directory_entry->context == "Applications" ||
-      base::EndsWith(directory, "apps", base::CompareCase::SENSITIVE)) {
+  bool valid_dir = false;
+  for (const char* dir_context : kValidDirectoryContexts) {
+    if (directory_entry->context == dir_context) {
+      valid_dir = true;
+      break;
+    }
+  }
+  if (!valid_dir) {
+    for (const char* dir_suffix : kValidDirectorySuffixes) {
+      if (base::EndsWith(directory, dir_suffix, base::CompareCase::SENSITIVE)) {
+        valid_dir = true;
+        break;
+      }
+    }
+  }
+  if (valid_dir) {
     FillInDefaultValues(directory_entry.get());
     directory_entries_.emplace_back(std::move(*directory_entry));
   }

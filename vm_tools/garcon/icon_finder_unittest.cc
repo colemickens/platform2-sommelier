@@ -73,14 +73,16 @@ class IconFinderTest : public ::testing::Test {
 TEST_F(IconFinderTest, UseXdgDataDirsEnv) {
   ValidateIconIndexDirsWithXDGDataDir(
       "/a:/b",
-      {base::FilePath("/a/icons/hicolor"), base::FilePath("/b/icons/hicolor")});
+      {base::FilePath("/a/icons/gnome"), base::FilePath("/b/icons/gnome"),
+       base::FilePath("/a/icons/hicolor"), base::FilePath("/b/icons/hicolor")});
 }
 
 // This test verifies that default XDG data directories are used when
 // environment variable XDG_DATA_DIRS is not set.
 TEST_F(IconFinderTest, DefaultDirs) {
   ValidateIconIndexDirsWithXDGDataDir(
-      "", {base::FilePath("/usr/share/icons/hicolor")});
+      "", {base::FilePath("/usr/share/icons/gnome"),
+           base::FilePath("/usr/share/icons/hicolor")});
 }
 
 // This test verifies that empty vector is returned when index.theme file is

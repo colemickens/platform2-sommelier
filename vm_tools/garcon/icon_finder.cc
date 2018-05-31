@@ -22,6 +22,7 @@ namespace {
 constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
 constexpr char kXdgDataDirsDefault[] = "/usr/share/";
 constexpr char kDefaultPixmapsDir[] = "/usr/share/pixmaps/";
+const char* const kThemeDirs[] = {"gnome", "hicolor"};
 
 // Returns a vector of directory paths under which an index.theme file is
 // located.
@@ -33,10 +34,13 @@ std::vector<base::FilePath> GetPathsForIconIndexDirs() {
   }
   std::vector<base::StringPiece> dirs = base::SplitStringPiece(
       xdg_data_dirs, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  std::transform(dirs.begin(), dirs.end(), std::back_inserter(retval),
-                 [](const base::StringPiece& dir) {
-                   return base::FilePath(dir).Append("icons").Append("hicolor");
-                 });
+  for (const char* theme_dir : kThemeDirs) {
+    std::transform(
+        dirs.begin(), dirs.end(), std::back_inserter(retval),
+        [&theme_dir](const base::StringPiece& dir) {
+          return base::FilePath(dir).Append("icons").Append(theme_dir);
+        });
+  }
   return retval;
 }
 
