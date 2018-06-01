@@ -619,6 +619,9 @@ bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
     return false;
   }
 
+  // TODO(shik): Add a helper function to do the exists() and find() combo, so
+  // it's less likely to have typos in the tag name.
+
   if (metadata.exists(ANDROID_CONTROL_AE_TARGET_FPS_RANGE)) {
     camera_metadata_ro_entry entry =
         metadata.find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
@@ -648,7 +651,8 @@ bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
   }
 
   if (metadata.exists(ANDROID_NOISE_REDUCTION_MODE)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_NOISE_REDUCTION);
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_NOISE_REDUCTION_MODE);
     switch (entry.data.u8[0]) {
       case ANDROID_NOISE_REDUCTION_MODE_OFF:
       case ANDROID_NOISE_REDUCTION_MODE_FAST:
