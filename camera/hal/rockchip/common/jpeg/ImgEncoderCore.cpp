@@ -302,7 +302,8 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
 {
     LOG2("@%s", __FUNCTION__);
 
-    cros::JpegCompressor jpegCompressor;
+    std::unique_ptr<cros::JpegCompressor> jpegCompressor(
+        cros::JpegCompressor::GetInstance());
 
     int width = srcBuf->width();
     int height = srcBuf->height();
@@ -334,15 +335,15 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
     uint32_t outSize = 0;
     nsecs_t startTime = systemTime();
     void* pDst = static_cast<unsigned char*>(destBuf->data()) + destOffset;
-    bool ret = jpegCompressor.CompressImage(tempBuf,
-                                            width, height, quality,
-                                            nullptr, 0,
-                                            destBuf->size(), pDst,
-                                            &outSize);
+    bool ret = jpegCompressor->CompressImage(tempBuf,
+                                             width, height, quality,
+                                             nullptr, 0,
+                                             destBuf->size(), pDst,
+                                             &outSize);
     LOG1("%s: encoding ret:%d, %dx%d need %" PRId64 "ms, jpeg size %u, quality %d)",
          __FUNCTION__, ret, destBuf->width(), destBuf->height(),
          (systemTime() - startTime) / 1000000, outSize, quality);
-    CheckError(ret == false, 0, "@%s, jpegCompressor.CompressImage() fails",
+    CheckError(ret == false, 0, "@%s, jpegCompressor->CompressImage() fails",
                __FUNCTION__);
 
     return outSize;
