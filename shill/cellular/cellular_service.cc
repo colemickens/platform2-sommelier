@@ -224,6 +224,8 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
       new_apn_info[kApnUsernameProperty] = str;
     if (GetNonEmptyField(value, kApnPasswordProperty, &str))
       new_apn_info[kApnPasswordProperty] = str;
+    if (GetNonEmptyField(value, kApnAuthenticationProperty, &str))
+      new_apn_info[kApnAuthenticationProperty] = str;
   }
   if (apn_info_ == new_apn_info) {
     return false;
