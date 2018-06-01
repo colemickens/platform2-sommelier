@@ -5,7 +5,10 @@
 #ifndef ARC_APPFUSE_DATA_FILTER_H_
 #define ARC_APPFUSE_DATA_FILTER_H_
 
+#include <stdint.h>
+
 #include <deque>
+#include <map>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -38,6 +41,12 @@ class DataFilter : public base::MessageLoopForIO::Watcher {
   // Returns true if fd == fd_dev_.
   bool IsDevFuseFD(int fd) { return fd == fd_dev_.get(); }
 
+  // Filters data from /dev/fuse and forwards it to the socket.
+  bool FilterDataFromDev(std::vector<char>* data);
+
+  // Filters data from the socket and forwards it to /dev/fuse.
+  bool FilterDataFromSocket(std::vector<char>* data);
+
   base::Thread watch_thread_;
   base::ScopedFD fd_dev_;
   base::ScopedFD fd_socket_;
@@ -46,6 +55,8 @@ class DataFilter : public base::MessageLoopForIO::Watcher {
 
   std::deque<std::vector<char>> pending_data_to_dev_;
   std::deque<std::vector<char>> pending_data_to_socket_;
+
+  std::map<uint64_t, uint32_t> unique_to_opcode_;
 
   DISALLOW_COPY_AND_ASSIGN(DataFilter);
 };

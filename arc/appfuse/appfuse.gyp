@@ -13,6 +13,14 @@
   },
   'targets': [
     {
+      'target_name': 'libarcappfuse',
+      'type': 'static_library',
+      'sources': [
+        'appfuse_mount.cc',
+        'data_filter.cc',
+      ],
+    },
+    {
       'target_name': 'arc-appfuse-provider-adaptors',
       'type': 'none',
       'variables': {
@@ -30,12 +38,28 @@
       'type': 'executable',
       'dependencies': [
         'arc-appfuse-provider-adaptors',
+        'libarcappfuse',
       ],
       'sources': [
-        'appfuse_mount.cc',
         'arc_appfuse_provider.cc',
-        'data_filter.cc',
       ],
     },
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'arc-appfuse_testrunner',
+          'type': 'executable',
+          'includes': ['../../common-mk/common_test.gypi'],
+          'defines': ['UNIT_TEST'],
+          'dependencies': [
+            'libarcappfuse',
+            '../../common-mk/testrunner.gyp:testrunner',
+          ],
+          'sources': ['data_filter_unittest.cc'],
+        },
+      ],
+    }],
   ],
 }

@@ -4,12 +4,13 @@
 
 #include "arc/appfuse/data_filter.h"
 
+#include <linux/fuse.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 #include <utility>
 
 #include <base/bind.h>
-#include <base/files/file_util.h>
 #include <base/posix/eintr_wrapper.h>
 
 namespace arc {
@@ -70,11 +71,12 @@ void DataFilter::OnFileCanReadWithoutBlocking(int fd) {
   }
   buf.resize(result);
 
-  // TODO(hashimoto): Check the contents of |buf| to reject unexpected commands.
   if (IsDevFuseFD(fd)) {
-    pending_data_to_socket_.push_back(std::move(buf));
+    if (!FilterDataFromDev(&buf))
+      AbortWatching();
   } else {
-    pending_data_to_dev_.push_back(std::move(buf));
+    if (!FilterDataFromSocket(&buf))
+      AbortWatching();
   }
 }
 
@@ -116,6 +118,96 @@ void DataFilter::AbortWatching() {
   watcher_socket_.StopWatchingFileDescriptor();
   fd_dev_.reset();
   fd_socket_.reset();
+}
+
+bool DataFilter::FilterDataFromDev(std::vector<char>* data) {
+  const auto* header = reinterpret_cast<const fuse_in_header*>(data->data());
+  if (data->size() < sizeof(fuse_in_header) || header->len != data->size()) {
+    LOG(ERROR) << "Invalid fuse_in_header";
+    return false;
+  }
+  switch (header->opcode) {
+    case FUSE_FORGET:  // No response for FORGET, so no need to save opcode.
+      break;
+    case FUSE_LOOKUP:
+    case FUSE_GETATTR:
+    case FUSE_OPEN:
+    case FUSE_READ:
+    case FUSE_WRITE:
+    case FUSE_RELEASE:
+    case FUSE_FSYNC:
+    case FUSE_INIT: {
+      // Save opcode to verify the response later.
+      if (unique_to_opcode_.count(header->unique)) {
+        LOG(ERROR) << "Conflicting unique value";
+        return false;
+      }
+      unique_to_opcode_[header->unique] = header->opcode;
+      break;
+    }
+    default: {
+      // Operation not supported. Return ENOSYS to /dev/fuse.
+      std::vector<char> response(sizeof(fuse_out_header));
+      auto* out_header = reinterpret_cast<fuse_out_header*>(response.data());
+      out_header->len = sizeof(fuse_out_header);
+      out_header->error = -ENOSYS;
+      out_header->unique = header->unique;
+      pending_data_to_dev_.push_back(std::move(response));
+      return true;
+    }
+  }
+  // Pass the data to the socket.
+  pending_data_to_socket_.push_back(std::move(*data));
+  return true;
+}
+
+bool DataFilter::FilterDataFromSocket(std::vector<char>* data) {
+  const auto* header = reinterpret_cast<const fuse_out_header*>(data->data());
+  if (data->size() < sizeof(fuse_out_header) || header->len != data->size()) {
+    LOG(ERROR) << "Invalid fuse_out_header";
+    return false;
+  }
+  // Get opcode of the original request.
+  auto it = unique_to_opcode_.find(header->unique);
+  if (it == unique_to_opcode_.end()) {
+    LOG(ERROR) << "Invalid unique value";
+    return false;
+  }
+  const int opcode = it->second;
+  unique_to_opcode_.erase(it);
+
+  // Check the response contents.
+  switch (opcode) {
+    case FUSE_LOOKUP: {
+      if (data->size() < sizeof(fuse_out_header) + sizeof(fuse_entry_out)) {
+        LOG(ERROR) << "Invalid LOOKUP response";
+        return false;
+      }
+      const auto* entry_out = reinterpret_cast<const fuse_entry_out*>(
+          data->data() + sizeof(fuse_out_header));
+      if (!S_ISREG(entry_out->attr.mode) && !S_ISDIR(entry_out->attr.mode)) {
+        LOG(ERROR) << "Invalid mode";
+        return false;
+      }
+      break;
+    }
+    case FUSE_GETATTR: {
+      if (data->size() < sizeof(fuse_out_header) + sizeof(fuse_attr_out)) {
+        LOG(ERROR) << "Invalid GETATTR response";
+        return false;
+      }
+      const auto* attr_out = reinterpret_cast<const fuse_attr_out*>(
+          data->data() + sizeof(fuse_out_header));
+      if (!S_ISREG(attr_out->attr.mode) && !S_ISDIR(attr_out->attr.mode)) {
+        LOG(ERROR) << "Invalid mode";
+        return false;
+      }
+      break;
+    }
+  }
+  // Pass the data to /dev/fuse.
+  pending_data_to_dev_.push_back(std::move(*data));
+  return true;
 }
 
 }  // namespace appfuse
