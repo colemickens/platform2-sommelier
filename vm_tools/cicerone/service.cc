@@ -399,6 +399,9 @@ void Service::OpenUrl(const std::string& url,
     event->Signal();
     return;
   }
+  if (container_ip_str == linuxhost_ip_) {
+    container_ip_str = kDefaultContainerHostname;
+  }
   writer.AppendString(ReplaceLocalhostInUrl(url, container_ip_str));
   std::unique_ptr<dbus::Response> dbus_response =
       url_handler_service_proxy_->CallMethodAndBlock(
@@ -855,6 +858,8 @@ void Service::RegisterHostname(const std::string& hostname,
         << "Failed to send dbus message to crosdns to register hostname";
   } else {
     hostname_mappings_[hostname] = ip;
+    if (hostname == kDefaultContainerHostname)
+      linuxhost_ip_ = ip;
   }
 }
 
@@ -911,6 +916,8 @@ void Service::UnregisterHostname(const std::string& hostname) {
                  << "hostname";
   }
   hostname_mappings_.erase(hostname);
+  if (hostname == kDefaultContainerHostname)
+    linuxhost_ip_ = "";
 }
 
 void Service::OnCrosDnsNameOwnerChanged(const std::string& old_owner,

@@ -191,6 +191,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // resolver service restarts.
   std::map<std::string, std::string> hostname_mappings_;
 
+  // IP address registered for 'linuxhost' so we can swap this out on OpenUrl
+  // calls.
+  std::string linuxhost_ip_;
+
   // Owner of the primary VM, we only do hostname mappings for the primary VM.
   std::string primary_owner_id_;
 
