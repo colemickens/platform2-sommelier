@@ -59,13 +59,13 @@ const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
 }  // namespace
 
 namespace {
+
 const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
-}  // namespace
 
-static bool GetNonEmptyField(const Stringmap& stringmap,
-                             const string& fieldname,
-                             string* value) {
+bool GetNonEmptyField(const Stringmap& stringmap,
+                      const string& fieldname,
+                      string* value) {
   Stringmap::const_iterator it = stringmap.find(fieldname);
   if (it != stringmap.end() && !it->second.empty()) {
     *value = it->second;
@@ -73,6 +73,8 @@ static bool GetNonEmptyField(const Stringmap& stringmap,
   }
   return false;
 }
+
+}  // namespace
 
 CellularService::CellularService(ModemInfo* modem_info,
                                  const CellularRefPtr& device)
