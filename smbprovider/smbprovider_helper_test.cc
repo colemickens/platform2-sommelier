@@ -353,4 +353,10 @@ TEST_F(SmbProviderHelperTest, GetOpenFilePermissions) {
   EXPECT_EQ(O_RDONLY, GetOpenFilePermissions(copy_entry_proto_blank));
 }
 
+TEST_F(SmbProviderHelperTest, GetOpenFilePermissionsBoolean) {
+  EXPECT_EQ(O_RDWR, GetOpenFilePermissions(true));
+
+  EXPECT_EQ(O_RDONLY, GetOpenFilePermissions(false));
+}
+
 }  // namespace smbprovider

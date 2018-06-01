@@ -183,8 +183,12 @@ bool ReadFromFD(const WriteFileOptionsProto& options,
   return true;
 }
 
+int32_t GetOpenFilePermissions(const bool writeable) {
+  return writeable ? O_RDWR : O_RDONLY;
+}
+
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options) {
-  return options.writeable() ? O_RDWR : O_RDONLY;
+  return GetOpenFilePermissions(options.writeable());
 }
 
 int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused) {

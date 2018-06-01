@@ -119,6 +119,7 @@ bool ReadFromFD(const WriteFileOptionsProto& options,
                 std::vector<uint8_t>* buffer);
 
 // Gets the correct permissions flag for |options|.
+int32_t GetOpenFilePermissions(const bool writeable);
 int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options);
 int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused);
 int32_t GetOpenFilePermissions(const CopyEntryOptionsProto& unused);
