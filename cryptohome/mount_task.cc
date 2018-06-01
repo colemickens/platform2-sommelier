@@ -11,45 +11,35 @@ namespace cryptohome {
 const char* kMountTaskResultEventType = "MountTaskResult";
 const char* kPkcs11InitResultEventType = "Pkcs11InitResult";
 
-base::AtomicSequenceNumber MountTask::sequence_holder_;
-
 MountTask::MountTask(MountTaskObserver* observer,
                      Mount* mount,
-                     const UsernamePasskey& credentials)
+                     const UsernamePasskey& credentials,
+                     int sequence_id)
     : mount_(mount),
       credentials_(),
-      sequence_id_(-1),
+      sequence_id_(sequence_id),
       cancel_flag_(false),
       observer_(observer),
       default_result_(new MountTaskResult),
       result_(default_result_.get()),
       complete_event_(NULL) {
   credentials_.Assign(credentials);
-  sequence_id_ = NextSequence();
   result_->set_sequence_id(sequence_id_);
 }
 
-MountTask::MountTask(MountTaskObserver* observer,
-                     Mount* mount)
+MountTask::MountTask(MountTaskObserver* observer, Mount* mount, int sequence_id)
     : mount_(mount),
       credentials_(),
-      sequence_id_(-1),
+      sequence_id_(sequence_id),
       cancel_flag_(false),
       observer_(observer),
       default_result_(new MountTaskResult),
       result_(default_result_.get()),
       complete_event_(NULL) {
-  sequence_id_ = NextSequence();
   result_->set_sequence_id(sequence_id_);
 }
 
 MountTask::~MountTask() {
-}
-
-int MountTask::NextSequence() {
-  // AtomicSequenceNumber is zero-based, so increment so that the sequence ids
-  // are one-based.
-  return sequence_holder_.GetNext() + 1;
 }
 
 void MountTask::Notify() {
@@ -149,8 +139,9 @@ void MountTaskUpdateCurrentUserActivityTimestamp::Run() {
 }
 
 MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
-                                         Mount* mount)
-    : MountTask(observer, mount),
+                                         Mount* mount,
+                                         int sequence_id)
+    : MountTask(observer, mount, sequence_id),
       pkcs11_init_result_(new MountTaskResult(kPkcs11InitResultEventType)) {
   set_result(pkcs11_init_result_.get());
 }

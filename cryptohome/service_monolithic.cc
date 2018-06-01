@@ -171,9 +171,8 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateEnrollRequest(
     GError** error) {
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<CreateEnrollRequestTask> task =
-      new CreateEnrollRequestTask(observer, attestation_,
-                                  GetPCAType(pca_type));
+  scoped_refptr<CreateEnrollRequestTask> task = new CreateEnrollRequestTask(
+      observer, attestation_, GetPCAType(pca_type), NextSequence());
   *OUT_async_id = task->sequence_id();
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -201,8 +200,8 @@ gboolean ServiceMonolithic::AsyncTpmAttestationEnroll(
                             pca_response->data + pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<EnrollTask> task =
-      new EnrollTask(observer, attestation_, GetPCAType(pca_type), blob);
+  scoped_refptr<EnrollTask> task = new EnrollTask(
+      observer, attestation_, GetPCAType(pca_type), blob, NextSequence());
   *OUT_async_id = task->sequence_id();
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -246,7 +245,8 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateCertRequest(
                                 GetPCAType(pca_type),
                                 GetProfile(certificate_profile),
                                 username,
-                                request_origin);
+                                request_origin,
+                                NextSequence());
   *OUT_async_id = task->sequence_id();
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -295,7 +295,8 @@ gboolean ServiceMonolithic::AsyncTpmAttestationFinishCertRequest(
                                 blob,
                                 is_user_specific,
                                 username,
-                                key_name);
+                                key_name,
+                                NextSequence());
   *OUT_async_id = task->sequence_id();
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -373,7 +374,8 @@ gboolean ServiceMonolithic::TpmAttestationRegisterKey(
                           attestation_,
                           is_user_specific,
                           username,
-                          key_name);
+                          key_name,
+                          NextSequence());
   *OUT_async_id = task->sequence_id();
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -431,7 +433,8 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
                             domain,
                             device_id_blob,
                             include_signed_public_key,
-                            challenge_blob);
+                            challenge_blob,
+                            NextSequence());
   *OUT_async_id = task->sequence_id();
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -456,7 +459,8 @@ gboolean ServiceMonolithic::TpmAttestationSignSimpleChallenge(
                             is_user_specific,
                             username,
                             key_name,
-                            challenge_blob);
+                            challenge_blob,
+                            NextSequence());
   *OUT_async_id = task->sequence_id();
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,

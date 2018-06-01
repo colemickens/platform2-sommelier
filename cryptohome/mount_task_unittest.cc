@@ -7,6 +7,7 @@
 #include "cryptohome/mount_task.h"
 
 #include <base/at_exit.h>
+#include <base/atomic_sequence_num.h>
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
@@ -48,6 +49,11 @@ class MountTaskTest : public ::testing::Test {
     }
   }
 
+  // Return the next sequence number.
+  int NextSequence() {
+    return sequence_holder_.GetNext() + 1;
+  }
+
  protected:
   base::Thread runner_;
   base::WaitableEvent event_;
@@ -56,6 +62,9 @@ class MountTaskTest : public ::testing::Test {
   MountTaskResult result_;
   base::TimeDelta wait_time_;
   UsernamePasskey empty_credentials_;
+
+  // An atomic incrementing sequence for setting asynchronous call ids.
+  base::AtomicSequenceNumber sequence_holder_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTaskTest);
@@ -108,7 +117,7 @@ TEST_F(MountTaskTest, ResultEqualsTest) {
 TEST_F(MountTaskTest, EventTest) {
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTask> mount_task
-      = new MountTask(NULL, NULL);
+      = new MountTask(NULL, NULL, NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -120,7 +129,7 @@ TEST_F(MountTaskTest, EventTest) {
 TEST_F(MountTaskTest, ObserveTest) {
   MountTaskNotifier notifier;
   scoped_refptr<MountTask> mount_task
-      = new MountTask(&notifier, NULL);
+      = new MountTask(&notifier, NULL, NextSequence());
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTask::Run, mount_task.get()));
@@ -136,7 +145,8 @@ TEST_F(MountTaskTest, ObserveTest) {
 
 TEST_F(MountTaskTest, NopTest) {
   ASSERT_FALSE(event_.IsSignaled());
-  scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(NULL);
+  scoped_refptr<MountTaskNop> mount_task =
+      new MountTaskNop(NULL, NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -151,8 +161,8 @@ TEST_F(MountTaskTest, MountTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   Mount::MountArgs mount_args;
-  scoped_refptr<MountTaskMount> mount_task =
-      new MountTaskMount(NULL, mount_.get(), empty_credentials_, mount_args);
+  scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
+      NULL, mount_.get(), empty_credentials_, mount_args, NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -167,7 +177,7 @@ TEST_F(MountTaskTest, MountGuestTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskMountGuest> mount_task
-      = new MountTaskMountGuest(NULL, mount_.get());
+      = new MountTaskMountGuest(NULL, mount_.get(), NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -182,8 +192,9 @@ TEST_F(MountTaskTest, MigratePasskeyTest) {
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  scoped_refptr<MountTaskMigratePasskey> mount_task
-      = new MountTaskMigratePasskey(NULL, &homedirs, empty_credentials_, "");
+  scoped_refptr<MountTaskMigratePasskey> mount_task =
+      new MountTaskMigratePasskey(NULL, &homedirs, empty_credentials_, "",
+                                  NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -198,7 +209,7 @@ TEST_F(MountTaskTest, UnmountTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskUnmount> mount_task
-      = new MountTaskUnmount(NULL, mount_.get());
+      = new MountTaskUnmount(NULL, mount_.get(), NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -213,8 +224,8 @@ TEST_F(MountTaskTest, RemoveTest) {
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  scoped_refptr<MountTaskRemove> mount_task
-      = new MountTaskRemove(NULL, NULL, empty_credentials_, &homedirs);
+  scoped_refptr<MountTaskRemove> mount_task = new MountTaskRemove(
+      NULL, NULL, empty_credentials_, &homedirs, NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -226,7 +237,7 @@ TEST_F(MountTaskTest, RemoveTest) {
 TEST_F(MountTaskTest, ResetTpmContext) {
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskResetTpmContext> mount_task
-      = new MountTaskResetTpmContext(NULL, NULL);
+      = new MountTaskResetTpmContext(NULL, NULL, NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,
@@ -238,7 +249,7 @@ TEST_F(MountTaskTest, ResetTpmContext) {
 TEST_F(MountTaskTest, AutomaticFreeDiskSpace) {
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task
-      = new MountTaskAutomaticFreeDiskSpace(NULL, &homedirs_);
+      = new MountTaskAutomaticFreeDiskSpace(NULL, &homedirs_, NextSequence());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.task_runner()->PostTask(FROM_HERE,

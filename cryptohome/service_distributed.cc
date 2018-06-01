@@ -85,11 +85,6 @@ bool ServiceDistributed::PrepareInterface() {
   return true;
 }
 
-int ServiceDistributed::AllocateAsyncId() {
-  scoped_refptr<MountTask> task = new MountTask(NULL, NULL);
-  return task->sequence_id();
-}
-
 base::WeakPtr<ServiceDistributed> ServiceDistributed::GetWeakPtr() {
   return weak_factory_.GetWeakPtr();
 }
@@ -411,7 +406,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationCreateEnrollRequest(
   if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
-  *OUT_async_id = AllocateAsyncId();
+  *OUT_async_id = NextSequence();
   attestation::CreateEnrollRequestRequest request;
   request.set_aca_type(aca_type);
   auto callback = base::Bind(
@@ -462,7 +457,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationEnroll(gint pca_type,
   if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
-  *OUT_async_id = AllocateAsyncId();
+  *OUT_async_id = NextSequence();
   attestation::FinishEnrollRequest request;
   request.set_pca_response(pca_response->data, pca_response->len);
   auto callback = base::Bind(
@@ -526,7 +521,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationCreateCertRequest(
   if (!ConvertPCATypeToACAType(pca_type, &aca_type, error)) {
     return FALSE;
   }
-  *OUT_async_id = AllocateAsyncId();
+  *OUT_async_id = NextSequence();
   attestation::CreateCertificateRequestRequest request;
   request.set_certificate_profile(GetProfile(certificate_profile));
   request.set_username(username);
@@ -589,7 +584,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationFinishCertRequest(
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
-  *OUT_async_id = AllocateAsyncId();
+  *OUT_async_id = NextSequence();
   attestation::FinishCertificateRequestRequest request;
   request.set_pca_response(pca_response->data, pca_response->len);
   request.set_key_label(key_name);
@@ -717,7 +712,7 @@ gboolean ServiceDistributed::TpmAttestationRegisterKey(
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
-  *OUT_async_id = AllocateAsyncId();
+  *OUT_async_id = NextSequence();
   attestation::RegisterKeyWithChapsTokenRequest request;
   request.set_key_label(key_name);
   if (is_user_specific) {
@@ -771,7 +766,7 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseVaChallenge(
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
-  *OUT_async_id = AllocateAsyncId();
+  *OUT_async_id = NextSequence();
   attestation::VAType att_va_type;
   if (!ConvertToVAType(va_type, &att_va_type, error)) {
     return FALSE;
@@ -810,7 +805,7 @@ gboolean ServiceDistributed::TpmAttestationSignSimpleChallenge(
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
-  *OUT_async_id = AllocateAsyncId();
+  *OUT_async_id = NextSequence();
   attestation::SignSimpleChallengeRequest request;
   request.set_key_label(key_name);
   if (is_user_specific) {

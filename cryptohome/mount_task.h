@@ -192,9 +192,11 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
  public:
   MountTask(MountTaskObserver* observer,
             Mount* mount,
-            const UsernamePasskey& credentials);
+            const UsernamePasskey& credentials,
+            int sequence_id);
   MountTask(MountTaskObserver* observer,
-            Mount* mount);
+            Mount* mount,
+            int sequence_id);
   virtual ~MountTask();
 
   // Run is called by the worker thread when this task is being processed
@@ -270,9 +272,6 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   // Signal will call Signal on the completion event if it is set
   void Signal();
 
-  // Return the next sequence number
-  static int NextSequence();
-
   // The MountTaskObserver to be notified when this task is complete
   MountTaskObserver* observer_;
 
@@ -286,23 +285,17 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   // The completion event to signal when this task is complete
   base::WaitableEvent* complete_event_;
 
-  // An atomic incrementing sequence for setting asynchronous call ids
-  static base::AtomicSequenceNumber sequence_holder_;
-
   DISALLOW_COPY_AND_ASSIGN(MountTask);
 };
 
 // Implements a no-op task that merely posts results
 class MountTaskNop : public MountTask {
  public:
-  explicit MountTaskNop(MountTaskObserver* observer)
-      : MountTask(observer, NULL) {
-  }
-  virtual ~MountTaskNop() { }
+  explicit MountTaskNop(MountTaskObserver* observer, int sequence_id)
+      : MountTask(observer, NULL, sequence_id) {}
+  virtual ~MountTaskNop() {}
 
-  virtual void Run() {
-    Notify();
-  }
+  virtual void Run() { Notify(); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTaskNop);
@@ -314,9 +307,11 @@ class MountTaskMount : public MountTask {
   MountTaskMount(MountTaskObserver* observer,
                  Mount* mount,
                  const UsernamePasskey& credentials,
-                 const Mount::MountArgs& mount_args)
-      : MountTask(observer, mount, credentials), mount_args_(mount_args) {}
-  virtual ~MountTaskMount() { }
+                 const Mount::MountArgs& mount_args,
+                 int sequence_id)
+      : MountTask(observer, mount, credentials, sequence_id),
+        mount_args_(mount_args) {}
+  virtual ~MountTaskMount() {}
 
   virtual void Run();
 
@@ -332,10 +327,10 @@ class MountTaskMount : public MountTask {
 class MountTaskMountGuest : public MountTask {
  public:
   MountTaskMountGuest(MountTaskObserver* observer,
-                      Mount* mount)
-      : MountTask(observer, mount) {
-  }
-  virtual ~MountTaskMountGuest() { }
+                      Mount* mount,
+                      int sequence_id)
+      : MountTask(observer, mount, sequence_id) {}
+  virtual ~MountTaskMountGuest() {}
 
   virtual void Run();
 
@@ -348,14 +343,16 @@ class MountTaskMountGuest : public MountTask {
 class MountTaskMigratePasskey : public MountTask {
  public:
   MountTaskMigratePasskey(MountTaskObserver* observer,
-            HomeDirs* homedirs,
-            const UsernamePasskey& credentials,
-            const char* old_key)
-      : MountTask(observer, NULL, credentials), homedirs_(homedirs) {
+                          HomeDirs* homedirs,
+                          const UsernamePasskey& credentials,
+                          const char* old_key,
+                          int sequence_id)
+      : MountTask(observer, NULL, credentials, sequence_id),
+        homedirs_(homedirs) {
     old_key_.resize(strlen(old_key));
     memcpy(old_key_.data(), old_key, old_key_.size());
   }
-  virtual ~MountTaskMigratePasskey() { }
+  virtual ~MountTaskMigratePasskey() {}
 
   virtual void Run();
 
@@ -370,8 +367,9 @@ class MountTaskMigratePasskey : public MountTask {
 class MountTaskUnmount : public MountTask {
  public:
   MountTaskUnmount(MountTaskObserver* observer,
-                   Mount* mount)
-      : MountTask(observer, mount) {
+                   Mount* mount,
+                   int sequence_id)
+      : MountTask(observer, mount, sequence_id) {
   }
   virtual ~MountTaskUnmount() { }
 
@@ -387,9 +385,10 @@ class MountTaskRemove : public MountTask {
   MountTaskRemove(MountTaskObserver* observer,
                   Mount* mount,
                   const UsernamePasskey& credentials,
-                  HomeDirs* homedirs)
-      : MountTask(observer, mount, credentials), homedirs_(homedirs) {
-  }
+                  HomeDirs* homedirs,
+                  int sequence_id)
+      : MountTask(observer, mount, credentials, sequence_id),
+        homedirs_(homedirs) {}
   virtual ~MountTaskRemove() { }
 
   virtual void Run();
@@ -402,9 +401,10 @@ class MountTaskRemove : public MountTask {
 // Implements asychronous reset of the TPM context
 class MountTaskResetTpmContext : public MountTask {
  public:
-  MountTaskResetTpmContext(MountTaskObserver* observer, Mount* mount)
-      : MountTask(observer, mount) {
-  }
+  MountTaskResetTpmContext(MountTaskObserver* observer,
+                           Mount* mount,
+                           int sequence_id)
+      : MountTask(observer, mount, sequence_id) {}
   virtual ~MountTaskResetTpmContext() { }
 
   virtual void Run();
@@ -417,9 +417,9 @@ class MountTaskResetTpmContext : public MountTask {
 class MountTaskAutomaticFreeDiskSpace : public MountTask {
  public:
   MountTaskAutomaticFreeDiskSpace(MountTaskObserver* observer,
-                                  HomeDirs* homedirs)
-      : MountTask(observer, NULL), homedirs_(homedirs) {
-  }
+                                  HomeDirs* homedirs,
+                                  int sequence_id)
+      : MountTask(observer, NULL, sequence_id), homedirs_(homedirs) {}
   virtual ~MountTaskAutomaticFreeDiskSpace() { }
 
   virtual void Run();
@@ -435,10 +435,10 @@ class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {
  public:
   MountTaskUpdateCurrentUserActivityTimestamp(MountTaskObserver* observer,
                                               Mount* mount,
-                                              int time_shift_sec)
-      : MountTask(observer, mount),
-        time_shift_sec_(time_shift_sec) {
-  }
+                                              int time_shift_sec,
+                                              int sequence_id)
+      : MountTask(observer, mount, sequence_id),
+        time_shift_sec_(time_shift_sec) {}
   virtual ~MountTaskUpdateCurrentUserActivityTimestamp() { }
 
   virtual void Run();
@@ -451,7 +451,9 @@ class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {
 // Implements asynchronous initialization of Pkcs11.
 class MountTaskPkcs11Init : public MountTask {
  public:
-  MountTaskPkcs11Init(MountTaskObserver* observer, Mount* mount);
+  MountTaskPkcs11Init(MountTaskObserver* observer,
+                      Mount* mount,
+                      int sequence_id);
   virtual ~MountTaskPkcs11Init() { }
 
   virtual void Run();
@@ -466,8 +468,9 @@ class MountTaskPkcs11Init : public MountTask {
 class MountTaskInstallAttrsFinalize : public MountTask {
  public:
   MountTaskInstallAttrsFinalize(MountTaskObserver* observer,
-                                InstallAttributes* attrs)
-      : MountTask(observer, NULL),
+                                InstallAttributes* attrs,
+                                int sequence_id)
+      : MountTask(observer, NULL, sequence_id),
         install_attrs_(attrs) { }
   virtual ~MountTaskInstallAttrsFinalize() { }
 

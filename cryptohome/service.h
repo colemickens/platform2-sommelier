@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/atomic_sequence_num.h>
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <base/logging.h>
@@ -629,6 +630,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Runs the event loop once. Only for testing.
   virtual void DispatchEventsForTesting();
 
+  // Return the next sequence number.
+  int NextSequence();
+
  protected:
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
 
@@ -842,6 +846,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   FirmwareManagementParameters* firmware_management_parameters_;
   int low_disk_notification_period_ms_;
   int upload_alerts_period_ms_;
+
+  // An atomic incrementing sequence for setting asynchronous call ids.
+  base::AtomicSequenceNumber sequence_holder_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

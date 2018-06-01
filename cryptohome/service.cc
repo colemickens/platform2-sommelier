@@ -732,7 +732,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount, &event_source_);
   scoped_refptr<MountTaskPkcs11Init> pkcs11_init_task =
-      new MountTaskPkcs11Init(bridge, mount);
+      new MountTaskPkcs11Init(bridge, mount, NextSequence());
   LOG(INFO) << "Putting a Pkcs11_Initialize on the mount thread.";
   pkcs11_tasks_[pkcs11_init_task->sequence_id()] = pkcs11_init_task.get();
   mount_thread_.task_runner()->PostTask(FROM_HERE,
@@ -893,7 +893,8 @@ void Service::OwnershipCallback(bool status, bool took_ownership) {
     mounts_lock_.Acquire();
     for (const auto& mount_pair : mounts_) {
       scoped_refptr<MountTaskResetTpmContext> mount_task =
-          new MountTaskResetTpmContext(NULL, mount_pair.second.get());
+          new MountTaskResetTpmContext(NULL, mount_pair.second.get(),
+                                       NextSequence());
       mount_thread_.task_runner()->PostTask(FROM_HERE,
           base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
     }
@@ -1249,7 +1250,8 @@ gboolean Service::MigrateKey(gchar *userid,
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   scoped_refptr<MountTaskMigratePasskey> mount_task =
-      new MountTaskMigratePasskey(NULL, homedirs_, credentials, from_key);
+      new MountTaskMigratePasskey(NULL, homedirs_, credentials, from_key,
+                                  NextSequence());
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.task_runner()->PostTask(FROM_HERE,
@@ -1270,7 +1272,8 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskMigratePasskey> mount_task =
-      new MountTaskMigratePasskey(bridge, homedirs_, credentials, from_key);
+      new MountTaskMigratePasskey(bridge, homedirs_, credentials, from_key,
+                                  NextSequence());
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));
@@ -1473,7 +1476,7 @@ gboolean Service::Remove(gchar *userid,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskRemove> mount_task =
-      new MountTaskRemove(bridge, NULL, credentials, homedirs_);
+      new MountTaskRemove(bridge, NULL, credentials, homedirs_, NextSequence());
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.task_runner()->PostTask(FROM_HERE,
@@ -1490,15 +1493,16 @@ gboolean Service::AsyncRemove(gchar *userid,
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<cryptohome::Mount> user_mount = GetMountForUser(userid);
   if (user_mount.get() && user_mount->IsMounted()) {
-    scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
+    scoped_refptr<MountTaskNop> mount_task =
+        new MountTaskNop(bridge, NextSequence());
     mount_task->result()->set_return_status(false);
     *OUT_async_id = mount_task->sequence_id();
     mount_thread_.task_runner()->PostTask(FROM_HERE,
         base::Bind(&MountTaskNop::Run, mount_task.get()));
   } else {
     UsernamePasskey credentials(userid, brillo::Blob());
-    scoped_refptr<MountTaskRemove> mount_task =
-        new MountTaskRemove(bridge, NULL, credentials, homedirs_);
+    scoped_refptr<MountTaskRemove> mount_task = new MountTaskRemove(
+        bridge, NULL, credentials, homedirs_, NextSequence());
     *OUT_async_id = mount_task->sequence_id();
     mount_thread_.task_runner()->PostTask(FROM_HERE,
         base::Bind(&MountTaskRemove::Run, mount_task.get()));
@@ -1762,7 +1766,8 @@ gboolean Service::Mount(const gchar *userid,
                                                             NULL,
                                                             user_mount.get(),
                                                             credentials,
-                                                            mount_args);
+                                                            mount_args,
+                                                            NextSequence());
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
 
@@ -2108,7 +2113,7 @@ gboolean Service::MountGuest(gint *OUT_error_code,
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   scoped_refptr<MountTaskMountGuest> mount_task
-      = new MountTaskMountGuest(NULL, guest_mount.get());
+      = new MountTaskMountGuest(NULL, guest_mount.get(), NextSequence());
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.task_runner()->PostTask(FROM_HERE,
@@ -2150,7 +2155,7 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(guest_mount.get(), &event_source_);
   scoped_refptr<MountTaskMountGuest> mount_task
-      = new MountTaskMountGuest(bridge, guest_mount.get());
+      = new MountTaskMountGuest(bridge, guest_mount.get(), NextSequence());
   mount_task->result()->set_guest(true);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.task_runner()->PostTask(FROM_HERE,
@@ -2181,7 +2186,7 @@ gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =
-      new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_);
+      new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_, NextSequence());
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.task_runner()->PostTask(FROM_HERE,
@@ -2196,7 +2201,7 @@ gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =
-      new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_);
+      new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_, NextSequence());
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.task_runner()->PostTask(FROM_HERE,
       base::Bind(&MountTaskAutomaticFreeDiskSpace::Run, mount_task.get()));
@@ -3074,7 +3079,8 @@ bool Service::GetPublicMountPassKey(const std::string& public_mount_id,
 int Service::PostAsyncCallResult(MountTaskObserver* bridge,
                                  MountError return_code,
                                  bool return_status) {
-  scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
+  scoped_refptr<MountTaskNop> mount_task =
+      new MountTaskNop(bridge, NextSequence());
   mount_task->result()->set_return_code(return_code);
   mount_task->result()->set_return_status(return_status);
   mount_thread_.task_runner()->PostTask(FROM_HERE,
@@ -3216,6 +3222,12 @@ bool Service::GetShouldMountAsEphemeral(const std::string& account_id,
     return false;
   }
   return true;
+}
+
+int Service::NextSequence() {
+  // AtomicSequenceNumber is zero-based, so increment so that the sequence ids
+  // are one-based.
+  return sequence_holder_.GetNext() + 1;
 }
 
 }  // namespace cryptohome

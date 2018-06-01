@@ -17,8 +17,9 @@ using brillo::SecureBlob;
 namespace cryptohome {
 
 AttestationTask::AttestationTask(AttestationTaskObserver* observer,
-                                 Attestation* attestation)
-    : MountTask(observer, NULL),
+                                 Attestation* attestation,
+                                 int sequence_id)
+    : MountTask(observer, NULL, sequence_id),
       attestation_(attestation) {
 }
 
@@ -27,9 +28,10 @@ AttestationTask::~AttestationTask() {}
 CreateEnrollRequestTask::CreateEnrollRequestTask(
     AttestationTaskObserver* observer,
     Attestation* attestation,
-    Attestation::PCAType pca_type)
-    : AttestationTask(observer, attestation), pca_type_(pca_type) {
-}
+    Attestation::PCAType pca_type,
+    int sequence_id)
+    : AttestationTask(observer, attestation, sequence_id),
+      pca_type_(pca_type) {}
 
 CreateEnrollRequestTask::~CreateEnrollRequestTask() {}
 
@@ -47,8 +49,9 @@ void CreateEnrollRequestTask::Run() {
 EnrollTask::EnrollTask(AttestationTaskObserver* observer,
                        Attestation* attestation,
                        Attestation::PCAType pca_type,
-                       const SecureBlob& pca_response)
-    : AttestationTask(observer, attestation),
+                       const SecureBlob& pca_response,
+                       int sequence_id)
+    : AttestationTask(observer, attestation, sequence_id),
       pca_type_(pca_type),
       pca_response_(pca_response) {
 }
@@ -69,8 +72,9 @@ CreateCertRequestTask::CreateCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation::PCAType pca_type,
                                              CertificateProfile profile,
                                              const std::string& username,
-                                             const std::string& origin)
-    : AttestationTask(observer, attestation),
+                                             const std::string& origin,
+                                             int sequence_id)
+    : AttestationTask(observer, attestation, sequence_id),
       pca_type_(pca_type),
       profile_(profile),
       username_(username),
@@ -99,8 +103,9 @@ FinishCertRequestTask::FinishCertRequestTask(AttestationTaskObserver* observer,
                                              const SecureBlob& pca_response,
                                              bool is_user_specific,
                                              const std::string& username,
-                                             const std::string& key_name)
-    : AttestationTask(observer, attestation),
+                                             const std::string& key_name,
+                                             int sequence_id)
+    : AttestationTask(observer, attestation, sequence_id),
       pca_response_(pca_response),
       is_user_specific_(is_user_specific),
       username_(username),
@@ -129,8 +134,9 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      bool is_user_specific,
                                      const std::string& username,
                                      const std::string& key_name,
-                                     const SecureBlob& challenge)
-    : AttestationTask(observer, attestation),
+                                     const SecureBlob& challenge,
+                                     int sequence_id)
+    : AttestationTask(observer, attestation, sequence_id),
       challenge_type_(kSimpleChallengeType),
       is_user_specific_(is_user_specific),
       username_(username),
@@ -147,8 +153,9 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      const std::string& domain,
                                      const SecureBlob& device_id,
                                      bool include_signed_public_key,
-                                     const SecureBlob& challenge)
-    : AttestationTask(observer, attestation),
+                                     const SecureBlob& challenge,
+                                     int sequence_id)
+    : AttestationTask(observer, attestation, sequence_id),
       challenge_type_(kEnterpriseVaChallengeType),
       va_type_(va_type),
       is_user_specific_(is_user_specific),
@@ -209,8 +216,9 @@ RegisterKeyTask::RegisterKeyTask(AttestationTaskObserver* observer,
                                  Attestation* attestation,
                                  bool is_user_specific,
                                  const std::string& username,
-                                 const std::string& key_name)
-    : AttestationTask(observer, attestation),
+                                 const std::string& key_name,
+                                 int sequence_id)
+    : AttestationTask(observer, attestation, sequence_id),
       is_user_specific_(is_user_specific),
       username_(username),
       key_name_(key_name) {

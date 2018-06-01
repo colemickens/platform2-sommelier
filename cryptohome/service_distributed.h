@@ -176,9 +176,6 @@ class ServiceDistributed : public Service {
   // Starts attestation_thread_ and initializes interface.
   bool PrepareInterface();
 
-  // Get a unique async_id for use in async dbus methods.
-  static int AllocateAsyncId();
-
   // Post a method on the attestation_thread_.
   template <typename MethodType>
   bool Post(const MethodType& method);

@@ -22,7 +22,9 @@ typedef MountTaskObserver AttestationTaskObserver;
 // async code, especially the sequence counter.
 class AttestationTask : public MountTask {
  public:
-  AttestationTask(AttestationTaskObserver* observer, Attestation* attestation);
+  AttestationTask(AttestationTaskObserver* observer,
+                  Attestation* attestation,
+                  int sequence_id);
   virtual ~AttestationTask();
 
  protected:
@@ -35,7 +37,8 @@ class CreateEnrollRequestTask : public AttestationTask {
  public:
   CreateEnrollRequestTask(AttestationTaskObserver* observer,
                           Attestation* attestation,
-                          Attestation::PCAType pca_type);
+                          Attestation::PCAType pca_type,
+                          int sequence_id);
   virtual ~CreateEnrollRequestTask();
 
   virtual void Run();
@@ -52,7 +55,8 @@ class EnrollTask : public AttestationTask {
   EnrollTask(AttestationTaskObserver* observer,
              Attestation* attestation,
              Attestation::PCAType pca_type,
-             const brillo::SecureBlob& pca_response);
+             const brillo::SecureBlob& pca_response,
+             int sequence_id);
   virtual ~EnrollTask();
 
   virtual void Run();
@@ -72,7 +76,8 @@ class CreateCertRequestTask : public AttestationTask {
                         Attestation::PCAType pca_type,
                         CertificateProfile profile,
                         const std::string& username,
-                        const std::string& origin);
+                        const std::string& origin,
+                        int sequence_id);
   virtual ~CreateCertRequestTask();
 
   virtual void Run();
@@ -94,7 +99,8 @@ class FinishCertRequestTask : public AttestationTask {
                         const brillo::SecureBlob& pca_response,
                         bool is_user_specific,
                         const std::string& username,
-                        const std::string& key_name);
+                        const std::string& key_name,
+                        int sequence_id);
   virtual ~FinishCertRequestTask();
 
   virtual void Run();
@@ -117,7 +123,8 @@ class SignChallengeTask : public AttestationTask {
                     bool is_user_specific,
                     const std::string& username,
                     const std::string& key_name,
-                    const brillo::SecureBlob& challenge);
+                    const brillo::SecureBlob& challenge,
+                    int sequence_id);
   // Constructs a task for SignEnterpriseVaChallenge.
   SignChallengeTask(AttestationTaskObserver* observer,
                     Attestation* attestation,
@@ -128,7 +135,8 @@ class SignChallengeTask : public AttestationTask {
                     const std::string& domain,
                     const brillo::SecureBlob& device_id,
                     bool include_signed_public_key,
-                    const brillo::SecureBlob& challenge);
+                    const brillo::SecureBlob& challenge,
+                    int sequence_id);
   virtual ~SignChallengeTask();
 
   virtual void Run();
@@ -160,7 +168,8 @@ class RegisterKeyTask : public AttestationTask {
                         Attestation* attestation,
                         bool is_user_specific,
                         const std::string& username,
-                        const std::string& key_name);
+                        const std::string& key_name,
+                        int sequence_id);
   virtual ~RegisterKeyTask();
 
   virtual void Run();
