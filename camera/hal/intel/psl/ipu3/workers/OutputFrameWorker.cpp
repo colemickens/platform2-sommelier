@@ -340,6 +340,9 @@ OutputFrameWorker::findBuffer(Camera3Request* request,
     std::shared_ptr<CameraBuffer> buffer = nullptr;
     const std::vector<camera3_stream_buffer>* outBufs =
                                         request->getOutputBuffers();
+    if (!outBufs) {
+        return buffer;
+    }
     for (camera3_stream_buffer outputBuffer : *outBufs) {
         s = reinterpret_cast<CameraStream *>(outputBuffer.stream->priv);
         if (s->getStream() == stream) {
