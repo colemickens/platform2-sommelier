@@ -36,6 +36,9 @@ const char kErrorGprsMissingOrUnknownApn[] =
 const char kErrorGprsServiceOptionNotSubscribed[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsServiceOptionNotSubscribed";
 
+const char kErrorGprsUserAuthenticationFailed[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsUserAuthenticationFailed";
+
 const char kErrorIncorrectPassword[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword";
 
@@ -71,6 +74,8 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
   else if (name == kErrorGprsMissingOrUnknownApn)
     type = Error::kInvalidApn;
   else if (name == kErrorGprsServiceOptionNotSubscribed)
+    type = Error::kInvalidApn;
+  else if (name == kErrorGprsUserAuthenticationFailed)
     type = Error::kInvalidApn;
   else if (name == kErrorWrongState)
     type = Error::kWrongState;
