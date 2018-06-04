@@ -24,7 +24,7 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
   explicit PinweaverLECredentialBackend(Tpm2Impl* tpm);
 
   // LECredentialBackend
-  bool Reset() override;
+  bool Reset(std::vector<uint8_t>* new_root) override;
   bool IsSupported() override;
   bool InsertCredential(const uint64_t label,
                         const std::vector<std::vector<uint8_t>>& h_aux,
@@ -33,7 +33,8 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
                         const brillo::SecureBlob& reset_secret,
                         const std::map<uint32_t, uint32_t>& delay_schedule,
                         std::vector<uint8_t>* cred_metadata,
-                        std::vector<uint8_t>* mac) override;
+                        std::vector<uint8_t>* mac,
+                        std::vector<uint8_t>* new_root) override;
   bool CheckCredential(const uint64_t label,
                        const std::vector<std::vector<uint8_t>>& h_aux,
                        const std::vector<uint8_t>& orig_cred_metadata,
@@ -41,17 +42,20 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
                        std::vector<uint8_t>* new_cred_metadata,
                        std::vector<uint8_t>* new_mac,
                        brillo::SecureBlob* he_secret,
-                       LECredBackendError* err) override;
+                       LECredBackendError* err,
+                       std::vector<uint8_t>* new_root) override;
   bool ResetCredential(const uint64_t label,
                        const std::vector<std::vector<uint8_t>>& h_aux,
                        const std::vector<uint8_t>& orig_cred_metadata,
                        const brillo::SecureBlob& reset_secret,
                        std::vector<uint8_t>* new_cred_metadata,
                        std::vector<uint8_t>* new_mac,
-                       LECredBackendError* err) override;
+                       LECredBackendError* err,
+                       std::vector<uint8_t>* new_root) override;
   bool RemoveCredential(const uint64_t label,
                         const std::vector<std::vector<uint8_t>>& h_aux,
-                        const std::vector<uint8_t>& mac) override;
+                        const std::vector<uint8_t>& mac,
+                        std::vector<uint8_t>* new_root) override;
 
  private:
   // Convenience wrapper implementing common boilerplate for all types of

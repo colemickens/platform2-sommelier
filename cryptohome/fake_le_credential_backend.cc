@@ -22,9 +22,10 @@ FakeLECredentialBackend::FakeLECredentialBackend() {
   fake_root_hash_.reserve(SHA256_DIGEST_LENGTH);
 }
 
-bool FakeLECredentialBackend::Reset() {
+bool FakeLECredentialBackend::Reset(std::vector<uint8_t>* new_root) {
   fake_root_hash_ = std::vector<uint8_t>(
       kInitRootHash14_4, kInitRootHash14_4 + SHA256_DIGEST_LENGTH);
+  *new_root = fake_root_hash_;
   return true;
 }
 
@@ -36,11 +37,14 @@ bool FakeLECredentialBackend::InsertCredential(
     const brillo::SecureBlob& reset_secret,
     const std::map<uint32_t, uint32_t>& delay_schedule,
     std::vector<uint8_t>* cred_metadata,
-    std::vector<uint8_t>* mac) {
+    std::vector<uint8_t>* mac,
+    std::vector<uint8_t>* new_root) {
   // Calculate the root hash, assuming new MAC is 32 bytes of 0.
   std::vector<uint8_t> leaf_mac(SHA256_DIGEST_LENGTH, 0);
-  std::vector<uint8_t> root_hash = RecalculateRootHash(label, leaf_mac, h_aux);
+  // Set |new_root| to the original value, in case we return errors.
+  *new_root = fake_root_hash_;
 
+  std::vector<uint8_t> root_hash = RecalculateRootHash(label, leaf_mac, h_aux);
   if (root_hash != fake_root_hash_) {
     LOG(ERROR) << "h_aux and/or metadata don't match the current root hash.";
     return false;
@@ -69,6 +73,7 @@ bool FakeLECredentialBackend::InsertCredential(
   *mac = CryptoLib::Sha256(*cred_metadata);
 
   fake_root_hash_ = RecalculateRootHash(label, *mac, h_aux);
+  *new_root = fake_root_hash_;
 
   return true;
 }
@@ -81,10 +86,13 @@ bool FakeLECredentialBackend::CheckCredential(
     std::vector<uint8_t>* new_cred_metadata,
     std::vector<uint8_t>* new_mac,
     brillo::SecureBlob* he_secret,
-    LECredBackendError* err) {
+    LECredBackendError* err,
+    std::vector<uint8_t>* new_root) {
   *err = LE_TPM_SUCCESS;
   new_cred_metadata->clear();
   new_mac->clear();
+  // Set |new_root| to the original value, in case we return errors.
+  *new_root = fake_root_hash_;
 
   std::vector<uint8_t> orig_mac = CryptoLib::Sha256(orig_cred_metadata);
 
@@ -130,6 +138,7 @@ bool FakeLECredentialBackend::CheckCredential(
   *new_mac = CryptoLib::Sha256(*new_cred_metadata);
 
   fake_root_hash_ = RecalculateRootHash(label, *new_mac, h_aux);
+  *new_root = fake_root_hash_;
 
   return (*err == LE_TPM_SUCCESS);
 }
@@ -141,10 +150,13 @@ bool FakeLECredentialBackend::ResetCredential(
     const brillo::SecureBlob& reset_secret,
     std::vector<uint8_t>* new_cred_metadata,
     std::vector<uint8_t>* new_mac,
-    LECredBackendError* err) {
+    LECredBackendError* err,
+    std::vector<uint8_t>* new_root) {
   *err = LE_TPM_SUCCESS;
   new_cred_metadata->clear();
   new_mac->clear();
+  // Set |new_root| to the original value, in case we return errors.
+  *new_root = fake_root_hash_;
 
   std::vector<uint8_t> orig_mac = CryptoLib::Sha256(orig_cred_metadata);
 
@@ -182,6 +194,7 @@ bool FakeLECredentialBackend::ResetCredential(
   *new_mac = CryptoLib::Sha256(*new_cred_metadata);
 
   fake_root_hash_ = RecalculateRootHash(label, *new_mac, h_aux);
+  *new_root = fake_root_hash_;
 
   return (*err == LE_TPM_SUCCESS);
 }
@@ -189,7 +202,10 @@ bool FakeLECredentialBackend::ResetCredential(
 bool FakeLECredentialBackend::RemoveCredential(
     const uint64_t label,
     const std::vector<std::vector<uint8_t>>& h_aux,
-    const std::vector<uint8_t>& mac) {
+    const std::vector<uint8_t>& mac,
+    std::vector<uint8_t>* new_root) {
+  // Set |new_root| to the original value, in case we return errors.
+  *new_root = fake_root_hash_;
   std::vector<uint8_t> root_hash = RecalculateRootHash(label, mac, h_aux);
 
   if (root_hash != fake_root_hash_) {
@@ -200,6 +216,7 @@ bool FakeLECredentialBackend::RemoveCredential(
   // Create a new MAC which is all zeros.
   brillo::SecureBlob new_mac(SHA256_DIGEST_LENGTH, 0);
   fake_root_hash_ = RecalculateRootHash(label, new_mac, h_aux);
+  *new_root = fake_root_hash_;
 
   return true;
 }

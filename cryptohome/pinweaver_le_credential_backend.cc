@@ -83,7 +83,7 @@ std::string BlobToString(const std::vector<uint8_t>& blob) {
 PinweaverLECredentialBackend::PinweaverLECredentialBackend(Tpm2Impl* tpm)
     : tpm_(tpm) {}
 
-bool PinweaverLECredentialBackend::Reset() {
+bool PinweaverLECredentialBackend::Reset(std::vector<uint8_t>* new_root) {
   return PerformPinweaverOperation(
       "Reset", nullptr, [&](trunks::TpmUtility* tpm_utility) {
         uint32_t pinweaver_status;
@@ -91,6 +91,7 @@ bool PinweaverLECredentialBackend::Reset() {
         trunks::TPM_RC result = tpm_utility->PinWeaverResetTree(
             kBitsPerLevel, kLengthLabels / kBitsPerLevel, &pinweaver_status,
             &root);
+        *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
 }
@@ -111,7 +112,8 @@ bool PinweaverLECredentialBackend::InsertCredential(
     const brillo::SecureBlob& reset_secret,
     const std::map<uint32_t, uint32_t>& delay_schedule,
     std::vector<uint8_t>* cred_metadata,
-    std::vector<uint8_t>* mac) {
+    std::vector<uint8_t>* mac,
+    std::vector<uint8_t>* new_root) {
   return PerformPinweaverOperation(
       "InsertCredential", nullptr, [&](trunks::TpmUtility* tpm_utility) {
         uint32_t pinweaver_status;
@@ -125,6 +127,7 @@ bool PinweaverLECredentialBackend::InsertCredential(
 
         *cred_metadata = StringToBlob(cred_metadata_string);
         *mac = StringToBlob(mac_string);
+        *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
 }
@@ -137,7 +140,8 @@ bool PinweaverLECredentialBackend::CheckCredential(
     std::vector<uint8_t>* new_cred_metadata,
     std::vector<uint8_t>* new_mac,
     brillo::SecureBlob* he_secret,
-    LECredBackendError* err) {
+    LECredBackendError* err,
+    std::vector<uint8_t>* new_root) {
   return PerformPinweaverOperation(
       "CheckCredential", err, [&](trunks::TpmUtility* tpm_utility) {
         uint32_t pinweaver_status;
@@ -152,6 +156,7 @@ bool PinweaverLECredentialBackend::CheckCredential(
 
         *new_cred_metadata = StringToBlob(cred_metadata_string);
         *new_mac = StringToBlob(mac_string);
+        *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
 }
@@ -163,7 +168,8 @@ bool PinweaverLECredentialBackend::ResetCredential(
     const brillo::SecureBlob& reset_secret,
     std::vector<uint8_t>* new_cred_metadata,
     std::vector<uint8_t>* new_mac,
-    LECredBackendError* err) {
+    LECredBackendError* err,
+    std::vector<uint8_t>* new_root) {
   return PerformPinweaverOperation(
       "ResetCredential", err, [&](trunks::TpmUtility* tpm_utility) {
         uint32_t pinweaver_status;
@@ -178,6 +184,7 @@ bool PinweaverLECredentialBackend::ResetCredential(
 
         *new_cred_metadata = StringToBlob(cred_metadata_string);
         *new_mac = StringToBlob(mac_string);
+        *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
 }
@@ -185,7 +192,8 @@ bool PinweaverLECredentialBackend::ResetCredential(
 bool PinweaverLECredentialBackend::RemoveCredential(
     const uint64_t label,
     const std::vector<std::vector<uint8_t>>& h_aux,
-    const std::vector<uint8_t>& mac) {
+    const std::vector<uint8_t>& mac,
+    std::vector<uint8_t>* new_root) {
   return PerformPinweaverOperation(
       "RemoveCredential", nullptr, [&](trunks::TpmUtility* tpm_utility) {
         uint32_t pinweaver_status;
@@ -193,6 +201,7 @@ bool PinweaverLECredentialBackend::RemoveCredential(
         trunks::TPM_RC result = tpm_utility->PinWeaverRemoveLeaf(
             label, EncodeAuxHashes(h_aux), BlobToString(mac), &pinweaver_status,
             &root);
+        *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
 }

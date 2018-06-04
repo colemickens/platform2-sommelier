@@ -28,7 +28,7 @@ LECredentialManager::LECredentialManager(LECredentialBackend* le_backend,
 
   // Reset the root hash in the TPM to its initial value.
   if (new_hash_tree) {
-    CHECK(le_tpm_backend_->Reset());
+    CHECK(le_tpm_backend_->Reset(&root_hash_));
     hash_tree_->GenerateAndStoreHashCache();
   }
 }
@@ -58,7 +58,7 @@ LECredError LECredentialManager::InsertCredential(
   std::vector<uint8_t> cred_metadata, mac;
   bool success = le_tpm_backend_->InsertCredential(
       label.value(), h_aux, le_secret, he_secret, reset_secret, delay_sched,
-      &cred_metadata, &mac);
+      &cred_metadata, &mac, &root_hash_);
   if (!success) {
     LOG(ERROR) << "Error executing TPM InsertCredential command.";
     return LE_CRED_ERROR_HASH_TREE;
@@ -71,7 +71,8 @@ LECredError LECredentialManager::InsertCredential(
     // The insert into the disk hash tree failed, so let us remove
     // the credential from the TPM state so that we are back to where
     // we started.
-    success = le_tpm_backend_->RemoveCredential(label.value(), h_aux, mac);
+    success = le_tpm_backend_->RemoveCredential(label.value(), h_aux, mac,
+                                                &root_hash_);
     if (!success) {
       LOG(ERROR) << " Failed to rewind aborted InsertCredential in TPM, label: "
                  << label.value();
@@ -115,7 +116,8 @@ LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
     return ret;
   }
 
-  bool success = le_tpm_backend_->RemoveCredential(label, h_aux, orig_mac);
+  bool success = le_tpm_backend_->RemoveCredential(label, h_aux, orig_mac,
+                                                   &root_hash_);
   if (!success) {
     LOG(ERROR) << "Error executing TPM RemoveCredential command.";
     return LE_CRED_ERROR_HASH_TREE;
@@ -161,10 +163,10 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
   if (is_le_secret) {
     he_secret->clear();
     le_tpm_backend_->CheckCredential(label, h_aux, orig_cred, secret, &new_cred,
-                                     &new_mac, he_secret, &err);
+                                     &new_mac, he_secret, &err, &root_hash_);
   } else {
     le_tpm_backend_->ResetCredential(label, h_aux, orig_cred, secret, &new_cred,
-                                     &new_mac, &err);
+                                     &new_mac, &err, &root_hash_);
   }
 
   // Store the new credential meta data and MAC in case the backend performed a

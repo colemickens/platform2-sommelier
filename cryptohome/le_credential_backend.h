@@ -55,7 +55,9 @@ class LECredentialBackend {
   // unrecoverable error.
   //
   // Returns true on success, false otherwise.
-  virtual bool Reset() = 0;
+  //
+  // In all cases, the resulting root hash is returned in |new_root|.
+  virtual bool Reset(std::vector<uint8_t>* new_root) = 0;
 
   // Returns whether LE credential protection is supported in this specific
   // backend. Not all TPM2-based h/w will support this feature (only Cr50
@@ -79,6 +81,8 @@ class LECredentialBackend {
   //
   // |h_aux| requires a particular order: starting from left child to right
   // child, from leaf upwards till the children of the root label.
+  //
+  // In all cases, the resulting root hash is returned in |new_root|.
   virtual bool InsertCredential(
       const uint64_t label,
       const std::vector<std::vector<uint8_t>>& h_aux,
@@ -87,7 +91,8 @@ class LECredentialBackend {
       const brillo::SecureBlob& reset_secret,
       const std::map<uint32_t, uint32_t>& delay_schedule,
       std::vector<uint8_t>* cred_metadata,
-      std::vector<uint8_t>* mac) = 0;
+      std::vector<uint8_t>* mac,
+      std::vector<uint8_t>* new_root) = 0;
 
   // Tries to verify/authenticate a credential.
   //
@@ -108,6 +113,8 @@ class LECredentialBackend {
   //
   // On success, the released high entropy credential will be returned in
   // |he_secret|.
+  //
+  // In all cases, the resulting root hash is returned in |new_root|.
   virtual bool CheckCredential(const uint64_t label,
                                const std::vector<std::vector<uint8_t>>& h_aux,
                                const std::vector<uint8_t>& orig_cred_metadata,
@@ -115,7 +122,8 @@ class LECredentialBackend {
                                std::vector<uint8_t>* new_cred_metadata,
                                std::vector<uint8_t>* new_mac,
                                brillo::SecureBlob* he_secret,
-                               LECredBackendError* err) = 0;
+                               LECredBackendError* err,
+                               std::vector<uint8_t>* new_root) = 0;
 
   // Tries to reset a (potentially locked out) credential.
   //
@@ -131,13 +139,16 @@ class LECredentialBackend {
   //
   // On success, the updated credential metadata and corresponding new MAC will
   // be returned in |new_cred_metadata| and |new_mac|.
+  //
+  // In all cases, the resulting root hash is returned in |new_root|.
   virtual bool ResetCredential(const uint64_t label,
                                const std::vector<std::vector<uint8_t>>& h_aux,
                                const std::vector<uint8_t>& orig_cred_metadata,
                                const brillo::SecureBlob& reset_secret,
                                std::vector<uint8_t>* new_cred_metadata,
                                std::vector<uint8_t>* new_mac,
-                               LECredBackendError* err) = 0;
+                               LECredBackendError* err,
+                               std::vector<uint8_t>* new_root) = 0;
 
   // Removes the credential which has label |label|.
   //
@@ -145,9 +156,12 @@ class LECredentialBackend {
   // the label that needs to be removed is |mac|.
   //
   // Returns true on success, false on failure.
+  //
+  // In all cases, the resulting root hash is returned in |new_root|.
   virtual bool RemoveCredential(const uint64_t label,
                                 const std::vector<std::vector<uint8_t>>& h_aux,
-                                const std::vector<uint8_t>& mac) = 0;
+                                const std::vector<uint8_t>& mac,
+                                std::vector<uint8_t>* new_root) = 0;
 };
 
 }  // namespace cryptohome

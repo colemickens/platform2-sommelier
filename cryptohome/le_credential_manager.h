@@ -167,6 +167,8 @@ class LECredentialManager {
   bool is_locked_;
   // Pointer to an implementation of the LE Credential operations in TPM.
   LECredentialBackend* le_tpm_backend_;
+  // In-memory copy of LEBackend's root hash value.
+  std::vector<uint8_t> root_hash_;
   std::unique_ptr<SignInHashTree> hash_tree_;
 };
 

@@ -27,7 +27,7 @@ const int LE_MAX_INCORRECT_ATTEMPTS = 5;
 class FakeLECredentialBackend : public LECredentialBackend {
  public:
   FakeLECredentialBackend();
-  bool Reset() override;
+  bool Reset(std::vector<uint8_t>* new_root) override;
 
   // For the fake backend, we can always assume it's supported.
   bool IsSupported() override { return true; };
@@ -39,7 +39,8 @@ class FakeLECredentialBackend : public LECredentialBackend {
                         const brillo::SecureBlob& reset_secret,
                         const std::map<uint32_t, uint32_t>& delay_schedule,
                         std::vector<uint8_t>* cred_metadata,
-                        std::vector<uint8_t>* mac) override;
+                        std::vector<uint8_t>* mac,
+                        std::vector<uint8_t>* new_root) override;
 
   bool CheckCredential(const uint64_t label,
                        const std::vector<std::vector<uint8_t>>& h_aux,
@@ -48,7 +49,8 @@ class FakeLECredentialBackend : public LECredentialBackend {
                        std::vector<uint8_t>* new_cred_metadata,
                        std::vector<uint8_t>* new_mac,
                        brillo::SecureBlob* he_secret,
-                       LECredBackendError* err) override;
+                       LECredBackendError* err,
+                       std::vector<uint8_t>* new_root) override;
 
   bool ResetCredential(const uint64_t label,
                        const std::vector<std::vector<uint8_t>>& h_aux,
@@ -56,11 +58,13 @@ class FakeLECredentialBackend : public LECredentialBackend {
                        const brillo::SecureBlob& reset_secret,
                        std::vector<uint8_t>* new_cred_metadata,
                        std::vector<uint8_t>* new_mac,
-                       LECredBackendError* err) override;
+                       LECredBackendError* err,
+                       std::vector<uint8_t>* new_root) override;
 
   bool RemoveCredential(const uint64_t label,
                         const std::vector<std::vector<uint8_t>>& h_aux,
-                        const std::vector<uint8_t>& mac) override;
+                        const std::vector<uint8_t>& mac,
+                        std::vector<uint8_t>* new_root) override;
 
  private:
   // Helper function to calculate root hash, given a leaf with label |label|,
