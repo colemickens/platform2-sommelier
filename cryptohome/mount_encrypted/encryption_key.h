@@ -26,13 +26,14 @@ class EncryptionKey {
  public:
   EncryptionKey(SystemKeyLoader* loader, const base::FilePath& rootdir);
 
-  // Loads the system key from TPM NVRAM.
+  // Loads the system key from TPM NVRAM via |loader_|.
   result_code SetTpmSystemKey();
 
   // Determines the system key to use in a production image on Chrome OS
-  // hardware. Attempts to load the system key from TPM NVRAM or generates a new
-  // system key. As a last resort, allows to continue without a system key to
-  // cover systems where the NVRAM space is yet to be created by cryptohomed.
+  // hardware. Attempts to load the system key from TPM NVRAM via |loader_| or
+  // generates a new system key. As a last resort, allows to continue without a
+  // system key to cover systems where the NVRAM space is yet to be created by
+  // cryptohomed.
   result_code LoadChromeOSSystemKey();
 
   // While ChromeOS devices can store the system key in the NVRAM area, all the
@@ -43,9 +44,6 @@ class EncryptionKey {
   // Loads the insecure well-known factory system key. This is used on factory
   // images instead of a proper key.
   result_code SetFactorySystemKey();
-
-  // Initialize with a passed-in system key.
-  result_code SetExternalSystemKey(const brillo::SecureBlob& system_key);
 
   // Load the encryption key from disk using the previously loaded system key.
   result_code LoadEncryptionKey();

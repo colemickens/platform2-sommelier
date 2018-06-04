@@ -254,4 +254,29 @@ class SystemKeyLoader {
   virtual result_code CheckLockbox(bool* valid) = 0;
 };
 
+// A SystemKeyLoader implementation backed by a fixed system key supplied at
+// construction time.
+class FixedSystemKeyLoader : public SystemKeyLoader {
+ public:
+  explicit FixedSystemKeyLoader(const brillo::SecureBlob& key) : key_(key) {}
+  virtual ~FixedSystemKeyLoader() = default;
+
+  result_code Load(brillo::SecureBlob* key, bool* migrate) override {
+    *key = key_;
+    return RESULT_SUCCESS;
+  }
+  brillo::SecureBlob Generate() override { return brillo::SecureBlob(); }
+  result_code Persist() override { return RESULT_FAIL_FATAL; }
+  void Lock() override {}
+  result_code SetupTpm() override { return RESULT_FAIL_FATAL; }
+  result_code GenerateForPreservation(brillo::SecureBlob* previous_key,
+                                      brillo::SecureBlob* fresh_key) override {
+    return RESULT_FAIL_FATAL;
+  }
+  result_code CheckLockbox(bool* valid) override { return RESULT_FAIL_FATAL; }
+
+ private:
+  brillo::SecureBlob key_;
+};
+
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_

@@ -278,15 +278,25 @@ void remove_pending() {
   }
 }
 
-/* This triggers the live encryption key to be written to disk, encrypted
- * by the system key. It is intended to be called by Cryptohome once the
- * TPM is done being set up. If the system key is passed as an argument,
- * use it, otherwise attempt to query the TPM again.
- */
+// This triggers the live encryption key to be written to disk, encrypted by the
+// system key. It is intended to be called by Cryptohome once the TPM is done
+// being set up. If the system key is passed as an argument, use it, otherwise
+// attempt to query the TPM again.
 static result_code finalize_from_cmdline(char* key) {
-  uint8_t system_key[DIGEST_LENGTH];
-  char* encryption_key;
-  result_code rc;
+  // Load the system key.
+  brillo::SecureBlob system_key;
+  if (!base::HexStringToBytes(key, &system_key) ||
+      system_key.size() != DIGEST_LENGTH) {
+    LOG(ERROR) << "Failed to parse system key.";
+    return RESULT_FAIL_FATAL;
+  }
+
+  FixedSystemKeyLoader loader(system_key);
+  EncryptionKey key_manager(&loader, base::FilePath(rootdir));
+  result_code rc = key_manager.SetTpmSystemKey();
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
 
   // If there already is an encrypted system key on disk, there is nothing to
   // do. This also covers cases where the system key is not derived from the
@@ -295,47 +305,12 @@ static result_code finalize_from_cmdline(char* key) {
   // appropriate to replace the system key. For cases where finalization is
   // unfinished, we clear any stale system keys from disk to make sure we pass
   // the check here.
-  Tpm tpm;
-  auto loader = SystemKeyLoader::Create(&tpm, base::FilePath(rootdir));
-  EncryptionKey key_manager(loader.get(), base::FilePath(rootdir));
-  if (base::PathExists(key_manager.key_path()))
+  if (base::PathExists(key_manager.key_path())) {
     return RESULT_SUCCESS;
-
-  /* Early sanity-check to see if the encrypted device exists,
-   * instead of failing at the end of this function.
-   */
-  if (access(dmcrypt_dev, R_OK)) {
-    ERROR("'%s' does not exist, giving up.", dmcrypt_dev);
-    return RESULT_FAIL_FATAL;
-  }
-
-  // Load the system key.
-  if (key) {
-    if (strlen(key) != 2 * DIGEST_LENGTH) {
-      ERROR("Invalid key length.");
-      return RESULT_FAIL_FATAL;
-    }
-
-    if (!hexify_string(key, system_key, DIGEST_LENGTH)) {
-      ERROR("Failed to convert hex string to byte array");
-      return RESULT_FAIL_FATAL;
-    }
-
-    rc = key_manager.SetExternalSystemKey(
-        brillo::SecureBlob(system_key, system_key + DIGEST_LENGTH));
-    if (rc != RESULT_SUCCESS) {
-      return rc;
-    }
-  } else {
-    rc = key_manager.SetTpmSystemKey();
-    if (rc != RESULT_SUCCESS) {
-      ERROR("Could not locate system key.");
-      return rc;
-    }
   }
 
   // Load the encryption key.
-  encryption_key = dm_get_key(dmcrypt_dev);
+  char* encryption_key = dm_get_key(dmcrypt_dev);
   if (!encryption_key) {
     ERROR("Could not locate encryption key for %s.", dmcrypt_dev);
     return RESULT_FAIL_FATAL;

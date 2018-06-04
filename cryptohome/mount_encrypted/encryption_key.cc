@@ -249,17 +249,6 @@ result_code EncryptionKey::LoadChromeOSSystemKey() {
   return RESULT_SUCCESS;
 }
 
-result_code EncryptionKey::SetExternalSystemKey(
-    const brillo::SecureBlob& system_key) {
-  if (system_key.size() != DIGEST_LENGTH) {
-    LOG(ERROR) << "Invalid key length.";
-    return RESULT_FAIL_FATAL;
-  }
-
-  system_key_ = std::move(system_key);
-  return RESULT_SUCCESS;
-}
-
 result_code EncryptionKey::LoadEncryptionKey() {
   if (!system_key_.empty()) {
     if (ReadKeyFile(key_path_, &encryption_key_, system_key_)) {
