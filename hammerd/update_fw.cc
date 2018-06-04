@@ -379,7 +379,7 @@ bool FirmwareUpdater::UnlockRollback() {
 bool FirmwareUpdater::TransferImage(SectionName section_name) {
   const uint8_t* image_ptr = reinterpret_cast<const uint8_t*>(ec_image_.data());
   auto section = sections_[static_cast<int>(section_name)];
-  LOG(INFO) << "Section to be updated: " << section.name;
+  LOG(INFO) << "Section to be updated: " << ToString(section.name);
   if (section.offset + section.size > ec_image_.size()) {
     LOG(ERROR) << "EC image length (" << ec_image_.size()
                << ") is smaller than transfer requirements: " << section.offset
