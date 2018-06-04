@@ -430,7 +430,7 @@ int V4L2VideoNode::Start() {
   VLOGF(1) << "Starting device " << name_;
   base::AutoLock l(state_lock_);
   if (state_ != VideoNodeState::PREPARED) {
-    LOGF(ERROR) << "Invalid device state " << state_;
+    LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
     return -1;
   }
 
@@ -453,7 +453,7 @@ int V4L2VideoNode::SetFormat(const V4L2Format& format) {
   if ((state_ != VideoNodeState::OPEN) &&
       (state_ != VideoNodeState::CONFIGURED) &&
       (state_ != VideoNodeState::PREPARED)) {
-    LOGF(ERROR) << "Invalid device state " << state_;
+    LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
     return -EINVAL;
   }
 
@@ -505,7 +505,7 @@ int V4L2VideoNode::SetSelection(const struct v4l2_selection& selection) {
   base::AutoLock l(state_lock_);
   if ((state_ != VideoNodeState::OPEN) &&
       (state_ != VideoNodeState::CONFIGURED)) {
-    LOGF(ERROR) << "Invalid device state " << state_;
+    LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
     return -EINVAL;
   }
 
@@ -536,7 +536,7 @@ int V4L2VideoNode::MapMemory(unsigned int index,
   if ((state_ != VideoNodeState::OPEN) &&
       (state_ != VideoNodeState::CONFIGURED) &&
       (state_ != VideoNodeState::PREPARED)) {
-    LOGF(ERROR) << "Invalid device state " << state_;
+    LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
     return -EINVAL;
   }
   if (memory_type_ != V4L2_MEMORY_MMAP) {
@@ -572,7 +572,8 @@ int V4L2VideoNode::GrabFrame(V4L2Buffer* buf) {
   VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if (state_ != VideoNodeState::STARTED) {
-    LOGF(ERROR) << name_ << " invalid device state " << state_;
+    LOGF(ERROR) << name_ << " invalid device state "
+                << static_cast<int>(state_);
     return -EINVAL;
   }
   if (!buf) {
@@ -646,7 +647,7 @@ int V4L2VideoNode::SetupBuffers(size_t num_buffers,
   if ((state_ != VideoNodeState::CONFIGURED)) {
     LOGF(ERROR) << name_
                 << " invalid operation, device not configured (state = "
-                << state_ << ")";
+                << static_cast<int>(state_) << ")";
     return -EINVAL;
   }
 
@@ -802,7 +803,8 @@ int V4L2VideoNode::GetFormat(V4L2Format* format) {
   base::AutoLock l(state_lock_);
   if ((state_ != VideoNodeState::OPEN) &&
       (state_ != VideoNodeState::CONFIGURED)) {
-    LOGF(ERROR) << name_ << " invalid device state " << state_;
+    LOGF(ERROR) << name_ << " invalid device state "
+                << static_cast<int>(state_);
     return -EINVAL;
   }
 

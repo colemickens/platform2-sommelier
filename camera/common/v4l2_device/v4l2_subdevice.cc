@@ -63,7 +63,7 @@ int V4L2Subdevice::SetFormat(const struct v4l2_subdev_format& format) {
   VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != SubdevState::OPEN) && (state_ != SubdevState::CONFIGURED)) {
-    LOGF(ERROR) << "Invalid device state " << state_;
+    LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
     return -EINVAL;
   }
 
@@ -97,7 +97,7 @@ int V4L2Subdevice::GetFormat(struct v4l2_subdev_format* format) {
   VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != SubdevState::OPEN) && (state_ != SubdevState::CONFIGURED)) {
-    LOGF(ERROR) << "Invalid device state " << state_;
+    LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
     return -EINVAL;
   }
 
@@ -143,7 +143,7 @@ int V4L2Subdevice::SetSelection(const struct v4l2_subdev_selection& selection) {
   VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != SubdevState::OPEN) && (state_ != SubdevState::CONFIGURED)) {
-    LOGF(ERROR) << "Invalid device state " << state_;
+    LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
     return -EINVAL;
   }
 
