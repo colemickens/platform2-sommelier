@@ -1,5 +1,10 @@
 # Chrome OS file contexts.
 /sbin/init                      u:object_r:chromeos_init_exec:s0
+/sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
+
+/usr/bin/shill                  u:object_r:cros_shill_exec:s0
+
+/var/log/messages               u:object_r:cros_syslog:s0
 
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
@@ -71,3 +76,7 @@
 
 # Chrome OS shared memory files.
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0
+
+
+/lib64(/.*)?                    u:object_r:cros_system_file:s0
+/lib(/.*)?                      u:object_r:cros_system_file:s0

@@ -1,0 +1,2 @@
+define(`arc', ifelse(arc_version, `none', , $1))
+define(`no_arc', ifelse(arc_version, `none', $1, ))

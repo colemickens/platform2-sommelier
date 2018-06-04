@@ -1,15 +1,19 @@
 # Life begins with the kernel.
 type kernel, chromeos_domain, domain, mlstrustedobject;
 
+permissive kernel;
+
 r_dir_file(kernel, rootfs)
 r_dir_file(kernel, sysfs)
+
+# allow kernel unlabeled:file { execute execute_no_trans };
 
 allow kernel selinuxfs:dir r_dir_perms;
 allow kernel selinuxfs:file rw_file_perms;
 allow kernel self:security setcheckreqprot;
 
 allow kernel unlabeled:dir search;
-allow kernel unlabeled:file { execute execute_no_trans };
+allow kernel cros_system_file:dir search;
 
 # TODO: label device file in more detail.
 allow kernel device:dir { search write };

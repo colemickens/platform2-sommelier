@@ -1,7 +1,7 @@
 DO NOT TOUCH FILES UNDER THIS DIRECTORY
 UNLESS YOU KNOW WHAT YOU'RE DOING.
 
-Files under this directory are the base essentials for ChromeOS policy.
+Files under this directory are the base essentials for Chrome OS policy.
 
 All policies in these file will be filtered out before combining with
 Android policies.

@@ -1,0 +1,7 @@
+# SELinux policy for Shill component of Chrome OS.
+
+type cros_shill, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_shill;
+
+domain_auto_trans(chromeos_domain, cros_shill_exec, cros_shill);

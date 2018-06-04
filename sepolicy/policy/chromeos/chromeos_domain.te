@@ -22,11 +22,11 @@ allow chromeos_domain self:process {
 
 allow chromeos_domain self:unix_stream_socket { create_stream_socket_perms connectto };
 allow chromeos_domain self:{ fifo_file file } rw_file_perms;
+allow chromeos_domain cros_system_file:file execute;
 
 r_dir_file(chromeos_domain, self)
 r_dir_file(chromeos_domain, proc)
 
 
-# TODO: delete this.
-r_dir_file(chromeos_domain, unlabeled)
+r_dir_file(chromeos_domain, cros_system_file)
 

@@ -1,0 +1,17 @@
+# SELinux policy for crash reporting.
+
+type cros_crash, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_crash;
+
+allow cros_crash chromeos:fd use;
+
+allow cros_crash devpts:chr_file rw_file_perms;
+allow cros_crash null_device:chr_file rw_file_perms;
+allow cros_crash device:chr_file rw_file_perms;
+
+allow cros_crash cros_syslog:file r_file_perms;
+
+allow cros_crash unlabeled:dir search;
+
+domain_auto_trans(chromeos_domain, cros_crash_reporter_exec, cros_crash);

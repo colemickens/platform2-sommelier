@@ -1,5 +1,15 @@
+
+# TODO(fqj): add exec_type attribute and neverallow non-exec to be entrypoint.
+type cros_system_file, file_type;
+type cros_crash_reporter_exec, file_type;
+type cros_shill_exec, file_type;
+
+type cros_syslog, file_type;
+
+
 allow fs_type self:filesystem associate;
 allow file_type labeledfs:filesystem associate;
 allow tmpfs labeledfs:filesystem associate;
 allow chromeos_domain tmpfs:dir { getattr read setattr };
 allow chromeos_domain tmpfs:dir create_dir_perms;
+
