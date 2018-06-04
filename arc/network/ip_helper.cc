@@ -77,15 +77,18 @@ void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
   CHECK_EQ(fd, control_fd_.get());
 
   char buffer[1024];
-  ssize_t len = read(fd, buffer, sizeof(buffer));
+  std::vector<base::ScopedFD> fds{};
+  ssize_t len =
+      base::UnixDomainSocket::RecvMsg(fd, buffer, sizeof(buffer), &fds);
 
-  if (len == 0) {
+  // Exit whenever read fails or fd is closed.
+  if (len <= 0) {
+    LOG(ERROR) << "Read returned " << len;
     // The other side closed the connection.
     control_watcher_.StopWatchingFileDescriptor();
     Quit();
     return;
   }
-  CHECK_GT(len, 0);
 
   if (!pending_command_.ParseFromArray(buffer, len)) {
     LOG(FATAL) << "error parsing protobuf";
