@@ -16,7 +16,8 @@ namespace bluetooth {
 // Main class within btdispatch daemon that ties all other classes together.
 class DispatcherDaemon : public BluetoothDaemon {
  public:
-  DispatcherDaemon() = default;
+  // |passthrough_mode|: Pure D-Bus forwarding to/from BlueZ or NewBlue.
+  explicit DispatcherDaemon(PassthroughMode passthrough_mode);
   ~DispatcherDaemon() = default;
 
   // Initializes the daemon D-Bus operations.
@@ -29,6 +30,8 @@ class DispatcherDaemon : public BluetoothDaemon {
 
   // Exposes BlueZ-compatible D-Bus API and handles the client requests.
   std::unique_ptr<Dispatcher> dispatcher_;
+
+  PassthroughMode passthrough_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(DispatcherDaemon);
 };

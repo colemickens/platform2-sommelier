@@ -16,6 +16,19 @@
 
 namespace bluetooth {
 
+// Normally the dispatcher task is to multiplex both BlueZ and NewBlue. This
+// enum allows the dispatcher to be configured to passthrough the D-Bus traffic
+// to/from BlueZ or NewBlue, acting as a pure proxy.
+enum class PassthroughMode {
+  // The normal BlueZ/NewBlue multiplexing. This is not yet supported and
+  // fallbacks to BlueZ passthrough.
+  MULTIPLEX = 0,
+  // Pure D-Bus forwarding to/from BlueZ.
+  BLUEZ_ONLY = 1,
+  // Pure D-Bus forwarding to/from NewBlue.
+  NEWBLUE_ONLY = 2,
+};
+
 // Exports BlueZ-compatible API and dispatches the requests to BlueZ or newblue.
 class Dispatcher {
  public:
@@ -23,7 +36,7 @@ class Dispatcher {
   ~Dispatcher();
 
   // Initializes the daemon D-Bus operations.
-  bool Init();
+  bool Init(PassthroughMode mode);
 
   // Frees up all resources, stopping all D-Bus operations.
   // Currently only needed in test.
@@ -37,8 +50,8 @@ class Dispatcher {
   std::unique_ptr<ExportedObjectManagerWrapper>
       exported_object_manager_wrapper_;
 
-  // Connects to BlueZ's object manager. Owned by |bus_|.
-  dbus::ObjectManager* bluez_object_manager_;
+  // Connects to the source object manager (BlueZ or NewBlue). Owned by |bus_|.
+  dbus::ObjectManager* source_object_manager_;
 
   // Impersonates BlueZ's objects on various interfaces.
   std::map<std::string, std::unique_ptr<ImpersonationObjectManagerInterface>>

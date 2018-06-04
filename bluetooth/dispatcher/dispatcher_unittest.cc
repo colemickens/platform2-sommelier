@@ -27,7 +27,6 @@ class DispatcherTest : public ::testing::Test {
     bus_ = new dbus::MockBus(dbus::Bus::Options());
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, GetDBusTaskRunner())
-        .Times(1)
         .WillOnce(Return(message_loop_.task_runner().get()));
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, Connect()).WillRepeatedly(Return(false));
@@ -41,7 +40,7 @@ class DispatcherTest : public ::testing::Test {
                            bluez_object_manager::kBluezObjectManagerServiceName,
                            object_manager_path))
         .WillOnce(Return(object_manager_object_proxy_.get()));
-    bluez_object_manager_ = new dbus::MockObjectManager(
+    source_object_manager_ = new dbus::MockObjectManager(
         bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
         object_manager_path);
     // Force MessageLoop to run pending tasks as effect of instantiating
@@ -52,81 +51,98 @@ class DispatcherTest : public ::testing::Test {
   }
 
  protected:
+  void TestPassthrough(PassthroughMode passthrough_mode,
+                       std::string source_object_manager_service_name) {
+    dbus::ObjectPath root_path(
+        bluetooth_object_manager::kBluetoothObjectManagerServicePath);
+
+    scoped_refptr<dbus::MockExportedObject> exported_root_object =
+        new dbus::MockExportedObject(bus_.get(), root_path);
+    EXPECT_CALL(*bus_, GetExportedObject(root_path))
+        .WillOnce(Return(exported_root_object.get()));
+
+    EXPECT_CALL(
+        *bus_,
+        RequestOwnershipAndBlock(
+            bluetooth_object_manager::kBluetoothObjectManagerServiceName, _))
+        .WillOnce(Return(true));
+
+    EXPECT_CALL(*bus_,
+                GetObjectManager(source_object_manager_service_name, root_path))
+        .WillOnce(Return(source_object_manager_.get()));
+
+    // org.freedesktop.DBus.ObjectManager interface methods should be exported.
+    EXPECT_CALL(*exported_root_object,
+                ExportMethod(dbus::kObjectManagerInterface,
+                             dbus::kObjectManagerGetManagedObjects, _, _))
+        .Times(1);
+    EXPECT_CALL(*exported_root_object,
+                ExportMethod(dbus::kObjectManagerInterface,
+                             dbus::kObjectManagerInterfacesAdded, _, _))
+        .Times(1);
+    EXPECT_CALL(*exported_root_object,
+                ExportMethod(dbus::kObjectManagerInterface,
+                             dbus::kObjectManagerInterfacesRemoved, _, _))
+        .Times(1);
+
+    // org.freedesktop.DBus.Properties interface methods should be exported.
+    EXPECT_CALL(*exported_root_object, ExportMethod(dbus::kPropertiesInterface,
+                                                    dbus::kPropertiesGet, _, _))
+        .Times(1);
+    EXPECT_CALL(*exported_root_object, ExportMethod(dbus::kPropertiesInterface,
+                                                    dbus::kPropertiesSet, _, _))
+        .Times(1);
+    EXPECT_CALL(
+        *exported_root_object,
+        ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesGetAll, _, _))
+        .Times(1);
+
+    std::vector<std::string> bluez_interfaces = {
+        bluetooth_adapter::kBluetoothAdapterInterface,
+        bluetooth_device::kBluetoothDeviceInterface,
+        bluetooth_gatt_characteristic::kBluetoothGattCharacteristicInterface,
+        bluetooth_input::kBluetoothInputInterface,
+        bluetooth_media::kBluetoothMediaInterface,
+        bluetooth_gatt_service::kBluetoothGattServiceInterface,
+        bluetooth_advertising_manager::kBluetoothAdvertisingManagerInterface,
+        bluetooth_gatt_descriptor::kBluetoothGattDescriptorInterface,
+        bluetooth_media_transport::kBluetoothMediaTransportInterface,
+    };
+
+    // Should listen to BlueZ interfaces.
+    for (const std::string& interface_name : bluez_interfaces)
+      EXPECT_CALL(*source_object_manager_,
+                  RegisterInterface(interface_name, _));
+    dispatcher_->Init(passthrough_mode);
+
+    // Free up all resources.
+    EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
+    for (const std::string& interface_name : bluez_interfaces)
+      EXPECT_CALL(*source_object_manager_, UnregisterInterface(interface_name));
+    dispatcher_->Shutdown();
+  }
+
   base::MessageLoop message_loop_;
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> object_manager_object_proxy_;
-  scoped_refptr<dbus::MockObjectManager> bluez_object_manager_;
+  scoped_refptr<dbus::MockObjectManager> source_object_manager_;
   std::unique_ptr<Dispatcher> dispatcher_;
 };
 
-TEST_F(DispatcherTest, Default) {
-  dbus::ObjectPath root_path(
-      bluetooth_object_manager::kBluetoothObjectManagerServicePath);
+TEST_F(DispatcherTest, NoPassthrough) {
+  // No passthrough fallbacks to BlueZ passthrough.
+  TestPassthrough(PassthroughMode::MULTIPLEX,
+                  bluez_object_manager::kBluezObjectManagerServiceName);
+}
 
-  scoped_refptr<dbus::MockExportedObject> exported_root_object =
-      new dbus::MockExportedObject(bus_.get(), root_path);
-  EXPECT_CALL(*bus_, GetExportedObject(root_path))
-      .WillOnce(Return(exported_root_object.get()));
+TEST_F(DispatcherTest, PassthroughBluez) {
+  TestPassthrough(PassthroughMode::BLUEZ_ONLY,
+                  bluez_object_manager::kBluezObjectManagerServiceName);
+}
 
-  EXPECT_CALL(
-      *bus_,
-      RequestOwnershipAndBlock(
-          bluetooth_object_manager::kBluetoothObjectManagerServiceName, _))
-      .WillOnce(Return(true));
-
-  EXPECT_CALL(*bus_, GetObjectManager(
-                         bluez_object_manager::kBluezObjectManagerServiceName,
-                         root_path))
-      .WillOnce(Return(bluez_object_manager_.get()));
-
-  // org.freedesktop.DBus.ObjectManager interface methods should be exported.
-  EXPECT_CALL(*exported_root_object,
-              ExportMethod(dbus::kObjectManagerInterface,
-                           dbus::kObjectManagerGetManagedObjects, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_root_object,
-              ExportMethod(dbus::kObjectManagerInterface,
-                           dbus::kObjectManagerInterfacesAdded, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_root_object,
-              ExportMethod(dbus::kObjectManagerInterface,
-                           dbus::kObjectManagerInterfacesRemoved, _, _))
-      .Times(1);
-
-  // org.freedesktop.DBus.Properties interface methods should be exported.
-  EXPECT_CALL(*exported_root_object, ExportMethod(dbus::kPropertiesInterface,
-                                                  dbus::kPropertiesGet, _, _))
-      .Times(1);
-  EXPECT_CALL(*exported_root_object, ExportMethod(dbus::kPropertiesInterface,
-                                                  dbus::kPropertiesSet, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *exported_root_object,
-      ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesGetAll, _, _))
-      .Times(1);
-
-  std::vector<std::string> bluez_interfaces = {
-      bluetooth_adapter::kBluetoothAdapterInterface,
-      bluetooth_device::kBluetoothDeviceInterface,
-      bluetooth_gatt_characteristic::kBluetoothGattCharacteristicInterface,
-      bluetooth_input::kBluetoothInputInterface,
-      bluetooth_media::kBluetoothMediaInterface,
-      bluetooth_gatt_service::kBluetoothGattServiceInterface,
-      bluetooth_advertising_manager::kBluetoothAdvertisingManagerInterface,
-      bluetooth_gatt_descriptor::kBluetoothGattDescriptorInterface,
-      bluetooth_media_transport::kBluetoothMediaTransportInterface,
-  };
-
-  // Should listen to BlueZ interfaces.
-  for (const std::string& interface_name : bluez_interfaces)
-    EXPECT_CALL(*bluez_object_manager_, RegisterInterface(interface_name, _));
-  dispatcher_->Init();
-
-  // Free up all resources.
-  EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
-  for (const std::string& interface_name : bluez_interfaces)
-    EXPECT_CALL(*bluez_object_manager_, UnregisterInterface(interface_name));
-  dispatcher_->Shutdown();
+TEST_F(DispatcherTest, PassthroughNewblue) {
+  TestPassthrough(PassthroughMode::NEWBLUE_ONLY,
+                  newblue_object_manager::kNewblueObjectManagerServiceName);
 }
 
 }  // namespace bluetooth

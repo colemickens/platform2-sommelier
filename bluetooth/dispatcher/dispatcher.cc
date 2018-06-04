@@ -20,7 +20,17 @@ Dispatcher::Dispatcher(scoped_refptr<dbus::Bus> bus)
 
 Dispatcher::~Dispatcher() = default;
 
-bool Dispatcher::Init() {
+bool Dispatcher::Init(PassthroughMode mode) {
+  // PassthroughMode::MULTIPLEX fallbacks to PassthroughMode::BLUEZ_ONLY
+  // as it's not yet supported.
+  // TODO(sonnysasaka): Add support for BlueZ-NewBlue multiplex.
+  std::string object_manager_service_name =
+      (mode == PassthroughMode::NEWBLUE_ONLY)
+          ? newblue_object_manager::kNewblueObjectManagerServiceName
+          : bluez_object_manager::kBluezObjectManagerServiceName;
+  std::string object_manager_service_path =
+      bluetooth_object_manager::kBluetoothObjectManagerServicePath;
+
   if (!bus_->RequestOwnershipAndBlock(
           bluetooth_object_manager::kBluetoothObjectManagerServiceName,
           dbus::Bus::REQUIRE_PRIMARY)) {
@@ -30,17 +40,15 @@ bool Dispatcher::Init() {
 
   auto exported_object_manager =
       std::make_unique<brillo::dbus_utils::ExportedObjectManager>(
-          bus_,
-          dbus::ObjectPath(
-              bluetooth_object_manager::kBluetoothObjectManagerServicePath));
+          bus_, dbus::ObjectPath(object_manager_service_path));
 
   exported_object_manager_wrapper_ =
       std::make_unique<ExportedObjectManagerWrapper>(
           bus_, std::move(exported_object_manager));
 
-  bluez_object_manager_ = bus_->GetObjectManager(
-      bluez_object_manager::kBluezObjectManagerServiceName,
-      dbus::ObjectPath(bluez_object_manager::kBluezObjectManagerServicePath));
+  source_object_manager_ =
+      bus_->GetObjectManager(object_manager_service_name,
+                             dbus::ObjectPath(object_manager_service_path));
 
   // Convenient temporary variable to hold InterfaceHandler's indexed by its
   // interface name to be registered.
@@ -76,9 +84,8 @@ bool Dispatcher::Init() {
     auto interface = std::make_unique<ImpersonationObjectManagerInterface>(
         bus_.get(), exported_object_manager_wrapper_.get(),
         std::move(kv.second), interface_name, dbus_connection_factory_.get());
-    interface->RegisterToObjectManager(
-        bluez_object_manager_,
-        bluez_object_manager::kBluezObjectManagerServiceName);
+    interface->RegisterToObjectManager(source_object_manager_,
+                                       object_manager_service_name);
     impersonation_object_manager_interfaces_.emplace(interface_name,
                                                      std::move(interface));
   }
@@ -88,7 +95,7 @@ bool Dispatcher::Init() {
 
 void Dispatcher::Shutdown() {
   for (const auto& kv : impersonation_object_manager_interfaces_) {
-    bluez_object_manager_->UnregisterInterface(kv.first);
+    source_object_manager_->UnregisterInterface(kv.first);
   }
   impersonation_object_manager_interfaces_.clear();
   exported_object_manager_wrapper_.reset();

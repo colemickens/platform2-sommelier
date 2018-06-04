@@ -8,6 +8,9 @@
 
 namespace bluetooth {
 
+DispatcherDaemon::DispatcherDaemon(PassthroughMode passthrough_mode)
+    : passthrough_mode_(passthrough_mode) {}
+
 bool DispatcherDaemon::Init(scoped_refptr<dbus::Bus> bus) {
   LOG(INFO) << "Bluetooth daemon started";
 
@@ -16,7 +19,7 @@ bool DispatcherDaemon::Init(scoped_refptr<dbus::Bus> bus) {
 
   suspend_manager_->Init();
 
-  return dispatcher_->Init();
+  return dispatcher_->Init(passthrough_mode_);
 }
 
 }  // namespace bluetooth
