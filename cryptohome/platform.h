@@ -861,6 +861,15 @@ class Platform {
 
   void PostWorkerTask(const base::Closure& task);
 
+  // Reads file at |path| into a blob-like object.
+  // <T> needs to implement:
+  // * .size()
+  // * .resize()
+  // * .data()
+  // This function will attempt to verify a checksum for the file at |path|.
+  template <class T>
+  bool ReadFileToBlob(const base::FilePath& path, T* blob);
+
   // Computes a checksum and returns an ASCII representation.
   std::string GetChecksum(const void* input, size_t input_size);
 
@@ -875,7 +884,6 @@ class Platform {
   void VerifyChecksum(const base::FilePath& path,
                       const void* content,
                       size_t content_size);
-
 
   // Returns list of mounts from |mount_info_path_| file.
   std::vector<DecodedProcMountInfo> ReadMountInfoFile();

@@ -658,31 +658,7 @@ bool Platform::TouchFileDurable(const FilePath& path) {
 }
 
 bool Platform::ReadFile(const FilePath& path, brillo::Blob* blob) {
-  int64_t file_size;
-  if (!base::PathExists(path)) {
-    return false;
-  }
-  if (!base::GetFileSize(path, &file_size)) {
-    LOG(ERROR) << "Could not get size of " << path.value();
-    return false;
-  }
-  // Compare to the max of a signed integer.
-  if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
-    LOG(ERROR) << "File " << path.value() << " is too large: " << file_size
-               << " bytes.";
-    return false;
-  }
-  brillo::Blob buf(file_size);
-  int data_read =
-      base::ReadFile(path, reinterpret_cast<char*>(buf.data()), file_size);
-  // Cast is okay because of comparison to INT_MAX above.
-  if (data_read != static_cast<int>(file_size)) {
-    LOG(ERROR) << "Only read " << data_read << " of " << file_size << " bytes.";
-    return false;
-  }
-  blob->swap(buf);
-  VerifyChecksum(path, blob->data(), blob->size());
-  return true;
+  return ReadFileToBlob<brillo::Blob>(path, blob);
 }
 
 bool Platform::ReadFileToString(const FilePath& path, std::string* string) {
@@ -695,12 +671,7 @@ bool Platform::ReadFileToString(const FilePath& path, std::string* string) {
 
 bool Platform::ReadFileToSecureBlob(const FilePath& path,
                                     brillo::SecureBlob* sblob) {
-  brillo::Blob buf;
-  if (!ReadFile(path, &buf)) {
-    return false;
-  }
-  sblob->assign(buf.begin(), buf.end());
-  return true;
+  return ReadFileToBlob<brillo::SecureBlob>(path, sblob);
 }
 
 bool Platform::CreateDirectory(const FilePath& path) {
@@ -1408,6 +1379,35 @@ bool Platform::WalkPath(const FilePath& path,
         return false;
     }
   }
+  return true;
+}
+
+template <class T>
+bool Platform::ReadFileToBlob(const FilePath& path, T* blob) {
+  int64_t file_size;
+  if (!base::PathExists(path)) {
+    return false;
+  }
+  if (!base::GetFileSize(path, &file_size)) {
+    LOG(ERROR) << "Could not get size of " << path.value();
+    return false;
+  }
+  // Compare to the max of a signed integer.
+  if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
+    LOG(ERROR) << "File " << path.value() << " is too large: " << file_size
+               << " bytes.";
+    return false;
+  }
+  blob->resize(file_size);
+  int data_read =
+      base::ReadFile(path, reinterpret_cast<char*>(blob->data()), blob->size());
+  // Cast is okay because of comparison to INT_MAX above.
+  if (data_read != static_cast<int>(file_size)) {
+    LOG(ERROR) << "Only read " << data_read << " of " << file_size << " bytes"
+               << " from " << path.value() << ".";
+    return false;
+  }
+  VerifyChecksum(path, blob->data(), blob->size());
   return true;
 }
 
