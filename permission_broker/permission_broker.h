@@ -21,6 +21,7 @@
 #include "permission_broker/firewall.h"
 #include "permission_broker/port_tracker.h"
 #include "permission_broker/rule_engine.h"
+#include "permission_broker/usb_control.h"
 #include "permission_broker/usb_driver_tracker.h"
 
 namespace permission_broker {
@@ -63,6 +64,11 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                        const std::string& interface,
                        const base::ScopedFD& dbus_fd) override;
   bool RemoveVpnSetup() override;
+  void PowerCycleUsbPorts(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+      uint16_t in_vid,
+      uint16_t in_pid,
+      int64_t in_delay) override;
 
   // Grants access to |path|, which is accomplished by changing the owning group
   // on the path to the one specified numerically by the 'access_group' flag.
@@ -74,6 +80,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   gid_t access_group_;
   Firewall firewall_;
   PortTracker port_tracker_;
+  UsbControl usb_control_;
   UsbDriverTracker usb_driver_tracker_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);

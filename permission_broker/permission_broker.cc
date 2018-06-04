@@ -16,6 +16,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/userdb_utils.h>
@@ -32,7 +34,9 @@
 #include "permission_broker/deny_unsafe_hidraw_device_rule.h"
 #include "permission_broker/deny_usb_device_class_rule.h"
 #include "permission_broker/deny_usb_vendor_id_rule.h"
+#include "permission_broker/libusb_wrapper.h"
 #include "permission_broker/rule.h"
+#include "permission_broker/usb_control.h"
 
 using permission_broker::AllowGroupTtyDeviceRule;
 using permission_broker::AllowHidrawDeviceRule;
@@ -92,7 +96,8 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
       rule_engine_(udev_run_path, poll_interval_msecs),
       dbus_object_(nullptr, bus,
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
-      port_tracker_(&firewall_) {
+      port_tracker_(&firewall_),
+      usb_control_(std::make_unique<UsbDeviceManager>()) {
   CHECK(brillo::userdb::GetGroupInfo(access_group_name, &access_group_))
       << "You must specify a group name via the --access_group flag.";
   rule_engine_.AddRule(new AllowUsbDeviceRule());
@@ -221,6 +226,27 @@ bool PermissionBroker::RequestVpnSetup(
 
 bool PermissionBroker::RemoveVpnSetup() {
   return port_tracker_.RemoveVpnSetup();
+}
+
+void PowerCycleUsbPortsResultCallback(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    bool result) {
+  response->Return(result);
+}
+
+void PermissionBroker::PowerCycleUsbPorts(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    uint16_t in_vid,
+    uint16_t in_pid,
+    int64_t in_delay) {
+
+  usb_control_.PowerCycleUsbPorts(
+      base::Bind(
+          &PowerCycleUsbPortsResultCallback,
+          base::Passed(std::move(response))),
+      in_vid,
+      in_pid,
+      base::TimeDelta::FromInternalValue(in_delay));
 }
 
 bool PermissionBroker::GrantAccess(const std::string& path) {
