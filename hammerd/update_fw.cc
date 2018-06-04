@@ -488,7 +488,8 @@ bool FirmwareUpdater::SendFirstPdu() {
     if (rxed_size < kMinimumResponseSize) {
       LOG(ERROR) << "Unexpected response size: " << rxed_size
                  << ". Response content: "
-                 << base::HexEncode(reinterpret_cast<uint8_t*>(&rpdu), rxed_size);
+                 << base::HexEncode(reinterpret_cast<uint8_t*>(&rpdu),
+                                    rxed_size);
       return false;
     }
 
