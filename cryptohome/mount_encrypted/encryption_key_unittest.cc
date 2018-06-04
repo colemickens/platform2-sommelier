@@ -332,7 +332,6 @@ class EncryptionKeyTest : public testing::Test {
 
 TEST_F(EncryptionKeyTest, TpmClearNoSpaces) {
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
@@ -341,7 +340,6 @@ TEST_F(EncryptionKeyTest, TpmOwnedNoSpaces) {
   SetOwned();
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -350,7 +348,6 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceNoKeyFile) {
              kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
@@ -362,7 +359,6 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadKey) {
   WriteWrappedKey(key_->key_path(), wrapped_key.data());
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
@@ -374,7 +370,6 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadAttributes) {
              kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
   CheckSpace(kEncStatefulIndex, attributes, kEncStatefulSize);
 }
@@ -384,7 +379,6 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceNotYetWritten) {
              false, kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
@@ -395,7 +389,6 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadContents) {
              bad_contents.data(), bad_contents.size());
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
@@ -406,7 +399,6 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceValid) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm2);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
@@ -415,7 +407,6 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceValid) {
 
 TEST_F(EncryptionKeyTest, TpmClearNoSpaces) {
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -423,7 +414,6 @@ TEST_F(EncryptionKeyTest, TpmOwnedNoSpaces) {
   SetOwned();
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -432,7 +422,6 @@ TEST_F(EncryptionKeyTest, TpmClearExistingLockboxV2Unowned) {
              sizeof(kLockboxV2Contents));
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -442,7 +431,6 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2Finalize) {
   SetOwned();
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
 }
 
@@ -453,7 +441,6 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2Finalized) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
 }
 
@@ -465,7 +452,6 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2BadDecrypt) {
   WriteWrappedKey(key_->key_path(), wrapped_key.data());
 
   ExpectFreshKey();
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(true);
 }
 
@@ -474,7 +460,6 @@ TEST_F(EncryptionKeyTest, TpmClearNeedsFinalization) {
                   kWrappedKeyNeedsFinalization);
 
   ExpectExistingKey(kEncryptionKeyNeedsFinalization);
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -484,7 +469,6 @@ TEST_F(EncryptionKeyTest, TpmOwnedNeedsFinalization) {
                   kWrappedKeyNeedsFinalization);
 
   ExpectExistingKey(kEncryptionKeyNeedsFinalization);
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -495,7 +479,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearExisting) {
              sizeof(kLockboxV2Contents));
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectFinalized(true);
   bool initialized = false;
   EXPECT_EQ(RESULT_SUCCESS, tpm_->HasSystemKeyInitializedFlag(&initialized));
@@ -517,7 +500,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearInitialized) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
 }
@@ -531,7 +513,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedExisting) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
@@ -546,7 +527,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadPCRBinding) {
              kEncStatefulTpm1Contents, sizeof(kEncStatefulTpm1Contents));
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -555,7 +535,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadSize) {
              kEncStatefulTpm1Contents, sizeof(kEncStatefulTpm1Contents) - 1);
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -564,7 +543,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadAttributes) {
              sizeof(kEncStatefulTpm1Contents));
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
 }
 
@@ -574,7 +552,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadContents) {
              bad_contents.data(), bad_contents.size());
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectFinalized(true);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
 }
@@ -588,7 +565,6 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedBadSpaceLockboxFallback) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   ExpectLockboxValid(true);
 }
@@ -602,7 +578,6 @@ TEST_F(EncryptionKeyTest, EncStatefulLockboxMACFailure) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
@@ -616,7 +591,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
@@ -629,7 +603,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
   SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
@@ -647,7 +620,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessEncstateful) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
@@ -663,7 +635,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorNotEligible) {
   SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
   ExpectLockboxValid(false);
@@ -677,7 +648,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorUpdateLocatorFailure) {
   SetupPendingFirmwareUpdate(true, EXIT_FAILURE);
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
 }
@@ -689,7 +659,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationNoPreviousKey) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectFreshKey();
-  EXPECT_TRUE(key_->is_migration_allowed());
   ExpectNeedsFinalization();
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
 }
@@ -702,7 +671,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryKeyfileMove) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
@@ -717,7 +685,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryEncryptionKeyWrapping) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
@@ -733,7 +700,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
-  EXPECT_FALSE(key_->is_migration_allowed());
   ExpectFinalized(false);
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);

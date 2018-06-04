@@ -54,7 +54,6 @@ class EncryptionKey {
 
   const brillo::SecureBlob& encryption_key() const { return encryption_key_; }
   bool is_fresh() const { return is_fresh_; }
-  bool is_migration_allowed() const { return migration_allowed_; }
   bool did_finalize() const { return did_finalize_; }
 
   base::FilePath key_path() const { return key_path_; }
@@ -89,14 +88,6 @@ class EncryptionKey {
   // Whether the key is generated freshly, which happens if the system key is
   // missing or the key file on disk didn't exist, failed to decrypt, etc.
   bool is_fresh_ = false;
-
-  // Whether it is OK to migrate an already existing unencrypted stateful
-  // file system to a freshly created encrypted stateful file system. This is
-  // only needed for devices that have been set up when Chrome OS didn't have
-  // the stateful encryption feature yet.
-  //
-  // TODO(mnissler): Remove migration, it's no longer relevant.
-  bool migration_allowed_ = false;
 
   // The system key is usually the key stored in TPM NVRAM that wraps the actual
   // encryption key. Empty if not available.

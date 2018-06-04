@@ -220,12 +220,7 @@ class SystemKeyLoader {
 
   // Load the encryption key from TPM NVRAM. Returns true if successful and
   // fills in key, false if the key is not available or there is an error.
-  //
-  // TODO(mnissler): Remove the migration feature - Chrome OS has supported
-  // encrypted stateful for years, the chance that a device that was set up with
-  // a Chrome OS version that didn't support stateful encryption will be
-  // switching directly to this version of the code is negligibly small.
-  virtual result_code Load(brillo::SecureBlob* key, bool* migrate) = 0;
+  virtual result_code Load(brillo::SecureBlob* key) = 0;
 
   // Generate a fresh system key but do not store it in NVRAM yet.
   virtual brillo::SecureBlob Generate() = 0;
@@ -261,7 +256,7 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
   explicit FixedSystemKeyLoader(const brillo::SecureBlob& key) : key_(key) {}
   virtual ~FixedSystemKeyLoader() = default;
 
-  result_code Load(brillo::SecureBlob* key, bool* migrate) override {
+  result_code Load(brillo::SecureBlob* key) override {
     *key = key_;
     return RESULT_SUCCESS;
   }

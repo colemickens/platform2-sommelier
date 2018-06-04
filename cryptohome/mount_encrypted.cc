@@ -722,13 +722,12 @@ static result_code report_info() {
   printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
   if (has_chromefw()) {
     brillo::SecureBlob system_key;
-    bool migrate = false;
     auto loader = SystemKeyLoader::Create(&tpm, base::FilePath(rootdir));
-    result_code rc = loader->Load(&system_key, &migrate);
+    result_code rc = loader->Load(&system_key);
     if (rc != RESULT_SUCCESS) {
       printf("NVRAM: missing.\n");
     } else {
-      printf("NVRAM: %s, available.\n", migrate ? "legacy" : "modern");
+      printf("NVRAM: available.\n");
     }
   } else {
     printf("NVRAM: not present\n");
@@ -911,8 +910,7 @@ int main(int argc, char* argv[]) {
 
   std::string encryption_key_hex =
       base::HexEncode(key.encryption_key().data(), key.encryption_key().size());
-  rc = setup_encrypted(encryption_key_hex.c_str(), key.is_fresh(),
-                       key.is_migration_allowed());
+  rc = setup_encrypted(encryption_key_hex.c_str(), key.is_fresh(), false);
   if (rc == RESULT_SUCCESS) {
     if (key.did_finalize()) {
       remove_pending();

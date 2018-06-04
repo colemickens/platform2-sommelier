@@ -133,7 +133,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   Tpm1SystemKeyLoader(Tpm* tpm, const base::FilePath& rootdir)
       : tpm_(tpm), rootdir_(rootdir) {}
 
-  result_code Load(brillo::SecureBlob* key, bool* migrate) override;
+  result_code Load(brillo::SecureBlob* key) override;
   brillo::SecureBlob Generate() override;
   result_code Persist() override;
   void Lock() override;
@@ -150,7 +150,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   result_code LoadEncStatefulKey(brillo::SecureBlob* key);
 
   // Loads the key from the lockbox NVRAM space.
-  result_code LoadLockboxKey(brillo::SecureBlob* key, bool* migrate);
+  result_code LoadLockboxKey(brillo::SecureBlob* key);
 
   // Validates the encstateful space is defined with correct parameters.
   result_code IsEncStatefulSpaceProperlyDefined(bool* result);
@@ -181,7 +181,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
 //
 // TPM ownership cases:
 //  - unowned (OOBE):
-//    - expect modern lockbox (no migration allowed).
+//    - expect modern lockbox.
 //  - owned: depends on NVRAM area (below).
 //
 // NVRAM area cases:
@@ -189,24 +189,15 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
 //    - interrupted install (cryptohome has the TPM password)
 //    - ancient device (cr48, cryptohome has thrown away TPM password)
 //    - broken device (cryptohome has thrown away/never had TPM password)
-//      - must expect worst-case: no lockbox ever, and migration allowed.
-//  - defined NVRAM area, but not written to ("Finalized"); interrupted OOBE:
-//    - if legacy size, allow migration.
-//    - if not, disallow migration.
-//  - written ("Finalized") NVRAM area:
-//    - if legacy size, allow migration.
-//    - if not, disallow migration.
+//      - must expect worst-case: no lockbox ever.
+//  - defined NVRAM area, but not written to ("Finalized"); interrupted OOBE.
+//  - written ("Finalized") NVRAM area.
 //
 // In case of success: (NVRAM area found and used)
-//  - *digest populated with NVRAM area entropy.
-//  - *migrate is true for NVRAM v1, false for NVRAM v2.
+//  - *system_key populated with NVRAM area entropy.
 // In case of failure: (NVRAM missing or error)
-//  - *digest untouched.
-//  - *migrate always true
-result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key,
-                                      bool* migrate) {
-  *migrate = false;
-
+//  - *system_key untouched.
+result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
   bool space_properly_defined = false;
   result_code rc = IsEncStatefulSpaceProperlyDefined(&space_properly_defined);
   if (rc != RESULT_SUCCESS) {
@@ -243,15 +234,12 @@ result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key,
     }
 
     if (owned) {
-      rc = LoadLockboxKey(system_key, migrate);
+      rc = LoadLockboxKey(system_key);
       if (rc == RESULT_SUCCESS) {
         return RESULT_SUCCESS;
       }
     }
   }
-
-  // If there's no key yet, allow migration.
-  *migrate = true;
 
   return RESULT_FAIL_FATAL;
 }
@@ -391,8 +379,7 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
   // Load the previous system key.
   rc = LoadEncStatefulKey(previous_key);
   if (rc != RESULT_SUCCESS) {
-    bool migrate = false;
-    rc = LoadLockboxKey(previous_key, &migrate);
+    rc = LoadLockboxKey(previous_key);
     if (rc != RESULT_SUCCESS) {
       return RESULT_FAIL_FATAL;
     }
@@ -464,8 +451,8 @@ result_code Tpm1SystemKeyLoader::LoadEncStatefulKey(
   return RESULT_SUCCESS;
 }
 
-result_code Tpm1SystemKeyLoader::LoadLockboxKey(brillo::SecureBlob* system_key,
-                                                bool* migrate) {
+result_code Tpm1SystemKeyLoader::LoadLockboxKey(
+    brillo::SecureBlob* system_key) {
   brillo::SecureBlob key_material;
   NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
   const brillo::SecureBlob& lockbox_contents = lockbox_space->contents();
@@ -474,7 +461,6 @@ result_code Tpm1SystemKeyLoader::LoadLockboxKey(brillo::SecureBlob* system_key,
   } else if (lockbox_contents.size() == kLockboxSizeV1) {
     key_material = lockbox_contents;
   } else if (kLockboxSaltOffset + DIGEST_LENGTH <= lockbox_contents.size()) {
-    *migrate = false;
     const uint8_t* begin = lockbox_contents.data() + kLockboxSaltOffset;
     key_material.assign(begin, begin + DIGEST_LENGTH);
   } else {

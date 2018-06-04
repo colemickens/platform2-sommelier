@@ -62,7 +62,7 @@ class Tpm2SystemKeyLoader : public SystemKeyLoader {
  public:
   explicit Tpm2SystemKeyLoader(Tpm* tpm) : tpm_(tpm) {}
 
-  result_code Load(brillo::SecureBlob* key, bool* migrate) override;
+  result_code Load(brillo::SecureBlob* key) override;
   brillo::SecureBlob Generate() override;
   result_code Persist() override;
   void Lock() override;
@@ -82,7 +82,6 @@ class Tpm2SystemKeyLoader : public SystemKeyLoader {
 };
 
 // For TPM2, NVRAM area is separate from Lockbox.
-// No legacy systems, so migration is never allowed.
 // Cases:
 //  - wrong-size NVRAM or invalid write-locked NVRAM: tampered with / corrupted
 //    ignore
@@ -103,13 +102,10 @@ class Tpm2SystemKeyLoader : public SystemKeyLoader {
 //    return SUCCESS
 //
 // In case of success: (NVRAM area found and used)
-//  - *digest populated with NVRAM area entropy.
-//  - *migrate is false
+//  - *system_key populated with NVRAM area entropy.
 // In case of failure: (NVRAM missing or error)
-//  - *digest untouched.
-//  - *migrate is false
-result_code Tpm2SystemKeyLoader::Load(brillo::SecureBlob* system_key,
-                                      bool* migrate) {
+//  - *system_key untouched.
+result_code Tpm2SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
   LOG(INFO) << "Getting key from TPM2 NVRAM index " << kNvramAreaTpm2Index;
 
   if (!tpm_->available()) {

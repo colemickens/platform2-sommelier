@@ -161,13 +161,9 @@ result_code EncryptionKey::SetFactorySystemKey() {
 }
 
 result_code EncryptionKey::SetTpmSystemKey() {
-  // By default, do not allow migration.
-  migration_allowed_ = false;
-
-  result_code rc = loader_->Load(&system_key_, &migration_allowed_);
+  result_code rc = loader_->Load(&system_key_);
   if (rc == RESULT_SUCCESS) {
-    LOG(INFO) << "Using NVRAM as system key; already populated"
-              << (migration_allowed_ ? " (legacy)" : "");
+    LOG(INFO) << "Using NVRAM as system key; already populated.";
   } else {
     LOG(INFO) << "Using NVRAM as system key; finalization needed.";
   }
@@ -176,8 +172,6 @@ result_code EncryptionKey::SetTpmSystemKey() {
 }
 
 result_code EncryptionKey::SetInsecureFallbackSystemKey() {
-  migration_allowed_ = false;
-
   system_key_ = GetKeyFromKernelCmdline();
   if (!system_key_.empty()) {
     LOG(INFO) << "Using kernel command line argument as system key.";
@@ -252,9 +246,6 @@ result_code EncryptionKey::LoadChromeOSSystemKey() {
 result_code EncryptionKey::LoadEncryptionKey() {
   if (!system_key_.empty()) {
     if (ReadKeyFile(key_path_, &encryption_key_, system_key_)) {
-      // If we found a stored encryption key, we've already finished a complete
-      // login and Cryptohome Finalize so migration is finished.
-      migration_allowed_ = false;
       return RESULT_SUCCESS;
     }
     LOG(INFO) << "Failed to load encryption key from disk.";
@@ -383,7 +374,6 @@ bool EncryptionKey::RewrapPreviousEncryptionKey() {
 
   // Success. Put the keys in place for later usage.
   system_key_ = std::move(fresh_system_key);
-  migration_allowed_ = false;
 
   LOG(INFO) << "Successfully preserved encryption key.";
 
