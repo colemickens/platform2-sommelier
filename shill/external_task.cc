@@ -108,6 +108,7 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
                                    const string user,
                                    const string group,
                                    uint64_t mask,
+                                   bool inherit_supplementary_groups,
                                    Error* error) {
   // Checks will fail if Start or StartInMinijailWithRPCIdentifiers has already
   // been called on this object.
@@ -141,7 +142,7 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
                                      user,
                                      group,
                                      mask,
-                                     false, /* inherit_supplementary_groups */
+                                     inherit_supplementary_groups,
                                      base::Bind(&ExternalTask::OnTaskDied,
                                                 base::Unretained(this)));
 

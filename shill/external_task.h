@@ -89,7 +89,9 @@ class ExternalTask : public RPCTaskDelegate {
   // |arguments|. Takes RPC identifiers that would be passed as environment
   // variables and passes them on the command line instead, since minijail does
   // not support the setting of custom environment variables for a spawned
-  // program.
+  // program. |inherit_supplementary_groups| indicates whether the child
+  // child program should be spawned with the programatic equivalent of the
+  // minijail -G flag.
   //
   // On success, returns true, and leaves |error| unmodified.
   // On failure, returns false, and sets |error|.
@@ -98,6 +100,7 @@ class ExternalTask : public RPCTaskDelegate {
                                const std::string user,
                                const std::string group,
                                uint64_t mask,
+                               bool inherit_supplementary_groups,
                                Error* error);
 
   virtual void Stop();
