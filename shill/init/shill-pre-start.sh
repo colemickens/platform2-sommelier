@@ -40,6 +40,11 @@ chmod -R u+rwX,g+rX,o+rX /var/lib/dhcpcd
 chown -R dhcp:dhcp /var/lib/dhcpcd
 chown -R dhcp:dhcp /run/dhcpcd
 
+# Shill needs read access to this file, which is part of the in-kernel
+# Connection Tracking System.
+chown root:shill /proc/net/ip_conntrack
+chmod g+r /proc/net/ip_conntrack
+
 # Use flimflam's default profile if shill doesn't have one.
 if [ ! -f /var/cache/shill/default.profile -a \
        -f /var/cache/flimflam/default.profile ]; then
