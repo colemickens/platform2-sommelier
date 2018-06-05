@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 
 namespace {
 
@@ -29,7 +30,10 @@ constexpr char kHelpText[] =
 }  // namespace
 
 int main(int argc, char** argv) {
+  // Use "arc-" prefix so that the log is recorded in /var/log/arc.log.
+  brillo::OpenLog("arc-apk-cache-cleaner", true /* log_pid */);
   brillo::FlagHelper::Init(argc, argv, kHelpText);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   if (!apk_cache::Clean(base::FilePath(kApkCacheDir))) {
     LOG(ERROR) << "APK Cache cleaner experienced problem while cleaning.";
