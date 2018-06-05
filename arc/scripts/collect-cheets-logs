@@ -20,12 +20,8 @@ dump_var_log arc-boot-continue.log
 dump_var_log arc-camera.log
 dump_var_log arc-lifetime.log
 dump_var_log arc-network.log
-dump_var_log arc-obb-mounter.log
 dump_var_log arc-removable-media.log
-dump_var_log arc-sdcard.log
 dump_var_log arc-sensor.log
-dump_var_log arc-setfattr.log
-dump_var_log arc-stale-directory-remover.log
 dump_var_log arc-start-sysctl.log
 dump_var_log arc-stop-sysctl.log
 dump_var_log arc-system-mount.log
@@ -38,6 +34,10 @@ rm -f /var/log/arc-setup.log
 
 # TODO(hidehiko): Remove these in M71.
 rm -f /var/log/arc-adbd.log
+rm -f /var/log/arc-obb-mounter.log
+rm -f /var/log/arc-sdcard.log
+rm -f /var/log/arc-setfattr.log
+rm -f /var/log/arc-stale-directory-remover.log
 
 if [ -d /var/log/android ] ; then
   # Dump only the last 3 log files.
