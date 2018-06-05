@@ -97,6 +97,7 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD1(GetEnabledDeviceByLinkName,
                      DeviceRefPtr(const std::string& link_name));
   MOCK_CONST_METHOD0(GetMinimumMTU, int());
+  MOCK_CONST_METHOD0(GetJailVpnClients, bool());
   MOCK_CONST_METHOD1(ShouldAcceptHostnameFrom,
                      bool(const std::string& device_name));
   MOCK_CONST_METHOD1(IsDHCPv6EnabledForDevice,

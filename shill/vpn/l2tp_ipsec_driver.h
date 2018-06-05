@@ -86,6 +86,7 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
+  FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPNInMinijail);
 
   static const char kL2TPIPSecVPNPath[];
   static const Property kProperties[];

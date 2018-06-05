@@ -289,7 +289,14 @@ bool OpenVPNDriver::WriteConfigFile(
                  << openvpn_config_directory_.value();
       return false;
     }
-    if (chmod(openvpn_config_directory_.value().c_str(), S_IRWXU)) {
+    // OpenVPN running as user 'openvpn' needs access to the config directory,
+    // and openvpn user is not member of shill group so make the dir
+    // world-readable. We'd rather not have openvpn belong to shill group since
+    // shill is more privileged than openvpn, hence the idea of 'dropping'
+    // UID/GID from shill to openvpn. Moreover since shill no longer runs with
+    // CAP_CHOWN, we can't chown the dir to shill:openvpn.
+    if (chmod(openvpn_config_directory_.value().c_str(),
+              S_IRWXU | S_IRWXG | S_IROTH)) {
       LOG(ERROR) << "Failed to set permissions on "
                  << openvpn_config_directory_.value();
       base::DeleteFile(openvpn_config_directory_, true);
@@ -301,7 +308,10 @@ bool OpenVPNDriver::WriteConfigFile(
   contents.push_back('\n');
   if (!base::CreateTemporaryFileInDir(openvpn_config_directory_, config_file) ||
       base::WriteFile(*config_file, contents.data(), contents.size()) !=
-          static_cast<int>(contents.size())) {
+          static_cast<int>(contents.size()) ||
+      chmod(config_file->value().c_str(), S_IRWXU | S_IRWXG | S_IROTH)) {
+    // Make the config file world-readable. Same rationale as listed above for
+    // the config directory.
     LOG(ERROR) << "Unable to setup OpenVPN config file.";
     return false;
   }
@@ -313,6 +323,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
 
   vector<vector<string>> options;
   Error error;
+  pid_t openvpn_pid;
   InitOptions(&options, &error);
   if (error.IsFailure()) {
     return false;
@@ -329,18 +340,29 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   vector<string> args = GetCommandLineArgs();
   LOG(INFO) << "OpenVPN command line args: " << base::JoinString(args, " ");
 
-  pid_t pid = process_manager_->StartProcess(
-      FROM_HERE, FilePath(kOpenVPNPath),
-      args,
-      map<string, string>(), // No env vars passed.
-      false,  // Do not terminate with parent.
-      base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
-  if (pid < 0) {
-    LOG(ERROR) << "Unable to spawn: " << kOpenVPNPath;
-    return false;
+  if (manager()->GetJailVpnClients()) {
+    uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW) |
+                       CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
+    openvpn_pid = process_manager_->StartProcessInMinijail(
+        FROM_HERE, base::FilePath(kOpenVPNPath), args, "shill", "shill",
+        capmask, true,
+        base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
+    if (openvpn_pid == -1) {
+      LOG(ERROR) << "Minijail couldn't run our child process";
+      return false;
+    }
+  } else {
+    openvpn_pid = process_manager_->StartProcess(
+        FROM_HERE, FilePath(kOpenVPNPath), args,
+        map<string, string>(),  // No env vars passed.
+        false,                  // Do not terminate with parent.
+        base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
+    if (openvpn_pid < 0) {
+      LOG(ERROR) << "Unable to spawn: " << kOpenVPNPath;
+      return false;
+    }
   }
-
-  pid_ = pid;
+  pid_ = openvpn_pid;
   return true;
 }
 
@@ -1054,7 +1076,7 @@ KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
 vector<string> OpenVPNDriver::GetCommandLineArgs() {
   SLOG(this, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
   vector<string> args =
-                 vector<string>{"--config", openvpn_config_file_.value()};
+      vector<string>{"--config", openvpn_config_file_.value()};
   string contents;
   if (!base::ReadFileToString(lsb_release_file_, &contents)) {
     LOG(ERROR) << "Unable to read the lsb-release file: "
