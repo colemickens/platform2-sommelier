@@ -338,9 +338,6 @@ constexpr struct {
     {
         .path = "/proc/sys/vm/max_map_count", .value = "262144",
     },
-    {
-        .path = "/proc/sys/kernel/dmesg_restrict", .value = "1",
-    },
 };
 
 // Information about any errors that happen in the child process before the exec
