@@ -437,7 +437,7 @@ int CameraBufferManagerImpl::LockYCbCr(buffer_handle_t buffer,
   }
 
   DCHECK_LE(num_planes, 3u);
-  std::vector<uint8_t*> addr(3);
+  std::vector<uint8_t*> addr(num_planes);
   for (size_t i = 0; i < num_planes; ++i) {
     void* a = Map(buffer, flags, i);
     if (a == MAP_FAILED) {

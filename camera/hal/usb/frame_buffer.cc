@@ -249,7 +249,18 @@ int GrallocFrameBuffer::Map() {
       break;
     }
     case V4L2_PIX_FMT_NV12:
-    case V4L2_PIX_FMT_NV12M:
+    case V4L2_PIX_FMT_NV12M: {
+      struct android_ycbcr ycbcr;
+      ret =
+          buffer_manager_->LockYCbCr(buffer_, 0, 0, 0, width_, height_, &ycbcr);
+      if (!ret) {
+        data_[YPLANE] = static_cast<uint8_t*>(ycbcr.y);
+        data_[UPLANE] = static_cast<uint8_t*>(ycbcr.cb);
+        stride_[YPLANE] = ycbcr.ystride;
+        stride_[UPLANE] = ycbcr.cstride;
+      }
+      break;
+    }
     case V4L2_PIX_FMT_YVU420:
     case V4L2_PIX_FMT_YVU420M: {
       struct android_ycbcr ycbcr;
