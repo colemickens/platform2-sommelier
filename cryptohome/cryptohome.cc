@@ -91,6 +91,7 @@ namespace switches {
                                    "get_key_data_ex",
                                    "list_keys_ex",
                                    "migrate_key",
+                                   "migrate_key_ex",
                                    "add_key_ex",
                                    "update_key_ex",
                                    "remove",
@@ -149,6 +150,7 @@ namespace switches {
     ACTION_GET_KEY_DATA_EX,
     ACTION_LIST_KEYS_EX,
     ACTION_MIGRATE_KEY,
+    ACTION_MIGRATE_KEY_EX,
     ACTION_ADD_KEY_EX,
     ACTION_UPDATE_KEY_EX,
     ACTION_REMOVE,
@@ -1102,6 +1104,56 @@ int main(int argc, char **argv) {
     } else {
       printf("Key migration succeeded.\n");
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY_EX],
+                     action.c_str())) {
+    std::string account_id, password, old_password;
+
+    if (!GetAccountId(cl, &account_id)) {
+      return 1;
+    }
+
+    GetPassword(proxy, cl, switches::kPasswordSwitch,
+                StringPrintf("Enter the password for <%s>", account_id.c_str()),
+                &password);
+    GetPassword(
+        proxy, cl, switches::kOldPasswordSwitch,
+        StringPrintf("Enter the old password for <%s>", account_id.c_str()),
+        &old_password);
+
+    cryptohome::AccountIdentifier account;
+    cryptohome::AuthorizationRequest auth_request;
+    cryptohome::MigrateKeyRequest migrate_request;
+    account.set_account_id(account_id);
+    auth_request.mutable_key()->set_secret(old_password);
+    migrate_request.set_secret(password);
+
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(account));
+    brillo::glib::ScopedArray auth_request_ary(
+        GArrayFromProtoBuf(auth_request));
+    brillo::glib::ScopedArray migrate_request_ary(
+        GArrayFromProtoBuf(migrate_request));
+
+    if (!account_ary.get() || !auth_request_ary.get() ||
+        !migrate_request_ary.get()) {
+      return 1;
+    }
+
+    cryptohome::BaseReply reply;
+    brillo::glib::ScopedError error;
+    GArray* out_reply = NULL;
+    if (!org_chromium_CryptohomeInterface_migrate_key_ex(
+            proxy.gproxy(), account_ary.get(), auth_request_ary.get(),
+            migrate_request_ary.get(), &out_reply,
+            &brillo::Resetter(&error).lvalue())) {
+      printf("MigrateKeyEx call failed: %s", error->message);
+      return 1;
+    }
+    ParseBaseReply(out_reply, &reply);
+    if (reply.has_error()) {
+      printf("Key migration failed.\n");
+      return reply.error();
+    }
+    printf("Key migration succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY_EX],
                 action.c_str())) {
     std::string new_password;

@@ -234,6 +234,14 @@ class Service : public brillo::dbus::AbstractDbusService,
                                    gchar *to_key,
                                    gint *OUT_async_id,
                                    GError **error);
+  virtual void DoMigrateKeyEx(AccountIdentifier* account,
+                              AuthorizationRequest* auth_request,
+                              MigrateKeyRequest* migrate_request,
+                              DBusGMethodInvocation* context);
+  virtual gboolean MigrateKeyEx(GArray* account,
+                                GArray* auth_request,
+                                GArray* migrate_request,
+                                DBusGMethodInvocation* context);
   virtual void DoAddKeyEx(AccountIdentifier* account_id,
                           AuthorizationRequest*  authorization_request,
                           AddKeyRequest* add_key_request,

@@ -102,6 +102,14 @@ gboolean cryptohome_async_migrate_key(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(AsyncMigrateKey, userid, from_key, to_key,
                          OUT_async_id);
 }
+gboolean cryptohome_migrate_key_ex(Cryptohome* self,
+                                   GArray* account,
+                                   GArray* auth_request,
+                                   GArray* migrate_request,
+                                   DBusGMethodInvocation* error) {
+  // Leave the response called error to reuse WRAP.
+  CRYPTOHOME_WRAP_METHOD(MigrateKeyEx, account, auth_request, migrate_request);
+}
 gboolean cryptohome_add_key_ex(Cryptohome* self,
                                GArray* id,
                                GArray* auth,

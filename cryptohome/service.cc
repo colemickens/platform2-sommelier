@@ -1289,6 +1289,67 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
   return TRUE;
 }
 
+void Service::DoMigrateKeyEx(AccountIdentifier* account,
+                             AuthorizationRequest* auth_request,
+                             MigrateKeyRequest* migrate_request,
+                             DBusGMethodInvocation* context) {
+  if (!account || !auth_request || !migrate_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  // Setup a reply to use during error handling.
+  BaseReply reply;
+
+  if (account->account_id().empty()) {
+    SendInvalidArgsReply(context, "Must supply account_id.");
+    return;
+  }
+
+  UsernamePasskey credentials(account->account_id().c_str(),
+                              SecureBlob(migrate_request->secret()));
+
+  if (!homedirs_->Migrate(credentials,
+                          SecureBlob(auth_request->key().secret()))) {
+    reply.set_error(CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
+  } else {
+    reply.clear_error();
+  }
+
+  SendReply(context, reply);
+}
+
+gboolean Service::MigrateKeyEx(GArray* account_ary,
+                               GArray* auth_request_ary,
+                               GArray* migrate_request_ary,
+                               DBusGMethodInvocation* context) {
+  auto account = std::make_unique<AccountIdentifier>();
+  auto auth_request = std::make_unique<AuthorizationRequest>();
+  auto migrate_request = std::make_unique<MigrateKeyRequest>();
+
+  // On parsing failure, pass along a nullptr.
+  if (!account->ParseFromArray(account_ary->data, account_ary->len))
+    account.reset(nullptr);
+  if (!auth_request->ParseFromArray(auth_request_ary->data,
+                                    auth_request_ary->len)) {
+    auth_request.reset(nullptr);
+  }
+  if (!migrate_request->ParseFromArray(migrate_request_ary->data,
+                                       migrate_request_ary->len)) {
+    migrate_request.reset(nullptr);
+  }
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&Service::DoMigrateKeyEx, base::Unretained(this),
+                            base::Owned(account.release()),
+                            base::Owned(auth_request.release()),
+                            base::Owned(migrate_request.release()),
+                            base::Unretained(context)));
+
+  return TRUE;
+}
+
 void Service::DoAddKeyEx(AccountIdentifier* identifier,
                          AuthorizationRequest* authorization,
                          AddKeyRequest* add_key_request,
