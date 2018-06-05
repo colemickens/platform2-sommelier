@@ -18,6 +18,7 @@ extern const char kColorKrb5Trace[];
 extern const char kColorPolicy[];
 extern const char kColorGpo[];
 extern const char kColorFlags[];
+extern const char kColorStatus[];
 extern const char kColorRequest[];
 extern const char kColorRequestSuccess[];
 extern const char kColorRequestFail[];

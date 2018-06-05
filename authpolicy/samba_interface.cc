@@ -24,6 +24,7 @@
 #include <policy/device_policy_impl.h>
 
 #include "authpolicy/anonymizer.h"
+#include "authpolicy/log_colors.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 
@@ -412,6 +413,53 @@ base::TimeDelta GetMachinePasswordChangeRate(
       device_policy.device_machine_password_change_rate().rate_days());
 }
 
+std::ostream& operator<<(std::ostream& os,
+                         const ActiveDirectoryUserStatus::TgtStatus& status) {
+  switch (status) {
+    case ActiveDirectoryUserStatus::TGT_VALID:
+      return os << "valid";
+    case ActiveDirectoryUserStatus::TGT_EXPIRED:
+      return os << "expired";
+    case ActiveDirectoryUserStatus::TGT_NOT_FOUND:
+      return os << "not found";
+  }
+  NOTREACHED();
+  return os << "unknown";
+}
+
+std::ostream& operator<<(
+    std::ostream& os, const ActiveDirectoryUserStatus::PasswordStatus& status) {
+  switch (status) {
+    case ActiveDirectoryUserStatus::PASSWORD_VALID:
+      return os << "valid";
+    case ActiveDirectoryUserStatus::PASSWORD_EXPIRED:
+      return os << "expired";
+    case ActiveDirectoryUserStatus::PASSWORD_CHANGED:
+      return os << "changed";
+  }
+  NOTREACHED();
+  return os << "unknown";
+}
+
+// Helper to log |status| if the |log_status| debug flag is enabled.
+void LogUserStatus(const ActiveDirectoryUserStatus& status,
+                   const protos::DebugFlags& flags) {
+  if (!flags.log_status())
+    return;
+
+  LOG(INFO) << kColorStatus << "User Status:" << kColorReset;
+  LOG(INFO) << kColorStatus << "  TGT:                  " << status.tgt_status()
+            << kColorReset;
+  LOG(INFO) << kColorStatus
+            << "  Password:             " << status.password_status()
+            << kColorReset;
+  LOG(INFO) << kColorStatus << "  Password Last Set:    "
+            << status.account_info().pwd_last_set() << kColorReset;
+  LOG(INFO) << kColorStatus << "  User Account Control: "
+            << status.account_info().user_account_control() << kColorReset;
+  // Note: Don't log the other account info data, it's all PII.
+}
+
 }  // namespace
 
 SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
@@ -638,6 +686,7 @@ ErrorType SambaInterface::GetUserStatus(
     ActiveDirectoryUserStatus* user_status) {
   ReloadDebugFlags();
   SetUser(account_id);
+  user_status->Clear();
 
   // We technically don't have to be in joined state, but check it anyway,
   // because the device should always be joined during getting status.
@@ -652,12 +701,31 @@ ErrorType SambaInterface::GetUserStatus(
   }
   SetUserRealm(user_realm);
 
+  // Tell Chrome that the password expired in case the TGT is not valid and the
+  // GetUserPasswordStatus() call below doesn't happen. See crbug.com/849318.
+  if (last_auth_error_ == ERROR_PASSWORD_EXPIRED) {
+    user_status->set_password_status(
+        ActiveDirectoryUserStatus::PASSWORD_EXPIRED);
+  }
+
+  // If authentication failed with bad password, but the session was still
+  // started and Cryptohome could be unmounted, it means that the logon password
+  // must have been a valid, old password and the password must have changed on
+  // the server.
+  if (last_auth_error_ == ERROR_BAD_PASSWORD) {
+    user_status->set_password_status(
+        ActiveDirectoryUserStatus::PASSWORD_CHANGED);
+  }
+
   // Determine the status of the TGT.
   ActiveDirectoryUserStatus::TgtStatus tgt_status =
       ActiveDirectoryUserStatus::TGT_VALID;
   ErrorType error = GetUserTgtStatus(&tgt_status);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
+    LogUserStatus(*user_status, flags_);
     return error;
+  }
+  user_status->set_tgt_status(tgt_status);
 
   // If we don't have a valid TGT, we can't GetAccountInfo() because that uses
   // the TGT to authenticate. Thus, just return the TGT status and the last auth
@@ -667,36 +735,34 @@ ErrorType SambaInterface::GetUserStatus(
     // the user has to relog in order to get a new TGT, but AuthenticateUser()
     // fails if the server is unavailable and the popup is shown again.
     // See crbug.com/844662.
-    error = PingServer(&user_account_);
-    if (error != ERROR_NONE)
-      return error;
-
-    user_status->set_tgt_status(tgt_status);
-    user_status->set_last_auth_error(last_auth_error_);
-    return ERROR_NONE;
+    LogUserStatus(*user_status, flags_);
+    return PingServer(&user_account_);
   }
 
   // Update smb.conf, IPs, server names etc. for the user account.
   error = UpdateAccountData(&user_account_);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
+    LogUserStatus(*user_status, flags_);
     return error;
+  }
 
   // Get account info for the user.
   ActiveDirectoryAccountInfo account_info;
   error =
       GetAccountInfo("" /* user_name unused */, "" /* normalized_upn unused */,
                      account_id, &account_info);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
+    LogUserStatus(*user_status, flags_);
     return error;
+  }
+  *user_status->mutable_account_info() = account_info;
 
   // Determine the status of the password.
   ActiveDirectoryUserStatus::PasswordStatus password_status =
       GetUserPasswordStatus(account_info);
-
-  *user_status->mutable_account_info() = account_info;
-  user_status->set_tgt_status(tgt_status);
   user_status->set_password_status(password_status);
-  user_status->set_last_auth_error(last_auth_error_);
+
+  LogUserStatus(*user_status, flags_);
   return ERROR_NONE;
 }
 

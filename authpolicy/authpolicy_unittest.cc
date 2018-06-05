@@ -1224,6 +1224,13 @@ TEST_F(AuthPolicyTest, AuthFailsBadPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_BAD_PASSWORD,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kWrongPassword)));
+  // During PODs auth it is possible that the user gets into a session despite
+  // the ERROR_BAD_PASSWORD error. This must mean that the password changed on
+  // the server and the user entered the old password, which successfully
+  // unlocked Cryptohome.
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED, status.tgt_status());
 }
 
 // Authentication fails for expired password.
@@ -1332,7 +1339,6 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
   expected_status.set_tgt_status(ActiveDirectoryUserStatus::TGT_VALID);
   expected_status.set_password_status(
       ActiveDirectoryUserStatus::PASSWORD_VALID);
-  expected_status.set_last_auth_error(ERROR_NONE);
 
   // Note that protobuf equality comparison is not supported.
   std::string status_blob, expected_status_blob;
@@ -1350,7 +1356,8 @@ TEST_F(AuthPolicyTest, GetUserStatusReportsLastAuthError) {
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
-  EXPECT_EQ(ERROR_PASSWORD_EXPIRED, status.last_auth_error());
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_EXPIRED,
+            status.password_status());
 }
 
 // GetUserStatus reports to expire the password.

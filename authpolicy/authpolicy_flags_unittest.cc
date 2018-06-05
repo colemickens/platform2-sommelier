@@ -34,6 +34,7 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOff) {
   EXPECT_FALSE(flags.log_gpo());
   EXPECT_EQ("0", flags.net_log_level());
   EXPECT_FALSE(flags.disable_anonymizer());
+  EXPECT_FALSE(flags.log_status());
 }
 
 // Check whether parsing the flags data works as expected.
@@ -49,7 +50,8 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
       "log_command_output_on_error":true,
       "log_gpo":true,
       "net_log_level":"10",
-      "disable_anonymizer":true })!!!");
+      "disable_anonymizer":true,
+      "log_status":true })!!!");
   const protos::DebugFlags& flags = flags_container.Get();
 
   EXPECT_TRUE(flags.disable_seccomp());
@@ -62,6 +64,7 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
   EXPECT_TRUE(flags.log_gpo());
   EXPECT_EQ("10", flags.net_log_level());
   EXPECT_TRUE(flags.disable_anonymizer());
+  EXPECT_TRUE(flags.log_status());
 }
 
 TEST_F(AuthPolicyFlagsTest, FlagsSerialization) {
