@@ -198,7 +198,6 @@ struct PowerStatus {
   // Additional information about the battery.
   std::string battery_vendor;
   std::string battery_model_name;
-  std::string battery_serial;
   std::string battery_technology;
 };
 

@@ -162,7 +162,6 @@ int main(int argc, char** argv) {
     display.PrintValue("path", status.battery_path);
     display.PrintStringValue("vendor", status.battery_vendor);
     display.PrintStringValue("model name", status.battery_model_name);
-    display.PrintStringValue("serial number", status.battery_serial);
 
     switch (status.battery_state) {
       case power_manager::PowerSupplyProperties_BatteryState_FULL:

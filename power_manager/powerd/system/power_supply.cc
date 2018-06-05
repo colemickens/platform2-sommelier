@@ -861,7 +861,6 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
       base::PathExists(path.Append("manufacturer")) ? "manufacturer" : "vendor",
       &status->battery_vendor);
   ReadAndTrimString(path, "model_name", &status->battery_model_name);
-  ReadAndTrimString(path, "serial_number", &status->battery_serial);
   ReadAndTrimString(path, "technology", &status->battery_technology);
 
   double voltage = ReadScaledDouble(path, "voltage_now");
