@@ -452,6 +452,11 @@ bool MountManager::IsPathImmediateChildOfParent(const string& path,
   if (path_components.size() != parent_components.size() + 1)
     return false;
 
+  if (path_components.back() == FilePath::kCurrentDirectory ||
+      path_components.back() == FilePath::kParentDirectory) {
+    return false;
+  }
+
   return std::equal(parent_components.begin(), parent_components.end(),
                     path_components.begin());
 }

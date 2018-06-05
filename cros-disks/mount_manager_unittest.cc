@@ -1210,6 +1210,14 @@ TEST_F(MountManagerTest, IsPathImmediateChildOfParent) {
                                                      "/media/removable"));
   EXPECT_FALSE(
       manager_.IsPathImmediateChildOfParent("/media", "/media/removable"));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable",
+                                                     "/media/removable"));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable/",
+                                                     "/media/removable"));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable/.",
+                                                     "/media/removable"));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable/..",
+                                                     "/media/removable"));
 }
 
 // Verifies that MountManager::IsValidMountPath() correctly determines if a
@@ -1221,6 +1229,10 @@ TEST_F(MountManagerTest, IsValidMountPath) {
   EXPECT_TRUE(manager_.IsValidMountPath("/media/removable/test/"));
   EXPECT_TRUE(manager_.IsValidMountPath("/media/removable//test"));
   EXPECT_FALSE(manager_.IsValidMountPath("/media/archive/test"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/"));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/."));
+  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/.."));
   EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test/doc"));
   EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/../test"));
   EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/../test/"));
