@@ -74,7 +74,7 @@ rotate_logs() {
            tlsdate.log authpolicy.log tpm-firmware-updater.log arc.log; do
     rotate_file "/var/log/${x}"
   done
-  sudo pkill -HUP rsyslogd
+  pkill -HUP rsyslogd
 }
 
 # Wipe the unencyrpted CRX cache if it still exists.
