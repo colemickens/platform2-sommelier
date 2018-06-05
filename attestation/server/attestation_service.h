@@ -72,6 +72,12 @@ namespace attestation {
 // back to the main thread.
 class AttestationService : public AttestationInterface {
  public:
+  using IdentityCertificateMap = google::protobuf::
+      Map<int, attestation::AttestationDatabase_IdentityCertificate>;
+
+  // The index of the first identity.
+  static constexpr int kFirstIdentity = 0;
+
   // If abe_data is not an empty blob, its contents will be
   // used to enable attestation-based enterprise enrollment.
   explicit AttestationService(brillo::SecureBlob* abe_data);
@@ -162,6 +168,15 @@ class AttestationService : public AttestationInterface {
   void set_abe_data(brillo::SecureBlob* abe_data) { abe_data_ = abe_data; }
 
  private:
+  enum ACATypeInternal {
+    kDefaultACA = 0,
+    kTestACA = 1,
+    kMaxACATypeInternal
+  };
+
+  static ACAType GetACAType(ACATypeInternal aca_type_internal);
+
+  friend class AttestationServiceBaseTest;
   friend class AttestationServiceTest;
 
   typedef std::map<std::string, std::string> CertRequestMap;
@@ -202,6 +217,14 @@ class AttestationService : public AttestationInterface {
 
   // Initialization to be run on the worker thread.
   void InitializeTask();
+
+  // Checks if |database_| needs to be migrated to the latest data model and
+  // do so if needed. Returns true if migration was needed and successful.
+  bool MigrateAttestationDatabase();
+
+  // Migrates identity date in |database_| if needed. Returns true if the
+  // migration was needed and successful.
+  bool MigrateIdentityData();
 
   // Shutdown to be run on the worker thread.
   void ShutdownTask();
@@ -313,9 +336,13 @@ class AttestationService : public AttestationInterface {
   // Attestation CA is available.
   bool IsPreparedForEnrollment();
 
-  // Returns true iff enrollment with the Google Attestation CA has been
-  // completed.
+  // Returns true iff enrollment with the default or test Google Attestation CA
+  // has been completed.
   bool IsEnrolled();
+
+  // Returns true iff enrollment with the given Google Attestation CA has been
+  // completed.
+  bool IsEnrolledWithACA(ACAType aca_type);
 
   // Creates an enrollment request compatible with the Google Attestation CA.
   // Returns true on success.
@@ -325,13 +352,15 @@ class AttestationService : public AttestationInterface {
   // Finishes enrollment given an |enroll_response| from the Google Attestation
   // CA. Returns true on success. On failure, returns false and sets
   // |server_error| to the error string from the CA.
-  bool FinishEnrollInternal(const std::string& enroll_response,
+  bool FinishEnrollInternal(ACAType aca_type,
+                            const std::string& enroll_response,
                             std::string* server_error);
 
   // Creates a |certificate_request| compatible with the Google Attestation CA
   // for the given |key|, according to the given |profile|, |username| and
   // |origin|.
-  bool CreateCertificateRequestInternal(const std::string& username,
+  bool CreateCertificateRequestInternal(ACAType aca_type,
+                                        const std::string& username,
                                         const CertifiedKey& key,
                                         CertificateProfile profile,
                                         const std::string& origin,
@@ -432,11 +461,60 @@ class AttestationService : public AttestationInterface {
   // Prepares the attestation system for enrollment with an ACA.
   void PrepareForEnrollment();
 
+  // Returns an iterator pointing to the identity certificate for the given
+  // |identity| and given Privacy CA.
+  virtual IdentityCertificateMap::iterator FindIdentityCertificate(
+      int identity, ACAType pca_type);
+
+  // Returns whether there is an identity certificate for the given |identity|
+  // and given Privacy CA.
+  virtual bool HasIdentityCertificate(int identity, ACAType pca_type);
+
+  // Finds an existing identity certificate for the given |identity| and Privacy
+  // CA, and if none is found, creates one. Returns a pointer to the certificate
+  // or nullptr if one could not be created. If |cert_index| is non null, set it
+  // to the index of the certificate, or -1 if none could be found or created.
+  AttestationDatabase_IdentityCertificate*
+  FindOrCreateIdentityCertificate(int identity, ACAType aca_type,
+                                  int* cert_index);
+
+  // Creates a new identity and returns its index, or -1 if it could not be
+  // created.
+  int CreateIdentity(int identity_features);
+
+  // Creates a new identity and returns its index, or -1 if it could not be
+  // created.
+  int CreateIdentity(int identity_features,
+                     const std::string& rsa_ek_public_key);
+
+  // Returns the count of identities in the attestation database.
+  virtual int GetIdentitiesCount() const;
+  // Returns the identity features of |identity|.
+  virtual int GetIdentityFeatures(int identity) const;
+
+  // Returns a copy of the identity certificate map.
+  virtual IdentityCertificateMap GetIdentityCertificateMap() const;
+
+  // ENcrypts all the endorsement credentials that we don't have yet.
+  bool EncryptAllEndorsementCredentials();
+
+  // Encrypts the endorsement credential for the given |aca_type|.
+  bool EncryptEndorsementCredential(
+      ACAType aca_type,
+      const std::string& credential,
+      EncryptedData* encrypted_credential);
+
   // Activates an attestation key given an |encrypted_certificate|. On success
   // returns true and provides the decrypted |certificate| if not null. If
-  // |save_certificate| is set, also writes the |certificate| to the database.
-  bool ActivateAttestationKeyInternal(const EncryptedIdentityCredential&
-    encrypted_certificate, bool save_certificate, std::string* certificate);
+  // |save_certificate| is set, also writes the |certificate| to the database
+  // and returns the certificate number in |certificate_index|. The value of
+  // |certificate_index| is undefined if the certificate is not saved.
+  bool ActivateAttestationKeyInternal(int identity,
+      ACAType aca_type,
+      const EncryptedIdentityCredential& encrypted_certificate,
+      bool save_certificate,
+      std::string* certificate,
+      int* certificate_index);
 
   // Checks if PCR0 indicates that the system booted in verified mode.
   // Always reads PCR0 contents from TPM, so works even when not prepared
@@ -529,9 +607,13 @@ class AttestationService : public AttestationInterface {
 
   base::WeakPtr<AttestationService> GetWeakPtr();
 
+  FRIEND_TEST(AttestationServiceBaseTest, MigrateAttestationDatabase);
+  FRIEND_TEST(AttestationServiceBaseTest,
+                           MigrateAttestationDatabaseWithCorruptedFields);
+  FRIEND_TEST(AttestationServiceBaseTest,
+                           MigrateAttestationDatabaseAllEndorsementCredentials);
   FRIEND_TEST_ALL_PREFIXES(AttestationServiceEnterpriseTest,
                            SignEnterpriseChallengeSuccess);
-  FRIEND_TEST(AttestationServiceTest, SignEnterpriseChallengeSuccess);
 
   // Other than initialization and destruction, these are used only by the
   // worker thread.
@@ -547,6 +629,9 @@ class AttestationService : public AttestationInterface {
   CertRequestMap pending_cert_requests_;
   std::string system_salt_;
   brillo::SecureBlob* abe_data_;
+  // Default identity features for newly created identities.
+  int default_identity_features_ =
+      attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID;
 
   // Default implementations for the above interfaces. These will be setup
   // during Initialize() if the corresponding interface has not been set with a

@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2016 The Android Open Source Project
+// Copyright (C) 2018 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@
 
 #include "attestation/common/print_interface_proto.h"
 
+#include <inttypes.h>
+
 #include <string>
 
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "attestation/common/print_common_proto.h"
@@ -64,6 +65,34 @@ std::string GetProtoDebugStringWithIndent(AttestationStatus value,
   return "<unknown>";
 }
 
+std::string GetProtoDebugString(ACAType value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(ACAType value, int indent_size) {
+  if (value == DEFAULT_ACA) {
+    return "DEFAULT_ACA";
+  }
+  if (value == TEST_ACA) {
+    return "TEST_ACA";
+  }
+  return "<unknown>";
+}
+
+std::string GetProtoDebugString(VAType value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(VAType value, int indent_size) {
+  if (value == DEFAULT_VA) {
+    return "DEFAULT_VA";
+  }
+  if (value == TEST_VA) {
+    return "TEST_VA";
+  }
+  return "<unknown>";
+}
+
 std::string GetProtoDebugString(const CreateGoogleAttestedKeyRequest& value) {
   return GetProtoDebugStringWithIndent(value, 0);
 }
@@ -82,16 +111,18 @@ std::string GetProtoDebugStringWithIndent(
   }
   if (value.has_key_type()) {
     output += indent + "  key_type: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_type(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_key_usage()) {
     output += indent + "  key_usage: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_usage(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_usage(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_certificate_profile()) {
@@ -110,6 +141,14 @@ std::string GetProtoDebugStringWithIndent(
   if (value.has_origin()) {
     output += indent + "  origin: ";
     base::StringAppendF(&output, "%s", value.origin().c_str());
+    output += "\n";
+  }
+  if (value.has_aca_type()) {
+    output += indent + "  aca_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.aca_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -191,16 +230,18 @@ std::string GetProtoDebugStringWithIndent(const GetKeyInfoReply& value,
   }
   if (value.has_key_type()) {
     output += indent + "  key_type: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_type(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_key_usage()) {
     output += indent + "  key_usage: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_usage(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_usage(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_public_key()) {
@@ -237,9 +278,10 @@ std::string GetProtoDebugStringWithIndent(const GetKeyInfoReply& value,
   }
   if (value.has_payload()) {
     output += indent + "  payload: ";
-    base::StringAppendF(&output, "%s", base::HexEncode(value.payload().data(),
-                                                       value.payload().size())
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.payload().data(), value.payload().size())
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -259,9 +301,10 @@ std::string GetProtoDebugStringWithIndent(
 
   if (value.has_key_type()) {
     output += indent + "  key_type: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_type(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -323,9 +366,18 @@ std::string GetProtoDebugStringWithIndent(
 
   if (value.has_key_type()) {
     output += indent + "  key_type: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_type(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_type(), indent_size + 2)
+            .c_str());
+    output += "\n";
+  }
+  if (value.has_aca_type()) {
+    output += indent + "  aca_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.aca_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -376,16 +428,18 @@ std::string GetProtoDebugStringWithIndent(
   }
   if (value.has_pcr0_quote()) {
     output += indent + "  pcr0_quote: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.pcr0_quote(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.pcr0_quote(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_pcr1_quote()) {
     output += indent + "  pcr1_quote: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.pcr1_quote(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.pcr1_quote(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -405,9 +459,10 @@ std::string GetProtoDebugStringWithIndent(
 
   if (value.has_key_type()) {
     output += indent + "  key_type: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_type(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_encrypted_certificate()) {
@@ -422,6 +477,14 @@ std::string GetProtoDebugStringWithIndent(
     output += indent + "  save_certificate: ";
     base::StringAppendF(&output, "%s",
                         value.save_certificate() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_aca_type()) {
+    output += indent + "  aca_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.aca_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -481,16 +544,18 @@ std::string GetProtoDebugStringWithIndent(
   }
   if (value.has_key_type()) {
     output += indent + "  key_type: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_type(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_key_usage()) {
     output += indent + "  key_usage: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.key_usage(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.key_usage(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -655,9 +720,10 @@ std::string GetProtoDebugStringWithIndent(const SignReply& value,
   }
   if (value.has_signature()) {
     output += indent + "  signature: ";
-    base::StringAppendF(&output, "%s", base::HexEncode(value.signature().data(),
-                                                       value.signature().size())
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.signature().data(), value.signature().size())
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -683,6 +749,12 @@ std::string GetProtoDebugStringWithIndent(
   if (value.has_username()) {
     output += indent + "  username: ";
     base::StringAppendF(&output, "%s", value.username().c_str());
+    output += "\n";
+  }
+  if (value.has_include_certificates()) {
+    output += indent + "  include_certificates: ";
+    base::StringAppendF(&output, "%s",
+                        value.include_certificates() ? "true" : "false");
     output += "\n";
   }
   output += indent + "}\n";
@@ -731,6 +803,51 @@ std::string GetProtoDebugStringWithIndent(const GetStatusRequest& value,
   return output;
 }
 
+std::string GetProtoDebugString(const GetStatusReply::Identity& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetStatusReply::Identity& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_features()) {
+    output += indent + "  features: ";
+    base::StringAppendF(&output, "%" PRId32, value.features());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(
+    const GetStatusReply::IdentityCertificate& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetStatusReply::IdentityCertificate& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_identity()) {
+    output += indent + "  identity: ";
+    base::StringAppendF(&output, "%" PRId32, value.identity());
+    output += "\n";
+  }
+  if (value.has_aca()) {
+    output += indent + "  aca: ";
+    base::StringAppendF(&output, "%" PRId32, value.aca());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
 std::string GetProtoDebugString(const GetStatusReply& value) {
   return GetProtoDebugStringWithIndent(value, 0);
 }
@@ -765,6 +882,17 @@ std::string GetProtoDebugStringWithIndent(const GetStatusReply& value,
                         value.verified_boot() ? "true" : "false");
     output += "\n";
   }
+  output += indent + "  identities: {";
+  for (int i = 0; i < value.identities_size(); ++i) {
+    if (i > 0) {
+      base::StringAppendF(&output, ", ");
+    }
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.identities(i), indent_size + 2)
+            .c_str());
+  }
+  output += "}\n";
   output += indent + "}\n";
   return output;
 }
@@ -830,6 +958,14 @@ std::string GetProtoDebugStringWithIndent(
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
+  if (value.has_aca_type()) {
+    output += indent + "  aca_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.aca_type(), indent_size + 2)
+            .c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -879,6 +1015,14 @@ std::string GetProtoDebugStringWithIndent(const FinishEnrollRequest& value,
                         base::HexEncode(value.pca_response().data(),
                                         value.pca_response().size())
                             .c_str());
+    output += "\n";
+  }
+  if (value.has_aca_type()) {
+    output += indent + "  aca_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.aca_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -933,6 +1077,14 @@ std::string GetProtoDebugStringWithIndent(
   if (value.has_request_origin()) {
     output += indent + "  request_origin: ";
     base::StringAppendF(&output, "%s", value.request_origin().c_str());
+    output += "\n";
+  }
+  if (value.has_aca_type()) {
+    output += indent + "  aca_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.aca_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -1060,9 +1212,10 @@ std::string GetProtoDebugStringWithIndent(
   }
   if (value.has_device_id()) {
     output += indent + "  device_id: ";
-    base::StringAppendF(&output, "%s", base::HexEncode(value.device_id().data(),
-                                                       value.device_id().size())
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.device_id().data(), value.device_id().size())
+            .c_str());
     output += "\n";
   }
   if (value.has_include_signed_public_key()) {
@@ -1073,9 +1226,18 @@ std::string GetProtoDebugStringWithIndent(
   }
   if (value.has_challenge()) {
     output += indent + "  challenge: ";
-    base::StringAppendF(&output, "%s", base::HexEncode(value.challenge().data(),
-                                                       value.challenge().size())
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.challenge().data(), value.challenge().size())
+            .c_str());
+    output += "\n";
+  }
+  if (value.has_va_type()) {
+    output += indent + "  va_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.va_type(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -1135,9 +1297,10 @@ std::string GetProtoDebugStringWithIndent(
   }
   if (value.has_challenge()) {
     output += indent + "  challenge: ";
-    base::StringAppendF(&output, "%s", base::HexEncode(value.challenge().data(),
-                                                       value.challenge().size())
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.challenge().data(), value.challenge().size())
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -1195,9 +1358,10 @@ std::string GetProtoDebugStringWithIndent(const SetKeyPayloadRequest& value,
   }
   if (value.has_payload()) {
     output += indent + "  payload: ";
-    base::StringAppendF(&output, "%s", base::HexEncode(value.payload().data(),
-                                                       value.payload().size())
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.payload().data(), value.payload().size())
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -1358,17 +1522,48 @@ std::string GetProtoDebugStringWithIndent(const SetSystemSaltReply& value,
   return output;
 }
 
-std::string GetProtoDebugString(const GetEnrollmentIdReply& value) {
-  std::string output;
-  if (value.has_enrollment_id()) {
-    output = base::ToLowerASCII(base::HexEncode(
-        value.enrollment_id().data(), value.enrollment_id().size()));
-  } else {
-    output = "GetEnrollmentId error";
-    if (value.has_status()) {
-      output += " status: " + GetProtoDebugString(value.status());
-    }
+std::string GetProtoDebugString(const GetEnrollmentIdRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetEnrollmentIdRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_ignore_cache()) {
+    output += indent + "  ignore_cache: ";
+    base::StringAppendF(&output, "%s", value.ignore_cache() ? "true" : "false");
+    output += "\n";
   }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetEnrollmentIdReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetEnrollmentIdReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_enrollment_id()) {
+    output += indent + "  enrollment_id: ";
+    base::StringAppendF(&output, "%s", value.enrollment_id().c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
   return output;
 }
 

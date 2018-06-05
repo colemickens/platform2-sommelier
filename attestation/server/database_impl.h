@@ -50,8 +50,9 @@ class DatabaseImpl : public Database, public DatabaseIO {
   ~DatabaseImpl() override;
 
   // Reads and decrypts any existing database on disk synchronously. Must be
-  // called before calling other methods.
-  void Initialize();
+  // called before calling other methods. Returns true if a database has been
+  // loaded, false if a new database has been created.
+  bool Initialize();
 
   // Database methods.
   const AttestationDatabase& GetProtobuf() const override;

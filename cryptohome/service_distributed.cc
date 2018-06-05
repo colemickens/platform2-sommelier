@@ -285,6 +285,20 @@ void ServiceDistributed::AttestationGetTpmStatus(GetTpmStatusReply* reply_out) {
     reply_out->set_attestation_prepared(reply.prepared_for_enrollment());
     reply_out->set_attestation_enrolled(reply.enrolled());
     reply_out->set_verified_boot_measured(reply.verified_boot());
+    for (auto it = reply.identities().cbegin(), end = reply.identities().cend();
+         it != end; ++it) {
+      auto* identity = reply_out->mutable_identities()->Add();
+      identity->set_features(it->features());
+    }
+    for (auto it = reply.identity_certificates().cbegin(),
+         end = reply.identity_certificates().cend(); it != end; ++it) {
+      GetTpmStatusReply::IdentityCertificate identity_certificate;
+      identity_certificate.set_identity(it->second.identity());
+      identity_certificate.set_aca(it->second.aca());
+      reply_out->mutable_identity_certificates()->insert(
+          google::protobuf::Map<int, GetTpmStatusReply::IdentityCertificate>::
+              value_type(it->first, identity_certificate));
+    }
   } else {
     reply_out->set_attestation_prepared(false);
     reply_out->set_attestation_enrolled(false);
@@ -434,6 +448,7 @@ gboolean ServiceDistributed::TpmAttestationEnroll(gint pca_type,
     return FALSE;
   }
   attestation::FinishEnrollRequest request;
+  request.set_aca_type(aca_type);
   request.set_pca_response(pca_response->data, pca_response->len);
   attestation::FinishEnrollReply reply;
   auto method = base::Bind(&AttestationInterface::FinishEnroll,
@@ -459,6 +474,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationEnroll(gint pca_type,
   }
   *OUT_async_id = NextSequence();
   attestation::FinishEnrollRequest request;
+  request.set_aca_type(aca_type);
   request.set_pca_response(pca_response->data, pca_response->len);
   auto callback = base::Bind(
       &ServiceDistributed::ProcessStatusReply<attestation::FinishEnrollReply>,
@@ -486,6 +502,7 @@ gboolean ServiceDistributed::TpmAttestationCreateCertRequest(
     return FALSE;
   }
   attestation::CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type);
   request.set_certificate_profile(GetProfile(certificate_profile));
   request.set_username(username);
   request.set_request_origin(request_origin);
@@ -523,6 +540,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationCreateCertRequest(
   }
   *OUT_async_id = NextSequence();
   attestation::CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type);
   request.set_certificate_profile(GetProfile(certificate_profile));
   request.set_username(username);
   request.set_request_origin(request_origin);

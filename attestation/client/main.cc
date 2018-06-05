@@ -84,7 +84,7 @@ Commands:
       verifies only the endorsement key. If |cros-core| flag is provided,
       verifies using CrosCore CA public key.
 
-  activate --input=<input_file> [--save]
+  activate [--attestation-server=default|test] --input=<input_file> [--save]
       Activates an attestation key using the encrypted credential in
       |input_file| and optionally saves it for future certifications.
   encrypt_for_activate --input=<input_file> --output=<output_file>
@@ -118,7 +118,8 @@ Commands:
         |profile| and |origin|, and stores it to |output_file|.
         Possible |profile| values: user, machine, enrollment, content, cpsi,
         cast, gfsc. Default is user.
-  finish_cert_request [--user=<user>] [--label=<label>] --input=<input_file>
+  finish_cert_request [--attestation-server=default|test] [--user=<user>]
+          [--label=<label>] --input=<input_file>
       Finishes certificate request for |user| using the CA response from
       |input_file|, and stores it in the key with the specified |label|.
   sign_challenge [--enterprise [--va_server=default|test]] [--user=<user>]
@@ -231,14 +232,24 @@ class ClientLoop : public ClientLoopBase {
       task = base::Bind(&ClientLoop::CallGetEndorsementInfo,
                         weak_factory_.GetWeakPtr());
     } else if (args.front() == kAttestationKeyCommand) {
+      ACAType aca_type;
+      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
+      if (status != EX_OK) {
+        return status;
+      }
       task = base::Bind(&ClientLoop::CallGetAttestationKeyInfo,
-                        weak_factory_.GetWeakPtr());
+                        weak_factory_.GetWeakPtr(), aca_type);
     } else if (args.front() == kVerifyAttestationCommand) {
       task = base::Bind(&ClientLoop::CallVerifyAttestation,
                         weak_factory_.GetWeakPtr(),
                         command_line->HasSwitch("cros-core"),
                         command_line->HasSwitch("ek-only"));
     } else if (args.front() == kActivateCommand) {
+      ACAType aca_type;
+      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
+      if (status != EX_OK) {
+        return status;
+      }
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
       }
@@ -249,7 +260,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_NOINPUT;
       }
       task = base::Bind(&ClientLoop::CallActivateAttestationKey,
-                        weak_factory_.GetWeakPtr(), input,
+                        weak_factory_.GetWeakPtr(), aca_type, input,
                         command_line->HasSwitch("save"));
     } else if (args.front() == kEncryptForActivateCommand) {
       if (!command_line->HasSwitch("input") ||
@@ -339,6 +350,11 @@ class ClientLoop : public ClientLoopBase {
           &ClientLoop::CallCreateEnrollRequest, weak_factory_.GetWeakPtr(),
           aca_type);
     } else if (args.front() == kFinishEnrollCommand) {
+      ACAType aca_type;
+      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
+      if (status != EX_OK) {
+        return status;
+      }
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
       }
@@ -572,8 +588,9 @@ class ClientLoop : public ClientLoopBase {
                    weak_factory_.GetWeakPtr()));
   }
 
-  void CallGetAttestationKeyInfo() {
+  void CallGetAttestationKeyInfo(ACAType aca_type) {
     GetAttestationKeyInfoRequest request;
+    request.set_aca_type(aca_type);
     request.set_key_type(KEY_TYPE_RSA);
     attestation_->GetAttestationKeyInfo(
         request,
@@ -591,9 +608,11 @@ class ClientLoop : public ClientLoopBase {
                    weak_factory_.GetWeakPtr()));
   }
 
-  void CallActivateAttestationKey(const std::string& input,
+  void CallActivateAttestationKey(ACAType aca_type,
+                                  const std::string& input,
                                   bool save_certificate) {
     ActivateAttestationKeyRequest request;
+    request.set_aca_type(aca_type);
     request.set_key_type(KEY_TYPE_RSA);
     request.mutable_encrypted_certificate()->ParseFromString(input);
     request.set_save_certificate(save_certificate);

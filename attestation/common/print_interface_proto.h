@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2016 The Android Open Source Project
+// Copyright (C) 2018 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,10 @@ namespace attestation {
 std::string GetProtoDebugStringWithIndent(AttestationStatus value,
                                           int indent_size);
 std::string GetProtoDebugString(AttestationStatus value);
+std::string GetProtoDebugStringWithIndent(ACAType value, int indent_size);
+std::string GetProtoDebugString(ACAType value);
+std::string GetProtoDebugStringWithIndent(VAType value, int indent_size);
+std::string GetProtoDebugString(VAType value);
 std::string GetProtoDebugStringWithIndent(
     const CreateGoogleAttestedKeyRequest& value,
     int indent_size);
@@ -96,6 +100,14 @@ std::string GetProtoDebugString(const RegisterKeyWithChapsTokenReply& value);
 std::string GetProtoDebugStringWithIndent(const GetStatusRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetStatusRequest& value);
+std::string GetProtoDebugStringWithIndent(const GetStatusReply::Identity& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const GetStatusReply::Identity& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetStatusReply::IdentityCertificate& value,
+    int indent_size);
+std::string GetProtoDebugString(
+    const GetStatusReply::IdentityCertificate& value);
 std::string GetProtoDebugStringWithIndent(const GetStatusReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetStatusReply& value);
@@ -173,6 +185,11 @@ std::string GetProtoDebugString(const SetSystemSaltRequest& value);
 std::string GetProtoDebugStringWithIndent(const SetSystemSaltReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const SetSystemSaltReply& value);
+std::string GetProtoDebugStringWithIndent(const GetEnrollmentIdRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const GetEnrollmentIdRequest& value);
+std::string GetProtoDebugStringWithIndent(const GetEnrollmentIdReply& value,
+                                          int indent_size);
 std::string GetProtoDebugString(const GetEnrollmentIdReply& value);
 
 }  // namespace attestation

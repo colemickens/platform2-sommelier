@@ -16,6 +16,8 @@
 
 #include "attestation/server/attestation_service.h"
 
+#include <algorithm>
+#include <climits>
 #include <string>
 
 #include <base/callback.h>
@@ -308,9 +310,52 @@ bool GetAuthorityPublicKey(
   return false;
 }
 
+std::string GetACAName(attestation::ACAType aca_type) {
+  switch (aca_type) {
+    case attestation::DEFAULT_ACA:
+      return "the default ACA";
+    case attestation::TEST_ACA:
+      return "the test ACA";
+    default: {
+      std::ostringstream stream;
+      stream << "ACA " << aca_type;
+      return stream.str();
+    }
+  }
+}
+
+std::string GetIdentityFeaturesNames(int identity_features) {
+  std::ostringstream stream;
+  if (identity_features == attestation::NO_IDENTITY_FEATURES) {
+    stream << "NO_IDENTITY_FEATURES";
+  } else {
+    // We don't have reflection, copy/paste and adapt these few lines when
+    // adding a new enum value.
+    if (identity_features &
+        attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+      if (stream.tellp() > 0) {
+        stream << ", ";
+      }
+      stream << "IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID";
+      identity_features &=
+          ~attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID;
+    }
+    // Print other bits which may have been forgotten above.
+    if (identity_features) {
+      if (stream.tellp() > 0) {
+        stream << ", ";
+      }
+      stream << "(undecoded features: " << identity_features << ")";
+    }
+  }
+  return stream.str();
+}
+
 }  // namespace
 
 namespace attestation {
+
+using QuoteMap = google::protobuf::Map<int, Quote>;
 
 const size_t kChallengeSignatureNonceSize = 20;  // For all TPMs.
 
@@ -340,10 +385,18 @@ void AttestationService::InitializeTask() {
     default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_));
     crypto_utility_ = default_crypto_utility_.get();
   }
-  if (!database_) {
+  bool existing_database;
+  if (database_) {
+    existing_database = true;
+  } else {
     default_database_.reset(new DatabaseImpl(crypto_utility_));
-    default_database_->Initialize();
+    existing_database = default_database_->Initialize();
     database_ = default_database_.get();
+  }
+  if (existing_database && MigrateAttestationDatabase()) {
+    if (!database_->SaveChanges()) {
+      LOG(WARNING) << "Attestation: Failed to persist database changes.";
+    }
   }
   if (!key_store_) {
     pkcs11_token_manager_.reset(new chaps::TokenManagerClient());
@@ -361,6 +414,122 @@ void AttestationService::InitializeTask() {
     // Ignore errors. If failed this time, will be re-attempted on next boot.
     tpm_utility_->RemoveOwnerDependency();
   }
+}
+
+bool AttestationService::MigrateAttestationDatabase() {
+  bool migrated = false;
+
+  auto* database_pb = database_->GetMutableProtobuf();
+  if (database_pb->has_credentials()) {
+    if (!database_pb->credentials().encrypted_endorsement_credentials().count(
+            DEFAULT_ACA) &&
+        database_pb->credentials()
+            .has_default_encrypted_endorsement_credential()) {
+      LOG(INFO) << "Attestation: Migrating endorsement credential for "
+                << GetACAName(DEFAULT_ACA) << ".";
+      (*database_pb->mutable_credentials()
+            ->mutable_encrypted_endorsement_credentials())[DEFAULT_ACA] =
+          database_pb->credentials().default_encrypted_endorsement_credential();
+      migrated = true;
+    }
+    if (!database_pb->credentials().encrypted_endorsement_credentials().count(
+            TEST_ACA) &&
+        database_pb->credentials()
+            .has_test_encrypted_endorsement_credential()) {
+      LOG(INFO) << "Attestation: Migrating endorsement credential for "
+                << GetACAName(TEST_ACA) << ".";
+      (*database_pb->mutable_credentials()
+            ->mutable_encrypted_endorsement_credentials())[TEST_ACA] =
+          database_pb->credentials().test_encrypted_endorsement_credential();
+      migrated = true;
+    }
+  }
+
+  // Migrate identity data if needed.
+  migrated |= MigrateIdentityData();
+
+  if (migrated) {
+    EncryptAllEndorsementCredentials();
+    LOG(INFO) << "Attestation: Migrated attestation database.";
+  }
+
+  return migrated;
+}
+
+bool AttestationService::MigrateIdentityData() {
+  auto* database_pb = database_->GetMutableProtobuf();
+  if (database_pb->identities().size() > 0) {
+    // We already migrated identity data.
+    return false;
+  }
+
+  bool error = false;
+
+  // The identity we're creating will have the next index in identities.
+  LOG(INFO) << "Attestation: Migrating existing identity into identity "
+            << database_pb->identities().size() << ".";
+  CHECK(database_pb->identities().size() == kFirstIdentity);
+  AttestationDatabase::Identity* identity_data =
+      database_pb->mutable_identities()->Add();
+  identity_data->set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
+  if (database_pb->has_identity_binding()) {
+    identity_data->mutable_identity_binding()->CopyFrom(
+        database_pb->identity_binding());
+  }
+  if (database_pb->has_identity_key()) {
+    identity_data->mutable_identity_key()->CopyFrom(
+        database_pb->identity_key());
+    identity_data->mutable_identity_key()->clear_identity_credential();
+    if (database_pb->identity_key().has_identity_credential()) {
+      // Create an identity certificate for this identity and the default ACA.
+      AttestationDatabase::IdentityCertificate identity_certificate;
+      identity_certificate.set_identity(kFirstIdentity);
+      identity_certificate.set_aca(DEFAULT_ACA);
+      identity_certificate.set_identity_credential(
+          database_pb->identity_key().identity_credential());
+      auto* map = database_pb->mutable_identity_certificates();
+      auto in = map->insert(IdentityCertificateMap::value_type(
+          DEFAULT_ACA, identity_certificate));
+      if (!in.second) {
+        LOG(ERROR) << "Attestation: Could not migrate existing identity.";
+        error = true;
+      }
+    }
+    if (database_pb->identity_key().has_enrollment_id()) {
+      database_->GetMutableProtobuf()->set_enrollment_id(
+          database_pb->identity_key().enrollment_id());
+    }
+  }
+
+  if (database_pb->has_pcr0_quote()) {
+    auto in = identity_data->mutable_pcr_quotes()->insert(
+        QuoteMap::value_type(0, database_pb->pcr0_quote()));
+    if (!in.second) {
+      LOG(ERROR) << "Attestation: Could not migrate existing identity.";
+      error = true;
+    }
+  } else {
+    LOG(ERROR) << "Attestation: Missing PCR0 quote in existing database.";
+    error = true;
+  }
+  if (database_pb->has_pcr1_quote()) {
+    auto in = identity_data->mutable_pcr_quotes()->insert(
+        QuoteMap::value_type(1, database_pb->pcr1_quote()));
+    if (!in.second) {
+      LOG(ERROR) << "Attestation: Could not migrate existing identity.";
+      error = true;
+    }
+  } else {
+    LOG(ERROR) << "Attestation: Missing PCR1 quote in existing database.";
+    error = true;
+  }
+
+  if (error) {
+    database_pb->mutable_identities()->RemoveLast();
+    database_pb->mutable_identity_certificates()->erase(DEFAULT_ACA);
+  }
+
+  return !error;
 }
 
 void AttestationService::ShutdownTask() {
@@ -390,7 +559,7 @@ void AttestationService::CreateGoogleAttestedKeyTask(
     result->set_status(STATUS_NOT_READY);
     return;
   }
-  if (!IsEnrolled()) {
+  if (!IsEnrolledWithACA(request.aca_type())) {
     std::string enroll_request;
     if (!CreateEnrollRequestInternal(request.aca_type(), &enroll_request)) {
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
@@ -403,7 +572,8 @@ void AttestationService::CreateGoogleAttestedKeyTask(
       return;
     }
     std::string server_error;
-    if (!FinishEnrollInternal(enroll_reply, &server_error)) {
+    if (!FinishEnrollInternal(request.aca_type(), enroll_reply,
+                              &server_error)) {
       if (server_error.empty()) {
         result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
         return;
@@ -421,7 +591,8 @@ void AttestationService::CreateGoogleAttestedKeyTask(
   }
   std::string certificate_request;
   std::string message_id;
-  if (!CreateCertificateRequestInternal(request.username(), key,
+  if (!CreateCertificateRequestInternal(request.aca_type(),
+                                        request.username(), key,
                                         request.certificate_profile(),
                                         request.origin(),
                                         &certificate_request, &message_id)) {
@@ -508,7 +679,7 @@ void AttestationService::GetEndorsementInfoTask(
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
-  auto database_pb = database_->GetProtobuf();
+  const auto& database_pb = database_->GetProtobuf();
   if (!database_pb.has_credentials() ||
       !database_pb.credentials().has_endorsement_public_key()) {
     // Try to read the public key directly.
@@ -517,7 +688,9 @@ void AttestationService::GetEndorsementInfoTask(
       result->set_status(STATUS_NOT_AVAILABLE);
       return;
     }
-    database_pb.mutable_credentials()->set_endorsement_public_key(public_key);
+    // Update the in-memory database with the key.
+    database_->GetMutableProtobuf()->
+        mutable_credentials()->set_endorsement_public_key(public_key);
   }
   std::string public_key_info;
   if (!GetSubjectPublicKeyInfo(
@@ -566,20 +739,38 @@ void AttestationService::GetAttestationKeyInfo(
 void AttestationService::GetAttestationKeyInfoTask(
     const GetAttestationKeyInfoRequest& request,
     const std::shared_ptr<GetAttestationKeyInfoReply>& result) {
+  const int identity = kFirstIdentity;
   if (request.key_type() != KEY_TYPE_RSA) {
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
-  auto database_pb = database_->GetProtobuf();
-  if (!IsPreparedForEnrollment() || !database_pb.has_identity_key()) {
+  auto aca_type = request.aca_type();
+  auto found = FindIdentityCertificate(identity, aca_type);
+  if (found == database_->GetMutableProtobuf()
+      ->mutable_identity_certificates()->end()) {
+    LOG(ERROR) << __func__ << ": Identity " << identity
+               << " is not enrolled for attestation with "
+               << GetACAName(aca_type) << ".";
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  const auto& identity_certificate = found->second;
+  if (!IsPreparedForEnrollment() ||identity_certificate.identity() >=
+      database_->GetProtobuf().identities().size()) {
     result->set_status(STATUS_NOT_AVAILABLE);
     return;
   }
-  if (database_pb.identity_key().has_identity_public_key()) {
+  const auto& identity_pb = database_->GetProtobuf().identities()
+      .Get(identity_certificate.identity());
+  if (!identity_pb.has_identity_key()) {
+    result->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+  if (identity_pb.identity_key().has_identity_public_key()) {
     std::string public_key_info;
     if (!GetSubjectPublicKeyInfo(
             request.key_type(),
-            database_pb.identity_key().identity_public_key(),
+            identity_pb.identity_key().identity_public_key(),
             &public_key_info)) {
       LOG(ERROR) << __func__ << ": Bad public key.";
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
@@ -587,19 +778,19 @@ void AttestationService::GetAttestationKeyInfoTask(
     }
     result->set_public_key(public_key_info);
   }
-  if (database_pb.has_identity_binding() &&
-      database_pb.identity_binding().has_identity_public_key()) {
+  if (identity_pb.has_identity_binding() &&
+      identity_pb.identity_binding().has_identity_public_key()) {
     result->set_public_key_tpm_format(
-        database_pb.identity_binding().identity_public_key());
+        identity_pb.identity_binding().identity_public_key());
   }
-  if (database_pb.identity_key().has_identity_credential()) {
-    result->set_certificate(database_pb.identity_key().identity_credential());
+  if (identity_certificate.has_identity_credential()) {
+    result->set_certificate(identity_certificate.identity_credential());
   }
-  if (database_pb.has_pcr0_quote()) {
-    *result->mutable_pcr0_quote() = database_pb.pcr0_quote();
+  if (identity_pb.pcr_quotes().count(0)) {
+    *result->mutable_pcr0_quote() = identity_pb.pcr_quotes().at(0);
   }
-  if (database_pb.has_pcr1_quote()) {
-    *result->mutable_pcr1_quote() = database_pb.pcr1_quote();
+  if (identity_pb.pcr_quotes().count(1)) {
+    *result->mutable_pcr1_quote() = identity_pb.pcr_quotes().at(1);
   }
 }
 
@@ -631,9 +822,11 @@ void AttestationService::ActivateAttestationKeyTask(
     return;
   }
   std::string certificate;
-  if (!ActivateAttestationKeyInternal(request.encrypted_certificate(),
-                                      request.save_certificate(),
-                                      &certificate)) {
+  if (!ActivateAttestationKeyInternal(kFirstIdentity, request.aca_type(),
+                                     request.encrypted_certificate(),
+                                     request.save_certificate(),
+                                     &certificate,
+                                     nullptr /* certificate_index */)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
@@ -779,45 +972,115 @@ bool AttestationService::IsPreparedForEnrollment() {
   if (!tpm_utility_->IsTpmReady()) {
     return false;
   }
-  auto database_pb = database_->GetProtobuf();
-  if (!database_pb.has_credentials()) {
-    return false;
-  }
-  return (
-      database_pb.credentials().has_endorsement_credential() ||
-      database_pb.credentials().has_default_encrypted_endorsement_credential());
+  const auto& database_pb = database_->GetProtobuf();
+  return database_pb.credentials().has_endorsement_credential() ||
+         database_pb.credentials().encrypted_endorsement_credentials().size() >
+             TEST_ACA;
 }
 
 bool AttestationService::IsEnrolled() {
-  auto database_pb = database_->GetProtobuf();
-  return database_pb.has_identity_key() &&
-         database_pb.identity_key().has_identity_credential();
+  return IsEnrolledWithACA(DEFAULT_ACA) || IsEnrolledWithACA(TEST_ACA);
+}
+
+bool AttestationService::IsEnrolledWithACA(ACAType aca_type) {
+  return HasIdentityCertificate(kFirstIdentity, aca_type);
+}
+
+AttestationService::IdentityCertificateMap::iterator
+AttestationService::FindIdentityCertificate(int identity, ACAType aca_type) {
+  auto* database_pb = database_->GetMutableProtobuf();
+  auto end = database_pb->mutable_identity_certificates()->end();
+  for (auto it = database_pb->mutable_identity_certificates()->begin();
+       it != end; ++it) {
+    if (it->second.identity() == identity && it->second.aca() == aca_type) {
+      return it;
+    }
+  }
+  return end;
+}
+
+AttestationDatabase_IdentityCertificate*
+AttestationService::FindOrCreateIdentityCertificate(int identity,
+                                                    ACAType aca_type,
+                                                    int* cert_index) {
+  // Find an identity certificate to reuse or create a new one.
+  int index;
+  auto* database_pb = database_->GetMutableProtobuf();
+  auto found = FindIdentityCertificate(identity, aca_type);
+  if (found == database_pb->mutable_identity_certificates()->end()) {
+    index = identity == kFirstIdentity
+        ? aca_type
+        : std::max(static_cast<size_t>(kMaxACATypeInternal),
+                            database_pb->identity_certificates().size());
+    AttestationDatabase::IdentityCertificate new_identity_certificate;
+    new_identity_certificate.set_identity(identity);
+    new_identity_certificate.set_aca(aca_type);
+    auto* map = database_pb->mutable_identity_certificates();
+    auto in = map->insert(
+        IdentityCertificateMap::value_type(index, new_identity_certificate));
+    if (!in.second) {
+      LOG(ERROR) << __func__ << ": Failed to create identity certificate "
+                 << index << " for identity " << identity << " and "
+                 << GetACAName(aca_type) << ".";
+      if (cert_index) {
+        *cert_index = -1;
+      }
+      return nullptr;
+    }
+    found = in.first;
+    LOG(INFO) << "Attestation: Creating identity certificate " << index
+              << " for identity " << identity << " enrolled with "
+              << GetACAName(aca_type);
+  } else {
+    index = found->first;
+  }
+  if (cert_index) {
+    *cert_index = index;
+  }
+  return &found->second;
+}
+
+bool AttestationService::HasIdentityCertificate(int identity,
+                                                ACAType aca_type) {
+  return FindIdentityCertificate(identity, aca_type) !=
+         database_->GetMutableProtobuf()->
+             mutable_identity_certificates()->end();
 }
 
 bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
     std::string* enroll_request) {
+  const int identity = kFirstIdentity;
   if (!IsPreparedForEnrollment()) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data "
                << "does not exist.";
     return false;
   }
-  auto database_pb = database_->GetProtobuf();
+  const auto& database_pb = database_->GetProtobuf();
+  if (database_pb.identities().size() < identity) {
+    LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
+               << identity << " does not exist.";
+    return false;
+  }
   AttestationEnrollmentRequest request_pb;
   request_pb.set_tpm_version(tpm_utility_->GetVersion());
   *request_pb.mutable_encrypted_endorsement_credential() =
-      aca_type == DEFAULT_ACA ?
-      database_pb.credentials().default_encrypted_endorsement_credential() :
-      database_pb.credentials().test_encrypted_endorsement_credential();
+      database_pb.credentials().encrypted_endorsement_credentials().at(
+          aca_type);
+  const AttestationDatabase::Identity& identity_data =
+      database_pb.identities().Get(identity);
   request_pb.set_identity_public_key(
-      database_pb.identity_binding().identity_public_key());
-  *request_pb.mutable_pcr0_quote() = database_pb.pcr0_quote();
-  *request_pb.mutable_pcr1_quote() = database_pb.pcr1_quote();
+      identity_data.identity_binding().identity_public_key());
+  *request_pb.mutable_pcr0_quote() = identity_data.pcr_quotes().at(0);
+  *request_pb.mutable_pcr1_quote() = identity_data.pcr_quotes().at(1);
 
-  std::string enterprise_enrollment_nonce = ComputeEnterpriseEnrollmentNonce();
-
-  if (!enterprise_enrollment_nonce.empty()) {
-    request_pb.set_enterprise_enrollment_nonce(
-        enterprise_enrollment_nonce.data(), enterprise_enrollment_nonce.size());
+  if (identity_data.features() & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+    std::string enterprise_enrollment_nonce =
+        ComputeEnterpriseEnrollmentNonce();
+    if (!enterprise_enrollment_nonce.empty()) {
+      request_pb.set_enterprise_enrollment_nonce(
+          enterprise_enrollment_nonce.data(),
+          enterprise_enrollment_nonce.size());
+    }
   }
 
   if (!request_pb.SerializeToString(enroll_request)) {
@@ -828,8 +1091,10 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
 }
 
 bool AttestationService::FinishEnrollInternal(
+    ACAType aca_type,
     const std::string& enroll_response,
     std::string* server_error) {
+  const int identity = kFirstIdentity;
   if (!tpm_utility_->IsTpmReady()) {
     return false;
   }
@@ -849,16 +1114,23 @@ bool AttestationService::FinishEnrollInternal(
     LOG(ERROR) << __func__ << ": TPM version mismatch.";
     return false;
   }
+  int certificate_index;
   if (!ActivateAttestationKeyInternal(
+          identity,
+          aca_type,
           response_pb.encrypted_identity_credential(),
-          true /* save_certificate */, nullptr /* certificate */)) {
+          true /* save_certificate */, nullptr /* certificate */,
+          &certificate_index)) {
     return false;
   }
-  LOG(INFO) << "Attestation: Enrollment complete.";
+  LOG(INFO) << __func__ << ": Enrollment of identity " << identity << " with "
+            << GetACAName(aca_type) << " complete. Certificate #"
+            << certificate_index << ".";
   return true;
 }
 
 bool AttestationService::CreateCertificateRequestInternal(
+    ACAType aca_type,
     const std::string& username,
     const CertifiedKey& key,
     CertificateProfile profile,
@@ -868,20 +1140,29 @@ bool AttestationService::CreateCertificateRequestInternal(
   if (!tpm_utility_->IsTpmReady()) {
     return false;
   }
-  if (!IsEnrolled()) {
-    LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
+  if (!IsEnrolledWithACA(aca_type)) {
+    LOG(ERROR) << __func__ << ": Device is not enrolled for attestation with "
+               << GetACAName(aca_type) << ".";
     return false;
   }
-  AttestationCertificateRequest request_pb;
+  auto found = FindIdentityCertificate(kFirstIdentity, aca_type);
+  if (found == database_->GetMutableProtobuf()
+      ->mutable_identity_certificates()->end()) {
+    LOG(ERROR) << __func__ << ": Identity " << kFirstIdentity
+               << " is not enrolled for attestation with "
+               << GetACAName(aca_type) << ".";
+    return false;
+  }
+  const auto& identity_certificate = found->second;
   if (!crypto_utility_->GetRandom(kNonceSize, message_id)) {
     LOG(ERROR) << __func__ << ": GetRandom(message_id) failed.";
     return false;
   }
+  AttestationCertificateRequest request_pb;
   request_pb.set_tpm_version(tpm_utility_->GetVersion());
   request_pb.set_message_id(*message_id);
-  auto database_pb = database_->GetProtobuf();
   request_pb.set_identity_credential(
-      database_pb.identity_key().identity_credential());
+      identity_certificate.identity_credential());
   request_pb.set_profile(profile);
   if (!origin.empty() &&
       (profile == CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID)) {
@@ -1110,7 +1391,7 @@ bool AttestationService::RemoveDeviceKeysByPrefix(
     const std::string& key_prefix) {
   // Manipulate the device keys protobuf field.  Linear time strategy is to swap
   // all elements we want to keep to the front and then truncate.
-  auto device_keys = database_->GetMutableProtobuf()->mutable_device_keys();
+  auto* device_keys = database_->GetMutableProtobuf()->mutable_device_keys();
   int next_keep_index = 0;
   for (int i = 0; i < device_keys->size(); ++i) {
     if (device_keys->Get(i).key_name().find(key_prefix) != 0) {
@@ -1272,6 +1553,57 @@ void AttestationService::PrepareForEnrollment() {
                                                &ecc_ek_certificate)) {
     LOG(WARNING) << "Attestation: Failed to get ECC EK certificate.";
   }
+
+  // Create a new AIK and PCR quotes for the first identity with default
+  // identity features.
+  if (CreateIdentity(default_identity_features_, rsa_ek_public_key) < 0) {
+    return;
+  }
+
+  // Store all this in the attestation database.
+  auto* database_pb = database_->GetMutableProtobuf();
+  TPMCredentials* credentials_pb = database_pb->mutable_credentials();
+  credentials_pb->set_endorsement_public_key(rsa_ek_public_key);
+  credentials_pb->set_endorsement_credential(rsa_ek_certificate);
+  credentials_pb->set_ecc_endorsement_public_key(ecc_ek_public_key);
+  credentials_pb->set_ecc_endorsement_credential(ecc_ek_certificate);
+
+  // Encrypt the endorsement credential for all the ACAs we know of.
+  EncryptAllEndorsementCredentials();
+
+  if (!database_->SaveChanges()) {
+    LOG(ERROR) << "Attestation: Failed to write database.";
+    return;
+  }
+
+  // Ignore errors when removing dependency. If failed this time, will be
+  // re-attempted on next boot.
+  tpm_utility_->RemoveOwnerDependency();
+  base::TimeDelta delta = (base::TimeTicks::Now() - start);
+  LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
+            << "ms).";
+}
+
+int AttestationService::CreateIdentity(int identity_features) {
+  if (!IsPreparedForEnrollment()) {
+    return -1;
+  }
+  std::string rsa_ek_public_key;
+  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA,
+                                             &rsa_ek_public_key)) {
+    return -1;
+  }
+  return CreateIdentity(identity_features, rsa_ek_public_key);
+}
+
+int AttestationService::CreateIdentity(int identity_features,
+                                       const std::string& rsa_ek_public_key) {
+  // The identity we're creating will have the next index in identities.
+  auto* database_pb = database_->GetMutableProtobuf();
+  const int identity = database_pb->identities().size();
+  LOG(INFO) << "Attestation: Creating identity " << identity
+            << " with identity feature(s) "
+            << GetIdentityFeaturesNames(identity_features) << ".";
   // Create an identity key.
   std::string rsa_identity_public_key;
   std::string rsa_identity_key_blob;
@@ -1279,14 +1611,15 @@ void AttestationService::PrepareForEnrollment() {
                                          &rsa_identity_public_key,
                                          &rsa_identity_key_blob)) {
     LOG(ERROR) << "Attestation: Failed to create RSA AIK.";
-    return;
+    return -1;
   }
   std::string rsa_identity_public_key_der;
   if (!tpm_utility_->GetRSAPublicKeyFromTpmPublicKey(
           rsa_identity_public_key, &rsa_identity_public_key_der)) {
     LOG(ERROR) << "Attestation: Failed to parse AIK public key.";
-    return;
+    return -1;
   }
+
   // Quote PCRs. These quotes are intended to be valid for the lifetime of the
   // identity key so they do not need external data. This only works when
   // firmware ensures that these PCRs will not change unless the TPM owner is
@@ -1296,114 +1629,203 @@ void AttestationService::PrepareForEnrollment() {
   std::string quote0;
   if (!tpm_utility_->QuotePCR(0, rsa_identity_key_blob, &quoted_pcr_value0,
                               &quoted_data0, &quote0)) {
-    LOG(ERROR) << "Attestation: Failed to generate quote for PCR_0.";
-    return;
+    LOG(ERROR) << "Attestation: Failed to generate quote for PCR0.";
+    return -1;
   }
   std::string quoted_pcr_value1;
   std::string quoted_data1;
   std::string quote1;
   if (!tpm_utility_->QuotePCR(1, rsa_identity_key_blob, &quoted_pcr_value1,
                               &quoted_data1, &quote1)) {
-    LOG(ERROR) << "Attestation: Failed to generate quote for PCR_1.";
-    return;
+    LOG(ERROR) << "Attestation: Failed to generate quote for PCR1.";
+    return -1;
   }
-  // Store all this in the attestation database.
-  AttestationDatabase* database_pb = database_->GetMutableProtobuf();
-  TPMCredentials* credentials_pb = database_pb->mutable_credentials();
-  credentials_pb->set_endorsement_public_key(rsa_ek_public_key);
-  credentials_pb->set_endorsement_credential(rsa_ek_certificate);
-  credentials_pb->set_ecc_endorsement_public_key(ecc_ek_public_key);
-  credentials_pb->set_ecc_endorsement_credential(ecc_ek_certificate);
 
-  if (!crypto_utility_->EncryptDataForGoogle(
-          rsa_ek_certificate, kDefaultACAPublicKey,
-          std::string(kDefaultACAPublicKeyID,
-                      arraysize(kDefaultACAPublicKeyID) - 1),
-          credentials_pb->mutable_default_encrypted_endorsement_credential())) {
-    LOG(ERROR) << "Attestation: Failed to encrypt EK certificate.";
-    return;
-  }
-  if (!crypto_utility_->EncryptDataForGoogle(
-          rsa_ek_certificate, kTestACAPublicKey,
-          std::string(kTestACAPublicKeyID, arraysize(kTestACAPublicKeyID) - 1),
-          credentials_pb->mutable_test_encrypted_endorsement_credential())) {
-    LOG(ERROR) << "Attestation: Failed to encrypt EK certificate (test).";
-    return;
-  }
-  IdentityKey* key_pb = database_pb->mutable_identity_key();
+  AttestationDatabase::Identity* identity_data =
+      database_pb->mutable_identities()->Add();
+  identity_data->set_features(identity_features);
+
+  IdentityKey* key_pb = identity_data->mutable_identity_key();
   key_pb->set_identity_public_key(rsa_identity_public_key_der);
   key_pb->set_identity_key_blob(rsa_identity_key_blob);
-  IdentityBinding* binding_pb = database_pb->mutable_identity_binding();
+  if (identity_features && IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+    key_pb->set_enrollment_id(database_pb->enrollment_id());
+  }
+  IdentityBinding* binding_pb = identity_data->mutable_identity_binding();
   binding_pb->set_identity_public_key_der(rsa_identity_public_key_der);
   binding_pb->set_identity_public_key(rsa_identity_public_key);
-  Quote* quote_pb0 = database_pb->mutable_pcr0_quote();
-  quote_pb0->set_quote(quote0);
-  quote_pb0->set_quoted_data(quoted_data0);
-  quote_pb0->set_quoted_pcr_value(quoted_pcr_value0);
-  Quote* quote_pb1 = database_pb->mutable_pcr1_quote();
-  quote_pb1->set_quote(quote1);
-  quote_pb1->set_quoted_data(quoted_data1);
-  quote_pb1->set_quoted_pcr_value(quoted_pcr_value1);
-  quote_pb1->set_pcr_source_hint(hwid_);
-  if (!database_->SaveChanges()) {
-    LOG(ERROR) << "Attestation: Failed to write database.";
-    return;
+
+  // Store PCR quotes in the identity.
+  auto* map = identity_data->mutable_pcr_quotes();
+
+  Quote quote_pb0;
+  quote_pb0.set_quote(quote0);
+  quote_pb0.set_quoted_data(quoted_data0);
+  quote_pb0.set_quoted_pcr_value(quoted_pcr_value0);
+  auto in0 = map->insert(QuoteMap::value_type(0, quote_pb0));
+  if (!in0.second) {
+    LOG(ERROR) << "Attestation: Failed to store PCR0 quote for identity "
+               << identity << ".";
+    return false;
   }
-  // Ignore errors when removing dependency. If failed this time, will be
-  // re-attempted on next boot.
-  tpm_utility_->RemoveOwnerDependency();
-  base::TimeDelta delta = (base::TimeTicks::Now() - start);
-  LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
-            << "ms).";
+
+  Quote quote_pb1;
+  quote_pb1.set_quote(quote1);
+  quote_pb1.set_quoted_data(quoted_data1);
+  quote_pb1.set_quoted_pcr_value(quoted_pcr_value1);
+  quote_pb1.set_pcr_source_hint(hwid_);
+
+  auto in1 = map->insert(QuoteMap::value_type(1, quote_pb1));
+  if (!in1.second) {
+    LOG(ERROR) << "Attestation: Failed to store PCR1 quote for identity "
+               << identity << ".";
+    return false;
+  }
+
+  // Return the index of the newly created identity.
+  return database_pb->identities().size() - 1;
+}
+
+int AttestationService::GetIdentitiesCount() const {
+  return database_->GetProtobuf().identities().size();
+}
+
+int AttestationService::GetIdentityFeatures(int identity) const {
+  return database_->GetProtobuf().identities().Get(identity).features();
+}
+
+AttestationService::IdentityCertificateMap
+AttestationService::GetIdentityCertificateMap() const {
+  return database_->GetProtobuf().identity_certificates();
+}
+
+bool AttestationService::EncryptAllEndorsementCredentials() {
+  auto* database_pb = database_->GetMutableProtobuf();
+  std::string rsa_ek_certificate;
+  if (database_pb->has_credentials() &&
+      database_pb->credentials().has_endorsement_credential()) {
+    rsa_ek_certificate = database_pb->credentials().endorsement_credential();
+  } else {
+    // Try to read the endorsement certificate directly.
+    if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA,
+                                               &rsa_ek_certificate)) {
+      LOG(ERROR) << "Attestation: Failed to obtain endorsement public key.";
+      return false;
+    }
+  }
+  TPMCredentials* credentials_pb = database_pb->mutable_credentials();
+  for (int aca = kDefaultACA; aca < kMaxACATypeInternal; ++aca) {
+    if (credentials_pb->encrypted_endorsement_credentials().count(aca)) {
+      continue;
+    }
+    ACAType aca_type = GetACAType(static_cast<ACATypeInternal>(aca));
+    LOG(INFO) << "Attestation: Encrypting endorsement credential for "
+              << GetACAName(aca_type) << ".";
+    if (!EncryptEndorsementCredential(aca_type, rsa_ek_certificate,
+        &(*credentials_pb->mutable_encrypted_endorsement_credentials())[aca])) {
+      LOG(ERROR) << "Attestation: Failed to encrypt EK certificate for "
+                   << GetACAName(static_cast<ACAType>(aca)) << ".";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool AttestationService::EncryptEndorsementCredential(
+    ACAType aca_type,
+    const std::string& credential,
+    EncryptedData* encrypted_credential) {
+  std::string key;
+  std::string key_id;
+  switch (aca_type) {
+    case DEFAULT_ACA:
+      key = kDefaultACAPublicKey;
+      key_id = std::string(kDefaultACAPublicKeyID,
+                        arraysize(kDefaultACAPublicKeyID) - 1);
+      break;
+    case TEST_ACA:
+      key = kTestACAPublicKey;
+      key_id = std::string(kTestACAPublicKeyID,
+                        arraysize(kTestACAPublicKeyID) - 1);
+      break;
+    default:
+      NOTREACHED();
+  }
+  if (!crypto_utility_->EncryptDataForGoogle(
+       credential, key, key_id, encrypted_credential)) {
+      return false;
+  }
+  return true;
 }
 
 bool AttestationService::ActivateAttestationKeyInternal(
+    int identity,
+    ACAType aca_type,
     const EncryptedIdentityCredential& encrypted_certificate,
     bool save_certificate,
-    std::string* certificate) {
+    std::string* certificate,
+    int* certificate_index) {
+  const auto& database_pb = database_->GetProtobuf();
+  if (database_pb.identities().size() < identity) {
+    LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
+               << identity << " does not exist.";
+    return false;
+  }
+  const auto& identity_data = database_pb.identities().Get(identity);
   std::string certificate_local;
-  auto database_pb = database_->GetProtobuf();
   if (encrypted_certificate.tpm_version() == TPM_1_2) {
     // TPM 1.2 style activate.
     if (!tpm_utility_->ActivateIdentity(
             database_pb.delegate().blob(), database_pb.delegate().secret(),
-            database_pb.identity_key().identity_key_blob(),
+            identity_data.identity_key().identity_key_blob(),
             encrypted_certificate.asym_ca_contents(),
             encrypted_certificate.sym_ca_attestation(),
             &certificate_local)) {
-      LOG(ERROR) << __func__ << ": Failed to activate identity.";
+      LOG(ERROR) << __func__ << ": Failed to activate identity "
+                 << identity << ".";
       return false;
     }
   } else {
     // TPM 2.0 style activate.
+        identity_data.identity_key().identity_key_blob();
     std::string credential;
     if (!tpm_utility_->ActivateIdentityForTpm2(
-            KEY_TYPE_RSA, database_pb.identity_key().identity_key_blob(),
+            KEY_TYPE_RSA, identity_data.identity_key().identity_key_blob(),
             encrypted_certificate.encrypted_seed(),
             encrypted_certificate.credential_mac(),
             encrypted_certificate.wrapped_certificate().wrapped_key(),
             &credential)) {
-      LOG(ERROR) << __func__ << ": Failed to activate identity.";
+      LOG(ERROR) << __func__ << ": Failed to activate identity "
+                 << identity << ".";
       return false;
     }
     if (!crypto_utility_->DecryptIdentityCertificateForTpm2(
             credential, encrypted_certificate.wrapped_certificate(),
             &certificate_local)) {
-      LOG(ERROR) << __func__ << ": Failed to decrypt identity certificate.";
+      LOG(ERROR) << __func__ << ": Failed to decrypt certificate for identity "
+                 << identity << ".";
       return false;
     }
   }
   if (save_certificate) {
-    auto identity_key = database_->GetMutableProtobuf()
-        ->mutable_identity_key();
-    identity_key->set_identity_credential(certificate_local);
-    const std::string& enrollment_id = ComputeEnterpriseEnrollmentId();
-    if (!enrollment_id.empty()) {
-      identity_key->set_enrollment_id(enrollment_id);
+    int index;
+    AttestationDatabase_IdentityCertificate* identity_certificate =
+        FindOrCreateIdentityCertificate(identity, aca_type, &index);
+    if (!identity_certificate) {
+      LOG(ERROR) << __func__ << ": Failed to find or create an identity"
+                 << " certificate for identity " << identity << " with "
+                 << GetACAName(aca_type) << ".";
+      return false;
     }
+    // Set the credential obtained when activating the identity with the
+    // response.
+    identity_certificate->set_identity_credential(certificate_local);
     if (!database_->SaveChanges()) {
       LOG(ERROR) << __func__ << ": Failed to persist database changes.";
       return false;
+    }
+    if (certificate_index) {
+      *certificate_index = index;
     }
   }
   if (certificate) {
@@ -1443,6 +1865,19 @@ void AttestationService::GetStatusTask(
     const std::shared_ptr<GetStatusReply>& result) {
   result->set_prepared_for_enrollment(IsPreparedForEnrollment());
   result->set_enrolled(IsEnrolled());
+  for (int i = 0, count = GetIdentitiesCount(); i < count; ++i) {
+    GetStatusReply::Identity* identity = result->mutable_identities()->Add();
+    identity->set_features(GetIdentityFeatures(i));
+  }
+  AttestationService::IdentityCertificateMap map = GetIdentityCertificateMap();
+  for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
+    GetStatusReply::IdentityCertificate identity_certificate;
+    identity_certificate.set_identity(it->second.identity());
+    identity_certificate.set_aca(it->second.aca());
+    result->mutable_identity_certificates()->insert(
+        google::protobuf::Map<int, GetStatusReply::IdentityCertificate>::
+            value_type(it->first, identity_certificate));
+  }
   if (request.extended_status()) {
     result->set_verified_boot(IsVerifiedMode());
   }
@@ -1657,7 +2092,9 @@ bool AttestationService::VerifyActivateIdentity(
     LOG(ERROR) << __func__ << ": Failed to encrypt identity credential";
     return false;
   }
-  if (!ActivateAttestationKeyInternal(encrypted_credential, false, nullptr)) {
+  if (!ActivateAttestationKeyInternal(kFirstIdentity, DEFAULT_ACA,
+                                     encrypted_credential, false,
+                                     nullptr, nullptr)) {
     LOG(ERROR) << __func__ << ": Failed to activate identity";
     return false;
   }
@@ -1720,27 +2157,30 @@ void AttestationService::VerifyTask(
     result->set_verified(true);
     return;
   }
+  const auto& identity_data = database_pb.identities().Get(kFirstIdentity);
   std::string identity_public_key_info;
   if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA,
-           database_pb.identity_binding().identity_public_key_der(),
+           identity_data.identity_binding().identity_public_key_der(),
            &identity_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to get identity public key info.";
     return;
   }
-  if (!VerifyIdentityBinding(database_pb.identity_binding())) {
+  if (!VerifyIdentityBinding(identity_data.identity_binding())) {
     LOG(ERROR) << __func__ << ": Bad identity binding.";
     return;
   }
-  if (!VerifyPCR0Quote(identity_public_key_info, database_pb.pcr0_quote())) {
+  if (!VerifyPCR0Quote(identity_public_key_info,
+                       identity_data.pcr_quotes().at(0))) {
     LOG(ERROR) << __func__ << ": Bad PCR0 quote.";
     return;
   }
-  if (!VerifyPCR1Quote(identity_public_key_info, database_pb.pcr1_quote())) {
+  if (!VerifyPCR1Quote(identity_public_key_info,
+                       identity_data.pcr_quotes().at(1))) {
     // Don't fail because many devices don't use PCR1.
     LOG(WARNING) << __func__ << ": Bad PCR1 quote.";
   }
   if (!VerifyCertifiedKeyGeneration(
-           database_pb.identity_key().identity_key_blob(),
+           identity_data.identity_key().identity_key_blob(),
            identity_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to verify certified key generation.";
     return;
@@ -1753,7 +2193,7 @@ void AttestationService::VerifyTask(
   }
   if (!VerifyActivateIdentity(
            ek_public_key_info,
-           database_pb.identity_binding().identity_public_key())) {
+           identity_data.identity_binding().identity_public_key())) {
     LOG(ERROR) << __func__ << ": Failed to verify identity activation.";
     return;
   }
@@ -1801,7 +2241,8 @@ void AttestationService::FinishEnrollTask(
     const FinishEnrollRequest& request,
     const std::shared_ptr<FinishEnrollReply>& result) {
   std::string server_error;
-  if (!FinishEnrollInternal(request.pca_response(), &server_error)) {
+  if (!FinishEnrollInternal(request.aca_type(), request.pca_response(),
+                            &server_error)) {
     if (server_error.empty()) {
       LOG(ERROR) << __func__ << ": Server error";
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
@@ -1828,6 +2269,13 @@ void AttestationService::CreateCertificateRequest(
 void AttestationService::CreateCertificateRequestTask(
     const CreateCertificateRequestRequest& request,
     const std::shared_ptr<CreateCertificateRequestReply>& result) {
+  const int identity = kFirstIdentity;
+  auto database_pb = database_->GetProtobuf();
+  if (database_pb.identities().size() < identity) {
+    LOG(ERROR) << __func__ << ": Cannot create a certificate request, identity "
+               << identity << " does not exist.";
+    return;
+  }
   std::string key_label;
   if (!crypto_utility_->GetRandom(kNonceSize, &key_label)) {
     LOG(ERROR) << __func__ << ": GetRandom(message_id) failed.";
@@ -1845,11 +2293,11 @@ void AttestationService::CreateCertificateRequestTask(
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
-  auto database_pb = database_->GetProtobuf();
   CertifiedKey key;
+  const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
           KEY_TYPE_RSA, KEY_USAGE_SIGN,
-          database_pb.identity_key().identity_key_blob(), nonce, &key_blob,
+          identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
           &public_key, &public_key_tpm_format, &key_info, &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create a key.";
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
@@ -1864,7 +2312,8 @@ void AttestationService::CreateCertificateRequestTask(
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
   std::string message_id;
-  if (!CreateCertificateRequestInternal(request.username(), key,
+  if (!CreateCertificateRequestInternal(request.aca_type(),
+                                        request.username(), key,
                                         request.certificate_profile(),
                                         request.request_origin(),
                                         result->mutable_pca_request(),
@@ -2241,20 +2690,15 @@ void AttestationService::GetEnrollmentIdTask(
   if (request.ignore_cache()) {
     enrollment_id = ComputeEnterpriseEnrollmentId();
   } else {
-    auto database_pb = database_->GetProtobuf();
-    if (database_pb.has_identity_key() &&
-        database_pb.identity_key().has_enrollment_id()) {
-      DCHECK(!database_pb.identity_key().enrollment_id().empty());
-      result->set_enrollment_id(
-          std::string(database_pb.identity_key().enrollment_id()));
-      return;
-    }
-    enrollment_id = ComputeEnterpriseEnrollmentId();
-    if (!enrollment_id.empty()) {
-      auto identity_key = database_->GetMutableProtobuf()
-          ->mutable_identity_key();
-      identity_key->set_enrollment_id(enrollment_id);
-      database_->SaveChanges();
+    const auto& database_pb = database_->GetProtobuf();
+    if (database_pb.has_enrollment_id()) {
+      enrollment_id = std::string(database_pb.enrollment_id());
+    } else {
+      enrollment_id = ComputeEnterpriseEnrollmentId();
+      if (!enrollment_id.empty()) {
+        database_->GetMutableProtobuf()->set_enrollment_id(enrollment_id);
+        database_->SaveChanges();
+      }
     }
   }
   if (enrollment_id.empty()) {
@@ -2290,6 +2734,17 @@ std::string AttestationService::ComputeEnterpriseEnrollmentId() {
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {
   return weak_factory_.GetWeakPtr();
+}
+
+ACAType AttestationService::GetACAType(ACATypeInternal aca_type_internal) {
+    switch (aca_type_internal) {
+      case kDefaultACA:
+        return DEFAULT_ACA;
+      case kTestACA:
+        return TEST_ACA;
+      default:
+        return DEFAULT_ACA;
+    }
 }
 
 }  // namespace attestation

@@ -55,13 +55,15 @@ DatabaseImpl::~DatabaseImpl() {
                        database_key_.size());
 }
 
-void DatabaseImpl::Initialize() {
+bool DatabaseImpl::Initialize() {
   DCHECK(thread_checker_.CalledOnValidThread());
   io_->Watch(base::Bind(base::IgnoreResult(&DatabaseImpl::Reload),
                         base::Unretained(this)));
   if (!Reload()) {
     LOG(WARNING) << "Creating new attestation database.";
+    return false;
   }
+  return true;
 }
 
 const AttestationDatabase& DatabaseImpl::GetProtobuf() const {
