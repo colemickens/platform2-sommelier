@@ -1870,7 +1870,7 @@ bool Attestation::MigrateIdentityData() {
       error = true;
     }
   } else {
-    LOG(ERROR) << "Attestation: missing PCR0 quote in existing database.";
+    LOG(ERROR) << "Attestation: Missing PCR0 quote in existing database.";
     error = true;
   }
   if (database_pb_.has_pcr1_quote()) {
@@ -1881,7 +1881,7 @@ bool Attestation::MigrateIdentityData() {
       error = true;
     }
   } else {
-    LOG(ERROR) << "Attestation: missing PCR0 quote in existing database.";
+    LOG(ERROR) << "Attestation: Missing PCR0 quote in existing database.";
     error = true;
   }
 

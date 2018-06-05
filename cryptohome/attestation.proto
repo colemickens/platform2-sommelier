@@ -266,11 +266,11 @@ message AttestationDatabase {
   reserved 1, 9, 10, 11, 13;
   optional TPMCredentials credentials = 2;
 
-  // These deprecated fields are now in pca_data for the default Privacy CA.
-  optional IdentityBinding identity_binding = 3 [deprecated=true];
-  optional IdentityKey identity_key = 4 [deprecated=true];
-  optional Quote pcr0_quote = 5 [deprecated=true];
-  optional Quote pcr1_quote = 12 [deprecated=true];
+  // These deprecated fields are now in identities and identity certificates.
+  optional IdentityBinding identity_binding = 3 [deprecated = true];
+  optional IdentityKey identity_key = 4 [deprecated = true];
+  optional Quote pcr0_quote = 5 [deprecated = true];
+  optional Quote pcr1_quote = 12 [deprecated = true];
 
   optional Delegation delegate = 6;
   repeated CertifiedKey device_keys = 7;
