@@ -1520,7 +1520,6 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
-  LaunchVshdRequest request;
   LaunchVshdResponse response;
   // Just proxy the bytes in the protobuf directly. The protobufs in cicerone
   // and concierge have the exact same structures and this is just temporary.
