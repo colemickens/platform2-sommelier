@@ -29,6 +29,7 @@
 #include <base/sys_info.h>
 #include <base/values.h>
 #include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 
 namespace {
 
@@ -411,7 +412,7 @@ int main(int argc, char** argv) {
   base::AtExitManager at_exit;
 
   brillo::FlagHelper::Init(argc, argv, "ADB over USB proxy.");
-  logging::InitLogging(logging::LoggingSettings());
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   const base::FilePath runtime_path(kRuntimePath);
 

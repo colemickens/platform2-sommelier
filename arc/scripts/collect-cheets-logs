@@ -16,7 +16,6 @@ dump_var_log arc.log
 
 # TODO(hidehiko): Move these logs into arc.log.
 dump_var_log android.kmsg
-dump_var_log arc-adbd.log
 dump_var_log arc-boot-continue.log
 dump_var_log arc-camera.log
 dump_var_log arc-lifetime.log
@@ -36,6 +35,9 @@ dump_var_log arc-ureadahead.log
 # TODO(yusukes): Remove these in M70.
 rm -f /var/log/arc-setup-for-login-screen.log
 rm -f /var/log/arc-setup.log
+
+# TODO(hidehiko): Remove these in M71.
+rm -f /var/log/arc-adbd.log
 
 if [ -d /var/log/android ] ; then
   # Dump only the last 3 log files.
