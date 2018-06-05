@@ -48,6 +48,8 @@ void enter_vfs_namespace() {
   // Mount /tmp and /run/cups to be able to communicate with CUPS.
   if (minijail_bind(j.get(), "/tmp", "/tmp", 1))
     LOG(FATAL) << "minijail_bind(\"/tmp\") failed";
+  // In case we start before cups, make sure the path exists.
+  mkdir("/run/cups", 0755);
   if (minijail_bind(j.get(), "/run/cups", "/run/cups", 0))
     LOG(FATAL) << "minijail_bind(\"/run/cups\") failed";
 
