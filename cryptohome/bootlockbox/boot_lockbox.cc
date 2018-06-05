@@ -63,7 +63,7 @@ BootLockbox::BootLockbox(Tpm* tpm, Platform* platform, Crypto* crypto)
 
 BootLockbox::~BootLockbox() {}
 
-bool BootLockbox::Sign(const brillo::SecureBlob& data,
+bool BootLockbox::Sign(const brillo::Blob& data,
                        brillo::SecureBlob* signature) {
   CHECK(signature);
   if (IsFinalized()) {
@@ -74,12 +74,13 @@ bool BootLockbox::Sign(const brillo::SecureBlob& data,
   if (!GetKeyBlob(&key_blob)) {
     return false;
   }
-  return tpm_->Sign(key_blob, data, kPCRIndex, signature);
+
+  return tpm_->Sign(key_blob, brillo::SecureBlob(data), kPCRIndex, signature);
 }
 
-bool BootLockbox::Verify(const brillo::SecureBlob& data,
+bool BootLockbox::Verify(const brillo::Blob& data,
                          const brillo::SecureBlob& signature) {
-  brillo::SecureBlob public_key;
+  brillo::Blob public_key;
   if (!GetPublicKey(&public_key)) {
     return false;
   }
@@ -136,7 +137,7 @@ bool BootLockbox::GetKeyBlob(brillo::SecureBlob* key_blob) {
   return true;
 }
 
-bool BootLockbox::GetPublicKey(brillo::SecureBlob* public_key) {
+bool BootLockbox::GetPublicKey(brillo::Blob* public_key) {
   if (!key_.has_public_key_der() && !LoadKey()) {
     return false;
   }
@@ -219,8 +220,8 @@ bool BootLockbox::CreateKey() {
   return SaveKey();
 }
 
-bool BootLockbox::VerifySignature(const brillo::SecureBlob& public_key,
-                                  const brillo::SecureBlob& signed_data,
+bool BootLockbox::VerifySignature(const brillo::Blob& public_key,
+                                  const brillo::Blob& signed_data,
                                   const brillo::SecureBlob& signature) {
   const unsigned char* asn1_ptr = public_key.data();
   std::unique_ptr<RSA, RSADeleter> rsa(

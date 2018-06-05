@@ -845,7 +845,14 @@ class ServiceExTest : public ServiceTest {
   }
 
   template<class ProtoBuf>
-  brillo::SecureBlob BlobFromProtobuf(const ProtoBuf& pb) {
+  brillo::Blob BlobFromProtobuf(const ProtoBuf& pb) {
+    std::string serialized;
+    CHECK(pb.SerializeToString(&serialized));
+    return brillo::BlobFromString(serialized);
+  }
+
+  template <class ProtoBuf>
+  brillo::SecureBlob SecureBlobFromProtobuf(const ProtoBuf& pb) {
     std::string serialized;
     CHECK(pb.SerializeToString(&serialized));
     return brillo::SecureBlob(serialized);
@@ -1192,7 +1199,7 @@ TEST_F(ServiceExTest, BootLockboxSignSuccess) {
 
 TEST_F(ServiceExTest, BootLockboxSignBadArgs) {
   // Try with bad proto data.
-  service_.DoSignBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  service_.DoSignBootLockbox(brillo::BlobFromString("not_a_protobuf"), NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_NE("", *error_reply());
@@ -1235,7 +1242,7 @@ TEST_F(ServiceExTest, BootLockboxVerifySuccess) {
 
 TEST_F(ServiceExTest, BootLockboxVerifyBadArgs) {
   // Try with bad proto data.
-  service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  service_.DoVerifyBootLockbox(brillo::BlobFromString("not_a_protobuf"), NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_NE("", *error_reply());
@@ -1285,7 +1292,8 @@ TEST_F(ServiceExTest, BootLockboxFinalizeSuccess) {
 
 TEST_F(ServiceExTest, BootLockboxFinalizeBadArgs) {
   // Try with bad proto data.
-  service_.DoFinalizeBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  service_.DoFinalizeBootLockbox(brillo::BlobFromString("not_a_protobuf"),
+                                 NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_NE("", *error_reply());
@@ -1320,7 +1328,7 @@ TEST_F(ServiceExTest, GetBootAttributeSuccess) {
 
 TEST_F(ServiceExTest, GetBootAttributeBadArgs) {
   // Try with bad proto data.
-  service_.DoGetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
+  service_.DoGetBootAttribute(brillo::BlobFromString("not_a_protobuf"), NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_NE("", *error_reply());
@@ -1351,7 +1359,7 @@ TEST_F(ServiceExTest, SetBootAttributeSuccess) {
 
 TEST_F(ServiceExTest, SetBootAttributeBadArgs) {
   // Try with bad proto data.
-  service_.DoSetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
+  service_.DoSetBootAttribute(brillo::BlobFromString("not_a_protobuf"), NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_NE("", *error_reply());
@@ -1370,7 +1378,8 @@ TEST_F(ServiceExTest, FlushAndSignBootAttributesSuccess) {
 
 TEST_F(ServiceExTest, FlushAndSignBootAttributesBadArgs) {
   // Try with bad proto data.
-  service_.DoFlushAndSignBootAttributes(SecureBlob("not_a_protobuf"), NULL);
+  service_.DoFlushAndSignBootAttributes(
+      brillo::BlobFromString("not_a_protobuf"), NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_NE("", *error_reply());
@@ -1395,7 +1404,7 @@ TEST_F(ServiceExTest, GetLoginStatusSuccess) {
     .WillOnce(Return(false));
 
   GetLoginStatusRequest request;
-  service_.DoGetLoginStatus(BlobFromProtobuf(request), NULL);
+  service_.DoGetLoginStatus(SecureBlobFromProtobuf(request), NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_FALSE(reply()->has_error());
@@ -1409,7 +1418,7 @@ TEST_F(ServiceExTest, GetLoginStatusSuccess) {
 
 TEST_F(ServiceExTest, GetLoginStatusBadArgs) {
   // Try with bad proto data.
-  service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  service_.DoVerifyBootLockbox(brillo::BlobFromString("not_a_protobuf"), NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_NE("", *error_reply());
@@ -1491,7 +1500,8 @@ TEST_F(ServiceExTest, GetFirmwareManagementParametersSuccess) {
     .WillRepeatedly(DoAll(SetArgPointee<0>(hash), Return(true)));
 
   GetFirmwareManagementParametersRequest request;
-  service_.DoGetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  service_.DoGetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
+                                             NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_FALSE(reply()->has_error());
@@ -1512,7 +1522,8 @@ TEST_F(ServiceExTest, GetFirmwareManagementParametersError) {
     .WillRepeatedly(Return(false));
 
   GetFirmwareManagementParametersRequest request;
-  service_.DoGetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  service_.DoGetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
+                                             NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_TRUE(reply()->has_error());
@@ -1532,7 +1543,8 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersSuccess) {
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
   request.set_developer_key_hash(hash.to_string());
-  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  service_.DoSetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
+                                             NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_FALSE(reply()->has_error());
@@ -1549,7 +1561,8 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersNoHash) {
 
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
-  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  service_.DoSetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
+                                             NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_FALSE(reply()->has_error());
@@ -1564,7 +1577,8 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersCreateError) {
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
   request.set_developer_key_hash(hash.to_string());
-  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  service_.DoSetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
+                                             NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_TRUE(reply()->has_error());
@@ -1583,7 +1597,8 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersStoreError) {
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
   request.set_developer_key_hash(hash.to_string());
-  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  service_.DoSetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
+                                             NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_TRUE(reply()->has_error());
@@ -1596,7 +1611,7 @@ TEST_F(ServiceExTest, RemoveFirmwareManagementParametersSuccess) {
     .WillOnce(Return(true));
 
   RemoveFirmwareManagementParametersRequest request;
-  service_.DoRemoveFirmwareManagementParameters(BlobFromProtobuf(request),
+  service_.DoRemoveFirmwareManagementParameters(SecureBlobFromProtobuf(request),
                                                 NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());
@@ -1608,7 +1623,7 @@ TEST_F(ServiceExTest, RemoveFirmwareManagementParametersError) {
     .WillOnce(Return(false));
 
   RemoveFirmwareManagementParametersRequest request;
-  service_.DoRemoveFirmwareManagementParameters(BlobFromProtobuf(request),
+  service_.DoRemoveFirmwareManagementParameters(SecureBlobFromProtobuf(request),
                                                 NULL);
   DispatchEvents();
   ASSERT_TRUE(reply());

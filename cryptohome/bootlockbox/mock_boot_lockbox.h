@@ -17,8 +17,8 @@ class MockBootLockbox : public BootLockbox {
   MockBootLockbox() : BootLockbox(NULL, NULL, NULL) {}
   virtual ~MockBootLockbox() {}
 
-  MOCK_METHOD2(Sign, bool(const brillo::SecureBlob&, brillo::SecureBlob*));
-  MOCK_METHOD2(Verify, bool(const brillo::SecureBlob&,
+  MOCK_METHOD2(Sign, bool(const brillo::Blob&, brillo::SecureBlob*));
+  MOCK_METHOD2(Verify, bool(const brillo::Blob&,
                             const brillo::SecureBlob&));
   MOCK_METHOD0(FinalizeBoot, bool());
   MOCK_METHOD0(IsFinalized, bool());

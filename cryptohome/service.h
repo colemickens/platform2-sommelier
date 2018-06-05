@@ -575,33 +575,33 @@ class Service : public brillo::dbus::AbstractDbusService,
                                                    GError** error);
 
   // Runs on the mount thread.
-  virtual void DoSignBootLockbox(const brillo::SecureBlob& request,
+  virtual void DoSignBootLockbox(const brillo::Blob& request,
                                  DBusGMethodInvocation* context);
   virtual gboolean SignBootLockbox(const GArray* request,
                                    DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoVerifyBootLockbox(const brillo::SecureBlob& request,
+  virtual void DoVerifyBootLockbox(const brillo::Blob& request,
                                    DBusGMethodInvocation* context);
   virtual gboolean VerifyBootLockbox(const GArray* request,
                                      DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoFinalizeBootLockbox(const brillo::SecureBlob& request,
+  virtual void DoFinalizeBootLockbox(const brillo::Blob& request,
                                      DBusGMethodInvocation* context);
   virtual gboolean FinalizeBootLockbox(const GArray* request,
                                        DBusGMethodInvocation* context);
 
   // Runs on the mount thread.
-  virtual void DoGetBootAttribute(const brillo::SecureBlob& request,
+  virtual void DoGetBootAttribute(const brillo::Blob& request,
                                   DBusGMethodInvocation* context);
   virtual gboolean GetBootAttribute(const GArray* request,
                                     DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoSetBootAttribute(const brillo::SecureBlob& request,
+  virtual void DoSetBootAttribute(const brillo::Blob& request,
                                   DBusGMethodInvocation* context);
   virtual gboolean SetBootAttribute(const GArray* request,
                                     DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoFlushAndSignBootAttributes(const brillo::SecureBlob& request,
+  virtual void DoFlushAndSignBootAttributes(const brillo::Blob& request,
                                             DBusGMethodInvocation* context);
   virtual gboolean FlushAndSignBootAttributes(const GArray* request,
                                               DBusGMethodInvocation* context);

@@ -2567,7 +2567,7 @@ gboolean Service::InstallAttributesIsFirstInstall(
   return TRUE;
 }
 
-void Service::DoSignBootLockbox(const brillo::SecureBlob& request,
+void Service::DoSignBootLockbox(const brillo::Blob& request,
                                 DBusGMethodInvocation* context) {
   SignBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size()) ||
@@ -2577,25 +2577,27 @@ void Service::DoSignBootLockbox(const brillo::SecureBlob& request,
   }
   BaseReply reply;
   SecureBlob signature;
-  if (!boot_lockbox_->Sign(SecureBlob(request_pb.data()), &signature)) {
+  if (!boot_lockbox_->Sign(brillo::BlobFromString(request_pb.data()),
+                           &signature)) {
     reply.set_error(CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN);
   } else {
-    reply.MutableExtension(SignBootLockboxReply::reply)->set_signature(
-        signature.to_string());
+    reply.MutableExtension(SignBootLockboxReply::reply)
+        ->set_signature(signature.to_string());
   }
   SendReply(context, reply);
 }
 
 gboolean Service::SignBootLockbox(const GArray* request,
                                   DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoSignBootLockbox, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
+                 brillo::Blob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
 
-void Service::DoVerifyBootLockbox(const brillo::SecureBlob& request,
+void Service::DoVerifyBootLockbox(const brillo::Blob& request,
                                   DBusGMethodInvocation* context) {
   VerifyBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size()) ||
@@ -2605,7 +2607,7 @@ void Service::DoVerifyBootLockbox(const brillo::SecureBlob& request,
     return;
   }
   BaseReply reply;
-  if (!boot_lockbox_->Verify(SecureBlob(request_pb.data()),
+  if (!boot_lockbox_->Verify(brillo::BlobFromString(request_pb.data()),
                              SecureBlob(request_pb.signature()))) {
     reply.set_error(CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID);
   }
@@ -2614,14 +2616,15 @@ void Service::DoVerifyBootLockbox(const brillo::SecureBlob& request,
 
 gboolean Service::VerifyBootLockbox(const GArray* request,
                                     DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoVerifyBootLockbox, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
+                 brillo::Blob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
 
-void Service::DoFinalizeBootLockbox(const brillo::SecureBlob& request,
+void Service::DoFinalizeBootLockbox(const brillo::Blob& request,
                                     DBusGMethodInvocation* context) {
   FinalizeBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2637,14 +2640,15 @@ void Service::DoFinalizeBootLockbox(const brillo::SecureBlob& request,
 
 gboolean Service::FinalizeBootLockbox(const GArray* request,
                                       DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoFinalizeBootLockbox, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
+                 brillo::Blob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
 
-void Service::DoGetBootAttribute(const brillo::SecureBlob& request,
+void Service::DoGetBootAttribute(const brillo::Blob& request,
                                  DBusGMethodInvocation* context) {
   GetBootAttributeRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2663,14 +2667,15 @@ void Service::DoGetBootAttribute(const brillo::SecureBlob& request,
 
 gboolean Service::GetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoGetBootAttribute, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
+                 brillo::Blob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
 
-void Service::DoSetBootAttribute(const brillo::SecureBlob& request,
+void Service::DoSetBootAttribute(const brillo::Blob& request,
                                  DBusGMethodInvocation* context) {
   SetBootAttributeRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2684,14 +2689,15 @@ void Service::DoSetBootAttribute(const brillo::SecureBlob& request,
 
 gboolean Service::SetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoSetBootAttribute, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
+                 brillo::Blob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
 
-void Service::DoFlushAndSignBootAttributes(const brillo::SecureBlob& request,
+void Service::DoFlushAndSignBootAttributes(const brillo::Blob& request,
                                            DBusGMethodInvocation* context) {
   FlushAndSignBootAttributesRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2707,9 +2713,10 @@ void Service::DoFlushAndSignBootAttributes(const brillo::SecureBlob& request,
 
 gboolean Service::FlushAndSignBootAttributes(const GArray* request,
                                              DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoFlushAndSignBootAttributes, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
+                 brillo::Blob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2734,7 +2741,8 @@ void Service::DoGetLoginStatus(const brillo::SecureBlob& request,
 
 gboolean Service::GetLoginStatus(const GArray* request,
                                  DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoGetLoginStatus, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));

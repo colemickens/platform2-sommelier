@@ -39,12 +39,11 @@ class BootLockbox {
   // Signs |data| for boot-time tamper evidence.  This always fails after
   // FinalizeBoot() has been called.  On success returns true and sets the
   // |signature| value.  The signature scheme will be RSA-PKCS1-SHA256.
-  virtual bool Sign(const brillo::SecureBlob& data,
-                    brillo::SecureBlob* signature);
+  virtual bool Sign(const brillo::Blob& data, brillo::SecureBlob* signature);
 
   // Verifies that |signature| is valid for |data| and that it was generated
   // before FinalizeBoot() on a current or prior boot.
-  virtual bool Verify(const brillo::SecureBlob& data,
+  virtual bool Verify(const brillo::Blob& data,
                       const brillo::SecureBlob& signature);
 
   // Locks the key used by Sign() so it cannot be used again until the next
@@ -62,7 +61,7 @@ class BootLockbox {
   bool GetKeyBlob(brillo::SecureBlob* key_blob);
 
   // Returns the DER-encoded lockbox |public_key|.  Returns true on success.
-  bool GetPublicKey(brillo::SecureBlob* public_key);
+  bool GetPublicKey(brillo::Blob* public_key);
 
   // Returns the |creation_blob| for the lockbox key.  Returns true on success.
   bool GetCreationBlob(brillo::SecureBlob* creation_blob);
@@ -77,8 +76,8 @@ class BootLockbox {
   bool CreateKey();
 
   // Verifies an RSA-PKCS1-SHA256 signature as created by Sign().
-  bool VerifySignature(const brillo::SecureBlob& public_key,
-                       const brillo::SecureBlob& signed_data,
+  bool VerifySignature(const brillo::Blob& public_key,
+                       const brillo::Blob& signed_data,
                        const brillo::SecureBlob& signature);
 
   Tpm* tpm_;

@@ -98,7 +98,7 @@ TEST_F(BootLockboxDBusAdaptorTest, SignBootLockbox) {
   std::vector<uint8_t> request_array(request.ByteSize());
   request.SerializeToArray(request_array.data(), request_array.size());
 
-  EXPECT_CALL(boot_lockbox_, Sign(brillo::SecureBlob("test"), _));
+  EXPECT_CALL(boot_lockbox_, Sign(brillo::BlobFromString("test"), _));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->SignBootLockbox(
       capturer.CreateMethodResponse<std::vector<uint8_t>>(),
@@ -118,7 +118,7 @@ TEST_F(BootLockboxDBusAdaptorTest, VerifyBootLockbox) {
   request.set_data("test");
   std::vector<uint8_t> request_array(request.ByteSize());
   request.SerializeToArray(request_array.data(), request_array.size());
-  EXPECT_CALL(boot_lockbox_, Verify(brillo::SecureBlob("test"), _));
+  EXPECT_CALL(boot_lockbox_, Verify(brillo::BlobFromString("test"), _));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->VerifyBootLockbox(
       capturer.CreateMethodResponse<std::vector<uint8_t>>(),

@@ -179,6 +179,7 @@ TEST_F(BootAttributesTest, WriteFileFailed) {
 }
 
 TEST_F(BootAttributesTest, ReadFileFailed) {
+  EXPECT_CALL(mock_platform_, ReadFile(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_platform_, ReadFileToSecureBlob(_, _))
       .WillRepeatedly(Return(false));
 

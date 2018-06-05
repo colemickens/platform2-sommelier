@@ -34,8 +34,9 @@ BootAttributes::~BootAttributes() {
 }
 
 bool BootAttributes::Load() {
-  brillo::SecureBlob data, signature;
-  if (!platform_->ReadFileToSecureBlob(FilePath(kAttributeFile), &data) ||
+  brillo::Blob data;
+  brillo::SecureBlob signature;
+  if (!platform_->ReadFile(FilePath(kAttributeFile), &data) ||
       !platform_->ReadFileToSecureBlob(FilePath(kSignatureFile), &signature)) {
     LOG(INFO) << "Cannot read boot lockbox files.";
     return false;
@@ -89,7 +90,7 @@ bool BootAttributes::FlushAndSign() {
     attr->set_value(it->second);
   }
 
-  brillo::SecureBlob content;
+  brillo::Blob content;
   content.resize(message.ByteSize());
   message.SerializeWithCachedSizesToArray(content.data());
 
@@ -103,7 +104,8 @@ bool BootAttributes::FlushAndSign() {
     LOG(ERROR) << "Failed to write to the boot attribute file.";
     return false;
   }
-  if (!platform_->WriteFile(FilePath(kSignatureFile), signature)) {
+  brillo::Blob signature_content(signature.begin(), signature.end());
+  if (!platform_->WriteFile(FilePath(kSignatureFile), signature_content)) {
     LOG(ERROR) << "Failed to write to the boot attribute signature file.";
     return false;
   }
