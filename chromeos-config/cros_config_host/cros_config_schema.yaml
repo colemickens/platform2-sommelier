@@ -273,6 +273,10 @@ properties:
             thermal:
               type: object
               properties:
+                dptf-dv:
+                  description: System image path to the .dv file containing DPTF (Dynamic Platform
+                    and Thermal Framework) settings.
+                  type: string
                 files:
                   type: array
                   items: *system_file

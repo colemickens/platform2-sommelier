@@ -322,6 +322,7 @@ The schema definition is below:
 ### thermal
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
+| dptf-dv | string |  | False |  | System image path to the .dv file containing DPTF (Dynamic Platform and Thermal Framework) settings. |
 | files | array - [files](#files) |  | True |  |  |
 
 ### files
