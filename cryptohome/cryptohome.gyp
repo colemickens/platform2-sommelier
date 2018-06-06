@@ -473,6 +473,7 @@
             'platform_unittest.cc',
             'service_unittest.cc',
             'sign_in_hash_tree_unittest.cc',
+            'signature_sealing_backend_test_utils.cc',
             'stateful_recovery_unittest.cc',
             'tpm_init_unittest.cc',
             'tpm_persistent_state_unittest.cc',
