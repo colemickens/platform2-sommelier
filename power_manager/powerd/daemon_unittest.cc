@@ -774,15 +774,22 @@ TEST_F(DaemonTest, FactoryMode) {
 
   Init();
 
-  // Check that Daemon didn't initialize anything related to adjusting the
+  // Check that Daemon didn't initialize most objects related to adjusting the
   // display or keyboard backlights.
   EXPECT_TRUE(passed_ambient_light_sensor_);
-  EXPECT_TRUE(passed_display_power_setter_);
   EXPECT_TRUE(passed_internal_backlight_);
   EXPECT_TRUE(passed_keyboard_backlight_);
   EXPECT_TRUE(passed_external_backlight_controller_);
   EXPECT_TRUE(passed_internal_backlight_controller_);
   EXPECT_TRUE(passed_keyboard_backlight_controller_);
+
+  // The initial display power still needs to be set after Chrome's display
+  // service comes up, though: http://b/78436034
+  EXPECT_EQ(0, display_power_setter_->num_power_calls());
+  dbus_wrapper_->NotifyNameOwnerChanged(chromeos::kDisplayServiceName, "", "1");
+  EXPECT_EQ(1, display_power_setter_->num_power_calls());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_->state());
+  EXPECT_EQ(base::TimeDelta(), display_power_setter_->delay());
 
   // Display-backlight-related D-Bus calls should return errors.
   dbus::MethodCall screen_call(kPowerManagerInterface,

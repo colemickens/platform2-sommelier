@@ -338,14 +338,14 @@ void Daemon::Init() {
     LOG(INFO) << "Lid closed at startup";
 
   display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
+  display_power_setter_ =
+      delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());
 
   // Ignore the ALS and backlights in factory mode.
   if (!factory_mode_) {
     if (BoolPrefIsTrue(kHasAmbientLightSensorPref))
       light_sensor_ = delegate_->CreateAmbientLightSensor();
 
-    display_power_setter_ =
-        delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =
           delegate_->CreateExternalBacklightController(
@@ -928,6 +928,16 @@ void Daemon::HandleDisplayServiceAvailableOrRestarted(bool available) {
   }
   for (auto controller : all_backlight_controllers_)
     controller->HandleDisplayServiceStart();
+
+  // When running in the factory, we avoid initializing any backlight
+  // controllers, but we need to still tell Chrome to initially turn displays on
+  // so it will restore the correct display power state when returning from VT2:
+  // http://b/78436034
+  if (factory_mode_) {
+    DCHECK(all_backlight_controllers_.empty());
+    display_power_setter_->SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON,
+                                           base::TimeDelta());
+  }
 }
 
 void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
