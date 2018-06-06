@@ -30,6 +30,21 @@ TEST(BlobTest, StringConversions) {
   EXPECT_EQ(blob, obtained_blob);
 }
 
+// Tests CombineBlobs().
+TEST(BlobTest, CombineBlobs) {
+  const Blob kEmpty;
+  const Blob kBlob1 = {1};
+  const Blob kBlob2 = {2};
+  const Blob kBlob3 = {3};
+  const Blob kBlob12 = {1, 2};
+  const Blob kBlob123 = {1, 2, 3};
+  EXPECT_EQ(kBlob123, CombineBlobs({kBlob12, kBlob3}));
+  EXPECT_EQ(kBlob123, CombineBlobs({kBlob1, kBlob2, kBlob3}));
+  EXPECT_EQ(kBlob12, CombineBlobs({kBlob12}));
+  EXPECT_EQ(kBlob12, CombineBlobs({kEmpty, kBlob1, kEmpty, kBlob2, kEmpty}));
+  EXPECT_EQ(kEmpty, CombineBlobs({}));
+}
+
 class SecureBlobTest : public ::testing::Test {
  public:
   SecureBlobTest() {}

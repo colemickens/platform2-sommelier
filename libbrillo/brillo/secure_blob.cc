@@ -18,6 +18,17 @@ Blob BlobFromString(const std::string& bytes) {
   return Blob(bytes.begin(), bytes.end());
 }
 
+Blob CombineBlobs(const std::initializer_list<Blob>& blobs) {
+  size_t total_size = 0;
+  for (const auto& blob : blobs)
+    total_size += blob.size();
+  Blob concatenation;
+  concatenation.reserve(total_size);
+  for (const auto& blob : blobs)
+    concatenation.insert(concatenation.end(), blob.begin(), blob.end());
+  return concatenation;
+}
+
 SecureBlob::SecureBlob(const Blob& blob)
     : SecureBlob(blob.begin(), blob.end()) {}
 

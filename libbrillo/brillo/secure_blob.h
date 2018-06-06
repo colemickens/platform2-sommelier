@@ -5,6 +5,7 @@
 #ifndef LIBBRILLO_BRILLO_SECURE_BLOB_H_
 #define LIBBRILLO_BRILLO_SECURE_BLOB_H_
 
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,9 @@ using Blob = std::vector<uint8_t>;
 // contents.
 BRILLO_EXPORT std::string BlobToString(const Blob& blob);
 BRILLO_EXPORT Blob BlobFromString(const std::string& bytes);
+
+// Returns a concatenation of given Blobs.
+BRILLO_EXPORT Blob CombineBlobs(const std::initializer_list<Blob>& blobs);
 
 // SecureBlob erases the contents on destruction.  It does not guarantee erasure
 // on resize, assign, etc.
