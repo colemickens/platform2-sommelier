@@ -124,7 +124,7 @@ int main(int argc, const char* argv[]) {
               << FLAGS_autosuspend_delay_ms << " ms.";
     base::FilePath base_path =
         hammerd::GetUsbSysfsPath(FLAGS_usb_bus, FLAGS_usb_port);
-    constexpr char kPowerLevelPath[] = "power/level";
+    constexpr char kPowerLevelPath[] = "power/control";
     constexpr char kAutosuspendDelayMsPath[] = "power/autosuspend_delay_ms";
     constexpr char kPowerLevel[] = "auto";
     std::string delay_ms = base::StringPrintf("%d", FLAGS_autosuspend_delay_ms);
