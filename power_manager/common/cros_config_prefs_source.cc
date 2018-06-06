@@ -27,7 +27,12 @@ bool CrosConfigPrefsSource::ReadPrefString(const std::string& name,
                                            std::string* value_out) {
   std::string prop_name;
   base::ReplaceChars(name, "_", "-", &prop_name);
-  return config_->GetString(kPowerConfigPath, prop_name, value_out);
+  if (!config_->GetString(kPowerConfigPath, prop_name, value_out))
+    return false;
+
+  // Trim trailing whitespace to match FilePrefsStore::ReadPrefString().
+  base::TrimWhitespaceASCII(*value_out, base::TRIM_TRAILING, value_out);
+  return true;
 }
 
 }  // namespace power_manager

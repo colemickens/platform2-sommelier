@@ -381,4 +381,14 @@ TEST_F(PrefsTest, TestLibCrosConfigPrefs) {
   EXPECT_FALSE(prefs_.GetInt64("nonexistent", &value));
 }
 
+// Test that CrosConfigPrefsSource::ReadPrefString() trims trailing whitespace.
+TEST_F(PrefsTest, TestLibCrosConfigPrefsTrailingWhitespace) {
+  InitPrefs();
+  cros_config_->SetString("/power", "name", "value \n");
+
+  std::string value;
+  EXPECT_TRUE(prefs_.GetString("name", &value));
+  EXPECT_EQ("value", value);
+}
+
 }  // namespace power_manager
