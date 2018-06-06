@@ -1653,8 +1653,7 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
                          request.scan_vendor_priv_app()),
       base::StringPrintf("CONTAINER_PID=%d", pid),
-      base::StringPrintf("SUPERVISION_TRANSITION=%d",
-                         request.supervision_transition()),
+      base::StringPrintf("IS_CHILD=%d", request.is_child()),
       "DEMO_SESSION_APPS_PATH=" + request.demo_session_apps_path()};
 
   switch (request.packages_cache_mode()) {

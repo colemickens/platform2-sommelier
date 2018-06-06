@@ -506,6 +506,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    UpgradeContainerExpectationsBuilder& SetIsChild(bool v) {
+      is_child_ = v;
+      return *this;
+    }
+
     std::vector<std::string> Build() const {
       return {"CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
               "CHROMEOS_INSIDE_VM=0",
@@ -518,7 +523,7 @@ class SessionManagerImplTest : public ::testing::Test,
                   std::to_string(enable_vendor_privileged_),
               // The upgrade signal has a PID.
               "CONTAINER_PID=" + std::to_string(kAndroidPid),
-              "SUPERVISION_TRANSITION=0",
+              "IS_CHILD=" + std::to_string(is_child_),
               "DEMO_SESSION_APPS_PATH=" + demo_session_apps_path_,
               ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
               ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
@@ -536,6 +541,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool copy_packages_cache_ = false;
     std::string locale_;
     std::string preferred_languages_;
+    bool is_child_ = false;
 
     DISALLOW_COPY_AND_ASSIGN(UpgradeContainerExpectationsBuilder);
   };
@@ -2236,6 +2242,40 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
     EXPECT_FALSE(error.get());
   }
   EXPECT_FALSE(android_container_.running());
+}
+
+TEST_F(SessionManagerImplTest, UpgradeArcContainerWithChild) {
+  ExpectAndRunStartSession(kSaneEmail);
+  SetUpArcMiniContainer();
+
+  // Expect continue-arc-boot and start-arc-network impulses.
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(
+          SessionManagerImpl::kContinueArcBootImpulse,
+          UpgradeContainerExpectationsBuilder(this).SetIsChild(true).Build(),
+          InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcNetworkImpulse,
+                  ElementsAre(std::string("CONTAINER_NAME=") +
+                                  SessionManagerImpl::kArcContainerName,
+                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_is_child(true);
+  ExpectUpgradeArcContainer();
+
+  brillo::ErrorPtr error;
+  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
+  EXPECT_TRUE(impl_->UpgradeArcContainer(
+      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_FALSE(error.get());
+  EXPECT_LE(0, server_socket_fd_for_upgrade.get());
+  EXPECT_TRUE(android_container_.running());
 }
 
 TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
