@@ -46,6 +46,9 @@ export DELETE_DATA_DALVIK_CACHE_DIR=0
 # OTA.
 export DELETE_DATA_EXECUTABLES_AFTER_OTA=0
 
+# Setting this value to 1 will enable arc-appfuse-provider.
+export ENABLE_APPFUSE_PROVIDER=0
+
 # ------------------------------------------------------------------------------
 # The variable is regexp-matched by setup_writable_android_mount.sh. Be careful
 # when editing. Setting this value to 1 will make the Android root,
