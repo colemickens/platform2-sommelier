@@ -63,6 +63,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectApn[];
   static const char kConnectUser[];
   static const char kConnectPassword[];
+  static const char kConnectAllowedAuth[];
   static const char kConnectNumber[];
   static const char kConnectAllowRoaming[];
 
@@ -194,6 +195,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, FillConnectPropertyMap);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetMdnForOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               GetNetworkTechnologyStringOnE362);

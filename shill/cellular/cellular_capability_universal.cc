@@ -62,6 +62,7 @@ static string ObjectID(CellularCapabilityUniversal* c) {
 const char CellularCapabilityUniversal::kConnectApn[] = "apn";
 const char CellularCapabilityUniversal::kConnectUser[] = "user";
 const char CellularCapabilityUniversal::kConnectPassword[] = "password";
+const char CellularCapabilityUniversal::kConnectAllowedAuth[] = "allowed-auth";
 const char CellularCapabilityUniversal::kConnectNumber[] = "number";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
@@ -86,8 +87,6 @@ const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
 
 namespace {
-
-const char kConnectAllowedAuth[] = "allowed-auth";
 
 const char kPhoneNumber[] = "*99#";
 
@@ -140,6 +139,17 @@ string AccessTechnologyToTechnologyFamily(uint32_t access_technologies) {
                              MM_MODEM_ACCESS_TECHNOLOGY_1XRTT))
     return kTechnologyFamilyCdma;
   return "";
+}
+
+MMBearerAllowedAuth ApnAuthenticationToMMBearerAllowedAuth(
+    const std::string& authentication) {
+  if (authentication == kApnAuthenticationPap) {
+    return MM_BEARER_ALLOWED_AUTH_PAP;
+  }
+  if (authentication == kApnAuthenticationChap) {
+    return MM_BEARER_ALLOWED_AUTH_CHAP;
+  }
+  return MM_BEARER_ALLOWED_AUTH_UNKNOWN;
 }
 
 }  // namespace
@@ -688,8 +698,11 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
     if (base::ContainsKey(apn_info, kApnPasswordProperty))
       properties->SetString(kConnectPassword, apn_info[kApnPasswordProperty]);
     if (base::ContainsKey(apn_info, kApnAuthenticationProperty)) {
-      properties->SetString(kConnectAllowedAuth,
-                            apn_info[kApnAuthenticationProperty]);
+      MMBearerAllowedAuth allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
+          apn_info[kApnAuthenticationProperty]);
+      if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN) {
+        properties->SetUint(kConnectAllowedAuth, allowed_auth);
+      }
     }
   }
 }

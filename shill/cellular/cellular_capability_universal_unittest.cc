@@ -70,7 +70,38 @@ namespace shill {
 
 MATCHER_P(HasApn, expected_apn, "") {
   return arg.ContainsString(CellularCapabilityUniversal::kConnectApn) &&
-      expected_apn == arg.GetString(CellularCapabilityUniversal::kConnectApn);
+         expected_apn ==
+             arg.GetString(CellularCapabilityUniversal::kConnectApn);
+}
+
+MATCHER(HasNoUser, "") {
+  return !arg.ContainsString(CellularCapabilityUniversal::kConnectUser);
+}
+
+MATCHER_P(HasUser, expected_user, "") {
+  return arg.ContainsString(CellularCapabilityUniversal::kConnectUser) &&
+         expected_user ==
+             arg.GetString(CellularCapabilityUniversal::kConnectUser);
+}
+
+MATCHER(HasNoPassword, "") {
+  return !arg.ContainsString(CellularCapabilityUniversal::kConnectPassword);
+}
+
+MATCHER_P(HasPassword, expected_password, "") {
+  return arg.ContainsString(CellularCapabilityUniversal::kConnectPassword) &&
+         expected_password ==
+             arg.GetString(CellularCapabilityUniversal::kConnectPassword);
+}
+
+MATCHER(HasNoAllowedAuth, "") {
+  return !arg.ContainsString(CellularCapabilityUniversal::kConnectAllowedAuth);
+}
+
+MATCHER_P(HasAllowedAuth, expected_authentication, "") {
+  return arg.ContainsUint(CellularCapabilityUniversal::kConnectAllowedAuth) &&
+         expected_authentication ==
+             arg.GetUint(CellularCapabilityUniversal::kConnectAllowedAuth);
 }
 
 class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
@@ -1341,6 +1372,71 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
   capability_->OnBearersChanged({});
   capability_->UpdateActiveBearer();
   EXPECT_EQ(nullptr, capability_->GetActiveBearer());;
+}
+
+// Validates FillConnectPropertyMap
+TEST_F(CellularCapabilityUniversalMainTest, FillConnectPropertyMap) {
+  constexpr char kTestApn[] = "test_apn";
+  constexpr char kTestUser[] = "test_user";
+  constexpr char kTestPassword[] = "test_password";
+
+  KeyValueStore properties;
+  Stringmap apn;
+  apn[kApnProperty] = kTestApn;
+  capability_->apn_try_list_ = {apn};
+  capability_->FillConnectPropertyMap(&properties);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasNoUser());
+  EXPECT_THAT(properties, HasNoPassword());
+  EXPECT_THAT(properties, HasNoAllowedAuth());
+
+  apn[kApnUsernameProperty] = kTestUser;
+  capability_->apn_try_list_ = {apn};
+  capability_->FillConnectPropertyMap(&properties);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasUser(kTestUser));
+  EXPECT_THAT(properties, HasNoPassword());
+  EXPECT_THAT(properties, HasNoAllowedAuth());
+
+  apn[kApnPasswordProperty] = kTestPassword;
+  capability_->apn_try_list_ = {apn};
+  capability_->FillConnectPropertyMap(&properties);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasUser(kTestUser));
+  EXPECT_THAT(properties, HasPassword(kTestPassword));
+  EXPECT_THAT(properties, HasNoAllowedAuth());
+
+  apn[kApnAuthenticationProperty] = kApnAuthenticationPap;
+  capability_->apn_try_list_ = {apn};
+  capability_->FillConnectPropertyMap(&properties);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasUser(kTestUser));
+  EXPECT_THAT(properties, HasPassword(kTestPassword));
+  EXPECT_THAT(properties, HasAllowedAuth(MM_BEARER_ALLOWED_AUTH_PAP));
+
+  apn[kApnAuthenticationProperty] = kApnAuthenticationChap;
+  capability_->apn_try_list_ = {apn};
+  capability_->FillConnectPropertyMap(&properties);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasUser(kTestUser));
+  EXPECT_THAT(properties, HasPassword(kTestPassword));
+  EXPECT_THAT(properties, HasAllowedAuth(MM_BEARER_ALLOWED_AUTH_CHAP));
+
+  apn[kApnAuthenticationProperty] = "something";
+  capability_->apn_try_list_ = {apn};
+  capability_->FillConnectPropertyMap(&properties);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasUser(kTestUser));
+  EXPECT_THAT(properties, HasPassword(kTestPassword));
+  EXPECT_THAT(properties, HasNoAllowedAuth());
+
+  apn[kApnAuthenticationProperty] = "";
+  capability_->apn_try_list_ = {apn};
+  capability_->FillConnectPropertyMap(&properties);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasUser(kTestUser));
+  EXPECT_THAT(properties, HasPassword(kTestPassword));
+  EXPECT_THAT(properties, HasNoAllowedAuth());
 }
 
 // Validates expected behavior of Connect function
