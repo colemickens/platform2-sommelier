@@ -162,20 +162,27 @@ int main(int argc, char* argv[]) {
   base::FilePath run_path("/run/l2tpipsec_vpn");
   base::FilePath persistent_path = run_path.Append("current");
 
-  // Make sure the run and persistent paths exist and are accessible for read
-  // by non-root users. This will allow items like CA certificates to be
+  // Make sure the run path exists. Since shill no longer runs as root user, we
+  // can't create the run path dir here. It should have been created in shill
+  // init scripts.
+  if (!base::DirectoryExists(run_path)) {
+    PLOG(ERROR) << "Directory does not exist " << run_path.value();
+    return vpn_manager::kServiceErrorInternal;
+  }
+
+  // Make sure the persistent path exists and is accessible for read by
+  // non-root users. This will allow items like CA certificates to be
   // visible by the l2tpipsec process even after it has dropped privileges.
-  for (auto path : {run_path, persistent_path}) {
-    if (!base::DirectoryExists(path) && !base::CreateDirectory(path)) {
-      PLOG(ERROR) << "Unable to create directory " << path.value();
-      return vpn_manager::kServiceErrorInternal;
-    }
-    if (chmod(path.value().c_str(),
-              S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0) {
-      PLOG(ERROR) << "Unable to change permissions of directory "
-                  << path.value();
-      return vpn_manager::kServiceErrorInternal;
-    }
+  if (!base::DirectoryExists(persistent_path) &&
+      !base::CreateDirectory(persistent_path)) {
+    PLOG(ERROR) << "Unable to create directory " << persistent_path.value();
+    return vpn_manager::kServiceErrorInternal;
+  }
+  if (chmod(persistent_path.value().c_str(),
+            S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0) {
+    PLOG(ERROR) << "Unable to change permissions of directory "
+                << persistent_path.value();
+    return vpn_manager::kServiceErrorInternal;
   }
 
   // Create temp_path directory under run_path, to be deleted at exit.
