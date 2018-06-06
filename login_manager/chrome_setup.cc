@@ -135,11 +135,10 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
 }
 
 void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
-  if (builder->UseFlagIsSet("kvm_host"))
+  if (builder->UseFlagIsSet("kvm_host")) {
     builder->AddFeatureEnableOverride("Crostini");
-  // Enable the UI by default for Eve.
-  if (builder->UseFlagIsSet("eve"))
     builder->AddFeatureEnableOverride("ExperimentalCrostiniUI");
+  }
 }
 
 // Blatantly copied from //components/crx_file/id_util.cc.
