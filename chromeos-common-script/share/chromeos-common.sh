@@ -12,6 +12,17 @@
 # filesystems prefer 4096-byte blocks. These functions help with alignment
 # issues.
 
+# Call sudo when not root already. Otherwise, add usual path before calling a
+# command, as sudo does.
+# This way we avoid using sudo when running on a device in verified mode.
+maybe_sudo() {
+   if [ "${UID:-$(id -u)}" = "0" ]; then
+     PATH="${PATH}:/sbin:/usr/sbin" "$@"
+   else
+     sudo "$@"
+   fi
+}
+
 # This returns the size of a file or device in 512-byte sectors, rounded up if
 # needed.
 # Invoke as: subshell
@@ -85,7 +96,7 @@ locate_gpt() {
 # Args: DEVICE PARTNUM
 # Returns: offset (in sectors) of partition PARTNUM
 partoffset() {
-  sudo $GPT show -b -i $2 $1
+  maybe_sudo $GPT show -b -i $2 $1
 }
 
 # Read GPT table to find the size of a specific partition.
@@ -93,7 +104,7 @@ partoffset() {
 # Args: DEVICE PARTNUM
 # Returns: size (in sectors) of partition PARTNUM
 partsize() {
-  sudo $GPT show -s -i $2 $1
+  maybe_sudo $GPT show -s -i $2 $1
 }
 
 # Extract the whole disk block device from the partition device.
