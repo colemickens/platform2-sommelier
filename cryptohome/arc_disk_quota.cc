@@ -44,27 +44,41 @@ bool ArcDiskQuota::IsQuotaSupported() const {
   return true;
 }
 
-int64_t ArcDiskQuota::GetCurrentSpaceForUid(uid_t uid) const {
+int64_t ArcDiskQuota::GetCurrentSpaceForUid(uid_t android_uid) const {
+  if (android_uid < kAndroidUidStart || android_uid > kAndroidUidEnd) {
+    LOG(ERROR) << "Android uid " << android_uid
+               << " is outside the allowed query range";
+    return -1;
+  }
   if (device_.empty()) {
     LOG(ERROR) << "No quota mount is found";
     return -1;
   }
-  int64_t current_space = platform_->GetQuotaCurrentSpaceForUid(device_, uid);
+  uid_t real_uid = android_uid + kContainerShiftUid;
+  int64_t current_space =
+      platform_->GetQuotaCurrentSpaceForUid(device_, real_uid);
   if (current_space == -1) {
-    PLOG(ERROR) << "Failed to get disk stats for uid: " << uid;
+    PLOG(ERROR) << "Failed to get disk stats for uid: " << real_uid;
     return -1;
   }
   return current_space;
 }
 
-int64_t ArcDiskQuota::GetCurrentSpaceForGid(gid_t gid) const {
+int64_t ArcDiskQuota::GetCurrentSpaceForGid(gid_t android_gid) const {
+  if (android_gid < kAndroidGidStart || android_gid > kAndroidGidEnd) {
+    LOG(ERROR) << "Android gid " << android_gid
+               << " is outside the allowed query range";
+    return -1;
+  }
   if (device_.empty()) {
     LOG(ERROR) << "No quota mount is found";
     return -1;
   }
-  int64_t current_space = platform_->GetQuotaCurrentSpaceForGid(device_, gid);
+  gid_t real_gid = android_gid + kContainerShiftGid;
+  int64_t current_space =
+      platform_->GetQuotaCurrentSpaceForGid(device_, real_gid);
   if (current_space == -1) {
-    PLOG(ERROR) << "Failed to get disk stats for gid: " << gid;
+    PLOG(ERROR) << "Failed to get disk stats for gid: " << real_gid;
     return -1;
   }
   return current_space;

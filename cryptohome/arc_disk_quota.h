@@ -78,11 +78,13 @@ class ArcDiskQuota {
   // installd lifetime.
   virtual bool IsQuotaSupported() const;
 
-  // Get the current disk space usage for a uid. Returns -1 if quotactl fails.
-  virtual int64_t GetCurrentSpaceForUid(uid_t uid) const;
+  // Get the current disk space usage for an android uid (a shifted uid).
+  // Returns -1 if quotactl fails.
+  virtual int64_t GetCurrentSpaceForUid(uid_t android_uid) const;
 
-  // Get the current disk space usage for a gid. Returns -1 if quotactl fails.
-  virtual int64_t GetCurrentSpaceForGid(gid_t gid) const;
+  // Get the current disk space usage for an android gid (a shifted gid).
+  // Returns -1 if quotactl fails.
+  virtual int64_t GetCurrentSpaceForGid(gid_t android_gid) const;
 
  private:
   // Helper function to parse dev file that contains Android's /data.
@@ -96,6 +98,35 @@ class ArcDiskQuota {
   const base::FilePath shadow_root_relative_path_;
   const base::FilePath android_data_relative_path_;
   base::FilePath device_;
+
+  // The uid shift of ARC++ container.
+  static constexpr uid_t kContainerShiftUid = 655360;
+  // The gid shift of ARC++ container.
+  static constexpr gid_t kContainerShiftGid = 655360;
+
+  // The constants below describes the ranges of valid ID to query (based on
+  // what is tracked by installd).These numbers are from
+  // system/core/libcutils/include/private/android_filesystem_config.h in
+  // Android codebase.
+
+  // The smallest UID in Android that is tracked by installd. This is from
+  // AID_APP_START in android_filesystem_config.h.
+  static constexpr uid_t kAndroidUidStart = 10000;
+  // The largest UID in Android that is tracked by installd. This is from
+  // AID_APP_END in android_filesystem_config.h.
+  static constexpr uid_t kAndroidUidEnd = 19999;
+
+  // The following section describes the GID that are tracked by installd.
+  // Installd tracks different kinds of GID types: Cache, External, Shared. The
+  // smallest amongst them is Cache and the largest is Shared hence the covered
+  // range is between AID_CACHE_GID_START and AID_SHARED_GID_END
+  // (inclusive).
+  // The smallest GID in Android that is tracked by installd. This is from
+  // AID_CACHE_GID_START in android_filesystem_config.h.
+  static constexpr gid_t kAndroidGidStart = 20000;
+  // The largest GID in Android that is tracked by installd. This is from
+  // AID_SHARED_GID_END in android_filesystem_config.h.
+  static constexpr gid_t kAndroidGidEnd = 59999;
 
   friend class ArcDiskQuotaTest;
 
