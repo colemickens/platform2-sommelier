@@ -108,6 +108,10 @@ class SessionManagerImpl
   static const char kArcBootedImpulse[];
   static const char kRemoveOldArcDataImpulse[];
 
+  // Lock screen state messages.
+  static const char kScreenLockedImpulse[];
+  static const char kScreenUnlockedImpulse[];
+
   // SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
   // minimum amount of time we must wait before killing the containers.
   static const base::TimeDelta kContainerTimeout;

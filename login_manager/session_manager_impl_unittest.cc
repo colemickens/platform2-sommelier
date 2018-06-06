@@ -218,6 +218,8 @@ UpgradeArcContainerRequest CreateUpgradeArcContainerRequest() {
   request.set_account_id(kSaneEmail);
   return request;
 }
+#endif
+
 // gmock 1.7 does not support returning move-only-type value.
 // Usage:
 //   EXPECT_CALL(
@@ -227,7 +229,6 @@ UpgradeArcContainerRequest CreateUpgradeArcContainerRequest() {
 dbus::Response* CreateEmptyResponse() {
   return dbus::Response::CreateEmpty().release();
 }
-#endif
 
 // Captures the D-Bus Response object passed via DBusMethodResponse via
 // ResponseSender.
@@ -1928,6 +1929,12 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
   brillo::ErrorPtr error;
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kScreenLockedImpulse,
+                  ElementsAre(),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(TRUE, impl_->ShouldEndSession());
@@ -1941,6 +1948,12 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kScreenUnlockedImpulse,
+                  ElementsAre(),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   impl_->HandleLockScreenDismissed();
   EXPECT_EQ(FALSE, impl_->ShouldEndSession());
 }

@@ -44,7 +44,8 @@ jobs.
 ## Login
 
 When the user successfully logs in within Chrome, Chrome calls
-`session_manager`'s `StartSession` D-Bus method. `session_manager` makes an
+`session_manager`'s `StartSession` D-Bus method and emits a
+`start-user-session` upstart signal. `session_manager` makes an
 asynchronous D-Bus call to Upstart's `StartUserSession` method and emits a
 `SessionStateChanged` D-Bus signal on its own interface.
 
@@ -62,16 +63,19 @@ logged in:
 -   [powerd] locks the screen in response to [user inactivity].
 
 To do this, these processes call `session_manager`'s `LockScreen` D-Bus method.
-`session_manager` records the locked state internally and calls Chrome's
-`ShowLockScreen` D-Bus method via `org.chromium.ScreenLockService`. Once Chrome
-has successfully displayed the lock screen, it calls `session_manager`'s
-`HandleLockScreenShown` D-Bus method. `session_manager` then emits a
-`ScreenIsLocked` D-Bus signal.
+`session_manager` records the locked state internally, triggers the
+`screen-locked` upstart signal, and calls Chrome's `ShowLockScreen` D-Bus method
+via `org.chromium.ScreenLockService`. Once Chrome has successfully displayed the
+lock screen it calls `session_manager`'s `HandleLockScreenShown` D-Bus method.
+`session_manager` then emits a `ScreenIsLocked` D-Bus signal.
 
 After the user successfully types their password to unlock the screen, Chrome
 calls `session_manager`'s `HandleLockScreenDismissed` D-Bus method.
 `session_manager` updates its internal state to record that the screen is no
-longer locked and emits a `ScreenIsUnlocked` D-Bus signal.
+longer locked and emits both a `screen-unlocked` upstart event and a
+`ScreenIsUnlocked` D-Bus signal. Note that the lock events are not necessarily
+followed by unlock events because the active session can crash in which case the
+device is no longer locked.
 
 ## Logout
 

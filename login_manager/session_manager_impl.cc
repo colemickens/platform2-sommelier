@@ -113,6 +113,12 @@ constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
 constexpr char SessionManagerImpl::kRemoveOldArcDataImpulse[] =
     "remove-old-arc-data";
 
+// Lock state related impulse (systemd unit start or Upstart signal).
+constexpr char SessionManagerImpl::kScreenLockedImpulse[] =
+    "screen-locked";
+constexpr char SessionManagerImpl::kScreenUnlockedImpulse[] =
+    "screen-unlocked";
+
 // TODO(b:66919195): Optimize Android container shutdown time. It
 // needs as long as 3s on kevin to perform graceful shutdown.
 constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
@@ -809,6 +815,8 @@ bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {
   }
   if (!screen_locked_) {
     screen_locked_ = true;
+    init_controller_->TriggerImpulse(kScreenLockedImpulse, {},
+                                     InitDaemonController::TriggerMode::ASYNC);
     delegate_->LockScreen();
   }
   LOG(INFO) << "LockScreen() method called.";
@@ -822,6 +830,8 @@ void SessionManagerImpl::HandleLockScreenShown() {
 
 void SessionManagerImpl::HandleLockScreenDismissed() {
   screen_locked_ = false;
+  init_controller_->TriggerImpulse(kScreenUnlockedImpulse, {},
+                                   InitDaemonController::TriggerMode::ASYNC);
   LOG(INFO) << "HandleLockScreenDismissed() method called.";
   adaptor_.SendScreenIsUnlockedSignal();
 }
