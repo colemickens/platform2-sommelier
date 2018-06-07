@@ -31,16 +31,6 @@ bool ParseSyslogRecord(const char* buf,
                        size_t len,
                        vm_tools::LogRecord* record);
 
-// Parse a kernel log record and store it in |record|.  The kernel log record
-// is expected to be in the format described by
-// Documentation/ABI/testing/dev-kmsg in the linux repository.  Returns true on
-// success.  Leaves |record| unchanged on failure.
-bool ParseKernelRecord(const char* buf,
-                       size_t len,
-                       const base::Time& boot_time,
-                       vm_tools::LogRecord* record,
-                       uint64_t* sequence);
-
 }  // namespace syslog
 }  // namespace vm_tools
 

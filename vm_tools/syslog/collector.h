@@ -36,7 +36,6 @@ class Collector : public base::MessageLoopForIO::Watcher {
 
   static std::unique_ptr<Collector> CreateForTesting(
       base::ScopedFD syslog_fd,
-      base::ScopedFD kmsg_fd,
       base::Time boot_time,
       std::unique_ptr<vm_tools::LogCollector::Stub> stub);
 
@@ -56,25 +55,16 @@ class Collector : public base::MessageLoopForIO::Watcher {
   // Returns true if there may still be more data to read from the socket.
   bool ReadOneSyslogRecord();
 
-  // Reads one kernel log record from |kmsg_fd_| and adds it to |kmsg_request_|.
-  // Returns true if there may still be more data to be read from the fd.
-  bool ReadOneKernelRecord();
-
   // Initializes this Collector for tests.  Starts listening on the
   // provided file descriptor instead of creating a socket and binding to a
   // path on the file system.
   bool InitForTesting(base::ScopedFD syslog_fd,
-                      base::ScopedFD kmsg_fd,
                       base::Time boot_time,
                       std::unique_ptr<vm_tools::LogCollector::Stub> stub);
 
   // File descriptor bound to /dev/log.
   base::ScopedFD syslog_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher syslog_controller_;
-
-  // File descriptor for listening to /dev/kmsg.
-  base::ScopedFD kmsg_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher kmsg_controller_;
 
   // File descriptor for receiving signals.
   base::ScopedFD signal_fd_;
@@ -93,18 +83,8 @@ class Collector : public base::MessageLoopForIO::Watcher {
   // Non-owning pointer to the current syslog LogRequest.  Owned by arena_.
   vm_tools::LogRequest* syslog_request_;
 
-  // Non-owning pointer to the current kernel log LogRequest.  Owend by arena_.
-  vm_tools::LogRequest* kmsg_request_;
-
   // Size of all the currently buffered log records.
   size_t buffered_size_;
-
-  // File descriptor for the file used to keep track of the last flushed kernel
-  // log message.
-  base::ScopedFD kernel_sequence_fd_;
-
-  // Sequence number of the last kernel log message that was sent to the host.
-  uint64_t kernel_sequence_ = 0;
 
   // Connection to the LogCollector service on the host.
   std::unique_ptr<vm_tools::LogCollector::Stub> stub_;
