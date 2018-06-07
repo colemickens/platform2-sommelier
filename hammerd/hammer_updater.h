@@ -28,7 +28,8 @@ class HammerUpdater {
     kNeedJump,
     kLostConnection,
     kInvalidFirmware,
-    kTouchpadUpToDate
+    kTouchpadUpToDate,
+    kTouchpadMismatched,
   };
 
   enum class UpdateCondition {

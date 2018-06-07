@@ -33,6 +33,7 @@ enum class ExitStatus {
   kUnknownUpdateCondition = 13,
   kConnectionError        = 14,
   kInvalidFirmware        = 15,
+  kTouchpadMismatched     = 16,
 };
 }  // namespace
 
@@ -143,6 +144,8 @@ int main(int argc, const char* argv[]) {
       return static_cast<int>(ExitStatus::kConnectionError);
     case hammerd::HammerUpdater::RunStatus::kInvalidFirmware:
       return static_cast<int>(ExitStatus::kInvalidFirmware);
+    case hammerd::HammerUpdater::RunStatus::kTouchpadMismatched:
+      return static_cast<int>(ExitStatus::kTouchpadMismatched);
     default:
       return static_cast<int>(ExitStatus::kUnknownError);
   }

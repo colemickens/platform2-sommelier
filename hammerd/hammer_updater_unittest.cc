@@ -928,7 +928,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_ICSizeMismatchAndStop) {
       .WillOnce(WriteResponse(reinterpret_cast<void *>(&response_)));
 
   ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
-            HammerUpdater::RunStatus::kFatalError);
+            HammerUpdater::RunStatus::kTouchpadMismatched);
 }
 
 // Test logic of entire firmware blob hash matches one accepted in RW EC.
@@ -942,7 +942,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_HashMismatchAndStop) {
       .WillOnce(WriteResponse(static_cast<void *>(&response_)));
 
   ASSERT_EQ(hammer_updater_->RunTouchpadUpdater(),
-            HammerUpdater::RunStatus::kFatalError);
+            HammerUpdater::RunStatus::kTouchpadMismatched);
 }
 
 // Test the return value if TransferTouchpadFirmware is failed.

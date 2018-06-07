@@ -217,6 +217,11 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         continue;
 
+      case HammerUpdater::RunStatus::kTouchpadMismatched:
+        LOG(ERROR) << "Touchpad firmware is mismatched!";
+        fw_updater_->CloseUsb();
+        return HammerUpdater::RunStatus::kTouchpadMismatched;
+
       default:
         LOG(ERROR) << "Unknown RunStatus: " << static_cast<int>(status);
         fw_updater_->CloseUsb();
@@ -573,7 +578,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   LOG(INFO) << "Loading touchpad firmware image.";
   if (!fw_updater_->LoadTouchpadImage(touchpad_image_)) {
     LOG(ERROR) << "Failed to load touchpad image.";
-    return HammerUpdater::RunStatus::kInvalidFirmware;
+    return HammerUpdater::RunStatus::kTouchpadMismatched;
   }
 
   // Make request to get infomation from hammer.
@@ -611,7 +616,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
     LOG(ERROR) << "Local touchpad binary doesn't match remote IC size.";
     LOG(ERROR) << "Local=" << touchpad_image_.size() << " bytes."
                << "Remote=" << response.fw_size << " bytes.";
-    return HammerUpdater::RunStatus::kFatalError;
+    return HammerUpdater::RunStatus::kTouchpadMismatched;
   }
 
   // Check if the SHA value of the touchpad firmware (entire file) has same
@@ -626,7 +631,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
             << base::HexEncode(digest, SHA256_DIGEST_LENGTH);
   if (std::memcmp(digest, response.allowed_fw_hash, SHA256_DIGEST_LENGTH)) {
     LOG(ERROR) << "Touchpad firmware mismatches hash in RW EC.";
-    return HammerUpdater::RunStatus::kFatalError;
+    return HammerUpdater::RunStatus::kTouchpadMismatched;
   }
 
   // Check if the product_id is matched. Currently, Elan uses numbers for
@@ -636,7 +641,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   if (base::StringPrintf(kElanFormatString, response.elan.id) !=
       touchpad_product_id_) {
     LOG(ERROR) << "product_id mismatch. Local: " << touchpad_product_id_;
-    return HammerUpdater::RunStatus::kFatalError;
+    return HammerUpdater::RunStatus::kTouchpadMismatched;
   }
 
   if (!task_.update_tp) {
@@ -657,7 +662,7 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
       if (response.elan.fw_version == kElanBrokenFwVersion) {
         LOG(INFO) << "Touchpad firmware is broken but never update, notify UI.";
         NotifyNeedUpdate();
-        return HammerUpdater::RunStatus::kFatalError;
+        return HammerUpdater::RunStatus::kTouchpadMismatched;
       }
       LOG(INFO) << "Pretend touchpad firmware is up to date.";
       return HammerUpdater::RunStatus::kTouchpadUpToDate;
