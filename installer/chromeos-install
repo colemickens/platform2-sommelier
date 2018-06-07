@@ -14,6 +14,9 @@ fi
 . /usr/share/misc/chromeos-common.sh || exit 1
 . /usr/share/misc/shflags || exit 1
 
+# Source blocksize
+SRC_BLKSIZE=512
+
 # Helpful constants.
 HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
 TMPMNT=/tmp/install-mount-point
@@ -182,8 +185,8 @@ write_partition() {
   case ${format} in
   nand)
     flash_erase "/dev/mtd${user_part}" 0 0
-    nandwrite --input-skip $((user_skip * 512)) \
-      --input-size $((user_count * 512)) \
+    nandwrite --input-skip $((user_skip * SRC_BLKSIZE)) \
+      --input-size $((user_count * SRC_BLKSIZE)) \
       "/dev/mtd${user_part}" "${src}"
     ;;
 
@@ -205,7 +208,7 @@ write_partition() {
 
       # Have to copy the files over by hand as the source partition is a
       # different filesystem type (like ext4).
-      loop_offset_setup "${src}" "${user_seek}"
+      loop_offset_setup "${src}" "${user_seek}" "${SRC_BLKSIZE}"
       TMPMNT="${src_mnt}" mount_on_loop_dev
       cp -a "${src_mnt}"/* "${dst_mnt}"/
       TMPMNT="${src_mnt}" umount_from_loop_dev
@@ -214,14 +217,14 @@ write_partition() {
       umount "${log_ubi}"
       ;;
     *)
-      ubiupdatevol --skip $((user_skip * 512)) --size $((user_count * 512)) \
-        ${log_ubi} "${src}"
+      ubiupdatevol --skip $((user_skip * SRC_BLKSIZE)) \
+        --size $((user_count * SRC_BLKSIZE)) ${log_ubi} "${src}"
       ;;
     esac
     ;;
 
   *)
-    fast_dd 512 "${user_count}" "${user_seek}" "${user_skip}" \
+    fast_dd "${SRC_BLKSIZE}" "${user_count}" "${user_seek}" "${user_skip}" \
       if="${src}" of="${dst}" conv=notrunc
     ;;
   esac
@@ -293,12 +296,19 @@ tracked_umount() {
 # Create a loop device on the given file at a specified (sector) offset.
 # Remember the loop device using the global variable LOOP_DEV.
 # Invoke as: command
-# Args: FILE OFFSET
+# Args: FILE OFFSET BLKSIZE
 loop_offset_setup() {
   local filename=$1
   local offset=$2
+  local blocksize=$3
 
-  LOOP_DEV=$(losetup -f --show -o $(($offset * 512)) ${filename})
+  if [ "${blocksize}" -eq 512 ]; then
+    local param=""
+  else
+    local param="-b ${blocksize}"
+  fi
+
+  LOOP_DEV=$(losetup -f ${param} --show -o $(($offset * blocksize)) ${filename})
   if [ -z "$LOOP_DEV" ]; then
     die "No free loop device. Free up a loop device or reboot. Exiting."
   fi
@@ -424,7 +434,7 @@ wipe_stateful() {
     init_ubi_volume "${PARTITION_NUM_STATE}" "$(cat "${sysfs_name}")"
     ;;
   *)
-    loop_offset_setup ${DST} ${START_STATEFUL}
+    loop_offset_setup ${DST} ${START_STATEFUL} ${DST_BLKSIZE}
     ;;
   esac
 
@@ -433,11 +443,18 @@ wipe_stateful() {
     state_options="-O encrypt"
   fi
 
+  local num_4k_sectors
+  if [ "${DST_BLKSIZE}" -gt 4096 ]; then
+    num_4k_sectors = $(( NUM_STATEFUL_SECTORS * (DST_BLKSIZE / 4096) ))
+  else
+    num_4k_sectors = $(( NUM_STATEFUL_SECTORS / (4096 / DST_BLKSIZE) ))
+  fi
+
   # We always make any ext* stateful partitions ext4.
   case ${stateful_fs_format} in
   ext[234])
     mkfs.ext4 -F -b 4096 -L "H-STATE" ${state_options} ${LOOP_DEV} \
-      $((NUM_STATEFUL_SECTORS / 8))
+      ${num_4k_sectors}
     ;;
   ubifs)
     mkfs.ubifs -y -x none -R 0 /dev/ubi${PARTITION_NUM_STATE}_0
@@ -490,7 +507,7 @@ install_stateful() {
     LOOP_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
     ;;
   *)
-    loop_offset_setup ${DST} ${START_STATEFUL}
+    loop_offset_setup ${DST} ${START_STATEFUL} ${DST_BLKSIZE}
     ;;
   esac
   mount_on_loop_dev readwrite
@@ -632,6 +649,7 @@ copy_partition() {
 # $1 is the device node, such as "/dev/mtd0"
 recreate_nand_partitions() {
   local dst=$1
+  local blocksize=$2
   local part_no
   for part_no in $(ls /dev | grep 'mtd[0-9]*$' | grep -v mtd0 | cut -c 4-); do
     # Ignore any error in case no UBI volume is attached.
@@ -646,9 +664,9 @@ recreate_nand_partitions() {
   mtd_gpt_file="-D ${mtd_size} ${gpt_file}"
   for part_no in $(seq ${PARTITION_NUM_STATE} ${PARTITION_NUM_EFI_SYSTEM}); do
     part_size=$(partsize "${mtd_gpt_file}" "${part_no}")
-    : $(( part_size *= 512 ))
+    : $(( part_size *= blocksize ))
     part_offset=$(partoffset "${mtd_gpt_file}" "${part_no}")
-    : $(( part_offset *= 512 ))
+    : $(( part_offset *= blocksize ))
     nand_partition add "${dst}" "${part_no}" \
       "${part_offset}" "${part_size}"
   done
@@ -689,12 +707,13 @@ get_pmbr_code() {
     echo "${FLAGS_pmbr_code}"
   elif [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
     # We don't use PMBR if this is on MTD.
-    dd bs=512 count=1 if=/dev/zero of="${pmbr_code}" >/dev/null 2>&1
+    dd bs="${DST_BLKSIZE}" \
+      count=1 if=/dev/zero of="${pmbr_code}" >/dev/null 2>&1
     echo "${pmbr_code}"
   else
     # Steal the PMBR code from the source MBR to put on the dest MBR, for
     # booting on legacy-BIOS devices.
-    dd bs=512 count=1 if="${SRC}" of="${pmbr_code}" >/dev/null 2>&1
+    dd bs="${DST_BLKSIZE}" count=1 if="${SRC}" of="${pmbr_code}" >/dev/null 2>&1
     echo "${pmbr_code}"
   fi
 }
@@ -714,7 +733,7 @@ reload_partitions() {
     /sbin/blockdev --rereadpt "${DST}"
   else
     # On NAND, we need to recreate the partition table.
-    recreate_nand_partitions "${DST}"
+    recreate_nand_partitions "${DST}" "${DST_BLKSIZE}"
   fi
 }
 
@@ -742,7 +761,7 @@ do_post_install() {
       # We need to pass the __writable__ device to postinst, hence ubiX_0.
       dst_rootfs_dev="/dev/ubi${PARTITION_NUM_ROOT_A}_0"
     else
-      loop_offset_setup ${DST} ${START_ROOTFS_A}
+      loop_offset_setup ${DST} ${START_ROOTFS_A} ${DST_BLKSIZE}
       dst_rootfs_dev=$(make_partition_dev ${DST} ${PARTITION_NUM_ROOT_A})
     fi
 
@@ -761,26 +780,9 @@ legacy_offset_size_export() {
   # code work for now.
 
   START_STATEFUL=$(partoffset $1 ${PARTITION_NUM_STATE})
-  START_KERN_A=$(partoffset $1 ${PARTITION_NUM_KERN_A})
   START_ROOTFS_A=$(partoffset $1 ${PARTITION_NUM_ROOT_A})
-  START_KERN_B=$(partoffset $1 ${PARTITION_NUM_KERN_B})
-  START_ROOTFS_B=$(partoffset $1 ${PARTITION_NUM_ROOT_B})
-  START_OEM=$(partoffset $1 ${PARTITION_NUM_OEM})
-  START_RWFW=$(partoffset $1 ${PARTITION_NUM_RWFW})
-  START_ESP=$(partoffset $1 ${PARTITION_NUM_EFI_SYSTEM})
 
   NUM_STATEFUL_SECTORS=$(partsize $1 ${PARTITION_NUM_STATE})
-  NUM_KERN_SECTORS=$(partsize $1 ${PARTITION_NUM_KERN_A})
-  NUM_ROOTFS_SECTORS=$(partsize $1 ${PARTITION_NUM_ROOT_A})
-  NUM_OEM_SECTORS=$(partsize $1 ${PARTITION_NUM_OEM})
-  NUM_RWFW_SECTORS=$(partsize $1 ${PARTITION_NUM_RWFW})
-  NUM_ESP_SECTORS=$(partsize $1 ${PARTITION_NUM_EFI_SYSTEM})
-
-  STATEFUL_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_STATE})
-  KERNEL_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_KERN_A})
-  ROOTFS_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_ROOT_A})
-  OEM_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_OEM})
-  ESP_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_EFI_SYSTEM})
 }
 
 main() {
@@ -801,6 +803,12 @@ main() {
   prepare_disk
   locate_gpt
 
+  DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
+  check_dst
+  check_removable
+
+  DST_BLKSIZE="$(blocksize "${DST}")"
+
   # Special handling for payload_image. This is passed in for recovery images
   # and USB installs. This is done first so we can read the gpt partition
   # file below.
@@ -810,9 +818,11 @@ main() {
 
     SRC="${FLAGS_payload_image}"
     # Mount files that are required to be referenced (when not already mounted).
-    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_ROOT_A})
+    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_ROOT_A}) \
+      512
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"
-    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_STATE})
+    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_STATE}) \
+      512
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
   fi
 
@@ -837,10 +847,6 @@ main() {
   # Now that we have loaded the partition table we can actually read the format
   # and partition information.
   STATEFUL_FORMAT=$(get_format ${PARTITION_NUM_STATE})
-
-  DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
-  check_dst
-  check_removable
 
   # Ask for confirmation to be sure.
   echo "This will install from '${SRC}' to '${DST}'."
