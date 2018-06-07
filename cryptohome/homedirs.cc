@@ -1531,4 +1531,72 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
   }
 }
 
+int32_t HomeDirs::GetUnmountedAndroidDataCount() {
+  int32_t unmounted_android_data_count = 0;
+  DoForEveryUnmountedCryptohome(
+      base::Bind(&HomeDirs::IncreaseCountIfAndroidUser,
+                 base::Unretained(this), &unmounted_android_data_count));
+  return unmounted_android_data_count;
+}
+
+void HomeDirs::IncreaseCountIfAndroidUser(int32_t* count,
+                                          const base::FilePath& user_dir) {
+  const std::string obfuscated = user_dir.BaseName().value();
+
+  if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
+    LOG(ERROR) << "Not sanitized username: " << obfuscated;
+    return;
+  }
+
+  if (EcryptfsCryptohomeExists(obfuscated)) {
+    LOG(WARNING) << "Ignoring Ecryptfs cryptohome: " << obfuscated;
+    return;
+  }
+
+  FilePath root_home_dir;
+  // Check if the tracked android-data exists.
+  if (GetTrackedDirectory(user_dir, FilePath(kRootHomeSuffix),
+                          &root_home_dir) &&
+      MayContainAndroidData(root_home_dir)) {
+    (*count)++;
+  }
+}
+
+bool HomeDirs::MayContainAndroidData(
+    const base::FilePath& root_home_dir) const {
+  // The root home directory is considered to contain Android data if its
+  // grandchild (supposedly android-data/data) is owned by android's system UID.
+  std::unique_ptr<FileEnumerator> dir_enum(platform_->GetFileEnumerator(
+      root_home_dir, false, base::FileEnumerator::DIRECTORIES));
+  for (base::FilePath subdirectory = dir_enum->Next(); !subdirectory.empty();
+       subdirectory = dir_enum->Next()) {
+    if (LooksLikeAndroidData(subdirectory)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool HomeDirs::LooksLikeAndroidData(const base::FilePath& directory) const {
+  std::unique_ptr<FileEnumerator> dir_enum(platform_->GetFileEnumerator(
+      directory, false, base::FileEnumerator::DIRECTORIES));
+
+  for (base::FilePath subdirectory = dir_enum->Next(); !subdirectory.empty();
+       subdirectory = dir_enum->Next()) {
+    if (IsOwnedByAndroidSystem(subdirectory)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool HomeDirs::IsOwnedByAndroidSystem(const base::FilePath& directory) const {
+  uid_t uid = 0;
+  gid_t gid = 0;
+  if (!platform_->GetOwnership(directory, &uid, &gid, false)) {
+    return false;
+  }
+  return uid == kAndroidSystemUid + kArcContainerShiftUid;
+}
+
 }  // namespace cryptohome

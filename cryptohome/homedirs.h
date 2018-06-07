@@ -33,6 +33,10 @@
 
 namespace cryptohome {
 
+// The uid shift of ARC++ container.
+const uid_t kArcContainerShiftUid = 655360;
+// The gid shift of ARC++ container.
+const gid_t kArcContainerShiftGid = 655360;
 const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
 const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
 extern const char kGCacheFilesAttribute[];
@@ -230,6 +234,11 @@ class HomeDirs {
   // a credential |cred|.
   virtual void ResetLECredentials(const Credentials& creds);
 
+  // Get the number of unmounted android-data directory. Each android users
+  // that is not currently logged in should have exactly one android-data
+  // directory.
+  virtual int32_t GetUnmountedAndroidDataCount();
+
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
   // TODO(wad) Should this update default_crypto_.set_platform()?
@@ -309,6 +318,35 @@ class HomeDirs {
   // An implementation function for public FreeDiskSpace interface.
   void FreeDiskSpaceInternal();
 
+  // Increase the out parameter count if the give user_dir contains
+  // android-data directory.
+  void IncreaseCountIfAndroidUser(int32_t* count,
+                                  const base::FilePath& uesr_dir);
+
+  // Helper function to check if the directory contains subdirectory that looks
+  // like encrypted android-data (see definition of looks-like-android-data in
+  // the LooksLikeAndroidData function). Each file names under mounted_user_dir
+  // filesystem tree has encrypted name, but unencrypted metadata.
+  // False positive is possible, but practically should never happen. Even if
+  // false positive happens, installd in ARC++ will use non-quota path and the
+  // system will keep running properly (though a bit slower) so it is still
+  // safe.
+  bool MayContainAndroidData(const base::FilePath& mounted_user_dir) const;
+
+  // Helper function to check if the directory looks like android-data. A
+  // directory is said to look like android-data if it has subdirectory owned by
+  // Android system. It is possible for a directory that looks like android-data
+  // to not actually be android-data, but the other way around is not possible.
+  // But practically in current home directory structure, directory that looks
+  // like android-data is always android-data. So normally, this function
+  // accurately predicts if the directory in the parameter is actually
+  // android-data.
+  bool LooksLikeAndroidData(const base::FilePath& directory) const;
+
+  // Helper function to check if the directory is owned by android system
+  // UID.
+  bool IsOwnedByAndroidSystem(const base::FilePath& directory) const;
+
   // Takes ownership of the supplied PolicyProvider. Used to avoid leaking mocks
   // in unit tests.
   void own_policy_provider(policy::PolicyProvider* value) {
@@ -332,6 +370,9 @@ class HomeDirs {
   VaultKeysetFactory* vault_keyset_factory_;
   brillo::SecureBlob system_salt_;
   chaps::TokenManagerClient chaps_client_;
+
+  // The container a not-shifted system UID in ARC++ container (AID_SYSTEM).
+  static constexpr uid_t kAndroidSystemUid = 1000;
 
   friend class HomeDirsTest;
   FRIEND_TEST(HomeDirsTest, GetTrackedDirectoryForDirCrypto);

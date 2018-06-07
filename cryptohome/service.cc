@@ -116,9 +116,7 @@ const char kAttestationMode[] = "attestation_mode";
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
 
-const base::FilePath kHome("/home");
-const base::FilePath kShadowRoot(".shadow");
-const base::FilePath kAndroidData("mount/root/android-data");
+const base::FilePath::CharType kHome[] = "/home";
 
 class TpmInitStatus : public CryptohomeEventBase {
  public:
@@ -212,7 +210,7 @@ Service::Service()
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       default_arc_disk_quota_(new cryptohome::ArcDiskQuota(
-          platform_, kHome, kShadowRoot, kAndroidData)),
+          homedirs_, platform_, base::FilePath(kHome))),
       arc_disk_quota_(default_arc_disk_quota_.get()),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),

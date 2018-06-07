@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "cryptohome/arc_disk_quota.h"
+#include "cryptohome/mock_homedirs.h"
 #include "cryptohome/mock_platform.h"
 
 #include <memory>
@@ -32,18 +33,16 @@ constexpr base::FilePath::CharType kDev[] = "/dev/mmcblk0p1";
 class ArcDiskQuotaTest : public ::testing::Test {
  public:
   ArcDiskQuotaTest()
-      : arc_disk_quota_(&platform_,
-                        base::FilePath(kHome),
-                        base::FilePath(".shadow"),
-                        base::FilePath("mount/root/android-data")) {}
+      : arc_disk_quota_(&homedirs_,
+                        &platform_,
+                        base::FilePath(kHome)) {}
   ~ArcDiskQuotaTest() override {}
 
  protected:
+  MockHomeDirs homedirs_;
   MockPlatform platform_;
   ArcDiskQuota arc_disk_quota_;
 
-  static const uid_t kContainerShiftUid = ArcDiskQuota::kContainerShiftUid;
-  static const gid_t kContainerShiftGid = ArcDiskQuota::kContainerShiftGid;
   static const uid_t kAndroidUidStart = ArcDiskQuota::kAndroidUidStart;
   static const uid_t kAndroidUidEnd = ArcDiskQuota::kAndroidUidEnd;
   static const gid_t kAndroidGidStart = ArcDiskQuota::kAndroidGidStart;
@@ -62,24 +61,7 @@ TEST_F(ArcDiskQuotaTest, QuotaIsSupported) {
       .WillOnce(Return(0));
 
   // Exactly 1 Android user.
-  MockFileEnumerator file_enumerator;
-  EXPECT_CALL(platform_,
-              GetFileEnumerator(base::FilePath("/home/.shadow"), false,
-                                base::FileEnumerator::DIRECTORIES))
-      .WillOnce(Return(&file_enumerator));
-
-  EXPECT_CALL(file_enumerator, Next())
-      .WillOnce(Return(base::FilePath("/home/.shadow/1")))
-      .WillOnce(Return(base::FilePath("/home/.shadow/2")))
-      .WillOnce(Return(base::FilePath()));
-  EXPECT_CALL(
-      platform_,
-      FileExists(base::FilePath("/home/.shadow/1/mount/root/android-data")))
-      .WillOnce(Return(false));
-  EXPECT_CALL(
-      platform_,
-      FileExists(base::FilePath("/home/.shadow/2/mount/root/android-data")))
-      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, GetUnmountedAndroidDataCount()).WillOnce(Return(0));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(true, arc_disk_quota_.IsQuotaSupported());
@@ -111,25 +93,8 @@ TEST_F(ArcDiskQuotaTest, QuotaIsNotSupported_MultipleAndroidUser) {
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
       .WillOnce(Return(0));
 
-  // Multiple Android user.
-  MockFileEnumerator file_enumerator;
-  EXPECT_CALL(platform_,
-              GetFileEnumerator(base::FilePath("/home/.shadow"), false,
-                                base::FileEnumerator::DIRECTORIES))
-      .WillOnce(Return(&file_enumerator));
-
-  EXPECT_CALL(file_enumerator, Next())
-      .WillOnce(Return(base::FilePath("/home/.shadow/1")))
-      .WillOnce(Return(base::FilePath("/home/.shadow/2")))
-      .WillOnce(Return(base::FilePath()));
-  EXPECT_CALL(
-      platform_,
-      FileExists(base::FilePath("/home/.shadow/1/mount/root/android-data")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      platform_,
-      FileExists(base::FilePath("/home/.shadow/2/mount/root/android-data")))
-      .WillOnce(Return(true));
+  // Multiple Android users.
+  EXPECT_CALL(homedirs_, GetUnmountedAndroidDataCount()).WillOnce(Return(2));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(false, arc_disk_quota_.IsQuotaSupported());
@@ -142,9 +107,9 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_Succeeds) {
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
       .WillOnce(Return(0));
 
-  EXPECT_CALL(platform_,
-              GetQuotaCurrentSpaceForUid(base::FilePath(kDev),
-                                         kValidAndroidUid + kContainerShiftUid))
+  EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(
+                             base::FilePath(kDev),
+                             kValidAndroidUid + kArcContainerShiftUid))
       .WillOnce(Return(5));
 
   arc_disk_quota_.Initialize();
@@ -205,9 +170,9 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_QuotactlFails) {
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
       .WillOnce(Return(0));
 
-  EXPECT_CALL(platform_,
-              GetQuotaCurrentSpaceForUid(base::FilePath(kDev),
-                                         kValidAndroidUid + kContainerShiftUid))
+  EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(
+                             base::FilePath(kDev),
+                             kValidAndroidUid + kArcContainerShiftUid))
       .WillOnce(Return(-1));
 
   arc_disk_quota_.Initialize();
@@ -221,9 +186,9 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_Succeeds) {
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
       .WillOnce(Return(0));
 
-  EXPECT_CALL(platform_,
-              GetQuotaCurrentSpaceForGid(base::FilePath(kDev),
-                                         kValidAndroidGid + kContainerShiftGid))
+  EXPECT_CALL(platform_, GetQuotaCurrentSpaceForGid(
+                             base::FilePath(kDev),
+                             kValidAndroidGid + kArcContainerShiftGid))
       .WillOnce(Return(5));
 
   arc_disk_quota_.Initialize();
@@ -284,9 +249,9 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_QuotactlFails) {
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
       .WillOnce(Return(0));
 
-  EXPECT_CALL(platform_,
-              GetQuotaCurrentSpaceForGid(base::FilePath(kDev),
-                                         kValidAndroidGid + kContainerShiftGid))
+  EXPECT_CALL(platform_, GetQuotaCurrentSpaceForGid(
+                             base::FilePath(kDev),
+                             kValidAndroidGid + kArcContainerShiftGid))
       .WillOnce(Return(-1));
 
   arc_disk_quota_.Initialize();

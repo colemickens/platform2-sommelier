@@ -49,6 +49,7 @@ namespace cryptohome {
 extern const base::FilePath::CharType kEphemeralCryptohomeDir[];
 extern const base::FilePath::CharType kSparseFileDir[];
 // Directories that we intend to track (make pass-through in cryptohome vault)
+extern const base::FilePath::CharType kAndroidDataDir[];
 extern const base::FilePath::CharType kCacheDir[];
 extern const base::FilePath::CharType kDownloadsDir[];
 extern const base::FilePath::CharType kGCacheDir[];

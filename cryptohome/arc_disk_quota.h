@@ -13,6 +13,7 @@
 
 #include <base/macros.h>
 
+#include "cryptohome/homedirs.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -32,16 +33,12 @@ namespace cryptohome {
 class ArcDiskQuota {
  public:
   // Parameters
+  //   homedirs - The mockable Cryptohome homedirs
   //   platform - The mockable Cryptohome platform
   //   home - The path to the home directory, e.g., /home
-  //   shadow_root_relative_path - The relative path to the shadow root, e.g.,
-  //       .shadow
-  //   android_data_relative_path - The relative path to the android-data, e.g.,
-  //       mount/root/android-data
-  ArcDiskQuota(Platform* platform,
-               const base::FilePath& home,
-               const base::FilePath& shadow_root_relative_path,
-               const base::FilePath& android_data_relative_path);
+  ArcDiskQuota(HomeDirs* homedirs,
+               Platform* platform,
+               const base::FilePath& home);
 
   virtual ~ArcDiskQuota();
 
@@ -86,24 +83,6 @@ class ArcDiskQuota {
   // Returns -1 if quotactl fails.
   virtual int64_t GetCurrentSpaceForGid(gid_t android_gid) const;
 
- private:
-  // Helper function to parse dev file that contains Android's /data.
-  base::FilePath GetDevice();
-
-  // Helper function to get the number of users with Android's /data.
-  virtual int32_t GetAndroidUserCount() const;
-
-  Platform* platform_;
-  const base::FilePath home_;
-  const base::FilePath shadow_root_relative_path_;
-  const base::FilePath android_data_relative_path_;
-  base::FilePath device_;
-
-  // The uid shift of ARC++ container.
-  static constexpr uid_t kContainerShiftUid = 655360;
-  // The gid shift of ARC++ container.
-  static constexpr gid_t kContainerShiftGid = 655360;
-
   // The constants below describes the ranges of valid ID to query (based on
   // what is tracked by installd).These numbers are from
   // system/core/libcutils/include/private/android_filesystem_config.h in
@@ -128,6 +107,15 @@ class ArcDiskQuota {
   // The largest GID in Android that is tracked by installd. This is from
   // AID_SHARED_GID_END in android_filesystem_config.h.
   static constexpr gid_t kAndroidGidEnd = 59999;
+
+ private:
+  // Helper function to parse dev file that contains Android's /data.
+  base::FilePath GetDevice();
+
+  HomeDirs* homedirs_;
+  Platform* platform_;
+  const base::FilePath home_;
+  base::FilePath device_;
 
   friend class ArcDiskQuotaTest;
 

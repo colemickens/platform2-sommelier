@@ -154,6 +154,48 @@ class HomeDirsTest
         std::unique_ptr<policy::MockDevicePolicy>(device_policy)));
   }
 
+  // Create an enumerator that will enumerate the given child_directories.
+  NiceMock<MockFileEnumerator>* CreateFileEnumerator(
+      const std::vector<FilePath>& child_directories) {
+    auto* mock = new NiceMock<MockFileEnumerator>;
+    for (const auto& child : child_directories) {
+      struct stat stat = {};
+      mock->entries_.push_back(FileEnumerator::FileInfo(child, stat));
+    }
+    return mock;
+  }
+
+  // Sets up expectations for the given tracked directories which belong to the
+  // same parent directory.
+  void ExpectTrackedDirectoryEnumeration(
+      const std::vector<FilePath>& child_directories) {
+    DCHECK(!child_directories.empty());
+    FilePath parent_directory = child_directories[0].DirName();
+    // xattr is used to track directories.
+    for (const auto& child : child_directories) {
+      DCHECK_EQ(parent_directory.value(), child.DirName().value());
+      EXPECT_CALL(platform_, GetExtendedFileAttributeAsString(
+          child, kTrackedDirectoryNameAttribute, _))
+          .WillRepeatedly(DoAll(SetArgPointee<2>(child.BaseName().value()),
+                                Return(true)));
+      EXPECT_CALL(platform_, HasExtendedFileAttribute(
+          child, kTrackedDirectoryNameAttribute))
+          .WillRepeatedly(Return(true));
+    }
+    // |child_directories| should be enumerated as the parent's children.
+    auto create_file_enumerator_function = [child_directories]() {
+      auto* mock = new NiceMock<MockFileEnumerator>;
+      for (const auto& child : child_directories) {
+        struct stat stat = {};
+        mock->entries_.push_back(FileEnumerator::FileInfo(child, stat));
+      }
+      return mock;
+    };
+    EXPECT_CALL(platform_, GetFileEnumerator(
+        parent_directory, false, base::FileEnumerator::DIRECTORIES))
+        .WillRepeatedly(InvokeWithoutArgs(create_file_enumerator_function));
+  }
+
   // Returns true if the test is running for eCryptfs, false if for dircrypto.
   bool ShouldTestEcryptfs() const { return GetParam(); }
 
@@ -167,6 +209,9 @@ class HomeDirsTest
   std::vector<base::Time> homedir_times_;
   MockVaultKeysetFactory vault_keyset_factory_;
   HomeDirs homedirs_;
+
+  static const uid_t kAndroidSystemRealUid =
+      HomeDirs::kAndroidSystemUid + kArcContainerShiftUid;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HomeDirsTest);
@@ -322,6 +367,81 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
       temp_dir.GetPath(), FilePath(FILE_PATH_LITERAL("aaa/zzz")), &result));
 }
 
+TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
+  if (ShouldTestEcryptfs()) {
+    // We don't support Ecryptfs.
+    for (int i = 0; i < homedir_paths_.size(); i++) {
+      FilePath vault_path = homedir_paths_[i].Append(kEcryptfsVaultDir);
+      EXPECT_CALL(platform_, DirectoryExists(vault_path))
+          .WillOnce(Return(true));
+    }
+    EXPECT_EQ(0, homedirs_.GetUnmountedAndroidDataCount());
+    return;
+  }
+
+  // Basic setup.
+  for (size_t i = 0; i < homedir_paths_.size(); i++) {
+    // Set up tracked root directory under DirCrypto's home.
+    FilePath vault_path = homedir_paths_[i].Append(kEcryptfsVaultDir);
+    EXPECT_CALL(platform_, DirectoryExists(vault_path))
+        .WillRepeatedly(Return(false));
+    FilePath mount = homedir_paths_[i].Append(kMountDir);
+    FilePath root = mount.Append(kRootHomeSuffix);
+
+    ExpectTrackedDirectoryEnumeration({root});
+  }
+
+  // Set up a root hierarchy for the encrypted version of homedir_paths_[0]
+  // (added a suffix _encrypted in the code to mark them encrypted).
+  // root
+  //     |-android-data
+  //     |    |-cache
+  //     |    |-data
+  //     |-session_manager
+  FilePath root = homedir_paths_[0].Append(kMountDir).Append(kRootHomeSuffix);
+  FilePath android_data = root.Append("android-data_encrypted");
+  FilePath session_manager = root.Append("session_manager_encrypted");
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(root, false, base::FileEnumerator::DIRECTORIES))
+      .WillOnce(Return(CreateFileEnumerator({android_data, session_manager})));
+  FilePath data = android_data.Append("data_encrypted");
+  FilePath cache = android_data.Append("cache_encrypted");
+  EXPECT_CALL(platform_, GetFileEnumerator(android_data, false,
+                                           base::FileEnumerator::DIRECTORIES))
+      .WillOnce(Return(CreateFileEnumerator({cache, data})));
+
+  // This marks dir2 directory under homedir_paths_[0] as android-data by
+  // assigning System UID as the uid owner of dir4 (dir2's children).
+  EXPECT_CALL(platform_, GetOwnership(cache, _, _, false))
+      .WillOnce(DoAll(SetArgPointee<1>(kAndroidSystemRealUid), Return(true)));
+
+  // Other homedir_paths_ shouldn't have android-data.
+  for (size_t i = 1; i < homedir_paths_.size(); i++) {
+    // Set up a root hierarchy for the encrypted version of homedir_paths
+    // without android-data (added a suffix _encrypted in the code to mark them
+    // encrypted).
+    // root
+    //     |-session_manager
+    //          |-policy
+    FilePath root = homedir_paths_[i].Append(kMountDir).Append(kRootHomeSuffix);
+    FilePath session_manager = root.Append("session_manager_encrypted");
+    EXPECT_CALL(platform_, GetFileEnumerator(root, false,
+                                             base::FileEnumerator::DIRECTORIES))
+        .WillOnce(Return(CreateFileEnumerator({session_manager})));
+    FilePath policy = session_manager.Append("policy_encrypted");
+    EXPECT_CALL(platform_, GetFileEnumerator(session_manager, false,
+                                             base::FileEnumerator::DIRECTORIES))
+        .WillOnce(Return(CreateFileEnumerator({policy})));
+    EXPECT_CALL(platform_, GetOwnership(policy, _, _, false))
+        .WillOnce(Return(false));
+  }
+
+  // Expect 1 home directory with android-data: homedir_paths_[0].
+  EXPECT_EQ(1, homedirs_.GetUnmountedAndroidDataCount());
+}
+
 class FreeDiskSpaceTest : public HomeDirsTest {
  public:
   FreeDiskSpaceTest() { }
@@ -346,37 +466,6 @@ class FreeDiskSpaceTest : public HomeDirsTest {
       ExpectTrackedDirectoryEnumeration({gcache_version1, gcache_version2});
       ExpectTrackedDirectoryEnumeration({gcache_tmp});
     }
-  }
-
-  // Sets up expectations for the given tracked directories which belong to the
-  // same parent directory.
-  void ExpectTrackedDirectoryEnumeration(
-      const std::vector<FilePath>& child_directories) {
-    DCHECK(!child_directories.empty());
-    FilePath parent_directory = child_directories[0].DirName();
-    // xattr is used to track directories.
-    for (const auto& child : child_directories) {
-      DCHECK_EQ(parent_directory.value(), child.DirName().value());
-      EXPECT_CALL(platform_, GetExtendedFileAttributeAsString(
-          child, kTrackedDirectoryNameAttribute, _))
-          .WillRepeatedly(DoAll(SetArgPointee<2>(child.BaseName().value()),
-                                Return(true)));
-      EXPECT_CALL(platform_, HasExtendedFileAttribute(
-          child, kTrackedDirectoryNameAttribute))
-          .WillRepeatedly(Return(true));
-    }
-    // |child_directories| should be enumerated as the parent's children.
-    auto create_file_enumerator_function = [child_directories]() {
-      auto* mock = new NiceMock<MockFileEnumerator>;
-      for (const auto& child : child_directories) {
-        struct stat stat = {};
-        mock->entries_.push_back(FileEnumerator::FileInfo(child, stat));
-      }
-      return mock;
-    };
-    EXPECT_CALL(platform_, GetFileEnumerator(
-        parent_directory, false, base::FileEnumerator::DIRECTORIES))
-        .WillRepeatedly(InvokeWithoutArgs(create_file_enumerator_function));
   }
 
   // The first half of HomeDirs::FreeDiskSpace does a purge of the Cache and
