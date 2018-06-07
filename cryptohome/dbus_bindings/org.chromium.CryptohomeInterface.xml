@@ -83,13 +83,15 @@
       <arg type="ay" name="update_key_request" direction="in" />
       <arg type="ay" name="update_key_reply" direction="out" />
     </method>
-    <method name="Remove">
-      <arg type="s" name="username" direction="in" />
-      <arg type="b" name="success" direction="out" />
-    </method>
     <method name="AsyncRemove">
       <arg type="s" name="username" direction="in" />
       <arg type="i" name="async_id" direction="out" />
+    </method>
+    <!-- This may be called asynchronously. -->
+    <method name="RemoveEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
     </method>
     <method name="GetSystemSalt">
       <arg type="ay" name="salt" direction="out" />

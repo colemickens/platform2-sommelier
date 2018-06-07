@@ -282,12 +282,12 @@ class Service : public brillo::dbus::AbstractDbusService,
                               GArray *authorization_request,
                               GArray *list_keys_request,
                               DBusGMethodInvocation *context);
-  virtual gboolean Remove(gchar *user,
-                          gboolean *OUT_result,
-                          GError **error);
   virtual gboolean AsyncRemove(gchar *user,
                                gint *OUT_async_id,
                                GError **error);
+  virtual void DoRemoveEx(AccountIdentifier* account_id,
+                          DBusGMethodInvocation* context);
+  virtual gboolean RemoveEx(GArray* account, DBusGMethodInvocation* context);
   virtual gboolean RenameCryptohome(const GArray* account_id_from,
                                     const GArray* account_id_to,
                                     DBusGMethodInvocation* response);

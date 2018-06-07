@@ -118,17 +118,17 @@ gboolean cryptohome_update_key_ex(Cryptohome* self,
   // Leave the response called error to reuse WRAP.
   CRYPTOHOME_WRAP_METHOD(UpdateKeyEx, id, auth, params);
 }
-gboolean cryptohome_remove(Cryptohome* self,
-                           gchar* userid,
-                           gboolean* OUT_result,
-                           GError** error) {
-  CRYPTOHOME_WRAP_METHOD(Remove, userid, OUT_result);
-}
 gboolean cryptohome_async_remove(Cryptohome* self,
                                  gchar* userid,
                                  gint* OUT_async_id,
                                  GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncRemove, userid, OUT_async_id);
+}
+gboolean cryptohome_remove_ex(Cryptohome* self,
+                              GArray* account,
+                              DBusGMethodInvocation* error) {
+  // Leave the response called error to reuse WRAP.
+  CRYPTOHOME_WRAP_METHOD(RemoveEx, account);
 }
 gboolean cryptohome_rename_cryptohome(Cryptohome* self,
                                       GArray* account_id_from,

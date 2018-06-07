@@ -1292,15 +1292,24 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    gboolean done = false;
+    cryptohome::AccountIdentifier identifier;
+    identifier.set_account_id(account_id);
+
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(identifier));
+    if (!account_ary.get())
+      return 1;
+
+    GArray* out_reply = nullptr;
     brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_remove(proxy.gproxy(),
-        account_id.c_str(),
-        &done,
-        &brillo::Resetter(&error).lvalue())) {
+    if (!org_chromium_CryptohomeInterface_remove_ex(
+            proxy.gproxy(), account_ary.get(), &out_reply,
+            &brillo::Resetter(&error).lvalue())) {
       printf("Remove call failed: %s.\n", error->message);
     }
-    if (!done) {
+
+    cryptohome::BaseReply reply;
+    ParseBaseReply(out_reply, &reply);
+    if (reply.has_error()) {
       printf("Remove failed.\n");
       return 1;
     }

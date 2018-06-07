@@ -1469,32 +1469,6 @@ gboolean Service::UpdateKeyEx(GArray* account_id,
   return TRUE;
 }
 
-gboolean Service::Remove(gchar *userid,
-                         gboolean *OUT_result,
-                         GError **error) {
-  UsernamePasskey credentials(userid, brillo::Blob());
-  scoped_refptr<cryptohome::Mount> user_mount = GetMountForUser(userid);
-  if (user_mount.get() && user_mount->IsMounted()) {
-    *OUT_result = FALSE;
-    return TRUE;
-  }
-
-  MountTaskResult result;
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<MountTaskRemove> mount_task =
-      new MountTaskRemove(bridge, NULL, credentials, homedirs_, NextSequence());
-  mount_task->set_result(&result);
-  mount_task->set_complete_event(&event);
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskRemove::Run, mount_task.get()));
-  event.Wait();
-  *OUT_result = result.return_status();
-  return TRUE;
-}
-
 gboolean Service::AsyncRemove(gchar *userid,
                               gint *OUT_async_id,
                               GError **error) {
@@ -1516,6 +1490,43 @@ gboolean Service::AsyncRemove(gchar *userid,
     mount_thread_.task_runner()->PostTask(FROM_HERE,
         base::Bind(&MountTaskRemove::Run, mount_task.get()));
   }
+  return TRUE;
+}
+
+void Service::DoRemoveEx(AccountIdentifier* identifier,
+                         DBusGMethodInvocation* context) {
+  if (!identifier) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  if (GetAccountId(*identifier).empty()) {
+    SendInvalidArgsReply(context, "Empty account_id.");
+    return;
+  }
+
+  BaseReply reply;
+  if (!homedirs_->Remove(identifier->account_id()))
+    reply.set_error(CRYPTOHOME_ERROR_REMOVE_FAILED);
+  else
+    reply.clear_error();
+
+  SendReply(context, reply);
+}
+
+gboolean Service::RemoveEx(GArray* account_id, DBusGMethodInvocation* context) {
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::DoRemoveEx, base::Unretained(this),
+                 base::Owned(identifier.release()), base::Unretained(context)));
+
   return TRUE;
 }
 
