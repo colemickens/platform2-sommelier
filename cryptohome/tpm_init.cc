@@ -413,7 +413,7 @@ Tpm::TpmRetryAction TpmInit::LoadCryptohomeKey(ScopedKeyHandle* key_handle) {
   // First, try loading the key from the key file.
   {
     SecureBlob raw_key;
-    if (platform_->ReadFile(kDefaultCryptohomeKeyFile, &raw_key)) {
+    if (platform_->ReadFileToSecureBlob(kDefaultCryptohomeKeyFile, &raw_key)) {
       Tpm::TpmRetryAction retry_action =
           get_tpm()->LoadWrappedKey(raw_key, key_handle);
       if (retry_action == Tpm::kTpmRetryNone ||
