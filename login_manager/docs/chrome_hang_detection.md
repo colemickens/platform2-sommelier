@@ -61,7 +61,7 @@ other bugs of similar vintage for more details.
 The original implementation of this within `session_manager` was tracked by
 [issue 217825], and the code hasn't changed much since then. The feature was
 briefly disabled in 2013 and before being reenabled ([issue 221008]) and updated
-to send `SIGFPE` rather than SIGABRT (to make it easier to distinguish between
+to send `SIGFPE` rather than `SIGABRT` (to make it easier to distinguish between
 hangs and `CHECK`s or `LOG(FATAL)`s within Chrome). In 2015, `session_manager`
 was updated to send `SIGABRT` rather than `SIGFPE` ([issue 284601]). The
 `CheckLiveness` D-Bus method was moved from `org.chromium.LibCrosService` into a
