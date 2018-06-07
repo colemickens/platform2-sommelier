@@ -822,12 +822,10 @@ uint64_t GetArtCompilationOffsetSeed(const std::string& image_build_id,
   return result;
 }
 
-bool MoveDataDirIntoDataOldDir(const base::FilePath& android_data_dir,
-                               const base::FilePath& android_data_old_dir) {
-  if (!base::DirectoryExists(android_data_dir) ||
-      base::IsDirectoryEmpty(android_data_dir)) {
+bool MoveDirIntoDataOldDir(const base::FilePath& dir,
+                           const base::FilePath& android_data_old_dir) {
+  if (!base::DirectoryExists(dir) || base::IsDirectoryEmpty(dir))
     return true;  // Nothing to do.
-  }
 
   // Create |android_data_old_dir| if it doesn't exist.
   if (!base::DirectoryExists(android_data_old_dir)) {
@@ -845,19 +843,20 @@ bool MoveDataDirIntoDataOldDir(const base::FilePath& android_data_dir,
 
   // Create a randomly-named temp dir in |android_data_old_dir|.
   base::FilePath target_dir_name;
-  if (!base::CreateTemporaryDirInDir(android_data_old_dir, "android_data_",
-                                     &target_dir_name)) {
+  if (!base::CreateTemporaryDirInDir(
+          android_data_old_dir,
+          base::StringPrintf("%s_", dir.BaseName().value().c_str()),
+          &target_dir_name)) {
     LOG(WARNING) << "Failed to create a temporary directory in "
                  << android_data_old_dir.value();
     return false;
   }
-  LOG(INFO) << "Renaming " << android_data_dir.value() << " to "
-            << target_dir_name.value();
+  LOG(INFO) << "Renaming " << dir.value() << " to " << target_dir_name.value();
 
-  // Rename |android_data_dir| to the temp dir.
+  // Rename |dir| to the temp dir.
   // Note: Renaming a dir to an existing empty dir works.
-  if (!base::Move(android_data_dir, target_dir_name)) {
-    LOG(WARNING) << "Failed to rename " << android_data_dir.value() << " to "
+  if (!base::Move(dir, target_dir_name)) {
+    LOG(WARNING) << "Failed to rename " << dir.value() << " to "
                  << target_dir_name.value();
     return false;
   }

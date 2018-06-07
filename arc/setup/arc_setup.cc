@@ -1528,12 +1528,23 @@ std::string ArcSetup::GetSerialNumber() {
   return arc::GenerateFakeSerialNumber(chromeos_user, salt);
 }
 
+void ArcSetup::DeleteUnusedCacheDirectory() {
+  if (sdk_version() == AndroidSdkVersion::ANDROID_M ||
+      sdk_version() == AndroidSdkVersion::ANDROID_N_MR1) {
+    return;
+  }
+  // /home/.../android-data/cache is bind-mounted to /cache on N in
+  // MountSharedAndroidDirectories, but it is no longer bind-mounted on P.
+  EXIT_IF(
+      !MoveDirIntoDataOldDir(arc_paths_->android_data_directory.Append("cache"),
+                             arc_paths_->android_data_old_directory));
+}
+
 void ArcSetup::MountSharedAndroidDirectories() {
   const base::FilePath cache_directory =
       arc_paths_->android_data_directory.Append("cache");
   const base::FilePath data_directory =
       arc_paths_->android_data_directory.Append("data");
-  const base::FilePath data_cache_directory = data_directory.Append("cache");
 
   const base::FilePath shared_cache_directory =
       arc_paths_->shared_mount_directory.Append("cache");
@@ -1545,26 +1556,10 @@ void ArcSetup::MountSharedAndroidDirectories() {
                               shared_data_directory));
   }
 
-  switch (sdk_version()) {
-    case AndroidSdkVersion::UNKNOWN:
-    case AndroidSdkVersion::ANDROID_M:
-      NOTREACHED();
-      break;
-    case AndroidSdkVersion::ANDROID_N_MR1:
-      if (!base::PathExists(shared_cache_directory)) {
-        EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
-                                  shared_cache_directory));
-      }
-      break;
-    case AndroidSdkVersion::ANDROID_P:
-      // TODO(yusukes): Double-check if we really want to migrate N's /cache as
-      // /data/cache in P. If we don't, we can remove all the code for master
-      // as well as the MS_REC flag in this function.
-      if (!base::PathExists(data_cache_directory)) {
-        EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
-                                  data_cache_directory));
-      }
-      break;
+  if (sdk_version() == AndroidSdkVersion::ANDROID_N_MR1 &&
+      !base::PathExists(shared_cache_directory)) {
+    EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
+                              shared_cache_directory));
   }
 
   // First, make the original data directory a mount point and also make it
@@ -1575,26 +1570,13 @@ void ArcSetup::MountSharedAndroidDirectories() {
   EXIT_IF(
       !arc_mounter_->Remount(data_directory, MS_NOSUID | MS_NODEV, "seclabel"));
 
-  // Then, bind-mount /cache to the shared mount point. On master, pass
-  // |cache_directory| as part of |data_directory| instead.
-  switch (sdk_version()) {
-    case AndroidSdkVersion::UNKNOWN:
-    case AndroidSdkVersion::ANDROID_M:
-      NOTREACHED();
-      break;
-    case AndroidSdkVersion::ANDROID_N_MR1:
-      EXIT_IF(
-          !arc_mounter_->BindMount(cache_directory, shared_cache_directory));
-      break;
-    case AndroidSdkVersion::ANDROID_P:
-      EXIT_IF(!arc_mounter_->BindMount(cache_directory, data_cache_directory));
-      break;
-  }
+  // Then, bind-mount /cache to the shared mount point on N.
+  if (sdk_version() == AndroidSdkVersion::ANDROID_N_MR1)
+    EXIT_IF(!arc_mounter_->BindMount(cache_directory, shared_cache_directory));
 
-  // Finally, bind-mount /data to the shared mount point. Note that MS_REC is
-  // not needed for non-master builds, but it doesn't hurt either.
+  // Finally, bind-mount /data to the shared mount point.
   EXIT_IF(!arc_mounter_->Mount(data_directory.value(), shared_data_directory,
-                               nullptr, MS_BIND | MS_REC, nullptr));
+                               nullptr, MS_BIND, nullptr));
 
   const std::string demo_session_apps =
       GetEnvOrDie(arc_paths_->env.get(), "DEMO_SESSION_APPS_PATH");
@@ -1882,8 +1864,8 @@ void ArcSetup::OnBootContinue() {
   GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
 
   if (ShouldDeleteAndroidData(sdk_version_, data_sdk_version)) {
-    EXIT_IF(!MoveDataDirIntoDataOldDir(arc_paths_->android_data_directory,
-                                       arc_paths_->android_data_old_directory));
+    EXIT_IF(!MoveDirIntoDataOldDir(arc_paths_->android_data_directory,
+                                   arc_paths_->android_data_old_directory));
   }
 
   bool should_delete_data_dalvik_cache_directory;
@@ -1926,6 +1908,8 @@ void ArcSetup::OnBootContinue() {
   // Unmount /run/arc/shared_mounts and its children. They are unnecessary at
   // this point.
   UnmountSharedAndroidDirectories();
+
+  DeleteUnusedCacheDirectory();
 }
 
 void ArcSetup::OnStop() {

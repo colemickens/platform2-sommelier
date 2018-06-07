@@ -657,29 +657,29 @@ TEST(ArcSetupUtil, TestGetArtCompilationOffsetSeed) {
   EXPECT_NE(seed3, seed1);
 }
 
-TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir) {
+TEST(ArcSetupUtil, MoveDirIntoDataOldDir) {
   base::ScopedTempDir test_dir;
   ASSERT_TRUE(test_dir.CreateUniqueTempDir());
-  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath dir = test_dir.GetPath().Append("android-data");
   base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
 
-  // Create android-data/path/to/file and run MoveDataDirIntoDataOldDir.
+  // Create android-data/path/to/file and run MoveDirIntoDataOldDir.
   ASSERT_TRUE(
       MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
   ASSERT_TRUE(CreateOrTruncate(
       test_dir.GetPath().Append("android-data/path/to/file"), 0755));
-  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
-  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+  EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(dir));
 
   // android-data has been cleared.
-  // Create android-data/path/to/file and run MoveDataDirIntoDataOldDir again.
+  // Create android-data/path/to/file and run MoveDirIntoDataOldDir again.
   ASSERT_TRUE(
       MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
   ASSERT_TRUE(CreateOrTruncate(
       test_dir.GetPath().Append("android-data/path/to/file"), 0755));
-  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+  EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
 
-  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(dir));
   ASSERT_TRUE(base::DirectoryExists(data_old_dir));
 
   // There should be two temp dirs in android-data-old now.
@@ -695,39 +695,55 @@ TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir) {
   EXPECT_EQ(2, temp_dir_count);
 }
 
-TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir_AndroidDataDirDoesNotExist) {
+TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataDirDoesNotExist) {
   base::ScopedTempDir test_dir;
   ASSERT_TRUE(test_dir.CreateUniqueTempDir());
 
-  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath dir = test_dir.GetPath().Append("android-data");
   base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
 
-  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+  EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
 
-  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(dir));
   EXPECT_TRUE(base::IsDirectoryEmpty(data_old_dir));
 }
 
-TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir_AndroidDataDirIsEmpty) {
+TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataDirIsEmpty) {
   base::ScopedTempDir test_dir;
   ASSERT_TRUE(test_dir.CreateUniqueTempDir());
 
-  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath dir = test_dir.GetPath().Append("android-data");
   base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
 
   ASSERT_TRUE(MkdirRecursively(test_dir.GetPath().Append("android-data")));
 
-  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+  EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
 
-  EXPECT_TRUE(base::IsDirectoryEmpty(data_dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(dir));
   EXPECT_TRUE(base::IsDirectoryEmpty(data_old_dir));
 }
 
-TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir_AndroidDataOldIsFile) {
+TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataDirIsFile) {
   base::ScopedTempDir test_dir;
   ASSERT_TRUE(test_dir.CreateUniqueTempDir());
 
-  base::FilePath data_dir = test_dir.GetPath().Append("android-data");
+  base::FilePath dir = test_dir.GetPath().Append("android-data");
+  base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
+
+  // dir is a file, not a directory.
+  ASSERT_TRUE(CreateOrTruncate(dir, 0755));
+
+  EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
+
+  EXPECT_TRUE(base::PathExists(dir));
+  EXPECT_TRUE(base::IsDirectoryEmpty(data_old_dir));
+}
+
+TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataOldIsFile) {
+  base::ScopedTempDir test_dir;
+  ASSERT_TRUE(test_dir.CreateUniqueTempDir());
+
+  base::FilePath dir = test_dir.GetPath().Append("android-data");
   base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
 
   ASSERT_TRUE(
@@ -741,7 +757,7 @@ TEST(ArcSetupUtil, MoveDataDirIntoDataOldDir_AndroidDataOldIsFile) {
 
   // This should remove the file named android-data-old and create
   // android-data-old dir instead.
-  EXPECT_TRUE(MoveDataDirIntoDataOldDir(data_dir, data_old_dir));
+  EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
 
   base::FileEnumerator temp_dir_iter(data_old_dir, false,
                                      base::FileEnumerator::DIRECTORIES);

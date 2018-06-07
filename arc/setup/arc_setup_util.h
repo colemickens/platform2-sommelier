@@ -237,11 +237,12 @@ std::string GenerateFakeSerialNumber(const std::string& chromeos_user,
 uint64_t GetArtCompilationOffsetSeed(const std::string& image_build_id,
                                      const std::string& salt);
 
-// Clears |android_data_dir| by renaming it to a randomly-named temp directory
-// in |android_data_old_dir|. |android_data_old_dir| will be cleaned up by
+// Clears |dir| by renaming it to a randomly-named temp directory in
+// |android_data_old_dir|. Does nothing if |dir| does not exist or is not a
+// directory. |android_data_old_dir| will be cleaned up by
 // arc-stale-directory-remover kicked off by arc-booted signal.
-bool MoveDataDirIntoDataOldDir(const base::FilePath& android_data_dir,
-                               const base::FilePath& android_data_old_dir);
+bool MoveDirIntoDataOldDir(const base::FilePath& dir,
+                           const base::FilePath& android_data_old_dir);
 
 // Renames to fast remove executable cache in /data/app/package/oat
 void MoveDataAppOatDirectory(const base::FilePath& data_app_directory,

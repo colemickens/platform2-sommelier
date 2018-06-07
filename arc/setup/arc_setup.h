@@ -81,6 +81,9 @@ class ArcSetup {
       bool should_delete_data_dalvik_cache_directory,
       bool should_delete_data_app_executables);
 
+  // Clears unused cache directory that was used in ARC-N.
+  void DeleteUnusedCacheDirectory();
+
   // Waits for the rt-limits job to start.
   void WaitForRtLimitsJob();
 
