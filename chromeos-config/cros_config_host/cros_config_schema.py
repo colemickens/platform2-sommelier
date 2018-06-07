@@ -26,7 +26,7 @@ SKUS = 'skus'
 CONFIG = 'config'
 BUILD_ONLY_ELEMENTS = [
     '/firmware', '/firmware-signing', '/audio/main/files', '/touch/files',
-    '/arc/files', '/thermal'
+    '/arc/files', '/thermal/files'
 ]
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper']
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')

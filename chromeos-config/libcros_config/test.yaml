@@ -130,9 +130,10 @@ chromeos:
               present: "probe"
               probe-regex: "some-prob-regex"
             thermal:
+              dptf-dv: "/etc/dptf/some_touch/dptf.dv"
               files:
                 - source: "some_touch/dptf.dv"
-                  destination: "/etc/dptf/some_touch/dptf.dv"
+                  destination: "{{dptf-dv}}"
         - $sku-id: 1
           config:
             <<: *some_config

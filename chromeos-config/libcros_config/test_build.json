@@ -74,6 +74,7 @@
           "suspend-to-idle": "0"
         },
         "thermal": {
+          "dptf-dv": "/etc/dptf/some_touch/dptf.dv",
           "files": [
             {
               "destination": "/etc/dptf/some_touch/dptf.dv",

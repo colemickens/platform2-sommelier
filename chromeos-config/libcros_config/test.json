@@ -28,6 +28,9 @@
           "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
         },
+        "thermal": {
+          "dptf-dv": "/etc/dptf/some_touch/dptf.dv"
+        },
         "touch": {
           "present": "probe",
           "probe-regex": "some-prob-regex"
@@ -67,6 +70,7 @@
           "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "0"
         },
+        "thermal": {},
         "touch": {
           "present": "no"
         },
@@ -90,6 +94,7 @@
           "smbios-name-match": "Another"
         },
         "name": "another",
+        "thermal": {},
         "touch": {
           "present": "probe",
           "probe-regex": "another-prob-regex"
