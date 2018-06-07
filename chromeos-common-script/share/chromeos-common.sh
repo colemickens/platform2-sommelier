@@ -39,6 +39,28 @@ numsectors() {
   fi
 }
 
+# This returns the block size of a file or device in byte
+# Invoke as: subshell
+# Args: FILENAME
+# Return: block size in bytes
+blocksize() {
+  local path="$1"
+  if [ -b "${path}" ]; then
+    local dev="${path##*/}"
+    local sys="/sys/block/${dev}/queue/logical_block_size"
+    if [ -e "${sys}" ]; then
+      cat "${sys}"
+    else
+      local part="${path##*/}"
+      local block="$(get_block_dev_from_partition_dev "${path}")"
+      local block="${block##*/}"
+      cat "/sys/block/${block}/${part}/queue/logical_block_size"
+    fi
+  else
+    echo 512
+  fi
+}
+
 # Locate the cgpt tool. It should already be installed in the build chroot,
 # but some of these functions may be invoked outside the chroot (by
 # image_to_usb or similar), so we need to find it.
