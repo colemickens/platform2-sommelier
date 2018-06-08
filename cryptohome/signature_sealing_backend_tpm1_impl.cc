@@ -27,6 +27,8 @@
 #include "cryptohome/tpm_impl.h"
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
+using brillo::Blob;
+using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
@@ -115,8 +117,8 @@ class UnsealingSessionTpm1Impl final
 
   // UnsealingSession:
   Algorithm GetChallengeAlgorithm() override;
-  SecureBlob GetChallengeValue() override;
-  bool Unseal(const SecureBlob& signed_challenge_value,
+  Blob GetChallengeValue() override;
+  bool Unseal(const Blob& signed_challenge_value,
               SecureBlob* unsealed_value) override;
 
  private:
@@ -301,7 +303,7 @@ bool ObtainCmkMigrationSignatureTicket(
     const SecureBlob& migration_destination_key_pubkey,
     const SecureBlob& cmk_pubkey,
     const SecureBlob& protection_key_pubkey,
-    const SecureBlob& signed_challenge_value,
+    const Blob& signed_challenge_value,
     SecureBlob* cmk_migration_signature_ticket) {
   ScopedTssObject<TSS_HMIGDATA> migdata_handle(tpm_context);
   TSS_RESULT tss_result = Tspi_Context_CreateObject(
@@ -987,14 +989,13 @@ UnsealingSessionTpm1Impl::GetChallengeAlgorithm() {
   return Algorithm::kRsassaPkcs1V15Sha1;
 }
 
-SecureBlob UnsealingSessionTpm1Impl::GetChallengeValue() {
-  return SecureBlob::Combine(
-      protection_key_pubkey_digest_,
-      SecureBlob::Combine(migration_destination_key_pubkey_digest_,
-                          cmk_pubkey_digest_));
+Blob UnsealingSessionTpm1Impl::GetChallengeValue() {
+  return CombineBlobs({protection_key_pubkey_digest_,
+                       migration_destination_key_pubkey_digest_,
+                       cmk_pubkey_digest_});
 }
 
-bool UnsealingSessionTpm1Impl::Unseal(const SecureBlob& signed_challenge_value,
+bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
                                       SecureBlob* unsealed_value) {
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;

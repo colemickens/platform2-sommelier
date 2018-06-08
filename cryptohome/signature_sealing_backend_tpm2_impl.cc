@@ -26,6 +26,9 @@
 #include "cryptohome/tpm2_impl.h"
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
+using brillo::Blob;
+using brillo::BlobToString;
+using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using trunks::GetErrorString;
 using trunks::TPM_ALG_ID;
@@ -59,8 +62,8 @@ class UnsealingSessionTpm2Impl final
 
   // UnsealingSession:
   Algorithm GetChallengeAlgorithm() override;
-  SecureBlob GetChallengeValue() override;
-  bool Unseal(const SecureBlob& signed_challenge_value,
+  Blob GetChallengeValue() override;
+  bool Unseal(const Blob& signed_challenge_value,
               SecureBlob* unsealed_value) override;
 
  private:
@@ -142,13 +145,13 @@ UnsealingSessionTpm2Impl::GetChallengeAlgorithm() {
   return algorithm_;
 }
 
-SecureBlob UnsealingSessionTpm2Impl::GetChallengeValue() {
+Blob UnsealingSessionTpm2Impl::GetChallengeValue() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  const SecureBlob expiration_blob(4, 0);  // zero expiration (4-byte integer)
-  return SecureBlob::Combine(policy_session_tpm_nonce_, expiration_blob);
+  const Blob expiration_blob(4);  // zero expiration (4-byte integer)
+  return CombineBlobs({policy_session_tpm_nonce_, expiration_blob});
 }
 
-bool UnsealingSessionTpm2Impl::Unseal(const SecureBlob& signed_challenge_value,
+bool UnsealingSessionTpm2Impl::Unseal(const Blob& signed_challenge_value,
                                       SecureBlob* unsealed_value) {
   DCHECK(thread_checker_.CalledOnValidThread());
   // Start a TPM authorization session.
@@ -190,7 +193,7 @@ bool UnsealingSessionTpm2Impl::Unseal(const SecureBlob& signed_challenge_value,
   signature.sig_alg = scheme_;
   signature.signature.rsassa.hash = hash_alg_;
   signature.signature.rsassa.sig =
-      trunks::Make_TPM2B_PUBLIC_KEY_RSA(signed_challenge_value.to_string());
+      trunks::Make_TPM2B_PUBLIC_KEY_RSA(BlobToString(signed_challenge_value));
   tpm_result = policy_session_->PolicySigned(
       key_handle.value(), key_name, policy_session_tpm_nonce_.to_string(),
       std::string() /* cp_hash */, std::string() /* policy_ref */,

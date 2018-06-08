@@ -35,6 +35,7 @@
 #include "cryptohome/tpm_impl.h"
 #endif  // !USE_TPM2
 
+using brillo::Blob;
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -549,8 +550,8 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     // Unseal the secret.
-    SecureBlob first_challenge_value;
-    SecureBlob first_challenge_signature;
+    Blob first_challenge_value;
+    Blob first_challenge_signature;
     SecureBlob first_unsealed_value;
     if (!Unseal(sealed_secret_data, &first_challenge_value,
                 &first_challenge_signature, &first_unsealed_value)) {
@@ -559,8 +560,8 @@ class SignatureSealedSecretTestCase final {
     }
     // Unseal the secret again - the challenge is different, but the result is
     // the same.
-    SecureBlob second_challenge_value;
-    SecureBlob second_challenge_signature;
+    Blob second_challenge_value;
+    Blob second_challenge_signature;
     SecureBlob second_unsealed_value;
     if (!Unseal(sealed_secret_data, &second_challenge_value,
                 &second_challenge_signature, &second_unsealed_value)) {
@@ -595,8 +596,8 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error creating another secret";
       return false;
     }
-    SecureBlob third_challenge_value;
-    SecureBlob third_challenge_signature;
+    Blob third_challenge_value;
+    Blob third_challenge_signature;
     SecureBlob third_unsealed_value;
     if (!Unseal(another_sealed_secret_data, &third_challenge_value,
                 &third_challenge_signature, &third_unsealed_value)) {
@@ -787,8 +788,8 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool Unseal(const SignatureSealedData& sealed_secret_data,
-              SecureBlob* challenge_value,
-              SecureBlob* challenge_signature,
+              Blob* challenge_value,
+              Blob* challenge_signature,
               SecureBlob* unsealed_value) {
     std::unique_ptr<UnsealingSession> unsealing_session(
         backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
@@ -826,7 +827,7 @@ class SignatureSealedSecretTestCase final {
 
   bool CheckUnsealingFailsWithOldSignature(
       const SignatureSealedData& sealed_secret_data,
-      const SecureBlob& challenge_signature) {
+      const Blob& challenge_signature) {
     std::unique_ptr<UnsealingSession> unsealing_session(
         backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
                                           param_.supported_algorithms,
@@ -856,7 +857,7 @@ class SignatureSealedSecretTestCase final {
     }
     const int wrong_openssl_algorithm_nid =
         param_.openssl_algorithm_nid == NID_sha1 ? NID_sha256 : NID_sha1;
-    SecureBlob challenge_signature;
+    Blob challenge_signature;
     if (!SignWithKey(unsealing_session->GetChallengeValue(),
                      wrong_openssl_algorithm_nid, &challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
@@ -880,7 +881,7 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
     }
-    SecureBlob challenge_signature;
+    Blob challenge_signature;
     if (!SignWithKey(unsealing_session->GetChallengeValue(),
                      param_.openssl_algorithm_nid, &challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
@@ -945,7 +946,7 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error starting the unsealing session";
       return false;
     }
-    SecureBlob challenge_signature;
+    Blob challenge_signature;
     if (!SignWithKey(unsealing_session->GetChallengeValue(),
                      param_.openssl_algorithm_nid, &challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
@@ -959,9 +960,9 @@ class SignatureSealedSecretTestCase final {
     return true;
   }
 
-  bool SignWithKey(const SecureBlob& unhashed_data,
+  bool SignWithKey(const Blob& unhashed_data,
                    int algorithm_nid,
-                   SecureBlob* signature) {
+                   Blob* signature) {
     signature->resize(EVP_PKEY_size(pkey_.get()));
     crypto::ScopedEVP_MD_CTX sign_context(EVP_MD_CTX_create());
     EVP_MD_CTX_init(sign_context.get());

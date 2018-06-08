@@ -55,8 +55,8 @@ class MockUnsealingSession : public SignatureSealingBackend::UnsealingSession {
   ~MockUnsealingSession() override;
 
   MOCK_METHOD0(GetChallengeAlgorithm, Algorithm());
-  MOCK_METHOD0(GetChallengeValue, brillo::SecureBlob());
-  MOCK_METHOD2(Unseal, bool(const brillo::SecureBlob&, brillo::SecureBlob*));
+  MOCK_METHOD0(GetChallengeValue, brillo::Blob());
+  MOCK_METHOD2(Unseal, bool(const brillo::Blob&, brillo::SecureBlob*));
 };
 
 }  // namespace cryptohome

@@ -47,7 +47,7 @@ class SignatureSealingBackend {
     virtual Algorithm GetChallengeAlgorithm() = 0;
 
     // Returns the challenge value to be signed.
-    virtual brillo::SecureBlob GetChallengeValue() = 0;
+    virtual brillo::Blob GetChallengeValue() = 0;
 
     // Attempts to complete the unsealing, given the signature of the challenge
     // value.
@@ -59,7 +59,7 @@ class SignatureSealingBackend {
     //                            GetChallengeValue() using the algorithm as
     //                            returned by GetChallengeAlgorithm().
     //   unsealed_value - The unsealed value, if the function returned true.
-    virtual bool Unseal(const brillo::SecureBlob& signed_challenge_value,
+    virtual bool Unseal(const brillo::Blob& signed_challenge_value,
                         brillo::SecureBlob* unsealed_value) = 0;
   };
 

@@ -38,6 +38,7 @@
 
 #include "cryptohome/cryptolib.h"
 
+using brillo::BlobFromString;
 using brillo::SecureBlob;
 using testing::_;
 using testing::DoAll;
@@ -1409,8 +1410,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
           SecureBlob() /* delegate_secret */));
   ASSERT_TRUE(unsealing_session);
   EXPECT_EQ(chosen_algorithm(), unsealing_session->GetChallengeAlgorithm());
-  EXPECT_EQ(kChallengeValue,
-            unsealing_session->GetChallengeValue().to_string());
+  EXPECT_EQ(BlobFromString(kChallengeValue),
+            unsealing_session->GetChallengeValue());
 
   // Set up mock expectations for the unsealing.
   EXPECT_CALL(mock_tpm_utility_,
@@ -1441,7 +1442,7 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
 
   // Trigger the unsealing.
   SecureBlob unsealed_secret_value;
-  EXPECT_TRUE(unsealing_session->Unseal(SecureBlob(kSignatureValue),
+  EXPECT_TRUE(unsealing_session->Unseal(BlobFromString(kSignatureValue),
                                         &unsealed_secret_value));
   EXPECT_EQ(kSecretValue, unsealed_secret_value.to_string());
 
