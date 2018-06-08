@@ -1086,7 +1086,7 @@ SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const SecureBlob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
-    const std::map<uint32_t, SecureBlob>& /* pcr_values */,
+    const std::map<uint32_t, Blob>& /* pcr_values */,
     const SecureBlob& delegate_blob,
     const SecureBlob& delegate_secret,
     SignatureSealedData* sealed_secret_data) {

@@ -117,7 +117,7 @@ class Tpm2Impl : public Tpm {
   bool QuotePCR(uint32_t pcr_index,
                 const brillo::SecureBlob& identity_key_blob,
                 const brillo::SecureBlob& external_data,
-                brillo::SecureBlob* pcr_value,
+                brillo::Blob* pcr_value,
                 brillo::SecureBlob* quoted_data,
                 brillo::SecureBlob* quote) override;
   bool SealToPCR0(const brillo::Blob& value,
@@ -153,9 +153,8 @@ class Tpm2Impl : public Tpm {
   bool VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
                          const brillo::SecureBlob& key_blob,
                          const brillo::SecureBlob& creation_blob) override;
-  bool ExtendPCR(uint32_t pcr_index,
-                 const brillo::SecureBlob& extension) override;
-  bool ReadPCR(uint32_t pcr_index, brillo::SecureBlob* pcr_value) override;
+  bool ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) override;
+  bool ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) override;
   bool IsEndorsementKeyAvailable() override;
   bool CreateEndorsementKey() override;
   bool TakeOwnership(int max_timeout_tries,

@@ -428,7 +428,7 @@ class Tpm {
   virtual bool QuotePCR(uint32_t pcr_index,
                         const brillo::SecureBlob& identity_key_blob,
                         const brillo::SecureBlob& external_data,
-                        brillo::SecureBlob* pcr_value,
+                        brillo::Blob* pcr_value,
                         brillo::SecureBlob* quoted_data,
                         brillo::SecureBlob* quote) = 0;
 
@@ -547,11 +547,10 @@ class Tpm {
 
   // Extends the PCR given by |pcr_index| with |extension|. The |extension| must
   // be exactly 20 bytes in length.
-  virtual bool ExtendPCR(uint32_t pcr_index,
-                         const brillo::SecureBlob& extension) = 0;
+  virtual bool ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) = 0;
 
   // Reads the current |pcr_value| of the PCR given by |pcr_index|.
-  virtual bool ReadPCR(uint32_t pcr_index, brillo::SecureBlob* pcr_value) = 0;
+  virtual bool ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) = 0;
 
   // Checks to see if the endorsement key is available by attempting to get its
   // public key

@@ -85,7 +85,7 @@ class BootLockbox {
   Platform* platform_;
   Crypto* crypto_;
   BootLockboxKey key_;
-  const brillo::SecureBlob initial_pcr_value_;
+  const brillo::Blob initial_pcr_value_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BootLockbox);

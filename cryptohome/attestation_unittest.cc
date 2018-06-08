@@ -31,6 +31,7 @@
 #include "attestation.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
+using brillo::Blob;
 using brillo::SecureBlob;
 using google::protobuf::util::MessageDifferencer;
 using ::testing::_;
@@ -794,11 +795,11 @@ class AttestationBaseTestNoInitialize : public AttestationBaseTest {
 };
 
 TEST_F(AttestationBaseTestNoInitialize, AutoExtendPCR1) {
-  SecureBlob default_pcr(std::string(GetDigestSize(), 0));
+  Blob default_pcr(GetDigestSize());
   EXPECT_CALL(tpm_, ReadPCR(1, _))
       .WillOnce(DoAll(SetArgPointee<1>(default_pcr), Return(true)));
   std::string fake_hwid = "hwid";
-  brillo::SecureBlob fake_hwid_expected_extension;
+  Blob fake_hwid_expected_extension;
   ASSERT_TRUE(base::HexStringToBytes(
       "bc45e91a086497cd817cb3024ac5c0d733111a74378257b11991e1e435b7e71e",
       &fake_hwid_expected_extension));
@@ -811,7 +812,7 @@ TEST_F(AttestationBaseTestNoInitialize, AutoExtendPCR1) {
 }
 
 TEST_F(AttestationBaseTestNoInitialize, AutoExtendPCR1NoHwID) {
-  SecureBlob default_pcr(std::string(GetDigestSize(), 0));
+  Blob default_pcr(GetDigestSize());
   EXPECT_CALL(tpm_, ReadPCR(1, _))
       .WillOnce(DoAll(SetArgPointee<1>(default_pcr), Return(true)));
   std::string no_hwid = "";

@@ -76,7 +76,7 @@ class MockTpm : public Tpm {
                bool(uint32_t,
                     const brillo::SecureBlob&,
                     const brillo::SecureBlob&,
-                    brillo::SecureBlob*,
+                    brillo::Blob*,
                     brillo::SecureBlob*,
                     brillo::SecureBlob*));
   MOCK_METHOD2(SealToPCR0, bool(const brillo::Blob&, brillo::Blob*));
@@ -105,8 +105,8 @@ class MockTpm : public Tpm {
                     const brillo::SecureBlob&,
                     uint32_t,
                     brillo::SecureBlob*));
-  MOCK_METHOD2(ExtendPCR, bool(uint32_t, const brillo::SecureBlob&));
-  MOCK_METHOD2(ReadPCR, bool(uint32_t, brillo::SecureBlob*));
+  MOCK_METHOD2(ExtendPCR, bool(uint32_t, const brillo::Blob&));
+  MOCK_METHOD2(ReadPCR, bool(uint32_t, brillo::Blob*));
   MOCK_METHOD5(CreatePCRBoundKey, bool(const std::map<uint32_t, std::string>&,
                                        AsymmetricKeyUsage key_type,
                                        brillo::SecureBlob*,
@@ -177,12 +177,12 @@ class MockTpm : public Tpm {
     return true;
   }
 
-  bool FakeExtendPCR(uint32_t index, const brillo::SecureBlob& value) {
+  bool FakeExtendPCR(uint32_t index, const brillo::Blob& value) {
     extended_pcrs_.insert(index);
     return true;
   }
 
-  bool FakeReadPCR(uint32_t index, brillo::SecureBlob* value) {
+  bool FakeReadPCR(uint32_t index, brillo::Blob* value) {
     value->assign(20, extended_pcrs_.count(index) ? 0xAA : 0);
     return true;
   }

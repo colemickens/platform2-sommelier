@@ -94,7 +94,7 @@ class StubTpm : public Tpm {
   bool QuotePCR(uint32_t pcr_index,
                 const SecureBlob& identity_key_blob,
                 const SecureBlob& external_data,
-                SecureBlob* pcr_value,
+                brillo::Blob* pcr_value,
                 SecureBlob* quoted_data,
                 SecureBlob* quote) override {
     return false;
@@ -141,10 +141,10 @@ class StubTpm : public Tpm {
                          const SecureBlob& creation_blob) override {
     return false;
   }
-  bool ExtendPCR(uint32_t pcr_index, const SecureBlob& extension) override {
+  bool ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) override {
     return false;
   }
-  bool ReadPCR(uint32_t pcr_index, SecureBlob* pcr_value) override {
+  bool ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) override {
     return false;
   }
   bool IsEndorsementKeyAvailable() override { return false; }

@@ -107,7 +107,7 @@ class BootLockboxTest : public testing::Test {
     return true;
   }
 
-  bool FakeReadPCR(brillo::SecureBlob* pcr) {
+  bool FakeReadPCR(brillo::Blob* pcr) {
     pcr->assign(20, is_fake_extended_ ? 0xAA : 0);
     return true;
   }

@@ -233,7 +233,7 @@ SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const SecureBlob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
-    const std::map<uint32_t, SecureBlob>& pcr_values,
+    const std::map<uint32_t, Blob>& pcr_values,
     const SecureBlob& /* delegate_blob */,
     const SecureBlob& /* delegate_secret */,
     SignatureSealedData* sealed_secret_data) {
@@ -294,7 +294,8 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   // Update the policy with restricting to selected PCRs.
   std::map<uint32_t, std::string> pcr_map;
   for (const auto& pcr_index_and_value : pcr_values) {
-    pcr_map[pcr_index_and_value.first] = pcr_index_and_value.second.to_string();
+    pcr_map[pcr_index_and_value.first] =
+        BlobToString(pcr_index_and_value.second);
   }
   tpm_result = policy_session->PolicyPCR(pcr_map);
   if (tpm_result != TPM_RC_SUCCESS) {

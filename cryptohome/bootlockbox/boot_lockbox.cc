@@ -22,6 +22,9 @@
 #include "cryptohome/tpm.h"
 
 using base::FilePath;
+using brillo::Blob;
+using brillo::BlobFromString;
+using brillo::BlobToString;
 using brillo::SecureBlob;
 
 namespace {
@@ -53,9 +56,10 @@ size_t GetPcrValueSize(Tpm* tpm) {
 }
 
 BootLockbox::BootLockbox(Tpm* tpm, Platform* platform, Crypto* crypto)
-    : tpm_(tpm), platform_(platform), crypto_(crypto),
-      initial_pcr_value_(GetPcrValueSize(tpm), 0) {
-}
+    : tpm_(tpm),
+      platform_(platform),
+      crypto_(crypto),
+      initial_pcr_value_(GetPcrValueSize(tpm)) {}
 
 BootLockbox::~BootLockbox() {}
 
@@ -91,9 +95,9 @@ bool BootLockbox::Verify(const brillo::SecureBlob& data,
     return false;
   }
   if (!tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>(
-          {{kPCRIndex, initial_pcr_value_.to_string()}}),
-      key_blob, creation_blob)) {
+          std::map<uint32_t, std::string>(
+              {{kPCRIndex, BlobToString(initial_pcr_value_)}}),
+          key_blob, creation_blob)) {
     return false;
   }
   return true;
@@ -104,13 +108,12 @@ bool BootLockbox::FinalizeBoot() {
       // The PCR is already not at the initial value, no need to extend again.
       return true;
   }
-  return tpm_->ExtendPCR(kPCRIndex, CryptoLib::Sha1(
-      brillo::SecureBlob(std::begin(kPCRExtension),
-                           std::end(kPCRExtension))));
+  return tpm_->ExtendPCR(kPCRIndex,
+                         CryptoLib::Sha1(BlobFromString(kPCRExtension)));
 }
 
 bool BootLockbox::IsFinalized() {
-  brillo::SecureBlob actual_pcr_value;
+  Blob actual_pcr_value;
   return tpm_->ReadPCR(kPCRIndex, &actual_pcr_value) &&
          actual_pcr_value != initial_pcr_value_;
 }
@@ -199,9 +202,10 @@ bool BootLockbox::CreateKey() {
   brillo::SecureBlob public_key;
   brillo::SecureBlob creation_blob;
   if (!tpm_->CreatePCRBoundKey(
-      std::map<uint32_t, std::string>(
-          {{kPCRIndex, initial_pcr_value_.to_string()}}),
-      AsymmetricKeyUsage::kSignKey, &key_blob, &public_key, &creation_blob)) {
+          std::map<uint32_t, std::string>(
+              {{kPCRIndex, BlobToString(initial_pcr_value_)}}),
+          AsymmetricKeyUsage::kSignKey, &key_blob, &public_key,
+          &creation_blob)) {
     LOG(ERROR) << "Failed to create boot-lockbox key.";
     return false;
   }

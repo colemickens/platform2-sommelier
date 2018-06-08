@@ -33,6 +33,9 @@
 
 #include "cryptohome/cryptolib.h"
 
+using brillo::Blob;
+using brillo::BlobFromString;
+using brillo::BlobToString;
 using brillo::SecureBlob;
 using trunks::GetErrorString;
 using trunks::TPM_RC;
@@ -579,7 +582,7 @@ bool Tpm2Impl::MakeIdentity(SecureBlob* identity_public_key_der,
 bool Tpm2Impl::QuotePCR(uint32_t pcr_index,
                         const SecureBlob& identity_key_blob,
                         const SecureBlob& external_data,
-                        SecureBlob* pcr_value,
+                        Blob* pcr_value,
                         SecureBlob* quoted_data,
                         SecureBlob* quote) {
   LOG(ERROR) << __func__ << ": Not Implemented.";
@@ -863,8 +866,8 @@ bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
     }
     concatenated_pcr_values += pcr_value;
   }
-  SecureBlob expected_pcr_digest = CryptoLib::Sha256(
-      SecureBlob(concatenated_pcr_values));
+  Blob expected_pcr_digest =
+      CryptoLib::Sha256(BlobFromString(concatenated_pcr_values));
   if (creation_data.creation_data.pcr_digest.size !=
       expected_pcr_digest.size()) {
     LOG(ERROR) << "Incorrect PCR digest size.";
@@ -928,7 +931,7 @@ bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   return true;
 }
 
-bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const SecureBlob& extension) {
+bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const Blob& extension) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
     return false;
@@ -936,7 +939,7 @@ bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const SecureBlob& extension) {
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
   TPM_RC result = trunks->tpm_utility->ExtendPCR(
-      pcr_index, extension.to_string(), delegate.get());
+      pcr_index, BlobToString(extension), delegate.get());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error extending PCR: " << GetErrorString(result);
     return false;
@@ -944,7 +947,7 @@ bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const SecureBlob& extension) {
   return true;
 }
 
-bool Tpm2Impl::ReadPCR(uint32_t pcr_index, SecureBlob* pcr_value) {
+bool Tpm2Impl::ReadPCR(uint32_t pcr_index, Blob* pcr_value) {
   CHECK(pcr_value);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -956,7 +959,7 @@ bool Tpm2Impl::ReadPCR(uint32_t pcr_index, SecureBlob* pcr_value) {
     LOG(ERROR) << "Error reading from PCR: " << GetErrorString(result);
     return false;
   }
-  pcr_value->assign(pcr_digest.begin(), pcr_digest.end());
+  *pcr_value = BlobFromString(pcr_digest);
   return true;
 }
 

@@ -35,6 +35,9 @@
 #include "cryptohome/tpm_metrics.h"
 
 using base::PlatformThread;
+using brillo::Blob;
+using brillo::BlobFromString;
+using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
@@ -1890,7 +1893,7 @@ bool TpmImpl::MakeIdentity(SecureBlob* identity_public_key_der,
 bool TpmImpl::QuotePCR(uint32_t pcr_index,
                        const SecureBlob& identity_key_blob,
                        const SecureBlob& external_data,
-                       SecureBlob* pcr_value,
+                       Blob* pcr_value,
                        SecureBlob* quoted_data,
                        SecureBlob* quote) {
   CHECK(pcr_value && quoted_data && quote);
@@ -2518,7 +2521,7 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   for (const auto& map_pair : pcr_map) {
     uint32_t pcr_index = map_pair.first;
-    brillo::SecureBlob pcr_value(map_pair.second);
+    Blob pcr_value(BlobFromString(map_pair.second));
     if (pcr_value.empty()) {
       if (!ReadPCR(pcr_index, &pcr_value)) {
         LOG(ERROR) << __func__ << ": Failed to read PCR.";
@@ -2646,7 +2649,7 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
     LOG(ERROR) << __func__ << ": No PCR selected.";
     return false;
   }
-  SecureBlob pcr_bitmap(pcr_selection.pcrSelect,
+  const Blob pcr_bitmap(pcr_selection.pcrSelect,
                         pcr_selection.pcrSelect + pcr_selection.sizeOfSelect);
   free(pcr_selection.pcrSelect);
   std::string concatenated_pcr_values;
@@ -2667,15 +2670,13 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   // the equivalent of hashing a TPM_PCR_COMPOSITE structure.
   trspi_offset = 0;
   UINT32 pcr_value_length = concatenated_pcr_values.size();
-  SecureBlob pcr_value_length_blob(sizeof(UINT32));
+  Blob pcr_value_length_blob(sizeof(UINT32));
   Trspi_LoadBlob_UINT32(&trspi_offset,
                         pcr_value_length,
                         pcr_value_length_blob.data());
-  SecureBlob pcr_hash = CryptoLib::Sha1(SecureBlob::Combine(
-      SecureBlob::Combine(
-      pcr_selection_blob,
-      pcr_value_length_blob),
-      brillo::SecureBlob(concatenated_pcr_values)));
+  const Blob pcr_hash =
+      CryptoLib::Sha1(CombineBlobs({pcr_selection_blob, pcr_value_length_blob,
+                                    BlobFromString(concatenated_pcr_values)}));
 
   // Check that the PCR value matches the key creation PCR value.
   SecureBlob pcr_at_creation;
@@ -2708,8 +2709,7 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   return true;
 }
 
-bool TpmImpl::ExtendPCR(uint32_t pcr_index,
-                        const brillo::SecureBlob& extension) {
+bool TpmImpl::ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2717,7 +2717,7 @@ bool TpmImpl::ExtendPCR(uint32_t pcr_index,
     return false;
   }
   CHECK_EQ(extension.size(), kPCRExtensionSize);
-  SecureBlob mutable_extension = extension;
+  Blob mutable_extension = extension;
   UINT32 new_pcr_value_length = 0;
   ScopedTssMemory new_pcr_value(context_handle);
   TSS_RESULT result = Tspi_TPM_PcrExtend(tpm_handle,
@@ -2735,7 +2735,7 @@ bool TpmImpl::ExtendPCR(uint32_t pcr_index,
   return true;
 }
 
-bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::SecureBlob* pcr_value) {
+bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2750,8 +2750,8 @@ bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::SecureBlob* pcr_value) {
     TPM_LOG(ERROR, result) << "Could not read PCR " << pcr_index << " value";
     return false;
   }
-  SecureBlob tmp(pcr_value_buffer.value(), pcr_value_buffer.value() + pcr_len);
-  pcr_value->swap(tmp);
+  pcr_value->assign(pcr_value_buffer.value(),
+                    pcr_value_buffer.value() + pcr_len);
   return true;
 }
 

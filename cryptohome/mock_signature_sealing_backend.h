@@ -27,7 +27,7 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
   MOCK_METHOD6(CreateSealedSecret,
                bool(const brillo::SecureBlob&,
                     const std::vector<Algorithm>&,
-                    const std::map<uint32_t, brillo::SecureBlob>&,
+                    const std::map<uint32_t, brillo::Blob>&,
                     const brillo::SecureBlob&,
                     const brillo::SecureBlob&,
                     SignatureSealedData*));

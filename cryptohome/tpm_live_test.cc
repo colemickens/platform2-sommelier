@@ -36,6 +36,8 @@
 #endif  // !USE_TPM2
 
 using brillo::Blob;
+using brillo::BlobFromString;
+using brillo::BlobToString;
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -159,7 +161,7 @@ bool TpmLiveTest::EncryptAndDecryptData(
 bool TpmLiveTest::PCRKeyTest() {
   LOG(INFO) << "PCRKeyTest started";
   uint32_t index = 5;
-  SecureBlob pcr_data;
+  Blob pcr_data;
   if (!tpm_->ReadPCR(index, &pcr_data)) {
     LOG(ERROR) << "Error reading pcr value from TPM.";
     return false;
@@ -173,7 +175,7 @@ bool TpmLiveTest::PCRKeyTest() {
   SecureBlob creation_blob1;
   SecureBlob creation_blob2;
   SecureBlob creation_blob3;
-  std::map<uint32_t, std::string> pcr_map({{index, pcr_data.to_string()}});
+  std::map<uint32_t, std::string> pcr_map({{index, BlobToString(pcr_data)}});
   // Create the keys.
   if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kSignKey,
       &pcr_bound_key1, &public_key_der1, &creation_blob1)) {
@@ -228,7 +230,7 @@ bool TpmLiveTest::PCRKeyTest() {
     return false;
   }
   // Extend PCR to invalidate the keys.
-  if (!tpm_->ExtendPCR(index, SecureBlob("01234567890123456789"))) {
+  if (!tpm_->ExtendPCR(index, BlobFromString("01234567890123456789"))) {
     LOG(ERROR) << "Error extending PCR.";
     return false;
   }
@@ -256,8 +258,8 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
   LOG(INFO) << "MultiplePCRKeyTest started";
   uint32_t index1 = 7;
   uint32_t index2 = 12;
-  SecureBlob pcr_data1;
-  SecureBlob pcr_data2;
+  Blob pcr_data1;
+  Blob pcr_data2;
   if (!tpm_->ReadPCR(index1, &pcr_data1) ||
       !tpm_->ReadPCR(index2, &pcr_data2)) {
     LOG(ERROR) << "Error reading pcr value from TPM.";
@@ -266,8 +268,8 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
   SecureBlob pcr_bound_key;
   SecureBlob public_key_der;
   SecureBlob creation_blob;
-  std::map<uint32_t, std::string> pcr_map({{index1, pcr_data1.to_string()},
-                                          {index2, pcr_data2.to_string()}});
+  std::map<uint32_t, std::string> pcr_map(
+      {{index1, BlobToString(pcr_data1)}, {index2, BlobToString(pcr_data2)}});
   if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
                                &pcr_bound_key, &public_key_der,
                                &creation_blob)) {
@@ -302,7 +304,7 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
     return false;
   }
   // Extend a PCR that is bound to the key, to invalidate it.
-  if (!tpm_->ExtendPCR(index2, SecureBlob("01234567890123456789"))) {
+  if (!tpm_->ExtendPCR(index2, BlobFromString("01234567890123456789"))) {
     LOG(ERROR) << "Error extending PCR.";
     return false;
   }
@@ -317,7 +319,7 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
     return false;
   }
   // Check that the text cannot be decrypted even with the right PCR values.
-  pcr_map[index2] = pcr_data2.to_string();
+  pcr_map[index2] = BlobToString(pcr_data2);
   if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
                         &decrypted_plaintext) == Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
@@ -747,7 +749,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CreateSecret(SignatureSealedData* sealed_secret_data) {
-    std::map<uint32_t, SecureBlob> pcr_values;
+    std::map<uint32_t, Blob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
       return false;
@@ -762,7 +764,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckSecretCreationFails() {
-    std::map<uint32_t, SecureBlob> pcr_values;
+    std::map<uint32_t, Blob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
       return false;
@@ -777,7 +779,7 @@ class SignatureSealedSecretTestCase final {
     return true;
   }
 
-  bool GetCurrentPcrValues(std::map<uint32_t, SecureBlob>* pcr_values) {
+  bool GetCurrentPcrValues(std::map<uint32_t, Blob>* pcr_values) {
     for (auto pcr_index : kPcrIndexes) {
       if (!tpm()->ReadPCR(pcr_index, &(*pcr_values)[pcr_index])) {
         LOG(ERROR) << "Error reading PCR value " << pcr_index;
@@ -934,7 +936,7 @@ class SignatureSealedSecretTestCase final {
   bool CheckUnsealingFailsWithChangedPcrs(
       const SignatureSealedData& sealed_secret_data) {
     if (!tpm()->ExtendPCR(kPcrIndexToExtend,
-                          SecureBlob("01234567890123456789"))) {
+                          BlobFromString("01234567890123456789"))) {
       LOG(ERROR) << "Error extending PCR";
       return false;
     }

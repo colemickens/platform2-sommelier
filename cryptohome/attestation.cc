@@ -42,6 +42,10 @@
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 
+using brillo::Blob;
+using brillo::BlobFromString;
+using brillo::BlobToString;
+using brillo::CombineBlobs;
 using brillo::SecureBlob;
 
 namespace {
@@ -617,7 +621,7 @@ int Attestation::CreateIdentity(int identity_features,
     LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
     return -1;
   }
-  SecureBlob quoted_pcr_value0;
+  Blob quoted_pcr_value0;
   SecureBlob quoted_data0;
   SecureBlob quote0;
   if (!tpm_->QuotePCR(0,
@@ -632,7 +636,7 @@ int Attestation::CreateIdentity(int identity_features,
   }
 
   // Quote PCR1.
-  SecureBlob quoted_pcr_value1;
+  Blob quoted_pcr_value1;
   SecureBlob quoted_data1;
   SecureBlob quote1;
   if (!tpm_->QuotePCR(1,
@@ -690,8 +694,7 @@ int Attestation::CreateIdentity(int identity_features,
   Quote quote_pb0;
   quote_pb0.set_quote(quote0.data(), quote0.size());
   quote_pb0.set_quoted_data(quoted_data0.data(), quoted_data0.size());
-  quote_pb0.set_quoted_pcr_value(quoted_pcr_value0.data(),
-                                 quoted_pcr_value0.size());
+  quote_pb0.set_quoted_pcr_value(BlobToString(quoted_pcr_value0));
   auto in0 = map->insert(QuoteMap::value_type(0, quote_pb0));
   if (!in0.second) {
     LOG(ERROR) << "Attestation: Failed to store PCR0 quote for identity "
@@ -702,8 +705,7 @@ int Attestation::CreateIdentity(int identity_features,
   Quote quote_pb1;
   quote_pb1.set_quote(quote1.data(), quote1.size());
   quote_pb1.set_quoted_data(quoted_data1.data(), quoted_data1.size());
-  quote_pb1.set_quoted_pcr_value(quoted_pcr_value1.data(),
-                                 quoted_pcr_value1.size());
+  quote_pb1.set_quoted_pcr_value(BlobToString(quoted_pcr_value1));
   quote_pb1.set_pcr_source_hint(platform_->GetHardwareID());
 
   auto in1 = map->insert(QuoteMap::value_type(1, quote_pb1));
@@ -1437,25 +1439,21 @@ bool Attestation::GetIdentityResetRequest(const std::string& reset_token,
 bool Attestation::IsPCR0VerifiedMode() {
   if (!IsTPMReady())
     return false;
-  SecureBlob current_pcr_value;
+  Blob current_pcr_value;
   if (!tpm_->ReadPCR(0, &current_pcr_value) ||
       current_pcr_value.size() != kDigestSize) {
     LOG(WARNING) << "Failed to read PCR0.";
     return false;
   }
-  SecureBlob settings_blob(3);
+  Blob settings_blob(3);
   settings_blob[0] = false;  // Developer mode enabled.
   settings_blob[1] = false;  // Recovery mode enabled.
   settings_blob[2] = kVerified;  // Firmware type.
-  SecureBlob settings_digest = CryptoLib::Sha1(settings_blob);
-  brillo::Blob extend_pcr_value(kDigestSize, 0);
-  extend_pcr_value.insert(extend_pcr_value.end(), settings_digest.begin(),
-                          settings_digest.end());
-  SecureBlob expected_pcr_value = CryptoLib::Sha1(extend_pcr_value);
-  return (current_pcr_value.size() == expected_pcr_value.size() &&
-          0 == memcmp(current_pcr_value.data(),
-                      expected_pcr_value.data(),
-                      kDigestSize));
+  const Blob settings_digest = CryptoLib::Sha1(settings_blob);
+  const Blob extend_pcr_value =
+      CombineBlobs({Blob(kDigestSize), settings_digest});
+  const Blob expected_pcr_value = CryptoLib::Sha1(extend_pcr_value);
+  return current_pcr_value == expected_pcr_value;
 }
 
 bool Attestation::EncryptDatabase(const AttestationDatabase& db,
@@ -1654,18 +1652,15 @@ bool Attestation::VerifyPCR0Quote(const SecureBlob& aik_public_key,
 
   // Check if the PCR0 value represents a known mode.
   for (size_t i = 0; i < arraysize(kKnownPCRValues); ++i) {
-    SecureBlob settings_blob(3);
+    Blob settings_blob(3);
     settings_blob[0] = kKnownPCRValues[i].developer_mode_enabled;
     settings_blob[1] = kKnownPCRValues[i].recovery_mode_enabled;
     settings_blob[2] = kKnownPCRValues[i].firmware_type;
-    SecureBlob settings_digest = CryptoLib::Sha1(settings_blob);
-    brillo::Blob extend_pcr_value(kDigestSize, 0);
-    extend_pcr_value.insert(extend_pcr_value.end(), settings_digest.begin(),
-                            settings_digest.end());
-    SecureBlob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
-    if (quote.quoted_pcr_value().size() == final_pcr_value.size() &&
-        0 == memcmp(quote.quoted_pcr_value().data(), final_pcr_value.data(),
-                    final_pcr_value.size())) {
+    const Blob settings_digest = CryptoLib::Sha1(settings_blob);
+    const Blob extend_pcr_value =
+        CombineBlobs({Blob(kDigestSize), settings_digest});
+    const Blob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
+    if (BlobFromString(quote.quoted_pcr_value()) == final_pcr_value) {
       std::string description = "Developer Mode: ";
       description += kKnownPCRValues[i].developer_mode_enabled ? "On" : "Off";
       description += ", Recovery Mode: ";
@@ -1721,10 +1716,10 @@ bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
     // TPM_PCR_COMPOSITE.valueSize: 32-bit length of PCR value.
     uint8_t(0), uint8_t(0), uint8_t(0),
     uint8_t(quote.quoted_pcr_value().size())};
-  SecureBlob pcr_composite = SecureBlob::Combine(
-      SecureBlob(std::begin(header), std::end(header)),
-      SecureBlob(quote.quoted_pcr_value()));
-  SecureBlob pcr_digest = CryptoLib::Sha1(pcr_composite);
+  const Blob pcr_composite =
+      CombineBlobs({Blob(std::begin(header), std::end(header)),
+                    BlobFromString(quote.quoted_pcr_value())});
+  const Blob pcr_digest = CryptoLib::Sha1(pcr_composite);
   SecureBlob quoted_data(quote.quoted_data());
   // The PCR digest should appear 8 bytes into the quoted data. See the
   // TPM_QUOTE_INFO structure.
@@ -1736,16 +1731,14 @@ bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
 
   if (quote.has_pcr_source_hint()) {
     // Check if the PCR value matches the hint.
-    SecureBlob hint_digest = CryptoLib::Sha256(
-        SecureBlob(quote.pcr_source_hint()));
-    brillo::Blob extend_pcr_value(kDigestSize, 0);
-    extend_pcr_value.insert(extend_pcr_value.end(),
-                            hint_digest.begin(),
-                            hint_digest.begin() + 20);
-    SecureBlob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
-    if (quote.quoted_pcr_value().size() != final_pcr_value.size() ||
-        0 != memcmp(quote.quoted_pcr_value().data(), final_pcr_value.data(),
-                    final_pcr_value.size())) {
+    const Blob hint_digest =
+        CryptoLib::Sha256(BlobFromString(quote.pcr_source_hint()));
+    const Blob hint_digest_prefix(hint_digest.begin(),
+                                  hint_digest.begin() + 20);
+    const Blob extend_pcr_value =
+        CombineBlobs({Blob(kDigestSize), hint_digest_prefix});
+    const Blob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
+    if (BlobFromString(quote.quoted_pcr_value()) != final_pcr_value) {
       LOG(ERROR) << "PCR source hint is invalid.";
       return false;
     }
@@ -2662,15 +2655,14 @@ bool Attestation::IsTPMReady() {
 }
 
 void Attestation::ExtendPCR1IfClear() {
-  SecureBlob current_pcr_value;
+  Blob current_pcr_value;
   if (!tpm_->ReadPCR(1, &current_pcr_value) ||
       current_pcr_value.size() != kDigestSize) {
     LOG(WARNING) << "Failed to read PCR1.";
     return;
   }
-  brillo::Blob default_pcr_value(kDigestSize, 0);
-  if (!std::equal(default_pcr_value.begin(), default_pcr_value.end(),
-                  current_pcr_value.begin())) {
+  Blob default_pcr_value(kDigestSize);
+  if (current_pcr_value != default_pcr_value) {
     // The PCR has already been extended.
     return;
   }
@@ -2679,8 +2671,8 @@ void Attestation::ExtendPCR1IfClear() {
   // Take the first n bytes of a SHA-256 hash because this is what firmware
   // would do. (Using SHA-256 allows a single precomputed hash to be stored
   // along with the HWID for both TPM 1.2 and 2.0 platforms).
-  SecureBlob hwid_hash = CryptoLib::Sha256(SecureBlob(hwid));
-  SecureBlob extension(hwid_hash.begin(), hwid_hash.begin() + kDigestSize);
+  const Blob hwid_hash = CryptoLib::Sha256(BlobFromString(hwid));
+  const Blob extension(hwid_hash.begin(), hwid_hash.begin() + kDigestSize);
   if (hwid.length() == 0 || !tpm_->ExtendPCR(1, extension)) {
     LOG(WARNING) << "Failed to extend PCR1.";
   }
