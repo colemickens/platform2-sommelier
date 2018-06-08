@@ -53,6 +53,13 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/run/cups", "/run/cups", 0))
     LOG(FATAL) << "minijail_bind(\"/run/cups\") failed";
 
+  // Mount /run/arc/bugreport to be able to collect ARC bug reports.
+  // In case we start before ARC, make sure the path exists.
+  mkdir("/run/arc", 0755);
+  mkdir("/run/arc/bugreport", 0755);
+  if (minijail_bind(j.get(), "/run/arc/bugreport", "/run/arc/bugreport", 0))
+    LOG(FATAL) << "minijail_bind(\"/run/arc/bugreport\") failed";
+
   // Mount /dev to be able to inspect devices.
   if (minijail_mount_with_data(j.get(), "/dev", "/dev", "bind",
                                MS_BIND | MS_REC, nullptr)) {
