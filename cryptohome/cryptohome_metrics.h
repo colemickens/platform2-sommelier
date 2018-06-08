@@ -7,11 +7,35 @@
 
 #include <base/files/file.h>
 
+#include "cryptohome/le_credential_manager.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_metrics.h"
 
 namespace cryptohome {
+
+// List of all the possible operation types. Used to construct the correct
+// histogram while logging to UMA.
+enum LECredOperationType {
+  LE_CRED_OP_RESET_TREE = 0,
+  LE_CRED_OP_INSERT,
+  LE_CRED_OP_CHECK,
+  LE_CRED_OP_RESET,
+  LE_CRED_OP_REMOVE,
+  LE_CRED_OP_SYNC,
+  LE_CRED_OP_MAX,
+};
+
+// List of all possible actions taken within an LE Credential operation.
+// Used to construct the correct histogram while logging to UMA.
+enum LECredActionType {
+  LE_CRED_ACTION_LOAD_FROM_DISK = 0,
+  LE_CRED_ACTION_BACKEND,
+  LE_CRED_ACTION_SAVE_TO_DISK,
+  LE_CRED_ACTION_BACKEND_GET_LOG,
+  LE_CRED_ACTION_BACKEND_REPLAY_LOG,
+  LE_CRED_ACTION_MAX,
+};
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -168,6 +192,19 @@ enum class DiskCleanupProgress {
 const char kAttestationOriginSpecificIdentifiersExhausted[] =
     "Attestation.OriginSpecificExhausted";
 
+// Constants related to LE Credential UMA logging.
+constexpr char kLEOpResetTree[]= ".ResetTree";
+constexpr char kLEOpInsert[]= ".Insert";
+constexpr char kLEOpCheck[]= ".Check";
+constexpr char kLEOpReset[]= ".Reset";
+constexpr char kLEOpRemove[]= ".Remove";
+constexpr char kLEOpSync[]= ".Sync";
+constexpr char kLEActionLoadFromDisk[] = ".LoadFromDisk";
+constexpr char kLEActionBackend[] = ".Backend";
+constexpr char kLEActionSaveToDisk[] = ".SaveToDisk";
+constexpr char kLEActionBackendGetLog[] = ".BackendGetLog";
+constexpr char kLEActionBackendReplayLog[] = ".BackendReplayLog";
+
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
 // will have no effect.
 void InitializeMetrics();
@@ -265,6 +302,15 @@ void ReportDiskCleanupProgress(DiskCleanupProgress progress);
 // The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
 // histogram.
 void ReportHomedirEncryptionType(HomedirEncryptionType type);
+
+// Reports the result of a Low Entropy (LE) Credential operation to the relevant
+// LE Credential histogram.
+void ReportLEResult(const char* type, const char* action,
+                    LECredError result);
+
+// Reports the overall outcome of a Low Entropy (LE) Credential Sync operation
+// to the "Cryptohome.LECredential.SyncOutcome" enum histogram.
+void ReportLESyncOutcome(LECredError result);
 
 // Reports the TPM version fingerprint to the "Platform.TPM.VersionFingerprint"
 // histogram.

@@ -17,7 +17,7 @@ namespace cryptohome {
 // List of all the errors returned by the LECredentialManager class.
 enum LECredError {
   // Operation succeeded.
-  LE_CRED_SUCCESS,
+  LE_CRED_SUCCESS = 0,
   // Check failed due to incorrect Low Entropy(LE) secret.
   LE_CRED_ERROR_INVALID_LE_SECRET,
   // Check failed due to incorrect Reset secret.
@@ -32,6 +32,12 @@ enum LECredError {
   LE_CRED_ERROR_NO_FREE_LABEL,
   // Invalid metadata in label.
   LE_CRED_ERROR_INVALID_METADATA,
+  // Unclassified error.
+  LE_CRED_ERROR_UNCLASSIFIED,
+  // Credential Manager Locked.
+  LE_CRED_ERROR_LE_LOCKED,
+  // Sentinel value.
+  LE_CRED_ERROR_MAX,
 };
 
 // Class containing all logic pertaining to management of Low Entropy(LE)

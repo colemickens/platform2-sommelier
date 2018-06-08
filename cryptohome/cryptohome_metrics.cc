@@ -4,6 +4,8 @@
 
 #include "cryptohome/cryptohome_metrics.h"
 
+#include <string>
+
 #include <base/logging.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
@@ -53,6 +55,10 @@ constexpr char kCryptohomeDircryptoMigrationTotalFileCountHistogram[] =
     "Cryptohome.DircryptoMigrationTotalFileCount";
 constexpr char kCryptohomeDiskCleanupProgressHistogram[] =
     "Cryptohome.DiskCleanupProgress";
+constexpr char kCryptohomeLEResultHistogramPrefix[] =
+    "Cryptohome.LECredential";
+constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] =
+    ".SyncOutcome";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
 constexpr char kTPMVersionFingerprint[] = "Platform.TPM.VersionFingerprint";
@@ -341,6 +347,31 @@ void ReportHomedirEncryptionType(HomedirEncryptionType type) {
       static_cast<int>(type),
       static_cast<int>(
           HomedirEncryptionType::kHomedirEncryptionTypeNumBuckets));
+}
+
+void ReportLEResult(const char* type,
+                    const char* action,
+                    LECredError result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  std::string hist_str = std::string(kCryptohomeLEResultHistogramPrefix)
+                             .append(type)
+                             .append(action);
+
+  g_metrics->SendEnumToUMA(hist_str, result, LE_CRED_ERROR_MAX);
+}
+
+void ReportLESyncOutcome(LECredError result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  std::string hist_str = std::string(kCryptohomeLEResultHistogramPrefix)
+                             .append(kCryptohomeLESyncOutcomeHistogramSuffix);
+
+  g_metrics->SendEnumToUMA(hist_str, result, LE_CRED_ERROR_MAX);
 }
 
 void ReportVersionFingerprint(int fingerprint) {

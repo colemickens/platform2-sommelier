@@ -11,6 +11,7 @@
 
 #include <base/files/file_util.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
@@ -48,14 +49,20 @@ LECredError LECredentialManager::InsertCredential(
   SignInHashTree::Label label = hash_tree_->GetFreeLabel();
   if (!label.is_valid()) {
     LOG(ERROR) << "No free labels available.";
+    ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_NO_FREE_LABEL);
     return LE_CRED_ERROR_NO_FREE_LABEL;
   }
 
   std::vector<std::vector<uint8_t>> h_aux = GetAuxHashes(label);
   if (h_aux.empty()) {
     LOG(ERROR) << "Error getting aux hashes for label: " << label.value();
+    ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_HASH_TREE);
     return LE_CRED_ERROR_HASH_TREE;
   }
+
+  ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
 
   std::vector<uint8_t> cred_metadata, mac;
   bool success = le_tpm_backend_->InsertCredential(
@@ -63,10 +70,14 @@ LECredError LECredentialManager::InsertCredential(
       &cred_metadata, &mac, &root_hash_);
   if (!success) {
     LOG(ERROR) << "Error executing TPM InsertCredential command.";
+    ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
     return LE_CRED_ERROR_HASH_TREE;
   }
 
+  ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_SUCCESS);
+
   if (!hash_tree_->StoreLabel(label, mac, cred_metadata, false)) {
+    ReportLEResult(kLEOpInsert, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR)
         << "InsertCredential succeeded in TPM but disk updated failed, label: "
         << label.value();
@@ -76,6 +87,7 @@ LECredError LECredentialManager::InsertCredential(
     success = le_tpm_backend_->RemoveCredential(label.value(), h_aux, mac,
                                                 &root_hash_);
     if (!success) {
+      ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
       LOG(ERROR) << " Failed to rewind aborted InsertCredential in TPM, label: "
                  << label.value();
       // The attempt to undo the TPM side operation has also failed, Can't do
@@ -86,6 +98,8 @@ LECredError LECredentialManager::InsertCredential(
     }
     return LE_CRED_ERROR_HASH_TREE;
   }
+
+  ReportLEResult(kLEOpInsert, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   *ret_label = label.value();
   return LE_CRED_SUCCESS;
@@ -273,6 +287,7 @@ LECredError LECredentialManager::ConvertTpmError(LECredBackendError err) {
 
 bool LECredentialManager::Sync() {
   if (is_locked_) {
+    ReportLESyncOutcome(LE_CRED_ERROR_LE_LOCKED);
     return false;
   }
 
@@ -283,13 +298,19 @@ bool LECredentialManager::Sync() {
   std::vector<LELogEntry> log;
   if (root_hash_.empty()) {
     if (!le_tpm_backend_->GetLog(disk_root_hash, &root_hash_, &log)) {
+      ReportLEResult(kLEOpSync, kLEActionBackendGetLog,
+                     LE_CRED_ERROR_UNCLASSIFIED);
+      ReportLESyncOutcome(LE_CRED_ERROR_HASH_TREE);
       LOG(ERROR) << "Couldn't get LE Log.";
       is_locked_ = true;
       return false;
     }
+    ReportLEResult(kLEOpSync, kLEActionBackendGetLog, LE_CRED_SUCCESS);
   }
 
+
   if (disk_root_hash == root_hash_) {
+    ReportLESyncOutcome(LE_CRED_SUCCESS);
     return true;
   }
 
@@ -300,22 +321,29 @@ bool LECredentialManager::Sync() {
   hash_tree_->GetRootHash(&disk_root_hash);
 
   if (disk_root_hash == root_hash_) {
+    ReportLESyncOutcome(LE_CRED_SUCCESS);
     return true;
   }
 
   // Get the log again, since |disk_root_hash| may have changed.
   log.clear();
   if (!le_tpm_backend_->GetLog(disk_root_hash, &root_hash_, &log)) {
+    ReportLEResult(kLEOpSync, kLEActionBackendGetLog,
+                   LE_CRED_ERROR_UNCLASSIFIED);
+    ReportLESyncOutcome(LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "Couldn't get LE Log.";
     is_locked_ = true;
     return false;
   }
+  ReportLEResult(kLEOpSync, kLEActionBackendGetLog, LE_CRED_SUCCESS);
   if (!ReplayLogEntries(log, disk_root_hash)) {
+    ReportLESyncOutcome(LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "Failed to Synchronize LE disk state after log replay.";
     // TODO(crbug.com/809749): Add UMA logging for this event.
     is_locked_ = true;
     return false;
   }
+  ReportLESyncOutcome(LE_CRED_SUCCESS);
   return true;
 }
 
@@ -329,12 +357,14 @@ bool LECredentialManager::ReplayInsert(
   CryptoLib::GetSecureRandom(cred_metadata.data(), cred_metadata.size());
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
   if (!hash_tree_->StoreLabel(label_obj, mac, cred_metadata, true)) {
+    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "InsertCredentialReplay disk update "
                   "failed, label: "
                << label_obj.value();
     // TODO(crbug.com/809749): Report failure to UMA.
     return false;
   }
+  ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   return true;
 }
@@ -347,25 +377,37 @@ bool LECredentialManager::ReplayCheck(uint64_t label,
   bool metadata_lost;
   if (RetrieveLabelInfo(label_obj, &orig_cred, &orig_mac, &h_aux,
                         &metadata_lost) != LE_CRED_SUCCESS) {
+    ReportLEResult(kLEOpSync, kLEActionLoadFromDisk, LE_CRED_ERROR_HASH_TREE);
     return false;
   }
+
+  ReportLEResult(kLEOpSync, kLEActionLoadFromDisk,
+                 LE_CRED_SUCCESS);
 
   brillo::SecureBlob new_cred, new_mac;
   if (!le_tpm_backend_->ReplayLogOperation(log_root, h_aux, orig_cred,
                                            &new_cred, &new_mac)) {
+    ReportLEResult(kLEOpSync, kLEActionBackendReplayLog,
+                   LE_CRED_ERROR_UNCLASSIFIED);
     LOG(ERROR) << "Auth replay failed on LE Backend, label: " << label;
     // TODO(crbug.com/809749): Report failure to UMA.
     return false;
   }
 
+  ReportLEResult(kLEOpSync, kLEActionBackendReplayLog, LE_CRED_SUCCESS);
+
   // Store the new credential metadata and MAC.
   if (!new_cred.empty() && !new_mac.empty()) {
     if (!hash_tree_->StoreLabel(label_obj, new_mac, new_cred, false)) {
+      ReportLEResult(kLEOpSync, kLEActionSaveToDisk,
+                     LE_CRED_ERROR_HASH_TREE);
       LOG(ERROR) << "Error in LE auth replay disk hash tree update, label: "
                  << label;
       // TODO(crbug.com/809749): Report failure to UMA.
       return false;
     }
+
+    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
   }
 
   return true;
@@ -375,8 +417,12 @@ bool LECredentialManager::ReplayResetTree() {
   hash_tree_.reset();
   if (!base::DeleteFile(basedir_, true)) {
     PLOG(ERROR) << "Failed to delete disk hash tree during replay.";
+    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
     return false;
   }
+
+  ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+
   hash_tree_ =
       std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, basedir_);
   hash_tree_->GenerateAndStoreHashCache();
@@ -386,10 +432,12 @@ bool LECredentialManager::ReplayResetTree() {
 bool LECredentialManager::ReplayRemove(uint64_t label) {
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
   if (!hash_tree_->RemoveLabel(label_obj)) {
+    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "RemoveLabel LE Replay failed for label: " << label;
     // TODO(crbug.com/809749): Report failure to UMA.
     return false;
   }
+  ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
   return true;
 }
 
