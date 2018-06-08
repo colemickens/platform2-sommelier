@@ -621,6 +621,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest,
               UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
+  FRIEND_TEST(ManagerTest, RefreshIPConfig);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
   FRIEND_TEST(ManagerTest, ReleaseBlacklistedDevice);

@@ -86,6 +86,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
     // all system traffic can use this connection.
     std::vector<uint32_t> allowed_uids;
     std::vector<std::string> allowed_iifs;
+    // List of uids that have their traffic blocked.
+    std::vector<uint32_t> blackholed_uids;
     // Set the flag to true when the interface should be set as the default
     // route.
     bool default_route;
@@ -212,6 +214,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // renewed in |time_left|. Returns false if an error occurs (i.e. current
   // lease has already expired or no current DHCP lease), true otherwise.
   bool TimeToLeaseExpiry(uint32_t* time_left);
+
+  // Returns whether the function call changed the configuration.
+  bool SetBlackholedUids(const std::vector<uint32_t>& uids);
+  bool ClearBlackholedUids();
 
  protected:
   // Inform RPC listeners of changes to our properties. MAY emit

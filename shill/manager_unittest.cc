@@ -5433,4 +5433,40 @@ TEST_F(ManagerTest, ShouldBlackholeBrowserTraffic) {
   EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
 }
 
+TEST_F(ManagerTest, RefreshIPConfig) {
+  manager()->RegisterDevice(mock_devices_[0]);
+
+  const string kOnlinePackage = "com.example.test.vpn1";
+  const string kOtherPackage = "com.example.test.vpn2";
+
+  MockServiceRefPtr service(new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  EXPECT_CALL(*service.get(), IsOnline()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service.get(), IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service.get(), IsAlwaysOnVpn(kOnlinePackage))
+      .WillRepeatedly(Return(true));
+  manager()->RegisterService(service);
+
+  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
+  manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
+
+  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(0);
+  manager()->SetAlwaysOnVpnPackage(kOnlinePackage, nullptr);
+
+  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(0);
+  manager()->UpdateBlackholeBrowserTraffic();
+
+  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*service.get(), IsOnline()).WillRepeatedly(Return(true));
+  manager()->UpdateBlackholeBrowserTraffic();
+
+  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
+  manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
+
+  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
+  manager()->SetAlwaysOnVpnPackage("", nullptr);
+}
+
 }  // namespace shill

@@ -247,10 +247,12 @@ class Connection : public base::RefCounted<Connection> {
   // all system traffic can use this connection.
   std::vector<uint32_t> allowed_uids_;
   std::vector<std::string> allowed_iifs_;
+  std::vector<uint32_t> blackholed_uids_;
 
   // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.
   bool fixed_ip_params_;
   uint8_t table_id_;
+  uint8_t blackhole_table_id_;
   IPAddress local_;
   IPAddress gateway_;
 

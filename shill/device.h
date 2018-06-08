@@ -366,6 +366,10 @@ class Device : public base::RefCounted<Device> {
   // change the state of the previously selected service.
   virtual void ResetConnection();
 
+  // If the status of browser traffic blackholing changed, this will restart
+  // the active connection with the right setting.
+  virtual void RefreshIPConfig();
+
  protected:
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;

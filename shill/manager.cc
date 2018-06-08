@@ -2795,6 +2795,7 @@ bool Manager::ShouldBlackholeBrowserTraffic(const std::string& device_name)
 }
 
 void Manager::UpdateBlackholeBrowserTraffic() {
+  bool before_update = should_blackhole_browser_traffic_;
   if (props_.always_on_vpn_package.empty()) {
     should_blackhole_browser_traffic_ = false;
   } else {
@@ -2806,6 +2807,12 @@ void Manager::UpdateBlackholeBrowserTraffic() {
         break;
       }
     }
+  }
+  if (should_blackhole_browser_traffic_ == before_update) {
+    return;
+  }
+  for (const auto& device : devices_) {
+    device->RefreshIPConfig();
   }
 }
 

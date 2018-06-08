@@ -822,6 +822,21 @@ bool Device::AcquireIPv6ConfigWithLeaseName(const string& lease_name) {
 }
 #endif  // DISABLE_DHCPV6
 
+void Device::RefreshIPConfig() {
+  SLOG(this, 2) << __func__;
+  if (ipconfig_.get()) {
+    bool updated;
+    if (manager_->ShouldBlackholeBrowserTraffic(UniqueName())) {
+      updated = ipconfig_->SetBlackholedUids(manager_->browser_traffic_uids());
+    } else {
+      updated = ipconfig_->ClearBlackholedUids();
+    }
+    if (updated) {
+      SetupConnection(ipconfig_);
+    }
+  }
+}
+
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   DestroyIPConfig();
   EnableIPv6();
@@ -919,6 +934,11 @@ void Device::OnIPv6ConfigUpdated() {
 
 void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   CreateConnection();
+  if (manager_->ShouldBlackholeBrowserTraffic(UniqueName())) {
+    ipconfig->SetBlackholedUids(manager_->browser_traffic_uids());
+  } else {
+    ipconfig->ClearBlackholedUids();
+  }
   connection_->UpdateFromIPConfig(ipconfig);
 
   // Report connection type.

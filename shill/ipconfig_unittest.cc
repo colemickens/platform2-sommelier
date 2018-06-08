@@ -17,6 +17,7 @@
 #include "shill/ipconfig.h"
 
 #include <sys/time.h>
+#include <vector>
 
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
@@ -141,6 +142,24 @@ TEST_F(IPConfigTest, RenewIP) {
 
 TEST_F(IPConfigTest, ReleaseIP) {
   EXPECT_FALSE(ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
+}
+
+TEST_F(IPConfigTest, SetBlackholedUids) {
+  std::vector<uint32_t> uids = {1000, 216};
+  std::vector<uint32_t> empty_uids = {};
+  // SetBlackholedUids returns true if the value changes
+  EXPECT_TRUE(ipconfig_->SetBlackholedUids(uids));
+  EXPECT_EQ(uids, ipconfig_->properties().blackholed_uids);
+
+  // SetBlackholeBrowserTraffic returns false if the value does not change
+  EXPECT_FALSE(ipconfig_->SetBlackholedUids(uids));
+  EXPECT_EQ(uids, ipconfig_->properties().blackholed_uids);
+
+  EXPECT_TRUE(ipconfig_->ClearBlackholedUids());
+  EXPECT_EQ(empty_uids, ipconfig_->properties().blackholed_uids);
+
+  EXPECT_FALSE(ipconfig_->ClearBlackholedUids());
+  EXPECT_EQ(empty_uids, ipconfig_->properties().blackholed_uids);
 }
 
 TEST_F(IPConfigTest, UpdateProperties) {

@@ -107,6 +107,7 @@ Connection::Connection(int interface_index,
       per_device_routing_(false),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RT_TABLE_MAIN),
+      blackhole_table_id_(RT_TABLE_UNSPEC),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
       lower_binder_(
@@ -137,6 +138,9 @@ Connection::~Connection() {
   }
   routing_table_->FlushRules(interface_index_);
   routing_table_->FreeTableId(table_id_);
+  if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
+    routing_table_->FreeTableId(blackhole_table_id_);
+  }
 }
 
 bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
@@ -291,6 +295,22 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
                                     table_id_);
   }
 
+  if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
+    routing_table_->FreeTableId(blackhole_table_id_);
+    blackhole_table_id_ = RT_TABLE_UNSPEC;
+  }
+  if (!properties.blackholed_uids.empty()) {
+    blackholed_uids_ = properties.blackholed_uids;
+    blackhole_table_id_ = routing_table_->AllocTableId();
+    CHECK(blackhole_table_id_);
+    routing_table_->CreateBlackholeRoute(IPAddress::kFamilyIPv4,
+                                         kDefaultMetric,
+                                         blackhole_table_id_);
+    routing_table_->CreateBlackholeRoute(IPAddress::kFamilyIPv6,
+                                         kDefaultMetric,
+                                         blackhole_table_id_);
+  }
+
   UpdateRoutingPolicy();
 
   // Install any explicitly configured routes at the default metric.
@@ -345,9 +365,23 @@ void Connection::UpdateRoutingPolicy() {
   routing_table_->FlushRules(interface_index_);
 
   bool rule_created = false;
+
+  uint32_t blackhole_offset = 0;
+  if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
+    blackhole_offset = 1;
+    for (const auto& uid : blackholed_uids_) {
+      RoutingPolicyEntry entry(
+          IPAddress::kFamilyIPv4, metric_, blackhole_table_id_, uid, uid);
+      routing_table_->AddRule(interface_index_, entry);
+      entry.family = IPAddress::kFamilyIPv6;
+      routing_table_->AddRule(interface_index_, entry);
+      rule_created = true;
+    }
+  }
+
   for (const auto& uid : allowed_uids_) {
-    RoutingPolicyEntry entry(
-        IPAddress::kFamilyIPv4, metric_, table_id_, uid, uid);
+    RoutingPolicyEntry entry(IPAddress::kFamilyIPv4,
+        metric_ + blackhole_offset, table_id_, uid, uid);
     routing_table_->AddRule(interface_index_, entry);
     entry.family = IPAddress::kFamilyIPv6;
     routing_table_->AddRule(interface_index_, entry);
@@ -355,8 +389,8 @@ void Connection::UpdateRoutingPolicy() {
   }
 
   for (const auto& interface_name : allowed_iifs_) {
-    RoutingPolicyEntry entry(
-        IPAddress::kFamilyIPv4, metric_, table_id_, interface_name);
+    RoutingPolicyEntry entry(IPAddress::kFamilyIPv4,
+        metric_ + blackhole_offset, table_id_, interface_name);
     routing_table_->AddRule(interface_index_, entry);
     entry.family = IPAddress::kFamilyIPv6;
     routing_table_->AddRule(interface_index_, entry);
@@ -365,7 +399,8 @@ void Connection::UpdateRoutingPolicy() {
 
   if (!rule_created) {
     // No restrictions.
-    RoutingPolicyEntry entry(IPAddress::kFamilyIPv4, metric_, table_id_);
+    RoutingPolicyEntry entry(
+        IPAddress::kFamilyIPv4, metric_ + blackhole_offset, table_id_);
     routing_table_->AddRule(interface_index_, entry);
     entry.family = IPAddress::kFamilyIPv6;
     routing_table_->AddRule(interface_index_, entry);

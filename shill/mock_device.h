@@ -74,6 +74,7 @@ class MockDevice : public Device {
   MOCK_METHOD0(OnIPv6DnsServerAddressesChanged, void());
   MOCK_METHOD0(StartConnectivityTest, bool());
   MOCK_CONST_METHOD0(connection, const ConnectionRefPtr&());
+  MOCK_METHOD0(RefreshIPConfig, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

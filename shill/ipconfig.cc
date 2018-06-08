@@ -162,6 +162,18 @@ bool IPConfig::TimeToLeaseExpiry(uint32_t* time_left) {
   return true;
 }
 
+bool IPConfig::SetBlackholedUids(const std::vector<uint32_t>& uids) {
+  if (properties_.blackholed_uids == uids) {
+    return false;
+  }
+  properties_.blackholed_uids = uids;
+  return true;
+}
+
+bool IPConfig::ClearBlackholedUids() {
+  return SetBlackholedUids(std::vector<uint32_t>());
+}
+
 void IPConfig::UpdateProperties(const Properties& properties,
                                 bool new_lease_acquired) {
   // Take a reference of this instance to make sure we don't get destroyed in
