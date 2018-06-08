@@ -168,6 +168,49 @@
         'cicerone/client.cc',
       ],
     },
+    {
+      'target_name': 'libseneschal',
+      'type': 'static_library',
+      'variables': {
+        'exported_deps': [
+          'libminijail',
+          'protobuf',
+          'system_api',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
+      },
+      'sources': [
+        'seneschal/service.cc',
+      ],
+    },
+    {
+      'target_name': 'seneschal',
+      'type': 'executable',
+      'dependencies': [
+        'libseneschal',
+      ],
+      'sources': [
+        'seneschal/main.cc',
+      ],
+    },
+    {
+      'target_name': 'seneschal_client',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'protobuf',
+          'system_api',
+        ],
+      },
+      'sources': [
+        'seneschal/client.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {

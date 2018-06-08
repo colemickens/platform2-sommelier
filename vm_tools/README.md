@@ -57,6 +57,22 @@ uses TCP/IP for the transport and firewall rules ensure that only the container
 IPs are allowed to connect to the corresponding port for `garcon` that is open
 in `vm_cicerone`.
 
+## seneschal
+
+`seneschal` is the steward of the user's /home directory. It manages processes
+that serve the [9p](http://man.cat-v.org/plan_9/5/0intro) file system protocol.
+The 9p client lives in the guest kernel and communicates with the server over
+[vsock](https://lwn.net/Articles/695981/).
+
+Each server initially does not have access to any path but can be
+granted access to specific paths in the user's home directory by sending
+requests over dbus to `seneschal`. These paths are bind-mounted into
+the server's root directory and become visible to the 9p clients of that
+server.
+
+This makes it possible to share different sets of paths with different
+VMs by giving each of them access to a different 9p server.
+
 ## vsh
 
 `vsh` is a vsock-based remote shell utility. `vshd` runs on the guest/server,
