@@ -84,6 +84,7 @@ namespace switches {
   static const char kActionSwitch[] = "action";
   static const char* kActions[] = {"mount_ex",
                                    "mount_guest",
+                                   "mount_guest_ex",
                                    "unmount",
                                    "is_mounted",
                                    "check_key_ex",
@@ -143,6 +144,7 @@ namespace switches {
   enum ActionEnum {
     ACTION_MOUNT_EX,
     ACTION_MOUNT_GUEST,
+    ACTION_MOUNT_GUEST_EX,
     ACTION_UNMOUNT,
     ACTION_MOUNTED,
     ACTION_CHECK_KEY_EX,
@@ -829,6 +831,27 @@ int main(int argc, char **argv) {
     if (!done) {
       printf("Mount failed.\n");
       return 1;
+    }
+    printf("Mount succeeded.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST_EX],
+                     action.c_str())) {
+    cryptohome::BaseReply reply;
+    cryptohome::MountGuestRequest request;
+    brillo::glib::ScopedError error;
+    GArray* out_reply = NULL;
+
+    brillo::glib::ScopedArray guest_request_ary(GArrayFromProtoBuf(request));
+    if (!org_chromium_CryptohomeInterface_mount_guest_ex(
+            proxy.gproxy(), guest_request_ary.get(), &out_reply,
+            &brillo::Resetter(&error).lvalue())) {
+      printf("Mount call failed: %s.\n", error->message);
+      return 1;
+    }
+
+    ParseBaseReply(out_reply, &reply);
+    if (reply.has_error()) {
+      printf("Mount failed.\n");
+      return reply.error();
     }
     printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_KEY_EX],

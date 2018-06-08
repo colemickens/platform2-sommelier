@@ -337,6 +337,11 @@ class Service : public brillo::dbus::AbstractDbusService,
                               GError **error);
   virtual gboolean AsyncMountGuest(gint *OUT_async_id,
                                    GError **error);
+  virtual void DoMountGuestEx(scoped_refptr<cryptohome::Mount> guest_mount,
+                              std::unique_ptr<MountGuestRequest> request_pb,
+                              DBusGMethodInvocation* context);
+  virtual gboolean MountGuestEx(GArray* request,
+                                DBusGMethodInvocation* context);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
   virtual gboolean UnmountForUser(const gchar* userid, gboolean *OUT_result,
                                   GError **error);

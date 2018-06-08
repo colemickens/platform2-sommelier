@@ -123,6 +123,12 @@
     <method name="AsyncMountGuest">
       <arg type="i" name="async_id" direction="out" />
     </method>
+    <!-- This may be called asynchronously. -->
+    <method name="MountGuestEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
     <method name="RenameCryptohome">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="cryptohome_id_from" direction="in" />

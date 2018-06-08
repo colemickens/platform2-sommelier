@@ -116,6 +116,9 @@ gboolean cryptohome_mount_guest(Cryptohome* self,
 gboolean cryptohome_async_mount_guest(Cryptohome* self,
                                       gint* OUT_async_id,
                                       GError** error);
+gboolean cryptohome_mount_guest_ex(Cryptohome* self,
+                                   GArray* request,
+                                   DBusGMethodInvocation* resp);
 gboolean cryptohome_mount_ex(Cryptohome* self,
                              GArray* id,
                              GArray* auth,

@@ -192,6 +192,12 @@ gboolean cryptohome_async_mount_guest(Cryptohome* self,
                                       GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncMountGuest, OUT_async_id);
 }
+gboolean cryptohome_mount_guest_ex(Cryptohome* self,
+                                   GArray* request,
+                                   DBusGMethodInvocation* error) {
+  // Leave the response called error to reuse WRAP.
+  CRYPTOHOME_WRAP_METHOD(MountGuestEx, request);
+}
 gboolean cryptohome_unmount(Cryptohome* self,
                             gboolean* OUT_result,
                             GError** error) {

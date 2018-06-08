@@ -2244,6 +2244,57 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   return TRUE;
 }
 
+void Service::DoMountGuestEx(scoped_refptr<cryptohome::Mount> guest_mount,
+                             std::unique_ptr<MountGuestRequest> request_pb,
+                             DBusGMethodInvocation* context) {
+  if (!request_pb) {
+    SendInvalidArgsReply(context, "Bad MountGuestRequest");
+    return;
+  }
+
+  BaseReply reply;
+  if (!guest_mount->MountGuestCryptohome())
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+  else
+    reply.clear_error();
+
+  SendReply(context, reply);
+}
+
+gboolean Service::MountGuestEx(GArray* request,
+                               DBusGMethodInvocation* context) {
+  auto request_pb = std::make_unique<MountGuestRequest>();
+  if (!request_pb->ParseFromArray(request->data, request->len))
+    request_pb.reset(nullptr);
+
+  if (mounts_.size() != 0)
+    LOG(WARNING) << "Guest mount requested with other mounts active.";
+  // Rather than make it safe to check the size, then clean up, just always
+  // clean up.
+  bool ok = RemoveAllMounts(true);
+  // Create a ref-counted guest mount for async use and then throw it away.
+  scoped_refptr<cryptohome::Mount> guest_mount =
+      GetOrCreateMountForUser(guest_user_);
+
+  BaseReply reply;
+  if (!ok) {
+    LOG(ERROR) << "Could not unmount cryptohomes for Guest use";
+    if (!RemoveMountForUser(guest_user_)) {
+      LOG(ERROR) << "Unexpectedly cannot drop unused Guest mount from map.";
+    }
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    return TRUE;
+  }
+
+  ReportTimerStart(kAsyncGuestMountTimer);
+
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&Service::DoMountGuestEx, base::Unretained(this),
+                            guest_mount, base::Passed(std::move(request_pb)),
+                            base::Unretained(context)));
+  return TRUE;
+}
+
 // Unmount all mounted cryptohomes.
 gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   *OUT_result = RemoveAllMounts(true);
