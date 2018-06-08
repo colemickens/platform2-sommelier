@@ -44,4 +44,3 @@ host kernel's networking stack to transfer data from the application in the
 guest VM to an application on the host system.
 
 ![vsock](vsock.png)
-

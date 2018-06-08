@@ -128,7 +128,6 @@ help of flow diagrams.
                               for that subdevice.           --------> Client
                              (SubDeviceClientFDHolder)
 
-
 #### Client to H/W device
 
              Client
@@ -147,4 +146,3 @@ help of flow diagrams.
                                          |
                                         \|/
                                     H/W device
-
