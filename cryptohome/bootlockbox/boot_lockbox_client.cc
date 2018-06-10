@@ -12,9 +12,8 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus.h>
-#include <cryptohome/proto_bindings/rpc.pb.h>
 
-#include "bootlockbox/dbus-proxies.h"
+#include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -40,89 +39,84 @@ BootLockboxClient::BootLockboxClient(
     scoped_refptr<dbus::Bus> bus)
     : bootlockbox_(std::move(bootlockbox)), bus_(bus) {}
 
-BootLockboxClient::~BootLockboxClient() {
-  bus_->ShutdownAndBlock();
-}
+BootLockboxClient::~BootLockboxClient() {}
 
-bool BootLockboxClient::Sign(const std::string& digest,
-                             std::string* signature_out) {
+bool BootLockboxClient::Store(const std::string& key,
+                              const std::string& digest) {
   base::ElapsedTimer timer;
-  cryptohome::SignBootLockboxRequest request;
+  cryptohome::StoreBootLockboxRequest request;
+  request.set_key(key);
   request.set_data(digest);
   std::vector<uint8_t> request_array(request.ByteSize());
   CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
 
   std::vector<uint8_t> reply_array;
   brillo::ErrorPtr error;
-  if (!bootlockbox_->SignBootLockbox(request_array, &reply_array, &error)) {
-    LOG(ERROR) << "Failed to call SignBootLockbox, error: "
+  if (!bootlockbox_->StoreBootLockbox(request_array, &reply_array, &error)) {
+    LOG(ERROR) << "Failed to call StoreBootLockbox, error: "
                << error->GetMessage();
     return false;
   }
 
-  cryptohome::BaseReply base_reply;
-  if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse SignBootLockboxReply";
+  cryptohome::BootLockboxBaseReply reply;
+  if (!reply.ParseFromArray(reply_array.data(), reply_array.size())) {
+    LOG(ERROR) << "Failed to parse StoreBootLockbox Reply";
+    return false;
+  }
+  if (reply.has_error()) {
+    LOG(ERROR) << "Failed to call Store, error code: " << reply.error();
     return false;
   }
 
-  if (base_reply.has_error()) {
-    LOG(ERROR) << "Failed to call Sign, error code: " << base_reply.error();
-    return false;
-  }
-
-  if (!base_reply.HasExtension(cryptohome::SignBootLockboxReply::reply)) {
-    LOG(ERROR) << "Missing reply in SignBootLockboxReply";
-    return false;
-  }
-
-  cryptohome::SignBootLockboxReply signature_reply =
-      base_reply.GetExtension(cryptohome::SignBootLockboxReply::reply);
-  if (!signature_reply.has_signature()) {
-    LOG(ERROR) << "Missing signature in SignBootLockboxReply";
-    return false;
-  }
-  *signature_out = signature_reply.signature();
-  LOG(INFO) << "BootLockboxClient::Sign took "
+  LOG(INFO) << "BootLockboxClient::Store took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
   return true;
 }
 
-bool BootLockboxClient::Verify(const std::string& digest,
-                               const std::string& signature) {
+bool BootLockboxClient::Read(const std::string& key,
+                             std::string* digest) {
   base::ElapsedTimer timer;
-  cryptohome::VerifyBootLockboxRequest request;
-  request.set_data(digest);
-  request.set_signature(signature);
+  cryptohome::ReadBootLockboxRequest request;
+  request.set_key(key);
   std::vector<uint8_t> request_array(request.ByteSize());
   CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
 
   std::vector<uint8_t> reply_array;
   brillo::ErrorPtr error;
-  if (!bootlockbox_->VerifyBootLockbox(request_array, &reply_array, &error)) {
-    LOG(ERROR) << "Failed to call VerifyBootLockbox, " << error->GetMessage();
+  if (!bootlockbox_->ReadBootLockbox(request_array, &reply_array, &error)) {
+    LOG(ERROR) << "Failed to call ReadBootLockbox, error: "
+               << error->GetMessage();
     return false;
   }
 
-  cryptohome::BaseReply base_reply;
+  cryptohome::BootLockboxBaseReply base_reply;
   if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse VerifyBootLockbox reply message";
+    LOG(ERROR) << "Failed to parse ReadBootLockbox reply";
     return false;
   }
 
   if (base_reply.has_error()) {
-    LOG(ERROR) << "Error calling VerifyBootLockbox, error code:"
+    LOG(ERROR) << "Failed to call ReadBootLockbox, error code: "
                << base_reply.error();
     return false;
   }
-  LOG(INFO) << "BootLockboxClient::Verify took " <<
-            timer.Elapsed().InMillisecondsRoundedUp() << "ms";
+  if (!base_reply.HasExtension(cryptohome::ReadBootLockboxReply::reply)) {
+    LOG(ERROR) << "Missing reply in ReadBootLockboxReply";
+    return false;
+  }
+  cryptohome::ReadBootLockboxReply read_reply =
+      base_reply.GetExtension(cryptohome::ReadBootLockboxReply::reply);
+  if (!read_reply.has_data()) {
+    LOG(ERROR) << "Missing data field in ReadBootLockboxReply";
+    return false;
+  }
+  *digest = read_reply.data();
   return true;
 }
 
 bool BootLockboxClient::Finalize() {
   base::ElapsedTimer timer;
-  cryptohome::FinalizeBootLockboxRequest request;
+  cryptohome::FinalizeNVRamBootLockboxRequest request;
   std::vector<uint8_t> request_array(request.ByteSize());
   CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
 
@@ -133,7 +127,7 @@ bool BootLockboxClient::Finalize() {
     return false;
   }
 
-  cryptohome::BaseReply base_reply;
+  cryptohome::BootLockboxBaseReply base_reply;
   if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
     LOG(ERROR) << "Failed to parse FinalizeBootLockbox reply";
     return false;

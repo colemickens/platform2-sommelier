@@ -33,6 +33,12 @@ group("all") {
   if (use.fuzzer) {
     deps += [ ":cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer" ]
   }
+  if (use.tpm2) {
+    deps += [
+      ":bootlockboxd",
+      ":bootlockboxtool",
+    ]
+  }
 }
 
 pkg_config("cryptohome_config") {
@@ -427,6 +433,7 @@ if (use.test) {
     deps = [
       "libs:libcrostpm",
       "libs:libcryptohome",
+      "libs:cryptohome-proto",
       "//common-mk/testrunner",
     ]
 
@@ -501,9 +508,12 @@ if (use.test) {
 
     if (use.tpm2) {
       sources = [
+        "bootlockbox/boot_lockbox_dbus_adaptor.cc",
+        "bootlockbox/boot_lockbox_service_unittest.cc",
         "bootlockbox/fake_tpm_nvspace_utility.cc",
         "bootlockbox/nvram_boot_lockbox_unittest.cc",
         "bootlockbox/tpm2_nvspace_utility_unittest.cc",
+        "mock_tpm_init.cc",
       ]
       defines = [ "TPM2_MODE=1" ]
       libs = [
@@ -515,9 +525,69 @@ if (use.test) {
       deps += [
         ":tpm-manager",
         "libs:bootlockbox-proto",
+        "libs:libcrostpm",
         "libs:libnvram-boot-lockbox",
       ]
     }
+  }
+}
+
+if (use.tpm2) {
+  pkg_config("bootlockboxtool_config") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libbrillo-${libbase_ver}",
+      "protobuf",
+    ]
+  }
+
+  executable("bootlockboxtool") {
+    configs += [ ":bootlockboxtool_config" ]
+    defines = [ "USE_TPM2=${use.tpm2}" ]
+    deps = [
+      "libs:bootlockbox-client-headers",
+      "libs:bootlockbox-proto",
+      "libs:libnvram-boot-lockbox",
+      "libs:libnvram-boot-lockbox-client",
+    ]
+    sources = [
+      "bootlockbox/boot_lockbox_tool.cc",
+    ]
+  }
+
+  pkg_config("bootlockboxd_config") {
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "libmetrics-${libbase_ver}",
+      "libecryptfs",
+      "openssl",
+      "protobuf",
+      "vboot_host",
+    ]
+  }
+
+  executable("bootlockboxd") {
+    configs += [ ":bootlockboxd_config" ]
+    deps = [
+      "libs:libcrostpm",
+      "libs:bootlockbox-adaptors",
+      "libs:bootlockbox-proto",
+      "libs:libnvram-boot-lockbox",
+    ]
+    defines = [ "USE_TPM2=${use.tpm2}" ]
+    libs = [
+      "-lscrypt",
+      "-lchaps",
+      "-lkeyutils",
+      "-ltpm_manager",
+      "-ltrunks",
+    ]
+    sources = [
+      "bootlockbox/boot_lockbox_dbus_adaptor.cc",
+      "bootlockbox/boot_lockbox_service.cc",
+      "bootlockbox/boot_lockboxd.cc",
+    ]
   }
 }
 

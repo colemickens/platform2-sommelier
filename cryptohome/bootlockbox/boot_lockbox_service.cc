@@ -9,22 +9,39 @@
 #include <base/logging.h>
 #include <dbus/dbus-protocol.h>
 
+#include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
+#include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
+#include "tpm_manager/common/tpm_manager_constants.h"
 
 namespace cryptohome {
 
 int BootLockboxService::OnInit() {
-  VLOG(1) << "Starting bootlockbox service";
+  nvspace_utility_ = std::make_unique<TPM2NVSpaceUtility>();
+  if (!nvspace_utility_->Initialize()) {
+    LOG(ERROR) << "Failed to initialize nvspace utility";
+    return EX_UNAVAILABLE;
+  }
+  boot_lockbox_.reset(new NVRamBootLockbox(nvspace_utility_.get()));
+
+  if (!boot_lockbox_->Load() &&
+      boot_lockbox_->GetState() == NVSpaceState::kNVSpaceUndefined ) {
+    LOG(INFO) << "NVSpace is not defined, define it now";
+    if (!nvspace_utility_->DefineNVSpace()) {
+      LOG(ERROR) << "Failed to create nvspace";
+      return EX_UNAVAILABLE;
+    }
+  }
   const int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK) {
     LOG(ERROR) << "Failed to start bootlockbox service";
     return return_code;
   }
-  LOG(INFO) << "BootLockbox service started";
+  LOG(INFO) << "BootLockboxd started";
   return EX_OK;
 }
 
@@ -36,24 +53,9 @@ void BootLockboxService::OnShutdown(int *exit_code) {
 void BootLockboxService::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   VLOG(1) << "Register dbus objects...";
-
-  platform_.reset(new Platform());
-  crypto_.reset(new Crypto(platform_.get()));
-  crypto_->set_use_tpm(true);
-  crypto_->set_tpm(Tpm::GetSingleton());
-
-  boot_lockbox_.reset(new BootLockbox(Tpm::GetSingleton(), platform_.get(),
-      crypto_.get()));
-  boot_lockbox_dbus_adaptor.reset(new BootLockboxDBusAdaptor(bus_,
+  boot_lockbox_dbus_adaptor_.reset(new BootLockboxDBusAdaptor(bus_,
       boot_lockbox_.get()));
-
-  // Try to pre load the key to speed up verify operations if the
-  // key is available.
-  if (!boot_lockbox_->PreLoadKey()) {
-    VLOG(1) << "Failed to pre load key, first time booting?";
-  }
-
-  boot_lockbox_dbus_adaptor->RegisterAsync(
+  boot_lockbox_dbus_adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
   VLOG(1) << "Register dbus object complete";
 }

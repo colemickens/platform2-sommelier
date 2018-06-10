@@ -8,25 +8,25 @@
 
 <node name="/org/chromium/BootLockbox">
   <interface name="org.chromium.BootLockboxInterface">
-    <!-- May be called asynchronously.  Both arguments are protobufs:
-         request: SignBootLockboxRequest
-         reply: BaseReply with a SignBootLockboxReply extension on success
-    -->
-    <method name="SignBootLockbox">
-      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
-    </method>
-    <!-- May be called asynchronously.  Both arguments are protobufs:
-         request: VerifyBootLockboxRequest
+    <!-- May be called asynchronously. Both arguments are protobufs:
+         request: StoreBootLockboxRequest
          reply: BaseReply
     -->
-    <method name="VerifyBootLockbox">
+    <method name="StoreBootLockbox">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
     </method>
-    <!-- May be called asynchronously.  Both arguments are protobufs:
+    <!-- May be called asynchronously. Both arguments are protobufs:
+         request: ReadBootLockboxRequest
+         reply BaseReply with ReadBootLockboxReply
+    -->
+    <method name="ReadBootLockbox">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+   <!-- May be called asynchronously.  Both arguments are protobufs:
          request: FinalizeBootLockboxRequest
          reply: BaseReply
     -->

@@ -12,15 +12,11 @@
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 
+#include "bootlockbox/dbus-proxies.h"
+
 namespace base {
 class FilePath;
 }  // namespace base
-
-namespace org {
-namespace chromium {
-class BootLockboxInterfaceProxy;
-}  // namespace chromium
-}  // namespace org
 
 namespace cryptohome {
 
@@ -31,25 +27,23 @@ class BootLockboxClient {
   // that will call ~BootLockboxClient();
   static std::unique_ptr<BootLockboxClient> CreateBootLockboxClient();
 
-  ~BootLockboxClient();
+  virtual ~BootLockboxClient();
 
-  // Signs |digest| using BootLockbox key. The signature is stored in
-  // |signature|.
-  bool Sign(const std::string& digest, std::string* signature);
+  // Store |digest| in NVRamBootLockbox with index |key|.
+  virtual bool Store(const std::string& key, const std::string& digest);
 
-  // Verifies |digest| against |signature|. Returns true if signature
-  // verification successed. Returns false if signature is invalid or the
-  // operation failed.
-  bool Verify(const std::string& digest, const std::string& signature);
+  // Read digest from NVRamBootLockbox indexed by key.
+  virtual bool Read(const std::string& key, std::string* digest);
 
   // Locks BootLockboxClient. Signing operation won't be available afterwards.
-  bool Finalize();
+  virtual bool Finalize();
 
- private:
+ protected:
   BootLockboxClient(
       std::unique_ptr<org::chromium::BootLockboxInterfaceProxy> bootlockbox,
       scoped_refptr<dbus::Bus> bus);
 
+ private:
   std::unique_ptr<org::chromium::BootLockboxInterfaceProxy> bootlockbox_;
   scoped_refptr<dbus::Bus> bus_;
 

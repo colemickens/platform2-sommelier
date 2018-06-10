@@ -7,6 +7,7 @@
 
 import("//common-mk/dbus_glib.gni")
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -301,6 +302,7 @@ static_library("libcryptohome") {
   if (use.tpm2) {
     sources += [ "../service_distributed.cc" ]
     libs += [ "-lattestation" ]
+    deps += [ ":libnvram-boot-lockbox-client" ]
   }
 }
 
@@ -368,6 +370,16 @@ generate_dbus_adaptors("bootlockbox-adaptors") {
   ]
 }
 
+generate_dbus_proxies("bootlockbox-client-headers") {
+  dbus_service_config = "../dbus_adaptors/dbus-service-config.json"
+  proxy_output_file = "include/bootlockbox/dbus-proxies.h"
+  mock_output_file = "include/bootlockbox/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "bootlockbox/dbus-proxies.h"
+  sources = [
+    "../dbus_adaptors/org.chromium.BootLockboxInterface.xml",
+  ]
+}
+
 if (use.tpm2) {
   proto_library("pinweaver-proto-external") {
     proto_in_dir = "${sysroot}/usr/include/proto"
@@ -398,4 +410,16 @@ if (use.tpm2) {
       ":libcrosplatform",
     ]
   }
+
+  static_library("libnvram-boot-lockbox-client") {
+    configs += [ ":target_defaults"]
+    sources = [ "../bootlockbox/boot_lockbox_client.cc" ]
+    all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
+
+    deps = [
+      ":bootlockbox-client-headers",
+      ":bootlockbox-proto",
+    ]
+  }
+
 }

@@ -9,15 +9,10 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 
-#include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/bootlockbox/boot_lockbox_dbus_adaptor.h"
+#include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
 
 namespace cryptohome {
-
-class Crypto;
-class Platform;
-class Tpm;
-class TpmInit;
 
 // BootLockboxService that implements the top level setups of bootlockboxd.
 class BootLockboxService : public brillo::DBusServiceDaemon {
@@ -32,10 +27,10 @@ class BootLockboxService : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
-  std::unique_ptr<Platform> platform_;
-  std::unique_ptr<Crypto> crypto_;
-  std::unique_ptr<BootLockbox> boot_lockbox_;
-  std::unique_ptr<BootLockboxDBusAdaptor> boot_lockbox_dbus_adaptor;
+  std::unique_ptr<TPMNVSpaceUtilityInterface> nvspace_utility_;
+  std::unique_ptr<NVRamBootLockbox> boot_lockbox_;
+  std::unique_ptr<BootLockboxDBusAdaptor> boot_lockbox_dbus_adaptor_;
+  base::WeakPtrFactory<BootLockboxService> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(BootLockboxService);
 };

@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-#include "cryptohome/bootlockbox/boot_lockbox.h"
+#include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
 
 #include "dbus_adaptors/org.chromium.BootLockboxInterface.h"
 
@@ -20,27 +20,21 @@ class BootLockboxDBusAdaptor
  public:
   // Don't own boot_lockbox, it is managed by BootLockboxService.
   explicit BootLockboxDBusAdaptor(scoped_refptr<dbus::Bus> bus,
-                                  BootLockbox* boot_lockbox);
+                                  NVRamBootLockbox* boot_lockbox);
 
   // Registers dbus objects.
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
-  // Uses BootLockbox key to sign data |in_request| which is a protobuf
-  // of type SignBootLockboxRequest defined in rpc.proto. |response| is of type
-  // SignBootLockboxReply.
-  void SignBootLockbox(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          std::vector<uint8_t>>> response,
-      const std::vector<uint8_t>& in_request) override;
+  // Stores a digest in bootlockbox.
+  void StoreBootLockbox(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                            std::vector<uint8_t>>> response,
+                        const std::vector<uint8_t>& in_request) override;
 
-  // Verfies a signature contained in |in_request|, which is a protobuf of
-  // type VerifyBootLockboxRequest defined in prc.proto. |response| is of type
-  // BaseReply.
-  void VerifyBootLockbox(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          std::vector<uint8_t>>> response,
-      const std::vector<uint8_t>& in_request) override;
+  // Reads a digest from bootlockbox.
+  void ReadBootLockbox(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           std::vector<uint8_t>>> response,
+                       const std::vector<uint8_t>& in_request) override;
 
   // Finalizes the BootLockbox and locks the signing key. |response| is of type
   // BaseReply.
@@ -50,7 +44,7 @@ class BootLockboxDBusAdaptor
       const std::vector<uint8_t>& in_request) override;
 
  private:
-  BootLockbox* boot_lockbox_;
+  NVRamBootLockbox* boot_lockbox_;
   brillo::dbus_utils::DBusObject dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(BootLockboxDBusAdaptor);

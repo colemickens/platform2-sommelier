@@ -9,15 +9,16 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/bootlockbox/boot_lockbox_dbus_adaptor.h"
-#include "cryptohome/bootlockbox/mock_boot_lockbox.h"
-#include "cryptohome/mock_crypto.h"
+#include "cryptohome/bootlockbox/mock_nvram_boot_lockbox.h"
 #include "cryptohome/mock_tpm_init.h"
 
 #include "dbus_adaptors/org.chromium.BootLockboxInterface.h"
-#include "rpc.pb.h"  // NOLINT(build/include)
+
+#include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
 
 using ::testing::_;
 using ::testing::NiceMock;
+using ::testing::Return;
 
 namespace cryptohome {
 
@@ -61,7 +62,8 @@ class ResponseCapturer {
   CreateMethodResponse() {
     return std::make_unique<brillo::dbus_utils::DBusMethodResponse<Types...>>(
         &call_,
-        base::Bind(&ResponseCapturer::Capture, weak_ptr_factory_.GetWeakPtr()));
+        base::Bind(&ResponseCapturer::Capture,
+                   weak_ptr_factory_.GetWeakPtr()));
   }
 
  private:
@@ -88,48 +90,45 @@ class BootLockboxDBusAdaptorTest : public ::testing::Test {
   }
  protected:
   NiceMock<MockTpmInit> tpm_init_;
-  NiceMock<MockBootLockbox> boot_lockbox_;
+  NiceMock<MockNVRamBootLockbox> boot_lockbox_;
   std::unique_ptr<BootLockboxDBusAdaptor> boot_lockbox_dbus_adaptor_;
 };
 
-TEST_F(BootLockboxDBusAdaptorTest, SignBootLockbox) {
-  cryptohome::SignBootLockboxRequest request;
-  request.set_data("test");
-  std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
+TEST_F(BootLockboxDBusAdaptorTest, StoreBootLockbox) {
+  cryptohome::StoreBootLockboxRequest store_request;
+  store_request.set_key("test_key");
+  store_request.set_data("test_data");
+  std::vector<uint8_t> request_array(store_request.ByteSize());
+  store_request.SerializeToArray(request_array.data(), request_array.size());
 
-  EXPECT_CALL(boot_lockbox_, Sign(brillo::BlobFromString("test"), _));
+  EXPECT_CALL(boot_lockbox_, Store("test_key", "test_data"))
+      .WillOnce(Return(true));
   ResponseCapturer capturer;
-  boot_lockbox_dbus_adaptor_->SignBootLockbox(
+  boot_lockbox_dbus_adaptor_->StoreBootLockbox(
       capturer.CreateMethodResponse<std::vector<uint8_t>>(),
       request_array);
-  dbus::Response* r = capturer.response();
-  dbus::MessageReader reader(r);
-  cryptohome::BaseReply base_reply;
-  reader.PopArrayOfBytesAsProto(&base_reply);
-  cryptohome::SignBootLockboxReply signature_reply =
-      base_reply.GetExtension(cryptohome::SignBootLockboxReply::reply);
-  EXPECT_EQ("", capturer.response()->GetErrorName());
-  EXPECT_EQ("", signature_reply.signature());
 }
 
-TEST_F(BootLockboxDBusAdaptorTest, VerifyBootLockbox) {
-  cryptohome::VerifyBootLockboxRequest request;
-  request.set_data("test");
-  std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
-  EXPECT_CALL(boot_lockbox_, Verify(brillo::BlobFromString("test"), _));
+TEST_F(BootLockboxDBusAdaptorTest, ReadBootLockbox) {
+  // Read the data back.
+  cryptohome::ReadBootLockboxRequest read_request;
+  read_request.set_key("test_key");
+  std::vector<uint8_t> read_request_array(read_request.ByteSize());
+  read_request.SerializeToArray(read_request_array.data(),
+                                read_request_array.size());
+  EXPECT_CALL(boot_lockbox_, Read("test_key", _))
+      .WillOnce(Return(true));
   ResponseCapturer capturer;
-  boot_lockbox_dbus_adaptor_->VerifyBootLockbox(
+  boot_lockbox_dbus_adaptor_->ReadBootLockbox(
       capturer.CreateMethodResponse<std::vector<uint8_t>>(),
-      request_array);
+      read_request_array);
 }
 
 TEST_F(BootLockboxDBusAdaptorTest, FinalizeBootLockbox) {
-  cryptohome::FinalizeBootLockboxRequest request;
+  cryptohome::FinalizeNVRamBootLockboxRequest request;
   std::vector<uint8_t> request_array(request.ByteSize());
   request.SerializeToArray(request_array.data(), request_array.size());
-  EXPECT_CALL(boot_lockbox_, FinalizeBoot());
+  EXPECT_CALL(boot_lockbox_, Finalize());
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->FinalizeBootLockbox(
       capturer.CreateMethodResponse<std::vector<uint8_t>>(),

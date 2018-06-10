@@ -14,7 +14,7 @@
 #include <brillo/secure_blob.h>
 #include <dbus/dbus-protocol.h>
 
-#include "rpc.pb.h"  // NOLINT(build/include)
+#include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
 
 namespace {
 // Creates a dbus error message.
@@ -25,7 +25,8 @@ brillo::ErrorPtr CreateError(const std::string& code,
 }
 
 // Serializes BaseReply protobuf to vector.
-std::vector<uint8_t> ReplyToVector(const cryptohome::BaseReply& reply) {
+std::vector<uint8_t> ReplyToVector(
+    const cryptohome::BootLockboxBaseReply& reply) {
   std::vector<uint8_t> reply_vec(reply.ByteSize());
   reply.SerializeToArray(reply_vec.data(), reply_vec.size());
   return reply_vec;
@@ -36,10 +37,12 @@ std::vector<uint8_t> ReplyToVector(const cryptohome::BaseReply& reply) {
 namespace cryptohome {
 
 BootLockboxDBusAdaptor::BootLockboxDBusAdaptor(scoped_refptr<dbus::Bus> bus,
-                                               BootLockbox* boot_lockbox)
+                                               NVRamBootLockbox* boot_lockbox)
     : org::chromium::BootLockboxInterfaceAdaptor(this),
       boot_lockbox_(boot_lockbox),
-      dbus_object_(nullptr, bus,
+      dbus_object_(
+          nullptr,
+          bus,
           org::chromium::BootLockboxInterfaceAdaptor::GetObjectPath()) {}
 
 void BootLockboxDBusAdaptor::RegisterAsync(
@@ -48,53 +51,47 @@ void BootLockboxDBusAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(cb);
 }
 
-void BootLockboxDBusAdaptor::SignBootLockbox(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        std::vector<uint8_t>>> response,
+void BootLockboxDBusAdaptor::StoreBootLockbox(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     const std::vector<uint8_t>& in_request) {
-  cryptohome::SignBootLockboxRequest request_pb;
+  cryptohome::StoreBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(in_request.data(), in_request.size()) ||
-      !request_pb.has_data()) {
-    brillo::ErrorPtr error = CreateError(DBUS_ERROR_INVALID_ARGS,
-        "SignBootLockboxRequest has invalid argument(s).");
+      !request_pb.has_key() || !request_pb.has_data()) {
+    brillo::ErrorPtr error =
+        CreateError(DBUS_ERROR_INVALID_ARGS,
+                    "StoreBootLockboxRequest has invalid argument(s).");
     response->ReplyWithError(error.get());
     return;
   }
 
-  cryptohome::BaseReply reply;
-  brillo::SecureBlob signature;
-  if (!boot_lockbox_->Sign(brillo::BlobFromString(request_pb.data()),
-                           &signature)) {
-    reply.set_error(cryptohome::CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN);
-  } else {
-    reply.MutableExtension(
-        cryptohome::SignBootLockboxReply::reply)->set_signature(
-            signature.to_string());
+  cryptohome::BootLockboxBaseReply reply;
+  if (!boot_lockbox_->Store(request_pb.key(), request_pb.data())) {
+    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_CANNOT_STORE);
   }
   response->Return(ReplyToVector(reply));
 }
 
-void BootLockboxDBusAdaptor::VerifyBootLockbox(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        std::vector<uint8_t>>> response,
+void BootLockboxDBusAdaptor::ReadBootLockbox(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     const std::vector<uint8_t>& in_request) {
-  cryptohome::VerifyBootLockboxRequest request_pb;
+  cryptohome::ReadBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(in_request.data(), in_request.size()) ||
-      !request_pb.has_data()) {
-    brillo::ErrorPtr error = CreateError(DBUS_ERROR_INVALID_ARGS,
-        "VerifyBootLockboxRequest has invalid argument(s).");
+      !request_pb.has_key()) {
+    brillo::ErrorPtr error =
+        CreateError(DBUS_ERROR_INVALID_ARGS,
+                    "ReadBootLockboxRequest has invalid argument(s).");
     response->ReplyWithError(error.get());
     return;
   }
-  cryptohome::BaseReply reply;
-  brillo::SecureBlob signature;
-  if (!boot_lockbox_->Verify(brillo::BlobFromString(request_pb.data()),
-                             brillo::SecureBlob(request_pb.signature()))) {
-    reply.set_error(cryptohome::CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID);
+  cryptohome::BootLockboxBaseReply reply;
+  std::string data;
+  if (!boot_lockbox_->Read(request_pb.key(), &data)) {
+    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_CANNOT_READ);
   } else {
-    reply.MutableExtension(
-        cryptohome::SignBootLockboxReply::reply)->set_signature(
-            signature.to_string());
+    reply.MutableExtension(cryptohome::ReadBootLockboxReply::reply)
+        ->set_data(data);
   }
   response->Return(ReplyToVector(reply));
 }
@@ -103,16 +100,16 @@ void BootLockboxDBusAdaptor::FinalizeBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
       std::vector<uint8_t>>> response,
     const std::vector<uint8_t>& in_request) {
-  cryptohome::FinalizeBootLockboxRequest request_pb;
+  cryptohome::FinalizeNVRamBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(in_request.data(), in_request.size())) {
     brillo::ErrorPtr error = CreateError(DBUS_ERROR_INVALID_ARGS,
         "FinalizeBootLockbox has invalid argument(s).");
     response->ReplyWithError(error.get());
     return;
   }
-  cryptohome::BaseReply reply;
-  if (!boot_lockbox_->FinalizeBoot()) {
-    reply.set_error(cryptohome::CRYPTOHOME_ERROR_TPM_COMM_ERROR);
+  cryptohome::BootLockboxBaseReply reply;
+  if (!boot_lockbox_->Finalize()) {
+    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_TPM_COMM_ERROR);
   }
   response->Return(ReplyToVector(reply));
 }
