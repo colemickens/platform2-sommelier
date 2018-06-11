@@ -159,12 +159,7 @@ TEST_F(ExternalTaskTest, DestroyLater) {
 
 TEST_F(ExternalTaskTest, Start) {
   const string kCommand = "/run/me";
-  const string kRPCTaskServiceKey = "--shill_task_service";
-  const string kRPCTaskPathKey = "--shill_task_path";
-  vector<string> kProvidedCommandOptions{"arg1", "arg2"};
-  vector<string> kExpectedCommandOptions{
-      "arg1", "arg2", kRPCTaskServiceKey + "=" + RPCTaskMockAdaptor::kRpcConnId,
-      kRPCTaskPathKey + "=" + RPCTaskMockAdaptor::kRpcId};
+  const vector<string> kCommandOptions{"arg1", "arg2"};
   const map<string, string> kCommandEnv{{"env1", "val1"}, {"env2", "val2"}};
   map<string, string> expected_env;
   expected_env.emplace(kRPCTaskServiceVariable, RPCTaskMockAdaptor::kRpcConnId);
@@ -172,21 +167,19 @@ TEST_F(ExternalTaskTest, Start) {
   expected_env.insert(kCommandEnv.begin(), kCommandEnv.end());
   const int kPID = 234678;
   EXPECT_CALL(process_manager_,
-              StartProcess(_, base::FilePath(kCommand), kExpectedCommandOptions,
+              StartProcess(_, base::FilePath(kCommand), kCommandOptions,
                            expected_env, false, _))
       .WillOnce(Return(-1))
       .WillOnce(Return(kPID));
   Error error;
-  EXPECT_FALSE(external_task_->Start(base::FilePath(kCommand),
-                                     kProvidedCommandOptions, kCommandEnv,
-                                     false, &error));
+  EXPECT_FALSE(external_task_->Start(
+      base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
   EXPECT_EQ(Error::kInternalError, error.type());
   EXPECT_FALSE(external_task_->rpc_task_);
 
   error.Reset();
-  EXPECT_TRUE(external_task_->Start(base::FilePath(kCommand),
-                                    kProvidedCommandOptions, kCommandEnv, false,
-                                    &error));
+  EXPECT_TRUE(external_task_->Start(
+      base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kPID, external_task_->pid_);
   EXPECT_NE(nullptr, external_task_->rpc_task_);

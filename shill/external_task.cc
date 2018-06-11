@@ -68,29 +68,14 @@ bool ExternalTask::Start(const FilePath& program,
   map<string, string> env = local_rpc_task->GetEnvironment();
   env.insert(environment.begin(), environment.end());
 
-  // TODO(mortonm): Take this block out once we start spawning l2tpipsec_vpn
-  // using ExternalTask::StartInMinijail
-  map<string, string>::iterator task_service_variable =
-      env.find(kRPCTaskServiceVariable);
-  map<string, string>::iterator task_path_variable =
-      env.find(kRPCTaskPathVariable);
-  // Fails without the necessary environment variables.
-  if (!base::ContainsKey(env, kRPCTaskServiceVariable) ||
-      !base::ContainsKey(env, kRPCTaskPathVariable)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInternalError,
-        "Invalid environment variables for: " + program.value());
-    return false;
-  }
-  // Copy input command line arguments to a new vector and add RPC identifiers.
-  vector<string> args_with_rpc(arguments);
-  args_with_rpc.push_back("--shill_task_service=" +
-                          task_service_variable->second);
-  args_with_rpc.push_back("--shill_task_path=" + task_path_variable->second);
-
-  pid_t pid = process_manager_->StartProcess(
-      FROM_HERE, program, args_with_rpc, env, terminate_with_parent,
-      base::Bind(&ExternalTask::OnTaskDied, base::Unretained(this)));
+  pid_t pid =
+      process_manager_->StartProcess(FROM_HERE,
+                                     program,
+                                     arguments,
+                                     env,
+                                     terminate_with_parent,
+                                     base::Bind(&ExternalTask::OnTaskDied,
+                                                base::Unretained(this)));
 
   if (pid < 0) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
