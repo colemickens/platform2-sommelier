@@ -11,7 +11,7 @@
       'target_name' : 'hermes',
       'type' : 'executable',
       'sources' : [
-        'esim_uim_impl.cc',
+        'esim_qmi_impl.cc',
         'lpd.cc',
         'main.cc',
         'smdp_fi_impl.cc',
@@ -21,7 +21,7 @@
       'target_name' : 'libhermes',
       'type' : 'static_library',
       'sources' : [
-        'esim_uim_impl.cc',
+        'esim_qmi_impl.cc',
         'lpd.cc',
         'smdp_fi_impl.cc',
       ],
@@ -44,7 +44,7 @@
             ],
           },
           'sources': [
-            'esim_uim_unittest.cc',
+            'esim_qmi_unittest.cc',
             'smdp_fi_unittest.cc',
           ],
         },

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef HERMES_ESIM_UIM_IMPL_H_
-#define HERMES_ESIM_UIM_IMPL_H_
+#ifndef HERMES_ESIM_QMI_IMPL_H_
+#define HERMES_ESIM_QMI_IMPL_H_
 
 #include <vector>
 
@@ -11,10 +11,10 @@
 
 namespace hermes {
 
-class EsimUimImpl : public Esim {
+class EsimQmiImpl : public Esim {
  public:
-  EsimUimImpl() = default;
-  ~EsimUimImpl() = default;
+  EsimQmiImpl() = default;
+  ~EsimQmiImpl() = default;
   void GetInfo(int which,
                const DataCallback& callback,
                const ErrorCallback& error_callback) override;
@@ -32,4 +32,4 @@ class EsimUimImpl : public Esim {
 
 }  // namespace hermes
 
-#endif  // HERMES_ESIM_UIM_IMPL_H_
+#endif  // HERMES_ESIM_QMI_IMPL_H_
