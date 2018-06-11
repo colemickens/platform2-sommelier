@@ -59,13 +59,17 @@ bool MountManager::AddMount(const std::string& mount_root,
   return true;
 }
 
-bool MountManager::Remount(const std::string& mount_root, int32_t mount_id) {
+bool MountManager::Remount(const std::string& mount_root,
+                           int32_t mount_id,
+                           const std::string& workgroup,
+                           const std::string& username,
+                           const base::ScopedFD& password_fd) {
   DCHECK(can_remount_);
   DCHECK(!IsAlreadyMounted(mount_id));
   DCHECK_GE(mount_id, 0);
 
-  if (!credential_store_->AddEmptyCredentials(mount_root)) {
-    // TODO(allenvic): Handle persistent credentials on remount.
+  if (!credential_store_->AddCredentials(mount_root, workgroup, username,
+                                         password_fd)) {
     return false;
   }
 

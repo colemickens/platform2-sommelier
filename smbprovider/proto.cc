@@ -86,6 +86,8 @@ bool IsValidOptions(const GetSharesOptionsProto& options) {
 }
 
 bool IsValidOptions(const RemountOptionsProto& options) {
+  // TODO(baileyberro): Add verification for workgroup and username here when
+  // SmbProviderClient starts passing them.
   return options.has_path() && options.has_mount_id();
 }
 

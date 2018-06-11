@@ -45,6 +45,21 @@ class MountManagerTest : public testing::Test {
                              mount_id);
   }
 
+  bool Remount(const std::string& root_path, int32_t mount_id) {
+    return Remount(root_path, mount_id, "" /* workgroup */, "" /* username */,
+                   "" /* password */);
+  }
+
+  bool Remount(const std::string& root_path,
+               int32_t mount_id,
+               const std::string& workgroup,
+               const std::string& username,
+               const std::string& password) {
+    base::ScopedFD password_fd = WritePasswordToFile(&temp_files_, password);
+    return mounts_->Remount(root_path, mount_id, workgroup, username,
+                            password_fd);
+  }
+
   void ExpectCredentialsEqual(const std::string& mount_root,
                               const std::string& workgroup,
                               const std::string& username,
@@ -245,7 +260,7 @@ TEST_F(MountManagerTest, TestRemountSucceeds) {
   const std::string root_path = "smb://server/share1";
   const int32_t mount_id = 9;
 
-  EXPECT_TRUE(mounts_->Remount(root_path, mount_id));
+  EXPECT_TRUE(Remount(root_path, mount_id));
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
 }
@@ -254,13 +269,13 @@ TEST_F(MountManagerTest, TestRemountFailsWithSameMount) {
   const std::string root_path = "smb://server/share1";
   const int32_t mount_id = 9;
 
-  EXPECT_TRUE(mounts_->Remount(root_path, mount_id));
+  EXPECT_TRUE(Remount(root_path, mount_id));
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
 
   const int32_t mount_id2 = 10;
   // Should be false since the same path cannot be mounted twice.
-  EXPECT_FALSE(mounts_->Remount(root_path, mount_id2));
+  EXPECT_FALSE(Remount(root_path, mount_id2));
 }
 
 TEST_F(MountManagerTest, TestMountAfterRemounts) {
@@ -272,8 +287,8 @@ TEST_F(MountManagerTest, TestMountAfterRemounts) {
 
   const std::string new_root_path = "smb://server/share3";
 
-  EXPECT_TRUE(mounts_->Remount(root_path_1, mount_id_1));
-  EXPECT_TRUE(mounts_->Remount(root_path_2, mount_id_2));
+  EXPECT_TRUE(Remount(root_path_1, mount_id_1));
+  EXPECT_TRUE(Remount(root_path_2, mount_id_2));
 
   EXPECT_EQ(2, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_1));
@@ -332,10 +347,10 @@ TEST_F(MountManagerTest, TestCantAddMountWithSamePath) {
 TEST_F(MountManagerTest, TestCantRemountWithSamePath) {
   const std::string root_path = "smb://server/share1";
 
-  EXPECT_TRUE(mounts_->Remount(root_path, 1 /* mount_id */));
+  EXPECT_TRUE(Remount(root_path, 1 /* mount_id */));
 
   // Should return false since |root_path| is already mounted.
-  EXPECT_FALSE(mounts_->Remount(root_path, 2 /* mount_id */));
+  EXPECT_FALSE(Remount(root_path, 2 /* mount_id */));
 }
 
 TEST_F(MountManagerTest, TestRemovedMountCanBeRemounted) {
@@ -347,6 +362,24 @@ TEST_F(MountManagerTest, TestRemovedMountCanBeRemounted) {
 
   // Should be able to be remounted again.
   EXPECT_TRUE(AddMount(root_path, &mount_id));
+}
+
+TEST_F(MountManagerTest, TestRemountWithCredentials) {
+  const std::string root_path = "smb://server/share1";
+  const std::string workgroup = "google";
+  const std::string username = "user1";
+  const std::string password = "admin";
+  const int32_t mount_id = 1;
+
+  EXPECT_EQ(0, mounts_->MountCount());
+  EXPECT_FALSE(mounts_->IsAlreadyMounted(mount_id));
+
+  EXPECT_TRUE(Remount(root_path, mount_id, workgroup, username, password));
+
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
+  ExpectCredentialsEqual(root_path, workgroup, username, password);
 }
 
 }  // namespace smbprovider

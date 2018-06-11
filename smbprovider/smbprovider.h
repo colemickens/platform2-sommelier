@@ -184,6 +184,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // |error_code| on failure.
   bool Remount(const std::string& mount_root,
                int32_t mount_id,
+               const std::string& workgroup,
+               const std::string& username,
+               const base::ScopedFD& password_fd,
                int32_t* error_code);
 
   // Removes |mount_id| from mount_manager_ if |mount_id| is mounted.

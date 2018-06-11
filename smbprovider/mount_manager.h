@@ -46,8 +46,13 @@ class MountManager {
 
   // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not
   // be called after AddMount is called for the first time. Returns false if
-  // |mount_root| is already mounted.
-  bool Remount(const std::string& mount_root, int32_t mount_id);
+  // |mount_root| is already mounted. If |workgroup| and |username| are
+  // provided, they will be used as credentials when interacting with the mount.
+  bool Remount(const std::string& mount_root,
+               int32_t mount_id,
+               const std::string& workgroup,
+               const std::string& username,
+               const base::ScopedFD& password_fd);
 
   // Returns true if |mount_id| was mounted and removes the mount.
   bool RemoveMount(int32_t mount_id);

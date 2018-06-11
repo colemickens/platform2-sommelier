@@ -105,7 +105,8 @@ int32_t SmbProvider::Remount(const ProtoBlob& options_blob,
   RemountOptionsProto options;
   const bool remounted =
       ParseOptionsProto(options_blob, &options, &error_code) &&
-      Remount(options.path(), options.mount_id(), &error_code);
+      Remount(options.path(), options.mount_id(), options.workgroup(),
+              options.username(), password_fd, &error_code);
 
   if (!remounted) {
     return error_code;
@@ -583,8 +584,12 @@ bool SmbProvider::AddMount(const std::string& mount_root,
 
 bool SmbProvider::Remount(const std::string& mount_root,
                           int32_t mount_id,
+                          const std::string& workgroup,
+                          const std::string& username,
+                          const base::ScopedFD& password_fd,
                           int32_t* error_code) {
-  bool remounted = mount_manager_->Remount(mount_root, mount_id);
+  bool remounted = mount_manager_->Remount(mount_root, mount_id, workgroup,
+                                           username, password_fd);
   if (!remounted) {
     *error_code = static_cast<int32_t>(ERROR_IN_USE);
   }
