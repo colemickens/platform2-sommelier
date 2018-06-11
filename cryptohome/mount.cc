@@ -278,7 +278,8 @@ bool Mount::MountCryptohome(const Credentials& credentials,
   }
 
   if (IsMounted()) {
-    *mount_error = MOUNT_ERROR_MOUNT_POINT_BUSY;
+    if (mount_error)
+      *mount_error = MOUNT_ERROR_MOUNT_POINT_BUSY;
     return false;
   }
 
