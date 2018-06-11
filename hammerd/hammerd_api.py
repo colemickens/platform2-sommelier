@@ -176,7 +176,7 @@ class FirmwareUpdater(object):
       ('TransferImage', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
       ('TransferTouchpadFirmware',
        [ctypes.c_voidp, ctypes.c_uint32, ctypes.c_size_t], ctypes.c_bool),
-      ('CurrentSection', [ctypes.c_voidp], ctypes.c_bool),
+      ('CurrentSection', [ctypes.c_voidp], ctypes.c_int),
       ('UpdatePossible', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
       ('VersionMismatch', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
       ('IsSectionLocked', [ctypes.c_voidp, ctypes.c_int], ctypes.c_bool),
