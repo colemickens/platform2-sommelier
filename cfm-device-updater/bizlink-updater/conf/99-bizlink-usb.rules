@@ -1,0 +1,3 @@
+# TODO(frankhu): Run bizlink-updater under minijail.
+SUBSYSTEM=="usb", ACTION=="add", ENV{ID_VENDOR_ID}=="06C4", ENV{ID_MODEL_ID}=="C002", \
+RUN+="/usr/sbin/bizlink-updater"

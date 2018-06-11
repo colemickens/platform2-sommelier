@@ -1,0 +1,24 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+{
+  'target_defaults': {
+    'variables': {
+      'deps': [
+        'libbrillo-<(libbase_ver)',
+        'libchrome-<(libbase_ver)',
+        'libusb-1.0',
+      ],
+    },
+  },
+  'targets': [
+    {
+      'target_name': 'bizlink-updater',
+      'type': 'executable',
+      'sources': [
+        'bizlink-updater/src/main.cc',
+      ],
+    },
+  ],
+}

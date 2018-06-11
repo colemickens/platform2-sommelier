@@ -34,6 +34,7 @@ copies.
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
 | [buffet](./buffet/) | Daemon for reacting to cloud messages |
 | [cecservice](./cecservice/) | Service for switching CEC enabled TVs on and off |
+| [cfm-device-updater](./cfm-device-updater/) | Firmware updaters for CFM peripherals |
 | [chaps](./chaps/) | PKCS #11 implementation for TPM 1 devices |
 | [chromeos-common-script](./chromeos-common-script/) | Shared scripts for partitions and basic disk information |
 | [chromeos-config](./chromeos-config/) | CrOS unified build runtime config manager |
