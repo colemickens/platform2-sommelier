@@ -543,6 +543,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("edge_touch_filtering"))
     AddArg("--edge-touch-filtering");
 
+  if (UseFlagIsSet("low_pressure_touch_filtering"))
+    AddArg("--low-pressure-touch-filtering");
+
   if (UseFlagIsSet("native_gpu_memory_buffers"))
     AddArg("--enable-native-gpu-memory-buffers");
 
