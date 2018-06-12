@@ -1234,132 +1234,11 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                                SerializedVaultKeyset* serialized,
                                int* index,
                                MountError* error) const {
-  SecureBlob passkey;
-  credentials.GetPasskey(&passkey);
   *error = MOUNT_ERROR_NONE;
 
-  std::string obfuscated_username =
-    credentials.GetObfuscatedUsername(system_salt_);
-
-  // Most straightforward approach, try every key. We can optimize
-  // by walking the directory, but 100 failed open() calls isn't that
-  // many on a sign-in failure.
-  unsigned int crypt_flags = 0;
-  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  *index = -1;
-  std::vector<int> key_indices;
-  if (!homedirs_->GetVaultKeysets(obfuscated_username, &key_indices)) {
-    LOG(ERROR) << "No keysets on disk for " << obfuscated_username;
-    *error = MOUNT_ERROR_FATAL;
+  if (!homedirs_->GetValidKeyset(credentials, vault_keyset, index, error))
     return false;
-  }
-  bool any_keyset_exists = false;
-  for (auto key_index : key_indices) {
-    // Load the encrypted keyset
-    // TODO(crbug.com/832395): get rid of direct operations on keyset files
-    // in class Mount.
-    if (!LoadVaultKeysetForUser(obfuscated_username, key_index, serialized)) {
-      LOG(ERROR) << "Could not parse keyset " << key_index
-                 << " for " << obfuscated_username;
-      continue;
-    }
-    any_keyset_exists = true;
-
-    // If a specific key was requested by label, then check if the
-    // label matches or if the key does not have a label, use the
-    // legacy-key translation from index to label.
-    //
-    // Label-less requests will still iterate over all keys.
-    if (!credentials.key_data().label().empty()) {
-      if (serialized->has_key_data()) {
-        if (credentials.key_data().label() != serialized->key_data().label())
-          continue;
-      } else {
-        if (credentials.key_data().label() !=
-            StringPrintf("%s%d", kKeyLegacyPrefix, key_index))
-          continue;
-      }
-    } else if (serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
-      // If no label was specified, we should skip all LE credentials.
-      continue;
-    }
-
-    // Reconstruct the policy for LECredentials.
-    if (serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
-      serialized->mutable_key_data()->mutable_policy()
-          ->set_low_entropy_credential(true);
-    }
-    // Attempt decrypt the master key with the passkey
-    crypt_flags = 0;
-    if (crypto_->DecryptVaultKeyset(*serialized, passkey, &crypt_flags,
-                                    &crypto_error, vault_keyset)) {
-      // Success!
-      *index = key_index;
-      break;
-    }
-    // Make sure |crypto_error| is non-empty, because sometimes
-    // DecryptVaultKeyset() doesn't fill it despite returning false. Note that
-    // the value assigned below must *not* say a fatal error, as otherwise this
-    // may result in removal of the cryptohome which is undesired in this case.
-    if (crypto_error == Crypto::CE_NONE)
-      crypto_error = Crypto::CE_OTHER_CRYPTO;
-  }
-
-  if (!any_keyset_exists) {
-    LOG(ERROR) << "No parsable keysets found for " << obfuscated_username;
-    *error = MOUNT_ERROR_FATAL;
-    return false;
-  }
-  if (*index == -1) {
-    if (crypto_error == Crypto::CE_NONE) {
-      // If we're searching by label, don't let a no-key-found become
-      // MOUNT_ERROR_FATAL.  In the past, no parseable key was a fatal
-      // error.  Just treat it like an invalid key.  This allows for
-      // multiple per-label requests then a wildcard, worst case, before
-      // the Cryptohome is removed.
-      if (!credentials.key_data().label().empty()) {
-        LOG(ERROR) << "Failed to find the specified keyset for "
-                   << obfuscated_username;
-        *error = MOUNT_ERROR_KEY_FAILURE;
-      } else {
-        LOG(ERROR) << "Failed to find any suitable keyset for "
-                   << obfuscated_username;
-        *error = MOUNT_ERROR_FATAL;
-      }
-    } else {
-      switch (crypto_error) {
-        case Crypto::CE_TPM_FATAL:
-        case Crypto::CE_OTHER_FATAL:
-          *error = MOUNT_ERROR_FATAL;
-          break;
-        case Crypto::CE_TPM_COMM_ERROR:
-          *error = MOUNT_ERROR_TPM_COMM_ERROR;
-          break;
-        case Crypto::CE_TPM_DEFEND_LOCK:
-          *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
-          // We should update LE key policy and persist it to disk.
-          if (serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
-            serialized->mutable_key_data()->mutable_policy()->set_auth_locked(
-                true);
-            if (!StoreVaultKeysetForUser(obfuscated_username, *index,
-                                         *serialized)) {
-              LOG(ERROR) << "Failed to update LE cred Keyset.";
-            }
-          }
-          break;
-        case Crypto::CE_TPM_REBOOT:
-          *error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
-          break;
-        default:
-          *error = MOUNT_ERROR_KEY_FAILURE;
-          break;
-      }
-      LOG(ERROR) << "Failed to decrypt any keysets for " << obfuscated_username
-                 << ": mount error " << *error << ", crypto error "
-                 << crypto_error;
-    }
-    return false;
-  }
+  *serialized = vault_keyset->serialized();
 
   // Calling EnsureTpm here handles the case where a user logged in while
   // cryptohome was taking TPM ownership.  In that case, their vault keyset
@@ -1390,7 +1269,8 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   // migrate         N   Y   Y   Y   N   Y   Y   Y   N   Y   Y   Y   Y   N   Y
   //
   // If the vault keyset represents an LE credential, we should not re-encrypt
-  // it at all (that is unecessary).
+  // it at all (that is unnecessary).
+  const unsigned crypt_flags = serialized->flags();
   bool tpm_wrapped =
       (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
   bool scrypt_wrapped =
@@ -1405,7 +1285,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   do {
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
-    if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
+    if (serialized->has_tpm_public_key_hash()) {
       if (is_le_credential)
         break;
       if (tpm_wrapped && should_tpm && !scrypt_wrapped) {

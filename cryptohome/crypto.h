@@ -23,11 +23,12 @@
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
-#include "cryptohome/vault_keyset.h"
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
+
+class VaultKeyset;
 
 extern const char kSystemSaltFile[];
 

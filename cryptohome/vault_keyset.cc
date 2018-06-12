@@ -10,8 +10,6 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/crypto.h"
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
@@ -230,16 +228,28 @@ bool VaultKeyset::Load(const FilePath& filename) {
   return loaded_;
 }
 
-bool VaultKeyset::Decrypt(const SecureBlob& key) {
+bool VaultKeyset::Decrypt(const SecureBlob& key,
+                          Crypto::CryptoError* crypto_error) {
   CHECK(crypto_);
-  if (!loaded_)
-    return false;
-  Crypto::CryptoError error;
-  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL, &error, this);
-  if (!ok && error == Crypto::CE_TPM_COMM_ERROR)
-    ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL, &error, this);
 
-  if (!ok && IsLECredential() && error == Crypto::CE_TPM_DEFEND_LOCK) {
+  if (crypto_error)
+    *crypto_error = Crypto::CE_NONE;
+
+  if (!loaded_) {
+    *crypto_error = Crypto::CE_OTHER_FATAL;
+    return false;
+  }
+
+  Crypto::CryptoError local_crypto_error = Crypto::CE_NONE;
+  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL,
+                                        &local_crypto_error, this);
+  if (!ok && local_crypto_error == Crypto::CE_TPM_COMM_ERROR) {
+    ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL,
+                                     &local_crypto_error, this);
+  }
+
+  if (!ok && IsLECredential() &&
+      local_crypto_error == Crypto::CE_TPM_DEFEND_LOCK) {
     // For LE credentials, if decrypting the keyset failed due to too many
     // attempts, set auth_locked=true in the keyset. Then save it for future
     // callers who can Load it w/o Decrypt'ing to check that flag.
@@ -248,6 +258,17 @@ bool VaultKeyset::Decrypt(const SecureBlob& key) {
       LOG(WARNING) << "Failed to set auth_locked in VaultKeyset on disk.";
     }
   }
+
+  // Make sure the returned error is non-empty, because sometimes
+  // Crypto::DecryptVaultKeyset() doesn't fill it despite returning false. Note
+  // that the value assigned below must *not* say a fatal error, as otherwise
+  // this may result in removal of the cryptohome which is undesired in this
+  // case.
+  if (local_crypto_error == Crypto::CE_NONE)
+    local_crypto_error = Crypto::CE_OTHER_CRYPTO;
+
+  if (!ok && crypto_error)
+    *crypto_error = local_crypto_error;
   return ok;
 }
 

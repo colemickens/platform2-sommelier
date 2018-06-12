@@ -23,6 +23,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_tpm_init.h"
+#include "cryptohome/vault_keyset.h"
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 

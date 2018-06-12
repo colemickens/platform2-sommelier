@@ -13,6 +13,8 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/crypto.h"
+
 namespace cryptohome {
 class Platform;
 class Crypto;
@@ -39,7 +41,7 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_CONST_METHOD0(FNEK_SALT, const brillo::SecureBlob&(void));
 
   MOCK_METHOD1(Load, bool(const base::FilePath&));
-  MOCK_METHOD1(Decrypt, bool(const brillo::SecureBlob&));
+  MOCK_METHOD2(Decrypt, bool(const brillo::SecureBlob&, Crypto::CryptoError*));
   MOCK_METHOD1(Save, bool(const base::FilePath&));
   MOCK_METHOD1(Encrypt, bool(const brillo::SecureBlob&));
   MOCK_CONST_METHOD0(serialized, const SerializedVaultKeyset&(void));

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <dbus/cryptohome/dbus-constants.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/credentials.h"
@@ -28,7 +29,8 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD0(FreeDiskSpace, void());
   MOCK_METHOD1(GetPlainOwner, bool(std::string*));
   MOCK_METHOD1(AreCredentialsValid, bool(const Credentials&));
-  MOCK_METHOD2(GetValidKeyset, bool(const Credentials&, VaultKeyset*));
+  MOCK_METHOD4(GetValidKeyset,
+               bool(const Credentials&, VaultKeyset*, int*, MountError*));
   MOCK_METHOD1(Remove, bool(const std::string&));
   MOCK_METHOD2(Migrate, bool(const Credentials&, const brillo::SecureBlob&));
   MOCK_CONST_METHOD1(Exists, bool(const std::string&));

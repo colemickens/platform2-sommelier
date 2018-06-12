@@ -1459,7 +1459,8 @@ class KeysetManagementTest : public HomeDirsTest {
     active_vk_ = NULL;
   }
 
-  virtual bool VkDecrypt0(const brillo::SecureBlob& key) {
+  virtual bool VkDecrypt0(const brillo::SecureBlob& key,
+                          Crypto::CryptoError* crypto_error) {
     return memcmp(key.data(), keys_[0].data(), key.size()) == 0;
   }
 
@@ -1488,8 +1489,8 @@ class KeysetManagementTest : public HomeDirsTest {
     last_vk_++;
     CHECK(last_vk_ < MAX_VKS);
     active_vk_ = active_vks_[last_vk_];
-    EXPECT_CALL(*active_vk_, Decrypt(_))
-      .WillRepeatedly(Invoke(this, &KeysetManagementTest::VkDecrypt0));
+    EXPECT_CALL(*active_vk_, Decrypt(_, _))
+        .WillRepeatedly(Invoke(this, &KeysetManagementTest::VkDecrypt0));
 
     EXPECT_CALL(*active_vk_, serialized())
       .WillRepeatedly(

@@ -22,6 +22,7 @@
 #include <chromeos/constants/cryptohome.h>
 
 #include "cryptohome/credentials.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/dircrypto_util.h"
@@ -286,31 +287,49 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
 bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
-  return GetValidKeyset(creds, vk.get());
+  return GetValidKeyset(creds, vk.get(), nullptr /* key_index */,
+                        nullptr /* error */);
 }
 
-bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
-  if (!vk)
+bool HomeDirs::GetValidKeyset(const Credentials& creds,
+                              VaultKeyset* vk,
+                              int* key_index,
+                              MountError* error) {
+  if (error)
+    *error = MOUNT_ERROR_NONE;
+
+  if (!vk) {
+    if (error)
+      *error = MOUNT_ERROR_FATAL;
     return false;
+  }
 
   std::string owner;
   std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
-  if (AreEphemeralUsersEnabled() && GetOwner(&owner) && obfuscated != owner)
+  if (AreEphemeralUsersEnabled() && GetOwner(&owner) && obfuscated != owner) {
+    if (error)
+      *error = MOUNT_ERROR_FATAL;
     return false;
+  }
 
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
+    if (error)
+      *error = MOUNT_ERROR_FATAL;
     return false;
   }
 
   SecureBlob passkey;
   creds.GetPasskey(&passkey);
 
+  bool any_keyset_exists = false;
+  Crypto::CryptoError last_crypto_error = Crypto::CE_NONE;
   for (int index : key_indices) {
     if (!vk->Load(GetVaultKeysetPath(obfuscated, index)))
       continue;
+    any_keyset_exists = true;
     // Skip decrypt attempts if the label doesn't match.
     // Treat an empty creds label as a wildcard.
     // Allow a creds label of "prefix<num>" for fixed indexing.
@@ -324,9 +343,55 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
     if (creds.key_data().label().empty() &&
         (vk->serialized().flags() & SerializedVaultKeyset::LE_CREDENTIAL))
       continue;
-    if (vk->Decrypt(passkey))
+    if (vk->Decrypt(passkey, &last_crypto_error)) {
+      if (key_index)
+        *key_index = index;
       return true;
+    }
   }
+
+  MountError local_error = MOUNT_ERROR_NONE;
+  if (!any_keyset_exists) {
+    LOG(ERROR) << "No parsable keysets found for " << obfuscated;
+    local_error = MOUNT_ERROR_FATAL;
+  } else if (last_crypto_error == Crypto::CE_NONE) {
+    // If we're searching by label, don't let a no-key-found become
+    // MOUNT_ERROR_FATAL.  In the past, no parseable key was a fatal
+    // error.  Just treat it like an invalid key.  This allows for
+    // multiple per-label requests then a wildcard, worst case, before
+    // the Cryptohome is removed.
+    if (!creds.key_data().label().empty()) {
+      LOG(ERROR) << "Failed to find the specified keyset for " << obfuscated;
+      local_error = MOUNT_ERROR_KEY_FAILURE;
+    } else {
+      LOG(ERROR) << "Failed to find any suitable keyset for " << obfuscated;
+      local_error = MOUNT_ERROR_FATAL;
+    }
+  } else {
+    switch (last_crypto_error) {
+      case Crypto::CE_TPM_FATAL:
+      case Crypto::CE_OTHER_FATAL:
+        local_error = MOUNT_ERROR_FATAL;
+        break;
+      case Crypto::CE_TPM_COMM_ERROR:
+        local_error = MOUNT_ERROR_TPM_COMM_ERROR;
+        break;
+      case Crypto::CE_TPM_DEFEND_LOCK:
+        local_error = MOUNT_ERROR_TPM_DEFEND_LOCK;
+        break;
+      case Crypto::CE_TPM_REBOOT:
+        local_error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
+        break;
+      default:
+        local_error = MOUNT_ERROR_KEY_FAILURE;
+        break;
+    }
+    LOG(ERROR) << "Failed to decrypt any keysets for " << obfuscated
+               << ": mount error " << local_error << ", crypto error "
+               << last_crypto_error;
+  }
+  if (error)
+    *error = local_error;
   return false;
 }
 
@@ -566,7 +631,8 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
       credentials.GetObfuscatedUsername(system_salt_);
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
-  if (!GetValidKeyset(credentials, vk.get())) {
+  if (!GetValidKeyset(credentials, vk.get(), nullptr /* key_index */,
+                      nullptr /* error */)) {
     // Differentiate between failure and non-existent.
     if (!credentials.key_data().label().empty()) {
       vk.reset(
@@ -660,7 +726,8 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
 
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
-  if (!GetValidKeyset(existing_credentials, vk.get())) {
+  if (!GetValidKeyset(existing_credentials, vk.get(), nullptr /* key_index */,
+                      nullptr /* error */)) {
     // Differentiate between failure and non-existent.
     if (!existing_credentials.key_data().label().empty()) {
       vk.reset(
@@ -769,7 +836,8 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
       credentials.GetObfuscatedUsername(system_salt_);
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
-  if (!GetValidKeyset(credentials, vk.get())) {
+  if (!GetValidKeyset(credentials, vk.get(), nullptr /* key_index */,
+                      nullptr /* error */)) {
     // Differentiate between failure and non-existent.
     if (!credentials.key_data().label().empty()) {
       vk.reset(GetVaultKeyset(obfuscated, credentials.key_data().label()));
@@ -1496,7 +1564,8 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
       vault_keyset_factory()->New(platform_, crypto_));
   // Make sure the credential can actually be used for sign-in.
   // It is also the easiest way to get a valid keyset.
-  if (!GetValidKeyset(creds, vk.get())) {
+  if (!GetValidKeyset(creds, vk.get(), nullptr /* key_index */,
+                      nullptr /* error */)) {
     LOG(WARNING) << "The provided credentials are incorrect or invalid"
       " for LE credential reset, reset skipped.";
     return;

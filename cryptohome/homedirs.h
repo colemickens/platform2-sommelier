@@ -18,14 +18,15 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
-#include <chaps/token_manager_client.h>
 #include <brillo/secure_blob.h>
+#include <chaps/token_manager_client.h>
+#include <dbus/cryptohome/dbus-constants.h>
 #include <gtest/gtest_prod.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
-#include "cryptohome/crypto.h"
 #include "cryptohome/mount_factory.h"
+#include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -48,6 +49,7 @@ extern const base::FilePath::CharType kEcryptfsVaultDir[];
 extern const base::FilePath::CharType kMountDir[];
 
 class Credentials;
+class Crypto;
 class Platform;
 class UserOldestActivityTimestampCache;
 class VaultKeyset;
@@ -151,11 +153,15 @@ class HomeDirs {
       const std::string& obfuscated_username) const;
 
   // Returns true if a valid keyset can be decrypted with |creds|.  If true,
-  // |vk| will contain the decrypted value. If false, |vk| will contain the
-  // last failed keyset attempt.
+  // |vk| will contain the decrypted value, and |key_index|, if non-null, will
+  // contain the key index. If false, |vk| will contain the last failed keyset
+  // attempt, and |error|, if non-null, will contain the error details.
   // NOTE: The LE Credential Keysets are only considered when the key label
   // provided via |creds| is non-empty.
-  virtual bool GetValidKeyset(const Credentials& creds, VaultKeyset* vk);
+  virtual bool GetValidKeyset(const Credentials& creds,
+                              VaultKeyset* vk,
+                              int* key_index,
+                              MountError* error);
 
   // Returns the vault keyset path for the supplied obfuscated username.
   virtual base::FilePath GetVaultKeysetPath(const std::string& obfuscated,

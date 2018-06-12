@@ -195,10 +195,6 @@ class MountTest
         .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
     mount_->set_policy_provider(new policy::PolicyProvider(
         std::unique_ptr<policy::MockDevicePolicy>(device_policy)));
-    // By setting a policy up, we're expecting HomeDirs::GetPlainOwner() to
-    // actually execute the code rather than a mock.
-    EXPECT_CALL(homedirs_, GetPlainOwner(_))
-        .WillRepeatedly(Invoke(&homedirs_, &MockHomeDirs::ActualGetPlainOwner));
   }
 
   // Returns true if the test is running for eCryptfs, false if for dircrypto.
@@ -316,6 +312,12 @@ class MountTest
         .WillRepeatedly(Return(true));
   }
 
+  void ExpectCryptohomeRemoval(const TestUser& user) {
+    EXPECT_CALL(platform_, DeleteFile(user.base_path, true)).Times(1);
+    EXPECT_CALL(platform_, DeleteFile(user.user_mount_path, true)).Times(1);
+    EXPECT_CALL(platform_, DeleteFile(user.root_mount_path, true)).Times(1);
+  }
+
  protected:
   // Protected for trivial access.
   MakeTests helper_;
@@ -327,7 +329,7 @@ class MountTest
   NiceMock<MockTpm> tpm_;
   NiceMock<MockTpmInit> tpm_init_;
   Crypto crypto_;
-  NiceMock<MockHomeDirs> homedirs_;
+  HomeDirs homedirs_;
   MockChapsClientFactory chaps_client_factory_;
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
   scoped_refptr<Mount> mount_;
@@ -350,15 +352,15 @@ TEST_P(MountTest, BadInitTest) {
 
   // Shadow root creation should fail.
   EXPECT_CALL(platform_, DirectoryExists(FilePath("/dev/null")))
-    .WillOnce(Return(false));
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(FilePath("/dev/null")))
-    .WillOnce(Return(false));
+      .WillRepeatedly(Return(false));
   // Salt creation failure because shadow_root is bogus.
   EXPECT_CALL(platform_, FileExists(FilePath("/dev/null/salt")))
-    .WillOnce(Return(false));
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,
-      WriteFileAtomicDurable(FilePath("/dev/null/salt"), _, _))
-    .WillOnce(Return(false));
+              WriteFileAtomicDurable(FilePath("/dev/null/salt"), _, _))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, GetUserId("chronos", _, _))
     .WillOnce(DoAll(SetArgPointee<1>(1000), SetArgPointee<2>(1000),
                     Return(true)));
@@ -425,13 +427,7 @@ TEST_P(MountTest, MountCryptohomeNoPrivileges) {
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
                         kDaemonGid, ShouldTestEcryptfs());
-  user->InjectKeyset(&platform_, false);
-
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   if (ShouldTestEcryptfs()) {
     EXPECT_CALL(platform_, ClearUserKeyring())
@@ -470,13 +466,7 @@ TEST_P(MountTest, MountCryptohomeHasPrivileges) {
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
                         kDaemonGid, ShouldTestEcryptfs());
-  user->InjectKeyset(&platform_, false);
-
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, ClearUserKeyring())
@@ -809,9 +799,6 @@ TEST_P(MountTest, GoodReDecryptTest) {
   mount_->set_use_tpm(true);
   crypto_.set_use_tpm(true);
 
-  HomeDirs homedirs;
-  homedirs.set_shadow_root(kImageDir);
-
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
@@ -829,8 +816,6 @@ TEST_P(MountTest, GoodReDecryptTest) {
     .WillRepeatedly(Return(true));
 
   EXPECT_TRUE(DoMountInit());
-  EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto(),
-                            user_timestamp_cache_.get()));
 
   // Load the pre-generated keyset
   FilePath key_path = mount_->GetUserLegacyKeyFileForUser(
@@ -861,14 +846,6 @@ TEST_P(MountTest, GoodReDecryptTest) {
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->user_salt),
                           Return(true)));
 
-  // Allow the "backup" to be written
-  EXPECT_CALL(platform_, FileExists(user->keyset_path.AddExtension("bak")))
-    .Times(2)  // Second time is for Mount::DeleteCacheFiles()
-    .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, FileExists(user->salt_path.AddExtension("bak")))
-    .Times(2)  // Second time is for Mount::DeleteCacheFiles()
-    .WillRepeatedly(Return(false));
-
   EXPECT_CALL(platform_,
       Move(user->keyset_path, user->keyset_path.AddExtension("bak")))
     .WillOnce(Return(true));
@@ -889,11 +866,7 @@ TEST_P(MountTest, GoodReDecryptTest) {
     .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
   int key_index = 0;
 
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   EXPECT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
@@ -938,7 +911,7 @@ TEST_P(MountTest, GoodReDecryptTest) {
       .WillOnce(Return(FilePath()));
   }
 
-  ASSERT_TRUE(homedirs.AreCredentialsValid(up));
+  ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
 }
 
 TEST_P(MountTest, MountCryptohome) {
@@ -954,13 +927,7 @@ TEST_P(MountTest, MountCryptohome) {
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
                         kDaemonGid, ShouldTestEcryptfs());
-  user->InjectKeyset(&platform_, false);
-
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, ClearUserKeyring())
@@ -983,32 +950,30 @@ TEST_P(MountTest, MountCryptohomeChapsKey) {
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, mount_->crypto());
   SerializedVaultKeyset serialized;
   MountError error;
   int key_index = -1;
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
 
   // First we decrypt the vault to load the chaps key.
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
-  EXPECT_EQ(key_index, key_indices[0]);
+  EXPECT_EQ(key_index, 0);
   EXPECT_EQ(serialized.has_wrapped_chaps_key(), true);
 
   SecureBlob local_chaps(vault_keyset.chaps_key().begin(),
                          vault_keyset.chaps_key().end());
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
+  user->InjectKeyset(&platform_, true);
 
   ExpectCryptohomeMount(*user);
 
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
+
+  user->InjectKeyset(&platform_, true);
 
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
@@ -1030,17 +995,12 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, mount_->crypto());
   SerializedVaultKeyset serialized;
   MountError error;
   int key_index = -1;
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillOnce(DoAll(SetArgPointee<1>(user->credentials),
                          Return(true)));
@@ -1062,14 +1022,16 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
+  user->InjectKeyset(&platform_, true);
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
 
-  EXPECT_EQ(key_index, key_indices[0]);
+  EXPECT_EQ(key_index, 0);
   EXPECT_EQ(serialized.has_wrapped_chaps_key(), false);
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
+  user->InjectKeyset(&platform_, true);
 
   ExpectCryptohomeMount(*user);
 
@@ -1077,6 +1039,7 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
+  user->InjectKeyset(&platform_, true);
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
   EXPECT_EQ(serialized.has_wrapped_chaps_key(), true);
@@ -1093,28 +1056,26 @@ TEST_P(MountTest, MountCryptohomeNoChange) {
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, mount_->crypto());
   SerializedVaultKeyset serialized;
   MountError error;
   int key_index = -1;
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
 
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
-  EXPECT_EQ(key_index, key_indices[0]);
+  EXPECT_EQ(key_index, 0);
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
+  user->InjectKeyset(&platform_, true);
 
   ExpectCryptohomeMount(*user);
 
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
+
+  user->InjectKeyset(&platform_, true);
 
   SerializedVaultKeyset new_serialized;
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &new_serialized,
@@ -1140,14 +1101,6 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  user->InjectKeyset(&platform_, false);
-
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
-
   // Doesn't exist.
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillOnce(Return(false));
@@ -1164,7 +1117,7 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
   // TODO(wad) Drop NiceMock and replace with InSequence EXPECT_CALL()s.
   // It will complain about creating tracked subdirs, but that is non-fatal.
   Mock::VerifyAndClearExpectations(&platform_);
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
 
   EXPECT_CALL(platform_,
       DirectoryExists(AnyOf(user->vault_path, user->vault_mount_path,
@@ -1175,6 +1128,10 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
   // Not legacy
   EXPECT_CALL(platform_, FileExists(user->image_path))
     .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
+      .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
+      .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
 
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
@@ -1217,15 +1174,9 @@ TEST_P(MountTest, UserActivityTimestampUpdated) {
           Property(&FilePath::value, StartsWith(kImageDir.value())))))
     .WillRepeatedly(Return(true));
 
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
-
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
 
   // Mount()
   MountError error;
@@ -1355,7 +1306,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   InsertTestUsers(&kDefaultUsers[7], 1);
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   // We now have Scrypt-wrapped key injected
 
   // Mock file and homedir ops
@@ -1366,11 +1317,6 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   EXPECT_TRUE(DoMountInit());
 
   int key_index = 0;
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
 
   // Allow the "backup"s to be written during migrations
   EXPECT_CALL(platform_, FileExists(user->keyset_path.AddExtension("bak")))
@@ -1415,9 +1361,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   // correct value to complete the rest of the test that needs
   // TPM-wrapped keys with correct flags
   error = MOUNT_ERROR_NONE;
-  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
-                    Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   EXPECT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
@@ -1441,9 +1385,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   crypto_.set_use_tpm(false);
 
   error = MOUNT_ERROR_NONE;
-  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
-                    Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   EXPECT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
@@ -1457,9 +1399,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   crypto_.set_use_tpm(true);
 
   error = MOUNT_ERROR_NONE;
-  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
-                    Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
@@ -1500,7 +1440,7 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
   InsertTestUsers(&kDefaultUsers[7], 1);
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   // We now have Scrypt-wrapped key injected
 
   // Mock file and homedir ops
@@ -1511,11 +1451,6 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
   EXPECT_TRUE(DoMountInit());
 
   int key_index = 0;
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
 
   // Allow the "backup"s to be written during migrations
   EXPECT_CALL(platform_,
@@ -1571,9 +1506,7 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
   // When we call DecryptVaultKeyset, it should re-encrypt
   // the keys and write with only one flag set
   error = MOUNT_ERROR_NONE;
-  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
-                    Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   EXPECT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
                                          &key_index, &error));
@@ -1689,14 +1622,9 @@ TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
   // Prepare a dummy user and a key.
   InsertTestUsers(&kDefaultUsers[10], 1);
   TestUser* user = &helper_.users[0];
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   UsernamePasskey up(user->username, user->passkey);
 
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
   // Not legacy
   EXPECT_CALL(platform_, FileExists(user->image_path))
     .WillRepeatedly(Return(false));
@@ -1729,13 +1657,7 @@ TEST_P(MountTest, MountCryptohomeToMigrateFromEcryptfs) {
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  user->InjectKeyset(&platform_, false);
-
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
+  user->InjectKeyset(&platform_, ShouldTestEcryptfs());
 
   // Inject dircrypto user paths.
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
@@ -1793,12 +1715,7 @@ TEST_P(MountTest, MountCryptohomeShadowOnly) {
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  user->InjectKeyset(&platform_, false);
-
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices), Return(true)));
+  user->InjectKeyset(&platform_, true);
 
   // Inject dircrypto user paths.
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
@@ -1821,15 +1738,10 @@ TEST_P(MountTest, MountCryptohomeForceDircrypto) {
   // Prepare a dummy user and a key.
   InsertTestUsers(&kDefaultUsers[10], 1);
   TestUser* user = &helper_.users[0];
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
                         kDaemonGid, ShouldTestEcryptfs());
 
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
 
@@ -1971,15 +1883,8 @@ class AltImageTest : public MountTest {
 
       // After Cache & GCache are depleted. Users are deleted. To do so cleanly,
       // their keysets timestamps are read into an in-memory.
-      if (inject_keyset && !mounted_user) {
+      if (inject_keyset && !mounted_user)
         helper_.users[user].InjectKeyset(&platform_, false);
-        key_indices_.push_back(0);
-        EXPECT_CALL(homedirs_,
-                    GetVaultKeysets(helper_.users[user].obfuscated_username,
-                                    _))
-            .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices_),
-                           Return(true)));
-      }
       if (delete_user) {
         EXPECT_CALL(platform_,
             DeleteFile(helper_.users[user].base_path, true))
@@ -1989,9 +1894,6 @@ class AltImageTest : public MountTest {
   }
 
   std::vector<FilePath> vaults_;
-
- protected:
-  std::vector<int> key_indices_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AltImageTest);
@@ -2035,11 +1937,6 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(Return(true));
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
@@ -2059,6 +1956,12 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   // First user to login -> an owner.
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::Owner))
       .WillOnce(Return(true));
+
+  user->InjectKeyset(&platform_, true);
+
+  EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
+      .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
+      .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -2109,11 +2012,6 @@ TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(Return(true));
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
@@ -2135,6 +2033,19 @@ TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
   EXPECT_CALL(tpm_, SetUserType(_))
       .Times(2)
       .WillRepeatedly(Return(false));
+
+  // Keyset enumeration and skeleton walk will be repeated twice due to mount
+  // retry logic. Note that InSequence is used here, as otherwise a single
+  // series of mocks will be triggered twice and fail due to over-saturation.
+  {
+    InSequence s;
+    for (int i = 0; i < 2; ++i) {
+      user->InjectKeyset(&platform_, true);
+      EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
+          .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
+          .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
+    }
+  }
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -2255,13 +2166,13 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
 }
 
 TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
-  // Checks that when ephemeral statvfs call fails, no clean up happens.
+  // Checks the case when ephemeral statvfs call fails.
   set_policy(false, "", true);
   mount_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-  EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
+  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
     .WillOnce(Return(false));
@@ -2275,14 +2186,14 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
 }
 
 TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
-  // Checks that when directory for ephemeral sparse files fails to be created,
-  // no clean up happens.
+  // Checks the case when directory for ephemeral sparse files fails to be
+  // created.
   set_policy(false, "", true);
   mount_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-  EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
+  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
     .WillOnce(Return(true));
@@ -2300,8 +2211,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
 }
 
 TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
-  // Checks that when ephemeral sparse file fails to create, no clean up
-  // happens.
+  // Checks the case when ephemeral sparse file fails to create.
   set_policy(false, "", true);
   mount_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
@@ -2310,6 +2220,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
   EXPECT_CALL(platform_,
       DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .Times(1);
+  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
     .WillOnce(Return(true));
@@ -2341,6 +2252,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
   EXPECT_CALL(platform_,
       DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .Times(1);
+  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
     .WillOnce(Return(true));
@@ -2378,6 +2290,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
   EXPECT_CALL(platform_,
       DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .Times(1);
+  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
     .WillOnce(Return(true));
@@ -2412,6 +2325,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
   EXPECT_CALL(platform_,
       DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .Times(1);
+  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
     .WillOnce(Return(true));
@@ -2628,19 +2542,13 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
 
-  std::vector<int> key_indices;
-  key_indices.push_back(0);
-  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
-                          Return(true)));
-
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .Times(0);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
-  user->InjectKeyset(&platform_, false);
+  user->InjectKeyset(&platform_, true);
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 

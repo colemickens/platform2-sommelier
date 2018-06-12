@@ -33,6 +33,7 @@ extern "C" {
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm_init.h"
 #include "cryptohome/username_passkey.h"
+#include "cryptohome/vault_keyset.h"
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 
