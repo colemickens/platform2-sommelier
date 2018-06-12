@@ -135,21 +135,6 @@ static int has_chromefw(void) {
   return state;
 }
 
-static int is_cr48(void) {
-  static int state = -1;
-  char hwid[PROP_SIZE];
-
-  /* Cache the state so we don't have to perform the query again. */
-  if (state != -1)
-    return state;
-
-  if (get_system_property("hwid", hwid, sizeof(hwid)) != RESULT_SUCCESS)
-    state = 0;
-  else
-    state = strstr(hwid, "MARIO") != NULL;
-  return state;
-}
-
 static result_code check_bind(struct bind_mount* bind, enum bind_dir dir) {
   struct passwd* user;
   struct group* group;
@@ -718,7 +703,6 @@ static result_code report_info() {
                                   : "fail");
   }
   printf("ChromeOS: %s\n", has_chromefw() ? "yes" : "no");
-  printf("CR48: %s\n", is_cr48() ? "yes" : "no");
   printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
   if (has_chromefw()) {
     brillo::SecureBlob system_key;
