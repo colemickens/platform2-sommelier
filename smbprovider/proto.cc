@@ -11,9 +11,8 @@
 namespace smbprovider {
 
 bool IsValidOptions(const MountOptionsProto& options) {
-  // TODO(allenvic): Add verification for workgroup and username here when
-  // SmbProviderClient starts passing them.
-  return options.has_path();
+  return options.has_path() && options.has_workgroup() &&
+         options.has_username();
 }
 
 bool IsValidOptions(const UnmountOptionsProto& options) {
