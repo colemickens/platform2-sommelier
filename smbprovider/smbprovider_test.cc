@@ -2582,7 +2582,7 @@ TEST_F(SmbProviderTest, RemountFailsWithInvalidProto) {
   ProtoBlob empty_blob;
 
   EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
-            CastError(smbprovider_->Remount(empty_blob)));
+            CastError(smbprovider_->Remount(empty_blob, base::ScopedFD())));
   EXPECT_EQ(0, mount_manager_->MountCount());
   ExpectNoOpenEntries();
 }
@@ -2592,7 +2592,8 @@ TEST_F(SmbProviderTest, RemountFailsWithInvalidShare) {
   const int32_t mount_id = 1;
   ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare/none", mount_id);
 
-  EXPECT_EQ(ERROR_NOT_FOUND, CastError(smbprovider_->Remount(blob)));
+  EXPECT_EQ(ERROR_NOT_FOUND,
+            CastError(smbprovider_->Remount(blob, base::ScopedFD())));
   EXPECT_EQ(0, mount_manager_->MountCount());
   ExpectNoOpenEntries();
 }
@@ -2604,7 +2605,7 @@ TEST_F(SmbProviderTest, RemountSucceedsOnValidShare) {
   const int32_t mount_id = 1;
   ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare", mount_id);
 
-  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob)));
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
   EXPECT_EQ(1, mount_manager_->MountCount());
   EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
 }

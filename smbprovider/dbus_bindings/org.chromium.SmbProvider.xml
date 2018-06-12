@@ -44,6 +44,11 @@
           Serialized RemountOptions protobuf.
         </tp:docstring>
       </arg>
+      <arg name="password_fd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor of the file that contains the password.
+        </tp:docstring>
+      </arg>
       <arg name="error_code" type="i" direction="out">
         <tp:docstring>
           Returned error code. See ErrorType enum.

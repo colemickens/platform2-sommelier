@@ -97,7 +97,8 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   }
 }
 
-int32_t SmbProvider::Remount(const ProtoBlob& options_blob) {
+int32_t SmbProvider::Remount(const ProtoBlob& options_blob,
+                             const base::ScopedFD& password_fd) {
   // The functions below will set the error if they fail.
   int32_t error_code = static_cast<int32_t>(ERROR_OK);
 
