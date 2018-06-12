@@ -9,9 +9,11 @@ namespace vm_tools {
 
 constexpr int kMaitredPort = 8888;
 constexpr int kGarconPort = 8889;
+constexpr int kTremplinPort = 8890;
 constexpr int kVshPort = 9001;
 
 constexpr int kStartupListenerPort = 7777;
+constexpr int kTremplinListenerPort = 7778;
 
 }  // namespace vm_tools
 
