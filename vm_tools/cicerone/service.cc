@@ -555,7 +555,8 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStarted(
 
   vms_[std::make_pair(request.owner_id(), std::move(request.vm_name()))] =
       std::make_unique<VirtualMachine>(request.container_ipv4_subnet(),
-                                       request.container_ipv4_netmask());
+                                       request.container_ipv4_netmask(),
+                                       request.ipv4_address());
   if (primary_owner_id_.empty() || vms_.empty()) {
     primary_owner_id_ = request.owner_id();
   }
@@ -827,6 +828,26 @@ bool Service::GetVirtualMachineForContainerIp(uint32_t container_ip,
   for (const auto& vm : vms_) {
     const uint32_t netmask = vm.second->container_netmask();
     if ((vm.second->container_subnet() & netmask) != (container_ip & netmask)) {
+      continue;
+    }
+    *owner_id_out = vm.first.first;
+    *name_out = vm.first.second;
+    *vm_out = vm.second.get();
+    return true;
+  }
+  return false;
+}
+
+bool Service::GetVirtualMachineForVmIp(uint32_t vm_ip,
+                                       VirtualMachine** vm_out,
+                                       std::string* owner_id_out,
+                                       std::string* name_out) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(vm_out);
+  CHECK(owner_id_out);
+  CHECK(name_out);
+  for (const auto& vm : vms_) {
+    if (vm.second->ipv4_address() != vm_ip) {
       continue;
     }
     *owner_id_out = vm.first.first;

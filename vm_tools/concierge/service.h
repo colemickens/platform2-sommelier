@@ -117,7 +117,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void NotifyCiceroneOfVmStarted(const std::string& owner_id,
                                  const std::string& vm_name,
                                  uint32_t container_subnet,
-                                 uint32_t container_netmask);
+                                 uint32_t container_netmask,
+                                 uint32_t ipv4_address);
   void NotifyCiceroneOfVmStopped(const std::string& owner_id,
                                  const std::string& vm_name);
   std::string GetContainerToken(const std::string& owner_id,

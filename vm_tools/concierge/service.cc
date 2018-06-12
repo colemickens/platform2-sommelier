@@ -768,7 +768,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   // Notify cicerone that we have started a VM.
   NotifyCiceroneOfVmStarted(request.owner_id(), request.name(),
-                            vm->ContainerSubnet(), vm->ContainerNetmask());
+                            vm->ContainerSubnet(), vm->ContainerNetmask(),
+                            vm->IPv4Address());
 
   VmInfo* vm_info = response.mutable_vm_info();
   response.set_success(true);
@@ -1559,7 +1560,8 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
 void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
                                         const std::string& vm_name,
                                         uint32_t container_subnet,
-                                        uint32_t container_netmask) {
+                                        uint32_t container_netmask,
+                                        uint32_t ipv4_address) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStartedMethod);
@@ -1569,6 +1571,7 @@ void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
   request.set_vm_name(vm_name);
   request.set_container_ipv4_subnet(container_subnet);
   request.set_container_ipv4_netmask(container_netmask);
+  request.set_ipv4_address(ipv4_address);
   writer.AppendProtoAsArrayOfBytes(request);
   std::unique_ptr<dbus::Response> dbus_response =
       cicerone_service_proxy_->CallMethodAndBlock(

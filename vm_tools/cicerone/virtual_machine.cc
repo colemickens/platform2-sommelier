@@ -32,9 +32,11 @@ constexpr int64_t kDefaultTimeoutSeconds = 2;
 }  // namespace
 
 VirtualMachine::VirtualMachine(uint32_t container_subnet,
-                               uint32_t container_netmask)
+                               uint32_t container_netmask,
+                               uint32_t ipv4_address)
     : container_subnet_(container_subnet),
-      container_netmask_(container_netmask) {}
+      container_netmask_(container_netmask),
+      ipv4_address_(ipv4_address) {}
 
 VirtualMachine::~VirtualMachine() = default;
 

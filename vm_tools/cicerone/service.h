@@ -127,6 +127,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                        std::string* owner_id_out,
                                        std::string* name_out);
 
+  bool GetVirtualMachineForVmIp(uint32_t vm_ip,
+                                VirtualMachine** vm_out,
+                                std::string* owner_id_out,
+                                std::string* name_out);
+
   // Registers |hostname| and |ip| with the hostname resolver service so that
   // the container is reachable from a known hostname.
   void RegisterHostname(const std::string& hostname, const std::string& ip);
