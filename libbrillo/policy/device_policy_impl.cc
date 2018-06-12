@@ -8,9 +8,12 @@
 
 #include <base/containers/adapters.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
+#include <base/time/time.h>
+#include <base/values.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
@@ -96,6 +99,50 @@ std::string DecodeConnectionType(int type) {
     return std::string();
 
   return kConnectionTypes[type];
+}
+
+// TODO(adokar): change type to base::Optional<int> when available.
+int ConvertDayOfWeekStringToInt(const std::string& day_of_week_str) {
+  if (day_of_week_str == "Sunday") return 0;
+  if (day_of_week_str == "Monday") return 1;
+  if (day_of_week_str == "Tuesday") return 2;
+  if (day_of_week_str == "Wednesday") return 3;
+  if (day_of_week_str == "Thursday") return 4;
+  if (day_of_week_str == "Friday") return 5;
+  if (day_of_week_str == "Saturday") return 6;
+  return -1;
+}
+
+bool DecodeWeeklyTimeFromValue(const base::DictionaryValue& dict_value,
+                               int* day_of_week_out,
+                               base::TimeDelta* time_out) {
+  std::string day_of_week_str;
+  if (!dict_value.GetString("day_of_week", &day_of_week_str)) {
+    LOG(ERROR) << "Day of the week is absent.";
+    return false;
+  }
+  *day_of_week_out = ConvertDayOfWeekStringToInt(day_of_week_str);
+  if (*day_of_week_out == -1) {
+    LOG(ERROR) << "Undefined day of the week: " << day_of_week_str;
+    return false;
+  }
+
+  int hours;
+  if (!dict_value.GetInteger("hours", &hours) || hours < 0 || hours > 23) {
+    LOG(ERROR) << "Hours are absent or are outside of the range [0, 24).";
+    return false;
+  }
+
+  int minutes;
+  if (!dict_value.GetInteger("minutes", &minutes) || minutes < 0 ||
+      minutes > 59) {
+    LOG(ERROR) << "Minutes are absent or are outside the range [0, 60)";
+    return false;
+  }
+
+  *time_out =
+      base::TimeDelta::FromMinutes(minutes) + base::TimeDelta::FromHours(hours);
+  return true;
 }
 
 }  // namespace
@@ -507,6 +554,65 @@ bool DevicePolicyImpl::GetSecondFactorAuthenticationMode(int* mode_out) const {
     return false;
 
   *mode_out = proto.mode();
+  return true;
+}
+
+bool DevicePolicyImpl::GetDisallowedTimeIntervals(
+    std::vector<WeeklyTimeInterval>* intervals_out) const {
+  if (!device_policy_.has_auto_update_settings()) {
+    return false;
+  }
+
+  const em::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+
+  if (!proto.has_disallowed_time_intervals()) {
+    return false;
+  }
+
+  // Decode the JSON string
+  std::string error;
+  std::unique_ptr<base::Value> decoded_json =
+      base::JSONReader::ReadAndReturnError(proto.disallowed_time_intervals(),
+                                           base::JSON_ALLOW_TRAILING_COMMAS,
+                                           NULL, &error);
+  if (!decoded_json) {
+    LOG(ERROR) << "Invalid JSON string " << error;
+    return false;
+  }
+
+  std::unique_ptr<base::ListValue> list_val =
+      base::ListValue::From(std::move(decoded_json));
+  if (!list_val) {
+    LOG(ERROR) << "JSON string is not a list";
+    return false;
+  }
+
+  intervals_out->clear();
+
+  for (const auto& interval_value : *list_val) {
+    base::DictionaryValue* interval_dict;
+    if (!interval_value->GetAsDictionary(&interval_dict)) {
+      LOG(ERROR) << "Invalid JSON string given. Interval is not a dict.";
+      return false;
+    }
+    base::DictionaryValue* start;
+    base::DictionaryValue* end;
+    if (!interval_dict->GetDictionary("start", &start) ||
+        !interval_dict->GetDictionary("end", &end)) {
+      LOG(ERROR) << "Interval is missing start/end.";
+      return false;
+    }
+    WeeklyTimeInterval weekly_interval;
+    if (!DecodeWeeklyTimeFromValue(*start, &weekly_interval.start_day_of_week,
+                                   &weekly_interval.start_time) ||
+        !DecodeWeeklyTimeFromValue(*end, &weekly_interval.end_day_of_week,
+                                   &weekly_interval.end_time)) {
+      return false;
+    }
+
+    intervals_out->push_back(weekly_interval);
+  }
   return true;
 }
 

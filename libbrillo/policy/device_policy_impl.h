@@ -78,6 +78,8 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetAutoLaunchedKioskAppId(std::string* app_id_out) const override;
   bool IsEnterpriseManaged() const override;
   bool GetSecondFactorAuthenticationMode(int* mode_out) const override;
+  bool GetDisallowedTimeIntervals(
+      std::vector<WeeklyTimeInterval>* intervals_out) const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(

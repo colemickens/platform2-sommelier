@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/time/time.h>
 
 #pragma GCC visibility push(default)
 
@@ -33,6 +34,22 @@ class DevicePolicy {
 
     // USB Product Identifier (aka idProduct).
     uint16_t product_id;
+  };
+
+  // Time interval represented by two |day_of_week| and |time| pairs. The start
+  // of the interval is inclusive and the end is exclusive. The time represented
+  // by those pairs will be interpreted to be in the local timezone. Because of
+  // this, there exists the possibility of intervals being repeated or skipped
+  // in a day with daylight savings transitions, this is expected behavior.
+  struct WeeklyTimeInterval {
+    // Value is from 1 to 7 (1 = Monday, 2 = Tuesday, etc.). All values outside
+    // this range are invalid and will be discarded.
+    int start_day_of_week;
+    // Time since the start of the day. This value will be interpreted to be in
+    // the system's current timezone when used for range checking.
+    base::TimeDelta start_time;
+    int end_day_of_week;
+    base::TimeDelta end_time;
   };
 
   DevicePolicy();
@@ -177,6 +194,13 @@ class DevicePolicy {
   // DeviceSecondFactorAuthenticationProto's U2fMode enum (e.g. DISABLED,
   // U2F or U2F_EXTENDED). Returns true on success.
   virtual bool GetSecondFactorAuthenticationMode(int* mode_out) const = 0;
+
+  // Writes the valid time intervals to |intervals_out|. These
+  // intervals are taken from the disallowed time intervals field in the
+  // AutoUpdateSettingsProto. Returns true if the intervals in the proto are
+  // valid.
+  virtual bool GetDisallowedTimeIntervals(
+      std::vector<WeeklyTimeInterval>* intervals_out) const = 0;
 
  private:
   // Verifies that the policy signature is correct.

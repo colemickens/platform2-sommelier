@@ -101,7 +101,8 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetAutoLaunchedKioskAppId, bool(std::string*));
   MOCK_CONST_METHOD0(IsEnterpriseManaged, bool());
   MOCK_CONST_METHOD1(GetSecondFactorAuthenticationMode, bool(int*));
-
+  MOCK_CONST_METHOD1(GetDisallowedTimeIntervals,
+                     bool(std::vector<WeeklyTimeInterval>*));
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));
 };

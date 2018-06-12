@@ -178,6 +178,21 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetSecondFactorAuthenticationMode(&int_value));
   EXPECT_EQ(2, int_value);
 
+  std::vector<DevicePolicy::WeeklyTimeInterval> intervals;
+  ASSERT_TRUE(policy.GetDisallowedTimeIntervals(&intervals));
+  ASSERT_EQ(2, intervals.size());
+  EXPECT_EQ(4, intervals[0].start_day_of_week);
+  EXPECT_EQ(base::TimeDelta::FromMinutes(30) + base::TimeDelta::FromHours(12),
+            intervals[0].start_time);
+  EXPECT_EQ(6, intervals[0].end_day_of_week);
+  EXPECT_EQ(base::TimeDelta::FromMinutes(15) + base::TimeDelta::FromHours(3),
+            intervals[0].end_time);
+  EXPECT_EQ(1, intervals[1].start_day_of_week);
+  EXPECT_EQ(base::TimeDelta::FromMinutes(10) + base::TimeDelta::FromHours(20),
+            intervals[1].start_time);
+  EXPECT_EQ(3, intervals[1].end_day_of_week);
+  EXPECT_EQ(base::TimeDelta::FromMinutes(20), intervals[1].end_time);
+
   // Reloading the protobuf should succeed.
   EXPECT_TRUE(provider.Reload());
 }
@@ -207,6 +222,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   bool bool_value;
   std::string string_value;
   std::vector<DevicePolicy::UsbDeviceId> list_device;
+  std::vector<DevicePolicy::WeeklyTimeInterval> intervals;
 
   EXPECT_FALSE(policy.GetPolicyRefreshRate(&int_value));
   EXPECT_FALSE(policy.GetUserWhitelist(&list_value));
@@ -235,6 +251,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));
   EXPECT_FALSE(policy.GetUsbDetachableWhitelist(&list_device));
   EXPECT_FALSE(policy.GetSecondFactorAuthenticationMode(&int_value));
+  EXPECT_FALSE(policy.GetDisallowedTimeIntervals(&intervals));
 }
 
 // Verify that the library will correctly recognize and signal missing files.
