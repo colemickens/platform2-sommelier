@@ -151,6 +151,19 @@
         'cicerone/main.cc',
       ],
     },
+    {
+      'target_name': 'cicerone_client',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'protobuf',
+          'system_api',
+        ],
+      },
+      'sources': [
+        'cicerone/client.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
