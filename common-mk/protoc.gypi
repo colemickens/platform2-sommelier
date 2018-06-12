@@ -8,6 +8,7 @@
     'grpc_cpp_plugin': '<!(which grpc_cpp_plugin)',
     'gen_go%': 0,
     'gen_grpc%': 0,
+    'gen_go_grpc%': 0,
     'gen_python%': 0,
   },
   'rules': [
@@ -49,7 +50,17 @@
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
           ],
         }],
-        ['gen_grpc==0 and gen_go==0 and gen_python==0', {
+        ['gen_go_grpc==1', {
+          'variables': {
+            'out_args': [
+              '--go_out=plugins=grpc:<(go_dir)',
+            ],
+          },
+          'outputs': [
+            '<(go_dir)/<(RULE_INPUT_ROOT).pb.go',
+          ],
+        }],
+        ['gen_grpc==0 and gen_go_grpc==0 and gen_go==0 and gen_python==0', {
           'outputs': [
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
