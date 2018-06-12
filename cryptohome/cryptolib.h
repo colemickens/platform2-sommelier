@@ -42,12 +42,25 @@ class CryptoLib {
   static void GetSecureRandom(unsigned char *bytes, size_t len);
   static bool CreateRsaKey(size_t bits, brillo::SecureBlob* n,
                            brillo::SecureBlob* p);
+
+  // TODO(jorgelo,crbug.com/728047): Review current usage of these functions and
+  // consider making the functions that take a plain Blob also return a plain
+  // Blob.
   static brillo::SecureBlob Sha1(const brillo::Blob& data);
+  static brillo::SecureBlob Sha1(const brillo::SecureBlob& data);
+
   static brillo::SecureBlob Sha256(const brillo::Blob& data);
+  static brillo::SecureBlob Sha256(const brillo::SecureBlob& data);
+
   static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
-                                         const brillo::Blob& data);
+                                       const brillo::Blob& data);
+  static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
+                                       const brillo::SecureBlob& data);
+
   static brillo::SecureBlob HmacSha256(const brillo::SecureBlob& key,
-                                         const brillo::Blob& data);
+                                       const brillo::Blob& data);
+  static brillo::SecureBlob HmacSha256(const brillo::SecureBlob& key,
+                                       const brillo::SecureBlob& data);
 
   static size_t GetAesBlockSize();
   static bool PasskeyToAesKey(const brillo::Blob& passkey,

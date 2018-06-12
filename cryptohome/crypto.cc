@@ -655,8 +655,8 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
     return false;
   }
 
-  SecureBlob vkk_seed = CryptoLib::HmacSha256(he_secret,
-      { std::begin(kHESecretHmacData), std::end(kHESecretHmacData) });
+  SecureBlob vkk_seed = CryptoLib::HmacSha256(
+      he_secret, brillo::BlobFromString(kHESecretHmacData));
 
   // We use separate IVs for decrypting the chaps keys and the file-encryption
   // keys from the corresponding encrypted blobs.
@@ -941,8 +941,8 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   }
 
   // Derive the VKK_seed by performing an HMAC on he_secret.
-  SecureBlob vkk_seed = CryptoLib::HmacSha256(he_secret,
-      { std::begin(kHESecretHmacData), std::end(kHESecretHmacData) });
+  SecureBlob vkk_seed = CryptoLib::HmacSha256(
+      he_secret, brillo::BlobFromString(kHESecretHmacData));
 
   // Generate and store random new IVs for file-encryption keys and
   // chaps key encryption.

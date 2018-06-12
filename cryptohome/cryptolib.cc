@@ -24,6 +24,62 @@
 
 using brillo::SecureBlob;
 
+namespace {
+
+template <class T>
+SecureBlob Sha1Helper(const T& data) {
+  SHA_CTX sha_context;
+  unsigned char md_value[SHA_DIGEST_LENGTH];
+  SecureBlob hash;
+
+  SHA1_Init(&sha_context);
+  SHA1_Update(&sha_context, data.data(), data.size());
+  SHA1_Final(md_value, &sha_context);
+  hash.resize(sizeof(md_value));
+  memcpy(hash.data(), md_value, sizeof(md_value));
+  // Zero the stack to match expectations set by SecureBlob.
+  brillo::SecureMemset(md_value, 0, sizeof(md_value));
+  return hash;
+}
+
+template <class T>
+SecureBlob Sha256Helper(const T& data) {
+  SHA256_CTX sha_context;
+  unsigned char md_value[SHA256_DIGEST_LENGTH];
+  SecureBlob hash;
+
+  SHA256_Init(&sha_context);
+  SHA256_Update(&sha_context, data.data(), data.size());
+  SHA256_Final(md_value, &sha_context);
+  hash.resize(sizeof(md_value));
+  memcpy(hash.data(), md_value, sizeof(md_value));
+  // Zero the stack to match expectations set by SecureBlob.
+  brillo::SecureMemset(md_value, 0, sizeof(md_value));
+  return hash;
+}
+
+template <class T>
+brillo::SecureBlob HmacSha512Helper(const brillo::SecureBlob& key,
+                                    const T& data) {
+  const int kSha512OutputSize = 64;
+  unsigned char mac[kSha512OutputSize];
+  HMAC(EVP_sha512(), key.data(), key.size(), data.data(), data.size(), mac,
+       NULL);
+  return brillo::SecureBlob(std::begin(mac), std::end(mac));
+}
+
+template <class T>
+brillo::SecureBlob HmacSha256Helper(const brillo::SecureBlob& key,
+                                    const T& data) {
+  const int kSha256OutputSize = 32;
+  unsigned char mac[kSha256OutputSize];
+  HMAC(EVP_sha256(), key.data(), key.size(), data.data(), data.size(), mac,
+       NULL);
+  return brillo::SecureBlob(std::begin(mac), std::end(mac));
+}
+
+}  // namespace
+
 namespace cryptohome {
 
 // The well-known exponent used when generating RSA keys.  Cryptohome only
@@ -74,56 +130,40 @@ bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
   return true;
 }
 
-SecureBlob CryptoLib::Sha1(const brillo::Blob& data) {
-  SHA_CTX sha_context;
-  unsigned char md_value[SHA_DIGEST_LENGTH];
-  SecureBlob hash;
-
-  SHA1_Init(&sha_context);
-  SHA1_Update(&sha_context, data.data(), data.size());
-  SHA1_Final(md_value, &sha_context);
-  hash.resize(sizeof(md_value));
-  memcpy(hash.data(), md_value, sizeof(md_value));
-  // Zero the stack to match expectations set by SecureBlob.
-  brillo::SecureMemset(md_value, 0, sizeof(md_value));
-  return hash;
+brillo::SecureBlob CryptoLib::Sha1(const brillo::Blob& data) {
+  return Sha1Helper(data);
 }
 
-SecureBlob CryptoLib::Sha256(const brillo::Blob& data) {
-  SHA256_CTX sha_context;
-  unsigned char md_value[SHA256_DIGEST_LENGTH];
-  SecureBlob hash;
+brillo::SecureBlob CryptoLib::Sha1(const brillo::SecureBlob& data) {
+  return Sha1Helper(data);
+}
 
-  SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context, data.data(), data.size());
-  SHA256_Final(md_value, &sha_context);
-  hash.resize(sizeof(md_value));
-  memcpy(hash.data(), md_value, sizeof(md_value));
-  // Zero the stack to match expectations set by SecureBlob.
-  brillo::SecureMemset(md_value, 0, sizeof(md_value));
-  return hash;
+brillo::SecureBlob CryptoLib::Sha256(const brillo::Blob& data) {
+  return Sha256Helper(data);
+}
+
+brillo::SecureBlob CryptoLib::Sha256(const brillo::SecureBlob& data) {
+  return Sha256Helper(data);
 }
 
 brillo::SecureBlob CryptoLib::HmacSha512(const brillo::SecureBlob& key,
-                                           const brillo::Blob& data) {
-  const int kSha512OutputSize = 64;
-  unsigned char mac[kSha512OutputSize];
-  HMAC(EVP_sha512(),
-       key.data(), key.size(),
-       data.data(), data.size(),
-       mac, NULL);
-  return brillo::SecureBlob(std::begin(mac), std::end(mac));
+                                         const brillo::Blob& data) {
+  return HmacSha512Helper(key, data);
+}
+
+brillo::SecureBlob CryptoLib::HmacSha512(const brillo::SecureBlob& key,
+                                         const brillo::SecureBlob& data) {
+  return HmacSha512Helper(key, data);
 }
 
 brillo::SecureBlob CryptoLib::HmacSha256(const brillo::SecureBlob& key,
-                                           const brillo::Blob& data) {
-  const int kSha256OutputSize = 32;
-  unsigned char mac[kSha256OutputSize];
-  HMAC(EVP_sha256(),
-       key.data(), key.size(),
-       data.data(), data.size(),
-       mac, NULL);
-  return brillo::SecureBlob(std::begin(mac), std::end(mac));
+                                         const brillo::Blob& data) {
+  return HmacSha256Helper(key, data);
+}
+
+brillo::SecureBlob CryptoLib::HmacSha256(const brillo::SecureBlob& key,
+                                         const brillo::SecureBlob& data) {
+  return HmacSha256Helper(key, data);
 }
 
 size_t CryptoLib::GetAesBlockSize() {
