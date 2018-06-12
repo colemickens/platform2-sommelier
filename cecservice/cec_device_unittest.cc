@@ -444,4 +444,32 @@ TEST_F(CecDeviceTest, TestGetTvStatusError) {
   EXPECT_EQ(kTvPowerStatusError, power_status);
 }
 
+TEST_F(CecDeviceTest, TestMessageSendingWhenNoLogicalAddressIsConfigured) {
+  Init();
+
+  ON_CALL(*cec_fd_mock_, GetLogicalAddresses(_))
+      .WillByDefault(Invoke([](struct cec_log_addrs* address) {
+        address->num_log_addrs = 0;
+        return true;
+      }));
+
+  ON_CALL(*cec_fd_mock_, SetLogicalAddresses(_)).WillByDefault(Return(true));
+
+  // Set the object into a state where we have a valid physical address but no
+  // logical one, yet.
+  SendStateUpdateEvent(kPhysicalAddress, 0);
+
+  // Ask to send a standby request.
+  device_->SetStandBy();
+
+  // Provide a logical address now.
+  SendStateUpdateEvent(kPhysicalAddress, kLogicalAddressMask);
+
+  // Tell the object that the fd is ready to be written to.
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  // Verify that the messsage that has been sent has a proper address.
+  EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
+}
+
 }  // namespace cecservice

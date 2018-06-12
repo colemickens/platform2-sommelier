@@ -19,16 +19,17 @@
 namespace cecservice {
 
 namespace {
-struct cec_msg CreateMessage(uint16_t source_address,
-                             uint16_t destination_address) {
+struct cec_msg CreateMessage(uint16_t destination_address) {
+  struct cec_msg message;
+  cec_msg_init(&message, CEC_LOG_ADDR_UNREGISTERED, destination_address);
+  return message;
+}
+
+void SetMessageSourceAddress(uint16_t source_address, struct cec_msg* msg) {
   if (source_address == CEC_LOG_ADDR_INVALID) {
     source_address = CEC_LOG_ADDR_UNREGISTERED;
   }
-
-  struct cec_msg message;
-  cec_msg_init(&message, source_address, destination_address);
-
-  return message;
+  msg->msg[0] = (source_address << 4) | cec_msg_destination(msg);
 }
 
 TvPowerStatus GetPowerStatus(const struct cec_msg& msg) {
@@ -79,7 +80,7 @@ void CecDeviceImpl::GetTvPowerStatus(GetTvPowerStatusCallback callback) {
     return;
   }
 
-  struct cec_msg message = CreateMessage(logical_address_, CEC_LOG_ADDR_TV);
+  struct cec_msg message = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_give_device_power_status(&message, 1);
   message_queue_.push_back(message);
 
@@ -104,7 +105,7 @@ void CecDeviceImpl::SetStandBy() {
 
   active_source_ = false;
 
-  struct cec_msg message = CreateMessage(logical_address_, CEC_LOG_ADDR_TV);
+  struct cec_msg message = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_standby(&message);
   message_queue_.push_back(message);
 
@@ -120,8 +121,7 @@ void CecDeviceImpl::SetWakeUp() {
     return;
   }
 
-  struct cec_msg image_view_on_message =
-      CreateMessage(logical_address_, CEC_LOG_ADDR_TV);
+  struct cec_msg image_view_on_message = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_image_view_on(&image_view_on_message);
 
   switch (GetState()) {
@@ -129,7 +129,7 @@ void CecDeviceImpl::SetWakeUp() {
       message_queue_.push_back(image_view_on_message);
 
       struct cec_msg active_source_message =
-          CreateMessage(logical_address_, CEC_LOG_ADDR_BROADCAST);
+          CreateMessage(CEC_LOG_ADDR_BROADCAST);
       cec_msg_active_source(&active_source_message, physical_address_);
       message_queue_.push_back(active_source_message);
     } break;
@@ -210,8 +210,7 @@ bool CecDeviceImpl::ProcessStateChangeEvent(
       return true;
     case State::kReady:
       if (pending_active_source_broadcast_) {
-        struct cec_msg message =
-            CreateMessage(logical_address_, CEC_LOG_ADDR_BROADCAST);
+        struct cec_msg message = CreateMessage(CEC_LOG_ADDR_BROADCAST);
         cec_msg_active_source(&message, physical_address_);
         message_queue_.push_back(message);
 
@@ -378,6 +377,8 @@ CecFd::TransmitResult CecDeviceImpl::SendMessage(struct cec_msg* msg) {
       "%s: transmitting message, opcode:0x%x to:0x%x",
       device_path_.value().c_str(), cec_msg_opcode(msg),
       static_cast<unsigned>(cec_msg_destination(msg)));
+
+  SetMessageSourceAddress(logical_address_, msg);
   return fd_->TransmitMessage(msg);
 }
 
