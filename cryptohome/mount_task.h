@@ -413,22 +413,6 @@ class MountTaskResetTpmContext : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskResetTpmContext);
 };
 
-// Implements asychronous removal of tracked subdirectories
-class MountTaskAutomaticFreeDiskSpace : public MountTask {
- public:
-  MountTaskAutomaticFreeDiskSpace(MountTaskObserver* observer,
-                                  HomeDirs* homedirs,
-                                  int sequence_id)
-      : MountTask(observer, NULL, sequence_id), homedirs_(homedirs) {}
-  virtual ~MountTaskAutomaticFreeDiskSpace() { }
-
-  virtual void Run();
-
- private:
-  HomeDirs* homedirs_;
-  DISALLOW_COPY_AND_ASSIGN(MountTaskAutomaticFreeDiskSpace);
-};
-
 // Implements asynchronous updating of the current user (if any)
 // activity timestamp
 class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {

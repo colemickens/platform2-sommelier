@@ -332,10 +332,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
   virtual gboolean UnmountForUser(const gchar* userid, gboolean *OUT_result,
                                   GError **error);
-  virtual gboolean DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
-                                                   GError **error);
-  virtual gboolean AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
-                                                        GError **error);
   virtual gboolean UpdateCurrentUserActivityTimestamp(gint time_shift_sec,
                                                       GError **error);
 

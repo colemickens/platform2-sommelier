@@ -133,12 +133,6 @@
       <arg type="s" name="username" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
-    <method name="DoAutomaticFreeDiskSpaceControl">
-      <arg type="b" name="done" direction="out" />
-    </method>
-    <method name="AsyncDoAutomaticFreeDiskSpaceControl">
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <method name="UpdateCurrentUserActivityTimestamp">
       <arg type="i" name="time_shift_sec" direction="in" />
     </method>

@@ -101,7 +101,6 @@ namespace switches {
                                    "tpm_more_status",
                                    "status",
                                    "set_current_user_old",
-                                   "do_free_disk_space_control",
                                    "tpm_take_ownership",
                                    "tpm_clear_stored_password",
                                    "tpm_wait_ownership",
@@ -160,7 +159,6 @@ namespace switches {
     ACTION_TPM_MORE_STATUS,
     ACTION_STATUS,
     ACTION_SET_CURRENT_USER_OLD,
-    ACTION_DO_FREE_DISK_SPACE_CONTROL,
     ACTION_TPM_TAKE_OWNERSHIP,
     ACTION_TPM_CLEAR_STORED_PASSWORD,
     ACTION_TPM_WAIT_OWNERSHIP,
@@ -1550,31 +1548,6 @@ int main(int argc, char **argv) {
     } else {
         printf("Timestamp successfully updated. You may verify it with "
                "--action=dump_keyset --user=...\n");
-    }
-  } else if (!strcmp(
-      switches::kActions[switches::ACTION_DO_FREE_DISK_SPACE_CONTROL],
-      action.c_str())) {
-    brillo::glib::ScopedError error;
-    ClientLoop client_loop;
-    client_loop.Initialize(&proxy);
-    gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_async_do_automatic_free_disk_space_control(  // NOLINT
-            proxy.gproxy(),
-            &async_id,
-            &brillo::Resetter(&error).lvalue())) {
-      printf("AsyncDoAutomaticFreeDiskSpaceControl call failed: %s.\n",
-             error->message);
-    } else {
-      client_loop.Run(async_id);
-      if (client_loop.get_return_status()) {
-        printf("Free disk space control completed successfully "
-               "and maybe cut away something. Use `df` to check.\n");
-      } else {
-        printf("Cleanup reported that there was enough free space "
-               "(more than %" PRIu64" Kbytes, check with `df`) "
-               "so it didn't try to cut anything.\n",
-               cryptohome::kMinFreeSpaceInBytes >> 10);
-      }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_TAKE_OWNERSHIP],
                      action.c_str())) {

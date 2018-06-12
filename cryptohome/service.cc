@@ -2198,36 +2198,6 @@ gboolean Service::UnmountForUser(const gchar *userid, gboolean *OUT_result,
   return Unmount(OUT_result, error);
 }
 
-gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
-                                                  GError **error) {
-  MountTaskResult result;
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =
-      new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_, NextSequence());
-  mount_task->set_result(&result);
-  mount_task->set_complete_event(&event);
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskAutomaticFreeDiskSpace::Run, mount_task.get()));
-  event.Wait();
-  *OUT_result = result.return_status();
-  return TRUE;
-}
-
-gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
-                                                       GError **error) {
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =
-      new MountTaskAutomaticFreeDiskSpace(bridge, homedirs_, NextSequence());
-  *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskAutomaticFreeDiskSpace::Run, mount_task.get()));
-  return TRUE;
-}
-
 gboolean Service::UpdateCurrentUserActivityTimestamp(gint time_shift_sec,
                                                      GError **error) {
   mounts_lock_.Acquire();
