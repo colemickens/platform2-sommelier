@@ -234,6 +234,9 @@
             'tpm2_impl.cc',
             'tpm2_metrics.cc',
           ],
+          'dependencies' : [
+            'pinweaver-proto-external',
+          ],
           'link_settings': {
             'libraries': [
               '-ltrunks',
@@ -356,5 +359,29 @@
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
+  ],
+  'conditions': [
+    ['USE_tpm2 == 1', {
+      'targets': [
+        {
+          'target_name': 'pinweaver-proto-external',
+          'type': 'static_library',
+          'variables': {
+            'proto_in_dir': '<(sysroot)/usr/include/proto',
+            'proto_out_dir': 'include',
+            'exported_deps': [
+              'protobuf',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'sources': [
+            '<(proto_in_dir)/pinweaver.proto',
+          ],
+          'includes': [
+            '../common-mk/protoc.gypi',
+          ],
+        },
+      ],
+    }],
   ],
 }

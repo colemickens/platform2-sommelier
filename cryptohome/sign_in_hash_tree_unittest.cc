@@ -173,7 +173,6 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(21, 6, 2),
                                  &returned_hash, &cred_data, &metadata_lost));
   EXPECT_EQ(kSampleHash1, returned_hash);
-  EXPECT_EQ(0, cred_data.size());
   EXPECT_EQ(true, metadata_lost);
 
   // Regenerate the hash cache so the root hash gets recalculated.

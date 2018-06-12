@@ -67,7 +67,14 @@ class FakeLECredentialBackend : public LECredentialBackend {
                         std::vector<uint8_t>* new_root) override;
 
   bool GetLog(const std::vector<uint8_t>& cur_disk_root_hash,
-              std::vector<uint8_t>* root_hash) override;
+              std::vector<uint8_t>* root_hash,
+              std::vector<LELogEntry>* log) override;
+
+  bool ReplayLogOperation(const std::vector<uint8_t>& cur_disk_root_hash,
+                          const std::vector<std::vector<uint8_t>>& h_aux,
+                          const std::vector<uint8_t>& orig_cred_metadata,
+                          std::vector<uint8_t>* new_cred_metadata,
+                          std::vector<uint8_t>* new_mac) override;
 
  private:
   // Helper function to calculate root hash, given a leaf with label |label|,

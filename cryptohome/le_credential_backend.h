@@ -38,6 +38,29 @@ enum LECredBackendError {
   LE_TPM_ERROR_TPM_OP_FAILED,
 };
 
+// Enum used to denote the LE log entry type.
+enum LELogEntryType {
+  LE_LOG_INSERT = 0,
+  LE_LOG_CHECK,
+  LE_LOG_REMOVE,
+  LE_LOG_RESET,
+  // Sentinel value.
+  LE_LOG_INVALID,
+};
+
+// Container for LE credential log replay data obtained from the LE Backend.
+// This struct is used during sychronization operations which occur when the
+// on-disk hash tree state and LE Backend hash tree state are out-of-sync.
+struct LELogEntry {
+  LELogEntryType type;
+  // Label on which the log operation is performed.
+  uint64_t label;
+  // Value of root hash after the log operation is performed.
+  std::vector<uint8_t> root;
+  // For insert operations, this signifies the MAC of the inserted leaf.
+  std::vector<uint8_t> mac;
+};
+
 // LECredentialBackend - class for performing Low Entropy (LE) Credential
 // related operations in the TPM. The Tpm class implementations which support LE
 // Credential handling will contain an object of a class which implements
@@ -173,7 +196,24 @@ class LECredentialBackend {
   // TODO(crbug.com/809710): Add a |log_data| vector which should return log
   // entries in already-parsed form.
   virtual bool GetLog(const std::vector<uint8_t>& cur_disk_root_hash,
-                      std::vector<uint8_t>* root_hash) = 0;
+                      std::vector<uint8_t>* root_hash,
+                      std::vector<LELogEntry>* log) = 0;
+
+  // Replays the log operation referenced by |log_entry_root|, where
+  // |log_entry_root| is the resulting root hash after the operation, and is
+  // retrieved from the log entry.
+  // |h_aux| and |orig_cred_metadata| refer to, respectively, the list of
+  // auxiliary hashes and the original credential metadata associated with the
+  // label concerned (available in the log entry). The resulting metadata and
+  // MAC are stored in |new_cred_metadata| and |new_mac|.
+  //
+  // Returns true on success, false on failure.
+  virtual bool ReplayLogOperation(
+      const std::vector<uint8_t>& log_entry_root,
+      const std::vector<std::vector<uint8_t>>& h_aux,
+      const std::vector<uint8_t>& orig_cred_metadata,
+      std::vector<uint8_t>* new_cred_metadata,
+      std::vector<uint8_t>* new_mac) = 0;
 };
 
 }  // namespace cryptohome

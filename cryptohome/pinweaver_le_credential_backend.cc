@@ -21,6 +21,7 @@ extern "C" {
 }
 
 #include "cryptohome/tpm2_impl.h"
+#include "pinweaver.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -76,6 +77,30 @@ std::vector<uint8_t> StringToBlob(const std::string& str) {
 
 std::string BlobToString(const std::vector<uint8_t>& blob) {
   return std::string(blob.begin(), blob.end());
+}
+
+void ConvertPinWeaverLogToLELog(
+    const std::vector<trunks::PinWeaverLogEntry>& orig_log,
+    std::vector<cryptohome::LELogEntry>* log) {
+  for (const auto& log_entry : orig_log) {
+    cryptohome::LELogEntry entry;
+    if (log_entry.has_insert_leaf()) {
+      entry.type = LE_LOG_INSERT;
+      entry.mac = StringToBlob(log_entry.insert_leaf().hmac());
+    } else if (log_entry.has_remove_leaf()) {
+      entry.type = LE_LOG_REMOVE;
+    } else if (log_entry.has_auth()) {
+      entry.type = LE_LOG_CHECK;
+    } else if (log_entry.has_reset_tree()) {
+      entry.type = LE_LOG_RESET;
+    } else {
+      entry.type = LE_LOG_INVALID;
+    }
+    entry.root = StringToBlob(log_entry.root());
+    entry.label = log_entry.label();
+
+    log->push_back(entry);
+  }
 }
 
 }  // namespace
@@ -208,17 +233,40 @@ bool PinweaverLECredentialBackend::RemoveCredential(
 
 bool PinweaverLECredentialBackend::GetLog(
     const std::vector<uint8_t>& cur_disk_root_hash,
-    std::vector<uint8_t>* root_hash) {
+    std::vector<uint8_t>* root_hash,
+    std::vector<LELogEntry>* log) {
   return PerformPinweaverOperation(
       "GetLog", nullptr, [&](trunks::TpmUtility* tpm_utility) {
         uint32_t pinweaver_status;
         std::string cur_root = BlobToString(cur_disk_root_hash);
         std::string root;
-        std::vector<trunks::PinWeaverLogEntry> log;
+        std::vector<trunks::PinWeaverLogEntry> log_ret;
         trunks::TPM_RC result = tpm_utility->PinWeaverGetLog(
-            cur_root, &pinweaver_status, &root, &log);
+            cur_root, &pinweaver_status, &root, &log_ret);
         *root_hash = StringToBlob(root);
-        // TODO(b/809710): Fix the handling/conversion of log data.
+        ConvertPinWeaverLogToLELog(log_ret, log);
+        return std::make_pair(result, pinweaver_status);
+      });
+}
+
+bool PinweaverLECredentialBackend::ReplayLogOperation(
+    const std::vector<uint8_t>& log_entry_root,
+    const std::vector<std::vector<uint8_t>>& h_aux,
+    const std::vector<uint8_t>& orig_cred_metadata,
+    std::vector<uint8_t>* new_cred_metadata,
+    std::vector<uint8_t>* new_mac) {
+  return PerformPinweaverOperation(
+      "LogReplay", nullptr, [&](trunks::TpmUtility* tpm_utility) {
+        uint32_t pinweaver_status;
+        std::string root;
+        std::string cred_metadata_string;
+        std::string mac_string;
+        trunks::TPM_RC result = tpm_utility->PinWeaverLogReplay(
+            BlobToString(log_entry_root), EncodeAuxHashes(h_aux),
+            BlobToString(orig_cred_metadata),
+            &pinweaver_status, &root, &cred_metadata_string, &mac_string);
+        *new_cred_metadata = StringToBlob(cred_metadata_string);
+        *new_mac = StringToBlob(mac_string);
         return std::make_pair(result, pinweaver_status);
       });
 }

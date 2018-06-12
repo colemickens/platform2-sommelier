@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 
+#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -16,7 +17,8 @@ namespace cryptohome {
 
 LECredentialManager::LECredentialManager(LECredentialBackend* le_backend,
                                          const base::FilePath& le_basedir)
-    : is_locked_(false), le_tpm_backend_(le_backend) {
+    : is_locked_(false), le_tpm_backend_(le_backend),
+      basedir_(le_basedir) {
   CHECK(le_tpm_backend_);
 
   // Check if hash tree already exists.
@@ -277,10 +279,11 @@ bool LECredentialManager::Sync() {
   std::vector<uint8_t> disk_root_hash;
   hash_tree_->GetRootHash(&disk_root_hash);
 
-  // If we don't have it, get the root hash from the LE backend.
+  // If we don't have it, get the root hash from the LE Backend.
+  std::vector<LELogEntry> log;
   if (root_hash_.empty()) {
-    if (!le_tpm_backend_->GetLog(disk_root_hash, &root_hash_)) {
-      LOG(ERROR) << "Couldn't get LE log.";
+    if (!le_tpm_backend_->GetLog(disk_root_hash, &root_hash_, &log)) {
+      LOG(ERROR) << "Couldn't get LE Log.";
       is_locked_ = true;
       return false;
     }
@@ -300,11 +303,166 @@ bool LECredentialManager::Sync() {
     return true;
   }
 
-  // TODO(crbug.com/809710): Add log replay functionality here.
-  LOG(ERROR) << "Failed to synchronize LE disk state after log replay.";
-  // TODO(crbug.com/809749): Add UMA logging for this event.
-  is_locked_ = true;
-  return false;
+  // Get the log again, since |disk_root_hash| may have changed.
+  log.clear();
+  if (!le_tpm_backend_->GetLog(disk_root_hash, &root_hash_, &log)) {
+    LOG(ERROR) << "Couldn't get LE Log.";
+    is_locked_ = true;
+    return false;
+  }
+  if (!ReplayLogEntries(log, disk_root_hash)) {
+    LOG(ERROR) << "Failed to Synchronize LE disk state after log replay.";
+    // TODO(crbug.com/809749): Add UMA logging for this event.
+    is_locked_ = true;
+    return false;
+  }
+  return true;
+}
+
+bool LECredentialManager::ReplayInsert(
+    uint64_t label,
+    const std::vector<uint8_t>& log_root,
+    const std::vector<uint8_t>& mac) {
+  // Fill cred_metadata with some random data since LECredentialManager
+  // considers empty cred_metadata as a non-existent label.
+  std::vector<uint8_t> cred_metadata(mac.size());
+  CryptoLib::GetSecureRandom(cred_metadata.data(), cred_metadata.size());
+  SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
+  if (!hash_tree_->StoreLabel(label_obj, mac, cred_metadata, true)) {
+    LOG(ERROR) << "InsertCredentialReplay disk update "
+                  "failed, label: "
+               << label_obj.value();
+    // TODO(crbug.com/809749): Report failure to UMA.
+    return false;
+  }
+
+  return true;
+}
+
+bool LECredentialManager::ReplayCheck(uint64_t label,
+                                      const std::vector<uint8_t>& log_root) {
+  SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
+  std::vector<uint8_t> orig_cred, orig_mac;
+  std::vector<std::vector<uint8_t>> h_aux;
+  bool metadata_lost;
+  if (RetrieveLabelInfo(label_obj, &orig_cred, &orig_mac, &h_aux,
+                        &metadata_lost) != LE_CRED_SUCCESS) {
+    return false;
+  }
+
+  brillo::SecureBlob new_cred, new_mac;
+  if (!le_tpm_backend_->ReplayLogOperation(log_root, h_aux, orig_cred,
+                                           &new_cred, &new_mac)) {
+    LOG(ERROR) << "Auth replay failed on LE Backend, label: " << label;
+    // TODO(crbug.com/809749): Report failure to UMA.
+    return false;
+  }
+
+  // Store the new credential metadata and MAC.
+  if (!new_cred.empty() && !new_mac.empty()) {
+    if (!hash_tree_->StoreLabel(label_obj, new_mac, new_cred, false)) {
+      LOG(ERROR) << "Error in LE auth replay disk hash tree update, label: "
+                 << label;
+      // TODO(crbug.com/809749): Report failure to UMA.
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool LECredentialManager::ReplayResetTree() {
+  hash_tree_.reset();
+  if (!base::DeleteFile(basedir_, true)) {
+    PLOG(ERROR) << "Failed to delete disk hash tree during replay.";
+    return false;
+  }
+  hash_tree_ =
+      std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, basedir_);
+  hash_tree_->GenerateAndStoreHashCache();
+  return true;
+}
+
+bool LECredentialManager::ReplayRemove(uint64_t label) {
+  SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
+  if (!hash_tree_->RemoveLabel(label_obj)) {
+    LOG(ERROR) << "RemoveLabel LE Replay failed for label: " << label;
+    // TODO(crbug.com/809749): Report failure to UMA.
+    return false;
+  }
+  return true;
+}
+
+bool LECredentialManager::ReplayLogEntries(
+    const std::vector<LELogEntry>& log,
+    const std::vector<uint8_t>& disk_root_hash) {
+  // The log entries are in reverse chronological order. Because the log entries
+  // only store the root hash after the operation, the strategy here is:
+  // - Parse the logs in reverse.
+  // - First try to find a log entry which matches the on-disk root hash,
+  //   and start with the log entry following that. If you can't, then just
+  //   start from the earliest log.
+  // - For all other entries, simply attempt to replay the operation.
+  auto it = log.rbegin();
+  for (; it != log.rend(); ++it) {
+    const LELogEntry& log_entry = *it;
+    if (log_entry.root == disk_root_hash) {
+      ++it;
+      break;
+    }
+  }
+
+  if (it == log.rend()) {
+    it = log.rbegin();
+  }
+
+
+  std::vector<uint8_t> cur_root_hash = disk_root_hash;
+  std::vector<uint64_t> inserted_leaves;
+  for (; it != log.rend(); ++it) {
+    const LELogEntry& log_entry = *it;
+    bool ret;
+    switch (log_entry.type) {
+      case LE_LOG_INSERT:
+        ret = ReplayInsert(log_entry.label, log_entry.root, log_entry.mac);
+        if (ret) {
+          inserted_leaves.push_back(log_entry.label);
+        }
+        break;
+      case LE_LOG_REMOVE:
+        ret = ReplayRemove(log_entry.label);
+        break;
+      case LE_LOG_CHECK:
+        ret = ReplayCheck(log_entry.label, log_entry.root);
+        break;
+      case LE_LOG_RESET:
+        ret = ReplayResetTree();
+        break;
+      case LE_LOG_INVALID:
+        ret = false;
+        break;
+    }
+    if (!ret) {
+      LOG(ERROR) << "Failure to replay LE Cred log entries.";
+      return false;
+    }
+    cur_root_hash.clear();
+    hash_tree_->GetRootHash(&cur_root_hash);
+    if (cur_root_hash != log_entry.root) {
+      LOG(ERROR) << "Root hash doesn't match log root after replaying entry.";
+      return false;
+    }
+  }
+
+  // Remove any inserted leaves since they are unusable.
+  for (const auto& label : inserted_leaves) {
+    if (RemoveCredential(label) != LE_CRED_SUCCESS) {
+      LOG(ERROR) << "Failed to remove re-inserted label: " << label;
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace cryptohome

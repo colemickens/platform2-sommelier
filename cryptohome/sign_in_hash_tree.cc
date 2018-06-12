@@ -125,10 +125,8 @@ bool SignInHashTree::StoreLabel(const Label& label,
     HashTreeLeafData leaf_data;
     leaf_data.set_mac(hmac.data(), hmac.size());
     leaf_data.set_metadata_lost(metadata_lost);
-    if (!metadata_lost) {
-      leaf_data.set_credential_metadata(cred_metadata.data(),
-                                        cred_metadata.size());
-    }
+    leaf_data.set_credential_metadata(cred_metadata.data(),
+                                      cred_metadata.size());
 
     std::vector<uint8_t> merged_blob(leaf_data.ByteSize());
     if (!leaf_data.SerializeToArray(merged_blob.data(), merged_blob.size())) {

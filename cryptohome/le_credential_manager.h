@@ -75,7 +75,7 @@ class LECredentialManager {
   // Attempts authentication for a LE Credential.
   //
   // Checks whether the LE credential |le_secret| for a |label| is correct.
-  // Returns LE_TPM_SUCCESS on success. Additionally, the released
+  // Returns LE_CRED_SUCCESS on success. Additionally, the released
   // high entropy credential is placed in |he_secret|.
   //
   // On failure, returns:
@@ -90,7 +90,7 @@ class LECredentialManager {
 
   // Attempts reset of a LE Credential.
   //
-  // Returns LE_TPM_SUCCESS on success.
+  // Returns LE_CRED_SUCCESS on success.
   //
   // On failure, returns:
   // - LE_CRED_ERROR_INVALID_RESET_SECRET for incorrect reset secret.
@@ -103,7 +103,7 @@ class LECredentialManager {
 
   // Remove a credential at node with label |label|.
   //
-  // Returns LE_TPM_SUCCESS on success.
+  // Returns LE_CRED_SUCCESS on success.
   // On failure, returns:
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // - LE_CRED_ERROR_HASH_TREE for hash tree error.
@@ -119,7 +119,7 @@ class LECredentialManager {
   // whether the secret being checked is the LE secret (true) or the reset
   // secret (false).
   //
-  // Returns LE_TPM_SUCCESS on success.
+  // Returns LE_CRED_SUCCESS on success.
   //
   // On failure, returns:
   // - LE_CRED_ERROR_INVALID_LE_SECRET for incorrect LE authentication attempt.
@@ -167,6 +167,46 @@ class LECredentialManager {
   // operations during the class lifecycle.
   bool Sync();
 
+  // Replays the InsertCredential operation using the information provided
+  // from the log entry from the LE credential backend.
+  // |label| denotes which label to perform the operation on,
+  // |log_root| is what the root hash should be after this operation is
+  // completed. It should directly be used from the log entry.
+  // |mac| is the MAC of the credential which has to be inserted.
+  //
+  // Returns true on success, false on failure.
+  //
+  // NOTE: A replayed insert is unusable and should be deleted after the replay
+  // is complete.
+  bool ReplayInsert(uint64_t label,
+                    const std::vector<uint8_t>& log_root,
+                    const std::vector<uint8_t>& mac);
+
+  // Replays the CheckCredential / ResetCredential operation using the
+  // information provided from the log entry from the LE credential
+  // backend.
+  // |label| denotes which credential label to perform the operation on.
+  // |log_root| is what the root hash should be after this operation is
+  // completed. It should directly be used from the log entry.
+  //
+  // Returns true on success, false on failure.
+  bool ReplayCheck(uint64_t label,
+                   const std::vector<uint8_t>& log_root);
+
+  // Resets the HashTree.
+  bool ReplayResetTree();
+
+  // Replays the RemoveCredential for |label| which is provided from
+  // the LE Backend Replay logs.
+  //
+  // Returns true on success, false otherwise.
+  bool ReplayRemove(uint64_t label);
+
+  // Replays all the log operations provided in |log|, and makes the
+  // corresponding updates to the HashTree.
+  bool ReplayLogEntries(const std::vector<LELogEntry>& log,
+                        const std::vector<uint8_t>& disk_root_hash);
+
   // Last resort flag which prevents any further Low Entropy operations from
   // occuring, till the next time the class is instantiated.
   // This is used in a situation where an operation succeeds on the TPM,
@@ -185,6 +225,8 @@ class LECredentialManager {
   LECredentialBackend* le_tpm_backend_;
   // In-memory copy of LEBackend's root hash value.
   std::vector<uint8_t> root_hash_;
+  // Directory where all LE Credential related data is stored.
+  base::FilePath basedir_;
   std::unique_ptr<SignInHashTree> hash_tree_;
 };
 
