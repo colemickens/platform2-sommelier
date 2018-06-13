@@ -787,14 +787,24 @@ help_network_diag() (
   debugd_shill network_diag --help
 )
 
+u2f_warning='
+  ### IMPORTANT: The U2F feature is experimental and not suitable for
+  ### general production use in its current form. The current
+  ### implementation is still in flux and some features (including
+  ### security-relevant ones) are still missing. You are welcome to
+  ### play with this, but use at your own risk. You have been warned.
+'
+
 USAGE_u2f_flags='<u2f | g2f>[,verbose]'
-HELP_u2f_flags='
+HELP_u2f_flags="
+${u2f_warning}
   Set flags to override the second-factor authentication daemon configuration.
   u2f: Always enable the standard U2F mode even if not set in device policy.
   g2f: Always enable the U2F mode plus some additional extensions.
   verbose: Increase the daemon logging verbosity in /var/log/messages.
-'
+"
 cmd_u2f_flags() (
+  echo "${u2f_warning}"
   debugd SetU2fFlags "string:$*"
 )
 
