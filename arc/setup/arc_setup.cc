@@ -263,9 +263,15 @@ bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
   // Downgraded from P to N. (b/80113276)
   if (data_sdk_version == AndroidSdkVersion::ANDROID_P &&
       system_sdk_version == AndroidSdkVersion::ANDROID_N_MR1) {
+    LOG(INFO) << "Clearing /data dir because ARC was downgraded from P to N.";
     return true;
   }
-  // TODO(niwa): Clear data if upgraded from M to P, skipping N. (b/77591360)
+  // Upgraded from M to P. (b/77591360)
+  if (data_sdk_version == AndroidSdkVersion::ANDROID_M &&
+      system_sdk_version == AndroidSdkVersion::ANDROID_P) {
+    LOG(INFO) << "Clearing /data dir because ARC was upgraded from M to P.";
+    return true;
+  }
   return false;
 }
 
@@ -1493,7 +1499,8 @@ void ArcSetup::GetBootTypeAndDataSdkVersion(
     LOG(INFO) << "This is the first boot after OTA: system="
               << system_fingerprint << ", data=" << data_fingerprint;
   }
-  LOG(INFO) << "Data SDK version " << data_sdk_version;
+  LOG(INFO) << "Data SDK version: " << data_sdk_version;
+  LOG(INFO) << "System SDK version: " << sdk_version_;
   *out_boot_type = ota_detected ? ArcBootType::FIRST_BOOT_AFTER_UPDATE
                                 : ArcBootType::REGULAR_BOOT;
   *out_data_sdk_version = SdkVersionFromString(data_sdk_version);
