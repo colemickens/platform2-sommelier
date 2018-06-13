@@ -107,6 +107,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(server_id, "", "ID expected from server");
   DEFINE_string(user_pin, "", "PKCS#11 User PIN");
   DEFINE_string(xauth_credentials_file, "", "File with Xauth user credentials");
+  DEFINE_string(shill_task_service, "", "RPC Connection Identifier");
+  DEFINE_string(shill_task_path, "", "RPC Object Identifier");
 
   // IpsecManager related flags.
 
@@ -200,6 +202,32 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(log_flags);
   logging::SetMinLogLevel(FLAGS_log_level);
   brillo::OpenLog("l2tpipsec_vpn", true);
+
+  // TODO(mortonm): When shill sandboxing lands and sticks, simplify this code
+  // by removing this if statement, since we will always be spawned in a
+  // minijail after that.
+  if (getenv("SHILL_TASK_SERVICE") == nullptr ||
+      getenv("SHILL_TASK_SERVICE") == nullptr) {
+    // The necessary env vars were not passed in, implying we were spawned in a
+    // minijail. Clear the env vars left over from the parent and then set
+    // RPC-related vars to reflect the values that were passed in on the command
+    // line.
+    if (clearenv() != 0) {
+      PLOG(ERROR) << "Unable to clear environment vars";
+      return vpn_manager::kServiceErrorInternal;
+    }
+    if (setenv("SHILL_TASK_SERVICE", FLAGS_shill_task_service.c_str(), 0) !=
+        0) {
+      PLOG(ERROR) << "Unable to set SHILL_TASK_SERVICE to: "
+                  << FLAGS_shill_task_service.c_str();
+      return vpn_manager::kServiceErrorInternal;
+    }
+    if (setenv("SHILL_TASK_PATH", FLAGS_shill_task_path.c_str(), 0) != 0) {
+      PLOG(ERROR) << "Unable to set SHILL_TASK_PATH to: "
+                  << FLAGS_shill_task_path.c_str();
+      return vpn_manager::kServiceErrorInternal;
+    }
+  }
 
   IpsecManager ipsec(FLAGS_esp, FLAGS_ike, FLAGS_ipsec_timeout,
                      FLAGS_leftprotoport, FLAGS_rekey, FLAGS_rightprotoport,
