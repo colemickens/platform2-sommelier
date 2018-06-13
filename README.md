@@ -50,6 +50,7 @@ copies.
 | [cryptohome](./cryptohome/) | Daemon and tools for managing encrypted /home and /var directories |
 | [debugd](./debugd/) | Centralized debug daemon for random tools |
 | [disk_updater](./disk_updater/) | Utility for updating root disk firmware (e.g. SSDs and eMMC) |
+| [dlcservice](./dlcservice/) | Downloadable Content (DLC) Service daemon |
 | [easy-unlock](./easy-unlock/) | Daemon for handling Easy Unlock requests (e.g. unlocking Chromebooks with an Android device) |
 | [feedback](./feedback/) | Daemon for headless systems that want to gather feedback (normally Chrome manages it) |
 | [fitpicker](./fitpicker/) ||

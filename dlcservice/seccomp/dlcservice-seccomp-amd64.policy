@@ -1,0 +1,45 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+rt_sigaction: 1
+open: 1
+mmap: 1
+close: 1
+read: 1
+fstat: 1
+mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
+stat: 1
+munmap: 1
+brk: 1
+access: 1
+write: 1
+restart_syscall: 1
+exit: 1
+exit_group: 1
+rt_sigreturn: 1
+clone: 1
+lseek: 1
+pipe: 1
+setpgid: 1
+arch_prctl: 1
+execve: 1
+wait4: 1
+getuid: 1
+geteuid: 1
+getgid: 1
+getegid: 1
+epoll_create1: 1
+pipe2: 1
+epoll_ctl: 1
+gettid: 1
+rt_sigprocmask: 1
+signalfd4: 1
+clock_getres: 1
+getresuid: 1
+getresgid: 1
+fcntl: 1
+getsockname: 1
+poll: 1
+sendmsg: 1
+recvmsg: 1
+epoll_wait: 1

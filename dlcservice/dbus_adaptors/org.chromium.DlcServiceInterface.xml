@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2018 The Chromium Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/DlcService"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+<interface name="org.chromium.DlcServiceInterface">
+  <method name="Install">
+    <tp:docstring>
+      Install Downloadable Content (DLC).
+    </tp:docstring>
+    <arg name="id" type="s" direction="in">
+      <tp:docstring>
+        ID of the DLC.
+      </tp:docstring>
+    </arg>
+    <arg name="mount_point" type="s" direction="out">
+      <tp:docstring>
+        The mount path of the DLC.
+      </tp:docstring>
+    </arg>
+  </method>
+  <method name="Uninstall">
+    <tp:docstring>
+      Uninstall Downloadable Content (DLC).
+    </tp:docstring>
+    <arg name="id" type="s" direction="in">
+      <tp:docstring>
+        ID of the DLC.
+      </tp:docstring>
+    </arg>
+  </method>
+</interface>
+</node>
