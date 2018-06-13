@@ -17,6 +17,7 @@
       'target_name': 'bizlink-updater',
       'type': 'executable',
       'sources': [
+        'bizlink-updater/src/dp_aux_ctrl.cc',
         'bizlink-updater/src/main.cc',
       ],
     },
