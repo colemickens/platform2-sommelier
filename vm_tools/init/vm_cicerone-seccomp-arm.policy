@@ -1,0 +1,64 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+epoll_pwait: 1
+gettid: 1
+futex: 1
+# Disallow mprotect with PROT_EXEC set.
+mprotect: arg2 in 0xfffffffb
+recvmsg: 1
+epoll_wait: 1
+sendmsg: 1
+write: 1
+read: 1
+# Disallow mmap2 with PROT_EXEC set.
+mmap2: arg2 in 0xfffffffb
+sendto: 1
+poll: 1
+epoll_ctl: 1
+fcntl64: 1
+setsockopt: 1
+brk: 1
+close: 1
+getsockopt: 1
+rt_sigprocmask: 1
+socket: arg0 == AF_INET6 || arg0 == AF_UNIX || arg0 == AF_INET
+eventfd2: 1
+geteuid32: 1
+epoll_create1: 1
+getgid32: 1
+munmap: 1
+clone: 1
+set_robust_list: 1
+getegid32: 1
+getuid32: 1
+rt_sigaction: 1
+connect: 1
+open: 1
+fstat64: 1
+getsockname: 1
+accept4: 1
+bind: 1
+pipe2: 1
+restart_syscall: 1
+exit_group: 1
+rt_sigreturn: 1
+lseek: 1
+_llseek: 1
+getresuid32: 1
+exit: 1
+prctl: arg0 == PR_SET_NAME
+clock_getres: 1
+getresgid32: 1
+setpriority: 1
+ugetrlimit: 1
+signalfd4: 1
+listen: 1
+ioctl: arg1 == TCGETS
+madvise: 1
+shutdown: 1
+gettimeofday: 1
+send: 1
+clock_gettime: 1
+tgkill: 1
+sigreturn: 1
