@@ -24,8 +24,11 @@
 #include <string>
 
 #include <base/command_line.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/timer/elapsed_timer.h>
+#include <brillo/file_utils.h>
 #include <brillo/syslog_logging.h>
 
 #include "trunks/error_codes.h"
@@ -33,6 +36,7 @@
 #include "trunks/password_authorization_delegate.h"
 #include "trunks/policy_session.h"
 #include "trunks/scoped_key_handle.h"
+#include "trunks/session_manager.h"
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_client_test.h"
@@ -63,10 +67,70 @@ void PrintUsage() {
   puts("  --extend_pcr --index=<N> --value=<value> - Extends a PCR.");
   puts("  --tpm_version - Prints TPM versions and IDs similar to tpm_version.");
   puts("  --endorsement_public_key - Prints the public endorsement key.");
+  puts("  --key_create --rsa=<bits> --usage=sign|decrypt|all");
+  puts("               --key_blob=<file> [--print_time] [--sess_*]");
+  puts("                    - Creates a key and saves the blob to file.");
+  puts("  --key_load --key_blob=<file> [--print_time] [--sess_*]");
+  puts("                    - Loads key from blob, returns handle.");
+  puts("  --key_sign --handle=<H> --data=<in_file> --signature=<out_file>");
+  puts("             [--print_time] [--sess_*]");
+  puts("                    - Signs the hash of data using the loaded key.");
+  puts("  --key_info --handle=<H> - Prints information about the loaded key.");
+  puts("  --sess_* - group of options providing parameters for auth session:");
+  puts("      --sess_salted");
+  puts("      --sess_encrypted");
 }
 
 std::string HexEncode(const std::string& bytes) {
   return base::HexEncode(bytes.data(), bytes.size());
+}
+
+std::string HexEncode(const trunks::TPM2B_DIGEST* tpm2b) {
+  return base::HexEncode(tpm2b->buffer, tpm2b->size);
+}
+
+int OutputToFile(const std::string& file_name, const std::string& data) {
+  if (!brillo::WriteStringToFile(base::FilePath(file_name), data)) {
+    LOG(ERROR) << "Failed to write to " << file_name;
+    return -1;
+  }
+  return 0;
+}
+
+int InputFromFile(const std::string& file_name, std::string* data) {
+  if (!base::ReadFileToString(base::FilePath(file_name), data)) {
+    LOG(ERROR) << "Failed to write to " << file_name;
+    return -1;
+  }
+  return 0;
+}
+
+template <typename OP, typename... ARGS>
+trunks::TPM_RC CallTimed(bool print_time,
+                         const char* op_name,
+                         OP op_func,
+                         ARGS&&... args) {
+  base::ElapsedTimer timer;
+  trunks::TPM_RC rc = op_func(args...);
+  if (print_time) {
+    printf("%s took %" PRId64 " ms\n", op_name,
+           timer.Elapsed().InMilliseconds());
+  }
+  return rc;
+}
+
+template <typename OP, typename... ARGS>
+trunks::TPM_RC CallTpmUtility(bool print_time,
+                              const TrunksFactory& factory,
+                              const char* op_name,
+                              OP op_func,
+                              ARGS&&... args) {
+  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
+  trunks::TPM_RC rc = CallTimed(print_time, op_name, std::mem_fn(op_func),
+                                tpm_utility.get(), args...);
+  LOG_IF(ERROR, rc) << "Error during " << op_name << ": "
+                    << trunks::GetErrorString(rc);
+  return rc;
 }
 
 int Startup(const TrunksFactory& factory) {
@@ -216,6 +280,63 @@ int EndorsementPublicKey(const TrunksFactory& factory) {
   return 0;
 }
 
+int KeyStartSession(trunks::SessionManager* session_manager,
+                    base::CommandLine* cl,
+                    trunks::HmacAuthorizationDelegate* delegate) {
+  bool salted = cl->HasSwitch("sess_salted");
+  bool encrypted = cl->HasSwitch("sess_encrypted");
+  bool print_time = cl->HasSwitch("print_time");
+
+  trunks::TPM_RC rc =
+      CallTimed(print_time, "StartSession",
+                std::mem_fn(&trunks::SessionManager::StartSession),
+                session_manager, trunks::TPM_SE_HMAC, trunks::TPM_RH_NULL, "",
+                salted, encrypted, delegate);
+  LOG_IF(ERROR, rc) << "Failed to start session: "
+                    << trunks::GetErrorString(rc);
+  return rc;
+}
+
+int GetKeyUsage(const std::string& option_value,
+                trunks::TpmUtility::AsymmetricKeyUsage* key_usage) {
+  const std::map<std::string,
+                 trunks::TpmUtility::AsymmetricKeyUsage> mapping = {
+    {"decrypt", trunks::TpmUtility::kDecryptKey},
+    {"sign", trunks::TpmUtility::kSignKey},
+    {"all", trunks::TpmUtility::kDecryptAndSignKey},
+  };
+  auto entry = mapping.find(option_value);
+  if (entry == mapping.end()) {
+    LOG(ERROR) << "Unrecognized key usage: " << option_value;
+    return -1;
+  }
+  *key_usage = entry->second;
+  return 0;
+}
+
+int KeyInfo(bool print_time, const TrunksFactory& factory, uint32_t handle) {
+  trunks::TPMT_PUBLIC public_area;
+  if (CallTpmUtility(print_time, factory, "GetKeyPublicArea",
+                     &trunks::TpmUtility::GetKeyPublicArea, handle,
+                     &public_area)) {
+    return -1;
+  }
+  puts("Key public area:");
+  printf("  type: %#x\n", public_area.type);
+  printf("  name_alg: %#x\n", public_area.name_alg);
+  printf("  attributes: %#x\n", public_area.object_attributes);
+  printf("  auth_policy: %s\n", HexEncode(&public_area.auth_policy).c_str());
+
+  std::string key_name;
+  if (CallTpmUtility(print_time, factory, "GetKeyName",
+                     &trunks::TpmUtility::GetKeyName, handle, &key_name)) {
+    return -1;
+  }
+  printf("Key name: %s\n", HexEncode(key_name).c_str());
+
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -231,6 +352,7 @@ int main(int argc, char** argv) {
   TrunksFactoryImpl factory;
   CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
 
+  bool print_time = cl->HasSwitch("print_time");
   if (cl->HasSwitch("status")) {
     return DumpStatus(factory);
   }
@@ -357,6 +479,77 @@ int main(int argc, char** argv) {
   }
   if (cl->HasSwitch("endorsement_public_key")) {
     return EndorsementPublicKey(factory);
+  }
+
+  if (cl->HasSwitch("key_create") && cl->HasSwitch("rsa") &&
+      cl->HasSwitch("usage") && cl->HasSwitch("key_blob")) {
+    int modulus_bits = std::stoi(cl->GetSwitchValueASCII("rsa"), nullptr, 0);
+    trunks::TpmUtility::AsymmetricKeyUsage key_usage;
+    if (GetKeyUsage(cl->GetSwitchValueASCII("usage"), &key_usage)) {
+      return -1;
+    }
+    trunks::HmacAuthorizationDelegate delegate;
+    std::unique_ptr<trunks::SessionManager> session_manager =
+        factory.GetSessionManager();
+    if (KeyStartSession(session_manager.get(), cl, &delegate)) {
+      return -1;
+    }
+    std::string key_blob;
+    if (CallTpmUtility(print_time, factory, "CreateRSAKeyPair",
+                       &trunks::TpmUtility::CreateRSAKeyPair, key_usage,
+                       modulus_bits, 0x10001 /* exponent */, "" /* password */,
+                       "" /* policy_digest */,
+                       false /* use_only_policy_digest */,
+                       std::vector<uint32_t>() /* pcrs */, &delegate, &key_blob,
+                       nullptr /* creation_blob */)) {
+      return -1;
+    }
+    return OutputToFile(cl->GetSwitchValueASCII("key_blob"), key_blob);
+  }
+  if (cl->HasSwitch("key_load") && cl->HasSwitch("key_blob")) {
+    std::string key_blob;
+    if (InputFromFile(cl->GetSwitchValueASCII("key_blob"), &key_blob)) {
+      return -1;
+    }
+    trunks::HmacAuthorizationDelegate delegate;
+    std::unique_ptr<trunks::SessionManager> session_manager =
+        factory.GetSessionManager();
+    if (KeyStartSession(session_manager.get(), cl, &delegate)) {
+      return -1;
+    }
+    trunks::TPM_HANDLE handle;
+    if (CallTpmUtility(print_time, factory, "Load",
+                       &trunks::TpmUtility::LoadKey, key_blob, &delegate,
+                       &handle)) {
+      return -1;
+    }
+    printf("Loaded key handle: %#x\n", handle);
+    return 0;
+  }
+  if (cl->HasSwitch("key_sign") && cl->HasSwitch("handle") &&
+      cl->HasSwitch("data") && cl->HasSwitch("signature")) {
+    uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
+    std::string data;
+    if (InputFromFile(cl->GetSwitchValueASCII("data"), &data)) {
+      return -1;
+    }
+    trunks::HmacAuthorizationDelegate delegate;
+    std::unique_ptr<trunks::SessionManager> session_manager =
+        factory.GetSessionManager();
+    if (KeyStartSession(session_manager.get(), cl, &delegate)) {
+      return -1;
+    }
+    std::string signature;
+    if (CallTpmUtility(print_time, factory, "Sign", &trunks::TpmUtility::Sign,
+                       handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA256,
+                       data, true /* generate_hash */, &delegate, &signature)) {
+      return -1;
+    }
+    return OutputToFile(cl->GetSwitchValueASCII("signature"), signature);
+  }
+  if (cl->HasSwitch("key_info") && cl->HasSwitch("handle")) {
+    uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
+    return KeyInfo(print_time, factory, handle);
   }
 
   puts("Invalid options!");
