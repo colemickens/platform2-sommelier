@@ -87,3 +87,6 @@
 
 (/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
+
+# Downloads files
+/home/chronos/user/Downloads(/.*)*   u:object_r:cros_downloads_file:s0

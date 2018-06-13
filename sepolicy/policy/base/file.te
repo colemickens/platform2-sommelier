@@ -7,6 +7,7 @@ type proc, fs_type, proc_type;
 
 # File types
 type unlabeled, file_type;
+type media_rw_data_file, file_type, data_file_type, core_data_file_type, mlstrustedobject;
 
 type selinuxfs, fs_type, mlstrustedobject;
 type devpts, fs_type, mlstrustedobject;
