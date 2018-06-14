@@ -72,12 +72,15 @@ bool JpegEncodeAcceleratorImpl::Start() {
     }
   }
 
-  auto is_initialized = Future<bool>::Create(nullptr);
+  cancellation_relay_ = std::make_unique<CancellationRelay>();
+  auto is_initialized = Future<bool>::Create(cancellation_relay_.get());
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&JpegEncodeAcceleratorImpl::InitializeOnIpcThread,
                             base::Unretained(this),
                             GetFutureCallback(is_initialized)));
-  is_initialized->Wait();
+  if (!is_initialized->Wait()) {
+    return false;
+  }
 
   VLOGF_EXIT();
 
@@ -111,6 +114,7 @@ void JpegEncodeAcceleratorImpl::DestroyOnIpcThread() {
   jea_ptr_.reset();
   input_shm_map_.clear();
   exif_shm_map_.clear();
+  cancellation_relay_ = nullptr;
   VLOGF_EXIT();
 }
 
@@ -136,7 +140,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
   buffer_id_ = (buffer_id_ + 1) & 0x3FFFFFFF;
 
-  auto future = Future<int>::Create(nullptr);
+  auto future = Future<int>::Create(cancellation_relay_.get());
   auto callback = base::Bind(&JpegEncodeAcceleratorImpl::EncodeSyncCallback,
       base::Unretained(this), GetFutureCallback(future),
       output_data_size);

@@ -74,7 +74,8 @@ bool JpegDecodeAcceleratorImpl::Start() {
     }
   }
 
-  auto is_initialized = cros::Future<bool>::Create(nullptr);
+  cancellation_relay_ = std::make_unique<CancellationRelay>();
+  auto is_initialized = cros::Future<bool>::Create(cancellation_relay_.get());
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&JpegDecodeAcceleratorImpl::InitializeOnIpcThread,
                             base::Unretained(this),
@@ -123,6 +124,7 @@ void JpegDecodeAcceleratorImpl::OnJpegDecodeAcceleratorError() {
   LOGF(ERROR) << "There is a mojo error for JpegDecodeAccelerator";
   jda_ptr_.reset();
   input_shm_map_.clear();
+  cancellation_relay_ = nullptr;
   VLOGF_EXIT();
 }
 
@@ -133,7 +135,7 @@ JpegDecodeAccelerator::Error JpegDecodeAcceleratorImpl::DecodeSync(
     int32_t coded_size_height,
     int output_fd,
     uint32_t output_buffer_size) {
-  auto future = cros::Future<int>::Create(nullptr);
+  auto future = cros::Future<int>::Create(cancellation_relay_.get());
 
   Decode(input_fd, input_buffer_size, coded_size_width, coded_size_height,
          output_fd, output_buffer_size,

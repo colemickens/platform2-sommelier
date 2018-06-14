@@ -15,6 +15,7 @@
 #include <base/threading/thread.h>
 
 #include "cros-camera/camera_mojo_channel_manager.h"
+#include "cros-camera/future.h"
 #include "cros-camera/jpeg_encode_accelerator.h"
 #include "mojo/cros_camera_service.mojom.h"
 #include "mojo/jea/jpeg_encode_accelerator.mojom.h"
@@ -91,6 +92,9 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
   // Camera Mojo channel manager.
   // We use it to create JpegEncodeAccelerator Mojo channel.
   std::unique_ptr<CameraMojoChannelManager> mojo_channel_manager_;
+
+  // Used to cancel pending futures when error occurs.
+  std::unique_ptr<cros::CancellationRelay> cancellation_relay_;
 
   // Pointer to local proxy of remote JpegEncodeAccelerator interface
   // implementation.

@@ -100,6 +100,9 @@ class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
   // We use it to create JpegDecodeAccelerator Mojo channel.
   std::unique_ptr<CameraMojoChannelManager> mojo_channel_manager_;
 
+  // Used to cancel pending futures when error occurs.
+  std::unique_ptr<cros::CancellationRelay> cancellation_relay_;
+
   // Pointer to local proxy of remote JpegDecodeAccelerator interface
   // implementation.
   // All the Mojo communication to |jda_ptr_| happens on |ipc_thread_|.
