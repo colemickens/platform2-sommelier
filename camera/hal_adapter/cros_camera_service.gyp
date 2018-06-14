@@ -48,6 +48,7 @@
         'camera_module_delegate.cc',
         'cros_camera_main.cc',
         'cros_camera_mojo_utils.cc',
+        'vendor_tag_ops_delegate.cc',
       ],
     },
   ],

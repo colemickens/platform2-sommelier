@@ -11,6 +11,8 @@
 #include <tuple>
 #include <utility>
 
+#include <system/camera_metadata_hidden.h>
+
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
@@ -23,6 +25,7 @@
 #include "hal_adapter/camera_module_callbacks_delegate.h"
 #include "hal_adapter/camera_module_delegate.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
+#include "hal_adapter/vendor_tag_ops_delegate.h"
 
 namespace cros {
 
@@ -33,6 +36,8 @@ namespace {
 // |module_delegates_| and |callbacks_delegates_| maps.
 const uint32_t kIdAll = 0xFFFFFFFF;
 
+const char kVendorGoogleSectionName[] = "vendor.google";
+
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(std::vector<camera_module_t*> camera_modules)
@@ -40,7 +45,8 @@ CameraHalAdapter::CameraHalAdapter(std::vector<camera_module_t*> camera_modules)
       camera_module_thread_("CameraModuleThread"),
       camera_module_callbacks_thread_("CameraModuleCallbacksThread"),
       module_id_(0),
-      callbacks_id_(0) {
+      callbacks_id_(0),
+      vendor_tag_ops_id_(0) {
   VLOGF_ENTER();
 }
 
@@ -52,8 +58,13 @@ CameraHalAdapter::~CameraHalAdapter() {
   camera_module_callbacks_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
                             base::Unretained(this), kIdAll));
+  camera_module_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
+                 base::Unretained(this), kIdAll));
   camera_module_thread_.Stop();
   camera_module_callbacks_thread_.Stop();
+  set_camera_metadata_vendor_ops(nullptr);
 }
 
 bool CameraHalAdapter::Start() {
@@ -234,6 +245,23 @@ int32_t CameraHalAdapter::Init() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   return 0;
+}
+
+void CameraHalAdapter::GetVendorTagOps(
+    mojom::VendorTagOpsRequest vendor_tag_ops_request) {
+  VLOGF_ENTER();
+  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+
+  auto vendor_tag_ops_delegate = std::make_unique<VendorTagOpsDelegate>(
+      camera_module_thread_.task_runner(), this);
+  uint32_t vendor_tag_ops_id = vendor_tag_ops_id_++;
+  vendor_tag_ops_delegate->Bind(
+      vendor_tag_ops_request.PassMessagePipe(),
+      base::Bind(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
+                 base::Unretained(this), vendor_tag_ops_id));
+  vendor_tag_ops_delegates_[vendor_tag_ops_id] =
+      std::move(vendor_tag_ops_delegate);
+  VLOGF(1) << "VendorTagOps " << vendor_tag_ops_id << " connected";
 }
 
 void CameraHalAdapter::CloseDeviceCallback(
@@ -443,6 +471,15 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
   num_builtin_cameras_ = cameras.size();
   next_external_camera_id_ = num_builtin_cameras_;
 
+  CameraHalAdapter::get_tag_count = CameraHalAdapter::GetTagCount;
+  CameraHalAdapter::get_all_tags = CameraHalAdapter::GetAllTags;
+  CameraHalAdapter::get_section_name = CameraHalAdapter::GetSectionName;
+  CameraHalAdapter::get_tag_name = CameraHalAdapter::GetTagName;
+  CameraHalAdapter::get_tag_type = CameraHalAdapter::GetTagType;
+  if (set_camera_metadata_vendor_ops(this) != 0) {
+    LOGF(ERROR) << "Failed to set vendor ops to camera metadata";
+  }
+
   LOGF(INFO) << "SuperHAL started with " << camera_modules_.size()
              << " modules and " << num_builtin_cameras_ << " built-in cameras";
 
@@ -526,6 +563,83 @@ void CameraHalAdapter::ResetCallbacksDelegateOnThread(uint32_t callbacks_id) {
   } else {
     callbacks_delegates_.erase(callbacks_id);
   }
+}
+
+void CameraHalAdapter::ResetVendorTagOpsDelegateOnThread(
+    uint32_t vendor_tag_ops_id) {
+  VLOGF_ENTER();
+  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  base::AutoLock l(module_delegates_lock_);
+  if (vendor_tag_ops_id == kIdAll) {
+    vendor_tag_ops_delegates_.clear();
+  } else {
+    vendor_tag_ops_delegates_.erase(vendor_tag_ops_id);
+  }
+}
+
+int CameraHalAdapter::GetTagCount(const vendor_tag_ops_t* v) {
+  VLOGF_ENTER();
+  if (!v) {
+    LOGF(ERROR) << "Invalid argument";
+    return -1;
+  }
+  auto d = static_cast<const CameraHalAdapter*>(v);
+  return d->vendor_tag_map_.size();
+}
+
+void CameraHalAdapter::GetAllTags(const vendor_tag_ops_t* v,
+                                  uint32_t* tag_array) {
+  VLOGF_ENTER();
+  if (!v || !tag_array) {
+    LOGF(ERROR) << "Invalid argument";
+    return;
+  }
+  auto d = static_cast<const CameraHalAdapter*>(v);
+  for (const auto& it : d->vendor_tag_map_) {
+    *tag_array = it.first;
+    tag_array++;
+  }
+}
+
+const char* CameraHalAdapter::GetSectionName(const vendor_tag_ops_t* v,
+                                             uint32_t tag) {
+  VLOGF_ENTER();
+  if (!v) {
+    LOGF(ERROR) << "Invalid argument";
+    return nullptr;
+  }
+  auto d = static_cast<const CameraHalAdapter*>(v);
+  if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
+    return nullptr;
+  }
+  return kVendorGoogleSectionName;
+}
+
+const char* CameraHalAdapter::GetTagName(const vendor_tag_ops_t* v,
+                                         uint32_t tag) {
+  VLOGF_ENTER();
+  if (!v) {
+    LOGF(ERROR) << "Invalid argument";
+    return nullptr;
+  }
+  auto d = static_cast<const CameraHalAdapter*>(v);
+  if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
+    return nullptr;
+  }
+  return d->vendor_tag_map_.at(tag).first.c_str();
+}
+
+int CameraHalAdapter::GetTagType(const vendor_tag_ops_t* v, uint32_t tag) {
+  VLOGF_ENTER();
+  if (!v) {
+    LOGF(ERROR) << "Invalid argument";
+    return -1;
+  }
+  auto d = static_cast<const CameraHalAdapter*>(v);
+  if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
+    return -1;
+  }
+  return d->vendor_tag_map_.at(tag).second;
 }
 
 }  // namespace cros

@@ -70,4 +70,13 @@ void CameraModuleDelegate::Init(const InitCallback& callback) {
   callback.Run(camera_hal_adapter_->Init());
 }
 
+void CameraModuleDelegate::GetVendorTagOps(
+    mojom::VendorTagOpsRequest vendor_tag_ops_request,
+    const GetVendorTagOpsCallback& callback) {
+  VLOGF_ENTER();
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  camera_hal_adapter_->GetVendorTagOps(std::move(vendor_tag_ops_request));
+  callback.Run();
+}
+
 }  // namespace cros

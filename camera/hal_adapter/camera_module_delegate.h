@@ -42,6 +42,9 @@ class CameraModuleDelegate final
 
   void Init(const InitCallback& callback) final;
 
+  void GetVendorTagOps(mojom::VendorTagOpsRequest vendor_tag_ops_request,
+                       const GetVendorTagOpsCallback& callback) final;
+
   CameraHalAdapter* camera_hal_adapter_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleDelegate);

@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -30,6 +31,8 @@ class CameraModuleDelegate;
 
 class CameraModuleCallbacksDelegate;
 
+class VendorTagOpsDelegate;
+
 class CameraHalAdapter;
 
 struct CameraModuleCallbacksAux : camera_module_callbacks_t {
@@ -37,7 +40,7 @@ struct CameraModuleCallbacksAux : camera_module_callbacks_t {
   CameraHalAdapter* adapter;
 };
 
-class CameraHalAdapter {
+class CameraHalAdapter : public vendor_tag_ops_t {
  public:
   explicit CameraHalAdapter(std::vector<camera_module_t*> camera_modules);
 
@@ -65,6 +68,8 @@ class CameraHalAdapter {
   int32_t SetTorchMode(int32_t camera_id, bool enabled);
 
   int32_t Init();
+
+  void GetVendorTagOps(mojom::VendorTagOpsRequest vendor_tag_ops_request);
 
   // A callback for the camera devices opened in OpenDevice().  Used to run
   // CloseDevice() on the same thread that OpenDevice() runs on.
@@ -113,6 +118,14 @@ class CameraHalAdapter {
 
   void ResetModuleDelegateOnThread(uint32_t module_id);
   void ResetCallbacksDelegateOnThread(uint32_t callbacks_id);
+  void ResetVendorTagOpsDelegateOnThread(uint32_t vendor_tag_ops_id);
+
+  // Vendor tag ops
+  static int GetTagCount(const vendor_tag_ops_t* v);
+  static void GetAllTags(const vendor_tag_ops_t* v, uint32_t* tag_array);
+  static const char* GetSectionName(const vendor_tag_ops_t* v, uint32_t tag);
+  static const char* GetTagName(const vendor_tag_ops_t* v, uint32_t tag);
+  static int GetTagType(const vendor_tag_ops_t* v, uint32_t tag);
 
   // The handles to the camera HALs dlopen()/dlsym()'d on process start.
   std::vector<camera_module_t*> camera_modules_;
@@ -150,6 +163,11 @@ class CameraHalAdapter {
   // got from |module_id_|.
   std::map<uint32_t, std::unique_ptr<CameraModuleDelegate>> module_delegates_;
 
+  // The delegates that handle the VendorTagOps mojo IPC. The key of the map is
+  // got from |vendor_tag_ops_id_|.
+  std::map<uint32_t, std::unique_ptr<VendorTagOpsDelegate>>
+      vendor_tag_ops_delegates_;
+
   // The delegate that handles the CameraModuleCallbacks mojo IPC.  The key of
   // the map is got from |callbacks_id_|.
   std::map<uint32_t, std::unique_ptr<CameraModuleCallbacksDelegate>>
@@ -160,17 +178,21 @@ class CameraHalAdapter {
   // Protects |callbacks_delegates_|.
   base::Lock callbacks_delegates_lock_;
 
-  // Strictly increasing integers used as the key for new CameraModuleDelegate
-  // and CameraModuleCallbacksDelegate instances in |module_delegates_| and
-  // |callback_delegates_|.
+  // Strictly increasing integers used as the key for new CameraModuleDelegate,
+  // CameraModuleCallbacksDelegate and VendorTagOpsDelegate instances in
+  // |module_delegates_|, |callback_delegates_| and |vendor_tag_ops_delegates_|.
   uint32_t module_id_;
   uint32_t callbacks_id_;
+  uint32_t vendor_tag_ops_id_;
 
   // The handles to the opened camera devices.  |device_adapters_| is accessed
   // only in OpenDevice(), CloseDevice() and CameraDeviceStatusChange().  In
   // order to do lock-free access to |device_adapters_|, we run all of them on
   // the same thread (i.e. the mojo IPC handler thread in |module_delegate_|).
   std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>> device_adapters_;
+
+  // The vendor tag names and types. The key of the map is vendor tag id.
+  std::unordered_map<uint32_t, std::pair<std::string, uint8_t>> vendor_tag_map_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraHalAdapter);
 };
