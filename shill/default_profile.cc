@@ -50,7 +50,7 @@ const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
 // static
 const char DefaultProfile::kStorageConnectionIdSalt[] = "ConnectionIdSalt";
 // static
-const char DefaultProfile::kStorageHostName[] = "HostName";
+const char DefaultProfile::kStorageHostName[] = "DHCPProperty.Hostname";
 // static
 const char DefaultProfile::kStorageIgnoredDNSSearchPaths[] =
     "IgnoredDNSSearchPaths";

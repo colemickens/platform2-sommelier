@@ -236,7 +236,7 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
                             &Manager::GetIgnoredDNSSearchPaths,
                             &Manager::SetIgnoredDNSSearchPaths);
-  store_.RegisterString(kHostNameProperty, &props_.host_name);
+  store_.RegisterString(kDhcpPropertyHostnameProperty, &props_.host_name);
   store_.RegisterString(kLinkMonitorTechnologiesProperty,
                         &props_.link_monitor_technologies);
   store_.RegisterString(kNoAutoConnectTechnologiesProperty,
