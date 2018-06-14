@@ -213,9 +213,12 @@ constexpr base::FilePath::CharType kDeviceLocalAccountsDir[] =
     FILE_PATH_LITERAL("device_local_accounts");
 
 #if USE_CHEETS
+constexpr char kDefaultLocale[] = "en_US";
+
 UpgradeArcContainerRequest CreateUpgradeArcContainerRequest() {
   UpgradeArcContainerRequest request;
   request.set_account_id(kSaneEmail);
+  request.set_locale(kDefaultLocale);
   return request;
 }
 #endif
@@ -454,6 +457,90 @@ class SessionManagerImplTest : public ::testing::Test,
   }
 
  protected:
+#if USE_CHEETS
+  class UpgradeContainerExpectationsBuilder {
+   public:
+    explicit UpgradeContainerExpectationsBuilder(SessionManagerImplTest* owner)
+        : owner_(owner), locale_(kDefaultLocale) {}
+
+    UpgradeContainerExpectationsBuilder& SetDevMode(bool v) {
+      dev_mode_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetDisableBootCompletedCallback(
+        bool v) {
+      disable_boot_completed_callback_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetEnableVendorPrivileged(bool v) {
+      enable_vendor_privileged_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetDemoSessionAppsPath(
+        const std::string& v) {
+      demo_session_apps_path_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetSkipPackagesCache(bool v) {
+      skip_packages_cache_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetCopyPackagesCache(bool v) {
+      copy_packages_cache_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetLocale(const std::string& v) {
+      locale_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetPreferredLanguages(
+        const std::string& v) {
+      preferred_languages_ = v;
+      return *this;
+    }
+
+    std::vector<std::string> Build() const {
+      return {"CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
+              "CHROMEOS_INSIDE_VM=0",
+              "ANDROID_DATA_DIR=" + owner_->android_data_dir_.value(),
+              "ANDROID_DATA_OLD_DIR=" + owner_->android_data_old_dir_.value(),
+              std::string("CHROMEOS_USER=") + kSaneEmail,
+              "DISABLE_BOOT_COMPLETED_BROADCAST=" +
+                  std::to_string(disable_boot_completed_callback_),
+              "ENABLE_VENDOR_PRIVILEGED=" +
+                  std::to_string(enable_vendor_privileged_),
+              // The upgrade signal has a PID.
+              "CONTAINER_PID=" + std::to_string(kAndroidPid),
+              "SUPERVISION_TRANSITION=0",
+              "DEMO_SESSION_APPS_PATH=" + demo_session_apps_path_,
+              ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
+              ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
+              "LOCALE=" + locale_,
+              "PREFERRED_LANGUAGES=" + preferred_languages_};
+    }
+
+   private:
+    SessionManagerImplTest* const owner_;
+    bool dev_mode_ = false;
+    bool disable_boot_completed_callback_ = false;
+    bool enable_vendor_privileged_ = false;
+    std::string demo_session_apps_path_;
+    bool skip_packages_cache_ = false;
+    bool copy_packages_cache_ = false;
+    std::string locale_;
+    std::string preferred_languages_;
+
+    DISALLOW_COPY_AND_ASSIGN(UpgradeContainerExpectationsBuilder);
+  };
+#endif
+
   dbus::MockExportedObject* exported_object() {
     return bus_->exported_object();
   }
@@ -681,34 +768,6 @@ class SessionManagerImplTest : public ::testing::Test,
       const NamedPlatformHandle& named_handle) {
     return ScopedPlatformHandle(open("/dev/null", O_RDONLY));
   }
-
-#if USE_CHEETS
-  std::vector<std::string> GetUpgradeContainerExpectations(
-      bool dev_mode,
-      bool disable_boot_completed_callback,
-      bool enable_vendor_privileged,
-      const std::string& demo_session_apps_path,
-      bool skip_packages_cache,
-      bool copy_packages_cache,
-      const std::string& locale,
-      const std::string& preferred_languages) const {
-    return {
-        "CHROMEOS_DEV_MODE=" + std::to_string(dev_mode), "CHROMEOS_INSIDE_VM=0",
-        "ANDROID_DATA_DIR=" + android_data_dir_.value(),
-        "ANDROID_DATA_OLD_DIR=" + android_data_old_dir_.value(),
-        std::string("CHROMEOS_USER=") + kSaneEmail,
-        "DISABLE_BOOT_COMPLETED_BROADCAST=" +
-            std::to_string(disable_boot_completed_callback),
-        "ENABLE_VENDOR_PRIVILEGED=" + std::to_string(enable_vendor_privileged),
-        // The upgrade signal has a PID.
-        "CONTAINER_PID=" + std::to_string(kAndroidPid),
-        "SUPERVISION_TRANSITION=0",
-        "DEMO_SESSION_APPS_PATH=" + demo_session_apps_path,
-        ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache),
-        ExpectedCopyPackagesCacheFlagValue(copy_packages_cache),
-        "LOCALE=" + locale, "PREFERRED_LANGUAGES=" + preferred_languages};
-  }
-#endif
 
   // These are bare pointers, not unique_ptrs, because we need to give them
   // to a SessionManagerImpl instance, but also be able to set expectations
@@ -2123,15 +2182,11 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          GetUpgradeContainerExpectations(
-              false /* dev_mode */, false /* disable_boot_completed_callback */,
-              true /* enable_vendor_privileged */,
-              std::string() /* demo_session_apps_path */,
-              false /* skip_packages_cache */, false /* copy_packages_cache */,
-              "en_US" /* locale */, std::string() /* preferred_languages */),
-          InitDaemonController::TriggerMode::SYNC))
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder(this)
+                                 .SetEnableVendorPrivileged(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2218,17 +2273,14 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   }
 
   // Then, upgrade it to a fully functional one.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          GetUpgradeContainerExpectations(
-              false /* dev_mode */, false /* disable_boot_completed_callback */,
-              true /* enable_vendor_privileged */,
-              std::string() /* demo_session_apps_path */,
-              skip_packages_cache_setup, copy_cache_setup, "en_US" /* locale */,
-              std::string() /* preferred_languages */),
-          InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  UpgradeContainerExpectationsBuilder(this)
+                      .SetSkipPackagesCache(skip_packages_cache_setup)
+                      .SetCopyPackagesCache(copy_cache_setup)
+                      .Build(),
+                  InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2250,7 +2302,6 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
-  upgrade_request.set_scan_vendor_priv_app(true);
   upgrade_request.set_packages_cache_mode(GetParam());
   ExpectUpgradeArcContainer();
   brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
@@ -2299,18 +2350,14 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          GetUpgradeContainerExpectations(
-              false /* dev_mode */, false /* disable_boot_completed_callback */,
-              false /* enable_vendor_privileged */,
-              /* demo_session_apps_path */
-              "/run/imageloader/0.1/demo_apps/img.squash",
-              false /* skip_packages_cache */, false /* copy_packages_cache */,
-              "en_US" /* locale */, std::string() /* preferred_languages */),
-          InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  UpgradeContainerExpectationsBuilder(this)
+                      .SetDemoSessionAppsPath(
+                          "/run/imageloader/0.1/demo_apps/img.squash")
+                      .Build(),
+                  InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2420,12 +2467,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
       *init_controller_,
       TriggerImpulseInternal(
           SessionManagerImpl::kContinueArcBootImpulse,
-          GetUpgradeContainerExpectations(
-              true /* dev_mode */, false /* disable_boot_completed_callback */,
-              false /* enable_vendor_privileged */,
-              std::string() /* demo_session_apps_path */,
-              false /* skip_packages_cache */, false /* copy_packages_cache */,
-              "en_US" /* locale */, std::string() /* preferred_languages */),
+          UpgradeContainerExpectationsBuilder(this).SetDevMode(true).Build(),
           InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
@@ -2487,7 +2529,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   }
 }
 
-TEST_F(SessionManagerPackagesCacheTest, LocaleAndPreferredLanguages) {
+TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
@@ -2518,15 +2560,12 @@ TEST_F(SessionManagerPackagesCacheTest, LocaleAndPreferredLanguages) {
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          GetUpgradeContainerExpectations(
-              false /* dev_mode */, false /* disable_boot_completed_callback */,
-              false /* enable_vendor_privileged */,
-              std::string() /* demo_session_apps_path */,
-              false /* skip_packages_cache */, false /* copy_packages_cache */,
-              "fr_FR" /* locale */, "ru,en" /* preferred_languages */),
-          InitDaemonController::TriggerMode::SYNC))
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder(this)
+                                 .SetLocale("fr_FR")
+                                 .SetPreferredLanguages("ru,en")
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2550,23 +2589,6 @@ TEST_F(SessionManagerPackagesCacheTest, LocaleAndPreferredLanguages) {
   EXPECT_TRUE(android_container_.running());
 }
 
-#else  // !USE_CHEETS
-
-TEST_F(SessionManagerImplTest, ArcUnavailable) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  brillo::ErrorPtr error;
-  std::string container_instance_id;
-  EXPECT_FALSE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
-  ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
-  EXPECT_TRUE(container_instance_id.empty());
-}
-#endif
-
-#if USE_CHEETS
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
   // Test that RemoveArcData() removes |android_data_dir_| and reports success
   // even if the directory is not empty.
@@ -2716,15 +2738,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          GetUpgradeContainerExpectations(
-              false /* dev_mode */, false /* disable_boot_completed_callback */,
-              false /* enable_vendor_privileged */,
-              std::string() /* demo_session_apps_path */,
-              false /* skip_packages_cache */, false /* copy_packages_cache */,
-              "en_US" /* locale */, std::string() /* preferred_languages */),
-          InitDaemonController::TriggerMode::SYNC))
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder(this).Build(),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2765,15 +2781,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
-          SessionManagerImpl::kContinueArcBootImpulse,
-          GetUpgradeContainerExpectations(
-              false /* dev_mode */, false /* disable_boot_completed_callback */,
-              false /* enable_vendor_privileged */,
-              std::string() /* demo_session_apps_path */,
-              false /* skip_packages_cache */, false /* copy_packages_cache */,
-              "en_US" /* locale */, std::string() /* preferred_languages */),
-          InitDaemonController::TriggerMode::SYNC))
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder(this).Build(),
+                             InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2825,7 +2835,21 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   }
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
-#else
+#else  // !USE_CHEETS
+
+TEST_F(SessionManagerImplTest, ArcUnavailable) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  brillo::ErrorPtr error;
+  std::string container_instance_id;
+  EXPECT_FALSE(impl_->StartArcMiniContainer(
+      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
+      &container_instance_id));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
+  EXPECT_TRUE(container_instance_id.empty());
+}
+
 // When USE_CHEETS is not defined, ArcRemoveData should immediately return
 // dbus_error::kNotAvailable.
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
