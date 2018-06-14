@@ -116,13 +116,6 @@ class ArcSetup {
   // Sets up shared APK cache directory.
   void SetUpSharedApkDirectory();
 
-  // Sets up android-data/data/dalvik-cache/<isa> directory.
-  void SetUpDalvikCacheInternal(const base::FilePath& dalvik_cache_directory,
-                                const base::FilePath& isa_relative);
-
-  // Sets up android-data/data/dalvik-cache directory.
-  void SetUpDalvikCache();
-
   // Creates files and directories needed by the container.
   void CreateContainerFilesAndDirectories();
 
@@ -174,9 +167,6 @@ class ArcSetup {
 
   // Sets up a mount point for arc-adbd.
   void SetUpMountPointForAdbd();
-
-  // Cleans up mount points in |android_mutable_source|/data/dalvik-cache/.
-  void CleanUpDalvikCache();
 
   // Cleans up mount points for arc-removable-media if any.
   void CleanUpStaleMountPoints();
