@@ -17,6 +17,29 @@ enum class QmiCommand {
   kOpenLogicalChannel = 0x0042,
 };
 
+// QMI result codes as specified in SGP.22 2.3.1
+enum class EsimQmiResult {
+  kQmiResultSuccess,
+  kQmiResultFailure,
+};
+
+// This list currently only contains QMI error codes specified for the functions
+// necessary for LOGICAL_CHANNEL and SEND_APDU QMI commands, and will be
+// expanded as more QMI integration is added.
+enum class EsimQmiError {
+  kQmiErrorNone,
+  kQmiErrorInternal,
+  kQmiMalformedMsg,
+  kQmiNoMemory,
+  kQmiInvalidArg,
+  kQmiArgTooLong,
+  kQmiMissingArg,
+  kQmiInsufficientResources,
+  kQmiSimFileNotFound,
+  kQmiAccessDenied,
+  kQmiIncompatibleState,
+};
+
 }  // namespace hermes
 
 #endif  // HERMES_QMI_CONSTANTS_H_

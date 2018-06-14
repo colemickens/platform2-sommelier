@@ -13,46 +13,55 @@ EsimQmiImpl::EsimQmiImpl() : connected_(false), weak_factory_(this) {}
 // TODO(jruthe): pass |which| to EsimQmiImpl::SendEsimMessage to make the
 // correct libqrtr call to the eSIM chip.
 void EsimQmiImpl::GetInfo(int which,
-                          const DataCallback& callback,
+                          const DataCallback& data_callback,
                           const ErrorCallback& error_callback) {
   if (!connected_) {
-    // error_callback.Run();
+    error_callback.Run(EsimError::kEsimNotConnected);
   }
 
-  SendEsimMessage(QmiCommand::kSendApdu, callback, error_callback);
+  if (which != 0xBF20) {
+    error_callback.Run(EsimError::kEsimError);
+    return;
+  }
+
+  SendEsimMessage(QmiCommand::kSendApdu, data_callback, error_callback);
 }
 
-void EsimQmiImpl::GetChallenge(const DataCallback& callback,
+void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
                                const ErrorCallback& error_callback) {
   if (!connected_) {
-    // error_callback.Run()
+    error_callback.Run(EsimError::kEsimNotConnected);
   }
 
-  SendEsimMessage(QmiCommand::kSendApdu, callback, error_callback);
+  SendEsimMessage(QmiCommand::kSendApdu, data_callback, error_callback);
 }
 
 // TODO(jruthe): pass |server_data| to EsimQmiImpl::SendEsimMessage to make
 // correct libqrtr call to the eSIM chip.
 void EsimQmiImpl::AuthenticateServer(const std::vector<uint8_t>& server_data,
-                                     const DataCallback& callback,
+                                     const DataCallback& data_callback,
                                      const ErrorCallback& error_callback) {
   if (!connected_) {
-    // error_callback.Run(server_data);
+    error_callback.Run(EsimError::kEsimNotConnected);
   }
 
-  SendEsimMessage(QmiCommand::kSendApdu, callback, error_callback);
+  SendEsimMessage(QmiCommand::kSendApdu, data_callback, error_callback);
 }
 
 void EsimQmiImpl::OpenChannel(uint8_t slot,
-                              const DataCallback& callback,
-                              const ErrorCallback& error_callback) const {
-  SendEsimMessage(QmiCommand::kOpenLogicalChannel, callback, error_callback);
+                              const DataCallback& data_callback,
+                              const ErrorCallback& error_callback) {
+  connected_ = true;
+  SendEsimMessage(QmiCommand::kOpenLogicalChannel, data_callback,
+                  error_callback);
 }
 
-void EsimQmiImpl::CloseChannel() const {}
+void EsimQmiImpl::CloseChannel() {
+  connected_ = false;
+}
 
 void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
-                                  const DataCallback& callback,
+                                  const DataCallback& data_callback,
                                   const ErrorCallback& error_callback) const {
   std::vector<uint8_t> result_code_tlv;
   switch (command) {
@@ -64,19 +73,19 @@ void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
       //
       // base::ThreadTaskRunnerHandle::Get->PostTask(...)
       result_code_tlv = {0x02, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
-      callback.Run(result_code_tlv);
+      data_callback.Run(result_code_tlv);
       break;
     case QmiCommand::kLogicalChannel:
       // TODO(jruthe) insert PostTask for closing logical channel
       result_code_tlv = {0x00};
-      callback.Run(result_code_tlv);
+      data_callback.Run(result_code_tlv);
       break;
     case QmiCommand::kSendApdu:
       // TODO(jruthe): implement some logic to construct different APDUs.
 
       // TODO(jruthe): insert actual PostTask for SEND_APDU QMI call
       result_code_tlv = {0x00};
-      callback.Run(result_code_tlv);
+      data_callback.Run(result_code_tlv);
       break;
   }
 }

@@ -13,15 +13,23 @@
 
 namespace hermes {
 
+// EsimError will be the generic abstraction from specific protocol errors to an
+// error that the interface can understand. This should contain a set of errors
+// that are recoverable, meaning if they occur, the process can still complete
+// successfully. This should also include errors that are fatal, and should be
+// reported back to the user.
+enum class EsimError {
+  kEsimSuccess,       // success condition
+  kEsimError,         // fatal
+  kEsimNotConnected,  // non-fatal
+};
+
 // Provides an interface through which the LPD can communicate with the eSIM
 // chip. This is responsible for opening, maintaining, and closing the logical
 // channel that will be opened to the chip.
 class Esim {
  public:
-  // TODO(jruthe): this should probably be a more robust error object in the
-  // future. e.g. brillo::Error/brillo::ErrorPtr
-  using ErrorCallback =
-      base::Callback<void(const std::vector<uint8_t>& error_data)>;
+  using ErrorCallback = base::Callback<void(EsimError error_data)>;
   using DataCallback =
       base::Callback<void(const std::vector<uint8_t>& esim_data)>;
 
@@ -38,7 +46,7 @@ class Esim {
   //                   info data
   //  error_callback - function to handle error returned from eSIM
   virtual void GetInfo(int which,
-                       const DataCallback& callback,
+                       const DataCallback& data_callback,
                        const ErrorCallback& error_callback) = 0;
   // Makes eSIM API call to request the eSIM to return the eSIM Challenge,
   // which is the second parameter needed to begin Authentication with the
@@ -63,7 +71,7 @@ class Esim {
   //  error_callback - function to call if |server_data| is determined to be
   //                   invalid by eSIM chip
   virtual void AuthenticateServer(const std::vector<uint8_t>& server_data,
-                                  const DataCallback& callback,
+                                  const DataCallback& data_callback,
                                   const ErrorCallback& error_callback) = 0;
 
  protected:
@@ -77,10 +85,10 @@ class Esim {
   //  error_callack - function handle error if eSIM fails to open channel
   virtual void OpenChannel(uint8_t slot,
                            const DataCallback& callback,
-                           const ErrorCallback& error_callback) const = 0;
+                           const ErrorCallback& error_callback) = 0;
 
   // Close the channel opened in Esim::OpenChannel.
-  virtual void CloseChannel() const = 0;
+  virtual void CloseChannel() = 0;
 };
 
 }  // namespace hermes

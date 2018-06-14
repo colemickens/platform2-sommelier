@@ -14,8 +14,9 @@
 #include "hermes/smdp_fi_impl.h"
 
 // TODO(jruthe): update this with some actual functionality to mimic caller.
-void ErrorCallback(const std::vector<uint8_t>& data) {}
-void SuccessCallback(const std::vector<uint8_t>& data) {}
+void ErrorCallback(hermes::LpdError error) {}
+
+void SuccessCallback() {}
 
 int main(int argc, char** argv) {
   base::MessageLoop message_loop;

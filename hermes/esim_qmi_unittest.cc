@@ -18,8 +18,10 @@ namespace hermes {
 class EsimQmiTester {
  public:
   MOCK_METHOD1(OnInfoResult, void(const std::vector<uint8_t>& data));
-  MOCK_METHOD1(OnChallengeResult, void(const std::vector<uint8_t>& data));
-  MOCK_METHOD1(FakeError, void(const std::vector<uint8_t>& error_data));
+  MOCK_METHOD2(OnChallengeResult,
+               void(const std::vector<uint8_t>& info,
+                    const std::vector<uint8_t>& challenge));
+  MOCK_METHOD1(FakeError, void(EsimError error));
 };
 
 class EsimQmiImplTest : public testing::Test {
@@ -37,10 +39,17 @@ class EsimQmiImplTest : public testing::Test {
 // does not get called.
 TEST_F(EsimQmiImplTest, GetInfoTest) {
   EXPECT_CALL(esim_tester_, OnInfoResult(_)).Times(1);
-  EXPECT_CALL(esim_tester_, FakeError(_)).Times(0);
+  EXPECT_CALL(esim_tester_, FakeError(_)).Times(1);
 
+  // This should call OnInfoResult
   esim_.GetInfo(
       kEsimInfo1,
+      base::Bind(&EsimQmiTester::OnInfoResult, base::Unretained(&esim_tester_)),
+      base::Bind(&EsimQmiTester::FakeError, base::Unretained(&esim_tester_)));
+
+  // This should call FakeError
+  esim_.GetInfo(
+      0,
       base::Bind(&EsimQmiTester::OnInfoResult, base::Unretained(&esim_tester_)),
       base::Bind(&EsimQmiTester::FakeError, base::Unretained(&esim_tester_)));
 }
@@ -49,12 +58,14 @@ TEST_F(EsimQmiImplTest, GetInfoTest) {
 // EsimQmiTester::OnChallengeResult gets called once and
 // EsimQmiTester::FakeError does not get called.
 TEST_F(EsimQmiImplTest, GetChallengeTest) {
-  EXPECT_CALL(esim_tester_, OnChallengeResult(_)).Times(1);
+  const std::vector<uint8_t> info = {0x00, 0x01, 0x02, 0x03};
+  EXPECT_CALL(esim_tester_, OnChallengeResult(info, _)).Times(1);
   EXPECT_CALL(esim_tester_, FakeError(_)).Times(0);
 
+  // This should call OnChallengeResult
   esim_.GetChallenge(
       base::Bind(&EsimQmiTester::OnChallengeResult,
-                 base::Unretained(&esim_tester_)),
+                 base::Unretained(&esim_tester_), info),
       base::Bind(&EsimQmiTester::FakeError, base::Unretained(&esim_tester_)));
 }
 

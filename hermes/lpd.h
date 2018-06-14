@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/macros.h>
 
 #include "hermes/esim.h"
@@ -16,14 +15,24 @@
 
 namespace hermes {
 
+// TODO(jruthe): // For now this is a simple binary pass/fail model. More
+// functionality will be built incrementally as QMI API is tested.
+enum class LpdError {
+  kSuccess,
+  kFailure,
+  kRetry,
+};
+
 // Provides a channel through which the eSIM chip communicates to a SM-DP+
 // server to download and install a carrier profile in accordance to SGP.22
 class Lpd {
  public:
-  using ErrorCallback =
-      base::Callback<void(const std::vector<uint8_t>& error_data)>;
-  using SuccessCallback =
-      base::Callback<void(const std::vector<uint8_t>& success_data)>;
+  using LpdErrorCallback = base::Callback<void(LpdError error)>;
+  using EsimErrorCallback = base::Callback<void(EsimError error)>;
+  // TODO(jruthe): add an SmdpErrorGeneric enum for the Smdp interface
+  using SmdpErrorCallback =
+      base::Callback<void(const std::vector<uint8_t>& smdp_error)>;
+  using SuccessCallback = base::Closure;
 
   Lpd(std::unique_ptr<Esim> esim, std::unique_ptr<Smdp> smpd);
   ~Lpd();
@@ -39,39 +48,49 @@ class Lpd {
   // guarantee that the requested profile has been loaded to the eSIM and can
   // be activated if desired.
   void InstallProfile(const SuccessCallback& success_callback,
-                      const ErrorCallback& error_callback);
+                      const LpdErrorCallback& error_callback);
 
  private:
-  // Performs the first step outlined for InstallProfile. As specified in SGP.22
-  // section 3.1.2, there are a few distinct steps to get this done:
+  // Performs the first step outlined for InstallProfile. As specified
+  // in SGP.22 section 3.1.2, there are a few distinct steps to get
+  // this done:
   //    1. Get the eSIM Info and Challenge
   //    2. Begin the authentication with the SM-DP+ server
   //    3. Perform the key exchange between the server and chip
   // Once all of these steps have completed, there is a secure channel between
   // the eSIM and SM-DP+ server, and the Profile Download and Installation
   // procedure can be executed.
-  void Authenticate(const SuccessCallback& success_callback,
-                    const ErrorCallback& error_callback);
+  void Authenticate();
+
+  void OnAuthenticateSuccess();
+
+  void OnAuthenticateError(LpdError error);
 
   void OnEsimInfoResult(const SuccessCallback& success_callback,
-                        const ErrorCallback& error_callback,
                         const std::vector<uint8_t>& info);
   void OnEsimChallengeResult(const SuccessCallback& success_callback,
-                             const ErrorCallback& error_callback,
                              const std::vector<uint8_t>& info1,
                              const std::vector<uint8_t>& challenge);
-  void OnAuthServerResult(const SuccessCallback& success_callback,
-                          const ErrorCallback& error_callback,
-                          const std::vector<uint8_t>& data);
   void OnInitiateAuthResult(const SuccessCallback& success_callback,
-                            const ErrorCallback& error_callback,
                             const std::vector<uint8_t>& data);
-  void OnAuthClientResult(const SuccessCallback& success_callback,
-                          const ErrorCallback& error_callback,
+  void OnAuthServerResult(const SuccessCallback& success_callback,
                           const std::vector<uint8_t>& data);
+  void OnAuthClientResult(const SuccessCallback& success_callback,
+                          const std::vector<uint8_t>& data);
+
+  void HandleEsimError(const LpdErrorCallback& lpd_callback,
+                       EsimError esim_error);
+
+  void HandleSmdpError(const LpdErrorCallback& lpd_callback,
+                       const std::vector<uint8_t>& smdp_error_data);
 
   std::unique_ptr<Esim> esim_;
   std::unique_ptr<Smdp> smdp_;
+
+  base::Closure user_success_;
+  LpdErrorCallback user_error_;
+  EsimErrorCallback esim_error_handler_;
+  SmdpErrorCallback smdp_error_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Lpd);
 };
