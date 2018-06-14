@@ -444,6 +444,9 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("webui_login_view=2");
   builder->AddVmodulePattern("power_button_observer=2");
 
+  // TODO(xiaochu): Remove after https://crbug.com/851151 is fixed.
+  builder->AddVmodulePattern("component_updater_service=1");
+
   // TODO(afakhry): Remove after Night Light has launched:
   // https://crbug.com/841846
   builder->AddVmodulePattern("*night_light*=1");
