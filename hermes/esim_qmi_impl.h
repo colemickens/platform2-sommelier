@@ -8,13 +8,14 @@
 #include <vector>
 
 #include "hermes/esim.h"
+#include "hermes/qmi_constants.h"
 
 namespace hermes {
 
 class EsimQmiImpl : public Esim {
  public:
-  EsimQmiImpl() = default;
-  ~EsimQmiImpl() = default;
+  EsimQmiImpl();
+  ~EsimQmiImpl() override = default;
   void GetInfo(int which,
                const DataCallback& callback,
                const ErrorCallback& error_callback) override;
@@ -25,9 +26,17 @@ class EsimQmiImpl : public Esim {
                           const ErrorCallback& error_callback) override;
 
  protected:
-  void OpenChannel() const override;
+  void OpenChannel(uint8_t slot,
+                   const DataCallback& callback,
+                   const ErrorCallback& error_callback) const override;
   void CloseChannel() const override;
-  void SendEsimMessage() const override;
+  void SendEsimMessage(const QmiCommand command,
+                       const DataCallback& callback,
+                       const ErrorCallback& error_callback) const;
+
+  bool connected_;
+  base::WeakPtrFactory<Esim> weak_factory_;
+  DISALLOW_COPY_AND_ASSIGN(EsimQmiImpl);
 };
 
 }  // namespace hermes

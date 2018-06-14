@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 
 namespace hermes {
 
@@ -32,15 +33,22 @@ class Esim {
   // |error_callback| on error.
   //
   // Parameters
-  //  which - specify either the info1 or info2 data
+  //  which          - specify either the info1 or info2 data
+  //  callback       - function to call on successful return of specified eSIM
+  //                   info data
+  //  error_callback - function to handle error returned from eSIM
   virtual void GetInfo(int which,
                        const DataCallback& callback,
                        const ErrorCallback& error_callback) = 0;
-
   // Makes eSIM API call to request the eSIM to return the eSIM Challenge,
   // which is the second parameter needed to begin Authentication with the
   // SM-DP+ server. Calls |callback| on returned challenge, or |error_callback|
   // on error.
+  //
+  // Parameters
+  //  callback       - function to call on successful return of eSIM challenge
+  //                   data blob
+  //  error_callback - function to handle error returned from eSIM
   virtual void GetChallenge(const DataCallback& callback,
                             const ErrorCallback& error_callback) = 0;
 
@@ -49,18 +57,30 @@ class Esim {
   // the eSIM's response. If the authentication fails, call |error_callback|.
   //
   // Parameters
-  //  server_data - data that has been signed with server_signature
-  //  server_signature - signature created by SM-DP+ server with certificate
-  //  server_cert - certificate with associated private key used to make
-  //                server signature
+  //  server_data    - data that has been signed with server_signature
+  //  callback       - function to call with the data returned from the eSIM on
+  //                   successful authentication of |server_data|
+  //  error_callback - function to call if |server_data| is determined to be
+  //                   invalid by eSIM chip
   virtual void AuthenticateServer(const std::vector<uint8_t>& server_data,
                                   const DataCallback& callback,
                                   const ErrorCallback& error_callback) = 0;
 
  protected:
-  virtual void OpenChannel() const = 0;
+  // Open logical channel on |slot| to the eSIM. The slot specified should be
+  // the one associated with the eSIM chip.
+  //
+  // Parameters
+  //  slot          - slot on which to open the logical channel
+  //  callback      - function to call once the channel has been successfully
+  //                  opened
+  //  error_callack - function handle error if eSIM fails to open channel
+  virtual void OpenChannel(uint8_t slot,
+                           const DataCallback& callback,
+                           const ErrorCallback& error_callback) const = 0;
+
+  // Close the channel opened in Esim::OpenChannel.
   virtual void CloseChannel() const = 0;
-  virtual void SendEsimMessage() const = 0;
 };
 
 }  // namespace hermes

@@ -8,29 +8,77 @@
 
 namespace hermes {
 
+EsimQmiImpl::EsimQmiImpl() : connected_(false), weak_factory_(this) {}
+
+// TODO(jruthe): pass |which| to EsimQmiImpl::SendEsimMessage to make the
+// correct libqrtr call to the eSIM chip.
 void EsimQmiImpl::GetInfo(int which,
                           const DataCallback& callback,
                           const ErrorCallback& error_callback) {
-  const std::vector<uint8_t> test_info = {1, 2, 3, 4, 5};
-  callback.Run(test_info);
+  if (!connected_) {
+    // error_callback.Run();
+  }
+
+  SendEsimMessage(QmiCommand::kSendApdu, callback, error_callback);
 }
 
 void EsimQmiImpl::GetChallenge(const DataCallback& callback,
                                const ErrorCallback& error_callback) {
-  const std::vector<uint8_t> test_challenge = {0x10, 0x11, 0x12,
-                                               0x13, 0x14, 0x15};
-  callback.Run(test_challenge);
+  if (!connected_) {
+    // error_callback.Run()
+  }
+
+  SendEsimMessage(QmiCommand::kSendApdu, callback, error_callback);
 }
 
+// TODO(jruthe): pass |server_data| to EsimQmiImpl::SendEsimMessage to make
+// correct libqrtr call to the eSIM chip.
 void EsimQmiImpl::AuthenticateServer(const std::vector<uint8_t>& server_data,
                                      const DataCallback& callback,
                                      const ErrorCallback& error_callback) {
-  std::vector<uint8_t> test_esim_response = {0x20, 0x21, 0x22, 0x23, 0x24};
-  callback.Run(test_esim_response);
+  if (!connected_) {
+    // error_callback.Run(server_data);
+  }
+
+  SendEsimMessage(QmiCommand::kSendApdu, callback, error_callback);
 }
 
-void EsimQmiImpl::OpenChannel() const {}
+void EsimQmiImpl::OpenChannel(uint8_t slot,
+                              const DataCallback& callback,
+                              const ErrorCallback& error_callback) const {
+  SendEsimMessage(QmiCommand::kOpenLogicalChannel, callback, error_callback);
+}
+
 void EsimQmiImpl::CloseChannel() const {}
-void EsimQmiImpl::SendEsimMessage() const {}
+
+void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
+                                  const DataCallback& callback,
+                                  const ErrorCallback& error_callback) const {
+  std::vector<uint8_t> result_code_tlv;
+  switch (command) {
+    case QmiCommand::kOpenLogicalChannel:
+      // std::vector<uint8_t> slot_tlv = {0x01, 0x01, 0x00, 0x01};
+      // TODO(jruthe): insert actual PostTask for QMI call here to open logical
+      // channel and populate result_code_tlv with return data from
+      // SEND_APDU_IND QMI callback
+      //
+      // base::ThreadTaskRunnerHandle::Get->PostTask(...)
+      result_code_tlv = {0x02, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
+      callback.Run(result_code_tlv);
+      break;
+    case QmiCommand::kLogicalChannel:
+      // TODO(jruthe) insert PostTask for closing logical channel
+      result_code_tlv = {0x00};
+      callback.Run(result_code_tlv);
+      break;
+    case QmiCommand::kSendApdu:
+      // TODO(jruthe): implement some logic to construct different APDUs.
+
+      // TODO(jruthe): insert actual PostTask for SEND_APDU QMI call
+      result_code_tlv = {0x00};
+      callback.Run(result_code_tlv);
+      break;
+  }
+}
 
 }  // namespace hermes

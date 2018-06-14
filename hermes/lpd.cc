@@ -8,11 +8,7 @@
 
 #include <base/bind.h>
 
-namespace {
-
-constexpr uint16_t kEuiccInfo1 = 0xBF20;
-
-}  // namespace
+#include "hermes/qmi_constants.h"
 
 namespace hermes {
 
@@ -28,7 +24,7 @@ void Lpd::InstallProfile(const Lpd::SuccessCallback& success_callback,
 
 void Lpd::Authenticate(const Lpd::SuccessCallback& success_callback,
                        const Lpd::ErrorCallback& error_callback) {
-  esim_->GetInfo(kEuiccInfo1,
+  esim_->GetInfo(kEsimInfo1,
                  base::Bind(&Lpd::OnEsimInfoResult, base::Unretained(this),
                             success_callback, error_callback),
                  error_callback);

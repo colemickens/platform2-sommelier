@@ -4,58 +4,53 @@
 
 #include "hermes/smdp_fi_impl.h"
 
-#include <memory>
-
 #include <base/bind.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+using ::testing::_;
+
 namespace hermes {
+
+class SmdpFiTester {
+ public:
+  MOCK_METHOD1(OnInitiateAuth, void(const std::vector<uint8_t>& data));
+  MOCK_METHOD1(OnAuthClient, void(const std::vector<uint8_t>& data));
+  MOCK_METHOD1(FakeError, void(const std::vector<uint8_t>& error_data));
+};
 
 class SmdpFiImplTest : public testing::Test {
  public:
   SmdpFiImplTest() = default;
   ~SmdpFiImplTest() = default;
 
-  void InitiateAuthCallback(const std::vector<uint8_t>& data) {
-    return_data_ = data;
-  }
-
-  void InitiateAuthErrorCallback(const std::vector<uint8_t>& error_data) {}
-
-  void AuthClientCallback(const std::vector<uint8_t>& data) {
-    return_data_ = data;
-  }
-
-  void AuthClientErrorCallback(const std::vector<uint8_t>& error_data) {}
-
  protected:
+  SmdpFiTester smdp_tester_;
   SmdpFiImpl smdp_;
-  std::vector<uint8_t> return_data_;
 };
 
 TEST_F(SmdpFiImplTest, InitiateAuthenticationTest) {
-  const std::vector<uint8_t> info1 = {1, 2, 3, 4, 5};
-  const std::vector<uint8_t> chal = {6, 7, 8, 9, 0};
-  const std::vector<uint8_t> expected = {5, 10, 15, 20, 25};
-  smdp_.InitiateAuthentication(
-      info1, chal,
-      base::Bind(&SmdpFiImplTest::InitiateAuthCallback, base::Unretained(this)),
-      base::Bind(&SmdpFiImplTest::InitiateAuthErrorCallback,
-                 base::Unretained(this)));
+  const std::vector<uint8_t> fake_info1 = {0x00, 0x01};
+  const std::vector<uint8_t> fake_challenge = {0x02, 0x03};
+  EXPECT_CALL(smdp_tester_, OnInitiateAuth(_)).Times(1);
+  EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
 
-  EXPECT_EQ(return_data_, expected);
+  smdp_.InitiateAuthentication(
+      fake_info1, fake_challenge,
+      base::Bind(&SmdpFiTester::OnInitiateAuth,
+                 base::Unretained(&smdp_tester_)),
+      base::Bind(&SmdpFiTester::FakeError, base::Unretained(&smdp_tester_)));
 }
 
 TEST_F(SmdpFiImplTest, AuthenticateClientTest) {
   const std::vector<uint8_t> esim_data = {0, 1, 2, 3, 4};
-  const std::vector<uint8_t> expected = {2, 4, 6, 8, 10};
+  EXPECT_CALL(smdp_tester_, OnAuthClient(_)).Times(1);
+  EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
+
   smdp_.AuthenticateClient(
       esim_data,
-      base::Bind(&SmdpFiImplTest::AuthClientCallback, base::Unretained(this)),
-      base::Bind(&SmdpFiImplTest::AuthClientErrorCallback,
-                 base::Unretained(this)));
-
-  EXPECT_EQ(return_data_, expected);
+      base::Bind(&SmdpFiTester::OnAuthClient, base::Unretained(&smdp_tester_)),
+      base::Bind(&SmdpFiTester::FakeError, base::Unretained(&smdp_tester_)));
 }
 
 }  // namespace hermes
