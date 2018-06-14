@@ -5,6 +5,8 @@
 #ifndef CFM_DEVICE_UPDATER_BIZLINK_UPDATER_SRC_DP_AUX_CTRL_H_
 #define CFM_DEVICE_UPDATER_BIZLINK_UPDATER_SRC_DP_AUX_CTRL_H_
 
+#include <base/files/scoped_file.h>
+
 #include <vector>
 
 namespace bizlink_updater {
@@ -18,6 +20,10 @@ typedef struct _DrmPortInfo {
 
 void DrmPortQuery(std::vector<DrmPortInfo>* valid_drm_port_info);
 void DrmDpAuxInit(std::vector<DrmPortInfo>* valid_drm_port_info);
+bool DrmAuxRead(const base::ScopedFD& fd,
+                off_t offset,
+                size_t read_size,
+                unsigned char* buf);
 
 }  // namespace bizlink_updater
 

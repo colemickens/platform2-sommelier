@@ -7,6 +7,8 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 
+#include <unistd.h>
+
 #include <vector>
 
 using base::FileEnumerator;
@@ -62,6 +64,20 @@ void DrmPortQuery(std::vector<DrmPortInfo>* valid_drm_port_info) {
       }
     }
   }
+}
+
+bool DrmAuxRead(const base::ScopedFD& fd,
+                off_t offset,
+                size_t read_size,
+                unsigned char* buf) {
+  // Read read_size bytes from aux dev at offset into buf.
+  size_t size = pread(fd.get(), buf, read_size, offset);
+  if (size != read_size) {
+    PLOG(ERROR) << "Failed to read native aux data at offset " << offset;
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace bizlink_updater
