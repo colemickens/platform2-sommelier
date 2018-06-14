@@ -439,14 +439,6 @@
 			]
 		},
 		{
-			"destination": "/config/sdcardfs",
-			"type": "bind",
-			"source": "/sys/kernel/config/sdcardfs",
-			"options": [
-				"bind"
-			]
-		},
-		{
 			"destination": "/oem/etc",
 			"type": "bind",
 			"source": "/run/arc/oem/etc",
