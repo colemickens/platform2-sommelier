@@ -504,6 +504,7 @@ BASE_POWER_SCHEMA = [
     PropFloat('power-supply-full-factor', False, (0.001, 1.0)),
     PropString('set-wifi-transmit-power-for-tablet-mode', False, '0|1'),
     PropString('suspend-to-idle', False, '0|1'),
+    PropString('touchpad-wakeup', False, '0|1'),
 ]
 
 NOT_WL = {'whitelabel': False}

@@ -65,6 +65,7 @@ some_base_config: &some_base_config
     power-supply-full-factor: "0.0"
     set-wifi-transmit-power-for-tablet-mode: "1"
     suspend-to-idle: "0"
+    touchpad-wakeup: "1"
   ui:
     power-button:
       edge: "left"

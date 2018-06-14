@@ -296,11 +296,13 @@ POWER = r'''
     power_type: power_type {
       power-supply-full-factor = "0.10";
       suspend-to-idle = "1";
+      touchpad-wakeup = "1";
     };
     bad_power_type: bad-power-type {
       low-battery-shutdown-percent = "110";
       power-supply-full-factor = "ten point one";
       suspend-to-idle = "2";
+      touchpad-wakeup = "2";
     };
   };
 };
@@ -631,6 +633,8 @@ class UnitTests(cros_test_lib.TestCase):
         "/chromeos/family/power/bad-power-type: 'power-supply-full-factor' " +
         "value 'ten point one' is not a float",
         "/chromeos/family/power/bad-power-type: 'suspend-to-idle' value '2' " +
+        "does not match pattern '^0|1$'",
+        "/chromeos/family/power/bad-power-type: 'touchpad-wakeup' value '2' " +
         "does not match pattern '^0|1$'",
         "/chromeos/family/power/bad-power-type: " +
         "'low-battery-shutdown-percent' value '110' is out of range [0..100]",

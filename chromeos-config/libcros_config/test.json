@@ -26,7 +26,8 @@
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
           "set-wifi-transmit-power-for-tablet-mode": "1",
-          "suspend-to-idle": "0"
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
         },
         "thermal": {
           "dptf-dv": "/etc/dptf/some_touch/dptf.dv"
@@ -68,7 +69,8 @@
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
           "set-wifi-transmit-power-for-tablet-mode": "1",
-          "suspend-to-idle": "0"
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
         },
         "thermal": {},
         "touch": {
@@ -129,7 +131,8 @@
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
           "set-wifi-transmit-power-for-tablet-mode": "1",
-          "suspend-to-idle": "0"
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
         },
         "touch": {
           "present": "yes",
@@ -163,7 +166,8 @@
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
           "set-wifi-transmit-power-for-tablet-mode": "1",
-          "suspend-to-idle": "0"
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
         },
         "touch": {
           "present": "no"
@@ -196,7 +200,8 @@
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
           "set-wifi-transmit-power-for-tablet-mode": "1",
-          "suspend-to-idle": "0"
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
         },
         "touch": {
           "present": "yes",
@@ -230,7 +235,8 @@
           "low-battery-shutdown-percent": "100.0",
           "power-supply-full-factor": "0.0",
           "set-wifi-transmit-power-for-tablet-mode": "1",
-          "suspend-to-idle": "0"
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
         },
         "touch": {
           "present": "no"

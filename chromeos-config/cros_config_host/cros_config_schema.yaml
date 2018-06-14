@@ -262,6 +262,10 @@ properties:
                 For examples on setting these properties (including multiline examples), see
                 the power config example in libcros_config/test.yaml
               type: object
+              touchpad-wakeup:
+                description: Enable (1) or disable (0) wake from touchpad.
+                type: string
+                pattern: "^[01]$"
               additionalProperties: true
             powerd-prefs:
               description: Powerd config that should be used.
