@@ -96,6 +96,36 @@ message MountResponse {
   sint32 error = 1;
 }
 
+// The request protobuf for a StartTermina message. StartTermina requests that
+// maitred run all VM guest setup necessary to start containers.
+message StartTerminaRequest {
+  // The address for tremplin to connect to.
+  uint32 tremplin_ipv4_address = 1;
+
+  // The IPv4 address config for LXD. Expected to be in a "xxx.xxx.xxx.xxx/yy"
+  // format.
+  string lxd_ipv4_subnet = 2;
+}
+
+message StartTerminaResponse {
+  enum Status {
+    // The result of StartTermina is unknown.
+    UNKNOWN = 0;
+
+    // Termina services were started successfully.
+    SUCCESS = 1;
+
+    // Termina services didn't start successfully. Check failure_reason.
+    FAILED = 2;
+  }
+
+  // The status of starting Termina services.
+  Status status = 1;
+
+  // If status is FAILED, the reason why StartTermina failed.
+  string failure_reason = 2;
+}
+
 // Implemented by maitred inside the VM.
 service Maitred {
   // Set up networking inside the VM so that it can access the internet.
@@ -109,4 +139,7 @@ service Maitred {
 
   // Mount a filesystem in the VM.
   rpc Mount(MountRequest) returns (MountResponse);
+
+  // Start Termina-specific system services.
+  rpc StartTermina(StartTerminaRequest) returns (StartTerminaResponse);
 }

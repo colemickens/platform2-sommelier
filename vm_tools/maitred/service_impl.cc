@@ -39,6 +39,16 @@ constexpr char kLoopbackName[] = "lo";
 
 constexpr char kHostIpPath[] = "/run/host_ip";
 
+// How long to wait before timing out on `lxd waitready`.
+constexpr int kLxdWaitreadyTimeoutSeconds = 50;
+
+// Common environment for all LXD functionality.
+const std::map<string, string> kLxdEnv = {
+    {"LXD_DIR", "/mnt/stateful/lxd"},
+    {"LXD_CONF", "/mnt/stateful/lxd_conf"},
+    {"LXD_UNPRIVILEGED_ONLY", "true"},
+};
+
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
   struct in_addr in = {
@@ -322,6 +332,70 @@ grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
     response->set_error(0);
     LOG(INFO) << "Mounted \"" << request->source() << "\" on \""
               << request->target() << "\"";
+  }
+
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
+                                       const StartTerminaRequest* request,
+                                       StartTerminaResponse* response) {
+  LOG(INFO) << "Received StartTermina request";
+  if (!init_) {
+    return grpc::Status(grpc::FAILED_PRECONDITION, "not running as init");
+  }
+
+  Init::ProcessLaunchInfo launch_info;
+  if (!init_->Spawn({"mkfs.btrfs", "/dev/vdb"}, kLxdEnv, false /*respawn*/,
+                    false /*use_console*/, true /*wait_for_exit*/,
+                    &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn mkfs.btrfs");
+  }
+  if (launch_info.status != Init::ProcessStatus::EXITED) {
+    return grpc::Status(grpc::INTERNAL, "mkfs.btrfs did not complete");
+  }
+  // mkfs.btrfs will fail if the disk is already formatted as btrfs.
+  // Optimistically continue on - if the mount fails, then return an error.
+
+  int ret =
+      mount("/dev/vdb", "/mnt/stateful", "btrfs", 0, "user_subvol_rm_allowed");
+  if (ret != 0) {
+    int saved_errno = errno;
+    PLOG(ERROR) << "Failed to mount stateful disk";
+    return grpc::Status(grpc::INTERNAL, string("failed to mount stateful: ") +
+                                            strerror(saved_errno));
+  }
+
+  if (!init_->Spawn({"lxd", "--group", "lxd"}, kLxdEnv, true /*respawn*/,
+                    false /*use_console*/, false /*wait_for_exit*/,
+                    &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn lxd");
+  }
+  if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
+    return grpc::Status(grpc::INTERNAL, "lxd did not launch");
+  }
+
+  string timeout = std::to_string(kLxdWaitreadyTimeoutSeconds);
+  if (!init_->Spawn({"lxd", "waitready", "--timeout", timeout}, kLxdEnv,
+                    false /*respawn*/, false /*use_console*/,
+                    true /*wait_for_exit*/, &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn lxd waitready");
+  }
+  if (launch_info.status != Init::ProcessStatus::EXITED) {
+    return grpc::Status(grpc::INTERNAL, "lxd waitready did not complete");
+  } else if (launch_info.code != 0) {
+    return grpc::Status(grpc::INTERNAL, "lxd waitready returned non-zero");
+  }
+
+  string host_ip = AddressToString(request->tremplin_ipv4_address());
+  if (!init_->Spawn({"tremplin", "-host_addr", host_ip, "-lxd_subnet",
+                     request->lxd_ipv4_subnet()},
+                    kLxdEnv, true /*respawn*/, false /*use_console*/,
+                    false /*wait_for_exit*/, &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn tremplin");
+  }
+  if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
+    return grpc::Status(grpc::INTERNAL, "tremplin did not launch");
   }
 
   return grpc::Status::OK;

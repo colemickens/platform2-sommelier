@@ -39,9 +39,14 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
       grpc::ServerContext* ctx,
       const vm_tools::LaunchProcessRequest* request,
       vm_tools::LaunchProcessResponse* response) override;
+
   grpc::Status Mount(grpc::ServerContext* ctx,
                      const vm_tools::MountRequest* request,
                      vm_tools::MountResponse* response) override;
+
+  grpc::Status StartTermina(grpc::ServerContext* ctx,
+                            const vm_tools::StartTerminaRequest* request,
+                            vm_tools::StartTerminaResponse* response) override;
 
  private:
   std::unique_ptr<Init> init_;
