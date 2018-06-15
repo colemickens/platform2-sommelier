@@ -10,8 +10,39 @@
 
 namespace bizlink_updater {
 
-bool GetFwBinInfo(const base::FilePath& fw_path, uint32_t* version);
-bool VerifyFwBin(const base::ScopedFD& fd);
+enum McdpFwRunState {
+  MCDP_RUN_NONE = 0,
+  MCDP_RUN_IROM = 1,
+  MCDP_RUN_BOOT_CODE = 2,
+  MCDP_RUN_APP = 3,
+};
+
+enum McdpChipId {
+  MCDP_CHIP_NONE = 0,
+  MCDP_PUMA_2900 = 6,
+  MCDP_PUMA_2920 = 7,
+};
+
+struct McdpChipInfo {
+  McdpChipId chip_id;
+  McdpFwRunState fw_run_state;
+  uint32_t fw_version;
+  int slave_addr;
+  int chip_type;
+  int chip_rev;
+  bool dual_bank_support;
+  McdpChipInfo() {
+    chip_id = MCDP_CHIP_NONE;
+    fw_run_state = MCDP_RUN_NONE;
+    fw_version = 0;
+    slave_addr = -1;
+    chip_type = -1;
+    chip_rev = -1;
+    dual_bank_support = false;
+  }
+};
+
+bool AuxGetChipInfo(const base::ScopedFD& dev_fd, McdpChipInfo* chip_info);
 
 }  // namespace bizlink_updater
 

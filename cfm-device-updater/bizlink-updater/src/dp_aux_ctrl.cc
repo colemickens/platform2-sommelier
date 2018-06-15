@@ -3,12 +3,15 @@
 // found in the LICENSE file.
 
 #include "cfm-device-updater/bizlink-updater/src/dp_aux_ctrl.h"
+#include "cfm-device-updater/bizlink-updater/src/mcdp_chip_ctrl.h"
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 
+#include <fcntl.h>
 #include <unistd.h>
 
+#include <string>
 #include <vector>
 
 using base::FileEnumerator;
@@ -16,23 +19,21 @@ using base::FilePath;
 
 namespace {
 
-const char kDrmCardPath[] = "/sys/class/drm/";
+struct DrmPortInfo {
+  int card_id;
+  int dp_port_id;
+  int i2c_port_id;
+  int dp_aux_port_id;
+};
+
+const FilePath::CharType kDrmCardPath[] = "/sys/class/drm/";
+const FilePath::StringType kDpAuxDevPath = "/dev/drm_dp_aux";
 
 }  // namespace
 
 namespace bizlink_updater {
 
-void DrmDpAuxInit(std::vector<DrmPortInfo>* valid_drm_port_info) {
-  DrmPortQuery(valid_drm_port_info);
-  if (valid_drm_port_info->size() == 0) {
-    LOG(ERROR) << "Didn't find valid DRM port.";
-    return;
-  }
-
-  // TODO(frankhu): Check for the drm port for the dongle.
-}
-
-void DrmPortQuery(std::vector<DrmPortInfo>* valid_drm_port_info) {
+void DrmPortQuery(std::vector<DrmPortInfo>* drm_ports_info) {
   FilePath base_path(kDrmCardPath);
 
   // Query drm card.
@@ -60,10 +61,46 @@ void DrmPortQuery(std::vector<DrmPortInfo>* valid_drm_port_info) {
         DrmPortInfo drm_info = {
             card_path.value().back() - '0', dp_path.value().back() - '0',
             i2c_path.value().back() - '0', aux_path.value().back() - '0'};
-        valid_drm_port_info->push_back(drm_info);
+        drm_ports_info->push_back(drm_info);
       }
     }
   }
+}
+
+bool GetValidDrmPort(std::vector<DrmPortInfo> ports,
+                     McdpChipInfo* chip_info,
+                     int* valid_port_id) {
+  for (auto port : ports) {
+    int dp_aux_id = port.dp_aux_port_id;
+    LOG(INFO) << "Checking DP AUX port " << dp_aux_id;
+    FilePath dev_path(kDpAuxDevPath + std::to_string(dp_aux_id));
+    base::ScopedFD dev_fp(open(dev_path.value().c_str(), O_RDONLY | O_CLOEXEC));
+    if (dev_fp.get() < 0) {
+      LOG(ERROR) << "Failed to open port " << dp_aux_id;
+      return false;
+    }
+    if (AuxGetChipInfo(dev_fp, chip_info)) {
+      *valid_port_id = dp_aux_id;
+      return true;
+    }
+  }
+  LOG(ERROR) << "Didn't find valid DP AUX port.";
+  return false;
+}
+
+bool GetValidDevice(McdpChipInfo* chip_info, int* valid_port_id) {
+  std::vector<DrmPortInfo> drm_ports_info;
+  DrmPortQuery(&drm_ports_info);
+  if (drm_ports_info.size() == 0) {
+    LOG(ERROR) << "Didn't find valid DRM port.";
+    return false;
+  }
+
+  if (!GetValidDrmPort(drm_ports_info, chip_info, valid_port_id)) {
+    return false;
+  }
+
+  return true;
 }
 
 bool DrmAuxRead(const base::ScopedFD& fd,

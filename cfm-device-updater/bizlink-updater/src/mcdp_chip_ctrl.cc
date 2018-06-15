@@ -7,95 +7,87 @@
 
 #include <base/files/file_util.h>
 
-#include <fcntl.h>
-#include <string.h>
-#include <sys/stat.h>
-
 namespace {
 
-typedef enum {
-  MCDP_CHIP_NONE = 0,
-  MCDP_PUMA_2900 = 6,
-  MCDP_PUMA_2920 = 7,
-} McdpChipId;
+constexpr int kDpcdBranchIdStrLen = 6;
+struct McdpChipBranchInfo {
+  bizlink_updater::McdpChipId chip_id;
+  bizlink_updater::McdpFwRunState fw_run_state;
+  int str_len;
+  unsigned char id_str[kDpcdBranchIdStrLen];
+  int slave_addr;
+};
 
-typedef struct _FwAppSignIdInfo {
-  McdpChipId chip_id;
-  unsigned int sign_id_addr;
-  unsigned char id_str[4];
-} McdpFwAppSignIdInfo;
+// Chip registers addresses.
+const off_t kDpcdBranchIdStrAddr = 0x00503;
 
-// FW version info starting address.
-const int kPumaFwVerStartAddr = 0x8003E;
+const int kChipInfoFwVerByte2 = 7;
+const int kChipInfoFwVerByte1 = 8;
+const int kChipInfoFwVerByte0 = 5;
+const int kRunIromChipTypeByteIdx = 4;
+const int kOtherRunStateChipTypeByteIdx = 9;
+constexpr int kMcdpDpcdChipInfoLen = 14;
 
-const int kFwBinVerStrLen = 3;
-const int kFwBinVerByte2 = 1;
-const int kFwBinVerByte1 = 0;
-const int kFwBinVerByte0 = 2;
-
-// Min FW size is 512KB.
-const off_t kMinFwSize = (512 * 1024);
-const size_t kFwSignLen = 4;
-const McdpFwAppSignIdInfo kMcdpAppSignId = {
-    MCDP_PUMA_2900, 0x080042UL, {'P', 'U', 'M', 'A'}};
+const McdpChipBranchInfo kMcdpChipBrandIdTable[] = {
+    {bizlink_updater::MCDP_PUMA_2900,
+     bizlink_updater::MCDP_RUN_IROM,
+     4,
+     {'P', 'U', 'M', 'A'},
+     0},
+    {bizlink_updater::MCDP_PUMA_2900,
+     bizlink_updater::MCDP_RUN_APP,
+     5,
+     {'M', 'C', '2', '9', '0'},
+     0},
+    {bizlink_updater::MCDP_CHIP_NONE,
+     bizlink_updater::MCDP_RUN_NONE,
+     6,
+     {' ', ' ', ' ', ' ', ' ', ' '},
+     0}};
 
 }  // namespace
 
 namespace bizlink_updater {
 
-// Get firmware version infomation.
-bool GetFwBinInfo(const base::FilePath& fw_path, uint32_t* version) {
-  base::ScopedFD fw_bin_fd(open(fw_path.value().c_str(), O_RDONLY | O_CLOEXEC));
-  if (fw_bin_fd.get() < 0) {
-    PLOG(ERROR) << "Failed to open FW bin file";
+bool AuxGetChipInfo(const base::ScopedFD& dev_fd, McdpChipInfo* chip_info) {
+  unsigned char chip_info_str[kMcdpDpcdChipInfoLen];
+
+  // Read device infomation from drm_ap_aux port.
+  if (!bizlink_updater::DrmAuxRead(dev_fd, kDpcdBranchIdStrAddr,
+                                   kMcdpDpcdChipInfoLen, chip_info_str))
+    return false;
+
+  // Parse device info.
+  for (auto branch_id : kMcdpChipBrandIdTable) {
+    if (memcmp(chip_info_str, branch_id.id_str, branch_id.str_len) == 0) {
+      chip_info->chip_id = branch_id.chip_id;
+      chip_info->fw_run_state = branch_id.fw_run_state;
+      chip_info->slave_addr = branch_id.slave_addr;
+      LOG(INFO) << "Found device branch id: " << branch_id.id_str;
+      break;
+    }
+  }
+
+  if (chip_info->chip_id == MCDP_CHIP_NONE) {
+    LOG(ERROR) << "Failed to match device brand. Brand string: "
+               << chip_info_str;
     return false;
   }
 
-  if (!VerifyFwBin(fw_bin_fd)) {
-    LOG(ERROR) << "FW file verification failed.";
-    return false;
+  if (chip_info->fw_run_state == MCDP_RUN_IROM) {
+    chip_info->chip_type = chip_info_str[kRunIromChipTypeByteIdx];
+  } else {
+    chip_info->dual_bank_support = true;
+    chip_info->chip_type = chip_info_str[kOtherRunStateChipTypeByteIdx];
   }
 
-  uint8_t ver_str[kFwBinVerStrLen];
-  if (!DrmAuxRead(fw_bin_fd, kPumaFwVerStartAddr, kFwBinVerStrLen, ver_str)) {
-    LOG(ERROR) << "Read FW version failed.";
-    return false;
-  }
+  chip_info->fw_version = (chip_info_str[kChipInfoFwVerByte2] << 16) |
+                          (chip_info_str[kChipInfoFwVerByte1] << 8) |
+                          chip_info_str[kChipInfoFwVerByte0];
 
-  *version = (ver_str[kFwBinVerByte2] << 16) | (ver_str[kFwBinVerByte1] << 8) |
-             ver_str[kFwBinVerByte0];
-
-  LOG(INFO) << "FW bin version: " << +ver_str[kFwBinVerByte2] << "."
-            << +ver_str[kFwBinVerByte1] << "." << +ver_str[kFwBinVerByte0];
-
-  return true;
-}
-
-// Verify the firmware binary by checking the size and FW signature.
-bool VerifyFwBin(const base::ScopedFD& fd) {
-  // Verify FW size.
-  struct stat fw_stat;
-  int r = fstat(fd.get(), &fw_stat);
-  if (r < 0) {
-    PLOG(ERROR) << "Check FW size failed";
-    return false;
-  }
-  if (fw_stat.st_size < kMinFwSize) {
-    LOG(ERROR) << "Invalid FW size: " << fw_stat.st_size;
-    return false;
-  }
-
-  // Verify FW signature.
-  unsigned char sign_id[kFwSignLen];
-  if (!DrmAuxRead(fd, kMcdpAppSignId.sign_id_addr, kFwSignLen, sign_id)) {
-    LOG(ERROR) << "Read FW signature failed.";
-    return false;
-  }
-  if (memcmp(sign_id, kMcdpAppSignId.id_str, kFwSignLen) != 0) {
-    LOG(ERROR) << "Failed to verify FW bin, wrong FW signature/ID."
-               << "Expect: " << kMcdpAppSignId.id_str << ", get: " << sign_id;
-    return false;
-  }
+  LOG(INFO) << "Device FW version: " << +chip_info_str[kChipInfoFwVerByte2]
+            << "." << +chip_info_str[kChipInfoFwVerByte1] << "."
+            << +chip_info_str[kChipInfoFwVerByte0];
 
   return true;
 }

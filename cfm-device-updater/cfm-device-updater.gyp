@@ -20,6 +20,7 @@
         'bizlink-updater/src/dp_aux_ctrl.cc',
         'bizlink-updater/src/main.cc',
         'bizlink-updater/src/mcdp_chip_ctrl.cc',
+        'bizlink-updater/src/puma_fw_ctrl.cc',
       ],
     },
   ],

@@ -5,21 +5,13 @@
 #ifndef CFM_DEVICE_UPDATER_BIZLINK_UPDATER_SRC_DP_AUX_CTRL_H_
 #define CFM_DEVICE_UPDATER_BIZLINK_UPDATER_SRC_DP_AUX_CTRL_H_
 
-#include <base/files/scoped_file.h>
+#include "cfm-device-updater/bizlink-updater/src/mcdp_chip_ctrl.h"
 
-#include <vector>
+#include <base/files/scoped_file.h>
 
 namespace bizlink_updater {
 
-typedef struct _DrmPortInfo {
-  int card_id;
-  int dp_port_id;
-  int i2c_port_id;
-  int dp_aux_port_id;
-} DrmPortInfo;
-
-void DrmPortQuery(std::vector<DrmPortInfo>* valid_drm_port_info);
-void DrmDpAuxInit(std::vector<DrmPortInfo>* valid_drm_port_info);
+bool GetValidDevice(McdpChipInfo* chip_info, int* dp_aux_port_id);
 bool DrmAuxRead(const base::ScopedFD& fd,
                 off_t offset,
                 size_t read_size,
