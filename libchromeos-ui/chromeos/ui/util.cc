@@ -37,14 +37,14 @@ bool SetPermissions(const base::FilePath& path,
                     mode_t mode) {
   if (getuid() == 0) {
     if (chown(path.value().c_str(), uid, gid) != 0) {
-      PLOG(ERROR) << "Couldn't chown " << path.value() << " to "
-                  << uid << ":" << gid;
+      PLOG(ERROR) << "Couldn't chown " << path.value() << " to " << uid << ":"
+                  << gid;
       return false;
     }
   }
   if (chmod(path.value().c_str(), mode) != 0) {
-    PLOG(ERROR) << "Unable to chmod " << path.value() << " to "
-                << std::oct << mode;
+    PLOG(ERROR) << "Unable to chmod " << path.value() << " to " << std::oct
+                << mode;
     return false;
   }
   return true;
@@ -61,8 +61,7 @@ bool EnsureDirectoryExists(const base::FilePath& path,
   return SetPermissions(path, uid, gid, mode);
 }
 
-bool Run(const char* command,
-         const char* arg, ...) {
+bool Run(const char* command, const char* arg, ...) {
   // Extra parentheses because yay C++ most vexing parse.
   base::CommandLine cl((base::FilePath(command)));
   va_list list;

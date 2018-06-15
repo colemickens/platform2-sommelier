@@ -22,8 +22,7 @@ namespace ui {
 class ChromiumCommandBuilderTest : public testing::Test {
  public:
   ChromiumCommandBuilderTest()
-      : write_use_flags_file_(true),
-        write_lsb_release_file_(true) {
+      : write_use_flags_file_(true), write_lsb_release_file_(true) {
     PCHECK(temp_dir_.CreateUniqueTempDir());
     base_path_ = temp_dir_.GetPath();
     builder_.set_base_path_for_testing(base_path_);
@@ -33,7 +32,6 @@ class ChromiumCommandBuilderTest : public testing::Test {
     PCHECK(base::CreateDirectory(pepper_dir_));
   }
   virtual ~ChromiumCommandBuilderTest() {}
-
 
   // Does testing-related initialization and returns the result of |builder_|'s
   // Init() method.
@@ -376,9 +374,8 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
       "FILE_NAME=/opt/google/chrome/pepper/flash.so\n"
       "PLUGIN_NAME=\"Shockwave Flash\"\n"
       "VERSION=1.2.3.4\n";
-  ASSERT_EQ(strlen(kFlash),
-            base::WriteFile(pepper_dir_.Append("flash.info"), kFlash,
-                            strlen(kFlash)));
+  ASSERT_EQ(strlen(kFlash), base::WriteFile(pepper_dir_.Append("flash.info"),
+                                            kFlash, strlen(kFlash)));
 
   const char kNetflix[] =
       "FILE_NAME=/opt/google/chrome/pepper/netflix.so\n"
@@ -393,9 +390,8 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
   const char kOther[] =
       "PLUGIN_NAME=Some other plugin\n"
       "FILE_NAME=/opt/google/chrome/pepper/other.so\n";
-  ASSERT_EQ(strlen(kOther),
-            base::WriteFile(pepper_dir_.Append("other.info"), kOther,
-                            strlen(kOther)));
+  ASSERT_EQ(strlen(kOther), base::WriteFile(pepper_dir_.Append("other.info"),
+                                            kOther, strlen(kOther)));
 
   const char kMissingFileName[] =
       "PLUGIN_NAME=Foo\n"

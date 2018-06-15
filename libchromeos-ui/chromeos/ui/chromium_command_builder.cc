@@ -51,8 +51,8 @@ std::string LookUpInStringPairs(const base::StringPairs& pairs,
     // session_manager_setup.sh is no longer interpreting them as shell scripts.
     std::string value = pairs[i].second;
     if (value.size() >= 2U &&
-        ((value[0] == '"' && value[value.size()-1] == '"') ||
-         (value[0] == '\'' && value[value.size()-1] == '\'')))
+        ((value[0] == '"' && value[value.size() - 1] == '"') ||
+         (value[0] == '\'' && value[value.size() - 1] == '\'')))
       value = value.substr(1, value.size() - 2);
 
     return value;
@@ -144,9 +144,8 @@ bool ChromiumCommandBuilder::Init() {
     PLOG(ERROR) << "Unable to read " << kUseFlagsPath;
     return false;
   }
-  std::vector<std::string> lines =
-      base::SplitString(data, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
     if (!lines[i].empty() && lines[i][0] != '#')
       use_flags_.insert(lines[i]);
@@ -204,14 +203,14 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   const base::FilePath time_zone_symlink(GetPath(kTimeZonePath));
   // TODO(derat): Move this back into the !base::PathExists() block in M39 or
   // later, after http://crbug.com/390188 has had time to be cleaned up.
-  CHECK(util::EnsureDirectoryExists(
-      time_zone_symlink.DirName(), uid_, gid_, 0755));
+  CHECK(util::EnsureDirectoryExists(time_zone_symlink.DirName(), uid_, gid_,
+                                    0755));
   if (!base::PathExists(time_zone_symlink)) {
     // base::PathExists() dereferences symlinks, so make sure that there's not a
     // dangling symlink there before we create a new link.
     base::DeleteFile(time_zone_symlink, false);
-    PCHECK(base::CreateSymbolicLink(
-        base::FilePath(kDefaultZoneinfoPath), time_zone_symlink));
+    PCHECK(base::CreateSymbolicLink(base::FilePath(kDefaultZoneinfoPath),
+                                    time_zone_symlink));
   }
 
   // Increase soft limit of file descriptors to 2048 (default is 1024).
@@ -249,11 +248,11 @@ bool ChromiumCommandBuilder::SetUpChromium() {
 }
 
 void ChromiumCommandBuilder::EnableCoreDumps() {
-  if (!util::EnsureDirectoryExists(
-          base::FilePath("/var/coredumps"), uid_, gid_, 0700))
+  if (!util::EnsureDirectoryExists(base::FilePath("/var/coredumps"), uid_, gid_,
+                                   0700))
     return;
 
-  struct rlimit limit = { RLIM_INFINITY, RLIM_INFINITY };
+  struct rlimit limit = {RLIM_INFINITY, RLIM_INFINITY};
   if (setrlimit(RLIMIT_CORE, &limit) != 0)
     PLOG(ERROR) << "Setting unlimited coredumps with setrlimit() failed";
   const std::string kPattern("/var/coredumps/core.%e.%p");
@@ -261,7 +260,8 @@ void ChromiumCommandBuilder::EnableCoreDumps() {
                   kPattern.c_str(), kPattern.size());
 }
 
-bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path,
+bool ChromiumCommandBuilder::ApplyUserConfig(
+    const base::FilePath& path,
     const std::set<std::string>& disallowed_prefixes) {
   std::string data;
   if (!base::ReadFileToString(path, &data)) {
@@ -269,9 +269,8 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path,
     return false;
   }
 
-  std::vector<std::string> lines =
-      base::SplitString(data, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   for (size_t i = 0; i < lines.size(); ++i) {
     std::string line;
@@ -417,11 +416,11 @@ void ChromiumCommandBuilder::AddListFlagEntry(
     AddArg(flag_prefix + new_entry);
     *flag_argument_index = arguments_.size() - 1;
   } else if (prepend) {
-      const std::string old = arguments_[*flag_argument_index];
-      DCHECK_EQ(old.substr(0, flag_prefix.size()), flag_prefix);
-      arguments_[*flag_argument_index] =
-          flag_prefix + new_entry + entry_separator +
-          old.substr(flag_prefix.size(), old.size() - flag_prefix.size());
+    const std::string old = arguments_[*flag_argument_index];
+    DCHECK_EQ(old.substr(0, flag_prefix.size()), flag_prefix);
+    arguments_[*flag_argument_index] =
+        flag_prefix + new_entry + entry_separator +
+        old.substr(flag_prefix.size(), old.size() - flag_prefix.size());
   } else {
     arguments_[*flag_argument_index] += entry_separator + new_entry;
   }
@@ -455,7 +454,8 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
   std::vector<std::string> register_plugins;
 
   base::FileEnumerator enumerator(GetPath(kPepperPluginsPath),
-      false /* recursive */, base::FileEnumerator::FILES);
+                                  false /* recursive */,
+                                  base::FileEnumerator::FILES);
   while (true) {
     const base::FilePath path = enumerator.Next();
     if (path.empty())
@@ -517,8 +517,8 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
 
   if (!register_plugins.empty()) {
     std::sort(register_plugins.begin(), register_plugins.end());
-    AddArg("--register-pepper-plugins=" + base::JoinString(register_plugins,
-                                                           ","));
+    AddArg("--register-pepper-plugins=" +
+           base::JoinString(register_plugins, ","));
   }
 }
 
