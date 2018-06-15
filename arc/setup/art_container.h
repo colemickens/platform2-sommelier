@@ -44,9 +44,6 @@ class ArtContainer {
   // is zero, ArtContainer uses a random offset.
   bool PatchImage(uint64_t offset_seed);
 
-  // Creates the directory for storing host-side dalvik-cache code.
-  static bool CreateArtContainerDataDirectory();
-
   // Gets a set of instruction set need to be supported. For example, arm,
   // arm64 or x86.
   static std::vector<std::string> GetIsas();

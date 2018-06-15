@@ -48,22 +48,6 @@ constexpr char kPatchOat[] = "/system/bin/patchoat";
 constexpr char kPidFile[] = "/run/patchoat.pid";
 constexpr char kSystemImage[] = "/opt/google/containers/android/system.raw.img";
 constexpr char kVendorImage[] = "/opt/google/containers/android/vendor.raw.img";
-constexpr uid_t kHostRootUid = 0;
-constexpr gid_t kHostRootGid = 0;
-
-// Creates subdirectories under dalvik-cache directory if not exists.
-bool CreateArtContainerDataDirectory(
-    const base::FilePath& art_dalvik_cache_directory) {
-  for (const std::string& isa : ArtContainer::GetIsas()) {
-    base::FilePath isa_directory = art_dalvik_cache_directory.Append(isa);
-    if (!InstallDirectory(0755, kHostRootUid, kHostRootGid, isa_directory)) {
-      PLOG(ERROR) << "Failed to create art container data dir: "
-                  << isa_directory.value();
-      return false;
-    }
-  }
-  return true;
-}
 
 // Ported from Andriod nyc
 template <typename T>
@@ -163,19 +147,12 @@ struct ArtContainerPaths {
 std::unique_ptr<ArtContainer> ArtContainer::CreateContainer(
     ArcMounter* mounter, AndroidSdkVersion sdk_version) {
   auto art_paths = std::make_unique<ArtContainerPaths>();
+
   // Make sure the data directory exits.
-  if (!arc::CreateArtContainerDataDirectory(
-          art_paths->art_dalvik_cache_directory))
-    return nullptr;
+  CHECK(base::PathExists(art_paths->art_dalvik_cache_directory));
 
   return std::unique_ptr<ArtContainer>(
       new ArtContainer(mounter, std::move(art_paths), sdk_version));
-}
-
-// static
-bool ArtContainer::CreateArtContainerDataDirectory() {
-  return arc::CreateArtContainerDataDirectory(
-      ArtContainerPaths().art_dalvik_cache_directory);
 }
 
 // static

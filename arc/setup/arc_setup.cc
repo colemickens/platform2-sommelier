@@ -311,6 +311,20 @@ void CheckOtherProcEntriesOrDie(const std::string& pid_str) {
   LOG(INFO) << "Process " << pid_str << " still has other proc entries";
 }
 
+// Creates subdirectories under dalvik-cache directory if not exists.
+bool CreateArtContainerDataDirectory(
+    const base::FilePath& art_dalvik_cache_directory) {
+  for (const std::string& isa : ArtContainer::GetIsas()) {
+    base::FilePath isa_directory = art_dalvik_cache_directory.Append(isa);
+    if (!InstallDirectory(0755, kHostRootUid, kHostRootGid, isa_directory)) {
+      PLOG(ERROR) << "Failed to create art container data dir: "
+                  << isa_directory.value();
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 struct ArcPaths {
@@ -1825,7 +1839,8 @@ void ArcSetup::OnSetup() {
   // The host-side dalvik-cache directory is mounted into the container
   // via the json file. Create it regardless of whether the code integrity
   // feature is enabled.
-  ArtContainer::CreateArtContainerDataDirectory();
+  EXIT_IF(
+      !CreateArtContainerDataDirectory(arc_paths_->art_dalvik_cache_directory));
 
   // Mount host-compiled and host-verified .art and .oat files. The container
   // will see these files, but other than that, the /data and /cache
