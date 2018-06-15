@@ -337,7 +337,9 @@ bool CreateArtContainerDataDirectory(
     const base::FilePath& art_dalvik_cache_directory) {
   for (const std::string& isa : ArtContainer::GetIsas()) {
     base::FilePath isa_directory = art_dalvik_cache_directory.Append(isa);
-    if (!InstallDirectory(0755, kHostRootUid, kHostRootGid, isa_directory)) {
+    // Use the same permissions as the ones used in maybeCreateDalvikCache() in
+    // framework/base/cmds/app_process/app_main.cpp
+    if (!InstallDirectory(0711, kRootUid, kRootGid, isa_directory)) {
       PLOG(ERROR) << "Failed to create art container data dir: "
                   << isa_directory.value();
       return false;
