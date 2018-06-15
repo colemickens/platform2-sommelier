@@ -52,6 +52,9 @@ constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 // How long to wait before timing out on shutdown RPCs.
 constexpr int64_t kShutdownTimeoutSeconds = 30;
 
+// How long to wait before timing out on StartTermina RPCs.
+constexpr int64_t kStartTerminaTimeoutSeconds = 150;
+
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 10;
 
@@ -442,6 +445,29 @@ bool VirtualMachine::Mount(string source,
                << request.target() << " inside VM " << vsock_cid_ << ": "
                << (status.ok() ? strerror(response.error())
                                : status.error_message());
+    return false;
+  }
+
+  return true;
+}
+
+bool VirtualMachine::StartTermina(std::string lxd_subnet,
+                                  std::string* out_error) {
+  vm_tools::StartTerminaRequest request;
+  vm_tools::StartTerminaResponse response;
+
+  request.set_tremplin_ipv4_address(GatewayAddress());
+  request.mutable_lxd_ipv4_subnet()->swap(lxd_subnet);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kStartTerminaTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = stub_->StartTermina(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to start Termina: " << status.error_message();
+    out_error->assign(status.error_message());
     return false;
   }
 

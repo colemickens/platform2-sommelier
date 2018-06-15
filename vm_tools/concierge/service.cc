@@ -77,11 +77,6 @@ constexpr char kVmRootfsName[] = "vm_rootfs.img";
 // Maximum number of extra disks to be mounted inside the VM.
 constexpr int kMaxExtraDisks = 10;
 
-// How long to wait before timing out on `lxd waitready`.
-constexpr int kLxdWaitreadyTimeoutSeconds = 150;
-constexpr base::TimeDelta kLxdWaitreadyTimeout =
-    base::TimeDelta::FromSeconds(kLxdWaitreadyTimeoutSeconds);
-
 // How long we should wait for a VM to start up.
 // While this timeout might be high, it's meant to be a final failure point, not
 // the lower bound of how long it takes.  On a loaded system (like extracting
@@ -761,6 +756,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     }
   }
 
+  // Notify cicerone that we have started a VM.
+  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(),
+                            vm->ContainerSubnet(), vm->ContainerNetmask(),
+                            vm->IPv4Address(), vm->cid());
+
   string failure_reason;
   if (request.start_termina() && !StartTermina(vm.get(), &failure_reason)) {
     response.set_failure_reason(std::move(failure_reason));
@@ -769,11 +769,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   LOG(INFO) << "Started VM with pid " << vm->pid();
-
-  // Notify cicerone that we have started a VM.
-  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(),
-                            vm->ContainerSubnet(), vm->ContainerNetmask(),
-                            vm->IPv4Address(), vm->cid());
 
   VmInfo* vm_info = response.mutable_vm_info();
   response.set_success(true);
@@ -899,40 +894,6 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Starting lxd";
 
-  // Set up the stateful disk. This will format the disk if necessary, then
-  // mount it.
-  if (!vm->RunProcess({"stateful_setup.sh"}, kLxdEnv)) {
-    LOG(ERROR) << "Stateful setup failed";
-    *failure_reason = "stateful setup failed";
-    return false;
-  }
-
-  // Launch the main lxd process.
-  if (!vm->StartProcess({"lxd", "--group", "lxd"}, kLxdEnv,
-                        ProcessExitBehavior::RESPAWN_ON_EXIT)) {
-    LOG(ERROR) << "lxd failed to start";
-    *failure_reason = "lxd failed to start";
-    return false;
-  }
-
-  // Wait for lxd to be ready. The first start may take a few seconds, so use
-  // a longer timeout than the default.
-  string timeout = std::to_string(kLxdWaitreadyTimeoutSeconds);
-  if (!vm->RunProcessWithTimeout({"lxd", "waitready", "--timeout", timeout},
-                                 kLxdEnv, kLxdWaitreadyTimeout)) {
-    LOG(ERROR) << "lxd waitready failed";
-    *failure_reason = "lxd waitready failed";
-    return false;
-  }
-
-  // Perform any setup for lxd to be usable. On first run, this sets up the
-  // lxd configuration (network bridge, storage pool, etc).
-  if (!vm->RunProcess({"lxd_setup.sh"}, kLxdEnv)) {
-    LOG(ERROR) << "lxd setup failed";
-    *failure_reason = "lxd setup failed";
-    return false;
-  }
-
   // Allocate the subnet for lxd's bridge to use.
   std::unique_ptr<SubnetPool::Subnet> container_subnet =
       subnet_pool_.AllocateContainer();
@@ -985,14 +946,12 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
   IPv4AddressToString(container_subnet_addr, &dst_addr);
   size_t prefix = vm->ContainerPrefix();
 
-  // The route has been installed on the host, so inform lxd of its subnet.
   std::string container_subnet_cidr =
       base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix);
-  if (!vm->RunProcess({"lxc", "network", "set", "lxdbr0", "ipv4.address",
-                       std::move(container_subnet_cidr)},
-                      kLxdEnv)) {
-    LOG(ERROR) << "lxc network config failed";
-    *failure_reason = "lxc network config failed";
+
+  string error;
+  if (!vm->StartTermina(std::move(container_subnet_cidr), &error)) {
+    failure_reason->assign(error);
     return false;
   }
 

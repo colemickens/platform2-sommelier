@@ -130,6 +130,9 @@ class VirtualMachine {
              uint64_t mountflags,
              std::string options);
 
+  // Starts Termina-specific services in the guest.
+  bool StartTermina(std::string lxd_subnet, std::string* out_error);
+
   // Sets the container subnet for this VM to |subnet|. This subnet is intended
   // to be provided to a container runtime as a DHCP pool.
   void SetContainerSubnet(std::unique_ptr<SubnetPool::Subnet> subnet);
