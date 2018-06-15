@@ -174,9 +174,8 @@ bool ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
       GetSealingAlgorithms(public_key_info_);
   unsealing_session_ = signature_sealing_backend_->CreateUnsealingSession(
       keyset_challenge_info_.sealed_secret(),
-      SecureBlob(public_key_info_.public_key_spki_der()),
-      key_sealing_algorithms, SecureBlob(delegate_blob_),
-      SecureBlob(delegate_secret_));
+      BlobFromString(public_key_info_.public_key_spki_der()),
+      key_sealing_algorithms, delegate_blob_, delegate_secret_);
   if (!unsealing_session_) {
     LOG(ERROR) << "Failed to start unsealing session for the secret";
     return false;
@@ -215,8 +214,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     return;
   }
   SecureBlob unsealed_secret;
-  if (!unsealing_session_->Unseal(SecureBlob(*challenge_signature),
-                                  &unsealed_secret)) {
+  if (!unsealing_session_->Unseal(*challenge_signature, &unsealed_secret)) {
     LOG(ERROR) << "Failed to unseal the secret";
     Abort();
     // |this| can be already destroyed at this point.

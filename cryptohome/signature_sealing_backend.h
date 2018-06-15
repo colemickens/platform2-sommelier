@@ -81,11 +81,11 @@ class SignatureSealingBackend {
   //   delegate_secret - The delegate secret for the delegate blob.
   //   sealed_secret_data - The created sealed secret value.
   virtual bool CreateSealedSecret(
-      const brillo::SecureBlob& public_key_spki_der,
+      const brillo::Blob& public_key_spki_der,
       const std::vector<Algorithm>& key_algorithms,
       const std::map<uint32_t, brillo::Blob>& pcr_values,
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret,
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret,
       SignatureSealedData* sealed_secret_data) = 0;
 
   // Initiates a session for unsealing the passed sealed data.
@@ -105,10 +105,10 @@ class SignatureSealingBackend {
   //   delegate_secret - The delegate secret for the delegate blob.
   virtual std::unique_ptr<UnsealingSession> CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
-      const brillo::SecureBlob& public_key_spki_der,
+      const brillo::Blob& public_key_spki_der,
       const std::vector<Algorithm>& key_algorithms,
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) = 0;
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) = 0;
 };
 
 }  // namespace cryptohome

@@ -193,7 +193,7 @@ class TpmImpl : public Tpm {
   // in |encryption_scheme|. The key's public exponent is assumed to be 65537.
   // Populates |key_handle| with the loaded key handle.
   bool CreateRsaPublicKeyObject(TSS_HCONTEXT tpm_context,
-                                const brillo::SecureBlob& key_modulus,
+                                const brillo::Blob& key_modulus,
                                 TSS_FLAG key_flags,
                                 UINT32 signature_scheme,
                                 UINT32 encryption_scheme,

@@ -28,6 +28,8 @@
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
 using brillo::Blob;
+using brillo::BlobFromString;
+using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using trousers::ScopedTssContext;
@@ -105,14 +107,14 @@ class UnsealingSessionTpm1Impl final
     : public SignatureSealingBackend::UnsealingSession {
  public:
   UnsealingSessionTpm1Impl(TpmImpl* tpm,
-                           const SecureBlob& srk_wrapped_cmk,
-                           const SecureBlob& public_key_spki_der,
-                           const SecureBlob& delegate_blob,
-                           const SecureBlob& delegate_secret,
-                           const SecureBlob& cmk_pubkey,
-                           const SecureBlob& protection_key_pubkey,
+                           const Blob& srk_wrapped_cmk,
+                           const Blob& public_key_spki_der,
+                           const Blob& delegate_blob,
+                           const Blob& delegate_secret,
+                           const Blob& cmk_pubkey,
+                           const Blob& protection_key_pubkey,
                            crypto::ScopedRSA migration_destination_rsa,
-                           const SecureBlob& migration_destination_key_pubkey);
+                           const Blob& migration_destination_key_pubkey);
   ~UnsealingSessionTpm1Impl() override;
 
   // UnsealingSession:
@@ -125,30 +127,30 @@ class UnsealingSessionTpm1Impl final
   // Unowned.
   TpmImpl* const tpm_;
   // The blob of the CMK wrapped by the SRK.
-  const SecureBlob srk_wrapped_cmk_;
+  const Blob srk_wrapped_cmk_;
   // The DER-encoded Subject Public Key Info of the protection key.
-  const SecureBlob public_key_spki_der_;
+  const Blob public_key_spki_der_;
   // The blob for the owner delegation.
-  const SecureBlob delegate_blob_;
+  const Blob delegate_blob_;
   // The delegate secret for the delegate blob.
-  const SecureBlob delegate_secret_;
+  const Blob delegate_secret_;
   // The TPM_PUBKEY blob of the CMK.
-  const SecureBlob cmk_pubkey_;
+  const Blob cmk_pubkey_;
   // The SHA-1 digest of |cmk_pubkey_|.
-  const SecureBlob cmk_pubkey_digest_;
+  const Blob cmk_pubkey_digest_;
   // The TPM_PUBKEY blob of the protection key.
-  const SecureBlob protection_key_pubkey_;
+  const Blob protection_key_pubkey_;
   // The SHA-1 digest of |protection_key_pubkey_|.
-  const SecureBlob protection_key_pubkey_digest_;
+  const Blob protection_key_pubkey_digest_;
   // The private RSA key of the migration destination key.
   const crypto::ScopedRSA migration_destination_rsa_;
   // The TPM_PUBKEY blob of the migration destination key.
-  const SecureBlob migration_destination_key_pubkey_;
+  const Blob migration_destination_key_pubkey_;
   // The SHA-1 digest of |migration_destination_key_pubkey_|.
-  const SecureBlob migration_destination_key_pubkey_digest_;
+  const Blob migration_destination_key_pubkey_digest_;
   // The SHA-1 digest of the TPM_MSA_COMPOSITE structure containing a sole
   // reference to |protection_key_pubkey_digest_|.
-  const SecureBlob msa_composite_digest_;
+  const Blob msa_composite_digest_;
 
   DISALLOW_COPY_AND_ASSIGN(UnsealingSessionTpm1Impl);
 };
@@ -159,7 +161,7 @@ std::string FormatTrousersErrorCode(TSS_RESULT result) {
 }
 
 // Extracts the public modulus from the OpenSSL RSA struct.
-bool GetRsaModulus(const RSA& rsa, SecureBlob* modulus) {
+bool GetRsaModulus(const RSA& rsa, Blob* modulus) {
   modulus->resize(BN_num_bytes(rsa.n));
   if (BN_bn2bin(rsa.n, modulus->data()) != modulus->size()) {
     LOG(ERROR) << "Failed to extract RSA modulus: size mismatch";
@@ -171,9 +173,9 @@ bool GetRsaModulus(const RSA& rsa, SecureBlob* modulus) {
 // Parses the public key that is protecting the sealed data. The key size in
 // bits via |key_size_bits|, and the RSA key public modulus is returned via
 // |key_modulus|.
-bool ParseProtectionKeySpki(const SecureBlob& public_key_spki_der,
+bool ParseProtectionKeySpki(const Blob& public_key_spki_der,
                             int* key_size_bits,
-                            SecureBlob* key_modulus) {
+                            Blob* key_modulus) {
   const unsigned char* asn1_ptr = public_key_spki_der.data();
   crypto::ScopedEVP_PKEY pkey(
       d2i_PUBKEY(nullptr, &asn1_ptr, public_key_spki_der.size()));
@@ -213,10 +215,10 @@ bool ParseProtectionKeySpki(const SecureBlob& public_key_spki_der,
 // returned via |key_modulus|.
 bool ParseAndLoadProtectionKey(TpmImpl* const tpm,
                                TSS_HCONTEXT tpm_context,
-                               const SecureBlob& public_key_spki_der,
+                               const Blob& public_key_spki_der,
                                int* key_size_bits,
                                TSS_HKEY* key_handle) {
-  SecureBlob key_modulus;
+  Blob key_modulus;
   if (!ParseProtectionKeySpki(public_key_spki_der, key_size_bits,
                               &key_modulus)) {
     LOG(ERROR) << "Failed to parse protection public key";
@@ -250,7 +252,7 @@ bool LoadMigrationDestinationPublicKey(TpmImpl* const tpm,
                                        TSS_HCONTEXT tpm_context,
                                        const RSA& migration_destination_rsa,
                                        TSS_HKEY* key_handle) {
-  SecureBlob key_modulus;
+  Blob key_modulus;
   if (!GetRsaModulus(migration_destination_rsa, &key_modulus)) {
     LOG(ERROR) << "Error loading migration destination public key: Failed to "
                   "extract key modulus";
@@ -273,7 +275,7 @@ bool LoadMigrationDestinationPublicKey(TpmImpl* const tpm,
 bool ObtainMigrationAuthorization(TSS_HCONTEXT tpm_context,
                                   TSS_HTPM tpm_handle,
                                   TSS_HKEY migration_destination_key_handle,
-                                  SecureBlob* migration_authorization_blob) {
+                                  Blob* migration_authorization_blob) {
   uint32_t migration_authorization_blob_buf_size = 0;
   ScopedTssMemory migration_authorization_blob_buf(tpm_context);
   TSS_RESULT tss_result = Tspi_TPM_AuthorizeMigrationTicket(
@@ -300,11 +302,11 @@ bool ObtainCmkMigrationSignatureTicket(
     TSS_HCONTEXT tpm_context,
     TSS_HTPM tpm_handle,
     TSS_HKEY protection_key_handle,
-    const SecureBlob& migration_destination_key_pubkey,
-    const SecureBlob& cmk_pubkey,
-    const SecureBlob& protection_key_pubkey,
+    const Blob& migration_destination_key_pubkey,
+    const Blob& cmk_pubkey,
+    const Blob& protection_key_pubkey,
     const Blob& signed_challenge_value,
-    SecureBlob* cmk_migration_signature_ticket) {
+    Blob* cmk_migration_signature_ticket) {
   ScopedTssObject<TSS_HMIGDATA> migdata_handle(tpm_context);
   TSS_RESULT tss_result = Tspi_Context_CreateObject(
       tpm_context, TSS_OBJECT_TYPE_MIGDATA, 0, migdata_handle.ptr());
@@ -357,12 +359,18 @@ bool ObtainCmkMigrationSignatureTicket(
                << FormatTrousersErrorCode(tss_result);
     return false;
   }
-  if (!tpm->GetDataAttribute(
-          tpm_context, migdata_handle, TSS_MIGATTRIB_TICKET_DATA,
-          TSS_MIGATTRIB_TICKET_SIG_TICKET, cmk_migration_signature_ticket)) {
+  SecureBlob local_cmk_migration_signature_ticket;
+  if (!tpm->GetDataAttribute(tpm_context, migdata_handle,
+                             TSS_MIGATTRIB_TICKET_DATA,
+                             TSS_MIGATTRIB_TICKET_SIG_TICKET,
+                             &local_cmk_migration_signature_ticket)) {
     LOG(ERROR) << "Error reading the CMK migration signature ticket";
     return false;
   }
+  // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
+  cmk_migration_signature_ticket->assign(
+      local_cmk_migration_signature_ticket.begin(),
+      local_cmk_migration_signature_ticket.end());
   return true;
 }
 
@@ -378,14 +386,14 @@ bool MigrateCmk(TpmImpl* tpm,
                 TSS_HCONTEXT tpm_context,
                 TSS_HTPM tpm_handle,
                 TSS_HKEY srk_handle,
-                const SecureBlob& srk_wrapped_cmk,
-                const SecureBlob& migration_destination_key_pubkey,
-                const SecureBlob& cmk_pubkey,
-                const SecureBlob& protection_key_pubkey,
-                const SecureBlob& migration_authorization_blob,
-                const SecureBlob& cmk_migration_signature_ticket,
-                SecureBlob* migrated_cmk_key12_blob,
-                SecureBlob* migration_random_blob) {
+                const Blob& srk_wrapped_cmk,
+                const Blob& migration_destination_key_pubkey,
+                const Blob& cmk_pubkey,
+                const Blob& protection_key_pubkey,
+                const Blob& migration_authorization_blob,
+                const Blob& cmk_migration_signature_ticket,
+                Blob* migrated_cmk_key12_blob,
+                Blob* migration_random_blob) {
   // Load the wrapped CMK into Trousers.
   ScopedTssObject<TSS_HMIGDATA> wrapped_cmk_handle(tpm_context);
   TSS_RESULT tss_result = Tspi_Context_CreateObject(
@@ -482,19 +490,23 @@ bool MigrateCmk(TpmImpl* tpm,
   migration_random_blob->assign(
       migration_random_buf.value(),
       migration_random_buf.value() + migration_random_buf_size);
+  SecureBlob local_migrated_cmk_key12_blob;
   if (!tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_MIGRATIONBLOB,
-          TSS_MIGATTRIB_MIG_XOR_BLOB, migrated_cmk_key12_blob)) {
+          TSS_MIGATTRIB_MIG_XOR_BLOB, &local_migrated_cmk_key12_blob)) {
     LOG(ERROR) << "Failed to read the migrated key blob";
     return false;
   }
+  // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
+  migrated_cmk_key12_blob->assign(local_migrated_cmk_key12_blob.begin(),
+                                  local_migrated_cmk_key12_blob.end());
   return true;
 }
 
 // Returns the digest of the blob of the TPM_MSA_COMPOSITE structure containing
 // a sole reference to the specified key (whose TPM_PUBKEY blob is passed via
 // |msa_pubkey_digest|).
-SecureBlob BuildMsaCompositeDigest(const SecureBlob& msa_pubkey_digest) {
+Blob BuildMsaCompositeDigest(const Blob& msa_pubkey_digest) {
   // Build the structure.
   DCHECK_EQ(TPM_SHA1_160_HASH_LEN, msa_pubkey_digest.size());
   TPM_DIGEST digest;
@@ -505,7 +517,7 @@ SecureBlob BuildMsaCompositeDigest(const SecureBlob& msa_pubkey_digest) {
   // Serialize the structure.
   UINT64 serializing_offset = 0;
   Trspi_LoadBlob_MSA_COMPOSITE(&serializing_offset, nullptr, &msa_composite);
-  SecureBlob msa_composite_blob(serializing_offset);
+  Blob msa_composite_blob(serializing_offset);
   serializing_offset = 0;
   Trspi_LoadBlob_MSA_COMPOSITE(&serializing_offset, msa_composite_blob.data(),
                                &msa_composite);
@@ -518,8 +530,8 @@ SecureBlob BuildMsaCompositeDigest(const SecureBlob& msa_pubkey_digest) {
 bool ObtainMaApprovalTicket(TpmImpl* const tpm,
                             TSS_HCONTEXT tpm_context,
                             TSS_HTPM tpm_handle,
-                            const SecureBlob& msa_composite_digest,
-                            SecureBlob* ma_approval_ticket) {
+                            const Blob& msa_composite_digest,
+                            Blob* ma_approval_ticket) {
   ScopedTssObject<TSS_HMIGDATA> migdata_handle(tpm_context);
   TSS_RESULT tss_result = Tspi_Context_CreateObject(
       tpm_context, TSS_OBJECT_TYPE_MIGDATA, 0, migdata_handle.ptr());
@@ -543,18 +555,21 @@ bool ObtainMaApprovalTicket(TpmImpl* const tpm,
                << FormatTrousersErrorCode(tss_result);
     return false;
   }
+  SecureBlob local_ma_approval_ticket;
   if (!tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_AUTHORITY_DATA,
-          TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, ma_approval_ticket)) {
+          TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, &local_ma_approval_ticket)) {
     LOG(ERROR) << "Error reading migration authority approval ticket";
     return false;
   }
+  // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
+  ma_approval_ticket->assign(local_ma_approval_ticket.begin(),
+                             local_ma_approval_ticket.end());
   return true;
 }
 
 // Parses the TPM_KEY12 blob and returns its "encData" field blob.
-bool ParseEncDataFromKey12Blob(const SecureBlob& key12_blob,
-                               SecureBlob* enc_data) {
+bool ParseEncDataFromKey12Blob(const Blob& key12_blob, Blob* enc_data) {
   using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
   ScopedKey12 key12;
   UINT64 key12_parsing_offset = 0;
@@ -574,14 +589,13 @@ bool ParseEncDataFromKey12Blob(const SecureBlob& key12_blob,
   return true;
 }
 
-// Returns the element-to-element bitwise XOR of two blobs of equal length.
-SecureBlob XorBlobs(const SecureBlob& first_value,
-                    const SecureBlob& second_value) {
-  DCHECK_EQ(first_value.size(), second_value.size());
-  SecureBlob result(first_value.size());
-  for (size_t index = 0; index < first_value.size(); ++index)
-    result[index] = first_value[index] ^ second_value[index];
-  return result;
+// Applies to the given blob the element-to-element bitwise XOR against the
+// other blob.
+void XorBytes(uint8_t* inplace_target_begin,
+              const uint8_t* other_begin,
+              size_t size) {
+  for (size_t index = 0; index < size; ++index)
+    inplace_target_begin[index] ^= other_begin[index];
 }
 
 // Obtains the value from its MGF1-masked representation in |masked_value|. The
@@ -608,7 +622,8 @@ bool UnmaskWithMgf1(const SecureBlob& masked_value,
                << FormatTrousersErrorCode(tss_result);
     return false;
   }
-  *value = XorBlobs(masked_value, mask);
+  *value = masked_value;
+  XorBytes(value->data(), mask.data(), value->size());
   return true;
 }
 
@@ -618,9 +633,9 @@ bool UnmaskWithMgf1(const SecureBlob& masked_value,
 // Returns the decoded message via |message| and the OAEP seed via |seed|.
 // Note that this custom implementation is used instead of the one from OpenSSL,
 // because we need to get the seed back and OpenSSL doesn't return it.
-bool DecodeOaepMgf1Encoding(const SecureBlob& encoded_blob,
+bool DecodeOaepMgf1Encoding(const Blob& encoded_blob,
                             size_t message_length,
-                            const SecureBlob& oaep_label,
+                            const Blob& oaep_label,
                             SecureBlob* seed,
                             SecureBlob* message) {
   // The comments in this function below refer to the notation that corresponds
@@ -665,9 +680,9 @@ bool DecodeOaepMgf1Encoding(const SecureBlob& encoded_blob,
   }
   // Steps ##8-10. Extract "M" from "DB", extract "pHash" from "DB" and check it
   // against "P", and verify the zeros/ones padding that covers the rest.
-  const SecureBlob obtained_label_digest(
-      padded_message.begin(), padded_message.begin() + SHA_DIGEST_LENGTH);
-  const SecureBlob obtained_zeroes_ones_padding(
+  const Blob obtained_label_digest(padded_message.begin(),
+                                   padded_message.begin() + SHA_DIGEST_LENGTH);
+  const Blob obtained_zeroes_ones_padding(
       padded_message.begin() + SHA_DIGEST_LENGTH,
       padded_message.end() - message_length);
   message->assign(padded_message.end() - message_length, padded_message.end());
@@ -678,8 +693,8 @@ bool DecodeOaepMgf1Encoding(const SecureBlob& encoded_blob,
     LOG(ERROR) << "Incorrect OAEP label";
     return false;
   }
-  const SecureBlob expected_zeroes_ones_padding(SecureBlob::Combine(
-      SecureBlob(obtained_zeroes_ones_padding.size() - 1), SecureBlob(1, 1)));
+  const Blob expected_zeroes_ones_padding =
+      CombineBlobs({Blob(obtained_zeroes_ones_padding.size() - 1), Blob(1, 1)});
   if (obtained_zeroes_ones_padding != expected_zeroes_ones_padding) {
     LOG(ERROR) << "Incorrect zeroes block in OAEP padding";
     return false;
@@ -689,13 +704,11 @@ bool DecodeOaepMgf1Encoding(const SecureBlob& encoded_blob,
 
 // Parses an unsigned four-byte integer from the given position in the blob in
 // the TPM endianness.
-uint32_t DecodeTpmUint32(const brillo::Blob& blob, size_t start_index) {
-  DCHECK_LE(start_index + 4, blob.size());
-  UINT64 parsing_offset = start_index;
+uint32_t DecodeTpmUint32(const uint8_t* begin) {
+  UINT64 parsing_offset = 0;
   uint32_t result = 0;
-  Trspi_UnloadBlob_UINT32(&parsing_offset, &result,
-                          const_cast<BYTE*>(blob.data()));
-  DCHECK_EQ(start_index + 4, parsing_offset);
+  Trspi_UnloadBlob_UINT32(&parsing_offset, &result, const_cast<BYTE*>(begin));
+  DCHECK_EQ(4, parsing_offset);
   return result;
 }
 
@@ -726,8 +739,9 @@ bool ParseRsaSecretPrimeFromTpmMigrateAsymkeyBlob(
   //     |kMigratedCmkPrivateKeySeedPartSizeBytes|.
   // We parse and validate this data below:
   // Parse and validate the keyLength field of the TPM_STORE_PRIVKEY structure.
+  DCHECK_GE(tpm_migrate_asymkey_oaep_seed_blob.size(), 4);
   const uint32_t tpm_store_privkey_key_length =
-      DecodeTpmUint32(tpm_migrate_asymkey_oaep_seed_blob, 0);
+      DecodeTpmUint32(tpm_migrate_asymkey_oaep_seed_blob.data());
   if (tpm_store_privkey_key_length != kCmkPrivateKeySizeBytes) {
     LOG(ERROR) << "Wrong migrated private key size";
     return false;
@@ -756,10 +770,9 @@ bool ParseRsaSecretPrimeFromTpmMigrateAsymkeyBlob(
       tpm_migrate_asymkey_blob.end());
   // Parse and validate the partPrivKeyLen field of the TPM_MIGRATE_ASYMKEY
   // structure.
-  const uint32_t tpm_migrate_asymkey_part_priv_key_length =
-      DecodeTpmUint32(tpm_migrate_asymkey_blob,
-                      tpm_migrate_asymkey_blob.size() -
-                          kMigratedCmkPrivateKeyRestPartSizeBytes - 4);
+  const uint32_t tpm_migrate_asymkey_part_priv_key_length = DecodeTpmUint32(
+      &tpm_migrate_asymkey_blob[tpm_migrate_asymkey_blob.size() -
+                                kMigratedCmkPrivateKeyRestPartSizeBytes - 4]);
   if (tpm_migrate_asymkey_part_priv_key_length !=
       kMigratedCmkPrivateKeyRestPartSizeBytes) {
     LOG(ERROR) << "Wrong size of the private key part in TPM_MIGRATE_ASYMKEY";
@@ -777,20 +790,19 @@ bool ParseRsaSecretPrimeFromTpmMigrateAsymkeyBlob(
 // TPM_KEY12 blob of the migrated CMK in |migrated_cmk_key12_blob|, and the
 // migration random XOR-mask in |migration_random_blob|. Returns the CMK's
 // secret RSA prime blob via |private_key_blob|.
-bool ExtractCmkPrivateKeyFromMigratedBlob(
-    const SecureBlob& migrated_cmk_key12_blob,
-    const SecureBlob& migration_random_blob,
-    const SecureBlob& cmk_pubkey_digest,
-    const SecureBlob& msa_composite_digest,
-    RSA* migration_destination_rsa,
-    SecureBlob* private_key_blob) {
+bool ExtractCmkPrivateKeyFromMigratedBlob(const Blob& migrated_cmk_key12_blob,
+                                          const Blob& migration_random_blob,
+                                          const Blob& cmk_pubkey_digest,
+                                          const Blob& msa_composite_digest,
+                                          RSA* migration_destination_rsa,
+                                          SecureBlob* private_key_blob) {
   // Load the encrypted TPM_MIGRATE_ASYMKEY blob from the TPM_KEY12 blob.
   // Note that this encrypted TPM_MIGRATE_ASYMKEY blob was generated by taking
   // the TPM_MIGRATE_ASYMKEY blob, applying the RSA OAEP *encoding* (not
   // encryption), XOR'ing it with the migration random XOR-mask, applying the
   // RSA OAEP *encryption* (not encoding). We'll unwind this to obtain the
   // original TPM_MIGRATE_ASYMKEY blob below.
-  SecureBlob encrypted_tpm_migrate_asymkey_blob;
+  Blob encrypted_tpm_migrate_asymkey_blob;
   if (!ParseEncDataFromKey12Blob(migrated_cmk_key12_blob,
                                  &encrypted_tpm_migrate_asymkey_blob)) {
     LOG(ERROR) << "Failed to parse the encrypted TPM_MIGRATE_ASYMKEY blob from "
@@ -806,9 +818,10 @@ bool ExtractCmkPrivateKeyFromMigratedBlob(
   // Perform the RSA OAEP decryption of the encrypted TPM_MIGRATE_ASYMKEY blob,
   // using the custom OAEP label parameter as prescribed by the TPM 1.2 specs.
   SecureBlob decrypted_tpm_migrate_asymkey_blob;
-  if (!CryptoLib::RsaOaepDecrypt(
-          encrypted_tpm_migrate_asymkey_blob, SecureBlob(kTpmRsaOaepLabel),
-          migration_destination_rsa, &decrypted_tpm_migrate_asymkey_blob)) {
+  if (!CryptoLib::RsaOaepDecrypt(SecureBlob(encrypted_tpm_migrate_asymkey_blob),
+                                 SecureBlob(kTpmRsaOaepLabel),
+                                 migration_destination_rsa,
+                                 &decrypted_tpm_migrate_asymkey_blob)) {
     LOG(ERROR)
         << "Failed to RSA-decrypt the encrypted TPM_MIGRATE_ASYMKEY blob";
     return false;
@@ -821,8 +834,13 @@ bool ExtractCmkPrivateKeyFromMigratedBlob(
   }
   // XOR the decrypted TPM_MIGRATE_ASYMKEY blob with the migration random
   // XOR-mask.
-  const SecureBlob xored_decrypted_tpm_migrate_asymkey_blob =
-      XorBlobs(decrypted_tpm_migrate_asymkey_blob, migration_random_blob);
+  DCHECK_EQ(decrypted_tpm_migrate_asymkey_blob.size(),
+            migration_random_blob.size());
+  SecureBlob xored_decrypted_tpm_migrate_asymkey_blob =
+      decrypted_tpm_migrate_asymkey_blob;
+  XorBytes(xored_decrypted_tpm_migrate_asymkey_blob.data(),
+           migration_random_blob.data(),
+           xored_decrypted_tpm_migrate_asymkey_blob.size());
   // Perform the RSA OAEP decoding (not decryption) of the XOR'ed decrypted
   // TPM_MIGRATE_ASYMKEY blob.
   // The OAEP label parameter is equal to concatenation of
@@ -831,8 +849,8 @@ bool ExtractCmkPrivateKeyFromMigratedBlob(
   // the private key data.
   // Note that our own implementation of OAEP decoding is used instead of the
   // OpenSSL's one, as the latter doesn't return the decoded seed.
-  const SecureBlob tpm_migrate_asymkey_oaep_label_blob =
-      SecureBlob::Combine(msa_composite_digest, cmk_pubkey_digest);
+  const Blob tpm_migrate_asymkey_oaep_label_blob =
+      CombineBlobs({msa_composite_digest, cmk_pubkey_digest});
   SecureBlob tpm_migrate_asymkey_oaep_seed_blob;
   SecureBlob tpm_migrate_asymkey_blob;
   if (!DecodeOaepMgf1Encoding(
@@ -865,10 +883,10 @@ bool GenerateCmk(TpmImpl* const tpm,
                  TSS_HCONTEXT tpm_context,
                  TSS_HTPM tpm_handle,
                  TSS_HKEY srk_handle,
-                 const SecureBlob& msa_composite_digest,
-                 const SecureBlob& ma_approval_ticket,
-                 SecureBlob* cmk_pubkey,
-                 SecureBlob* srk_wrapped_cmk) {
+                 const Blob& msa_composite_digest,
+                 const Blob& ma_approval_ticket,
+                 Blob* cmk_pubkey,
+                 Blob* srk_wrapped_cmk) {
   // Create the Certified Migratable Key object. Note that the actual key
   // generation isn't happening at this point yet.
   ScopedTssKey cmk_handle(tpm_context);
@@ -943,29 +961,38 @@ bool GenerateCmk(TpmImpl* const tpm,
                << FormatTrousersErrorCode(tss_result);
     return false;
   }
+  SecureBlob local_cmk_pubkey;
   if (!tpm->GetDataAttribute(tpm_handle, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
-                             TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, cmk_pubkey)) {
+                             TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+                             &local_cmk_pubkey)) {
     LOG(ERROR) << "Failed to read the certified migratable public key";
     return false;
   }
+  // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
+  cmk_pubkey->assign(local_cmk_pubkey.begin(), local_cmk_pubkey.end());
+  SecureBlob local_srk_wrapped_cmk;
   if (!tpm->GetDataAttribute(tpm_handle, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
-                             TSS_TSPATTRIB_KEYBLOB_BLOB, srk_wrapped_cmk)) {
+                             TSS_TSPATTRIB_KEYBLOB_BLOB,
+                             &local_srk_wrapped_cmk)) {
     LOG(ERROR) << "Failed to read the certified migratable key";
     return false;
   }
+  // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
+  srk_wrapped_cmk->assign(local_srk_wrapped_cmk.begin(),
+                          local_srk_wrapped_cmk.end());
   return true;
 }
 
 UnsealingSessionTpm1Impl::UnsealingSessionTpm1Impl(
     TpmImpl* tpm,
-    const SecureBlob& srk_wrapped_cmk,
-    const SecureBlob& public_key_spki_der,
-    const SecureBlob& delegate_blob,
-    const SecureBlob& delegate_secret,
-    const SecureBlob& cmk_pubkey,
-    const SecureBlob& protection_key_pubkey,
+    const Blob& srk_wrapped_cmk,
+    const Blob& public_key_spki_der,
+    const Blob& delegate_blob,
+    const Blob& delegate_secret,
+    const Blob& cmk_pubkey,
+    const Blob& protection_key_pubkey,
     crypto::ScopedRSA migration_destination_rsa,
-    const SecureBlob& migration_destination_key_pubkey)
+    const Blob& migration_destination_key_pubkey)
     : tpm_(tpm),
       srk_wrapped_cmk_(srk_wrapped_cmk),
       public_key_spki_der_(public_key_spki_der),
@@ -1000,7 +1027,8 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(delegate_blob_, delegate_secret_,
+  if (!tpm_->ConnectContextAsDelegate(SecureBlob(delegate_blob_),
+                                      SecureBlob(delegate_secret_),
                                       tpm_context.ptr(), &tpm_handle)) {
     LOG(ERROR) << "Failed to connect to the TPM";
     return false;
@@ -1034,7 +1062,7 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
     return false;
   }
   // Obtain the migration authorization blob for the migration destination key.
-  SecureBlob migration_authorization_blob;
+  Blob migration_authorization_blob;
   if (!ObtainMigrationAuthorization(tpm_context, tpm_handle,
                                     migration_destination_key_handle,
                                     &migration_authorization_blob)) {
@@ -1042,7 +1070,7 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
     return false;
   }
   // Obtain the CMK migration signature ticket for the signed challenge blob.
-  SecureBlob cmk_migration_signature_ticket;
+  Blob cmk_migration_signature_ticket;
   if (!ObtainCmkMigrationSignatureTicket(
           tpm_, tpm_context, tpm_handle, protection_key_handle,
           migration_destination_key_pubkey_, cmk_pubkey_,
@@ -1052,8 +1080,8 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
     return false;
   }
   // Perform the migration of the CMK onto the migration destination key.
-  SecureBlob migrated_cmk_key12_blob;
-  SecureBlob migration_random_blob;
+  Blob migrated_cmk_key12_blob;
+  Blob migration_random_blob;
   if (!MigrateCmk(tpm_, tpm_context, tpm_handle, srk_handle, srk_wrapped_cmk_,
                   migration_destination_key_pubkey_, cmk_pubkey_,
                   protection_key_pubkey_, migration_authorization_blob,
@@ -1084,11 +1112,11 @@ SignatureSealingBackendTpm1Impl::SignatureSealingBackendTpm1Impl(TpmImpl* tpm)
 SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 
 bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
-    const SecureBlob& public_key_spki_der,
+    const Blob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
     const std::map<uint32_t, Blob>& /* pcr_values */,
-    const SecureBlob& delegate_blob,
-    const SecureBlob& delegate_secret,
+    const Blob& delegate_blob,
+    const Blob& delegate_secret,
     SignatureSealedData* sealed_secret_data) {
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
@@ -1099,7 +1127,8 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(delegate_blob, delegate_secret,
+  if (!tpm_->ConnectContextAsDelegate(SecureBlob(delegate_blob),
+                                      SecureBlob(delegate_secret),
                                       tpm_context.ptr(), &tpm_handle)) {
     LOG(ERROR) << "Failed to connect to the TPM";
     return false;
@@ -1122,13 +1151,13 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     LOG(ERROR) << "Failed to read the protection public key";
     return false;
   }
-  const SecureBlob protection_key_pubkey_digest =
+  const Blob protection_key_pubkey_digest =
       CryptoLib::Sha1(protection_key_pubkey);
-  const SecureBlob msa_composite_digest =
+  const Blob msa_composite_digest =
       BuildMsaCompositeDigest(protection_key_pubkey_digest);
   // Obtain the migration authority approval ticket for the TPM_MSA_COMPOSITE
   // structure.
-  SecureBlob ma_approval_ticket;
+  Blob ma_approval_ticket;
   if (!ObtainMaApprovalTicket(tpm_, tpm_context, tpm_handle,
                               msa_composite_digest, &ma_approval_ticket)) {
     LOG(ERROR) << "Failed to obtain the migration authority approval ticket";
@@ -1145,8 +1174,8 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Generate the Certified Migratable Key, associated with the protection
   // public key (via the TPM_MSA_COMPOSITE digest). Obtain the resulting wrapped
   // CMK blob and the TPM_PUBKEY blob.
-  SecureBlob cmk_pubkey;
-  SecureBlob srk_wrapped_cmk;
+  Blob cmk_pubkey;
+  Blob srk_wrapped_cmk;
   if (!GenerateCmk(tpm_, tpm_context, tpm_handle, srk_handle,
                    msa_composite_digest, ma_approval_ticket, &cmk_pubkey,
                    &srk_wrapped_cmk)) {
@@ -1159,19 +1188,19 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
       sealed_data_contents =
           sealed_secret_data->mutable_tpm12_certified_migratable_key_data();
   sealed_data_contents->set_public_key_spki_der(
-      public_key_spki_der.to_string());
-  sealed_data_contents->set_srk_wrapped_cmk(srk_wrapped_cmk.to_string());
-  sealed_data_contents->set_cmk_pubkey(cmk_pubkey.to_string());
+      BlobToString(public_key_spki_der));
+  sealed_data_contents->set_srk_wrapped_cmk(BlobToString(srk_wrapped_cmk));
+  sealed_data_contents->set_cmk_pubkey(BlobToString(cmk_pubkey));
   return true;
 }
 
 std::unique_ptr<SignatureSealingBackend::UnsealingSession>
 SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
-    const SecureBlob& public_key_spki_der,
+    const Blob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
-    const SecureBlob& delegate_blob,
-    const SecureBlob& delegate_secret) {
+    const Blob& delegate_blob,
+    const Blob& delegate_secret) {
   // Validate the parameters.
   if (!sealed_secret_data.has_tpm12_certified_migratable_key_data()) {
     LOG(ERROR) << "Sealed data is empty or uses unexpected method";
@@ -1181,7 +1210,7 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
       sealed_data_contents =
           sealed_secret_data.tpm12_certified_migratable_key_data();
   if (sealed_data_contents.public_key_spki_der() !=
-      public_key_spki_der.to_string()) {
+      BlobToString(public_key_spki_der)) {
     LOG(ERROR) << "Wrong subject public key info";
     return nullptr;
   }
@@ -1194,7 +1223,8 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(delegate_blob, delegate_secret,
+  if (!tpm_->ConnectContextAsDelegate(SecureBlob(delegate_blob),
+                                      SecureBlob(delegate_secret),
                                       tpm_context.ptr(), &tpm_handle)) {
     LOG(ERROR) << "Failed to connect to the TPM";
     return nullptr;
@@ -1244,9 +1274,9 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     return nullptr;
   }
   return std::make_unique<UnsealingSessionTpm1Impl>(
-      tpm_, SecureBlob(sealed_data_contents.srk_wrapped_cmk()),
+      tpm_, BlobFromString(sealed_data_contents.srk_wrapped_cmk()),
       public_key_spki_der, delegate_blob, delegate_secret,
-      SecureBlob(sealed_data_contents.cmk_pubkey()), protection_key_pubkey,
+      BlobFromString(sealed_data_contents.cmk_pubkey()), protection_key_pubkey,
       std::move(migration_destination_rsa), migration_destination_key_pubkey);
 }
 

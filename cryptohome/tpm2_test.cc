@@ -1288,7 +1288,7 @@ class Tpm2RsaSignatureSecretSealingTest
     key_spki_der_.resize(key_spki_der_length);
     unsigned char* key_spki_der_buffer =
         reinterpret_cast<unsigned char*>(&key_spki_der_[0]);
-    CHECK_EQ(key_spki_der_.length(),
+    CHECK_EQ(key_spki_der_.size(),
              i2d_PUBKEY(pkey.get(), &key_spki_der_buffer));
     // Obtain the key modulus.
     key_modulus_.resize(BN_num_bytes(rsa->n));
@@ -1313,7 +1313,7 @@ class Tpm2RsaSignatureSecretSealingTest
     return result;
   }
 
-  std::string key_spki_der_;
+  Blob key_spki_der_;
   std::string key_modulus_;
 };
 
@@ -1357,13 +1357,13 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   // Trigger the secret creation.
   SignatureSealedData sealed_data;
   EXPECT_TRUE(signature_sealing_backend()->CreateSealedSecret(
-      SecureBlob(key_spki_der_), supported_algorithms(), pcr_values,
-      SecureBlob() /* delegate_blob */, SecureBlob() /* delegate_secret */,
-      &sealed_data));
+      key_spki_der_, supported_algorithms(), pcr_values,
+      Blob() /* delegate_blob */, Blob() /* delegate_secret */, &sealed_data));
   ASSERT_TRUE(sealed_data.has_tpm2_policy_signed_data());
   const SignatureSealedData_Tpm2PolicySignedData& sealed_data_contents =
       sealed_data.tpm2_policy_signed_data();
-  EXPECT_EQ(key_spki_der_, sealed_data_contents.public_key_spki_der());
+  EXPECT_EQ(BlobToString(key_spki_der_),
+            sealed_data_contents.public_key_spki_der());
   EXPECT_EQ(kSealedSecretValue, sealed_data_contents.srk_wrapped_secret());
   EXPECT_EQ(chosen_scheme(), sealed_data_contents.scheme());
   EXPECT_EQ(chosen_hash_alg(), sealed_data_contents.hash_alg());
@@ -1384,7 +1384,7 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   SignatureSealedData sealed_data;
   SignatureSealedData_Tpm2PolicySignedData* const sealed_data_contents =
       sealed_data.mutable_tpm2_policy_signed_data();
-  sealed_data_contents->set_public_key_spki_der(key_spki_der_);
+  sealed_data_contents->set_public_key_spki_der(BlobToString(key_spki_der_));
   sealed_data_contents->set_srk_wrapped_secret(kSealedSecretValue);
   sealed_data_contents->set_scheme(chosen_scheme());
   sealed_data_contents->set_hash_alg(chosen_hash_alg());
@@ -1400,9 +1400,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   // Trigger the challenge generation.
   std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session(
       signature_sealing_backend()->CreateUnsealingSession(
-          sealed_data, SecureBlob(key_spki_der_), supported_algorithms(),
-          SecureBlob() /* delegate_blob */,
-          SecureBlob() /* delegate_secret */));
+          sealed_data, key_spki_der_, supported_algorithms(),
+          Blob() /* delegate_blob */, Blob() /* delegate_secret */));
   ASSERT_TRUE(unsealing_session);
   EXPECT_EQ(chosen_algorithm(), unsealing_session->GetChallengeAlgorithm());
   EXPECT_EQ(BlobFromString(kChallengeValue),

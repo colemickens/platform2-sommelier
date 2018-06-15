@@ -1237,7 +1237,7 @@ bool Tpm2Impl::GetTrunksContext(TrunksClientContext** trunks) {
 }
 
 bool Tpm2Impl::LoadPublicKeyFromSpki(
-    const SecureBlob& public_key_spki_der,
+    const Blob& public_key_spki_der,
     AsymmetricKeyUsage key_type,
     trunks::TPM_ALG_ID scheme,
     trunks::TPM_ALG_ID hash_alg,

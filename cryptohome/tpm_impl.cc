@@ -418,7 +418,7 @@ bool TpmImpl::CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
 }
 
 bool TpmImpl::CreateRsaPublicKeyObject(TSS_HCONTEXT context_handle,
-                                       const SecureBlob& key_modulus,
+                                       const Blob& key_modulus,
                                        TSS_FLAG key_flags,
                                        UINT32 signature_scheme,
                                        UINT32 encryption_scheme,

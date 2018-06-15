@@ -198,7 +198,7 @@ class Tpm2Impl : public Tpm {
   // |key_type|. Algorithm scheme and hashing algorithm are passed via |scheme|
   // and |hash_alg|. Currently, only the RSA keys are supported.
   // The loaded key handle is returned via |key_handle|.
-  bool LoadPublicKeyFromSpki(const brillo::SecureBlob& public_key_spki_der,
+  bool LoadPublicKeyFromSpki(const brillo::Blob& public_key_spki_der,
                              AsymmetricKeyUsage key_type,
                              trunks::TPM_ALG_ID scheme,
                              trunks::TPM_ALG_ID hash_alg,

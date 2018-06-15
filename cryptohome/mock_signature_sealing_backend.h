@@ -25,28 +25,28 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
   ~MockSignatureSealingBackend() override;
 
   MOCK_METHOD6(CreateSealedSecret,
-               bool(const brillo::SecureBlob&,
+               bool(const brillo::Blob&,
                     const std::vector<Algorithm>&,
                     const std::map<uint32_t, brillo::Blob>&,
-                    const brillo::SecureBlob&,
-                    const brillo::SecureBlob&,
+                    const brillo::Blob&,
+                    const brillo::Blob&,
                     SignatureSealedData*));
 
   // Wrap a mockable method to workaround gmock's issue with noncopyable types.
   std::unique_ptr<UnsealingSession> CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
-      const brillo::SecureBlob& public_key_spki_der,
+      const brillo::Blob& public_key_spki_der,
       const std::vector<Algorithm>& key_algorithms,
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) override;
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) override;
   // Equivalent of CreateUnsealingSession(), but returns result via a raw owned
   // pointer.
   MOCK_METHOD5(CreateUnsealingSessionImpl,
                UnsealingSession*(const SignatureSealedData&,
-                                 const brillo::SecureBlob&,
+                                 const brillo::Blob&,
                                  const std::vector<Algorithm>&,
-                                 const brillo::SecureBlob&,
-                                 const brillo::SecureBlob&));
+                                 const brillo::Blob&,
+                                 const brillo::Blob&));
 };
 
 class MockUnsealingSession : public SignatureSealingBackend::UnsealingSession {

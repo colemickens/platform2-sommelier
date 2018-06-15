@@ -27,6 +27,7 @@
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
 using brillo::Blob;
+using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
@@ -50,14 +51,14 @@ class UnsealingSessionTpm2Impl final
   UnsealingSessionTpm2Impl(
       Tpm2Impl* tpm,
       Tpm2Impl::TrunksClientContext* trunks,
-      const SecureBlob& srk_wrapped_secret,
-      const SecureBlob& public_key_spki_der,
+      const Blob& srk_wrapped_secret,
+      const Blob& public_key_spki_der,
       Algorithm algorithm,
       TPM_ALG_ID scheme,
       TPM_ALG_ID hash_alg,
       const std::vector<uint32_t>& bound_pcrs,
       std::unique_ptr<trunks::PolicySession> policy_session,
-      const SecureBlob& policy_session_tpm_nonce);
+      const Blob& policy_session_tpm_nonce);
   ~UnsealingSessionTpm2Impl() override;
 
   // UnsealingSession:
@@ -71,14 +72,14 @@ class UnsealingSessionTpm2Impl final
   Tpm2Impl* const tpm_;
   // Unowned.
   Tpm2Impl::TrunksClientContext* const trunks_;
-  const SecureBlob srk_wrapped_secret_;
-  const SecureBlob public_key_spki_der_;
+  const Blob srk_wrapped_secret_;
+  const Blob public_key_spki_der_;
   const Algorithm algorithm_;
   const TPM_ALG_ID scheme_;
   const TPM_ALG_ID hash_alg_;
   const std::vector<uint32_t> bound_pcrs_;
   const std::unique_ptr<trunks::PolicySession> policy_session_;
-  const SecureBlob policy_session_tpm_nonce_;
+  const Blob policy_session_tpm_nonce_;
   base::ThreadChecker thread_checker_;
 
   DISALLOW_COPY_AND_ASSIGN(UnsealingSessionTpm2Impl);
@@ -116,14 +117,14 @@ bool GetAlgIdsByAlgorithm(SignatureSealingBackend::Algorithm algorithm,
 UnsealingSessionTpm2Impl::UnsealingSessionTpm2Impl(
     Tpm2Impl* tpm,
     Tpm2Impl::TrunksClientContext* trunks,
-    const SecureBlob& srk_wrapped_secret,
-    const SecureBlob& public_key_spki_der,
+    const Blob& srk_wrapped_secret,
+    const Blob& public_key_spki_der,
     Algorithm algorithm,
     TPM_ALG_ID scheme,
     TPM_ALG_ID hash_alg,
     const std::vector<uint32_t>& bound_pcrs,
     std::unique_ptr<trunks::PolicySession> policy_session,
-    const SecureBlob& policy_session_tpm_nonce)
+    const Blob& policy_session_tpm_nonce)
     : tpm_(tpm),
       trunks_(trunks),
       srk_wrapped_secret_(srk_wrapped_secret),
@@ -195,7 +196,7 @@ bool UnsealingSessionTpm2Impl::Unseal(const Blob& signed_challenge_value,
   signature.signature.rsassa.sig =
       trunks::Make_TPM2B_PUBLIC_KEY_RSA(BlobToString(signed_challenge_value));
   tpm_result = policy_session_->PolicySigned(
-      key_handle.value(), key_name, policy_session_tpm_nonce_.to_string(),
+      key_handle.value(), key_name, BlobToString(policy_session_tpm_nonce_),
       std::string() /* cp_hash */, std::string() /* policy_ref */,
       0 /* expiration */, signature, session->GetDelegate());
   if (tpm_result != TPM_RC_SUCCESS) {
@@ -212,9 +213,9 @@ bool UnsealingSessionTpm2Impl::Unseal(const Blob& signed_challenge_value,
   }
   // Unseal the secret value.
   std::string unsealed_value_string;
-  tpm_result = trunks_->tpm_utility->UnsealData(srk_wrapped_secret_.to_string(),
-                                                policy_session_->GetDelegate(),
-                                                &unsealed_value_string);
+  tpm_result = trunks_->tpm_utility->UnsealData(
+      BlobToString(srk_wrapped_secret_), policy_session_->GetDelegate(),
+      &unsealed_value_string);
   if (tpm_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error unsealing object: " << GetErrorString(tpm_result);
     return false;
@@ -231,11 +232,11 @@ SignatureSealingBackendTpm2Impl::SignatureSealingBackendTpm2Impl(Tpm2Impl* tpm)
 SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 
 bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
-    const SecureBlob& public_key_spki_der,
+    const Blob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
     const std::map<uint32_t, Blob>& pcr_values,
-    const SecureBlob& /* delegate_blob */,
-    const SecureBlob& /* delegate_secret */,
+    const Blob& /* delegate_blob */,
+    const Blob& /* delegate_secret */,
     SignatureSealedData* sealed_secret_data) {
   // Choose the algorithm. Respect the input's algorithm prioritization, with
   // the exception of considering SHA-1 as the least preferred option.
@@ -346,7 +347,7 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   SignatureSealedData_Tpm2PolicySignedData* const sealed_data_contents =
       sealed_secret_data->mutable_tpm2_policy_signed_data();
   sealed_data_contents->set_public_key_spki_der(
-      public_key_spki_der.to_string());
+      BlobToString(public_key_spki_der));
   sealed_data_contents->set_srk_wrapped_secret(sealed_value);
   sealed_data_contents->set_scheme(scheme);
   sealed_data_contents->set_hash_alg(hash_alg);
@@ -358,10 +359,10 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
 std::unique_ptr<SignatureSealingBackend::UnsealingSession>
 SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
-    const SecureBlob& public_key_spki_der,
+    const Blob& public_key_spki_der,
     const std::vector<Algorithm>& key_algorithms,
-    const SecureBlob& /* delegate_blob */,
-    const SecureBlob& /* delegate_secret */) {
+    const Blob& /* delegate_blob */,
+    const Blob& /* delegate_secret */) {
   // Validate the parameters.
   if (!sealed_secret_data.has_tpm2_policy_signed_data()) {
     LOG(ERROR) << "Error: sealed data is empty or uses unexpected method";
@@ -370,7 +371,7 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
   const SignatureSealedData_Tpm2PolicySignedData& sealed_data_contents =
       sealed_secret_data.tpm2_policy_signed_data();
   if (sealed_data_contents.public_key_spki_der() !=
-      public_key_spki_der.to_string()) {
+      BlobToString(public_key_spki_der)) {
     LOG(ERROR) << "Error: wrong subject public key info";
     return nullptr;
   }
@@ -427,9 +428,9 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
   for (int index = 0; index < sealed_data_contents.bound_pcr_size(); ++index)
     bound_pcrs.push_back(sealed_data_contents.bound_pcr(index));
   return std::make_unique<UnsealingSessionTpm2Impl>(
-      tpm_, trunks, SecureBlob(sealed_data_contents.srk_wrapped_secret()),
+      tpm_, trunks, BlobFromString(sealed_data_contents.srk_wrapped_secret()),
       public_key_spki_der, *chosen_algorithm, scheme, hash_alg, bound_pcrs,
-      std::move(policy_session), SecureBlob(tpm_nonce));
+      std::move(policy_session), BlobFromString(tpm_nonce));
 }
 
 }  // namespace cryptohome
