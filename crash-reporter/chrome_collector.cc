@@ -170,7 +170,7 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
   }
 
   base::FilePath aborted_path(kAbortedBrowserPidPath);
-  string pid_data;
+  std::string pid_data;
   if (base::ReadFileToString(aborted_path, &pid_data)) {
     base::TrimWhitespaceASCII(pid_data, base::TRIM_TRAILING, &pid_data);
     if (pid_data == base::IntToString(pid)) {
