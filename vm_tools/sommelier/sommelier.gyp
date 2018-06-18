@@ -23,6 +23,12 @@
 
     # Set this to the virtwl device.
     'virtwl_device%': '"/dev/wl0"',
+
+    # Set this to the frame color to use for Xwayland clients.
+    'frame_color%': '"#f2f2f2"',
+
+    # Set this to the dark frame color to use for Xwayland clients.
+    'dark_frame_color%': '"#121D23"',
   },
   'targets': [
     {
@@ -89,6 +95,8 @@
         'SHM_DRIVER=<@(shm_driver)',
         'VIRTWL_DEVICE=<@(virtwl_device)',
         'PEER_CMD_PREFIX=<@(peer_cmd_prefix)',
+        'FRAME_COLOR=<@(frame_color)',
+        'DARK_FRAME_COLOR=<@(dark_frame_color)',
       ],
     },
   ],

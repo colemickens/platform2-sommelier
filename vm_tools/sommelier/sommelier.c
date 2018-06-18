@@ -79,6 +79,7 @@ enum {
   PROPERTY_WM_CLIENT_LEADER,
   PROPERTY_MOTIF_WM_HINTS,
   PROPERTY_NET_STARTUP_ID,
+  PROPERTY_GTK_THEME_VARIANT,
 };
 
 #define US_POSITION (1L << 0)
@@ -640,10 +641,13 @@ void sl_window_update(struct sl_window* window) {
   }
 
   if (ctx->aura_shell) {
+    uint32_t frame_color;
+
     if (!window->aura_surface) {
       window->aura_surface = zaura_shell_get_aura_surface(
           ctx->aura_shell->internal, host_surface->proxy);
     }
+
     zaura_surface_set_frame(window->aura_surface,
                             window->decorated
                                 ? ZAURA_SURFACE_FRAME_TYPE_NORMAL
@@ -651,10 +655,9 @@ void sl_window_update(struct sl_window* window) {
                                       ? ZAURA_SURFACE_FRAME_TYPE_NONE
                                       : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
 
-    if (ctx->has_frame_color) {
-      zaura_surface_set_frame_colors(window->aura_surface, ctx->frame_color,
-                                     ctx->frame_color);
-    }
+    frame_color = window->dark_frame ? ctx->dark_frame_color : ctx->frame_color;
+    zaura_surface_set_frame_colors(window->aura_surface, frame_color,
+                                   frame_color);
 
     zaura_surface_set_startup_id(window->aura_surface, window->startup_id);
 
@@ -1269,6 +1272,7 @@ static void sl_create_window(struct sl_context* ctx,
   window->name = NULL;
   window->clazz = NULL;
   window->startup_id = NULL;
+  window->dark_frame = 0;
   window->size_flags = P_POSITION;
   window->min_width = 0;
   window->min_height = 0;
@@ -1429,6 +1433,7 @@ static void sl_handle_map_request(struct sl_context* ctx,
       {PROPERTY_WM_CLIENT_LEADER, ctx->atoms[ATOM_WM_CLIENT_LEADER].value},
       {PROPERTY_MOTIF_WM_HINTS, ctx->atoms[ATOM_MOTIF_WM_HINTS].value},
       {PROPERTY_NET_STARTUP_ID, ctx->atoms[ATOM_NET_STARTUP_ID].value},
+      {PROPERTY_GTK_THEME_VARIANT, ctx->atoms[ATOM_GTK_THEME_VARIANT].value},
   };
   xcb_get_geometry_cookie_t geometry_cookie;
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
@@ -1475,6 +1480,7 @@ static void sl_handle_map_request(struct sl_context* ctx,
   window->client_leader = XCB_WINDOW_NONE;
   window->decorated = 1;
   window->size_flags = 0;
+  window->dark_frame = 0;
 
   for (i = 0; i < ARRAY_SIZE(properties); ++i) {
     xcb_get_property_reply_t* reply =
@@ -1524,6 +1530,10 @@ static void sl_handle_map_request(struct sl_context* ctx,
     case PROPERTY_NET_STARTUP_ID:
       window->startup_id = strndup(xcb_get_property_value(reply),
                                    xcb_get_property_value_length(reply));
+      break;
+    case PROPERTY_GTK_THEME_VARIANT:
+      if (xcb_get_property_value_length(reply) >= 4)
+        window->dark_frame = !strcmp(xcb_get_property_value(reply), "dark");
       break;
     default:
       break;
@@ -2189,6 +2199,36 @@ static void sl_handle_property_notify(struct sl_context* ctx,
                                 : window->depth == 32
                                       ? ZAURA_SURFACE_FRAME_TYPE_NONE
                                       : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
+  } else if (event->atom == ctx->atoms[ATOM_GTK_THEME_VARIANT].value) {
+    struct sl_window* window;
+    uint32_t frame_color;
+
+    window = sl_lookup_window(ctx, event->window);
+    if (!window)
+      return;
+
+    window->dark_frame = 0;
+
+    if (event->state != XCB_PROPERTY_DELETE) {
+      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+          ctx->connection,
+          xcb_get_property(ctx->connection, 0, window->id,
+                           ctx->atoms[ATOM_GTK_THEME_VARIANT].value,
+                           XCB_ATOM_ANY, 0, 2048),
+          NULL);
+      if (reply) {
+        if (xcb_get_property_value_length(reply) >= 4)
+          window->dark_frame = !strcmp(xcb_get_property_value(reply), "dark");
+        free(reply);
+      }
+    }
+
+    if (!window->aura_surface)
+      return;
+
+    frame_color = window->dark_frame ? ctx->dark_frame_color : ctx->frame_color;
+    zaura_surface_set_frame_colors(window->aura_surface, frame_color,
+                                   frame_color);
   } else if (event->atom == ctx->atoms[ATOM_WL_SELECTION].value) {
     if (event->window == ctx->selection_window &&
         event->state == XCB_PROPERTY_NEW_VALUE &&
@@ -3247,8 +3287,8 @@ int main(int argc, char **argv) {
       .exit_with_child = 1,
       .sd_notify = NULL,
       .clipboard_manager = 0,
-      .frame_color = 0,
-      .has_frame_color = 0,
+      .frame_color = 0xffffffff,
+      .dark_frame_color = 0xff000000,
       .default_seat = NULL,
       .selection_window = XCB_WINDOW_NONE,
       .selection_owner = XCB_WINDOW_NONE,
@@ -3294,6 +3334,7 @@ int main(int argc, char **argv) {
                   [ATOM_TEXT] = {"TEXT"},
                   [ATOM_INCR] = {"INCR"},
                   [ATOM_WL_SELECTION] = {"_WL_SELECTION"},
+                  [ATOM_GTK_THEME_VARIANT] = {"_GTK_THEME_VARIANT"},
           },
       .visual_ids = {0},
       .colormaps = {0}};
@@ -3302,6 +3343,7 @@ int main(int argc, char **argv) {
   const char* dpi = getenv("SOMMELIER_DPI");
   const char *clipboard_manager = getenv("SOMMELIER_CLIPBOARD_MANAGER");
   const char *frame_color = getenv("SOMMELIER_FRAME_COLOR");
+  const char* dark_frame_color = getenv("SOMMELIER_DARK_FRAME_COLOR");
   const char *virtwl_device = getenv("SOMMELIER_VIRTWL_DEVICE");
   const char *drm_device = getenv("SOMMELIER_DRM_DEVICE");
   const char *glamor = getenv("SOMMELIER_GLAMOR");
@@ -3410,6 +3452,10 @@ int main(int argc, char **argv) {
       const char *s = strchr(arg, '=');
       ++s;
       frame_color = s;
+    } else if (strstr(arg, "--dark-frame-color") == arg) {
+      const char* s = strchr(arg, '=');
+      ++s;
+      dark_frame_color = s;
     } else if (strstr(arg, "--virtwl-device") == arg) {
       const char *s = strchr(arg, '=');
       ++s;
@@ -3600,12 +3646,22 @@ int main(int argc, char **argv) {
     ctx.scale = MIN(MAX_SCALE, MAX(MIN_SCALE, round(ctx.desired_scale)));
   }
 
+  if (!frame_color)
+    frame_color = FRAME_COLOR;
+
   if (frame_color) {
     int r, g, b;
-    if (sscanf(frame_color, "#%02x%02x%02x", &r, &g, &b) == 3) {
+    if (sscanf(frame_color, "#%02x%02x%02x", &r, &g, &b) == 3)
       ctx.frame_color = 0xff000000 | (r << 16) | (g << 8) | (b << 0);
-      ctx.has_frame_color = 1;
-    }
+  }
+
+  if (!dark_frame_color)
+    dark_frame_color = DARK_FRAME_COLOR;
+
+  if (dark_frame_color) {
+    int r, g, b;
+    if (sscanf(dark_frame_color, "#%02x%02x%02x", &r, &g, &b) == 3)
+      ctx.dark_frame_color = 0xff000000 | (r << 16) | (g << 8) | (b << 0);
   }
 
   // Handle broken pipes without signals that kill the entire process.

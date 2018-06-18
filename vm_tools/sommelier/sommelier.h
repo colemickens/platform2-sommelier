@@ -67,7 +67,8 @@ enum {
   ATOM_TEXT,
   ATOM_INCR,
   ATOM_WL_SELECTION,
-  ATOM_LAST = ATOM_WL_SELECTION,
+  ATOM_GTK_THEME_VARIANT,
+  ATOM_LAST = ATOM_GTK_THEME_VARIANT,
 };
 
 enum {
@@ -138,7 +139,7 @@ struct sl_context {
   const char* sd_notify;
   int clipboard_manager;
   uint32_t frame_color;
-  int has_frame_color;
+  uint32_t dark_frame_color;
   struct sl_host_seat* default_seat;
   xcb_window_t selection_window;
   xcb_window_t selection_owner;
@@ -386,6 +387,7 @@ struct sl_window {
   char* name;
   char* clazz;
   char* startup_id;
+  int dark_frame;
   uint32_t size_flags;
   int min_width;
   int min_height;
