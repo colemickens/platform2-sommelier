@@ -378,11 +378,6 @@ bool Service::Init() {
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kStartContainerMethod, &Service::StartContainer},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
-      // TODO(jkardatzke): Remove the next 3 lines after Chrome is migrated to
-      // cicerone.
-      {kLaunchContainerApplicationMethod, &Service::LaunchContainerApplication},
-      {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
-      {kLaunchVshdMethod, &Service::LaunchVshd},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -1364,112 +1359,6 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
   return dbus_response;
 }
 
-// TODO(jkardatzke): Remove this when we migrate Chrome to cicerone.
-std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
-    dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  LOG(INFO) << "Received LaunchContainerApplication request";
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  LaunchContainerApplicationResponse response;
-
-  // Just proxy the bytes in the protobuf directly. The protobufs in cicerone
-  // and concierge have the exact same structures and this is just temporary.
-  const uint8_t* protobuf_bytes;
-  size_t protobuf_length;
-  if (!reader.PopArrayOfBytes(&protobuf_bytes, &protobuf_length)) {
-    LOG(ERROR) << "Unable to extract LaunchContainerApplicationRequest from "
-               << "message";
-    response.set_success(false);
-    response.set_failure_reason(
-        "Unable to extract LaunchContainerApplicationRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  // Proxy this call over to cicerone.
-  dbus::MethodCall proxy_method_call(
-      vm_tools::cicerone::kVmCiceroneInterface,
-      vm_tools::cicerone::kLaunchContainerApplicationMethod);
-  dbus::MessageWriter proxy_writer(&proxy_method_call);
-  proxy_writer.AppendArrayOfBytes(protobuf_bytes, protobuf_length);
-  std::unique_ptr<dbus::Response> proxy_dbus_response =
-      cicerone_service_proxy_->CallMethodAndBlock(
-          &proxy_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!proxy_dbus_response) {
-    LOG(ERROR) << "Failed proxying LaunchContainerApplication to cicerone";
-    response.set_success(false);
-    response.set_failure_reason("Failure in D-Bus call to cicerone");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  dbus::MessageReader proxy_reader(proxy_dbus_response.get());
-  if (!proxy_reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed parsing protobuf response from cicerone";
-    response.set_success(false);
-    response.set_failure_reason(
-        "Failure parsing protobuf response from cicerone");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-// TODO(jkardatzke): Remove this when we migrate Chrome to cicerone.
-std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
-    dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  LOG(INFO) << "Received GetContainerAppIcon request";
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ContainerAppIconResponse response;
-
-  // Just proxy the bytes in the protobuf directly. The protobufs in cicerone
-  // and concierge have the exact same structures and this is just temporary.
-  const uint8_t* protobuf_bytes;
-  size_t protobuf_length;
-  if (!reader.PopArrayOfBytes(&protobuf_bytes, &protobuf_length)) {
-    LOG(ERROR) << "Unable to extract ContainerAppIconRequest from "
-               << "message";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  // Proxy this call over to cicerone.
-  dbus::MethodCall proxy_method_call(
-      vm_tools::cicerone::kVmCiceroneInterface,
-      vm_tools::cicerone::kGetContainerAppIconMethod);
-  dbus::MessageWriter proxy_writer(&proxy_method_call);
-  proxy_writer.AppendArrayOfBytes(protobuf_bytes, protobuf_length);
-  std::unique_ptr<dbus::Response> proxy_dbus_response =
-      cicerone_service_proxy_->CallMethodAndBlock(
-          &proxy_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!proxy_dbus_response) {
-    LOG(ERROR) << "Failed proxying GetContainerAppIcon to cicerone";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  dbus::MessageReader proxy_reader(proxy_dbus_response.get());
-  if (!proxy_reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed parsing protobuf response from cicerone";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
 std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -1506,53 +1395,6 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
       request.container_name().empty() ? kDefaultContainerName
                                        : request.container_name()));
   response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-// TODO(jkardatzke): Remove this when we migrate Chrome to cicerone.
-std::unique_ptr<dbus::Response> Service::LaunchVshd(
-    dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  LOG(INFO) << "Received LaunchVshd request";
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  LaunchVshdResponse response;
-  // Just proxy the bytes in the protobuf directly. The protobufs in cicerone
-  // and concierge have the exact same structures and this is just temporary.
-  const uint8_t* protobuf_bytes;
-  size_t protobuf_length;
-  if (!reader.PopArrayOfBytes(&protobuf_bytes, &protobuf_length)) {
-    LOG(ERROR) << "Unable to extract ContainerAppIconRequest from "
-               << "message";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  // Proxy this call over to cicerone.
-  dbus::MethodCall proxy_method_call(vm_tools::cicerone::kVmCiceroneInterface,
-                                     vm_tools::cicerone::kLaunchVshdMethod);
-  dbus::MessageWriter proxy_writer(&proxy_method_call);
-  proxy_writer.AppendArrayOfBytes(protobuf_bytes, protobuf_length);
-  std::unique_ptr<dbus::Response> proxy_dbus_response =
-      cicerone_service_proxy_->CallMethodAndBlock(
-          &proxy_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!proxy_dbus_response) {
-    LOG(ERROR) << "Failed proxying LaunchVshd to cicerone";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  dbus::MessageReader proxy_reader(proxy_dbus_response.get());
-  if (!proxy_reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed parsing protobuf response from cicerone";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

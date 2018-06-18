@@ -736,151 +736,6 @@ int StartContainer(dbus::ObjectProxy* proxy,
   return ret;
 }
 
-int LaunchApplication(dbus::ObjectProxy* proxy,
-                      string owner_id,
-                      string name,
-                      string container_name,
-                      string application) {
-  if (name.empty()) {
-    LOG(ERROR) << "--name is required";
-    return -1;
-  }
-
-  if (container_name.empty()) {
-    LOG(ERROR) << "--container_name is required";
-    return -1;
-  }
-
-  if (application.empty()) {
-    LOG(ERROR) << "--application is required";
-    return -1;
-  }
-
-  LOG(INFO) << "Starting application " << application << " in '" << name << ":"
-            << container_name << "'";
-
-  dbus::MethodCall method_call(
-      vm_tools::concierge::kVmConciergeInterface,
-      vm_tools::concierge::kLaunchContainerApplicationMethod);
-  dbus::MessageWriter writer(&method_call);
-
-  vm_tools::concierge::LaunchContainerApplicationRequest request;
-  request.set_owner_id(owner_id);
-  request.set_vm_name(name);
-  request.set_container_name(container_name);
-  request.set_desktop_file_id(application);
-
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode LaunchContainerApplicationRequest protobuf";
-    return -1;
-  }
-
-  std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to send dbus message to concierge service";
-    return -1;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  vm_tools::concierge::LaunchContainerApplicationResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed to parse response protobuf";
-    return -1;
-  }
-
-  if (!response.success()) {
-    LOG(ERROR) << "Failed to launch application: " << response.failure_reason();
-    return -1;
-  }
-
-  LOG(INFO) << "Launched application " << application << " in '" << name << ":"
-            << container_name << "'";
-
-  return 0;
-}
-
-void Write(const std::string& output_filepath, const std::string& content) {
-  int content_size = content.size();
-  if (content_size != base::WriteFile(base::FilePath(output_filepath),
-                                      content.c_str(), content_size)) {
-    LOG(ERROR) << "Failed to write to file " << output_filepath;
-  }
-}
-
-int GetIcon(dbus::ObjectProxy* proxy,
-            string owner_id,
-            string name,
-            string container_name,
-            string application,
-            int icon_size,
-            int scale,
-            string output_filepath) {
-  if (name.empty()) {
-    LOG(ERROR) << "--name is required";
-    return -1;
-  }
-
-  if (container_name.empty()) {
-    LOG(ERROR) << "--container_name is required";
-    return -1;
-  }
-
-  if (application.empty()) {
-    LOG(ERROR) << "--application is required";
-    return -1;
-  }
-
-  if (output_filepath.empty()) {
-    LOG(ERROR) << "--output_filepath is required";
-    return -1;
-  }
-
-  LOG(INFO) << "Getting icon for " << application << " in '" << name << ":"
-            << container_name << "'";
-
-  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
-                               vm_tools::concierge::kGetContainerAppIconMethod);
-  dbus::MessageWriter writer(&method_call);
-
-  vm_tools::concierge::ContainerAppIconRequest request;
-  request.set_owner_id(owner_id);
-  request.set_vm_name(name);
-  request.set_container_name(container_name);
-  request.add_desktop_file_ids(application);
-  request.set_size(icon_size);
-  request.set_scale(scale);
-
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode ContainerAppIconRequest protobuf";
-    return -1;
-  }
-
-  std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to send dbus message to concierge service";
-    return -1;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  vm_tools::concierge::ContainerAppIconResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed to parse response protobuf";
-    return -1;
-  }
-
-  // This should have up to one icon since the input has only one application
-  // file ID.
-  CHECK_LE(response.icons_size(), 1);
-  for (vm_tools::concierge::DesktopIcon icon : response.icons()) {
-    if (!icon.icon().empty())
-      Write(output_filepath, icon.icon());
-  }
-
-  return 0;
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -910,14 +765,8 @@ int main(int argc, char** argv) {
   DEFINE_string(extra_disks, "",
                 "Additional disk images to be mounted inside the VM");
   DEFINE_string(container_name, "", "Name of the container within the VM");
-  DEFINE_string(application, "", "Name of the application to launch");
   DEFINE_string(removable_media, "", "Name of the removable media to use");
   DEFINE_string(image_name, "", "Name of the file on removable media to use");
-  DEFINE_string(output_filepath, "",
-                "Filename with path to write appliction icon to");
-  DEFINE_int32(icon_size, 48,
-               "The size of the icon to get is this icon_size by icon_size");
-  DEFINE_int32(scale, 1, "The scale that the icon is designed to use with");
 
   // create_disk parameters.
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
@@ -955,13 +804,11 @@ int main(int argc, char** argv) {
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
-      FLAGS_destroy_disk + FLAGS_list_disks + FLAGS_start_container +
-      FLAGS_launch_application + FLAGS_get_icon != 1) {
+      FLAGS_destroy_disk + FLAGS_list_disks + FLAGS_start_container != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
                << "--create_disk, --create_external_disk --destroy_disk, "
-               << "--list_disks, --start_termina_vm, --start_container, "
-               << "--launch_application, or --get_icon "
+               << "--list_disks, --start_termina_vm or --start_container "
                << "must be provided";
     return -1;
   }
@@ -1001,15 +848,6 @@ int main(int argc, char** argv) {
     return StartContainer(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_container_name),
                           std::move(FLAGS_cryptohome_id));
-  } else if (FLAGS_launch_application) {
-    return LaunchApplication(
-        proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name),
-        std::move(FLAGS_container_name), std::move(FLAGS_application));
-  } else if (FLAGS_get_icon) {
-    return GetIcon(proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name),
-                   std::move(FLAGS_container_name),
-                   std::move(FLAGS_application), FLAGS_icon_size, FLAGS_scale,
-                   std::move(FLAGS_output_filepath));
   }
 
   // Unreachable.
