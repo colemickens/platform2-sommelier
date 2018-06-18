@@ -32,6 +32,7 @@ using brillo::BlobToString;
 using brillo::CombineBlobs;
 using testing::Return;
 using testing::StrictMock;
+using testing::Values;
 
 namespace cryptohome {
 
@@ -68,17 +69,24 @@ KeysetSignatureChallengeInfo MakeFakeKeysetChallengeInfo(
 // testing a single instance of ChallengeCredentialsDecryptOperation.
 class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
  protected:
-  // Set up mock for Tpm::GetSignatureSealingBackend().
-  void PrepareSignatureSealingBackend() {
+  void PrepareSignatureSealingBackend(bool enabled) {
+    SignatureSealingBackend* const return_value =
+        enabled ? &sealing_backend_ : nullptr;
     EXPECT_CALL(tpm_, GetSignatureSealingBackend())
-        .WillRepeatedly(Return(&sealing_backend_));
+        .WillRepeatedly(Return(return_value));
   }
 
   // Create an instance of ChallengeCredentialsDecryptOperation to be tested.
+  // When |pass_salt_signature| is true, it additionally passes the signature of
+  // salt as it were precomputed before.
   void CreateOperation(
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
-      ChallengeSignatureAlgorithm salt_challenge_algorithm) {
+      ChallengeSignatureAlgorithm salt_challenge_algorithm,
+      bool pass_salt_signature) {
     DCHECK(!operation_);
+    std::unique_ptr<Blob> salt_signature;
+    if (pass_salt_signature)
+      salt_signature = std::make_unique<Blob>(kSaltSignature);
     const ChallengePublicKeyInfo public_key_info =
         MakePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     const KeysetSignatureChallengeInfo keyset_challenge_info =
@@ -87,11 +95,13 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
     operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
         &challenge_service_, &tpm_, kDelegateBlob, kDelegateSecret, kUserEmail,
         public_key_info, kSalt, keyset_challenge_info,
-        nullptr /* salt_signature */,
+        std::move(salt_signature),
         MakeChallengeCredentialsDecryptResultWriter(&operation_result_));
   }
 
   void StartOperation() { operation_->Start(); }
+
+  void AbortOperation() { operation_->Abort(); }
 
   // Whether the tested operation completed with some result.
   bool has_result() const { return static_cast<bool>(operation_result_); }
@@ -101,6 +111,12 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
     ASSERT_TRUE(operation_result_);
     VerifySuccessfulChallengeCredentialsDecryptResult(*operation_result_,
                                                       kUserEmail, kPasskey);
+  }
+
+  // Assert that the tested operation completed with a failure result.
+  void VerifyFailedResult() const {
+    ASSERT_TRUE(operation_result_);
+    VerifyFailedChallengeCredentialsDecryptResult(*operation_result_);
   }
 
   // Returns a helper object that aids mocking of the secret unsealing
@@ -141,6 +157,12 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
         kSaltSignature);
   }
 
+  // Injects a simulated failure response for the currently running salt
+  // challenge request.
+  void SimulateSaltChallengeFailure() {
+    salt_challenge_mock_controller_.SimulateFailureResponse();
+  }
+
   // Sets up an expectation that the secret unsealing challenge request will be
   // issued via |challenge_service_|.
   void ExpectUnsealingChallenge(
@@ -160,6 +182,12 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   void SimulateUnsealingChallengeResponse() {
     unsealing_challenge_mock_controller_.SimulateSignatureChallengeResponse(
         kUnsealingChallengeSignature);
+  }
+
+  // Injects a simulated failure response for the currently running secret
+  // unsealing challenge request.
+  void SimulateUnsealingChallengeFailure() {
+    unsealing_challenge_mock_controller_.SimulateFailureResponse();
   }
 
  private:
@@ -231,7 +259,7 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
 };
 
 // Base fixture class that uses a single algorithm for simplicity.
-class ChallengeCredentialsDecryptOperationBasicTest
+class ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase
     : public ChallengeCredentialsDecryptOperationTestBase {
  protected:
   // Constants for the single algorithm to be used in this test.
@@ -239,11 +267,18 @@ class ChallengeCredentialsDecryptOperationBasicTest
       CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
   static constexpr SealingAlgorithm kSealingAlgorithm =
       SealingAlgorithm::kRsassaPkcs1V15Sha256;
+};
 
+// Basic tests that use a single algorithm, have the sealing backend available
+// and don't skip signing of salt.
+class ChallengeCredentialsDecryptOperationBasicTest
+    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
+ protected:
   ChallengeCredentialsDecryptOperationBasicTest() {
-    PrepareSignatureSealingBackend();
+    PrepareSignatureSealingBackend(true /* enabled */);
     CreateOperation({kChallengeAlgorithm} /* key_algorithms */,
-                    kChallengeAlgorithm /* salt_challenge_algorithm */);
+                    kChallengeAlgorithm /* salt_challenge_algorithm */,
+                    false /* pass_salt_signature */);
   }
 };
 
@@ -251,7 +286,8 @@ class ChallengeCredentialsDecryptOperationBasicTest
 
 // Test success of the operation in scenario when the salt challenge response
 // comes before the unsealing challenge response.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest, Success) {
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
+       SuccessSaltThenUnsealing) {
   ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(
       kChallengeAlgorithm /* unsealing_challenge_algorithm */);
@@ -269,5 +305,334 @@ TEST_F(ChallengeCredentialsDecryptOperationBasicTest, Success) {
   SimulateUnsealingChallengeResponse();
   VerifySuccessfulResult();
 }
+
+// Test success of the operation in scenario when the unsealing challenge
+// response comes before the salt challenge response.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
+       SuccessUnsealingThenSalt) {
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpSuccessfulMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+
+  SimulateUnsealingChallengeResponse();
+  EXPECT_FALSE(has_result());
+
+  SimulateSaltChallengeResponse();
+  VerifySuccessfulResult();
+}
+
+// Test failure of the operation due to failure of unsealing session creation.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
+       UnsealingSessionCreationFailure) {
+  EXPECT_FALSE(has_result());
+
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpCreationFailingMock(true /* mock_repeatedly */);
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  VerifyFailedResult();
+
+  // Responding to the salt challenge shouldn't have any effect.
+  SimulateSaltChallengeResponse();
+}
+
+// Test failure of the operation due to failure of unsealing.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest, UnsealingFailure) {
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpUsealingFailingMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+  EXPECT_FALSE(has_result());
+
+  SimulateUnsealingChallengeResponse();
+  VerifyFailedResult();
+
+  // Responding to the salt challenge shouldn't have any effect.
+  SimulateSaltChallengeResponse();
+}
+
+// Test failure of the operation due to failure of salt challenge request.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest, SaltChallengeFailure) {
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpUnsealingNotCalledMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+  EXPECT_FALSE(has_result());
+
+  SimulateSaltChallengeFailure();
+  VerifyFailedResult();
+
+  // Responding to the unsealing challenge shouldn't have any effect.
+  SimulateUnsealingChallengeResponse();
+}
+
+// Test failure of the operation due to failure of unsealing challenge request.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
+       UnsealingChallengeFailure) {
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpUnsealingNotCalledMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+  EXPECT_FALSE(has_result());
+
+  SimulateUnsealingChallengeFailure();
+  VerifyFailedResult();
+
+  // Responding to the salt challenge shouldn't have any effect.
+  SimulateSaltChallengeResponse();
+}
+
+// Test failure of the operation due to its abortion before any of the
+// challenges is completed.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest, AbortBeforeChallenges) {
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpUnsealingNotCalledMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+  EXPECT_FALSE(has_result());
+
+  AbortOperation();
+  VerifyFailedResult();
+
+  // Responding to the challenges shouldn't have any effect.
+  SimulateSaltChallengeResponse();
+  SimulateUnsealingChallengeResponse();
+}
+
+// Test failure of the operation due to its abortion after the salt challenge
+// completes.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest, AbortAfterSaltChallenge) {
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpUnsealingNotCalledMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+
+  SimulateSaltChallengeResponse();
+  EXPECT_FALSE(has_result());
+
+  AbortOperation();
+  VerifyFailedResult();
+
+  // Responding to the unsealing challenge shouldn't have any effect.
+  SimulateUnsealingChallengeResponse();
+}
+
+// Test failure of the operation due to its abortion after the unsealing
+// completes.
+TEST_F(ChallengeCredentialsDecryptOperationBasicTest, AbortAfterUnsealing) {
+  ExpectSaltChallenge(kChallengeAlgorithm /* salt_challenge_algorithm */);
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpSuccessfulMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+
+  SimulateUnsealingChallengeResponse();
+  EXPECT_FALSE(has_result());
+
+  AbortOperation();
+  VerifyFailedResult();
+
+  // Responding to the salt challenge shouldn't have any effect.
+  SimulateSaltChallengeResponse();
+}
+
+namespace {
+
+// Tests that have the salt signature already passed to the tested operation as
+// an input parameter.
+class ChallengeCredentialsDecryptOperationSaltSkippingTest
+    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
+ protected:
+  ChallengeCredentialsDecryptOperationSaltSkippingTest() {
+    PrepareSignatureSealingBackend(true /* enabled */);
+    CreateOperation({kChallengeAlgorithm} /* key_algorithms */,
+                    kChallengeAlgorithm /* salt_challenge_algorithm */,
+                    true /* pass_salt_signature */);
+  }
+};
+
+// Test success of the operation when the salt signature is passed as a
+// parameter.
+TEST_F(ChallengeCredentialsDecryptOperationSaltSkippingTest, Success) {
+  ExpectUnsealingChallenge(
+      kChallengeAlgorithm /* unsealing_challenge_algorithm */);
+  MakeUnsealingMocker({kSealingAlgorithm} /* key_sealing_algorithms */,
+                      kSealingAlgorithm /* unsealing_algorithm */)
+      ->SetUpSuccessfulMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+  EXPECT_FALSE(has_result());
+
+  SimulateUnsealingChallengeResponse();
+  VerifySuccessfulResult();
+}
+
+}  // namespace
+
+namespace {
+
+// Tests with simulation of SignatureSealingBackend absence.
+class ChallengeCredentialsDecryptOperationNoBackendTest
+    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
+ protected:
+  ChallengeCredentialsDecryptOperationNoBackendTest() {
+    PrepareSignatureSealingBackend(false /* enabled */);
+    CreateOperation({kChallengeAlgorithm} /* key_algorithms */,
+                    kChallengeAlgorithm /* salt_challenge_algorithm */,
+                    false /* pass_salt_signature */);
+  }
+};
+
+}  // namespace
+
+// Test failure of the operation due to the absence of the sealing backend.
+TEST_F(ChallengeCredentialsDecryptOperationNoBackendTest, Failure) {
+  EXPECT_FALSE(has_result());
+
+  StartOperation();
+  VerifyFailedResult();
+}
+
+namespace {
+
+// Test parameters for ChallengeCredentialsDecryptOperationAlgorithmsTest.
+struct AlgorithmsTestParam {
+  std::vector<ChallengeSignatureAlgorithm> key_algorithms;
+  std::vector<SealingAlgorithm> key_sealing_algorithms;
+  ChallengeSignatureAlgorithm salt_challenge_algorithm;
+  SealingAlgorithm unsealing_algorithm;
+  ChallengeSignatureAlgorithm unsealing_challenge_algorithm;
+};
+
+// Tests various combinations of multiple algorithms.
+class ChallengeCredentialsDecryptOperationAlgorithmsTest
+    : public ChallengeCredentialsDecryptOperationTestBase,
+      public testing::WithParamInterface<AlgorithmsTestParam> {
+ protected:
+  ChallengeCredentialsDecryptOperationAlgorithmsTest() {
+    PrepareSignatureSealingBackend(true /* enabled */);
+    CreateOperation(GetParam().key_algorithms,
+                    GetParam().salt_challenge_algorithm,
+                    false /* pass_salt_signature */);
+  }
+};
+
+}  // namespace
+
+// Test success of the operation with the specified combination of algorithms.
+TEST_P(ChallengeCredentialsDecryptOperationAlgorithmsTest, Success) {
+  ExpectSaltChallenge(GetParam().salt_challenge_algorithm);
+  ExpectUnsealingChallenge(GetParam().unsealing_challenge_algorithm);
+  MakeUnsealingMocker(GetParam().key_sealing_algorithms,
+                      GetParam().unsealing_algorithm)
+      ->SetUpSuccessfulMock();
+
+  StartOperation();
+  EXPECT_TRUE(is_salt_challenge_requested());
+  EXPECT_TRUE(is_unsealing_challenge_requested());
+
+  SimulateSaltChallengeResponse();
+  EXPECT_FALSE(has_result());
+
+  SimulateUnsealingChallengeResponse();
+  VerifySuccessfulResult();
+}
+
+// Test that SHA-1 algorithms are the least preferred and chosen only if there's
+// no other option.
+INSTANTIATE_TEST_CASE_P(
+    LowPriorityOfSha1,
+    ChallengeCredentialsDecryptOperationAlgorithmsTest,
+    Values(
+        AlgorithmsTestParam{
+            {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1,
+             CHALLENGE_RSASSA_PKCS1_V1_5_SHA256} /* key_algorithms */,
+            {SealingAlgorithm::kRsassaPkcs1V15Sha1,
+             SealingAlgorithm::
+                 kRsassaPkcs1V15Sha256} /* key_sealing_algorithms */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA256 /* salt_challenge_algorithm */,
+            SealingAlgorithm::kRsassaPkcs1V15Sha256 /* unsealing_algorithm */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA256
+            /* unsealing_challenge_algorithm */},
+        AlgorithmsTestParam{
+            {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1} /* key_algorithms */,
+            {SealingAlgorithm::
+                 kRsassaPkcs1V15Sha1} /* key_sealing_algorithms */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA1 /* salt_challenge_algorithm */,
+            SealingAlgorithm::kRsassaPkcs1V15Sha1 /* unsealing_algorithm */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA1
+            /* unsealing_challenge_algorithm */}));
+
+// Test prioritization of algorithms according to their order in the input.
+INSTANTIATE_TEST_CASE_P(
+    InputPrioritization,
+    ChallengeCredentialsDecryptOperationAlgorithmsTest,
+    Values(
+        AlgorithmsTestParam{
+            {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
+             CHALLENGE_RSASSA_PKCS1_V1_5_SHA512} /* key_algorithms */,
+            {SealingAlgorithm::kRsassaPkcs1V15Sha256,
+             SealingAlgorithm::
+                 kRsassaPkcs1V15Sha512} /* key_sealing_algorithms */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA256 /* salt_challenge_algorithm */,
+            SealingAlgorithm::kRsassaPkcs1V15Sha256 /* unsealing_algorithm */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA256
+            /* unsealing_challenge_algorithm */},
+        AlgorithmsTestParam{
+            {CHALLENGE_RSASSA_PKCS1_V1_5_SHA512,
+             CHALLENGE_RSASSA_PKCS1_V1_5_SHA256} /* key_algorithms */,
+            {SealingAlgorithm::kRsassaPkcs1V15Sha512,
+             SealingAlgorithm::
+                 kRsassaPkcs1V15Sha256} /* key_sealing_algorithms */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA512 /* salt_challenge_algorithm */,
+            SealingAlgorithm::kRsassaPkcs1V15Sha512 /* unsealing_algorithm */,
+            CHALLENGE_RSASSA_PKCS1_V1_5_SHA512
+            /* unsealing_challenge_algorithm */}));
 
 }  // namespace cryptohome
