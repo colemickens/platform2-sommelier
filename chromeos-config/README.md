@@ -318,6 +318,7 @@ The schema definition is below:
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
 | [ANY] | N/A | N/A | N/A| N/A | This type allows additional properties not governed by the schema. See the type description for details on these additional properties.|
+| touchpad-wakeup | string | ```^[01]$``` | False |  | Enable (1) or disable (0) wake from touchpad. |
 
 ### thermal
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
