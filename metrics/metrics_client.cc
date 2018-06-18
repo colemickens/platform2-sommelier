@@ -20,29 +20,34 @@ enum Mode {
   kModeShowConsentId,
   kModeCreateConsent,
   kModeDeleteConsent,
+  kModeReplayFile,
 };
 
 void ShowUsage() {
-  fprintf(stderr,
-          "Usage:  metrics_client [-t] name sample min max nbuckets\n"
-          "        metrics_client -e   name sample max\n"
-          "        metrics_client -s   name sample\n"
-          "        metrics_client -v   event\n"
-          "        metrics_client -u action\n"
-          "        metrics_client [-cCDg]\n"
-          "\n"
-          "  default: send metric with integer values\n"
-          "           |min| > 0, |min| <= sample < |max|\n"
-          "  -C: Create consent file such that -c will return 0.\n"
-          "  -D: Delete consent file such that -c will return 1.\n"
-          "  -c: return exit status 0 if user consents to stats, 1 otherwise,\n"
-          "      in guest mode always return 1\n"
-          "  -e: send linear/enumeration histogram data\n"
-          "  -g: return exit status 0 if machine in guest mode, 1 otherwise\n"
-          "  -s: send a sparse histogram sample\n"
-          "  -t: convert sample from double seconds to int milliseconds\n"
-          "  -u: send a user action\n"
-          "  -v: send a Platform.CrOSEvent enum histogram sample\n");
+  fprintf(
+      stderr,
+      "Usage:  metrics_client [-W <file>] [-t] name sample min max nbuckets\n"
+      "        metrics_client [-W <file>] -e   name sample max\n"
+      "        metrics_client [-W <file>] -s   name sample\n"
+      "        metrics_client [-W <file>] -v   event\n"
+      "        metrics_client [-W <file>] -u action\n"
+      "        metrics_client [-W <file>] -R <file>\n"
+      "        metrics_client [-cCDg]\n"
+      "\n"
+      "  default: send metric with integer values\n"
+      "           |min| > 0, |min| <= sample < |max|\n"
+      "  -C: Create consent file such that -c will return 0.\n"
+      "  -D: Delete consent file such that -c will return 1.\n"
+      "  -R <file>: Replay events from a file.\n"
+      "  -W <file>: Write events to a file.\n"
+      "  -c: return exit status 0 if user consents to stats, 1 otherwise,\n"
+      "      in guest mode always return 1\n"
+      "  -e: send linear/enumeration histogram data\n"
+      "  -g: return exit status 0 if machine in guest mode, 1 otherwise\n"
+      "  -s: send a sparse histogram sample\n"
+      "  -t: convert sample from double seconds to int milliseconds\n"
+      "  -u: send a user action\n"
+      "  -v: send a Platform.CrOSEvent enum histogram sample\n");
   exit(1);
 }
 
@@ -69,7 +74,8 @@ double ParseDouble(const char* arg) {
 int SendStats(char* argv[],
               int name_index,
               enum Mode mode,
-              bool secs_to_msecs) {
+              bool secs_to_msecs,
+              const char* output_file) {
   const char* name = argv[name_index];
   int sample;
   if (secs_to_msecs) {
@@ -80,6 +86,9 @@ int SendStats(char* argv[],
 
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
+  if (output_file) {
+    metrics_lib.SetOutputFile(output_file);
+  }
   if (mode == kModeSendSparseSample) {
     metrics_lib.SendSparseToUMA(name, sample);
   } else if (mode == kModeSendEnumSample) {
@@ -149,21 +158,39 @@ int ShowConsentId() {
   return 0;
 }
 
+int ReplayFile(const char* input_file, const char* output_file) {
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  if (output_file) {
+    metrics_lib.SetOutputFile(output_file);
+  }
+  return metrics_lib.Replay(input_file) ? 0 : 1;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   enum Mode mode = kModeSendSample;
   bool secs_to_msecs = false;
+  const char* output_file = nullptr;
+  const char* input_file = nullptr;
 
   // Parse arguments
   int flag;
-  while ((flag = getopt(argc, argv, "CDcegistuv")) != -1) {
+  while ((flag = getopt(argc, argv, "CDR:W:cegistuv")) != -1) {
     switch (flag) {
       case 'C':
         mode = kModeCreateConsent;
         break;
       case 'D':
         mode = kModeDeleteConsent;
+        break;
+      case 'R':
+        mode = kModeReplayFile;
+        input_file = optarg;
+        break;
+      case 'W':
+        output_file = optarg;
         break;
       case 'c':
         mode = kModeHasConsent;
@@ -219,7 +246,7 @@ int main(int argc, char** argv) {
       if ((mode != kModeSendSample) && secs_to_msecs) {
         ShowUsage();
       }
-      return SendStats(argv, arg_index, mode, secs_to_msecs);
+      return SendStats(argv, arg_index, mode, secs_to_msecs, output_file);
     case kModeSendUserAction:
       return SendUserAction(argv, arg_index);
     case kModeSendCrosEvent:
@@ -234,6 +261,8 @@ int main(int argc, char** argv) {
       return IsGuestMode();
     case kModeShowConsentId:
       return ShowConsentId();
+    case kModeReplayFile:
+      return ReplayFile(input_file, output_file);
     default:
       ShowUsage();
       return 0;

@@ -68,6 +68,17 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // Note: Should only be used by internal system projects.
   bool ConsentId(std::string* id);
 
+  // Send output to the specified file. This is
+  // useful when running in a context where the metrics reporting system isn't
+  // fully available (e.g. when /var is not mounted). Note that the contents of
+  // custom output files will not be sent to the server automatically, but need
+  // to be imported via Replay() to get picked up by the reporting pipeline.
+  void SetOutputFile(const std::string& output_file);
+
+  // Replays metrics from the given file as if the events contained in |file|
+  // where being generated via the SendXYZ functions.
+  bool Replay(const std::string& input_file);
+
   // Sends histogram data to Chrome for transport to UMA and returns
   // true on success. This method results in the equivalent of an
   // asynchronous non-blocking RPC to UMA_HISTOGRAM_CUSTOM_COUNTS

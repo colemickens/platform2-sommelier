@@ -264,10 +264,22 @@ bool SerializationUtils::ReadAndTruncateMetricsFromFile(
   return total_length <= sample_batch_max_length;
 }
 
-bool SerializationUtils::WriteMetricToFile(const MetricSample& sample,
-                                           const std::string& filename) {
-  if (!sample.IsValid())
-    return false;
+bool SerializationUtils::WriteMetricsToFile(
+    const std::vector<MetricSample>& samples, const std::string& filename) {
+  std::string output;
+  for (const auto& sample : samples) {
+    if (!sample.IsValid()) {
+      return false;
+    }
+    std::string msg = sample.ToString();
+    int32_t size = msg.length() + sizeof(int32_t);
+    if (size > kMessageMaxLength) {
+      LOG(ERROR) << "cannot write message: too long, length = " << size;
+      return false;
+    }
+    output.append(reinterpret_cast<char*>(&size), sizeof(size));
+    output.append(msg);
+  }
 
   base::ScopedFD file_descriptor(open(filename.c_str(),
                                       O_WRONLY | O_APPEND | O_CREAT,
@@ -278,33 +290,17 @@ bool SerializationUtils::WriteMetricToFile(const MetricSample& sample,
     return false;
   }
 
-  // Grab a lock to avoid chrome truncating the file
-  // underneath us. Keep the file locked as briefly as possible.
-  // Freeing file_descriptor will close the file and and remove the lock.
+  // Grab a lock to avoid chrome truncating the file underneath us. Keep the
+  // file locked as briefly as possible. Freeing file_descriptor will close the
+  // file and remove the lock.
   if (HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) < 0) {
     PLOG(ERROR) << filename << ": cannot lock";
     return false;
   }
 
-  std::string msg = sample.ToString();
-  int32_t size = msg.length() + sizeof(int32_t);
-  if (size > kMessageMaxLength) {
-    LOG(ERROR) << "cannot write message: too long";
-    return false;
-  }
-
-  // The file containing the metrics samples will only be read by programs on
-  // the same device so we do not check endianness.
-  if (!base::WriteFileDescriptor(file_descriptor.get(),
-                                 reinterpret_cast<char*>(&size),
-                                 sizeof(size))) {
-    PLOG(ERROR) << "error writing message length";
-    return false;
-  }
-
-  if (!base::WriteFileDescriptor(
-          file_descriptor.get(), msg.c_str(), msg.size())) {
-    PLOG(ERROR) << "error writing message";
+  if (!base::WriteFileDescriptor(file_descriptor.get(), output.c_str(),
+                                 output.size())) {
+    PLOG(ERROR) << "error writing output";
     return false;
   }
 

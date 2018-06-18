@@ -31,8 +31,8 @@ bool ReadAndTruncateMetricsFromFile(const std::string& filename,
                                     std::vector<MetricSample>* metrics,
                                     size_t sample_batch_max_length);
 
-// Serializes a sample and write it to filename.
-// The format for the message is:
+// Serializes a vector of samples and writes them to filename.
+// The format for each sample is:
 //  message_size, serialized_message
 // where
 //  * message_size is the total length of the message (message_size +
@@ -41,7 +41,8 @@ bool ReadAndTruncateMetricsFromFile(const std::string& filename,
 //
 //  NB: the file will never leave the device so message_size will be written
 //  with the architecture's endianness.
-bool WriteMetricToFile(const MetricSample& sample, const std::string& filename);
+bool WriteMetricsToFile(const std::vector<MetricSample>& samples,
+                        const std::string& filename);
 
 // Maximum length of a serialized message.
 static const size_t kMessageMaxLength = 1024;
