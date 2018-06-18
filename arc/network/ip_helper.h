@@ -32,7 +32,7 @@ class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   explicit IpHelper(const Options& opt, base::ScopedFD control_fd);
 
  protected:
-  // Overrides Daemon init callback.
+  // Overrides Daemon init callback. Returns 0 on success and < 0 on error.
   int OnInit() override;
 
   // Overrides MessageLoopForIO callbacks for new data on |control_fd_|.

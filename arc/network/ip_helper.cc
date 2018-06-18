@@ -36,7 +36,10 @@ int IpHelper::OnInit() {
   // Prevent the main process from sending us any signals.
   CHECK_GT(setsid(), 0);
 
-  CHECK(arc_ip_config_->Init());
+  if (!arc_ip_config_->Init()) {
+    LOG(ERROR) << "Error initializing arc_ip_config";
+    return -1;
+  }
 
   // This needs to execute after Daemon::OnInit().
   base::MessageLoopForIO::current()->task_runner()->PostTask(
