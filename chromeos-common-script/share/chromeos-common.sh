@@ -299,7 +299,7 @@ edit_mbr() {
   local PARTITION_NUM_EFI_SYSTEM=12
   local start_esp=$(partoffset "$1" ${PARTITION_NUM_EFI_SYSTEM})
   local num_esp_sectors=$(partsize "$1" ${PARTITION_NUM_EFI_SYSTEM})
-  sfdisk -X dos "${1}" <<EOF
+  maybe_sudo sfdisk -w never -X dos "${1}" <<EOF
 unit: sectors
 
 disk1 : start=   $start_esp, size=    $num_esp_sectors, Id= c, bootable
@@ -322,7 +322,7 @@ install_hybrid_mbr() {
   echo "Creating hybrid MBR"
   if ! edit_mbr "${1}"; then
     udevadm settle
-    blockdev --rereadpt "${1}"
+    maybe_sudo blockdev --rereadpt "${1}"
   fi
 }
 
