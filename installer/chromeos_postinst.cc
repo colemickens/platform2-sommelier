@@ -104,26 +104,25 @@ bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
 
 namespace {
 
-// Returns zero on success, exit code on failure
-int TryCr50Update(const string &install_dir) {
-  int result;
-  string script =  install_dir + "/usr/share/cros/cr50-update.sh";
-  string command = script + " " + install_dir;
+// Run the cr50 script with the given args. Returns zero on success, exit code
+// on failure.
+//
+// script_name the script in /usr/share/cros to run
+// script_arg the args to run the script with
+//
+int RunCr50Script(const string &install_dir,
+                  const string &script_name,
+                  const string &script_arg) {
+  string script = install_dir + "/usr/share/cros/" + script_name;
+  string command = script + " " + script_arg;
 
   if (access(script.c_str(), X_OK)) {
     // The script is not there, means no cr50 present either, nothing to do.
     return 0;
   }
 
-  printf("Starting cr50 updater (%s)\n", command.c_str());
-  result = RunCommand(command);
-
-  if (result)
-    fprintf(stderr, "Cr50 update attempt failed (%d).\n",  result);
-  else
-    printf("Cr50 updater succeeded\n");
-
-  return result;
+  printf("Starting command: %s\n", command.c_str());
+  return RunCommand(command);
 }
 
 // Updates firmware. We must activate new firmware only after new kernel is
@@ -407,11 +406,20 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     }
   }
 
-  // Don't update Cr50 in factory
-  if (!is_factory_install && TryCr50Update(install_config.root.mount())) {
-    fprintf(stderr, "Failed to update cr50 firmware.\n");
-    // Let's not consider cr50 update failure a reason for interrupting
-    // installation.
+  // Don't modify Cr50 in factory.
+  if (!is_factory_install) {
+    result = RunCr50Script(install_config.root.mount(), "cr50-set-board-id.sh",
+                           "unknown");
+    // cr50 set board id failure is not a reason for interrupting installation.
+    if (result)
+      fprintf(stderr, "ignored: cr50-set-board-id failure (%d).\n", result);
+
+    result = RunCr50Script(install_config.root.mount(), "cr50-update.sh",
+                           install_config.root.mount());
+    // cr50 update failure is not a reason for interrupting installation.
+    if (result)
+      fprintf(stderr, "ignored: cr50-update failure (%d).\n", result);
+    printf("cr50 setup complete.\n");
   }
 
   if (cgpt_manager.Finalize()) {
