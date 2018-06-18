@@ -437,6 +437,7 @@
             'bootlockbox/boot_lockbox_service.cc',
             'bootlockbox/boot_lockbox_service_unittest.cc',
             'bootlockbox/boot_lockbox_unittest.cc',
+            'challenge_credentials/challenge_credentials_decrypt_operation_unittest.cc',
             'challenge_credentials/challenge_credentials_test_utils.cc',
             'crypto_unittest.cc',
             'cryptohome_event_source_unittest.cc',
