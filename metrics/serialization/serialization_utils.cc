@@ -151,10 +151,10 @@ bool ReadMessage(int fd, std::string* message_out, size_t* bytes_used_out) {
 
 }  // namespace
 
-std::unique_ptr<MetricSample> SerializationUtils::ParseSample(
+MetricSample SerializationUtils::ParseSample(
     const std::string& sample) {
   if (sample.empty())
-    return std::unique_ptr<MetricSample>();
+    return MetricSample();
 
   // Can't split at \0 anymore, so replace null chars with \n.
   std::string sample_copy = sample;
@@ -166,7 +166,7 @@ std::unique_ptr<MetricSample> SerializationUtils::ParseSample(
   if (parts.size() != 3) {
     LOG(ERROR) << "splitting message on \\0 produced " << parts.size()
                 << " parts (expected 3)";
-    return std::unique_ptr<MetricSample>();
+    return MetricSample();
   }
   const std::string& name = parts[0];
   const std::string& value = parts[1];
@@ -184,12 +184,12 @@ std::unique_ptr<MetricSample> SerializationUtils::ParseSample(
   } else {
     LOG(ERROR) << "invalid event type: " << name << ", value: " << value;
   }
-  return std::unique_ptr<MetricSample>();
+  return MetricSample();
 }
 
 bool SerializationUtils::ReadAndTruncateMetricsFromFile(
     const std::string& filename,
-    std::vector<std::unique_ptr<MetricSample>>* metrics,
+    std::vector<MetricSample>* metrics,
     size_t sample_batch_max_length) {
   struct stat stat_buf;
   int result;
@@ -238,8 +238,8 @@ bool SerializationUtils::ReadAndTruncateMetricsFromFile(
     if (!ReadMessage(fd.get(), &message, &bytes_used))
       break;
 
-    std::unique_ptr<MetricSample> sample = ParseSample(message);
-    if (sample)
+    MetricSample sample = ParseSample(message);
+    if (sample.IsValid())
       metrics->push_back(std::move(sample));
 
     total_length += bytes_used;

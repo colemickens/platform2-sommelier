@@ -5,7 +5,6 @@
 #ifndef METRICS_SERIALIZATION_SERIALIZATION_UTILS_H_
 #define METRICS_SERIALIZATION_SERIALIZATION_UTILS_H_
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,7 +19,7 @@ namespace SerializationUtils {
 // Deserializes a sample passed as a string and return a sample.
 // The return value will either be a std::unique_ptr to a Metric sample (if the
 // deserialization was successful) or a NULL std::unique_ptr.
-std::unique_ptr<MetricSample> ParseSample(const std::string& sample);
+MetricSample ParseSample(const std::string& sample);
 
 // Reads samples from a file, and modifies the file to reflect the samples
 // processed.  If all samples are read, truncates the file to zero size and
@@ -28,10 +27,9 @@ std::unique_ptr<MetricSample> ParseSample(const std::string& sample);
 // samples, changes the file to logically contain only the remaining samples.
 // Returns false if samples are left for further processing, true in all other
 // cases (including errors).
-bool ReadAndTruncateMetricsFromFile(
-    const std::string& filename,
-    std::vector<std::unique_ptr<MetricSample>>* metrics,
-    size_t sample_batch_max_length);
+bool ReadAndTruncateMetricsFromFile(const std::string& filename,
+                                    std::vector<MetricSample>* metrics,
+                                    size_t sample_batch_max_length);
 
 // Serializes a sample and write it to filename.
 // The format for the message is:

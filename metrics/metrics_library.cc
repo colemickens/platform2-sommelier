@@ -207,8 +207,7 @@ void MetricsLibrary::Init() {
 bool MetricsLibrary::SendToUMA(
     const std::string& name, int sample, int min, int max, int nbuckets) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::HistogramSample(name, sample, min, max, nbuckets)
-           .get(),
+      metrics::MetricSample::HistogramSample(name, sample, min, max, nbuckets),
       kUMAEventsPath);
 }
 
@@ -220,8 +219,8 @@ bool MetricsLibrary::SendRepeatedToUMA(const std::string& name,
                                     int nbuckets,
                                     int num_samples) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::HistogramSample(
-           name, sample, min, max, nbuckets, num_samples).get(),
+      metrics::MetricSample::HistogramSample(name, sample, min, max, nbuckets,
+                                             num_samples),
       kUMAEventsPath);
 }
 #endif
@@ -230,31 +229,30 @@ bool MetricsLibrary::SendEnumToUMA(const std::string& name,
                                    int sample,
                                    int max) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::LinearHistogramSample(name, sample, max).get(),
+      metrics::MetricSample::LinearHistogramSample(name, sample, max),
       kUMAEventsPath);
 }
 
 bool MetricsLibrary::SendBoolToUMA(const std::string& name, bool sample) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2)
-           .get(),
+      metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2),
       kUMAEventsPath);
 }
 
 bool MetricsLibrary::SendSparseToUMA(const std::string& name, int sample) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::SparseHistogramSample(name, sample).get(),
+      metrics::MetricSample::SparseHistogramSample(name, sample),
       kUMAEventsPath);
 }
 
 bool MetricsLibrary::SendUserActionToUMA(const std::string& action) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::UserActionSample(action).get(), kUMAEventsPath);
+      metrics::MetricSample::UserActionSample(action), kUMAEventsPath);
 }
 
 bool MetricsLibrary::SendCrashToUMA(const char* crash_kind) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::CrashSample(crash_kind).get(), kUMAEventsPath);
+      metrics::MetricSample::CrashSample(crash_kind), kUMAEventsPath);
 }
 
 void MetricsLibrary::SetPolicyProvider(policy::PolicyProvider* provider) {

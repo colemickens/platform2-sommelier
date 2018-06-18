@@ -166,14 +166,14 @@ bool UploadService::ReadMetrics() {
   CHECK(!staged_log_)
       << "cannot read metrics until the old logs have been discarded";
 
-  std::vector<std::unique_ptr<metrics::MetricSample>> samples;
+  std::vector<metrics::MetricSample> samples;
   bool result = metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       metrics_file_,
       &samples,
       metrics::SerializationUtils::kSampleBatchMaxLength);
 
   for (const auto& sample : samples) {
-    AddSample(*sample);
+    AddSample(sample);
   }
   DLOG(INFO) << samples.size() << " samples found in uma-events";
 

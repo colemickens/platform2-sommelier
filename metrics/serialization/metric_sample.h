@@ -5,7 +5,6 @@
 #ifndef METRICS_SERIALIZATION_METRIC_SAMPLE_H_
 #define METRICS_SERIALIZATION_METRIC_SAMPLE_H_
 
-#include <memory>
 #include <string>
 
 #include "base/gtest_prod_util.h"
@@ -20,6 +19,7 @@ class MetricSample {
  public:
   // Types of metric sample used.
   enum SampleType {
+    INVALID,
     CRASH,
     HISTOGRAM,
     LINEAR_HISTOGRAM,
@@ -27,7 +27,15 @@ class MetricSample {
     USER_ACTION,
   };
 
-  ~MetricSample();
+  // Constructs an invalid sample. Use the factory functions below to create
+  // samples carrying actual data.
+  MetricSample() {}
+  ~MetricSample() = default;
+
+  // Allow copy and move construction. Assignment is not available because all
+  // data members are constant.
+  MetricSample(const MetricSample& other) = default;
+  MetricSample(MetricSample&& other) = default;
 
   // Returns true if the sample is valid (can be serialized without ambiguity).
   //
@@ -60,45 +68,40 @@ class MetricSample {
   std::string ToString() const;
 
   // Builds a crash sample.
-  static std::unique_ptr<MetricSample> CrashSample(
-      const std::string& crash_name);
+  static MetricSample CrashSample(const std::string& crash_name);
 
   // Builds a histogram sample.
   // Chrome doesn't support repeated samples yet, non-one counts
   // can only be used (outside of unit tests) when
   // conditional compile flag USE_METRICS_UPLOADER is 1.
-  static std::unique_ptr<MetricSample> HistogramSample(
-      const std::string& histogram_name,
-      int sample,
-      int min,
-      int max,
-      int bucket_count,
-      int num_samples = 1);
+  static MetricSample HistogramSample(const std::string& histogram_name,
+                                      int sample,
+                                      int min,
+                                      int max,
+                                      int bucket_count,
+                                      int num_samples = 1);
   // Deserializes a histogram sample.
-  static std::unique_ptr<MetricSample> ParseHistogram(
-      const std::string& serialized);
+  static MetricSample ParseHistogram(const std::string& serialized);
 
   // Builds a sparse histogram sample.
-  static std::unique_ptr<MetricSample> SparseHistogramSample(
-      const std::string& histogram_name, int sample);
+  static MetricSample SparseHistogramSample(const std::string& histogram_name,
+                                            int sample);
   // Deserializes a sparse histogram sample.
-  static std::unique_ptr<MetricSample> ParseSparseHistogram(
-      const std::string& serialized);
+  static MetricSample ParseSparseHistogram(const std::string& serialized);
 
   // Builds a linear histogram sample.
-  static std::unique_ptr<MetricSample> LinearHistogramSample(
-      const std::string& histogram_name, int sample, int max);
+  static MetricSample LinearHistogramSample(const std::string& histogram_name,
+                                            int sample,
+                                            int max);
   // Deserializes a linear histogram sample.
-  static std::unique_ptr<MetricSample> ParseLinearHistogram(
-      const std::string& serialized);
+  static MetricSample ParseLinearHistogram(const std::string& serialized);
 
   // Builds a user action sample.
-  static std::unique_ptr<MetricSample> UserActionSample(
-      const std::string& action_name);
+  static MetricSample UserActionSample(const std::string& action_name);
 
   // Returns true if sample and this object represent the same sample (type,
   // name, sample, min, max, bucket_count match).
-  bool IsEqual(const MetricSample& sample);
+  bool IsEqual(const MetricSample& sample) const;
 
  private:
   MetricSample(SampleType sample_type,
@@ -109,15 +112,13 @@ class MetricSample {
                const int bucket_count,
                const int num_samples = 1);
 
-  const SampleType type_;
+  const SampleType type_ = INVALID;
   const std::string name_;
-  const int sample_;
-  const int min_;
-  const int max_;
-  const int bucket_count_;
-  const int num_samples_;
-
-  DISALLOW_COPY_AND_ASSIGN(MetricSample);
+  const int sample_ = 0;
+  const int min_ = 0;
+  const int max_ = 0;
+  const int bucket_count_ = 0;
+  const int num_samples_ = 0;
 };
 
 }  // namespace metrics

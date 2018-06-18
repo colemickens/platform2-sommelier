@@ -53,7 +53,7 @@ class UploadServiceTest : public testing::Test {
         new chromeos_metrics::PersistentInteger("session_id"));
   }
 
-  std::unique_ptr<metrics::MetricSample> Crash(const std::string& name) {
+  metrics::MetricSample Crash(const std::string& name) {
     return metrics::MetricSample::CrashSample(name);
   }
 
@@ -68,7 +68,7 @@ class UploadServiceTest : public testing::Test {
 
 // Tests that the right crash increments a values.
 TEST_F(UploadServiceTest, LogUserCrash) {
-  upload_service_.AddSample(*Crash("user").get());
+  upload_service_.AddSample(Crash("user"));
 
   MetricsLog* log = upload_service_.current_log_.get();
   metrics::ChromeUserMetricsExtension* proto = log->uma_proto();
@@ -77,7 +77,7 @@ TEST_F(UploadServiceTest, LogUserCrash) {
 }
 
 TEST_F(UploadServiceTest, LogUncleanShutdown) {
-  upload_service_.AddSample(*Crash("uncleanshutdown"));
+  upload_service_.AddSample(Crash("uncleanshutdown"));
 
   EXPECT_EQ(1,
             upload_service_.current_log_->uma_proto()
@@ -87,7 +87,7 @@ TEST_F(UploadServiceTest, LogUncleanShutdown) {
 }
 
 TEST_F(UploadServiceTest, LogKernelCrash) {
-  upload_service_.AddSample(*Crash("kernel"));
+  upload_service_.AddSample(Crash("kernel"));
 
   EXPECT_EQ(1,
             upload_service_.current_log_->uma_proto()
@@ -97,7 +97,7 @@ TEST_F(UploadServiceTest, LogKernelCrash) {
 }
 
 TEST_F(UploadServiceTest, UnknownCrashIgnored) {
-  upload_service_.AddSample(*Crash("foo"));
+  upload_service_.AddSample(Crash("foo"));
 
   // The log should be empty.
   EXPECT_FALSE(upload_service_.current_log_);
@@ -106,7 +106,7 @@ TEST_F(UploadServiceTest, UnknownCrashIgnored) {
 TEST_F(UploadServiceTest, FailedSendAreRetried) {
   sender_->set_should_succeed(false);
 
-  upload_service_.AddSample(*Crash("user"));
+  upload_service_.AddSample(Crash("user"));
   upload_service_.UploadEvent();
   EXPECT_EQ(1, sender_->send_call_count());
   std::string sent_string = sender_->last_message();
@@ -118,7 +118,7 @@ TEST_F(UploadServiceTest, FailedSendAreRetried) {
 
 TEST_F(UploadServiceTest, DiscardLogsAfterTooManyFailedUpload) {
   sender_->set_should_succeed(false);
-  upload_service_.AddSample(*Crash("user"));
+  upload_service_.AddSample(Crash("user"));
 
   for (int i = 0; i < UploadService::kMaxFailedUpload; i++) {
     upload_service_.UploadEvent();
@@ -145,19 +145,19 @@ TEST_F(UploadServiceTest, LogEmptyByDefault) {
 }
 
 TEST_F(UploadServiceTest, CanSendMultipleTimes) {
-  upload_service_.AddSample(*Crash("user"));
+  upload_service_.AddSample(Crash("user"));
   upload_service_.UploadEvent();
 
   std::string first_message = sender_->last_message();
 
-  upload_service_.AddSample(*Crash("kernel"));
+  upload_service_.AddSample(Crash("kernel"));
   upload_service_.UploadEvent();
 
   EXPECT_NE(first_message, sender_->last_message());
 }
 
 TEST_F(UploadServiceTest, LogEmptyAfterUpload) {
-  upload_service_.AddSample(*Crash("user"));
+  upload_service_.AddSample(Crash("user"));
 
   EXPECT_TRUE(upload_service_.current_log_.get());
 
@@ -166,13 +166,13 @@ TEST_F(UploadServiceTest, LogEmptyAfterUpload) {
 }
 
 TEST_F(UploadServiceTest, LogContainsAggregatedValues) {
-  std::unique_ptr<metrics::MetricSample> histogram =
+  metrics::MetricSample histogram =
       metrics::MetricSample::HistogramSample("foo", 10, 0, 42, 10);
-  upload_service_.AddSample(*histogram.get());
+  upload_service_.AddSample(histogram);
 
-  std::unique_ptr<metrics::MetricSample> histogram2 =
+  metrics::MetricSample histogram2 =
       metrics::MetricSample::HistogramSample("foo", 11, 0, 42, 10);
-  upload_service_.AddSample(*histogram2.get());
+  upload_service_.AddSample(histogram2);
 
   upload_service_.GatherHistograms();
   metrics::ChromeUserMetricsExtension* proto =
@@ -202,7 +202,7 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
       "CHROMEOS_RELEASE_BOARD=myboard");
 
   base::SysInfo::SetChromeOSVersionInfoForTest(content, base::Time());
-  std::unique_ptr<metrics::MetricSample> histogram =
+  metrics::MetricSample histogram =
       metrics::MetricSample::SparseHistogramSample("myhistogram", 1);
   SystemProfileCache* local_cache_ = new SystemProfileCache(true, "/");
   local_cache_->session_id_.reset(
@@ -211,7 +211,7 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
   upload_service_.system_profile_setter_.reset(local_cache_);
   // Reset to create the new log with the profile setter.
   upload_service_.Reset();
-  upload_service_.AddSample(*histogram.get());
+  upload_service_.AddSample(histogram);
   upload_service_.UploadEvent();
 
   EXPECT_EQ(1, sender_->send_call_count());
