@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -100,6 +101,7 @@ std::string VirtualMachine::GetContainerNameForToken(
 bool VirtualMachine::LaunchContainerApplication(
     const std::string& container_name,
     const std::string& desktop_file_id,
+    std::vector<std::string> files,
     std::string* out_error) {
   CHECK(out_error);
   // Get the gRPC stub for communicating with the container.
@@ -114,6 +116,10 @@ bool VirtualMachine::LaunchContainerApplication(
   vm_tools::container::LaunchApplicationRequest container_request;
   vm_tools::container::LaunchApplicationResponse container_response;
   container_request.set_desktop_file_id(desktop_file_id);
+  std::copy(std::make_move_iterator(files.begin()),
+            std::make_move_iterator(files.end()),
+            google::protobuf::RepeatedFieldBackInserter(
+                container_request.mutable_files()));
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

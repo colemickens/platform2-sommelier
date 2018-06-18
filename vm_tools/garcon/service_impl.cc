@@ -442,10 +442,13 @@ grpc::Status ServiceImpl::LaunchApplication(
     return grpc::Status::OK;
   }
 
+  std::vector<std::string> files(request->files().begin(),
+                                 request->files().end());
+
   // Get the argv string from the desktop file we need for execution.
-  // TODO(jkardatzke): Add handling of file/URL arguments for applications.
-  std::vector<std::string> argv =
-      desktop_file->GenerateArgvWithFiles(std::vector<std::string>());
+  // TODO(timloh): Desktop files using %u/%f should execute multiple copies of
+  // the program for multiple files.
+  std::vector<std::string> argv = desktop_file->GenerateArgvWithFiles(files);
   if (argv.empty()) {
     response->set_success(false);
     response->set_failure_reason(

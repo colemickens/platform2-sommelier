@@ -706,7 +706,11 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
   response.set_success(vm->LaunchContainerApplication(
       request.container_name().empty() ? kDefaultContainerName
                                        : request.container_name(),
-      request.desktop_file_id(), &error_msg));
+      request.desktop_file_id(),
+      std::vector<string>(
+          std::make_move_iterator(request.mutable_files()->begin()),
+          std::make_move_iterator(request.mutable_files()->end())),
+      &error_msg));
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

@@ -67,6 +67,7 @@ class VirtualMachine {
   // otherwise and fills out |out_error| on failure.
   bool LaunchContainerApplication(const std::string& container_name,
                                   const std::string& desktop_file_id,
+                                  std::vector<std::string> files,
                                   std::string* out_error);
 
   // Launches vshd.
