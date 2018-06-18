@@ -209,7 +209,7 @@ int32_t SambaInterfaceImpl::CopyFile(const std::string& source_path,
   }
 
   if (smbc_splice_ctx_(context_, source, target, source_stat.st_size,
-                       progress_callback, callback_context) != 0) {
+                       progress_callback, callback_context) == -1) {
     result = errno;
     CloseCopySourceAndTarget(source, target);
     return result;
