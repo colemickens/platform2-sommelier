@@ -18,6 +18,7 @@
 
 %{
 
+#include <ctype.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <pwd.h>
@@ -34,7 +35,6 @@
 char *cur_service_name;
 
 char *selinux_audit_text;
-char *selinux_audit_text_for_hash;
 char *selinux_audit_comm;
 char *selinux_audit_name;
 char *selinux_audit_scontext;
@@ -60,22 +60,13 @@ void AppendToString(char** strp, const char *to_append) {
   *strp = new;
 }
 
-void AppendSELinuxText(bool add_to_hash) {
+void AppendSELinuxText() {
   AppendToString(&selinux_audit_text, yytext);
-  if (add_to_hash) {
-    AppendToString(&selinux_audit_text_for_hash, yytext);
-  }
-}
-
-void AppendSELinuxTextForHash() {
-  AppendSELinuxText(true);
 }
 
 void CleanUpSELinuxVariables() {
   free(selinux_audit_text);
   selinux_audit_text = NULL;
-  free(selinux_audit_text_for_hash);
-  selinux_audit_text_for_hash = NULL;
   free(selinux_audit_comm);
   selinux_audit_comm = NULL;
   free(selinux_audit_name);
@@ -163,32 +154,30 @@ SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
                                   selinux_audit_comm = strdup(yytext + 6);
                                   // Remove the trailing double-quotes.
                                   selinux_audit_comm[strlen(selinux_audit_comm) - 1] = '\0';
-                                  AppendSELinuxTextForHash();
+                                  AppendSELinuxText();
                                 }
 <SELINUX_AUDIT>name=\"[^"]*\"   {
                                   selinux_audit_name = strdup(yytext + 6);
                                   // Remove the trailing double-quotes.
                                   selinux_audit_name[strlen(selinux_audit_name) - 1] = '\0';
-                                  AppendSELinuxTextForHash();
+                                  AppendSELinuxText();
                                 }
 <SELINUX_AUDIT>scontext=[^ ]*   {
                                   selinux_audit_scontext = strdup(yytext + 9);
-                                  AppendSELinuxTextForHash();
+                                  AppendSELinuxText();
                                 }
 <SELINUX_AUDIT>tcontext=[^ ]*   {
                                   selinux_audit_tcontext = strdup(yytext + 9);
-                                  AppendSELinuxTextForHash();
+                                  AppendSELinuxText();
                                 }
-<SELINUX_AUDIT>for[ ]+pid=[0-9]* ; // Skip pid
-<SELINUX_AUDIT>ino=[0-9]*       AppendSELinuxText(false);
 <SELINUX_AUDIT>avc:[ ]*granted  BEGIN(SELINUX_AUDIT_NON_VIOLATION);
 <SELINUX_AUDIT>\n               {
                                   BEGIN(0);
-                                  AppendSELinuxTextForHash();
+                                  AppendSELinuxText();
                                   ReportSELinuxViolation();
                                   CleanUpSELinuxVariables();
                                 }
-<SELINUX_AUDIT>.                AppendSELinuxTextForHash();
+<SELINUX_AUDIT>.                AppendSELinuxText();
 
 <SELINUX_AUDIT_NON_VIOLATION>.*$ {
                                   BEGIN(0);
@@ -261,6 +250,16 @@ static uint32_t StringHash(const char *string) {
   return hash;
 }
 
+static uint32_t StringHashAlphabetOnly(const char *string) {
+  uint32_t hash = 0;
+  while (*string != '\0') {
+    if (isalpha(*string))
+      hash = (hash << 5) + hash + *string;
+    string++;
+  }
+  return hash;
+}
+
 /* We expect only a handful of different anomalies per boot session, so the
  * probability of a collision is very low, and statistically it won't matter
  * (unless anomalies with the same hash also happens in tandem, which is even
@@ -323,7 +322,7 @@ int ReportSELinuxViolation(void) {
   if (selinux_audit_text == NULL)
     return 0;
 
-  uint32_t hash = StringHash(selinux_audit_text_for_hash);
+  uint32_t hash = StringHashAlphabetOnly(selinux_audit_text);
 
   if (!AnomalyStart(selinux_violation_dump_path, selinux_violation_hist_name,
                     selinux_violation_hash_bitmap, hash))
