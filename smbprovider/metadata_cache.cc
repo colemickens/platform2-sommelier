@@ -1,0 +1,13 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "smbprovider/metadata_cache.h"
+
+namespace smbprovider {
+
+MetadataCache::MetadataCache() = default;
+
+MetadataCache::~MetadataCache() = default;
+
+}  // namespace smbprovider
