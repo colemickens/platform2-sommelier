@@ -5,7 +5,12 @@
 #ifndef SMBPROVIDER_METADATA_CACHE_H_
 #define SMBPROVIDER_METADATA_CACHE_H_
 
+#include <map>
+#include <string>
+
 #include <base/macros.h>
+
+#include "smbprovider/proto.h"
 
 namespace smbprovider {
 
@@ -19,9 +24,6 @@ namespace smbprovider {
 // requests for metadata.
 //
 // TODO(zentaro): Follow up CL's will implement;
-//    * Data structures to hold cache.
-//    * Inserting items to the cache.
-//    * Searching for items in the cache.
 //    * Clearing the entire cache.
 //    * Invalidating requested entries based on time.
 //    * Purging entries based on time.
@@ -30,6 +32,26 @@ class MetadataCache {
   MetadataCache();
   ~MetadataCache();
 
+  // Adds an entry to the cache.
+  void AddEntry(const DirectoryEntry& entry);
+
+  // Finds an entry at |full_path|. If found, returns true and out_entry
+  // is set. |full_path| is a full smb url.
+  bool FindEntry(const std::string& full_path, DirectoryEntry* out_entry);
+
+ private:
+  struct CacheEntry {
+    CacheEntry() = default;
+    explicit CacheEntry(const DirectoryEntry& entry) : entry(entry) {}
+    CacheEntry& operator=(CacheEntry&& other) = default;
+
+    DirectoryEntry entry;
+    // TODO(zentaro): Add a time for invalidation.
+
+    DISALLOW_COPY_AND_ASSIGN(CacheEntry);
+  };
+
+  std::map<std::string, CacheEntry> cache_;
   DISALLOW_COPY_AND_ASSIGN(MetadataCache);
 };
 

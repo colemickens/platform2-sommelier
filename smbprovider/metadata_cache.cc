@@ -10,4 +10,19 @@ MetadataCache::MetadataCache() = default;
 
 MetadataCache::~MetadataCache() = default;
 
+void MetadataCache::AddEntry(const DirectoryEntry& entry) {
+  cache_[entry.full_path] = CacheEntry(entry);
+}
+
+bool MetadataCache::FindEntry(const std::string& full_path,
+                              DirectoryEntry* out_entry) {
+  auto entry_iter = cache_.find(full_path);
+  if (entry_iter == cache_.end()) {
+    return false;
+  }
+
+  *out_entry = entry_iter->second.entry;
+  return true;
+}
+
 }  // namespace smbprovider
