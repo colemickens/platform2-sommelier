@@ -30,6 +30,12 @@ namespace {
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 2;
 
+// How long to wait while setting up a user.
+constexpr int64_t kSetUpUserTimeoutSeconds = 15;
+
+// How long to wait while starting a container.
+constexpr int64_t kStartLxdContainerTimeoutSeconds = 15;
+
 }  // namespace
 
 VirtualMachine::VirtualMachine(uint32_t container_subnet,
@@ -40,6 +46,14 @@ VirtualMachine::VirtualMachine(uint32_t container_subnet,
       ipv4_address_(ipv4_address) {}
 
 VirtualMachine::~VirtualMachine() = default;
+
+bool VirtualMachine::ConnectTremplin(const std::string& ipv4_address) {
+  tremplin_stub_ =
+      std::make_unique<vm_tools::tremplin::Tremplin::Stub>(grpc::CreateChannel(
+          base::StringPrintf("%s:%d", ipv4_address.c_str(), kTremplinPort),
+          grpc::InsecureChannelCredentials()));
+  return tremplin_stub_ != nullptr;
+}
 
 bool VirtualMachine::RegisterContainer(const std::string& container_token,
                                        const std::string& container_ip) {
@@ -275,6 +289,192 @@ std::vector<std::string> VirtualMachine::GetContainerNames() {
     retval.emplace_back(container_entry.first);
   }
   return retval;
+}
+
+VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
+    const std::string& container_name,
+    const std::string& image_server,
+    const std::string& image_alias,
+    std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::CreateLxdContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::CreateContainerRequest request;
+  vm_tools::tremplin::CreateContainerResponse response;
+
+  request.set_container_name(container_name);
+  request.set_image_server(image_server);
+  request.set_image_alias(image_alias);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->CreateContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "CreateContainer RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::CreateLxdContainerStatus::FAILED;
+  }
+
+  if (response.status() != tremplin::CreateContainerResponse::CREATING &&
+      response.status() != tremplin::CreateContainerResponse::EXISTS) {
+    LOG(ERROR) << "Failed to create LXD container: "
+               << response.failure_reason();
+    out_error->assign(response.failure_reason());
+    return VirtualMachine::CreateLxdContainerStatus::FAILED;
+  }
+
+  if (response.status() == tremplin::CreateContainerResponse::EXISTS) {
+    return VirtualMachine::CreateLxdContainerStatus::EXISTS;
+  }
+
+  return VirtualMachine::CreateLxdContainerStatus::CREATING;
+}
+
+VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
+    const std::string& container_name,
+    const std::string& container_public_key,
+    const std::string& host_private_key,
+    const std::string& token,
+    std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::StartLxdContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::StartContainerRequest request;
+  vm_tools::tremplin::StartContainerResponse response;
+
+  request.set_container_name(container_name);
+  request.set_container_public_key(container_public_key);
+  request.set_host_private_key(host_private_key);
+  request.set_token(token);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kStartLxdContainerTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->StartContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "StartContainer RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::StartLxdContainerStatus::FAILED;
+  }
+
+  if (response.status() != tremplin::StartContainerResponse::STARTED &&
+      response.status() != tremplin::StartContainerResponse::RUNNING) {
+    LOG(ERROR) << "Failed to start LXD container: "
+               << response.failure_reason();
+    out_error->assign(response.failure_reason());
+    return VirtualMachine::StartLxdContainerStatus::FAILED;
+  }
+
+  if (response.status() == tremplin::StartContainerResponse::RUNNING) {
+    return VirtualMachine::StartLxdContainerStatus::RUNNING;
+  }
+
+  return VirtualMachine::StartLxdContainerStatus::STARTED;
+}
+
+VirtualMachine::GetLxdContainerUsernameStatus
+VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
+                                        std::string* username,
+                                        std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::GetLxdContainerUsernameStatus::FAILED;
+  }
+
+  vm_tools::tremplin::GetContainerUsernameRequest request;
+  vm_tools::tremplin::GetContainerUsernameResponse response;
+
+  request.set_container_name(container_name);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->GetContainerUsername(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "GetContainerUsername RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::GetLxdContainerUsernameStatus::FAILED;
+  }
+
+  out_error->assign(response.failure_reason());
+  username->assign(response.username());
+
+  switch (response.status()) {
+    case tremplin::GetContainerUsernameResponse::UNKNOWN:
+      return VirtualMachine::GetLxdContainerUsernameStatus::UNKNOWN;
+    case tremplin::GetContainerUsernameResponse::SUCCESS:
+      return VirtualMachine::GetLxdContainerUsernameStatus::SUCCESS;
+    case tremplin::GetContainerUsernameResponse::CONTAINER_NOT_FOUND:
+      return VirtualMachine::GetLxdContainerUsernameStatus::CONTAINER_NOT_FOUND;
+    case tremplin::GetContainerUsernameResponse::CONTAINER_NOT_RUNNING:
+      return VirtualMachine::GetLxdContainerUsernameStatus::
+          CONTAINER_NOT_RUNNING;
+    case tremplin::GetContainerUsernameResponse::USER_NOT_FOUND:
+      return VirtualMachine::GetLxdContainerUsernameStatus::USER_NOT_FOUND;
+    case tremplin::GetContainerUsernameResponse::FAILED:
+      return VirtualMachine::GetLxdContainerUsernameStatus::FAILED;
+    default:
+      return VirtualMachine::GetLxdContainerUsernameStatus::UNKNOWN;
+  }
+}
+
+VirtualMachine::SetUpLxdContainerUserStatus
+VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
+                                      const std::string& container_username,
+                                      std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
+  }
+
+  vm_tools::tremplin::SetUpUserRequest request;
+  vm_tools::tremplin::SetUpUserResponse response;
+
+  request.set_container_name(container_name);
+  request.set_container_username(container_username);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kSetUpUserTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = tremplin_stub_->SetUpUser(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "SetUpUser RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
+  }
+
+  if (response.status() != tremplin::SetUpUserResponse::EXISTS &&
+      response.status() != tremplin::SetUpUserResponse::SUCCESS) {
+    LOG(ERROR) << "Failed to set up user: " << response.failure_reason();
+    out_error->assign(response.failure_reason());
+    return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
+  }
+
+  if (response.status() == tremplin::SetUpUserResponse::EXISTS) {
+    return VirtualMachine::SetUpLxdContainerUserStatus::EXISTS;
+  }
+
+  return VirtualMachine::SetUpLxdContainerUserStatus::SUCCESS;
 }
 
 }  // namespace cicerone

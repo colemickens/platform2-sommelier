@@ -23,8 +23,10 @@
 #include <grpc++/grpc++.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
+#include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/cicerone/container_listener_impl.h"
+#include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
 
 namespace vm_tools {
@@ -42,6 +44,40 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
+
+  // Connect to the Tremplin instance on the VM with the given vm_ip.
+  void ConnectTremplin(const uint32_t vm_ip,
+                       bool* result,
+                       base::WaitableEvent* event);
+
+  // The status of an ongoing LXD container create operation.
+  enum class CreateStatus {
+    UNKNOWN,
+    CREATED,
+    DOWNLOAD_TIMED_OUT,
+    CANCELLED,
+    FAILED,
+  };
+
+  // Notifies the service that a VM with |vm_ip| has finished its create
+  // operation of |container_name| with |status|. |failure_reason| will describe
+  // the failure reason if status != CREATED. Sets |result| to true if the VM IP
+  // is known. Signals |event| when done.
+  void LxdContainerCreated(const uint32_t vm_ip,
+                           std::string container_name,
+                           CreateStatus status,
+                           std::string failure_reason,
+                           bool* result,
+                           base::WaitableEvent* event);
+
+  // Notifies the service that a VM with |vm_ip| is downloading a container
+  // |container_name| with |download_progress| percentage complete. Sets
+  // |result| to true if the VM IP is known. Signals |event| when done.
+  void LxdContainerDownloading(const uint32_t vm_ip,
+                               std::string container_name,
+                               int download_progress,
+                               bool* result,
+                               base::WaitableEvent* event);
 
   // Notifies the service that a container with |container_token| and IP of
   // |container_ip| has completed startup. Sets |result| to true if this maps to
@@ -137,6 +173,22 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> InstallLinuxPackage(
       dbus::MethodCall* method_call);
 
+  // Handles a request to create an LXD container.
+  std::unique_ptr<dbus::Response> CreateLxdContainer(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to start an LXD container.
+  std::unique_ptr<dbus::Response> StartLxdContainer(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to get the primary username for an LXD container.
+  std::unique_ptr<dbus::Response> GetLxdContainerUsername(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to set up the user for an LXD container.
+  std::unique_ptr<dbus::Response> SetUpLxdContainerUser(
+      dbus::MethodCall* method_call);
+
   // Gets the VirtualMachine that corresponds to a container at |container_ip|
   // and sets |vm_out| to the VirtualMachine, |owner_id_out| to the owner id of
   // the VM, and |name_out| to the name of the VM. Returns false if no such
@@ -194,6 +246,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* url_handler_service_proxy_;      // Owned by |bus_|.
   dbus::ObjectProxy* crosdns_service_proxy_;          // Owned by |bus_|.
+  dbus::ObjectProxy* concierge_service_proxy_;        // Owned by |bus_|.
 
   // The ContainerListener service.
   std::unique_ptr<ContainerListenerImpl> container_listener_;
@@ -203,6 +256,15 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // The server where the ContainerListener service lives.
   std::shared_ptr<grpc::Server> grpc_server_container_;
+
+  // The TremplinListener service.
+  std::unique_ptr<TremplinListenerImpl> tremplin_listener_;
+
+  // Thread on which the TremplinListener service lives.
+  base::Thread grpc_thread_tremplin_{"gRPC Tremplin Server Thread"};
+
+  // The server where the TremplinListener service lives.
+  std::shared_ptr<grpc::Server> grpc_server_tremplin_;
 
   // Closure that's posted to the current thread's TaskRunner when the service
   // receives a SIGTERM.

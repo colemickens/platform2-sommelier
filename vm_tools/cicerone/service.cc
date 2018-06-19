@@ -200,6 +200,8 @@ Service::Service(base::Closure quit_closure)
       weak_ptr_factory_(this) {
   container_listener_ =
       std::make_unique<ContainerListenerImpl>(weak_ptr_factory_.GetWeakPtr());
+  tremplin_listener_ =
+      std::make_unique<TremplinListenerImpl>(weak_ptr_factory_.GetWeakPtr());
 }
 
 Service::~Service() {
@@ -227,6 +229,122 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
 
 void Service::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
+}
+
+void Service::ConnectTremplin(uint32_t vm_ip,
+                              bool* result,
+                              base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string vm_name;
+  std::string owner_id;
+  if (!GetVirtualMachineForVmIp(vm_ip, &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  // Found the VM with a matching VM IP, so connect to the tremplin instance.
+  std::string ip_string;
+  if (!IPv4AddressToString(vm_ip, &ip_string)) {
+    LOG(ERROR) << "Failed to convert VM IP to string";
+    event->Signal();
+    return;
+  }
+  if (!vm->ConnectTremplin(ip_string)) {
+    LOG(ERROR) << "Failed to connect to tremplin";
+    event->Signal();
+    return;
+  }
+
+  // Send the D-Bus signal out to indicate tremplin is ready.
+  dbus::Signal signal(kVmCiceroneInterface, kTremplinStartedSignal);
+  vm_tools::cicerone::TremplinStartedSignal proto;
+  proto.set_vm_name(vm_name);
+  proto.set_owner_id(owner_id);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
+void Service::LxdContainerCreated(const uint32_t vm_ip,
+                                  std::string container_name,
+                                  Service::CreateStatus status,
+                                  std::string failure_reason,
+                                  bool* result,
+                                  base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(!container_name.empty());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string vm_name;
+  std::string owner_id;
+  if (!GetVirtualMachineForVmIp(vm_ip, &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  dbus::Signal signal(kVmCiceroneInterface, kLxdContainerCreatedSignal);
+  vm_tools::cicerone::LxdContainerCreatedSignal proto;
+  proto.mutable_vm_name()->swap(vm_name);
+  proto.set_container_name(container_name);
+  proto.mutable_owner_id()->swap(owner_id);
+  proto.set_failure_reason(failure_reason);
+  switch (status) {
+    case Service::CreateStatus::CREATED:
+      proto.set_status(LxdContainerCreatedSignal::CREATED);
+      break;
+    case Service::CreateStatus::DOWNLOAD_TIMED_OUT:
+      proto.set_status(LxdContainerCreatedSignal::DOWNLOAD_TIMED_OUT);
+      break;
+    case Service::CreateStatus::CANCELLED:
+      proto.set_status(LxdContainerCreatedSignal::CANCELLED);
+      break;
+    case Service::CreateStatus::FAILED:
+      proto.set_status(LxdContainerCreatedSignal::FAILED);
+      break;
+    default:
+      proto.set_status(LxdContainerCreatedSignal::UNKNOWN);
+      break;
+  }
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
+void Service::LxdContainerDownloading(const uint32_t vm_ip,
+                                      std::string container_name,
+                                      int download_progress,
+                                      bool* result,
+                                      base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(!container_name.empty());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string vm_name;
+  std::string owner_id;
+  if (!GetVirtualMachineForVmIp(vm_ip, &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  dbus::Signal signal(kVmCiceroneInterface, kLxdContainerDownloadingSignal);
+  vm_tools::cicerone::LxdContainerDownloadingSignal proto;
+  proto.set_vm_name(std::move(vm_name));
+  proto.set_download_progress(std::move(download_progress));
+  proto.set_owner_id(std::move(owner_id));
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
 }
 
 void Service::ContainerStartupCompleted(const std::string& container_token,
@@ -477,6 +595,10 @@ bool Service::Init() {
       {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
       {kLaunchVshdMethod, &Service::LaunchVshd},
       {kInstallLinuxPackageMethod, &Service::InstallLinuxPackage},
+      {kCreateLxdContainerMethod, &Service::CreateLxdContainer},
+      {kStartLxdContainerMethod, &Service::StartLxdContainer},
+      {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
+      {kSetUpLxdContainerUserMethod, &Service::SetUpLxdContainerUser},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -525,6 +647,15 @@ bool Service::Init() {
   crosdns_service_proxy_->WaitForServiceToBeAvailable(base::Bind(
       &Service::OnCrosDnsServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
 
+  concierge_service_proxy_ = bus_->GetObjectProxy(
+      vm_tools::concierge::kVmConciergeServiceName,
+      dbus::ObjectPath(vm_tools::concierge::kVmConciergeServicePath));
+  if (!concierge_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << vm_tools::concierge::kVmConciergeServiceName;
+    return false;
+  }
+
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
           &grpc_thread_container_, container_listener_.get(),
@@ -533,6 +664,15 @@ bool Service::Init() {
     LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
+
+  if (!SetupListenerService(
+          &grpc_thread_tremplin_, tremplin_listener_.get(),
+          base::StringPrintf("[::]:%u", vm_tools::kTremplinListenerPort),
+          &grpc_server_tremplin_)) {
+    LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
+    return false;
+  }
+  LOG(INFO) << "Started tremplin grpc server";
 
   // Set up the signalfd for receiving SIGTERM.
   sigset_t mask;
@@ -899,6 +1039,271 @@ std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
   response.set_status(static_cast<InstallLinuxPackageResponse::Status>(status));
   response.set_failure_reason(error_msg);
 
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::CreateLxdContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received CreateLxdContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  CreateLxdContainerRequest request;
+  CreateLxdContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse CreateLxdRequest from message";
+    response.set_failure_reason(
+        "unable to parse CreateLxdRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::CreateLxdContainerStatus status = vm->CreateLxdContainer(
+      request.container_name().empty() ? kDefaultContainerName
+                                       : request.container_name(),
+      request.image_server(), request.image_alias(), &error_msg);
+
+  switch (status) {
+    case VirtualMachine::CreateLxdContainerStatus::UNKNOWN:
+      response.set_status(CreateLxdContainerResponse::UNKNOWN);
+      break;
+    case VirtualMachine::CreateLxdContainerStatus::CREATING:
+      response.set_status(CreateLxdContainerResponse::CREATING);
+      break;
+    case VirtualMachine::CreateLxdContainerStatus::EXISTS:
+      response.set_status(CreateLxdContainerResponse::EXISTS);
+      break;
+    case VirtualMachine::CreateLxdContainerStatus::FAILED:
+      response.set_status(CreateLxdContainerResponse::FAILED);
+      break;
+  }
+  response.set_failure_reason(error_msg);
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::StartLxdContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received StartLxdContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StartLxdContainerRequest request;
+  StartLxdContainerResponse response;
+  response.set_status(StartLxdContainerResponse::UNKNOWN);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StartLxdRequest from message";
+    response.set_failure_reason("unable to parse StartLxdRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+
+  // Request SSH keys from concierge.
+  dbus::MethodCall keys_method_call(
+      vm_tools::concierge::kVmConciergeInterface,
+      vm_tools::concierge::kGetContainerSshKeysMethod);
+  vm_tools::concierge::ContainerSshKeysRequest keys_request;
+  vm_tools::concierge::ContainerSshKeysResponse keys_response;
+  dbus::MessageWriter keys_writer(&keys_method_call);
+
+  keys_request.set_vm_name(request.vm_name());
+  keys_request.set_container_name(container_name);
+  keys_request.set_cryptohome_id(request.owner_id());
+  keys_writer.AppendProtoAsArrayOfBytes(keys_request);
+  std::unique_ptr<dbus::Response> keys_dbus_response =
+      concierge_service_proxy_->CallMethodAndBlock(
+          &keys_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!keys_dbus_response) {
+    LOG(ERROR) << "Failed to get SSH keys from concierge";
+    response.set_failure_reason("failed to get SSH keys from concierge");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  dbus::MessageReader keys_reader(keys_dbus_response.get());
+  if (!keys_reader.PopArrayOfBytesAsProto(&keys_response)) {
+    LOG(ERROR) << "Unable to parse ContainerSshKeysResponse from message";
+    response.set_failure_reason(
+        "unable to parse ContainerSshKeysResponse from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string container_token = vm->GenerateContainerToken(container_name);
+
+  std::string error_msg;
+  VirtualMachine::StartLxdContainerStatus status = vm->StartLxdContainer(
+      container_name, keys_response.container_public_key(),
+      keys_response.host_private_key(), container_token, &error_msg);
+
+  switch (status) {
+    case VirtualMachine::StartLxdContainerStatus::UNKNOWN:
+      response.set_status(StartLxdContainerResponse::UNKNOWN);
+      break;
+    case VirtualMachine::StartLxdContainerStatus::STARTED:
+      response.set_status(StartLxdContainerResponse::STARTED);
+      break;
+    case VirtualMachine::StartLxdContainerStatus::RUNNING:
+      response.set_status(StartLxdContainerResponse::RUNNING);
+      break;
+    case VirtualMachine::StartLxdContainerStatus::FAILED:
+      response.set_status(StartLxdContainerResponse::FAILED);
+      break;
+  }
+
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetLxdContainerUsername(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received GetLxdContainerUsername request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  GetLxdContainerUsernameRequest request;
+  GetLxdContainerUsernameResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse GetLxdContainerUsernameRequest from message";
+    response.set_failure_reason(
+        "unable to parse GetLxdContainerUsernameRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg, username;
+  VirtualMachine::GetLxdContainerUsernameStatus status =
+      vm->GetLxdContainerUsername(request.container_name().empty()
+                                      ? kDefaultContainerName
+                                      : request.container_name(),
+                                  &username, &error_msg);
+
+  switch (status) {
+    case VirtualMachine::GetLxdContainerUsernameStatus::UNKNOWN:
+      response.set_status(GetLxdContainerUsernameResponse::UNKNOWN);
+      break;
+    case VirtualMachine::GetLxdContainerUsernameStatus::SUCCESS:
+      response.set_status(GetLxdContainerUsernameResponse::SUCCESS);
+      break;
+    case VirtualMachine::GetLxdContainerUsernameStatus::CONTAINER_NOT_FOUND:
+      response.set_status(GetLxdContainerUsernameResponse::CONTAINER_NOT_FOUND);
+      break;
+    case VirtualMachine::GetLxdContainerUsernameStatus::CONTAINER_NOT_RUNNING:
+      response.set_status(
+          GetLxdContainerUsernameResponse::CONTAINER_NOT_RUNNING);
+      break;
+    case VirtualMachine::GetLxdContainerUsernameStatus::USER_NOT_FOUND:
+      response.set_status(GetLxdContainerUsernameResponse::USER_NOT_FOUND);
+      break;
+    case VirtualMachine::GetLxdContainerUsernameStatus::FAILED:
+      response.set_status(GetLxdContainerUsernameResponse::FAILED);
+      break;
+  }
+
+  response.set_username(username);
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::SetUpLxdContainerUser(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received SetUpLxdContainerUser request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  SetUpLxdContainerUserRequest request;
+  SetUpLxdContainerUserResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse SetUpLxdContainerUserRequest from message";
+    response.set_failure_reason(
+        "unable to parse SetUpLxdContainerUserRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::SetUpLxdContainerUserStatus status =
+      vm->SetUpLxdContainerUser(request.container_name().empty()
+                                    ? kDefaultContainerName
+                                    : request.container_name(),
+                                request.container_username(), &error_msg);
+
+  switch (status) {
+    case VirtualMachine::SetUpLxdContainerUserStatus::UNKNOWN:
+      response.set_status(SetUpLxdContainerUserResponse::UNKNOWN);
+      break;
+    case VirtualMachine::SetUpLxdContainerUserStatus::SUCCESS:
+      response.set_status(SetUpLxdContainerUserResponse::SUCCESS);
+      break;
+    case VirtualMachine::SetUpLxdContainerUserStatus::EXISTS:
+      response.set_status(SetUpLxdContainerUserResponse::EXISTS);
+      break;
+    case VirtualMachine::SetUpLxdContainerUserStatus::FAILED:
+      response.set_status(SetUpLxdContainerUserResponse::FAILED);
+      break;
+  }
+  response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

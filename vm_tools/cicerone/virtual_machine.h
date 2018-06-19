@@ -15,6 +15,7 @@
 #include <base/macros.h>
 
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
+#include "tremplin.grpc.pb.h"         // NOLINT(build/include)
 
 namespace vm_tools {
 namespace cicerone {
@@ -26,6 +27,36 @@ class VirtualMachine {
   struct Icon {
     std::string desktop_file_id;
     std::string content;
+  };
+
+  enum class CreateLxdContainerStatus {
+    UNKNOWN,
+    CREATING,
+    EXISTS,
+    FAILED,
+  };
+
+  enum class StartLxdContainerStatus {
+    UNKNOWN,
+    STARTED,
+    RUNNING,
+    FAILED,
+  };
+
+  enum class GetLxdContainerUsernameStatus {
+    UNKNOWN,
+    SUCCESS,
+    CONTAINER_NOT_FOUND,
+    CONTAINER_NOT_RUNNING,
+    USER_NOT_FOUND,
+    FAILED,
+  };
+
+  enum class SetUpLxdContainerUserStatus {
+    UNKNOWN,
+    SUCCESS,
+    EXISTS,
+    FAILED,
   };
 
   VirtualMachine(uint32_t container_subnet,
@@ -41,6 +72,9 @@ class VirtualMachine {
 
   // The first address in the VM's container subnet in network byte order.
   uint32_t ipv4_address() const { return ipv4_address_; }
+
+  // Connect to the tremplin instance in the VM.
+  bool ConnectTremplin(const std::string& uri);
 
   // Registers a container with the VM using the |container_ip| address and
   // |container_token|. Returns true if the token is valid, false otherwise.
@@ -98,6 +132,32 @@ class VirtualMachine {
                            uint32_t scale,
                            std::vector<Icon>* icons);
 
+  // Creates an LXD container.
+  CreateLxdContainerStatus CreateLxdContainer(const std::string& container_name,
+                                              const std::string& image_server,
+                                              const std::string& image_alias,
+                                              std::string* out_error);
+
+  // Starts an LXD container.
+  StartLxdContainerStatus StartLxdContainer(
+      const std::string& container_name,
+      const std::string& container_public_key,
+      const std::string& host_private_key,
+      const std::string& token,
+      std::string* out_error);
+
+  // Gets the primary user of an LXD container.
+  GetLxdContainerUsernameStatus GetLxdContainerUsername(
+      const std::string& container_name,
+      std::string* username,
+      std::string* out_error);
+
+  // Sets up an LXD container.
+  SetUpLxdContainerUserStatus SetUpLxdContainerUser(
+      const std::string& container_name,
+      const std::string& container_username,
+      std::string* out_error);
+
   // Gets a list of all the active container names in this VM.
   std::vector<std::string> GetContainerNames();
 
@@ -116,6 +176,9 @@ class VirtualMachine {
   // map because we may get redundant requests to start a container that is
   // already running and we don't want to invalidate an in-use token.
   std::map<std::string, std::string> pending_container_token_to_name_;
+
+  // The stub for the tremplin instance in this VM.
+  std::unique_ptr<vm_tools::tremplin::Tremplin::Stub> tremplin_stub_;
 
   // Mapping of container names to a stub for making RPC requests to the garcon
   // process inside the container.

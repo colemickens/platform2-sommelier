@@ -116,6 +116,7 @@
       'type': 'static_library',
       'dependencies': [
         'container-rpcs',
+        'tremplin-rpcs',
       ],
       'variables': {
         'exported_deps': [
@@ -136,6 +137,7 @@
       'sources': [
         'cicerone/container_listener_impl.cc',
         'cicerone/service.cc',
+        'cicerone/tremplin_listener_impl.cc',
         'cicerone/virtual_machine.cc',
       ],
     },
