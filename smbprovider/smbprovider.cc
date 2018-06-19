@@ -59,12 +59,14 @@ SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     std::unique_ptr<SambaInterface> samba_interface,
     std::unique_ptr<MountManager> mount_manager,
-    std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer)
+    std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
+    bool enable_metadata_cache)
     : org::chromium::SmbProviderAdaptor(this),
       samba_interface_(std::move(samba_interface)),
       dbus_object_(std::move(dbus_object)),
       mount_manager_(std::move(mount_manager)),
-      kerberos_synchronizer_(std::move(kerberos_synchronizer)) {}
+      kerberos_synchronizer_(std::move(kerberos_synchronizer)),
+      metadata_cache_enabled_(enable_metadata_cache) {}
 
 void SmbProvider::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {

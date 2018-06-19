@@ -192,7 +192,8 @@ class SmbProviderTest : public testing::Test {
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
         std::move(fake_ptr), std::move(mount_manager_ptr),
-        std::move(kerberos_artifact_synchronizer));
+        std::move(kerberos_artifact_synchronizer),
+        false /* enable_metadata_cache */);
   }
 
   // Helper method that asserts there are no entries that have not been
