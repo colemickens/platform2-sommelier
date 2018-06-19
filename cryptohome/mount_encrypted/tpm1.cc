@@ -141,6 +141,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   result_code GenerateForPreservation(brillo::SecureBlob* previous_key,
                                       brillo::SecureBlob* fresh_key) override;
   result_code CheckLockbox(bool* valid) override;
+  bool UsingLockboxKey() override;
 
  private:
   // Gets a pointer to the EncStatefulArea structure backed by NVRAM.
@@ -171,6 +172,9 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   // Provisional space contents that get initialized by Generate() and written
   // to the NVRAM space by Persist();
   std::unique_ptr<brillo::SecureBlob> provisional_contents_;
+
+  // Whether we're using the lockbox salt as system key.
+  bool using_lockbox_key_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm1SystemKeyLoader);
 };
@@ -236,6 +240,7 @@ result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
     if (owned) {
       rc = LoadLockboxKey(system_key);
       if (rc == RESULT_SUCCESS) {
+        using_lockbox_key_ = true;
         return RESULT_SUCCESS;
       }
     }
@@ -279,6 +284,7 @@ result_code Tpm1SystemKeyLoader::Persist() {
     return rc;
   }
 
+  using_lockbox_key_ = false;
   return RESULT_SUCCESS;
 }
 
@@ -414,6 +420,7 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
   }
 
   *fresh_key = provisional_area->DeriveKey(kLabelSystemKey);
+  using_lockbox_key_ = false;
   return RESULT_SUCCESS;
 }
 
@@ -671,6 +678,10 @@ result_code Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
   // In case there is no encstateful space, the lockbox space is only valid once
   // cryptohomed has taken TPM ownership and recreated the space.
   return tpm_->IsOwned(valid);
+}
+
+bool Tpm1SystemKeyLoader::UsingLockboxKey() {
+  return using_lockbox_key_;
 }
 
 std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(

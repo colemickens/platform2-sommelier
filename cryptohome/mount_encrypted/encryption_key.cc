@@ -157,6 +157,7 @@ result_code EncryptionKey::SetFactorySystemKey() {
   LOG(INFO) << "Using factory insecure system key.";
   system_key_ = Sha256(kStaticKeyFactory);
   VLOG(1) << "system key: " << HexEncode(system_key_);
+  system_key_status_ = SystemKeyStatus::kFactory;
   return RESULT_SUCCESS;
 }
 
@@ -175,6 +176,7 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
   system_key_ = GetKeyFromKernelCmdline();
   if (!system_key_.empty()) {
     LOG(INFO) << "Using kernel command line argument as system key.";
+    system_key_status_ = SystemKeyStatus::kKernelCommandLine;
     return RESULT_SUCCESS;
   }
 
@@ -184,12 +186,14 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
     system_key_ = Sha256(product_uuid);
     VLOG(1) << "system key: " << HexEncode(system_key_);
     LOG(INFO) << "Using UUID as system key.";
+    system_key_status_ = SystemKeyStatus::kProductUUID;
     return RESULT_SUCCESS;
   }
 
   LOG(INFO) << "Using default insecure system key.";
   system_key_ = Sha256(kStaticKeyDefault);
   VLOG(1) << "system key: " << HexEncode(system_key_);
+  system_key_status_ = SystemKeyStatus::kStaticFallback;
   return RESULT_SUCCESS;
 }
 
@@ -240,12 +244,22 @@ result_code EncryptionKey::LoadChromeOSSystemKey() {
   // Lock the system key to to prevent subsequent manipulation.
   loader_->Lock();
 
+  // Determine and record the system key status.
+  if (system_key_.empty()) {
+    system_key_status_ = SystemKeyStatus::kFinalizationPending;
+  } else if (loader_->UsingLockboxKey()) {
+    system_key_status_ = SystemKeyStatus::kNVRAMLockbox;
+  } else {
+    system_key_status_ = SystemKeyStatus::kNVRAMEncstateful;
+  }
+
   return RESULT_SUCCESS;
 }
 
 result_code EncryptionKey::LoadEncryptionKey() {
   if (!system_key_.empty()) {
     if (ReadKeyFile(key_path_, &encryption_key_, system_key_)) {
+      encryption_key_status_ = EncryptionKeyStatus::kKeyFile;
       return RESULT_SUCCESS;
     }
     LOG(INFO) << "Failed to load encryption key from disk.";
@@ -267,8 +281,9 @@ result_code EncryptionKey::LoadEncryptionKey() {
     encryption_key_.resize(DIGEST_LENGTH);
     cryptohome::CryptoLib::GetSecureRandom(encryption_key_.data(),
                                            encryption_key_.size());
-    is_fresh_ = true;
+    encryption_key_status_ = EncryptionKeyStatus::kFresh;
   } else {
+    encryption_key_status_ = EncryptionKeyStatus::kNeedsFinalization;
     LOG(ERROR) << "Finalization unfinished! Encryption key still on disk!";
   }
 
@@ -285,7 +300,7 @@ result_code EncryptionKey::LoadEncryptionKey() {
   // using an NVRAM space that doesn't get lost on TPM clear and (2) allowing
   // mount-encrypted to take ownership and create the NVRAM space if necessary.
   if (system_key_.empty()) {
-    if (is_fresh_) {
+    if (is_fresh()) {
       LOG(INFO) << "Writing finalization intent " << needs_finalization_path_;
       if (!WriteKeyFile(needs_finalization_path_, encryption_key_,
                         GetUselessKey())) {

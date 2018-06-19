@@ -247,6 +247,9 @@ class SystemKeyLoader {
 
   // Checks whether the lockbox space contents are considered valid.
   virtual result_code CheckLockbox(bool* valid) = 0;
+
+  // Whether the lockbox salt is used as the system key.
+  virtual bool UsingLockboxKey() = 0;
 };
 
 // A SystemKeyLoader implementation backed by a fixed system key supplied at
@@ -269,6 +272,7 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
     return RESULT_FAIL_FATAL;
   }
   result_code CheckLockbox(bool* valid) override { return RESULT_FAIL_FATAL; }
+  bool UsingLockboxKey() override { return false; }
 
  private:
   brillo::SecureBlob key_;

@@ -36,6 +36,8 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 
+#include <metrics/metrics_library.h>
+
 #include "cryptohome/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/encryption_key.h"
 #include "cryptohome/mount_encrypted/tpm.h"
@@ -104,6 +106,14 @@ static gchar* block_path = NULL;
 static gchar* encrypted_mount = NULL;
 static gchar* dmcrypt_name = NULL;
 static gchar* dmcrypt_dev = NULL;
+
+static const char kMountEncryptedMetricsPath[] = "/run/metrics.mount-encrypted";
+
+namespace metrics {
+const char kSystemKeyStatus[] = "Platform.MountEncrypted.SystemKeyStatus";
+const char kEncryptionKeyStatus[] =
+    "Platform.MountEncrypted.EncryptionKeyStatus";
+}
 
 static void sha256(char const* str, uint8_t* digest) {
   SHA256((unsigned char*)(str), strlen(str), digest);
@@ -842,8 +852,20 @@ void nvram_export(const brillo::SecureBlob& contents) {
   close(fd);
 }
 
+template <typename Enum>
+void RecordEnumeratedHistogram(MetricsLibrary* metrics,
+                               const char* name,
+                               Enum val) {
+  metrics->SendEnumToUMA(name, static_cast<int>(val),
+                         static_cast<int>(Enum::kCount));
+}
+
 int main(int argc, char* argv[]) {
   result_code rc;
+
+  MetricsLibrary metrics;
+  metrics.Init();
+  metrics.SetOutputFile(kMountEncryptedMetricsPath);
 
   INFO_INIT("Starting.");
   rc = prepare_paths();
@@ -883,11 +905,15 @@ int main(int argc, char* argv[]) {
   } else {
     rc = key.SetInsecureFallbackSystemKey();
   }
+  RecordEnumeratedHistogram(&metrics, metrics::kSystemKeyStatus,
+                            key.system_key_status());
   if (rc != RESULT_SUCCESS) {
     return rc;
   }
 
   rc = key.LoadEncryptionKey();
+  RecordEnumeratedHistogram(&metrics, metrics::kEncryptionKeyStatus,
+                            key.encryption_key_status());
   if (rc != RESULT_SUCCESS) {
     return rc;
   }

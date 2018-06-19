@@ -159,6 +159,9 @@ const uint8_t kWrappedKeyEncStatefulTpm1[] = {
 
 }  // namespace
 
+using SystemKeyStatus = EncryptionKey::SystemKeyStatus;
+using EncryptionKeyStatus = EncryptionKey::EncryptionKeyStatus;
+
 class EncryptionKeyTest : public testing::Test {
  public:
   void SetUp() override {
@@ -332,7 +335,9 @@ class EncryptionKeyTest : public testing::Test {
 
 TEST_F(EncryptionKeyTest, TpmClearNoSpaces) {
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
 
@@ -340,7 +345,9 @@ TEST_F(EncryptionKeyTest, TpmOwnedNoSpaces) {
   SetOwned();
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmExistingSpaceNoKeyFile) {
@@ -348,7 +355,9 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceNoKeyFile) {
              kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
 
@@ -359,7 +368,9 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadKey) {
   WriteWrappedKey(key_->key_path(), wrapped_key.data());
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
 
@@ -370,7 +381,9 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadAttributes) {
              kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, attributes, kEncStatefulSize);
 }
 
@@ -379,7 +392,9 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceNotYetWritten) {
              false, kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
 
@@ -389,7 +404,9 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadContents) {
              bad_contents.data(), bad_contents.size());
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
 
@@ -399,7 +416,9 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceValid) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm2);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
 
@@ -407,14 +426,18 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceValid) {
 
 TEST_F(EncryptionKeyTest, TpmClearNoSpaces) {
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmOwnedNoSpaces) {
   SetOwned();
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmClearExistingLockboxV2Unowned) {
@@ -422,7 +445,9 @@ TEST_F(EncryptionKeyTest, TpmClearExistingLockboxV2Unowned) {
              sizeof(kLockboxV2Contents));
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2Finalize) {
@@ -431,7 +456,9 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2Finalize) {
   SetOwned();
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMLockbox, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2Finalized) {
@@ -441,7 +468,9 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2Finalized) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMLockbox, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2BadDecrypt) {
@@ -452,7 +481,9 @@ TEST_F(EncryptionKeyTest, TpmOwnedExistingLockboxV2BadDecrypt) {
   WriteWrappedKey(key_->key_path(), wrapped_key.data());
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMLockbox, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmClearNeedsFinalization) {
@@ -460,7 +491,10 @@ TEST_F(EncryptionKeyTest, TpmClearNeedsFinalization) {
                   kWrappedKeyNeedsFinalization);
 
   ExpectExistingKey(kEncryptionKeyNeedsFinalization);
+  EXPECT_EQ(EncryptionKeyStatus::kNeedsFinalization,
+            key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmOwnedNeedsFinalization) {
@@ -469,7 +503,10 @@ TEST_F(EncryptionKeyTest, TpmOwnedNeedsFinalization) {
                   kWrappedKeyNeedsFinalization);
 
   ExpectExistingKey(kEncryptionKeyNeedsFinalization);
+  EXPECT_EQ(EncryptionKeyStatus::kNeedsFinalization,
+            key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, EncStatefulTpmClearExisting) {
@@ -479,7 +516,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearExisting) {
              sizeof(kLockboxV2Contents));
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   bool initialized = false;
   EXPECT_EQ(RESULT_SUCCESS, tpm_->HasSystemKeyInitializedFlag(&initialized));
   EXPECT_TRUE(initialized);
@@ -500,7 +539,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearInitialized) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
 }
 
@@ -513,7 +554,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedExisting) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
   EXPECT_EQ(
@@ -527,7 +570,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadPCRBinding) {
              kEncStatefulTpm1Contents, sizeof(kEncStatefulTpm1Contents));
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadSize) {
@@ -535,7 +580,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadSize) {
              kEncStatefulTpm1Contents, sizeof(kEncStatefulTpm1Contents) - 1);
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadAttributes) {
@@ -543,7 +590,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadAttributes) {
              sizeof(kEncStatefulTpm1Contents));
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadContents) {
@@ -552,7 +601,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearBadContents) {
              bad_contents.data(), bad_contents.size());
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
 }
 
@@ -565,7 +616,9 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedBadSpaceLockboxFallback) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMLockbox, key_->system_key_status());
   ExpectLockboxValid(true);
 }
 
@@ -578,7 +631,9 @@ TEST_F(EncryptionKeyTest, EncStatefulLockboxMACFailure) {
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
 }
@@ -591,7 +646,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
@@ -603,7 +660,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
   SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
 
@@ -620,7 +679,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessEncstateful) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
 
@@ -635,7 +696,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorNotEligible) {
   SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
   ExpectLockboxValid(false);
 }
@@ -648,7 +711,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorUpdateLocatorFailure) {
   SetupPendingFirmwareUpdate(true, EXIT_FAILURE);
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
 }
 
@@ -659,7 +724,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationNoPreviousKey) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectFreshKey();
+  EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
 }
 
@@ -671,7 +738,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryKeyfileMove) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
@@ -685,7 +754,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryEncryptionKeyWrapping) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
@@ -700,7 +771,9 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
   SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
+  EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
   ExpectFinalized(false);
+  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));

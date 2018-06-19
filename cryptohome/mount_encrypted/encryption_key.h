@@ -24,6 +24,32 @@ class SystemKeyLoader;
 // storing and loading the key to/from disk.
 class EncryptionKey {
  public:
+  // Describes the status of the system key for metrics reporting purposes.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class SystemKeyStatus {
+    kUnknown,              // No key loaded yet.
+    kNVRAMLockbox,         // Using lockbox salt as system key.
+    kNVRAMEncstateful,     // Key in dedicated encstateful NVRAM space.
+    kFinalizationPending,  // TPM not ready, obfuscated key on on disk.
+    kFactory,              // Hard-coded factory key.
+    kKernelCommandLine,    // Key from kernel command line.
+    kProductUUID,          // Using product UUID as system key.
+    kStaticFallback,       // Using hard-coded fallback key.
+    kCount,                // Must be last (and may be re-assigned).
+  };
+
+  // Describes the status of the encryption key for metrics reporting purposes.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class EncryptionKeyStatus {
+    kUnknown,            // Key not loaded yet.
+    kKeyFile,            // Key loaded from encrypted.key file.
+    kNeedsFinalization,  // Key loaded from needs-finalization file.
+    kFresh,              // Freshly generated key.
+    kCount,              // Must be last (and may be re-assigned).
+  };
+
   EncryptionKey(SystemKeyLoader* loader, const base::FilePath& rootdir);
 
   // Loads the system key from TPM NVRAM via |loader_|.
@@ -53,7 +79,9 @@ class EncryptionKey {
   void PersistEncryptionKey(const brillo::SecureBlob& encryption_key);
 
   const brillo::SecureBlob& encryption_key() const { return encryption_key_; }
-  bool is_fresh() const { return is_fresh_; }
+  bool is_fresh() const {
+    return encryption_key_status_ == EncryptionKeyStatus::kFresh;
+  }
   bool did_finalize() const { return did_finalize_; }
 
   base::FilePath key_path() const { return key_path_; }
@@ -65,6 +93,10 @@ class EncryptionKey {
   }
   base::FilePath preserved_previous_key_path() const {
     return preserved_previous_key_path_;
+  }
+  SystemKeyStatus system_key_status() const { return system_key_status_; }
+  EncryptionKeyStatus encryption_key_status() const {
+    return encryption_key_status_;
   }
 
  private:
@@ -85,10 +117,6 @@ class EncryptionKey {
   base::FilePath preservation_request_path_;
   base::FilePath preserved_previous_key_path_;
 
-  // Whether the key is generated freshly, which happens if the system key is
-  // missing or the key file on disk didn't exist, failed to decrypt, etc.
-  bool is_fresh_ = false;
-
   // The system key is usually the key stored in TPM NVRAM that wraps the actual
   // encryption key. Empty if not available.
   brillo::SecureBlob system_key_;
@@ -98,6 +126,13 @@ class EncryptionKey {
 
   // Whether finalization took place during Persist().
   bool did_finalize_ = false;
+
+  // System key status. Only valid after one of the system key loading functions
+  // has been called.
+  SystemKeyStatus system_key_status_ = SystemKeyStatus::kUnknown;
+
+  // Encryption key status. Only valid after calling LoadEncryptionKey().
+  EncryptionKeyStatus encryption_key_status_ = EncryptionKeyStatus::kUnknown;
 };
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTION_KEY_H_
