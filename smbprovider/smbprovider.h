@@ -49,13 +49,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
       std::unique_ptr<SambaInterface> samba_interface,
       std::unique_ptr<MountManager> mount_manager,
-      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
-      size_t buffer_size);
-
-  SmbProvider(
-      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-      std::unique_ptr<SambaInterface> samba_interface,
-      std::unique_ptr<MountManager> mount_manager,
       std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
