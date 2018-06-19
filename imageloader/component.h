@@ -28,6 +28,7 @@
 
 #include "imageloader/helper_process_proxy.h"
 #include "imageloader/imageloader_impl.h"
+#include "imageloader/manifest.h"
 
 namespace imageloader {
 
@@ -36,22 +37,8 @@ constexpr int kComponentDirPerms = 0755;
 // The permissions that files in the component should have.
 constexpr int kComponentFilePerms = 0644;
 
-// The supported file systems for images.
-enum class FileSystem { kExt4, kSquashFS };
-
 class Component {
  public:
-  // This is a parsed version of the imageloader.json manifest.
-  struct Manifest {
-    int manifest_version;
-    std::vector<uint8_t> image_sha256;
-    std::vector<uint8_t> table_sha256;
-    std::string version;
-    FileSystem fs_type;
-    bool is_removable;
-    std::map<std::string, std::string> metadata;
-  };
-
   // Creates a Component. Returns nullptr if initialization and verification
   // fails.
   static std::unique_ptr<Component> Create(const base::FilePath& component_dir,
@@ -79,7 +66,6 @@ class Component {
   // Loads and verifies the manfiest. Returns false on failure. |public_key| is
   // the public key used to check the manifest signature.
   bool LoadManifest(const std::vector<uint8_t>& public_key);
-  bool ParseManifest();
   bool CopyComponentFile(const base::FilePath& src, const base::FilePath& dest,
                          const std::vector<uint8_t>& expected_hash);
   // This reads the contents of |file|, hashes it with |sha256|, and if

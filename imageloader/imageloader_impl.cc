@@ -92,7 +92,7 @@ std::string ImageLoaderImpl::LoadComponentAtPath(
   }
 
   base::FilePath mount_point(
-      GetMountPoint(config_.mount_path, name, component->manifest().version));
+      GetMountPoint(config_.mount_path, name, component->manifest().version()));
   return component->Mount(proxy, mount_point) ? mount_point.value()
                                               : kBadResult;
 }
@@ -130,7 +130,7 @@ bool ImageLoaderImpl::RemoveComponentAtPath(
     LOG(ERROR) << "Failed to initialize component: " << name;
     return false;
   }
-  if (!component->manifest().is_removable) {
+  if (!component->manifest().is_removable()) {
     LOG(ERROR) << "Component is not removable";
     return false;
   }
@@ -192,7 +192,7 @@ bool ImageLoaderImpl::RegisterComponent(
     return false;
 
   // Check that the reported version matches the component manifest version.
-  if (component->manifest().version != version) {
+  if (component->manifest().version() != version) {
     LOG(ERROR) << "Version in signed manifest does not match the reported "
                   "component version.";
     return false;
@@ -243,7 +243,7 @@ std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
   if (!component)
     return kBadResult;
 
-  return component->manifest().version;
+  return component->manifest().version();
 }
 
 bool ImageLoaderImpl::GetComponentMetadata(
@@ -258,7 +258,7 @@ bool ImageLoaderImpl::GetComponentMetadata(
   if (!component)
     return false;
 
-  *out_metadata = component->manifest().metadata;
+  *out_metadata = component->manifest().metadata();
   return true;
 }
 

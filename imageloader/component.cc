@@ -38,26 +38,10 @@ constexpr char kManifestName[] = "imageloader.json";
 constexpr char kFingerprintName[] = "manifest.fingerprint";
 // The manifest signature.
 constexpr char kManifestSignatureNamePattern[] = "imageloader.sig.[1-2]";
-// The current version of the manifest file.
-constexpr int kCurrentManifestVersion = 1;
-// The name of the version field in the manifest.
-constexpr char kManifestVersionField[] = "manifest-version";
-// The name of the component version field in the manifest.
-constexpr char kVersionField[] = "version";
-// The name of the field containing the image hash.
-constexpr char kImageHashField[] = "image-sha256-hash";
-// The name of the bool field indicating whether component is removable.
-constexpr char kIsRemovableField[] = "is-removable";
-// The name of the metadata field.
-constexpr char kMetadataField[] = "metadata";
 // The name of the image file (squashfs).
 constexpr char kImageFileNameSquashFS[] = "image.squash";
 // The name of the image file (ext4).
 constexpr char kImageFileNameExt4[] = "image.ext4";
-// The name of the field containing the table hash.
-constexpr char kTableHashField[] = "table-sha256-hash";
-// The name of the optional field containing the file system type.
-constexpr char kFSType[] = "fs-type";
 // The name of the table file.
 constexpr char kTableFileName[] = "table";
 // The maximum size of any file to read into memory.
@@ -134,13 +118,6 @@ bool WriteFileToDisk(const base::FilePath& path, const std::string& contents) {
   return file.Write(0, contents.data(), contents.size()) == size;
 }
 
-bool GetSHA256FromString(const std::string& hash_str,
-                         std::vector<uint8_t>* bytes) {
-  if (!base::HexStringToBytes(hash_str, bytes))
-    return false;
-  return bytes->size() == crypto::kSHA256Length;
-}
-
 bool GetAndVerifyTable(const base::FilePath& path,
                        const std::vector<uint8_t>& hash,
                        std::string* out_table) {
@@ -157,30 +134,6 @@ bool GetAndVerifyTable(const base::FilePath& path,
   }
 
   out_table->assign(table);
-  return true;
-}
-
-// Ensure the metadata entry is a dictionary mapping strings to strings and
-// parse it into |out_metadata| and return true if so.
-bool ParseMetadata(const base::Value* metadata_element,
-                   std::map<std::string, std::string>* out_metadata) {
-  DCHECK(out_metadata);
-
-  const base::DictionaryValue* metadata_dict = nullptr;
-  if (!metadata_element->GetAsDictionary(&metadata_dict))
-    return false;
-
-  base::DictionaryValue::Iterator it(*metadata_dict);
-  for (; !it.IsAtEnd(); it.Advance()) {
-    std::string parsed_value;
-    if (!it.value().GetAsString(&parsed_value)) {
-      LOG(ERROR) << "Key \"" << it.key() << "\" did not map to string value";
-      return false;
-    }
-
-    (*out_metadata)[it.key()] = std::move(parsed_value);
-  }
-
   return true;
 }
 
@@ -209,7 +162,7 @@ std::unique_ptr<Component> Component::Create(
   return component;
 }
 
-const Component::Manifest& Component::manifest() {
+const Manifest& Component::manifest() {
   return manifest_;
 }
 
@@ -217,13 +170,13 @@ bool Component::Mount(HelperProcessProxy* mounter,
                       const base::FilePath& dest_dir) {
   // Read the table in and verify the hash.
   std::string table;
-  if (!GetAndVerifyTable(GetTablePath(component_dir_), manifest_.table_sha256,
+  if (!GetAndVerifyTable(GetTablePath(component_dir_), manifest_.table_sha256(),
                          &table)) {
     LOG(ERROR) << "Could not read and verify dm-verity table.";
     return false;
   }
 
-  base::FilePath image_path(GetImagePath(component_dir_, manifest_.fs_type));
+  base::FilePath image_path(GetImagePath(component_dir_, manifest_.fs_type()));
   base::File image(image_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!image.IsValid()) {
     LOG(ERROR) << "Could not open image file.";
@@ -232,98 +185,7 @@ bool Component::Mount(HelperProcessProxy* mounter,
   base::ScopedFD image_fd(image.TakePlatformFile());
 
   return mounter->SendMountCommand(image_fd.get(), dest_dir.value(),
-                                   manifest_.fs_type, table);
-}
-
-bool Component::ParseManifest() {
-  // Now deserialize the manifest json and read out the rest of the component.
-  int error_code;
-  std::string error_message;
-  JSONStringValueDeserializer deserializer(manifest_raw_);
-  std::unique_ptr<base::Value> value =
-      deserializer.Deserialize(&error_code, &error_message);
-
-  if (!value) {
-    LOG(ERROR) << "Could not deserialize the manifest file. Error "
-               << error_code << ": " << error_message;
-    return false;
-  }
-
-  base::DictionaryValue* manifest_dict = nullptr;
-  if (!value->GetAsDictionary(&manifest_dict)) {
-    LOG(ERROR) << "Could not parse manifest file as JSON.";
-    return false;
-  }
-
-  // This will have to be changed if the manifest version is bumped.
-  int version;
-  if (!manifest_dict->GetInteger(kManifestVersionField, &version)) {
-    LOG(ERROR) << "Could not parse manifest version field from manifest.";
-    return false;
-  }
-  if (version != kCurrentManifestVersion) {
-    LOG(ERROR) << "Unsupported version of the manifest.";
-    return false;
-  }
-  manifest_.manifest_version = version;
-
-  std::string image_hash_str;
-  if (!manifest_dict->GetString(kImageHashField, &image_hash_str)) {
-    LOG(ERROR) << "Could not parse image hash from manifest.";
-    return false;
-  }
-
-  if (!GetSHA256FromString(image_hash_str, &(manifest_.image_sha256))) {
-    LOG(ERROR) << "Could not convert image hash to bytes.";
-    return false;
-  }
-
-  std::string table_hash_str;
-  if (!manifest_dict->GetString(kTableHashField, &table_hash_str)) {
-    LOG(ERROR) << "Could not parse table hash from manifest.";
-    return false;
-  }
-
-  if (!GetSHA256FromString(table_hash_str, &(manifest_.table_sha256))) {
-    LOG(ERROR) << "Could not convert table hash to bytes.";
-    return false;
-  }
-
-  if (!manifest_dict->GetString(kVersionField, &(manifest_.version))) {
-    LOG(ERROR) << "Could not parse component version from manifest.";
-    return false;
-  }
-
-  // The fs_type field is optional, and squashfs by default.
-  manifest_.fs_type = FileSystem::kSquashFS;
-  std::string fs_type;
-  if (manifest_dict->GetString(kFSType, &fs_type)) {
-    if (fs_type == "ext4") {
-      manifest_.fs_type = FileSystem::kExt4;
-    } else if (fs_type == "squashfs") {
-      manifest_.fs_type = FileSystem::kSquashFS;
-    } else {
-      LOG(ERROR) << "Unsupported file system type: " << fs_type;
-      return false;
-    }
-  }
-
-  if (!manifest_dict->GetBoolean(kIsRemovableField,
-                                 &(manifest_.is_removable))) {
-    // If is_removable field does not exist, by default it is false.
-    manifest_.is_removable = false;
-  }
-
-  // Copy out the metadata, if it's there.
-  const base::Value* metadata = nullptr;
-  if (manifest_dict->Get(kMetadataField, &metadata)) {
-    if (!ParseMetadata(metadata, &(manifest_.metadata))) {
-      LOG(ERROR) << "Manifest metadata was malformed";
-      return false;
-    }
-  }
-
-  return true;
+                                   manifest_.fs_type(), table);
 }
 
 bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
@@ -357,7 +219,7 @@ bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
     LOG(ERROR) << "Manifest failed signature verification.";
     return false;
   }
-  return ParseManifest();
+  return manifest_.ParseManifest(manifest_raw_);
 }
 
 bool Component::CopyTo(const base::FilePath& dest_dir) {
@@ -370,14 +232,14 @@ bool Component::CopyTo(const base::FilePath& dest_dir) {
 
   base::FilePath table_src(GetTablePath(component_dir_));
   base::FilePath table_dest(GetTablePath(dest_dir));
-  if (!CopyComponentFile(table_src, table_dest, manifest_.table_sha256)) {
+  if (!CopyComponentFile(table_src, table_dest, manifest_.table_sha256())) {
     LOG(ERROR) << "Could not copy table file.";
     return false;
   }
 
-  base::FilePath image_src(GetImagePath(component_dir_, manifest_.fs_type));
-  base::FilePath image_dest(GetImagePath(dest_dir, manifest_.fs_type));
-  if (!CopyComponentFile(image_src, image_dest, manifest_.image_sha256)) {
+  base::FilePath image_src(GetImagePath(component_dir_, manifest_.fs_type()));
+  base::FilePath image_dest(GetImagePath(dest_dir, manifest_.fs_type()));
+  if (!CopyComponentFile(image_src, image_dest, manifest_.image_sha256())) {
     LOG(ERROR) << "Could not copy image file.";
     return false;
   }

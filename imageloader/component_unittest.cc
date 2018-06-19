@@ -123,13 +123,13 @@ TEST_F(ComponentTest, InitComponentAndCheckManifest) {
       Component::Create(GetTestComponentPath(), keys_);
   ASSERT_NE(nullptr, component);
 
-  EXPECT_EQ(1, component->manifest().manifest_version);
-  EXPECT_EQ(kTestDataVersion, component->manifest().version);
+  EXPECT_EQ(1, component->manifest().manifest_version());
+  EXPECT_EQ(kTestDataVersion, component->manifest().version());
   // Don't hardcode the sha256 hashes, but run some sanity checks.
-  EXPECT_EQ(crypto::kSHA256Length, component->manifest().image_sha256.size());
-  EXPECT_EQ(crypto::kSHA256Length, component->manifest().table_sha256.size());
-  EXPECT_NE(component->manifest().image_sha256,
-            component->manifest().table_sha256);
+  EXPECT_EQ(crypto::kSHA256Length, component->manifest().image_sha256().size());
+  EXPECT_EQ(crypto::kSHA256Length, component->manifest().table_sha256().size());
+  EXPECT_NE(component->manifest().image_sha256(),
+            component->manifest().table_sha256());
 }
 
 TEST_F(ComponentTest, TestCopyAndMountComponentExt4) {
