@@ -72,13 +72,29 @@ class MountManager {
                               const std::string& full_path) const;
 
  private:
+  // Maintains the state of a single mount. Contains the mount root path and
+  // the metadata cache.
+  //
+  // TODO(zentaro): Add cache in follow up CL.
+  struct MountInfo {
+    MountInfo() = default;
+    explicit MountInfo(const std::string& mount_root)
+        : mount_root(mount_root) {}
+
+    MountInfo& operator=(MountInfo&& other) = default;
+
+    std::string mount_root;
+
+    DISALLOW_COPY_AND_ASSIGN(MountInfo);
+  };
+
   // Returns true if |mount_root| exists as a value in mounts_. This method is
   // only used for DCHECK to ensure that credential_store_ is in sync with
   // MountManager.
   bool ExistsInMounts(const std::string& mount_root) const;
 
   bool can_remount_ = true;
-  std::map<int32_t, std::string> mounts_;
+  std::map<int32_t, MountInfo> mounts_;
   int32_t next_mount_id_ = 0;
   std::unique_ptr<CredentialStore> credential_store_;
 

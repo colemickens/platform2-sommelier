@@ -25,7 +25,7 @@ bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
     return false;
   }
 
-  DCHECK(credential_store_->HasCredentials(mount_iter->second));
+  DCHECK(credential_store_->HasCredentials(mount_iter->second.mount_root));
   return true;
 }
 
@@ -54,7 +54,7 @@ bool MountManager::AddMount(const std::string& mount_root,
   }
 
   can_remount_ = false;
-  mounts_[next_mount_id_] = mount_root;
+  mounts_[next_mount_id_] = MountInfo(mount_root);
   *mount_id = next_mount_id_++;
   return true;
 }
@@ -73,7 +73,7 @@ bool MountManager::Remount(const std::string& mount_root,
     return false;
   }
 
-  mounts_[mount_id] = mount_root;
+  mounts_[mount_id] = MountInfo(mount_root);
   next_mount_id_ = std::max(next_mount_id_, mount_id) + 1;
   return true;
 }
@@ -84,7 +84,8 @@ bool MountManager::RemoveMount(int32_t mount_id) {
     return false;
   }
 
-  bool removed = credential_store_->RemoveCredentials(mount_iter->second);
+  bool removed =
+      credential_store_->RemoveCredentials(mount_iter->second.mount_root);
   DCHECK(removed);
 
   mounts_.erase(mount_iter);
@@ -101,7 +102,7 @@ bool MountManager::GetFullPath(int32_t mount_id,
     return false;
   }
 
-  *full_path = AppendPath(mount_iter->second, entry_path);
+  *full_path = AppendPath(mount_iter->second.mount_root, entry_path);
   return true;
 }
 
@@ -110,15 +111,15 @@ std::string MountManager::GetRelativePath(int32_t mount_id,
   auto mount_iter = mounts_.find(mount_id);
   DCHECK(mount_iter != mounts_.end());
 
-  DCHECK(StartsWith(full_path, mount_iter->second,
+  DCHECK(StartsWith(full_path, mount_iter->second.mount_root,
                     base::CompareCase::INSENSITIVE_ASCII));
 
-  return full_path.substr(mount_iter->second.length());
+  return full_path.substr(mount_iter->second.mount_root.length());
 }
 
 bool MountManager::ExistsInMounts(const std::string& mount_root) const {
   for (auto const& mount : mounts_) {
-    if (mount.second == mount_root) {
+    if (mount.second.mount_root == mount_root) {
       return true;
     }
   }
