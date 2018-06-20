@@ -368,8 +368,8 @@ struct sl_mmap {
   size_t offset[2];
   size_t stride[2];
   size_t y_ss[2];
-  sl_begin_end_access_func_t begin_access;
-  sl_begin_end_access_func_t end_access;
+  sl_begin_end_access_func_t begin_write;
+  sl_begin_end_access_func_t end_write;
   struct wl_resource* buffer_resource;
 };
 

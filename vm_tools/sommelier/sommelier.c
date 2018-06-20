@@ -181,8 +181,8 @@ struct sl_mmap* sl_mmap_create(int fd,
   map->stride[1] = stride1;
   map->y_ss[0] = y_ss0;
   map->y_ss[1] = y_ss1;
-  map->begin_access = NULL;
-  map->end_access = NULL;
+  map->begin_write = NULL;
+  map->end_write = NULL;
   map->buffer_resource = NULL;
   map->addr =
       mmap(NULL, size + offset0, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);

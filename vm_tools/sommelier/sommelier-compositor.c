@@ -70,12 +70,29 @@ static void sl_dmabuf_sync(int fd, __u64 flags) {
   } while (rv == -1 && errno == EINTR);
 }
 
-static void sl_dmabuf_begin_access(int fd) {
-  sl_dmabuf_sync(fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_RW);
+static void sl_dmabuf_begin_write(int fd) {
+  sl_dmabuf_sync(fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_WRITE);
 }
 
-static void sl_dmabuf_end_access(int fd) {
-  sl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW);
+static void sl_dmabuf_end_write(int fd) {
+  sl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE);
+}
+
+static void sl_virtwl_dmabuf_sync(int fd, __u32 flags) {
+  struct virtwl_ioctl_dmabuf_sync sync = {0};
+  int rv;
+
+  sync.flags = flags;
+  rv = ioctl(fd, VIRTWL_IOCTL_DMABUF_SYNC, &sync);
+  assert(!rv);
+}
+
+static void sl_virtwl_dmabuf_begin_write(int fd) {
+  sl_virtwl_dmabuf_sync(fd, DMA_BUF_SYNC_START | DMA_BUF_SYNC_WRITE);
+}
+
+static void sl_virtwl_dmabuf_end_write(int fd) {
+  sl_virtwl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE);
 }
 
 static uint32_t sl_gbm_format_for_shm_format(uint32_t format) {
@@ -224,8 +241,8 @@ static void sl_host_surface_attach(struct wl_client* client,
 
           host->current_buffer->mmap = sl_mmap_create(
               fd, height * stride0, bpp, 1, 0, stride0, 0, 0, 1, 0);
-          host->current_buffer->mmap->begin_access = sl_dmabuf_begin_access;
-          host->current_buffer->mmap->end_access = sl_dmabuf_end_access;
+          host->current_buffer->mmap->begin_write = sl_dmabuf_begin_write;
+          host->current_buffer->mmap->end_write = sl_dmabuf_end_write;
 
           gbm_bo_destroy(bo);
         } break;
@@ -300,6 +317,9 @@ static void sl_host_surface_attach(struct wl_client* client,
               ioctl_new.dmabuf.stride0, ioctl_new.dmabuf.offset1,
               ioctl_new.dmabuf.stride1, host_buffer->shm_mmap->y_ss[0],
               host_buffer->shm_mmap->y_ss[1]);
+          host->current_buffer->mmap->begin_write =
+              sl_virtwl_dmabuf_begin_write;
+          host->current_buffer->mmap->end_write = sl_virtwl_dmabuf_end_write;
         } break;
       }
 
@@ -483,8 +503,8 @@ static void sl_host_surface_commit(struct wl_client* client,
       }
     }
 
-    if (host->current_buffer->mmap->begin_access)
-      host->current_buffer->mmap->begin_access(host->current_buffer->mmap->fd);
+    if (host->current_buffer->mmap->begin_write)
+      host->current_buffer->mmap->begin_write(host->current_buffer->mmap->fd);
 
     rect = pixman_region32_rectangles(&host->current_buffer->damage, &n);
     while (n--) {
@@ -524,8 +544,8 @@ static void sl_host_surface_commit(struct wl_client* client,
       ++rect;
     }
 
-    if (host->current_buffer->mmap->end_access)
-      host->current_buffer->mmap->end_access(host->current_buffer->mmap->fd);
+    if (host->current_buffer->mmap->end_write)
+      host->current_buffer->mmap->end_write(host->current_buffer->mmap->fd);
 
     pixman_region32_clear(&host->current_buffer->damage);
 
