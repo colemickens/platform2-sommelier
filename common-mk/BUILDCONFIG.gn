@@ -1,0 +1,84 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # The OS build is running on.
+  OS = ""
+
+  # Specifies pkg-config program to retrieve information about packages.
+  pkg_config = ""
+
+  # The logical root directory for headers and libraries.
+  sysroot = ""
+
+  # The libdir of the target board. e.g. /usr/lib64
+  libdir = ""
+
+  # The path to the directory where build artifacts are located.
+  build_root = ""
+
+  # The path to src/platform2.
+  platform2_root = ""
+
+  # Libbase revision number read from BASE_VER variable for file.
+  libbase_ver = ""
+
+  # Set true to allow C++ code to use exceptions.
+  enable_exceptions = false
+
+  # Additional flags for C compiler.
+  external_cflags = []
+
+  # Additional flags for C++ compiler.
+  external_cxxflags = []
+
+  # Additional flags for C and C++ preprocessor.
+  external_cppflags = []
+
+  # Additional flags for C and C++ linker.
+  external_ldflags = []
+}
+import("//common-mk/use.gni")
+
+assert(pkg_config != "", "pkg-config script path must be set")
+assert(libbase_ver != -1, "libbase_ver must be set")
+assert(libdir != "", "libdir must be set")
+
+if (target_os == "") {
+  target_os = host_os
+}
+if (target_cpu == "") {
+  target_cpu = host_cpu
+}
+if (current_cpu == "") {
+  current_cpu = target_cpu
+}
+if (current_os == "") {
+  current_os = target_os
+}
+
+# All binary targets will get this list of configs by default.
+_shared_binary_target_configs = [ "//common-mk:compiler_defaults" ]
+
+if (!enable_exceptions) {
+  _shared_binary_target_configs += [ "//common-mk:no_exceptions" ]
+}
+
+set_defaults("executable") {
+  configs = _shared_binary_target_configs
+  configs += [ "//common-mk:executable_config" ]
+}
+set_defaults("static_library") {
+  configs = _shared_binary_target_configs
+  configs += [ "//common-mk:static_library_config" ]
+}
+set_defaults("shared_library") {
+  configs = _shared_binary_target_configs
+  configs += [ "//common-mk:shared_library_config" ]
+}
+set_defaults("source_set") {
+  configs = _shared_binary_target_configs
+}
+
+set_default_toolchain("//common-mk/toolchain")
