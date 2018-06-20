@@ -1,0 +1,33 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":net_poll_tool",
+    ":static_node_tool",
+  ]
+}
+
+pkg_config("config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("net_poll_tool") {
+  configs += [ ":config" ]
+  sources = [
+    "net_poll_tool.cc",
+  ]
+}
+
+executable("static_node_tool") {
+  configs += [ ":config" ]
+  sources = [
+    "static_node_tool.cc",
+  ]
+}
