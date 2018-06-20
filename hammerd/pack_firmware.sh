@@ -17,7 +17,8 @@ SCRIPT_ROOT="${CURRENT_DIR}/../../scripts"
 BOARD_LOOKUP_TABLE="\
 poppy wand
 soraka staff
-meowth whiskers"
+meowth whiskers
+nocturne whiskers"
 
 DEFINE_string board "" "The board name. e.g. poppy" b
 DEFINE_string version "" "The version of the target file. e.g. 9794.0.0" v
