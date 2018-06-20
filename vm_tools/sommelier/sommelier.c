@@ -3823,13 +3823,10 @@ int main(int argc, char **argv) {
         args[i++] = "-nolisten";
         args[i++] = "tcp";
         args[i++] = "-rootless";
-        if (ctx.drm_device) {
-          // Use DRM and software rendering unless glamor is enabled.
-          if (!glamor || !strcmp(glamor, "0"))
-            args[i++] = "-drm";
-        } else {
+        // Use software rendering unless we have a DRM device and glamor is
+        // enabled.
+        if (!ctx.drm_device || !glamor || !strcmp(glamor, "0"))
           args[i++] = "-shm";
-        }
         args[i++] = "-displayfd";
         args[i++] = display_fd_str;
         args[i++] = "-wm";
