@@ -105,6 +105,7 @@ const char kKeyCannotContactKDC[] = "Cannot contact any KDC";
 const char kKeyCannotFindKDC[] = "Cannot find KDC";
 const char kKeyNoCrentialsCache[] = "No credentials cache found";
 const char kKeyTicketExpired[] = "Ticket expired while renewing credentials";
+const char kKeyEncTypeNotSupported[] = "KDC has no support for encryption type";
 
 // Nice marker for TGT renewal related logs, for easy grepping.
 const char kTgtRenewalHeader[] = "TGT RENEWAL - ";
@@ -194,6 +195,10 @@ WARN_UNUSED_RESULT ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
   if (Contains(kinit_err, kKeyTicketExpired)) {
     LOG(ERROR) << "kinit failed - ticket expired";
     return ERROR_KERBEROS_TICKET_EXPIRED;
+  }
+  if (Contains(kinit_err, kKeyEncTypeNotSupported)) {
+    LOG(ERROR) << "kinit failed - KDC does not support encryption type";
+    return ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE;
   }
   LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
   return ERROR_KINIT_FAILED;

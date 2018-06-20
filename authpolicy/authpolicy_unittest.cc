@@ -1266,6 +1266,13 @@ TEST_F(AuthPolicyTest, AuthFailsNetworkProblem) {
             metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
+// Authentication fails with unsupported encryption type.
+TEST_F(AuthPolicyTest, AuthFailsEncTypeNotSupported) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE,
+            Auth(kEncTypeNotSupportedUserPrincipal, "", MakePasswordFd()));
+}
+
 // Authentication retries without KDC if it fails the first time.
 TEST_F(AuthPolicyTest, AuthSucceedsKdcRetry) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));

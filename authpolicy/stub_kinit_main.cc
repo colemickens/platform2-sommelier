@@ -50,6 +50,8 @@ const char kPasswordWillExpireWarning[] =
 const char kRefresh[] = "-R";
 const char kTicketExpired[] =
     "kinit: Ticket expired while renewing credentials";
+const char kEncTypeNotSupported[] =
+    "KDC has no support for encryption type while getting initial credentials";
 
 // Helper file for simulating account propagation issues.
 const char kPropagationTestFile[] = "propagation_test";
@@ -185,6 +187,13 @@ int HandleCommandLine(const std::string& command_line) {
   // Stub kinit retry, but fail the second time as well.
   if (StartsWithCaseSensitive(command_line, kKdcRetryFailsUserPrincipal)) {
     WriteOutput("", kCannotContactKdc);
+    return kExitCodeError;
+  }
+
+  // Stub encryption type not supported error.
+  if (StartsWithCaseSensitive(command_line,
+                              kEncTypeNotSupportedUserPrincipal)) {
+    WriteOutput("", kEncTypeNotSupported);
     return kExitCodeError;
   }
 
