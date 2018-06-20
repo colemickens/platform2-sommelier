@@ -76,6 +76,7 @@
       'sources': [
         'sommelier-compositor.c',
         'sommelier-data-device-manager.c',
+        'sommelier-display.c',
         'sommelier-drm.c',
         'sommelier-gtk-shell.c',
         'sommelier-output.c',

@@ -340,6 +340,22 @@ struct sl_linux_dmabuf {
   struct zwp_linux_dmabuf_v1* internal;
 };
 
+struct sl_global {
+  struct sl_context* ctx;
+  const struct wl_interface* interface;
+  uint32_t name;
+  uint32_t version;
+  void* data;
+  wl_global_bind_func_t bind;
+  struct wl_list link;
+};
+
+struct sl_host_registry {
+  struct sl_context* ctx;
+  struct wl_resource* resource;
+  struct wl_list link;
+};
+
 typedef void (*sl_begin_end_access_func_t)(int fd);
 
 struct sl_mmap {
@@ -443,6 +459,8 @@ struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_drm_global_create(struct sl_context* ctx);
+
+void sl_set_display_implementation(struct sl_context* ctx);
 
 struct sl_mmap* sl_mmap_create(int fd,
                                size_t size,
