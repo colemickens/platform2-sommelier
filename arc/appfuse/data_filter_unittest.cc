@@ -111,6 +111,38 @@ TEST_F(DataFilterTest, ValidRequestAndResponse) {
   }
 }
 
+TEST_F(DataFilterTest, ValidRequestAndErrorResponse) {
+  constexpr int kUnique = 123;
+  {  // GETATTR request from /dev/fuse to DataFitler.
+    fuse_in_header header = {};
+    fuse_getattr_in body = {};
+    header.len = sizeof(header) + sizeof(body);
+    header.opcode = FUSE_GETATTR;
+    header.unique = kUnique;
+    ASSERT_TRUE(WriteInData(header, &body, sizeof(body)));
+  }
+  {  // DataFilter passes GETATTR to the app.
+    fuse_in_header header = {};
+    fuse_getattr_in body = {};
+    ASSERT_TRUE(ReadInData(&header, &body, sizeof(body)));
+    EXPECT_EQ(FUSE_GETATTR, header.opcode);
+    EXPECT_EQ(kUnique, header.unique);
+  }
+  {  // ENOENT response from app to DataFilter.
+    fuse_out_header header = {};
+    header.len = sizeof(header);
+    header.unique = kUnique;
+    header.error = -ENOENT;
+    ASSERT_TRUE(WriteOutData(header, nullptr, 0));
+  }
+  {  // DataFilter passes the response to /dev/fuse.
+    fuse_out_header header = {};
+    ASSERT_TRUE(ReadOutData(&header, nullptr, 0));
+    EXPECT_EQ(kUnique, header.unique);
+    EXPECT_EQ(-ENOENT, header.error);
+  }
+}
+
 TEST_F(DataFilterTest, InvalidFileMode) {
   constexpr int kUnique = 123;
   constexpr mode_t kMode = S_IFBLK | 0777;  // S_IFBLK is not allowed.

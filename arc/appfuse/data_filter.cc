@@ -176,33 +176,35 @@ bool DataFilter::FilterDataFromSocket(std::vector<char>* data) {
   const int opcode = it->second;
   unique_to_opcode_.erase(it);
 
-  // Check the response contents.
-  switch (opcode) {
-    case FUSE_LOOKUP: {
-      if (data->size() < sizeof(fuse_out_header) + sizeof(fuse_entry_out)) {
-        LOG(ERROR) << "Invalid LOOKUP response";
-        return false;
+  if (header->error == 0) {
+    // Check the response contents.
+    switch (opcode) {
+      case FUSE_LOOKUP: {
+        if (data->size() < sizeof(fuse_out_header) + sizeof(fuse_entry_out)) {
+          LOG(ERROR) << "Invalid LOOKUP response";
+          return false;
+        }
+        const auto* entry_out = reinterpret_cast<const fuse_entry_out*>(
+            data->data() + sizeof(fuse_out_header));
+        if (!S_ISREG(entry_out->attr.mode) && !S_ISDIR(entry_out->attr.mode)) {
+          LOG(ERROR) << "Invalid mode";
+          return false;
+        }
+        break;
       }
-      const auto* entry_out = reinterpret_cast<const fuse_entry_out*>(
-          data->data() + sizeof(fuse_out_header));
-      if (!S_ISREG(entry_out->attr.mode) && !S_ISDIR(entry_out->attr.mode)) {
-        LOG(ERROR) << "Invalid mode";
-        return false;
+      case FUSE_GETATTR: {
+        if (data->size() < sizeof(fuse_out_header) + sizeof(fuse_attr_out)) {
+          LOG(ERROR) << "Invalid GETATTR response";
+          return false;
+        }
+        const auto* attr_out = reinterpret_cast<const fuse_attr_out*>(
+            data->data() + sizeof(fuse_out_header));
+        if (!S_ISREG(attr_out->attr.mode) && !S_ISDIR(attr_out->attr.mode)) {
+          LOG(ERROR) << "Invalid mode";
+          return false;
+        }
+        break;
       }
-      break;
-    }
-    case FUSE_GETATTR: {
-      if (data->size() < sizeof(fuse_out_header) + sizeof(fuse_attr_out)) {
-        LOG(ERROR) << "Invalid GETATTR response";
-        return false;
-      }
-      const auto* attr_out = reinterpret_cast<const fuse_attr_out*>(
-          data->data() + sizeof(fuse_out_header));
-      if (!S_ISREG(attr_out->attr.mode) && !S_ISDIR(attr_out->attr.mode)) {
-        LOG(ERROR) << "Invalid mode";
-        return false;
-      }
-      break;
     }
   }
   // Pass the data to /dev/fuse.
