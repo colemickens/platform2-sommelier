@@ -110,6 +110,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kStringList, ToVector(policy.device_login_screen_app_install_list()
                                       .device_login_screen_app_install_list()));
 
+  EncodeString(&policy, key::kDeviceLoginScreenDomainAutoComplete, kString);
+  EXPECT_EQ(kString, policy.login_screen_domain_auto_complete()
+                         .login_screen_domain_auto_complete());
+
   EncodeStringList(&policy, key::kDeviceLoginScreenLocales, kStringList);
   EXPECT_EQ(kStringList,
             ToVector(policy.login_screen_locales().login_screen_locales()));
@@ -196,6 +200,43 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeBoolean(&policy, key::kDeviceAutoUpdateP2PEnabled, kBool);
   EXPECT_EQ(kBool, policy.auto_update_settings().p2p_enabled());
+
+  EncodeStringList(&policy, key::kDeviceAutoUpdateTimeRestrictions,
+                   {R"({
+                         "start": {
+                           "day_of_week": "MONDAY",
+                           "time": 12840000
+                         },
+                         "end": {
+                           "day_of_week": "MONDAY",
+                           "time": 21720000
+                         }
+                       })",
+                    R"({
+                         "start": {
+                           "day_of_week": "FRIDAY",
+                           "time": 38640000
+                         },
+                         "end": {
+                           "day_of_week": "FRIDAY",
+                           "time": 57600000
+                         }
+                       })"});
+  const auto& auto_update_disallowed_intervals =
+      policy.auto_update_settings().disallowed_time_intervals();
+  EXPECT_EQ(2, auto_update_disallowed_intervals.size());
+  {
+    const auto& interval1 = auto_update_disallowed_intervals.Get(0);
+    const auto& interval2 = auto_update_disallowed_intervals.Get(1);
+    EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.start().day_of_week());
+    EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.end().day_of_week());
+    EXPECT_EQ(12840000, interval1.start().time());
+    EXPECT_EQ(21720000, interval1.end().time());
+    EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.start().day_of_week());
+    EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.end().day_of_week());
+    EXPECT_EQ(38640000, interval2.start().time());
+    EXPECT_EQ(57600000, interval2.end().time());
+  }
 
   //
   // Accessibility policies.
@@ -320,16 +361,18 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                })!!!");
   const auto& device_off_hours_proto = policy.device_off_hours();
   EXPECT_EQ(2, device_off_hours_proto.intervals_size());
-  const auto& interval1 = device_off_hours_proto.intervals().Get(0);
-  const auto& interval2 = device_off_hours_proto.intervals().Get(1);
-  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.start().day_of_week());
-  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.end().day_of_week());
-  EXPECT_EQ(12840000, interval1.start().time());
-  EXPECT_EQ(21720000, interval1.end().time());
-  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.start().day_of_week());
-  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.end().day_of_week());
-  EXPECT_EQ(38640000, interval2.start().time());
-  EXPECT_EQ(57600000, interval2.end().time());
+  {
+    const auto& interval1 = device_off_hours_proto.intervals().Get(0);
+    const auto& interval2 = device_off_hours_proto.intervals().Get(1);
+    EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.start().day_of_week());
+    EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.end().day_of_week());
+    EXPECT_EQ(12840000, interval1.start().time());
+    EXPECT_EQ(21720000, interval1.end().time());
+    EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.start().day_of_week());
+    EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.end().day_of_week());
+    EXPECT_EQ(38640000, interval2.start().time());
+    EXPECT_EQ(57600000, interval2.end().time());
+  }
   EXPECT_EQ("GMT", device_off_hours_proto.timezone());
   EXPECT_EQ(2, device_off_hours_proto.ignored_policy_proto_tags_size());
   EXPECT_EQ(3, device_off_hours_proto.ignored_policy_proto_tags().Get(0));

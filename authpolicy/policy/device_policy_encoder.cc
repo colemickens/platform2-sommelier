@@ -126,9 +126,9 @@ bool EncodeWeeklyTimeProto(const base::DictionaryValue& value,
   return true;
 }
 
-// Converts the dictionary |value| to a DeviceOffHoursIntervalProto |proto|.
-bool EncodeDeviceOffHoursIntervalProto(const base::Value& value,
-                                       em::DeviceOffHoursIntervalProto* proto) {
+// Converts the dictionary |value| to a WeeklyTimeIntervalProto |proto|.
+bool EncodeWeeklyTimeIntervalProto(const base::Value& value,
+                                   em::WeeklyTimeIntervalProto* proto) {
   const base::DictionaryValue* dict = nullptr;
   if (!value.GetAsDictionary(&dict))
     return false;
@@ -196,6 +196,11 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
                      for (const std::string& value : values)
                        list->add_device_login_screen_app_install_list(value);
                    });
+  EncodeString(key::kDeviceLoginScreenDomainAutoComplete,
+               [policy](const std::string& value) {
+                 policy->mutable_login_screen_domain_auto_complete()
+                     ->set_login_screen_domain_auto_complete(value);
+               });
   EncodeStringList(key::kDeviceLoginScreenLocales,
                    [policy](const std::vector<std::string>& values) {
                      auto list = policy->mutable_login_screen_locales();
@@ -300,6 +305,26 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
   EncodeBoolean(key::kDeviceAutoUpdateP2PEnabled, [policy](bool value) {
     policy->mutable_auto_update_settings()->set_p2p_enabled(value);
   });
+  EncodeStringList(
+      key::kDeviceAutoUpdateTimeRestrictions,
+      [policy](const std::vector<std::string>& values) {
+        auto proto = policy->mutable_auto_update_settings();
+        proto->clear_disallowed_time_intervals();
+        for (const std::string& value : values) {
+          std::string error;
+          std::unique_ptr<base::DictionaryValue> dict_value =
+              JsonToDictionary(value, &error);
+          if (!dict_value ||
+              !EncodeWeeklyTimeIntervalProto(
+                  *dict_value, proto->add_disallowed_time_intervals())) {
+            LOG(ERROR) << "Invalid JSON string '"
+                       << (!error.empty() ? error : value) << "' for policy '"
+                       << key::kDeviceAutoUpdateTimeRestrictions
+                       << "', ignoring.";
+            continue;
+          }
+        }
+      });
 }
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
@@ -435,7 +460,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
 
       for (const base::Value* entry : *intervals) {
         is_error |=
-            !EncodeDeviceOffHoursIntervalProto(*entry, proto->add_intervals());
+            !EncodeWeeklyTimeIntervalProto(*entry, proto->add_intervals());
       }
 
       for (const base::Value* entry : *ignored_policy_proto_tags) {
@@ -483,35 +508,34 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
                        list->add_whitelist(value);
                    });
 
-  EncodeString(
-      key::kTPMFirmwareUpdateSettings, [policy](const std::string& value) {
-        std::string error;
-        std::unique_ptr<base::DictionaryValue> dict_value =
-            JsonToDictionary(value, &error);
-        if (!dict_value) {
-          LOG(ERROR) << "Invalid JSON string '"
-                     << (!error.empty() ? error : value) << "' for policy '"
-                     << key::kTPMFirmwareUpdateSettings << "', ignoring.";
-          return;
-        }
+  EncodeString(key::kTPMFirmwareUpdateSettings, [policy](
+                                                    const std::string& value) {
+    std::string error;
+    std::unique_ptr<base::DictionaryValue> dict_value =
+        JsonToDictionary(value, &error);
+    if (!dict_value) {
+      LOG(ERROR) << "Invalid JSON string '" << (!error.empty() ? error : value)
+                 << "' for policy '" << key::kTPMFirmwareUpdateSettings
+                 << "', ignoring.";
+      return;
+    }
 
-        em::TPMFirmwareUpdateSettingsProto* settings =
-            policy->mutable_tpm_firmware_update_settings();
-        for (base::DictionaryValue::Iterator iter(*dict_value); !iter.IsAtEnd();
-             iter.Advance()) {
-          bool flag;
-          if (iter.key() == "allow-user-initiated-powerwash" &&
-              iter.value().GetAsBoolean(&flag)) {
-            settings->set_allow_user_initiated_powerwash(flag);
-          } else if (iter.key() ==
-                         "allow-user-initiated-preserve-device-state" &&
-                     iter.value().GetAsBoolean(&flag)) {
-            settings->set_allow_user_initiated_preserve_device_state(flag);
-          } else {
-            LOG(WARNING) << "Unknown JSON key or invalid value: " << iter.key();
-          }
-        }
-      });
+    em::TPMFirmwareUpdateSettingsProto* settings =
+        policy->mutable_tpm_firmware_update_settings();
+    for (base::DictionaryValue::Iterator iter(*dict_value); !iter.IsAtEnd();
+         iter.Advance()) {
+      bool flag;
+      if (iter.key() == "allow-user-initiated-powerwash" &&
+          iter.value().GetAsBoolean(&flag)) {
+        settings->set_allow_user_initiated_powerwash(flag);
+      } else if (iter.key() == "allow-user-initiated-preserve-device-state" &&
+                 iter.value().GetAsBoolean(&flag)) {
+        settings->set_allow_user_initiated_preserve_device_state(flag);
+      } else {
+        LOG(WARNING) << "Unknown JSON key or invalid value: " << iter.key();
+      }
+    }
+  });
 
   EncodeString(
       key::kMinimumRequiredChromeVersion, [policy](const std::string& value) {
