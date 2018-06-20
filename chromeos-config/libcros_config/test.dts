@@ -163,6 +163,8 @@
 			main-image = "bcs://Another.1111.11.1.tbz2";
 			main-rw-image = "bcs://Another_RW.1111.11.1.tbz2";
 			key-id = "ANOTHER";
+			extra = "${FILESDIR}/extra";
+			tools = "${FILESDIR}/tools1", "${FILESDIR}/tools2";
 			build-targets {
 				coreboot = "another";
 				ec = "another";

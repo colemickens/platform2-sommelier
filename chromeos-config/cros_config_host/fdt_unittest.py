@@ -14,7 +14,7 @@ from . import fdt, fdt_util
 
 DTS_FILE = '../libcros_config/test.dts'
 ANOTHER_FIRMWARE_NAMES = ['bcs-overlay', 'ec-image', 'main-image',
-                          'main-rw-image', 'key-id']
+                          'main-rw-image', 'key-id', 'extra', 'tools']
 
 
 class FdtLibTest(unittest.TestCase):

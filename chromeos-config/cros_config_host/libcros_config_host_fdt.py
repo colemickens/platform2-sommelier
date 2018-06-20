@@ -308,6 +308,8 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       prop = self.Property(property_name)
       if not prop:
         return []
+      if not isinstance(prop.value, list):
+        return [prop.value]
       return prop.value
 
     def GetBool(self, property_name):
