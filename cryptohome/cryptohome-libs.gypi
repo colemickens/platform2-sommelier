@@ -342,11 +342,35 @@
         }],
       ],
     },
-    # BootLockbox rpc.proto
+    # Copy boot_lockbox_rpc.proto from /usr/include/chromeos/dbus.
+    {
+      'target_name': 'bootlockbox-proto-external',
+      'type': 'none',
+      'variables': {
+        'shared_proto_path': '<(sysroot)/usr/include/chromeos/dbus/bootlockbox',
+        'proto_out_dir': './bootlockbox',
+      },
+      'actions': [
+        {
+          'action_name': 'proto-mung',
+          'inputs': [
+            '<(shared_proto_path)/boot_lockbox_rpc.proto',
+          ],
+          'outputs': [
+            '<(proto_out_dir)/boot_lockbox_rpc.proto',
+          ],
+          'action': [
+            'sh', '-c',
+            'cp <@(_inputs) <(proto_out_dir)/ && sed -i s:LITE_RUNTIME:CODE_SIZE:g <@(_outputs)',
+          ],
+        },
+      ],
+    },
+    # BootLockbox rpc.proto.
     {
       'target_name': 'bootlockbox-proto',
       'type': 'static_library',
-      # shared_libary
+      # shared_libary.
       'cflags!': ['-fPIE'],
       'cflags': ['-fPIC'],
       'variables': {
@@ -357,12 +381,16 @@
         ],
         'deps': ['<@(exported_deps)'],
       },
+      'dependencies': [
+        'bootlockbox-proto-external',
+      ],
       'all_dependent_settings': {
         'variables': {
           'deps': ['<@(exported_deps)'],
         },
       },
       'sources': [
+        '<(proto_in_dir)/boot_lockbox_rpc.proto',
         '<(proto_in_dir)/key_value_map.proto',
       ],
       'includes': [
