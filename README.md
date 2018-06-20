@@ -82,6 +82,7 @@ copies.
 | [regions](./regions/) ||
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [salsa](./salsa/) | Touchpad experimentation framework |
+| [screenshot](./screenshot/) | Tiny command to take a screenshot |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
 | [sepolicy](./sepolicy/) | SELinux policy for Chrome OS
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
