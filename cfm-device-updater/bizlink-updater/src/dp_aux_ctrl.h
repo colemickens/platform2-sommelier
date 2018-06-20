@@ -13,10 +13,13 @@ namespace bizlink_updater {
 
 bool GetValidDevice(McdpChipInfo* chip_info, int* dp_aux_port_id);
 bool DrmAuxRead(const base::ScopedFD& fd,
-                off_t offset,
+                const off_t offset,
                 size_t read_size,
                 unsigned char* buf);
-
+bool DrmAuxWrite(const base::ScopedFD& fd,
+                 const off_t offset,
+                 const size_t write_size,
+                 const unsigned char* buf);
 }  // namespace bizlink_updater
 
 #endif  // CFM_DEVICE_UPDATER_BIZLINK_UPDATER_SRC_DP_AUX_CTRL_H_

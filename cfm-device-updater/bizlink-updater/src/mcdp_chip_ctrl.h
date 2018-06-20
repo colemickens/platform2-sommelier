@@ -44,6 +44,10 @@ struct McdpChipInfo {
 
 bool AuxGetChipInfo(const base::ScopedFD& dev_fd, McdpChipInfo* chip_info);
 
+void FlashNewFw(const base::FilePath& fw_path,
+                const base::ScopedFD& dev_fd,
+                const McdpChipInfo& device_info);
+
 }  // namespace bizlink_updater
 
 #endif  // CFM_DEVICE_UPDATER_BIZLINK_UPDATER_SRC_MCDP_CHIP_CTRL_H_

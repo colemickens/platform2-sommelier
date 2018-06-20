@@ -12,6 +12,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include <fcntl.h>
+
 #include <vector>
 
 using base::FilePath;
@@ -46,6 +48,12 @@ int main(int argc, char* argv[]) {
   if (!bizlink_updater::GetValidDevice(&chip_info, &valid_drm_port)) {
     return 1;
   }
+
+  // Flash new firmware to the chip.
+  FilePath dev_path(kDpDevPath + std::to_string(valid_drm_port));
+  base::ScopedFD dev_fd(open(dev_path.value().c_str(), O_RDWR | O_CLOEXEC));
+
+  bizlink_updater::FlashNewFw(fw_path, dev_fd, chip_info);
 
   return 0;
 }

@@ -104,13 +104,27 @@ bool GetValidDevice(McdpChipInfo* chip_info, int* valid_port_id) {
 }
 
 bool DrmAuxRead(const base::ScopedFD& fd,
-                off_t offset,
+                const off_t offset,
                 size_t read_size,
                 unsigned char* buf) {
   // Read read_size bytes from aux dev at offset into buf.
   size_t size = pread(fd.get(), buf, read_size, offset);
   if (size != read_size) {
     PLOG(ERROR) << "Failed to read native aux data at offset " << offset;
+    return false;
+  }
+
+  return true;
+}
+
+bool DrmAuxWrite(const base::ScopedFD& fd,
+                 const off_t offset,
+                 const size_t write_size,
+                 const unsigned char* buf) {
+  // Write write_size bytes from aux dev into buf.
+  size_t size = pwrite(fd.get(), buf, write_size, offset);
+  if (size != write_size) {
+    PLOG(ERROR) << "Failed to write native aux data at offset " << offset;
     return false;
   }
 
