@@ -10,6 +10,7 @@
 
 namespace bizlink_updater {
 
+// Megachips DisplayPort chip FW status.
 enum McdpFwRunState {
   MCDP_RUN_NONE = 0,
   MCDP_RUN_IROM = 1,
@@ -17,6 +18,7 @@ enum McdpFwRunState {
   MCDP_RUN_APP = 3,
 };
 
+// Megachips DisplayPort chip ID.
 enum McdpChipId {
   MCDP_CHIP_NONE = 0,
   MCDP_PUMA_2900 = 6,
@@ -44,7 +46,7 @@ struct McdpChipInfo {
 
 bool AuxGetChipInfo(const base::ScopedFD& dev_fd, McdpChipInfo* chip_info);
 
-void FlashNewFw(const base::FilePath& fw_path,
+bool FlashNewFw(const base::FilePath& fw_path,
                 const base::ScopedFD& dev_fd,
                 const McdpChipInfo& device_info);
 

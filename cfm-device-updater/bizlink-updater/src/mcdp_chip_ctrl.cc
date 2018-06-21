@@ -315,41 +315,44 @@ void AbortFwUpdate(const base::ScopedFD& dev_fd) {
   }
 }
 
-void FlashNewFw(const base::FilePath& fw_path,
+bool FlashNewFw(const base::FilePath& fw_path,
                 const base::ScopedFD& dev_fd,
                 const McdpChipInfo& device_info) {
   int64_t fw_size = 0;
   if (!base::GetFileSize(fw_path, &fw_size)) {
     LOG(ERROR) << "Failed to read FW size.";
-    return;
+    return false;
   }
-  unsigned char* fw_buf = new unsigned char[fw_size];
-  int r = base::ReadFile(fw_path, (char*)fw_buf, fw_size);
+  auto fw_buf = std::make_unique<unsigned char[]>(fw_size);
+  int r =
+      base::ReadFile(fw_path, reinterpret_cast<char*>(fw_buf.get()), fw_size);
   if (r != fw_size) {
     LOG(ERROR) << "Failed to load fw bin.";
-    return;
+    return false;
   }
 
   if (!AuxWriteMcaOui(dev_fd)) {
     LOG(ERROR) << "Write mca oui data failed. Aborting...";
     AbortFwUpdate(dev_fd);
-    return;
+    return false;
   }
   if (!EnableUpdateMode(dev_fd, device_info.fw_run_state)) {
     LOG(ERROR) << "Enable FW update mode failed. Aborting...";
     AbortFwUpdate(dev_fd);
-    return;
+    return false;
   }
-  if (!WriteFwThruAux(dev_fd, fw_buf, fw_size)) {
+  if (!WriteFwThruAux(dev_fd, fw_buf.get(), fw_size)) {
     LOG(ERROR) << "Flash FW failed. Aborting...";
     AbortFwUpdate(dev_fd);
-    return;
+    return false;
   }
   if (ValidateFwUpdate(dev_fd) < 0) {
     LOG(ERROR) << "Validate FW failed. Aborting...";
     AbortFwUpdate(dev_fd);
-    return;
+    return false;
   }
+
+  return true;
 }
 
 }  // namespace bizlink_updater

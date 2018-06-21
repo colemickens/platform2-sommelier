@@ -20,6 +20,7 @@ bool DrmAuxWrite(const base::ScopedFD& fd,
                  const off_t offset,
                  const size_t write_size,
                  const unsigned char* buf);
+
 }  // namespace bizlink_updater
 
 #endif  // CFM_DEVICE_UPDATER_BIZLINK_UPDATER_SRC_DP_AUX_CTRL_H_

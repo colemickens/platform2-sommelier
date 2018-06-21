@@ -11,10 +11,9 @@
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/flag_helper.h>
 
 #include <fcntl.h>
-
-#include <vector>
 
 using base::FilePath;
 
@@ -25,14 +24,15 @@ const FilePath::StringType kDpDevPath = FILE_PATH_LITERAL("/dev/drm_dp_aux");
 }
 
 int main(int argc, char* argv[]) {
+  // Flag for run FW update. If false, print FW bin and device version.
+  DEFINE_bool(update, false, "Run FW update.");
   DEFINE_string(fw_path, "/lib/firmware/bizlink/megachips-firmware.bin",
                 "Absolute FW path to flash.");
+  DEFINE_bool(force, false, "Skip FW version check and force update.");
   brillo::FlagHelper::Init(argc, argv, "bizlink-updater");
 
   // Configure logging to syslog.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-
-  LOG(INFO) << "Bizlink FW updater start...";
 
   // Read FW bin file info.
   const FilePath fw_path(FLAGS_fw_path);
@@ -50,10 +50,22 @@ int main(int argc, char* argv[]) {
   }
 
   // Flash new firmware to the chip.
-  FilePath dev_path(kDpDevPath + std::to_string(valid_drm_port));
-  base::ScopedFD dev_fd(open(dev_path.value().c_str(), O_RDWR | O_CLOEXEC));
-
-  bizlink_updater::FlashNewFw(fw_path, dev_fd, chip_info);
+  if (FLAGS_update) {
+    if (!FLAGS_force && (fw_bin_version == chip_info.fw_version)) {
+      LOG(INFO) << "Same FW version, no update required.";
+      return 0;
+    }
+    LOG(INFO) << "Use valid DP AUX port " << valid_drm_port;
+    FilePath dev_path(kDpDevPath + std::to_string(valid_drm_port));
+    base::ScopedFD dev_fd(open(dev_path.value().c_str(), O_RDWR | O_CLOEXEC));
+    if (!dev_fd.is_valid()) {
+      LOG(ERROR) << "Failed to open DP AUX port.";
+      return 1;
+    }
+    if (!bizlink_updater::FlashNewFw(fw_path, dev_fd, chip_info)) {
+      return 1;
+    }
+  }
 
   return 0;
 }
