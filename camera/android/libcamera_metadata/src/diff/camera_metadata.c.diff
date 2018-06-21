@@ -1,56 +1,57 @@
-diff --git a/home/jcliang/arc/system/media/camera/src/camera_metadata.c b/camera_metadata.c
-index 041d0d6..c1ae362 100644
---- a/home/jcliang/arc/system/media/camera/src/camera_metadata.c
+diff --git a/usr/local/google/home/shik/pi-arc-dev/system/media/camera/src/camera_metadata.c b/camera_metadata.c
+index e99abc4f4d9..6bfd02da29c 100644
+--- a/usr/local/google/home/shik/pi-arc-dev/system/media/camera/src/camera_metadata.c
 +++ b/camera_metadata.c
-@@ -14,13 +14,18 @@
-  * limitations under the License.
-  */
+@@ -16,17 +16,23 @@
  
--#define _GNU_SOURCE // for fdprintf
- #include <inttypes.h>
+ #define LOG_TAG "camera_metadata"
+ 
++/*
++ * Replace ALOGE() with a fprintf to stderr so that we don't need to
++ * re-implement Android's logging system.  The log/log.h header file is no
++ * longer necessary once we removed dependency on ALOGE().
++ */
++#define ALOGE(...) fprintf(stderr, LOG_TAG __VA_ARGS__)
++
  #include <system/camera_metadata.h>
  #include <camera_metadata_hidden.h>
  
- #define LOG_TAG "camera_metadata"
--#include <cutils/log.h>
-+/*
-+ * Replace ALOGE() with a fprintf to stderr so that we don't need to
-+ * re-implement Android's logging system.  The cutils/log.h header file is
-+ * no longer necessary once we removed dependency on ALOGE().
-+ */
-+//#include <cutils/log.h>
-+#define ALOGE(...) fprintf(stderr, LOG_TAG __VA_ARGS__)
  #include <assert.h>
+ #include <errno.h>
+ #include <inttypes.h>
++#include <stddef.h>  // for offsetof
  #include <stdio.h>
  #include <stdlib.h>
-@@ -310,7 +315,7 @@ static int validate_and_calculate_camera_metadata_entry_data_size(size_t *data_s
+ 
+-#include <log/log.h>
+-
+ #define OK              0
+ #define ERROR           1
+ #define NOT_FOUND       (-ENOENT)
+@@ -230,7 +236,7 @@ camera_metadata_t *allocate_copy_camera_metadata_checked(
+ 
+     if (src_size < sizeof(camera_metadata_t)) {
+         ALOGE("%s: Source size too small!", __FUNCTION__);
+-        android_errorWriteLog(0x534e4554, "67782345");
++        // android_errorWriteLog(0x534e4554, "67782345");
+         return NULL;
+     }
+ 
+@@ -371,7 +377,7 @@ static int validate_and_calculate_camera_metadata_entry_data_size(size_t *data_s
      // Check for overflow
      if (data_count != 0 &&
              camera_metadata_type_size[type] > (SIZE_MAX - DATA_ALIGNMENT + 1) / data_count) {
 -        android_errorWriteLog(SN_EVENT_LOG_ID, "30741779");
-+        //android_errorWriteLog(SN_EVENT_LOG_ID, "30741779");
++        // android_errorWriteLog(SN_EVENT_LOG_ID, "30741779");
          return ERROR;
      }
  
-@@ -395,7 +400,7 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
+@@ -460,7 +466,7 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
          ALOGE("%s: Data count (%" PRIu32 ") should be <= data capacity "
                "(%" PRIu32 ")",
                __FUNCTION__, metadata->data_count, metadata->data_capacity);
 -        android_errorWriteLog(SN_EVENT_LOG_ID, "30591838");
-+        //android_errorWriteLog(SN_EVENT_LOG_ID, "30591838");
-         return ERROR;
++        // android_errorWriteLog(SN_EVENT_LOG_ID, "30591838");
+         return CAMERA_METADATA_VALIDATION_ERROR;
      }
- 
-@@ -757,6 +762,12 @@ int update_camera_metadata_entry(camera_metadata_t *dst,
-     size_t data_bytes =
-             calculate_camera_metadata_entry_data_size(entry->type,
-                     data_count);
-+
-+    if (entry->type >= NUM_TYPES) {
-+        ALOGE("%s: Entry index %zu had a bad type %d",
-+              __FUNCTION__, index, entry->type);
-+        return ERROR;
-+    }
-     size_t data_payload_bytes =
-             data_count * camera_metadata_type_size[entry->type];
  
