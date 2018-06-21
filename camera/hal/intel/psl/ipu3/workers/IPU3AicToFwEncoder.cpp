@@ -768,124 +768,6 @@ ispTccEncode(aic_config *config, ipu3_uapi_params *params)
     params->use.acc_tcc = 1;
 }
 
-status_t
-ispBdsHorEncode(aic_config *config, ipu3_uapi_params *params)
-{
-    uint32_t i = 0;
-    uint32_t j = 0;
-    uint32_t index = 0;
-
-    params->acc_param.bds.hor.hor_ctrl0.hor_ds_en = config->bds_2500_config.bds.hor_enable;
-    params->acc_param.bds.hor.hor_ctrl0.sample_patrn_length = config->bds_2500_config.bds.sequence_len;
-    params->acc_param.bds.hor.hor_ctrl0.max_clip_val = BDS_MAX_CLIP_VAL;
-    params->acc_param.bds.hor.hor_ctrl0.min_clip_val = BDS_MIN_CLIP_VAL;
-
-    params->acc_param.bds.hor.hor_ctrl1.hor_crop_en = config->bds_2500_config.bds.hor_crop_enable;
-    params->acc_param.bds.hor.hor_ctrl1.hor_crop_start = config->bds_2500_config.bds.hor_crop_start;
-    params->acc_param.bds.hor.hor_ctrl1.hor_crop_end = config->bds_2500_config.bds.hor_crop_end;
-
-    for (i = 0; i < BDS_MAX_SEQ_PATTERN_SIZE; i++)
-        params->acc_param.bds.hor.hor_ptrn_arr.elems[i] = config->bds_2500_config.bds.sequence_pat[i];
-
-    for (i = 0; i < config->bds_2500_config.bds.phase_count; i++) {
-        index = i / 2;
-        if ((i % 2) == 0) {
-            params->acc_param.bds.hor.hor_phase_arr.even[index].coeff_min2 = config->bds_2500_config.bds.hor_coeffs[i][0];
-            params->acc_param.bds.hor.hor_phase_arr.even[index].coeff_min1 = config->bds_2500_config.bds.hor_coeffs[i][1];
-            params->acc_param.bds.hor.hor_phase_arr.even[index].coeff_0 = config->bds_2500_config.bds.hor_coeffs[i][2];
-            params->acc_param.bds.hor.hor_phase_arr.even[index].coeff_pls1 = config->bds_2500_config.bds.hor_coeffs[i][3];
-            params->acc_param.bds.hor.hor_phase_arr.even[index].coeff_pls2 = config->bds_2500_config.bds.hor_coeffs[i][4];
-            params->acc_param.bds.hor.hor_phase_arr.even[index].coeff_pls3 = config->bds_2500_config.bds.hor_coeffs[i][5];
-            params->acc_param.bds.hor.hor_phase_arr.even[index].nf = config->bds_2500_config.bds.hor_nf[i];
-        } else {
-            params->acc_param.bds.hor.hor_phase_arr.odd[index].coeff_min2 = config->bds_2500_config.bds.hor_coeffs[i][0];
-            params->acc_param.bds.hor.hor_phase_arr.odd[index].coeff_min1 = config->bds_2500_config.bds.hor_coeffs[i][1];
-            params->acc_param.bds.hor.hor_phase_arr.odd[index].coeff_0 = config->bds_2500_config.bds.hor_coeffs[i][2];
-            params->acc_param.bds.hor.hor_phase_arr.odd[index].coeff_pls1 = config->bds_2500_config.bds.hor_coeffs[i][3];
-            params->acc_param.bds.hor.hor_phase_arr.odd[index].coeff_pls2 = config->bds_2500_config.bds.hor_coeffs[i][4];
-            params->acc_param.bds.hor.hor_phase_arr.odd[index].coeff_pls3 = config->bds_2500_config.bds.hor_coeffs[i][5];
-            params->acc_param.bds.hor.hor_phase_arr.odd[index].nf = config->bds_2500_config.bds.hor_nf[i];
-        }
-        for (j = 0; j < BDS_NUM_OF_TAPS; j++) {
-            if (config->bds_2500_config.bds.hor_coeffs[i][j] > BDS_MAX_COEFF_VALUE ||
-                config->bds_2500_config.bds.hor_coeffs[i][j] < BDS_MIN_COEFF_VALUE) {
-                LOGE("BDS configuration is wrong - phase %d coeff %d", i, j-2);
-                return UNKNOWN_ERROR;
-            }
-        }
-    }
-    return OK;
-}
-
-status_t
-ispBdsVerEncode(aic_config *config, ipu3_uapi_params *params)
-{
-    uint32_t i = 0;
-    uint32_t j = 0;
-    uint32_t index = 0;
-
-    params->acc_param.bds.ver.ver_ctrl0.ver_ds_en = config->bds_2500_config.bds.ver_enable;
-    params->acc_param.bds.ver.ver_ctrl0.sample_patrn_length = config->bds_2500_config.bds.sequence_len;
-    params->acc_param.bds.ver.ver_ctrl0.max_clip_val = BDS_MAX_CLIP_VAL;
-    params->acc_param.bds.ver.ver_ctrl0.min_clip_val = BDS_MIN_CLIP_VAL;
-
-    MEMCPY_S(params->acc_param.bds.ver.ver_ptrn_arr.elems,
-        sizeof(params->acc_param.bds.ver.ver_ptrn_arr.elems),
-        config->bds_2500_config.bds.sequence_pat,
-        sizeof(config->bds_2500_config.bds.sequence_pat));
-
-    for (i = 0; i < config->bds_2500_config.bds.phase_count; i++) {
-        index = i / 2;
-        if ((i % 2) == 0) {
-            params->acc_param.bds.ver.ver_phase_arr.even[index].coeff_min2 = config->bds_2500_config.bds.ver_coeffs[i][0];
-            params->acc_param.bds.ver.ver_phase_arr.even[index].coeff_min1 = config->bds_2500_config.bds.ver_coeffs[i][1];
-            params->acc_param.bds.ver.ver_phase_arr.even[index].coeff_0 = config->bds_2500_config.bds.ver_coeffs[i][2];
-            params->acc_param.bds.ver.ver_phase_arr.even[index].coeff_pls1 = config->bds_2500_config.bds.ver_coeffs[i][3];
-            params->acc_param.bds.ver.ver_phase_arr.even[index].coeff_pls2 = config->bds_2500_config.bds.ver_coeffs[i][4];
-            params->acc_param.bds.ver.ver_phase_arr.even[index].coeff_pls3 = config->bds_2500_config.bds.ver_coeffs[i][5];
-            params->acc_param.bds.ver.ver_phase_arr.even[index].nf = config->bds_2500_config.bds.ver_nf[i];
-        } else {
-            params->acc_param.bds.ver.ver_phase_arr.odd[index].coeff_min2 = config->bds_2500_config.bds.ver_coeffs[i][0];
-            params->acc_param.bds.ver.ver_phase_arr.odd[index].coeff_min1 = config->bds_2500_config.bds.ver_coeffs[i][1];
-            params->acc_param.bds.ver.ver_phase_arr.odd[index].coeff_0 = config->bds_2500_config.bds.ver_coeffs[i][2];
-            params->acc_param.bds.ver.ver_phase_arr.odd[index].coeff_pls1 = config->bds_2500_config.bds.ver_coeffs[i][3];
-            params->acc_param.bds.ver.ver_phase_arr.odd[index].coeff_pls2 = config->bds_2500_config.bds.ver_coeffs[i][4];
-            params->acc_param.bds.ver.ver_phase_arr.odd[index].coeff_pls3 = config->bds_2500_config.bds.ver_coeffs[i][5];
-            params->acc_param.bds.ver.ver_phase_arr.odd[index].nf = config->bds_2500_config.bds.ver_nf[i];
-        }
-        for (j = 0; j < BDS_NUM_OF_TAPS; j++) {
-            if (config->bds_2500_config.bds.ver_coeffs[i][j] > BDS_MAX_COEFF_VALUE ||
-                config->bds_2500_config.bds.ver_coeffs[i][j] < BDS_MIN_COEFF_VALUE) {
-                LOGE("BDS configuration is wrong - phase %d coeff %d", i, j-2);
-                return UNKNOWN_ERROR;
-            }
-        }
-    }
-    return OK;
-}
-
-status_t
-ispBdsEncode(aic_config *config, ipu3_uapi_params *params)
-{
-    status_t status = OK;
-    params->acc_param.bds.enabled = config->bds_2500_config.bds.hor_enable || config->bds_2500_config.bds.hor_crop_enable
-            || config->bds_2500_config.bds.ver_enable;
-    status = ispBdsHorEncode(config, params);
-    if (status != OK) {
-        LOGE("Bds Horizontal Encode fail");
-        return status;
-    }
-
-    status = ispBdsVerEncode(config, params);
-    if (status != OK) {
-        LOGE("Bds Vertical Encode fail");
-        return status;
-    }
-
-    params->use.acc_bds = 1;
-    return status;
-}
-
 void
 ispAfEncode(aic_config *config, ipu3_uapi_params *params)
 {
@@ -1322,8 +1204,6 @@ namespace camera2 {
 status_t
 IPU3AicToFwEncoder::encodeParameters(aic_config *config, ipu3_uapi_params *params)
 {
-    status_t status = OK;
-
     ispAwbFrEncode(config, params);
     ispAeEncode(config, params);
     ispAwbEncode(config, params);
@@ -1344,7 +1224,6 @@ IPU3AicToFwEncoder::encodeParameters(aic_config *config, ipu3_uapi_params *param
     ispYEeNrEncode(config, params);
     ispYTmLutEncode(config, params);
     ispTccEncode(config, params);
-    status = ispBdsEncode(config, params);
     ispAnrEncode(config, params);
     ispBnrEncode(config, params);
     ispOBGEncode(config, params);
@@ -1354,7 +1233,7 @@ IPU3AicToFwEncoder::encodeParameters(aic_config *config, ipu3_uapi_params *param
     ispTnr3VmemEncode(config, params);
     ispTnr3DmemEncode(config, params);
 
-    return status;
+    return OK;
 }
 
 } /* namespace camera2 */
