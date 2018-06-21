@@ -50,15 +50,15 @@ class SecureBlobTest : public ::testing::Test {
   SecureBlobTest() {}
   virtual ~SecureBlobTest() {}
 
-  static bool FindBlobInBlob(const brillo::Blob& haystack,
-                             const brillo::Blob& needle) {
+  static bool FindBlobInBlob(const brillo::SecureBlob& haystack,
+                             const brillo::SecureBlob& needle) {
     auto pos = std::search(
         haystack.begin(), haystack.end(), needle.begin(), needle.end());
     return (pos != haystack.end());
   }
 
-  static int FindBlobIndexInBlob(const brillo::Blob& haystack,
-                                 const brillo::Blob& needle) {
+  static int FindBlobIndexInBlob(const brillo::SecureBlob& haystack,
+                                 const brillo::SecureBlob& needle) {
     auto pos = std::search(
         haystack.begin(), haystack.end(), needle.begin(), needle.end());
     if (pos == haystack.end()) {
@@ -71,24 +71,33 @@ class SecureBlobTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(SecureBlobTest);
 };
 
-// Test construction of SecureBlob from Blob.
-TEST_F(SecureBlobTest, BlobConstructorTest) {
-  const std::vector<uint8_t> bytes = {0, 1, 255};
-  const Blob blob(bytes);
-  const SecureBlob secure_blob(blob);
-  EXPECT_EQ(bytes,
-            std::vector<uint8_t>(secure_blob.begin(), secure_blob.end()));
-}
-
 TEST_F(SecureBlobTest, AllocationSizeTest) {
-  // Check that allocating a SecureBlob of a specified size works
+  // Checks that allocating a SecureBlob of a specified size works.
   SecureBlob blob(32);
 
   EXPECT_EQ(32, blob.size());
 }
 
-TEST_F(SecureBlobTest, AllocationCopyTest) {
-  // Check that allocating a SecureBlob with an iterator works
+TEST_F(SecureBlobTest, ConstructorCountValueTest) {
+  // Checks that constructing a SecureBlob with |count| copies of |value| works.
+  SecureBlob blob(32, 'a');
+
+  for (size_t i = 0; i < blob.size(); i++) {
+    EXPECT_EQ('a', blob[i]);
+  }
+}
+
+TEST_F(SecureBlobTest, ConstructorAmbiguousTest) {
+  // This test will become important once SecureBlob stops inheriting from Blob.
+  SecureBlob blob(32, 0);
+
+  for (size_t i = 0; i < blob.size(); i++) {
+    EXPECT_EQ(0, blob[i]);
+  }
+}
+
+TEST_F(SecureBlobTest, ConstructorIteratorTest) {
+  // Checks that constructing a SecureBlob with an iterator works.
   unsigned char from_data[32];
   std::iota(std::begin(from_data), std::end(from_data), 0);
 
@@ -101,26 +110,60 @@ TEST_F(SecureBlobTest, AllocationCopyTest) {
   }
 }
 
-TEST_F(SecureBlobTest, IteratorConstructorTest) {
-  // Check that allocating a SecureBlob with an iterator works
-  brillo::Blob from_blob(32);
-  for (unsigned int i = 0; i < from_blob.size(); i++) {
-    from_blob[i] = i;
-  }
-
-  SecureBlob blob(from_blob.begin(), from_blob.end());
-
-  EXPECT_EQ(from_blob.size(), blob.size());
-  EXPECT_TRUE(SecureBlobTest::FindBlobInBlob(from_blob, blob));
+TEST_F(SecureBlobTest, BlobConstructorTest) {
+  // Check that constructing a SecureBlob from a Blob works.
+  const std::vector<uint8_t> bytes = {0, 1, 255};
+  const Blob blob(bytes);
+  const SecureBlob secure_blob(blob);
+  EXPECT_EQ(bytes,
+            std::vector<uint8_t>(secure_blob.begin(), secure_blob.end()));
 }
 
-// Disable ResizeTest with address sanitizer.
+TEST_F(SecureBlobTest, IteratorTest) {
+  // Checks that SecureBlob::begin(), SecureBlob::end() work.
+  unsigned char from_data[32];
+  std::iota(std::begin(from_data), std::end(from_data), 0);
+
+  SecureBlob blob(std::begin(from_data), std::end(from_data));
+
+  EXPECT_EQ(sizeof(from_data), blob.size());
+
+  size_t i = 0;
+  for (auto it = blob.begin(); it != blob.end(); ++it) {
+    EXPECT_EQ(from_data[i], *it);
+    ++i;
+  }
+}
+
+TEST_F(SecureBlobTest, AssignTest) {
+  // Checks that .assign() works.
+  unsigned char from_data[32];
+  std::iota(std::begin(from_data), std::end(from_data), 0);
+
+  SecureBlob blob;
+  blob.assign(std::begin(from_data), std::end(from_data));
+
+  EXPECT_EQ(sizeof(from_data), blob.size());
+
+  size_t i = 0;
+  for (auto it = blob.begin(); it != blob.end(); ++it) {
+    EXPECT_EQ(from_data[i], *it);
+    ++i;
+  }
+
+  SecureBlob blob2;
+  blob2.assign(blob.begin(), blob.end());
+
+  EXPECT_EQ(blob, blob2);
+}
+
+// Disable ResizeTest with Address Sanitizer.
 // https://crbug.com/806013
 #ifndef BRILLO_ASAN_BUILD
 TEST_F(SecureBlobTest, ResizeTest) {
-  // Check that resizing a SecureBlob wipes the excess memory.  The test assumes
+  // Check that resizing a SecureBlob wipes the excess memory. The test assumes
   // that resize() down by one will not re-allocate the memory, so the last byte
-  // will still be part of the SecureBlob's allocation
+  // will still be part of the SecureBlob's allocation.
   size_t length = 1024;
   SecureBlob blob(length);
   void* original_data = blob.data();
