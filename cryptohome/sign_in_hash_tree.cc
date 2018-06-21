@@ -92,8 +92,9 @@ std::vector<SignInHashTree::Label> SignInHashTree::GetAuxiliaryLabels(
 void SignInHashTree::PopulateLeafCache() {
   for (uint64_t i = 0; i < (1 << leaf_length_); i++) {
     std::vector<uint8_t> hmac, cred_metadata;
+    bool metadata_lost;
     Label label(i, leaf_length_, bits_per_level_);
-    if (!GetLabelData(label, &hmac, &cred_metadata)) {
+    if (!GetLabelData(label, &hmac, &cred_metadata, &metadata_lost)) {
       LOG(ERROR) << "Error getting leaf HMAC, can't regenerate HashCache.";
       return;
     }
@@ -112,7 +113,8 @@ void SignInHashTree::GenerateInnerHashArray() {
 
 bool SignInHashTree::StoreLabel(const Label& label,
                                 const std::vector<uint8_t>& hmac,
-                                const std::vector<uint8_t>& cred_metadata) {
+                                const std::vector<uint8_t>& cred_metadata,
+                                bool metadata_lost) {
   if (hmac.size() != kHashSize) {
     LOG(WARNING) << "Unexpected MAC size when storing label " << label.value();
     return false;
@@ -122,8 +124,11 @@ bool SignInHashTree::StoreLabel(const Label& label,
     // Place the data in a protobuf and then write out to storage.
     HashTreeLeafData leaf_data;
     leaf_data.set_mac(hmac.data(), hmac.size());
-    leaf_data.set_credential_metadata(cred_metadata.data(),
-                                      cred_metadata.size());
+    leaf_data.set_metadata_lost(metadata_lost);
+    if (!metadata_lost) {
+      leaf_data.set_credential_metadata(cred_metadata.data(),
+                                        cred_metadata.size());
+    }
 
     std::vector<uint8_t> merged_blob(leaf_data.ByteSize());
     if (!leaf_data.SerializeToArray(merged_blob.data(), merged_blob.size())) {
@@ -163,7 +168,8 @@ bool SignInHashTree::RemoveLabel(const Label& label) {
 
 bool SignInHashTree::GetLabelData(const Label& label,
                                   std::vector<uint8_t>* hmac,
-                                  std::vector<uint8_t>* cred_metadata) {
+                                  std::vector<uint8_t>* cred_metadata,
+                                  bool* metadata_lost) {
   // If it is a leaf node, just get all the data from the PLT directly.
   if (IsLeafLabel(label)) {
     std::vector<uint8_t> merged_blob;
@@ -194,6 +200,7 @@ bool SignInHashTree::GetLabelData(const Label& label,
     hmac->assign(leaf_data.mac().begin(), leaf_data.mac().end());
     cred_metadata->assign(leaf_data.credential_metadata().begin(),
                           leaf_data.credential_metadata().end());
+    *metadata_lost = leaf_data.metadata_lost();
   } else {
     // If it is a inner leaf, get the value from the HashCache file.
     hmac->assign(inner_hash_array_[label.cache_index()],

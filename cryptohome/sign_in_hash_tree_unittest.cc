@@ -118,25 +118,29 @@ TEST(SignInHashTreeUnitTest, GenerateAndStoreHashCacheFile) {
   // Check that the root hash was calculated successfully.
   std::vector<uint8_t> result_hash;
   std::vector<uint8_t> cred_data;
+  bool metadata_lost;
   auto label = SignInHashTree::Label(0, 0, 1);
-  ASSERT_TRUE(tree.GetLabelData(label, &result_hash, &cred_data));
+  ASSERT_TRUE(tree.GetLabelData(label, &result_hash, &cred_data,
+                                &metadata_lost));
   EXPECT_EQ(kRootHash4_2, result_hash);
 
   // Try updating Label "00".
-  ASSERT_TRUE(
-      tree.StoreLabel(SignInHashTree::Label(0, 2, 1), kSampleHash1, cred_data));
+  ASSERT_TRUE(tree.StoreLabel(SignInHashTree::Label(0, 2, 1), kSampleHash1,
+                              cred_data, false));
   // Try updating Label "101".
-  ASSERT_TRUE(
-      tree.StoreLabel(SignInHashTree::Label(5, 3, 1), kSampleHash1, cred_data));
+  ASSERT_TRUE(tree.StoreLabel(SignInHashTree::Label(5, 3, 1), kSampleHash1,
+                              cred_data, false));
 
   result_hash.clear();
   ASSERT_TRUE(tree.GetLabelData(SignInHashTree::Label(0, 2, 1), &result_hash,
-                                &cred_data));
+                                &cred_data, &metadata_lost));
   EXPECT_EQ(kSampleHash1, result_hash);
+  EXPECT_EQ(false, metadata_lost);
   result_hash.clear();
   ASSERT_TRUE(tree.GetLabelData(SignInHashTree::Label(5, 3, 1), &result_hash,
-                                &cred_data));
+                                &cred_data, &metadata_lost));
   EXPECT_EQ(kSampleHash1, result_hash);
+  EXPECT_EQ(false, metadata_lost);
 }
 
 // Test that we can insert and retrieve a leaf label when we initialize
@@ -152,12 +156,25 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   tree->GenerateAndStoreHashCache();
 
   ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 6, 2), kSampleHash1,
-                               kSampleCredData1));
+                               kSampleCredData1, false));
   std::vector<uint8_t> returned_hash, cred_data;
+  bool metadata_lost;
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(21, 6, 2),
-                                 &returned_hash, &cred_data));
+                                 &returned_hash, &cred_data, &metadata_lost));
   EXPECT_EQ(kSampleHash1, returned_hash);
   EXPECT_EQ(kSampleCredData1, cred_data);
+  EXPECT_EQ(false, metadata_lost);
+
+  // Try the insert and retrieve for invalid labels too.
+  returned_hash.clear();
+  cred_data.clear();
+  ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 6, 2), kSampleHash1,
+                               kSampleCredData1, true));
+  ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(21, 6, 2),
+                                 &returned_hash, &cred_data, &metadata_lost));
+  EXPECT_EQ(kSampleHash1, returned_hash);
+  EXPECT_EQ(0, cred_data.size());
+  EXPECT_EQ(true, metadata_lost);
 
   // Regenerate the hash cache so the root hash gets recalculated.
   tree->GenerateAndStoreHashCache();
@@ -165,7 +182,7 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   returned_hash.clear();
   cred_data.clear();
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
-                                 &cred_data));
+                                 &cred_data, &metadata_lost));
   EXPECT_EQ(kRootHash6_4_1, returned_hash);
   returned_hash.clear();
   tree->GetRootHash(&returned_hash);
@@ -184,13 +201,14 @@ TEST(SignInHashTreeUnitTest, UpdateHashCacheOnInsertRemove) {
   tree->GenerateAndStoreHashCache();
 
   std::vector<uint8_t> returned_hash, cred_data;
+  bool metadata_lost;
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
-                                 &cred_data));
+                                 &cred_data, &metadata_lost));
   ASSERT_EQ(kRootHash14_4_1, returned_hash);
 
   // Insert a label.
   ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 14, 2), kSampleHash1,
-                               kSampleCredData1));
+                               kSampleCredData1, false));
   returned_hash.clear();
   tree->GetRootHash(&returned_hash);
   EXPECT_EQ(kRootHash14_4_2, returned_hash);

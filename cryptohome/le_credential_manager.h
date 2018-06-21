@@ -30,6 +30,8 @@ enum LECredError {
   LE_CRED_ERROR_INVALID_LABEL,
   // No free labels available.
   LE_CRED_ERROR_NO_FREE_LABEL,
+  // Invalid metadata in label.
+  LE_CRED_ERROR_INVALID_METADATA,
 };
 
 // Class containing all logic pertaining to management of Low Entropy(LE)
@@ -81,6 +83,7 @@ class LECredentialManager {
   // LE_CRED_ERROR_TOO_MANY_ATTEMPTS for locked out credential (too many
   // incorrect attempts). LE_CRED_ERROR_HASH_TREE for error in hash tree.
   // LE_CRED_ERROR_INVALID_LABEL for invalid label.
+  // LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   LECredError CheckCredential(const uint64_t& label,
                               const brillo::SecureBlob& le_secret,
                               brillo::SecureBlob* he_secret);
@@ -94,6 +97,7 @@ class LECredentialManager {
   // incorrect attempts).
   // - LE_CRED_ERROR_HASH_TREE for error in hash tree.
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
+  // - LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   LECredError ResetCredential(const uint64_t& label,
                               const brillo::SecureBlob& reset_secret);
 
@@ -122,7 +126,8 @@ class LECredentialManager {
   // - LE_CRED_ERROR_INVALID_RESET_SECRET for incorrect reset secret.
   // incorrect attempts).
   // - LE_CRED_ERROR_HASH_TREE for error in hash tree.
-  // - LE_CRED_ERROR_INVALID_LABEL for invalid label
+  // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
+  // - LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   LECredError CheckSecret(const uint64_t& label,
                           const brillo::SecureBlob& secret,
                           brillo::SecureBlob* he_secret,
@@ -130,7 +135,8 @@ class LECredentialManager {
 
   // Helper function to retrieve the credential metadata, MAC, and auxiliary
   // hashes associated with a label |label| (stored in |cred_metadata|, |mac|
-  // and |h_aux| respectively).
+  // and |h_aux| respectively). |metadata_lost| will denote whether the label
+  // contains valid metadata (false) or not (true).
   //
   // Returns LE_CRED_SUCCESS on success.
   // On failure, returns:
@@ -140,7 +146,8 @@ class LECredentialManager {
   LECredError RetrieveLabelInfo(const SignInHashTree::Label& label,
                                 std::vector<uint8_t>* cred_metadata,
                                 std::vector<uint8_t>* mac,
-                                std::vector<std::vector<uint8_t>>* h_aux);
+                                std::vector<std::vector<uint8_t>>* h_aux,
+                                bool* metadata_lost);
 
   // Given a label, gets the list of auxiliary hashes for that label.
   // On failure, returns an empty vector.

@@ -13,4 +13,8 @@ message HashTreeLeafData {
   // various attributes like number of attempts, delay schedule,
   // low and high entropy secrets, timestamp, etc.
   optional bytes credential_metadata = 2;
+  // Signifies when a leaf credential doesn't contain valid metadata and
+  // can't be used for authentication. This flag is set to true when a
+  // credential is re-inserted during log replay. Otherwise, it is set to false.
+  optional bool metadata_lost = 3;
 }

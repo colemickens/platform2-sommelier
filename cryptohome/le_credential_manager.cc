@@ -64,7 +64,7 @@ LECredError LECredentialManager::InsertCredential(
     return LE_CRED_ERROR_HASH_TREE;
   }
 
-  if (!hash_tree_->StoreLabel(label, mac, cred_metadata)) {
+  if (!hash_tree_->StoreLabel(label, mac, cred_metadata, false)) {
     LOG(ERROR)
         << "InsertCredential succeeded in TPM but disk updated failed, label: "
         << label.value();
@@ -110,8 +110,10 @@ LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
+  bool metadata_lost;
   LECredError ret =
-      RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux);
+      RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux,
+                        &metadata_lost);
   if (ret != LE_CRED_SUCCESS) {
     return ret;
   }
@@ -152,10 +154,17 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
 
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
+  bool metadata_lost;
   LECredError ret =
-      RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux);
+      RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux,
+                        &metadata_lost);
   if (ret != LE_CRED_SUCCESS) {
     return ret;
+  }
+
+  if (metadata_lost) {
+    LOG(ERROR) << "Invalid cred metadata for label: " << label;
+    return LE_CRED_ERROR_INVALID_METADATA;
   }
 
   brillo::Blob new_cred, new_mac;
@@ -172,7 +181,7 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
   // Store the new credential meta data and MAC in case the backend performed a
   // state change. Note that this might also be needed for some failure cases.
   if (!new_cred.empty() && !new_mac.empty()) {
-    if (!hash_tree_->StoreLabel(label_object, new_mac, new_cred)) {
+    if (!hash_tree_->StoreLabel(label_object, new_mac, new_cred, false)) {
       LOG(ERROR) << "Failed to update credential in disk hash tree for label: "
                  << label;
       // This is an un-salvageable state. We can't make LE updates anymore,
@@ -193,8 +202,9 @@ LECredError LECredentialManager::RetrieveLabelInfo(
     const SignInHashTree::Label& label,
     std::vector<uint8_t>* cred_metadata,
     std::vector<uint8_t>* mac,
-    std::vector<std::vector<uint8_t>>* h_aux) {
-  if (!hash_tree_->GetLabelData(label, mac, cred_metadata)) {
+    std::vector<std::vector<uint8_t>>* h_aux,
+    bool* metadata_lost) {
+  if (!hash_tree_->GetLabelData(label, mac, cred_metadata, metadata_lost)) {
     LOG(ERROR) << "Failed to get the credential in disk hash tree for label: "
                << label.value();
     return LE_CRED_ERROR_INVALID_LABEL;
@@ -227,7 +237,9 @@ std::vector<std::vector<uint8_t>> LECredentialManager::GetAuxHashes(
   h_aux.reserve(aux_labels.size());
   for (auto cur_aux_label : aux_labels) {
     brillo::Blob hash, cred_data;
-    if (!hash_tree_->GetLabelData(cur_aux_label, &hash, &cred_data)) {
+    bool metadata_lost;
+    if (!hash_tree_->GetLabelData(cur_aux_label, &hash, &cred_data,
+                                  &metadata_lost)) {
       LOG(INFO) << "Error getting aux label :" << cur_aux_label.value()
                 << " for label: " << label.value();
       h_aux.clear();

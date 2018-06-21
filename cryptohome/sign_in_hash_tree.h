@@ -202,7 +202,8 @@ class SignInHashTree {
   // The HMAC and the credential metadata are provided as two parameters,
   // |hmac| and |cred_data| respectively.
   // In case the label is an inner node , |hmac| will represent the hash of the
-  // node, and |cred_data| MUST be empty.
+  // node, and |cred_data| MUST be empty. |metadata_lost| signifies whether
+  // there is valid metadata stored for this label(false) or not(true).
   // This function should lead to two things happening(in the prescribed order):
   // - Concat the HMAC and credential metadata blobs together and store it
   //   in the underlying PersistentLookupTable pointed by |plt_|, with the
@@ -220,7 +221,8 @@ class SignInHashTree {
   // clarify the user intention.
   bool StoreLabel(const Label& label,
                   const std::vector<uint8_t>& hmac,
-                  const std::vector<uint8_t>& cred_metadata);
+                  const std::vector<uint8_t>& cred_metadata,
+                  bool metadata_lost);
 
   // Get the hash/hmac and, if applicable, the credential metadata associated
   // with a label.
@@ -232,6 +234,9 @@ class SignInHashTree {
   //
   // |hmac| and |cred_data| are expected to be pointers to empty vectors. The
   // function will ensure that the corresponding vectors have sufficient space.
+  // |metadata_lost| will return whether the credential metadata in this leaf
+  // is lost or not. This flag is set to true when a leaf was re-inserted as
+  // part of a log replay operation.
   //
   // Note that the hash returned may be incorrect if the HashCache is stale
   // or erroneous, and a failure will necessitate the regeneration of the
@@ -245,7 +250,8 @@ class SignInHashTree {
   // Returns true on success, false otherwise.
   bool GetLabelData(const Label& label,
                     std::vector<uint8_t>* hmac,
-                    std::vector<uint8_t>* cred_metadata);
+                    std::vector<uint8_t>* cred_metadata,
+                    bool* metadata_lost);
 
   // Remove the credential metadata associated with label |label| from the hash
   // tree. The |label| must refer to a leaf node; if a label for a inner node is
