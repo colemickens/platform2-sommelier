@@ -5,58 +5,6 @@
     'USE_cert_provision%': 0,
   },
   'targets': [
-    # An executable that communicates with bootlockbox daemon.
-    {
-      'target_name': 'bootlockboxtool',
-      'type': 'executable',
-      'dependencies': [
-        'cryptohome-proto',
-      ],
-      'variables': {
-        'deps': [
-          'libbootlockbox-client',
-          'libchrome-<(libbase_ver)',
-          'libbrillo-<(libbase_ver)',
-          'protobuf',
-        ],
-      },
-      'sources': [
-        'bootlockbox/boot_lockbox_client.cc',
-        'bootlockbox/boot_lockbox_tool.cc',
-      ],
-    },
-    {
-      'target_name': 'bootlockboxd',
-      'type': 'executable',
-      'dependencies': [
-        'libcrostpm',
-        'bootlockbox-adaptors',
-        'cryptohome-proto',
-      ],
-      'link_settings': {
-        'libraries': [
-          '-lscrypt',
-          '-lchaps',
-          '-lkeyutils',
-        ],
-      },
-      'variables': {
-        'deps': [
-          'libchrome-<(libbase_ver)',
-          'libbrillo-<(libbase_ver)',
-          'protobuf',
-          'openssl',
-          'libmetrics-<(libbase_ver)',
-          'libecryptfs',
-          'vboot_host',
-        ],
-      },
-      'sources': [
-        'bootlockbox/boot_lockbox_dbus_adaptor.cc',
-        'bootlockbox/boot_lockbox_service.cc',
-        'bootlockbox/boot_lockboxd.cc',
-      ],
-    },
     # Main programs.
     {
       'target_name': 'cryptohome',
@@ -436,9 +384,6 @@
             'arc_disk_quota_unittest.cc',
             'attestation_unittest.cc',
             'boot_attributes_unittest.cc',
-            'bootlockbox/boot_lockbox_dbus_adaptor.cc',
-            'bootlockbox/boot_lockbox_service.cc',
-            'bootlockbox/boot_lockbox_service_unittest.cc',
             'bootlockbox/boot_lockbox_unittest.cc',
             'challenge_credentials/challenge_credentials_decrypt_operation_unittest.cc',
             'challenge_credentials/challenge_credentials_test_utils.cc',
@@ -495,7 +440,6 @@
                 '-ltpm_manager_test',
               ],
               'sources': [
-                'bootlockbox/tpm2_nvspace_utility_unittest.cc',
                 'tpm2_test.cc',
               ],
             }],
@@ -540,6 +484,53 @@
             ['USE_tpm2 == 1', {
               'defines': [
                 'TPM2_MODE=1',
+              ],
+            }],
+          ],
+        },
+        {
+          'target_name': 'boot_lockbox_unittests',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'link_settings': {
+            'libraries': [
+            ],
+          },
+          'variables': {
+            'deps': [
+              'glib-2.0',
+              'libbrillo-<(libbase_ver)',
+              'libbrillo-test-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
+              'libchrome-test-<(libbase_ver)',
+              'openssl',
+            ],
+          },
+          'sources': [
+          ],
+          'conditions': [
+            ['USE_tpm2 == 1', {
+              'defines': [
+                'TPM2_MODE=1',
+              ],
+              'dependencies': [
+                'bootlockbox-proto',
+                'libnvram-boot-lockbox',
+                'tpm-manager',
+              ],
+              'libraries': [
+                '-ltpm_manager',
+                '-ltpm_manager_test',
+                '-ltrunks',
+                '-ltrunks_test',
+              ],
+              'sources': [
+                'bootlockbox/fake_tpm_nvspace_utility.cc',
+                'bootlockbox/nvram_boot_lockbox_unittest.cc',
+                'bootlockbox/tpm2_nvspace_utility_unittest.cc',
               ],
             }],
           ],

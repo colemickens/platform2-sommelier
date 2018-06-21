@@ -232,7 +232,6 @@
       'conditions': [
         ['USE_tpm2 == 1', {
           'sources': [
-            'bootlockbox/tpm2_nvspace_utility.cc',
             'pinweaver_le_credential_backend.cc',
             'signature_sealing_backend_tpm2_impl.cc',
             'tpm2_impl.cc',
@@ -343,6 +342,33 @@
         }],
       ],
     },
+    # BootLockbox rpc.proto
+    {
+      'target_name': 'bootlockbox-proto',
+      'type': 'static_library',
+      # shared_libary
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
+      'variables': {
+        'proto_in_dir': './bootlockbox',
+        'proto_out_dir': 'include',
+        'exported_deps': [
+          'protobuf',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': ['<@(exported_deps)'],
+        },
+      },
+      'sources': [
+        '<(proto_in_dir)/key_value_map.proto',
+      ],
+      'includes': [
+        '../common-mk/protoc.gypi',
+      ],
+    },
     {
       'target_name': 'bootlockbox-adaptors',
       'type': 'none',
@@ -383,6 +409,30 @@
           ],
           'includes': [
             '../common-mk/protoc.gypi',
+          ],
+        },
+        {
+          'target_name': 'libnvram-boot-lockbox',
+          'type': 'static_library',
+          'variables': {
+            'exported_deps': [
+              'libbrillo-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'all_dependent_settings': {
+            'variables': {
+              'deps': ['<@(exported_deps)'],
+            },
+          },
+          'dependencies': [
+            'bootlockbox-proto',
+            'libcrosplatform',
+          ],
+          'sources': [
+            'bootlockbox/nvram_boot_lockbox.cc',
+            'bootlockbox/tpm2_nvspace_utility.cc',
           ],
         },
       ],
