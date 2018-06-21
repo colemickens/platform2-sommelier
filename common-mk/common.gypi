@@ -219,28 +219,6 @@
       ['_type == "shared_library"', {
         'cflags': ['-fPIC'],
       }],
-      ['OS!="win"', {
-        'sources/': [
-          ['exclude', '_win(_browsertest|_unittest)?\\.(h|cc)$'],
-          ['exclude', '(^|/)win/'],
-          ['exclude', '(^|/)win_[^/]*\\.(h|cc)$'],
-        ],
-      }],
-      ['OS!="mac"', {
-        'sources/': [
-          ['exclude', '_(cocoa|mac)(_unittest)?\\.(h|cc|mm?)$'],
-          ['exclude', '(^|/)(cocoa|mac)/'],
-        ],
-      }],
-      ['OS!="ios"', {
-        'sources/': [
-          ['exclude', '_ios(_unittest)?\\.(h|cc|mm?)$'],
-          ['exclude', '(^|/)ios/'],
-        ],
-      }],
-      ['(OS!="mac" and OS!="ios")', {
-        'sources/': [ ['exclude', '\\.mm?$' ] ],
-      }],
     ],
   },
 }
