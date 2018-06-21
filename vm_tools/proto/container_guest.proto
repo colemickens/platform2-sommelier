@@ -10,8 +10,6 @@ option cc_enable_arenas = true;
 // will be used by the host.
 package vm_tools.container;
 
-import "common.proto";
-
 // Request protobuf for launching an application in the container.
 message LaunchApplicationRequest {
   // The ID of the application to launch. This should correspond to an
@@ -74,6 +72,33 @@ message LaunchVshdResponse {
   string failure_reason = 2;
 }
 
+// Request protobuf for installing a Linux package file.
+message InstallLinuxPackageRequest {
+  // Path to the package file (e.g. .deb) in the container's filesystem.
+  string file_path = 1;
+}
+
+// Response sent back from a request to install a Linux package.
+message InstallLinuxPackageResponse {
+  enum Status {
+    // Install process was successfully started, all further updates will be
+    // sent via the LinuxPackageProgress signal.
+    STARTED = 0;
+
+    // Failed to startup for a general reason, specific details are given in
+    // failure_reason.
+    FAILED = 1;
+
+    // Indicates another install is already in process, this one will not be
+    // started.
+    INSTALL_ALREADY_ACTIVE = 2;
+  }
+  Status status = 1;
+
+  // Contains a textual reason for the failure in case of a FAILED status.
+  string failure_reason = 2;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
@@ -85,4 +110,8 @@ service Garcon {
 
   // Launch a vshd instance that will connect back to the host.
   rpc LaunchVshd(LaunchVshdRequest) returns (LaunchVshdResponse);
+
+  // Install a Linux package file in the container.
+  rpc InstallLinuxPackage(InstallLinuxPackageRequest)
+      returns (InstallLinuxPackageResponse);
 }

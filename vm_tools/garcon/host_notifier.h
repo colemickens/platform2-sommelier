@@ -17,18 +17,18 @@
 #include <grpc++/grpc++.h>
 
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_tools/garcon/package_kit_proxy.h"
 
 namespace vm_tools {
 namespace garcon {
 
 // Handles making calls to concierge running in the host.
-class HostNotifier : public base::MessageLoopForIO::Watcher {
+class HostNotifier : public base::MessageLoopForIO::Watcher,
+                     public PackageKitProxy::PackageKitObserver {
  public:
   // Creates and inits the HostNotifier for running on the current sequence.
   // Returns null if there was any failure.
-  static std::unique_ptr<HostNotifier> Create(
-      std::shared_ptr<grpc::Server> grpc_server,
-      base::Closure shutdown_closure);
+  static std::unique_ptr<HostNotifier> Create(base::Closure shutdown_closure);
 
   // Sends a gRPC call to the host to notify it to open the specified URL with
   // the web browser. Returns true on success, false otherwise.
@@ -40,9 +40,24 @@ class HostNotifier : public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
+  // vm_tools::garcon::PackageKitObserver overrides.
+  void OnInstallCompletion(bool success,
+                           const std::string& failure_reason) override;
+  void OnInstallProgress(
+      vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
+      uint32_t percent_progress) override;
+
+  // Returns a WeakPtr reference to this object.
+  base::WeakPtr<HostNotifier> GetWeakPtr();
+
+  // Sets the gRPC Server object which will then be shutdown when this thread
+  // detects a SIGTERM.
+  void set_grpc_server(std::shared_ptr<grpc::Server> grpc_server) {
+    grpc_server_ = grpc_server;
+  }
+
  private:
-  HostNotifier(std::shared_ptr<grpc::Server> grpc_server,
-               base::Closure shutdown_closure);
+  explicit HostNotifier(base::Closure shutdown_closure);
   // This will notify the host that garcon is ready and send the initial update
   // for the application list and also establish a watcher for any updates to
   // the list of installed applications. Returns false if there was any failure.

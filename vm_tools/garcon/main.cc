@@ -6,6 +6,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 
 // syslog.h and base/logging.h both try to #define LOG_INFO and LOG_WARNING.
@@ -36,6 +37,7 @@ const int kSyslogCritical = LOG_CRIT;
 
 #include "vm_tools/common/constants.h"
 #include "vm_tools/garcon/host_notifier.h"
+#include "vm_tools/garcon/package_kit_proxy.h"
 #include "vm_tools/garcon/service_impl.h"
 
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
@@ -72,7 +74,8 @@ bool LogToSyslog(logging::LogSeverity severity,
   return true;
 }
 
-void RunGarconService(base::WaitableEvent* event,
+void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
+                      base::WaitableEvent* event,
                       std::shared_ptr<grpc::Server>* server_copy) {
   // We don't want to receive SIGTERM on this thread.
   sigset_t mask;
@@ -85,7 +88,7 @@ void RunGarconService(base::WaitableEvent* event,
   builder.AddListeningPort(base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
                            grpc::InsecureServerCredentials());
 
-  vm_tools::garcon::ServiceImpl garcon_service;
+  vm_tools::garcon::ServiceImpl garcon_service(pk_proxy);
   builder.RegisterService(&garcon_service);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
@@ -163,12 +166,31 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  // Setup the HostNotifier on the run loop for the main thread. It needs to
+  // have its own run loop separate from the gRPC server since it will be using
+  // base::FilePathWatcher to identify installed application changes, that same
+  // thread is also then used for D-Bus messaging.
+  base::RunLoop run_loop;
+
+  std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
+      vm_tools::garcon::HostNotifier::Create(run_loop.QuitClosure());
+  if (!host_notifier) {
+    LOG(ERROR) << "Failure setting up the HostNotifier";
+    return -1;
+  }
+
+  // This needs to be created on the main thread since it will be using that
+  // for D-Bus communication.
+  std::unique_ptr<vm_tools::garcon::PackageKitProxy> pk_proxy =
+      vm_tools::garcon::PackageKitProxy::Create(host_notifier->GetWeakPtr());
+
   // Launch the gRPC server on the gRPC thread.
   std::shared_ptr<grpc::Server> server_copy;
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
   bool ret = grpc_thread.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&RunGarconService, &event, &server_copy));
+      FROM_HERE,
+      base::Bind(&RunGarconService, pk_proxy.get(), &event, &server_copy));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return -1;
@@ -187,19 +209,9 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // Now setup the HostNotifier on the run loop for the main thread. It needs to
-  // have its own run loop separate from the gRPC server since it will be using
-  // base::FilePathWatcher to identify installed application changes.
-  base::RunLoop run_loop;
+  host_notifier->set_grpc_server(server_copy);
 
-  std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
-      vm_tools::garcon::HostNotifier::Create(server_copy,
-                                             run_loop.QuitClosure());
-  if (!host_notifier) {
-    LOG(ERROR) << "Failure setting up the HostNotifier";
-    return -1;
-  }
-
+  // Start the main run loop now for the HostNotifier.
   run_loop.Run();
 
   return 0;

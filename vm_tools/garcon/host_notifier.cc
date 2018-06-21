@@ -72,9 +72,9 @@ namespace garcon {
 
 // static
 std::unique_ptr<HostNotifier> HostNotifier::Create(
-    std::shared_ptr<grpc::Server> grpc_server, base::Closure shutdown_closure) {
-  auto notifier = base::WrapUnique(
-      new HostNotifier(std::move(grpc_server), std::move(shutdown_closure)));
+    base::Closure shutdown_closure) {
+  auto notifier =
+      base::WrapUnique(new HostNotifier(std::move(shutdown_closure)));
   if (!notifier->Init()) {
     notifier.reset();
   }
@@ -104,15 +104,15 @@ bool HostNotifier::OpenUrlInHost(const std::string& url) {
   return true;
 }
 
-HostNotifier::HostNotifier(std::shared_ptr<grpc::Server> grpc_server,
-                           base::Closure shutdown_closure)
+HostNotifier::HostNotifier(base::Closure shutdown_closure)
     : shutdown_closure_(std::move(shutdown_closure)),
-      grpc_server_(std::move(grpc_server)),
       signal_controller_(FROM_HERE),
       weak_ptr_factory_(this) {}
 
 HostNotifier::~HostNotifier() {
-  grpc_server_->Shutdown();
+  if (grpc_server_) {
+    grpc_server_->Shutdown();
+  }
 }
 
 void HostNotifier::OnFileCanReadWithoutBlocking(int fd) {
@@ -131,6 +131,45 @@ void HostNotifier::OnFileCanReadWithoutBlocking(int fd) {
 
 void HostNotifier::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
+}
+
+base::WeakPtr<HostNotifier> HostNotifier::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
+}
+
+void HostNotifier::OnInstallCompletion(bool success,
+                                       const std::string& failure_reason) {
+  grpc::ClientContext ctx;
+  vm_tools::container::InstallLinuxPackageProgressInfo progress_info;
+  progress_info.set_token(token_);
+  progress_info.set_status(
+      success ? vm_tools::container::InstallLinuxPackageProgressInfo::SUCCEEDED
+              : vm_tools::container::InstallLinuxPackageProgressInfo::FAILED);
+  progress_info.set_failure_details(failure_reason);
+  vm_tools::EmptyMessage empty;
+  grpc::Status grpc_status =
+      stub_->InstallLinuxPackageProgress(&ctx, progress_info, &empty);
+  if (!grpc_status.ok()) {
+    LOG(WARNING) << "Failed to notify host system about install completion: "
+                 << grpc_status.error_message();
+  }
+}
+
+void HostNotifier::OnInstallProgress(
+    vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
+    uint32_t percent_progress) {
+  vm_tools::container::InstallLinuxPackageProgressInfo progress_info;
+  progress_info.set_token(token_);
+  progress_info.set_status(status);
+  progress_info.set_progress_percent(percent_progress);
+  grpc::ClientContext ctx;
+  vm_tools::EmptyMessage empty;
+  grpc::Status grpc_status =
+      stub_->InstallLinuxPackageProgress(&ctx, progress_info, &empty);
+  if (!grpc_status.ok()) {
+    LOG(WARNING) << "Failed to notify host system about install progress: "
+                 << grpc_status.error_message();
+  }
 }
 
 bool HostNotifier::Init() {

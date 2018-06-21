@@ -23,12 +23,14 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/logging.h>
 
 #include "vm_tools/garcon/desktop_file.h"
+#include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/icon_finder.h"
 
 namespace vm_tools {
@@ -407,6 +409,11 @@ bool Spawn(std::vector<std::string> argv,
 
 }  // namespace
 
+ServiceImpl::ServiceImpl(PackageKitProxy* package_kit_proxy)
+    : package_kit_proxy_(package_kit_proxy) {
+  CHECK(package_kit_proxy_);
+}
+
 grpc::Status ServiceImpl::LaunchApplication(
     grpc::ServerContext* ctx,
     const vm_tools::container::LaunchApplicationRequest* request,
@@ -522,6 +529,29 @@ grpc::Status ServiceImpl::LaunchVshd(
 
   // Return OK no matter what because the RPC itself succeeded even if there
   // was an issue with launching the process.
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::InstallLinuxPackage(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::InstallLinuxPackageRequest* request,
+    vm_tools::container::InstallLinuxPackageResponse* response) {
+  LOG(INFO) << "Received request to install Linux package";
+  if (request->file_path().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path cannot be empty");
+  }
+
+  base::FilePath file_path(request->file_path());
+  if (!base::PathExists(file_path)) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path does not exist");
+  }
+
+  std::string error_msg;
+  response->set_status(
+      static_cast<vm_tools::container::InstallLinuxPackageResponse::Status>(
+          package_kit_proxy_->InstallLinuxPackage(file_path, &error_msg)));
+  response->set_failure_reason(error_msg);
+
   return grpc::Status::OK;
 }
 

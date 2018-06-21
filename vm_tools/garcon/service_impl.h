@@ -5,9 +5,7 @@
 #ifndef VM_TOOLS_GARCON_SERVICE_IMPL_H_
 #define VM_TOOLS_GARCON_SERVICE_IMPL_H_
 
-#include <map>
-#include <string>
-#include <vector>
+#include <memory>
 
 #include <base/macros.h>
 #include <grpc++/grpc++.h>
@@ -17,10 +15,12 @@
 namespace vm_tools {
 namespace garcon {
 
+class PackageKitProxy;
+
 // Actually implements the garcon service.
 class ServiceImpl final : public vm_tools::container::Garcon::Service {
  public:
-  ServiceImpl() = default;
+  explicit ServiceImpl(PackageKitProxy* package_kit_proxy);
   ~ServiceImpl() override = default;
 
   // Garcon::Service overrides.
@@ -38,7 +38,14 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::LaunchVshdRequest* request,
       vm_tools::container::LaunchVshdResponse* response) override;
 
+  grpc::Status InstallLinuxPackage(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::InstallLinuxPackageRequest* request,
+      vm_tools::container::InstallLinuxPackageResponse* response) override;
+
  private:
+  PackageKitProxy* package_kit_proxy_;  // Not owned.
+
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };
 

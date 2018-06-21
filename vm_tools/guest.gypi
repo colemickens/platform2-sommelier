@@ -30,6 +30,7 @@
         'garcon/icon_finder.cc',
         'garcon/icon_index_file.cc',
         'garcon/ini_parse_util.cc',
+        'garcon/package_kit_proxy.cc',
         'garcon/service_impl.cc',
       ],
     },
