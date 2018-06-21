@@ -1,0 +1,5 @@
+type cros_browser, cros_miscdomain, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_browser;
+
+domain_auto_trans(chromeos_domain, chrome_browser_exec, cros_browser);

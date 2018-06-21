@@ -6,6 +6,12 @@
 
 /var/log/messages               u:object_r:cros_syslog:s0
 
+# /opt/google
+/opt/google/chrome/chrome       u:object_r:chrome_browser_exec:s0
+
+# /etc
+/etc/init(/.*)?                 u:object_r:cros_init_conf_file:s0
+
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
 /opt/google/containers/android/rootfs/android-data/cache                   u:object_r:cache_file:s0
@@ -76,7 +82,8 @@
 
 # Chrome OS shared memory files.
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0
+/dev/console                    u:object_r:console_device:s0
 
 
-/lib64(/.*)?                    u:object_r:cros_system_file:s0
-/lib(/.*)?                      u:object_r:cros_system_file:s0
+(/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0
+(/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
