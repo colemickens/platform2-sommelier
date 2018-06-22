@@ -171,6 +171,8 @@ bool StateController::TestApi::TriggerInitialStateTimeout() {
 
 bool StateController::Delays::operator!=(
     const StateController::Delays& o) const {
+  // Don't bother checking screen_dim_imminent; it's a synthetic delay that's
+  // based solely on screen_dim.
   return idle != o.idle || idle_warning != o.idle_warning ||
          screen_off != o.screen_off || screen_dim != o.screen_dim ||
          screen_lock != o.screen_lock;
@@ -216,6 +218,8 @@ class StateController::ActivityInfo {
 };
 
 const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
+
+constexpr base::TimeDelta StateController::kScreenDimImminentInterval;
 
 // static
 std::string StateController::GetPolicyDebugString(
@@ -859,6 +863,13 @@ void StateController::UpdateSettingsAndState() {
     reason_for_ignoring_idle_action_ = "factory mode is enabled";
   }
 
+  SanitizeDelays(&delays_);
+
+  if (emit_screen_dim_imminent_) {
+    delays_.screen_dim_imminent = std::max(
+        delays_.screen_dim - kScreenDimImminentInterval, base::TimeDelta());
+  }
+
   // If the idle or lid-closed actions changed, make sure that we perform
   // the new actions in the event that the system is already idle or the
   // lid is already closed.
@@ -866,8 +877,6 @@ void StateController::UpdateSettingsAndState() {
     idle_action_performed_ = false;
   if (lid_closed_action_ != old_lid_closed_action)
     lid_closed_action_performed_ = false;
-
-  SanitizeDelays(&delays_);
 
   // Let UpdateState() know if it may need to re-send the warning with an
   // updated time-until-idle-action.
@@ -941,6 +950,16 @@ void StateController::UpdateState() {
       now - GetLastActivityTimeForScreenOff(now);
   base::TimeDelta screen_lock_duration =
       now - GetLastActivityTimeForScreenLock(now);
+
+  if (delays_.screen_dim_imminent > base::TimeDelta() &&
+      screen_dim_duration >= delays_.screen_dim_imminent) {
+    if (!sent_screen_dim_imminent_) {
+      dbus_wrapper_->EmitBareSignal(kScreenDimImminentSignal);
+      sent_screen_dim_imminent_ = true;
+    }
+  } else if (sent_screen_dim_imminent_) {
+    sent_screen_dim_imminent_ = false;
+  }
 
   const bool screen_was_dimmed = screen_dimmed_;
   HandleDelay(delays_.screen_dim, screen_dim_duration,
@@ -1079,6 +1098,8 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
+    UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
+                        delays_.screen_dim_imminent, &timeout_delay);
     UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
                         delays_.screen_dim, &timeout_delay);
   }

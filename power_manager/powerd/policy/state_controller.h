@@ -133,6 +133,11 @@ class StateController : public PrefsObserver {
   // off.
   static const int kUserActivityAfterScreenOffIncreaseDelaysMs;
 
+  // Time before the screen is dimmed when a ScreenDimImminent D-Bus signal
+  // should be emitted.
+  static constexpr base::TimeDelta kScreenDimImminentInterval =
+      base::TimeDelta::FromSeconds(5);
+
   // Returns a string describing |policy|.
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
 
@@ -141,6 +146,9 @@ class StateController : public PrefsObserver {
 
   base::TimeTicks last_user_activity_time() const {
     return last_user_activity_time_;
+  }
+  void set_emit_screen_dim_imminent(bool should_emit) {
+    emit_screen_dim_imminent_ = should_emit;
   }
 
   // Is the system currently in "docked mode", where it remains awake while
@@ -187,6 +195,7 @@ class StateController : public PrefsObserver {
     base::TimeDelta idle_warning;
     base::TimeDelta screen_off;
     base::TimeDelta screen_dim;
+    base::TimeDelta screen_dim_imminent;
     base::TimeDelta screen_lock;
     bool operator!=(const Delays& o) const;
   };
@@ -379,6 +388,7 @@ class StateController : public PrefsObserver {
 
   // These track whether various actions have already been performed by
   // UpdateState().
+  bool sent_screen_dim_imminent_ = false;
   bool screen_dimmed_ = false;
   bool screen_turned_off_ = false;
   bool requested_screen_lock_ = false;
@@ -434,6 +444,10 @@ class StateController : public PrefsObserver {
 
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_ = false;
+
+  // Should ScreenDimImminent D-Bus signals be emitted? May be disabled by tests
+  // that aren't exercising these signals.
+  bool emit_screen_dim_imminent_ = true;
 
   // TPM dictionary-attack counter value.
   int tpm_dictionary_attack_count_ = 0;

@@ -193,6 +193,12 @@ class StateControllerTest : public testing::Test {
         update_engine_operation_(update_engine::kUpdateStatusIdle) {
     dbus_wrapper_.SetMethodCallback(base::Bind(
         &StateControllerTest::HandleDBusMethodCall, base::Unretained(this)));
+
+    // Don't emit ScreenDimImminent D-Bus signals by default, as they complicate
+    // tests and aren't integral to this class's behavior. Tests can change the
+    // setting to true before calling Init() if they want to verify these
+    // signals.
+    controller_.set_emit_screen_dim_imminent(false);
   }
 
  protected:
@@ -319,7 +325,8 @@ class StateControllerTest : public testing::Test {
   enum class SignalType {
     // Return all emitted signals.
     ALL,
-    // Return only IdleActionImminent and IdleActionDeferred signals.
+    // Return only ScreenDimImminent, IdleActionImminent, and IdleActionDeferred
+    // signals.
     ACTIONS,
   };
 
@@ -331,7 +338,8 @@ class StateControllerTest : public testing::Test {
     for (size_t i = 0; i < dbus_wrapper_.num_sent_signals(); ++i) {
       const std::string name = dbus_wrapper_.GetSentSignalName(i);
       if (signal_type == SignalType::ACTIONS &&
-          (name != kIdleActionImminentSignal &&
+          (name != kScreenDimImminentSignal &&
+           name != kIdleActionImminentSignal &&
            name != kIdleActionDeferredSignal))
         continue;
 
@@ -1925,6 +1933,56 @@ TEST_F(StateControllerTest, ReportInactivityDelays) {
                 kIdle + kDelayDiff, base::TimeDelta(), kScreenOff + kDelayDiff,
                 kScaledScreenDim, base::TimeDelta()),
             GetDBusSignals(SignalType::ALL));
+}
+
+TEST_F(StateControllerTest, ScreenDimImminent) {
+  controller_.set_emit_screen_dim_imminent(true);
+  Init();
+
+  // Send a policy setting delays and instructing powerd to double the
+  // screen-dim delay while Chrome is presenting the screen.
+  constexpr base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
+  constexpr base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(70);
+  constexpr base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(90);
+  constexpr double kPresentationFactor = 2.0;
+
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  policy.set_presentation_screen_dim_delay_factor(kPresentationFactor);
+  controller_.HandlePolicyChange(policy);
+
+  // ScreenDimImminent should be emitted shortly before the screen is dimmed.
+  const base::TimeDelta kDimImminentDelay =
+      kDimDelay - StateController::kScreenDimImminentInterval;
+  dbus_wrapper_.ClearSentSignals();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+
+  // Turn the screen back on.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
+            delegate_.GetActions());
+  EXPECT_EQ("", GetDBusSignals(SignalType::ACTIONS));
+
+  // After entering presentation mode, the screen-dim delay should be doubled,
+  // and ScreenDimImminent should be emitted again after its now-scaled delay is
+  // reached.
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
+  const base::TimeDelta kScaledDimDelay = kDimDelay * kPresentationFactor;
+  const base::TimeDelta kScaledDimImminentDelay =
+      kScaledDimDelay - StateController::kScreenDimImminentInterval;
+
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimImminentDelay));
+  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
 
 }  // namespace policy
