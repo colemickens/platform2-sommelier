@@ -21,9 +21,9 @@
 #include "cryptohome/mount_encrypted.h"
 #include "cryptohome/mount_helpers.h"
 
-namespace {
+namespace cryptohome {
 
-static struct bind_mount* bind_mounts = NULL;
+namespace {
 
 static const gchar* const kEncryptedFSType = "ext4";
 static const gchar* const kCryptDevName = "encstateful";
@@ -32,16 +32,6 @@ static const uint64_t kSectorSize = 512;
 static const uint64_t kExt4BlockSize = 4096;
 static const uint64_t kExt4MinBytes = 16 * 1024 * 1024;
 static const int kCryptAllowDiscard = 1;
-
-static gchar* rootdir = NULL;
-static gchar* stateful_mount = NULL;
-static gchar* key_path = NULL;
-static gchar* block_path = NULL;
-static gchar* encrypted_mount = NULL;
-static gchar* dmcrypt_name = NULL;
-static gchar* dmcrypt_dev = NULL;
-
-}  // namespace
 
 result_code check_bind(struct bind_mount* bind, enum bind_dir dir) {
   struct passwd* user;
@@ -123,8 +113,33 @@ out:
   exit(RESULT_SUCCESS);
 }
 
+/* This expects "mnt" to be allocated and initialized to NULL bytes. */
+static result_code dup_bind_mount(struct bind_mount* mnt,
+                                  struct bind_mount* old,
+                                  char* dir) {
+  if (old->src && asprintf(&mnt->src, "%s%s", dir, old->src) == -1)
+    goto fail;
+  if (old->dst && asprintf(&mnt->dst, "%s%s", dir, old->dst) == -1)
+    goto fail;
+  if (!(mnt->owner = strdup(old->owner)))
+    goto fail;
+  if (!(mnt->group = strdup(old->group)))
+    goto fail;
+  mnt->mode = old->mode;
+  mnt->submount = old->submount;
+
+  return RESULT_SUCCESS;
+
+fail:
+  perror(__FUNCTION__);
+  return RESULT_FAIL_FATAL;
+}
+
+}  // namespace
+
 /* Do all the work needed to actually set up the encrypted partition. */
-result_code setup_encrypted(const char* encryption_key, int rebuild) {
+result_code EncryptedFs::setup_encrypted(const char* encryption_key,
+                                         int rebuild) {
   gchar* lodev = NULL;
   gchar* dirty_expire_centisecs = NULL;
   char* mount_opts = NULL;
@@ -293,7 +308,7 @@ finished:
  * can be cleaned up from, and continue the shutdown process on a
  * second call. If the loopback cannot be found, claim success.
  */
-result_code teardown_mount(void) {
+result_code EncryptedFs::teardown_mount(void) {
   struct bind_mount* bind;
 
   for (bind = bind_mounts; bind->src; ++bind) {
@@ -354,7 +369,7 @@ result_code teardown_mount(void) {
   return RESULT_SUCCESS;
 }
 
-result_code check_mount_states(void) {
+result_code EncryptedFs::check_mount_states(void) {
   struct bind_mount* bind;
 
   /* Verify stateful partition exists. */
@@ -401,7 +416,7 @@ result_code check_mount_states(void) {
   return RESULT_SUCCESS;
 }
 
-result_code report_mount_info(void) {
+result_code EncryptedFs::report_mount_info(void) const {
   struct bind_mount* mnt;
   printf("rootdir: %s\n", rootdir);
   printf("stateful_mount: %s\n", stateful_mount);
@@ -422,29 +437,7 @@ result_code report_mount_info(void) {
   return RESULT_SUCCESS;
 }
 
-/* This expects "mnt" to be allocated and initialized to NULL bytes. */
-static result_code dup_bind_mount(struct bind_mount* mnt,
-                                  struct bind_mount* old,
-                                  char* dir) {
-  if (old->src && asprintf(&mnt->src, "%s%s", dir, old->src) == -1)
-    goto fail;
-  if (old->dst && asprintf(&mnt->dst, "%s%s", dir, old->dst) == -1)
-    goto fail;
-  if (!(mnt->owner = strdup(old->owner)))
-    goto fail;
-  if (!(mnt->group = strdup(old->group)))
-    goto fail;
-  mnt->mode = old->mode;
-  mnt->submount = old->submount;
-
-  return RESULT_SUCCESS;
-
-fail:
-  perror(__FUNCTION__);
-  return RESULT_FAIL_FATAL;
-}
-
-result_code prepare_paths(gchar* mount_root) {
+result_code EncryptedFs::prepare_paths(gchar* mount_root) {
   char* dir = NULL;
   struct bind_mount* old;
   struct bind_mount* mnt;
@@ -467,9 +460,8 @@ result_code prepare_paths(gchar* mount_root) {
     /* Generate a shortened hash for non-default cryptnames,
      * which will get re-used in the loopback name, which
      * must be less than 64 (LO_NAME_SIZE) bytes. */
-    digest = cryptohome::CryptoLib::Sha256(
-        brillo::SecureBlob(std::string(mount_root)));
-    hex = cryptohome::CryptoLib::BlobToHex(digest).substr(0, 16);
+    digest = CryptoLib::Sha256(brillo::SecureBlob(std::string(mount_root)));
+    hex = CryptoLib::BlobToHex(digest).substr(0, 16);
     if (asprintf(&dmcrypt_name, "%s_%s", kCryptDevName, hex.c_str()) == -1)
       goto fail;
   } else {
@@ -503,6 +495,8 @@ fail:
   return RESULT_FAIL_FATAL;
 }
 
-char* get_mount_key() {
+char* EncryptedFs::get_mount_key() const {
   return dm_get_key(dmcrypt_dev);
 }
+
+}  // namespace cryptohome
