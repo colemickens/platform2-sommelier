@@ -30,6 +30,7 @@
 #include "drm-server-protocol.h"
 #include "keyboard-extension-unstable-v1-client-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
+#include "text-input-unstable-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "xdg-shell-unstable-v6-client-protocol.h"
 
@@ -1107,6 +1108,17 @@ static void sl_registry_handler(void* data,
         wl_registry_bind(registry, id, &zcr_keyboard_extension_v1_interface, 1);
     assert(!ctx->keyboard_extension);
     ctx->keyboard_extension = keyboard_extension;
+  } else if (strcmp(interface, "zwp_text_input_manager_v1") == 0) {
+    struct sl_text_input_manager* text_input_manager =
+        malloc(sizeof(struct sl_text_input_manager));
+    assert(text_input_manager);
+    text_input_manager->ctx = ctx;
+    text_input_manager->id = id;
+    text_input_manager->internal =
+        wl_registry_bind(registry, id, &zwp_text_input_manager_v1_interface, 1);
+    text_input_manager->host_global = sl_text_input_manager_global_create(ctx);
+    assert(!ctx->text_input_manager);
+    ctx->text_input_manager = text_input_manager;
   }
 }
 
@@ -1189,6 +1201,12 @@ static void sl_registry_remover(void* data,
     zcr_keyboard_extension_v1_destroy(ctx->keyboard_extension->internal);
     free(ctx->keyboard_extension);
     ctx->keyboard_extension = NULL;
+    return;
+  }
+  if (ctx->text_input_manager && ctx->text_input_manager->id == id) {
+    sl_global_destroy(ctx->text_input_manager->host_global);
+    free(ctx->text_input_manager);
+    ctx->text_input_manager = NULL;
     return;
   }
   wl_list_for_each(output, &ctx->outputs, link) {
@@ -3140,6 +3158,7 @@ int main(int argc, char **argv) {
       .viewporter = NULL,
       .linux_dmabuf = NULL,
       .keyboard_extension = NULL,
+      .text_input_manager = NULL,
       .display_event_source = NULL,
       .display_ready_event_source = NULL,
       .sigchld_event_source = NULL,
