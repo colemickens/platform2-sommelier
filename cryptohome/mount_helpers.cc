@@ -99,43 +99,6 @@ int same_vfs(const char* mnt_a, const char* mnt_b) {
   return (stat_a.st_dev == stat_b.st_dev);
 }
 
-/* Returns allocated string that holds [length]*2 + 1 characters. */
-char* stringify_hex(uint8_t* binary, size_t length) {
-  char* string;
-  size_t i;
-
-  string = (char*)malloc(length * 2 + 1);
-  if (!string) {
-    PERROR("malloc");
-    return NULL;
-  }
-  for (i = 0; i < length; ++i)
-    sprintf(string + (i * 2), "%02x", binary[i]);
-  string[length * 2] = '\0';
-
-  return string;
-}
-
-/* Returns allocated byte array that holds strlen([string])/2 bytes. */
-uint8_t* hexify_string(char* string, uint8_t* binary, size_t length) {
-  size_t bytes, i;
-
-  bytes = strlen(string) / 2;
-  if (bytes > length) {
-    ERROR("Hex string too long (%zu) for byte array (%zu)", bytes, length);
-    return NULL;
-  }
-
-  for (i = 0; i < bytes; ++i) {
-    if (sscanf(&string[i * 2], "%2hhx", &binary[i]) != 1) {
-      ERROR("Invalid hex code at byte %zu.", i);
-      return NULL;
-    }
-  }
-
-  return binary;
-}
-
 /* Overwrite file contents. Useless on SSD. :( */
 void shred(const char* pathname) {
   uint8_t patterns[] = {0xA5, 0x5A, 0xFF, 0x00};

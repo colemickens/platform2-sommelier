@@ -13,8 +13,11 @@
 #include <sys/types.h>
 #include <vboot/tlcl.h>
 
+#include <string>
+
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted.h"
 #include "cryptohome/mount_helpers.h"
 
@@ -39,11 +42,6 @@ static gchar* dmcrypt_name = NULL;
 static gchar* dmcrypt_dev = NULL;
 
 }  // namespace
-
-// TODO(sarthakkukreti): Remove on refactoring keys to SecureBlob.
-static void sha256(char const* str, uint8_t* digest) {
-  SHA256((unsigned char*)(str), strlen(str), digest);
-}
 
 result_code check_bind(struct bind_mount* bind, enum bind_dir dir) {
   struct passwd* user;
@@ -127,7 +125,6 @@ out:
 
 /* Do all the work needed to actually set up the encrypted partition. */
 result_code setup_encrypted(const char* encryption_key, int rebuild) {
-  brillo::SecureBlob system_key;
   gchar* lodev = NULL;
   gchar* dirty_expire_centisecs = NULL;
   char* mount_opts = NULL;
@@ -461,8 +458,8 @@ result_code prepare_paths(gchar* mount_root) {
   }
 
   if (mount_root != NULL) {
-    unsigned char digest[DIGEST_LENGTH];
-    gchar* hex;
+    brillo::SecureBlob digest;
+    std::string hex;
 
     if (asprintf(&rootdir, "%s/", dir) == -1)
       goto fail;
@@ -470,12 +467,11 @@ result_code prepare_paths(gchar* mount_root) {
     /* Generate a shortened hash for non-default cryptnames,
      * which will get re-used in the loopback name, which
      * must be less than 64 (LO_NAME_SIZE) bytes. */
-    sha256(mount_root, digest);
-    hex = stringify_hex(digest, sizeof(digest));
-    hex[17] = '\0';
-    if (asprintf(&dmcrypt_name, "%s_%s", kCryptDevName, hex) == -1)
+    digest = cryptohome::CryptoLib::Sha256(
+        brillo::SecureBlob(std::string(mount_root)));
+    hex = cryptohome::CryptoLib::BlobToHex(digest).substr(0, 16);
+    if (asprintf(&dmcrypt_name, "%s_%s", kCryptDevName, hex.c_str()) == -1)
       goto fail;
-    g_free(hex);
   } else {
     rootdir = const_cast<gchar*>("/");
     if (!(dmcrypt_name = strdup(kCryptDevName)))
