@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
+#include <brillo/secure_blob.h>
 #include <dbus/dbus-protocol.h>
 
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -62,7 +63,8 @@ void BootLockboxDBusAdaptor::SignBootLockbox(
 
   cryptohome::BaseReply reply;
   brillo::SecureBlob signature;
-  if (!boot_lockbox_->Sign(brillo::SecureBlob(request_pb.data()), &signature)) {
+  if (!boot_lockbox_->Sign(brillo::BlobFromString(request_pb.data()),
+                           &signature)) {
     reply.set_error(cryptohome::CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN);
   } else {
     reply.MutableExtension(
@@ -86,7 +88,7 @@ void BootLockboxDBusAdaptor::VerifyBootLockbox(
   }
   cryptohome::BaseReply reply;
   brillo::SecureBlob signature;
-  if (!boot_lockbox_->Verify(brillo::SecureBlob(request_pb.data()),
+  if (!boot_lockbox_->Verify(brillo::BlobFromString(request_pb.data()),
                              brillo::SecureBlob(request_pb.signature()))) {
     reply.set_error(cryptohome::CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID);
   } else {
