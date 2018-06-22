@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 namespace arc {
 namespace appfuse {
@@ -24,7 +25,9 @@ constexpr size_t kMaxFuseDataSize = 256 * 1024;
 
 }  // namespace
 
-DataFilter::DataFilter() : watch_thread_("DataFilter") {}
+DataFilter::DataFilter()
+    : watch_thread_("DataFilter"),
+      origin_task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
 
 DataFilter::~DataFilter() {
   watch_thread_.Stop();
@@ -118,6 +121,9 @@ void DataFilter::AbortWatching() {
   watcher_socket_.StopWatchingFileDescriptor();
   fd_dev_.reset();
   fd_socket_.reset();
+
+  if (!on_stopped_callback_.is_null())
+    origin_task_runner_->PostTask(FROM_HERE, on_stopped_callback_);
 }
 
 bool DataFilter::FilterDataFromDev(std::vector<char>* data) {

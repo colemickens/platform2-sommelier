@@ -11,8 +11,11 @@
 #include <map>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/task_runner.h>
 #include <base/threading/thread.h>
 
 namespace arc {
@@ -23,6 +26,11 @@ class DataFilter : public base::MessageLoopForIO::Watcher {
  public:
   DataFilter();
   ~DataFilter() override;
+
+  // The given callback will be run when this filter stops.
+  void set_on_stopped_callback(const base::Closure& callback) {
+    on_stopped_callback_ = callback;
+  }
 
   // Starts watching the given /dev/fuse FD and returns a filtered FD.
   base::ScopedFD Start(base::ScopedFD fd_dev);
@@ -57,6 +65,9 @@ class DataFilter : public base::MessageLoopForIO::Watcher {
   std::deque<std::vector<char>> pending_data_to_socket_;
 
   std::map<uint64_t, uint32_t> unique_to_opcode_;
+
+  scoped_refptr<base::TaskRunner> origin_task_runner_;
+  base::Closure on_stopped_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(DataFilter);
 };

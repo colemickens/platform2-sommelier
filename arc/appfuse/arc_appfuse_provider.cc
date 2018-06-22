@@ -32,7 +32,8 @@ brillo::ErrorPtr CreateDBusError(const std::string& code,
 }
 
 class DBusAdaptor : public org::chromium::ArcAppfuseProviderAdaptor,
-                    public org::chromium::ArcAppfuseProviderInterface {
+                    public org::chromium::ArcAppfuseProviderInterface,
+                    public arc::appfuse::AppfuseMount::Delegate {
  public:
   explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus)
       : org::chromium::ArcAppfuseProviderAdaptor(this),
@@ -71,7 +72,7 @@ class DBusAdaptor : public org::chromium::ArcAppfuseProviderAdaptor,
     }
     // Create a new mount.
     auto mount = std::make_unique<arc::appfuse::AppfuseMount>(mount_root_, uid,
-                                                              mount_id);
+                                                              mount_id, this);
     base::ScopedFD fd = mount->Mount();
     if (!fd.is_valid()) {
       LOG(ERROR) << "Failed to mount: " << uid << " " << mount_id;
@@ -121,6 +122,11 @@ class DBusAdaptor : public org::chromium::ArcAppfuseProviderAdaptor,
     }
     *out_fd = std::move(fd);
     return true;
+  }
+
+  // AppfuseMount::Delegate override:
+  void OnUnmounted(arc::appfuse::AppfuseMount* mount) override {
+    mounts_.erase(std::make_pair(mount->uid(), mount->mount_id()));
   }
 
  private:

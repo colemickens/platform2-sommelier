@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/memory/weak_ptr.h>
 
 #include "arc/appfuse/data_filter.h"
 
@@ -19,8 +20,22 @@ namespace appfuse {
 // AppfuseMount represents a mountpoint for each appfuse mount.
 class AppfuseMount {
  public:
-  AppfuseMount(const base::FilePath& mount_root, uid_t uid, int mount_id);
+  class Delegate {
+   public:
+    virtual ~Delegate() = default;
+
+    // Called when this mount is unmounted.
+    virtual void OnUnmounted(AppfuseMount* mount) = 0;
+  };
+
+  AppfuseMount(const base::FilePath& mount_root,
+               uid_t uid,
+               int mount_id,
+               Delegate* delegate);
   ~AppfuseMount();
+
+  uid_t uid() const { return uid_; }
+  int mount_id() const { return mount_id_; }
 
   // Mounts an appfuse file system and returns the filtered /dev/fuse FD
   // associated with the mounted appfuse file system.
@@ -33,12 +48,17 @@ class AppfuseMount {
   base::ScopedFD OpenFile(int file_id, int flags);
 
  private:
+  void OnDataFilterStopped();
+
   const base::FilePath mount_root_;
   const uid_t uid_;
   const int mount_id_;
+  Delegate* const delegate_;
   const base::FilePath mount_point_;
 
   DataFilter data_filter_;
+
+  base::WeakPtrFactory<AppfuseMount> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(AppfuseMount);
 };

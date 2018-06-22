@@ -7,7 +7,10 @@
 #include <linux/fuse.h>
 #include <sys/socket.h>
 
+#include <base/bind.h>
+#include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/run_loop.h>
 #include <gtest/gtest.h>
 
 namespace arc {
@@ -19,11 +22,20 @@ class DataFilterTest : public testing::Test {
   ~DataFilterTest() override = default;
 
   void SetUp() override {
+    data_filter_.set_on_stopped_callback(
+        base::Bind(&DataFilterTest::OnStopped, base::Unretained(this)));
     int raw_socks[2];
     ASSERT_EQ(0, socketpair(AF_UNIX, SOCK_SEQPACKET, 0, raw_socks));
     fd_dev_ = base::ScopedFD(raw_socks[0]);
     fd_app_ = data_filter_.Start(base::ScopedFD(raw_socks[1]));
     ASSERT_TRUE(fd_app_.is_valid());
+  }
+
+  void TearDown() override {
+    if (stop_expected_) {
+      run_loop_.Run();
+      EXPECT_TRUE(was_stopped_);
+    }
   }
 
   // Reads filtered data which /dev/fuse sent to app.
@@ -68,10 +80,22 @@ class DataFilterTest : public testing::Test {
            buf.size();
   }
 
+  void ExpectStop() { stop_expected_ = true; }
+
  private:
+  void OnStopped() {
+    EXPECT_FALSE(was_stopped_);
+    was_stopped_ = true;
+    run_loop_.Quit();
+  }
+
+  base::MessageLoop message_loop_;
+  base::RunLoop run_loop_;
   DataFilter data_filter_;
   base::ScopedFD fd_app_;  // App-side FD connected to the filter.
   base::ScopedFD fd_dev_;  // /dev/fuse-side FD connected to the filter.
+  bool was_stopped_ = false;
+  bool stop_expected_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(DataFilterTest);
 };
@@ -146,6 +170,7 @@ TEST_F(DataFilterTest, ValidRequestAndErrorResponse) {
 TEST_F(DataFilterTest, InvalidFileMode) {
   constexpr int kUnique = 123;
   constexpr mode_t kMode = S_IFBLK | 0777;  // S_IFBLK is not allowed.
+  ExpectStop();
   {  // GETATTR request from /dev/fuse to DataFitler.
     fuse_in_header header = {};
     fuse_getattr_in body = {};
@@ -178,6 +203,7 @@ TEST_F(DataFilterTest, InvalidFileMode) {
 
 TEST_F(DataFilterTest, InvalidInHeader) {
   constexpr int kUnique = 123;
+  ExpectStop();
   {  // GETATTR request from /dev/fuse to DataFitler.
     fuse_in_header header = {};
     fuse_getattr_in body = {};
@@ -196,6 +222,7 @@ TEST_F(DataFilterTest, InvalidInHeader) {
 TEST_F(DataFilterTest, InvalidOutHeader) {
   constexpr int kUnique = 123;
   constexpr mode_t kMode = S_IFREG | 0777;
+  ExpectStop();
   {  // GETATTR request from /dev/fuse to DataFitler.
     fuse_in_header header = {};
     fuse_getattr_in body = {};
