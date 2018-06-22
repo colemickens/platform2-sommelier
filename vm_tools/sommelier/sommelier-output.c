@@ -22,20 +22,18 @@ double sl_output_aura_scale_factor_to_double(int scale_factor) {
   return scale_factor / 1000.0;
 }
 
-void sl_output_send_host_output_state(struct sl_host_output* host) {
+void sl_output_get_host_output_state(struct sl_host_output* host,
+                                     int* scale,
+                                     int* physical_width,
+                                     int* physical_height,
+                                     int* width,
+                                     int* height) {
   double preferred_scale =
       sl_output_aura_scale_factor_to_double(host->preferred_scale);
   double current_scale =
       sl_output_aura_scale_factor_to_double(host->current_scale);
   double ideal_scale_factor = 1.0;
   double scale_factor = host->scale_factor;
-  int scale;
-  int physical_width;
-  int physical_height;
-  int x;
-  int y;
-  int width;
-  int height;
 
   // Use the scale factor we received from aura shell protocol when available.
   if (host->output->ctx->aura_shell) {
@@ -50,30 +48,27 @@ void sl_output_send_host_output_state(struct sl_host_output* host) {
   // scale factor for Xwayland client. For other clients, pick an optimal
   // scale and adjust geometry and mode based on it.
   if (host->output->ctx->xwayland) {
-    scale = 1;
-    physical_width = host->physical_width * ideal_scale_factor / scale_factor;
-    physical_height = host->physical_height * ideal_scale_factor / scale_factor;
-    // X/Y are best left at origin as managed X windows are kept centered on
-    // the root window. The result is that all outputs are overlapping and
-    // pointer events can always be dispatched to the visible region of the
-    // window.
-    x = y = 0;
-    width = host->width * host->output->ctx->scale / scale_factor;
-    height = host->height * host->output->ctx->scale / scale_factor;
+    if (scale)
+      *scale = 1;
+    *physical_width = host->physical_width * ideal_scale_factor / scale_factor;
+    *physical_height =
+        host->physical_height * ideal_scale_factor / scale_factor;
+    *width = host->width * host->output->ctx->scale / scale_factor;
+    *height = host->height * host->output->ctx->scale / scale_factor;
   } else {
-    scale =
+    int s =
         MIN(ceil(scale_factor / host->output->ctx->scale), MAX_OUTPUT_SCALE);
-    physical_width = host->physical_width;
-    physical_height = host->physical_height;
-    // Should x/y be affected by scale?
-    x = host->x;
-    y = host->y;
-    width = host->width * host->output->ctx->scale * scale / scale_factor;
-    height = host->height * host->output->ctx->scale * scale / scale_factor;
+
+    if (scale)
+      *scale = s;
+    *physical_width = host->physical_width;
+    *physical_height = host->physical_height;
+    *width = host->width * host->output->ctx->scale * s / scale_factor;
+    *height = host->height * host->output->ctx->scale * s / scale_factor;
   }
 
   if (host->output->ctx->dpi.size) {
-    int dpi = (width * INCH_IN_MM) / physical_width;
+    int dpi = (*width * INCH_IN_MM) / *physical_width;
     int adjusted_dpi = *((int*)host->output->ctx->dpi.data);
     double mmpd;
     int* p;
@@ -86,11 +81,48 @@ void sl_output_send_host_output_state(struct sl_host_output* host) {
     }
 
     mmpd = INCH_IN_MM / adjusted_dpi;
-    physical_width = width * mmpd + 0.5;
-    physical_height = height * mmpd + 0.5;
+    *physical_width = *width * mmpd + 0.5;
+    *physical_height = *height * mmpd + 0.5;
+  }
+}
+
+void sl_output_send_host_output_state(struct sl_host_output* host) {
+  int scale;
+  int physical_width;
+  int physical_height;
+  int width;
+  int height;
+
+  sl_output_get_host_output_state(host, &scale, &physical_width,
+                                  &physical_height, &width, &height);
+
+  // Use density of internal display for all Xwayland outputs. X11 clients
+  // typically lack support for dynamically changing density so it's
+  // preferred to always use the density of the internal display.
+  if (host->output->ctx->xwayland) {
+    struct sl_host_output* output;
+
+    wl_list_for_each(output, &host->output->ctx->host_outputs, link) {
+      if (output->internal) {
+        int internal_width;
+        int internal_height;
+
+        sl_output_get_host_output_state(output, NULL, &physical_width,
+                                        &physical_height, &internal_width,
+                                        &internal_height);
+
+        physical_width = (physical_width * width) / internal_width;
+        physical_height = (physical_height * height) / internal_height;
+        break;
+      }
+    }
   }
 
-  wl_output_send_geometry(host->resource, x, y, physical_width, physical_height,
+  // X/Y are best left at origin as managed X windows are kept centered on
+  // the root window. The result is that all outputs are overlapping and
+  // pointer events can always be dispatched to the visible region of the
+  // window.
+  wl_output_send_geometry(host->resource, 0, 0, physical_width, physical_height,
                           host->subpixel, host->make, host->model,
                           host->transform);
   wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
