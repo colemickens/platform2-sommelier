@@ -13,7 +13,7 @@ namespace cryptohome {
 using brillo::SecureBlob;
 
 UsernamePasskey::UsernamePasskey(const char *username,
-                                 const brillo::Blob& passkey)
+                                 const brillo::SecureBlob& passkey)
     : username_(username, strlen(username)),
       passkey_() {
   passkey_.assign(passkey.begin(), passkey.end());
@@ -27,7 +27,7 @@ void UsernamePasskey::Assign(const Credentials& rhs) {
   key_data_ = rhs.key_data();
   SecureBlob passkey;
   rhs.GetPasskey(&passkey);
-  passkey_.assign(passkey.begin(), passkey.end());
+  passkey_.swap(passkey);
 }
 
 void UsernamePasskey::set_key_data(const KeyData& data) {

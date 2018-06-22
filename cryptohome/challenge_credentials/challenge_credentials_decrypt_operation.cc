@@ -220,7 +220,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     // |this| can be already destroyed at this point.
     return;
   }
-  unsealed_secret_ = std::make_unique<Blob>(unsealed_secret);
+  unsealed_secret_ = std::make_unique<SecureBlob>(unsealed_secret);
   ProceedIfChallengesDone();
 }
 
@@ -233,13 +233,13 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
   // |this| can be already destroyed at this point.
 }
 
-Blob ChallengeCredentialsDecryptOperation::ConstructPasskey() const {
+SecureBlob ChallengeCredentialsDecryptOperation::ConstructPasskey() const {
   DCHECK(unsealed_secret_);
   DCHECK(salt_signature_);
   // Use a digest of the salt signature, to make the resulting passkey
   // reasonably short, and to avoid any potential bias.
-  const Blob salt_signature_hash = CryptoLib::Sha256(*salt_signature_);
-  return CombineBlobs({*unsealed_secret_, salt_signature_hash});
+  const SecureBlob salt_signature_hash = CryptoLib::Sha256(*salt_signature_);
+  return SecureBlob::Combine(*unsealed_secret_, salt_signature_hash);
 }
 
 }  // namespace cryptohome

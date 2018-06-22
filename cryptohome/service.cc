@@ -1544,7 +1544,7 @@ gboolean Service::AsyncRemove(gchar *userid,
     mount_thread_.task_runner()->PostTask(FROM_HERE,
         base::Bind(&MountTaskNop::Run, mount_task.get()));
   } else {
-    UsernamePasskey credentials(userid, brillo::Blob());
+    UsernamePasskey credentials(userid, SecureBlob());
     scoped_refptr<MountTaskRemove> mount_task = new MountTaskRemove(
         bridge, NULL, credentials, homedirs_, NextSequence());
     *OUT_async_id = mount_task->sequence_id();

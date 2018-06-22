@@ -91,7 +91,7 @@ class ChallengeCredentialsDecryptOperation
   void ProceedIfChallengesDone();
 
   // Consructs passkey from the prepared secrets.
-  brillo::Blob ConstructPasskey() const;
+  brillo::SecureBlob ConstructPasskey() const;
 
   Tpm* const tpm_;
   const brillo::Blob delegate_blob_;
@@ -104,7 +104,7 @@ class ChallengeCredentialsDecryptOperation
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;
   std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session_;
-  std::unique_ptr<brillo::Blob> unsealed_secret_;
+  std::unique_ptr<brillo::SecureBlob> unsealed_secret_;
   base::WeakPtrFactory<ChallengeCredentialsDecryptOperation> weak_ptr_factory_{
       this};
 };

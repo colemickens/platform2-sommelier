@@ -22,7 +22,7 @@ class UsernamePasskey : public Credentials {
   UsernamePasskey() { }
 
   // Constructs UsernamePasskey from username strings and passkeys and passwords
-  UsernamePasskey(const char* username, const brillo::Blob& passkey);
+  UsernamePasskey(const char* username, const brillo::SecureBlob& passkey);
 
   ~UsernamePasskey();
 
