@@ -250,6 +250,7 @@ void AndroidOciWrapper::CleanUpContainer() {
   if (!GetContainerPID(&pid))
     return;
 
+  LOG(INFO) << "Cleaning up container " << pid;
   std::vector<std::string> argv = {kRunOciPath, kRunOciDestroyCommand,
                                    kContainerId};
 
