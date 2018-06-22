@@ -6,6 +6,8 @@
 
 #include <openssl/sha.h>
 
+#include <brillo/secure_blob.h>
+
 #include "cryptohome/cryptolib.h"
 #include "fake_le_credential_metadata.pb.h"  // NOLINT(build/include)
 
@@ -70,7 +72,8 @@ bool FakeLECredentialBackend::InsertCredential(
 
   // Actual TPM will actually calculate the MAC, but for testing,
   // just a SHA should be sufficient.
-  *mac = CryptoLib::Sha256(*cred_metadata);
+  brillo::SecureBlob hash = CryptoLib::Sha256(*cred_metadata);
+  mac->assign(hash.begin(), hash.end());
 
   fake_root_hash_ = RecalculateRootHash(label, *mac, h_aux);
   *new_root = fake_root_hash_;
@@ -135,7 +138,8 @@ bool FakeLECredentialBackend::CheckCredential(
     return false;
   }
 
-  *new_mac = CryptoLib::Sha256(*new_cred_metadata);
+  brillo::SecureBlob hash = CryptoLib::Sha256(*new_cred_metadata);
+  new_mac->assign(hash.begin(), hash.end());
 
   fake_root_hash_ = RecalculateRootHash(label, *new_mac, h_aux);
   *new_root = fake_root_hash_;
@@ -191,7 +195,8 @@ bool FakeLECredentialBackend::ResetCredential(
     return false;
   }
 
-  *new_mac = CryptoLib::Sha256(*new_cred_metadata);
+  brillo::SecureBlob hash = CryptoLib::Sha256(*new_cred_metadata);
+  new_mac->assign(hash.begin(), hash.end());
 
   fake_root_hash_ = RecalculateRootHash(label, *new_mac, h_aux);
   *new_root = fake_root_hash_;
@@ -225,7 +230,7 @@ bool FakeLECredentialBackend::GetLog(
     const std::vector<uint8_t>& cur_disk_root_hash,
     std::vector<uint8_t>* root_hash) {
   root_hash->assign(fake_root_hash_.begin(), fake_root_hash_.end());
-  // TODO(b/809710): Mimick the log functionality of PinWeaver.
+  // TODO(crbug.com/809710): Mimick the log functionality of PinWeaver.
   return true;
 }
 
@@ -256,8 +261,8 @@ std::vector<uint8_t> FakeLECredentialBackend::RecalculateRootHash(
         ++it;
       }
     }
-    std::vector<uint8_t> result_hash = CryptoLib::Sha256(input_buffer);
-    cur_hash = result_hash;
+    brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
+    cur_hash.assign(result_hash.begin(), result_hash.end());
     cur_label = cur_label >> kBitsPerLevel;
   }
 

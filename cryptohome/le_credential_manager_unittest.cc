@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 // Functional tests for LECredentialManager + SignInHashTree.
+#include <iterator>  // For std::begin()/std::end().
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
@@ -17,25 +18,25 @@
 namespace {
 
 // All the keys are 32 bytes long.
-const brillo::SecureBlob kLeSecret1 = {
-    {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00,
-     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00, 0x01,
-     0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00, 0x02}};
+constexpr uint8_t kLeSecret1Array[] = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00,
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00, 0x01,
+    0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00, 0x02};
 
-const brillo::SecureBlob kLeSecret2 = {
-    {0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x10,
-     0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x10, 0x11,
-     0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x10, 0x12}};
+constexpr uint8_t kLeSecret2Array[] = {
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x10,
+    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x10, 0x11,
+    0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x10, 0x12};
 
-const brillo::SecureBlob kHeSecret1 = {
-    {0x00, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x00,
-     0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x00, 0x06,
-     0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}};
+constexpr uint8_t kHeSecret1Array[] = {
+    0x00, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x00,
+    0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x00, 0x06,
+    0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10};
 
-const brillo::SecureBlob kResetSecret1 = {
-    {0x00, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00,
-     0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00, 0x0B,
-     0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15}};
+constexpr uint8_t kResetSecret1Array[] = {
+    0x00, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00,
+    0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00, 0x0B,
+    0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15};
 
 }  // namespace
 
@@ -63,6 +64,13 @@ class LECredentialManagerUnitTest : public testing::Test {
     // hard limit at 5.
     std::map<uint32_t, uint32_t> stub_delay_sched;
     uint64_t label;
+    brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                  std::end(kLeSecret1Array));
+    brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                  std::end(kHeSecret1Array));
+    brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                     std::end(kResetSecret1Array));
+
     EXPECT_EQ(LE_CRED_SUCCESS,
               le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
                                         stub_delay_sched, &label));
@@ -101,6 +109,15 @@ TEST_F(LECredentialManagerUnitTest, BasicInsertAndCheck) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   uint64_t label1;
   uint64_t label2;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kLeSecret2(std::begin(kLeSecret2Array),
+                                std::end(kLeSecret2Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
   ASSERT_EQ(LE_CRED_SUCCESS,
             le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
                                       stub_delay_sched, &label1));
@@ -123,6 +140,8 @@ TEST_F(LECredentialManagerUnitTest, BasicInsertAndCheck) {
 // correctly.
 TEST_F(LECredentialManagerUnitTest, LockedOutSecret) {
   uint64_t label1 = CreateLockedOutCredential();
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
 
   // NOTE: The current fake backend hard codes the number of attempts at 5, so
   // all subsequent checks will return false.
@@ -141,6 +160,13 @@ TEST_F(LECredentialManagerUnitTest, LockedOutSecret) {
 TEST_F(LECredentialManagerUnitTest, InvalidLabelCheck) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   uint64_t label1;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
   ASSERT_EQ(LE_CRED_SUCCESS,
             le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
                                       stub_delay_sched, &label1));
@@ -160,6 +186,13 @@ TEST_F(LECredentialManagerUnitTest, InvalidLabelCheck) {
 TEST_F(LECredentialManagerUnitTest, BasicInsertRemove) {
   uint64_t label1;
   std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
   ASSERT_EQ(LE_CRED_SUCCESS,
             le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
                                       stub_delay_sched, &label1));
@@ -172,6 +205,12 @@ TEST_F(LECredentialManagerUnitTest, BasicInsertRemove) {
 // Check that a reset unlocks a locked out credential.
 TEST_F(LECredentialManagerUnitTest, ResetSecret) {
   uint64_t label1 = CreateLockedOutCredential();
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
 
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
@@ -191,6 +230,8 @@ TEST_F(LECredentialManagerUnitTest, ResetSecret) {
 // Check that an invalid reset doesn't unlock a locked credential.
 TEST_F(LECredentialManagerUnitTest, ResetSecretNegative) {
   uint64_t label1 = CreateLockedOutCredential();
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
 
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
@@ -212,6 +253,13 @@ TEST_F(LECredentialManagerUnitTest, ResetSecretNegative) {
 TEST_F(LECredentialManagerUnitTest, InsertRemoveCorruptHashCache) {
   uint64_t label1;
   std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
   ASSERT_EQ(LE_CRED_SUCCESS,
             le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
                                       stub_delay_sched, &label1));

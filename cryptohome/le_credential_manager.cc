@@ -158,7 +158,7 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
     return ret;
   }
 
-  brillo::SecureBlob new_cred, new_mac;
+  brillo::Blob new_cred, new_mac;
   LECredBackendError err;
   if (is_le_secret) {
     he_secret->clear();
@@ -226,7 +226,7 @@ std::vector<std::vector<uint8_t>> LECredentialManager::GetAuxHashes(
 
   h_aux.reserve(aux_labels.size());
   for (auto cur_aux_label : aux_labels) {
-    brillo::SecureBlob hash, cred_data;
+    brillo::Blob hash, cred_data;
     if (!hash_tree_->GetLabelData(cur_aux_label, &hash, &cred_data)) {
       LOG(INFO) << "Error getting aux label :" << cur_aux_label.value()
                 << " for label: " << label.value();
@@ -265,10 +265,10 @@ bool LECredentialManager::Sync() {
   std::vector<uint8_t> disk_root_hash;
   hash_tree_->GetRootHash(&disk_root_hash);
 
-  // If we don't have it, get the root hash from the LE Backend.
+  // If we don't have it, get the root hash from the LE backend.
   if (root_hash_.empty()) {
     if (!le_tpm_backend_->GetLog(disk_root_hash, &root_hash_)) {
-      LOG(ERROR) << "Couldn't get LE Log.";
+      LOG(ERROR) << "Couldn't get LE log.";
       is_locked_ = true;
       return false;
     }
@@ -288,8 +288,8 @@ bool LECredentialManager::Sync() {
     return true;
   }
 
-  // TODO(b/809710): Add log replay functionality here..
-  LOG(ERROR) << "Failed to Synchronize LE disk state after log replay.";
+  // TODO(crbug.com/809710): Add log replay functionality here.
+  LOG(ERROR) << "Failed to synchronize LE disk state after log replay.";
   // TODO(crbug.com/809749): Add UMA logging for this event.
   is_locked_ = true;
   return false;
