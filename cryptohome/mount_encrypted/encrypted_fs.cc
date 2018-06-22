@@ -25,7 +25,6 @@ static struct bind_mount* bind_mounts = NULL;
 static const gchar* const kEncryptedFSType = "ext4";
 static const gchar* const kCryptDevName = "encstateful";
 static const float kSizePercent = 0.3;
-static const float kMigrationSizeMultiplier = 1.1;
 static const uint64_t kSectorSize = 512;
 static const uint64_t kExt4BlockSize = 4096;
 static const uint64_t kExt4MinBytes = 16 * 1024 * 1024;
@@ -87,93 +86,6 @@ result_code check_bind(struct bind_mount* bind, enum bind_dir dir) {
   return RESULT_SUCCESS;
 }
 
-result_code migrate_contents(struct bind_mount* bind,
-                             enum migration_method method) {
-  const gchar* previous = NULL;
-  const gchar* pending = NULL;
-  gchar* dotdir;
-
-  /* Skip migration if the previous bind sources are missing. */
-  if (bind->pending && access(bind->pending, R_OK) == 0)
-    pending = bind->pending;
-  if (bind->previous && access(bind->previous, R_OK) == 0)
-    previous = bind->previous;
-  if (!pending && !previous)
-    return RESULT_FAIL_FATAL;
-
-  /* Pretend migration happened. */
-  if (method == MIGRATE_TEST_ONLY)
-    return RESULT_SUCCESS;
-
-  check_bind(bind, BIND_SOURCE);
-
-  /* Prefer the pending-delete location when doing migration. */
-  if (!(dotdir = g_strdup_printf("%s/.", pending ? pending : previous))) {
-    PERROR("g_strdup_printf");
-    goto mark_for_removal;
-  }
-
-  INFO("Migrating bind mount contents %s to %s.", dotdir, bind->src);
-
-  /* Add scope to ensure compilation with C++: "error: jump bypasses
-   * initialization" goto mark_for_removal jumps over the definition of cp[] */
-  {
-    const gchar* cp[] = {"/bin/cp", "-a", dotdir, bind->src, NULL};
-
-    if (runcmd(cp, NULL) != 0) {
-      /* If the copy failed, it may have partially populated the
-       * new source, so we need to remove the new source and
-       * rebuild it. Regardless, the previous source must be removed
-       * as well.
-       */
-      INFO("Failed to migrate %s to %s!", dotdir, bind->src);
-      remove_tree(bind->src);
-      check_bind(bind, BIND_SOURCE);
-    }
-  }
-
-mark_for_removal:
-  g_free(dotdir);
-
-  /* The removal of the previous directory needs to happen at finalize
-   * time, otherwise /var state gets lost on a migration if the
-   * system is powered off before the encryption key is saved. Instead,
-   * relocate the directory so it can be removed (or re-migrated).
-   */
-
-  if (previous) {
-    /* If both pending and previous directory exists, we must
-     * remove previous entirely now so it stops taking up disk
-     * space. The pending area will stay pending to be deleted
-     * later.
-     */
-    if (pending)
-      remove_tree(pending);
-    if (rename(previous, bind->pending)) {
-      PERROR("rename(%s,%s)", previous, bind->pending);
-    }
-  }
-
-  /* As noted above, failures are unrecoverable, so getting here means
-   * "we're done" more than "it worked".
-   */
-  return RESULT_SUCCESS;
-}
-
-void remove_pending() {
-  struct bind_mount* bind;
-
-  for (bind = bind_mounts; bind->src; ++bind) {
-    if (!bind->pending || access(bind->pending, R_OK))
-      continue;
-    INFO("Removing %s.", bind->pending);
-#if DEBUG_ENABLED
-    continue;
-#endif
-    remove_tree(bind->pending);
-  }
-}
-
 void spawn_resizer(const char* device, uint64_t blocks, uint64_t blocks_max) {
   pid_t pid;
 
@@ -214,11 +126,8 @@ out:
 }
 
 /* Do all the work needed to actually set up the encrypted partition. */
-result_code setup_encrypted(const char* encryption_key,
-                            int rebuild,
-                            int migrate_allowed) {
+result_code setup_encrypted(const char* encryption_key, int rebuild) {
   brillo::SecureBlob system_key;
-  int migrate_needed = 0;
   gchar* lodev = NULL;
   gchar* dirty_expire_centisecs = NULL;
   char* mount_opts = NULL;
@@ -295,54 +204,9 @@ result_code setup_encrypted(const char* encryption_key,
     INFO("%s: dm-crypt does not support discard; disabling.", dmcrypt_dev);
   }
 
-  /* Decide now if any migration will happen. If so, we will not
-   * grow the new filesystem in the background, since we need to
-   * copy the contents over before /var is valid again.
-   */
-  if (!rebuild)
-    migrate_allowed = 0;
-  if (migrate_allowed) {
-    for (bind = bind_mounts; bind->src; ++bind) {
-      if (migrate_contents(bind, MIGRATE_TEST_ONLY) == RESULT_SUCCESS)
-        migrate_needed = 1;
-    }
-  }
-
   /* Calculate filesystem min/max size. */
   blocks_max = sectors / (kExt4BlockSize / kSectorSize);
   blocks_min = kExt4MinBytes / kExt4BlockSize;
-  if (migrate_needed && migrate_allowed) {
-    uint64_t fs_bytes_min;
-    uint64_t calc_blocks_min;
-    /* When doing a migration, the new filesystem must be
-     * large enough to hold what we're going to migrate.
-     * Instead of walking the bind mount sources, which would
-     * be IO and time expensive, just read the bytes-used
-     * value from statvfs (plus 10% for overhead). It will
-     * be too large, since it includes the eCryptFS data, so
-     * we must cap at the max filesystem size just in case.
-     */
-
-    /* Bytes used in stateful partition plus 10%. */
-    fs_bytes_min = stateful_statbuf.f_blocks - stateful_statbuf.f_bfree;
-    fs_bytes_min *= stateful_statbuf.f_frsize;
-    DEBUG("Stateful bytes used: %" PRIu64 "", fs_bytes_min);
-    fs_bytes_min *= kMigrationSizeMultiplier;
-
-    /* Minimum blocks needed for that many bytes. */
-    calc_blocks_min = fs_bytes_min / kExt4BlockSize;
-    /* Do not use more than blocks_max. */
-    if (calc_blocks_min > blocks_max)
-      calc_blocks_min = blocks_max;
-    /* Do not use less than blocks_min. */
-    else if (calc_blocks_min < blocks_min)
-      calc_blocks_min = blocks_min;
-
-    DEBUG("Maximum fs blocks: %" PRIu64 "", blocks_max);
-    DEBUG("Minimum fs blocks: %" PRIu64 "", blocks_min);
-    DEBUG("Migration blocks chosen: %" PRIu64 "", calc_blocks_min);
-    blocks_min = calc_blocks_min;
-  }
 
   if (rebuild) {
     INFO(
@@ -380,19 +244,6 @@ result_code setup_encrypted(const char* encryption_key,
   /* Always spawn filesystem resizer, in case growth was interrupted. */
   /* TODO(keescook): if already full size, don't resize. */
   spawn_resizer(dmcrypt_dev, blocks_min, blocks_max);
-
-  /* If the legacy lockbox NVRAM area exists, we've rebuilt the
-   * filesystem, and there are old bind sources on disk, attempt
-   * migration.
-   */
-  if (migrate_needed && migrate_allowed) {
-    /* Migration needs to happen before bind mounting because
-     * some partitions were not already on the stateful partition,
-     * and would be over-mounted by the new bind mount.
-     */
-    for (bind = bind_mounts; bind->src; ++bind)
-      migrate_contents(bind, MIGRATE_FOR_REAL);
-  }
 
   /* Perform bind mounts. */
   for (bind = bind_mounts; bind->src; ++bind) {
@@ -566,8 +417,6 @@ result_code report_mount_info(void) {
   for (mnt = bind_mounts; mnt->src; ++mnt) {
     printf("\tsrc:%s\n", mnt->src);
     printf("\tdst:%s\n", mnt->dst);
-    printf("\tprevious:%s\n", mnt->previous);
-    printf("\tpending:%s\n", mnt->pending);
     printf("\towner:%s\n", mnt->owner);
     printf("\tmode:%o\n", mnt->mode);
     printf("\tsubmount:%d\n", mnt->submount);
@@ -583,11 +432,6 @@ static result_code dup_bind_mount(struct bind_mount* mnt,
   if (old->src && asprintf(&mnt->src, "%s%s", dir, old->src) == -1)
     goto fail;
   if (old->dst && asprintf(&mnt->dst, "%s%s", dir, old->dst) == -1)
-    goto fail;
-  if (old->previous &&
-      asprintf(&mnt->previous, "%s%s", dir, old->previous) == -1)
-    goto fail;
-  if (old->pending && asprintf(&mnt->pending, "%s%s", dir, old->pending) == -1)
     goto fail;
   if (!(mnt->owner = strdup(old->owner)))
     goto fail;
