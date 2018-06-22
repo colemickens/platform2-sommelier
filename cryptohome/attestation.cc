@@ -1483,7 +1483,7 @@ bool Attestation::DecryptDatabase(const std::string& serial_encrypted_db,
                                   AttestationDatabase* db) {
   CHECK(crypto_);
   if (!crypto_->UnsealKey(serial_encrypted_db, &database_key_,
-                         &sealed_database_key_)) {
+                          &sealed_database_key_)) {
     LOG(ERROR) << "Attestation: Could not unseal decryption key.";
     return false;
   }
@@ -2438,25 +2438,21 @@ bool Attestation::CreateSignedPublicKey(
 }
 
 bool Attestation::AesEncrypt(const brillo::SecureBlob& plaintext,
-                const brillo::SecureBlob& key,
-                const brillo::SecureBlob& iv,
-                brillo::SecureBlob* ciphertext) {
-  return CryptoLib::AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(),
-                                               key, iv,
-                                               CryptoLib::kPaddingStandard,
-                                               CryptoLib::kCbc,
-                                               ciphertext);
+                             const brillo::SecureBlob& key,
+                             const brillo::SecureBlob& iv,
+                             brillo::SecureBlob* ciphertext) {
+  return CryptoLib::AesEncryptSpecifyBlockMode(
+      plaintext, 0, plaintext.size(), key, iv, CryptoLib::kPaddingStandard,
+      CryptoLib::kCbc, ciphertext);
 }
 
 bool Attestation::AesDecrypt(const brillo::SecureBlob& ciphertext,
-                const brillo::SecureBlob& key,
-                const brillo::SecureBlob& iv,
-                brillo::SecureBlob* plaintext) {
-  return CryptoLib::AesDecryptSpecifyBlockMode(ciphertext, 0, ciphertext.size(),
-                                               key, iv,
-                                               CryptoLib::kPaddingStandard,
-                                               CryptoLib::kCbc,
-                                               plaintext);
+                             const brillo::SecureBlob& key,
+                             const brillo::SecureBlob& iv,
+                             brillo::SecureBlob* plaintext) {
+  return CryptoLib::AesDecryptSpecifyBlockMode(
+      ciphertext, 0, ciphertext.size(), key, iv, CryptoLib::kPaddingStandard,
+      CryptoLib::kCbc, plaintext);
 }
 
 bool Attestation::TssCompatibleEncrypt(const SecureBlob& key,
@@ -2796,10 +2792,8 @@ bool Attestation::ComputeEnterpriseEnrollmentId(
     LOG(ERROR) << "Attestation: Failed to decode public endorsement key.";
     return false;
   }
-  SecureBlob modulus(BN_num_bytes(public_key.get()->n), 0);
-  int length =
-      BN_bn2bin(public_key.get()->n,
-                reinterpret_cast<unsigned char*>(modulus.char_data()));
+  brillo::Blob modulus(BN_num_bytes(public_key.get()->n), 0);
+  int length = BN_bn2bin(public_key.get()->n, modulus.data());
   if (length <= 0) {
     LOG(ERROR)
         << "Attestation: Failed to extract public endorsement key modulus.";

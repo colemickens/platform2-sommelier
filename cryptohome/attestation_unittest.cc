@@ -340,7 +340,7 @@ class AttestationBaseTest : public testing::Test {
     SecureBlob aes_key(buffer, buffer + length);
     // Decrypt the blob.
     SecureBlob decrypted;
-    SecureBlob encrypted = SecureBlob(input.encrypted_data());
+    brillo::Blob encrypted = brillo::BlobFromString(input.encrypted_data());
     SecureBlob aes_iv = SecureBlob(input.iv());
     if (!CryptoLib::AesDecryptSpecifyBlockMode(encrypted, 0, encrypted.size(),
                                                aes_key, aes_iv,
