@@ -6,7 +6,7 @@
 
 #include "cryptohome/username_passkey.h"
 
-#include <string.h>  // For memset(), memcpy()
+#include <string.h>  // For memset(), memcpy(), memcmp().
 
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
@@ -55,8 +55,7 @@ TEST(UsernamePasskeyTest, GetPasskeyTest) {
   SecureBlob passkey;
   up.GetPasskey(&passkey);
   EXPECT_EQ(strlen(kFakePasskey), passkey.size());
-  EXPECT_EQ(0, brillo::SecureMemcmp(kFakePasskey,
-                                      passkey.data(), passkey.size()));
+  EXPECT_EQ(0, memcmp(kFakePasskey, passkey.data(), passkey.size()));
 }
 
 }  // namespace cryptohome

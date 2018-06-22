@@ -6,6 +6,8 @@
 
 #include "cryptohome/vault_keyset.h"
 
+#include <string.h>  // For memcmp().
+
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -31,15 +33,14 @@ class VaultKeysetTest : public ::testing::Test {
   VaultKeysetTest() { }
   virtual ~VaultKeysetTest() { }
 
-  static bool FindBlobInBlob(const brillo::Blob& haystack,
-                             const brillo::Blob& needle) {
+  static bool FindBlobInBlob(const brillo::SecureBlob& haystack,
+                             const brillo::SecureBlob& needle) {
     if (needle.size() > haystack.size()) {
       return false;
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (brillo::SecureMemcmp(&haystack[start], needle.data(),
-                                 needle.size()) == 0) {
+      if (memcmp(&haystack[start], needle.data(), needle.size()) == 0) {
         return true;
       }
     }

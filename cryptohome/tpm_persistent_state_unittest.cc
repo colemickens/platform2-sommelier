@@ -164,7 +164,7 @@ TEST_F(TpmPersistentStateTest, TpmStatusPreExisting) {
                    TpmStatus::USES_RANDOM_OWNER |
                    TpmStatus::ATTESTATION_NEEDS_OWNER);
   status.set_owner_password(password.to_string());
-  SecureBlob status_blob(status.SerializeAsString());
+  brillo::Blob status_blob = brillo::BlobFromString(status.SerializeAsString());
   FileWrite(kTpmStatusFile, status_blob);
 
   SecureBlob result;
@@ -180,7 +180,8 @@ TEST_F(TpmPersistentStateTest, TpmStatusCached) {
   // The TpmStatus file is read only once.
   TpmStatus empty_status;
   empty_status.set_flags(TpmStatus::NONE);
-  SecureBlob empty_status_blob(empty_status.SerializeAsString());
+  brillo::Blob empty_status_blob =
+      brillo::BlobFromString(empty_status.SerializeAsString());
   FileWrite(kTpmStatusFile, empty_status_blob);
   EXPECT_CALL(platform_, ReadFile(kTpmStatusFile, _)).Times(1);
   SecureBlob password("password");
