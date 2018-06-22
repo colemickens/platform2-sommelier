@@ -87,6 +87,30 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="LoadDlcImage">
+    <tp:docstring>
+      Loads an image.
+    </tp:docstring>
+    <arg name="id" type="s" direction="in">
+      <tp:docstring>
+        The id of the image.
+      </tp:docstring>
+    </arg>
+    <arg name="a_or_b" type="s" direction="in">
+      <tp:docstring>
+        Whether to load image A or image B ({"Dlc-A", "Dlc-B"}). Each DLC has
+        two images (A and B) which corresponds to the two rootfs partitions
+        (Root-A and Root-B). e.g. If current active roofs partition is Root-A,
+        then "Dlc-A" should be passed in.
+      </tp:docstring>
+    </arg>
+    <arg name="mount_point" type="s" direction="out">
+      <tp:docstring>
+        The mount point of the verified and mounted image. When successful,
+        |mount_point| is "/run/imageloader/|id|". Otherwise it is empty.
+      </tp:docstring>
+    </arg>
+  </method>
   <method name="RemoveComponent">
     <tp:docstring>
       Remove all versions of a component if removable.

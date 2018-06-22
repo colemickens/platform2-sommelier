@@ -47,6 +47,8 @@
       'sources': [
         'component.cc',
         'component.h',
+        'dlc.cc',
+        'dlc.h',
         'helper_process_proxy.cc',
         'helper_process_proxy.h',
         'helper_process_receiver.cc',
@@ -94,6 +96,7 @@
           'sources': [
             'component.h',
             'component_unittest.cc',
+            'dlc_unittest.cc',
             'imageloader.cc',
             'imageloader.h',
             'imageloader_unittest.cc',

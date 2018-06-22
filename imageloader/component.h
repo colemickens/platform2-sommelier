@@ -36,6 +36,8 @@ namespace imageloader {
 constexpr int kComponentDirPerms = 0755;
 // The permissions that files in the component should have.
 constexpr int kComponentFilePerms = 0644;
+// The maximum size of any file to read into memory.
+constexpr size_t kMaximumFilesize = 4096 * 10;
 
 class Component {
  public:

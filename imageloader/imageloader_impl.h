@@ -66,6 +66,11 @@ class ImageLoaderImpl {
   // string on failure.
   std::string LoadComponent(const std::string& name, HelperProcessProxy* proxy);
 
+  // Load the specified DLC image. This returns the mount point or an empty
+  // string on failure.
+  std::string LoadDlcImage(const std::string& id, const std::string& a_or_b,
+                           HelperProcessProxy* proxy);
+
   // Load the specified component at a set mount point.
   bool LoadComponent(const std::string& name, const std::string& mount_point,
                      HelperProcessProxy* proxy);

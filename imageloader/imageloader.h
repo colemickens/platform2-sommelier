@@ -62,6 +62,12 @@ class ImageLoader : public brillo::DBusServiceDaemon,
                            const std::string& component_folder_abs_path,
                            std::string* out_mount_point) override;
 
+  // Load and mount a DLC image given the image id.
+  bool LoadDlcImage(brillo::ErrorPtr* err,
+                    const std::string& id,
+                    const std::string& a_or_b,
+                    std::string* out_mount_point) override;
+
   // Remove a component given component |name|.
   bool RemoveComponent(brillo::ErrorPtr* err, const std::string& name,
                        bool* out_success) override;

@@ -129,6 +129,16 @@ bool ImageLoader::LoadComponentAtPath(brillo::ErrorPtr* err,
   return true;
 }
 
+bool ImageLoader::LoadDlcImage(brillo::ErrorPtr* err,
+                               const std::string& id,
+                               const std::string& a_or_b,
+                               std::string* out_mount_point) {
+  *out_mount_point = impl_.LoadDlcImage(id, a_or_b,
+                                        helper_process_proxy_.get());
+  PostponeShutdown();
+  return true;
+}
+
 bool ImageLoader::RemoveComponent(
     brillo::ErrorPtr* err, const std::string& name, bool* out_success) {
   *out_success = impl_.RemoveComponent(name);

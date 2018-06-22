@@ -21,7 +21,7 @@ class Manifest {
  public:
   Manifest();
   // Parse the manifest raw string. Return true if successful.
-  bool ParseManifest(const std::string &manifest_raw);
+  bool ParseManifest(const std::string& manifest_raw);
   // Getters for manifest fields:
   int manifest_version() const;
   const std::vector<uint8_t>& image_sha256() const;
@@ -30,6 +30,7 @@ class Manifest {
   FileSystem fs_type() const;
   bool is_removable() const;
   const std::map<std::string, std::string> metadata() const;
+
  private:
   // Manifest fields:
   int manifest_version_;

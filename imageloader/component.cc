@@ -44,8 +44,6 @@ constexpr char kImageFileNameSquashFS[] = "image.squash";
 constexpr char kImageFileNameExt4[] = "image.ext4";
 // The name of the table file.
 constexpr char kTableFileName[] = "table";
-// The maximum size of any file to read into memory.
-constexpr size_t kMaximumFilesize = 4096 * 10;
 
 base::FilePath GetManifestPath(const base::FilePath& component_dir) {
   return component_dir.Append(kManifestName);

@@ -66,7 +66,7 @@ bool ParseMetadata(const base::Value* metadata_element,
 
 Manifest::Manifest() {}
 
-bool Manifest::ParseManifest(const std::string &manifest_raw) {
+bool Manifest::ParseManifest(const std::string& manifest_raw) {
   // Now deserialize the manifest json and read out the rest of the component.
   int error_code;
   std::string error_message;
@@ -125,7 +125,7 @@ bool Manifest::ParseManifest(const std::string &manifest_raw) {
     return false;
   }
 
-  // The fs_type field is optional, and squashfs by default.
+  // The fs-type field is optional, and kSquashFS by default.
   fs_type_ = FileSystem::kSquashFS;
   std::string fs_type;
   if (manifest_dict->GetString(kFSType, &fs_type)) {
@@ -139,9 +139,8 @@ bool Manifest::ParseManifest(const std::string &manifest_raw) {
     }
   }
 
-  if (!manifest_dict->GetBoolean(kIsRemovableField,
-                                 &(is_removable_))) {
-    // If is_removable field does not exist, by default it is false.
+  // The is-removable field is optional, it is false by default.
+  if (!manifest_dict->GetBoolean(kIsRemovableField, &(is_removable_))) {
     is_removable_ = false;
   }
 
