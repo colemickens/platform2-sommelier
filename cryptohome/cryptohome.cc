@@ -2511,7 +2511,7 @@ int main(int argc, char **argv) {
     if (cl->HasSwitch(switches::kDevKeyHashSwitch)) {
       std::string hash_str =
         cl->GetSwitchValueASCII(switches::kDevKeyHashSwitch);
-      brillo::SecureBlob hash;
+      brillo::Blob hash;
       if (!base::HexStringToBytes(hash_str, &hash)) {
         printf("Bad hash value.\n");
         return 1;
@@ -2521,7 +2521,7 @@ int main(int argc, char **argv) {
         return 1;
       }
 
-      request.set_developer_key_hash(hash.to_string());
+      request.set_developer_key_hash(brillo::BlobToString(hash));
     }
 
     if (!MakeProtoDBusCall(
