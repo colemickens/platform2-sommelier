@@ -14,11 +14,6 @@
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
 
-enum migration_method {
-  MIGRATE_TEST_ONLY,
-  MIGRATE_FOR_REAL,
-};
-
 enum bind_dir {
   BIND_SOURCE,
   BIND_DEST,
@@ -26,30 +21,22 @@ enum bind_dir {
 
 #define str_literal(s) (const_cast<char*>(s))
 static struct bind_mount {
-  char* src;      /* Location of bind source. */
-  char* dst;      /* Destination of bind. */
-  char* previous; /* Migratable prior bind source. */
-  char* pending;  /* Location for pending deletion. */
+  char* src; /* Location of bind source. */
+  char* dst; /* Destination of bind. */
   char const* owner;
   char const* group;
   mode_t mode;
   int submount; /* Submount is bound already. */
 } bind_mounts_default[] = {
-    {str_literal(ENCRYPTED_MNT "/var"), str_literal("var"),
-     str_literal(STATEFUL_MNT "/var"), str_literal(STATEFUL_MNT "/.var"),
-     "root", "root", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 0},
+    {str_literal(ENCRYPTED_MNT "/var"), str_literal("var"), "root", "root",
+     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 0},
     {str_literal(ENCRYPTED_MNT "/chronos"), str_literal("home/chronos"),
-     str_literal(STATEFUL_MNT "/home/chronos"),
-     str_literal(STATEFUL_MNT "/home/.chronos"), "chronos", "chronos",
-     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 1},
+     "chronos", "chronos", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, 1},
     {},
 };
 #undef str_literal
 
-void remove_pending();
-result_code setup_encrypted(const char* encryption_key,
-                            int rebuild,
-                            int migrate_allowed);
+result_code setup_encrypted(const char* encryption_key, int rebuild);
 result_code teardown_mount(void);
 result_code check_mount_states(void);
 result_code report_mount_info(void);

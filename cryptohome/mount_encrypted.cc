@@ -300,12 +300,8 @@ int main(int argc, char* argv[]) {
 
   std::string encryption_key_hex =
       base::HexEncode(key.encryption_key().data(), key.encryption_key().size());
-  rc = setup_encrypted(encryption_key_hex.c_str(), key.is_fresh(), false);
+  rc = setup_encrypted(encryption_key_hex.c_str(), key.is_fresh());
   if (rc == RESULT_SUCCESS) {
-    if (key.did_finalize()) {
-      remove_pending();
-    }
-
     bool lockbox_valid = false;
     if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
       NvramSpace* lockbox_space = tpm.GetLockboxSpace();

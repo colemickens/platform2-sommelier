@@ -11,7 +11,6 @@
 
 /* General utility functions. */
 uint64_t blk_size(const char* device);
-int remove_tree(const char* tree);
 int runcmd(const gchar* argv[], gchar** output);
 int same_vfs(const char* mnt_a, const char* mnt_b);
 char* stringify_hex(uint8_t* binary, size_t length);

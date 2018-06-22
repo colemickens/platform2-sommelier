@@ -45,12 +45,6 @@ static const uint64_t kInodeRatioDefault = 16384;
 static const uint64_t kInodeRatioMinimum = 2048;
 static const gchar* const kExt4ExtendedOptions = "discard,lazy_itable_init";
 
-int remove_tree(const char* tree) {
-  const gchar* rm[] = {"/bin/rm", "-rf", tree, NULL};
-
-  return runcmd(rm, NULL);
-}
-
 uint64_t blk_size(const char* device) {
   uint64_t bytes;
   int fd;
