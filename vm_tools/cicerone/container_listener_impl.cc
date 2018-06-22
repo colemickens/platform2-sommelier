@@ -13,6 +13,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <vm_applications/proto_bindings/apps.pb.h>
+#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 
 #include "vm_tools/cicerone/service.h"
 
@@ -214,5 +216,44 @@ grpc::Status ContainerListenerImpl::OpenUrl(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::InstallLinuxPackageProgressInfo* request,
+    vm_tools::EmptyMessage* response) {
+  std::string peer_address = ctx->peer();
+  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
+  if (ip == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing IPv4 address for ContainerListener");
+  }
+  InstallLinuxPackageProgressSignal progress_signal;
+  if (!InstallLinuxPackageProgressSignal::Status_IsValid(
+          static_cast<int>(request->status()))) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Invalid status field in protobuf request");
+  }
+  progress_signal.set_status(
+      static_cast<InstallLinuxPackageProgressSignal::Status>(
+          request->status()));
+  progress_signal.set_progress_percent(request->progress_percent());
+  progress_signal.set_failure_details(request->failure_details());
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::InstallLinuxPackageProgress,
+                 service_, request->token(), ip, &progress_signal, &result,
+                 &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure updating Linux package install progress from "
+                  "ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in InstallLinuxPackageProgress");
+  }
+
+  return grpc::Status::OK;
+}
 }  // namespace cicerone
 }  // namespace vm_tools

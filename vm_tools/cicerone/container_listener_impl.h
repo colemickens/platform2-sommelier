@@ -12,7 +12,6 @@
 #include <base/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <grpc++/grpc++.h>
-#include <vm_applications/proto_bindings/apps.pb.h>
 
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
 
@@ -45,6 +44,10 @@ class ContainerListenerImpl final
   grpc::Status OpenUrl(grpc::ServerContext* ctx,
                        const vm_tools::container::OpenUrlRequest* request,
                        vm_tools::EmptyMessage* response) override;
+  grpc::Status InstallLinuxPackageProgress(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::InstallLinuxPackageProgressInfo* request,
+      vm_tools::EmptyMessage* response) override;
 
  private:
   base::WeakPtr<vm_tools::cicerone::Service> service_;  // not owned

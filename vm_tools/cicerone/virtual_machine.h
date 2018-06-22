@@ -75,6 +75,15 @@ class VirtualMachine {
                   uint32_t port,
                   std::string* out_error);
 
+  // Installs a Linux package into container |container_name| from the
+  // container's filesystem at |file_path|. Returns a status value which
+  // corresponds to the Status enum in the InstallLinuxPackageResponse protobuf
+  // (either the cicerone or container_guest one, they have matching values),
+  // if the status is FAILED then |out_error| is set with failure details.
+  int InstallLinuxPackage(const std::string& container_name,
+                          const std::string& file_path,
+                          std::string* out_error);
+
   // Returns whether there is a connected stub to Garcon running inside the
   // named |container_name| within this VM.
   bool IsContainerRunning(const std::string& container_name);

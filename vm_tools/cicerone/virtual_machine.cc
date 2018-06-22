@@ -222,6 +222,41 @@ bool VirtualMachine::GetContainerAppIcon(
   return true;
 }
 
+int VirtualMachine::InstallLinuxPackage(const std::string& container_name,
+                                        const std::string& file_path,
+                                        std::string* out_error) {
+  // Get the gRPC stub for communicating with the container.
+  auto iter = container_name_to_garcon_stub_.find(container_name);
+  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
+    LOG(ERROR) << "Requested container " << container_name
+               << " is not registered with the corresponding VM";
+    out_error->assign("Requested container is not registered");
+    return vm_tools::container::InstallLinuxPackageResponse::FAILED;
+  }
+
+  vm_tools::container::InstallLinuxPackageRequest container_request;
+  vm_tools::container::InstallLinuxPackageResponse container_response;
+  container_request.set_file_path(file_path);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = iter->second->InstallLinuxPackage(
+      &ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to install Linux package in container "
+               << container_name << ": " << status.error_message()
+               << " code: " << status.error_code();
+    out_error->assign("gRPC failure installing Linux package in container: " +
+                      status.error_message());
+    return vm_tools::container::InstallLinuxPackageResponse::FAILED;
+  }
+  out_error->assign(container_response.failure_reason());
+  return container_response.status();
+}
+
 bool VirtualMachine::IsContainerRunning(const std::string& container_name) {
   auto iter = container_name_to_garcon_channel_.find(container_name);
   if (iter == container_name_to_garcon_channel_.end() || !iter->second) {

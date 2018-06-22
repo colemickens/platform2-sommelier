@@ -21,6 +21,8 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <grpc++/grpc++.h>
+#include <vm_applications/proto_bindings/apps.pb.h>
+#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
@@ -81,6 +83,19 @@ class Service final : public base::MessageLoopForIO::Watcher {
                bool* result,
                base::WaitableEvent* event);
 
+  // Sends a D-Bus signal to inform listeners on update for the progress or
+  // completion of a Linux package install. It will use |container_ip| to
+  // resolve the request to a VM and then |container_token| to resolve it to a
+  // container. |progress_signal| should have all related fields from the
+  // container request set in it. |result| is set to true on success, false
+  // otherwise. Signals |event| when done.
+  void InstallLinuxPackageProgress(
+      const std::string& container_token,
+      const uint32_t container_ip,
+      InstallLinuxPackageProgressSignal* progress_signal,
+      bool* result,
+      base::WaitableEvent* event);
+
  private:
   explicit Service(base::Closure quit_closure);
 
@@ -117,6 +132,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Handles a request to launch vshd in a container.
   std::unique_ptr<dbus::Response> LaunchVshd(dbus::MethodCall* method_call);
+
+  // Handles a request to install a Linux package file in a container.
+  std::unique_ptr<dbus::Response> InstallLinuxPackage(
+      dbus::MethodCall* method_call);
 
   // Gets the VirtualMachine that corresponds to a container at |container_ip|
   // and sets |vm_out| to the VirtualMachine, |owner_id_out| to the owner id of

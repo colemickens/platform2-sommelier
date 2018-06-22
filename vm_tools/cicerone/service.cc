@@ -22,8 +22,6 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
-#include <vm_applications/proto_bindings/apps.pb.h>
-#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 
 #include "vm_tools/common/constants.h"
 
@@ -414,6 +412,43 @@ void Service::OpenUrl(const std::string& url,
   event->Signal();
 }
 
+void Service::InstallLinuxPackageProgress(
+    const std::string& container_token,
+    const uint32_t container_ip,
+    InstallLinuxPackageProgressSignal* progress_signal,
+    bool* result,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(progress_signal);
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
+                                       &vm_name)) {
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (container_name.empty()) {
+    event->Signal();
+    return;
+  }
+
+  // Send the D-Bus signal out updating progress/completion for the install.
+  dbus::Signal signal(kVmCiceroneInterface, kInstallLinuxPackageProgressSignal);
+  progress_signal->set_vm_name(vm_name);
+  progress_signal->set_container_name(container_name);
+  progress_signal->set_owner_id(owner_id);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*progress_signal);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 bool Service::Init() {
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
@@ -441,6 +476,7 @@ bool Service::Init() {
       {kLaunchContainerApplicationMethod, &Service::LaunchContainerApplication},
       {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
       {kLaunchVshdMethod, &Service::LaunchVshd},
+      {kInstallLinuxPackageMethod, &Service::InstallLinuxPackage},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -817,6 +853,52 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
 
   response.set_success(true);
   response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received InstallLinuxPackage request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  InstallLinuxPackageRequest request;
+  InstallLinuxPackageResponse response;
+  response.set_status(InstallLinuxPackageResponse::FAILED);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse InstallLinuxPackageRequest from message";
+    response.set_failure_reason("Unable to parse request protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  if (request.file_path().empty()) {
+    LOG(ERROR) << "Linux file path is not set in request";
+    response.set_failure_reason("Linux file path is not set in request");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  int status = vm->InstallLinuxPackage(request.container_name().empty()
+                                           ? kDefaultContainerName
+                                           : request.container_name(),
+                                       request.file_path(), &error_msg);
+  response.set_status(static_cast<InstallLinuxPackageResponse::Status>(status));
+  response.set_failure_reason(error_msg);
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
