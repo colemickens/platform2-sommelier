@@ -48,6 +48,11 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::InstallLinuxPackageRequest* request,
       vm_tools::container::InstallLinuxPackageResponse* response) override;
 
+  grpc::Status GetDebugInformation(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::GetDebugInformationRequest* request,
+      vm_tools::container::GetDebugInformationResponse* response) override;
+
  private:
   PackageKitProxy* package_kit_proxy_;  // Not owned.
 

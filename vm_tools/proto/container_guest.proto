@@ -138,6 +138,14 @@ message InstallLinuxPackageResponse {
   string failure_reason = 2;
 }
 
+// Request for debug information about container state.
+message GetDebugInformationRequest {}
+
+// Response for debug information about container state.
+message GetDebugInformationResponse {
+  string debug_information = 1;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
@@ -157,4 +165,8 @@ service Garcon {
   // Install a Linux package file in the container.
   rpc InstallLinuxPackage(InstallLinuxPackageRequest)
       returns (InstallLinuxPackageResponse);
+
+  // Get debug information about container state.
+  rpc GetDebugInformation(GetDebugInformationRequest)
+      returns (GetDebugInformationResponse);
 }

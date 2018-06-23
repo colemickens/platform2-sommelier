@@ -193,6 +193,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> SetUpLxdContainerUser(
       dbus::MethodCall* method_call);
 
+  // Handles a request to get debug information.
+  std::unique_ptr<dbus::Response> GetDebugInformation(
+      dbus::MethodCall* method_call);
+
   // Gets the VirtualMachine that corresponds to a container at |container_ip|
   // and sets |vm_out| to the VirtualMachine, |owner_id_out| to the owner id of
   // the VM, and |name_out| to the name of the VM. Returns false if no such

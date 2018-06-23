@@ -371,6 +371,39 @@ int GetIcon(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int GetInfo(dbus::ObjectProxy* proxy) {
+  LOG(INFO) << "Getting information";
+
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kGetDebugInformation);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::cicerone::GetDebugInformationRequest request;
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode GetDebugInformationRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to cicerone service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::cicerone::GetDebugInformationResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  std::cout << response.debug_information();
+
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -384,6 +417,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(launch_application, false,
               "Launches an application in a container");
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
+  DEFINE_bool(get_info, false, "Get debug information about all running VMs");
 
   // Parameters.
   DEFINE_string(vm_name, "", "VM name");
@@ -427,12 +461,12 @@ int main(int argc, char** argv) {
   // clang-format off
   if (FLAGS_create_lxd_container + FLAGS_start_lxd_container +
       FLAGS_set_up_lxd_user + FLAGS_get_username + FLAGS_launch_application +
-      FLAGS_get_icon != 1) {
+      FLAGS_get_icon + FLAGS_get_info != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --create_lxd_container, "
                << "--start_lxd_container, --set_up_lxd_user, "
                << "--get_username, --launch_application "
-               << "or --get_icon must be provided";
+               << "-get_icon, or --get_info must be provided";
     return -1;
   }
 
@@ -476,6 +510,8 @@ int main(int argc, char** argv) {
                    std::move(FLAGS_container_name),
                    std::move(FLAGS_application), FLAGS_icon_size, FLAGS_scale,
                    std::move(FLAGS_output_filepath));
+  } else if (FLAGS_get_info) {
+    return GetInfo(proxy);
   }
 
   // Unreachable.

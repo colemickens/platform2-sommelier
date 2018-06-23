@@ -189,6 +189,39 @@ bool VirtualMachine::LaunchVshd(const std::string& container_name,
   return container_response.success();
 }
 
+bool VirtualMachine::GetDebugInformation(const std::string& container_name,
+                                         std::string* out) {
+  // Get the gRPC stub for communicating with the container.
+  auto iter = container_name_to_garcon_stub_.find(container_name);
+  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
+    LOG(ERROR) << "Requested container " << container_name
+               << " is not registered with the corresponding VM";
+    out->assign("Requested container is not registered");
+    return false;
+  }
+
+  vm_tools::container::GetDebugInformationRequest container_request;
+  vm_tools::container::GetDebugInformationResponse container_response;
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = iter->second->GetDebugInformation(
+      &ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to get debug information in container "
+               << container_name << ": " << status.error_message()
+               << " code: " << status.error_code();
+    out->assign("gRPC failure to get debug information in container: " +
+                status.error_message());
+    return false;
+  }
+  out->assign(container_response.debug_information());
+  return true;
+}
+
 bool VirtualMachine::GetContainerAppIcon(
     const std::string& container_name,
     std::vector<std::string> desktop_file_ids,

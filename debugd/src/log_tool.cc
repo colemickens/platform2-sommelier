@@ -298,6 +298,7 @@ const Log kCommandLogs[] = {
     kRoot, kRoot },
   { "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
     kRoot, kRoot },
+  { "crostini", "/usr/bin/cicerone_client --get_info" },
 
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to

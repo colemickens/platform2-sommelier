@@ -136,6 +136,9 @@ class VirtualMachine {
                           const std::string& file_path,
                           std::string* out_error);
 
+  // Gets container debug information.
+  bool GetDebugInformation(const std::string& container_name, std::string* out);
+
   // Returns whether there is a connected stub to Garcon running inside the
   // named |container_name| within this VM.
   bool IsContainerRunning(const std::string& container_name);

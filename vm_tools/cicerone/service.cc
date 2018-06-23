@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
@@ -600,6 +601,7 @@ bool Service::Init() {
       {kStartLxdContainerMethod, &Service::StartLxdContainer},
       {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
       {kSetUpLxdContainerUserMethod, &Service::SetUpLxdContainerUser},
+      {kGetDebugInformation, &Service::GetDebugInformation},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -1360,6 +1362,51 @@ std::unique_ptr<dbus::Response> Service::SetUpLxdContainerUser(
       break;
   }
   response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetDebugInformation(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received GetDebugInformation request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageWriter writer(dbus_response.get());
+  GetDebugInformationResponse response;
+
+  std::string container_debug_information;
+  std::string* debug_information = response.mutable_debug_information();
+  for (const auto& vm : vms_) {
+    const std::string& vm_name = vm.first.second;
+    *debug_information += "VM: ";
+    *debug_information += vm_name;
+    *debug_information += "\n";
+    for (const auto& container_name : vm.second->GetContainerNames()) {
+      *debug_information += "\tContainer: ";
+      *debug_information += container_name;
+      *debug_information += "\n";
+
+      container_debug_information.clear();
+      if (!vm.second->GetDebugInformation(container_name,
+                                          &container_debug_information)) {
+        *debug_information += "\t\tfailed to get debug information\n";
+        *debug_information += "\t\t";
+        *debug_information += container_debug_information;
+        *debug_information += "\n";
+      } else {
+        std::vector<base::StringPiece> info_lines = base::SplitStringPiece(
+            container_debug_information, "\n", base::KEEP_WHITESPACE,
+            base::SPLIT_WANT_NONEMPTY);
+        for (const auto& line : info_lines) {
+          *debug_information += "\t\t";
+          line.AppendToString(debug_information);
+          *debug_information += "\n";
+        }
+      }
+    }
+  }
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

@@ -26,8 +26,11 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/logging.h>
+#include <base/process/launch.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
@@ -583,6 +586,67 @@ grpc::Status ServiceImpl::InstallLinuxPackage(
       static_cast<vm_tools::container::InstallLinuxPackageResponse::Status>(
           package_kit_proxy_->InstallLinuxPackage(file_path, &error_msg)));
   response->set_failure_reason(error_msg);
+
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::GetDebugInformation(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::GetDebugInformationRequest* request,
+    vm_tools::container::GetDebugInformationResponse* response) {
+  LOG(INFO) << "Received request to get container debug information";
+
+  std::string* debug_information = response->mutable_debug_information();
+
+  *debug_information += "Installed Crostini Packages:\n";
+  std::string dpkg_out;
+  base::GetAppOutput({"dpkg", "-l", "cros-*"}, &dpkg_out);
+  std::vector<base::StringPiece> dpkg_lines = base::SplitStringPiece(
+      dpkg_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& pkg_line : dpkg_lines) {
+    std::vector<base::StringPiece> pkg_info = base::SplitStringPiece(
+        pkg_line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_NONEMPTY);
+    // Filter out unrelated lines.
+    if (pkg_info.size() < 3)
+      continue;
+    // Only collect installed packages.
+    if (pkg_info[0] != "ii")
+      continue;
+
+    base::StringPiece pkg_name = pkg_info[1];
+    base::StringPiece pkg_version = pkg_info[2];
+
+    *debug_information += "\t";
+    pkg_name.AppendToString(debug_information);
+    *debug_information += "-";
+    pkg_version.AppendToString(debug_information);
+    *debug_information += "\n";
+  }
+
+  *debug_information += "systemctl status:\n";
+  std::string systemctl_out;
+  base::GetAppOutput({"systemctl", "--no-legend"}, &systemctl_out);
+  std::vector<base::StringPiece> systemctl_out_lines = base::SplitStringPiece(
+      systemctl_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : systemctl_out_lines) {
+    *debug_information += "\t";
+    line.AppendToString(debug_information);
+    *debug_information += "\n";
+  }
+
+  *debug_information += "systemctl user status:\n";
+  std::string systemctl_user_out;
+  base::GetAppOutput({"systemctl", "--user", "--no-legend"},
+                     &systemctl_user_out);
+  std::vector<base::StringPiece> systemctl_user_out_lines =
+      base::SplitStringPiece(systemctl_user_out, "\n", base::TRIM_WHITESPACE,
+                             base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : systemctl_user_out_lines) {
+    *debug_information += "\t";
+    line.AppendToString(debug_information);
+    *debug_information += "\n";
+  }
 
   return grpc::Status::OK;
 }
