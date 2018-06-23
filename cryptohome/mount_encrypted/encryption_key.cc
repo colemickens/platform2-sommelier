@@ -35,14 +35,6 @@ const char kStaticKeyFinalizationNeeded[] = "needs finalization";
 
 const size_t kMaxReadSize = 4 * 1024;
 
-// Simplify logging of base::FilePath. Note that this has appeared in upstream
-// chromium base/ already and can be removed once it has propagated to Chrome
-// OS' base copy.
-static inline std::ostream& operator<<(std::ostream& out,
-                                       const base::FilePath& file_path) {
-  return out << file_path.value();
-}
-
 bool ReadKeyFile(const base::FilePath& path,
                  brillo::SecureBlob* plaintext,
                  const brillo::SecureBlob& encryption_key) {
