@@ -110,6 +110,10 @@ void KeyboardBacklightController::Init(
       dbus_wrapper_, kDecreaseKeyboardBrightnessMethod,
       base::Bind(&KeyboardBacklightController::HandleDecreaseBrightnessRequest,
                  weak_ptr_factory_.GetWeakPtr()));
+  RegisterGetBrightnessHandler(
+      dbus_wrapper_, kGetKeyboardBrightnessPercentMethod,
+      base::Bind(&KeyboardBacklightController::HandleGetBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
 
   display_backlight_controller_ = display_backlight_controller;
   if (display_backlight_controller_)
@@ -479,6 +483,12 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
   num_user_adjustments_++;
 
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
+}
+
+void KeyboardBacklightController::HandleGetBrightnessRequest(
+    double* percent_out, bool* success_out) {
+  *percent_out = current_percent_;
+  *success_out = true;
 }
 
 bool KeyboardBacklightController::UpdateState(

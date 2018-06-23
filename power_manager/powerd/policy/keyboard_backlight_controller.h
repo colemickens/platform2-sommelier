@@ -133,6 +133,7 @@ class KeyboardBacklightController : public BacklightController,
   // Handlers for requests sent via D-Bus.
   void HandleIncreaseBrightnessRequest();
   void HandleDecreaseBrightnessRequest(bool allow_off);
+  void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
 
   // Updates the current brightness after assessing the current state (based on
   // |dimmed_for_inactivity_|, |off_for_inactivity_|, etc.). Should be called

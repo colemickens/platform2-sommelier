@@ -102,6 +102,24 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
   }
 
+  // Calls the GetKeyboardBrightnessPercent D-Bus method and returns the
+  // percentage from the reply. Adds a failure and returns 0 on error.
+  double CallGetKeyboardBrightnessPercent() {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kGetKeyboardBrightnessPercentMethod);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_.CallExportedMethodSync(&method_call);
+    if (!response) {
+      ADD_FAILURE() << kGetKeyboardBrightnessPercentMethod << " call failed";
+      return 0.0;
+    }
+
+    double percent = 0.0;
+    if (!dbus::MessageReader(response.get()).PopDouble(&percent))
+      ADD_FAILURE() << "Bad " << kGetKeyboardBrightnessPercentMethod << " arg";
+    return percent;
+  }
+
   BacklightControllerStub display_backlight_controller_;
 
   // Max and initial brightness levels for |backlight_|.
@@ -139,17 +157,16 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
 TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
   Init();
 
-  // GetBrightnessPercent() should initially return the backlight's
+  // GetKeyboardBrightnessPercent should initially return the backlight's
   // starting level.  (It's safe to compare levels and percents since we're
   // using a [0, 100] range to make things simpler.)
-  double percent = 0.0;
-  EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
-  EXPECT_DOUBLE_EQ(static_cast<double>(initial_backlight_level_), percent);
+  EXPECT_DOUBLE_EQ(static_cast<double>(initial_backlight_level_),
+                   CallGetKeyboardBrightnessPercent());
 
   // After increasing the brightness, the new level should be returned.
   CallIncreaseKeyboardBrightness();
-  EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
-  EXPECT_DOUBLE_EQ(static_cast<double>(backlight_.current_level()), percent);
+  EXPECT_DOUBLE_EQ(static_cast<double>(backlight_.current_level()),
+                   CallGetKeyboardBrightnessPercent());
 }
 
 TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
