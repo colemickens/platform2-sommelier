@@ -15,6 +15,7 @@
 
 #include <string>
 
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptolib.h"
@@ -25,56 +26,67 @@ namespace cryptohome {
 
 namespace {
 
-static const gchar* const kEncryptedFSType = "ext4";
-static const gchar* const kCryptDevName = "encstateful";
-static const float kSizePercent = 0.3;
-static const uint64_t kSectorSize = 512;
-static const uint64_t kExt4BlockSize = 4096;
-static const uint64_t kExt4MinBytes = 16 * 1024 * 1024;
-static const int kCryptAllowDiscard = 1;
+constexpr char kEncryptedFSType[] = "ext4";
+constexpr char kCryptDevName[] = "encstateful";
+constexpr char kDevMapperPath[] = "/dev/mapper";
+constexpr float kSizePercent = 0.3;
+constexpr uint64_t kSectorSize = 512;
+constexpr uint64_t kExt4BlockSize = 4096;
+constexpr uint64_t kExt4MinBytes = 16 * 1024 * 1024;
+constexpr int kCryptAllowDiscard = 1;
 
-result_code check_bind(struct bind_mount* bind, enum bind_dir dir) {
+// Temp. function to cleanly get the c_str() of FilePaths.
+// TODO(sarthakkukreti): Remove once all functions use base::FilePath
+const char* path_str(const base::FilePath& path) {
+  return path.value().c_str();
+}
+
+result_code CheckBind(BindMount* bind, BindDir dir) {
   struct passwd* user;
   struct group* group;
-  const gchar* target;
+  base::FilePath target;
 
-  if (dir == BIND_SOURCE)
+  if (dir == BindDir::BIND_SOURCE)
     target = bind->src;
   else
     target = bind->dst;
 
-  if (access(target, R_OK) && mkdir(target, bind->mode)) {
-    PERROR("mkdir(%s)", target);
+  if (access(path_str(target), R_OK) && mkdir(path_str(target), bind->mode)) {
+    PERROR("mkdir(%s)", path_str(target));
     return RESULT_FAIL_FATAL;
   }
 
   /* Destination may be on read-only filesystem, so skip tweaks. */
-  if (dir == BIND_DEST)
+  if (dir == BindDir::BIND_DEST)
     return RESULT_SUCCESS;
 
-  if (!(user = getpwnam(bind->owner))) {  // NOLINT(runtime/threadsafe_fn)
-    PERROR("getpwnam(%s)", bind->owner);
+  if (!(user =
+            getpwnam(bind->owner.c_str()))) {  // NOLINT(runtime/threadsafe_fn)
+    PERROR("getpwnam(%s)", bind->owner.c_str());
     return RESULT_FAIL_FATAL;
   }
-  if (!(group = getgrnam(bind->group))) {  // NOLINT(runtime/threadsafe_fn)
-    PERROR("getgrnam(%s)", bind->group);
+  if (!(group =
+            getgrnam(bind->group.c_str()))) {  // NOLINT(runtime/threadsafe_fn)
+    PERROR("getgrnam(%s)", bind->group.c_str());
     return RESULT_FAIL_FATAL;
   }
 
   /* Must do explicit chmod since mkdir()'s mode respects umask. */
-  if (chmod(target, bind->mode)) {
-    PERROR("chmod(%s)", target);
+  if (chmod(path_str(target), bind->mode)) {
+    PERROR("chmod(%s)", path_str(target));
     return RESULT_FAIL_FATAL;
   }
-  if (chown(target, user->pw_uid, group->gr_gid)) {
-    PERROR("chown(%s)", target);
+  if (chown(path_str(target), user->pw_uid, group->gr_gid)) {
+    PERROR("chown(%s)", path_str(target));
     return RESULT_FAIL_FATAL;
   }
 
   return RESULT_SUCCESS;
 }
 
-void spawn_resizer(const char* device, uint64_t blocks, uint64_t blocks_max) {
+void SpawnResizer(const base::FilePath& device,
+                  uint64_t blocks,
+                  uint64_t blocks_max) {
   pid_t pid;
 
   /* Skip resize before forking, if it's not going to happen. */
@@ -106,60 +118,65 @@ void spawn_resizer(const char* device, uint64_t blocks, uint64_t blocks_max) {
     goto out;
   }
 
-  filesystem_resize(device, blocks, blocks_max);
+  filesystem_resize(path_str(device), blocks, blocks_max);
 
 out:
   INFO_DONE("Done.");
   exit(RESULT_SUCCESS);
 }
 
-/* This expects "mnt" to be allocated and initialized to NULL bytes. */
-static result_code dup_bind_mount(struct bind_mount* mnt,
-                                  struct bind_mount* old,
-                                  char* dir) {
-  if (old->src && asprintf(&mnt->src, "%s%s", dir, old->src) == -1)
-    goto fail;
-  if (old->dst && asprintf(&mnt->dst, "%s%s", dir, old->dst) == -1)
-    goto fail;
-  if (!(mnt->owner = strdup(old->owner)))
-    goto fail;
-  if (!(mnt->group = strdup(old->group)))
-    goto fail;
-  mnt->mode = old->mode;
-  mnt->submount = old->submount;
-
-  return RESULT_SUCCESS;
-
-fail:
-  perror(__FUNCTION__);
-  return RESULT_FAIL_FATAL;
-}
-
 }  // namespace
 
+EncryptedFs::EncryptedFs(const base::FilePath& mount_root) {
+  dmcrypt_name = std::string(kCryptDevName);
+  rootdir = base::FilePath("/");
+  if (!mount_root.empty()) {
+    brillo::SecureBlob digest =
+        cryptohome::CryptoLib::Sha256(brillo::SecureBlob(mount_root.value()));
+    std::string hex = cryptohome::CryptoLib::BlobToHex(digest);
+    dmcrypt_name += "_" + hex.substr(0, 16);
+    rootdir = mount_root;
+  }
+  // Initialize remaining directories.
+  stateful_mount = rootdir.Append(STATEFUL_MNT);
+  block_path = rootdir.Append(STATEFUL_MNT "/encrypted.block");
+  encrypted_mount = rootdir.Append(ENCRYPTED_MNT);
+  dmcrypt_dev = base::FilePath(kDevMapperPath).Append(dmcrypt_name.c_str());
+
+  // Create bind mounts.
+  bind_mounts.push_back(
+      {rootdir.Append(ENCRYPTED_MNT "/var"), rootdir.Append("var"), "root",
+       "root", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false});
+
+  bind_mounts.push_back({rootdir.Append(ENCRYPTED_MNT "/chronos"),
+                         rootdir.Append("home/chronos"), "chronos", "chronos",
+                         S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH,
+                         true});
+}
+
 /* Do all the work needed to actually set up the encrypted partition. */
-result_code EncryptedFs::setup_encrypted(const char* encryption_key,
-                                         int rebuild) {
+result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
+                               bool rebuild) {
   gchar* lodev = NULL;
   gchar* dirty_expire_centisecs = NULL;
   char* mount_opts = NULL;
   uint64_t commit_interval = 600;
   uint64_t sectors;
-  struct bind_mount* bind;
   int sparsefd;
   struct statvfs stateful_statbuf;
   uint64_t blocks_min, blocks_max;
   result_code rc = RESULT_FAIL_FATAL;
+  std::string encryption_key_hex;
 
   if (rebuild) {
     uint64_t fs_bytes_max;
 
     /* Wipe out the old files, and ignore errors. */
-    unlink(block_path);
+    unlink(path_str(block_path));
 
     /* Calculate the desired size of the new partition. */
-    if (statvfs(stateful_mount, &stateful_statbuf)) {
-      PERROR("%s", stateful_mount);
+    if (statvfs(path_str(stateful_mount), &stateful_statbuf)) {
+      PERROR("%s", path_str(stateful_mount));
       goto finished;
     }
     fs_bytes_max = stateful_statbuf.f_blocks;
@@ -169,22 +186,23 @@ result_code EncryptedFs::setup_encrypted(const char* encryption_key,
     INFO("Creating sparse backing file with size %" PRIu64 ".", fs_bytes_max);
 
     /* Create the sparse file. */
-    sparsefd = sparse_create(block_path, fs_bytes_max);
+    sparsefd = sparse_create(path_str(block_path), fs_bytes_max);
     if (sparsefd < 0) {
-      PERROR("%s", block_path);
+      PERROR("%s", path_str(block_path));
       goto finished;
     }
   } else {
-    sparsefd = open(block_path, O_RDWR | O_NOFOLLOW);
+    sparsefd = open(path_str(block_path), O_RDWR | O_NOFOLLOW);
     if (sparsefd < 0) {
-      PERROR("%s", block_path);
+      PERROR("%s", path_str(block_path));
       goto finished;
     }
   }
 
   /* Set up loopback device. */
-  INFO("Loopback attaching %s (named %s).", block_path, dmcrypt_name);
-  lodev = loop_attach(sparsefd, dmcrypt_name);
+  INFO("Loopback attaching %s (named %s).", path_str(block_path),
+       dmcrypt_name.c_str());
+  lodev = loop_attach(sparsefd, dmcrypt_name.c_str());
   if (!lodev || strlen(lodev) == 0) {
     ERROR("loop_attach failed");
     goto finished;
@@ -198,9 +216,12 @@ result_code EncryptedFs::setup_encrypted(const char* encryption_key,
   }
 
   /* Mount loopback device with dm-crypt using the encryption key. */
-  INFO("Setting up dm-crypt %s as %s.", lodev, dmcrypt_dev);
-  if (!dm_setup(sectors, encryption_key, dmcrypt_name, lodev, dmcrypt_dev,
-                kCryptAllowDiscard)) {
+  INFO("Setting up dm-crypt %s as %s.", lodev, path_str(dmcrypt_dev));
+
+  encryption_key_hex =
+      base::HexEncode(encryption_key.data(), encryption_key.size());
+  if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name.c_str(),
+                lodev, path_str(dmcrypt_dev), kCryptAllowDiscard)) {
     /* If dm_setup() fails, it could be due to lacking
      * "allow_discard" support, so try again with discard
      * disabled. There doesn't seem to be a way to query
@@ -208,12 +229,13 @@ result_code EncryptedFs::setup_encrypted(const char* encryption_key,
      * version test or just trying to set up the dm table
      * again, so do the latter.
      */
-    if (!dm_setup(sectors, encryption_key, dmcrypt_name, lodev, dmcrypt_dev,
-                  !kCryptAllowDiscard)) {
+    if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name.c_str(),
+                  lodev, path_str(dmcrypt_dev), !kCryptAllowDiscard)) {
       ERROR("dm_setup failed");
       goto lo_cleanup;
     }
-    INFO("%s: dm-crypt does not support discard; disabling.", dmcrypt_dev);
+    INFO("%s: dm-crypt does not support discard; disabling.",
+         path_str(dmcrypt_dev));
   }
 
   /* Calculate filesystem min/max size. */
@@ -224,8 +246,9 @@ result_code EncryptedFs::setup_encrypted(const char* encryption_key,
     INFO(
         "Building filesystem on %s "
         "(blocksize:%" PRIu64 ", min:%" PRIu64 ", max:%" PRIu64 ").",
-        dmcrypt_dev, kExt4BlockSize, blocks_min, blocks_max);
-    if (!filesystem_build(dmcrypt_dev, kExt4BlockSize, blocks_min, blocks_max))
+        path_str(dmcrypt_dev), kExt4BlockSize, blocks_min, blocks_max);
+    if (!filesystem_build(path_str(dmcrypt_dev), kExt4BlockSize, blocks_min,
+                          blocks_max))
       goto dm_cleanup;
   }
 
@@ -241,30 +264,31 @@ result_code EncryptedFs::setup_encrypted(const char* encryption_key,
     goto dm_cleanup;
 
   /* Mount the dm-crypt partition finally. */
-  INFO("Mounting %s onto %s.", dmcrypt_dev, encrypted_mount);
-  if (access(encrypted_mount, R_OK) &&
-      mkdir(encrypted_mount, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
-    PERROR("%s", dmcrypt_dev);
+  INFO("Mounting %s onto %s.", path_str(dmcrypt_dev),
+       path_str(encrypted_mount));
+  if (access(path_str(encrypted_mount), R_OK) &&
+      mkdir(path_str(encrypted_mount), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+    PERROR("%s", path_str(dmcrypt_dev));
     goto dm_cleanup;
   }
-  if (mount(dmcrypt_dev, encrypted_mount, kEncryptedFSType,
+  if (mount(path_str(dmcrypt_dev), path_str(encrypted_mount), kEncryptedFSType,
             MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME, mount_opts)) {
-    PERROR("mount(%s,%s)", dmcrypt_dev, encrypted_mount);
+    PERROR("mount(%s,%s)", path_str(dmcrypt_dev), path_str(encrypted_mount));
     goto dm_cleanup;
   }
 
   /* Always spawn filesystem resizer, in case growth was interrupted. */
   /* TODO(keescook): if already full size, don't resize. */
-  spawn_resizer(dmcrypt_dev, blocks_min, blocks_max);
+  SpawnResizer(dmcrypt_dev, blocks_min, blocks_max);
 
   /* Perform bind mounts. */
-  for (bind = bind_mounts; bind->src; ++bind) {
-    INFO("Bind mounting %s onto %s.", bind->src, bind->dst);
-    if (check_bind(bind, BIND_SOURCE) != RESULT_SUCCESS ||
-        check_bind(bind, BIND_DEST) != RESULT_SUCCESS)
+  for (auto& bind : bind_mounts) {
+    INFO("Bind mounting %s onto %s.", path_str(bind.src), path_str(bind.dst));
+    if (CheckBind(&bind, BindDir::BIND_SOURCE) != RESULT_SUCCESS ||
+        CheckBind(&bind, BindDir::BIND_DEST) != RESULT_SUCCESS)
       goto unbind;
-    if (mount(bind->src, bind->dst, "none", MS_BIND, NULL)) {
-      PERROR("mount(%s,%s)", bind->src, bind->dst);
+    if (mount(path_str(bind.src), path_str(bind.dst), "none", MS_BIND, NULL)) {
+      PERROR("mount(%s,%s)", path_str(bind.src), path_str(bind.dst));
       goto unbind;
     }
   }
@@ -274,23 +298,23 @@ result_code EncryptedFs::setup_encrypted(const char* encryption_key,
   goto finished;
 
 unbind:
-  for (bind = bind_mounts; bind->src; ++bind) {
-    INFO("Unmounting %s.", bind->dst);
-    umount(bind->dst);
+  for (auto& bind : bind_mounts) {
+    INFO("Unmounting %s.", path_str(bind.dst));
+    umount(path_str(bind.dst));
   }
 
-  INFO("Unmounting %s.", encrypted_mount);
-  umount(encrypted_mount);
+  INFO("Unmounting %s.", path_str(encrypted_mount));
+  umount(path_str(encrypted_mount));
 
 dm_cleanup:
-  INFO("Removing %s.", dmcrypt_dev);
+  INFO("Removing %s.", path_str(dmcrypt_dev));
   /* TODO(keescook): something holds this open briefly on mkfs failure
    * and I haven't been able to catch it yet. Adding an "fuser" call
    * here is sufficient to lose the race. Instead, just sleep during
    * the error path.
    */
   sleep(1);
-  dm_teardown(dmcrypt_dev);
+  dm_teardown(path_str(dmcrypt_dev));
 
 lo_cleanup:
   INFO("Unlooping %s.", lodev);
@@ -308,27 +332,25 @@ finished:
  * can be cleaned up from, and continue the shutdown process on a
  * second call. If the loopback cannot be found, claim success.
  */
-result_code EncryptedFs::teardown_mount(void) {
-  struct bind_mount* bind;
-
-  for (bind = bind_mounts; bind->src; ++bind) {
-    INFO("Unmounting %s.", bind->dst);
+result_code EncryptedFs::Teardown(void) {
+  for (auto& bind : bind_mounts) {
+    INFO("Unmounting %s.", path_str(bind.dst));
     errno = 0;
     /* Allow either success or a "not mounted" failure. */
-    if (umount(bind->dst)) {
+    if (umount(path_str(bind.dst))) {
       if (errno != EINVAL) {
-        PERROR("umount(%s)", bind->dst);
+        PERROR("umount(%s)", path_str(bind.dst));
         return RESULT_FAIL_FATAL;
       }
     }
   }
 
-  INFO("Unmounting %s.", encrypted_mount);
+  INFO("Unmounting %s.", path_str(encrypted_mount));
   errno = 0;
   /* Allow either success or a "not mounted" failure. */
-  if (umount(encrypted_mount)) {
+  if (umount(path_str(encrypted_mount))) {
     if (errno != EINVAL) {
-      PERROR("umount(%s)", encrypted_mount);
+      PERROR("umount(%s)", path_str(encrypted_mount));
       return RESULT_FAIL_FATAL;
     }
   }
@@ -343,7 +365,7 @@ result_code EncryptedFs::teardown_mount(void) {
   if (getenv("MOUNT_ENCRYPTED_FSCK")) {
     char* cmd;
 
-    if (asprintf(&cmd, "fsck -a %s", dmcrypt_dev) == -1) {
+    if (asprintf(&cmd, "fsck -a %s", path_str(dmcrypt_dev)) == -1) {
       PERROR("asprintf");
     } else {
       int rc;
@@ -354,14 +376,14 @@ result_code EncryptedFs::teardown_mount(void) {
     }
   }
 
-  INFO("Removing %s.", dmcrypt_dev);
-  if (!dm_teardown(dmcrypt_dev))
-    ERROR("dm_teardown(%s)", dmcrypt_dev);
+  INFO("Removing %s.", path_str(dmcrypt_dev));
+  if (!dm_teardown(path_str(dmcrypt_dev)))
+    ERROR("dm_teardown(%s)", path_str(dmcrypt_dev));
   sync();
 
-  INFO("Unlooping %s (named %s).", block_path, dmcrypt_name);
-  if (!loop_detach_name(dmcrypt_name)) {
-    ERROR("loop_detach_name(%s)", dmcrypt_name);
+  INFO("Unlooping %s (named %s).", path_str(block_path), dmcrypt_name.c_str());
+  if (!loop_detach_name(dmcrypt_name.c_str())) {
+    ERROR("loop_detach_name(%s)", dmcrypt_name.c_str());
     return RESULT_FAIL_FATAL;
   }
   sync();
@@ -369,45 +391,44 @@ result_code EncryptedFs::teardown_mount(void) {
   return RESULT_SUCCESS;
 }
 
-result_code EncryptedFs::check_mount_states(void) {
-  struct bind_mount* bind;
-
+result_code EncryptedFs::CheckStates(void) {
   /* Verify stateful partition exists. */
-  if (access(stateful_mount, R_OK)) {
-    INFO("%s does not exist.", stateful_mount);
+  if (access(path_str(stateful_mount), R_OK)) {
+    INFO("%s does not exist.", path_str(stateful_mount));
     return RESULT_FAIL_FATAL;
   }
   /* Verify stateful is either a separate mount, or that the
    * root directory is writable (i.e. a factory install, dev mode
    * where root remounted rw, etc).
    */
-  if (same_vfs(stateful_mount, rootdir) && access(rootdir, W_OK)) {
-    INFO("%s is not mounted.", stateful_mount);
+  if (same_vfs(path_str(stateful_mount), path_str(rootdir)) &&
+      access(path_str(rootdir), W_OK)) {
+    INFO("%s is not mounted.", path_str(stateful_mount));
     return RESULT_FAIL_FATAL;
   }
 
   /* Verify encrypted partition is missing or not already mounted. */
-  if (access(encrypted_mount, R_OK) == 0 &&
-      !same_vfs(encrypted_mount, stateful_mount)) {
-    INFO("%s already appears to be mounted.", encrypted_mount);
+  if (access(path_str(encrypted_mount), R_OK) == 0 &&
+      !same_vfs(path_str(encrypted_mount), path_str(stateful_mount))) {
+    INFO("%s already appears to be mounted.", path_str(encrypted_mount));
     return RESULT_SUCCESS;
   }
 
   /* Verify that bind mount targets exist. */
-  for (bind = bind_mounts; bind->src; ++bind) {
-    if (access(bind->dst, R_OK)) {
-      PERROR("%s mount point is missing.", bind->dst);
+  for (auto& bind : bind_mounts) {
+    if (access(path_str(bind.dst), R_OK)) {
+      PERROR("%s mount point is missing.", path_str(bind.dst));
       return RESULT_FAIL_FATAL;
     }
   }
 
   /* Verify that old bind mounts on stateful haven't happened yet. */
-  for (bind = bind_mounts; bind->src; ++bind) {
-    if (bind->submount)
+  for (auto& bind : bind_mounts) {
+    if (bind.submount)
       continue;
 
-    if (same_vfs(bind->dst, stateful_mount)) {
-      INFO("%s already bind mounted.", bind->dst);
+    if (same_vfs(path_str(bind.dst), path_str(stateful_mount))) {
+      INFO("%s already bind mounted.", path_str(bind.dst));
       return RESULT_FAIL_FATAL;
     }
   }
@@ -416,87 +437,33 @@ result_code EncryptedFs::check_mount_states(void) {
   return RESULT_SUCCESS;
 }
 
-result_code EncryptedFs::report_mount_info(void) const {
-  struct bind_mount* mnt;
-  printf("rootdir: %s\n", rootdir);
-  printf("stateful_mount: %s\n", stateful_mount);
-  printf("key_path: %s\n", key_path);
-  printf("block_path: %s\n", block_path);
-  printf("encrypted_mount: %s\n", encrypted_mount);
-  printf("dmcrypt_name: %s\n", dmcrypt_name);
-  printf("dmcrypt_dev: %s\n", dmcrypt_dev);
+result_code EncryptedFs::ReportInfo(void) const {
+  printf("rootdir: %s\n", path_str(rootdir));
+  printf("stateful_mount: %s\n", path_str(stateful_mount));
+  printf("block_path: %s\n", path_str(block_path));
+  printf("encrypted_mount: %s\n", path_str(encrypted_mount));
+  printf("dmcrypt_name: %s\n", dmcrypt_name.c_str());
+  printf("dmcrypt_dev: %s\n", path_str(dmcrypt_dev));
   printf("bind mounts:\n");
-  for (mnt = bind_mounts; mnt->src; ++mnt) {
-    printf("\tsrc:%s\n", mnt->src);
-    printf("\tdst:%s\n", mnt->dst);
-    printf("\towner:%s\n", mnt->owner);
-    printf("\tmode:%o\n", mnt->mode);
-    printf("\tsubmount:%d\n", mnt->submount);
+  for (auto& mnt : bind_mounts) {
+    printf("\tsrc:%s\n", path_str(mnt.src));
+    printf("\tdst:%s\n", path_str(mnt.dst));
+    printf("\towner:%s\n", mnt.owner.c_str());
+    printf("\tmode:%o\n", mnt.mode);
+    printf("\tsubmount:%d\n", mnt.submount);
     printf("\n");
   }
   return RESULT_SUCCESS;
 }
 
-result_code EncryptedFs::prepare_paths(gchar* mount_root) {
-  char* dir = NULL;
-  struct bind_mount* old;
-  struct bind_mount* mnt;
-
-  mnt = bind_mounts = (struct bind_mount*)calloc(
-      sizeof(bind_mounts_default) / sizeof(*bind_mounts_default),
-      sizeof(*bind_mounts_default));
-  if (!mnt) {
-    perror("calloc");
-    return RESULT_FAIL_FATAL;
+brillo::SecureBlob EncryptedFs::GetKey() const {
+  char* key = dm_get_key(path_str(dmcrypt_dev));
+  brillo::SecureBlob encryption_key;
+  if (!base::HexStringToBytes(key, &encryption_key)) {
+    ERROR("Failed to decode encryption key.");
+    return brillo::SecureBlob();
   }
-
-  if (mount_root != NULL) {
-    brillo::SecureBlob digest;
-    std::string hex;
-
-    if (asprintf(&rootdir, "%s/", dir) == -1)
-      goto fail;
-
-    /* Generate a shortened hash for non-default cryptnames,
-     * which will get re-used in the loopback name, which
-     * must be less than 64 (LO_NAME_SIZE) bytes. */
-    digest = CryptoLib::Sha256(brillo::SecureBlob(std::string(mount_root)));
-    hex = CryptoLib::BlobToHex(digest).substr(0, 16);
-    if (asprintf(&dmcrypt_name, "%s_%s", kCryptDevName, hex.c_str()) == -1)
-      goto fail;
-  } else {
-    rootdir = const_cast<gchar*>("/");
-    if (!(dmcrypt_name = strdup(kCryptDevName)))
-      goto fail;
-  }
-
-  if (asprintf(&stateful_mount, "%s%s", rootdir, STATEFUL_MNT) == -1)
-    goto fail;
-  if (asprintf(&key_path, "%s%s", rootdir, STATEFUL_MNT "/encrypted.key") == -1)
-    goto fail;
-  if (asprintf(&block_path, "%s%s", rootdir, STATEFUL_MNT "/encrypted.block") ==
-      -1)
-    goto fail;
-  if (asprintf(&encrypted_mount, "%s%s", rootdir, ENCRYPTED_MNT) == -1)
-    goto fail;
-  if (asprintf(&dmcrypt_dev, "/dev/mapper/%s", dmcrypt_name) == -1)
-    goto fail;
-
-  for (old = bind_mounts_default; old->src; ++old) {
-    result_code rc = dup_bind_mount(mnt++, old, rootdir);
-    if (rc != RESULT_SUCCESS)
-      return rc;
-  }
-
-  return RESULT_SUCCESS;
-
-fail:
-  perror("asprintf");
-  return RESULT_FAIL_FATAL;
-}
-
-char* EncryptedFs::get_mount_key() const {
-  return dm_get_key(dmcrypt_dev);
+  return encryption_key;
 }
 
 }  // namespace cryptohome

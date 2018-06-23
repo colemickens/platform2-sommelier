@@ -45,8 +45,6 @@ struct timeval tick = {};
 struct timeval tick_start = {};
 #endif
 
-static gchar* rootdir = NULL;
-
 static const char kMountEncryptedMetricsPath[] = "/run/metrics.mount-encrypted";
 
 namespace metrics {
@@ -88,6 +86,7 @@ static int has_chromefw(void) {
 // attempt to query the TPM again.
 static result_code finalize_from_cmdline(
     const cryptohome::EncryptedFs& encrypted_fs,
+    const base::FilePath& rootdir,
     char* key) {
   // Load the system key.
   brillo::SecureBlob system_key;
@@ -98,7 +97,7 @@ static result_code finalize_from_cmdline(
   }
 
   FixedSystemKeyLoader loader(system_key);
-  EncryptionKey key_manager(&loader, base::FilePath(rootdir));
+  EncryptionKey key_manager(&loader, rootdir);
   result_code rc = key_manager.SetTpmSystemKey();
   if (rc != RESULT_SUCCESS) {
     return rc;
@@ -116,26 +115,22 @@ static result_code finalize_from_cmdline(
   }
 
   // Load the encryption key.
-  char* encryption_key = encrypted_fs.get_mount_key();
-  if (!encryption_key) {
+  brillo::SecureBlob encryption_key = encrypted_fs.GetKey();
+  if (encryption_key.empty()) {
     ERROR("Could not get mount encryption key");
-    return RESULT_FAIL_FATAL;
-  }
-  brillo::SecureBlob encryption_key_blob;
-  if (!brillo::SecureBlob::HexStringToSecureBlob(std::string(encryption_key),
-                                                 &encryption_key_blob)) {
-    ERROR("Failed to decode encryption key.");
     return RESULT_FAIL_FATAL;
   }
 
   // Persist the encryption key to disk.
-  key_manager.PersistEncryptionKey(encryption_key_blob);
+  key_manager.PersistEncryptionKey(encryption_key);
 
   return RESULT_SUCCESS;
 }
 
-static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs) {
+static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs,
+                               const base::FilePath& rootdir) {
   Tpm tpm;
+
   printf("TPM: %s\n", tpm.available() ? "yes" : "no");
   if (tpm.available()) {
     bool owned = false;
@@ -147,7 +142,7 @@ static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs) {
   printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
   if (has_chromefw()) {
     brillo::SecureBlob system_key;
-    auto loader = SystemKeyLoader::Create(&tpm, base::FilePath(rootdir));
+    auto loader = SystemKeyLoader::Create(&tpm, rootdir);
     result_code rc = loader->Load(&system_key);
     if (rc != RESULT_SUCCESS) {
       printf("NVRAM: missing.\n");
@@ -157,9 +152,8 @@ static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs) {
   } else {
     printf("NVRAM: not present\n");
   }
-
   // Report info from the encrypted mount.
-  encrypted_fs.report_mount_info();
+  encrypted_fs.ReportInfo();
 
   return RESULT_SUCCESS;
 }
@@ -234,26 +228,25 @@ bool SendSecretToBiodTmpFile(const EncryptionKey& key) {
 
 int main(int argc, char* argv[]) {
   result_code rc;
-  rootdir = getenv("MOUNT_ENCRYPTED_ROOT");
-  cryptohome::EncryptedFs encrypted_fs;
+  base::FilePath rootdir = base::FilePath(getenv("MOUNT_ENCRYPTED_ROOT"));
+  cryptohome::EncryptedFs encrypted_fs(rootdir);
 
   MetricsLibrary metrics;
   metrics.Init();
   metrics.SetOutputFile(kMountEncryptedMetricsPath);
 
   INFO_INIT("Starting.");
-  rc = encrypted_fs.prepare_paths(rootdir);
-  if (rc != RESULT_SUCCESS)
-    return rc;
 
   bool use_factory_system_key = false;
   if (argc > 1) {
     if (!strcmp(argv[1], "umount")) {
-      return encrypted_fs.teardown_mount();
+      return encrypted_fs.Teardown();
     } else if (!strcmp(argv[1], "info")) {
-      return report_info(encrypted_fs);
+      // Report info from the encrypted mount.
+      return report_info(encrypted_fs, rootdir);
     } else if (!strcmp(argv[1], "finalize")) {
-      return finalize_from_cmdline(encrypted_fs, argc > 2 ? argv[2] : NULL);
+      return finalize_from_cmdline(encrypted_fs, rootdir,
+                                   argc > 2 ? argv[2] : NULL);
     } else if (!strcmp(argv[1], "factory")) {
       use_factory_system_key = true;
     } else {
@@ -265,13 +258,13 @@ int main(int argc, char* argv[]) {
   /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
    * chromeos_startup do the stateful wipe.
    */
-  rc = encrypted_fs.check_mount_states();
+  rc = encrypted_fs.CheckStates();
   if (rc != RESULT_SUCCESS)
     return rc;
 
   Tpm tpm;
-  auto loader = SystemKeyLoader::Create(&tpm, base::FilePath(rootdir));
-  EncryptionKey key(loader.get(), base::FilePath(rootdir));
+  auto loader = SystemKeyLoader::Create(&tpm, rootdir);
+  EncryptionKey key(loader.get(), rootdir);
   if (use_factory_system_key) {
     rc = key.SetFactorySystemKey();
   } else if (has_chromefw()) {
@@ -301,10 +294,7 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Failed to load system key, biod won't get a TPM seed.";
   }
 
-  std::string encryption_key_hex =
-      base::HexEncode(key.encryption_key().data(), key.encryption_key().size());
-  rc = encrypted_fs.setup_encrypted(encryption_key_hex.c_str(),
-                                    key.is_fresh());
+  rc = encrypted_fs.Setup(key.encryption_key(), key.is_fresh());
   if (rc == RESULT_SUCCESS) {
     bool lockbox_valid = false;
     if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
