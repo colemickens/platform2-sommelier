@@ -16,6 +16,10 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 
+#include <base/files/file_path.h>
+#include <base/macros.h>
+
+
 #define DIGEST_LENGTH SHA256_DIGEST_LENGTH
 
 #define _ERROR(f, a...)                                                \
@@ -172,5 +176,13 @@ enum result_code {
   RESULT_SUCCESS = 0,
   RESULT_FAIL_FATAL = 1,
 };
+
+// Simplify logging of base::FilePath. Note that this has appeared in upstream
+// chromium base/ already and can be removed once it has propagated to Chrome
+// OS' base copy.
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const base::FilePath& file_path) {
+  return out << file_path.value();
+}
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_H_
