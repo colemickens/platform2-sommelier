@@ -301,6 +301,16 @@ class StateControllerTest : public testing::Test {
     dbus_wrapper_.EmitRegisteredSignal(update_engine_proxy_, &signal);
   }
 
+  // Calls the DeferScreenDim D-Bus method, returning true on success and false
+  // if an error was returned.
+  bool CallDeferScreenDim() WARN_UNUSED_RESULT {
+    dbus::MethodCall method_call(kPowerManagerInterface, kDeferScreenDimMethod);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_.CallExportedMethodSync(&method_call);
+    return response.get() &&
+           response->GetMessageType() != dbus::Message::MESSAGE_ERROR;
+  }
+
   // Generates responses for D-Bus method calls to other processes sent via
   // |dbus_wrapper_|.
   std::unique_ptr<dbus::Response> HandleDBusMethodCall(dbus::ObjectProxy* proxy,
@@ -1981,8 +1991,34 @@ TEST_F(StateControllerTest, ScreenDimImminent) {
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimImminentDelay));
   EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimDelay));
+
+  // Reset everything, wait for the dim-imminent signal, and request that screen
+  // dimming be deferred.
+  controller_.HandleUserActivity();
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
+  EXPECT_TRUE(CallDeferScreenDim());
+
+  // The timer should've been reset when we called DeferScreenDim, so wait for
+  // the next dim-imminent signal and for the screen to be dimmed.
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // Defer requests should be rejected if the screen is already dimmed.
+  EXPECT_FALSE(AdvanceTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(5)));
+  EXPECT_FALSE(CallDeferScreenDim());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // They should also be rejected if screen-dim isn't imminent.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  EXPECT_FALSE(CallDeferScreenDim());
 }
 
 }  // namespace policy

@@ -311,6 +311,10 @@ void StateController::Init(Delegate* delegate,
       kGetInactivityDelaysMethod,
       base::Bind(&StateController::HandleGetInactivityDelaysMethodCall,
                  weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->ExportMethod(
+      kDeferScreenDimMethod,
+      base::Bind(&StateController::HandleDeferScreenDimMethodCall,
+                 weak_ptr_factory_.GetWeakPtr()));
 
   update_engine_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(update_engine::kUpdateEngineServiceName,
@@ -675,6 +679,8 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
     last_time = std::max(last_time, audio_activity_->GetLastActiveTime(now));
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
+  if (emit_screen_dim_imminent_)
+    last_time = std::max(last_time, last_defer_screen_dim_time_);
 
   // All types of wake locks defer the idle action.
   last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));
@@ -690,6 +696,8 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
       waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
+  if (emit_screen_dim_imminent_)
+    last_time = std::max(last_time, last_defer_screen_dim_time_);
 
   // Only full-brightness wake locks keep the screen from dimming.
   last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));
@@ -1148,6 +1156,24 @@ void StateController::HandleGetInactivityDelaysMethodCall(
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(CreateInactivityDelaysProto());
   response_sender.Run(std::move(response));
+}
+
+void StateController::HandleDeferScreenDimMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  if (!sent_screen_dim_imminent_ || screen_dimmed_) {
+    LOG(WARNING) << "Rejected request from " << method_call->GetSender()
+                 << " to defer screen dimming";
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, "Screen dim is not imminent"));
+    return;
+  }
+
+  LOG(INFO) << "Got request from " << method_call->GetSender()
+            << " to defer screen dimming";
+  last_defer_screen_dim_time_ = clock_->GetCurrentTime();
+  UpdateState();
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void StateController::HandleUpdateEngineAvailable(bool available) {

@@ -324,8 +324,11 @@ class StateController : public PrefsObserver {
   // delays.
   PowerManagementPolicy::Delays CreateInactivityDelaysProto() const;
 
-  // Replies to GetInactivityDelays D-Bus method calls.
+  // Handles various D-Bus method calls.
   void HandleGetInactivityDelaysMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  void HandleDeferScreenDimMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
@@ -460,6 +463,9 @@ class StateController : public PrefsObserver {
   // Time of the last report of user or video activity.
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;
+
+  // Time of the last DeferScreenDim D-Bus method call.
+  base::TimeTicks last_defer_screen_dim_time_;
 
   // Information about audio activity and full-brightness, screen-on-but-dimmed,
   // and system-level wake locks.
