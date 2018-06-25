@@ -127,6 +127,27 @@ out:
   exit(RESULT_SUCCESS);
 }
 
+std::string GetMountOpts() {
+  // Use vm.dirty_expire_centisecs / 100 as the commit interval.
+  std::string dirty_expire;
+  uint64_t dirty_expire_centisecs;
+  uint64_t commit_interval = 600;
+
+  if (base::ReadFileToString(base::FilePath(kProcDirtyExpirePath),
+                             &dirty_expire) &&
+      base::StringToUint64(dirty_expire, &dirty_expire_centisecs)) {
+    LOG(INFO) << "Using vm.dirty_expire_centisecs/100 as the commit interval";
+
+    // Keep commit interval as 5 seconds (default for ext4) for smaller
+    // values of dirty_expire_centisecs.
+    if (dirty_expire_centisecs < 600)
+      commit_interval = 5;
+    else
+      commit_interval = dirty_expire_centisecs / 100;
+  }
+  return "discard,commit=" + std::to_string(commit_interval);
+}
+
 }  // namespace
 
 EncryptedFs::EncryptedFs(const base::FilePath& mount_root) {
@@ -156,42 +177,50 @@ EncryptedFs::EncryptedFs(const base::FilePath& mount_root) {
                           true});
 }
 
+int EncryptedFs::Purge() {
+  LOG(INFO) << "Purging block file";
+  return unlink(path_str(block_path_));
+}
+
+int EncryptedFs::CreateSparseBackingFile() {
+  uint64_t fs_bytes_max;
+  struct statvfs stateful_statbuf;
+
+  // Calculate the desired size of the new partition.
+  if (statvfs(path_str(stateful_mount_), &stateful_statbuf)) {
+    PLOG(ERROR) << stateful_mount_;
+    return -1;
+  }
+  fs_bytes_max = stateful_statbuf.f_blocks;
+  fs_bytes_max *= kSizePercent;
+  fs_bytes_max *= stateful_statbuf.f_frsize;
+
+  LOG(INFO) << "Creating sparse backing file with size " << fs_bytes_max;
+
+  // Create the sparse file and return the descriptor.
+  return sparse_create(path_str(block_path_), fs_bytes_max);
+}
+
 // Do all the work needed to actually set up the encrypted partition.
 result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
                                bool rebuild) {
   int sparsefd;
-  struct statvfs stateful_statbuf;
   result_code rc = RESULT_FAIL_FATAL;
 
   if (rebuild) {
-    uint64_t fs_bytes_max;
-
     // Wipe out the old files, and ignore errors.
-    unlink(path_str(block_path_));
+    Purge();
 
-    // Calculate the desired size of the new partition.
-    if (statvfs(path_str(stateful_mount_), &stateful_statbuf)) {
-      PLOG(ERROR) << stateful_mount_;
-      return rc;
-    }
-    fs_bytes_max = stateful_statbuf.f_blocks;
-    fs_bytes_max *= kSizePercent;
-    fs_bytes_max *= stateful_statbuf.f_frsize;
-
-    LOG(INFO) << "Creating sparse backing file with size " << fs_bytes_max;
-
-    // Create the sparse file.
-    sparsefd = sparse_create(path_str(block_path_), fs_bytes_max);
-    if (sparsefd < 0) {
-      PLOG(ERROR) << block_path_;
-      return rc;
-    }
+    // Create new sparse file.
+    sparsefd = CreateSparseBackingFile();
   } else {
     sparsefd = open(path_str(block_path_), O_RDWR | O_NOFOLLOW);
-    if (sparsefd < 0) {
-      PLOG(ERROR) << block_path_;
-      return rc;
-    }
+  }
+
+  // Return failure if the fd is invalid.
+  if (sparsefd < 0) {
+    PLOG(ERROR) << block_path_;
+    return rc;
   }
 
   // Set up loopback device.
@@ -251,25 +280,6 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     }
   }
 
-  // Use vm.dirty_expire_centisecs / 100 as the commit interval.
-  std::string dirty_expire;
-  uint64_t dirty_expire_centisecs;
-  uint64_t commit_interval = 600;
-
-  if (base::ReadFileToString(base::FilePath(kProcDirtyExpirePath),
-                              &dirty_expire) &&
-      base::StringToUint64(dirty_expire, &dirty_expire_centisecs)) {
-    LOG(INFO) << "Using vm.dirty_expire_centisecs/100 as the commit interval";
-
-    // Keep commit interval as 5 seconds (default for ext4) for smaller
-    // values of dirty_expire_centisecs.
-    if (dirty_expire_centisecs < 600)
-      commit_interval = 5;
-    else
-      commit_interval = dirty_expire_centisecs / 100;
-  }
-  std::string mount_opts = "discard,commit=" + std::to_string(commit_interval);
-
   // Mount the dm-crypt partition finally.
   LOG(INFO) << "Mounting " << dmcrypt_dev_ << " onto " << encrypted_mount_;
   if (access(path_str(encrypted_mount_), R_OK) &&
@@ -281,7 +291,7 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   }
   if (mount(path_str(dmcrypt_dev_), path_str(encrypted_mount_),
             kEncryptedFSType, MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
-            mount_opts.c_str())) {
+            GetMountOpts().c_str())) {
     PLOG(ERROR) << "mount: " << dmcrypt_dev_ << ", " << encrypted_mount_;
     TeardownByStage(TeardownStage::kTeardownDevmapper, true);
     return rc;

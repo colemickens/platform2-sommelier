@@ -69,6 +69,9 @@ class EncryptedFs {
   //   encryption_key - dmcrypt encryption key.
   //   rebuild - cleanup and recreate the encrypted mount.
   result_code Setup(const brillo::SecureBlob& encryption_key, bool rebuild);
+  // Purge - obliterate the sparse file. This should be called only
+  // when the encrypted fs is not mounted.
+  int Purge(void);
   // Teardown - stepwise unmounts the | ext4 | dmcrypt | loopback | tower
   // on top of the sparse file.
   result_code Teardown(void);
@@ -82,6 +85,9 @@ class EncryptedFs {
   brillo::SecureBlob GetKey() const;
 
  private:
+  // CreateSparseBackingFile creates the sparse backing file for the
+  // encrypted mount and returns an open fd, if successful.
+  int CreateSparseBackingFile();
   // TeardownByStage allows higher granularity over teardown
   // processes.
   result_code TeardownByStage(TeardownStage stage, bool ignore_errors);
