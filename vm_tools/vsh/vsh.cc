@@ -327,10 +327,6 @@ int main(int argc, char** argv) {
   base::ScopedFD ttyfd(
       HANDLE_EINTR(open(vm_tools::vsh::kDevTtyPath,
                         O_RDONLY | O_NOCTTY | O_CLOEXEC | O_NONBLOCK)));
-  if (!ttyfd.is_valid()) {
-    PLOG(ERROR) << "Failed to open /dev/tty";
-    return EXIT_FAILURE;
-  }
 
   // Set terminal to raw mode. Note that the client /must/ cleanly exit
   // the message loop below to restore termios settings.

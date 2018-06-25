@@ -49,16 +49,7 @@ namespace vsh {
 std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
                                              const std::string& user,
                                              const std::string& container) {
-  base::ScopedFD tty_fd(
-      HANDLE_EINTR(open(vm_tools::vsh::kDevTtyPath,
-                        O_RDONLY | O_NOCTTY | O_CLOEXEC | O_NONBLOCK)));
-  if (!tty_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open /dev/tty";
-    return nullptr;
-  }
-
-  auto client = std::unique_ptr<VshClient>(
-      new VshClient(std::move(tty_fd), std::move(sock_fd)));
+  auto client = std::unique_ptr<VshClient>(new VshClient(std::move(sock_fd)));
 
   if (!client->Init(user, container)) {
     return nullptr;
@@ -67,8 +58,7 @@ std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
   return client;
 }
 
-VshClient::VshClient(base::ScopedFD tty_fd, base::ScopedFD sock_fd)
-    : tty_fd_(std::move(tty_fd)), sock_fd_(std::move(sock_fd)) {}
+VshClient::VshClient(base::ScopedFD sock_fd) : sock_fd_(std::move(sock_fd)) {}
 
 bool VshClient::Init(const std::string& user, const std::string& container) {
   // Set up the connection with the guest. The setup process is:
@@ -238,7 +228,7 @@ void VshClient::HandleStdinReadable() {
     PLOG(ERROR) << "Failed to read from stdin";
     Shutdown();
   } else if (count == 0) {
-    Shutdown();
+    return;
   }
 
   data_message->set_stream(STDIN_STREAM);
@@ -258,7 +248,10 @@ bool VshClient::SendCurrentWindowSize() {
 
   struct winsize winsize;
 
-  if (ioctl(tty_fd_.get(), TIOCGWINSZ, &winsize) < 0) {
+  if (!isatty(STDIN_FILENO))
+    return true;
+
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &winsize) < 0) {
     PLOG(ERROR) << "Failed to get tty window size";
     Shutdown();
     return false;

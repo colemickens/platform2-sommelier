@@ -29,7 +29,7 @@ class VshClient {
   int exit_code();
 
  private:
-  VshClient(base::ScopedFD tty_fd, base::ScopedFD sock_fd);
+  explicit VshClient(base::ScopedFD sock_fd);
 
   bool Init(const std::string& user, const std::string& container);
 
@@ -39,7 +39,6 @@ class VshClient {
   void HandleStdinReadable();
   bool SendCurrentWindowSize();
 
-  base::ScopedFD tty_fd_;
   base::ScopedFD sock_fd_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
