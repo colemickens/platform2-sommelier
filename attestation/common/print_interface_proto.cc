@@ -25,7 +25,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
-#include "attestation/common/print_common_proto.h"
+#include "attestation/common/print_attestation_ca_proto.h"
+#include "attestation/common/print_keystore_proto.h"
 
 namespace attestation {
 

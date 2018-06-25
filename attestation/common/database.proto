@@ -6,7 +6,8 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
-import "common.proto";
+import "attestation_ca.proto";
+import "keystore.proto";
 
 package attestation;
 
@@ -134,7 +135,10 @@ message AttestationDatabase {
     optional int32 features = 1;
     optional IdentityBinding identity_binding = 2;
     optional IdentityKey identity_key = 3;
+    // PCR quotes. Keys are PCR indices.
     map<int32, Quote> pcr_quotes = 4;
+    // NVRAM quoted by AIK. Keys are values of NVRAMQuoteType.
+    map<int32, Quote> nvram_quotes = 5;
   }
 
   // The unique device EID.

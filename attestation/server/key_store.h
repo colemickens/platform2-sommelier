@@ -21,7 +21,7 @@
 
 #include <base/macros.h>
 
-#include "attestation/common/common.pb.h"
+#include "attestation/common/keystore.pb.h"
 
 namespace attestation {
 

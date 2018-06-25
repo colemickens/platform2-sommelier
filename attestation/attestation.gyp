@@ -17,7 +17,8 @@
 {
   'target_defaults': {
     'variables': {
-      'deps': [  # This is a list of pkg-config dependencies
+      'deps': [
+        # This is a list of pkg-config dependencies
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'protobuf-lite',
@@ -46,11 +47,12 @@
       },
       'sources': [
         '<(proto_in_dir)/attestation_ca.proto',
-        '<(proto_in_dir)/common.proto',
         '<(proto_in_dir)/database.proto',
         '<(proto_in_dir)/interface.proto',
-        'common/print_common_proto.cc',
+        '<(proto_in_dir)/keystore.proto',
+        'common/print_attestation_ca_proto.cc',
         'common/print_interface_proto.cc',
+        'common/print_keystore_proto.cc',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -66,10 +68,10 @@
         'variables': {
           'deps': [
             'openssl',
+            'vboot_host',
           ],
         },
         'libraries': [
-          '-lvboot_host',
         ],
       },
       'dependencies': [
@@ -120,7 +122,9 @@
     {
       'target_name': 'libattestation',
       'type': 'shared_library',
-      'cflags': ['-fvisibility=default'],
+      'cflags': [
+        '-fvisibility=default',
+      ],
       'sources': [
       ],
       'dependencies': [
@@ -139,7 +143,7 @@
         'client_library',
         'common_library',
         'proto_library',
-      ]
+      ],
     },
     # A library for server code.
     {
@@ -147,8 +151,8 @@
       'type': 'static_library',
       'sources': [
         'server/attestation_service.cc',
-        'server/dbus_service.cc',
         'server/database_impl.cc',
+        'server/dbus_service.cc',
         'server/pkcs11_key_store.cc',
       ],
       'all_dependent_settings': {
