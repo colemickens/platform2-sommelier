@@ -49,6 +49,12 @@
 #ifndef PEER_CMD_PREFIX
 #error PEER_CMD_PREFIX must be defined
 #endif
+#ifndef FRAME_COLOR
+#error FRAME_COLOR must be defined
+#endif
+#ifndef DARK_FRAME_COLOR
+#error DARK_FRAME_COLOR must be defined
+#endif
 
 struct sl_data_source {
   struct sl_context* ctx;

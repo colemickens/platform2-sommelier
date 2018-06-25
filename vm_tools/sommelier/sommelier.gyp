@@ -28,7 +28,7 @@
     'frame_color%': '"#f2f2f2"',
 
     # Set this to the dark frame color to use for Xwayland clients.
-    'dark_frame_color%': '"#121D23"',
+    'dark_frame_color%': '"#323639"',
   },
   'targets': [
     {
