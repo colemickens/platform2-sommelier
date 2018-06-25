@@ -82,12 +82,12 @@ TEST_F(HostsModifierTest, SettingRemovingHostnames) {
   EXPECT_TRUE(hosts_modifier()->Init(hosts_file()));
   // Valid hostname for default container.
   EXPECT_TRUE(hosts_modifier()->SetHostnameIpMapping(
-      "linuxhost", "100.115.92.24", "", &err));
+      "penguin.linux.test", "100.115.92.24", "", &err));
   // Valid hostnames for vm/container.
   EXPECT_TRUE(hosts_modifier()->SetHostnameIpMapping(
-      "foo12-local", "100.115.92.22", "", &err));
+      "foo12.linux.test", "100.115.92.22", "", &err));
   EXPECT_TRUE(hosts_modifier()->SetHostnameIpMapping(
-      "penguin-termina-local", "100.115.92.253", "", &err));
+      "penguin.termina.linux.test", "100.115.92.253", "", &err));
   // Invalid hostnames.
   EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping(
       "google.com", "100.115.92.24", "", &err));
@@ -95,36 +95,44 @@ TEST_F(HostsModifierTest, SettingRemovingHostnames) {
       "localhost", "100.115.92.24", "", &err));
   EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping(
       "-foo-local", "100.115.92.24", "", &err));
+  EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping(
+      "foo..linux.test", "100.115.92.24", "", &err));
+  EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping(
+      ".linux.test", "100.115.92.24", "", &err));
+  EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping(
+      "linux.test", "100.115.92.24", "", &err));
   EXPECT_FALSE(
       hosts_modifier()->SetHostnameIpMapping("", "100.115.92.24", "", &err));
   // Invalid IPs.
   EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping(
-      "linuxhost", "100.115.91.24", "", &err));
-  EXPECT_FALSE(
-      hosts_modifier()->SetHostnameIpMapping("linuxhost", "8.8.8.8", "", &err));
+      "penguin.linux.test", "100.115.91.24", "", &err));
+  EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping("penguin.linux.test",
+                                                      "8.8.8.8", "", &err));
   EXPECT_FALSE(hosts_modifier()->SetHostnameIpMapping(
-      "linuxhost", "101.115.92.24", "", &err));
+      "penguin.linux.test", "101.115.92.24", "", &err));
   // Verify the contents of the hosts file. We are assuming an ordered map is
   // used here (which it is in the code) to make analyzing the results easier.
   std::string extra_contents = kBaseFileContents;
   extra_contents += kFileModificationDelimeter;
-  extra_contents += "100.115.92.22 foo12-local\n";
-  extra_contents += "100.115.92.24 linuxhost\n";
-  extra_contents += "100.115.92.253 penguin-termina-local\n";
+  extra_contents += "100.115.92.22 foo12.linux.test\n";
+  extra_contents += "100.115.92.24 penguin.linux.test\n";
+  extra_contents += "100.115.92.253 penguin.termina.linux.test\n";
   EXPECT_EQ(extra_contents, ReadHostsContents());
 
   // Removing an invalid hostname should fail.
   EXPECT_FALSE(hosts_modifier()->RemoveHostnameIpMapping("bar-local", &err));
   EXPECT_FALSE(hosts_modifier()->RemoveHostnameIpMapping("google.com", &err));
   // Removing a valid hostname should succeed.
-  EXPECT_TRUE(hosts_modifier()->RemoveHostnameIpMapping("linuxhost", &err));
-  EXPECT_TRUE(hosts_modifier()->RemoveHostnameIpMapping("foo12-local", &err));
+  EXPECT_TRUE(
+      hosts_modifier()->RemoveHostnameIpMapping("penguin.linux.test", &err));
+  EXPECT_TRUE(
+      hosts_modifier()->RemoveHostnameIpMapping("foo12.linux.test", &err));
 
   // Verify the contents of the hosts file again, there should be one entry
   // left.
   extra_contents = kBaseFileContents;
   extra_contents += kFileModificationDelimeter;
-  extra_contents += "100.115.92.253 penguin-termina-local\n";
+  extra_contents += "100.115.92.253 penguin.termina.linux.test\n";
   EXPECT_EQ(extra_contents, ReadHostsContents());
 }
 

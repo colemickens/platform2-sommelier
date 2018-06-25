@@ -19,8 +19,7 @@ constexpr size_t kMaxFileSize = 1048576;  // 1MB.
 // are restarted we know what the base file was before we modified it.
 constexpr char kFileModificationDelimeter[] =
     "\n#####DYNAMIC-CROSDNS-ENTRIES#####\n";
-constexpr char kAllowedHostnameFull[] = "linuxhost";
-constexpr char kAllowedHostnameSuffix[] = "-local";
+constexpr char kAllowedHostnameSuffix[] = ".linux.test";
 constexpr uint32_t kAllowedIpSubnet = 0x64735c00;  // 100.115.92.0
 constexpr uint32_t kAllowedIpMask = 0xFFFFFF00;
 
@@ -33,26 +32,31 @@ bool IsAllowedIpv4Address(uint32_t ipv4, std::string* err_out) {
   return true;
 }
 
-// Hostname must be either 'linuxhost' or *-localhost and use legal chars.
+// Hostname must be *.test and use legal chars.
 bool IsAllowedHostname(const std::string& hostname, std::string* err_out) {
   // Make sure this is a legal hostname. It must be comprised of alphanumeric
-  // characters or dashes. The dash may not be the first character. It must also
-  // either match 'linuxhost' or have the '-local' suffix.
-  if (hostname != kAllowedHostnameFull &&
-      !base::EndsWith(hostname, kAllowedHostnameSuffix,
+  // characters, dashes or dots. The dot or dash may not be the first character.
+  // It may not have consecutive dots. It must also have the '.test' suffix.
+  if (!base::EndsWith(hostname, kAllowedHostnameSuffix,
                       base::CompareCase::SENSITIVE)) {
     *err_out = "Attempt to add invalid hostname to mapping of: " + hostname;
     return false;
   }
-  if (hostname[0] == '-') {
-    *err_out = "First char in hostname may not be a dash: " + hostname;
+  if (hostname[0] == '-' || hostname[0] == '.') {
+    *err_out = "First char in hostname may not be a dot or dash: " + hostname;
     return false;
   }
+  bool last_was_dot = false;
   for (auto c : hostname) {
     if (!base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c) && c != '-') {
+      if (c == '.' && !last_was_dot) {
+        last_was_dot = true;
+        continue;
+      }
       *err_out = "Invalid char in hostname: " + hostname;
       return false;
     }
+    last_was_dot = false;
   }
   return true;
 }

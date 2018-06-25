@@ -40,7 +40,7 @@ constexpr char kDefaultVmName[] = "termina";
 constexpr char kDefaultContainerName[] = "penguin";
 
 // Hostname for the default VM/container.
-constexpr char kDefaultContainerHostname[] = "linuxhost";
+constexpr char kDefaultContainerHostname[] = "penguin.linux.test";
 
 // Delimiter for the end of a URL scheme.
 constexpr char kUrlSchemeDelimiter[] = "://";
@@ -385,9 +385,10 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
 
   if (owner_id == primary_owner_id_) {
     // Register this with the hostname resolver.
-    RegisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
-                                        vm_name.c_str()),
-                     string_ip);
+    RegisterHostname(
+        base::StringPrintf("%s.%s.linux.test", container_name.c_str(),
+                           vm_name.c_str()),
+        string_ip);
     if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
       RegisterHostname(kDefaultContainerHostname, string_ip);
     }
@@ -430,8 +431,8 @@ void Service::ContainerShutdown(const std::string& container_token,
     return;
   }
   // Unregister this with the hostname resolver.
-  UnregisterHostname(base::StringPrintf("%s-%s-local", container_name.c_str(),
-                                        vm_name.c_str()));
+  UnregisterHostname(base::StringPrintf(
+      "%s.%s.linux.test", container_name.c_str(), vm_name.c_str()));
   if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
     UnregisterHostname(kDefaultContainerHostname);
   }
@@ -1496,7 +1497,7 @@ void Service::UnregisterVmContainers(VirtualMachine* vm,
                  << container_name;
     if (owner_id == primary_owner_id_) {
       UnregisterHostname(base::StringPrintf(
-          "%s-%s-local", container_name.c_str(), vm_name.c_str()));
+          "%s.%s.linux.test", container_name.c_str(), vm_name.c_str()));
       if (vm_name == kDefaultVmName &&
           container_name == kDefaultContainerName) {
         UnregisterHostname(kDefaultContainerHostname);
