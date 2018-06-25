@@ -782,9 +782,6 @@ void ArcSetup::CreateContainerFilesAndDirectories() {
   }
   EXIT_IF(!LaunchAndWait(
       {"/sbin/initctl", "start", "--no-wait", "arc-kmsg-logger"}));
-
-  // TODO(b/28988348)
-  EXIT_IF(!base::SetPosixFilePermissions(base::FilePath("/run/chrome"), 0755));
 }
 
 void ArcSetup::ApplyPerBoardConfigurations() {

@@ -202,7 +202,9 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
 
   // Create a directory where the chrome process can store a reboot request so
   // that it persists across browser crashes but is always removed on reboot.
-  CHECK(EnsureDirectoryExists(base::FilePath("/run/chrome"), uid, gid, 0700));
+  // This directory also houses the wayland and arc-bridge sockets that are
+  // exported to VMs and Android.
+  CHECK(EnsureDirectoryExists(base::FilePath("/run/chrome"), uid, gid, 0755));
 
   // Ensure the existence of the directory in which the whitelist and other
   // ownership-related state will live. Yes, it should be owned by root. The
