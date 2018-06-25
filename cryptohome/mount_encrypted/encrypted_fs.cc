@@ -128,30 +128,30 @@ out:
 }  // namespace
 
 EncryptedFs::EncryptedFs(const base::FilePath& mount_root) {
-  dmcrypt_name = std::string(kCryptDevName);
-  rootdir = base::FilePath("/");
+  dmcrypt_name_ = std::string(kCryptDevName);
+  rootdir_ = base::FilePath("/");
   if (!mount_root.empty()) {
     brillo::SecureBlob digest =
         cryptohome::CryptoLib::Sha256(brillo::SecureBlob(mount_root.value()));
     std::string hex = cryptohome::CryptoLib::BlobToHex(digest);
-    dmcrypt_name += "_" + hex.substr(0, 16);
-    rootdir = mount_root;
+    dmcrypt_name_ += "_" + hex.substr(0, 16);
+    rootdir_ = mount_root;
   }
   // Initialize remaining directories.
-  stateful_mount = rootdir.Append(STATEFUL_MNT);
-  block_path = rootdir.Append(STATEFUL_MNT "/encrypted.block");
-  encrypted_mount = rootdir.Append(ENCRYPTED_MNT);
-  dmcrypt_dev = base::FilePath(kDevMapperPath).Append(dmcrypt_name.c_str());
+  stateful_mount_ = rootdir_.Append(STATEFUL_MNT);
+  block_path_ = rootdir_.Append(STATEFUL_MNT "/encrypted.block");
+  encrypted_mount_ = rootdir_.Append(ENCRYPTED_MNT);
+  dmcrypt_dev_ = base::FilePath(kDevMapperPath).Append(dmcrypt_name_.c_str());
 
   // Create bind mounts.
-  bind_mounts.push_back(
-      {rootdir.Append(ENCRYPTED_MNT "/var"), rootdir.Append("var"), "root",
+  bind_mounts_.push_back(
+      {rootdir_.Append(ENCRYPTED_MNT "/var"), rootdir_.Append("var"), "root",
        "root", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false});
 
-  bind_mounts.push_back({rootdir.Append(ENCRYPTED_MNT "/chronos"),
-                         rootdir.Append("home/chronos"), "chronos", "chronos",
-                         S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH,
-                         true});
+  bind_mounts_.push_back({rootdir_.Append(ENCRYPTED_MNT "/chronos"),
+                          rootdir_.Append("home/chronos"), "chronos", "chronos",
+                          S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH,
+                          true});
 }
 
 // Do all the work needed to actually set up the encrypted partition.
@@ -172,11 +172,11 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     uint64_t fs_bytes_max;
 
     // Wipe out the old files, and ignore errors.
-    unlink(path_str(block_path));
+    unlink(path_str(block_path_));
 
     // Calculate the desired size of the new partition.
-    if (statvfs(path_str(stateful_mount), &stateful_statbuf)) {
-      PLOG(ERROR) << stateful_mount;
+    if (statvfs(path_str(stateful_mount_), &stateful_statbuf)) {
+      PLOG(ERROR) << stateful_mount_;
       goto finished;
     }
     fs_bytes_max = stateful_statbuf.f_blocks;
@@ -186,22 +186,23 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     LOG(INFO) << "Creating sparse backing file with size " << fs_bytes_max;
 
     // Create the sparse file.
-    sparsefd = sparse_create(path_str(block_path), fs_bytes_max);
+    sparsefd = sparse_create(path_str(block_path_), fs_bytes_max);
     if (sparsefd < 0) {
-      PLOG(ERROR) << block_path;
+      PLOG(ERROR) << block_path_;
       goto finished;
     }
   } else {
-    sparsefd = open(path_str(block_path), O_RDWR | O_NOFOLLOW);
+    sparsefd = open(path_str(block_path_), O_RDWR | O_NOFOLLOW);
     if (sparsefd < 0) {
-      PLOG(ERROR) << block_path;
+      PLOG(ERROR) << block_path_;
       goto finished;
     }
   }
 
   // Set up loopback device.
-  LOG(INFO) << "Loopback attaching " << block_path << " named " << dmcrypt_name;
-  lodev = loop_attach(sparsefd, dmcrypt_name.c_str());
+  LOG(INFO) << "Loopback attaching " << block_path_ << " named "
+            << dmcrypt_name_;
+  lodev = loop_attach(sparsefd, dmcrypt_name_.c_str());
   if (!lodev || strlen(lodev) == 0) {
     LOG(ERROR) << "loop_attach failed";
     goto finished;
@@ -215,12 +216,12 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   }
 
   // Mount loopback device with dm-crypt using the encryption key.
-  LOG(INFO) << "Setting up dm-crypt " << lodev << " as " << dmcrypt_dev;
+  LOG(INFO) << "Setting up dm-crypt " << lodev << " as " << dmcrypt_dev_;
 
   encryption_key_hex =
       base::HexEncode(encryption_key.data(), encryption_key.size());
-  if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name.c_str(),
-                lodev, path_str(dmcrypt_dev), kCryptAllowDiscard)) {
+  if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
+                lodev, path_str(dmcrypt_dev_), kCryptAllowDiscard)) {
     // If dm_setup() fails, it could be due to lacking
     // "allow_discard" support, so try again with discard
     // disabled. There doesn't seem to be a way to query
@@ -228,12 +229,12 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     // version test or just trying to set up the dm table
     // again, so do the latter.
     //
-    if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name.c_str(),
-                  lodev, path_str(dmcrypt_dev), !kCryptAllowDiscard)) {
+    if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
+                  lodev, path_str(dmcrypt_dev_), !kCryptAllowDiscard)) {
       LOG(ERROR) << "dm_setup failed";
       goto lo_cleanup;
     }
-    LOG(INFO) << dmcrypt_dev
+    LOG(INFO) << dmcrypt_dev_
               << ": dm-crypt does not support discard; disabling.";
   }
 
@@ -242,10 +243,10 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   blocks_min = kExt4MinBytes / kExt4BlockSize;
 
   if (rebuild) {
-    LOG(INFO) << "Building filesystem on " << dmcrypt_dev
+    LOG(INFO) << "Building filesystem on " << dmcrypt_dev_
               << "(blocksize: " << kExt4BlockSize << ", min: " << blocks_min
               << ", max: " << blocks_max;
-    if (!filesystem_build(path_str(dmcrypt_dev), kExt4BlockSize, blocks_min,
+    if (!filesystem_build(path_str(dmcrypt_dev_), kExt4BlockSize, blocks_min,
                           blocks_max))
       goto dm_cleanup;
   }
@@ -262,24 +263,26 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     goto dm_cleanup;
 
   // Mount the dm-crypt partition finally.
-  LOG(INFO) << "Mounting " << dmcrypt_dev << " onto " << encrypted_mount;
-  if (access(path_str(encrypted_mount), R_OK) &&
-      mkdir(path_str(encrypted_mount), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
-    PLOG(ERROR) << dmcrypt_dev;
+  LOG(INFO) << "Mounting " << dmcrypt_dev_ << " onto " << encrypted_mount_;
+  if (access(path_str(encrypted_mount_), R_OK) &&
+      mkdir(path_str(encrypted_mount_),
+            S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+    PLOG(ERROR) << dmcrypt_dev_;
     goto dm_cleanup;
   }
-  if (mount(path_str(dmcrypt_dev), path_str(encrypted_mount), kEncryptedFSType,
-            MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME, mount_opts)) {
-    PLOG(ERROR) << "mount: " << dmcrypt_dev << ", " << encrypted_mount;
+  if (mount(path_str(dmcrypt_dev_), path_str(encrypted_mount_),
+            kEncryptedFSType, MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
+            mount_opts)) {
+    PLOG(ERROR) << "mount: " << dmcrypt_dev_ << ", " << encrypted_mount_;
     goto dm_cleanup;
   }
 
   // Always spawn filesystem resizer, in case growth was interrupted.
   // TODO(keescook): if already full size, don't resize.
-  SpawnResizer(dmcrypt_dev, blocks_min, blocks_max);
+  SpawnResizer(dmcrypt_dev_, blocks_min, blocks_max);
 
   // Perform bind mounts.
-  for (auto& bind : bind_mounts) {
+  for (auto& bind : bind_mounts_) {
     LOG(INFO) << "Bind mounting " << bind.src << " onto " << bind.dst;
     if (CheckBind(&bind, BindDir::BIND_SOURCE) != RESULT_SUCCESS ||
         CheckBind(&bind, BindDir::BIND_DEST) != RESULT_SUCCESS)
@@ -295,22 +298,22 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   goto finished;
 
 unbind:
-  for (auto& bind : bind_mounts) {
+  for (auto& bind : bind_mounts_) {
     LOG(INFO) << "Unmounting " << bind.dst;
     umount(path_str(bind.dst));
   }
 
-  LOG(INFO) << "Unmounting " << encrypted_mount;
-  umount(path_str(encrypted_mount));
+  LOG(INFO) << "Unmounting " << encrypted_mount_;
+  umount(path_str(encrypted_mount_));
 
 dm_cleanup:
-  LOG(INFO) << "Removing " << dmcrypt_dev;
+  LOG(INFO) << "Removing " << dmcrypt_dev_;
   // TODO(keescook): something holds this open briefly on mkfs failure
   // and I haven't been able to catch it yet. Adding an "fuser" call
   // here is sufficient to lose the race. Instead, just sleep during
   // the error path.
   sleep(1);
-  dm_teardown(path_str(dmcrypt_dev));
+  dm_teardown(path_str(dmcrypt_dev_));
 
 lo_cleanup:
   LOG(INFO) << "Unlooping " << lodev;
@@ -328,7 +331,7 @@ finished:
 // can be cleaned up from, and continue the shutdown process on a
 // second call. If the loopback cannot be found, claim success.
 result_code EncryptedFs::Teardown(void) {
-  for (auto& bind : bind_mounts) {
+  for (auto& bind : bind_mounts_) {
     LOG(INFO) << "Unmounting " << bind.dst;
     errno = 0;
     // Allow either success or a "not mounted" failure.
@@ -340,12 +343,12 @@ result_code EncryptedFs::Teardown(void) {
     }
   }
 
-  LOG(INFO) << "Unmounting " << encrypted_mount;
+  LOG(INFO) << "Unmounting " << encrypted_mount_;
   errno = 0;
   // Allow either success or a "not mounted" failure.
-  if (umount(path_str(encrypted_mount))) {
+  if (umount(path_str(encrypted_mount_))) {
     if (errno != EINVAL) {
-      PLOG(ERROR) << "umount " << encrypted_mount;
+      PLOG(ERROR) << "umount " << encrypted_mount_;
       return RESULT_FAIL_FATAL;
     }
   }
@@ -358,7 +361,7 @@ result_code EncryptedFs::Teardown(void) {
   if (getenv("MOUNT_ENCRYPTED_FSCK")) {
     char* cmd;
 
-    if (asprintf(&cmd, "fsck -a %s", path_str(dmcrypt_dev)) == -1) {
+    if (asprintf(&cmd, "fsck -a %s", path_str(dmcrypt_dev_)) == -1) {
       PLOG(ERROR) << "asprintf";
     } else {
       int rc;
@@ -369,14 +372,14 @@ result_code EncryptedFs::Teardown(void) {
     }
   }
 
-  LOG(INFO) << "Removing " << dmcrypt_dev;
-  if (!dm_teardown(path_str(dmcrypt_dev)))
-    LOG(ERROR) << "dm_teardown: " << dmcrypt_dev;
+  LOG(INFO) << "Removing " << dmcrypt_dev_;
+  if (!dm_teardown(path_str(dmcrypt_dev_)))
+    LOG(ERROR) << "dm_teardown: " << dmcrypt_dev_;
   sync();
 
-  LOG(INFO) << "Unlooping " << block_path << " named " << dmcrypt_name;
-  if (!loop_detach_name(dmcrypt_name.c_str())) {
-    LOG(ERROR) << "loop_detach_name: " << dmcrypt_name;
+  LOG(INFO) << "Unlooping " << block_path_ << " named " << dmcrypt_name_;
+  if (!loop_detach_name(dmcrypt_name_.c_str())) {
+    LOG(ERROR) << "loop_detach_name: " << dmcrypt_name_;
     return RESULT_FAIL_FATAL;
   }
   sync();
@@ -386,28 +389,28 @@ result_code EncryptedFs::Teardown(void) {
 
 result_code EncryptedFs::CheckStates(void) {
   // Verify stateful partition exists.
-  if (access(path_str(stateful_mount), R_OK)) {
-    LOG(INFO) << stateful_mount << "does not exist.";
+  if (access(path_str(stateful_mount_), R_OK)) {
+    LOG(INFO) << stateful_mount_ << "does not exist.";
     return RESULT_FAIL_FATAL;
   }
   // Verify stateful is either a separate mount, or that the
   // root directory is writable (i.e. a factory install, dev mode
   // where root remounted rw, etc).
-  if (same_vfs(path_str(stateful_mount), path_str(rootdir)) &&
-      access(path_str(rootdir), W_OK)) {
-    LOG(INFO) << stateful_mount << " is not mounted.";
+  if (same_vfs(path_str(stateful_mount_), path_str(rootdir_)) &&
+      access(path_str(rootdir_), W_OK)) {
+    LOG(INFO) << stateful_mount_ << " is not mounted.";
     return RESULT_FAIL_FATAL;
   }
 
   // Verify encrypted partition is missing or not already mounted.
-  if (access(path_str(encrypted_mount), R_OK) == 0 &&
-      !same_vfs(path_str(encrypted_mount), path_str(stateful_mount))) {
-    LOG(INFO) << encrypted_mount << " already appears to be mounted.";
+  if (access(path_str(encrypted_mount_), R_OK) == 0 &&
+      !same_vfs(path_str(encrypted_mount_), path_str(stateful_mount_))) {
+    LOG(INFO) << encrypted_mount_ << " already appears to be mounted.";
     return RESULT_SUCCESS;
   }
 
   // Verify that bind mount targets exist.
-  for (auto& bind : bind_mounts) {
+  for (auto& bind : bind_mounts_) {
     if (access(path_str(bind.dst), R_OK)) {
       PLOG(ERROR) << bind.dst << " mount point is missing.";
       return RESULT_FAIL_FATAL;
@@ -415,11 +418,11 @@ result_code EncryptedFs::CheckStates(void) {
   }
 
   // Verify that old bind mounts on stateful haven't happened yet.
-  for (auto& bind : bind_mounts) {
+  for (auto& bind : bind_mounts_) {
     if (bind.submount)
       continue;
 
-    if (same_vfs(path_str(bind.dst), path_str(stateful_mount))) {
+    if (same_vfs(path_str(bind.dst), path_str(stateful_mount_))) {
       LOG(INFO) << bind.dst << " already bind mounted.";
       return RESULT_FAIL_FATAL;
     }
@@ -430,14 +433,14 @@ result_code EncryptedFs::CheckStates(void) {
 }
 
 result_code EncryptedFs::ReportInfo(void) const {
-  printf("rootdir: %s\n", path_str(rootdir));
-  printf("stateful_mount: %s\n", path_str(stateful_mount));
-  printf("block_path: %s\n", path_str(block_path));
-  printf("encrypted_mount: %s\n", path_str(encrypted_mount));
-  printf("dmcrypt_name: %s\n", dmcrypt_name.c_str());
-  printf("dmcrypt_dev: %s\n", path_str(dmcrypt_dev));
+  printf("rootdir: %s\n", path_str(rootdir_));
+  printf("stateful_mount: %s\n", path_str(stateful_mount_));
+  printf("block_path: %s\n", path_str(block_path_));
+  printf("encrypted_mount: %s\n", path_str(encrypted_mount_));
+  printf("dmcrypt_name: %s\n", dmcrypt_name_.c_str());
+  printf("dmcrypt_dev: %s\n", path_str(dmcrypt_dev_));
   printf("bind mounts:\n");
-  for (auto& mnt : bind_mounts) {
+  for (auto& mnt : bind_mounts_) {
     printf("\tsrc:%s\n", path_str(mnt.src));
     printf("\tdst:%s\n", path_str(mnt.dst));
     printf("\towner:%s\n", mnt.owner.c_str());
@@ -449,7 +452,7 @@ result_code EncryptedFs::ReportInfo(void) const {
 }
 
 brillo::SecureBlob EncryptedFs::GetKey() const {
-  char* key = dm_get_key(path_str(dmcrypt_dev));
+  char* key = dm_get_key(path_str(dmcrypt_dev_));
   brillo::SecureBlob encryption_key;
   if (!base::HexStringToBytes(key, &encryption_key)) {
     LOG(ERROR) << "Failed to decode encryption key.";
