@@ -1390,11 +1390,14 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
     return dbus_response;
   }
 
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
   response.set_container_public_key(GetGuestSshPublicKey(
-      request.cryptohome_id(), request.vm_name(),
-      request.container_name().empty() ? kDefaultContainerName
-                                       : request.container_name()));
+      request.cryptohome_id(), request.vm_name(), container_name));
   response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
+  response.set_hostname(base::StringPrintf(
+      "%s-%s-local", container_name.c_str(), request.vm_name().c_str()));
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
