@@ -23,6 +23,8 @@
 #include "CommonBuffer.h"
 #include "EXIFMaker.h"
 
+#include "cros-camera/jpeg_compressor.h"
+
 NAMESPACE_DECLARATION {
 /**
  * \class ImgEncoderCore
@@ -128,6 +130,8 @@ private:  /* Members */
     // so a temporary intermediate buffer is needed.
     std::unique_ptr<char[]> mInternalYU12;
     unsigned int mInternalYU12Size;
+
+    std::unique_ptr<cros::JpegCompressor> mJpegCompressor;
 };
 
 } NAMESPACE_DECLARATION_END
