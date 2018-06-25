@@ -76,13 +76,13 @@ class EncryptedFs {
 
  private:
   // FilePaths used by the encrypted fs.
-  base::FilePath rootdir;
-  base::FilePath stateful_mount;
-  base::FilePath block_path;
-  base::FilePath encrypted_mount;
-  std::string dmcrypt_name;
-  base::FilePath dmcrypt_dev;
-  std::vector<BindMount> bind_mounts;
+  base::FilePath rootdir_;
+  base::FilePath stateful_mount_;
+  base::FilePath block_path_;
+  base::FilePath encrypted_mount_;
+  std::string dmcrypt_name_;
+  base::FilePath dmcrypt_dev_;
+  std::vector<BindMount> bind_mounts_;
 };
 
 }  // namespace cryptohome
