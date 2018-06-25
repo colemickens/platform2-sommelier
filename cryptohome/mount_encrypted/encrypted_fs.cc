@@ -15,6 +15,7 @@
 
 #include <string>
 
+#include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 
@@ -29,6 +30,7 @@ namespace {
 constexpr char kEncryptedFSType[] = "ext4";
 constexpr char kCryptDevName[] = "encstateful";
 constexpr char kDevMapperPath[] = "/dev/mapper";
+constexpr char kProcDirtyExpirePath[] = "/proc/sys/vm/dirty_expire_centisecs";
 constexpr float kSizePercent = 0.3;
 constexpr uint64_t kSectorSize = 512;
 constexpr uint64_t kExt4BlockSize = 4096;
@@ -157,16 +159,9 @@ EncryptedFs::EncryptedFs(const base::FilePath& mount_root) {
 // Do all the work needed to actually set up the encrypted partition.
 result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
                                bool rebuild) {
-  gchar* lodev = NULL;
-  gchar* dirty_expire_centisecs = NULL;
-  char* mount_opts = NULL;
-  uint64_t commit_interval = 600;
-  uint64_t sectors;
   int sparsefd;
   struct statvfs stateful_statbuf;
-  uint64_t blocks_min, blocks_max;
   result_code rc = RESULT_FAIL_FATAL;
-  std::string encryption_key_hex;
 
   if (rebuild) {
     uint64_t fs_bytes_max;
@@ -177,7 +172,7 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     // Calculate the desired size of the new partition.
     if (statvfs(path_str(stateful_mount_), &stateful_statbuf)) {
       PLOG(ERROR) << stateful_mount_;
-      goto finished;
+      return rc;
     }
     fs_bytes_max = stateful_statbuf.f_blocks;
     fs_bytes_max *= kSizePercent;
@@ -189,39 +184,41 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     sparsefd = sparse_create(path_str(block_path_), fs_bytes_max);
     if (sparsefd < 0) {
       PLOG(ERROR) << block_path_;
-      goto finished;
+      return rc;
     }
   } else {
     sparsefd = open(path_str(block_path_), O_RDWR | O_NOFOLLOW);
     if (sparsefd < 0) {
       PLOG(ERROR) << block_path_;
-      goto finished;
+      return rc;
     }
   }
 
   // Set up loopback device.
   LOG(INFO) << "Loopback attaching " << block_path_ << " named "
             << dmcrypt_name_;
-  lodev = loop_attach(sparsefd, dmcrypt_name_.c_str());
-  if (!lodev || strlen(lodev) == 0) {
+  std::string lodev(loop_attach(sparsefd, dmcrypt_name_.c_str()));
+  if (lodev.empty()) {
     LOG(ERROR) << "loop_attach failed";
-    goto finished;
+    return rc;
   }
 
   // Get size as seen by block device.
-  sectors = blk_size(lodev) / kSectorSize;
-  if (!sectors) {
+  uint64_t blkdev_size = blk_size(lodev.c_str());
+  if (blkdev_size < kExt4BlockSize) {
     LOG(ERROR) << "Failed to read device size";
-    goto lo_cleanup;
+    TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
+    return rc;
   }
 
   // Mount loopback device with dm-crypt using the encryption key.
   LOG(INFO) << "Setting up dm-crypt " << lodev << " as " << dmcrypt_dev_;
 
-  encryption_key_hex =
+  uint64_t sectors = blkdev_size / kSectorSize;
+  std::string encryption_key_hex =
       base::HexEncode(encryption_key.data(), encryption_key.size());
   if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
-                lodev, path_str(dmcrypt_dev_), kCryptAllowDiscard)) {
+                lodev.c_str(), path_str(dmcrypt_dev_), kCryptAllowDiscard)) {
     // If dm_setup() fails, it could be due to lacking
     // "allow_discard" support, so try again with discard
     // disabled. There doesn't seem to be a way to query
@@ -230,37 +227,48 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     // again, so do the latter.
     //
     if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
-                  lodev, path_str(dmcrypt_dev_), !kCryptAllowDiscard)) {
+                  lodev.c_str(), path_str(dmcrypt_dev_), !kCryptAllowDiscard)) {
       LOG(ERROR) << "dm_setup failed";
-      goto lo_cleanup;
+      TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
+      return rc;
     }
     LOG(INFO) << dmcrypt_dev_
               << ": dm-crypt does not support discard; disabling.";
   }
 
   // Calculate filesystem min/max size.
-  blocks_max = sectors / (kExt4BlockSize / kSectorSize);
-  blocks_min = kExt4MinBytes / kExt4BlockSize;
+  uint64_t blocks_max = blkdev_size / kExt4BlockSize;
+  uint64_t blocks_min = kExt4MinBytes / kExt4BlockSize;
 
   if (rebuild) {
     LOG(INFO) << "Building filesystem on " << dmcrypt_dev_
               << "(blocksize: " << kExt4BlockSize << ", min: " << blocks_min
               << ", max: " << blocks_max;
     if (!filesystem_build(path_str(dmcrypt_dev_), kExt4BlockSize, blocks_min,
-                          blocks_max))
-      goto dm_cleanup;
+                          blocks_max)) {
+      TeardownByStage(TeardownStage::kTeardownDevmapper, true);
+      return rc;
+    }
   }
 
   // Use vm.dirty_expire_centisecs / 100 as the commit interval.
-  if (g_file_get_contents("/proc/sys/vm/dirty_expire_centisecs",
-                          &dirty_expire_centisecs, NULL, NULL)) {
-    guint64 dirty_expire = g_ascii_strtoull(dirty_expire_centisecs, NULL, 10);
-    if (dirty_expire > 0)
-      commit_interval = dirty_expire / 100;
-    g_free(dirty_expire_centisecs);
+  std::string dirty_expire;
+  uint64_t dirty_expire_centisecs;
+  uint64_t commit_interval = 600;
+
+  if (base::ReadFileToString(base::FilePath(kProcDirtyExpirePath),
+                              &dirty_expire) &&
+      base::StringToUint64(dirty_expire, &dirty_expire_centisecs)) {
+    LOG(INFO) << "Using vm.dirty_expire_centisecs/100 as the commit interval";
+
+    // Keep commit interval as 5 seconds (default for ext4) for smaller
+    // values of dirty_expire_centisecs.
+    if (dirty_expire_centisecs < 600)
+      commit_interval = 5;
+    else
+      commit_interval = dirty_expire_centisecs / 100;
   }
-  if (asprintf(&mount_opts, "discard,commit=%" PRIu64, commit_interval) == -1)
-    goto dm_cleanup;
+  std::string mount_opts = "discard,commit=" + std::to_string(commit_interval);
 
   // Mount the dm-crypt partition finally.
   LOG(INFO) << "Mounting " << dmcrypt_dev_ << " onto " << encrypted_mount_;
@@ -268,13 +276,15 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
       mkdir(path_str(encrypted_mount_),
             S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
     PLOG(ERROR) << dmcrypt_dev_;
-    goto dm_cleanup;
+    TeardownByStage(TeardownStage::kTeardownDevmapper, true);
+    return rc;
   }
   if (mount(path_str(dmcrypt_dev_), path_str(encrypted_mount_),
             kEncryptedFSType, MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
-            mount_opts)) {
+            mount_opts.c_str())) {
     PLOG(ERROR) << "mount: " << dmcrypt_dev_ << ", " << encrypted_mount_;
-    goto dm_cleanup;
+    TeardownByStage(TeardownStage::kTeardownDevmapper, true);
+    return rc;
   }
 
   // Always spawn filesystem resizer, in case growth was interrupted.
@@ -285,106 +295,79 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   for (auto& bind : bind_mounts_) {
     LOG(INFO) << "Bind mounting " << bind.src << " onto " << bind.dst;
     if (CheckBind(&bind, BindDir::BIND_SOURCE) != RESULT_SUCCESS ||
-        CheckBind(&bind, BindDir::BIND_DEST) != RESULT_SUCCESS)
-      goto unbind;
+        CheckBind(&bind, BindDir::BIND_DEST) != RESULT_SUCCESS) {
+      TeardownByStage(TeardownStage::kTeardownUnbind, true);
+      return rc;
+    }
     if (mount(path_str(bind.src), path_str(bind.dst), "none", MS_BIND, NULL)) {
       PLOG(ERROR) << "mount: " << bind.src << ", " << bind.dst;
-      goto unbind;
+      TeardownByStage(TeardownStage::kTeardownUnbind, true);
+      return rc;
     }
   }
 
   // Everything completed without error.
-  rc = RESULT_SUCCESS;
-  goto finished;
-
-unbind:
-  for (auto& bind : bind_mounts_) {
-    LOG(INFO) << "Unmounting " << bind.dst;
-    umount(path_str(bind.dst));
-  }
-
-  LOG(INFO) << "Unmounting " << encrypted_mount_;
-  umount(path_str(encrypted_mount_));
-
-dm_cleanup:
-  LOG(INFO) << "Removing " << dmcrypt_dev_;
-  // TODO(keescook): something holds this open briefly on mkfs failure
-  // and I haven't been able to catch it yet. Adding an "fuser" call
-  // here is sufficient to lose the race. Instead, just sleep during
-  // the error path.
-  sleep(1);
-  dm_teardown(path_str(dmcrypt_dev_));
-
-lo_cleanup:
-  LOG(INFO) << "Unlooping " << lodev;
-  loop_detach(lodev);
-
-finished:
-  free(lodev);
-  free(mount_opts);
-
-  return rc;
+  return RESULT_SUCCESS;
 }
 
 // Clean up all bind mounts, mounts, attaches, etc. Only the final
 // action informs the return value. This makes it so that failures
 // can be cleaned up from, and continue the shutdown process on a
 // second call. If the loopback cannot be found, claim success.
-result_code EncryptedFs::Teardown(void) {
-  for (auto& bind : bind_mounts_) {
-    LOG(INFO) << "Unmounting " << bind.dst;
-    errno = 0;
-    // Allow either success or a "not mounted" failure.
-    if (umount(path_str(bind.dst))) {
-      if (errno != EINVAL) {
-        PLOG(ERROR) << "umount " << bind.dst;
+result_code EncryptedFs::Teardown() {
+  return TeardownByStage(TeardownStage::kTeardownUnbind, false);
+}
+
+result_code EncryptedFs::TeardownByStage(TeardownStage stage,
+                                         bool ignore_errors) {
+  switch (stage) {
+    case TeardownStage::kTeardownUnbind:
+      for (auto& bind : bind_mounts_) {
+        LOG(INFO) << "Unmounting " << bind.dst;
+        errno = 0;
+        // Allow either success or a "not mounted" failure.
+        if (umount(path_str(bind.dst)) && !ignore_errors) {
+          if (errno != EINVAL) {
+            PLOG(ERROR) << "umount " << bind.dst;
+            return RESULT_FAIL_FATAL;
+          }
+        }
+      }
+
+      LOG(INFO) << "Unmounting " << encrypted_mount_;
+      errno = 0;
+      // Allow either success or a "not mounted" failure.
+      if (umount(path_str(encrypted_mount_)) && !ignore_errors) {
+        if (errno != EINVAL) {
+          PLOG(ERROR) << "umount " << encrypted_mount_;
+          return RESULT_FAIL_FATAL;
+        }
+      }
+
+      // Force syncs to make sure we don't tickle racey/buggy kernel
+      // routines that might be causing crosbug.com/p/17610.
+      sync();
+
+    // Intentionally fall through here to teardown the lower dmcrypt device.
+    case TeardownStage::kTeardownDevmapper:
+      LOG(INFO) << "Removing " << dmcrypt_dev_;
+      if (!dm_teardown(path_str(dmcrypt_dev_)) && !ignore_errors)
+        LOG(ERROR) << "dm_teardown: " << dmcrypt_dev_;
+      sync();
+
+    // Intentionally fall through here to teardown the lower loop device.
+    case TeardownStage::kTeardownLoopDevice:
+      LOG(INFO) << "Unlooping " << block_path_ << " named " << dmcrypt_name_;
+      if (!loop_detach_name(dmcrypt_name_.c_str()) && !ignore_errors) {
+        LOG(ERROR) << "loop_detach_name: " << dmcrypt_name_;
         return RESULT_FAIL_FATAL;
       }
-    }
+      sync();
+      return RESULT_SUCCESS;
   }
 
-  LOG(INFO) << "Unmounting " << encrypted_mount_;
-  errno = 0;
-  // Allow either success or a "not mounted" failure.
-  if (umount(path_str(encrypted_mount_))) {
-    if (errno != EINVAL) {
-      PLOG(ERROR) << "umount " << encrypted_mount_;
-      return RESULT_FAIL_FATAL;
-    }
-  }
-
-  // Force syncs to make sure we don't tickle racey/buggy kernel
-  // routines that might be causing crosbug.com/p/17610.
-  sync();
-
-  // Optionally run fsck on the device after umount.
-  if (getenv("MOUNT_ENCRYPTED_FSCK")) {
-    char* cmd;
-
-    if (asprintf(&cmd, "fsck -a %s", path_str(dmcrypt_dev_)) == -1) {
-      PLOG(ERROR) << "asprintf";
-    } else {
-      int rc;
-
-      rc = system(cmd);
-      if (rc != 0)
-        PLOG(ERROR) << cmd << " failed: " << rc;
-    }
-  }
-
-  LOG(INFO) << "Removing " << dmcrypt_dev_;
-  if (!dm_teardown(path_str(dmcrypt_dev_)))
-    LOG(ERROR) << "dm_teardown: " << dmcrypt_dev_;
-  sync();
-
-  LOG(INFO) << "Unlooping " << block_path_ << " named " << dmcrypt_name_;
-  if (!loop_detach_name(dmcrypt_name_.c_str())) {
-    LOG(ERROR) << "loop_detach_name: " << dmcrypt_name_;
-    return RESULT_FAIL_FATAL;
-  }
-  sync();
-
-  return RESULT_SUCCESS;
+  LOG(ERROR) << "Teardown failed.";
+  return RESULT_FAIL_FATAL;
 }
 
 result_code EncryptedFs::CheckStates(void) {

@@ -26,6 +26,13 @@ enum class BindDir {
   BIND_DEST,
 };
 
+// Teardown stage: for granular teardowns
+enum class TeardownStage {
+  kTeardownUnbind,
+  kTeardownDevmapper,
+  kTeardownLoopDevice,
+};
+
 // BindMount represents a bind mount to be setup from
 // source directories within the encrypted mount.
 // EncryptedFs is responsible for setting up the bind mount
@@ -75,6 +82,10 @@ class EncryptedFs {
   brillo::SecureBlob GetKey() const;
 
  private:
+  // TeardownByStage allows higher granularity over teardown
+  // processes.
+  result_code TeardownByStage(TeardownStage stage, bool ignore_errors);
+
   // FilePaths used by the encrypted fs.
   base::FilePath rootdir_;
   base::FilePath stateful_mount_;
