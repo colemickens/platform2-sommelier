@@ -10,18 +10,6 @@
 #include <glib.h>
 
 /* General utility functions. */
-int runcmd(const gchar* argv[], gchar** output);
 void shred(const char* keyfile);
-
-/* Encrypted device mapper setup/teardown. */
-int dm_setup(uint64_t bytes,
-             const gchar* encryption_key,
-             const char* name,
-             const gchar* device,
-             const char* path,
-             int discard);
-int dm_teardown(const gchar* device);
-char* dm_get_key(const gchar* device);
-
 
 #endif  // CRYPTOHOME_MOUNT_HELPERS_H_
