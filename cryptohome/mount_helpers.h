@@ -28,11 +28,5 @@ int dm_setup(uint64_t bytes,
 int dm_teardown(const gchar* device);
 char* dm_get_key(const gchar* device);
 
-/* Filesystem creation. */
-int filesystem_build(const char* device,
-                     uint64_t block_bytes,
-                     uint64_t blocks_min,
-                     uint64_t blocks_max);
-int filesystem_resize(const char* device, uint64_t blocks, uint64_t blocks_max);
 
 #endif  // CRYPTOHOME_MOUNT_HELPERS_H_

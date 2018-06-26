@@ -290,7 +290,8 @@ class MountTest
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, AttachLoop(ephemeral_filename))
         .WillOnce(Return(FilePath("/dev/loop7")));
-    EXPECT_CALL(platform_, FormatExt4(ephemeral_filename))
+    EXPECT_CALL(platform_, FormatExt4(ephemeral_filename,
+                                      kDefaultExt4FormatOpts, 0))
         .WillOnce(Return(true));
 
     EXPECT_CALL(platform_,
@@ -2335,7 +2336,8 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
           Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
-      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username),
+                 kDefaultExt4FormatOpts, 0))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       AttachLoop(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
@@ -2373,7 +2375,8 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
           Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
-      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username),
+                 kDefaultExt4FormatOpts, 0))
     .WillOnce(Return(false));
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
@@ -2404,7 +2407,8 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
           Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
-      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username),
+                 kDefaultExt4FormatOpts, 0))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       AttachLoop(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
@@ -3170,7 +3174,8 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
       AttachLoop(Property(&FilePath::value, StartsWith(sparse_prefix))))
     .WillOnce(Return(FilePath("/dev/loop7")));
   EXPECT_CALL(platform_,
-      FormatExt4(Property(&FilePath::value, StartsWith(sparse_prefix))))
+      FormatExt4(Property(&FilePath::value, StartsWith(sparse_prefix)),
+                 kDefaultExt4FormatOpts, 0))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       Stat(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)), _))
@@ -3263,7 +3268,7 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserFailSetUserType) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, AttachLoop(_))
     .WillOnce(Return(FilePath("/dev/loop7")));
-  EXPECT_CALL(platform_, FormatExt4(_))
+  EXPECT_CALL(platform_, FormatExt4(_, kDefaultExt4FormatOpts, 0))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       Stat(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)), _))
