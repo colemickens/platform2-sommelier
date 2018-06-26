@@ -22,7 +22,7 @@
 namespace vm_tools {
 namespace garcon {
 
-// Handles making calls to concierge running in the host.
+// Handles making calls to cicerone running in the host.
 class HostNotifier : public base::MessageLoopForIO::Watcher,
                      public PackageKitProxy::PackageKitObserver {
  public:
@@ -76,10 +76,10 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // Callback for when desktop file path changes occur.
   void DesktopPathsChanged(const base::FilePath& path, bool error);
 
-  // gRPC stub for communicating with concierge on the host.
+  // gRPC stub for communicating with cicerone on the host.
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub_;
 
-  // Security token for communicating with concierge.
+  // Security token for communicating with cicerone.
   std::string token_;
 
   // Watchers for tracking filesystem changes to .desktop files/dirs.
