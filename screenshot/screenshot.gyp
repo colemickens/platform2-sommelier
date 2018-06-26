@@ -17,7 +17,12 @@
     {
       'target_name': 'screenshot',
       'type': 'executable',
-      'sources': ['screenshot.cc'],
+      'sources': [
+        'capture.cc',
+        'crtc.cc',
+        'main.cc',
+        'png.cc',
+      ],
     },
   ],
 }
