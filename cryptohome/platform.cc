@@ -140,7 +140,7 @@ bool DecodeProcInfoLine(const std::string& line,
 
 namespace cryptohome {
 
-const int kDefaultMountOptions = MS_NOEXEC | MS_NOSUID | MS_NODEV;
+const uint32_t kDefaultMountFlags = MS_NOEXEC | MS_NOSUID | MS_NODEV;
 const int kDefaultPwnameLength = 1024;
 const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
                                | S_IXOTH;
@@ -234,10 +234,10 @@ bool Platform::IsDirectoryMounted(const FilePath& directory) {
 }
 
 bool Platform::Mount(const FilePath& from, const FilePath& to,
-                     const std::string& type,
+                     const std::string& type, uint32_t mount_flags,
                      const std::string& mount_options) {
   if (mount(from.value().c_str(), to.value().c_str(), type.c_str(),
-            kDefaultMountOptions, mount_options.c_str())) {
+            mount_flags, mount_options.c_str())) {
     return false;
   }
   return true;
@@ -249,7 +249,7 @@ bool Platform::Bind(const FilePath& from, const FilePath& to) {
             nullptr))
     return false;
   if (mount(nullptr, to.value().c_str(), nullptr,
-            MS_REMOUNT | MS_BIND | kDefaultMountOptions, nullptr))
+            MS_REMOUNT | MS_BIND | kDefaultMountFlags, nullptr))
     return false;
   return true;
 }

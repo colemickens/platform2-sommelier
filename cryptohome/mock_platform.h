@@ -96,8 +96,8 @@ class MockPlatform : public Platform {
  public:
   MockPlatform();
   virtual ~MockPlatform();
-  MOCK_METHOD4(Mount, bool(const base::FilePath&, const base::FilePath&,
-                           const std::string&, const std::string&));
+  MOCK_METHOD5(Mount, bool(const base::FilePath&, const base::FilePath&,
+                           const std::string&, uint32_t, const std::string&));
   MOCK_METHOD2(Bind, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD3(Unmount, bool(const base::FilePath&, bool, bool*));
   MOCK_METHOD1(LazyUnmount, void(const base::FilePath&));

@@ -7,6 +7,7 @@
 #include "cryptohome/mount.h"
 
 #include <errno.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 
 #include <map>
@@ -845,7 +846,7 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path) {
 bool Mount::RememberMount(const FilePath& src,
                           const FilePath& dest, const std::string& type,
                           const std::string& options) {
-  if (!platform_->Mount(src, dest, type, options)) {
+  if (!platform_->Mount(src, dest, type, kDefaultMountFlags, options)) {
     PLOG(ERROR) << "Mount failed: " << src.value() << " -> " << dest.value();
     return false;
   }
