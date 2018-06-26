@@ -13,11 +13,6 @@
 int runcmd(const gchar* argv[], gchar** output);
 void shred(const char* keyfile);
 
-/* Loopback device attach/detach helpers. */
-gchar* loop_attach(int fd, const char* name);
-int loop_detach(const gchar* loopback);
-int loop_detach_name(const char* name);
-
 /* Encrypted device mapper setup/teardown. */
 int dm_setup(uint64_t bytes,
              const gchar* encryption_key,
