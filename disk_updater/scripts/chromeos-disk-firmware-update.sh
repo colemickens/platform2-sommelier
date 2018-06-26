@@ -465,7 +465,7 @@ disk_mmc_upgrade() {
      options="-k ${options}"
   fi
 
-  "${FLAGS_mmc}" ffu ${options} "${fw_file##*/}" "/dev/${device}"
+  "${FLAGS_mmc}" old_ffu ${options} "${fw_file##*/}" "/dev/${device}"
 }
 
 # disk_nmve_reset - Reset  NMVE SSD PCIe device.
