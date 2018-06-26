@@ -5,6 +5,7 @@
 #include <cstring>  // memcpy
 
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "brillo/secure_blob.h"
 
@@ -69,6 +70,20 @@ SecureBlob SecureBlob::Combine(const SecureBlob& blob1,
   result.insert(result.end(), blob1.begin(), blob1.end());
   result.insert(result.end(), blob2.begin(), blob2.end());
   return result;
+}
+
+bool SecureBlob::HexStringToSecureBlob(const std::string& input,
+                                       SecureBlob* output) {
+  // TODO(jorgelo,crbug.com/728047): Consider not using an intermediate
+  // std::vector here at all.
+  std::vector<uint8_t> temp;
+  if (!base::HexStringToBytes(input, &temp)) {
+    output->clear();
+    return false;
+  }
+  output->assign(temp.begin(), temp.end());
+  SecureMemset(temp.data(), 0, temp.capacity());
+  return true;
 }
 
 BRILLO_DISABLE_ASAN void* SecureMemset(void* v, int c, size_t n) {

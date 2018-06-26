@@ -44,6 +44,8 @@ class BRILLO_EXPORT SecureBlob : public Blob {
     return reinterpret_cast<const char*>(data());
   }
   static SecureBlob Combine(const SecureBlob& blob1, const SecureBlob& blob2);
+  static bool HexStringToSecureBlob(const std::string& input,
+                                    SecureBlob* output);
 };
 
 // Secure memset(). This function is guaranteed to fill in the whole buffer

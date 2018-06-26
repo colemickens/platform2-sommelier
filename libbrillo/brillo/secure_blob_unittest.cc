@@ -202,4 +202,29 @@ TEST_F(SecureBlobTest, BlobToStringTest) {
   EXPECT_EQ(test_string.compare(result_string), 0);
 }
 
+TEST_F(SecureBlobTest, HexStringToSecureBlob) {
+  std::string hex_string("112233445566778899aabbccddeeff0f");
+
+  SecureBlob blob;
+  SecureBlob::HexStringToSecureBlob(hex_string, &blob);
+
+  EXPECT_EQ(blob.size(), 16u);
+  EXPECT_EQ(blob[0],  0x11);
+  EXPECT_EQ(blob[1],  0x22);
+  EXPECT_EQ(blob[2],  0x33);
+  EXPECT_EQ(blob[3],  0x44);
+  EXPECT_EQ(blob[4],  0x55);
+  EXPECT_EQ(blob[5],  0x66);
+  EXPECT_EQ(blob[6],  0x77);
+  EXPECT_EQ(blob[7],  0x88);
+  EXPECT_EQ(blob[8],  0x99);
+  EXPECT_EQ(blob[9],  0xaa);
+  EXPECT_EQ(blob[10], 0xbb);
+  EXPECT_EQ(blob[11], 0xcc);
+  EXPECT_EQ(blob[12], 0xdd);
+  EXPECT_EQ(blob[13], 0xee);
+  EXPECT_EQ(blob[14], 0xff);
+  EXPECT_EQ(blob[15], 0x0f);
+}
+
 }  // namespace brillo
