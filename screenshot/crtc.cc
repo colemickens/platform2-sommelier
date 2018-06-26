@@ -18,13 +18,9 @@ namespace {
 constexpr const char kDrmDeviceDir[] = "/dev/dri";
 constexpr const char kDrmDeviceGlob[] = "card?";
 
-}  // namespace
+std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
+  std::vector<std::unique_ptr<Crtc>> crtcs;
 
-Crtc::Crtc(base::File file, ScopedDrmModeCrtcPtr crtc)
-    : file_(std::move(file)), crtc_(std::move(crtc)) {}
-
-// static
-std::unique_ptr<Crtc> CrtcFinder::FindAnyDisplay() {
   std::vector<base::FilePath> paths;
   {
     base::FileEnumerator lister(base::FilePath(kDrmDeviceDir),
@@ -50,20 +46,91 @@ std::unique_ptr<Crtc> CrtcFinder::FindAnyDisplay() {
     if (!resources)
       continue;
 
-    for (int index_crtc = 0;
-         index_crtc < resources->count_crtcs;
-         ++index_crtc) {
-      uint32_t crtc_id = resources->crtcs[index_crtc];
+    for (int index_connector = 0;
+         index_connector < resources->count_connectors;
+         ++index_connector) {
+      ScopedDrmModeConnectorPtr connector(
+          drmModeGetConnector(file.GetPlatformFile(),
+                              resources->connectors[index_connector]));
+      if (!connector || connector->encoder_id == 0)
+        continue;
+
+      ScopedDrmModeEncoderPtr encoder(
+          drmModeGetEncoder(file.GetPlatformFile(), connector->encoder_id));
+      if (!encoder || encoder->crtc_id == 0)
+        continue;
 
       ScopedDrmModeCrtcPtr crtc(
-          drmModeGetCrtc(file.GetPlatformFile(), crtc_id));
+          drmModeGetCrtc(file.GetPlatformFile(), encoder->crtc_id));
       if (!crtc || !crtc->mode_valid || crtc->buffer_id == 0)
         continue;
 
-      return std::make_unique<Crtc>(std::move(file), std::move(crtc));
+      ScopedDrmModeFBPtr fb(
+          drmModeGetFB(file.GetPlatformFile(), crtc->buffer_id));
+      if (!fb)
+        continue;
+
+      crtcs.emplace_back(std::make_unique<Crtc>(
+          file.Duplicate(), std::move(connector), std::move(encoder),
+          std::move(crtc), std::move(fb)));
     }
   }
 
+  return crtcs;
+}
+
+}  // namespace
+
+Crtc::Crtc(base::File file, ScopedDrmModeConnectorPtr connector,
+           ScopedDrmModeEncoderPtr encoder, ScopedDrmModeCrtcPtr crtc,
+           ScopedDrmModeFBPtr fb)
+    : file_(std::move(file)), connector_(std::move(connector)),
+      encoder_(std::move(encoder)), crtc_(std::move(crtc)),
+      fb_(std::move(fb)) {}
+
+bool Crtc::IsInternalDisplay() const {
+  switch (connector_->connector_type) {
+    case DRM_MODE_CONNECTOR_eDP:
+    case DRM_MODE_CONNECTOR_LVDS:
+    case DRM_MODE_CONNECTOR_DSI:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// static
+std::unique_ptr<Crtc> CrtcFinder::FindAnyDisplay() {
+  auto crtcs = GetConnectedCrtcs();
+  if (crtcs.empty())
+    return nullptr;
+  return std::move(crtcs[0]);
+}
+
+// static
+std::unique_ptr<Crtc> CrtcFinder::FindInternalDisplay() {
+  auto crtcs = GetConnectedCrtcs();
+  for (auto& crtc : crtcs)
+    if (crtc->IsInternalDisplay())
+      return std::move(crtc);
+  return nullptr;
+}
+
+// static
+std::unique_ptr<Crtc> CrtcFinder::FindExternalDisplay() {
+  auto crtcs = GetConnectedCrtcs();
+  for (auto& crtc : crtcs)
+    if (!crtc->IsInternalDisplay())
+      return std::move(crtc);
+  return nullptr;
+}
+
+// static
+std::unique_ptr<Crtc> CrtcFinder::FindById(uint32_t crtc_id) {
+  auto crtcs = GetConnectedCrtcs();
+  for (auto& crtc : crtcs)
+    if (crtc->crtc()->crtc_id == crtc_id)
+      return std::move(crtc);
   return nullptr;
 }
 

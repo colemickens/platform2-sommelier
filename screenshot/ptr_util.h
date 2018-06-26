@@ -27,6 +27,22 @@ struct DrmModeCrtcDeleter {
 };
 using ScopedDrmModeCrtcPtr = std::unique_ptr<drmModeCrtc, DrmModeCrtcDeleter>;
 
+struct DrmModeEncoderDeleter {
+  void operator()(drmModeEncoder* encoder) {
+    drmModeFreeEncoder(encoder);
+  }
+};
+using ScopedDrmModeEncoderPtr =
+    std::unique_ptr<drmModeEncoder, DrmModeEncoderDeleter>;
+
+struct DrmModeConnectorDeleter {
+  void operator()(drmModeConnector* connector) {
+    drmModeFreeConnector(connector);
+  }
+};
+using ScopedDrmModeConnectorPtr =
+    std::unique_ptr<drmModeConnector, DrmModeConnectorDeleter>;
+
 struct DrmModeFBDeleter {
   void operator()(drmModeFB* fb) {
     drmModeFreeFB(fb);

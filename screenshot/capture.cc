@@ -32,18 +32,14 @@ GbmBoMap::~GbmBoMap() {
 }
 
 std::unique_ptr<GbmBoMap> Capture(const Crtc& crtc) {
-  ScopedDrmModeFBPtr fb(
-      drmModeGetFB(crtc.file().GetPlatformFile(), crtc.crtc()->buffer_id));
-  CHECK(fb) << "drmModeGetFB failed";
-
   ScopedGbmDevicePtr device(gbm_create_device(crtc.file().GetPlatformFile()));
   CHECK(device) << "gbm_create_device failed";
 
   base::ScopedFD buffer_fd;
   {
     int fd;
-    int rv = drmPrimeHandleToFD(crtc.file().GetPlatformFile(), fb->handle, 0,
-                                &fd);
+    int rv = drmPrimeHandleToFD(crtc.file().GetPlatformFile(),
+                                crtc.fb()->handle, 0, &fd);
     CHECK_EQ(rv, 0) << "drmPrimeHandleToFD failed";
     buffer_fd.reset(fd);
   }
@@ -52,9 +48,9 @@ std::unique_ptr<GbmBoMap> Capture(const Crtc& crtc) {
   {
     gbm_import_fd_data fd_data = {
         buffer_fd.get(),
-        fb->width,
-        fb->height,
-        fb->pitch,
+        crtc.fb()->width,
+        crtc.fb()->height,
+        crtc.fb()->pitch,
         // TODO(djmk): The buffer format is hardcoded to ARGB8888, we should fix
         // this to query for the frambuffer's format instead.
         GBM_FORMAT_ARGB8888,
@@ -64,8 +60,8 @@ std::unique_ptr<GbmBoMap> Capture(const Crtc& crtc) {
   }
   CHECK(bo) << "gbm_bo_import failed";
 
-  return std::make_unique<GbmBoMap>(std::move(device), std::move(bo), fb->width,
-                                    fb->height);
+  return std::make_unique<GbmBoMap>(std::move(device), std::move(bo),
+                                    crtc.fb()->width, crtc.fb()->height);
 }
 
 }  // namespace screenshot
