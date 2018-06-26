@@ -11,7 +11,6 @@
 #include <sys/mount.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
-#include <vboot/tlcl.h>
 
 #include <string>
 
@@ -36,6 +35,12 @@ constexpr uint64_t kSectorSize = 512;
 constexpr uint64_t kExt4BlockSize = 4096;
 constexpr uint64_t kExt4MinBytes = 16 * 1024 * 1024;
 constexpr int kCryptAllowDiscard = 1;
+constexpr unsigned int kResizeStepSeconds = 2;
+constexpr uint64_t kExt4ResizeBlocks = 32768 * 10;
+constexpr uint64_t kExt4BlocksPerGroup = 32768;
+constexpr uint64_t kExt4InodeRatioDefault = 16384;
+constexpr uint64_t kExt4InodeRatioMinimum = 2048;
+constexpr char kExt4ExtendedOptions[] = "discard,lazy_itable_init";
 
 // Temp. function to cleanly get the c_str() of FilePaths.
 // TODO(sarthakkukreti): Remove once all functions use base::FilePath
@@ -79,45 +84,39 @@ bool CheckBind(Platform* platform, const BindMount& bind) {
   return true;
 }
 
-void SpawnResizer(const base::FilePath& device,
+// Spawns a filesystem resizing process
+void SpawnResizer(Platform* platform,
+                  const base::FilePath& device,
                   uint64_t blocks,
                   uint64_t blocks_max) {
-  pid_t pid;
-
-  // Skip resize before forking, if it's not going to happen.
+  // Ignore resizing if we know the filesystem was built to max size.
   if (blocks >= blocks_max) {
-    LOG(INFO) << "Resizing skipped. blocks: " << blocks
-              << " >= blocks_max: " << blocks_max;
+    PLOG(ERROR) << " Resizing aborted";
     return;
   }
 
-  fflush(NULL);
-  pid = fork();
-  if (pid < 0) {
-    PERROR("fork");
-    return;
-  }
-  if (pid != 0) {
-    LOG(INFO) << "Started filesystem resizing process: " << pid;
-    return;
-  }
+  // TODO(keescook): Read superblock to find out the current size of
+  // the filesystem (since statvfs does not report the correct value).
+  // For now, instead of doing multi-step resizing, just resize to the
+  // full size of the block device in one step.
+  blocks = blocks_max;
 
-  // Child
-  // TODO(sarthakkukreti): remove on refactor to ProcessImpl
-  // along with vboot/tlcl.h.
-  TlclLibClose();
-  LOG(INFO) << "Resizer spawned.";
+  LOG(INFO) << "Resizing started in " << kResizeStepSeconds
+             << " second steps.";
 
-  if (daemon(0, 1)) {
-    PERROR("daemon");
-    goto out;
-  }
+  do {
+    sleep(kResizeStepSeconds);
+    blocks += kExt4ResizeBlocks;
 
-  filesystem_resize(path_str(device), blocks, blocks_max);
+    if (blocks > blocks_max)
+      blocks = blocks_max;
 
-out:
-  LOG(INFO) << "Done.";
-  exit(RESULT_SUCCESS);
+    // Run the resizing daemon
+    platform->ResizeFilesystem(device, blocks);
+  } while (blocks < blocks_max);
+
+  LOG(INFO) << "Resizing daemon launched.";
+  return;
 }
 
 std::string GetMountOpts() {
@@ -139,6 +138,73 @@ std::string GetMountOpts() {
       commit_interval = dirty_expire_centisecs / 100;
   }
   return "discard,commit=" + std::to_string(commit_interval);
+}
+
+// When creating a filesystem that will grow, the inode ratio is calculated
+// using the starting size not the hinted "resize" size, which means the
+// number of inodes can be highly constrained on tiny starting filesystems.
+// Instead, calculate what the correct inode ratio should be for a given
+// filesystem based on its expected starting and ending sizes.
+//
+// inode-ratio_mkfs =
+//
+//               ceil(blocks_max / group-ratio) * size_mkfs
+//      ------------------------------------------------------------------
+//      ceil(size_max / inode-ratio_max) * ceil(blocks_mkfs / group-ratio)
+//
+static uint64_t Ext4GetInodeRatio(uint64_t block_bytes_in,
+                                  uint64_t blocks_mkfs_in,
+                                  uint64_t blocks_max_in) {
+  double block_bytes = static_cast<double>(block_bytes_in);
+  double blocks_mkfs = static_cast<double>(blocks_mkfs_in);
+  double blocks_max = static_cast<double>(blocks_max_in);
+
+  double size_max, size_mkfs, groups_max;
+  double inode_ratio_mkfs;
+
+  uint64_t denom, inodes_max, groups_mkfs;
+
+  size_max = block_bytes * blocks_max;
+  size_mkfs = block_bytes * blocks_mkfs;
+
+  groups_max = ceil(blocks_max / kExt4BlocksPerGroup);
+  groups_mkfs = static_cast<uint64_t>(ceil(blocks_mkfs / kExt4BlocksPerGroup));
+
+  inodes_max = static_cast<uint64_t>(ceil(size_max / kExt4InodeRatioDefault));
+
+  denom = inodes_max * groups_mkfs;
+  // Make sure we never trigger divide-by-zero.
+  if (denom == 0)
+    return kExt4InodeRatioDefault;
+
+  inode_ratio_mkfs = (groups_max * size_mkfs) / denom;
+
+  // Make sure we never calculate anything totally huge or totally tiny.
+  if (inode_ratio_mkfs > blocks_mkfs ||
+      inode_ratio_mkfs < kExt4InodeRatioMinimum)
+    return kExt4InodeRatioDefault;
+
+  return (uint64_t)inode_ratio_mkfs;
+}
+
+std::vector<std::string> BuildExt4FormatOpts(uint64_t block_bytes,
+                                             uint64_t blocks_min,
+                                             uint64_t blocks_max) {
+  return {
+      "-T",
+      "default",
+      "-b",
+      std::to_string(block_bytes),
+      "-m",
+      "0",
+      "-O",
+      "^huge_file,^flex_bg",
+      "-i",
+      std::to_string(Ext4GetInodeRatio(block_bytes, blocks_min, blocks_max)),
+      "-E",
+      kExt4ExtendedOptions + ((blocks_min < blocks_max)
+                                  ? ",resize=" + std::to_string(blocks_max)
+                                  : "")};
 }
 
 }  // namespace
@@ -271,8 +337,10 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     LOG(INFO) << "Building filesystem on " << dmcrypt_dev_
               << "(blocksize: " << kExt4BlockSize << ", min: " << blocks_min
               << ", max: " << blocks_max;
-    if (!filesystem_build(path_str(dmcrypt_dev_), kExt4BlockSize, blocks_min,
-                          blocks_max)) {
+    if (!platform_->FormatExt4(
+            dmcrypt_dev_,
+            BuildExt4FormatOpts(kExt4BlockSize, blocks_min, blocks_max),
+            blocks_min)) {
       TeardownByStage(TeardownStage::kTeardownDevmapper, true);
       return rc;
     }
@@ -298,7 +366,7 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
 
   // Always spawn filesystem resizer, in case growth was interrupted.
   // TODO(keescook): if already full size, don't resize.
-  SpawnResizer(dmcrypt_dev_, blocks_min, blocks_max);
+  SpawnResizer(platform_, dmcrypt_dev_, blocks_min, blocks_max);
 
   // Perform bind mounts.
   for (auto& bind : bind_mounts_) {

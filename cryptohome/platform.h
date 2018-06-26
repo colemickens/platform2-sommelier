@@ -44,6 +44,9 @@ extern const int kDefaultUmask;
 // Default mount flags for Platform::Mount.
 extern const uint32_t kDefaultMountFlags;
 
+// Default ext4 format opts.
+extern const std::vector<std::string> kDefaultExt4FormatOpts;
+
 // Loop devices prefix.
 extern const char kLoopPrefix[];
 
@@ -818,12 +821,25 @@ class Platform {
   // Returns list of attached loop devices.
   virtual std::vector<LoopDevice> GetAttachedLoopDevices();
 
-  // Formats the file or device into ext4 filesystem.
+  // Formats the file or device into ext4 filesystem with default opts.
   // Returns true if formatting succeeded.
   //
   // Paratemers
   //   file - Path to the file or device to be formatted.
-  virtual bool FormatExt4(const base::FilePath& file);
+  //   opts - format opts.
+  //   blocks - number of blocks.
+  virtual bool FormatExt4(const base::FilePath& file,
+                          const std::vector<std::string>& opts,
+                          uint64_t blocks);
+
+  // Resizes the file to blocks.
+  // Returns true if resize succeeded.
+  //
+  // Parameters
+  //   file - Path to the file to be resized.
+  //   blocks - number of blocks to be resized to.
+  virtual bool ResizeFilesystem(const base::FilePath& file,
+                                          uint64_t blocks);
 
   // Restore SELinux file contexts. No-op if not compiled with -DUSE_SELINUX=1
   // Returns true if restorecon succeeded.

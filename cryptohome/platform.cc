@@ -153,6 +153,18 @@ const char kLoopPrefix[] = "/dev/loop";
 const char kSysBlockPath[] = "/sys/block";
 const char kDevPath[] = "/dev";
 const char kLoopBackingFile[] = "loop/backing_file";
+const std::vector<std::string> kDefaultExt4FormatOpts(
+  { // Always use 'default' configuration.
+    "-T", "default",
+    // reserved-blocks-percentage = 0%
+    "-m", "0",
+    // ^huge_file: Do not allow files larger than 2TB.
+    // ^flex_bg: Do not allow per-block group metadata to be placed anywhere.
+    // ^has_journal: Do not create journal.
+    "-O", "^huge_file,^flex_bg,^has_journal",
+    // Attempt to discard blocks at mkfs time.
+    "-E", "discard"
+  });
 
 Platform::Platform() {
     pid_t pid = getpid();
@@ -1243,24 +1255,22 @@ std::vector<Platform::LoopDevice> Platform::GetAttachedLoopDevices() {
   return devices;
 }
 
-bool Platform::FormatExt4(const base::FilePath& file) {
+bool Platform::FormatExt4(const base::FilePath& file,
+                          const std::vector<std::string>& opts,
+                          uint64_t blocks) {
   brillo::ProcessImpl format_process;
   format_process.AddArg("/sbin/mkfs.ext4");
-  // Always use 'default' configuration.
-  format_process.AddArg("-T");
-  format_process.AddArg("default");
-  // reserved-blocks-percentage = 0%
-  format_process.AddArg("-m");
-  format_process.AddArg("0");
-  // ^huge_file: Do not allow files larger than 2TB.
-  // ^flex_bg: Do not allow per-block group metadata to be placed anywhere.
-  // ^has_journal: Do not create journal.
-  format_process.AddArg("-O");
-  format_process.AddArg("^huge_file,^flex_bg,^has_journal");
-  // Attempt to discard blocks at mkfs time.
-  format_process.AddArg("-E");
-  format_process.AddArg("discard");
+
+  for (const auto& arg : opts)
+    format_process.AddArg(arg);
+
   format_process.AddArg(file.value());
+  if (blocks != 0)
+    format_process.AddArg(std::to_string(blocks));
+
+  // Close unused file descriptors in child process.
+  format_process.SetCloseUnusedFileDescriptors(true);
+
   int rc = format_process.Run();
   if (rc != 0) {
     LOG(ERROR) << "Can't format ext4: " << file.value() << ", error: " << rc;
@@ -1276,11 +1286,37 @@ bool Platform::FormatExt4(const base::FilePath& file) {
   tune_process.AddArg("-i");
   tune_process.AddArg("0");
   tune_process.AddArg(file.value());
+
+  // Close unused file descriptors in child process.
+  tune_process.SetCloseUnusedFileDescriptors(true);
+
   rc = tune_process.Run();
   if (rc != 0) {
     LOG(ERROR) << "Can't tune ext4: " << file.value() << ", error: " << rc;
     return false;
   }
+  return true;
+}
+
+bool Platform::ResizeFilesystem(const base::FilePath& file,
+                                uint64_t blocks) {
+  brillo::ProcessImpl resize_process;
+  resize_process.AddArg("/sbin/resize2fs");
+  resize_process.AddArg("-f");
+  resize_process.AddArg(file.value().c_str());
+  resize_process.AddArg(std::to_string(blocks));
+
+  // Close unused file descriptors in child process.
+  resize_process.SetCloseUnusedFileDescriptors(true);
+
+  // Start the process and return.
+  LOG(INFO) << "Resizing filesystem on "
+            << file.value() << " to " << blocks;
+  int rc = resize_process.Run();
+  if (rc != 0)
+    return false;
+
+  LOG(INFO) << "Resizing process started.";
   return true;
 }
 
