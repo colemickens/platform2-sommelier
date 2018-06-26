@@ -114,10 +114,8 @@ constexpr char SessionManagerImpl::kRemoveOldArcDataImpulse[] =
     "remove-old-arc-data";
 
 // Lock state related impulse (systemd unit start or Upstart signal).
-constexpr char SessionManagerImpl::kScreenLockedImpulse[] =
-    "screen-locked";
-constexpr char SessionManagerImpl::kScreenUnlockedImpulse[] =
-    "screen-unlocked";
+constexpr char SessionManagerImpl::kScreenLockedImpulse[] = "screen-locked";
+constexpr char SessionManagerImpl::kScreenUnlockedImpulse[] = "screen-unlocked";
 
 // TODO(b:66919195): Optimize Android container shutdown time. It
 // needs as long as 3s on kevin to perform graceful shutdown.
@@ -627,15 +625,6 @@ void SessionManagerImpl::StorePolicy(
                 in_policy_blob);
 }
 
-void SessionManagerImpl::StoreUnsignedPolicy(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    const std::vector<uint8_t>& in_policy_blob) {
-  StoreUnsignedPolicyEx(
-      std::move(response),
-      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
-      in_policy_blob);
-}
-
 bool SessionManagerImpl::RetrievePolicy(brillo::ErrorPtr* error,
                                         std::vector<uint8_t>* out_policy_blob) {
   return RetrievePolicyEx(
@@ -650,15 +639,6 @@ void SessionManagerImpl::StorePolicyForUser(
   StorePolicyEx(std::move(response),
                 MakePolicyDescriptor(ACCOUNT_TYPE_USER, in_account_id),
                 in_policy_blob);
-}
-
-void SessionManagerImpl::StoreUnsignedPolicyForUser(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    const std::string& in_account_id,
-    const std::vector<uint8_t>& in_policy_blob) {
-  StoreUnsignedPolicyEx(std::move(response),
-                        MakePolicyDescriptor(ACCOUNT_TYPE_USER, in_account_id),
-                        in_policy_blob);
 }
 
 bool SessionManagerImpl::RetrievePolicyForUser(

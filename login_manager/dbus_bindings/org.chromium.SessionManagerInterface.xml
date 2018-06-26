@@ -218,20 +218,6 @@
     </method>
 
     <!--
-        StoreUnsignedPolicy:
-        @policy_blob: Serialized protobuf containing device policy.
-
-        Stores device policy without signature verification for AD managed
-        devices. Locked down through busconfig to be only callable by
-        authpolicyd and exits with an error if install attributes are not locked
-        to enterprise_ad device mode.
-    -->
-    <method name="StoreUnsignedPolicy">
-      <arg type="ay" name="policy_blob" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-    </method>
-
-    <!--
         RetrievePolicy:
         @policy_blob: Serialized protobuf containing a device policy and a
                       signature over that policy.
@@ -261,31 +247,6 @@
         updates pushed by Chrome.
     -->
     <method name="StorePolicyForUser">
-      <arg type="s" name="account_id" direction="in" />
-      <arg type="ay" name="policy_blob" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-    </method>
-
-    <!--
-        StoreUnsignedPolicyForUser:
-        @account_id: Account ID of the user whose policy is to be stored.
-        @policy_blob: A serialized PolicyFetchResponse protobuf.
-
-        Similar to StoreUnsignedPolicy() above, but for user policy.
-
-        Stores user policy without signature verification for AD managed
-        devices. Locked down through busconfig to be only callable by
-        authpolicyd and exits with an error if install attributes are not locked
-        to enterprise_ad device mode. The policy data is opaque to
-        session_manager, the exact definition is only relevant to client code in
-        Chrome.
-
-        Calling this function attempts to persist the policy blob for a given
-        user. Policy is stored in a root-owned location within the user's
-        cryptohome (for privacy reasons and to prevent tampering by other system
-        components).
-    -->
-    <method name="StoreUnsignedPolicyForUser">
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />

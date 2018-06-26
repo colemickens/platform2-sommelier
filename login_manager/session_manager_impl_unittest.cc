@@ -1184,14 +1184,6 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
-TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  ExpectNoStorePolicy(device_policy_service_);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
-}
-
 TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureConsumer) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   ExpectNoStorePolicy(device_policy_service_);
@@ -1200,15 +1192,6 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureConsumer) {
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise");
-  ExpectNoStorePolicy(device_policy_service_);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterprise) {
@@ -1220,16 +1203,6 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterprise) {
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise_ad");
-  ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
-                    SignatureCheck::kDisabled);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterpriseAD) {
@@ -1476,17 +1449,6 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
 }
 
-TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
-      .Times(0);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyForUser(capturer.CreateMethodResponse<>(),
-                                    kSaneEmail, policy_blob);
-}
-
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureConsumer) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
@@ -1497,18 +1459,6 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureConsumer) {
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
       MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
-      .Times(0);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyForUser(capturer.CreateMethodResponse<>(),
-                                    kSaneEmail, policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterprise) {
@@ -1522,21 +1472,6 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterprise) {
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
       MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise_ad");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(MakeChromePolicyNamespace(), policy_blob,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kDisabled, _))
-      .WillOnce(Return(true));
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyForUser(capturer.CreateMethodResponse<>(),
-                                    kSaneEmail, policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterpriseAD) {
@@ -1995,10 +1930,9 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectLockScreen();
   brillo::ErrorPtr error;
   EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kScreenLockedImpulse,
-                  ElementsAre(),
-                  InitDaemonController::TriggerMode::ASYNC))
+              TriggerImpulseInternal(SessionManagerImpl::kScreenLockedImpulse,
+                                     ElementsAre(),
+                                     InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
@@ -2014,10 +1948,9 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
               SendSignal(SignalEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
   EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kScreenUnlockedImpulse,
-                  ElementsAre(),
-                  InitDaemonController::TriggerMode::ASYNC))
+              TriggerImpulseInternal(SessionManagerImpl::kScreenUnlockedImpulse,
+                                     ElementsAre(),
+                                     InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   impl_->HandleLockScreenDismissed();
   EXPECT_EQ(FALSE, impl_->ShouldEndSession());

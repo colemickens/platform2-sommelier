@@ -206,20 +206,11 @@ class SessionManagerImpl
   void StorePolicy(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::vector<uint8_t>& in_policy_blob) override;
-  // Deprecated, use StoreUnsignedPolicyEx.
-  void StoreUnsignedPolicy(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::vector<uint8_t>& in_policy_blob) override;
   // Deprecated, use RetrievePolicyEx.
   bool RetrievePolicy(brillo::ErrorPtr* error,
                       std::vector<uint8_t>* out_policy_blob) override;
   // Deprecated, use StorePolicyEx.
   void StorePolicyForUser(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::string& in_account_id,
-      const std::vector<uint8_t>& in_policy_blob) override;
-  // Deprecated, use StoreUnsignedPolicyEx.
-  void StoreUnsignedPolicyForUser(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::string& in_account_id,
       const std::vector<uint8_t>& in_policy_blob) override;
