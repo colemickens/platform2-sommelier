@@ -10,9 +10,7 @@
 #include <glib.h>
 
 /* General utility functions. */
-uint64_t blk_size(const char* device);
 int runcmd(const gchar* argv[], gchar** output);
-int same_vfs(const char* mnt_a, const char* mnt_b);
 void shred(const char* keyfile);
 
 /* Loopback device attach/detach helpers. */
@@ -29,9 +27,6 @@ int dm_setup(uint64_t bytes,
              int discard);
 int dm_teardown(const gchar* device);
 char* dm_get_key(const gchar* device);
-
-/* Sparse file creation. */
-int sparse_create(const char* path, uint64_t bytes);
 
 /* Filesystem creation. */
 int filesystem_build(const char* device,
