@@ -41,6 +41,9 @@ namespace cryptohome {
 // Default umask
 extern const int kDefaultUmask;
 
+// Default mount flags for Platform::Mount.
+extern const uint32_t kDefaultMountFlags;
+
 // Loop devices prefix.
 extern const char kLoopPrefix[];
 
@@ -145,7 +148,8 @@ class Platform {
   //   type - The fs type
   //   mount_options - The mount options to pass to mount()
   virtual bool Mount(const base::FilePath& from, const base::FilePath& to,
-                     const std::string& type, const std::string& mount_options);
+                     const std::string& type, uint32_t mount_flags,
+                     const std::string& mount_options);
 
   // Creates a bind mount
   //
