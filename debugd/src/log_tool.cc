@@ -148,6 +148,8 @@ const Log kCommandLogs[] = {
     "mali_memory",
     "/bin/cat /sys/class/misc/mali0/device/memory 2> /dev/null"
   },
+  { "memd.parameters", "cat /var/log/memd/memd.parameters 2>/dev/null" },
+  { "memd clips", "cat /var/log/memd/memd.clip* 2>/dev/null" },
   { "meminfo", "cat /proc/meminfo" },
   {
     "memory_spd_info",
