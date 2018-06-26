@@ -459,6 +459,13 @@ const char Metrics::kMetricWifiUserInitiatedConnectionFailureReason[] =
     "Network.Shill.WiFi.UserInitiatedConnectionFailureReason";
 
 // static
+const char Metrics::kMetricWifiSupplicantAttempts[] =
+    "Network.Shill.WiFi.SupplicantAttempts";
+const int Metrics::kMetricWifiSupplicantAttemptsMax = 10;
+const int Metrics::kMetricWifiSupplicantAttemptsMin = 1;
+const int Metrics::kMetricWifiSupplicantAttemptsNumBuckets = 10;
+
+// static
 const char Metrics::kMetricFallbackDNSTestResultSuffix[] =
     "FallbackDNSTestResult";
 
@@ -1375,6 +1382,26 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
   SendEnumToUMA(metric_disconnect_type, type, kStatusCodeTypeMax);
 }
 #endif  // DISABLE_WIFI
+
+void Metrics::NotifyWiFiSupplicantAbort() {
+  SendToUMA(kMetricWifiSupplicantAttempts,
+            kMetricWifiSupplicantAttemptsMax,  // abort == max
+            kMetricWifiSupplicantAttemptsMin,
+            kMetricWifiSupplicantAttemptsMax,
+            kMetricWifiSupplicantAttemptsNumBuckets);
+}
+
+void Metrics::NotifyWiFiSupplicantSuccess(int attempts) {
+  // Cap "success" at 1 lower than max. Max means we aborted.
+  if (attempts >= kMetricWifiSupplicantAttemptsMax)
+    attempts = kMetricWifiSupplicantAttemptsMax - 1;
+
+  SendToUMA(kMetricWifiSupplicantAttempts,
+            attempts,
+            kMetricWifiSupplicantAttemptsMin,
+            kMetricWifiSupplicantAttemptsMax,
+            kMetricWifiSupplicantAttemptsNumBuckets);
+}
 
 void Metrics::RegisterDevice(int interface_index,
                              Technology::Identifier technology) {

@@ -39,6 +39,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD2(Notify80211Disconnect, void(WiFiDisconnectByWhom by_whom,
                                            IEEE_80211::WiFiReasonCode reason));
 #endif  // DISABLE_WIFI
+  MOCK_METHOD1(NotifyWiFiSupplicantSuccess, void(int attempts));
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
   MOCK_METHOD0(NotifyCorruptedProfile, void());

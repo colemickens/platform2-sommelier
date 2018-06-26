@@ -88,6 +88,8 @@ const int WiFi::kFastScanIntervalSeconds = 10;
 const int WiFi::kPendingTimeoutSeconds = 15;
 const int WiFi::kReconnectTimeoutSeconds = 10;
 const int WiFi::kRequestStationInfoPeriodSeconds = 20;
+const int WiFi::kMaxRetryCreateInterfaceAttempts = 6;
+const int WiFi::kRetryCreateInterfaceIntervalSeconds = 10;
 const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
 const float WiFi::kDefaultFractionPerScan = 0.34;
 const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
@@ -130,6 +132,7 @@ WiFi::WiFi(ControlInterface* control_interface,
              Technology::kWifi),
       provider_(manager->wifi_provider()),
       time_(Time::GetInstance()),
+      supplicant_connect_attempts_(0),
       supplicant_present_(false),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
@@ -249,6 +252,7 @@ void WiFi::Start(Error* error,
   GetPhyInfo();
   // Connect to WPA supplicant if it's already present. If not, we'll connect to
   // it when it appears.
+  supplicant_connect_attempts_ = 0;
   ConnectToSupplicant();
   wake_on_wifi_->StartMetricsTimer();
 }
@@ -2458,16 +2462,37 @@ void WiFi::ConnectToSupplicant() {
                                   WPASupplicant::kDriverNL80211);
   create_interface_args.SetString(WPASupplicant::kInterfacePropertyConfigFile,
                                   WPASupplicant::kSupplicantConfPath);
+  supplicant_connect_attempts_++;
   if (!supplicant_process_proxy_->CreateInterface(
       create_interface_args, &supplicant_interface_path_)) {
     // Interface might've already been created, attempt to retrieve it.
     if (!supplicant_process_proxy_->GetInterface(link_name(),
                                                  &supplicant_interface_path_)) {
-      // TODO(quiche): Is it okay to crash here, if device is missing?
-      LOG(ERROR) << __func__ << ": Failed to create interface with supplicant.";
+      LOG(ERROR) << __func__
+          << ": Failed to create interface with supplicant, attempt "
+          << supplicant_connect_attempts_;
+
+      // Interface could not be created at the moment. This could be a
+      // transient error in trying to bring the interface UP, or it could be a
+      // persistent device failure. We continue to rety a few times until
+      // either we succeed or the device disappears or is disabled, in the hope
+      // that the device will recover.
+      if (supplicant_connect_attempts_ >= kMaxRetryCreateInterfaceAttempts) {
+        LOG(ERROR) << "Giving up.";
+        SetEnabled(false);
+        metrics()->NotifyWiFiSupplicantAbort();
+      } else {
+        dispatcher()->PostDelayedTask(FROM_HERE,
+            Bind(&WiFi::ConnectToSupplicant, weak_ptr_factory_.GetWeakPtr()),
+            kRetryCreateInterfaceIntervalSeconds * 1000);
+      }
       return;
     }
   }
+
+  LOG(INFO) << "connected to supplicant on attempt "
+      << supplicant_connect_attempts_;
+  metrics()->NotifyWiFiSupplicantSuccess(supplicant_connect_attempts_);
 
   SetSupplicantInterfaceProxy(
       control_interface()->CreateSupplicantInterfaceProxy(

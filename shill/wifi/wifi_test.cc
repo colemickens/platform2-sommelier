@@ -1662,6 +1662,7 @@ TEST_F(WiFiMainTest, Restart) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_, _));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  EXPECT_CALL(*metrics(), NotifyWiFiSupplicantSuccess(1));
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
 }

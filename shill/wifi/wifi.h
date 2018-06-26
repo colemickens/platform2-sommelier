@@ -343,6 +343,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kPendingTimeoutSeconds;
   static const int kReconnectTimeoutSeconds;
   static const int kRequestStationInfoPeriodSeconds;
+  static const int kMaxRetryCreateInterfaceAttempts;
+  static const int kRetryCreateInterfaceIntervalSeconds;
   static const size_t kMinumumFrequenciesToScan;
   static const float kDefaultFractionPerScan;
   static const size_t kStuckQueueLengthThreshold;
@@ -622,6 +624,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Store cached copies of singletons for speed/ease of testing.
   Time* time_;
+
+  // Number of times we have attempted to set up device via wpa_supplicant
+  // {Create,Get}Interface() since the last Start(). Errors may be transient or
+  // they may be permanent, so we only retry a limited number of times.
+  int supplicant_connect_attempts_;
 
   bool supplicant_present_;
 

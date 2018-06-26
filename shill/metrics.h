@@ -887,6 +887,13 @@ class Metrics {
   // The reason of failed user-initiated wifi connection attempt.
   static const char kMetricWifiUserInitiatedConnectionFailureReason[];
 
+  // Number of attempts made to connect to supplicant before success (max ==
+  // failure).
+  static const char kMetricWifiSupplicantAttempts[];
+  static const int kMetricWifiSupplicantAttemptsMax;
+  static const int kMetricWifiSupplicantAttemptsMin;
+  static const int kMetricWifiSupplicantAttemptsNumBuckets;
+
   // DNS test result.
   static const char kMetricFallbackDNSTestResultSuffix[];
 
@@ -1095,6 +1102,13 @@ class Metrics {
   virtual void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                      IEEE_80211::WiFiReasonCode reason);
 #endif  // DISABLE_WIFI
+
+  // Notifies that WiFi tried to set up supplicant too many times.
+  void NotifyWiFiSupplicantAbort();
+
+  // Notifies that WiFi successfully set up supplicant after some number of
+  // |attempts|.
+  virtual void NotifyWiFiSupplicantSuccess(int attempts);
 
   // Notifies this object that an AP has switched channels.
   void NotifyApChannelSwitch(uint16_t frequency, uint16_t new_frequency);

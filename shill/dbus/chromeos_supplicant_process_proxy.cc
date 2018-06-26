@@ -153,9 +153,9 @@ bool ChromeosSupplicantProcessProxy::GetInterface(
   dbus::ObjectPath path;
   brillo::ErrorPtr error;
   if (!supplicant_proxy_->GetInterface(ifname, &path, &error)) {
-    LOG(FATAL) << "Failed to get interface " << ifname << ": "
+    LOG(ERROR) << "Failed to get interface " << ifname << ": "
                << error->GetCode() << " " << error->GetMessage();
-    return false;  // Make the compiler happy.
+    return false;
   }
   *rpc_identifier = path.value();
   return rpc_identifier;
