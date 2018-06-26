@@ -44,49 +44,49 @@ struct Log {
 };
 
 #define CMD_KERNEL_MODULE_PARAMS(module_name) \
-    "cd /sys/module/" #module_name "/parameters 2> /dev/null && grep -sH ^ *"
+    "cd /sys/module/" #module_name "/parameters 2>/dev/null && grep -sH ^ *"
 
 const Log kCommandLogs[] = {
   { "CLIENT_ID", "/usr/bin/metrics_client -i"},
   { "LOGDATE", "/bin/date" },
-  { "atrus_logs", "/bin/cat /var/log/atrus.log 2> /dev/null" },
-  { "authpolicy", "/bin/cat /var/log/authpolicy.log" },
-  { "bios_info", "/bin/cat /var/log/bios_info.txt" },
+  { "atrus_logs", "cat /var/log/atrus.log 2>/dev/null" },
+  { "authpolicy", "cat /var/log/authpolicy.log" },
+  { "bios_info", "cat /var/log/bios_info.txt" },
   { "bios_log",
-    "/bin/cat /sys/firmware/log "
-    "/proc/device-tree/chosen/ap-console-buffer 2> /dev/null" },
-  { "bios_times", "/bin/cat /var/log/bios_times.txt" },
+    "cat /sys/firmware/log "
+    "/proc/device-tree/chosen/ap-console-buffer 2>/dev/null" },
+  { "bios_times", "cat /var/log/bios_times.txt" },
   { "board-specific",
     "/usr/share/userfeedback/scripts/get_board_specific_info" },
-  { "buddyinfo", "/bin/cat /proc/buddyinfo" },
+  { "buddyinfo", "cat /proc/buddyinfo" },
   { "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot, },
   { "cheets_log", "/usr/bin/collect-cheets-logs 2>&1" },
-  { "clobber.log", "/bin/cat /var/log/clobber.log 2> /dev/null" },
-  { "clobber-state.log", "/bin/cat /var/log/clobber-state.log 2> /dev/null" },
-  { "chrome_system_log", "/bin/cat /var/log/chrome/chrome" },
+  { "clobber.log", "cat /var/log/clobber.log 2>/dev/null" },
+  { "clobber-state.log", "cat /var/log/clobber-state.log 2>/dev/null" },
+  { "chrome_system_log", "cat /var/log/chrome/chrome" },
   // There might be more than one record, so grab them all.
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
-  { "console-ramoops", "/bin/cat /sys/fs/pstore/console-ramoops* 2>/dev/null" },
+  { "console-ramoops", "cat /sys/fs/pstore/console-ramoops* 2>/dev/null" },
   { "cpu", "/usr/bin/uname -p" },
-  { "cpuinfo", "/bin/cat /proc/cpuinfo" },
-  { "cr50_version", "/bin/cat /var/cache/cr50-version" },
+  { "cpuinfo", "cat /proc/cpuinfo" },
+  { "cr50_version", "cat /var/cache/cr50-version" },
   { "cros_ec",
-    "/bin/cat /var/log/cros_ec.previous /var/log/cros_ec.log 2> /dev/null" },
+    "cat /var/log/cros_ec.previous /var/log/cros_ec.log 2>/dev/null" },
   { "cros_ec_panicinfo",
-    "/bin/cat /sys/kernel/debug/cros_ec/panicinfo 2> /dev/null",
+    "cat /sys/kernel/debug/cros_ec/panicinfo 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
   { "cros_ec_pdinfo",
-    "/bin/cat /sys/kernel/debug/cros_ec/pdinfo 2> /dev/null",
+    "cat /sys/kernel/debug/cros_ec/pdinfo 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
   { "cros_fp",
-    "/bin/cat /var/log/cros_fp.previous /var/log/cros_fp.log 2> /dev/null" },
+    "cat /var/log/cros_fp.previous /var/log/cros_fp.log 2>/dev/null" },
   { "dmesg", "/bin/dmesg" },
-  { "ec_info", "/bin/cat /var/log/ec_info.txt" },
+  { "ec_info", "cat /var/log/ec_info.txt" },
   // The sed command replaces the EDID serial number (4 bytes at position 12)
   // with zeroes. See https://en.wikipedia.org/wiki/EDID#EDID_1.4_data_format.
   { "edid-decode",
@@ -95,10 +95,10 @@ const Log kCommandLogs[] = {
         "sed -E 's/.{4}/\x00\x00\x00\x00/4' \"${f}\" | edid-decode;"
         "done"
   },
-  { "eventlog", "/bin/cat /var/log/eventlog.txt" },
+  { "eventlog", "cat /var/log/eventlog.txt" },
   {
     "exynos_gem_objects",
-    "/bin/cat /sys/kernel/debug/dri/0/exynos_gem_objects 2> /dev/null",
+    "cat /sys/kernel/debug/dri/0/exynos_gem_objects 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
@@ -109,24 +109,24 @@ const Log kCommandLogs[] = {
   { "hw_platform", "/usr/bin/uname -i" },
   {
     "i915_gem_gtt",
-    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_gtt 2> /dev/null",
+    "cat /sys/kernel/debug/dri/0/i915_gem_gtt 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
   {
     "i915_gem_objects",
-    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_objects 2> /dev/null",
+    "cat /sys/kernel/debug/dri/0/i915_gem_objects 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
   {
     "i915_error_state",
-    "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2> /dev/null",
+    "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
   },
   { "ifconfig", "/bin/ifconfig -a" },
-  { "input_devices", "/bin/cat /proc/bus/input/devices" },
+  { "input_devices", "cat /proc/bus/input/devices" },
   // Information about the wiphy device, such as current channel.
   { "iw_dev", "/usr/sbin/iw dev" },
   // Hardware capabilities of the wiphy device.
@@ -135,19 +135,16 @@ const Log kCommandLogs[] = {
   { "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm) },
   { "iwlwifi_module_params", CMD_KERNEL_MODULE_PARAMS(iwlwifi) },
 #endif  // USE_IWLWIFI_DUMP
-  { "kernel-crashes",
-    "/bin/cat /var/spool/crash/kernel.*.kcrash 2> /dev/null" },
-  { "logcat", "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
+  { "kernel-crashes", "cat /var/spool/crash/kernel.*.kcrash 2>/dev/null" },
+  { "logcat",
+    "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
     kRoot,
     kRoot,
   },
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
   { "lsusb", "lsusb && lsusb -t" },
-  {
-    "mali_memory",
-    "/bin/cat /sys/class/misc/mali0/device/memory 2> /dev/null"
-  },
+  { "mali_memory", "cat /sys/class/misc/mali0/device/memory 2>/dev/null" },
   { "memd.parameters", "cat /var/log/memd/memd.parameters 2>/dev/null" },
   { "memd clips", "cat /var/log/memd/memd.clip* 2>/dev/null" },
   { "meminfo", "cat /proc/meminfo" },
@@ -184,8 +181,8 @@ const Log kCommandLogs[] = {
     kRoot,
     kRoot,
   },
-  { "mount-encrypted", "/bin/cat /var/log/mount-encrypted.log" },
-  { "mountinfo", "/bin/cat /proc/1/mountinfo" },
+  { "mount-encrypted", "cat /var/log/mount-encrypted.log" },
+  { "mountinfo", "cat /proc/1/mountinfo" },
   { "netlog", "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log" },
   // --processes requires root.
   { "netstat", "/sbin/ss --all --query inet --numeric --processes",
@@ -194,12 +191,12 @@ const Log kCommandLogs[] = {
   },
   {
     "nvmap_iovmm",
-    "/bin/cat /sys/kernel/debug/nvmap/iovmm/allocations 2> /dev/null",
+    "cat /sys/kernel/debug/nvmap/iovmm/allocations 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
   },
   { "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot, },
-  { "pagetypeinfo", "/bin/cat /proc/pagetypeinfo" },
+  { "pagetypeinfo", "cat /proc/pagetypeinfo" },
   {
     "platform_info",
     // mosys may use 'i2c-dev', which may not be loaded yet.
@@ -220,16 +217,16 @@ const Log kCommandLogs[] = {
   },
   { "power_supply_info", "/usr/bin/power_supply_info" },
   { "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data" },
-  { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
-  { "powerd.PREVIOUS", "/bin/cat /var/log/power_manager/powerd.PREVIOUS" },
-  { "powerd.out", "/bin/cat /var/log/powerd.out" },
-  { "powerwash_count", "/bin/cat /var/log/powerwash_count 2> /dev/null" },
+  { "powerd.LATEST", "cat /var/log/power_manager/powerd.LATEST" },
+  { "powerd.PREVIOUS", "cat /var/log/power_manager/powerd.PREVIOUS" },
+  { "powerd.out", "cat /var/log/powerd.out" },
+  { "powerwash_count", "cat /var/log/powerwash_count 2>/dev/null" },
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd,
   // not chronos.
   { "ps", "/bin/ps aux" },
   // /proc/slabinfo is owned by root and has 0400 permission.
-  { "slabinfo", "/bin/cat /proc/slabinfo", kRoot, kRoot, },
-  { "storage_info", "/bin/cat /var/log/storage_info.txt" },
+  { "slabinfo", "cat /proc/slabinfo", kRoot, kRoot, },
+  { "storage_info", "cat /var/log/storage_info.txt" },
   { "swap_info",
     "/usr/share/cros/init/swap.sh status 2>/dev/null",
     SandboxedProcess::kDefaultUser,
@@ -240,7 +237,7 @@ const Log kCommandLogs[] = {
     "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
     kRoot, kRoot},
   { "threads", "/bin/ps -T axo pid,ppid,spid,pcpu,ni,stat,time,comm" },
-  { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
+  { "tlsdate", "cat /var/log/tlsdate.log" },
   { "top thread", "/usr/bin/top -Hb -n 1 | head -n 40"},
   { "top memory", "/usr/bin/top -o \"+%MEM\" -bn 1 | head -n 57"},
   { "touch_fw_version", "grep -E"
@@ -274,28 +271,29 @@ const Log kCommandLogs[] = {
   { "update_engine.log", "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
                          " s.^./var/log/update_engine/.)" },
   { "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime" },
-  { "verified boot", "/bin/cat /var/log/debug_vboot_noisy.log" },
-  { "vmlog.1.LATEST", "/bin/cat /var/log/vmlog/vmlog.1.LATEST" },
-  { "vmlog.1.PREVIOUS", "/bin/cat /var/log/vmlog/vmlog.1.PREVIOUS" },
-  { "vmlog.LATEST", "/bin/cat /var/log/vmlog/vmlog.LATEST" },
-  { "vmlog.PREVIOUS", "/bin/cat /var/log/vmlog/vmlog.PREVIOUS" },
-  { "vmstat", "/bin/cat /proc/vmstat" },
-  { "vpd_2.0", "/bin/cat /var/log/vpd_2.0.txt" },
+  { "verified boot", "cat /var/log/debug_vboot_noisy.log" },
+  { "vmlog.1.LATEST", "cat /var/log/vmlog/vmlog.1.LATEST" },
+  { "vmlog.1.PREVIOUS", "cat /var/log/vmlog/vmlog.1.PREVIOUS" },
+  { "vmlog.LATEST", "cat /var/log/vmlog/vmlog.LATEST" },
+  { "vmlog.PREVIOUS", "cat /var/log/vmlog/vmlog.PREVIOUS" },
+  { "vmstat", "cat /proc/vmstat" },
+  { "vpd_2.0", "cat /var/log/vpd_2.0.txt" },
   { "wifi_status", "/usr/bin/network_diag --wifi-internal --no-log" },
   { "zram compressed data size",
-    "/bin/cat /sys/block/zram0/compr_data_size 2> /dev/null" },
+    "cat /sys/block/zram0/compr_data_size 2>/dev/null" },
   { "zram original data size",
-    "/bin/cat /sys/block/zram0/orig_data_size 2> /dev/null" },
+    "cat /sys/block/zram0/orig_data_size 2>/dev/null" },
   { "zram total memory used",
-    "/bin/cat /sys/block/zram0/mem_used_total 2> /dev/null" },
+    "cat /sys/block/zram0/mem_used_total 2>/dev/null" },
   { "zram total reads",
-    "/bin/cat /sys/block/zram0/num_reads 2> /dev/null" },
+    "cat /sys/block/zram0/num_reads 2>/dev/null" },
   { "zram total writes",
-    "/bin/cat /sys/block/zram0/num_writes 2> /dev/null" },
-  { "zram new stats names", "/bin/echo orig_size compr_size used_total limit "
+    "cat /sys/block/zram0/num_writes 2>/dev/null" },
+  { "zram new stats names",
+    "echo orig_size compr_size used_total limit "
     "used_max zero_pages migrated" },
-  { "zram new stats values", "/bin/cat /sys/block/zram0/mm_stat 2> /dev/null" },
-  { "cros_tp version", "/bin/cat /sys/class/chromeos/cros_tp/version" },
+  { "zram new stats values", "cat /sys/block/zram0/mm_stat 2>/dev/null" },
+  { "cros_tp version", "cat /sys/class/chromeos/cros_tp/version" },
   { "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
     kRoot, kRoot },
   { "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
@@ -339,7 +337,7 @@ const Log kFeedbackLogs[] = {
 // LogTool::GetBigFeedbackLogs().
 const Log kBigFeedbackLogs[] = {
   { "arc-bugreport",
-    "/bin/cat /run/arc/bugreport/pipe 2> /dev/null",
+    "cat /run/arc/bugreport/pipe 2>/dev/null",
     // ARC bugreport permissions are weird. Since we're just running cat, this
     // shouldn't cause any issues.
     kRoot,
