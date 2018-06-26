@@ -551,6 +551,10 @@ bool Platform::FileExists(const FilePath& path) {
   return base::PathExists(path);
 }
 
+int Platform::Access(const FilePath& path, uint32_t flag) {
+  return HANDLE_EINTR(access(path.value().c_str(), flag));
+}
+
 bool Platform::DirectoryExists(const FilePath& path) {
   return base::DirectoryExists(path);
 }
@@ -990,6 +994,22 @@ bool Platform::StatVFS(const FilePath& path, struct statvfs* vfs) {
   return statvfs(path.value().c_str(), vfs) == 0;
 }
 
+bool Platform::SameVFS(const base::FilePath& mnt_a,
+                       const base::FilePath& mnt_b) {
+  struct stat stat_a, stat_b;
+
+  if (lstat(mnt_a.value().c_str(), &stat_a)) {
+    PLOG(ERROR) << "lstat: " << mnt_a.value().c_str();
+    return false;
+  }
+  if (lstat(mnt_b.value().c_str(), &stat_b)) {
+    PLOG(ERROR) << "lstat: " << mnt_b.value().c_str();
+    return false;
+  }
+  return (stat_a.st_dev == stat_b.st_dev);
+}
+
+
 bool Platform::FindFilesystemDevice(const FilePath &filesystem_in,
                                     std::string *device) {
   /* Clear device to indicate failure case. */
@@ -1133,6 +1153,20 @@ bool Platform::CreateSparseFile(const base::FilePath& path, size_t size) {
     return false;
   }
   return file.SetLength(size);
+}
+
+bool Platform::GetBlkSize(const base::FilePath& device, uint64_t* size) {
+  base::ScopedFD fd(HANDLE_EINTR(open(device.value().c_str(),
+                                      O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "open " << device.value();
+    return false;
+  }
+  if (ioctl(fd.get(), BLKGETSIZE64, size)) {
+    PLOG(ERROR) << "ioctl(BLKGETSIZE): " << device.value();
+    return false;
+  }
+  return true;
 }
 
 base::FilePath Platform::AttachLoop(const base::FilePath& path) {

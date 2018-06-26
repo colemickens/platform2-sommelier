@@ -229,7 +229,8 @@ bool SendSecretToBiodTmpFile(const EncryptionKey& key) {
 int main(int argc, char* argv[]) {
   result_code rc;
   base::FilePath rootdir = base::FilePath(getenv("MOUNT_ENCRYPTED_ROOT"));
-  cryptohome::EncryptedFs encrypted_fs(rootdir);
+  cryptohome::Platform platform;
+  cryptohome::EncryptedFs encrypted_fs(rootdir, &platform);
 
   MetricsLibrary metrics;
   metrics.Init();

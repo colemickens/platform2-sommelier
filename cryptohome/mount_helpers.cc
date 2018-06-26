@@ -45,21 +45,6 @@ static const uint64_t kInodeRatioDefault = 16384;
 static const uint64_t kInodeRatioMinimum = 2048;
 static const gchar* const kExt4ExtendedOptions = "discard,lazy_itable_init";
 
-uint64_t blk_size(const char* device) {
-  uint64_t bytes;
-  int fd;
-  if ((fd = open(device, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)) < 0) {
-    PERROR("open(%s)", device);
-    return 0;
-  }
-  if (ioctl(fd, BLKGETSIZE64, &bytes)) {
-    PERROR("ioctl(%s, BLKGETSIZE64)", device);
-    return 0;
-  }
-  close(fd);
-  return bytes;
-}
-
 int runcmd(const gchar* argv[], gchar** output) {
   gint rc;
   gchar *out = NULL, *errout = NULL;
@@ -85,19 +70,6 @@ int runcmd(const gchar* argv[], gchar** output) {
   return rc;
 }
 
-int same_vfs(const char* mnt_a, const char* mnt_b) {
-  struct stat stat_a, stat_b;
-
-  if (lstat(mnt_a, &stat_a)) {
-    PERROR("lstat(%s)", mnt_a);
-    exit(1);
-  }
-  if (lstat(mnt_b, &stat_b)) {
-    PERROR("lstat(%s)", mnt_b);
-    exit(1);
-  }
-  return (stat_a.st_dev == stat_b.st_dev);
-}
 
 /* Overwrite file contents. Useless on SSD. :( */
 void shred(const char* pathname) {
@@ -451,28 +423,6 @@ char* dm_get_key(const gchar* device) {
   }
 
   return key;
-}
-
-int sparse_create(const char* path, uint64_t bytes) {
-  int sparsefd;
-
-  sparsefd = open(path, O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
-                  S_IRUSR | S_IWUSR);
-  if (sparsefd < 0)
-    goto out;
-
-  if (ftruncate(sparsefd, bytes)) {
-    int saved_errno = errno;
-
-    close(sparsefd);
-    unlink(path);
-    errno = saved_errno;
-
-    sparsefd = -1;
-  }
-
-out:
-  return sparsefd;
 }
 
 /* When creating a filesystem that will grow, the inode ratio is calculated

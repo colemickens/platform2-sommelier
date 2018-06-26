@@ -15,16 +15,12 @@
 #include <brillo/secure_blob.h>
 
 #include <cryptohome/mount_encrypted.h>
+#include <cryptohome/platform.h>
 
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
 
 namespace cryptohome {
-
-enum class BindDir {
-  BIND_SOURCE,
-  BIND_DEST,
-};
 
 // Teardown stage: for granular teardowns
 enum class TeardownStage {
@@ -51,8 +47,8 @@ struct BindMount {
 // sets up an encrypted mount at <root_dir>/ENCRYPTED_MOUNT.
 class EncryptedFs {
  public:
-  // Setup EncrytpedFs with the root directory.
-  explicit EncryptedFs(const base::FilePath& mount_root);
+  // Setup EncryptedFs with the root dir and a platform_ implementation.
+  EncryptedFs(const base::FilePath& mount_root, Platform* platform);
   ~EncryptedFs() = default;
 
   // Setup mounts the encrypted mount by:
@@ -71,7 +67,7 @@ class EncryptedFs {
   result_code Setup(const brillo::SecureBlob& encryption_key, bool rebuild);
   // Purge - obliterate the sparse file. This should be called only
   // when the encrypted fs is not mounted.
-  int Purge(void);
+  bool Purge(void);
   // Teardown - stepwise unmounts the | ext4 | dmcrypt | loopback | tower
   // on top of the sparse file.
   result_code Teardown(void);
@@ -87,7 +83,7 @@ class EncryptedFs {
  private:
   // CreateSparseBackingFile creates the sparse backing file for the
   // encrypted mount and returns an open fd, if successful.
-  int CreateSparseBackingFile();
+  bool CreateSparseBackingFile();
   // TeardownByStage allows higher granularity over teardown
   // processes.
   result_code TeardownByStage(TeardownStage stage, bool ignore_errors);
@@ -100,6 +96,10 @@ class EncryptedFs {
   std::string dmcrypt_name_;
   base::FilePath dmcrypt_dev_;
   std::vector<BindMount> bind_mounts_;
+
+  // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
+  // for mock Platform objects.
+  Platform* platform_;
 };
 
 }  // namespace cryptohome

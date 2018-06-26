@@ -325,6 +325,14 @@ class Platform {
   //  path - Path of the file to check
   virtual bool FileExists(const base::FilePath& path);
 
+  // Calls Access() on path with flag
+  //
+  // Parameters
+  //   path - Path of file to access.
+  //   flag -  Access flag.
+  virtual int Access(const base::FilePath& path, uint32_t flag);
+
+
   // Check if a directory exists as the given path
   virtual bool DirectoryExists(const base::FilePath& path);
 
@@ -633,6 +641,14 @@ class Platform {
   //   vfs - buffer to store result in
   virtual bool StatVFS(const base::FilePath& path, struct statvfs* vfs);
 
+  // Check if the two paths are in the same vfs.
+  //
+  // Parameters
+  //   mnt_a - first path.
+  //   mnt_b - second path.
+  virtual bool SameVFS(const base::FilePath& mnt_a,
+                       const base::FilePath& mnt_b);
+
   // Find the device for a given filesystem.
   //
   // Parameters
@@ -775,6 +791,13 @@ class Platform {
   //   path - The path to the file.
   //   size - The size to which sparse file should be resized.
   virtual bool CreateSparseFile(const base::FilePath& path, size_t size);
+
+  // Get the size of block device in bytes.
+  //
+  // Parameters
+  //   device - path to the device.
+  //   size (OUT) - size of the block device.
+  virtual bool GetBlkSize(const base::FilePath& device, uint64_t* size);
 
   // Attaches the file to a loop device and returns path to that.
   // New loop device might be allocated if no free device is present.

@@ -43,47 +43,40 @@ const char* path_str(const base::FilePath& path) {
   return path.value().c_str();
 }
 
-result_code CheckBind(BindMount* bind, BindDir dir) {
-  struct passwd* user;
-  struct group* group;
-  base::FilePath target;
+bool CheckBind(Platform* platform, const BindMount& bind) {
+  uid_t user;
+  gid_t group;
 
-  if (dir == BindDir::BIND_SOURCE)
-    target = bind->src;
-  else
-    target = bind->dst;
+  if (platform->Access(bind.src, R_OK) &&
+      !platform->CreateDirectory(bind.src)) {
+    PLOG(ERROR) << "mkdir " << bind.src;
+    return false;
+  }
 
-  if (access(path_str(target), R_OK) && mkdir(path_str(target), bind->mode)) {
-    PLOG(ERROR) << "mkdir: " << target;
-    return RESULT_FAIL_FATAL;
+  if (platform->Access(bind.dst, R_OK) &&
+      !(platform->CreateDirectory(bind.dst) &&
+        platform->SetPermissions(bind.dst, bind.mode))) {
+    PLOG(ERROR) << "mkdir " << bind.dst;
+    return false;
+  }
+
+  if (!platform->GetUserId(bind.owner, &user, &group)) {
+    PLOG(ERROR) << "getpwnam" << bind.owner;
+    return false;
   }
 
   // Destination may be on read-only filesystem, so skip tweaks.
-  if (dir == BindDir::BIND_DEST)
-    return RESULT_SUCCESS;
-
-  if (!(user =
-            getpwnam(bind->owner.c_str()))) {  // NOLINT(runtime/threadsafe_fn)
-    PLOG(ERROR) << "getpwnam: " << bind->owner;
-    return RESULT_FAIL_FATAL;
-  }
-  if (!(group =
-            getgrnam(bind->group.c_str()))) {  // NOLINT(runtime/threadsafe_fn)
-    PLOG(ERROR) << "getgrnam: " << bind->group;
-    return RESULT_FAIL_FATAL;
-  }
-
   // Must do explicit chmod since mkdir()'s mode respects umask.
-  if (chmod(path_str(target), bind->mode)) {
-    PLOG(ERROR) << "chmod: " << target;
-    return RESULT_FAIL_FATAL;
+  if (!platform->SetPermissions(bind.src, bind.mode)) {
+    PLOG(ERROR) << "chmod " << bind.src;
+    return false;
   }
-  if (chown(path_str(target), user->pw_uid, group->gr_gid)) {
-    PLOG(ERROR) << "chown: " << target;
-    return RESULT_FAIL_FATAL;
+  if (!platform->SetOwnership(bind.src, user, group, true)) {
+    PLOG(ERROR) << "chown " << bind.src;
+    return false;
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
 void SpawnResizer(const base::FilePath& device,
@@ -150,7 +143,8 @@ std::string GetMountOpts() {
 
 }  // namespace
 
-EncryptedFs::EncryptedFs(const base::FilePath& mount_root) {
+EncryptedFs::EncryptedFs(const base::FilePath& mount_root, Platform* platform)
+    : platform_(platform) {
   dmcrypt_name_ = std::string(kCryptDevName);
   rootdir_ = base::FilePath("/");
   if (!mount_root.empty()) {
@@ -177,19 +171,19 @@ EncryptedFs::EncryptedFs(const base::FilePath& mount_root) {
                           true});
 }
 
-int EncryptedFs::Purge() {
+bool EncryptedFs::Purge() {
   LOG(INFO) << "Purging block file";
-  return unlink(path_str(block_path_));
+  return platform_->DeleteFile(block_path_, false);
 }
 
-int EncryptedFs::CreateSparseBackingFile() {
+bool EncryptedFs::CreateSparseBackingFile() {
   uint64_t fs_bytes_max;
   struct statvfs stateful_statbuf;
 
   // Calculate the desired size of the new partition.
-  if (statvfs(path_str(stateful_mount_), &stateful_statbuf)) {
+  if (!platform_->StatVFS(stateful_mount_, &stateful_statbuf)) {
     PLOG(ERROR) << stateful_mount_;
-    return -1;
+    return false;
   }
   fs_bytes_max = stateful_statbuf.f_blocks;
   fs_bytes_max *= kSizePercent;
@@ -198,13 +192,13 @@ int EncryptedFs::CreateSparseBackingFile() {
   LOG(INFO) << "Creating sparse backing file with size " << fs_bytes_max;
 
   // Create the sparse file and return the descriptor.
-  return sparse_create(path_str(block_path_), fs_bytes_max);
+  return platform_->CreateSparseFile(block_path_, fs_bytes_max) &&
+         platform_->SetPermissions(block_path_, S_IRUSR | S_IWUSR);
 }
 
 // Do all the work needed to actually set up the encrypted partition.
 result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
                                bool rebuild) {
-  int sparsefd;
   result_code rc = RESULT_FAIL_FATAL;
 
   if (rebuild) {
@@ -212,13 +206,16 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     Purge();
 
     // Create new sparse file.
-    sparsefd = CreateSparseBackingFile();
-  } else {
-    sparsefd = open(path_str(block_path_), O_RDWR | O_NOFOLLOW);
+    if (!CreateSparseBackingFile()) {
+      PLOG(ERROR) << block_path_;
+      return rc;
+    }
   }
 
   // Return failure if the fd is invalid.
-  if (sparsefd < 0) {
+  base::ScopedFD sparse_fd(
+      HANDLE_EINTR(open(block_path_.value().c_str(), O_RDWR | O_NOFOLLOW)));
+  if (!sparse_fd.is_valid()) {
     PLOG(ERROR) << block_path_;
     return rc;
   }
@@ -226,15 +223,16 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   // Set up loopback device.
   LOG(INFO) << "Loopback attaching " << block_path_ << " named "
             << dmcrypt_name_;
-  std::string lodev(loop_attach(sparsefd, dmcrypt_name_.c_str()));
+  std::string lodev(loop_attach(sparse_fd.get(), dmcrypt_name_.c_str()));
   if (lodev.empty()) {
     LOG(ERROR) << "loop_attach failed";
     return rc;
   }
 
   // Get size as seen by block device.
-  uint64_t blkdev_size = blk_size(lodev.c_str());
-  if (blkdev_size < kExt4BlockSize) {
+  uint64_t blkdev_size;
+  if (!platform_->GetBlkSize(base::FilePath(lodev), &blkdev_size) &&
+      blkdev_size < kExt4BlockSize) {
     LOG(ERROR) << "Failed to read device size";
     TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
     return rc;
@@ -282,16 +280,17 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
 
   // Mount the dm-crypt partition finally.
   LOG(INFO) << "Mounting " << dmcrypt_dev_ << " onto " << encrypted_mount_;
-  if (access(path_str(encrypted_mount_), R_OK) &&
-      mkdir(path_str(encrypted_mount_),
-            S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+  if (platform_->Access(encrypted_mount_, R_OK) &&
+      !(platform_->CreateDirectory(encrypted_mount_) &&
+        platform_->SetPermissions(encrypted_mount_,
+                                  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))) {
     PLOG(ERROR) << dmcrypt_dev_;
     TeardownByStage(TeardownStage::kTeardownDevmapper, true);
     return rc;
   }
-  if (mount(path_str(dmcrypt_dev_), path_str(encrypted_mount_),
-            kEncryptedFSType, MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
-            GetMountOpts().c_str())) {
+  if (!platform_->Mount(dmcrypt_dev_, encrypted_mount_, kEncryptedFSType,
+                        MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
+                        GetMountOpts().c_str())) {
     PLOG(ERROR) << "mount: " << dmcrypt_dev_ << ", " << encrypted_mount_;
     TeardownByStage(TeardownStage::kTeardownDevmapper, true);
     return rc;
@@ -304,12 +303,11 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   // Perform bind mounts.
   for (auto& bind : bind_mounts_) {
     LOG(INFO) << "Bind mounting " << bind.src << " onto " << bind.dst;
-    if (CheckBind(&bind, BindDir::BIND_SOURCE) != RESULT_SUCCESS ||
-        CheckBind(&bind, BindDir::BIND_DEST) != RESULT_SUCCESS) {
+    if (!CheckBind(platform_, bind)) {
       TeardownByStage(TeardownStage::kTeardownUnbind, true);
       return rc;
     }
-    if (mount(path_str(bind.src), path_str(bind.dst), "none", MS_BIND, NULL)) {
+    if (!platform_->Bind(bind.src, bind.dst)) {
       PLOG(ERROR) << "mount: " << bind.src << ", " << bind.dst;
       TeardownByStage(TeardownStage::kTeardownUnbind, true);
       return rc;
@@ -336,7 +334,7 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
         LOG(INFO) << "Unmounting " << bind.dst;
         errno = 0;
         // Allow either success or a "not mounted" failure.
-        if (umount(path_str(bind.dst)) && !ignore_errors) {
+        if (!platform_->Unmount(bind.dst, false, nullptr) && !ignore_errors) {
           if (errno != EINVAL) {
             PLOG(ERROR) << "umount " << bind.dst;
             return RESULT_FAIL_FATAL;
@@ -347,7 +345,8 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
       LOG(INFO) << "Unmounting " << encrypted_mount_;
       errno = 0;
       // Allow either success or a "not mounted" failure.
-      if (umount(path_str(encrypted_mount_)) && !ignore_errors) {
+      if (!platform_->Unmount(encrypted_mount_, false, nullptr) &&
+          !ignore_errors) {
         if (errno != EINVAL) {
           PLOG(ERROR) << "umount " << encrypted_mount_;
           return RESULT_FAIL_FATAL;
@@ -356,14 +355,14 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
 
       // Force syncs to make sure we don't tickle racey/buggy kernel
       // routines that might be causing crosbug.com/p/17610.
-      sync();
+      platform_->Sync();
 
     // Intentionally fall through here to teardown the lower dmcrypt device.
     case TeardownStage::kTeardownDevmapper:
       LOG(INFO) << "Removing " << dmcrypt_dev_;
       if (!dm_teardown(path_str(dmcrypt_dev_)) && !ignore_errors)
         LOG(ERROR) << "dm_teardown: " << dmcrypt_dev_;
-      sync();
+      platform_->Sync();
 
     // Intentionally fall through here to teardown the lower loop device.
     case TeardownStage::kTeardownLoopDevice:
@@ -372,7 +371,7 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
         LOG(ERROR) << "loop_detach_name: " << dmcrypt_name_;
         return RESULT_FAIL_FATAL;
       }
-      sync();
+      platform_->Sync();
       return RESULT_SUCCESS;
   }
 
@@ -382,29 +381,29 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
 
 result_code EncryptedFs::CheckStates(void) {
   // Verify stateful partition exists.
-  if (access(path_str(stateful_mount_), R_OK)) {
+  if (platform_->Access(stateful_mount_, R_OK)) {
     LOG(INFO) << stateful_mount_ << "does not exist.";
     return RESULT_FAIL_FATAL;
   }
   // Verify stateful is either a separate mount, or that the
   // root directory is writable (i.e. a factory install, dev mode
   // where root remounted rw, etc).
-  if (same_vfs(path_str(stateful_mount_), path_str(rootdir_)) &&
-      access(path_str(rootdir_), W_OK)) {
+  if (platform_->SameVFS(stateful_mount_, rootdir_) &&
+      platform_->Access(rootdir_, W_OK)) {
     LOG(INFO) << stateful_mount_ << " is not mounted.";
     return RESULT_FAIL_FATAL;
   }
 
   // Verify encrypted partition is missing or not already mounted.
-  if (access(path_str(encrypted_mount_), R_OK) == 0 &&
-      !same_vfs(path_str(encrypted_mount_), path_str(stateful_mount_))) {
+  if (platform_->Access(encrypted_mount_, R_OK) == 0 &&
+      !platform_->SameVFS(encrypted_mount_, stateful_mount_)) {
     LOG(INFO) << encrypted_mount_ << " already appears to be mounted.";
     return RESULT_SUCCESS;
   }
 
   // Verify that bind mount targets exist.
   for (auto& bind : bind_mounts_) {
-    if (access(path_str(bind.dst), R_OK)) {
+    if (platform_->Access(bind.dst, R_OK)) {
       PLOG(ERROR) << bind.dst << " mount point is missing.";
       return RESULT_FAIL_FATAL;
     }
@@ -415,7 +414,7 @@ result_code EncryptedFs::CheckStates(void) {
     if (bind.submount)
       continue;
 
-    if (same_vfs(path_str(bind.dst), path_str(stateful_mount_))) {
+    if (platform_->SameVFS(bind.dst, stateful_mount_)) {
       LOG(INFO) << bind.dst << " already bind mounted.";
       return RESULT_FAIL_FATAL;
     }

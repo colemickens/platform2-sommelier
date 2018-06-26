@@ -127,6 +127,7 @@ class MockPlatform : public Platform {
                      int64_t(const base::FilePath&, gid_t));
   MOCK_METHOD2(Symlink, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD1(FileExists, bool(const base::FilePath&));
+  MOCK_METHOD2(Access, int(const base::FilePath&, uint32_t));
   MOCK_METHOD2(GetFileSize, bool(const base::FilePath&, int64_t*));
   MOCK_METHOD1(ComputeDirectorySize, int64_t(const base::FilePath&));
   MOCK_METHOD2(OpenFile, FILE*(const base::FilePath&, const char*));
@@ -188,6 +189,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Copy, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD2(Move, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD2(StatVFS, bool(const base::FilePath&, struct statvfs*));
+  MOCK_METHOD2(SameVFS, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD2(ReportFilesystemDetails, bool(const base::FilePath&,
                                              const base::FilePath&));
   MOCK_METHOD2(FindFilesystemDevice, bool(const base::FilePath&,
@@ -232,6 +234,7 @@ class MockPlatform : public Platform {
                     bool));
   MOCK_METHOD4(SendFile, bool(int, int, off_t, size_t));
   MOCK_METHOD2(CreateSparseFile, bool(const base::FilePath&, size_t));
+  MOCK_METHOD2(GetBlkSize, bool(const base::FilePath&, uint64_t*));
   MOCK_METHOD1(AttachLoop, base::FilePath(const base::FilePath&));
   MOCK_METHOD1(DetachLoop, bool(const base::FilePath&));
   MOCK_METHOD0(GetAttachedLoopDevices, std::vector<LoopDevice>());
