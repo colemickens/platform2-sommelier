@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
+#include <brillo/process.h>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted.h"
@@ -42,12 +43,7 @@ constexpr uint64_t kExt4BlocksPerGroup = 32768;
 constexpr uint64_t kExt4InodeRatioDefault = 16384;
 constexpr uint64_t kExt4InodeRatioMinimum = 2048;
 constexpr char kExt4ExtendedOptions[] = "discard,lazy_itable_init";
-
-// Temp. function to cleanly get the c_str() of FilePaths.
-// TODO(sarthakkukreti): Remove once all functions use base::FilePath
-const char* path_str(const base::FilePath& path) {
-  return path.value().c_str();
-}
+constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
 
 bool CheckBind(Platform* platform, const BindMount& bind) {
   uid_t user;
@@ -207,12 +203,37 @@ std::vector<std::string> BuildExt4FormatOpts(uint64_t block_bytes,
                                   : "")};
 }
 
+bool UdevAdmSettle(const base::FilePath& device_path, bool wait_for_device) {
+  brillo::ProcessImpl udevadm_process;
+  udevadm_process.AddArg("/bin/udevadm");
+  udevadm_process.AddArg("settle");
+
+  if (wait_for_device) {
+    udevadm_process.AddArg("-t");
+    udevadm_process.AddArg("10");
+    udevadm_process.AddArg("-E");
+    udevadm_process.AddArg(device_path.value());
+  }
+  // Close unused file descriptors in child process.
+  udevadm_process.SetCloseUnusedFileDescriptors(true);
+
+  // Start the process and return.
+  int rc = udevadm_process.Run();
+  if (rc != 0)
+    return false;
+
+  return true;
+}
+
 }  // namespace
 
 EncryptedFs::EncryptedFs(const base::FilePath& mount_root,
                          Platform* platform,
-                         brillo::LoopDeviceManager* loop_device_manager)
-    : platform_(platform), loopdev_manager_(loop_device_manager) {
+                         brillo::LoopDeviceManager* loop_device_manager,
+                         brillo::DeviceMapper* device_mapper)
+    : platform_(platform),
+      loopdev_manager_(loop_device_manager),
+      device_mapper_(device_mapper) {
   dmcrypt_name_ = std::string(kCryptDevName);
   rootdir_ = base::FilePath("/");
   if (!mount_root.empty()) {
@@ -311,27 +332,44 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   LOG(INFO) << "Setting up dm-crypt " << lodev_path << " as " << dmcrypt_dev_;
 
   uint64_t sectors = blkdev_size / kSectorSize;
-  std::string encryption_key_hex =
-      base::HexEncode(encryption_key.data(), encryption_key.size());
-  if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
-                lodev_path.value().c_str(), path_str(dmcrypt_dev_),
-                kCryptAllowDiscard)) {
+  brillo::SecureBlob dm_parameters =
+      brillo::DevmapperTable::CryptCreateParameters(
+          kDmCryptDefaultCipher,  // cipher.
+          encryption_key,         // encryption key.
+          0,                      // iv offset.
+          lodev_path,             // device_path.
+          0,                      // device offset.
+          kCryptAllowDiscard);    // allow discards.
+
+  brillo::DevmapperTable dm_table(0, sectors, "crypt", dm_parameters);
+  if (!device_mapper_->Setup(dmcrypt_name_, dm_table)) {
     // If dm_setup() fails, it could be due to lacking
     // "allow_discard" support, so try again with discard
     // disabled. There doesn't seem to be a way to query
     // the kernel for this feature short of a fallible
     // version test or just trying to set up the dm table
     // again, so do the latter.
-    //
-    if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
-                  lodev_path.value().c_str(), path_str(dmcrypt_dev_),
-                  !kCryptAllowDiscard)) {
+    dm_parameters = brillo::DevmapperTable::CryptCreateParameters(
+        kDmCryptDefaultCipher,  // cipher.
+        encryption_key,         // encryption key.
+        0,                      // iv offset.
+        lodev_path,             // device_path.
+        0,                      // device offset.
+        !kCryptAllowDiscard);   // allow discards.
+    brillo::DevmapperTable dm_table(0, sectors, "crypt", dm_parameters);
+    if (!device_mapper_->Setup(dmcrypt_name_, dm_table)) {
       LOG(ERROR) << "dm_setup failed";
       TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
       return rc;
     }
     LOG(INFO) << dmcrypt_dev_
               << ": dm-crypt does not support discard; disabling.";
+  }
+
+  if (!UdevAdmSettle(dmcrypt_dev_, true)) {
+    LOG(ERROR) << "udevadm settle failed.";
+    TeardownByStage(TeardownStage::kTeardownDevmapper, true);
+    return rc;
   }
 
   // Calculate filesystem min/max size.
@@ -433,8 +471,12 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
     // Intentionally fall through here to teardown the lower dmcrypt device.
     case TeardownStage::kTeardownDevmapper:
       LOG(INFO) << "Removing " << dmcrypt_dev_;
-      if (!dm_teardown(path_str(dmcrypt_dev_)) && !ignore_errors)
+      if (!device_mapper_->Remove(dmcrypt_name_) && !ignore_errors)
         LOG(ERROR) << "dm_teardown: " << dmcrypt_dev_;
+      if (!UdevAdmSettle(dmcrypt_dev_, false) && !ignore_errors) {
+        LOG(ERROR) << "udevadm settle failed.";
+        return RESULT_FAIL_FATAL;
+      }
       platform_->Sync();
 
     // Intentionally fall through here to teardown the lower loop device.
@@ -500,16 +542,16 @@ result_code EncryptedFs::CheckStates(void) {
 }
 
 result_code EncryptedFs::ReportInfo(void) const {
-  printf("rootdir: %s\n", path_str(rootdir_));
-  printf("stateful_mount: %s\n", path_str(stateful_mount_));
-  printf("block_path: %s\n", path_str(block_path_));
-  printf("encrypted_mount: %s\n", path_str(encrypted_mount_));
+  printf("rootdir: %s\n", rootdir_.value().c_str());
+  printf("stateful_mount: %s\n", stateful_mount_.value().c_str());
+  printf("block_path: %s\n", block_path_.value().c_str());
+  printf("encrypted_mount: %s\n", encrypted_mount_.value().c_str());
   printf("dmcrypt_name: %s\n", dmcrypt_name_.c_str());
-  printf("dmcrypt_dev: %s\n", path_str(dmcrypt_dev_));
+  printf("dmcrypt_dev: %s\n", dmcrypt_dev_.value().c_str());
   printf("bind mounts:\n");
   for (auto& mnt : bind_mounts_) {
-    printf("\tsrc:%s\n", path_str(mnt.src));
-    printf("\tdst:%s\n", path_str(mnt.dst));
+    printf("\tsrc:%s\n", mnt.src.value().c_str());
+    printf("\tdst:%s\n", mnt.dst.value().c_str());
     printf("\towner:%s\n", mnt.owner.c_str());
     printf("\tmode:%o\n", mnt.mode);
     printf("\tsubmount:%d\n", mnt.submount);
@@ -519,13 +561,8 @@ result_code EncryptedFs::ReportInfo(void) const {
 }
 
 brillo::SecureBlob EncryptedFs::GetKey() const {
-  char* key = dm_get_key(path_str(dmcrypt_dev_));
-  brillo::SecureBlob encryption_key;
-  if (!base::HexStringToBytes(key, &encryption_key)) {
-    LOG(ERROR) << "Failed to decode encryption key.";
-    return brillo::SecureBlob();
-  }
-  return encryption_key;
+  brillo::DevmapperTable dm_table = device_mapper_->GetTable(dmcrypt_name_);
+  return dm_table.CryptGetKey();
 }
 
 }  // namespace cryptohome
