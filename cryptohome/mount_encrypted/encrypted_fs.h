@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/secure_blob.h>
 
 #include <cryptohome/mount_encrypted.h>
@@ -47,8 +48,10 @@ struct BindMount {
 // sets up an encrypted mount at <root_dir>/ENCRYPTED_MOUNT.
 class EncryptedFs {
  public:
-  // Setup EncryptedFs with the root dir and a platform_ implementation.
-  EncryptedFs(const base::FilePath& mount_root, Platform* platform);
+  // Setup EncryptedFs with the root dir, platform and loopdev manager.
+  EncryptedFs(const base::FilePath& mount_root,
+              Platform* platform,
+              brillo::LoopDeviceManager* loop_device_manager);
   ~EncryptedFs() = default;
 
   // Setup mounts the encrypted mount by:
@@ -81,6 +84,13 @@ class EncryptedFs {
   brillo::SecureBlob GetKey() const;
 
  private:
+  // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
+  // for mock Platform objects.
+  Platform* platform_;
+
+  // Loop Device Manager.
+  brillo::LoopDeviceManager* loopdev_manager_;
+
   // CreateSparseBackingFile creates the sparse backing file for the
   // encrypted mount and returns an open fd, if successful.
   bool CreateSparseBackingFile();
@@ -96,10 +106,6 @@ class EncryptedFs {
   std::string dmcrypt_name_;
   base::FilePath dmcrypt_dev_;
   std::vector<BindMount> bind_mounts_;
-
-  // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
-  // for mock Platform objects.
-  Platform* platform_;
 };
 
 }  // namespace cryptohome

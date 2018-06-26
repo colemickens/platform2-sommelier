@@ -11,6 +11,7 @@
 #include <sys/mount.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
+#include <memory>
 
 #include <string>
 
@@ -101,8 +102,7 @@ void SpawnResizer(Platform* platform,
   // full size of the block device in one step.
   blocks = blocks_max;
 
-  LOG(INFO) << "Resizing started in " << kResizeStepSeconds
-             << " second steps.";
+  LOG(INFO) << "Resizing started in " << kResizeStepSeconds << " second steps.";
 
   do {
     sleep(kResizeStepSeconds);
@@ -209,8 +209,10 @@ std::vector<std::string> BuildExt4FormatOpts(uint64_t block_bytes,
 
 }  // namespace
 
-EncryptedFs::EncryptedFs(const base::FilePath& mount_root, Platform* platform)
-    : platform_(platform) {
+EncryptedFs::EncryptedFs(const base::FilePath& mount_root,
+                         Platform* platform,
+                         brillo::LoopDeviceManager* loop_device_manager)
+    : platform_(platform), loopdev_manager_(loop_device_manager) {
   dmcrypt_name_ = std::string(kCryptDevName);
   rootdir_ = base::FilePath("/");
   if (!mount_root.empty()) {
@@ -278,26 +280,27 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     }
   }
 
-  // Return failure if the fd is invalid.
-  base::ScopedFD sparse_fd(
-      HANDLE_EINTR(open(block_path_.value().c_str(), O_RDWR | O_NOFOLLOW)));
-  if (!sparse_fd.is_valid()) {
-    PLOG(ERROR) << block_path_;
-    return rc;
-  }
-
   // Set up loopback device.
   LOG(INFO) << "Loopback attaching " << block_path_ << " named "
             << dmcrypt_name_;
-  std::string lodev(loop_attach(sparse_fd.get(), dmcrypt_name_.c_str()));
-  if (lodev.empty()) {
-    LOG(ERROR) << "loop_attach failed";
+  std::unique_ptr<brillo::LoopDevice> lodev =
+      loopdev_manager_->AttachDeviceToFile(block_path_);
+  if (!lodev->IsValid()) {
+    LOG(ERROR) << "Loop attach failed";
     return rc;
   }
 
+  // Set loop device name.
+  if (!lodev->SetName(dmcrypt_name_)) {
+    LOG(ERROR) << "Loop set name failed";
+    return rc;
+  }
+
+  base::FilePath lodev_path = lodev->GetDevicePath();
+
   // Get size as seen by block device.
   uint64_t blkdev_size;
-  if (!platform_->GetBlkSize(base::FilePath(lodev), &blkdev_size) &&
+  if (!platform_->GetBlkSize(lodev_path, &blkdev_size) &&
       blkdev_size < kExt4BlockSize) {
     LOG(ERROR) << "Failed to read device size";
     TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
@@ -305,13 +308,14 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
   }
 
   // Mount loopback device with dm-crypt using the encryption key.
-  LOG(INFO) << "Setting up dm-crypt " << lodev << " as " << dmcrypt_dev_;
+  LOG(INFO) << "Setting up dm-crypt " << lodev_path << " as " << dmcrypt_dev_;
 
   uint64_t sectors = blkdev_size / kSectorSize;
   std::string encryption_key_hex =
       base::HexEncode(encryption_key.data(), encryption_key.size());
   if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
-                lodev.c_str(), path_str(dmcrypt_dev_), kCryptAllowDiscard)) {
+                lodev_path.value().c_str(), path_str(dmcrypt_dev_),
+                kCryptAllowDiscard)) {
     // If dm_setup() fails, it could be due to lacking
     // "allow_discard" support, so try again with discard
     // disabled. There doesn't seem to be a way to query
@@ -320,7 +324,8 @@ result_code EncryptedFs::Setup(const brillo::SecureBlob& encryption_key,
     // again, so do the latter.
     //
     if (!dm_setup(sectors, encryption_key_hex.c_str(), dmcrypt_name_.c_str(),
-                  lodev.c_str(), path_str(dmcrypt_dev_), !kCryptAllowDiscard)) {
+                  lodev_path.value().c_str(), path_str(dmcrypt_dev_),
+                  !kCryptAllowDiscard)) {
       LOG(ERROR) << "dm_setup failed";
       TeardownByStage(TeardownStage::kTeardownLoopDevice, true);
       return rc;
@@ -435,7 +440,9 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
     // Intentionally fall through here to teardown the lower loop device.
     case TeardownStage::kTeardownLoopDevice:
       LOG(INFO) << "Unlooping " << block_path_ << " named " << dmcrypt_name_;
-      if (!loop_detach_name(dmcrypt_name_.c_str()) && !ignore_errors) {
+      std::unique_ptr<brillo::LoopDevice> lodev =
+          loopdev_manager_->GetAttachedDeviceByName(dmcrypt_name_);
+      if (!(lodev->IsValid() && lodev->Detach()) && !ignore_errors) {
         LOG(ERROR) << "loop_detach_name: " << dmcrypt_name_;
         return RESULT_FAIL_FATAL;
       }
