@@ -15,39 +15,15 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
+#include <camera/camera_metadata.h>
 
 #include "cros-camera/common.h"
 #include "hal/usb/camera_characteristics.h"
 
 namespace cros {
-
-// USB VID and PID are both 4 bytes long.
-static const size_t kVidPidSize = 4;
-// /sys/class/video4linux/video{N}/device is a symlink to the corresponding
-// USB device info directory.
-static const char kVidPathTemplate[] =
-    "/sys/class/video4linux/%s/device/../idVendor";
-static const char kPidPathTemplate[] =
-    "/sys/class/video4linux/%s/device/../idProduct";
-
-// Allowed camera devices.
-static const char kAllowedCameraPrefix[] = "/dev/camera-internal";
-static const char kAllowedVideoPrefix[] = "/dev/video";
-
-static bool ReadIdFile(const std::string& path, std::string* id) {
-  char id_buf[kVidPidSize];
-  FILE* file = fopen(path.c_str(), "rb");
-  if (!file)
-    return false;
-  const bool success = fread(id_buf, kVidPidSize, 1, file) == 1;
-  fclose(file);
-  if (!success)
-    return false;
-  id->append(id_buf, kVidPidSize);
-  return true;
-}
 
 V4L2CameraDevice::V4L2CameraDevice()
     : stream_on_(false), device_info_(DeviceInfo()) {}
@@ -62,42 +38,23 @@ V4L2CameraDevice::~V4L2CameraDevice() {
 int V4L2CameraDevice::Connect(const std::string& device_path) {
   VLOGF(1) << "Connecting device path: " << device_path;
   base::AutoLock l(lock_);
-  if (device_path.compare(0, strlen(kAllowedCameraPrefix),
-                          kAllowedCameraPrefix) &&
-      device_path.compare(0, strlen(kAllowedVideoPrefix),
-                          kAllowedVideoPrefix)) {
-    LOGF(ERROR) << "Invalid device path " << device_path;
-    return -EINVAL;
-  }
   if (device_fd_.is_valid()) {
     LOGF(ERROR) << "A camera device is opened (" << device_fd_.get()
                 << "). Please close it first";
     return -EIO;
   }
 
-  // If device path is /dev/video*, it means the device is an external camera.
-  // We have to glob all video devices again since the device number may be
-  // changed after suspend/resume.
-  std::string correct_device_path = device_path;
-  if (!device_path.compare(0, strlen(kAllowedVideoPrefix),
-                           kAllowedVideoPrefix)) {
-    std::pair<std::string, DeviceInfo> external_camera = FindExternalCamera();
-    if (external_camera.first != "") {
-      correct_device_path = external_camera.second.device_path;
-    }
-  }
-
   // Since device node may be changed after suspend/resume, we allow to use
   // symbolic link to access device.
-  device_fd_.reset(RetryDeviceOpen(correct_device_path, O_RDWR));
+  device_fd_.reset(RetryDeviceOpen(device_path, O_RDWR));
   if (!device_fd_.is_valid()) {
-    LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
+    PLOGF(ERROR) << "Failed to open " << device_path;
     return -errno;
   }
 
   v4l2_capability cap = {};
   if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QUERYCAP, &cap)) != 0) {
-    LOGF(ERROR) << "VIDIOC_QUERYCAP fail: " << strerror(errno);
+    PLOGF(ERROR) << "VIDIOC_QUERYCAP fail";
     device_fd_.reset();
     return -errno;
   }
@@ -120,12 +77,12 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_G_FMT, &fmt));
   if (ret < 0) {
-    LOGF(ERROR) << "Unable to G_FMT: " << strerror(errno);
+    PLOGF(ERROR) << "Unable to G_FMT";
     return -errno;
   }
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_FMT, &fmt));
   if (ret < 0) {
-    LOGF(WARNING) << "Unable to S_FMT: " << strerror(errno)
+    LOGF(WARNING) << "Unable to S_FMT: " << base::safe_strerror(errno)
                   << ", maybe camera is being used by another app.";
     return -errno;
   }
@@ -175,7 +132,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   fmt.fmt.pix.pixelformat = pixel_format;
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_FMT, &fmt));
   if (ret < 0) {
-    LOGF(ERROR) << "Unable to S_FMT: " << strerror(errno);
+    PLOGF(ERROR) << "Unable to S_FMT";
     return -errno;
   }
   VLOGF(1) << "Actual width: " << fmt.fmt.pix.width
@@ -222,10 +179,15 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   *buffer_size = fmt.fmt.pix.sizeimage;
   VLOGF(1) << "Buffer size: " << *buffer_size;
 
-  // Set power line frequency
+  // TODO(shik): We don't need to set power line frequency every time here.
+  // Maybe we could move this to initialization stage?
   ret = SetPowerLineFrequency(device_info_.power_line_frequency);
   if (ret < 0) {
-    return -EINVAL;
+    if (IsExternalCamera()) {
+      VLOGF(2) << "Ignore SetPowerLineFrequency error for external camera";
+    } else {
+      return -EINVAL;
+    }
   }
 
   v4l2_requestbuffers req_buffers;
@@ -235,7 +197,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   req_buffers.count = kNumVideoBuffers;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers)) < 0) {
-    LOGF(ERROR) << "REQBUFS fails: " << strerror(errno);
+    PLOGF(ERROR) << "REQBUFS fails";
     return -errno;
   }
   VLOGF(1) << "Requested buffer number: " << req_buffers.count;
@@ -249,7 +211,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     expbuf.index = i;
     if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_EXPBUF, &expbuf)) <
         0) {
-      LOGF(ERROR) << "EXPBUF (" << i << ") fails: " << strerror(errno);
+      PLOGF(ERROR) << "EXPBUF (" << i << ") fails";
       return -errno;
     }
     VLOGF(1) << "Exported frame buffer fd: " << expbuf.fd;
@@ -262,7 +224,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     buffer.memory = V4L2_MEMORY_MMAP;
 
     if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer)) < 0) {
-      LOGF(ERROR) << "QBUF (" << i << ") fails: " << strerror(errno);
+      PLOGF(ERROR) << "QBUF (" << i << ") fails";
       return -errno;
     }
   }
@@ -270,7 +232,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_STREAMON, &capture_type)) < 0) {
-    LOGF(ERROR) << "STREAMON fails: " << strerror(errno);
+    PLOGF(ERROR) << "STREAMON fails";
     return -errno;
   }
 
@@ -297,7 +259,7 @@ int V4L2CameraDevice::StreamOff() {
   v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_STREAMOFF, &capture_type)) < 0) {
-    LOGF(ERROR) << "STREAMOFF fails: " << strerror(errno);
+    PLOGF(ERROR) << "STREAMOFF fails";
     return -errno;
   }
   v4l2_requestbuffers req_buffers;
@@ -307,7 +269,7 @@ int V4L2CameraDevice::StreamOff() {
   req_buffers.count = 0;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers)) < 0) {
-    LOGF(ERROR) << "REQBUFS fails: " << strerror(errno);
+    PLOGF(ERROR) << "REQBUFS fails";
     return -errno;
   }
   buffers_at_client_.clear();
@@ -333,7 +295,7 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer.memory = V4L2_MEMORY_MMAP;
   if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_DQBUF, &buffer)) < 0) {
-    LOGF(ERROR) << "DQBUF fails: " << strerror(errno);
+    PLOGF(ERROR) << "DQBUF fails";
     return -errno;
   }
   VLOGF(1) << "DQBUF returns index " << buffer.index << " length "
@@ -379,42 +341,25 @@ int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
   buffer.memory = V4L2_MEMORY_MMAP;
   buffer.index = buffer_id;
   if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer)) < 0) {
-    LOGF(ERROR) << "QBUF fails: " << strerror(errno);
+    PLOGF(ERROR) << "QBUF fails";
     return -errno;
   }
   buffers_at_client_[buffer.index] = false;
   return 0;
 }
 
+// static
 const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     const std::string& device_path) {
   VLOGF(1) << "Query supported formats for " << device_path;
-  SupportedFormats formats;
-  if (device_path.compare(0, strlen(kAllowedCameraPrefix),
-                          kAllowedCameraPrefix) &&
-      device_path.compare(0, strlen(kAllowedVideoPrefix),
-                          kAllowedVideoPrefix)) {
-    LOGF(ERROR) << "Invalid device path " << device_path;
-    return formats;
-  }
-  // If device path is /dev/video*, it means the device is an external camera.
-  // We have to glob all video devices again since the device number may be
-  // changed after suspend/resume.
-  std::string correct_device_path = device_path;
-  if (!device_path.compare(0, strlen(kAllowedVideoPrefix),
-                           kAllowedVideoPrefix)) {
-    std::pair<std::string, DeviceInfo> external_camera = FindExternalCamera();
-    if (external_camera.first != "") {
-      correct_device_path = external_camera.second.device_path;
-    }
-  }
 
-  base::ScopedFD fd(RetryDeviceOpen(correct_device_path, O_RDONLY));
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
   if (!fd.is_valid()) {
-    LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
-    return formats;
+    PLOGF(ERROR) << "Failed to open " << device_path;
+    return {};
   }
 
+  SupportedFormats formats;
   v4l2_fmtdesc v4l2_format = {};
   v4l2_format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   for (;
@@ -447,53 +392,7 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
   return formats;
 }
 
-const DeviceInfos V4L2CameraDevice::GetCameraDeviceInfos() {
-  // /dev/camera-internal* symbolic links should have been created and pointed
-  // to the internal cameras according to Vid and Pid.
-  std::unordered_map<std::string, DeviceInfo> camera_devices =
-      GetCameraDevicesByPattern(std::string(kAllowedCameraPrefix) + "*");
-  internal_devices_ = camera_devices;
-
-  CameraCharacteristics characteristics;
-  bool external_camera_support = characteristics.IsExternalCameraSupported();
-  if (external_camera_support) {
-    std::pair<std::string, DeviceInfo> external_camera = FindExternalCamera();
-    if (external_camera.first != "") {
-      VLOGF(1) << "Add external camera " << external_camera.first
-               << ", path: " << external_camera.second.device_path;
-      camera_devices.insert(external_camera);
-    }
-  }
-
-  DeviceInfos device_infos =
-      characteristics.GetCharacteristicsFromFile(camera_devices);
-
-  if (device_infos.empty()) {
-    // Symbolic link /dev/camera-internal* is generated from the udev rules
-    // 50-camera.rules in chromeos-bsp-{BOARD}-private. The rules file may not
-    // exist, and it will cause this error. (b/29425883)
-    LOGF(ERROR) << "Cannot find any camera devices with "
-                << kAllowedCameraPrefix << "*";
-    LOGF(ERROR) << "List available cameras as follows: ";
-    std::unordered_map<std::string, DeviceInfo> video_devices =
-        GetCameraDevicesByPattern(std::string(kAllowedVideoPrefix) + "*");
-    for (const auto& device : video_devices) {
-      size_t pos = device.first.find(":");
-      if (pos != std::string::npos) {
-        LOGF(ERROR) << "Device path: " << device.second.device_path
-                    << " vid: " << device.first.substr(0, pos)
-                    << " pid: " << device.first.substr(pos + 1);
-      } else {
-        LOGF(ERROR) << "Invalid device: " << device.first;
-      }
-    }
-    return DeviceInfos();
-  } else {
-    VLOGF(1) << "Number of cameras: " << device_infos.size();
-  }
-  return device_infos;
-}
-
+// static
 std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
                                                       uint32_t fourcc,
                                                       uint32_t width,
@@ -528,73 +427,25 @@ std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
   return frame_rates;
 }
 
-const std::unordered_map<std::string, DeviceInfo>
-V4L2CameraDevice::GetCameraDevicesByPattern(std::string pattern) {
-  const base::FilePath path(pattern);
-  base::FileEnumerator enumerator(path.DirName(), false,
-                                  base::FileEnumerator::FILES,
-                                  path.BaseName().value());
-  std::unordered_map<std::string, DeviceInfo> devices;
-  std::string device_path, device_name;
-
-  while (!enumerator.Next().empty()) {
-    const base::FileEnumerator::FileInfo info = enumerator.GetInfo();
-    const std::string name = info.GetName().value();
-    const base::FilePath target_path = path.DirName().Append(name);
-
-    base::FilePath target;
-    if (base::ReadSymbolicLink(target_path, &target)) {
-      device_path = "/dev/" + target.value();
-      device_name = target.value();
-    } else {
-      device_path = target_path.value();
-      device_name = name;
-    }
-
-    const base::ScopedFD fd(
-        TEMP_FAILURE_RETRY(open(device_path.c_str(), O_RDONLY | O_NOFOLLOW)));
-    if (!fd.is_valid()) {
-      VLOGF(1) << "Couldn't open " << device_name;
-      continue;
-    }
-
-    v4l2_capability cap;
-    DeviceInfo device_info = CameraCharacteristics::GetDefaultDeviceInfo();
-    if ((TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCAP, &cap)) == 0) &&
-        ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) &&
-         !(cap.capabilities & V4L2_CAP_VIDEO_OUTPUT))) {
-      const std::string vidPath =
-          base::StringPrintf(kVidPathTemplate, device_name.c_str());
-      const std::string pidPath =
-          base::StringPrintf(kPidPathTemplate, device_name.c_str());
-
-      std::string usb_vid, usb_pid;
-      if (!ReadIdFile(vidPath, &usb_vid)) {
-        VLOGF(1) << "Couldn't read VID of " << device_name;
-        continue;
-      }
-      if (!ReadIdFile(pidPath, &usb_pid)) {
-        VLOGF(1) << "Couldn't read PID of " << device_name;
-        continue;
-      }
-      VLOGF(1) << "Device path: " << target_path.value() << " vid: " << usb_vid
-               << " pid: " << usb_pid;
-      device_info.usb_vid = usb_vid;
-      device_info.usb_pid = usb_pid;
-      device_info.device_path = target_path.value();
-
-      // Get power line frequency info
-      device_info.power_line_frequency = GetPowerLineFrequency(fd.get());
-
-      devices.insert(std::make_pair(usb_vid + ":" + usb_pid, device_info));
-    }
+// static
+bool V4L2CameraDevice::IsCameraDevice(const std::string& device_path) {
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  if (!fd.is_valid()) {
+    PLOGF(ERROR) << "Failed to open " << device_path;
+    return false;
   }
-  if (devices.empty()) {
-    VLOGF(1) << "Cannot find any camera devices with pattern " << pattern;
-  }
-  return devices;
+
+  const uint32_t kCaptureMask =
+      V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
+  const uint32_t kOutputMask =
+      V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
+
+  v4l2_capability cap;
+  return TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCAP, &cap)) == 0 &&
+         (cap.capabilities & kCaptureMask) && !(cap.capabilities & kOutputMask);
 }
 
+// static
 int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
                                       int flags) {
   const int64_t kDeviceOpenTimeOutInMilliseconds = 2000;
@@ -632,48 +483,22 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
         base::TimeDelta::FromMilliseconds(kSleepTimeInMilliseconds));
     elapsed_time = timer.Elapsed().InMillisecondsRoundedUp();
   }
-  LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
+  PLOGF(ERROR) << "Failed to open " << device_path;
   return -1;
 }
 
-std::pair<std::string, DeviceInfo> V4L2CameraDevice::FindExternalCamera() {
-  std::unordered_map<std::string, DeviceInfo> video_devices =
-      GetCameraDevicesByPattern(std::string(kAllowedVideoPrefix) + "*");
-
-  if (internal_devices_.size() == 0) {
-    internal_devices_ =
-        GetCameraDevicesByPattern(std::string(kAllowedCameraPrefix) + "*");
+// static
+PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(
+    const std::string& device_path) {
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  if (!fd.is_valid()) {
+    PLOGF(ERROR) << "Failed to open " << device_path;
+    return PowerLineFrequency::FREQ_ERROR;
   }
 
-  for (const auto& device : internal_devices_) {
-    base::FilePath target;
-    std::string device_path;
-    if (base::ReadSymbolicLink(base::FilePath(device.second.device_path),
-                               &target)) {
-      device_path = "/dev/" + target.value();
-    } else {
-      LOGF(ERROR) << device.second.device_path << " should be a symbolic link";
-    }
-    video_devices.erase(device.first);
-  }
-
-  if (video_devices.size() > 1) {
-    LOGF(ERROR) << "Only allow one external camera";
-    return std::make_pair("", DeviceInfo());
-  }
-
-  for (const auto& device : video_devices) {
-    VLOGF(1) << "Find external camera " << device.first
-             << ", path: " << device.second.device_path;
-    return device;
-  }
-  return std::make_pair("", DeviceInfo());
-}
-
-PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(int fd) {
   struct v4l2_queryctrl query = {};
   query.id = V4L2_CID_POWER_LINE_FREQUENCY;
-  if (TEMP_FAILURE_RETRY(ioctl(fd, VIDIOC_QUERYCTRL, &query)) < 0) {
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCTRL, &query)) < 0) {
     LOGF(ERROR) << "Power line frequency should support auto or 50/60Hz";
     return PowerLineFrequency::FREQ_ERROR;
   }
@@ -699,6 +524,7 @@ PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(int fd) {
   if (query.maximum == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) {
     frequency = PowerLineFrequency::FREQ_AUTO;
   } else if (query.minimum >= V4L2_CID_POWER_LINE_FREQUENCY_60HZ) {
+    // TODO(shik): Handle this more gracefully for external camera
     LOGF(ERROR) << "Camera module should at least support 50/60Hz";
     return PowerLineFrequency::FREQ_ERROR;
   }
@@ -735,6 +561,10 @@ int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
   VLOGF(1) << "Set power line frequency(" << static_cast<int>(setting)
            << ") successfully";
   return 0;
+}
+
+bool V4L2CameraDevice::IsExternalCamera() {
+  return device_info_.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
 }
 
 }  // namespace cros

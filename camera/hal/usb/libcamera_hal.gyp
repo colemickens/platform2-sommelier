@@ -16,6 +16,7 @@
         'libjda',
         'libsync',
         'libyuv',
+        're2',
       ],
     },
   },

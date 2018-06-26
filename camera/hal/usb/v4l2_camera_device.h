@@ -72,40 +72,34 @@ class V4L2CameraDevice {
   // after StreamOn().
   int ReuseFrameBuffer(uint32_t buffer_id);
 
-  // TODO(henryhsu): GetDeviceSupportedFormats, GetCameraDeviceInfos, and the
-  // private functions used by them can be changed to static.
+  // TODO(shik): Change the type of |device_path| to base::FilePath.
 
   // Get all supported formats of device by |device_path|. This function can be
   // called without calling Connect().
-  const SupportedFormats GetDeviceSupportedFormats(
+  static const SupportedFormats GetDeviceSupportedFormats(
       const std::string& device_path);
 
-  // Get all camera devices information. This function can be called without
-  // calling Connect().
-  const DeviceInfos GetCameraDeviceInfos();
+  // Get power frequency supported from device.
+  static PowerLineFrequency GetPowerLineFrequency(
+      const std::string& device_path);
+
+  static bool IsCameraDevice(const std::string& device_path);
 
  private:
-  std::vector<float> GetFrameRateList(int fd,
-                                      uint32_t fourcc,
-                                      uint32_t width,
-                                      uint32_t height);
-  const std::unordered_map<std::string, DeviceInfo> GetCameraDevicesByPattern(
-      std::string pattern);
+  static std::vector<float> GetFrameRateList(int fd,
+                                             uint32_t fourcc,
+                                             uint32_t width,
+                                             uint32_t height);
 
   // This is for suspend/resume feature. USB camera will be enumerated after
   // device resumed. But camera device may not be ready immediately.
-  int RetryDeviceOpen(const std::string& device_path, int flags);
-
-  // External camera is the only one camera device of /dev/video* which is not
-  // in |internal_devices_|. Ruturns <VID:PID, device_info> if external camera
-  // is found. Otherwise, returns empty strings.
-  std::pair<std::string, DeviceInfo> FindExternalCamera();
-
-  // Get power frequency supported from device.
-  PowerLineFrequency GetPowerLineFrequency(int fd);
+  static int RetryDeviceOpen(const std::string& device_path, int flags);
 
   // Set power frequency supported from device.
   int SetPowerLineFrequency(PowerLineFrequency setting);
+
+  // Returns true if the current connected device is an external camera.
+  bool IsExternalCamera();
 
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;

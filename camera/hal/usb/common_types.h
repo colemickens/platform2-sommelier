@@ -14,41 +14,45 @@
 
 namespace cros {
 
+// Fields without default value would be filled in runtime.
+
 struct DeviceInfo {
+  int camera_id;
+
+  // TODO(shik): Change this to base::FilePath.
   // ex: /dev/video0
   std::string device_path;
+
   // USB vender id
   std::string usb_vid;
+
   // USB product id
   std::string usb_pid;
+
   // Some cameras need to wait several frames to output correct images.
-  uint32_t frames_to_skip_after_streamon;
-  // Power line frequency supported by device.
-  PowerLineFrequency power_line_frequency;
+  uint32_t frames_to_skip_after_streamon = 0;
+
+  // Power line frequency supported by device, which will be filled according to
+  // the current location instead of camera_characteristics.conf.
+  PowerLineFrequency power_line_frequency = PowerLineFrequency::FREQ_DEFAULT;
+
+  // The camera doesn't support constant frame rate. That means HAL cannot set
+  // V4L2_CID_EXPOSURE_AUTO_PRIORITY to 0 to have constant frame rate in low
+  // light environment.
+  bool constant_framerate_unsupported = false;
 
   // Member definitions can be found in https://developer.android.com/
   // reference/android/hardware/camera2/CameraCharacteristics.html
   uint32_t lens_facing;
-  int32_t sensor_orientation;
-  float horizontal_view_angle_16_9;
-  float horizontal_view_angle_4_3;
+  int32_t sensor_orientation = 0;
+
+  // These fields are not available for external cameras.
+  std::vector<float> lens_info_available_apertures;
   std::vector<float> lens_info_available_focal_lengths;
   float lens_info_minimum_focus_distance;
   float lens_info_optimal_focus_distance;
-  float vertical_view_angle_16_9;
-  float vertical_view_angle_4_3;
-  // The camera doesn't support 1280x960 resolution when the maximum resolution
-  // of the camear is larger than 1080p.
-  bool resolution_1280x960_unsupported;
-  // The camera doesn't support 1600x1200 resolution.
-  bool resolution_1600x1200_unsupported;
-  // The camera doesn't support constant frame rate. That means HAL cannot set
-  // V4L2_CID_EXPOSURE_AUTO_PRIORITY to 0 to have constant frame rate in low
-  // light environment.
-  bool constant_framerate_unsupported;
   int32_t sensor_info_pixel_array_size_width;
   int32_t sensor_info_pixel_array_size_height;
-  std::vector<float> lens_info_available_apertures;
   float sensor_info_physical_size_width;
   float sensor_info_physical_size_height;
 };
@@ -62,7 +66,7 @@ struct SupportedFormat {
   // All the supported frame rates in fps with given width, height, and
   // pixelformat. This is not sorted. For example, suppose width, height, and
   // fourcc are 640x480 YUYV. If frame rates are 15.0 and 30.0, the camera
-  // supports outputting 640X480 YUYV in 15fps or 30fps.
+  // supports outputting 640x480 YUYV in 15fps or 30fps.
   std::vector<float> frame_rates;
 };
 

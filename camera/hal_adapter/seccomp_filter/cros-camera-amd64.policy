@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 access: 1
 arch_prctl: 1
+bind: 1
 brk: 1
 clone: 1
 close: 1
@@ -22,7 +23,9 @@ getdents: 1
 getegid: 1
 geteuid: 1
 getgid: 1
+getrandom: 1
 getrlimit: 1
+getsockname: 1
 gettid: 1
 getuid: 1
 inotify_add_watch: 1
@@ -35,6 +38,7 @@ madvise: 1
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 munmap: 1
+name_to_handle_at: 1
 nanosleep: 1
 open: 1
 pipe2: 1
@@ -43,6 +47,7 @@ poll: 1
 prctl: 1
 read: 1
 readlink: 1
+readlinkat: 1
 recvmsg: 1
 restart_syscall: 1
 rt_sigaction: 1
@@ -55,6 +60,7 @@ sendto: 1
 set_robust_list: 1
 set_tid_address: 1
 setpriority: 1
+setsockopt: 1
 signalfd4: 1
 # Allow only PF_UNIX socket
 socket: arg0 == 1

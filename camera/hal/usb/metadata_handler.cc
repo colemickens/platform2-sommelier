@@ -39,9 +39,6 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
 MetadataHandler::~MetadataHandler() {}
 
 int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
-  const uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
-  UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
-
   // android.colorCorrection
   const uint8_t available_aberration_modes[] = {
       ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST,
@@ -150,22 +147,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, &optical_stabilization_mode,
          1);
 
-  const float pose_rotation[] = {0.0, 0.0, 0.0, 0.0};
-  UPDATE(ANDROID_LENS_POSE_ROTATION, pose_rotation, ARRAY_SIZE(pose_rotation));
-
-  const float pose_translation[] = {0.0, 0.0, 0.0};
-  UPDATE(ANDROID_LENS_POSE_TRANSLATION, pose_translation,
-         ARRAY_SIZE(pose_translation));
-
-  // TODO(henryhsu): understand this parameter
-  const float intrinsic_calibration[] = {0.0, 0.0, 0.0, 0.0, 0.0};
-  UPDATE(ANDROID_LENS_INTRINSIC_CALIBRATION, intrinsic_calibration,
-         ARRAY_SIZE(intrinsic_calibration));
-
-  const float radial_distortion[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  UPDATE(ANDROID_LENS_RADIAL_DISTORTION, radial_distortion,
-         ARRAY_SIZE(radial_distortion));
-
   // android.noiseReduction
   const uint8_t noise_reduction_mode = ANDROID_NOISE_REDUCTION_MODE_OFF;
   UPDATE(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
@@ -177,142 +158,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE};
   UPDATE(ANDROID_REQUEST_AVAILABLE_CAPABILITIES, available_capabilities,
          ARRAY_SIZE(available_capabilities));
-
-  const int32_t available_request_keys[] = {
-      ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
-      ANDROID_CONTROL_AE_ANTIBANDING_MODE,
-      ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION,
-      ANDROID_CONTROL_AE_LOCK,
-      ANDROID_CONTROL_AE_MODE,
-      ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
-      ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
-      ANDROID_CONTROL_AF_MODE,
-      ANDROID_CONTROL_AF_TRIGGER,
-      ANDROID_CONTROL_AWB_LOCK,
-      ANDROID_CONTROL_AWB_MODE,
-      ANDROID_CONTROL_CAPTURE_INTENT,
-      ANDROID_CONTROL_EFFECT_MODE,
-      ANDROID_CONTROL_MODE,
-      ANDROID_CONTROL_SCENE_MODE,
-      ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
-      ANDROID_FLASH_MODE,
-      ANDROID_JPEG_ORIENTATION,
-      ANDROID_JPEG_QUALITY,
-      ANDROID_JPEG_THUMBNAIL_QUALITY,
-      ANDROID_JPEG_THUMBNAIL_SIZE,
-      ANDROID_LENS_FOCAL_LENGTH,
-      ANDROID_LENS_FOCUS_DISTANCE,
-      ANDROID_LENS_OPTICAL_STABILIZATION_MODE,
-      ANDROID_NOISE_REDUCTION_MODE,
-      ANDROID_SCALER_CROP_REGION,
-      ANDROID_SENSOR_TEST_PATTERN_MODE,
-      ANDROID_STATISTICS_FACE_DETECT_MODE,
-      ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE};
-  UPDATE(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, available_request_keys,
-         ARRAY_SIZE(available_request_keys));
-
-  const int32_t available_result_keys[] = {
-      ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
-      ANDROID_CONTROL_AE_ANTIBANDING_MODE,
-      ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION,
-      ANDROID_CONTROL_AE_LOCK,
-      ANDROID_CONTROL_AE_MODE,
-      ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
-      ANDROID_CONTROL_AE_STATE,
-      ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
-      ANDROID_CONTROL_AF_MODE,
-      ANDROID_CONTROL_AF_STATE,
-      ANDROID_CONTROL_AF_TRIGGER,
-      ANDROID_CONTROL_AWB_LOCK,
-      ANDROID_CONTROL_AWB_MODE,
-      ANDROID_CONTROL_AWB_STATE,
-      ANDROID_CONTROL_CAPTURE_INTENT,
-      ANDROID_CONTROL_EFFECT_MODE,
-      ANDROID_CONTROL_MODE,
-      ANDROID_CONTROL_SCENE_MODE,
-      ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
-      ANDROID_FLASH_MODE,
-      ANDROID_FLASH_STATE,
-      ANDROID_JPEG_ORIENTATION,
-      ANDROID_JPEG_QUALITY,
-      ANDROID_JPEG_THUMBNAIL_QUALITY,
-      ANDROID_JPEG_THUMBNAIL_SIZE,
-      ANDROID_LENS_FOCAL_LENGTH,
-      ANDROID_LENS_FOCUS_DISTANCE,
-      ANDROID_LENS_INTRINSIC_CALIBRATION,
-      ANDROID_LENS_OPTICAL_STABILIZATION_MODE,
-      ANDROID_LENS_POSE_ROTATION,
-      ANDROID_LENS_POSE_TRANSLATION,
-      ANDROID_LENS_RADIAL_DISTORTION,
-      ANDROID_NOISE_REDUCTION_MODE,
-      ANDROID_REQUEST_PIPELINE_DEPTH,
-      ANDROID_SCALER_CROP_REGION,
-      ANDROID_SENSOR_ROLLING_SHUTTER_SKEW,
-      ANDROID_SENSOR_TEST_PATTERN_MODE,
-      ANDROID_SENSOR_TIMESTAMP,
-      ANDROID_STATISTICS_FACE_DETECT_MODE,
-      ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
-      ANDROID_STATISTICS_LENS_SHADING_MAP_MODE,
-      ANDROID_STATISTICS_SCENE_FLICKER};
-  UPDATE(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, available_result_keys,
-         ARRAY_SIZE(available_result_keys));
-
-  const int32_t available_characteristics_keys[] = {
-      ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES,
-      ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES,
-      ANDROID_CONTROL_AE_AVAILABLE_MODES,
-      ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
-      ANDROID_CONTROL_AE_COMPENSATION_RANGE,
-      ANDROID_CONTROL_AE_COMPENSATION_STEP,
-      ANDROID_CONTROL_AE_LOCK_AVAILABLE,
-      ANDROID_CONTROL_AF_AVAILABLE_MODES,
-      ANDROID_CONTROL_AVAILABLE_EFFECTS,
-      ANDROID_CONTROL_AVAILABLE_MODES,
-      ANDROID_CONTROL_AVAILABLE_SCENE_MODES,
-      ANDROID_CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES,
-      ANDROID_CONTROL_AWB_AVAILABLE_MODES,
-      ANDROID_CONTROL_AWB_LOCK_AVAILABLE,
-      ANDROID_CONTROL_MAX_REGIONS,
-      ANDROID_FLASH_INFO_AVAILABLE,
-      ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
-      ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
-      ANDROID_LENS_FACING,
-      ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
-      ANDROID_LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
-      ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION,
-      ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE,
-      ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE,
-      ANDROID_LENS_INTRINSIC_CALIBRATION,
-      ANDROID_LENS_POSE_ROTATION,
-      ANDROID_LENS_POSE_TRANSLATION,
-      ANDROID_LENS_RADIAL_DISTORTION,
-      ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
-      ANDROID_REQUEST_AVAILABLE_CAPABILITIES,
-      ANDROID_REQUEST_MAX_NUM_INPUT_STREAMS,
-      ANDROID_REQUEST_MAX_NUM_OUTPUT_STREAMS,
-      ANDROID_REQUEST_PARTIAL_RESULT_COUNT,
-      ANDROID_REQUEST_PIPELINE_MAX_DEPTH,
-      ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM,
-      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
-      ANDROID_SCALER_CROPPING_TYPE,
-      ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES,
-      ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE,
-      ANDROID_SENSOR_INFO_MAX_FRAME_DURATION,
-      ANDROID_SENSOR_INFO_PHYSICAL_SIZE,
-      ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE,
-      ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE,
-      ANDROID_SENSOR_INFO_SENSITIVITY_RANGE,
-      ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE,
-      ANDROID_SENSOR_ORIENTATION,
-      ANDROID_SHADING_AVAILABLE_MODES,
-      ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
-      ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES,
-      ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES,
-      ANDROID_STATISTICS_INFO_MAX_FACE_COUNT,
-      ANDROID_SYNC_MAX_LATENCY};
-  UPDATE(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
-         available_characteristics_keys,
-         ARRAY_SIZE(available_characteristics_keys));
 
   const int32_t partial_result_count = 1;
   UPDATE(ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &partial_result_count, 1);
@@ -344,14 +189,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
 
   const uint8_t cropping_type = ANDROID_SCALER_CROPPING_TYPE_CENTER_ONLY;
   UPDATE(ANDROID_SCALER_CROPPING_TYPE, &cropping_type, 1);
-
-  // android.sensor
-  // UVC driver cannot set ISO sensitivity. Use the minimum range.
-  // Android document says the minimum should be <= 100, and maximum should be
-  // >= 800.
-  const int32_t sensor_info_sensitivity_range[] = {100, 800};
-  UPDATE(ANDROID_SENSOR_INFO_SENSITIVITY_RANGE, sensor_info_sensitivity_range,
-         ARRAY_SIZE(sensor_info_sensitivity_range));
 
   const int32_t test_pattern_modes[] = {
       ANDROID_SENSOR_TEST_PATTERN_MODE_OFF,
@@ -498,57 +335,245 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   UPDATE(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, active_array_size,
          ARRAY_SIZE(active_array_size));
 
+  // It's a sensible value for external camera, since it's required on all
+  // devices per spec.  For built-in camera, this would be overwritten in
+  // FillMetadataFromDeviceInfo() using the value from the configuration file.
+  // References:
+  // * The official document for this field
+  //   https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics.html#SENSOR_INFO_PIXEL_ARRAY_SIZE
+  // * The implementation of external camera in Android P
+  //   https://googleplex-android.git.corp.google.com/platform/hardware/interfaces/+/6ad8708bf8b631561fa11eb1f4889907d1772d78/camera/device/3.4/default/ExternalCameraDevice.cpp#687
+  int32_t pixel_array_size[] = {static_cast<int32_t>(maximum_format.width),
+                                static_cast<int32_t>(maximum_format.height)};
+  UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
+         ARRAY_SIZE(pixel_array_size));
+
   return 0;
 }
 
 int MetadataHandler::FillMetadataFromDeviceInfo(
-    const DeviceInfo& device_info,
-    android::CameraMetadata* metadata) {
+    const DeviceInfo& device_info, android::CameraMetadata* metadata) {
+  bool is_external = device_info.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
+  bool is_builtin = !is_external;
+
+  std::vector<int32_t> available_request_keys = {
+      ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
+      ANDROID_CONTROL_AE_ANTIBANDING_MODE,
+      ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION,
+      ANDROID_CONTROL_AE_LOCK,
+      ANDROID_CONTROL_AE_MODE,
+      ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
+      ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
+      ANDROID_CONTROL_AF_MODE,
+      ANDROID_CONTROL_AF_TRIGGER,
+      ANDROID_CONTROL_AWB_LOCK,
+      ANDROID_CONTROL_AWB_MODE,
+      ANDROID_CONTROL_CAPTURE_INTENT,
+      ANDROID_CONTROL_EFFECT_MODE,
+      ANDROID_CONTROL_MODE,
+      ANDROID_CONTROL_SCENE_MODE,
+      ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
+      ANDROID_FLASH_MODE,
+      ANDROID_JPEG_ORIENTATION,
+      ANDROID_JPEG_QUALITY,
+      ANDROID_JPEG_THUMBNAIL_QUALITY,
+      ANDROID_JPEG_THUMBNAIL_SIZE,
+      ANDROID_LENS_OPTICAL_STABILIZATION_MODE,
+      ANDROID_NOISE_REDUCTION_MODE,
+      ANDROID_SCALER_CROP_REGION,
+      ANDROID_SENSOR_TEST_PATTERN_MODE,
+      ANDROID_STATISTICS_FACE_DETECT_MODE,
+      ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
+  };
+  if (is_builtin) {
+    available_request_keys.insert(
+        available_request_keys.end(),
+        {
+            ANDROID_LENS_APERTURE, ANDROID_LENS_FOCAL_LENGTH,
+            ANDROID_LENS_FOCUS_DISTANCE,
+        });
+  }
+  UPDATE(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, available_request_keys.data(),
+         available_request_keys.size());
+
+  // TODO(shik): All properties listed for capture requests can also be queried
+  // on the capture result, to determine the final values used for capture. We
+  // shuold build this list from |available_request_keys|.
+  // ref:
+  // https://developer.android.com/reference/android/hardware/camera2/CaptureResult
+  std::vector<int32_t> available_result_keys = {
+      ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
+      ANDROID_CONTROL_AE_ANTIBANDING_MODE,
+      ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION,
+      ANDROID_CONTROL_AE_LOCK,
+      ANDROID_CONTROL_AE_MODE,
+      ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
+      ANDROID_CONTROL_AE_STATE,
+      ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
+      ANDROID_CONTROL_AF_MODE,
+      ANDROID_CONTROL_AF_STATE,
+      ANDROID_CONTROL_AF_TRIGGER,
+      ANDROID_CONTROL_AWB_LOCK,
+      ANDROID_CONTROL_AWB_MODE,
+      ANDROID_CONTROL_AWB_STATE,
+      ANDROID_CONTROL_CAPTURE_INTENT,
+      ANDROID_CONTROL_EFFECT_MODE,
+      ANDROID_CONTROL_MODE,
+      ANDROID_CONTROL_SCENE_MODE,
+      ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
+      ANDROID_FLASH_MODE,
+      ANDROID_FLASH_STATE,
+      ANDROID_JPEG_ORIENTATION,
+      ANDROID_JPEG_QUALITY,
+      ANDROID_JPEG_THUMBNAIL_QUALITY,
+      ANDROID_JPEG_THUMBNAIL_SIZE,
+      ANDROID_LENS_OPTICAL_STABILIZATION_MODE,
+      ANDROID_NOISE_REDUCTION_MODE,
+      ANDROID_REQUEST_PIPELINE_DEPTH,
+      ANDROID_SCALER_CROP_REGION,
+      ANDROID_SENSOR_ROLLING_SHUTTER_SKEW,
+      ANDROID_SENSOR_TEST_PATTERN_MODE,
+      ANDROID_SENSOR_TIMESTAMP,
+      ANDROID_STATISTICS_FACE_DETECT_MODE,
+      ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
+      ANDROID_STATISTICS_LENS_SHADING_MAP_MODE,
+      ANDROID_STATISTICS_SCENE_FLICKER,
+  };
+  if (is_builtin) {
+    available_result_keys.insert(
+        available_result_keys.end(),
+        {
+            ANDROID_LENS_APERTURE, ANDROID_LENS_FOCAL_LENGTH,
+            ANDROID_LENS_FOCUS_DISTANCE,
+        });
+  }
+  UPDATE(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, available_result_keys.data(),
+         available_result_keys.size());
+
+  // TODO(shik): The HAL must not have any tags in its static info that are not
+  // listed either here or in the vendor tag list.  Some request/result metadata
+  // entries are also presented in the static info now, and we should fix it.
+  // ref:
+  // https://android.googlesource.com/platform/system/media/+/a8cff157ff0ed02fa7e29438f4889a9933c37768/camera/docs/docs.html#16298
+  std::vector<int32_t> available_characteristics_keys = {
+      ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES,
+      ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES,
+      ANDROID_CONTROL_AE_AVAILABLE_MODES,
+      ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
+      ANDROID_CONTROL_AE_COMPENSATION_RANGE,
+      ANDROID_CONTROL_AE_COMPENSATION_STEP,
+      ANDROID_CONTROL_AE_LOCK_AVAILABLE,
+      ANDROID_CONTROL_AF_AVAILABLE_MODES,
+      ANDROID_CONTROL_AVAILABLE_EFFECTS,
+      ANDROID_CONTROL_AVAILABLE_MODES,
+      ANDROID_CONTROL_AVAILABLE_SCENE_MODES,
+      ANDROID_CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES,
+      ANDROID_CONTROL_AWB_AVAILABLE_MODES,
+      ANDROID_CONTROL_AWB_LOCK_AVAILABLE,
+      ANDROID_CONTROL_MAX_REGIONS,
+      ANDROID_FLASH_INFO_AVAILABLE,
+      ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
+      ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
+      ANDROID_JPEG_MAX_SIZE,
+      ANDROID_LENS_FACING,
+      ANDROID_LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
+      ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION,
+      ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE,
+      ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
+      ANDROID_REQUEST_AVAILABLE_CAPABILITIES,
+      ANDROID_REQUEST_MAX_NUM_INPUT_STREAMS,
+      ANDROID_REQUEST_MAX_NUM_OUTPUT_STREAMS,
+      ANDROID_REQUEST_PARTIAL_RESULT_COUNT,
+      ANDROID_REQUEST_PIPELINE_MAX_DEPTH,
+      ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM,
+      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+      ANDROID_SCALER_CROPPING_TYPE,
+      ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES,
+      ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE,
+      ANDROID_SENSOR_INFO_MAX_FRAME_DURATION,
+      ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE,
+      ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE,
+      ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE,
+      ANDROID_SENSOR_ORIENTATION,
+      ANDROID_SHADING_AVAILABLE_MODES,
+      ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
+      ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES,
+      ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES,
+      ANDROID_STATISTICS_INFO_MAX_FACE_COUNT,
+      ANDROID_SYNC_MAX_LATENCY,
+  };
+  if (is_builtin) {
+    available_characteristics_keys.insert(
+        available_characteristics_keys.end(),
+        {
+            ANDROID_LENS_INFO_AVAILABLE_APERTURES,
+            ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
+            ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE,
+            ANDROID_SENSOR_INFO_PHYSICAL_SIZE,
+        });
+  }
+  UPDATE(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
+         available_characteristics_keys.data(),
+         available_characteristics_keys.size());
+
   UPDATE(ANDROID_SENSOR_ORIENTATION, &device_info.sensor_orientation, 1);
 
   uint8_t lens_facing = device_info.lens_facing;
   UPDATE(ANDROID_LENS_FACING, &lens_facing, 1);
 
-  float physical_size[] = {device_info.sensor_info_physical_size_width,
-                           device_info.sensor_info_physical_size_height};
-  UPDATE(ANDROID_SENSOR_INFO_PHYSICAL_SIZE, physical_size,
-         ARRAY_SIZE(physical_size));
+  if (is_builtin) {
+    uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
+    UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
 
-  int32_t pixel_array_size[] = {
-      device_info.sensor_info_pixel_array_size_width,
-      device_info.sensor_info_pixel_array_size_height};
-  UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
-         ARRAY_SIZE(pixel_array_size));
+    UPDATE(ANDROID_LENS_INFO_AVAILABLE_APERTURES,
+           device_info.lens_info_available_apertures.data(),
+           device_info.lens_info_available_apertures.size());
 
-  UPDATE(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
-         device_info.lens_info_available_focal_lengths.data(),
-         device_info.lens_info_available_focal_lengths.size());
+    UPDATE(ANDROID_LENS_APERTURE,
+           &device_info.lens_info_available_apertures.data()[0], 1);
 
-  UPDATE(ANDROID_LENS_FOCAL_LENGTH,
-         &device_info.lens_info_available_focal_lengths.data()[0], 1);
+    UPDATE(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
+           device_info.lens_info_available_focal_lengths.data(),
+           device_info.lens_info_available_focal_lengths.size());
 
-  UPDATE(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE,
-         &device_info.lens_info_minimum_focus_distance, 1);
-  UPDATE(ANDROID_LENS_FOCUS_DISTANCE,
-         &device_info.lens_info_optimal_focus_distance, 1);
+    UPDATE(ANDROID_LENS_FOCAL_LENGTH,
+           &device_info.lens_info_available_focal_lengths.data()[0], 1);
+
+    UPDATE(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE,
+           &device_info.lens_info_minimum_focus_distance, 1);
+
+    UPDATE(ANDROID_LENS_FOCUS_DISTANCE,
+           &device_info.lens_info_optimal_focus_distance, 1);
+
+    float physical_size[] = {device_info.sensor_info_physical_size_width,
+                             device_info.sensor_info_physical_size_height};
+    UPDATE(ANDROID_SENSOR_INFO_PHYSICAL_SIZE, physical_size,
+           ARRAY_SIZE(physical_size));
+
+    int32_t pixel_array_size[] = {
+        device_info.sensor_info_pixel_array_size_width,
+        device_info.sensor_info_pixel_array_size_height};
+    UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
+           ARRAY_SIZE(pixel_array_size));
+  } else {
+    uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL;
+    UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
+  }
 
   uint8_t focus_distance_calibration =
       ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED;
   UPDATE(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION,
          &focus_distance_calibration, 1);
 
-  UPDATE(ANDROID_LENS_INFO_AVAILABLE_APERTURES,
-         device_info.lens_info_available_apertures.data(),
-         device_info.lens_info_available_apertures.size());
-
-  UPDATE(ANDROID_LENS_APERTURE,
-         &device_info.lens_info_available_apertures.data()[0], 1);
-
   std::vector<uint8_t> ae_antibanding_modes;
   uint8_t ae_antibanding_mode;
   if (device_info.power_line_frequency == PowerLineFrequency::FREQ_AUTO) {
     ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO);
     ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
+  } else if (is_external && device_info.power_line_frequency ==
+                                PowerLineFrequency::FREQ_ERROR) {
+    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF);
+    ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF;
   } else {
     ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ);
     ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ);
@@ -566,6 +591,7 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES,
          ae_antibanding_modes.data(), ae_antibanding_modes.size());
   UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
+
   return 0;
 }
 
@@ -579,8 +605,7 @@ const camera_metadata_t* MetadataHandler::GetDefaultRequestSettings(
 }
 
 void MetadataHandler::PreHandleRequest(
-    int frame_number,
-    const android::CameraMetadata& metadata) {
+    int frame_number, const android::CameraMetadata& metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (metadata.exists(ANDROID_CONTROL_AF_TRIGGER)) {
     camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AF_TRIGGER);
@@ -751,13 +776,13 @@ int MetadataHandler::FillDefaultVideoSnapshotSettings(
 }
 
 int MetadataHandler::FillDefaultZeroShutterLagSettings(
-    android::CameraMetadata* metadata) {
+    android::CameraMetadata* /*metadata*/) {
   // Do not support ZSL template.
   return -EINVAL;
 }
 
 int MetadataHandler::FillDefaultManualSettings(
-    android::CameraMetadata* metadata) {
+    android::CameraMetadata* /*metadata*/) {
   // Do not support manual template.
   return -EINVAL;
 }

@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -16,6 +17,8 @@
 #include <hardware/camera_common.h>
 
 #include "cros-camera/future.h"
+#include "cros-camera/udev_watcher.h"
+#include "hal/usb/camera_characteristics.h"
 #include "hal/usb/camera_client.h"
 #include "hal/usb/common_types.h"
 
@@ -26,7 +29,7 @@ namespace cros {
 // functions are not called concurrently. The hal adapter also has different
 // dedicated threads to handle camera_module_callbacks_t, camera3_device_ops_t,
 // and camera3_callback_ops_t.
-class CameraHal {
+class CameraHal : public UdevWatcher::Observer {
  public:
   CameraHal();
   ~CameraHal();
@@ -35,9 +38,7 @@ class CameraHal {
 
   // Implementations for camera_module_t.
   int OpenDevice(int id, const hw_module_t* module, hw_device_t** hw_device);
-  int GetNumberOfCameras() const { return device_infos_.size(); }
-  // GetCameraInfo can be called before camera is opened when module api
-  // version <= 2.3.
+  int GetNumberOfCameras() const;
   int GetCameraInfo(int id, camera_info* info);
   int SetCallbacks(const camera_module_callbacks_t* callbacks);
   int Init();
@@ -49,8 +50,14 @@ class CameraHal {
  private:
   void CloseDevice(int id, scoped_refptr<cros::Future<void>> future);
 
+  bool IsValidCameraId(int id);
+
+  // Implementation of UdevWatcher::Observer.
+  void OnDeviceAdded(ScopedUdevDevicePtr dev) override;
+  void OnDeviceRemoved(ScopedUdevDevicePtr dev) override;
+
   // Cache device information because querying the information is very slow.
-  DeviceInfos device_infos_;
+  std::map<int, DeviceInfo> device_infos_;
 
   // The key is camera id.
   std::map<int, std::unique_ptr<CameraClient>> cameras_;
@@ -61,10 +68,29 @@ class CameraHal {
   base::ThreadChecker thread_checker_;
 
   // Used to report camera info at anytime.
-  std::vector<CameraMetadataUniquePtr> static_infos_;
+  std::map<int, CameraMetadataUniquePtr> static_infos_;
 
   // Used to post CloseDevice to run on the same thread.
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+
+  // Used to query informations stored in
+  // /etc/camera/camera_characteristics.conf.
+  CameraCharacteristics characteristics_;
+
+  // Used to watch (un)plug events of external cameras.
+  UdevWatcher udev_watcher_;
+
+  // Map from device path to camera id.
+  std::map<std::string, int> path_to_id_;
+
+  // The number of built-in cameras.  Use |int| instead of |size_t| here to
+  // avoid casting everywhere since we also use it as an upper bound of built-in
+  // camera id.
+  int num_builtin_cameras_;
+
+  // The next id for newly plugged external camera, which is starting from
+  // |num_builtin_cameras_|.
+  int next_external_camera_id_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraHal);
 };
