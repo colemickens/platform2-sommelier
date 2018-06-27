@@ -284,6 +284,11 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           break;
         case NLMSG_ERROR:
           {
+            if (hdr->nlmsg_len < NLMSG_LENGTH(sizeof(struct nlmsgerr))) {
+              SLOG(this, 5) << "invalid error message header: length "
+                            << hdr->nlmsg_len;
+              break;
+            }
             struct nlmsgerr* err =
                 reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr));
             int error_number = -err->error;

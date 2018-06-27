@@ -259,7 +259,9 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader* hdr,
                                      Mode mode,
                                      rtattr** attr_data,
                                      int* attr_length) {
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->nd_user_opt))) {
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->nd_user_opt) +
+                                        sizeof(struct nduseroptmsg) +
+                                        sizeof(NDUserOptionHeader))) {
     return false;
   }
 
