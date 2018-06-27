@@ -53,3 +53,7 @@ _llseek: 1
 ioctl: arg1 == TCGETS
 getresgid32: 1
 brk: 1
+getdents64: 1
+lstat64: 1
+madvise: 1
+rmdir: 1
