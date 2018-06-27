@@ -1148,6 +1148,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       "androidboot.hardware=cheets "
       "androidboot.container=1 "
       "androidboot.dev_mode=%d "
+      "androidboot.disable_runas=%d "
       "androidboot.vm=%d "
       "androidboot.debuggable=%d "
       "androidboot.lcd_density=%s "
@@ -1157,10 +1158,10 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       "androidboot.native_bridge=%s "
       "androidboot.chromeos_channel=%s "
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
-      is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density.c_str(),
-      arc_ui_scale.c_str(), arc_container_ipv4_address.c_str(),
-      arc_gateway_ipv4_address.c_str(), native_bridge.c_str(),
-      chromeos_channel.c_str(),
+      is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable,
+      arc_lcd_density.c_str(), arc_ui_scale.c_str(),
+      arc_container_ipv4_address.c_str(), arc_gateway_ipv4_address.c_str(),
+      native_bridge.c_str(), chromeos_channel.c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
