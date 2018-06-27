@@ -222,6 +222,30 @@ int32_t SambaInterfaceImpl::CopyFile(const std::string& source_path,
   return 0;
 }
 
+int32_t SambaInterfaceImpl::SpliceFile(int32_t source_fd,
+                                       int32_t target_fd,
+                                       off_t length,
+                                       off_t* bytes_written) {
+  DCHECK(bytes_written);
+
+  SMBCFILE* source = GetFile(source_fd);
+  SMBCFILE* target = GetFile(target_fd);
+
+  if (!source || !target) {
+    return EBADF;
+  }
+
+  CopyProgressCallback progress_callback = CopyProgressHandler;
+  void* callback_context = nullptr;
+
+  *bytes_written = smbc_splice_ctx_(context_, source, target, length,
+                                    progress_callback, callback_context);
+  if (*bytes_written == -1) {
+    return errno;
+  }
+  return 0;
+}
+
 int32_t SambaInterfaceImpl::OpenCopySource(const std::string& file_path,
                                            int32_t* source_fd) {
   DCHECK(source_fd);

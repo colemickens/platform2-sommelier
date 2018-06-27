@@ -135,6 +135,13 @@ class SambaInterface {
                            const std::string& target_path)
       WARN_UNUSED_RESULT = 0;
 
+  // Splices |length| bytes from |source| to |target| using a server side
+  // splice. Returns 0 on success and errno on failure.
+  virtual int32_t SpliceFile(int32_t source_fd,
+                             int32_t target_fd,
+                             off_t length,
+                             off_t* bytes_written) WARN_UNUSED_RESULT = 0;
+
  private:
   static_assert(std::is_same<int, int32_t>::value,
                 "Ensure that int32_t is same as int, due to casting of int to "

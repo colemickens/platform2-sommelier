@@ -83,6 +83,11 @@ class SambaInterfaceImpl : public SambaInterface {
   int32_t CopyFile(const std::string& source_path,
                    const std::string& target_path) override;
 
+  int32_t SpliceFile(int32_t source_fd,
+                     int32_t target_fd,
+                     off_t length,
+                     off_t* bytes_written) override;
+
  private:
   using CopyProgressCallback = int (*)(off_t upto, void* callback_context);
 
