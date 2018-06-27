@@ -132,6 +132,7 @@ class SHILL_EXPORT RTNLHandler {
   friend class DeviceInfoTest;
   friend class ModemTest;
   friend class RTNLHandlerTest;
+  friend class RTNLHandlerFuzz;
   friend class RTNLListenerTest;
   friend class RoutingTableTest;
 
