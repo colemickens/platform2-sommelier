@@ -1652,7 +1652,7 @@ void ArcSetup::GetBootTypeAndDataSdkVersion(
               << system_fingerprint << ", data=" << data_fingerprint;
   }
   LOG(INFO) << "Data SDK version: " << data_sdk_version;
-  LOG(INFO) << "System SDK version: " << sdk_version_;
+  LOG(INFO) << "System SDK version: " << static_cast<int>(sdk_version_);
   *out_boot_type = ota_detected ? ArcBootType::FIRST_BOOT_AFTER_UPDATE
                                 : ArcBootType::REGULAR_BOOT;
   *out_data_sdk_version = SdkVersionFromString(data_sdk_version);
