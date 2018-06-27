@@ -1399,7 +1399,7 @@ void Cellular::set_mm_plugin(const string& mm_plugin) {
 }
 
 void Cellular::StartLocationPolling() {
-  if (!capability_->IsLocationUpdateSupported()){
+  if (!capability_->IsLocationUpdateSupported()) {
     SLOG(this, 2) << "Location polling not enabled for "
                   << mm_plugin_ << " plugin.";
     return;

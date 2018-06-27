@@ -16,6 +16,8 @@
 
 #include "shill/vpn/arc_vpn_driver.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <gtest/gtest.h>
 

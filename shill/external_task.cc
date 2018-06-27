@@ -89,7 +89,7 @@ bool ExternalTask::Start(const FilePath& program,
 }
 
 bool ExternalTask::StartInMinijail(const FilePath& program,
-                                   vector<string>& arguments,
+                                   vector<string>* arguments,
                                    const string user,
                                    const string group,
                                    uint64_t mask,
@@ -115,15 +115,15 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
                           program.value().c_str());
     return false;
   }
-  arguments.push_back(base::StringPrintf("--shill_task_service=%s",
+  arguments->push_back(base::StringPrintf("--shill_task_service=%s",
                       task_service_variable->second.c_str()));
-  arguments.push_back(base::StringPrintf("--shill_task_path=%s",
+  arguments->push_back(base::StringPrintf("--shill_task_path=%s",
                       task_path_variable->second.c_str()));
 
   pid_t pid =
       process_manager_->StartProcessInMinijail(FROM_HERE,
                                      program,
-                                     arguments,
+                                     *arguments,
                                      user,
                                      group,
                                      mask,

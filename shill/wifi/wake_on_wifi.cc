@@ -241,21 +241,21 @@ bool WakeOnWiFi::ConvertIPProtoStrtoEnum(
     set<uint8_t>* ip_proto_enums,
     Error* error) {
   for (const auto& ip_proto : ip_proto_strs) {
-    if (ip_proto == kWakeOnIP)
+    if (ip_proto == kWakeOnIP) {
       ip_proto_enums->insert(IPPROTO_IP);
-    else if (ip_proto == kWakeOnICMP)
+    } else if (ip_proto == kWakeOnICMP) {
       ip_proto_enums->insert(IPPROTO_ICMP);
-    else if (ip_proto == kWakeOnIGMP)
+    } else if (ip_proto == kWakeOnIGMP) {
       ip_proto_enums->insert(IPPROTO_IGMP);
-    else if (ip_proto == kWakeOnIPIP)
+    } else if (ip_proto == kWakeOnIPIP) {
       ip_proto_enums->insert(IPPROTO_IPIP);
-    else if (ip_proto == kWakeOnTCP)
+    } else if (ip_proto == kWakeOnTCP) {
       ip_proto_enums->insert(IPPROTO_TCP);
-    else if (ip_proto == kWakeOnUDP)
+    } else if (ip_proto == kWakeOnUDP) {
       ip_proto_enums->insert(IPPROTO_UDP);
-    else if (ip_proto == kWakeOnIDP)
+    } else if (ip_proto == kWakeOnIDP) {
       ip_proto_enums->insert(IPPROTO_IDP);
-    else {
+    } else {
       Error::PopulateAndLog(
           FROM_HERE,
           error,
@@ -354,7 +354,7 @@ void WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(
     uint8_t ip_protocol,
     ByteString* pattern,
     ByteString* mask) {
-  struct Pattern{
+  struct Pattern {
     struct ethhdr eth_hdr;
     struct iphdr ipv4_hdr;
   } __attribute__((__packed__)) pattern_bytes;
@@ -464,7 +464,8 @@ bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
 bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     SetWakeOnPacketConnMessage* msg, const set<WakeOnWiFiTrigger>& trigs,
     const IPAddressStore& addrs, uint32_t wiphy_index,
-    const set<uint8_t>& wake_on_packet_types, const std::string& hardware_address,
+    const set<uint8_t>& wake_on_packet_types,
+    const std::string& hardware_address,
     uint32_t pattern_min_len, uint32_t net_detect_scan_period_seconds,
     const vector<ByteString>& ssid_whitelist, Error* error) {
 #if defined(DISABLE_WAKE_ON_WIFI)
@@ -1427,7 +1428,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
       // Check if the pattern matching capabilities of this WiFi device will
       // allow all possible patterns to be used.
       if (patt_support->min_pattern_len <= min_pattern_len &&
-          patt_support->max_pattern_len >= max_pattern_len){
+          patt_support->max_pattern_len >= max_pattern_len) {
         wake_on_wifi_triggers_supported_.insert(
             WakeOnWiFi::kWakeTriggerPattern);
         wake_on_wifi_max_patterns_ = patt_support->max_patterns;

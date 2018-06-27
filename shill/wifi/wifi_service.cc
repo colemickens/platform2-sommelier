@@ -794,7 +794,7 @@ void WiFiService::UpdateFromEndpoints() {
          (bssid_ != representative_endpoint->bssid_string() ||
           frequency_ != representative_endpoint->frequency())) ||
         abs(representative_endpoint->signal_strength() -
-            raw_signal_strength_ ) > 10) {
+            raw_signal_strength_) > 10) {
         LOG(INFO)
             << "Rep ep updated for " << unique_name()
             << ". "

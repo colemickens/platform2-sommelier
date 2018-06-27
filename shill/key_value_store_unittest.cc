@@ -58,10 +58,10 @@ const vector<int64_t> kInt64sValue{0x2345000000000000, 0x6789000000000000};
 const double kDoubleValue = 1.1;
 const vector<double> kDoublesValue{2.2, 3.3};
 const size_t kDoublesValueSize = kDoublesValue.size();
-const string kRpcIdentifierValue("/org/chromium/test");
+const char kRpcIdentifierValue[] = "/org/chromium/test";
 const vector<string> kRpcIdentifiersValue{
     "/org/chromium/test0", "/org/chromium/test1", "/org/chromium/test2"};
-const string kStringValue("StringValue");
+const char kStringValue[] = "StringValue";
 const map<string, string> kStringmapValue = {{"key", "value"}};
 const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
 const uint32_t kUintValue = 654;
@@ -109,9 +109,9 @@ class KeyValueStoreTest : public Test {
 
 TEST_F(KeyValueStoreTest, Any) {
   EXPECT_FALSE(store_.Contains(kStringKey));
-  store_.Set(kStringKey, brillo::Any(kStringValue));
+  store_.Set(kStringKey, brillo::Any(string(kStringValue)));
   EXPECT_TRUE(store_.Contains(kStringKey));
-  EXPECT_EQ(kStringValue, store_.Get(kStringKey).Get<string>());
+  EXPECT_EQ(string(kStringValue), store_.Get(kStringKey).Get<string>());
   store_.Remove(kStringKey);
   EXPECT_FALSE(store_.Contains(kStringKey));
 }

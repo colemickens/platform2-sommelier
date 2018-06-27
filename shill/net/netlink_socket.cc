@@ -20,6 +20,8 @@
 #include <linux/netlink.h>
 #include <sys/socket.h>
 
+#include <string>
+
 #include <base/logging.h>
 
 #include "shill/logging.h"

@@ -500,7 +500,7 @@ const char kIPV4Address0[] = "192.168.10.20";
 const char kIPV4Address1[] = "1.2.3.4";
 const char kIPV6Address0[] = "FEDC:BA98:7654:3210:FEDC:BA98:7654:3210";
 const char kIPV6Address1[] = "1080:0:0:0:8:800:200C:417A";
-const std::string kHardwareAddress = "00A0C914C829";
+const char kHardwareAddress[] = "00A0C914C829";
 
 
 const int64_t kSuspendDurationSecs  = 15;
@@ -721,7 +721,7 @@ class WakeOnWiFiTest : public ::testing::Test {
         uint32_t min_pattern_len, uint8_t ip_protocol) {
       WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
             hardware_address, min_pattern_len, ip_protocol, pattern, mask);
-   }
+  }
 
   void CreatePacketTypePatternAndMaskforIPV4(
       const std::basic_string<char>& hardware_address,
@@ -1349,8 +1349,6 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       EXPECT_TRUE(pattern.Equals(expected_pattern));
       EXPECT_TRUE(mask.Equals(ByteString(KIPV6ProtocolTypeMaskBytes,
                                          sizeof(KIPV6ProtocolTypeMaskBytes))));
-
-
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, ConvertIPProtoStrtoEnum) {
@@ -1381,13 +1379,13 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, ConvertIPProtoStrtoEnum) {
   EXPECT_EQ(ip_proto_enums.find(IPPROTO_IGMP), ip_proto_enums.end());
   EXPECT_EQ(ip_proto_enums.find(IPPROTO_IPIP), ip_proto_enums.end());
   EXPECT_EQ(ip_proto_enums.find(IPPROTO_IP), ip_proto_enums.end());
-  EXPECT_EQ(ip_proto_enums.find(IPPROTO_IDP),ip_proto_enums.end());
+  EXPECT_EQ(ip_proto_enums.find(IPPROTO_IDP), ip_proto_enums.end());
 
   ip_proto_strs = {"IP", "IP", "IP", "IP", "IP", "IP"};
   ip_proto_enums.clear();
   return_val = ConvertIPProtoStrtoEnum(ip_proto_strs, &ip_proto_enums, &e);
   EXPECT_TRUE(return_val);
-  EXPECT_TRUE(ip_proto_enums.size() == 1);
+  EXPECT_EQ(ip_proto_enums.size(), 1);
   EXPECT_FALSE(ip_proto_enums.find(IPPROTO_IP) == ip_proto_enums.end());
 }
 
@@ -1697,12 +1695,12 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   SetWakeOnPacketConnMessage msg11;
   all_addresses.Clear();
   uint8_t proto_udp = static_cast<uint8_t>(IPPROTO_UDP);
-   EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-       &msg11, trigs, all_addresses, index, {proto_udp}, kHardwareAddress, interval,
-       whitelist, &e));
-   EXPECT_TRUE(
-         WakeOnWiFiSettingsMatch(msg11, trigs, all_addresses, interval, {proto_udp},
-                                 kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg11, trigs, all_addresses, index, {proto_udp}, kHardwareAddress,
+      interval, whitelist, &e));
+  EXPECT_TRUE(
+      WakeOnWiFiSettingsMatch(msg11, trigs, all_addresses, interval,
+                              {proto_udp}, kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg12;
   all_addresses.Clear();
@@ -2514,7 +2512,6 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketConnection) {
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketOfType) {
-
   const string ip_string1("192.168.0.19");
   IPAddress ip_addr1(ip_string1);
   Error e;
@@ -3275,8 +3272,7 @@ TEST_F(
 
 TEST_F(
     WakeOnWiFiTestWithMockDispatcher,
-    ReportConnectedToServiceAfterWake_WakeOnDarkConnectDisabledAndNotConnected)
-{
+    ReportConnectedToServiceAfterWake_WakeOnDarkConnectDisabledAndDisonnected) {
   const bool is_connected = false;
   EnableWakeOnWiFiFeaturesPacket();
   EXPECT_CALL(

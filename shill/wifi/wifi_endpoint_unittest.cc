@@ -176,7 +176,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
     if (authkey_count > 0 && authkey_count == ciphers.size()) {
       vector<uint8_t>::iterator rsn_authkeys =
           rsn.begin() + authkey_offset + IEEE_80211::kRSNIECipherCountLen;
-      uint8_t* authkeys = (uint8_t*)&ciphers[0];
+      const uint8_t* authkeys = reinterpret_cast<const uint8_t*>(&ciphers[0]);
       std::copy(authkeys,
                 authkeys + authkey_count * IEEE_80211::kRSNIESelectorLen,
                 rsn_authkeys);

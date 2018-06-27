@@ -17,6 +17,7 @@
 #ifndef SHILL_EAP_CREDENTIALS_H_
 #define SHILL_EAP_CREDENTIALS_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 

@@ -14,6 +14,8 @@
 // limitations under the License.
 //
 
+#include <memory>
+
 #include "shill/eap_credentials.h"
 
 #include <base/stl_util.h>
@@ -560,7 +562,6 @@ TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
     EXPECT_FALSE(SetEapPassword(kPassword, &error));
     EXPECT_TRUE(error.IsSuccess());
   }
-
 }
 
 TEST_F(EapCredentialsTest, TestUseLoginPassword) {

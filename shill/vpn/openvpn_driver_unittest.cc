@@ -1206,7 +1206,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
       .WillRepeatedly(Return(false));
 
   const int kPID = 234678;
-  const map<string, string> expected_env; // No env vars passed.
+  const map<string, string> expected_env;  // No env vars passed.
   EXPECT_CALL(process_manager_, StartProcess(_, _, _, expected_env, _, _))
       .WillOnce(Return(-1))
       .WillOnce(Return(kPID));

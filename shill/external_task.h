@@ -96,7 +96,7 @@ class ExternalTask : public RPCTaskDelegate {
   // On success, returns true, and leaves |error| unmodified.
   // On failure, returns false, and sets |error|.
   virtual bool StartInMinijail(const base::FilePath& program,
-                               std::vector<std::string>& arguments,
+                               std::vector<std::string>* arguments,
                                const std::string user,
                                const std::string group,
                                uint64_t mask,

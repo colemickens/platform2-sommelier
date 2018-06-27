@@ -140,8 +140,8 @@ class CryptoUtilProxyTest : public testing::Test {
             "shill-crypto",
             0,  // no capabilities required
             false,
-            _,  // exit_callback
-            _)) // std fds are checked in HandleStartInMinijailWithPipes
+            _,   // exit_callback
+            _))  // std fds are checked in HandleStartInMinijailWithPipes
         .WillOnce(Invoke(this,
                          &CryptoUtilProxyTest::HandleStartInMinijailWithPipes));
     // We should always schedule a shim timeout callback.

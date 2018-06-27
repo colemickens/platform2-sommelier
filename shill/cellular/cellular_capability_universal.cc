@@ -1230,7 +1230,8 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     OnModemRevisionChanged(properties.GetString(MM_MODEM_PROPERTY_REVISION));
   }
   if (properties.ContainsString(MM_MODEM_PROPERTY_HARDWAREREVISION)) {
-    OnModemHardwareRevisionChanged(properties.GetString(MM_MODEM_PROPERTY_HARDWAREREVISION));
+    OnModemHardwareRevisionChanged(
+        properties.GetString(MM_MODEM_PROPERTY_HARDWAREREVISION));
   }
   if (properties.ContainsString(MM_MODEM_PROPERTY_DEVICE)) {
     OnModemDevicePathChanged(properties.GetString(MM_MODEM_PROPERTY_DEVICE));

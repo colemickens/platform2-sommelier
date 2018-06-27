@@ -31,7 +31,7 @@ bool IsValidDNSDomainName(const char* name) {
     }
 
     if (!shill::IsValidHostLabelCharacter(name[i],
-                                        i == 0 || name[i - 1] == '.')) {
+                                          i == 0 || name[i - 1] == '.')) {
       return false;
     }
   }
@@ -64,18 +64,40 @@ TEST(DNSUtilTest, DNSDomainFromDot) {
   EXPECT_EQ(out, IncludeNUL("\003www\006google\003com"));
 
   // Label is 63 chars: still valid
-  EXPECT_TRUE(DNSDomainFromDot("z23456789a123456789a123456789a123456789a123456789a123456789a123", &out));
-  EXPECT_EQ(out, IncludeNUL("\077z23456789a123456789a123456789a123456789a123456789a123456789a123"));
+  EXPECT_TRUE(DNSDomainFromDot(
+      "z23456789a123456789a123456789a123456789a123456789a123456789a123", &out));
+  EXPECT_EQ(out,
+            IncludeNUL("\077z23456789a123456789a123456789a123456789a123456789a1"
+                       "23456789a123"));
 
   // Label is too long: invalid
-  EXPECT_FALSE(DNSDomainFromDot("123456789a123456789a123456789a123456789a123456789a123456789a1234", &out));
+  EXPECT_FALSE(DNSDomainFromDot(
+      "123456789a123456789a123456789a123456789a123456789a123456789a1234",
+      &out));
 
   // 253 characters in the name: still valid
-  EXPECT_TRUE(DNSDomainFromDot("abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abc", &out));
-  EXPECT_EQ(out, IncludeNUL("\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\003abc"));
+  EXPECT_TRUE(DNSDomainFromDot(
+      "abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi."
+      "abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi."
+      "abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi.abcdefghi."
+      "abcdefghi.abcdefghi.abcdefghi.abcdefghi.abc",
+      &out));
+  EXPECT_EQ(
+      out,
+      IncludeNUL("\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcde"
+                 "fghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011a"
+                 "bcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi"
+                 "\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcde"
+                 "fghi\011abcdefghi\011abcdefghi\011abcdefghi\011abcdefghi\011a"
+                 "bcdefghi\011abcdefghi\003abc"));
 
   // 254 characters in the name: invalid
-  EXPECT_FALSE(DNSDomainFromDot("123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.1234", &out));
+  EXPECT_FALSE(DNSDomainFromDot(
+      "123456789.123456789.123456789.123456789.123456789.123456789.123456789."
+      "123456789.123456789.123456789.123456789.123456789.123456789.123456789."
+      "123456789.123456789.123456789.123456789.123456789.123456789.123456789."
+      "123456789.123456789.123456789.123456789.1234",
+      &out));
 
   // Zero length labels should fail, except that one trailing dot is allowed
   // (to disable suffix search):
@@ -88,9 +110,14 @@ TEST(DNSUtilTest, DNSDomainFromDot) {
 
 TEST(DNSUtilTest, IsValidDNSDomain) {
   const char* const bad_hostnames[] = {
-      "%20%20noodles.blorg", "noo dles.blorg ",    "noo dles.blorg. ",
-      "^noodles.blorg",      "noodles^.blorg",     "noo&dles.blorg",
-      "noodles.blorg`",      "www.-noodles.blorg",
+      "%20%20noodles.blorg",
+      "noo dles.blorg ",
+      "noo dles.blorg. ",
+      "^noodles.blorg",
+      "noodles^.blorg",
+      "noo&dles.blorg",
+      "noodles.blorg`",
+      "www.-noodles.blorg",
   };
 
   // TODO(palmer): In the future, when we can remove support for invalid names,
@@ -102,9 +129,15 @@ TEST(DNSUtilTest, IsValidDNSDomain) {
   }
 
   const char* const good_hostnames[] = {
-      "www.noodles.blorg",   "1www.noodles.blorg", "www.2noodles.blorg",
-      "www.n--oodles.blorg", "www.noodl_es.blorg", "www.no-_odles.blorg",
-      "www_.noodles.blorg",  "www.noodles.blorg.", "_privet._tcp.local",
+      "www.noodles.blorg",
+      "1www.noodles.blorg",
+      "www.2noodles.blorg",
+      "www.n--oodles.blorg",
+      "www.noodl_es.blorg",
+      "www.no-_odles.blorg",
+      "www_.noodles.blorg",
+      "www.noodles.blorg.",
+      "_privet._tcp.local",
   };
 
   for (size_t i = 0; i < arraysize(good_hostnames); ++i) {

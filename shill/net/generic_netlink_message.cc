@@ -17,6 +17,7 @@
 #include "shill/net/generic_netlink_message.h"
 
 #include <memory>
+#include <string>
 
 #include <base/bind.h>
 #include <base/logging.h>
