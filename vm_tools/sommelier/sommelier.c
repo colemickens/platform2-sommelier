@@ -3775,6 +3775,15 @@ int main(int argc, char **argv) {
     ctx.sigchld_event_source =
         wl_event_loop_add_signal(event_loop, SIGCHLD, sl_handle_sigchld, &ctx);
 
+    // Unset DISPLAY to prevent X clients from connecting to an existing X
+    // server when X forwarding is not enabled.
+    unsetenv("DISPLAY");
+    // Set WAYLAND_DISPLAY to value that is guaranteed to not point to a
+    // valid wayland compositor socket name. Resetting WAYLAND_DISPLAY is
+    // insufficient as clients will attempt to connect to wayland-0 if
+    // it's not set.
+    setenv("WAYLAND_DISPLAY", ".", 1);
+
     if (ctx.xwayland) {
       int ds[2], wm[2];
 
