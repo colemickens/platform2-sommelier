@@ -21,8 +21,8 @@ class Crtc;
 // Utility class to map/unmap GBM buffer with RAII.
 class GbmBoMap {
  public:
-  GbmBoMap(ScopedGbmDevicePtr device, ScopedGbmBoPtr bo, uint32_t width,
-           uint32_t height);
+  GbmBoMap(ScopedGbmDevicePtr device, ScopedGbmBoPtr bo, uint32_t x, uint32_t y,
+           uint32_t width, uint32_t height);
   ~GbmBoMap();
 
   uint32_t width() const { return width_; }
@@ -43,7 +43,8 @@ class GbmBoMap {
 };
 
 // Captures a screenshot from the specified CRTC.
-std::unique_ptr<GbmBoMap> Capture(const Crtc& crtc);
+std::unique_ptr<GbmBoMap> Capture(const Crtc& crtc, uint32_t x, uint32_t y,
+                                  uint32_t width, uint32_t height);
 
 }  // namespace screenshot
 

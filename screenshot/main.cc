@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <inttypes.h>
+#include <stdio.h>
+
 #include <iostream>
 #include <memory>
 
@@ -19,6 +22,7 @@ constexpr const char kHelpSwitch[] = "help";
 constexpr const char kInternalSwitch[] = "internal";
 constexpr const char kExternalSwitch[] = "external";
 constexpr const char kCrtcIdSwitch[] = "crtc-id";
+constexpr const char kCropSwitch[] = "crop";
 
 constexpr const char kHelp[] =
     "Usage: screenshot [options...] path/to/output.png\n"
@@ -29,7 +33,8 @@ constexpr const char kHelp[] =
     "Options:\n"
     "  --internal: Capture from internal display.\n"
     "  --external: Capture from external display.\n"
-    "  --crtc-id=ID: Capture from the specified display.\n";
+    "  --crtc-id=ID: Capture from the specified display.\n"
+    "  --crop=WxH+X+Y: Specify a subregion to capture.\n";
 
 void PrintHelp() {
   std::cerr << kHelp;
@@ -57,6 +62,23 @@ int Main() {
     return 1;
   }
 
+  bool crop_set = false;
+  uint32_t x, y, width, height;
+  if (cmdline->HasSwitch(kCropSwitch)) {
+    auto spec = cmdline->GetSwitchValueASCII(kCropSwitch);
+    int read_size;
+    int scan_size = sscanf(
+        spec.c_str(), "%" SCNu32 "x%" SCNu32 "+%" SCNu32 "+%" SCNu32 "%n",
+        &width, &height, &x, &y, &read_size);
+    if (scan_size != 4 || read_size != static_cast<int>(spec.size())) {
+      LOG(ERROR) << "Invalid --crop specification";
+      return 1;
+    }
+    CHECK_GT(width, 0);
+    CHECK_GT(height, 0);
+    crop_set = true;
+  }
+
   std::unique_ptr<Crtc> crtc;
   if (cmdline->HasSwitch(kInternalSwitch)) {
     crtc = screenshot::CrtcFinder::FindInternalDisplay();
@@ -79,7 +101,20 @@ int Main() {
     return 1;
   }
 
-  auto map = screenshot::Capture(*crtc);
+  const uint32_t crtc_width = crtc->fb()->width;
+  const uint32_t crtc_height = crtc->fb()->height;
+  if (!crop_set) {
+    x = 0;
+    y = 0;
+    width = crtc_width;
+    height = crtc_height;
+  }
+  CHECK_LT(x, crtc_width);
+  CHECK_LT(y, crtc_height);
+  CHECK_LE(x + width, crtc_width);
+  CHECK_LE(y + height, crtc_height);
+
+  auto map = screenshot::Capture(*crtc, x, y, width, height);
 
   screenshot::SaveAsPng(cmdline->GetArgs()[0].c_str(), map->buffer(),
                         map->width(), map->height(), map->stride());
