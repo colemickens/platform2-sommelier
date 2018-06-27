@@ -228,6 +228,11 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
 
   # Enable/disable quota feature.
   if [ "${FS_FORMAT_STATE}" = "ext4" ]; then
+    if ! dumpe2fs -h "${STATE_DEV}" 2>/dev/null | \
+         grep -qe "^Reserved blocks gid.*20119"; then
+      # Add Android's AID_RESERVED_DISK to resgid.
+      tune2fs -g 20119 "${STATE_DEV}" || :
+    fi
     if [ -d /proc/sys/fs/quota ]; then
       # Quota is enabled in the kernel, make sure that quota is enabled in the
       # filesystem.

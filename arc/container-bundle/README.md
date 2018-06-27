@@ -97,6 +97,13 @@ The second range maps Chrome OS daemon uids (600-649), into one of Android's
 AIDs](https://source.android.com/devices/tech/config/filesystem#defining-an-oem-specific-aid)
 ranges.
 
+Similarly, gid is assigned in the same way as uids assignment, except the
+special gid 20119 is allocated for container gid 1065, which is [Android's
+reserved gid](https://android.googlesource.com/platform/system/core/+/1fefb9f1294d3e270f1711f41e7c77a61213742b/libcutils/include/private/android_filesystem_config.h#128).
+This exception is because [ext4](http://man7.org/linux/man-pages/man5/ext4.5.html)
+resgid only accepts 16-bit gid, and hence the originally mapped gid
+1065 + 655360 does not fit the ext4 resgid.
+
 ### Network namespace
 
 TODO

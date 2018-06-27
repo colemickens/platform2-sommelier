@@ -822,9 +822,22 @@
 		],
 		"gidMappings": [
 			{
+				"_comment": "Shift GID 0..1064 (inclusive) in container by 655360",
 				"hostID": 655360,
 				"containerID": 0,
-				"size": 5000
+				"size": 1065
+			},
+			{
+				"_comment": "Map GID 1065 in container (Android's AID_RESERVED_DISK) to 20119, since ext4 resgid is 16-bit",
+				"hostID": 20119,
+				"containerID": 1065,
+				"size": 1
+			},
+			{
+				"_comment": "Shift GID 1066..4999 (inclusive) in container by 655360",
+				"hostID": 656426,
+				"containerID": 1066,
+				"size": 3934
 			},
 			{
 				"hostID": 600,
