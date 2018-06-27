@@ -119,10 +119,6 @@ class BacklightControllerStub : public policy::BacklightController {
   bool docked_ = false;
   bool forced_off_ = false;
 
-  double user_brightness_percent_ = 0.0;
-  int num_user_brightness_increases_ = 0;
-  int num_user_brightness_decreases_ = 0;
-
   // Counts to be returned by GetNum*Adjustments().
   int num_als_adjustments_ = 0;
   int num_user_adjustments_ = 0;
