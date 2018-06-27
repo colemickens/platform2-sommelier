@@ -283,7 +283,7 @@ int SensorHwOp::setGains(int analog_gain, int digital_gain)
     ret = pPixelArraySubdev->setControl(V4L2_CID_ANALOGUE_GAIN,
                                         analog_gain, "Analog Gain");
     if (digital_gain != 0) {
-        ret = pPixelArraySubdev->setControl(V4L2_CID_GAIN,
+        ret = pPixelArraySubdev->setControl(V4L2_CID_DIGITAL_GAIN,
                                             digital_gain, "Digital Gain");
     }
     return ret;
