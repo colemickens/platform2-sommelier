@@ -419,7 +419,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   index (OUT) - The keyset index from disk
   //   error (OUT) - The specific error when decrypting
   bool DecryptVaultKeyset(const Credentials& credentials,
-                          bool migrate_if_needed,
                           VaultKeyset* vault_keyset,
                           SerializedVaultKeyset* serialized,
                           int* index,

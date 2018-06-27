@@ -404,8 +404,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   SerializedVaultKeyset serialized;
   MountError local_mount_error = MOUNT_ERROR_NONE;
   int index = -1;
-  if (!DecryptVaultKeyset(credentials, true, &vault_keyset, &serialized,
-                          &index, &local_mount_error)) {
+  if (!DecryptVaultKeyset(credentials, &vault_keyset, &serialized, &index,
+                          &local_mount_error)) {
     *mount_error = local_mount_error;
     if (recreate_on_decrypt_fatal && (local_mount_error & MOUNT_ERROR_FATAL)) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
@@ -1230,7 +1230,6 @@ bool Mount::StoreVaultKeysetForUser(
 }
 
 bool Mount::DecryptVaultKeyset(const Credentials& credentials,
-                               bool migrate_if_needed,
                                VaultKeyset* vault_keyset,
                                SerializedVaultKeyset* serialized,
                                int* index,
@@ -1339,9 +1338,6 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     LOG(ERROR) << "Failed to decrypt any keysets for " << obfuscated_username;
     return false;
   }
-
-  if (!migrate_if_needed)
-    return true;
 
   // Calling EnsureTpm here handles the case where a user logged in while
   // cryptohome was taking TPM ownership.  In that case, their vault keyset
