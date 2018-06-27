@@ -28,6 +28,15 @@ class VirtualMachine {
     std::string desktop_file_id;
     std::string content;
   };
+  // Information about a Linux package file.
+  struct LinuxPackageInfo {
+    std::string package_id;
+    std::string license;
+    std::string description;
+    std::string project_url;
+    uint64_t size;
+    std::string summary;
+  };
 
   enum class CreateLxdContainerStatus {
     UNKNOWN,
@@ -108,6 +117,15 @@ class VirtualMachine {
   bool LaunchVshd(const std::string& container_name,
                   uint32_t port,
                   std::string* out_error);
+
+  // Gets information about a Linux package from container |container_name| from
+  // the container's filesystem at |file_path|. Returns true on success, false
+  // otherwise. On failure, |out_error| is set with failure details. On success,
+  // the fields in the |out_pkg_info| struct will be filled in.
+  bool GetLinuxPackageInfo(const std::string& container_name,
+                           const std::string& file_path,
+                           LinuxPackageInfo* out_pkg_info,
+                           std::string* out_error);
 
   // Installs a Linux package into container |container_name| from the
   // container's filesystem at |file_path|. Returns a status value which

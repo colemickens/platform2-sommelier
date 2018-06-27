@@ -594,6 +594,7 @@ bool Service::Init() {
       {kLaunchContainerApplicationMethod, &Service::LaunchContainerApplication},
       {kGetContainerAppIconMethod, &Service::GetContainerAppIcon},
       {kLaunchVshdMethod, &Service::LaunchVshd},
+      {kGetLinuxPackageInfoMethod, &Service::GetLinuxPackageInfo},
       {kInstallLinuxPackageMethod, &Service::InstallLinuxPackage},
       {kCreateLxdContainerMethod, &Service::CreateLxdContainer},
       {kStartLxdContainerMethod, &Service::StartLxdContainer},
@@ -993,6 +994,61 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
 
   response.set_success(true);
   response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetLinuxPackageInfo(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received GetLinuxPackageInfo request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  LinuxPackageInfoRequest request;
+  LinuxPackageInfoResponse response;
+  response.set_success(false);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse LinuxPackageInfoRequest from message";
+    response.set_failure_reason("Unable to parse request protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  if (request.file_path().empty()) {
+    LOG(ERROR) << "Linux file path is not set in request";
+    response.set_failure_reason("Linux file path is not set in request");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::LinuxPackageInfo pkg_info;
+  response.set_success(vm->GetLinuxPackageInfo(
+      request.container_name().empty() ? kDefaultContainerName
+                                       : request.container_name(),
+      request.file_path(), &pkg_info, &error_msg));
+  if (response.success()) {
+    response.set_package_id(pkg_info.package_id);
+    response.set_license(pkg_info.license);
+    response.set_description(pkg_info.description);
+    response.set_project_url(pkg_info.project_url);
+    response.set_size(pkg_info.size);
+    response.set_summary(pkg_info.summary);
+  } else {
+    response.set_failure_reason(error_msg);
+  }
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

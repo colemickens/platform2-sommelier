@@ -169,6 +169,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to launch vshd in a container.
   std::unique_ptr<dbus::Response> LaunchVshd(dbus::MethodCall* method_call);
 
+  // Handles a request to get Linux package info from a container.
+  std::unique_ptr<dbus::Response> GetLinuxPackageInfo(
+      dbus::MethodCall* method_call);
+
   // Handles a request to install a Linux package file in a container.
   std::unique_ptr<dbus::Response> InstallLinuxPackage(
       dbus::MethodCall* method_call);

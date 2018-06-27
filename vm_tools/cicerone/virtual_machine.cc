@@ -236,6 +236,50 @@ bool VirtualMachine::GetContainerAppIcon(
   return true;
 }
 
+bool VirtualMachine::GetLinuxPackageInfo(const std::string& container_name,
+                                         const std::string& file_path,
+                                         LinuxPackageInfo* out_pkg_info,
+                                         std::string* out_error) {
+  CHECK(out_pkg_info);
+  // Get the gRPC stub for communicating with the container.
+  auto iter = container_name_to_garcon_stub_.find(container_name);
+  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
+    LOG(ERROR) << "Requested container " << container_name
+               << " is not registered with the corresponding VM";
+    out_error->assign("Requested container is not registered");
+    return false;
+  }
+
+  vm_tools::container::LinuxPackageInfoRequest container_request;
+  vm_tools::container::LinuxPackageInfoResponse container_response;
+  container_request.set_file_path(file_path);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = iter->second->GetLinuxPackageInfo(
+      &ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to get Linux package info from container "
+               << container_name << ": " << status.error_message()
+               << " code: " << status.error_code();
+    out_error->assign(
+        "gRPC failure getting Linux package info from container: " +
+        status.error_message());
+    return false;
+  }
+  out_error->assign(container_response.failure_reason());
+  out_pkg_info->package_id = std::move(container_response.package_id());
+  out_pkg_info->license = std::move(container_response.license());
+  out_pkg_info->description = std::move(container_response.description());
+  out_pkg_info->project_url = std::move(container_response.project_url());
+  out_pkg_info->size = container_response.size();
+  out_pkg_info->summary = std::move(container_response.summary());
+  return container_response.success();
+}
+
 int VirtualMachine::InstallLinuxPackage(const std::string& container_name,
                                         const std::string& file_path,
                                         std::string* out_error) {
