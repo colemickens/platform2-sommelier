@@ -532,6 +532,38 @@ grpc::Status ServiceImpl::LaunchVshd(
   return grpc::Status::OK;
 }
 
+grpc::Status ServiceImpl::GetLinuxPackageInfo(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::LinuxPackageInfoRequest* request,
+    vm_tools::container::LinuxPackageInfoResponse* response) {
+  LOG(INFO) << "Received request to get Linux package info";
+  if (request->file_path().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path cannot be empty");
+  }
+
+  base::FilePath file_path(request->file_path());
+  if (!base::PathExists(file_path)) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path does not exist");
+  }
+
+  std::string error_msg;
+  std::shared_ptr<PackageKitProxy::LinuxPackageInfo> pkg_info =
+      std::make_shared<PackageKitProxy::LinuxPackageInfo>();
+  response->set_success(
+      package_kit_proxy_->GetLinuxPackageInfo(file_path, pkg_info, &error_msg));
+  if (response->success()) {
+    response->set_package_id(std::move(pkg_info->package_id));
+    response->set_license(std::move(pkg_info->license));
+    response->set_description(std::move(pkg_info->description));
+    response->set_project_url(std::move(pkg_info->project_url));
+    response->set_size(pkg_info->size);
+    response->set_summary(std::move(pkg_info->summary));
+  } else {
+    response->set_failure_reason(error_msg);
+  }
+  return grpc::Status::OK;
+}
+
 grpc::Status ServiceImpl::InstallLinuxPackage(
     grpc::ServerContext* ctx,
     const vm_tools::container::InstallLinuxPackageRequest* request,

@@ -72,6 +72,45 @@ message LaunchVshdResponse {
   string failure_reason = 2;
 }
 
+// Request to get information about a Linux package file in the container.
+message LinuxPackageInfoRequest {
+  // Path to the package file (e.g. .deb) in the container's filesystem.
+  string file_path = 1;
+}
+
+// Response sent back from a GetLinuxPackageInfo call.
+message LinuxPackageInfoResponse {
+  // True if the file was successfully parsed and the other fields are valid.
+  bool success = 1;
+
+  // Contains a textual reason for the failure in case success is false.
+  string failure_reason = 2;
+
+  // The package identifier is in the form of a semicolon delimited string of
+  // the format: name;version;arch;data
+  // name, version and arch are as expected. data is somewhat variant and refers
+  // to the state of the package as well as potentially remote repository
+  // information.
+  string package_id = 3;
+
+  // The license associated with the package. So far only the value of
+  // 'unknown' has been observed for this field.
+  string license = 4;
+
+  // The description of the package, can be a multi-line text string.
+  string description = 5;
+
+  // The URL for the homepage of the project.
+  string project_url = 6;
+
+  // Size of the package file in bytes.
+  uint64 size = 7;
+
+  // Usually more of a title for a package, but sometimes less descriptive
+  // than that.
+  string summary = 8;
+}
+
 // Request protobuf for installing a Linux package file.
 message InstallLinuxPackageRequest {
   // Path to the package file (e.g. .deb) in the container's filesystem.
@@ -110,6 +149,10 @@ service Garcon {
 
   // Launch a vshd instance that will connect back to the host.
   rpc LaunchVshd(LaunchVshdRequest) returns (LaunchVshdResponse);
+
+  // Gets information about a Linux package file in the container.
+  rpc GetLinuxPackageInfo(LinuxPackageInfoRequest)
+      returns (LinuxPackageInfoResponse);
 
   // Install a Linux package file in the container.
   rpc InstallLinuxPackage(InstallLinuxPackageRequest)

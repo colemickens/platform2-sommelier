@@ -38,6 +38,11 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::LaunchVshdRequest* request,
       vm_tools::container::LaunchVshdResponse* response) override;
 
+  grpc::Status GetLinuxPackageInfo(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::LinuxPackageInfoRequest* request,
+      vm_tools::container::LinuxPackageInfoResponse* response) override;
+
   grpc::Status InstallLinuxPackage(
       grpc::ServerContext* ctx,
       const vm_tools::container::InstallLinuxPackageRequest* request,

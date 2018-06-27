@@ -33,6 +33,14 @@ class PackageKitProxy {
         vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
         uint32_t percent_progress) = 0;
   };
+  struct LinuxPackageInfo {
+    std::string package_id;
+    std::string license;
+    std::string description;
+    std::string project_url;
+    uint64_t size;
+    std::string summary;
+  };
 
   // Creates an instance of PackageKitProxy that will use the calling thread for
   // its message loop for D-Bus communication. Returns nullptr if there was a
@@ -41,6 +49,14 @@ class PackageKitProxy {
       base::WeakPtr<PackageKitObserver> observer);
 
   ~PackageKitProxy();
+
+  // Gets the information about a local Linux package file located at
+  // |file_path| and populates |out_pkg_info| with the details on success.
+  // Returns true on success, and false otherwise. On failure, |out_error| will
+  // be populated with error details.
+  bool GetLinuxPackageInfo(const base::FilePath& file_path,
+                           std::shared_ptr<LinuxPackageInfo> out_pkg_info,
+                           std::string* out_error);
 
   // Requests that installation of the Linux package located at |file_path| be
   // performed. Returns the result which corresponds to the
@@ -51,9 +67,24 @@ class PackageKitProxy {
 
  private:
   struct PackageKitTransactionProperties;
+  // This is used to hold various objects/data that we pass around through
+  // callbacks when querying for package information. It's in a struct to avoid
+  // huge argument lists for the method calls.
+  struct PackageInfoTransactionData {
+    PackageInfoTransactionData(const base::FilePath& file_path_in,
+                               std::shared_ptr<LinuxPackageInfo> pkg_info_in);
+    dbus::ObjectPath info_transaction_path;
+    const base::FilePath file_path;
+    base::WaitableEvent event;
+    bool result;
+    std::shared_ptr<LinuxPackageInfo> pkg_info;
+    std::string error;
+  };
 
   explicit PackageKitProxy(base::WeakPtr<PackageKitObserver> observer);
   bool Init();
+  void GetLinuxPackageInfoOnDBusThread(
+      std::shared_ptr<PackageInfoTransactionData> data);
   void InstallLinuxPackageOnDBusThread(const base::FilePath& file_path,
                                        base::WaitableEvent* event,
                                        int* status,
@@ -71,11 +102,40 @@ class PackageKitProxy {
                                            const std::string& signal_name,
                                            bool is_connected);
 
+  // Callbacks for when D-Bus signals are connected for an info request.
+  void OnErrorSignalConnectedForInfo(
+      dbus::ObjectProxy* transaction_proxy,
+      std::shared_ptr<PackageInfoTransactionData> data,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+  void OnFinishedSignalConnectedForInfo(
+      dbus::ObjectProxy* transaction_proxy,
+      std::shared_ptr<PackageInfoTransactionData> data,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+  void OnDetailsSignalConnectedForInfo(
+      dbus::ObjectProxy* transaction_proxy,
+      std::shared_ptr<PackageInfoTransactionData> data,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+
   // Callback for the D-Bus signals for ErrorCode, Finished and Changed during
   // installs.
   void OnPackageKitInstallError(dbus::Signal* signal);
   void OnPackageKitInstallFinished(dbus::Signal* signal);
   void OnPackageKitPropertyChanged(const std::string& name);
+
+  // Callback for the D-Bus signal for ErrorCode, Finished and Details during
+  // info requests.
+  void OnPackageKitInfoError(std::shared_ptr<PackageInfoTransactionData> data,
+                             dbus::Signal* signal);
+  void OnPackageKitInfoFinished(
+      std::shared_ptr<PackageInfoTransactionData> data, dbus::Signal* signal);
+  void OnPackageKitInfoDetails(std::shared_ptr<PackageInfoTransactionData> data,
+                               dbus::Signal* signal);
 
   // Called to clear local state for an install operation and make a call to the
   // observer with the result.
