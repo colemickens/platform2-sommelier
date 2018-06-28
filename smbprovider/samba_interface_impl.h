@@ -16,6 +16,13 @@
 namespace smbprovider {
 
 // Implements SambaInterface and calls libsmbclient's smbc_* methods 1:1.
+//
+// TODO(zentaro): WIP for crbug/857487.
+//   - Assign remainaing _ctx members from libsmbclient
+//   - Add a map of FD's to SMBCFILE
+//   - Add helper functions to manage getting/setting FDs
+//   - Switch splice to use new implementation
+//   - Switch remaining implementation to call new functions
 class SambaInterfaceImpl : public SambaInterface {
  public:
   // SMB authentication callback.
@@ -98,9 +105,21 @@ class SambaInterfaceImpl : public SambaInterface {
 
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;
-  smbc_splice_fn smbc_splice_ctx_;
-  smbc_open_fn smbc_open_ctx_;
-  smbc_close_fn smbc_close_ctx_;
+  smbc_close_fn smbc_close_ctx_ = nullptr;
+  smbc_closedir_fn smbc_closedir_ctx_ = nullptr;
+  smbc_ftruncate_fn smbc_ftruncate_ctx_ = nullptr;
+  smbc_getdents_fn smbc_getdents_ctx_ = nullptr;
+  smbc_lseek_fn smbc_lseek_ctx_ = nullptr;
+  smbc_mkdir_fn smbc_mkdir_ctx_ = nullptr;
+  smbc_open_fn smbc_open_ctx_ = nullptr;
+  smbc_opendir_fn smbc_opendir_ctx_ = nullptr;
+  smbc_read_fn smbc_read_ctx_ = nullptr;
+  smbc_rename_fn smbc_rename_ctx_ = nullptr;
+  smbc_rmdir_fn smbc_rmdir_ctx_ = nullptr;
+  smbc_splice_fn smbc_splice_ctx_ = nullptr;
+  smbc_stat_fn smbc_stat_ctx_ = nullptr;
+  smbc_unlink_fn smbc_unlink_ctx_ = nullptr;
+  smbc_write_fn smbc_write_ctx_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceImpl);
 };

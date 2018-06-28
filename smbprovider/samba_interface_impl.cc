@@ -261,9 +261,9 @@ SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {
   DCHECK(context);
 
   // Load the context functions required for smbc_splice.
-  smbc_splice_ctx_ = smbc_getFunctionSplice(context);
-  smbc_open_ctx_ = smbc_getFunctionOpen(context);
   smbc_close_ctx_ = smbc_getFunctionClose(context);
+  smbc_open_ctx_ = smbc_getFunctionOpen(context);
+  smbc_splice_ctx_ = smbc_getFunctionSplice(context);
 }
 
 // This is required to explicitly instantiate the template function.
