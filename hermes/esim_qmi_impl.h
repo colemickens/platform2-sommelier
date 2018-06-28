@@ -5,7 +5,9 @@
 #ifndef HERMES_ESIM_QMI_IMPL_H_
 #define HERMES_ESIM_QMI_IMPL_H_
 
-#include <vector>
+#include <libqrtr.h>
+
+#include <base/files/scoped_file.h>
 
 #include "hermes/esim.h"
 #include "hermes/qmi_constants.h"
@@ -34,8 +36,9 @@ class EsimQmiImpl : public Esim {
                        const DataCallback& callback,
                        const ErrorCallback& error_callback) const;
 
-  bool connected_;
-  base::WeakPtrFactory<Esim> weak_factory_;
+  // ScopedFD to hold the qrtr socket file descriptor returned by qrtr_open.
+  base::ScopedFD qrtr_socket_fd_;
+  base::WeakPtrFactory<EsimQmiImpl> weak_factory_;
   DISALLOW_COPY_AND_ASSIGN(EsimQmiImpl);
 };
 

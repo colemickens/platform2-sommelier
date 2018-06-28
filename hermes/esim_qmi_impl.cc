@@ -8,15 +8,16 @@
 
 namespace hermes {
 
-EsimQmiImpl::EsimQmiImpl() : connected_(false), weak_factory_(this) {}
+EsimQmiImpl::EsimQmiImpl() : weak_factory_(this) {}
 
 // TODO(jruthe): pass |which| to EsimQmiImpl::SendEsimMessage to make the
 // correct libqrtr call to the eSIM chip.
 void EsimQmiImpl::GetInfo(int which,
                           const DataCallback& data_callback,
                           const ErrorCallback& error_callback) {
-  if (!connected_) {
+  if (!qrtr_socket_fd_.is_valid()) {
     error_callback.Run(EsimError::kEsimNotConnected);
+    return;
   }
 
   if (which != 0xBF20) {
@@ -29,8 +30,9 @@ void EsimQmiImpl::GetInfo(int which,
 
 void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
                                const ErrorCallback& error_callback) {
-  if (!connected_) {
+  if (!qrtr_socket_fd_.is_valid()) {
     error_callback.Run(EsimError::kEsimNotConnected);
+    return;
   }
 
   SendEsimMessage(QmiCommand::kSendApdu, data_callback, error_callback);
@@ -41,8 +43,9 @@ void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
 void EsimQmiImpl::AuthenticateServer(const DataBlob& server_data,
                                      const DataCallback& data_callback,
                                      const ErrorCallback& error_callback) {
-  if (!connected_) {
+  if (!qrtr_socket_fd_.is_valid()) {
     error_callback.Run(EsimError::kEsimNotConnected);
+    return;
   }
 
   SendEsimMessage(QmiCommand::kSendApdu, data_callback, error_callback);
@@ -59,7 +62,7 @@ void EsimQmiImpl::OpenChannel(uint8_t slot,
 void EsimQmiImpl::OnOpenChannel(const DataBlob& return_data) {}
 
 void EsimQmiImpl::CloseChannel() {
-  connected_ = false;
+  qrtr_socket_fd_.reset();
 }
 
 void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
