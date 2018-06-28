@@ -35,6 +35,9 @@ class Esim {
 
   virtual ~Esim() = default;
 
+  virtual void Initialize(const DataCallback& data_callback,
+                          const ErrorCallback& error_callback) = 0;
+
   // Makes eSIM API call to request the eSIM to return either the info1 or
   // the info2 block of data to send to the SM-DP+ server to begin
   // Authentication. Calls |callback| with the newly returned data, or
@@ -73,25 +76,6 @@ class Esim {
   virtual void AuthenticateServer(const DataBlob& server_data,
                                   const DataCallback& data_callback,
                                   const ErrorCallback& error_callback) = 0;
-
- protected:
-  friend class EsimQmiImplTest;
-
-  // Open logical channel on |slot| to the eSIM. The slot specified should be
-  // the one associated with the eSIM chip.
-  //
-  // Parameters
-  //  slot          - slot on which to open the logical channel
-  //  callback      - function to call once the channel has been successfully
-  //                  opened
-  //  error_callack - function handle error if eSIM fails to open channel
-  virtual void OpenChannel(const uint8_t slot,
-                           const ErrorCallback& error_callback) = 0;
-
-  virtual void OnOpenChannel(const DataBlob& return_data) = 0;
-
-  // Close the channel opened in Esim::OpenChannel.
-  virtual void CloseChannel() = 0;
 };
 
 }  // namespace hermes

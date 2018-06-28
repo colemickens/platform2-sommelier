@@ -27,31 +27,39 @@ class EsimQmiTester {
 class EsimQmiImplTest : public testing::Test {
  public:
   EsimQmiImplTest() {
-    esim_.OpenChannel(kEsimSlot, base::Bind(&EsimQmiTester::FakeError,
-                                            base::Unretained(&esim_tester_)));
+    esim_ = EsimQmiImpl::CreateForTest(&fd_);
+    esim_->Initialize(
+        base::Bind(&EsimQmiImplTest::FakeSuccess, base::Unretained(this)),
+        base::Bind(&EsimQmiImplTest::FakeError, base::Unretained(this)));
   }
-  ~EsimQmiImplTest() { esim_.CloseChannel(); }
+  ~EsimQmiImplTest() = default;
+
+  void FakeSuccess(const Esim::DataBlob& data) {}
+  void FakeError(EsimError error) {}
 
  protected:
+  base::ScopedFD fd_;
   EsimQmiTester esim_tester_;
-  EsimQmiImpl esim_;
+  std::unique_ptr<EsimQmiImpl> esim_;
 };
 
 // Test simple functionality of EsimQmiImpl::GetInfo. This test passes if
 // EsimQmiTester::OnInfoResult gets called once and EsimQmiTester::FakeError
 // does not get called.
 TEST_F(EsimQmiImplTest, GetInfoTest) {
-  EXPECT_CALL(esim_tester_, OnInfoResult(_)).Times(0);
-  EXPECT_CALL(esim_tester_, FakeError(EsimError::kEsimNotConnected)).Times(2);
+  EXPECT_CALL(esim_tester_, OnInfoResult(_)).Times(1);
 
   // This should call OnInfoResult
-  esim_.GetInfo(
+  esim_->GetInfo(
       kEsimInfo1,
       base::Bind(&EsimQmiTester::OnInfoResult, base::Unretained(&esim_tester_)),
       base::Bind(&EsimQmiTester::FakeError, base::Unretained(&esim_tester_)));
 
+  testing::Mock::VerifyAndClearExpectations(&esim_tester_);
+  EXPECT_CALL(esim_tester_, FakeError(EsimError::kEsimError)).Times(1);
+
   // This should call FakeError
-  esim_.GetInfo(
+  esim_->GetInfo(
       0,
       base::Bind(&EsimQmiTester::OnInfoResult, base::Unretained(&esim_tester_)),
       base::Bind(&EsimQmiTester::FakeError, base::Unretained(&esim_tester_)));
@@ -62,11 +70,11 @@ TEST_F(EsimQmiImplTest, GetInfoTest) {
 // EsimQmiTester::FakeError does not get called.
 TEST_F(EsimQmiImplTest, GetChallengeTest) {
   const Esim::DataBlob info = {0x00, 0x01, 0x02, 0x03};
-  EXPECT_CALL(esim_tester_, OnChallengeResult(info, _)).Times(0);
-  EXPECT_CALL(esim_tester_, FakeError(EsimError::kEsimNotConnected)).Times(1);
+  EXPECT_CALL(esim_tester_, OnChallengeResult(info, _)).Times(1);
+  EXPECT_CALL(esim_tester_, FakeError(_)).Times(0);
 
   // This should call OnChallengeResult
-  esim_.GetChallenge(
+  esim_->GetChallenge(
       base::Bind(&EsimQmiTester::OnChallengeResult,
                  base::Unretained(&esim_tester_), info),
       base::Bind(&EsimQmiTester::FakeError, base::Unretained(&esim_tester_)));
