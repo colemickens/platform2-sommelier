@@ -35,6 +35,8 @@ class SequentialIdMap {
     return ids_.find(id);
   }
 
+  bool Contains(int32_t id) const { return ids_.count(id) > 0; }
+
   typename std::map<int32_t, T>::const_iterator End() const {
     return ids_.end();
   }

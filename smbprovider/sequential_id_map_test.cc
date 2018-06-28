@@ -25,6 +25,7 @@ class SequentialIdMapTest : public testing::Test {
   void ExpectNotFound(int32_t id) {
     auto iter = map_.Find(id);
     EXPECT_EQ(map_.End(), iter);
+    EXPECT_FALSE(map_.Contains(id));
   }
 
   SequentialIdMap<const std::string> map_;
@@ -42,6 +43,16 @@ TEST_F(SequentialIdMapTest, TestInsertandFind) {
   // First id is 0.
   EXPECT_EQ(0, id);
   ExpectFound(id, expected);
+}
+
+TEST_F(SequentialIdMapTest, TestInsertAndContains) {
+  const std::string expected = "Foo";
+  const int32_t id = map_.Insert(expected);
+
+  // First id is 0.
+  EXPECT_EQ(0, id);
+  EXPECT_TRUE(map_.Contains(id));
+  EXPECT_FALSE(map_.Contains(id + 1));
 }
 
 TEST_F(SequentialIdMapTest, TestInsertandFindNonExistant) {
