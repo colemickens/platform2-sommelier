@@ -404,6 +404,114 @@ int GetInfo(dbus::ObjectProxy* proxy) {
   return 0;
 }
 
+int GetLinuxPackageInfo(dbus::ObjectProxy* proxy,
+                        const string& vm_name,
+                        const string& container_name,
+                        const string& owner_id,
+                        string file_path) {
+  if (file_path.empty()) {
+    LOG(ERROR) << "--file_path is required";
+    return -1;
+  }
+  LOG(INFO) << "Getting Linux package info";
+
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kGetLinuxPackageInfoMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::cicerone::LinuxPackageInfoRequest request;
+  request.set_vm_name(vm_name);
+  request.set_container_name(container_name);
+  request.set_owner_id(owner_id);
+  request.set_file_path(file_path);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode LinuxPackageInfoRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to cicerone service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::cicerone::LinuxPackageInfoResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+  if (!response.success()) {
+    LOG(ERROR) << "Failure getting Linux package info: "
+               << response.failure_reason();
+    return -1;
+  }
+  LOG(INFO) << "Linux package info for: " << file_path;
+  LOG(INFO) << "Package ID: " << response.package_id();
+  LOG(INFO) << "License: " << response.license();
+  LOG(INFO) << "Description: " << response.description();
+  LOG(INFO) << "Project URL: " << response.project_url();
+  LOG(INFO) << "Size(bytes): " << response.size();
+  LOG(INFO) << "Summary: " << response.summary();
+  return 0;
+}
+
+int InstallLinuxPackage(dbus::ObjectProxy* proxy,
+                        const string& vm_name,
+                        const string& container_name,
+                        const string& owner_id,
+                        string file_path) {
+  if (file_path.empty()) {
+    LOG(ERROR) << "--file_path is required";
+    return -1;
+  }
+  LOG(INFO) << "Installing Linux package";
+
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kInstallLinuxPackageMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::cicerone::InstallLinuxPackageRequest request;
+  request.set_vm_name(vm_name);
+  request.set_container_name(container_name);
+  request.set_owner_id(owner_id);
+  request.set_file_path(std::move(file_path));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode InstallLinuxPackageRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to cicerone service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::cicerone::InstallLinuxPackageResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+  switch (response.status()) {
+    case vm_tools::cicerone::InstallLinuxPackageResponse::STARTED:
+      LOG(INFO) << "Successfully started the package install";
+      return 0;
+    case vm_tools::cicerone::InstallLinuxPackageResponse::
+        INSTALL_ALREADY_ACTIVE:
+      LOG(ERROR) << "Failed starting the package install because one is "
+                    "already active";
+      return -1;
+    default:
+      LOG(ERROR) << "Failed starting the package install, reason: "
+                 << response.failure_reason();
+      return -1;
+  }
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -418,6 +526,8 @@ int main(int argc, char** argv) {
               "Launches an application in a container");
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
   DEFINE_bool(get_info, false, "Get debug information about all running VMs");
+  DEFINE_bool(install_package, false, "Install a Linux package file");
+  DEFINE_bool(package_info, false, "Gets information on a Linux package file");
 
   // Parameters.
   DEFINE_string(vm_name, "", "VM name");
@@ -432,6 +542,7 @@ int main(int argc, char** argv) {
   DEFINE_int32(icon_size, 48,
                "The size of the icon to get is this icon_size by icon_size");
   DEFINE_int32(scale, 1, "The scale that the icon is designed to use with");
+  DEFINE_string(file_path, "", "Package file path");
 
   brillo::FlagHelper::Init(argc, argv, "vm_cicerone client tool");
   brillo::InitLog(brillo::kLogToStderrIfTty);
@@ -461,12 +572,14 @@ int main(int argc, char** argv) {
   // clang-format off
   if (FLAGS_create_lxd_container + FLAGS_start_lxd_container +
       FLAGS_set_up_lxd_user + FLAGS_get_username + FLAGS_launch_application +
-      FLAGS_get_icon + FLAGS_get_info != 1) {
+      FLAGS_get_icon + FLAGS_get_info + FLAGS_install_package +
+      FLAGS_package_info != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --create_lxd_container, "
                << "--start_lxd_container, --set_up_lxd_user, "
-               << "--get_username, --launch_application "
-               << "-get_icon, or --get_info must be provided";
+               << "--get_username, --launch_application, --get_icon, "
+               << "--get_info, --install_package or "
+               << " --package_info must be provided";
     return -1;
   }
 
@@ -512,6 +625,12 @@ int main(int argc, char** argv) {
                    std::move(FLAGS_output_filepath));
   } else if (FLAGS_get_info) {
     return GetInfo(proxy);
+  } else if (FLAGS_install_package) {
+    return InstallLinuxPackage(proxy, FLAGS_vm_name, FLAGS_container_name,
+                               FLAGS_owner_id, std::move(FLAGS_file_path));
+  } else if (FLAGS_package_info) {
+    return GetLinuxPackageInfo(proxy, FLAGS_vm_name, FLAGS_container_name,
+                               FLAGS_owner_id, std::move(FLAGS_file_path));
   }
 
   // Unreachable.
