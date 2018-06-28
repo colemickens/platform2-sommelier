@@ -255,7 +255,7 @@ struct sl_output {
 };
 
 struct sl_host_output {
-  struct sl_output* output;
+  struct sl_context* ctx;
   struct wl_resource* resource;
   struct wl_output* proxy;
   struct zaura_output* aura_output;

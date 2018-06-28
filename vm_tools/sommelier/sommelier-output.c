@@ -36,7 +36,7 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
   double scale_factor = host->scale_factor;
 
   // Use the scale factor we received from aura shell protocol when available.
-  if (host->output->ctx->aura_shell) {
+  if (host->ctx->aura_shell) {
     double device_scale_factor =
         sl_output_aura_scale_factor_to_double(host->device_scale_factor);
 
@@ -47,33 +47,32 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
   // Always use scale=1 and adjust geometry and mode based on ideal
   // scale factor for Xwayland client. For other clients, pick an optimal
   // scale and adjust geometry and mode based on it.
-  if (host->output->ctx->xwayland) {
+  if (host->ctx->xwayland) {
     if (scale)
       *scale = 1;
     *physical_width = host->physical_width * ideal_scale_factor / scale_factor;
     *physical_height =
         host->physical_height * ideal_scale_factor / scale_factor;
-    *width = host->width * host->output->ctx->scale / scale_factor;
-    *height = host->height * host->output->ctx->scale / scale_factor;
+    *width = host->width * host->ctx->scale / scale_factor;
+    *height = host->height * host->ctx->scale / scale_factor;
   } else {
-    int s =
-        MIN(ceil(scale_factor / host->output->ctx->scale), MAX_OUTPUT_SCALE);
+    int s = MIN(ceil(scale_factor / host->ctx->scale), MAX_OUTPUT_SCALE);
 
     if (scale)
       *scale = s;
     *physical_width = host->physical_width;
     *physical_height = host->physical_height;
-    *width = host->width * host->output->ctx->scale * s / scale_factor;
-    *height = host->height * host->output->ctx->scale * s / scale_factor;
+    *width = host->width * host->ctx->scale * s / scale_factor;
+    *height = host->height * host->ctx->scale * s / scale_factor;
   }
 
-  if (host->output->ctx->dpi.size) {
+  if (host->ctx->dpi.size) {
     int dpi = (*width * INCH_IN_MM) / *physical_width;
-    int adjusted_dpi = *((int*)host->output->ctx->dpi.data);
+    int adjusted_dpi = *((int*)host->ctx->dpi.data);
     double mmpd;
     int* p;
 
-    wl_array_for_each(p, &host->output->ctx->dpi) {
+    wl_array_for_each(p, &host->ctx->dpi) {
       if (*p > dpi)
         break;
 
@@ -99,10 +98,10 @@ void sl_output_send_host_output_state(struct sl_host_output* host) {
   // Use density of internal display for all Xwayland outputs. X11 clients
   // typically lack support for dynamically changing density so it's
   // preferred to always use the density of the internal display.
-  if (host->output->ctx->xwayland) {
+  if (host->ctx->xwayland) {
     struct sl_host_output* output;
 
-    wl_list_for_each(output, &host->output->ctx->host_outputs, link) {
+    wl_list_for_each(output, &host->ctx->host_outputs, link) {
       if (output->internal) {
         int internal_width;
         int internal_height;
@@ -300,7 +299,7 @@ static void sl_bind_host_output(struct wl_client* client,
 
   host = malloc(sizeof(*host));
   assert(host);
-  host->output = output;
+  host->ctx = ctx;
   host->resource = wl_resource_create(client, &wl_output_interface,
                                       MIN(version, output->version), id);
   wl_resource_set_implementation(host->resource, NULL, host,
