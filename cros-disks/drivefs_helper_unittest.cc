@@ -20,6 +20,7 @@ namespace {
 
 using testing::_;
 using testing::DoAll;
+using testing::EndsWith;
 using testing::Eq;
 using testing::HasSubstr;
 using testing::Invoke;
@@ -46,6 +47,8 @@ class MockPlatform : public Platform {
         .WillByDefault(Invoke(this, &MockPlatform::GetRealPathImpl));
     ON_CALL(*this, IsDirectoryEmpty(_)).WillByDefault(Return(true));
     ON_CALL(*this, DirectoryExists(_)).WillByDefault(Return(true));
+    ON_CALL(*this, PathExists(EndsWith("-seccomp.policy")))
+        .WillByDefault(Return(false));
   }
 
   MOCK_CONST_METHOD2(GetRealPath, bool(const std::string&, std::string*));
@@ -58,6 +61,7 @@ class MockPlatform : public Platform {
                           const std::string&,
                           MountOptions::Flags,
                           const std::string&));
+  MOCK_CONST_METHOD1(PathExists, bool(const std::string& path));
   MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
   MOCK_CONST_METHOD1(IsDirectoryEmpty, bool(const std::string& path));
   MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));

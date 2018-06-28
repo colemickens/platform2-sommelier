@@ -90,6 +90,7 @@ class MockMounter : public FUSEMounter {
                     platform,
                     "/bin/sh",
                     "root",
+                    "",
                     false) {}
   MOCK_METHOD0(MountImpl, MountErrorType());
 };

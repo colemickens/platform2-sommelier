@@ -23,6 +23,8 @@ const char kIdentityOptionPrefix[] = "identity=";
 
 const char kUserName[] = "fuse-drivefs";
 const char kHelperTool[] = "/opt/google/drive-file-stream/drivefs";
+const char kSeccompPolicyFile[] =
+    "/opt/google/drive-file-stream/drivefs-seccomp.policy";
 const char kType[] = "drivefs";
 
 }  // namespace
@@ -64,9 +66,13 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
   mount_options.Initialize(options, true, base::IntToString(files_uid),
                            base::IntToString(files_gid));
 
-  return std::make_unique<FUSEMounter>("", target_path.value(), type(),
-                                       mount_options, platform(),
-                                       program_path().value(), user(), true);
+  // TODO(crbug.com/859802): Make seccomp mandatory when testing done.
+  std::string seccomp =
+      platform()->PathExists(kSeccompPolicyFile) ? kSeccompPolicyFile : "";
+
+  return std::make_unique<FUSEMounter>(
+      "", target_path.value(), type(), mount_options, platform(),
+      program_path().value(), user(), seccomp, true);
 }
 
 base::FilePath DrivefsHelper::GetValidatedDataDir(

@@ -107,9 +107,9 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
   mount_options.Initialize(opts, true, base::IntToString(files_uid),
                            base::IntToString(files_gid));
 
-  return std::make_unique<FUSEMounter>(source.path(), target_path.value(),
-                                       type(), mount_options, platform(),
-                                       program_path().value(), user(), true);
+  return std::make_unique<FUSEMounter>(
+      source.path(), target_path.value(), type(), mount_options, platform(),
+      program_path().value(), user(), "", true);
 }
 
 bool SshfsHelper::PrepareWorkingDirectory(

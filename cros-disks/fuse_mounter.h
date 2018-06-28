@@ -23,6 +23,7 @@ class FUSEMounter : public Mounter {
               const Platform* platform,
               const std::string& mount_program_path,
               const std::string& mount_user,
+              const std::string& seccomp_policy,
               bool permit_network_access);
 
  protected:
@@ -37,6 +38,9 @@ class FUSEMounter : public Mounter {
 
   // User to run the FUSE mount program as.
   const std::string mount_user_;
+
+  // If not empty the path to BPF seccomp filter policy.
+  const std::string seccomp_policy_;
 
   // Whether to leave network access to the mount program.
   const bool permit_network_access_;

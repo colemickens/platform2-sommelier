@@ -31,11 +31,13 @@ FUSEMounter::FUSEMounter(const string& source_path,
                          const Platform* platform,
                          const string& mount_program_path,
                          const string& mount_user,
+                         const std::string& seccomp_policy,
                          bool permit_network_access)
     : Mounter(source_path, target_path, filesystem_type, mount_options),
       platform_(platform),
       mount_program_path_(mount_program_path),
       mount_user_(mount_user),
+      seccomp_policy_(seccomp_policy),
       permit_network_access_(permit_network_access) {}
 
 MountErrorType FUSEMounter::MountImpl() {
@@ -110,6 +112,10 @@ MountErrorType FUSEMounter::MountImpl() {
     mount_process.AddArgument(source_path());
   }
   mount_process.AddArgument(target_path());
+
+  if (!seccomp_policy_.empty()) {
+    mount_process.LoadSeccompFilterPolicy(seccomp_policy_);
+  }
 
   int return_code = mount_process.Run();
   if (return_code != 0) {
