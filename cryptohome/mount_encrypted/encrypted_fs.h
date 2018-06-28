@@ -94,6 +94,12 @@ class EncryptedFs {
   // Device Mapper.
   brillo::DeviceMapper* device_mapper_;
 
+  friend class EncryptedFsTest;
+  FRIEND_TEST(EncryptedFsTest, RebuildStateful);
+  FRIEND_TEST(EncryptedFsTest, OldStateful);
+  FRIEND_TEST(EncryptedFsTest, LoopdevTeardown);
+  FRIEND_TEST(EncryptedFsTest, DevmapperTeardown);
+
   // CreateSparseBackingFile creates the sparse backing file for the
   // encrypted mount and returns an open fd, if successful.
   bool CreateSparseBackingFile();
