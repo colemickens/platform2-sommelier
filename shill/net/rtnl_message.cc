@@ -259,9 +259,10 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader* hdr,
                                      Mode mode,
                                      rtattr** attr_data,
                                      int* attr_length) {
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->nd_user_opt) +
-                                        sizeof(struct nduseroptmsg) +
-                                        sizeof(NDUserOptionHeader))) {
+  size_t min_payload_len = sizeof(hdr->nd_user_opt) +
+                           sizeof(struct nduseroptmsg) +
+                           sizeof(NDUserOptionHeader);
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(min_payload_len)) {
     return false;
   }
 
@@ -296,6 +297,9 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader* hdr,
   const uint8_t* option_data =
       reinterpret_cast<const uint8_t*>(nd_user_option_header + 1);
   int data_len = opt_len - sizeof(NDUserOptionHeader);
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(min_payload_len + data_len)) {
+    return false;
+  }
 
   if (nd_user_option_header->type == ND_OPT_DNSSL) {
     // TODO(zqiu): Parse DNSSL (DNS Search List) option.
