@@ -648,7 +648,6 @@ void sl_window_update(struct sl_window* window) {
     frame_color = window->dark_frame ? ctx->dark_frame_color : ctx->frame_color;
     zaura_surface_set_frame_colors(window->aura_surface, frame_color,
                                    frame_color);
-
     zaura_surface_set_startup_id(window->aura_surface, window->startup_id);
 
     if (ctx->application_id) {
@@ -668,12 +667,19 @@ void sl_window_update(struct sl_window* window) {
                  XID_APPLICATION_ID_FORMAT, window->id);
       }
 
-      zaura_surface_set_application_id(window->aura_surface,
-                                       application_id_str);
+      // Don't set application id for X11 override redirect. This prevents
+      // aura shell from thinking that these are regular application windows
+      // that should appear in application lists.
+      if (!ctx->xwayland || window->managed) {
+        zaura_surface_set_application_id(window->aura_surface,
+                                         application_id_str);
+      }
     }
   }
 
-  if (window->managed || !parent) {
+  // Always use top-level surface for X11 windows as we can't control when the
+  // window is closed.
+  if (ctx->xwayland || !parent) {
     if (!window->xdg_toplevel) {
       window->xdg_toplevel = zxdg_surface_v6_get_toplevel(window->xdg_surface);
       zxdg_toplevel_v6_set_user_data(window->xdg_toplevel, window);
