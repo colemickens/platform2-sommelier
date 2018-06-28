@@ -94,7 +94,9 @@
       'sources': [
         '<(proto_in_dir)/tremplin.proto',
       ],
-      'includes': ['../../platform2/common-mk/protoc.gypi'],
+      'includes': [
+        '../common-mk/protoc.gypi',
+      ],
     },
     {
       'target_name': 'vm-rpcs',
