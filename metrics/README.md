@@ -102,6 +102,11 @@ reserved.  New prefixes should be added to this list.
 
 - `shill.`
 
+# Memory Daemon
+
+The [memd](./memd/) subdirectory contains a daemon that collects data at high
+frequency during episodes of heavy memory pressure.
+
 # Further Information
 
 See

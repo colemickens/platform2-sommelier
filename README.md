@@ -67,6 +67,7 @@ copies.
 | [libweave](./libweave/) | Library for cloud messaging |
 | [login_manager](./login_manager/) | Session manager for handling the life cycle of the main session (e.g. Chrome) |
 | [lorgnette](./lorgnette/) | Daemon for managing attached USB scanners via [SANE](https://en.wikipedia.org/wiki/Scanner_Access_Now_Easy) |
+| [memd](./metrics/memd/) | Daemon that logs memory-related data and events |
 | [metrics](./metrics/) | Client side user metrics collection |
 | [midis](./midis/) | [MIDI](https://en.wikipedia.org/wiki/MIDI) service |
 | [mist](./mist/) | Modem USB Interface Switching Tool |
