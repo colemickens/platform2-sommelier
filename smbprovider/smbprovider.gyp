@@ -37,6 +37,7 @@
       'sources': [
         'constants.cc',
         'constants.h',
+        'copy_progress_interface.h',
         'credential_store.cc',
         'credential_store.h',
         'in_memory_credential_store.cc',
