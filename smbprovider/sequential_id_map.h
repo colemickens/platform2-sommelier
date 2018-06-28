@@ -15,9 +15,6 @@ namespace smbprovider {
 
 // Class that maps an increasing int32_t ID to another type. Used for
 // handing out pseudo file descriptors.
-//
-// TODO(zentaro): WIP for crbug/857487
-//   - Add method to remove value
 template <typename T>
 class SequentialIdMap {
  public:
@@ -36,6 +33,10 @@ class SequentialIdMap {
   }
 
   bool Contains(int32_t id) const { return ids_.count(id) > 0; }
+
+  bool Remove(int32_t id) { return ids_.erase(id) > 0; }
+
+  size_t Count() const { return ids_.size(); }
 
   typename std::map<int32_t, T>::const_iterator End() const {
     return ids_.end();
