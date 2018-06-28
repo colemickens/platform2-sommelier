@@ -75,6 +75,8 @@ class Esim {
                                   const ErrorCallback& error_callback) = 0;
 
  protected:
+  friend class EsimQmiImplTest;
+
   // Open logical channel on |slot| to the eSIM. The slot specified should be
   // the one associated with the eSIM chip.
   //
@@ -84,7 +86,6 @@ class Esim {
   //                  opened
   //  error_callack - function handle error if eSIM fails to open channel
   virtual void OpenChannel(const uint8_t slot,
-                           const DataCallback& data_callback,
                            const ErrorCallback& error_callback) = 0;
 
   virtual void OnOpenChannel(const DataBlob& return_data) = 0;

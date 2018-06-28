@@ -28,10 +28,15 @@ class EsimQmiImpl : public Esim {
                           const ErrorCallback& error_callback) override;
 
   void OpenChannel(const uint8_t slot,
-                   const DataCallback& data_callback,
                    const ErrorCallback& error_callback) override;
   void OnOpenChannel(const DataBlob& return_data) override;
   void CloseChannel() override;
+
+ private:
+  void SendEsimMessage(const QmiCommand command,
+                       const DataBlob& data,
+                       const DataCallback& callback,
+                       const ErrorCallback& error_callback) const;
   void SendEsimMessage(const QmiCommand command,
                        const DataCallback& callback,
                        const ErrorCallback& error_callback) const;

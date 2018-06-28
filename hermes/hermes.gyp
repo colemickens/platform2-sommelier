@@ -5,18 +5,13 @@
         'libchrome-<(libbase_ver)',
       ],
     },
-  },
-  'targets' : [
-    {
-      'target_name' : 'hermes',
-      'type' : 'executable',
-      'sources' : [
-        'esim_qmi_impl.cc',
-        'lpd.cc',
-        'main.cc',
-        'smdp_fi_impl.cc',
+    'link_settings': {
+      'libraries': [
+        '-lqrtr',
       ],
     },
+  },
+  'targets' : [
     {
       'target_name' : 'libhermes',
       'type' : 'static_library',
@@ -24,6 +19,16 @@
         'esim_qmi_impl.cc',
         'lpd.cc',
         'smdp_fi_impl.cc',
+      ],
+    },
+    {
+      'target_name' : 'hermes',
+      'type' : 'executable',
+      'dependencies': [
+        'libhermes',
+      ],
+      'sources' : [
+        'main.cc',
       ],
     },
   ],

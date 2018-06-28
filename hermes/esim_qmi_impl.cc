@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include <base/bind.h>
+
 namespace hermes {
 
 EsimQmiImpl::EsimQmiImpl() : weak_factory_(this) {}
@@ -51,12 +53,20 @@ void EsimQmiImpl::AuthenticateServer(const DataBlob& server_data,
   SendEsimMessage(QmiCommand::kSendApdu, data_callback, error_callback);
 }
 
-void EsimQmiImpl::OpenChannel(uint8_t slot,
-                              const DataCallback& data_callback,
+void EsimQmiImpl::OpenChannel(const uint8_t slot,
                               const ErrorCallback& error_callback) {
-  connected_ = true;
-  SendEsimMessage(QmiCommand::kOpenLogicalChannel, data_callback,
-                  error_callback);
+  const DataBlob slot_vec(1, slot);
+
+  qrtr_socket_fd_.reset(qrtr_open(kQrtrPort));
+  if (!qrtr_socket_fd_.is_valid()) {
+    error_callback.Run(EsimError::kEsimNotConnected);
+    return;
+  }
+  qrtr_new_lookup(qrtr_socket_fd_.get(), kQrtrUimService, 1, 0);
+  SendEsimMessage(
+      QmiCommand::kOpenLogicalChannel, slot_vec,
+      base::Bind(&EsimQmiImpl::OnOpenChannel, weak_factory_.GetWeakPtr()),
+      error_callback);
 }
 
 void EsimQmiImpl::OnOpenChannel(const DataBlob& return_data) {}
@@ -66,6 +76,7 @@ void EsimQmiImpl::CloseChannel() {
 }
 
 void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
+                                  const DataBlob& data,
                                   const DataCallback& data_callback,
                                   const ErrorCallback& error_callback) const {
   DataBlob result_code_tlv;
@@ -76,7 +87,6 @@ void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
       // channel and populate result_code_tlv with return data from
       // SEND_APDU_IND QMI callback
       //
-      // base::ThreadTaskRunnerHandle::Get->PostTask(...)
       result_code_tlv = {0x02, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00};
       data_callback.Run(result_code_tlv);
       break;
@@ -93,6 +103,12 @@ void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
       data_callback.Run(result_code_tlv);
       break;
   }
+}
+
+void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
+                                  const DataCallback& data_callback,
+                                  const ErrorCallback& error_callback) const {
+  SendEsimMessage(command, DataBlob(), data_callback, error_callback);
 }
 
 }  // namespace hermes

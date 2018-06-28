@@ -17,17 +17,20 @@ namespace hermes {
 
 class EsimQmiTester {
  public:
-  MOCK_METHOD1(OnInfoResult, void(const std::vector<uint8_t>& data));
+  MOCK_METHOD1(OnInfoResult, void(const Esim::DataBlob& data));
   MOCK_METHOD2(OnChallengeResult,
-               void(const std::vector<uint8_t>& info,
-                    const std::vector<uint8_t>& challenge));
+               void(const Esim::DataBlob& info,
+                    const Esim::DataBlob& challenge));
   MOCK_METHOD1(FakeError, void(EsimError error));
 };
 
 class EsimQmiImplTest : public testing::Test {
  public:
-  EsimQmiImplTest() = default;
-  ~EsimQmiImplTest() = default;
+  EsimQmiImplTest() {
+    esim_.OpenChannel(kEsimSlot, base::Bind(&EsimQmiTester::FakeError,
+                                            base::Unretained(&esim_tester_)));
+  }
+  ~EsimQmiImplTest() { esim_.CloseChannel(); }
 
  protected:
   EsimQmiTester esim_tester_;
@@ -38,8 +41,8 @@ class EsimQmiImplTest : public testing::Test {
 // EsimQmiTester::OnInfoResult gets called once and EsimQmiTester::FakeError
 // does not get called.
 TEST_F(EsimQmiImplTest, GetInfoTest) {
-  EXPECT_CALL(esim_tester_, OnInfoResult(_)).Times(1);
-  EXPECT_CALL(esim_tester_, FakeError(_)).Times(1);
+  EXPECT_CALL(esim_tester_, OnInfoResult(_)).Times(0);
+  EXPECT_CALL(esim_tester_, FakeError(EsimError::kEsimNotConnected)).Times(2);
 
   // This should call OnInfoResult
   esim_.GetInfo(
@@ -58,9 +61,9 @@ TEST_F(EsimQmiImplTest, GetInfoTest) {
 // EsimQmiTester::OnChallengeResult gets called once and
 // EsimQmiTester::FakeError does not get called.
 TEST_F(EsimQmiImplTest, GetChallengeTest) {
-  const std::vector<uint8_t> info = {0x00, 0x01, 0x02, 0x03};
-  EXPECT_CALL(esim_tester_, OnChallengeResult(info, _)).Times(1);
-  EXPECT_CALL(esim_tester_, FakeError(_)).Times(0);
+  const Esim::DataBlob info = {0x00, 0x01, 0x02, 0x03};
+  EXPECT_CALL(esim_tester_, OnChallengeResult(info, _)).Times(0);
+  EXPECT_CALL(esim_tester_, FakeError(EsimError::kEsimNotConnected)).Times(1);
 
   // This should call OnChallengeResult
   esim_.GetChallenge(
