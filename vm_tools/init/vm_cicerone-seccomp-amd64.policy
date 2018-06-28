@@ -56,3 +56,4 @@ listen: 1
 ioctl: arg1 == TCGETS
 madvise: 1
 shutdown: 1
+tgkill: 1
