@@ -29,9 +29,9 @@ enum class EsimError {
 // channel that will be opened to the chip.
 class Esim {
  public:
+  using DataBlob = std::vector<uint8_t>;
   using ErrorCallback = base::Callback<void(EsimError error_data)>;
-  using DataCallback =
-      base::Callback<void(const std::vector<uint8_t>& esim_data)>;
+  using DataCallback = base::Callback<void(const DataBlob& esim_data)>;
 
   virtual ~Esim() = default;
 
@@ -70,7 +70,7 @@ class Esim {
   //                   successful authentication of |server_data|
   //  error_callback - function to call if |server_data| is determined to be
   //                   invalid by eSIM chip
-  virtual void AuthenticateServer(const std::vector<uint8_t>& server_data,
+  virtual void AuthenticateServer(const DataBlob& server_data,
                                   const DataCallback& data_callback,
                                   const ErrorCallback& error_callback) = 0;
 
@@ -83,9 +83,11 @@ class Esim {
   //  callback      - function to call once the channel has been successfully
   //                  opened
   //  error_callack - function handle error if eSIM fails to open channel
-  virtual void OpenChannel(uint8_t slot,
-                           const DataCallback& callback,
+  virtual void OpenChannel(const uint8_t slot,
+                           const DataCallback& data_callback,
                            const ErrorCallback& error_callback) = 0;
+
+  virtual void OnOpenChannel(const DataBlob& return_data) = 0;
 
   // Close the channel opened in Esim::OpenChannel.
   virtual void CloseChannel() = 0;

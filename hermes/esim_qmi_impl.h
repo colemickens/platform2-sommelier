@@ -21,14 +21,14 @@ class EsimQmiImpl : public Esim {
                const ErrorCallback& error_callback) override;
   void GetChallenge(const DataCallback& data_callback,
                     const ErrorCallback& error_callback) override;
-  void AuthenticateServer(const std::vector<uint8_t>& server_data,
+  void AuthenticateServer(const DataBlob& server_data,
                           const DataCallback& data_callback,
                           const ErrorCallback& error_callback) override;
 
- protected:
-  void OpenChannel(uint8_t slot,
-                   const DataCallback& callback,
+  void OpenChannel(const uint8_t slot,
+                   const DataCallback& data_callback,
                    const ErrorCallback& error_callback) override;
+  void OnOpenChannel(const DataBlob& return_data) override;
   void CloseChannel() override;
   void SendEsimMessage(const QmiCommand command,
                        const DataCallback& callback,

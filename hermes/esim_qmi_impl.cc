@@ -38,7 +38,7 @@ void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
 
 // TODO(jruthe): pass |server_data| to EsimQmiImpl::SendEsimMessage to make
 // correct libqrtr call to the eSIM chip.
-void EsimQmiImpl::AuthenticateServer(const std::vector<uint8_t>& server_data,
+void EsimQmiImpl::AuthenticateServer(const DataBlob& server_data,
                                      const DataCallback& data_callback,
                                      const ErrorCallback& error_callback) {
   if (!connected_) {
@@ -56,6 +56,8 @@ void EsimQmiImpl::OpenChannel(uint8_t slot,
                   error_callback);
 }
 
+void EsimQmiImpl::OnOpenChannel(const DataBlob& return_data) {}
+
 void EsimQmiImpl::CloseChannel() {
   connected_ = false;
 }
@@ -63,7 +65,7 @@ void EsimQmiImpl::CloseChannel() {
 void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
                                   const DataCallback& data_callback,
                                   const ErrorCallback& error_callback) const {
-  std::vector<uint8_t> result_code_tlv;
+  DataBlob result_code_tlv;
   switch (command) {
     case QmiCommand::kOpenLogicalChannel:
       // std::vector<uint8_t> slot_tlv = {0x01, 0x01, 0x00, 0x01};
