@@ -1236,7 +1236,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                                MountError* error) const {
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
-  *error = MOUNT_ERROR_FATAL;
+  *error = MOUNT_ERROR_NONE;
 
   std::string obfuscated_username =
     credentials.GetObfuscatedUsername(system_salt_);
@@ -1249,8 +1249,11 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   *index = -1;
   std::vector<int> key_indices;
   if (!homedirs_->GetVaultKeysets(obfuscated_username, &key_indices)) {
-    LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
+    LOG(ERROR) << "No keysets on disk for " << obfuscated_username;
+    *error = MOUNT_ERROR_FATAL;
+    return false;
   }
+  bool any_keyset_exists = false;
   for (auto key_index : key_indices) {
     // Load the encrypted keyset
     // TODO(crbug.com/832395): get rid of direct operations on keyset files
@@ -1260,6 +1263,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                  << " for " << obfuscated_username;
       continue;
     }
+    any_keyset_exists = true;
 
     // If a specific key was requested by label, then check if the
     // label matches or if the key does not have a label, use the
@@ -1267,12 +1271,6 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     //
     // Label-less requests will still iterate over all keys.
     if (!credentials.key_data().label().empty()) {
-      // If we're searching by label, don't let a no-key-found become
-      // MOUNT_ERROR_FATAL.  In the past, no parseable key was a fatal
-      // error.  Just treat it like an invalid key.  This allows for
-      // multiple per-label requests then a wildcard, worst case, before
-      // the Cryptohome is removed.
-      *error = MOUNT_ERROR_KEY_FAILURE;
       if (serialized->has_key_data()) {
         if (credentials.key_data().label() != serialized->key_data().label())
           continue;
@@ -1293,49 +1291,73 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     }
     // Attempt decrypt the master key with the passkey
     crypt_flags = 0;
-    crypto_error = Crypto::CE_NONE;
     if (crypto_->DecryptVaultKeyset(*serialized, passkey, &crypt_flags,
                                     &crypto_error, vault_keyset)) {
       // Success!
-      *error = MOUNT_ERROR_NONE;
       *index = key_index;
       break;
     }
+    // Make sure |crypto_error| is non-empty, because sometimes
+    // DecryptVaultKeyset() doesn't fill it despite returning false. Note that
+    // the value assigned below must *not* say a fatal error, as otherwise this
+    // may result in removal of the cryptohome which is undesired in this case.
+    if (crypto_error == Crypto::CE_NONE)
+      crypto_error = Crypto::CE_OTHER_CRYPTO;
+  }
 
-    if (error) {
+  if (!any_keyset_exists) {
+    LOG(ERROR) << "No parsable keysets found for " << obfuscated_username;
+    *error = MOUNT_ERROR_FATAL;
+    return false;
+  }
+  if (*index == -1) {
+    if (crypto_error == Crypto::CE_NONE) {
+      // If we're searching by label, don't let a no-key-found become
+      // MOUNT_ERROR_FATAL.  In the past, no parseable key was a fatal
+      // error.  Just treat it like an invalid key.  This allows for
+      // multiple per-label requests then a wildcard, worst case, before
+      // the Cryptohome is removed.
+      if (!credentials.key_data().label().empty()) {
+        LOG(ERROR) << "Failed to find the specified keyset for "
+                   << obfuscated_username;
+        *error = MOUNT_ERROR_KEY_FAILURE;
+      } else {
+        LOG(ERROR) << "Failed to find any suitable keyset for "
+                   << obfuscated_username;
+        *error = MOUNT_ERROR_FATAL;
+      }
+    } else {
       switch (crypto_error) {
         case Crypto::CE_TPM_FATAL:
         case Crypto::CE_OTHER_FATAL:
           *error = MOUNT_ERROR_FATAL;
           break;
-        // Don't keep trying on TPM errors.
         case Crypto::CE_TPM_COMM_ERROR:
           *error = MOUNT_ERROR_TPM_COMM_ERROR;
-          return false;
+          break;
         case Crypto::CE_TPM_DEFEND_LOCK:
           *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
           // We should update LE key policy and persist it to disk.
           if (serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) {
             serialized->mutable_key_data()->mutable_policy()->set_auth_locked(
                 true);
-            if (!StoreVaultKeysetForUser(obfuscated_username, key_index,
+            if (!StoreVaultKeysetForUser(obfuscated_username, *index,
                                          *serialized)) {
               LOG(ERROR) << "Failed to update LE cred Keyset.";
             }
           }
-          return false;
+          break;
         case Crypto::CE_TPM_REBOOT:
           *error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
-          return false;
+          break;
         default:
           *error = MOUNT_ERROR_KEY_FAILURE;
           break;
       }
+      LOG(ERROR) << "Failed to decrypt any keysets for " << obfuscated_username
+                 << ": mount error " << *error << ", crypto error "
+                 << crypto_error;
     }
-  }
-  // Failed to decrypt any keyset.
-  if (*error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to decrypt any keysets for " << obfuscated_username;
     return false;
   }
 
