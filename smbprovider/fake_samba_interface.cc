@@ -343,7 +343,55 @@ int32_t FakeSambaInterface::SpliceFile(int32_t source_fd,
                                        int32_t target_fd,
                                        off_t length,
                                        off_t* bytes_written) {
-  NOTREACHED();
+  DCHECK(bytes_written);
+
+  if (!IsFDOpen(source_fd) || !IsFDOpen(target_fd)) {
+    return EBADF;
+  }
+
+  // Verify the source is a readable file.
+  OpenInfo& source_info = FindOpenFD(source_fd)->second;
+  if (source_info.smbc_type != SMBC_FILE) {
+    return EISDIR;
+  }
+  if (!source_info.readable) {
+    return EINVAL;
+  }
+
+  // Verify the target is a writable file.
+  OpenInfo& target_info = FindOpenFD(target_fd)->second;
+  if (target_info.smbc_type != SMBC_FILE) {
+    return EISDIR;
+  }
+  if (!target_info.writeable) {
+    return EINVAL;
+  }
+
+  // Get the file structs.
+  FakeFile* source_file = GetFile(source_info.full_path);
+  DCHECK(source_file);
+  FakeFile* target_file = GetFile(target_info.full_path);
+  DCHECK(target_file);
+
+  // Verify there is at least |length| bytes remaining in source_info.
+  DCHECK_GE(source_file->data.size(), source_info.current_index);
+  int32_t max_bytes_remaining =
+      source_file->data.size() - source_info.current_index;
+  DCHECK_GE(max_bytes_remaining, length);
+
+  auto begin = source_file->data.begin() + source_info.current_index;
+  auto end = source_file->data.begin() + source_info.current_index + length;
+  std::vector<uint8_t> buffer(begin, end);
+
+  // Write the data into the file.
+  target_file->WriteData(target_info.current_index, buffer.data(),
+                         buffer.size());
+
+  // Adjust to the new offsets of the files.
+  source_info.current_index += length;
+  target_info.current_index += length;
+
+  *bytes_written = length;
   return 0;
 }
 

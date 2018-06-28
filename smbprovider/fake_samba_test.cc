@@ -41,6 +41,24 @@ class FakeSambaTest : public testing::Test {
   }
   ~FakeSambaTest() = default;
 
+ protected:
+  int32_t OpenCopySource(const std::string& file_path, int32_t* source_fd) {
+    return fake_samba_.OpenFile(file_path, O_RDONLY, source_fd);
+  }
+
+  int32_t OpenCopyTarget(const std::string& file_path, int32_t* target_fd) {
+    return fake_samba_.CreateFile(file_path, target_fd);
+  }
+
+  void CloseCopySourceAndTarget(int32_t source_fd, int32_t target_fd) {
+    if (source_fd >= 0) {
+      fake_samba_.CloseFile(source_fd);
+    }
+    if (target_fd >= 0) {
+      fake_samba_.CloseFile(target_fd);
+    }
+  }
+
   FakeSambaInterface fake_samba_;
 
  private:
@@ -641,6 +659,129 @@ TEST_F(FakeSambaTest, CopyFailsWhenDestinationDirLocked) {
   fake_samba_.AddLockedDirectory(target_dir);
 
   EXPECT_EQ(EACCES, fake_samba_.CopyFile(source_file, target_file));
+}
+
+TEST_F(FakeSambaTest, SpliceFileCorrectlySplicesFullFile) {
+  // Create a source file.
+  const std::string source_path = "smb://wdshare/test/source";
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5};
+  fake_samba_.AddFile(source_path, 0 /* date */, file_data);
+
+  const std::string target_path = "smb://wdshare/test/target";
+
+  // Open source and target.
+  int32_t source_fd;
+  EXPECT_EQ(0, OpenCopySource(source_path, &source_fd));
+
+  int32_t target_fd;
+  EXPECT_EQ(0, OpenCopyTarget(target_path, &target_fd));
+
+  // Splice all of the source to the destination.
+  off_t bytes_written;
+  EXPECT_EQ(0, fake_samba_.SpliceFile(source_fd, target_fd, file_data.size(),
+                                      &bytes_written));
+  EXPECT_EQ(file_data.size(), bytes_written);
+
+  EXPECT_TRUE(fake_samba_.IsFileDataEqual(target_path, file_data));
+
+  CloseCopySourceAndTarget(source_fd, target_fd);
+}
+
+TEST_F(FakeSambaTest, SpliceFileCorrectlySplicePartialCopiedFile) {
+  // Create a source file
+  const std::string source_path = "smb://wdshare/test/source";
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5};
+  fake_samba_.AddFile(source_path, 0 /* date */, file_data);
+
+  const std::string target_path = "smb://wdshare/test/target";
+
+  // Open source and target.
+  int32_t source_fd;
+  EXPECT_EQ(0, OpenCopySource(source_path, &source_fd));
+
+  int32_t target_fd;
+  EXPECT_EQ(0, OpenCopyTarget(target_path, &target_fd));
+
+  // Splice part of the source to the destination.
+  const off_t bytes_to_splice = 3;
+  off_t bytes_written;
+  EXPECT_EQ(0, fake_samba_.SpliceFile(source_fd, target_fd, bytes_to_splice,
+                                      &bytes_written));
+  EXPECT_EQ(bytes_to_splice, bytes_written);
+
+  std::vector<uint8_t> expected_splice_data(
+      file_data.begin(), file_data.begin() + bytes_to_splice);
+  EXPECT_TRUE(fake_samba_.IsFileDataEqual(target_path, expected_splice_data));
+
+  CloseCopySourceAndTarget(source_fd, target_fd);
+}
+
+TEST_F(FakeSambaTest, SpliceFileCorrectlySplicesMultipleChunks) {
+  // Create a source file
+  const std::string source_path = "smb://wdshare/test/source";
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5};
+  fake_samba_.AddFile(source_path, 0 /* date */, file_data);
+
+  const std::string target_path = "smb://wdshare/test/target";
+
+  // Open source and target.
+  int32_t source_fd;
+  EXPECT_EQ(0, OpenCopySource(source_path, &source_fd));
+
+  int32_t target_fd;
+  EXPECT_EQ(0, OpenCopyTarget(target_path, &target_fd));
+
+  // Splice all of the source to the destination in two chunks.
+  const off_t bytes_to_splice = 3;
+  off_t bytes_written;
+  EXPECT_EQ(0, fake_samba_.SpliceFile(source_fd, target_fd, bytes_to_splice,
+                                      &bytes_written));
+  EXPECT_EQ(bytes_to_splice, bytes_written);
+  EXPECT_EQ(0, fake_samba_.SpliceFile(source_fd, target_fd, bytes_to_splice,
+                                      &bytes_written));
+  EXPECT_EQ(bytes_to_splice, bytes_written);
+
+  EXPECT_TRUE(fake_samba_.IsFileDataEqual(target_path, file_data));
+
+  CloseCopySourceAndTarget(source_fd, target_fd);
+}
+
+TEST_F(FakeSambaTest, SpliceFileReturnsEBADFIfSourceIsNotOpened) {
+  // Create a source file
+  const std::string source_path = "smb://wdshare/test/source";
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5};
+  fake_samba_.AddFile(source_path, 0 /* date */, file_data);
+
+  const std::string target_path = "smb://wdshare/test/target";
+
+  // Open source.
+  int32_t source_fd;
+  EXPECT_EQ(0, OpenCopySource(source_path, &source_fd));
+
+  const int32_t invalid_target_fd = 95;
+
+  off_t bytes_written;
+  EXPECT_EQ(EBADF, fake_samba_.SpliceFile(source_fd, invalid_target_fd,
+                                          file_data.size(), &bytes_written));
+}
+
+TEST_F(FakeSambaTest, SpliceFileReturnsEBADFIfTargetIsNotOpened) {
+  // Create a source file
+  const std::string source_path = "smb://wdshare/test/source";
+  std::vector<uint8_t> file_data = {0, 1, 2, 3, 4, 5};
+  fake_samba_.AddFile(source_path, 0 /* date */, file_data);
+
+  const std::string target_path = "smb://wdshare/test/target";
+
+  // Open target.
+  const int32_t invalid_source_fd = 96;
+
+  int32_t target_fd;
+  EXPECT_EQ(0, OpenCopyTarget(target_path, &target_fd));
+
+  off_t bytes_written;
+  EXPECT_EQ(EBADF, fake_samba_.SpliceFile(invalid_source_fd, target_fd,
+                                          file_data.size(), &bytes_written));
 }
 
 }  // namespace smbprovider
