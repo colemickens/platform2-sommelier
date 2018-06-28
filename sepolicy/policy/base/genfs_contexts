@@ -9,3 +9,6 @@ genfscon selinuxfs / u:object_r:selinuxfs:s0
 
 # sysfs labeling
 genfscon sysfs / u:object_r:sysfs:s0
+
+# debugfs labeling
+genfscon debugfs / u:object_r:debugfs:s0

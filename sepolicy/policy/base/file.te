@@ -4,6 +4,7 @@ type pipefs, fs_type;
 type sockfs, fs_type;
 type rootfs, fs_type;
 type proc, fs_type, proc_type;
+type debugfs, fs_type, debugfs_type;
 
 # File types
 type unlabeled, file_type;
@@ -21,5 +22,6 @@ allow file_type tmpfs:filesystem associate;
 allow file_type rootfs:filesystem associate;
 allow dev_type tmpfs:filesystem associate;
 allow dev_type device:filesystem associate;
+allow debugfs_type debugfs:filesystem associate;
 neverallow fs_type file_type:filesystem associate;
 
