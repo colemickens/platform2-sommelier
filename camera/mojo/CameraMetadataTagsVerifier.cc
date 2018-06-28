@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 The Android Open Source Project
+ * Copyright 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,8 +84,10 @@ static_assert(static_cast<ssize_t>(CameraMetadataSection::ANDROID_REPROCESS) == 
               "CameraMetadataSection::ANDROID_REPROCESS != ANDROID_REPROCESS");
 static_assert(static_cast<ssize_t>(CameraMetadataSection::ANDROID_DEPTH) == static_cast<ssize_t>(ANDROID_DEPTH),
               "CameraMetadataSection::ANDROID_DEPTH != ANDROID_DEPTH");
-static_assert(static_cast<ssize_t>(CameraMetadataSection::ANDROID_SECTION_COUNT) == static_cast<ssize_t>(ANDROID_SECTION_COUNT),
-              "CameraMetadataSection::ANDROID_SECTION_COUNT != ANDROID_SECTION_COUNT");
+static_assert(static_cast<ssize_t>(CameraMetadataSection::ANDROID_LOGICAL_MULTI_CAMERA) == static_cast<ssize_t>(ANDROID_LOGICAL_MULTI_CAMERA),
+              "CameraMetadataSection::ANDROID_LOGICAL_MULTI_CAMERA != ANDROID_LOGICAL_MULTI_CAMERA");
+static_assert(static_cast<ssize_t>(CameraMetadataSection::ANDROID_DISTORTION_CORRECTION) == static_cast<ssize_t>(ANDROID_DISTORTION_CORRECTION),
+              "CameraMetadataSection::ANDROID_DISTORTION_CORRECTION != ANDROID_DISTORTION_CORRECTION");
 static_assert(static_cast<ssize_t>(CameraMetadataSection::VENDOR_SECTION) == static_cast<ssize_t>(VENDOR_SECTION),
               "CameraMetadataSection::VENDOR_SECTION != VENDOR_SECTION");
 
@@ -145,6 +147,10 @@ static_assert(static_cast<ssize_t>(CameraMetadataSectionStart::ANDROID_REPROCESS
               "CameraMetadataSectionStart::ANDROID_REPROCESS_START != ANDROID_REPROCESS_START");
 static_assert(static_cast<ssize_t>(CameraMetadataSectionStart::ANDROID_DEPTH_START) == static_cast<ssize_t>(ANDROID_DEPTH_START),
               "CameraMetadataSectionStart::ANDROID_DEPTH_START != ANDROID_DEPTH_START");
+static_assert(static_cast<ssize_t>(CameraMetadataSectionStart::ANDROID_LOGICAL_MULTI_CAMERA_START) == static_cast<ssize_t>(ANDROID_LOGICAL_MULTI_CAMERA_START),
+              "CameraMetadataSectionStart::ANDROID_LOGICAL_MULTI_CAMERA_START != ANDROID_LOGICAL_MULTI_CAMERA_START");
+static_assert(static_cast<ssize_t>(CameraMetadataSectionStart::ANDROID_DISTORTION_CORRECTION_START) == static_cast<ssize_t>(ANDROID_DISTORTION_CORRECTION_START),
+              "CameraMetadataSectionStart::ANDROID_DISTORTION_CORRECTION_START != ANDROID_DISTORTION_CORRECTION_START");
 
 /**
  * Verify all the definitions in CameraMetadataTag match their corresponding enum
@@ -160,8 +166,6 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_COLOR_CORRECTION_A
               "CameraMetadataTag::ANDROID_COLOR_CORRECTION_ABERRATION_MODE != ANDROID_COLOR_CORRECTION_ABERRATION_MODE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES) == static_cast<ssize_t>(ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES),
               "CameraMetadataTag::ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES != ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_COLOR_CORRECTION_END) == static_cast<ssize_t>(ANDROID_COLOR_CORRECTION_END),
-              "CameraMetadataTag::ANDROID_COLOR_CORRECTION_END != ANDROID_COLOR_CORRECTION_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_CONTROL_AE_ANTIBANDING_MODE) == static_cast<ssize_t>(ANDROID_CONTROL_AE_ANTIBANDING_MODE),
               "CameraMetadataTag::ANDROID_CONTROL_AE_ANTIBANDING_MODE != ANDROID_CONTROL_AE_ANTIBANDING_MODE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION) == static_cast<ssize_t>(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION),
@@ -246,20 +250,16 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_CONTROL_POST_RAW_S
               "CameraMetadataTag::ANDROID_CONTROL_POST_RAW_SENSITIVITY_BOOST != ANDROID_CONTROL_POST_RAW_SENSITIVITY_BOOST");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_CONTROL_ENABLE_ZSL) == static_cast<ssize_t>(ANDROID_CONTROL_ENABLE_ZSL),
               "CameraMetadataTag::ANDROID_CONTROL_ENABLE_ZSL != ANDROID_CONTROL_ENABLE_ZSL");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_CONTROL_END) == static_cast<ssize_t>(ANDROID_CONTROL_END),
-              "CameraMetadataTag::ANDROID_CONTROL_END != ANDROID_CONTROL_END");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_CONTROL_AF_SCENE_CHANGE) == static_cast<ssize_t>(ANDROID_CONTROL_AF_SCENE_CHANGE),
+              "CameraMetadataTag::ANDROID_CONTROL_AF_SCENE_CHANGE != ANDROID_CONTROL_AF_SCENE_CHANGE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DEMOSAIC_MODE) == static_cast<ssize_t>(ANDROID_DEMOSAIC_MODE),
               "CameraMetadataTag::ANDROID_DEMOSAIC_MODE != ANDROID_DEMOSAIC_MODE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DEMOSAIC_END) == static_cast<ssize_t>(ANDROID_DEMOSAIC_END),
-              "CameraMetadataTag::ANDROID_DEMOSAIC_END != ANDROID_DEMOSAIC_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_EDGE_MODE) == static_cast<ssize_t>(ANDROID_EDGE_MODE),
               "CameraMetadataTag::ANDROID_EDGE_MODE != ANDROID_EDGE_MODE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_EDGE_STRENGTH) == static_cast<ssize_t>(ANDROID_EDGE_STRENGTH),
               "CameraMetadataTag::ANDROID_EDGE_STRENGTH != ANDROID_EDGE_STRENGTH");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_EDGE_AVAILABLE_EDGE_MODES) == static_cast<ssize_t>(ANDROID_EDGE_AVAILABLE_EDGE_MODES),
               "CameraMetadataTag::ANDROID_EDGE_AVAILABLE_EDGE_MODES != ANDROID_EDGE_AVAILABLE_EDGE_MODES");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_EDGE_END) == static_cast<ssize_t>(ANDROID_EDGE_END),
-              "CameraMetadataTag::ANDROID_EDGE_END != ANDROID_EDGE_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_FIRING_POWER) == static_cast<ssize_t>(ANDROID_FLASH_FIRING_POWER),
               "CameraMetadataTag::ANDROID_FLASH_FIRING_POWER != ANDROID_FLASH_FIRING_POWER");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_FIRING_TIME) == static_cast<ssize_t>(ANDROID_FLASH_FIRING_TIME),
@@ -272,20 +272,14 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_MAX_ENERGY) 
               "CameraMetadataTag::ANDROID_FLASH_MAX_ENERGY != ANDROID_FLASH_MAX_ENERGY");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_STATE) == static_cast<ssize_t>(ANDROID_FLASH_STATE),
               "CameraMetadataTag::ANDROID_FLASH_STATE != ANDROID_FLASH_STATE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_END) == static_cast<ssize_t>(ANDROID_FLASH_END),
-              "CameraMetadataTag::ANDROID_FLASH_END != ANDROID_FLASH_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_INFO_AVAILABLE) == static_cast<ssize_t>(ANDROID_FLASH_INFO_AVAILABLE),
               "CameraMetadataTag::ANDROID_FLASH_INFO_AVAILABLE != ANDROID_FLASH_INFO_AVAILABLE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_INFO_CHARGE_DURATION) == static_cast<ssize_t>(ANDROID_FLASH_INFO_CHARGE_DURATION),
               "CameraMetadataTag::ANDROID_FLASH_INFO_CHARGE_DURATION != ANDROID_FLASH_INFO_CHARGE_DURATION");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_FLASH_INFO_END) == static_cast<ssize_t>(ANDROID_FLASH_INFO_END),
-              "CameraMetadataTag::ANDROID_FLASH_INFO_END != ANDROID_FLASH_INFO_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_HOT_PIXEL_MODE) == static_cast<ssize_t>(ANDROID_HOT_PIXEL_MODE),
               "CameraMetadataTag::ANDROID_HOT_PIXEL_MODE != ANDROID_HOT_PIXEL_MODE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES) == static_cast<ssize_t>(ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES),
               "CameraMetadataTag::ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES != ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_HOT_PIXEL_END) == static_cast<ssize_t>(ANDROID_HOT_PIXEL_END),
-              "CameraMetadataTag::ANDROID_HOT_PIXEL_END != ANDROID_HOT_PIXEL_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_JPEG_GPS_COORDINATES) == static_cast<ssize_t>(ANDROID_JPEG_GPS_COORDINATES),
               "CameraMetadataTag::ANDROID_JPEG_GPS_COORDINATES != ANDROID_JPEG_GPS_COORDINATES");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_JPEG_GPS_PROCESSING_METHOD) == static_cast<ssize_t>(ANDROID_JPEG_GPS_PROCESSING_METHOD),
@@ -306,8 +300,6 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_JPEG_MAX_SIZE) == 
               "CameraMetadataTag::ANDROID_JPEG_MAX_SIZE != ANDROID_JPEG_MAX_SIZE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_JPEG_SIZE) == static_cast<ssize_t>(ANDROID_JPEG_SIZE),
               "CameraMetadataTag::ANDROID_JPEG_SIZE != ANDROID_JPEG_SIZE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_JPEG_END) == static_cast<ssize_t>(ANDROID_JPEG_END),
-              "CameraMetadataTag::ANDROID_JPEG_END != ANDROID_JPEG_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_APERTURE) == static_cast<ssize_t>(ANDROID_LENS_APERTURE),
               "CameraMetadataTag::ANDROID_LENS_APERTURE != ANDROID_LENS_APERTURE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_FILTER_DENSITY) == static_cast<ssize_t>(ANDROID_LENS_FILTER_DENSITY),
@@ -332,8 +324,10 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_INTRINSIC_CAL
               "CameraMetadataTag::ANDROID_LENS_INTRINSIC_CALIBRATION != ANDROID_LENS_INTRINSIC_CALIBRATION");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_RADIAL_DISTORTION) == static_cast<ssize_t>(ANDROID_LENS_RADIAL_DISTORTION),
               "CameraMetadataTag::ANDROID_LENS_RADIAL_DISTORTION != ANDROID_LENS_RADIAL_DISTORTION");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_END) == static_cast<ssize_t>(ANDROID_LENS_END),
-              "CameraMetadataTag::ANDROID_LENS_END != ANDROID_LENS_END");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_POSE_REFERENCE) == static_cast<ssize_t>(ANDROID_LENS_POSE_REFERENCE),
+              "CameraMetadataTag::ANDROID_LENS_POSE_REFERENCE != ANDROID_LENS_POSE_REFERENCE");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_DISTORTION) == static_cast<ssize_t>(ANDROID_LENS_DISTORTION),
+              "CameraMetadataTag::ANDROID_LENS_DISTORTION != ANDROID_LENS_DISTORTION");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_INFO_AVAILABLE_APERTURES) == static_cast<ssize_t>(ANDROID_LENS_INFO_AVAILABLE_APERTURES),
               "CameraMetadataTag::ANDROID_LENS_INFO_AVAILABLE_APERTURES != ANDROID_LENS_INFO_AVAILABLE_APERTURES");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_INFO_AVAILABLE_FILTER_DENSITIES) == static_cast<ssize_t>(ANDROID_LENS_INFO_AVAILABLE_FILTER_DENSITIES),
@@ -350,16 +344,12 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_INFO_SHADING_
               "CameraMetadataTag::ANDROID_LENS_INFO_SHADING_MAP_SIZE != ANDROID_LENS_INFO_SHADING_MAP_SIZE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION) == static_cast<ssize_t>(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION),
               "CameraMetadataTag::ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION != ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LENS_INFO_END) == static_cast<ssize_t>(ANDROID_LENS_INFO_END),
-              "CameraMetadataTag::ANDROID_LENS_INFO_END != ANDROID_LENS_INFO_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_NOISE_REDUCTION_MODE) == static_cast<ssize_t>(ANDROID_NOISE_REDUCTION_MODE),
               "CameraMetadataTag::ANDROID_NOISE_REDUCTION_MODE != ANDROID_NOISE_REDUCTION_MODE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_NOISE_REDUCTION_STRENGTH) == static_cast<ssize_t>(ANDROID_NOISE_REDUCTION_STRENGTH),
               "CameraMetadataTag::ANDROID_NOISE_REDUCTION_STRENGTH != ANDROID_NOISE_REDUCTION_STRENGTH");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES) == static_cast<ssize_t>(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES),
               "CameraMetadataTag::ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES != ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_NOISE_REDUCTION_END) == static_cast<ssize_t>(ANDROID_NOISE_REDUCTION_END),
-              "CameraMetadataTag::ANDROID_NOISE_REDUCTION_END != ANDROID_NOISE_REDUCTION_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_QUIRKS_METERING_CROP_REGION) == static_cast<ssize_t>(ANDROID_QUIRKS_METERING_CROP_REGION),
               "CameraMetadataTag::ANDROID_QUIRKS_METERING_CROP_REGION != ANDROID_QUIRKS_METERING_CROP_REGION");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_QUIRKS_TRIGGER_AF_WITH_AUTO) == static_cast<ssize_t>(ANDROID_QUIRKS_TRIGGER_AF_WITH_AUTO),
@@ -370,8 +360,6 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_QUIRKS_USE_PARTIAL
               "CameraMetadataTag::ANDROID_QUIRKS_USE_PARTIAL_RESULT != ANDROID_QUIRKS_USE_PARTIAL_RESULT");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_QUIRKS_PARTIAL_RESULT) == static_cast<ssize_t>(ANDROID_QUIRKS_PARTIAL_RESULT),
               "CameraMetadataTag::ANDROID_QUIRKS_PARTIAL_RESULT != ANDROID_QUIRKS_PARTIAL_RESULT");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_QUIRKS_END) == static_cast<ssize_t>(ANDROID_QUIRKS_END),
-              "CameraMetadataTag::ANDROID_QUIRKS_END != ANDROID_QUIRKS_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REQUEST_FRAME_COUNT) == static_cast<ssize_t>(ANDROID_REQUEST_FRAME_COUNT),
               "CameraMetadataTag::ANDROID_REQUEST_FRAME_COUNT != ANDROID_REQUEST_FRAME_COUNT");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REQUEST_ID) == static_cast<ssize_t>(ANDROID_REQUEST_ID),
@@ -404,8 +392,10 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_
               "CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_RESULT_KEYS != ANDROID_REQUEST_AVAILABLE_RESULT_KEYS");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS) == static_cast<ssize_t>(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS),
               "CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS != ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REQUEST_END) == static_cast<ssize_t>(ANDROID_REQUEST_END),
-              "CameraMetadataTag::ANDROID_REQUEST_END != ANDROID_REQUEST_END");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_SESSION_KEYS) == static_cast<ssize_t>(ANDROID_REQUEST_AVAILABLE_SESSION_KEYS),
+              "CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_SESSION_KEYS != ANDROID_REQUEST_AVAILABLE_SESSION_KEYS");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_PHYSICAL_CAMERA_REQUEST_KEYS) == static_cast<ssize_t>(ANDROID_REQUEST_AVAILABLE_PHYSICAL_CAMERA_REQUEST_KEYS),
+              "CameraMetadataTag::ANDROID_REQUEST_AVAILABLE_PHYSICAL_CAMERA_REQUEST_KEYS != ANDROID_REQUEST_AVAILABLE_PHYSICAL_CAMERA_REQUEST_KEYS");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SCALER_CROP_REGION) == static_cast<ssize_t>(ANDROID_SCALER_CROP_REGION),
               "CameraMetadataTag::ANDROID_SCALER_CROP_REGION != ANDROID_SCALER_CROP_REGION");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SCALER_AVAILABLE_FORMATS) == static_cast<ssize_t>(ANDROID_SCALER_AVAILABLE_FORMATS),
@@ -434,8 +424,6 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SCALER_AVAILABLE_S
               "CameraMetadataTag::ANDROID_SCALER_AVAILABLE_STALL_DURATIONS != ANDROID_SCALER_AVAILABLE_STALL_DURATIONS");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SCALER_CROPPING_TYPE) == static_cast<ssize_t>(ANDROID_SCALER_CROPPING_TYPE),
               "CameraMetadataTag::ANDROID_SCALER_CROPPING_TYPE != ANDROID_SCALER_CROPPING_TYPE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SCALER_END) == static_cast<ssize_t>(ANDROID_SCALER_END),
-              "CameraMetadataTag::ANDROID_SCALER_END != ANDROID_SCALER_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_EXPOSURE_TIME) == static_cast<ssize_t>(ANDROID_SENSOR_EXPOSURE_TIME),
               "CameraMetadataTag::ANDROID_SENSOR_EXPOSURE_TIME != ANDROID_SENSOR_EXPOSURE_TIME");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_FRAME_DURATION) == static_cast<ssize_t>(ANDROID_SENSOR_FRAME_DURATION),
@@ -498,8 +486,6 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_DYNAMIC_WHI
               "CameraMetadataTag::ANDROID_SENSOR_DYNAMIC_WHITE_LEVEL != ANDROID_SENSOR_DYNAMIC_WHITE_LEVEL");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_OPAQUE_RAW_SIZE) == static_cast<ssize_t>(ANDROID_SENSOR_OPAQUE_RAW_SIZE),
               "CameraMetadataTag::ANDROID_SENSOR_OPAQUE_RAW_SIZE != ANDROID_SENSOR_OPAQUE_RAW_SIZE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_END) == static_cast<ssize_t>(ANDROID_SENSOR_END),
-              "CameraMetadataTag::ANDROID_SENSOR_END != ANDROID_SENSOR_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE) == static_cast<ssize_t>(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE),
               "CameraMetadataTag::ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE != ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_INFO_SENSITIVITY_RANGE) == static_cast<ssize_t>(ANDROID_SENSOR_INFO_SENSITIVITY_RANGE),
@@ -522,16 +508,12 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_INFO_LENS_S
               "CameraMetadataTag::ANDROID_SENSOR_INFO_LENS_SHADING_APPLIED != ANDROID_SENSOR_INFO_LENS_SHADING_APPLIED");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE) == static_cast<ssize_t>(ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE),
               "CameraMetadataTag::ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE != ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SENSOR_INFO_END) == static_cast<ssize_t>(ANDROID_SENSOR_INFO_END),
-              "CameraMetadataTag::ANDROID_SENSOR_INFO_END != ANDROID_SENSOR_INFO_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SHADING_MODE) == static_cast<ssize_t>(ANDROID_SHADING_MODE),
               "CameraMetadataTag::ANDROID_SHADING_MODE != ANDROID_SHADING_MODE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SHADING_STRENGTH) == static_cast<ssize_t>(ANDROID_SHADING_STRENGTH),
               "CameraMetadataTag::ANDROID_SHADING_STRENGTH != ANDROID_SHADING_STRENGTH");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SHADING_AVAILABLE_MODES) == static_cast<ssize_t>(ANDROID_SHADING_AVAILABLE_MODES),
               "CameraMetadataTag::ANDROID_SHADING_AVAILABLE_MODES != ANDROID_SHADING_AVAILABLE_MODES");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SHADING_END) == static_cast<ssize_t>(ANDROID_SHADING_END),
-              "CameraMetadataTag::ANDROID_SHADING_END != ANDROID_SHADING_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_FACE_DETECT_MODE) == static_cast<ssize_t>(ANDROID_STATISTICS_FACE_DETECT_MODE),
               "CameraMetadataTag::ANDROID_STATISTICS_FACE_DETECT_MODE != ANDROID_STATISTICS_FACE_DETECT_MODE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_HISTOGRAM_MODE) == static_cast<ssize_t>(ANDROID_STATISTICS_HISTOGRAM_MODE),
@@ -566,8 +548,14 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_HOT_PIX
               "CameraMetadataTag::ANDROID_STATISTICS_HOT_PIXEL_MAP != ANDROID_STATISTICS_HOT_PIXEL_MAP");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_LENS_SHADING_MAP_MODE) == static_cast<ssize_t>(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE),
               "CameraMetadataTag::ANDROID_STATISTICS_LENS_SHADING_MAP_MODE != ANDROID_STATISTICS_LENS_SHADING_MAP_MODE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_END) == static_cast<ssize_t>(ANDROID_STATISTICS_END),
-              "CameraMetadataTag::ANDROID_STATISTICS_END != ANDROID_STATISTICS_END");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_OIS_DATA_MODE) == static_cast<ssize_t>(ANDROID_STATISTICS_OIS_DATA_MODE),
+              "CameraMetadataTag::ANDROID_STATISTICS_OIS_DATA_MODE != ANDROID_STATISTICS_OIS_DATA_MODE");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_OIS_TIMESTAMPS) == static_cast<ssize_t>(ANDROID_STATISTICS_OIS_TIMESTAMPS),
+              "CameraMetadataTag::ANDROID_STATISTICS_OIS_TIMESTAMPS != ANDROID_STATISTICS_OIS_TIMESTAMPS");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_OIS_X_SHIFTS) == static_cast<ssize_t>(ANDROID_STATISTICS_OIS_X_SHIFTS),
+              "CameraMetadataTag::ANDROID_STATISTICS_OIS_X_SHIFTS != ANDROID_STATISTICS_OIS_X_SHIFTS");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_OIS_Y_SHIFTS) == static_cast<ssize_t>(ANDROID_STATISTICS_OIS_Y_SHIFTS),
+              "CameraMetadataTag::ANDROID_STATISTICS_OIS_Y_SHIFTS != ANDROID_STATISTICS_OIS_Y_SHIFTS");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES) == static_cast<ssize_t>(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES),
               "CameraMetadataTag::ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES != ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_INFO_HISTOGRAM_BUCKET_COUNT) == static_cast<ssize_t>(ANDROID_STATISTICS_INFO_HISTOGRAM_BUCKET_COUNT),
@@ -584,8 +572,8 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_INFO_AV
               "CameraMetadataTag::ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES != ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES) == static_cast<ssize_t>(ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES),
               "CameraMetadataTag::ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES != ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_INFO_END) == static_cast<ssize_t>(ANDROID_STATISTICS_INFO_END),
-              "CameraMetadataTag::ANDROID_STATISTICS_INFO_END != ANDROID_STATISTICS_INFO_END");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_STATISTICS_INFO_AVAILABLE_OIS_DATA_MODES) == static_cast<ssize_t>(ANDROID_STATISTICS_INFO_AVAILABLE_OIS_DATA_MODES),
+              "CameraMetadataTag::ANDROID_STATISTICS_INFO_AVAILABLE_OIS_DATA_MODES != ANDROID_STATISTICS_INFO_AVAILABLE_OIS_DATA_MODES");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_TONEMAP_CURVE_BLUE) == static_cast<ssize_t>(ANDROID_TONEMAP_CURVE_BLUE),
               "CameraMetadataTag::ANDROID_TONEMAP_CURVE_BLUE != ANDROID_TONEMAP_CURVE_BLUE");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_TONEMAP_CURVE_GREEN) == static_cast<ssize_t>(ANDROID_TONEMAP_CURVE_GREEN),
@@ -602,34 +590,24 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_TONEMAP_GAMMA) == 
               "CameraMetadataTag::ANDROID_TONEMAP_GAMMA != ANDROID_TONEMAP_GAMMA");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_TONEMAP_PRESET_CURVE) == static_cast<ssize_t>(ANDROID_TONEMAP_PRESET_CURVE),
               "CameraMetadataTag::ANDROID_TONEMAP_PRESET_CURVE != ANDROID_TONEMAP_PRESET_CURVE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_TONEMAP_END) == static_cast<ssize_t>(ANDROID_TONEMAP_END),
-              "CameraMetadataTag::ANDROID_TONEMAP_END != ANDROID_TONEMAP_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LED_TRANSMIT) == static_cast<ssize_t>(ANDROID_LED_TRANSMIT),
               "CameraMetadataTag::ANDROID_LED_TRANSMIT != ANDROID_LED_TRANSMIT");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LED_AVAILABLE_LEDS) == static_cast<ssize_t>(ANDROID_LED_AVAILABLE_LEDS),
               "CameraMetadataTag::ANDROID_LED_AVAILABLE_LEDS != ANDROID_LED_AVAILABLE_LEDS");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LED_END) == static_cast<ssize_t>(ANDROID_LED_END),
-              "CameraMetadataTag::ANDROID_LED_END != ANDROID_LED_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL) == static_cast<ssize_t>(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL),
               "CameraMetadataTag::ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL != ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_INFO_END) == static_cast<ssize_t>(ANDROID_INFO_END),
-              "CameraMetadataTag::ANDROID_INFO_END != ANDROID_INFO_END");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_INFO_VERSION) == static_cast<ssize_t>(ANDROID_INFO_VERSION),
+              "CameraMetadataTag::ANDROID_INFO_VERSION != ANDROID_INFO_VERSION");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_BLACK_LEVEL_LOCK) == static_cast<ssize_t>(ANDROID_BLACK_LEVEL_LOCK),
               "CameraMetadataTag::ANDROID_BLACK_LEVEL_LOCK != ANDROID_BLACK_LEVEL_LOCK");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_BLACK_LEVEL_END) == static_cast<ssize_t>(ANDROID_BLACK_LEVEL_END),
-              "CameraMetadataTag::ANDROID_BLACK_LEVEL_END != ANDROID_BLACK_LEVEL_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SYNC_FRAME_NUMBER) == static_cast<ssize_t>(ANDROID_SYNC_FRAME_NUMBER),
               "CameraMetadataTag::ANDROID_SYNC_FRAME_NUMBER != ANDROID_SYNC_FRAME_NUMBER");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SYNC_MAX_LATENCY) == static_cast<ssize_t>(ANDROID_SYNC_MAX_LATENCY),
               "CameraMetadataTag::ANDROID_SYNC_MAX_LATENCY != ANDROID_SYNC_MAX_LATENCY");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_SYNC_END) == static_cast<ssize_t>(ANDROID_SYNC_END),
-              "CameraMetadataTag::ANDROID_SYNC_END != ANDROID_SYNC_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR) == static_cast<ssize_t>(ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR),
               "CameraMetadataTag::ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR != ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REPROCESS_MAX_CAPTURE_STALL) == static_cast<ssize_t>(ANDROID_REPROCESS_MAX_CAPTURE_STALL),
               "CameraMetadataTag::ANDROID_REPROCESS_MAX_CAPTURE_STALL != ANDROID_REPROCESS_MAX_CAPTURE_STALL");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_REPROCESS_END) == static_cast<ssize_t>(ANDROID_REPROCESS_END),
-              "CameraMetadataTag::ANDROID_REPROCESS_END != ANDROID_REPROCESS_END");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DEPTH_MAX_DEPTH_SAMPLES) == static_cast<ssize_t>(ANDROID_DEPTH_MAX_DEPTH_SAMPLES),
               "CameraMetadataTag::ANDROID_DEPTH_MAX_DEPTH_SAMPLES != ANDROID_DEPTH_MAX_DEPTH_SAMPLES");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DEPTH_AVAILABLE_DEPTH_STREAM_CONFIGURATIONS) == static_cast<ssize_t>(ANDROID_DEPTH_AVAILABLE_DEPTH_STREAM_CONFIGURATIONS),
@@ -640,8 +618,14 @@ static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DEPTH_AVAILABLE_DE
               "CameraMetadataTag::ANDROID_DEPTH_AVAILABLE_DEPTH_STALL_DURATIONS != ANDROID_DEPTH_AVAILABLE_DEPTH_STALL_DURATIONS");
 static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE) == static_cast<ssize_t>(ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE),
               "CameraMetadataTag::ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE != ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE");
-static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DEPTH_END) == static_cast<ssize_t>(ANDROID_DEPTH_END),
-              "CameraMetadataTag::ANDROID_DEPTH_END != ANDROID_DEPTH_END");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS) == static_cast<ssize_t>(ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS),
+              "CameraMetadataTag::ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS != ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE) == static_cast<ssize_t>(ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE),
+              "CameraMetadataTag::ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE != ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DISTORTION_CORRECTION_MODE) == static_cast<ssize_t>(ANDROID_DISTORTION_CORRECTION_MODE),
+              "CameraMetadataTag::ANDROID_DISTORTION_CORRECTION_MODE != ANDROID_DISTORTION_CORRECTION_MODE");
+static_assert(static_cast<ssize_t>(CameraMetadataTag::ANDROID_DISTORTION_CORRECTION_AVAILABLE_MODES) == static_cast<ssize_t>(ANDROID_DISTORTION_CORRECTION_AVAILABLE_MODES),
+              "CameraMetadataTag::ANDROID_DISTORTION_CORRECTION_AVAILABLE_MODES != ANDROID_DISTORTION_CORRECTION_AVAILABLE_MODES");
 
 /**
  * Verify all the definitions in CameraMetadataEnum_* match their corresponding enum
@@ -681,6 +665,8 @@ static_assert(static_cast<ssize_t>(AndroidControlAeMode::ANDROID_CONTROL_AE_MODE
               "AndroidControlAeMode::ANDROID_CONTROL_AE_MODE_ON_ALWAYS_FLASH != ANDROID_CONTROL_AE_MODE_ON_ALWAYS_FLASH");
 static_assert(static_cast<ssize_t>(AndroidControlAeMode::ANDROID_CONTROL_AE_MODE_ON_AUTO_FLASH_REDEYE) == static_cast<ssize_t>(ANDROID_CONTROL_AE_MODE_ON_AUTO_FLASH_REDEYE),
               "AndroidControlAeMode::ANDROID_CONTROL_AE_MODE_ON_AUTO_FLASH_REDEYE != ANDROID_CONTROL_AE_MODE_ON_AUTO_FLASH_REDEYE");
+static_assert(static_cast<ssize_t>(AndroidControlAeMode::ANDROID_CONTROL_AE_MODE_ON_EXTERNAL_FLASH) == static_cast<ssize_t>(ANDROID_CONTROL_AE_MODE_ON_EXTERNAL_FLASH),
+              "AndroidControlAeMode::ANDROID_CONTROL_AE_MODE_ON_EXTERNAL_FLASH != ANDROID_CONTROL_AE_MODE_ON_EXTERNAL_FLASH");
 static_assert(static_cast<ssize_t>(AndroidControlAePrecaptureTrigger::ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE) == static_cast<ssize_t>(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE),
               "AndroidControlAePrecaptureTrigger::ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE != ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE");
 static_assert(static_cast<ssize_t>(AndroidControlAePrecaptureTrigger::ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START) == static_cast<ssize_t>(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START),
@@ -741,6 +727,8 @@ static_assert(static_cast<ssize_t>(AndroidControlCaptureIntent::ANDROID_CONTROL_
               "AndroidControlCaptureIntent::ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG != ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG");
 static_assert(static_cast<ssize_t>(AndroidControlCaptureIntent::ANDROID_CONTROL_CAPTURE_INTENT_MANUAL) == static_cast<ssize_t>(ANDROID_CONTROL_CAPTURE_INTENT_MANUAL),
               "AndroidControlCaptureIntent::ANDROID_CONTROL_CAPTURE_INTENT_MANUAL != ANDROID_CONTROL_CAPTURE_INTENT_MANUAL");
+static_assert(static_cast<ssize_t>(AndroidControlCaptureIntent::ANDROID_CONTROL_CAPTURE_INTENT_MOTION_TRACKING) == static_cast<ssize_t>(ANDROID_CONTROL_CAPTURE_INTENT_MOTION_TRACKING),
+              "AndroidControlCaptureIntent::ANDROID_CONTROL_CAPTURE_INTENT_MOTION_TRACKING != ANDROID_CONTROL_CAPTURE_INTENT_MOTION_TRACKING");
 static_assert(static_cast<ssize_t>(AndroidControlEffectMode::ANDROID_CONTROL_EFFECT_MODE_OFF) == static_cast<ssize_t>(ANDROID_CONTROL_EFFECT_MODE_OFF),
               "AndroidControlEffectMode::ANDROID_CONTROL_EFFECT_MODE_OFF != ANDROID_CONTROL_EFFECT_MODE_OFF");
 static_assert(static_cast<ssize_t>(AndroidControlEffectMode::ANDROID_CONTROL_EFFECT_MODE_MONO) == static_cast<ssize_t>(ANDROID_CONTROL_EFFECT_MODE_MONO),
@@ -861,6 +849,10 @@ static_assert(static_cast<ssize_t>(AndroidControlEnableZsl::ANDROID_CONTROL_ENAB
               "AndroidControlEnableZsl::ANDROID_CONTROL_ENABLE_ZSL_FALSE != ANDROID_CONTROL_ENABLE_ZSL_FALSE");
 static_assert(static_cast<ssize_t>(AndroidControlEnableZsl::ANDROID_CONTROL_ENABLE_ZSL_TRUE) == static_cast<ssize_t>(ANDROID_CONTROL_ENABLE_ZSL_TRUE),
               "AndroidControlEnableZsl::ANDROID_CONTROL_ENABLE_ZSL_TRUE != ANDROID_CONTROL_ENABLE_ZSL_TRUE");
+static_assert(static_cast<ssize_t>(AndroidControlAfSceneChange::ANDROID_CONTROL_AF_SCENE_CHANGE_NOT_DETECTED) == static_cast<ssize_t>(ANDROID_CONTROL_AF_SCENE_CHANGE_NOT_DETECTED),
+              "AndroidControlAfSceneChange::ANDROID_CONTROL_AF_SCENE_CHANGE_NOT_DETECTED != ANDROID_CONTROL_AF_SCENE_CHANGE_NOT_DETECTED");
+static_assert(static_cast<ssize_t>(AndroidControlAfSceneChange::ANDROID_CONTROL_AF_SCENE_CHANGE_DETECTED) == static_cast<ssize_t>(ANDROID_CONTROL_AF_SCENE_CHANGE_DETECTED),
+              "AndroidControlAfSceneChange::ANDROID_CONTROL_AF_SCENE_CHANGE_DETECTED != ANDROID_CONTROL_AF_SCENE_CHANGE_DETECTED");
 static_assert(static_cast<ssize_t>(AndroidDemosaicMode::ANDROID_DEMOSAIC_MODE_FAST) == static_cast<ssize_t>(ANDROID_DEMOSAIC_MODE_FAST),
               "AndroidDemosaicMode::ANDROID_DEMOSAIC_MODE_FAST != ANDROID_DEMOSAIC_MODE_FAST");
 static_assert(static_cast<ssize_t>(AndroidDemosaicMode::ANDROID_DEMOSAIC_MODE_HIGH_QUALITY) == static_cast<ssize_t>(ANDROID_DEMOSAIC_MODE_HIGH_QUALITY),
@@ -913,6 +905,10 @@ static_assert(static_cast<ssize_t>(AndroidLensState::ANDROID_LENS_STATE_STATIONA
               "AndroidLensState::ANDROID_LENS_STATE_STATIONARY != ANDROID_LENS_STATE_STATIONARY");
 static_assert(static_cast<ssize_t>(AndroidLensState::ANDROID_LENS_STATE_MOVING) == static_cast<ssize_t>(ANDROID_LENS_STATE_MOVING),
               "AndroidLensState::ANDROID_LENS_STATE_MOVING != ANDROID_LENS_STATE_MOVING");
+static_assert(static_cast<ssize_t>(AndroidLensPoseReference::ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA) == static_cast<ssize_t>(ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA),
+              "AndroidLensPoseReference::ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA != ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA");
+static_assert(static_cast<ssize_t>(AndroidLensPoseReference::ANDROID_LENS_POSE_REFERENCE_GYROSCOPE) == static_cast<ssize_t>(ANDROID_LENS_POSE_REFERENCE_GYROSCOPE),
+              "AndroidLensPoseReference::ANDROID_LENS_POSE_REFERENCE_GYROSCOPE != ANDROID_LENS_POSE_REFERENCE_GYROSCOPE");
 static_assert(static_cast<ssize_t>(AndroidLensInfoFocusDistanceCalibration::ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED) == static_cast<ssize_t>(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED),
               "AndroidLensInfoFocusDistanceCalibration::ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED != ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED");
 static_assert(static_cast<ssize_t>(AndroidLensInfoFocusDistanceCalibration::ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_APPROXIMATE) == static_cast<ssize_t>(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION_APPROXIMATE),
@@ -961,6 +957,12 @@ static_assert(static_cast<ssize_t>(AndroidRequestAvailableCapabilities::ANDROID_
               "AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_DEPTH_OUTPUT != ANDROID_REQUEST_AVAILABLE_CAPABILITIES_DEPTH_OUTPUT");
 static_assert(static_cast<ssize_t>(AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO) == static_cast<ssize_t>(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO),
               "AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO != ANDROID_REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO");
+static_assert(static_cast<ssize_t>(AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MOTION_TRACKING) == static_cast<ssize_t>(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MOTION_TRACKING),
+              "AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MOTION_TRACKING != ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MOTION_TRACKING");
+static_assert(static_cast<ssize_t>(AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA) == static_cast<ssize_t>(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA),
+              "AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA != ANDROID_REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA");
+static_assert(static_cast<ssize_t>(AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MONOCHROME) == static_cast<ssize_t>(ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MONOCHROME),
+              "AndroidRequestAvailableCapabilities::ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MONOCHROME != ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MONOCHROME");
 static_assert(static_cast<ssize_t>(AndroidScalerAvailableFormats::ANDROID_SCALER_AVAILABLE_FORMATS_RAW16) == static_cast<ssize_t>(ANDROID_SCALER_AVAILABLE_FORMATS_RAW16),
               "AndroidScalerAvailableFormats::ANDROID_SCALER_AVAILABLE_FORMATS_RAW16 != ANDROID_SCALER_AVAILABLE_FORMATS_RAW16");
 static_assert(static_cast<ssize_t>(AndroidScalerAvailableFormats::ANDROID_SCALER_AVAILABLE_FORMATS_RAW_OPAQUE) == static_cast<ssize_t>(ANDROID_SCALER_AVAILABLE_FORMATS_RAW_OPAQUE),
@@ -1085,6 +1087,10 @@ static_assert(static_cast<ssize_t>(AndroidStatisticsLensShadingMapMode::ANDROID_
               "AndroidStatisticsLensShadingMapMode::ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF != ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF");
 static_assert(static_cast<ssize_t>(AndroidStatisticsLensShadingMapMode::ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON) == static_cast<ssize_t>(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON),
               "AndroidStatisticsLensShadingMapMode::ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON != ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON");
+static_assert(static_cast<ssize_t>(AndroidStatisticsOisDataMode::ANDROID_STATISTICS_OIS_DATA_MODE_OFF) == static_cast<ssize_t>(ANDROID_STATISTICS_OIS_DATA_MODE_OFF),
+              "AndroidStatisticsOisDataMode::ANDROID_STATISTICS_OIS_DATA_MODE_OFF != ANDROID_STATISTICS_OIS_DATA_MODE_OFF");
+static_assert(static_cast<ssize_t>(AndroidStatisticsOisDataMode::ANDROID_STATISTICS_OIS_DATA_MODE_ON) == static_cast<ssize_t>(ANDROID_STATISTICS_OIS_DATA_MODE_ON),
+              "AndroidStatisticsOisDataMode::ANDROID_STATISTICS_OIS_DATA_MODE_ON != ANDROID_STATISTICS_OIS_DATA_MODE_ON");
 static_assert(static_cast<ssize_t>(AndroidTonemapMode::ANDROID_TONEMAP_MODE_CONTRAST_CURVE) == static_cast<ssize_t>(ANDROID_TONEMAP_MODE_CONTRAST_CURVE),
               "AndroidTonemapMode::ANDROID_TONEMAP_MODE_CONTRAST_CURVE != ANDROID_TONEMAP_MODE_CONTRAST_CURVE");
 static_assert(static_cast<ssize_t>(AndroidTonemapMode::ANDROID_TONEMAP_MODE_FAST) == static_cast<ssize_t>(ANDROID_TONEMAP_MODE_FAST),
@@ -1113,6 +1119,8 @@ static_assert(static_cast<ssize_t>(AndroidInfoSupportedHardwareLevel::ANDROID_IN
               "AndroidInfoSupportedHardwareLevel::ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY != ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY");
 static_assert(static_cast<ssize_t>(AndroidInfoSupportedHardwareLevel::ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_3) == static_cast<ssize_t>(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_3),
               "AndroidInfoSupportedHardwareLevel::ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_3 != ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_3");
+static_assert(static_cast<ssize_t>(AndroidInfoSupportedHardwareLevel::ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL) == static_cast<ssize_t>(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL),
+              "AndroidInfoSupportedHardwareLevel::ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL != ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL");
 static_assert(static_cast<ssize_t>(AndroidBlackLevelLock::ANDROID_BLACK_LEVEL_LOCK_OFF) == static_cast<ssize_t>(ANDROID_BLACK_LEVEL_LOCK_OFF),
               "AndroidBlackLevelLock::ANDROID_BLACK_LEVEL_LOCK_OFF != ANDROID_BLACK_LEVEL_LOCK_OFF");
 static_assert(static_cast<ssize_t>(AndroidBlackLevelLock::ANDROID_BLACK_LEVEL_LOCK_ON) == static_cast<ssize_t>(ANDROID_BLACK_LEVEL_LOCK_ON),
@@ -1133,6 +1141,16 @@ static_assert(static_cast<ssize_t>(AndroidDepthDepthIsExclusive::ANDROID_DEPTH_D
               "AndroidDepthDepthIsExclusive::ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE_FALSE != ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE_FALSE");
 static_assert(static_cast<ssize_t>(AndroidDepthDepthIsExclusive::ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE_TRUE) == static_cast<ssize_t>(ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE_TRUE),
               "AndroidDepthDepthIsExclusive::ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE_TRUE != ANDROID_DEPTH_DEPTH_IS_EXCLUSIVE_TRUE");
+static_assert(static_cast<ssize_t>(AndroidLogicalMultiCameraSensorSyncType::ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_APPROXIMATE) == static_cast<ssize_t>(ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_APPROXIMATE),
+              "AndroidLogicalMultiCameraSensorSyncType::ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_APPROXIMATE != ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_APPROXIMATE");
+static_assert(static_cast<ssize_t>(AndroidLogicalMultiCameraSensorSyncType::ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_CALIBRATED) == static_cast<ssize_t>(ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_CALIBRATED),
+              "AndroidLogicalMultiCameraSensorSyncType::ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_CALIBRATED != ANDROID_LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_CALIBRATED");
+static_assert(static_cast<ssize_t>(AndroidDistortionCorrectionMode::ANDROID_DISTORTION_CORRECTION_MODE_OFF) == static_cast<ssize_t>(ANDROID_DISTORTION_CORRECTION_MODE_OFF),
+              "AndroidDistortionCorrectionMode::ANDROID_DISTORTION_CORRECTION_MODE_OFF != ANDROID_DISTORTION_CORRECTION_MODE_OFF");
+static_assert(static_cast<ssize_t>(AndroidDistortionCorrectionMode::ANDROID_DISTORTION_CORRECTION_MODE_FAST) == static_cast<ssize_t>(ANDROID_DISTORTION_CORRECTION_MODE_FAST),
+              "AndroidDistortionCorrectionMode::ANDROID_DISTORTION_CORRECTION_MODE_FAST != ANDROID_DISTORTION_CORRECTION_MODE_FAST");
+static_assert(static_cast<ssize_t>(AndroidDistortionCorrectionMode::ANDROID_DISTORTION_CORRECTION_MODE_HIGH_QUALITY) == static_cast<ssize_t>(ANDROID_DISTORTION_CORRECTION_MODE_HIGH_QUALITY),
+              "AndroidDistortionCorrectionMode::ANDROID_DISTORTION_CORRECTION_MODE_HIGH_QUALITY != ANDROID_DISTORTION_CORRECTION_MODE_HIGH_QUALITY");
 
 }  // end of namespace mojom
 
