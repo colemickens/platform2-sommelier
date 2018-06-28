@@ -2012,13 +2012,6 @@ void ArcSetup::OnSetup() {
 }
 
 void ArcSetup::OnBootContinue() {
-  // This feature is only available in NYC branch.
-  // TODO(khmel): Support them in P and remove this block.
-  if (sdk_version() != AndroidSdkVersion::ANDROID_N_MR1) {
-    EXIT_IF(!arc_paths_->env->SetVar("SKIP_PACKAGES_CACHE_SETUP", "1"));
-    EXIT_IF(!arc_paths_->env->SetVar("COPY_PACKAGES_CACHE", "0"));
-  }
-
   const bool is_dev_mode =
       GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_DEV_MODE");
   const bool is_inside_vm =
