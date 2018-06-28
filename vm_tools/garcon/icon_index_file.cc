@@ -179,6 +179,11 @@ bool IconIndexFile::CloseDirectorySection(
 }
 
 bool IconIndexFile::LoadFromFile(const base::FilePath& file_path) {
+  // Fail fast if the file doesn't exist, which can happen due to the number
+  // of directories we are searching.
+  if (!base::PathExists(file_path))
+    return false;
+
   std::unique_ptr<IconThemeEntry> icon_theme_entry =
       std::make_unique<IconThemeEntry>();
   std::unique_ptr<DirectoryEntry> directory_entry =
