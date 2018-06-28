@@ -5,6 +5,10 @@
 #ifndef SMBPROVIDER_SEQUENTIAL_ID_MAP_H_
 #define SMBPROVIDER_SEQUENTIAL_ID_MAP_H_
 
+#include <map>
+#include <utility>
+
+#include <base/logging.h>
 #include <base/macros.h>
 
 namespace smbprovider {
@@ -13,9 +17,6 @@ namespace smbprovider {
 // handing out pseudo file descriptors.
 //
 // TODO(zentaro): WIP for crbug/857487
-//   - Add map member variable
-//   - Add method to insert value
-//   - Add method to query value
 //   - Add method to remove value
 template <typename T>
 class SequentialIdMap {
@@ -23,6 +24,24 @@ class SequentialIdMap {
   SequentialIdMap() = default;
   ~SequentialIdMap() = default;
 
+  int32_t Insert(T value) {
+    DCHECK_EQ(0, ids_.count(next_id_));
+
+    ids_.insert({next_id_, std::move(value)});
+    return next_id_++;
+  }
+
+  typename std::map<int32_t, T>::const_iterator Find(int32_t id) const {
+    return ids_.find(id);
+  }
+
+  typename std::map<int32_t, T>::const_iterator End() const {
+    return ids_.end();
+  }
+
+ private:
+  std::map<int32_t, T> ids_;
+  int32_t next_id_ = 0;
   DISALLOW_COPY_AND_ASSIGN(SequentialIdMap);
 };
 
