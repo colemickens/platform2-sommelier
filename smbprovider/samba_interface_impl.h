@@ -12,16 +12,13 @@
 #include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/samba_interface.h"
+#include "smbprovider/sequential_id_map.h"
 
 namespace smbprovider {
 
 // Implements SambaInterface and calls libsmbclient's smbc_* methods 1:1.
 //
 // TODO(zentaro): WIP for crbug/857487.
-//   - Assign remainaing _ctx members from libsmbclient
-//   - Add a map of FD's to SMBCFILE
-//   - Add helper functions to manage getting/setting FDs
-//   - Switch splice to use new implementation
 //   - Switch remaining implementation to call new functions
 class SambaInterfaceImpl : public SambaInterface {
  public:
@@ -99,9 +96,18 @@ class SambaInterfaceImpl : public SambaInterface {
                    const std::string& target_path,
                    CopyProgressCallback progress_callback,
                    void* callback_context) WARN_UNUSED_RESULT;
-  int32_t OpenCopySource(const std::string& file_path, SMBCFILE** source);
-  int32_t OpenCopyTarget(const std::string& file_path, SMBCFILE** target);
-  void CloseCopySourceAndTarget(SMBCFILE* source, SMBCFILE* target);
+  int32_t OpenCopySource(const std::string& file_path, int32_t* source_fd);
+  int32_t OpenCopyTarget(const std::string& file_path, int32_t* target_fd);
+  void CloseCopySourceAndTarget(int32_t source_fd, int32_t target_fd);
+
+  // Inserts the |file| pointer into the map and returns a new FD.
+  int32_t NewFd(SMBCFILE* file);
+
+  // Returns the SMBCFILE pointer for |fd| or nullptr if it doesn't exist.
+  SMBCFILE* GetFile(int32_t fd);
+
+  // Returns the SMBCFILE pointer for |fd| and DCHECKS if it doesn't exist.
+  SMBCFILE* MustGetFile(int32_t fd);
 
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;
@@ -120,6 +126,7 @@ class SambaInterfaceImpl : public SambaInterface {
   smbc_stat_fn smbc_stat_ctx_ = nullptr;
   smbc_unlink_fn smbc_unlink_ctx_ = nullptr;
   smbc_write_fn smbc_write_ctx_ = nullptr;
+  SequentialIdMap<SMBCFILE*> fds_;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceImpl);
 };

@@ -188,69 +188,95 @@ int32_t SambaInterfaceImpl::CopyFile(const std::string& source_path,
                                      const std::string& target_path,
                                      CopyProgressCallback progress_callback,
                                      void* callback_context) {
-  SMBCFILE* source = nullptr;
-  SMBCFILE* target = nullptr;
-  int32_t result = OpenCopySource(source_path, &source);
+  int32_t source_fd = -1;
+  int32_t target_fd = -1;
+  int32_t result = OpenCopySource(source_path, &source_fd);
   if (result != 0) {
     return result;
   }
+  DCHECK_GE(source_fd, 0);
 
-  result = OpenCopyTarget(target_path, &target);
+  result = OpenCopyTarget(target_path, &target_fd);
   if (result != 0) {
-    CloseCopySourceAndTarget(source, target);
+    CloseCopySourceAndTarget(source_fd, target_fd);
     return result;
   }
+  DCHECK_GE(target_fd, 0);
 
   struct stat source_stat;
   result = GetEntryStatus(source_path, &source_stat);
   if (result != 0) {
-    CloseCopySourceAndTarget(source, target);
+    CloseCopySourceAndTarget(source_fd, target_fd);
     return result;
   }
 
-  if (smbc_splice_ctx_(context_, source, target, source_stat.st_size,
-                       progress_callback, callback_context) == -1) {
+  if (smbc_splice_ctx_(context_, MustGetFile(source_fd), MustGetFile(target_fd),
+                       source_stat.st_size, progress_callback,
+                       callback_context) == -1) {
     result = errno;
-    CloseCopySourceAndTarget(source, target);
+    CloseCopySourceAndTarget(source_fd, target_fd);
     return result;
   }
 
-  CloseCopySourceAndTarget(source, target);
+  CloseCopySourceAndTarget(source_fd, target_fd);
   return 0;
 }
 
 int32_t SambaInterfaceImpl::OpenCopySource(const std::string& file_path,
-                                           SMBCFILE** source) {
-  DCHECK(source);
-  *source = smbc_open_ctx_(context_, file_path.c_str(), O_RDONLY, 0 /* mode */);
-  if (!(*source)) {
+                                           int32_t* source_fd) {
+  DCHECK(source_fd);
+  SMBCFILE* source_file =
+      smbc_open_ctx_(context_, file_path.c_str(), O_RDONLY, 0 /* mode */);
+  if (!source_file) {
     return errno;
   }
 
+  *source_fd = NewFd(source_file);
   return 0;
 }
 
 int32_t SambaInterfaceImpl::OpenCopyTarget(const std::string& file_path,
-                                           SMBCFILE** target) {
-  DCHECK(target);
-  *target = smbc_open_ctx_(context_, file_path.c_str(), kCreateFileFlags,
-                           0 /* mode */);
-  if (!(*target)) {
+                                           int32_t* target_fd) {
+  DCHECK(target_fd);
+  SMBCFILE* target_file = smbc_open_ctx_(context_, file_path.c_str(),
+                                         kCreateFileFlags, 0 /* mode */);
+  if (!target_file) {
     return errno;
   }
 
+  *target_fd = NewFd(target_file);
   return 0;
 }
 
-void SambaInterfaceImpl::CloseCopySourceAndTarget(SMBCFILE* source,
-                                                  SMBCFILE* target) {
-  if (source) {
-    smbc_close_ctx_(context_, source);
+void SambaInterfaceImpl::CloseCopySourceAndTarget(int32_t source_fd,
+                                                  int32_t target_fd) {
+  if (source_fd >= 0) {
+    smbc_close_ctx_(context_, MustGetFile(source_fd));
   }
 
-  if (target) {
-    smbc_close_ctx_(context_, target);
+  if (target_fd >= 0) {
+    smbc_close_ctx_(context_, MustGetFile(target_fd));
   }
+}
+
+int32_t SambaInterfaceImpl::NewFd(SMBCFILE* file) {
+  DCHECK(file);
+  return fds_.Insert(file);
+}
+
+SMBCFILE* SambaInterfaceImpl::GetFile(int32_t fd) {
+  auto iter = fds_.Find(fd);
+  if (iter == fds_.End()) {
+    return nullptr;
+  }
+
+  return iter->second;
+}
+
+SMBCFILE* SambaInterfaceImpl::MustGetFile(int32_t fd) {
+  SMBCFILE* file = GetFile(fd);
+  DCHECK(file);
+  return file;
 }
 
 SambaInterfaceImpl::~SambaInterfaceImpl() {
