@@ -23,31 +23,39 @@ maybe_sudo() {
    fi
 }
 
-# This returns the size of a file or device in 512-byte sectors, rounded up if
+# This returns the size of a file or device in physical sectors, rounded up if
 # needed.
 # Invoke as: subshell
 # Args: FILENAME
 # Return: whole number of sectors needed to fully contain FILENAME
 numsectors() {
-  if [ -b "${1}" ]; then
-    dev=${1##*/}
-    if [ -e /sys/block/$dev/size ]; then
-      cat /sys/block/$dev/size
+  local block_size
+  local sectors
+  local path="$1"
+
+  if [ -b "${path}" ]; then
+    local dev="${path##*/}"
+    block_size="$(blocksize "${path}")"
+
+    if [ -e "/sys/block/${dev}/size" ]; then
+      sectors="$(cat "/sys/block/${dev}/size")"
     else
-      part=${1##*/}
-      block=$(get_block_dev_from_partition_dev "${1}")
-      block=${block##*/}
-      cat /sys/block/$block/$part/size
+      part="${path##*/}"
+      block="$(get_block_dev_from_partition_dev "${path}")"
+      block="${block##*/}"
+      sectors="$(cat "/sys/block/${block}/${part}/size")"
     fi
   else
-    local bytes=$(stat -c%s "$1")
-    local sectors=$(( $bytes / 512 ))
-    local rem=$(( $bytes % 512 ))
-    if [ $rem -ne 0 ]; then
-      sectors=$(( $sectors + 1 ))
+    local bytes="$(stat -c%s "${path}")"
+    local rem=$(( bytes % 512 ))
+    block_size=512
+    sectors=$(( bytes / 512 ))
+    if [ "${rem}" -ne 0 ]; then
+      sectors=$(( sectors + 1 ))
     fi
-    echo $sectors
   fi
+
+  echo $(( sectors * 512 / block_size ))
 }
 
 # This returns the block size of a file or device in byte
