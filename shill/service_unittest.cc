@@ -2206,27 +2206,18 @@ TEST_F(ServiceTest, Compare) {
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // A service that has been connected before should be considered
-  // above a service that neither been connected to before nor has
-  // has managed credentials.
+  // above a service that has never been connected to before.
   service2->has_ever_connected_ = true;
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
-  // If one service has been connected to before, and the other is managed
-  // by Chrome they should rank same, so the priority will be considered
-  // instead.
-  service10->managed_credentials_ = true;
-  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
-  service2->SetPriority(3, nullptr);
-  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
-
-  // A service with managed credentials should be considered above one that
-  // has neither been connected to before nor has managed credentials.
-  service2->has_ever_connected_ = false;
-  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
-
   // Auto-connect.
-  service2->SetAutoConnect(true);
-  service10->SetAutoConnect(false);
+  service10->SetAutoConnect(true);
+  service2->SetAutoConnect(false);
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  // Managed credentials
+  service10->managed_credentials_ = false;
+  service2->managed_credentials_ = true;
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Test is-dependent-on.

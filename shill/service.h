@@ -743,6 +743,7 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortAutoConnect[];
   static const char kServiceSortConnectable[];
   static const char kServiceSortHasEverConnected[];
+  static const char kServiceSortManagedCredentials[];
   static const char kServiceSortIsConnected[];
   static const char kServiceSortDependency[];
   static const char kServiceSortIsConnecting[];

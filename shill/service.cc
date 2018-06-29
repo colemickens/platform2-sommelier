@@ -84,6 +84,7 @@ const char Service::kServiceSortAutoConnect[] = "AutoConnect";
 const char Service::kServiceSortConnectable[] = "Connectable";
 const char Service::kServiceSortDependency[] = "Dependency";
 const char Service::kServiceSortHasEverConnected[] = "HasEverConnected";
+const char Service::kServiceSortManagedCredentials[] = "ManagedCredentials";
 const char Service::kServiceSortIsConnected[] = "IsConnected";
 const char Service::kServiceSortIsConnecting[] = "IsConnecting";
 const char Service::kServiceSortIsFailed[] = "IsFailed";
@@ -1088,6 +1089,11 @@ bool Service::Compare(Manager* manager,
     return ret;
   }
 
+  if (DecideBetween(a->managed_credentials_, b->managed_credentials_, &ret)) {
+    *reason = kServiceSortManagedCredentials;
+    return ret;
+  }
+
   // Ignore the auto-connect property if both services are connected
   // already. This allows connected non-autoconnectable VPN services to be
   // sorted higher than other connected services based on technology order.
@@ -1097,9 +1103,7 @@ bool Service::Compare(Manager* manager,
     return ret;
   }
 
-  if (DecideBetween(a->has_ever_connected() || a->managed_credentials_,
-                    b->has_ever_connected() || b->managed_credentials_,
-                    &ret)) {
+  if (DecideBetween(a->has_ever_connected(), b->has_ever_connected(), &ret)) {
     *reason = kServiceSortHasEverConnected;
     return ret;
   }
