@@ -73,7 +73,12 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
 }
 
 int32_t SambaInterfaceImpl::CloseFile(int32_t file_id) {
-  return smbc_close(file_id) >= 0 ? 0 : errno;
+  SMBCFILE* file = GetFile(file_id);
+  if (!file) {
+    return EBADF;
+  }
+
+  return smbc_close_ctx_(context_, file) >= 0 ? 0 : errno;
 }
 
 int32_t SambaInterfaceImpl::OpenFile(const std::string& file_path,
@@ -82,27 +87,38 @@ int32_t SambaInterfaceImpl::OpenFile(const std::string& file_path,
   DCHECK(file_id);
   DCHECK(IsValidOpenFileFlags(flags));
 
-  *file_id = smbc_open(file_path.c_str(), flags, 0 /* mode */);
-  if (*file_id < 0) {
+  SMBCFILE* file =
+      smbc_open_ctx_(context_, file_path.c_str(), flags, 0 /* mode */);
+  if (!file) {
     *file_id = -1;
     return errno;
   }
+
+  *file_id = NewFd(file);
   return 0;
 }
 
 int32_t SambaInterfaceImpl::OpenDirectory(const std::string& directory_path,
                                           int32_t* dir_id) {
   DCHECK(dir_id);
-  *dir_id = smbc_opendir(directory_path.c_str());
-  if (*dir_id < 0) {
+
+  SMBCFILE* dir = smbc_opendir_ctx_(context_, directory_path.c_str());
+  if (!dir) {
     *dir_id = -1;
     return errno;
   }
+
+  *dir_id = NewFd(dir);
   return 0;
 }
 
 int32_t SambaInterfaceImpl::CloseDirectory(int32_t dir_id) {
-  return smbc_closedir(dir_id) >= 0 ? 0 : errno;
+  SMBCFILE* dir = GetFile(dir_id);
+  if (!dir) {
+    return EBADF;
+  }
+
+  return smbc_closedir_ctx_(context_, dir) >= 0 ? 0 : errno;
 }
 
 int32_t SambaInterfaceImpl::GetDirectoryEntries(int32_t dir_id,
@@ -111,18 +127,25 @@ int32_t SambaInterfaceImpl::GetDirectoryEntries(int32_t dir_id,
                                                 int32_t* bytes_read) {
   DCHECK(dirp);
   DCHECK(bytes_read);
-  *bytes_read = smbc_getdents(dir_id, dirp, dirp_buffer_size);
+
+  SMBCFILE* dir = GetFile(dir_id);
+  if (!dir) {
+    return EBADF;
+  }
+
+  *bytes_read = smbc_getdents_ctx_(context_, dir, dirp, dirp_buffer_size);
   if (*bytes_read < 0) {
     *bytes_read = -1;
     return errno;
   }
+
   return 0;
 }
 
 int32_t SambaInterfaceImpl::GetEntryStatus(const std::string& full_path,
                                            struct stat* stat) {
   DCHECK(stat);
-  return smbc_stat(full_path.c_str(), stat) >= 0 ? 0 : errno;
+  return smbc_stat_ctx_(context_, full_path.c_str(), stat) >= 0 ? 0 : errno;
 }
 
 int32_t SambaInterfaceImpl::ReadFile(int32_t file_id,
@@ -131,51 +154,76 @@ int32_t SambaInterfaceImpl::ReadFile(int32_t file_id,
                                      size_t* bytes_read) {
   DCHECK(buffer);
   DCHECK(bytes_read);
-  *bytes_read = smbc_read(file_id, buffer, buffer_size);
+
+  SMBCFILE* file = GetFile(file_id);
+  if (!file) {
+    return EBADF;
+  }
+
+  *bytes_read = smbc_read_ctx_(context_, file, buffer, buffer_size);
   return *bytes_read < 0 ? errno : 0;
 }
 
 int32_t SambaInterfaceImpl::Seek(int32_t file_id, int64_t offset) {
-  return smbc_lseek(file_id, offset, SEEK_SET) < 0 ? errno : 0;
+  SMBCFILE* file = GetFile(file_id);
+  if (!file) {
+    return EBADF;
+  }
+
+  return smbc_lseek_ctx_(context_, file, offset, SEEK_SET) < 0 ? errno : 0;
 }
 
 int32_t SambaInterfaceImpl::Unlink(const std::string& file_path) {
-  return smbc_unlink(file_path.c_str()) < 0 ? errno : 0;
+  return smbc_unlink_ctx_(context_, file_path.c_str()) < 0 ? errno : 0;
 }
 
 int32_t SambaInterfaceImpl::RemoveDirectory(const std::string& dir_path) {
-  return smbc_rmdir(dir_path.c_str()) < 0 ? errno : 0;
+  return smbc_rmdir_ctx_(context_, dir_path.c_str()) < 0 ? errno : 0;
 }
 
 int32_t SambaInterfaceImpl::CreateFile(const std::string& file_path,
                                        int32_t* file_id) {
-  *file_id =
-      smbc_open(file_path.c_str(), kCreateFileFlags, kCreateEntryPermissions);
-  if (*file_id < 0) {
+  SMBCFILE* file = smbc_open_ctx_(context_, file_path.c_str(), kCreateFileFlags,
+                                  kCreateEntryPermissions);
+  if (!file) {
     *file_id = -1;
     return errno;
   }
+
+  *file_id = NewFd(file);
   return 0;
 }
 
 int32_t SambaInterfaceImpl::Truncate(int32_t file_id, size_t size) {
-  return smbc_ftruncate(file_id, size) < 0 ? errno : 0;
+  SMBCFILE* file = GetFile(file_id);
+  if (!file) {
+    return EBADF;
+  }
+
+  return smbc_ftruncate_ctx_(context_, file, size) < 0 ? errno : 0;
 }
 
 int32_t SambaInterfaceImpl::WriteFile(int32_t file_id,
                                       const uint8_t* buffer,
                                       size_t buffer_size) {
-  return smbc_write(file_id, buffer, buffer_size) < 0 ? errno : 0;
+  SMBCFILE* file = GetFile(file_id);
+  if (!file) {
+    return EBADF;
+  }
+
+  return smbc_write_ctx_(context_, file, buffer, buffer_size) < 0 ? errno : 0;
 }
 
 int32_t SambaInterfaceImpl::CreateDirectory(const std::string& directory_path) {
-  int32_t result = smbc_mkdir(directory_path.c_str(), kCreateEntryPermissions);
+  int32_t result = smbc_mkdir_ctx_(context_, directory_path.c_str(),
+                                   kCreateEntryPermissions);
   return result < 0 ? errno : 0;
 }
 
 int32_t SambaInterfaceImpl::MoveEntry(const std::string& source_path,
                                       const std::string& target_path) {
-  int32_t result = smbc_rename(source_path.c_str(), target_path.c_str());
+  int32_t result = smbc_rename_ctx_(context_, source_path.c_str(), context_,
+                                    target_path.c_str());
   return result < 0 ? errno : 0;
 }
 
