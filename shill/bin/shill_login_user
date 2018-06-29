@@ -91,12 +91,22 @@ if [ ! -d "$profile_dir" ]; then
     logger -t "$script_name" \
       "Failed to create shill user profile directory $profile_dir"
     exit 1
+  else
+    if ! chown shill:shill "$profile_dir" ; then
+      logger -t "$script_name" \
+        "Failed to chown shill user profile directory $profile_dir"
+      exit 1
+    fi
   fi
 fi
 
 if ! mkdir -p --mode 0700 "$profile_link_root"; then
   logger -t "$script_name" \
     "Unable to create shill user profile link directory"
+else
+  if ! chown shill:shill "$profile_link_root"; then
+    logger -t "$script_name" "Unable to chown shill user profile link directory"
+  fi
 fi
 
 ln -s "$profile_dir" "$profile_link_dir" ||
@@ -106,6 +116,10 @@ ln -s "$profile_dir" "$profile_link_dir" ||
 if ! mkdir -p --mode 0700 "$log_dir"; then
   logger -t "$script_name" \
     "Unable to create shill log directory"
+else
+  if ! chown shill:shill "$log_dir"; then
+    logger -t "$script_name" "Unable to chown shill log directory"
+  fi
 fi
 
 if [ ! -h "$log_link_dir" ]; then
