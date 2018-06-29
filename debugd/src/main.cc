@@ -60,6 +60,11 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/run/arc/bugreport", "/run/arc/bugreport", 0))
     LOG(FATAL) << "minijail_bind(\"/run/arc/bugreport\") failed";
 
+  // Mount /run/containers to be able to collect container stats.
+  mkdir("/run/containers", 0755);
+  if (minijail_bind(j.get(), "/run/containers", "/run/containers", 0))
+    LOG(FATAL) << "minijail_bind(\"/run/containers\") failed";
+
   // Mount /dev to be able to inspect devices.
   if (minijail_mount_with_data(j.get(), "/dev", "/dev", "bind",
                                MS_BIND | MS_REC, nullptr)) {
