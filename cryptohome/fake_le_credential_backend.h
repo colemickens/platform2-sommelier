@@ -18,6 +18,18 @@ namespace cryptohome {
 // Hard code max attempts at 5 for now.
 const int LE_MAX_INCORRECT_ATTEMPTS = 5;
 
+// Number of entries the replay log can store.
+const int kFakeLogSize = 2;
+
+// Wrapper around LELogEntry which stores extra data about the log entry used
+// by FakeLECredentialBackend.
+struct FakeLELogEntry {
+  struct LELogEntry entry;
+  // For check operations, this signifies whether the check was successful or
+  // not.
+  bool check_success;
+};
+
 // Implementation of the LECredentialBackend interface. This class
 // mimicks all the actual TPM-backed LECrdentialBackend functionality on
 // the host side itself. It is useful for prototyping host side features,
@@ -85,8 +97,16 @@ class FakeLECredentialBackend : public LECredentialBackend {
       const std::vector<uint8_t>& leaf_mac,
       const std::vector<std::vector<uint8_t>>& h_aux);
 
-  // Location where the fake backend stores the root hash.
-  std::vector<uint8_t> fake_root_hash_;
+  // Add |entry| to the log, while removing the least recent entry.
+  void AddLogEntry(const struct FakeLELogEntry& entry);
+
+  // Helper function which returns the current root hash.
+  const std::vector<uint8_t>& CurrentRootHash() const {
+    return log_[0].entry.root;
+  }
+
+  // Replay log.
+  std::vector<struct FakeLELogEntry> log_;
 };
 
 }  // namespace cryptohome

@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest_prod.h>
@@ -38,6 +39,8 @@ constexpr uint8_t kResetSecret1Array[] = {
     0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00, 0x0B,
     0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15};
 
+constexpr char kCredDirName[] = "low_entropy_creds";
+
 }  // namespace
 
 namespace cryptohome {
@@ -49,11 +52,14 @@ class LECredentialManagerUnitTest : public testing::Test {
     InitLEManager();
   }
 
+  // Returns location of on-disk hash tree directory.
+  base::FilePath CredDirPath() {
+    return temp_dir_.GetPath().Append(kCredDirName);
+  }
+
   void InitLEManager() {
-    base::FilePath cred_manager_dir =
-        temp_dir_.GetPath().Append("low_entropy_creds");
     le_mgr_ =
-        std::make_unique<LECredentialManager>(&fake_backend_, cred_manager_dir);
+        std::make_unique<LECredentialManager>(&fake_backend_, CredDirPath());
   }
 
   // Helper function to create a credential & then lock it out.
@@ -82,19 +88,54 @@ class LECredentialManagerUnitTest : public testing::Test {
     return label;
   }
 
-  void CorruptLeafCache() {
-    // Fill the leafcache file with random data.
+  // Corrupts |path| by replacing file contents with random data.
+  void CorruptFile(base::FilePath path) {
     int64_t file_size;
-    base::FilePath leaf_cache = temp_dir_.GetPath()
-                                    .Append("low_entropy_creds")
-                                    .Append(kLeafCacheFileName);
-    ASSERT_TRUE(base::GetFileSize(leaf_cache, &file_size));
+    ASSERT_TRUE(base::GetFileSize(path, &file_size));
     std::vector<uint8_t> random_data(file_size);
     CryptoLib::GetSecureRandom(random_data.data(), file_size);
     ASSERT_EQ(
         file_size,
-        base::WriteFile(leaf_cache, reinterpret_cast<char*>(random_data.data()),
+        base::WriteFile(path, reinterpret_cast<char*>(random_data.data()),
                         file_size));
+  }
+
+  void CorruptLeafCache() {
+    // Fill the leafcache file with random data.
+    base::FilePath leaf_cache = CredDirPath().Append(kLeafCacheFileName);
+    CorruptFile(leaf_cache);
+  }
+
+  // Corrupts all versions of any one leaf. We corrupt all the versions, since
+  // it is tedious to find which is the most recent one.
+  void CorruptHashTree() {
+    base::FileEnumerator dirs(
+        CredDirPath(), false, base::FileEnumerator::DIRECTORIES);
+    base::FilePath leaf_dir = dirs.Next();
+    ASSERT_FALSE(leaf_dir.empty());
+
+    base::FileEnumerator files(leaf_dir, false, base::FileEnumerator::FILES);
+    for (base::FilePath cur_file = files.Next(); !cur_file.empty();
+        cur_file = files.Next()) {
+      CorruptFile(cur_file);
+    }
+  }
+
+  // Takes a snapshot of the on-disk hash three, and returns the directory
+  // where the snapshot is stored.
+  std::unique_ptr<base::ScopedTempDir> CaptureSnapshot() {
+    auto snapshot = std::make_unique<base::ScopedTempDir>();
+    CHECK(snapshot->CreateUniqueTempDir());
+    base::CopyDirectory(CredDirPath(), snapshot->GetPath(), true);
+
+    return snapshot;
+  }
+
+  // Fills the on-disk hash tree with the contents of |snapshot_path|.
+  void RestoreSnapshot(base::FilePath snapshot_path) {
+    ASSERT_TRUE(base::DeleteFile(CredDirPath(), true));
+    ASSERT_TRUE(base::CopyDirectory(snapshot_path.Append(kCredDirName),
+                                    temp_dir_.GetPath(), true));
   }
 
   base::ScopedTempDir temp_dir_;
@@ -292,6 +333,218 @@ TEST_F(LECredentialManagerUnitTest, InsertRemoveCorruptHashCache) {
             le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
   EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
   EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label2));
+}
+
+// Initialize the LECredManager and take a snapshot after 1 operation,
+// then perform an insert. Then, restore the snapshot (in effect "losing" the
+// last operation). The log functionality should restore the "lost" state.
+TEST_F(LECredentialManagerUnitTest, LogReplayLostInsert) {
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+
+  base::ScopedTempDir snapshot;
+  ASSERT_TRUE(snapshot.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CopyDirectory(CredDirPath(), snapshot.GetPath(), true));
+
+  // Another Insert & Remove after taking the snapshot.
+  uint64_t label2;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot.GetPath());
+  InitLEManager();
+
+  // Subsequent operation should work.
+  brillo::SecureBlob he_secret;
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+}
+
+// Initialize the LECredManager and take a snapshot after an operation,
+// then perform an insert and remove. Then, restore the snapshot
+// (in effect "losing" the last 2 operations). The log functionality
+// should restore the "lost" state.
+TEST_F(LECredentialManagerUnitTest, LogReplayLostInsertRemove) {
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Another Insert & Remove after taking the snapshot.
+  uint64_t label2;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // Subsequent operation should work.
+  uint64_t label3;
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label3));
+}
+
+// Initialize the LECredManager and take a snapshot after 2 operations,
+// then perform 2 checks. Then, restore the snapshot (in effect "losing"
+// the last 2 operations). The log functionality should restore the "lost"
+// state.
+TEST_F(LECredentialManagerUnitTest, LogReplayLostChecks) {
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kLeSecret2(std::begin(kLeSecret2Array),
+                                std::end(kLeSecret2Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+  uint64_t label2;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform incorrect checks to fill up the replay log.
+  brillo::SecureBlob he_secret;
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_EQ(LE_CRED_ERROR_INVALID_LE_SECRET,
+        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret));
+  }
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // Subsequent operations should work.
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret));
+}
+
+// Verify behaviour when more operations are lost than the log can save.
+// NOTE: The number of lost operations should always be greater than
+// the log size of FakeLECredentialBackend.
+TEST_F(LECredentialManagerUnitTest, FailedLogReplayTooManyOps) {
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kLeSecret2(std::begin(kLeSecret2Array),
+                                std::end(kLeSecret2Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+  uint64_t label2;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform |kFakeLogSize| + 1 incorrect checks and an insert.
+  brillo::SecureBlob he_secret;
+  for (int i = 0; i < kFakeLogSize + 1; i++) {
+    ASSERT_EQ(LE_CRED_ERROR_INVALID_LE_SECRET,
+        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret));
+  }
+  uint64_t label3;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label3));
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // Subsequent operations should fail.
+  // TODO(crbug.com/809710): Should we reset the tree in this case?
+  EXPECT_EQ(LE_CRED_ERROR_HASH_TREE,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+  EXPECT_EQ(LE_CRED_ERROR_HASH_TREE,
+            le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret));
+}
+
+// Verify behaviour when there is an unsalvageable disk corruption.
+TEST_F(LECredentialManagerUnitTest, FailedSyncDiskCorrupted) {
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kLeSecret2(std::begin(kLeSecret2Array),
+                                std::end(kLeSecret2Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  uint64_t label1;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+  uint64_t label2;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+  brillo::SecureBlob he_secret;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+
+  le_mgr_.reset();
+  CorruptHashTree();
+  CorruptLeafCache();
+
+  // Now re-initialize the LE Manager.
+  InitLEManager();
+
+  // Any operation should now fail.
+  // TODO(crbug.com/809710): Should we reset the tree in this case?
+  he_secret.clear();
+  EXPECT_EQ(LE_CRED_ERROR_HASH_TREE,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+  EXPECT_EQ(LE_CRED_ERROR_HASH_TREE,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
 }
 
 }  // namespace cryptohome
