@@ -57,14 +57,16 @@ def CheckTopLevel():
 
   # Pull out all the linked projects.
   listed_projs = []
+  listed_dirs = []
   for line in data:
     # Break once we hit the end of the table.
     if line.startswith('#'):
       break
 
-    m = re.match(r'^[|] \[([^]]+)*\]', line)
+    m = re.match(r'^[|] \[([^]]+)*\]\(\./([^)]*)/\)', line)
     if m:
       listed_projs.append(m.group(1))
+      listed_dirs.append(m.group(2))
   logging.debug('README.md projects: %s', listed_projs)
 
   sorted_projs = sorted(listed_projs)
@@ -75,14 +77,14 @@ def CheckTopLevel():
                   '\n'.join(lines[2:]))
 
   # Check the list in README.md for outdated entries.
-  old_projs = []
-  for proj in listed_projs:
-    path = os.path.join(TOP_DIR, proj)
+  old_dirs = []
+  for project_dir in listed_dirs:
+    path = os.path.join(TOP_DIR, project_dir)
     if not os.path.isdir(path):
-      old_projs.append(proj)
-  if old_projs:
+      old_dirs.append(path)
+  if old_dirs:
     ret = 1
-    logging.error('README.md: delete old project entries: %s', old_projs)
+    logging.error('README.md: found stale project entries: %s', old_dirs)
 
   # Check the local source repo for missing entries.
   existing_projs = sorted(GetActiveProjects())
