@@ -345,7 +345,7 @@ void VirtualMachineTest::SetUp() {
       FROM_HERE,
       base::Bind(
           &StartFakeMaitredService, this, base::ThreadTaskRunnerHandle::Get(),
-          temp_dir_.path().Append(kServerSocket),
+          temp_dir_.GetPath().Append(kServerSocket),
           base::Bind(&VirtualMachineTest::ServerStartCallback,
                      weak_factory_.GetWeakPtr(), run_loop.QuitClosure())));
 
@@ -356,7 +356,7 @@ void VirtualMachineTest::SetUp() {
   // Create the stub to the FakeMaitredService.
   std::unique_ptr<vm_tools::Maitred::Stub> stub =
       vm_tools::Maitred::NewStub(grpc::CreateChannel(
-          "unix:" + temp_dir_.path().Append(kServerSocket).value(),
+          "unix:" + temp_dir_.GetPath().Append(kServerSocket).value(),
           grpc::InsecureChannelCredentials()));
   ASSERT_TRUE(stub);
 
@@ -373,7 +373,7 @@ void VirtualMachineTest::SetUp() {
 
   // Create the VirtualMachine.
   vm_ = VirtualMachine::CreateForTesting(std::move(mac_addr), std::move(subnet),
-                                         vsock_cid, temp_dir_.path(),
+                                         vsock_cid, temp_dir_.GetPath(),
                                          std::move(stub));
   ASSERT_TRUE(vm_);
 }

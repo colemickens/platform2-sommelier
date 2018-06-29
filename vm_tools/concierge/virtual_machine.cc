@@ -182,7 +182,7 @@ bool VirtualMachine::Start(base::FilePath kernel,
       "--root",         rootfs.value(),
       "--tap-fd",       std::to_string(tap_fd.get()),
       "--cid",          std::to_string(vsock_cid_),
-      "--socket",       runtime_dir_.path().Append(kCrosvmSocket).value(),
+      "--socket",       runtime_dir_.GetPath().Append(kCrosvmSocket).value(),
       "--wayland-sock", kWaylandSocket,
       "--wayland-dmabuf",
   };
@@ -294,7 +294,7 @@ bool VirtualMachine::Shutdown() {
   brillo::ProcessImpl crosvm;
   crosvm.AddArg(kCrosvmBin);
   crosvm.AddArg("stop");
-  crosvm.AddArg(runtime_dir_.path().Append(kCrosvmSocket).value());
+  crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
   crosvm.Run();
 
   // We can't actually trust the exit codes that crosvm gives us so just see if
