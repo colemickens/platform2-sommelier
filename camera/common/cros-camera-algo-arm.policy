@@ -26,7 +26,6 @@ gettid: 1
 gettimeofday: 1
 getuid32: 1
 inotify_init: 1
-ioctl: 1
 listen: 1
 lstat64: 1
 madvise: 1
