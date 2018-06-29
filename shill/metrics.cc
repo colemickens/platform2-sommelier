@@ -104,6 +104,20 @@ const int Metrics::kMetricTimeToConnectMillisecondsNumBuckets = 60;
 const char Metrics::kMetricTimeToScanAndConnectMillisecondsSuffix[] =
     "TimeToScanAndConnect";
 
+constexpr char Metrics::kMetricCumulativeDirectory[] =
+    "/var/lib/shill/metrics";
+constexpr char Metrics::kMetricCumulativeTimeOnlineAny[] =
+    "Network.Shill.CumulativeTimeOnline.Any";
+constexpr char Metrics::kMetricCumulativeTimeOnlineCellular[] =
+    "Network.Shill.CumulativeTimeOnline.Cellular";
+constexpr char Metrics::kMetricCumulativeTimeOnlineWifi[] =
+    "Network.Shill.CumulativeTimeOnline.Wifi";
+constexpr int Metrics::kMetricsCumulativeTimeOnlineSamplePeriod =
+    60 * 5;  // 5 minutes in seconds
+constexpr int Metrics::kMetricsCumulativeTimeOnlineAccumulationPeriod =
+    24 * 60 * 60;  // 24 hours in seconds
+constexpr int Metrics::kMetricsCumulativeTimeOnlineBucketCount = 40;
+
 const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
@@ -474,12 +488,20 @@ const char Metrics::kMetricDeviceRemovedEvent[] =
 const char Metrics::kMetricConnectionDiagnosticsIssue[] =
     "Network.Shill.ConnectionDiagnosticsIssue";
 
-    // static
-    const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
-        "UnreliableLinkSignalStrength";
+// static
+const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
+    "UnreliableLinkSignalStrength";
 const int Metrics::kMetricServiceSignalStrengthMin = 1;
 const int Metrics::kMetricServiceSignalStrengthMax = 100;
 const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
+
+namespace {
+
+constexpr char kMetricTechnologyNameWifi[] = "TimeOnTechnology.wifi";
+constexpr char kMetricTechnologyNameCellular[] = "TimeOnTechnology.cellular";
+constexpr char kMetricTechnologyNameAny[] = "TimeOnTechnology.any";
+
+}  // namespace
 
 Metrics::Metrics(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
@@ -704,6 +726,21 @@ Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
 
 void Metrics::Start() {
   SLOG(this, 2) << __func__;
+  static const std::vector<std::string> technology_names = {
+      kMetricTechnologyNameWifi,
+      kMetricTechnologyNameCellular,
+      kMetricTechnologyNameAny,
+  };
+  base::FilePath backing_path(kMetricCumulativeDirectory);
+  cumulative_metrics_.reset(
+    new chromeos_metrics::CumulativeMetrics(
+      backing_path,
+      technology_names,
+      base::TimeDelta::FromMinutes(5),
+      base::Bind(&AccumulateTimeOnTechnology, this),
+      base::TimeDelta::FromDays(1),
+      base::Bind(&ReportTimeOnTechnology,
+                 base::Unretained(&metrics_library_))));
 }
 
 void Metrics::Stop() {
@@ -744,6 +781,44 @@ void Metrics::AddServiceStateTransitionTimer(
   service_metrics->start_on_state[start_state].push_back(timer.get());
   service_metrics->stop_on_state[stop_state].push_back(timer.get());
   service_metrics->timers.push_back(std::move(timer));
+}
+
+// static
+void Metrics::AccumulateTimeOnTechnology(
+    const Metrics* metrics, chromeos_metrics::CumulativeMetrics* cm) {
+
+  // Only accumulate time on line.
+  if (!metrics->was_last_online_)
+    return;
+
+  int64_t active_time = cm->ActiveTimeSinceLastUpdate().InSeconds();
+  cm->Add(kMetricTechnologyNameAny, active_time);
+
+  switch (metrics->last_default_technology_) {
+  case Technology::kCellular:
+    cm->Add(kMetricTechnologyNameCellular, active_time);
+    break;
+  case Technology::kWifi:
+    cm->Add(kMetricTechnologyNameWifi, active_time);
+    break;
+  default:
+    break;
+  }
+}
+
+// static
+void Metrics::ReportTimeOnTechnology(
+    MetricsLibrary* ml, chromeos_metrics::CumulativeMetrics* cm) {
+  const int min = 10;  // seconds
+  const int max = kMetricsCumulativeTimeOnlineAccumulationPeriod;
+  const int nbuckets = kMetricsCumulativeTimeOnlineBucketCount;
+
+  ml->SendToUMA(Metrics::kMetricCumulativeTimeOnlineAny,
+                cm->Get(kMetricTechnologyNameAny), min, max, nbuckets);
+  ml->SendToUMA(Metrics::kMetricCumulativeTimeOnlineCellular,
+                cm->Get(kMetricTechnologyNameCellular), min, max, nbuckets);
+  ml->SendToUMA(Metrics::kMetricCumulativeTimeOnlineWifi,
+                cm->Get(kMetricTechnologyNameWifi), min, max, nbuckets);
 }
 
 void Metrics::NotifyDefaultServiceChanged(const Service* service) {

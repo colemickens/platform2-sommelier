@@ -56,5 +56,23 @@ if [ ! -f /var/cache/shill/default.profile -a \
   chmod a+r /var/cache/shill/default.profile
 fi
 
+# Create private directory for data which needs to persists across sessions.
+# Wrap in conditional for performance: the body will run only once, and "[" is
+# faster than "mkdir -p".
+PERSISTENT_DATA_DIR=/var/lib/shill
+if [ ! -f "${PERSISTENT_DATA_DIR}" ]; then
+  mkdir "${PERSISTENT_DATA_DIR}"
+  chown shill:shill "${PERSISTENT_DATA_DIR}"
+  chmod 0755 "${PERSISTENT_DATA_DIR}"
+fi
+
+# Create directory for backing files for metrics.
+CUMULATIVE_METRICS_DIR="${PERSISTENT_DATA_DIR}/metrics"
+if [ ! -f "${CUMULATIVE_METRICS_DIR}" ]; then
+  mkdir "${CUMULATIVE_METRICS_DIR}"
+  chown shill:shill "${CUMULATIVE_METRICS_DIR}"
+  chmod 0755 "${CUMULATIVE_METRICS_DIR}"
+fi
+
 # This option is no longer supported.
 rm -f /home/chronos/.disable_shill

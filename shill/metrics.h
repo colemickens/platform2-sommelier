@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include <metrics/cumulative_metrics.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
@@ -609,6 +610,13 @@ class Metrics {
   static const int kMetricTimeToConnectMillisecondsMin;
   static const int kMetricTimeToConnectMillisecondsNumBuckets;
   static const char kMetricTimeToScanAndConnectMillisecondsSuffix[];
+  static const char kMetricCumulativeDirectory[];
+  static const char kMetricCumulativeTimeOnlineAny[];
+  static const char kMetricCumulativeTimeOnlineCellular[];
+  static const char kMetricCumulativeTimeOnlineWifi[];
+  static const int kMetricsCumulativeTimeOnlineSamplePeriod;
+  static const int kMetricsCumulativeTimeOnlineAccumulationPeriod;
+  static const int kMetricsCumulativeTimeOnlineBucketCount;
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
@@ -919,6 +927,14 @@ class Metrics {
   // Converts portal detection result to UMA portal result enumerator.
   static PortalResult PortalDetectionResultToEnum(
       const PortalDetector::Result& result);
+
+  // Callback for accumulating per-technology connected time.
+  static void AccumulateTimeOnTechnology(
+      const Metrics* metrics, chromeos_metrics::CumulativeMetrics* cm);
+
+  // Callback for reporting UMA stats on connected time per device per day.
+  static void ReportTimeOnTechnology(
+      MetricsLibrary* ml, chromeos_metrics::CumulativeMetrics* cm);
 
   // Starts this object.  Call this during initialization.
   virtual void Start();
@@ -1382,6 +1398,7 @@ class Metrics {
   bool wake_on_wifi_throttled_;
   bool wake_reason_received_;
   int dark_resume_scan_retries_;
+  std::unique_ptr<chromeos_metrics::CumulativeMetrics> cumulative_metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };
