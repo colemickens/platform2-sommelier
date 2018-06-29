@@ -42,6 +42,7 @@ namespace metrics {
 const char kSystemKeyStatus[] = "Platform.MountEncrypted.SystemKeyStatus";
 const char kEncryptionKeyStatus[] =
     "Platform.MountEncrypted.EncryptionKeyStatus";
+const char kEncryptedFsType[] = "Platform.MountEncrypted.EncryptedFsType";
 }
 
 static result_code get_system_property(const char* prop, char* buf,
@@ -211,6 +212,9 @@ int main(int argc, char* argv[]) {
   /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
    * chromeos_startup do the stateful wipe.
    */
+
+  RecordEnumeratedHistogram(&metrics, metrics::kEncryptedFsType,
+                            encrypted_fs.GetType());
   rc = encrypted_fs.CheckStates();
   if (rc != RESULT_SUCCESS)
     return rc;
