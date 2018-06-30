@@ -43,6 +43,9 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   grpc::Status Mount(grpc::ServerContext* ctx,
                      const vm_tools::MountRequest* request,
                      vm_tools::MountResponse* response) override;
+  grpc::Status Mount9P(grpc::ServerContext* ctx,
+                       const vm_tools::Mount9PRequest* request,
+                       vm_tools::MountResponse* response) override;
 
   grpc::Status StartTermina(grpc::ServerContext* ctx,
                             const vm_tools::StartTerminaRequest* request,

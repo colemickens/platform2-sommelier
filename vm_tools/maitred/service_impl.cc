@@ -16,6 +16,8 @@
 #include <sys/mount.h>
 #include <sys/socket.h>
 
+#include <linux/vm_sockets.h>
+
 #include <map>
 #include <string>
 #include <utility>
@@ -26,6 +28,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
+#include <base/strings/stringprintf.h>
 
 using std::string;
 
@@ -398,6 +401,44 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     return grpc::Status(grpc::INTERNAL, "tremplin did not launch");
   }
 
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::Mount9P(grpc::ServerContext* ctx,
+                                  const Mount9PRequest* request,
+                                  MountResponse* response) {
+  LOG(INFO) << "Received request to mount 9P file system";
+  base::ScopedFD server(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));
+  if (!server.is_valid()) {
+    response->set_error(errno);
+    PLOG(ERROR) << "Failed to create vsock socket";
+    return grpc::Status(grpc::INTERNAL, "unable to create vsock socket");
+  }
+
+  struct sockaddr_vm svm = {
+      .svm_family = AF_VSOCK,
+      .svm_cid = VMADDR_CID_HOST,
+      .svm_port = static_cast<unsigned int>(request->port()),
+  };
+  if (connect(server.get(), reinterpret_cast<struct sockaddr*>(&svm),
+              sizeof(svm)) != 0) {
+    response->set_error(errno);
+    PLOG(ERROR) << "Unable to connect to server";
+    return grpc::Status(grpc::INTERNAL, "unable to connect to server");
+  }
+
+  // Do the mount.
+  string data = base::StringPrintf(
+      "trans=fd,rfdno=%d,wfdno=%d,cache=none,access=any,version=9p2000.L",
+      server.get(), server.get());
+  if (mount("9p", request->target().c_str(), "9p",
+            MS_NOSUID | MS_NODEV | MS_NOEXEC, data.c_str()) != 0) {
+    response->set_error(errno);
+    PLOG(ERROR) << "Failed to mount 9p file system";
+    return grpc::Status(grpc::INTERNAL, "failed to mount file system");
+  }
+
+  LOG(INFO) << "Mounted 9P file system on " << request->target();
   return grpc::Status::OK;
 }
 

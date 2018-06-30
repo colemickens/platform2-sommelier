@@ -91,6 +91,16 @@ message MountRequest {
   string options = 5;
 }
 
+// Request to mount a 9P filesystem via a vsock socket using the trans=fd
+// option.
+message Mount9PRequest {
+  // The port number on the host where the server is listening for connections.
+  uint32 port = 1;
+
+  // The path where the filesystem should be mounted.
+  string target = 2;
+}
+
 // Response after maitred attempts to mount a filesystem.
 message MountResponse {
   sint32 error = 1;
@@ -142,4 +152,9 @@ service Maitred {
 
   // Start Termina-specific system services.
   rpc StartTermina(StartTerminaRequest) returns (StartTerminaResponse);
+
+  // Mount a 9P server using a vsock socket.  This uses the trans=fd option
+  // when mounting the 9P server, which requires first connecting a socket
+  // to the server.  Other transports should use the normal Mount rpc instead.
+  rpc Mount9P(Mount9PRequest) returns (MountResponse);
 }

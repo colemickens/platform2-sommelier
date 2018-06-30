@@ -161,6 +161,37 @@ bool Mount(vm_tools::Maitred::Stub* stub, base::FilePath path) {
             << request.target();
   return true;
 }
+
+bool Mount9P(vm_tools::Maitred::Stub* stub, base::FilePath path) {
+  LOG(INFO) << "Attempting to mount 9p filesystem";
+
+  vm_tools::Mount9PRequest request;
+  if (!ParseFileToProto(path, &request)) {
+    LOG(ERROR) << "Unable to parse proto file";
+    return false;
+  }
+
+  // Make the RPC.
+  grpc::ClientContext ctx;
+  vm_tools::MountResponse response;
+
+  grpc::Status status = stub->Mount9P(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to send Mount9P RPC: " << status.error_message();
+    return true;
+  }
+
+  if (response.error() != 0) {
+    LOG(ERROR) << "Failed to mount VMADDR_CID_HOST:" << request.port() << " -> "
+               << request.target() << ": " << strerror(response.error());
+    return false;
+  }
+
+  LOG(INFO) << "Mount successful VMADDR_CID_HOST:" << request.port() << " -> "
+            << request.target();
+  return true;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -173,6 +204,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(launch_process, "",
                 "Path to LaunchProcessRequest text proto file");
   DEFINE_string(mount, "", "Path to MountRequest text proto file");
+  DEFINE_string(mount_9p, "", "Path to Mount9PRequest text proto file");
   DEFINE_bool(shutdown, false, "Shutdown the VM");
   brillo::FlagHelper::Init(argc, argv, "maitred client tool");
   if (FLAGS_cid == 0) {
@@ -209,6 +241,8 @@ int main(int argc, char* argv[]) {
     success = LaunchProcess(&stub, base::FilePath(FLAGS_launch_process));
   } else if (!FLAGS_mount.empty()) {
     success = Mount(&stub, base::FilePath(FLAGS_mount));
+  } else if (!FLAGS_mount_9p.empty()) {
+    success = Mount9P(&stub, base::FilePath(FLAGS_mount_9p));
   } else if (FLAGS_shutdown) {
     Shutdown(&stub);
   } else {
