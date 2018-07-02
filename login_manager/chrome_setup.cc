@@ -448,6 +448,7 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 
   // TODO(xiaochu): Remove after https://crbug.com/851151 is fixed.
   builder->AddVmodulePattern("component_updater_service=1");
+  builder->AddVmodulePattern("update_engine=1");
 
   // TODO(afakhry): Remove after Night Light has launched:
   // https://crbug.com/841846
