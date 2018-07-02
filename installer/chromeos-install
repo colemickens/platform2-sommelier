@@ -445,9 +445,9 @@ wipe_stateful() {
 
   local num_4k_sectors
   if [ "${DST_BLKSIZE}" -gt 4096 ]; then
-    num_4k_sectors = $(( NUM_STATEFUL_SECTORS * (DST_BLKSIZE / 4096) ))
+    num_4k_sectors=$(( NUM_STATEFUL_SECTORS * (DST_BLKSIZE / 4096) ))
   else
-    num_4k_sectors = $(( NUM_STATEFUL_SECTORS / (4096 / DST_BLKSIZE) ))
+    num_4k_sectors=$(( NUM_STATEFUL_SECTORS / (4096 / DST_BLKSIZE) ))
   fi
 
   # We always make any ext* stateful partitions ext4.
