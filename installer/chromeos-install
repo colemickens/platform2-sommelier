@@ -547,9 +547,9 @@ install_stateful() {
   # src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
   #
   local dirlist="
-    unencrypted/import_extensions
     unencrypted/demo_mode_resources
-    oobe_auto_config
+    unencrypted/import_extensions
+    unencrypted/oobe_auto_config
   "
 
   if crossystem 'cros_debug?1'; then
