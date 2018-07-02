@@ -328,7 +328,7 @@
 				"args": [
 					"arc_setup_wrapper.sh"
 				],
-				"timeout": 20
+				"timeout": 40
 			}
 		],
 		"prechroot": [
