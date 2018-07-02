@@ -40,7 +40,7 @@ class DepthFirstIterator {
   DepthFirstIterator(const std::string& dir_path,
                      SambaInterface* samba_interface);
 
-  ~DepthFirstIterator() = default;
+  virtual ~DepthFirstIterator() = default;
 
   // Either OnPop() or OnPush() should be overridden to set |current_| to
   // |entry| in order to achieve a Postorder or Preorder traversal. Without an
