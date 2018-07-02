@@ -235,6 +235,8 @@ int StartVm(dbus::ObjectProxy* proxy,
   LOG(INFO) << "    ip address: " << address;
   LOG(INFO) << "    vsock cid:  " << vm_info.cid();
   LOG(INFO) << "    process id: " << vm_info.pid();
+  LOG(INFO) << "    seneschal server handle: "
+            << vm_info.seneschal_server_handle();
 
   return 0;
 }
@@ -339,10 +341,11 @@ int GetVmInfo(dbus::ObjectProxy* proxy, string owner_id, string name) {
   string address;
   IPv4AddressToString(vm_info.ipv4_address(), &address);
 
-  LOG(INFO) << "VM:           " << name;
-  LOG(INFO) << "IPv4 address: " << address;
-  LOG(INFO) << "pid:          " << vm_info.pid();
-  LOG(INFO) << "vsock cid:    " << vm_info.cid();
+  LOG(INFO) << "VM:                      " << name;
+  LOG(INFO) << "IPv4 address:            " << address;
+  LOG(INFO) << "pid:                     " << vm_info.pid();
+  LOG(INFO) << "vsock cid:               " << vm_info.cid();
+  LOG(INFO) << "seneschal server handle: " << vm_info.seneschal_server_handle();
   LOG(INFO) << "Done";
   return 0;
 }
@@ -757,6 +760,8 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   LOG(INFO) << "    ip address: " << address;
   LOG(INFO) << "    vsock cid:  " << vm_info.cid();
   LOG(INFO) << "    process id: " << vm_info.pid();
+  LOG(INFO) << "    seneschal server handle: "
+            << vm_info.seneschal_server_handle();
 
   return 0;
 }

@@ -20,6 +20,7 @@
 #include <brillo/process.h>
 
 #include "vm_tools/concierge/mac_address_generator.h"
+#include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
@@ -88,6 +89,7 @@ class VirtualMachine {
       MacAddress mac_addr,
       std::unique_ptr<SubnetPool::Subnet> subnet,
       uint32_t vsock_cid,
+      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir);
   ~VirtualMachine();
 
@@ -133,6 +135,10 @@ class VirtualMachine {
   // Starts Termina-specific services in the guest.
   bool StartTermina(std::string lxd_subnet, std::string* out_error);
 
+  // Mount a 9p file system inside the VM.  The guest VM connects to a server
+  // listening on the vsock port |port| and mounts the file system on |target|.
+  bool Mount9P(uint32_t port, std::string target);
+
   // Sets the container subnet for this VM to |subnet|. This subnet is intended
   // to be provided to a container runtime as a DHCP pool.
   void SetContainerSubnet(std::unique_ptr<SubnetPool::Subnet> subnet);
@@ -142,6 +148,17 @@ class VirtualMachine {
 
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
+
+  // The 9p server managed by seneschal that provides access to shared files for
+  // this VM.  Returns 0 if there is no seneschal server associated with this
+  // VM.
+  uint32_t seneschal_server_handle() const {
+    if (seneschal_server_proxy_) {
+      return seneschal_server_proxy_->handle();
+    }
+
+    return 0;
+  }
 
   // The IPv4 address of the VM's gateway in network byte order.
   uint32_t GatewayAddress() const;
@@ -175,6 +192,7 @@ class VirtualMachine {
   VirtualMachine(MacAddress mac_addr,
                  std::unique_ptr<SubnetPool::Subnet> subnet,
                  uint32_t vsock_cid,
+                 std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
                  base::FilePath runtime_dir);
 
   // Starts the VM with the given kernel and root file system.
@@ -203,6 +221,9 @@ class VirtualMachine {
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
+
+  // Proxy to the server providing shared directory access for this VM.
+  std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
 
   // Runtime directory for this VM.
   base::ScopedTempDir runtime_dir_;

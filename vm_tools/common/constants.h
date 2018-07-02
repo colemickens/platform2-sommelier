@@ -15,6 +15,9 @@ constexpr int kVshPort = 9001;
 constexpr int kStartupListenerPort = 7777;
 constexpr int kTremplinListenerPort = 7778;
 
+// All ports above this value are reserved for seneschal servers.
+constexpr uint32_t kFirstSeneschalServerPort = 16384;
+
 }  // namespace vm_tools
 
 #endif  // VM_TOOLS_COMMON_CONSTANTS_H_

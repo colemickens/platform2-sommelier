@@ -128,13 +128,16 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout) {
 
 }  // namespace
 
-VirtualMachine::VirtualMachine(MacAddress mac_addr,
-                               std::unique_ptr<Subnet> subnet,
-                               uint32_t vsock_cid,
-                               base::FilePath runtime_dir)
+VirtualMachine::VirtualMachine(
+    MacAddress mac_addr,
+    std::unique_ptr<Subnet> subnet,
+    uint32_t vsock_cid,
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+    base::FilePath runtime_dir)
     : mac_addr_(std::move(mac_addr)),
       subnet_(std::move(subnet)),
-      vsock_cid_(vsock_cid) {
+      vsock_cid_(vsock_cid),
+      seneschal_server_proxy_(std::move(seneschal_server_proxy)) {
   CHECK(subnet_);
   CHECK(base::DirectoryExists(runtime_dir));
 
@@ -153,10 +156,11 @@ std::unique_ptr<VirtualMachine> VirtualMachine::Create(
     MacAddress mac_addr,
     std::unique_ptr<Subnet> subnet,
     uint32_t vsock_cid,
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir) {
-  auto vm = base::WrapUnique(new VirtualMachine(std::move(mac_addr),
-                                                std::move(subnet), vsock_cid,
-                                                std::move(runtime_dir)));
+  auto vm = base::WrapUnique(new VirtualMachine(
+      std::move(mac_addr), std::move(subnet), vsock_cid,
+      std::move(seneschal_server_proxy), std::move(runtime_dir)));
 
   if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(disks))) {
     vm.reset();
@@ -474,6 +478,32 @@ bool VirtualMachine::StartTermina(std::string lxd_subnet,
   return true;
 }
 
+bool VirtualMachine::Mount9P(uint32_t port, string target) {
+  LOG(INFO) << "Mounting 9P file system from port " << port << " on " << target;
+
+  vm_tools::Mount9PRequest request;
+  vm_tools::MountResponse response;
+
+  request.set_port(port);
+  request.set_target(std::move(target));
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = stub_->Mount9P(&ctx, request, &response);
+  if (!status.ok() || response.error() != 0) {
+    LOG(ERROR) << "Failed to mount 9P server on " << request.target()
+               << " inside VM " << vsock_cid_ << ": "
+               << (status.ok() ? strerror(response.error())
+                               : status.error_message());
+    return false;
+  }
+
+  return true;
+}
+
 void VirtualMachine::SetContainerSubnet(
     std::unique_ptr<SubnetPool::Subnet> subnet) {
   container_subnet_ = std::move(subnet);
@@ -523,9 +553,9 @@ std::unique_ptr<VirtualMachine> VirtualMachine::CreateForTesting(
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
-  auto vm = base::WrapUnique(new VirtualMachine(std::move(mac_addr),
-                                                std::move(subnet), vsock_cid,
-                                                std::move(runtime_dir)));
+  auto vm = base::WrapUnique(
+      new VirtualMachine(std::move(mac_addr), std::move(subnet), vsock_cid,
+                         nullptr, std::move(runtime_dir)));
 
   vm->set_stub_for_testing(std::move(stub));
 

@@ -49,6 +49,7 @@
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/constants.h"
+#include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/ssh_keys.h"
 
 using std::string;
@@ -288,6 +289,7 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
 
 Service::Service(base::Closure quit_closure)
     : watcher_(FROM_HERE),
+      next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
       weak_ptr_factory_(this) {
   startup_listener_ =
@@ -408,6 +410,16 @@ bool Service::Init() {
   if (!cicerone_service_proxy_) {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << vm_tools::cicerone::kVmCiceroneServiceName;
+    return false;
+  }
+
+  // Get the D-Bus proxy for communicating with seneschal.
+  seneschal_service_proxy_ = bus_->GetObjectProxy(
+      vm_tools::seneschal::kSeneschalServiceName,
+      dbus::ObjectPath(vm_tools::seneschal::kSeneschalServicePath));
+  if (!seneschal_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << vm_tools::seneschal::kSeneschalServiceName;
     return false;
   }
 
@@ -686,6 +698,19 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+  uint32_t seneschal_server_port = next_seneschal_server_port_++;
+  std::unique_ptr<SeneschalServerProxy> server_proxy =
+      SeneschalServerProxy::Create(seneschal_service_proxy_,
+                                   seneschal_server_port, vsock_cid);
+  if (!server_proxy) {
+    LOG(ERROR) << "Unable to start shared directory server";
+
+    response.set_failure_reason("Unable to start shared directory server");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  uint32_t seneschal_server_handle = server_proxy->handle();
 
   // Associate a WaitableEvent with this VM.  This needs to happen before
   // starting the VM to avoid a race where the VM reports that it's ready
@@ -695,10 +720,10 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   startup_listener_->AddPendingVm(vsock_cid, &event);
 
   // Start the VM and build the response.
-  auto vm = VirtualMachine::Create(std::move(kernel), std::move(rootfs),
-                                   std::move(disks), std::move(mac_address),
-                                   std::move(subnet), vsock_cid,
-                                   std::move(runtime_dir));
+  auto vm = VirtualMachine::Create(
+      std::move(kernel), std::move(rootfs), std::move(disks),
+      std::move(mac_address), std::move(subnet), vsock_cid,
+      std::move(server_proxy), std::move(runtime_dir));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -756,6 +781,15 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     }
   }
 
+  // Mount the 9p server.
+  if (!vm->Mount9P(seneschal_server_port, "/mnt/shared")) {
+    LOG(ERROR) << "Failed to mount " << request.shared_directory();
+
+    response.set_failure_reason("Failed to mount shared directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Notify cicerone that we have started a VM.
   NotifyCiceroneOfVmStarted(request.owner_id(), request.name(),
                             vm->ContainerSubnet(), vm->ContainerNetmask(),
@@ -775,6 +809,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
   vm_info->set_cid(vsock_cid);
+  vm_info->set_seneschal_server_handle(seneschal_server_handle);
   writer.AppendProtoAsArrayOfBytes(response);
 
   vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
@@ -883,6 +918,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
   vm_info->set_cid(vm->cid());
+  vm_info->set_seneschal_server_handle(vm->seneschal_server_handle());
 
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
