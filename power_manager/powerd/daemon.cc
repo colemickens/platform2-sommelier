@@ -395,7 +395,8 @@ void Daemon::Init() {
 
   // Asynchronously undo the previous force-lid-open request to the EC (if there
   // was one).
-  RunSetuidHelper("set_force_lid_open", "--noforce_lid_open", false);
+  if (BoolPrefIsTrue(kUseLidPref))
+    RunSetuidHelper("set_force_lid_open", "--noforce_lid_open", false);
 
   // This needs to happen *after* all D-Bus methods are exported:
   // https://crbug.com/331431
