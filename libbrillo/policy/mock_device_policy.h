@@ -103,6 +103,8 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetSecondFactorAuthenticationMode, bool(int*));
   MOCK_CONST_METHOD1(GetDisallowedTimeIntervals,
                      bool(std::vector<WeeklyTimeInterval>*));
+  MOCK_CONST_METHOD1(GetDeviceUpdateStagingSchedule, bool(std::vector<int> *));
+
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));
 };

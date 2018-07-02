@@ -202,6 +202,16 @@ class DevicePolicy {
   virtual bool GetDisallowedTimeIntervals(
       std::vector<WeeklyTimeInterval>* intervals_out) const = 0;
 
+  // Writes the value of the DeviceUpdateStagingPercentOfFleetPerWeek policy to
+  // |staging_schedule_out|. Returns true on success.
+  // Values are expected to be mononically increasing in the range of [0, 100].
+  // Each value describes the percentage of the fleet that is expected to
+  // receive an update per week, e.g. [5, 20, 30, 100] means that 5% of devices
+  // should be updated in the first week, 20% should be updated in the second
+  // week, and so on.
+  virtual bool GetDeviceUpdateStagingSchedule(
+      std::vector<int> *staging_schedule_out) const = 0;
+
  private:
   // Verifies that the policy signature is correct.
   virtual bool VerifyPolicySignature() = 0;

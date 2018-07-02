@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "policy/device_policy_impl.h"
@@ -10,6 +11,8 @@
 #include "install_attributes/mock_install_attributes_reader.h"
 
 namespace em = enterprise_management;
+
+using testing::ElementsAre;
 
 namespace policy {
 
@@ -186,6 +189,83 @@ TEST(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetTooSmall) {
   int value = -1;
   ASSERT_TRUE(device_policy.GetRollbackAllowedMilestones(&value));
   EXPECT_EQ(0, value);
+}
+
+// Update staging schedule has no values
+TEST(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_NoValues) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto *auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->clear_staging_percent_of_fleet_per_week();
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true));
+
+  std::vector<int> staging_schedule;
+  EXPECT_FALSE(device_policy.GetDeviceUpdateStagingSchedule(&staging_schedule));
+}
+
+// Update staging schedule has valid values
+TEST(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto *auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->add_staging_percent_of_fleet_per_week(10);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(20);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(40);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(100);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true));
+
+  std::vector<int> staging_schedule;
+  ASSERT_TRUE(device_policy.GetDeviceUpdateStagingSchedule(&staging_schedule));
+  EXPECT_THAT(staging_schedule, ElementsAre(10, 20, 40, 100));
+}
+
+// Update staging schedule has valid values, set using AD.
+TEST(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid_AD) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto *auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->add_staging_percent_of_fleet_per_week(10);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(20);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(40);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(100);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterpriseAD, true));
+
+  std::vector<int> staging_schedule;
+  ASSERT_TRUE(device_policy.GetDeviceUpdateStagingSchedule(&staging_schedule));
+  EXPECT_THAT(staging_schedule, ElementsAre(10, 20, 40, 100));
+}
+
+// Update staging schedule has values with values set larger than the max
+// allowed percentage and smaller than the min allowed percentage.
+TEST(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_SetOutsideAllowable) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto *auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->add_staging_percent_of_fleet_per_week(-10);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(20);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(40);
+  auto_update_settings->add_staging_percent_of_fleet_per_week(110);
+  DevicePolicyImpl device_policy;
+  device_policy.set_policy_for_testing(device_policy_proto);
+  device_policy.set_install_attributes_for_testing(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true));
+
+  std::vector<int> staging_schedule;
+  ASSERT_TRUE(device_policy.GetDeviceUpdateStagingSchedule(&staging_schedule));
+  EXPECT_THAT(staging_schedule, ElementsAre(0, 20, 40, 100));
 }
 
 }  // namespace policy

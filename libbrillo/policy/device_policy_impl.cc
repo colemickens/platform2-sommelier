@@ -4,6 +4,7 @@
 
 #include "policy/device_policy_impl.h"
 
+#include <algorithm>
 #include <memory>
 
 #include <base/containers/adapters.h>
@@ -498,6 +499,26 @@ bool DevicePolicyImpl::GetUsbDetachableWhitelist(
     dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
     usb_whitelist->push_back(dev_id);
   }
+  return true;
+}
+
+bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
+    std::vector<int> *staging_schedule_out) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const em::AutoUpdateSettingsProto &proto =
+      device_policy_.auto_update_settings();
+
+  if (proto.staging_percent_of_fleet_per_week_size() == 0)
+    return false;
+
+  for (int i = 0; i < proto.staging_percent_of_fleet_per_week_size(); i++) {
+    // Limit the percentage to [0, 100]
+    staging_schedule_out->push_back(
+        std::max(std::min(proto.staging_percent_of_fleet_per_week(i), 100), 0));
+  }
+
   return true;
 }
 
