@@ -12,10 +12,17 @@ for path in "${SAFE_REMOVE_PATHS}"; do
   # If the path exists and is a symlink, then it should be ignored.
   if [ -e "${path}" -a ! -L "${path}" ]; then
     # Recursively delete all files in the path. Note that we do not follow or
-    # consider any symlinks.
+    # consider any symlinks. Note that secure_erase_file is currently a no-op
+    # for non-eMMC (NVMe) disks, and will do nothing to the data.
     find "${path}" -type f -exec secure_erase_file {} \;
 
-    # Delete the path, since its contents have already been destroyed.
-    rm -rf "${path}"
+    # Delete the path, since its contents have already been destroyed. This
+    # command might fail if we don't have permissions on the *parent* directory,
+    # in which case we should not let the exit code of this script be 1 since
+    # the data within the path has already been removed. In the case that
+    # secure_erase_file fails to remove NVMe contents, rm will still recursively
+    # delete all it can before it tries (and potentially fails) to delete the
+    # top-level directory.
+    rm -rf "${path}" || true
   fi
 done
