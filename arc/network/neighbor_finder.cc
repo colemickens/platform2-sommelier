@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "arc/network/manager.h"
 #include "arc/network/neighbor_finder.h"
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <netinet/icmp6.h>
+#include <netinet/in.h>
 #include <string.h>
 
 #include <ndp.h>
@@ -23,6 +26,7 @@ namespace arc_networkd {
 bool NeighborFinder::Check(const std::string& ifname,
                            const struct in6_addr& addr,
                            const base::Callback<void(bool)>& callback) {
+  int success;
   struct ndp_msg* msg;
 
   CHECK(!running_);
@@ -36,23 +40,36 @@ bool NeighborFinder::Check(const std::string& ifname,
       base::Bind(&NeighborFinder::Timeout, weak_factory_.GetWeakPtr()),
       base::TimeDelta::FromMilliseconds(kTimeoutMs));
 
-  CHECK_EQ(ndp_msg_new(&msg, NDP_MSG_NS), 0);
+  success = ndp_msg_new(&msg, NDP_MSG_NS);
+  if (success < 0) {
+    errno = -success;
+    PLOG(WARNING) << "Failed to allocate NDP Neighbor Solicitation msg";
+    return false;
+  }
+
   ndp_msg_ifindex_set(msg, ifindex_);
 
   struct nd_neighbor_solicit** ns =
       reinterpret_cast<struct nd_neighbor_solicit**>(ndp_msgns(msg));
   memcpy(&(*ns)->nd_ns_target, &addr, sizeof((*ns)->nd_ns_target));
 
-  if (ndp_msg_send(ndp_, msg))
-    LOG(WARNING) << "Error sending neighbor solicitation";
+  success = ndp_msg_send(ndp_, msg);
+  if (success < 0) {
+    errno = -success;
+    PLOG(WARNING) << "Error sending Neighbor Solicitation msg to "
+                  << check_addr_;
+  }
+
   ndp_msg_destroy(msg);
 
-  return true;
+  return success == 0;
 }
 
 void NeighborFinder::Timeout() {
   if (!running_)
     return;
+
+  VLOG(1) << "no answer for neighbor solicitation to " << check_addr_;
 
   running_ = false;
   StopNdp();
@@ -64,6 +81,8 @@ int NeighborFinder::OnNdpMsg(struct ndp* ndp, struct ndp_msg* msg) {
     return 0;
 
   if (memcmp(&check_addr_, ndp_msg_addrto(msg), sizeof(check_addr_)) == 0) {
+    VLOG(1) << "got answer for neighbor solicitation to " << check_addr_;
+
     running_ = false;
     StopNdp();
     result_callback_.Run(true);

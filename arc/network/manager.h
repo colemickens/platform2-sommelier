@@ -69,6 +69,8 @@ class Manager final : public brillo::DBusDaemon {
   // the daemon should clean up in preparation to exit.
   void OnShutdown(int* exit_code) override;
 
+  friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
+
   // Persistent objects.
   brillo::ProcessReaper process_reaper_;
   std::unique_ptr<ShillClient> shill_client_;

@@ -43,6 +43,15 @@ int main(int argc, char* argv[]) {
   opt.con_ifname = FLAGS_container_interface;
   opt.con_netns = FLAGS_con_netns;
 
+  LOG(INFO) << "Starting arc-networkd "
+            << (FLAGS_ip_helper_fd >= 0 ? "helper" : "manager")
+            << " with Option "
+            << "{ netns=" << opt.con_netns
+            << ", host ifname=" << opt.int_ifname
+            << ", guest ifname=" << opt.con_ifname
+            << ", mdns ip=" << opt.mdns_ipaddr
+            << " }";
+
   if (FLAGS_ip_helper_fd >= 0) {
     base::ScopedFD fd(FLAGS_ip_helper_fd);
     arc_networkd::IpHelper ip_helper{opt, std::move(fd)};

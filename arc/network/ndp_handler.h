@@ -35,6 +35,8 @@ class NdpHandler : public MessageLoopForIO::Watcher {
 
   virtual int OnNdpMsg(struct ndp* ndp, struct ndp_msg* msg) = 0;
 
+  static const char* MsgTypeName(enum ndp_msg_type msg_type);
+
   struct ndp* ndp_{nullptr};
   int ifindex_;
   enum ndp_msg_type msg_type_;

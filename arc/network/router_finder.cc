@@ -4,6 +4,7 @@
 
 #include "arc/network/router_finder.h"
 
+#include <errno.h>
 #include <stdint.h>
 
 #include <ndp.h>
@@ -51,31 +52,48 @@ void RouterFinder::CheckForRouter() {
   if (have_prefix_)
     return;
 
+  rs_attempts_++;
+  if (rs_attempts_ > kMaxRtrSolicitations) {
+    LOG(INFO) << "No IPv6 router found on iface " << ifname_;
+    return;
+  }
+
   if (!ndp_)
     StartNdp(ifname_, NDP_MSG_RA);
   SendRouterSolicitation();
 
-  if (++rs_attempts_ < kMaxRtrSolicitations) {
-    base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
-        FROM_HERE,
-        base::Bind(&RouterFinder::CheckForRouter, weak_factory_.GetWeakPtr()),
-        base::TimeDelta::FromMilliseconds(kRtrSolicitationIntervalMs));
-  }
+  base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&RouterFinder::CheckForRouter, weak_factory_.GetWeakPtr()),
+      base::TimeDelta::FromMilliseconds(kRtrSolicitationIntervalMs));
 }
 
 void RouterFinder::SendRouterSolicitation() {
+  int success;
   struct ndp_msg* msg;
 
-  CHECK_EQ(ndp_msg_new(&msg, NDP_MSG_RS), 0);
+  success = ndp_msg_new(&msg, NDP_MSG_RS);
+  if (success < 0) {
+    errno = -success;
+    PLOG(WARNING) << "Failed to allocate NDP Router Solicitation msg";
+    return;
+  }
+
   ndp_msg_ifindex_set(msg, ifindex_);
-  if (ndp_msg_send(ndp_, msg))
-    LOG(WARNING) << "Error sending router solicitation";
+  success = ndp_msg_send(ndp_, msg);
+  if (success < 0) {
+    errno = -success;
+    PLOG(WARNING) << "Error sending router solicitation";
+  }
   ndp_msg_destroy(msg);
 }
 
 int RouterFinder::OnNdpMsg(struct ndp* ndp, struct ndp_msg* msg) {
-  if (ndp_msg_type(msg) != NDP_MSG_RA)
+  enum ndp_msg_type msg_type = ndp_msg_type(msg);
+  if (msg_type != NDP_MSG_RA) {
+    LOG(WARNING) << "Unexpected message type " << MsgTypeName(msg_type);
     return -1;
+  }
 
   int offset;
 

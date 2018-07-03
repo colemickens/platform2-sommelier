@@ -5,6 +5,7 @@
 #include "arc/network/manager.h"
 
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <stdint.h>
 
 #include <utility>
@@ -40,23 +41,29 @@ Manager::Manager(const Options& opt, std::unique_ptr<HelperProcess> ip_helper)
 }
 
 int Manager::OnInit() {
+  VLOG(1) << "OnInit for " << *this;
+
   // Run with minimal privileges.
   brillo::Minijail* m = brillo::Minijail::GetInstance();
   struct minijail* jail = m->New();
 
   // Most of these return void, but DropRoot() can fail if the user/group
   // does not exist.
-  CHECK(m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
+  CHECK(m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser))
+      << "Could not drop root privileges";
   m->UseCapabilities(jail, kManagerCapMask);
   m->Enter(jail);
   m->Destroy(jail);
 
   // Handle subprocess lifecycle.
+
   process_reaper_.Register(this);
-  process_reaper_.WatchForChild(
+
+  CHECK(process_reaper_.WatchForChild(
       FROM_HERE, ip_helper_->pid(),
       base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                 ip_helper_->pid()));
+                 ip_helper_->pid())))
+      << "Failed to watch child IpHelper process";
 
   // This needs to execute after DBusDaemon::OnInit() creates bus_.
   base::MessageLoopForIO::current()->task_runner()->PostTask(
@@ -76,15 +83,16 @@ void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
   ClearArcIp();
   neighbor_finder_.reset();
 
-  lan_ifname_ = ifname;
   if (ifname.empty()) {
-    LOG(INFO) << "Unbinding services";
+    LOG(INFO) << "Unbinding services from interface " << lan_ifname_;
+    lan_ifname_.clear();
     mdns_forwarder_.reset();
     ssdp_forwarder_.reset();
     router_finder_.reset();
     DisableInbound();
   } else {
-    LOG(INFO) << "Binding to interface " << ifname;
+    LOG(INFO) << "Binding services to new default interface " << ifname;
+    lan_ifname_ = ifname;
     mdns_forwarder_.reset(new MulticastForwarder());
     ssdp_forwarder_.reset(new MulticastForwarder());
     router_finder_.reset(new RouterFinder());
@@ -106,11 +114,9 @@ void Manager::OnRouteFound(const struct in6_addr& prefix,
                            int prefix_len,
                            const struct in6_addr& router) {
   if (prefix_len == 64) {
-    char buf[64];
-    LOG(INFO) << "Found IPv6 network "
-              << inet_ntop(AF_INET6, &prefix, buf, sizeof(buf)) << "/"
-              << prefix_len << " route "
-              << inet_ntop(AF_INET6, &router, buf, sizeof(buf));
+    LOG(INFO) << "Found IPv6 network on iface " << lan_ifname_
+              << " route=" << prefix << "/" << prefix_len
+              << ", gateway=" << router;
 
     memcpy(&random_address_, &prefix, sizeof(random_address_));
     random_address_prefix_len_ = prefix_len;
@@ -134,8 +140,12 @@ void Manager::OnNeighborCheckResult(bool found) {
       return;
     }
 
-    LOG(INFO) << "Detected IP collision, retrying with a new address";
+    struct in6_addr previous_address = random_address_;
     ArcIpConfig::GenerateRandom(&random_address_, random_address_prefix_len_);
+
+    LOG(INFO) << "Detected IP collision for " << previous_address
+              << ", retrying with new address " << random_address_;
+
     neighbor_finder_->Check(lan_ifname_, random_address_,
                             base::Bind(&Manager::OnNeighborCheckResult,
                                        weak_factory_.GetWeakPtr()));
@@ -147,11 +157,8 @@ void Manager::OnNeighborCheckResult(bool found) {
       return;
     }
 
-    char buf[64];
-    LOG(INFO) << "Setting IPv6 address "
-              << inet_ntop(AF_INET6, &random_address_, buf, sizeof(buf))
-              << "/128 route "
-              << inet_ntop(AF_INET6, &router, buf, sizeof(buf));
+    LOG(INFO) << "Setting IPv6 address " << random_address_
+              << "/128, gateway=" << router;
 
     // Set up new ARC IPv6 address, NDP, and forwarding rules.
     IpHelperMessage outer_msg;
@@ -189,6 +196,19 @@ void Manager::OnShutdown(int* exit_code) {
 
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
   LOG(FATAL) << "Subprocess " << pid << " exited unexpectedly";
+}
+
+std::ostream& operator<<(std::ostream& stream, const Manager& manager) {
+  stream << "Manager "
+         << "{ inbound ifname=" << manager.lan_ifname_
+         << ", host ifname=" << manager.int_ifname_
+         << ", guest ifname=" << manager.con_ifname_
+         << ", mdns ip=" << manager.mdns_ipaddr_
+         << ", ipv6 random address=" << manager.random_address_
+         << "/" << manager.random_address_prefix_len_
+         << ", random address tries=" << manager.random_address_tries_
+         << " }";
+  return stream;
 }
 
 }  // namespace arc_networkd

@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 
 #include <memory>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,9 @@
 #include <base/macros.h>
 
 namespace arc_networkd {
+
+std::ostream& operator<<(std::ostream& stream, const struct in_addr& addr);
+std::ostream& operator<<(std::ostream& stream, const struct in6_addr& addr);
 
 // Sets up IPv6 addresses, routing, and NDP proxying between the guest's
 // interface |con_ifname| in network namespace |con_netns|, the internal
@@ -48,6 +52,9 @@ class ArcIpConfig {
   // a DNAT rule matching unclaimed traffic on the interface.
   void EnableInbound(const std::string& lan_ifname);
   void DisableInbound();
+
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  const ArcIpConfig& conf);
 
   // Utility functions.
   static bool GetV6Address(const std::string& ifname, struct in6_addr* address);

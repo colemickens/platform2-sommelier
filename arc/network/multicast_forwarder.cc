@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "arc/network/arc_ip_config.h"
 #include "arc/network/multicast_forwarder.h"
 
 #include <arpa/inet.h>
@@ -53,13 +54,24 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
   }
 
   int_socket_.reset(new MulticastSocket());
-  int_socket_->Bind(int_ifname, mcast_addr_, port, this);
+  if (!int_socket_->Bind(int_ifname, mcast_addr_, port, this)) {
+    LOG(WARNING) << "Could not bind socket on " << int_ifname << " for "
+                 << mcast_addr_ << ":" << port;
+    return false;
+  }
 
   if (allow_stateless_) {
     lan_socket_.reset(new MulticastSocket());
-    lan_socket_->Bind(lan_ifname, mcast_addr_, port, this);
+    if (!lan_socket_->Bind(lan_ifname, mcast_addr_, port, this)) {
+      LOG(WARNING) << "could not bind socket on  " << lan_ifname << " for "
+                   << mcast_addr_ << ":" << port;
+      return false;
+    }
     lan_ip_ = lan_socket_->interface_ip();
   }
+
+  VLOG(1) << "Started forwarding between " << lan_ifname << " and "
+          << int_ifname << " for " << mcast_addr_ << ":" << port;
 
   CleanupTask();
   return true;

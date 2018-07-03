@@ -79,7 +79,11 @@ int ArcIpConfig::GetTableIdForInterface(const std::string& ifname) {
   // Android adds a constant to the interface index to derive the table id.
   // This is defined in system/netd/server/RouteController.h
   constexpr int kRouteControllerRouteTableOffsetFromIndex = 1000;
-  return table_id + kRouteControllerRouteTableOffsetFromIndex;
+  table_id += kRouteControllerRouteTableOffsetFromIndex;
+
+  LOG(INFO) << "Found table id " << table_id << " for iface " << ifname;
+
+  return table_id;
 }
 
 bool ArcIpConfig::Init() {
@@ -249,6 +253,8 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
 
   PCHECK(setns(con_netns_fd_.get(), CLONE_NEWNET) == 0);
 
+  VLOG(1) << "Setting " << *this;
+
   // These can fail if the interface disappears (e.g. hot-unplug).
   // If that happens, the error will be logged, because sometimes it
   // might help in debugging a real issue.
@@ -298,6 +304,8 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
 bool ArcIpConfig::Clear() {
   if (!ipv6_configured_)
     return true;
+
+  VLOG(1) << "Clearing " << *this;
 
   // These should never fail.
 
@@ -353,6 +361,8 @@ bool ArcIpConfig::Clear() {
 void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
   DisableInbound();
 
+  VLOG(1) << "Enabling inbound for " << *this;
+
   CHECK_EQ(StartProcessInMinijail({kIpTablesPath, "-t", "nat", "-A", "try_arc",
                                    "-i", lan_ifname, "-j", "dnat_arc", "-w"},
                                   true),
@@ -363,10 +373,39 @@ void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
 void ArcIpConfig::DisableInbound() {
   if (!inbound_configured_)
     return;
+
+  VLOG(1) << "Disabling inbound for " << *this;
+
   CHECK_EQ(StartProcessInMinijail(
                {kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}, true),
            0);
   inbound_configured_ = false;
+}
+
+std::ostream& operator<<(std::ostream& stream, const ArcIpConfig& conf) {
+  stream << "ArcIpConfig "
+         << "{ netns=" << conf.con_netns_
+         << ", host iface=" << conf.int_ifname_
+         << ", guest iface=" << conf.con_ifname_
+         << ", inbound iface=" << conf.current_lan_ifname_
+         << ", ipv6=" << conf.current_address_full_
+         << ", gateway=" << conf.current_router_
+         << " }";
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const struct in_addr& addr) {
+  char buf[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &addr, buf, sizeof(buf));
+  stream << buf;
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const struct in6_addr& addr) {
+  char buf[INET6_ADDRSTRLEN];
+  inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
+  stream << buf;
+  return stream;
 }
 
 }  // namespace arc_networkd

@@ -33,11 +33,13 @@ IpHelper::IpHelper(const Options& opt, base::ScopedFD control_fd)
 }
 
 int IpHelper::OnInit() {
+  VLOG(1) << "OnInit for " << *arc_ip_config_;
+
   // Prevent the main process from sending us any signals.
   CHECK_GT(setsid(), 0);
 
   if (!arc_ip_config_->Init()) {
-    LOG(ERROR) << "Error initializing arc_ip_config";
+    LOG(ERROR) << "Error initializing arc_ip_config_";
     return -1;
   }
 
@@ -86,7 +88,7 @@ void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
 
   // Exit whenever read fails or fd is closed.
   if (len <= 0) {
-    LOG(ERROR) << "Read returned " << len;
+    PLOG(WARNING) << "Read failed: exiting";
     // The other side closed the connection.
     control_watcher_.StopWatchingFileDescriptor();
     Quit();
@@ -122,18 +124,23 @@ void IpHelper::HandleCommand() {
   } else if (pending_command_.has_set_arc_ip()) {
     const SetArcIp& ip = pending_command_.set_arc_ip();
 
-    CHECK(ip.prefix_len() > 0 && ip.prefix_len() <= 128);
-    CHECK(ValidateIfname(ip.lan_ifname()));
+    CHECK(ip.prefix_len() > 0 && ip.prefix_len() <= 128)
+        << "Invalid prefix len " << ip.prefix_len();
+    CHECK(ValidateIfname(ip.lan_ifname()))
+        << "Invalid inbound iface name " << ip.lan_ifname();
 
     arc_ip_config_->Set(ExtractAddr6(ip.prefix()),
                         static_cast<int>(ip.prefix_len()),
                         ExtractAddr6(ip.router()), ip.lan_ifname());
   } else if (pending_command_.has_enable_inbound()) {
-    CHECK(ValidateIfname(pending_command_.enable_inbound()));
+    std::string lan_ifname = pending_command_.enable_inbound();
+    CHECK(ValidateIfname(lan_ifname))
+        << "Invalid inbound iface name " << lan_ifname;
     arc_ip_config_->EnableInbound(pending_command_.enable_inbound());
   } else if (pending_command_.has_disable_inbound()) {
     arc_ip_config_->DisableInbound();
   }
+
   pending_command_.Clear();
 }
 

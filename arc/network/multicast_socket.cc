@@ -29,7 +29,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
 
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM, 0));
   if (!fd.is_valid()) {
-    LOG(ERROR) << "socket() failed";
+    PLOG(ERROR) << "socket() failed";
     return false;
   }
 
@@ -41,7 +41,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
   if (ioctl(fd.get(), SIOCGIFADDR, &ifr) < 0) {
-    LOG(ERROR) << "SIOCGIFADDR failed";
+    PLOG(ERROR) << "SIOCGIFADDR failed";
     return false;
   }
 
@@ -50,7 +50,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
   interface_ip_ = if_addr->sin_addr;
 
   if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
-    LOG(ERROR) << "setsockopt(SOL_SOCKET) failed";
+    PLOG(ERROR) << "setsockopt(SOL_SOCKET) faile";
     return false;
   }
 
@@ -66,27 +66,27 @@ bool MulticastSocket::Bind(const std::string& ifname,
     // FIXME: RX needs to be limited to the given interface.
     int on = 1;
     if (setsockopt(fd.get(), SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-      LOG(ERROR) << "setsockopt(SO_BROADCAST) failed";
+      PLOG(ERROR) << "setsockopt(SO_BROADCAST) failed";
       return false;
     }
     bind_addr.sin_addr.s_addr = INADDR_BROADCAST;
   } else {
     if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
                    sizeof(mreq)) < 0) {
-      LOG(ERROR) << "can't add multicast membership";
+      PLOG(ERROR) << "can't add multicast membership";
       return false;
     }
   }
 
   int off = 0;
   if (setsockopt(fd.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &off, sizeof(off))) {
-    LOG(ERROR) << "setsockopt(IP_MULTICAST_LOOP) failed";
+    PLOG(ERROR) << "setsockopt(IP_MULTICAST_LOOP) failed";
     return false;
   }
 
   int on = 1;
   if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-    LOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
+    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
     return false;
   }
 
@@ -95,7 +95,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
 
   if (bind(fd.get(), (const struct sockaddr*)&bind_addr, sizeof(bind_addr)) <
       0) {
-    LOG(ERROR) << "bind(" << port << ") failed";
+    PLOG(ERROR) << "bind(" << port << ") failed";
     return false;
   }
 
@@ -112,12 +112,11 @@ bool MulticastSocket::SendTo(const void* data,
   if (sendto(fd_.get(), data, len, 0,
              reinterpret_cast<const struct sockaddr*>(&addr),
              sizeof(struct sockaddr_in)) < 0) {
-    LOG(WARNING) << "sendto failed";
+    PLOG(WARNING) << "sendto failed";
     return false;
-  } else {
-    last_used_ = time(NULL);
-    return true;
   }
+  last_used_ = time(NULL);
+  return true;
 }
 
 // static
@@ -128,8 +127,12 @@ ssize_t MulticastSocket::RecvFromFd(int fd,
   socklen_t addrlen = sizeof(*addr);
   ssize_t bytes = recvfrom(fd, data, len, 0,
                            reinterpret_cast<struct sockaddr*>(addr), &addrlen);
-  if (bytes < 0 || addrlen != sizeof(*addr)) {
-    LOG(WARNING) << "recvfrom failed";
+  if (bytes < 0) {
+    PLOG(WARNING) << "recvfrom failed";
+    return -1;
+  }
+  if (addrlen != sizeof(*addr)) {
+    LOG(WARNING) << "recvfrom failed: unexpected src addr length " << addrlen;
     return -1;
   }
   return bytes;
