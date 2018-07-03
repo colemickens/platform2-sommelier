@@ -1644,7 +1644,7 @@ TEST_P(KeysetManagementTest, AddKeysetSuccess) {
         Property(&FilePath::value, EndsWith("master.1")),
         StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(*active_vk_, Encrypt(newkey))
+  EXPECT_CALL(*active_vk_, Encrypt(newkey, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_,
       Save(Property(&FilePath::value, EndsWith("master.1"))))
@@ -1678,7 +1678,7 @@ TEST_P(KeysetManagementTest, AddKeysetClobber) {
         Property(&FilePath::value, EndsWith("master.1")),
         StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(*active_vk_, Encrypt(newkey))
+  EXPECT_CALL(*active_vk_, Encrypt(newkey, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vks_[1], set_legacy_index(_));
   EXPECT_CALL(*active_vks_[1], legacy_index())
@@ -1741,7 +1741,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetSuccess) {
   FilePath vk_path("/some/path/master.0");
   EXPECT_CALL(*active_vk_, source_file())
     .WillOnce(ReturnRef(vk_path));
-  EXPECT_CALL(*active_vk_, Encrypt(new_secret))
+  EXPECT_CALL(*active_vk_, Encrypt(new_secret, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_, Save(vk_path))
     .WillOnce(Return(true));
@@ -1808,7 +1808,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   FilePath vk_path("/some/path/master.0");
   EXPECT_CALL(*active_vk_, source_file())
     .WillOnce(ReturnRef(vk_path));
-  EXPECT_CALL(*active_vk_, Encrypt(new_pass))
+  EXPECT_CALL(*active_vk_, Encrypt(new_pass, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_, Save(vk_path))
     .WillOnce(Return(true));
@@ -1877,7 +1877,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   FilePath vk_path("/some/path/master.0");
   EXPECT_CALL(*active_vk_, source_file())
     .WillOnce(ReturnRef(vk_path));
-  EXPECT_CALL(*active_vk_, Encrypt(new_pass))
+  EXPECT_CALL(*active_vk_, Encrypt(new_pass, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_, Save(vk_path))
     .WillOnce(Return(true));
@@ -2145,7 +2145,7 @@ TEST_P(KeysetManagementTest, AddKeyset0Available) {
         Property(&FilePath::value, EndsWith("master.0")),
         StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(*active_vk_, Encrypt(newkey))
+  EXPECT_CALL(*active_vk_, Encrypt(newkey, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_,
       Save(Property(&FilePath::value, EndsWith("master.0"))))
@@ -2181,7 +2181,7 @@ TEST_P(KeysetManagementTest, AddKeyset10Available) {
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
-  EXPECT_CALL(*active_vk_, Encrypt(newkey))
+  EXPECT_CALL(*active_vk_, Encrypt(newkey, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_,
       Save(Property(&FilePath::value, EndsWith("master.10"))))
@@ -2226,7 +2226,7 @@ TEST_P(KeysetManagementTest, AddKeysetEncryptFail) {
         Property(&FilePath::value, EndsWith("master.0")),
         StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(*active_vk_, Encrypt(newkey))
+  EXPECT_CALL(*active_vk_, Encrypt(newkey, _))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, CloseFile(reinterpret_cast<FILE*>(0xbeefbeef)))
     .WillOnce(Return(true));
@@ -2251,7 +2251,7 @@ TEST_P(KeysetManagementTest, AddKeysetSaveFail) {
       OpenFile(
         Property(&FilePath::value, EndsWith("master.0")), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(*active_vk_, Encrypt(newkey))
+  EXPECT_CALL(*active_vk_, Encrypt(newkey, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_,
       Save(Property(&FilePath::value, EndsWith("master.0"))))
@@ -2281,7 +2281,7 @@ TEST_P(KeysetManagementTest, AddKeysetNoResetSeedSuccess) {
 
   // Expectations for calls used to generate the reset_seed
   base::FilePath orig_file(old_file_name);
-  EXPECT_CALL(*active_vk_, Encrypt(oldkey)).WillOnce(Return(true));
+  EXPECT_CALL(*active_vk_, Encrypt(oldkey, _)).WillOnce(Return(true));
   EXPECT_CALL(*active_vk_,
               Save(Property(&FilePath::value, EndsWith(old_file_name))))
       .WillOnce(Return(true));
@@ -2296,7 +2296,7 @@ TEST_P(KeysetManagementTest, AddKeysetNoResetSeedSuccess) {
       platform_,
       OpenFile(Property(&FilePath::value, EndsWith("master.1")), StrEq("wx")))
       .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(*active_vk_, Encrypt(newkey)).WillOnce(Return(true));
+  EXPECT_CALL(*active_vk_, Encrypt(newkey, _)).WillOnce(Return(true));
   EXPECT_CALL(*active_vk_,
               Save(Property(&FilePath::value, EndsWith("master.1"))))
       .WillOnce(Return(true));

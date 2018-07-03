@@ -204,6 +204,11 @@ void VaultKeyset::set_reset_seed(const SecureBlob& reset_seed) {
   reset_seed_ = reset_seed;
 }
 
+void VaultKeyset::set_reset_secret(const SecureBlob& reset_secret) {
+  CHECK_EQ(reset_secret.size(), CRYPTOHOME_RESET_SEED_LENGTH);
+  reset_secret_ = reset_secret;
+}
+
 bool VaultKeyset::Load(const FilePath& filename) {
   CHECK(platform_);
   brillo::Blob contents;
@@ -241,10 +246,10 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
   }
 
   Crypto::CryptoError local_crypto_error = Crypto::CE_NONE;
-  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL,
+  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, nullptr,
                                         &local_crypto_error, this);
   if (!ok && local_crypto_error == Crypto::CE_TPM_COMM_ERROR) {
-    ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL,
+    ok = crypto_->DecryptVaultKeyset(serialized_, key, nullptr,
                                      &local_crypto_error, this);
   }
 
@@ -272,11 +277,13 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
   return ok;
 }
 
-bool VaultKeyset::Encrypt(const SecureBlob& key) {
+bool VaultKeyset::Encrypt(const SecureBlob& key,
+                          const std::string& obfuscated_username) {
   CHECK(crypto_);
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
-  encrypted_ = crypto_->EncryptVaultKeyset(*this, key, salt, &serialized_);
+  encrypted_ = crypto_->EncryptVaultKeyset(*this, key, salt,
+                                           obfuscated_username, &serialized_);
   return encrypted_;
 }
 

@@ -18,6 +18,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
@@ -29,18 +30,22 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_chaps_client_factory.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_homedirs.h"
+#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_user_session.h"
+#include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
+
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
 
@@ -72,6 +77,27 @@ const FilePath kImageDir("test_image_dir");
 const FilePath kImageSaltFile = kImageDir.Append("salt");
 const FilePath kSkelDir = kImageDir.Append("skel");
 const gid_t kDaemonGid = 400;  // TODO(wad): expose this in mount.h
+const int kPinUserIndex = 14;
+const char kHexHeSecret[] =
+    "F3D9D5B126C36676689E18BB8517D95DF4F30947E71D4A840824425760B1D3FA";
+const char kHexResetSecret[] =
+    "B133D2450392335BA8D33AA95AD52488254070C66F5D79AEA1A46AC4A30760D4";
+const char kHexWrappedKeyset[] =
+    "B737B5D73E39BD390A4F361CE2FC166CF1E89EC6AEAA35D4B34456502C48B4F5EFA310077"\
+    "324B393E13AF633DF3072FF2EC78BD2B80D919035DB97C30F1AD418737DA3F26A4D35DF6B"\
+    "6A9743BD0DF3D37D8A68DE0932A9905452D05ECF92701B9805937F76EE01D10924268F057"\
+    "EDD66087774BB86C2CB92B01BD3A3C41C10C52838BD3A3296474598418E5191DEE9E8D831"\
+    "3C859C9EDB0D5F2BC1D7FC3C108A0D4ABB2D90E413086BCFFD0902AB68E2BF787817EB10C"\
+    "25E2E43011CAB3FB8AA";
+const char kHexSalt[] = "D470B9B108902241";
+const char kHexVaultKey[] =
+    "665A58534E684F2B61516B6D42624B514E6749732B4348427450305453754158377232347"\
+    "37A79466C6B383D";
+const char kHexFekIv[] = "EA80F14BF29C6D580D536E7F0CC47F3E";
+const char kHexChapsIv[] = "ED85D928940E5B02ED218F29225AA34F";
+const char kHexWrappedChapsKey[] =
+    "7D7D01EECC8DAE7906CAD56310954BBEB3CC81765210D29902AB92DDE074217771AD284F2"\
+    "12C13897C6CBB30CEC4CD75";
 
 }  // namespace
 
@@ -106,6 +132,12 @@ Tpm::TpmRetryAction TpmPassthroughDecrypt(uint32_t _key,
   plaintext->resize(ciphertext.size());
   memcpy(plaintext->data(), ciphertext.data(), ciphertext.size());
   return Tpm::kTpmRetryNone;
+}
+
+std::string HexDecode(const std::string& hex) {
+  std::vector<uint8_t> output;
+  CHECK(base::HexStringToBytes(hex, &output));
+  return std::string(output.begin(), output.end());
 }
 
 class MountTest
@@ -173,6 +205,14 @@ class MountTest
     return serialized->ParseFromArray(contents.data(), contents.size());
   }
 
+  bool StoreSerializedKeyset(const SerializedVaultKeyset& serialized,
+                             TestUser *user) {
+    user->credentials.resize(serialized.ByteSize());
+    serialized.SerializeWithCachedSizesToArray(
+        static_cast<google::protobuf::uint8*>(&user->credentials[0]));
+    return true;
+  }
+
   void GetKeysetBlob(const SerializedVaultKeyset& serialized,
                      SecureBlob* blob) {
     SecureBlob local_wrapped_keyset(serialized.wrapped_keyset().length());
@@ -204,6 +244,78 @@ class MountTest
     Mount::MountArgs args;
     args.create_as_ecryptfs = ShouldTestEcryptfs();
     return args;
+  }
+
+  bool SetUserAsLECredential(TestUser* user) {
+    SerializedVaultKeyset serialized;
+    if (!LoadSerializedKeyset(user->credentials, &serialized)) {
+      LOG(ERROR) << "Failed to parse keyset for " << user->username;
+      return false;
+    }
+    serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
+                         SerializedVaultKeyset::LE_CREDENTIAL);
+    serialized.set_le_fek_iv(HexDecode(kHexFekIv));
+    serialized.set_le_chaps_iv(HexDecode(kHexChapsIv));
+    serialized.set_wrapped_keyset(HexDecode(kHexWrappedKeyset));
+    serialized.set_wrapped_chaps_key(HexDecode(kHexWrappedChapsKey));
+    serialized.set_salt(HexDecode(kHexSalt));
+    if (!StoreSerializedKeyset(serialized, user)) {
+      LOG(ERROR) << "Failed to serialize new timestamp'd keyset for "
+                 << user->username;
+      return false;
+    }
+    return true;
+  }
+
+  void InitializeLECredential() {
+    EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+      .WillRepeatedly(Return(true));
+    EXPECT_TRUE(DoMountInit());
+
+    mount_->set_use_tpm(true);
+    crypto_.set_use_tpm(true);
+
+    EXPECT_CALL(tpm_init_, HasCryptohomeKey())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+    EXPECT_CALL(tpm_init_, SetupTpm(true))
+      .WillOnce(Return(true))  // This is by crypto.Init() and
+      .WillOnce(Return(true));  // because HasCryptohomeKey returned false once.
+
+    EXPECT_CALL(tpm_, IsEnabled())
+      .WillRepeatedly(Return(true));
+    EXPECT_CALL(tpm_, IsOwned())
+      .WillRepeatedly(Return(true));
+
+    EXPECT_CALL(platform_, CreateDirectory(_))
+      .WillRepeatedly(Return(true));
+
+    le_cred_manager_ =
+        new cryptohome::MockLECredentialManager(&le_cred_backend_, kImageDir);
+    EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(SecureBlob(HexDecode(kHexHeSecret))),
+                SetArgPointee<3>(SecureBlob(HexDecode(kHexResetSecret))),
+                Return(LE_CRED_SUCCESS)));
+    crypto_.set_le_manager_for_testing(
+        std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
+
+    crypto_.Init(&tpm_init_);
+
+    InsertTestUsers(&kDefaultUsers[kPinUserIndex], 1);
+    pin_user_ = &helper_.users[0];
+    pin_up_ = std::make_unique<UsernamePasskey>(
+        pin_user_->username,
+        SecureBlob(HexDecode(kHexVaultKey)));
+    KeyData pin_label;
+    pin_label.set_label("PIN");
+    pin_up_->set_key_data(pin_label);
+
+    pin_user_->InjectKeyset(&platform_, true);
+    SetUserAsLECredential(pin_user_);
+    EXPECT_CALL(platform_, ReadFile(pin_user_->keyset_path, _))
+      .WillOnce(DoAll(SetArgPointee<1>(pin_user_->credentials),
+                           Return(true)));
   }
 
   // Sets expectations for cryptohome key setup.
@@ -386,6 +498,10 @@ class MountTest
   NiceMock<MockTpmInit> tpm_init_;
   Crypto crypto_;
   HomeDirs homedirs_;
+  FakeLECredentialBackend le_cred_backend_;
+  cryptohome::MockLECredentialManager* le_cred_manager_;
+  TestUser* pin_user_;
+  std::unique_ptr<UsernamePasskey> pin_up_;
   MockChapsClientFactory chaps_client_factory_;
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
   scoped_refptr<Mount> mount_;
@@ -1098,6 +1214,93 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
                                          &key_index, &error));
   EXPECT_EQ(serialized.has_wrapped_chaps_key(), true);
   EXPECT_EQ(vault_keyset.chaps_key().size(), CRYPTOHOME_CHAPS_KEY_LENGTH);
+}
+
+TEST_P(MountTest, MountCryptohomeLECredentials) {
+  // This test checks the mount operation with the LE credentials.
+  InitializeLECredential();
+  EXPECT_CALL(*le_cred_manager_, NeedsPcrBinding(_))
+    .WillRepeatedly(Return(false));
+
+  VaultKeyset pin_vault_keyset;
+  pin_vault_keyset.Initialize(&platform_, mount_->crypto());
+
+  SerializedVaultKeyset serialized;
+  MountError error;
+  int key_index = -1;
+  SecureBlob passkey;
+  pin_up_->GetPasskey(&passkey);
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(*pin_up_.get(), &pin_vault_keyset,
+                                         &serialized, &key_index, &error));
+}
+
+TEST_P(MountTest, MountCryptohomeLECredentialsMigrate) {
+  // This test checks if the mount operation recreates the LE credentials
+  // when the switch to protocol 1 happens.
+  InitializeLECredential();
+  EXPECT_CALL(*le_cred_manager_, NeedsPcrBinding(_))
+    .WillRepeatedly(Return(true));
+
+  brillo::Blob creds;
+  EXPECT_CALL(platform_, FileExists(_))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(pin_user_->keyset_path, _, _))
+    .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
+
+  // Make sure the same reset_secret is inserted.
+  EXPECT_CALL(
+      *le_cred_manager_,
+      InsertCredential(_, _, SecureBlob(HexDecode(kHexResetSecret)), _, _, _))
+    .WillOnce(Return(LE_CRED_SUCCESS));
+  EXPECT_CALL(*le_cred_manager_, RemoveCredential(_))
+    .WillOnce(Return(LE_CRED_SUCCESS));
+
+  VaultKeyset pin_vault_keyset;
+  pin_vault_keyset.Initialize(&platform_, mount_->crypto());
+
+  SerializedVaultKeyset serialized;
+  MountError error;
+  int key_index = -1;
+  SecureBlob passkey;
+  pin_up_->GetPasskey(&passkey);
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(*pin_up_.get(), &pin_vault_keyset,
+                                         &serialized, &key_index, &error));
+
+  // Check the inserted data from migration.
+  ASSERT_TRUE(LoadSerializedKeyset(creds, &serialized));
+  ASSERT_TRUE(serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
+}
+
+TEST_P(MountTest, MountCryptohomeLECredentialsMigrationFails) {
+  // This test checks the scenario when mount operation tries to recreate
+  // vault keyset for LE credentials and insert operation fails.
+  InitializeLECredential();
+  EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*le_cred_manager_, NeedsPcrBinding(_))
+    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform_, FileExists(_))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(_, _, _)).Times(0);
+
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(
+      _, _, SecureBlob(HexDecode(kHexResetSecret)), _, _, _))
+    .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL));
+  EXPECT_CALL(*le_cred_manager_, RemoveCredential(_)).Times(0);
+
+  VaultKeyset pin_vault_keyset;
+  pin_vault_keyset.Initialize(&platform_, mount_->crypto());
+
+  SerializedVaultKeyset serialized;
+  MountError error;
+  int key_index = -1;
+  SecureBlob passkey;
+  pin_up_->GetPasskey(&passkey);
+  ASSERT_TRUE(mount_->DecryptVaultKeyset(*pin_up_.get(), &pin_vault_keyset,
+                                         &serialized, &key_index, &error));
+
+  // Check the returned data.
+  ASSERT_TRUE(serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
 }
 
 TEST_P(MountTest, MountCryptohomeNoChange) {
@@ -1880,14 +2083,6 @@ class AltImageTest : public MountTest {
     EXPECT_CALL(platform_, DirectoryExists(kImageDir))
       .WillRepeatedly(Return(true));
     EXPECT_TRUE(DoMountInit());
-  }
-
-  bool StoreSerializedKeyset(const SerializedVaultKeyset& serialized,
-                             TestUser *user) {
-    user->credentials.resize(serialized.ByteSize());
-    serialized.SerializeWithCachedSizesToArray(
-        static_cast<google::protobuf::uint8*>(&user->credentials[0]));
-    return true;
   }
 
   // Set the user with specified |key_file| old.

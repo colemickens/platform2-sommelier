@@ -36,6 +36,8 @@ enum LECredError {
   LE_CRED_ERROR_UNCLASSIFIED,
   // Credential Manager Locked.
   LE_CRED_ERROR_LE_LOCKED,
+  // Unexpected PCR state.
+  LE_CRED_ERROR_PCR_NOT_MATCH,
   // Sentinel value.
   LE_CRED_ERROR_MAX,
 };
@@ -58,6 +60,8 @@ class LECredentialManager {
   explicit LECredentialManager(LECredentialBackend* le_backend,
                                const base::FilePath& le_basedir);
 
+  virtual ~LECredentialManager() {}
+
   // Inserts an LE credential into the system.
   //
   // The Low entropy credential is represented by |le_secret|, and the high
@@ -72,17 +76,20 @@ class LECredentialManager {
   // The returned label should be placed into the metadata associated with the
   // Encrypted Vault Key (EVK). so that it can be used to look up the credential
   // later.
-  LECredError InsertCredential(const brillo::SecureBlob& le_secret,
-                               const brillo::SecureBlob& he_secret,
-                               const brillo::SecureBlob& reset_secret,
-                               const DelaySchedule& delay_sched,
-                               uint64_t* ret_label);
+  virtual LECredError InsertCredential(
+      const brillo::SecureBlob& le_secret,
+      const brillo::SecureBlob& he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_sched,
+      const ValidPcrCriteria& valid_pcr_criteria,
+      uint64_t* ret_label);
 
   // Attempts authentication for a LE Credential.
   //
   // Checks whether the LE credential |le_secret| for a |label| is correct.
   // Returns LE_CRED_SUCCESS on success. Additionally, the released
-  // high entropy credential is placed in |he_secret|.
+  // high entropy credential is placed in |he_secret| and the reset secret is
+  // placed in |reset_secret| if CR50 version with protocol > 0 is used.
   //
   // On failure, returns:
   // LE_CRED_ERROR_INVALID_LE_SECRET for incorrect authentication attempt.
@@ -90,9 +97,12 @@ class LECredentialManager {
   // incorrect attempts). LE_CRED_ERROR_HASH_TREE for error in hash tree.
   // LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
-  LECredError CheckCredential(const uint64_t& label,
+  // LE_CRED_ERROR_PCR_NOT_MATCH if the PCR registers from TPM have unexpected
+  // values, in which case only reboot will allow this user to authenticate.
+  virtual LECredError CheckCredential(const uint64_t& label,
                               const brillo::SecureBlob& le_secret,
-                              brillo::SecureBlob* he_secret);
+                              brillo::SecureBlob* he_secret,
+                              brillo::SecureBlob* reset_secret);
 
   // Attempts reset of a LE Credential.
   //
@@ -113,17 +123,20 @@ class LECredentialManager {
   // On failure, returns:
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // - LE_CRED_ERROR_HASH_TREE for hash tree error.
-  LECredError RemoveCredential(const uint64_t& label);
+  virtual LECredError RemoveCredential(const uint64_t& label);
+
+  // Returns whether the provided label needs valid PCR criteria attached.
+  virtual bool NeedsPcrBinding(const uint64_t& label);
 
  private:
   // Since the CheckCredential() and ResetCredential() functions are very
   // similar, this function combines the common parts of both the calls
   // into a generic "check credential" function. The label to be checked
   // is stored in |label|, the secret to be verified is in |secret|, the
-  // high entropy credential which gets released on successful verification
-  // is stored in |he_secret|, and a flag |is_le_secret| is used to signal
-  // whether the secret being checked is the LE secret (true) or the reset
-  // secret (false).
+  // high entropy credential and reset secret which gets released on successful
+  // verification are stored in |he_secret| and |reset_secret|. A flag
+  // |is_le_secret| is used to signal whether the secret being checked is the LE
+  // secret (true) or the reset secret (false).
   //
   // Returns LE_CRED_SUCCESS on success.
   //
@@ -134,9 +147,12 @@ class LECredentialManager {
   // - LE_CRED_ERROR_HASH_TREE for error in hash tree.
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // - LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
+  // - LE_CRED_ERROR_PCR_NOT_MATCH if the PCR registers from TPM have unexpected
+  // values, in which case only reboot will allow this user to authenticate.
   LECredError CheckSecret(const uint64_t& label,
                           const brillo::SecureBlob& secret,
                           brillo::SecureBlob* he_secret,
+                          brillo::SecureBlob* reset_secret,
                           bool is_le_secret);
 
   // Helper function to retrieve the credential metadata, MAC, and auxiliary

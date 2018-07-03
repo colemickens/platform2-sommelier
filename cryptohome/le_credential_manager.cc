@@ -41,6 +41,7 @@ LECredError LECredentialManager::InsertCredential(
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
     const DelaySchedule& delay_sched,
+    const ValidPcrCriteria& valid_pcr_criteria,
     uint64_t* ret_label) {
   if (!Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
@@ -67,7 +68,7 @@ LECredError LECredentialManager::InsertCredential(
   std::vector<uint8_t> cred_metadata, mac;
   bool success = le_tpm_backend_->InsertCredential(
       label.value(), h_aux, le_secret, he_secret, reset_secret, delay_sched,
-      &cred_metadata, &mac, &root_hash_);
+      valid_pcr_criteria, &cred_metadata, &mac, &root_hash_);
   if (!success) {
     LOG(ERROR) << "Error executing TPM InsertCredential command.";
     ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
@@ -108,14 +109,15 @@ LECredError LECredentialManager::InsertCredential(
 LECredError LECredentialManager::CheckCredential(
     const uint64_t& label,
     const brillo::SecureBlob& le_secret,
-    brillo::SecureBlob* he_secret) {
-  return CheckSecret(label, le_secret, he_secret, true);
+    brillo::SecureBlob* he_secret,
+    brillo::SecureBlob* reset_secret) {
+  return CheckSecret(label, le_secret, he_secret, reset_secret, true);
 }
 
 LECredError LECredentialManager::ResetCredential(
     const uint64_t& label,
     const brillo::SecureBlob& reset_secret) {
-  return CheckSecret(label, reset_secret, nullptr, false);
+  return CheckSecret(label, reset_secret, nullptr, nullptr, false);
 }
 
 LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
@@ -161,6 +163,7 @@ LECredError LECredentialManager::RemoveCredential(const uint64_t& label) {
 LECredError LECredentialManager::CheckSecret(const uint64_t& label,
                                              const brillo::SecureBlob& secret,
                                              brillo::SecureBlob* he_secret,
+                                             brillo::SecureBlob* reset_secret,
                                              bool is_le_secret) {
   if (!Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
@@ -195,7 +198,8 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
   if (is_le_secret) {
     he_secret->clear();
     le_tpm_backend_->CheckCredential(label, h_aux, orig_cred, secret, &new_cred,
-                                     &new_mac, he_secret, &err, &root_hash_);
+                                     &new_mac, he_secret, reset_secret, &err,
+                                     &root_hash_);
   } else {
     le_tpm_backend_->ResetCredential(label, h_aux, orig_cred, secret, &new_cred,
                                      &new_mac, &err, &root_hash_);
@@ -224,6 +228,21 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
   ReportLEResult(uma_log_op, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   return ConvertTpmError(err);
+}
+
+bool LECredentialManager::NeedsPcrBinding(const uint64_t& label) {
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  std::vector<uint8_t> orig_cred, orig_mac;
+  std::vector<std::vector<uint8_t>> h_aux;
+  bool metadata_lost;
+  LECredError ret =
+    RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux,
+                      &metadata_lost);
+  if (ret != LE_CRED_SUCCESS)
+    return false;
+
+  return le_tpm_backend_->NeedsPCRBinding(orig_cred);
 }
 
 LECredError LECredentialManager::RetrieveLabelInfo(
@@ -292,6 +311,8 @@ LECredError LECredentialManager::ConvertTpmError(LECredBackendError err) {
     case LE_TPM_ERROR_HASH_TREE_SYNC:
     case LE_TPM_ERROR_TPM_OP_FAILED:
       return LE_CRED_ERROR_HASH_TREE;
+    case LE_TPM_ERROR_PCR_NOT_MATCH:
+      return LE_CRED_ERROR_PCR_NOT_MATCH;
   }
 
   return LE_CRED_ERROR_HASH_TREE;

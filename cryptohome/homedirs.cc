@@ -723,7 +723,8 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
     }
   }
 
-  if (!vk->Encrypt(passkey) || !vk->Save(vk->source_file())) {
+  if (!vk->Encrypt(passkey, obfuscated_username) ||
+      !vk->Save(vk->source_file())) {
     LOG(ERROR) << "Failed to encrypt and write the updated keyset";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
   }
@@ -775,7 +776,7 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
     vk->CreateRandomResetSeed();
     brillo::SecureBlob passkey;
     existing_credentials.GetPasskey(&passkey);
-    if (!vk->Encrypt(passkey) || !vk->Save(vk->source_file())) {
+    if (!vk->Encrypt(passkey, obfuscated) || !vk->Save(vk->source_file())) {
       LOG(WARNING) << "Failed to re-encrypt the old keyset";
       return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
     }
@@ -829,7 +830,7 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
 
   // Repersist the VK with the new creds.
   CryptohomeErrorCode added = CRYPTOHOME_ERROR_NOT_SET;
-  if (!vk->Encrypt(new_passkey) || !vk->Save(vk_path)) {
+  if (!vk->Encrypt(new_passkey, obfuscated) || !vk->Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset";
     added = CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
     // If we're clobbering, don't delete on error.

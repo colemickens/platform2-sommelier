@@ -30,6 +30,7 @@ struct TestUserInfo {
   const char* username;
   const char* password;
   bool create;
+  bool is_le_credential;
 };
 
 extern const TestUserInfo kDefaultUsers[];
@@ -81,6 +82,7 @@ class TestUser {
   const char* username;
   const char* password;
   bool create;
+  bool is_le_credential;
   std::string obfuscated_username;
   std::string sanitized_username;
   base::FilePath shadow_root;

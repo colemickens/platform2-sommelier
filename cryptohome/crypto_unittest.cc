@@ -180,7 +180,8 @@ TEST_F(CryptoTest, EncryptionTest) {
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  ASSERT_TRUE(
+      crypto.EncryptVaultKeyset(vault_keyset, key, salt, "", &serialized));
 
   SecureBlob original;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original));
@@ -206,7 +207,8 @@ TEST_F(CryptoTest, DecryptionTest) {
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  ASSERT_TRUE(
+      crypto.EncryptVaultKeyset(vault_keyset, key, salt, "", &serialized));
   SecureBlob encrypted;
   GetSerializedBlob(serialized, &encrypted);
 
@@ -325,7 +327,8 @@ TEST_F(CryptoTest, TpmStepTest) {
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  ASSERT_TRUE(
+      crypto.EncryptVaultKeyset(vault_keyset, key, salt, "", &serialized));
   SecureBlob encrypted;
   GetSerializedBlob(serialized, &encrypted);
 
@@ -395,7 +398,8 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  ASSERT_TRUE(
+      crypto.EncryptVaultKeyset(vault_keyset, key, salt, "", &serialized));
   SecureBlob encrypted;
   GetSerializedBlob(serialized, &encrypted);
 
@@ -439,7 +443,8 @@ TEST_F(CryptoTest, ScryptStepTest) {
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  ASSERT_TRUE(
+      crypto.EncryptVaultKeyset(vault_keyset, key, salt, "", &serialized));
   SecureBlob encrypted;
   GetSerializedBlob(serialized, &encrypted);
 
@@ -494,7 +499,8 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  ASSERT_TRUE(
+      crypto.EncryptVaultKeyset(vault_keyset, key, salt, "", &serialized));
   SecureBlob encrypted;
   GetSerializedBlob(serialized, &encrypted);
 

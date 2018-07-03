@@ -43,6 +43,7 @@ bool FakeLECredentialBackend::InsertCredential(
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
     const std::map<uint32_t, uint32_t>& delay_schedule,
+    const ValidPcrCriteria& valid_pcr_criteria,
     std::vector<uint8_t>* cred_metadata,
     std::vector<uint8_t>* mac,
     std::vector<uint8_t>* new_root) {
@@ -67,6 +68,10 @@ bool FakeLECredentialBackend::InsertCredential(
   cred_metadata_entry.set_reset_secret(reset_secret.data(),
                                        reset_secret.size());
   cred_metadata_entry.set_attempt_count(0);
+  if (valid_pcr_criteria.size() > 0) {
+    cred_metadata_entry.set_valid_pcr_digest(
+        valid_pcr_criteria[0].digest);
+  }
 
   cred_metadata->resize(cred_metadata_entry.ByteSize());
   if (!cred_metadata_entry.SerializeToArray(cred_metadata->data(),
@@ -92,6 +97,19 @@ bool FakeLECredentialBackend::InsertCredential(
   return true;
 }
 
+bool FakeLECredentialBackend::NeedsPCRBinding(
+    const std::vector<uint8_t>& cred_metadata) {
+  return false;
+}
+
+void FakeLECredentialBackend::ExtendArcPCR(const std::string& data) {
+  pcr_digest += data;
+}
+
+void FakeLECredentialBackend::ResetArcPCR() {
+  pcr_digest.clear();
+}
+
 bool FakeLECredentialBackend::CheckCredential(
     const uint64_t label,
     const std::vector<std::vector<uint8_t>>& h_aux,
@@ -100,6 +118,7 @@ bool FakeLECredentialBackend::CheckCredential(
     std::vector<uint8_t>* new_cred_metadata,
     std::vector<uint8_t>* new_mac,
     brillo::SecureBlob* he_secret,
+    brillo::SecureBlob* reset_secret,
     LECredBackendError* err,
     std::vector<uint8_t>* new_root) {
   *err = LE_TPM_SUCCESS;
@@ -130,12 +149,20 @@ bool FakeLECredentialBackend::CheckCredential(
     return false;
   }
 
+  // Check the PCR.
+  if (!pcr_digest.empty() && metadata_tmp.valid_pcr_digest() != pcr_digest) {
+    *err = LE_TPM_ERROR_PCR_NOT_MATCH;
+    return false;
+  }
+
   // Check the LE secret.
   if (!memcmp(metadata_tmp.le_secret().data(), le_secret.data(),
               le_secret.size())) {
     metadata_tmp.set_attempt_count(0);
     he_secret->assign(metadata_tmp.he_secret().begin(),
                       metadata_tmp.he_secret().end());
+    reset_secret->assign(metadata_tmp.reset_secret().begin(),
+                         metadata_tmp.reset_secret().end());
   } else {
     *err = LE_TPM_ERROR_INVALID_LE_SECRET;
     metadata_tmp.set_attempt_count(metadata_tmp.attempt_count() + 1);

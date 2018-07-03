@@ -1251,8 +1251,8 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   do {
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
-    if (serialized->has_tpm_public_key_hash()) {
-      if (is_le_credential)
+    if (serialized->has_tpm_public_key_hash() || is_le_credential) {
+      if (is_le_credential && !crypto_->NeedsPcrBinding(serialized->le_label()))
         break;
       if (tpm_wrapped && should_tpm && !scrypt_wrapped) {
         if (scrypt_derived)
@@ -1284,11 +1284,15 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
 
+  std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+
   // Encrypt the vault keyset
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
-  if (!crypto_->EncryptVaultKeyset(vault_keyset, passkey, salt, serialized)) {
+  if (!crypto_->EncryptVaultKeyset(vault_keyset, passkey, salt,
+                                   obfuscated_username, serialized)) {
     LOG(ERROR) << "Encrypting vault keyset failed";
     return false;
   }
@@ -1309,10 +1313,18 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
     LOG(ERROR) << "Couldn't cache old key material.";
     return false;
   }
+  uint64_t label = serialized->le_label();
   if (!AddVaultKeyset(credentials, vault_keyset, serialized)) {
     LOG(ERROR) << "Couldn't add keyset.";
     RevertCacheFiles(files);
     return false;
+  }
+
+  if ((serialized->flags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0) {
+    if (!crypto_->RemoveLECredential(label)) {
+      // This is non-fatal error.
+      LOG(ERROR) << "Failed to remove label = " << label;
+    }
   }
 
   // Note that existing legacy keysets are not automatically annotated.

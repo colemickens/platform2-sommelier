@@ -32,9 +32,11 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
                         const brillo::SecureBlob& he_secret,
                         const brillo::SecureBlob& reset_secret,
                         const std::map<uint32_t, uint32_t>& delay_schedule,
+                        const ValidPcrCriteria& valid_pcr_criteria,
                         std::vector<uint8_t>* cred_metadata,
                         std::vector<uint8_t>* mac,
                         std::vector<uint8_t>* new_root) override;
+  bool NeedsPCRBinding(const std::vector<uint8_t>& cred_metadata) override;
   bool CheckCredential(const uint64_t label,
                        const std::vector<std::vector<uint8_t>>& h_aux,
                        const std::vector<uint8_t>& orig_cred_metadata,
@@ -42,6 +44,7 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
                        std::vector<uint8_t>* new_cred_metadata,
                        std::vector<uint8_t>* new_mac,
                        brillo::SecureBlob* he_secret,
+                       brillo::SecureBlob* reset_secret,
                        LECredBackendError* err,
                        std::vector<uint8_t>* new_root) override;
   bool ResetCredential(const uint64_t label,
@@ -87,6 +90,8 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
                                  Operation op);
 
   Tpm2Impl* tpm_;
+  // The protocol version used by pinweaver.
+  uint8_t protocol_version_ = 255;
 };
 
 }  // namespace cryptohome

@@ -394,6 +394,7 @@ if (use.test) {
       "mock_install_attributes.cc",
       "mock_key_challenge_service.cc",
       "mock_keystore.cc",
+      "mock_le_credential_manager.cc",
       "mock_lockbox.cc",
       "mock_mount.cc",
       "mock_pkcs11_init.cc",

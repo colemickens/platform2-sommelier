@@ -8,6 +8,7 @@
 
 #include <sys/types.h>
 
+#include <crypto/sha2.h>
 #include <limits>
 #include <map>
 #include <openssl/err.h>
@@ -636,9 +637,10 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
 
   // Try to obtain the HE Secret from the LECredentialManager.
   SecureBlob he_secret;
-  int ret =
-      le_manager_->CheckCredential(serialized.le_label(), le_secret,
-                                   &he_secret);
+  SecureBlob reset_secret;
+  int ret = le_manager_->CheckCredential(serialized.le_label(), le_secret,
+                                         &he_secret, &reset_secret);
+
   if (ret != LE_CRED_SUCCESS) {
     if (error) {
       if (ret == LE_CRED_ERROR_INVALID_LE_SECRET) {
@@ -649,6 +651,11 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
         *error = CE_OTHER_FATAL;
       } else if (ret == LE_CRED_ERROR_HASH_TREE) {
         *error = CE_OTHER_FATAL;
+      } else if (ret == LE_CRED_ERROR_PCR_NOT_MATCH) {
+        // We might want to return an error here that will make the device
+        // reboot.
+        LOG(ERROR) << "PCR in unexpected state.";
+        *error = CE_LE_INVALID_SECRET;
       } else {
         *error = CE_OTHER_FATAL;
       }
@@ -696,7 +703,16 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
     keyset->set_chaps_key(unwrapped_chaps_key);
   }
 
+  // This is possible to be empty if an old version of CR50 is running.
+  if (!reset_secret.empty()) {
+    keyset->set_reset_secret(reset_secret);
+  }
+
   return true;
+}
+
+bool Crypto::NeedsPcrBinding(const uint64_t& label) const {
+    return le_manager_->NeedsPcrBinding(label);
 }
 
 bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
@@ -917,6 +933,7 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
 bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
                                  const SecureBlob& key,
                                  const SecureBlob& salt,
+                                 const std::string& obfuscated_username,
                                  SerializedVaultKeyset* serialized) const {
   if (!use_tpm_ || !tpm_)
     return false;
@@ -985,21 +1002,32 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   }
 
   // Generate a unique reset secret for this credential.
-  if (vault_keyset.reset_seed().empty()) {
+  SecureBlob reset_secret;
+
+  if (!vault_keyset.reset_seed().empty()) {
+    SecureBlob local_reset_seed(vault_keyset.reset_seed().begin(),
+                                vault_keyset.reset_seed().end());
+    SecureBlob reset_salt(kAesBlockSize);
+    CryptoLib::GetSecureRandom(reset_salt.data(), reset_salt.size());
+    serialized->set_reset_salt(reset_salt.data(), reset_salt.size());
+    reset_secret = CryptoLib::HmacSha256(reset_salt, local_reset_seed);
+  } else if (!vault_keyset.reset_secret().empty()) {
+    reset_secret = vault_keyset.reset_secret();
+  } else {
     LOG(ERROR) << "The VaultKeyset doesn't have a reset seed, so we can't"
       " set up an LE credential.";
     return false;
   }
-  SecureBlob local_reset_seed(vault_keyset.reset_seed().begin(),
-                              vault_keyset.reset_seed().end());
-  SecureBlob reset_salt(kAesBlockSize);
-  CryptoLib::GetSecureRandom(reset_salt.data(), reset_salt.size());
-  serialized->set_reset_salt(reset_salt.data(), reset_salt.size());
-  SecureBlob reset_secret = CryptoLib::HmacSha256(reset_salt, local_reset_seed);
+
+  ValidPcrCriteria valid_pcr_criteria;
+  if (!GetValidPCRValues(obfuscated_username, &valid_pcr_criteria)) {
+    return false;
+  }
 
   uint64_t label;
-  int ret = le_manager_->InsertCredential(le_secret, he_secret,
-                                          reset_secret, delay_sched, &label);
+  int ret =
+      le_manager_->InsertCredential(le_secret, he_secret, reset_secret,
+                                    delay_sched, valid_pcr_criteria, &label);
   if (ret == LE_CRED_SUCCESS) {
     serialized->set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
     serialized->set_le_label(label);
@@ -1088,10 +1116,11 @@ void Crypto::DecryptAuthorizationData(const SerializedVaultKeyset& serialized,
 bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                                 const SecureBlob& vault_key,
                                 const SecureBlob& vault_key_salt,
+                                const std::string& obfuscated_username,
                                 SerializedVaultKeyset* serialized) const {
   if (vault_keyset.IsLECredential()) {
     if (!EncryptLECredential(vault_keyset, vault_key, vault_key_salt,
-                             serialized)) {
+                             obfuscated_username, serialized)) {
       // TODO(crbug.com/794010): add ReportCryptohomeError
       return false;
     }
@@ -1294,5 +1323,46 @@ bool Crypto::is_cryptohome_key_loaded() const {
     return false;
   }
   return tpm_init_->HasCryptohomeKey();
+}
+
+bool Crypto::GetValidPCRValues(
+    const std::string& obfuscated_username,
+    ValidPcrCriteria* valid_pcr_criteria) const {
+  std::string default_pcr_str = std::string(kDefaultPcrValue, 32);
+
+  // The digest used for validation of PCR values by pinweaver is sha256 of
+  // the current PCR value of index 4.
+  // Step 1 - calculate expected values of PCR4 initially
+  // (kDefaultPcrValue = 0) and after user logins
+  // (sha256(initial_value | user_specific_digest)).
+  // Step 2 - calculate digest of those values, to support multi-PCR case,
+  // where all those expected values for all PCRs are sha256'ed together.
+  std::string default_digest = crypto::SHA256HashString(default_pcr_str);
+
+  // The second valid digest is the one obtained from the future value of
+  // PCR4, after it's extended by |obfuscated_username|. Compute the value of
+  // PCR4 after it will be extended first, which is
+  // sha256(default_value + sha256(extend_text)).
+  std::string extended_arc_pcr_value = crypto::SHA256HashString(
+      default_pcr_str + crypto::SHA256HashString(obfuscated_username));
+
+  // The second valid digest used by pinweaver for validation will be
+  // sha256 of the extended value of pcr4.
+  std::string extended_digest =
+      crypto::SHA256HashString(extended_arc_pcr_value);
+
+  ValidPcrValue default_pcr_value;
+  memset(default_pcr_value.bitmask, 0, 2);
+  default_pcr_value.bitmask[kTpmArcPCR / 8] = 1u << kTpmArcPCR;
+  default_pcr_value.digest = default_digest;
+  valid_pcr_criteria->push_back(default_pcr_value);
+
+  ValidPcrValue extended_pcr_value;
+  memset(extended_pcr_value.bitmask, 0, 2);
+  extended_pcr_value.bitmask[kTpmArcPCR / 8] = 1u << kTpmArcPCR;
+  extended_pcr_value.digest = extended_digest;
+  valid_pcr_criteria->push_back(extended_pcr_value);
+
+  return true;
 }
 }  // namespace cryptohome

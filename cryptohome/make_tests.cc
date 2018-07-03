@@ -57,20 +57,21 @@ namespace cryptohome {
 // };
 
 const TestUserInfo kDefaultUsers[] = {
-  {"testuser0@invalid.domain", "zero", true},
-  {"testuser1@invalid.domain", "one", true},
-  {"testuser2@invalid.domain", "two", true},
-  {"testuser3@invalid.domain", "three", true},
-  {"testuser4@invalid.domain", "four", true},
-  {"testuser5@invalid.domain", "five", false},
-  {"testuser6@invalid.domain", "six", true},
-  {"testuser7@invalid.domain", "seven", true},
-  {"testuser8@invalid.domain", "eight", true},
-  {"testuser9@invalid.domain", "nine", true},
-  {"testuser10@invalid.domain", "ten", true},
-  {"testuser11@invalid.domain", "eleven", true},
-  {"testuser12@invalid.domain", "twelve", false},
-  {"testuser13@invalid.domain", "thirteen", true},
+  {"testuser0@invalid.domain", "zero", true, false},
+  {"testuser1@invalid.domain", "one", true, false},
+  {"testuser2@invalid.domain", "two", true, false},
+  {"testuser3@invalid.domain", "three", true, false},
+  {"testuser4@invalid.domain", "four", true, false},
+  {"testuser5@invalid.domain", "five", false, false},
+  {"testuser6@invalid.domain", "six", true, false},
+  {"testuser7@invalid.domain", "seven", true, false},
+  {"testuser8@invalid.domain", "eight", true, false},
+  {"testuser9@invalid.domain", "nine", true, false},
+  {"testuser10@invalid.domain", "ten", true, false},
+  {"testuser11@invalid.domain", "eleven", true, false},
+  {"testuser12@invalid.domain", "twelve", false, false},
+  {"testuser13@invalid.domain", "thirteen", true, false},
+  {"testuser14@invalid.domain", "0014", true, true},
 };
 const size_t kDefaultUserCount = arraysize(kDefaultUsers);
 
@@ -147,7 +148,8 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   username = info->username;
   password = info->password;
   create = info->create;
-  use_key_data = false;
+  is_le_credential = info->is_le_credential;
+  use_key_data = is_le_credential ? true : false;
   // Stub system salt must already be in place. See MountTest::SetUp().
   // Sanitized usernames and obfuscated ones differ by case. Accomodate both.
   // TODO(ellyjones) fix this discrepancy!
@@ -230,6 +232,8 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
                                         &passkey);
   UsernamePasskey up(username, passkey);
   if (use_key_data) {
+    if (is_le_credential)
+        key_data.set_label("PIN");
     up.set_key_data(key_data);
   }
   bool created;

@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -80,10 +81,14 @@ class Crypto {
   //   vault_key - The passkey used to encrypt the keyset
   //   vault_key_salt - The salt to use for the vault passkey to key conversion
   //                    when encrypting the keyset
+  //   obfuscated_username - The value of username obfuscated. It's the same
+  //                         value used as the folder name where the user data
+  //                         is stored.
   //   encrypted_keyset - On success, the encrypted vault keyset
   virtual bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                                   const brillo::SecureBlob& vault_key,
                                   const brillo::SecureBlob& vault_key_salt,
+                                  const std::string& obfuscated_username,
                                   SerializedVaultKeyset* serialized) const;
 
   // Derives secrets and other values from User Passkey.
@@ -189,6 +194,9 @@ class Crypto {
   // Returns true on success, false otherwise.
   bool RemoveLECredential(uint64_t label) const;
 
+  // Returns whether the provided label needs valid PCR criteria attached.
+  bool NeedsPcrBinding(const uint64_t& label) const;
+
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's
@@ -227,6 +235,11 @@ class Crypto {
 
   void set_scrypt_max_encrypt_time(double max_time) {
     scrypt_max_encrypt_time_ = max_time;
+  }
+
+  void set_le_manager_for_testing(
+      std::unique_ptr<LECredentialManager> le_manager) {
+    le_manager_ = std::move(le_manager);
   }
 
   static const int64_t kSaltMax;
@@ -269,6 +282,7 @@ class Crypto {
   bool EncryptLECredential(const VaultKeyset& vault_keyset,
                            const brillo::SecureBlob& key,
                            const brillo::SecureBlob& salt,
+                           const std::string& obfuscated_username,
                            SerializedVaultKeyset* serialized) const;
 
   bool DecryptTPM(const SerializedVaultKeyset& serialized,
@@ -307,6 +321,13 @@ class Crypto {
                                 const brillo::SecureBlob& vkk_iv) const;
 
   bool IsTPMPubkeyHash(const std::string& hash, CryptoError* error) const;
+
+  // Computes the PCR digest for default state as well as the future digest
+  // obtained if PCR for ARC++ would be extended with |obfuscated_username|
+  // value. Populates the results in |valid_pcr_criteria| where each pair
+  // represents the bitmask of used PCR indexes and the expected digest.
+  bool GetValidPCRValues(const std::string& obfuscated_username,
+                         ValidPcrCriteria* valid_pcr_criteria) const;
 
   // If set, the TPM will be used during the encryption of the vault keyset
   bool use_tpm_;

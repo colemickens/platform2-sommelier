@@ -152,7 +152,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   SecureBlob key("key");
-  EXPECT_TRUE(keyset.Encrypt(key));
+  EXPECT_TRUE(keyset.Encrypt(key, ""));
   EXPECT_TRUE(keyset.Save(FilePath("foo")));
 
   VaultKeyset new_keyset;
@@ -174,7 +174,7 @@ TEST_F(VaultKeysetTest, WriteError) {
       .WillOnce(Return(false));
 
   SecureBlob key("key");
-  EXPECT_TRUE(keyset.Encrypt(key));
+  EXPECT_TRUE(keyset.Encrypt(key, ""));
   EXPECT_FALSE(keyset.Save(FilePath("foo")));
 }
 

@@ -40,6 +40,9 @@ class Tpm;
 
 constexpr TpmKeyHandle kInvalidKeyHandle = 0;
 constexpr uint32_t kNotBoundToPCR = UINT32_MAX;
+constexpr uint32_t kTpmBootPCR = 0;
+constexpr uint32_t kTpmArcPCR = 4;
+const char kDefaultPcrValue[32] = {0};
 
 // This class provides a wrapper around TpmKeyHandle, and manages freeing of
 // TPM resources associated with TPM keys. It does not take ownership of the

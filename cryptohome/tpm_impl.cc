@@ -189,7 +189,6 @@ const unsigned int kDefaultDiscardableWrapPasswordLength = 32;
 const char* kWellKnownSrkTmp = "1234567890";
 const unsigned int kTpmConnectRetries = 10;
 const unsigned int kTpmConnectIntervalMs = 100;
-const uint32_t kTpmBootPCR = 0;
 const unsigned int kTpmPCRLocality = 1;
 const int kDelegateSecretSize = 20;
 const size_t kPCRExtensionSize = 20;  // SHA-1 digest size.

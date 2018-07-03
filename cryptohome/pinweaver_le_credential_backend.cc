@@ -6,6 +6,7 @@
 
 #include <stdint.h>  // required by pinweaver_types.h
 
+#include <algorithm>
 #include <utility>
 
 #include <base/logging.h>
@@ -54,6 +55,10 @@ LECredBackendError ConvertStatus(const std::string& operation,
       return LE_TPM_ERROR_TOO_MANY_ATTEMPTS;
     case PW_ERR_PATH_AUTH_FAILED:
       return LE_TPM_ERROR_HASH_TREE_SYNC;
+    // This could happen (by design) only if the device is hacked. Treat the
+    // error as like an invalid PIN was provided.
+    case PW_ERR_PCR_NOT_MATCH:
+      return LE_TPM_ERROR_PCR_NOT_MATCH;
   }
 
   LOG(ERROR) << "Pinweaver error on pinweaver " << operation
@@ -114,8 +119,8 @@ bool PinweaverLECredentialBackend::Reset(std::vector<uint8_t>* new_root) {
         uint32_t pinweaver_status;
         std::string root;
         trunks::TPM_RC result = tpm_utility->PinWeaverResetTree(
-            kBitsPerLevel, kLengthLabels / kBitsPerLevel, &pinweaver_status,
-            &root);
+            protocol_version_, kBitsPerLevel, kLengthLabels / kBitsPerLevel,
+            &pinweaver_status, &root);
         *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
@@ -124,8 +129,18 @@ bool PinweaverLECredentialBackend::Reset(std::vector<uint8_t>* new_root) {
 bool PinweaverLECredentialBackend::IsSupported() {
   return PerformPinweaverOperation(
       "IsSupported", nullptr, [&](trunks::TpmUtility* tpm_utility) {
-        return std::make_pair(tpm_utility->PinWeaverIsSupported(),
-                              0 /* EC_SUCCESS */);
+        trunks::TPM_RC result = tpm_utility->PinWeaverIsSupported(
+            PW_PROTOCOL_VERSION, &protocol_version_);
+        if (result == trunks::SAPI_RC_ABI_MISMATCH)
+          result = tpm_utility->PinWeaverIsSupported(0, &protocol_version_);
+        if (result == trunks::TPM_RC_SUCCESS)
+          protocol_version_ =
+              std::min(protocol_version_,
+                       static_cast<uint8_t>(PW_PROTOCOL_VERSION));
+
+        LOG(INFO) << "Protocol version: "
+                  << static_cast<int>(protocol_version_);
+        return std::make_pair(result, 0 /* EC_SUCCESS */);
       });
 }
 
@@ -136,9 +151,19 @@ bool PinweaverLECredentialBackend::InsertCredential(
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
     const std::map<uint32_t, uint32_t>& delay_schedule,
+    const ValidPcrCriteria& valid_pcr_criteria,
     std::vector<uint8_t>* cred_metadata,
     std::vector<uint8_t>* mac,
     std::vector<uint8_t>* new_root) {
+  trunks::ValidPcrCriteria pcr_criteria;
+  if (protocol_version_ > 0) {
+      for (ValidPcrValue value : valid_pcr_criteria) {
+          trunks::ValidPcrValue* new_value =
+              pcr_criteria.add_valid_pcr_values();
+          new_value->set_bitmask(&value.bitmask, 2);
+          new_value->set_digest(value.digest);
+      }
+  }
   return PerformPinweaverOperation(
       "InsertCredential", nullptr, [&](trunks::TpmUtility* tpm_utility) {
         uint32_t pinweaver_status;
@@ -146,15 +171,33 @@ bool PinweaverLECredentialBackend::InsertCredential(
         std::string cred_metadata_string;
         std::string mac_string;
         trunks::TPM_RC result = tpm_utility->PinWeaverInsertLeaf(
-            label, EncodeAuxHashes(h_aux), le_secret, he_secret, reset_secret,
-            delay_schedule, &pinweaver_status, &root, &cred_metadata_string,
-            &mac_string);
+            protocol_version_, label, EncodeAuxHashes(h_aux), le_secret,
+            he_secret, reset_secret, delay_schedule, pcr_criteria,
+            &pinweaver_status, &root, &cred_metadata_string, &mac_string);
 
         *cred_metadata = StringToBlob(cred_metadata_string);
         *mac = StringToBlob(mac_string);
         *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
+}
+
+bool PinweaverLECredentialBackend::NeedsPCRBinding(
+    const std::vector<uint8_t>& cred_metadata) {
+  if (protocol_version_ == 0)
+    return false;
+
+  const struct unimported_leaf_data_t *unimported =
+      reinterpret_cast<const struct unimported_leaf_data_t*>
+        (cred_metadata.data());
+  if (unimported->head.leaf_version.minor == 0 &&
+      unimported->head.leaf_version.major == 0)
+      return true;
+
+  const struct leaf_public_data_t *leaf_data =
+      reinterpret_cast<const struct leaf_public_data_t*>(unimported->payload);
+  return leaf_data->valid_pcr_criteria[0].bitmask[0] == 0 &&
+         leaf_data->valid_pcr_criteria[0].bitmask[1] == 0;
 }
 
 bool PinweaverLECredentialBackend::CheckCredential(
@@ -165,6 +208,7 @@ bool PinweaverLECredentialBackend::CheckCredential(
     std::vector<uint8_t>* new_cred_metadata,
     std::vector<uint8_t>* new_mac,
     brillo::SecureBlob* he_secret,
+    brillo::SecureBlob* reset_secret,
     LECredBackendError* err,
     std::vector<uint8_t>* new_root) {
   return PerformPinweaverOperation(
@@ -175,9 +219,10 @@ bool PinweaverLECredentialBackend::CheckCredential(
         std::string cred_metadata_string;
         std::string mac_string;
         trunks::TPM_RC result = tpm_utility->PinWeaverTryAuth(
-            le_secret, EncodeAuxHashes(h_aux), BlobToString(orig_cred_metadata),
-            &pinweaver_status, &root, &seconds_to_wait, he_secret,
-            &cred_metadata_string, &mac_string);
+            protocol_version_, le_secret, EncodeAuxHashes(h_aux),
+            BlobToString(orig_cred_metadata), &pinweaver_status, &root,
+            &seconds_to_wait, he_secret, reset_secret, &cred_metadata_string,
+            &mac_string);
 
         *new_cred_metadata = StringToBlob(cred_metadata_string);
         *new_mac = StringToBlob(mac_string);
@@ -203,7 +248,7 @@ bool PinweaverLECredentialBackend::ResetCredential(
         std::string cred_metadata_string;
         std::string mac_string;
         trunks::TPM_RC result = tpm_utility->PinWeaverResetAuth(
-            reset_secret, EncodeAuxHashes(h_aux),
+            protocol_version_, reset_secret, EncodeAuxHashes(h_aux),
             BlobToString(orig_cred_metadata), &pinweaver_status, &root,
             &he_secret, &cred_metadata_string, &mac_string);
 
@@ -224,8 +269,8 @@ bool PinweaverLECredentialBackend::RemoveCredential(
         uint32_t pinweaver_status;
         std::string root;
         trunks::TPM_RC result = tpm_utility->PinWeaverRemoveLeaf(
-            label, EncodeAuxHashes(h_aux), BlobToString(mac), &pinweaver_status,
-            &root);
+            protocol_version_, label, EncodeAuxHashes(h_aux), BlobToString(mac),
+            &pinweaver_status, &root);
         *new_root = StringToBlob(root);
         return std::make_pair(result, pinweaver_status);
       });
@@ -242,7 +287,7 @@ bool PinweaverLECredentialBackend::GetLog(
         std::string root;
         std::vector<trunks::PinWeaverLogEntry> log_ret;
         trunks::TPM_RC result = tpm_utility->PinWeaverGetLog(
-            cur_root, &pinweaver_status, &root, &log_ret);
+            protocol_version_, cur_root, &pinweaver_status, &root, &log_ret);
         *root_hash = StringToBlob(root);
         ConvertPinWeaverLogToLELog(log_ret, log);
         return std::make_pair(result, pinweaver_status);
@@ -262,8 +307,8 @@ bool PinweaverLECredentialBackend::ReplayLogOperation(
         std::string cred_metadata_string;
         std::string mac_string;
         trunks::TPM_RC result = tpm_utility->PinWeaverLogReplay(
-            BlobToString(log_entry_root), EncodeAuxHashes(h_aux),
-            BlobToString(orig_cred_metadata),
+            protocol_version_, BlobToString(log_entry_root),
+            EncodeAuxHashes(h_aux), BlobToString(orig_cred_metadata),
             &pinweaver_status, &root, &cred_metadata_string, &mac_string);
         *new_cred_metadata = StringToBlob(cred_metadata_string);
         *new_mac = StringToBlob(mac_string);
@@ -277,6 +322,11 @@ bool PinweaverLECredentialBackend::PerformPinweaverOperation(
   Tpm2Impl::TrunksClientContext* trunks = nullptr;
   if (!tpm_->GetTrunksContext(&trunks)) {
     LOG(ERROR) << "Error getting trunks context for " << name;
+    return false;
+  }
+
+  if (protocol_version_ > PW_PROTOCOL_VERSION && name != "IsSupported") {
+    LOG(ERROR) << "Protocol version not initialized for " << name;
     return false;
   }
 

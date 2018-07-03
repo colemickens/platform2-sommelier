@@ -6,6 +6,7 @@
 #define CRYPTOHOME_FAKE_LE_CREDENTIAL_BACKEND_H_
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -50,9 +51,12 @@ class FakeLECredentialBackend : public LECredentialBackend {
                         const brillo::SecureBlob& he_secret,
                         const brillo::SecureBlob& reset_secret,
                         const std::map<uint32_t, uint32_t>& delay_schedule,
+                        const ValidPcrCriteria& valid_pcr_criteria,
                         std::vector<uint8_t>* cred_metadata,
                         std::vector<uint8_t>* mac,
                         std::vector<uint8_t>* new_root) override;
+
+  bool NeedsPCRBinding(const std::vector<uint8_t>& cred_metadata) override;
 
   bool CheckCredential(const uint64_t label,
                        const std::vector<std::vector<uint8_t>>& h_aux,
@@ -61,6 +65,7 @@ class FakeLECredentialBackend : public LECredentialBackend {
                        std::vector<uint8_t>* new_cred_metadata,
                        std::vector<uint8_t>* new_mac,
                        brillo::SecureBlob* he_secret,
+                       brillo::SecureBlob* reset_secret,
                        LECredBackendError* err,
                        std::vector<uint8_t>* new_root) override;
 
@@ -88,6 +93,10 @@ class FakeLECredentialBackend : public LECredentialBackend {
                           std::vector<uint8_t>* new_cred_metadata,
                           std::vector<uint8_t>* new_mac) override;
 
+  // The operations to simulate the PCR changes.
+  void ExtendArcPCR(const std::string& data);
+  void ResetArcPCR();
+
  private:
   // Helper function to calculate root hash, given a leaf with label |label|,
   // MAC value |mac, and a set of auxiliary hashes |h_aux|.
@@ -107,6 +116,7 @@ class FakeLECredentialBackend : public LECredentialBackend {
 
   // Replay log.
   std::vector<struct FakeLELogEntry> log_;
+  std::string pcr_digest;
 };
 
 }  // namespace cryptohome

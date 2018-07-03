@@ -54,7 +54,8 @@ class VaultKeyset {
                        Crypto::CryptoError* crypto_error);
   // Encrypt must be called first.
   virtual bool Save(const base::FilePath& filename);
-  virtual bool Encrypt(const brillo::SecureBlob& key);
+  virtual bool Encrypt(const brillo::SecureBlob& key,
+                       const std::string& obfuscated_username);
   virtual const SerializedVaultKeyset& serialized() const {
     return serialized_;
   }
@@ -76,9 +77,13 @@ class VaultKeyset {
   virtual const brillo::SecureBlob& reset_seed() const {
     return reset_seed_;
   }
+  virtual const brillo::SecureBlob& reset_secret() const {
+    return reset_secret_;
+  }
   virtual void set_chaps_key(const brillo::SecureBlob& chaps_key);
   virtual void clear_chaps_key();
   virtual void set_reset_seed(const brillo::SecureBlob& reset_seed);
+  virtual void set_reset_secret(const brillo::SecureBlob& reset_secret);
   virtual bool IsLECredential() const;
 
  private:
@@ -90,6 +95,8 @@ class VaultKeyset {
   brillo::SecureBlob fnek_salt_;
   brillo::SecureBlob chaps_key_;
   brillo::SecureBlob reset_seed_;
+  // Used by LECredentials only.
+  brillo::SecureBlob reset_secret_;
 
   Platform* platform_;
   Crypto* crypto_;
