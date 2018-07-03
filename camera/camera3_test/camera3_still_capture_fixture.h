@@ -11,9 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <exif-data.h>
-#include <jpeglib.h>
-
+#include "camera3_test/camera3_exif_validator.h"
 #include "camera3_test/camera3_preview_fixture.h"
 
 namespace camera3_test {
@@ -38,6 +36,8 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
   int WaitStillCaptureResult(int cam_id, const struct timespec& timeout);
 
  protected:
+  using JpegExifInfo = Camera3ExifValidator::JpegExifInfo;
+
   struct StillCaptureResult {
     sem_t capture_result_sem;
 
@@ -56,17 +56,6 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
 
   // Max JPEG size with camera device id as the index
   std::unordered_map<int, size_t> jpeg_max_sizes_;
-
-  struct JpegExifInfo {
-    const BufferHandleUniquePtr& buffer_handle;
-    size_t buffer_size;
-    void* buffer_addr;
-    ResolutionInfo jpeg_resolution;
-    ExifData* exif_data;
-    JpegExifInfo(const BufferHandleUniquePtr& buffer, size_t size);
-    ~JpegExifInfo();
-    bool Initialize();
-  };
 
  private:
   std::vector<int> cam_ids_;
