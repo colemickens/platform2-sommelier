@@ -63,7 +63,7 @@ status_t JpegMakerCore::setupExifWithMetaData(ImgEncoderCore::EncodePackage & pa
 
     processExifSettings(package.settings, metaData);
 
-    mExifMaker->initialize(package.main->width(), package.main->height());
+    mExifMaker->initialize(package.jpegOut->width(), package.jpegOut->height());
     mExifMaker->pictureTaken(metaData);
     if (metaData.mIspMkNote)
         mExifMaker->setDriverData(*metaData.mIspMkNote);

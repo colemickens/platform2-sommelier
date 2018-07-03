@@ -282,10 +282,16 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
             GRALLOC_USAGE_SW_WRITE_NEVER |
             GRALLOC_USAGE_HW_CAMERA_WRITE;
 
+    bool hasInputStream = false;
+
     camera3_stream_t* stillStream = findStreamForStillCapture(activeStreams);
     for (unsigned int i = 0; i < activeStreams.size(); i++) {
         activeStreams[i]->max_buffers = maxBufs;
         activeStreams[i]->usage |= usage;
+        if (activeStreams[i]->stream_type == CAMERA3_STREAM_INPUT) {
+            hasInputStream = true;
+            continue;
+        }
 
         if (activeStreams[i] != stillStream) {
             mStreamsVideo.push_back(activeStreams[i]);
@@ -305,7 +311,7 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     mControlUnit->flush();
 
     mUseCase = USECASE_VIDEO; // Configure video pipe by default
-    if (mStreamsVideo.empty()) {
+    if (mStreamsVideo.empty() && !hasInputStream) {
         mUseCase = USECASE_STILL;
     }
     LOG1("%s: select usecase %d, video/still stream num: %zu/%zu", __FUNCTION__,

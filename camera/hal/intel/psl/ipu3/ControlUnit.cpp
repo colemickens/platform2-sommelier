@@ -610,7 +610,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
          jpegBufCount,
          implDefinedBufCount,
          yuv888BufCount,
-         reqState->request->getNumberInputBufs(),
+         (reqState->request->hasInputBuf() ? 1 : 0),
          reqState->request->getId());
     if (jpegBufCount > 0) {
         // NOTE: Makernote should be get after isp_bxt_run()
@@ -774,7 +774,7 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
      *
      * Request which are processed from input buffers do not wait for pixel data
      */
-    if (reqState->request->getNumberInputBufs() == 0)
+    if (!reqState->request->hasInputBuf())
         mWaitingForCapture.erase(reqId);
 
     if (CC_LIKELY((reqState->request != nullptr) &&

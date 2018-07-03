@@ -112,19 +112,19 @@ public:
 
     /* access methods */
     unsigned int getNumberOutputBufs();
-    unsigned int getNumberInputBufs();
-             int getBufferCountOfFormat(int format) const;
-             int getId();
-             int getpartialResultCount() { return mPartialResultBuffers.size(); }
+    bool hasInputBuf();
+    int getBufferCountOfFormat(int format) const;
+    int getId();
+    int getpartialResultCount() { return mPartialResultBuffers.size(); }
     int getCameraId() {return mCameraId;}
     CameraMetadata* getPartialResultBuffer(unsigned int index);
     const CameraMetadata* getSettings() const;
 
-    const std::vector<camera3_stream_buffer>* getInputBuffers();
     const std::vector<camera3_stream_buffer>* getOutputBuffers();
+    const camera3_stream_buffer* getInputBuffer();
     const std::vector<CameraStreamNode*>* getOutputStreams();
-    const std::vector<CameraStreamNode*>* getInputStreams();
-    std::shared_ptr<CameraBuffer> findBuffer(CameraStreamNode *stream, bool warn = true);
+    const CameraStreamNode* getInputStream();
+    std::shared_ptr<CameraBuffer> findBuffer(const CameraStreamNode* stream, bool warn = true);
     bool  isInputBuffer(std::shared_ptr<CameraBuffer> buffer);
 
     void setSeqenceId(int seqenceId) {mSeqenceId = seqenceId; }
@@ -138,9 +138,8 @@ public:
     IRequestCallback * mCallback;
 
 private:  /* methods */
-    bool isRequestValid(camera3_capture_request * request3);
-    status_t checkInputStreams(camera3_capture_request * request3);
-    status_t checkOutputStreams(camera3_capture_request * request3);
+    status_t checkInputStream(camera3_capture_request* request3);
+    status_t checkOutputStreams(camera3_capture_request* request3);
     status_t initPartialResultBuffers(int cameraId);
     status_t allocatePartialResultBuffers(int partialResultCount);
     void freePartialResultBuffers(void);
@@ -158,7 +157,7 @@ private:  /* types and members */
     CameraMetadata mSettings; /* request settings metadata. Always contains a
                                     valid metadata buffer even if the request
                                     had nullptr */
-     std::mutex mAccessLock;  /* protects mInBuffers, mOutBuffers and mRequestId,
+     std::mutex mAccessLock;  /* protects mInBuffers, mOutBufs and mRequestId,
                             to ensure thread safe access to private
                             camera3_capture_request and camera3_stream_buffer
                             members*/
@@ -166,13 +165,14 @@ private:  /* types and members */
     int mCameraId;
     int mSeqenceId;
     camera3_capture_request mRequest3;
-    std::vector<camera3_stream_buffer> mOutBuffers;
-    std::vector<camera3_stream_buffer> mInBuffers;
+    std::vector<camera3_stream_buffer> mOutBufs;
+    bool mHasInBuf;
+    camera3_stream_buffer mInBuf;
     std::vector<CameraStreamNode*> mOutStreams;
-    std::vector<CameraStreamNode*> mInStreams;
-    std::shared_ptr<CameraBuffer>    mOutputBufferPool[MAX_NUMBER_OUTPUT_STREAMS];
-    std::vector<std::shared_ptr<CameraBuffer> > mOutputBuffers;
-    std::shared_ptr<CameraBuffer>        mInputBuffer;
+    CameraStreamNode* mInStream;
+    std::shared_ptr<CameraBuffer> mOutCamBufPool[MAX_NUMBER_OUTPUT_STREAMS];
+    std::vector<std::shared_ptr<CameraBuffer> > mOutCamBufs;
+    std::shared_ptr<CameraBuffer> mInCamBuf;
     std::map<int, int>      mBuffersPerFormat;
     /* Partial result support */
     bool mResultBufferAllocated;

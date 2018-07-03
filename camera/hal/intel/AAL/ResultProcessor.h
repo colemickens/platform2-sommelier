@@ -101,7 +101,7 @@ private:  /* types  and constants */
          * Output buffers control variables
          */
         unsigned int buffersReturned;  /*!> from AAL to client */
-        unsigned int buffersToReturn;  /*!> total output buffer count of request */
+        unsigned int buffersToReturn;  /*!> total output and input buffer count of request */
         std::vector<std::shared_ptr<CameraBuffer> > pendingBuffers; /*!> where we store the
                                                               buffers received
                                                               from PSL*/
@@ -116,7 +116,7 @@ private:  /* types  and constants */
             isShutterDone = false;
             partialResultReturned = 0;
             buffersReturned = 0;
-            buffersToReturn = req->getNumberOutputBufs() + req->getNumberInputBufs();
+            buffersToReturn = req->getNumberOutputBufs() + (req->hasInputBuf() ? 1 : 0);
             request = req;
         }
     } RequestState_t;

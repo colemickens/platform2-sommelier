@@ -122,7 +122,7 @@ status_t ResultProcessor::handleRegisterRequest(MessageRegisterRequest msg)
 
     reqState->init(msg.request);
     mRequestsInTransit.insert(RequestsInTransitPair(reqState->reqId, reqState));
-    LOGR("<request %d> camera id %d registered @ ResultProcessor", reqState->reqId, msg.request->getCameraId());
+    LOGR("<Request %d> camera id %d registered @ ResultProcessor", reqState->reqId, msg.request->getCameraId());
     /**
      * get the number of partial results the request may return, this is not
      *  going to change once the camera is open, so do it only once.
@@ -264,7 +264,7 @@ status_t ResultProcessor::handleMetadataDone(MessageMetadataDone msg)
     }
 
     reqState->pendingPartialResults.emplace_back(request->getSettings());
-    LOGR(" <Request %d> camera id %d Metadata arrived %zu/%d", reqId, reqState->request->getCameraId(),
+    LOGR("<Request %d> camera id %d Metadata arrived %zu/%d", reqId, reqState->request->getCameraId(),
             reqState->pendingPartialResults.size(),mPartialResultCount);
 
     if (!reqState->isShutterDone) {
@@ -434,12 +434,16 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
 
         buf.status = pendingBuf->status();
         buf.stream = pendingBuf->getOwner()->getStream();
+        if (buf.stream) {
+            LOGR("<Request %d> width:%d, height:%d, fmt:%d",
+            reqState->reqId, buf.stream->width, buf.stream->height, buf.stream->format);
+        }
         buf.buffer = pendingBuf->getBufferHandle();
         pendingBuf->getFence(&buf);
         result.result = nullptr;
         if (request->isInputBuffer(pendingBuf)) {
             result.input_buffer = &buf;
-            LOGR(" <Request %d> return an input buffer", reqState->reqId);
+            LOGR("<Request %d> return an input buffer", reqState->reqId);
         } else {
             result.output_buffers = &buf;
         }
@@ -447,7 +451,7 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
         mCallbackOps->process_capture_result(mCallbackOps, &result);
         pendingBuf->getOwner()->decOutBuffersInHal();
         reqState->buffersReturned += 1;
-        LOGR(" <Request %d> camera id %d buffer done %d/%d ", reqState->reqId,
+        LOGR("<Request %d> camera id %d buffer done %d/%d ", reqState->reqId,
             reqState->request->getCameraId(), reqState->buffersReturned, reqState->buffersToReturn);
     }
 

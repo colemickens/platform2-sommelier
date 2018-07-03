@@ -466,17 +466,11 @@ RequestThread::captureRequest(Camera3Request* request)
         stream->processRequest(request);
     }
 
-    const std::vector<CameraStreamNode*>* inStreams = request->getInputStreams();
-    if (inStreams != nullptr) {
-        for (unsigned int i = 0; i < inStreams->size(); i++) {
-            streamNode = inStreams->at(i);
-            stream = static_cast<CameraStream *>(streamNode);
-            status = stream->processRequest(request);
-            if (status != NO_ERROR) {
-                LOGE("%s, fail to process stream request", __FUNCTION__);
-                break;
-             }
-        }
+    const CameraStreamNode* inStream = request->getInputStream();
+    if (inStream) {
+        stream = static_cast<CameraStream*>(const_cast<CameraStreamNode*>(inStream));
+        status = stream->processRequest(request);
+        CheckError(status != NO_ERROR, status, "%s, processRequest fails", __FUNCTION__);
     }
 
     return status;

@@ -358,6 +358,11 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
     } else if (availableStreams.size() == 2) {
         mainOutputIndex = (streamSizeGE(availableStreams[0], availableStreams[1])) ? 0 : 1;
         secondaryOutputIndex = mainOutputIndex ? 0 : 1;
+
+        if (streamSizeGE(availableStreams[1], availableStreams[0])) {
+            // yuv >= blob
+            isVideoSnapshot = true;
+        }
     } else if (availableStreams.size() == 3 && blobNum == 1) {
         // Check if it is video snapshot case: jpeg size = yuv size
         // Otherwise it is still capture case

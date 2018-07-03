@@ -330,6 +330,11 @@ status_t ImguUnit::mapStreamWithDeviceNode()
     } else if (streamNum == 2) {
         videoIdx = (streamSizeGE(availableStreams[0], availableStreams[1])) ? 0 : 1;
         previewIdx = videoIdx ? 0 : 1;
+
+        if (streamSizeGE(availableStreams[1], availableStreams[0])) {
+            // yuv >= blob
+            isVideoSnapshot = true;
+        }
     } else if (yuvNum == 2 && blobNum == 1) {
         // Check if it is video snapshot case: jpeg size = yuv size
         // Otherwise it is still capture case, same to GraphConfigManager::mapStreamToKey.
@@ -604,12 +609,11 @@ ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
         LOGE("ProcUnit: nullptr request - BUG");
         return UNKNOWN_ERROR;
     }
-    const std::vector<camera3_stream_buffer> *outBufs = request->getOutputBuffers();
-    const std::vector<camera3_stream_buffer> *inBufs = request->getInputBuffers();
+    const std::vector<camera3_stream_buffer>* outBufs = request->getOutputBuffers();
     int reqId = request->getId();
 
-    LOG2("@%s: Req id %d,  Num outbufs %lu Num inbufs %lu",
-         __FUNCTION__, reqId, outBufs ? outBufs->size() : 0, inBufs ? inBufs->size() : 0);
+    LOG2("@%s: Req id %d,  Num outbufs %lu Num inbufs %d",
+         __FUNCTION__, reqId, outBufs ? outBufs->size() : 0, (request->hasInputBuf()? 1 : 0));
 
     if (captureBufs.rawNonScaledBuffer.get() != nullptr) {
         LOG2("Using Non Scaled Buffer %p for req id %d",

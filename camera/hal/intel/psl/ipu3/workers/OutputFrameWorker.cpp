@@ -40,8 +40,14 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, 
                 mProcessor(cameraId)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    if (mNode)
-        LOG1("@%s, node name:%d, device name:%s", __FUNCTION__, nodeName, mNode->Name().c_str());
+    if (mNode) {
+        LOG1("@%s, node name:%d, device name:%s, mStream:%p", __FUNCTION__,
+        nodeName, mNode->Name().c_str(), mStream);
+    }
+    if (stream) {
+        LOG1("@%s, node name:%d, width:%d, height:%d, format:%x, type:%d", __FUNCTION__,
+        nodeName, stream->width, stream->height, stream->format, stream->stream_type);
+    }
 }
 
 OutputFrameWorker::~OutputFrameWorker()
@@ -248,6 +254,11 @@ status_t OutputFrameWorker::postRun()
                 goto exit;
             }
         } else {
+            if (!mWorkingBuffer->isLocked()) {
+                status_t ret = mWorkingBuffer->lock();
+                CheckError(ret != NO_ERROR, NO_MEMORY, "@%s, lock fails", __FUNCTION__);
+            }
+
             MEMCPY_S(listenerBuf->data(), listenerBuf->size(),
                      mWorkingBuffer->data(), mWorkingBuffer->size());
         }
@@ -550,15 +561,47 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
 
     // Jpeg input buffer is always mPostProcessBufs.back()
     if (mProcessType & PROCESS_JPEG_ENCODING) {
-        mPostProcessBufs.back()->dumpImage(CAMERA_DUMP_JPEG,
-                                           "before_jpeg_converion_nv12");
-        // JPEG encoding
+        // get input frame buffer, for yuv reprocessing
+        bool hasInputBuf = request->hasInputBuf();
+        if (hasInputBuf) {
+            const camera3_stream_buffer* inputBuf = request->getInputBuffer();
+            CheckError(!inputBuf, UNKNOWN_ERROR, "@%s, getInputBuffer fails", __FUNCTION__);
+
+            int fmt = inputBuf->stream->format;
+            CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
+            "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
+
+            const CameraStreamNode* s = request->getInputStream();
+            CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
+
+            std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
+            CheckError((buf == nullptr), UNKNOWN_ERROR, "@%s, findBuffer fails", __FUNCTION__);
+
+            if (!buf->isLocked()) {
+                status_t ret = buf->lock();
+                CheckError(ret != NO_ERROR, NO_MEMORY, "@%s, lock fails", __FUNCTION__);
+            }
+
+            mPostProcessBufs.push_back(buf);
+        }
+
+        mPostProcessBufs.back()->dumpImage(CAMERA_DUMP_JPEG, "before_nv12_to_jpeg");
+
+        // update settings for jpeg
         status = mJpegTask->handleMessageSettings(*(settings.get()));
-        CheckError((status != OK), status, "@%s, set settings failed! [%d]!",
-                   __FUNCTION__, status);
+        CheckError((status != OK), status, "@%s, handleMessageSettings fails", __FUNCTION__);
+
+        // encode jpeg
         status = convertJpeg(mPostProcessBufs.back(), output, request);
-        CheckError((status != OK), status, "@%s, JPEG conversion failed! [%d]!",
-                   __FUNCTION__, status);
+        if (status != OK) {
+            LOGE("@%s, convertJpeg fails, status:%d", __FUNCTION__, status);
+        }
+
+        if (hasInputBuf) {
+            std::shared_ptr<CameraBuffer> buf = mPostProcessBufs.back();
+            buf->unlock();
+            buf->getOwner()->captureDone(buf, request);
+        }
     }
 
     return status;

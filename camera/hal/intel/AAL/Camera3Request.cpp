@@ -36,12 +36,12 @@ NAMESPACE_DECLARATION {
  */
 #define RESULT_DATA_CAP 73728
 
-
 Camera3Request::Camera3Request():
         mCallback(nullptr),
         mRequestId(0),
         mCameraId(-1),
-        mSeqenceId(-1)
+        mSeqenceId(-1),
+        mHasInBuf(false)
 {
     LOG1("@%s Creating request with pointer %p", __FUNCTION__, this);
     deInit();
@@ -53,10 +53,10 @@ Camera3Request::Camera3Request():
      * we initialize the Request object
      */
     for (int i = 0; i < MAX_NUMBER_OUTPUT_STREAMS; i++) {
-        mOutputBufferPool[i] = std::make_shared<CameraBuffer>();
+        mOutCamBufPool[i] = std::make_shared<CameraBuffer>();
     }
 
-    mInputBuffer = std::make_shared<CameraBuffer>();
+    mInCamBuf = std::make_shared<CameraBuffer>();
     mResultBufferAllocated = false;
 }
 
@@ -73,15 +73,15 @@ void
 Camera3Request::deInit()
 {
     std::lock_guard<std::mutex> l(mAccessLock);
-    mOutBuffers.clear();
-    mInBuffers.clear();
-    mInStreams.clear();
+    mOutBufs.clear();
+    mHasInBuf = false;
+    mInStream = nullptr;
     mOutStreams.clear();
     mInitialized = false;
     mMembers.mSettings.clear();
     mSettings.clear();
-    mOutputBuffers.clear();
-    mInputBuffer.reset();
+    mOutCamBufs.clear();
+    mInCamBuf.reset(new CameraBuffer);
     mBuffersPerFormat.clear();
     CLEAR(mRequest3);
 }
@@ -96,6 +96,11 @@ Camera3Request::init(camera3_capture_request* req,
     LOG2("@%s req, framenum:%d, inputbuf:%p, outnum:%d, outputbuf:%p",
                 __FUNCTION__, req->frame_number, req->input_buffer,
                 req->num_output_buffers, req->output_buffers);
+    if (req->input_buffer) {
+        camera3_stream_t* s = req->input_buffer->stream;
+        LOG2("@%s req, input stream, width:%d, height:%d, format:%d, stream_type:%d, usage:%d",
+        __FUNCTION__, s->width, s->height, s->format, s->stream_type, s->usage);
+    }
 
     if (CC_UNLIKELY(cb == nullptr)) {
         LOGE("@%s: Invalid callback object", __FUNCTION__);
@@ -129,14 +134,14 @@ Camera3Request::init(camera3_capture_request* req,
                                                    buffer->stream->width,
                                                    buffer->stream->stream_type);
 
-        status = mOutputBufferPool[i]->init(buffer, cameraId);
+        status = mOutCamBufPool[i]->init(buffer, cameraId);
         if (status != NO_ERROR) {
             LOGE("init output buffer fail");
             l.unlock();
             deInit();
             return BAD_VALUE;
         }
-        mOutputBuffers.push_back(mOutputBufferPool[i]);
+        mOutCamBufs.push_back(mOutCamBufPool[i]);
 
         /*
          * Keep track of the number buffers per format
@@ -150,8 +155,8 @@ Camera3Request::init(camera3_capture_request* req,
         int typeCount = mBuffersPerFormat.at(buffer->stream->format);
         mBuffersPerFormat.at(buffer->stream->format) = ++typeCount;
 
-        mOutBuffers.push_back(*buffer);
-        mOutBuffers.at(i).release_fence = -1;
+        mOutBufs.push_back(*buffer);
+        mOutBufs.at(i).release_fence = -1;
 
         CameraStream *stream = reinterpret_cast<CameraStream *>(buffer->stream->priv);
         if (stream)
@@ -159,18 +164,20 @@ Camera3Request::init(camera3_capture_request* req,
 
         buffer++;
     }
+
     if (req->input_buffer) {
-        status = mInputBuffer->init(req->input_buffer, cameraId);
+        status = mInCamBuf->init(req->input_buffer, cameraId);
         if (status != NO_ERROR) {
             LOGE("init input buffer fail");
             l.unlock();
             deInit();
             return BAD_VALUE;
         }
-        mInBuffers.push_back(*(req->input_buffer));
+        mHasInBuf = true;
+        mInBuf = *req->input_buffer;
     }
 
-    status = checkInputStreams(req);
+    status = checkInputStream(req);
     status |= checkOutputStreams(req);
     if (status != NO_ERROR) {
         LOGE("error with the request's buffers");
@@ -211,19 +218,19 @@ unsigned int
 Camera3Request::getNumberOutputBufs()
 {
     std::lock_guard<std::mutex> l(mAccessLock);
-    return mInitialized ? mOutBuffers.size() : 0;
+    return mInitialized ? mOutBufs.size() : 0;
 }
 
 /**
- * getNumberInputBufs()
+ * hasInputBuf()
  *
- * returns the number of input buffers that this request has attached.
+ * returns true if it has input buffer.
  */
-unsigned int
-Camera3Request::getNumberInputBufs()
+bool
+Camera3Request::hasInputBuf()
 {
     std::lock_guard<std::mutex> l(mAccessLock);
-    return mInitialized ? mInBuffers.size() : 0;
+    return mInitialized && mHasInBuf;
 }
 
 int
@@ -233,10 +240,10 @@ Camera3Request::getId()
     return mInitialized ? mRequestId : -1;
 }
 
-const std::vector<CameraStreamNode*>*
-Camera3Request::getInputStreams()
+const CameraStreamNode*
+Camera3Request::getInputStream()
 {
-    return mInitialized ? &mInStreams : nullptr;
+    return mInitialized ? mInStream : nullptr;
 }
 
 const std::vector<CameraStreamNode*>*
@@ -249,14 +256,14 @@ const std::vector<camera3_stream_buffer>*
 Camera3Request::getOutputBuffers()
 {
     std::lock_guard<std::mutex> l(mAccessLock);
-    return mInitialized ? &mOutBuffers : nullptr;
+    return mInitialized ? &mOutBufs : nullptr;
 }
 
-const std::vector<camera3_stream_buffer>*
-Camera3Request::getInputBuffers()
+const camera3_stream_buffer*
+Camera3Request::getInputBuffer()
 {
     std::lock_guard<std::mutex> l(mAccessLock);
-    return mInitialized ? &mInBuffers : nullptr;
+    return (mInitialized && mHasInBuf) ? &mInBuf : nullptr;
 }
 
 /**
@@ -300,27 +307,28 @@ Camera3Request::getSettings() const
  * is initialized with a pointer to the corresponding CameraStream object
  */
 status_t
-Camera3Request::checkInputStreams(camera3_capture_request * request3)
+Camera3Request::checkInputStream(camera3_capture_request* request3)
 {
-    camera3_stream_t* stream = nullptr;
-    CameraStreamNode* streamNode = nullptr;
+    if (request3 == nullptr) return NO_ERROR;
+    if (request3->input_buffer == nullptr) return NO_ERROR;
 
+    camera3_stream_t* stream = request3->input_buffer->stream;
+    CheckError(!stream, BAD_VALUE,
+    "%s: Request %d: stream is nullptr!", __FUNCTION__, request3->frame_number);
 
-    if (request3->input_buffer != nullptr) {
-        stream = request3->input_buffer->stream;
-        if (stream->stream_type != CAMERA3_STREAM_INPUT
-           && stream->stream_type != CAMERA3_STREAM_BIDIRECTIONAL) {
-            LOGE("%s: Request %d: Input buffer not from input stream!",
-                    __FUNCTION__, request3->frame_number);
-            return BAD_VALUE;
-        }
-        if (stream->priv == nullptr) {
-            LOGE("Input Stream not configured");
-            return BAD_VALUE;
-        }
-        streamNode = reinterpret_cast<CameraStreamNode *>(stream->priv);
-        mInStreams.push_back(streamNode);
+    if (stream->stream_type != CAMERA3_STREAM_INPUT &&
+        stream->stream_type != CAMERA3_STREAM_BIDIRECTIONAL) {
+        LOGE("%s: Request %d: wrong type:%d",
+        __FUNCTION__, request3->frame_number, stream->stream_type);
+        return BAD_VALUE;
     }
+    if (stream->priv == nullptr) {
+        LOGE("%s: Request %d: stream is unconfigured", __FUNCTION__, request3->frame_number);
+        return BAD_VALUE;
+    }
+
+    mInStream = static_cast<CameraStreamNode*>(stream->priv);
+
     return NO_ERROR;
 }
 
@@ -333,14 +341,16 @@ Camera3Request::checkInputStreams(camera3_capture_request * request3)
  * \return: sp to the CameraBuffer object
  */
 std::shared_ptr<CameraBuffer>
-Camera3Request::findBuffer(CameraStreamNode *stream, bool warn)
+Camera3Request::findBuffer(const CameraStreamNode* stream, bool warn)
 {
-    for (size_t i = 0; i< mOutputBuffers.size(); i++) {
-        if (mOutputBuffers[i]->getOwner() == stream)
-            return mOutputBuffers[i];
+    for (size_t i = 0; i< mOutCamBufs.size(); i++) {
+        if (mOutCamBufs[i]->getOwner() == stream) {
+            return mOutCamBufs[i];
+        }
     }
-    if (mInputBuffer != nullptr && mInputBuffer->getOwner() == stream)
-        return mInputBuffer;
+    if (mInCamBuf != nullptr && mInCamBuf->getOwner() == stream) {
+        return mInCamBuf;
+    }
 
     if (warn)
         LOGW("could not find requested buffer. invalid stream?");
@@ -354,14 +364,14 @@ Camera3Request::findBuffer(CameraStreamNode *stream, bool warn)
 bool
 Camera3Request::isInputBuffer(std::shared_ptr<CameraBuffer> buffer)
 {
-    return mInputBuffer != nullptr && buffer.get() == mInputBuffer.get();
+    return mInCamBuf != nullptr && buffer.get() == mInCamBuf.get();
 }
 
 /**
  * Check that the output buffers belong to a known stream
  */
 status_t
-Camera3Request::checkOutputStreams(camera3_capture_request * request3)
+Camera3Request::checkOutputStreams(camera3_capture_request* request3)
 {
     camera3_stream_t* stream = nullptr;
     CameraStream* s = nullptr;
