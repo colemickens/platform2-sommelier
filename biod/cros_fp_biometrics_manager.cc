@@ -287,6 +287,16 @@ bool CrosFpBiometricsManager::CrosFpDevice::Init() {
   LOG(INFO) << "  Product ID : " << info_.product_id;
   LOG(INFO) << "  Model ID   : 0x" << std::hex << info_.model_id;
   LOG(INFO) << "  Version    : " << info_.version;
+  std::string error_flags;
+  if (info_.errors & FP_ERROR_NO_IRQ)
+    error_flags += "NO_IRQ ";
+  if (info_.errors & FP_ERROR_SPI_COMM)
+    error_flags += "SPI_COMM ";
+  if (info_.errors & FP_ERROR_BAD_HWID)
+    error_flags += "BAD_HWID ";
+  if (info_.errors & FP_ERROR_INIT_FAIL)
+    error_flags += "INIT_FAIL";
+  LOG(INFO) << "  Errors     : " << error_flags;
   LOG(INFO) << "CROS FP Image Info ";
   // Prints the pixel format in FOURCC format.
   LOG(INFO) << "  Pixel Format     : " << FourCC(info_.pixel_format);
