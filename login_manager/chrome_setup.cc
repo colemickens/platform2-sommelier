@@ -338,6 +338,9 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
   if (!builder->UseFlagIsSet("compupdates"))
     builder->AddArg("--disable-component-update");
 
+  if (builder->UseFlagIsSet("ml_service"))
+    builder->AddFeatureEnableOverride("MachineLearningService");
+
   // On developer systems, set a flag to let the browser know.
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
