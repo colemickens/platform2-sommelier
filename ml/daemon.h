@@ -5,8 +5,12 @@
 #ifndef ML_DAEMON_H_
 #define ML_DAEMON_H_
 
+#include <memory>
+
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
+
+#include "mojom/machine_learning_service.mojom.h"
 
 namespace dbus {
 class MethodCall;
@@ -20,6 +24,7 @@ class Daemon : public brillo::DBusDaemon {
   ~Daemon() override;
 
  protected:
+  // brillo::DBusDaemon:
   int OnInit() override;
 
  private:
@@ -34,6 +39,14 @@ class Daemon : public brillo::DBusDaemon {
   void BootstrapMojoConnection(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
+
+  // Responds to Mojo connection errors by quitting the daemon.
+  void OnConnectionError();
+
+  // The top-level interface. Empty until it is created & bound to a pipe by
+  // BootstrapMojoConnection.
+  std::unique_ptr<chromeos::machine_learning::mojom::MachineLearningService>
+      machine_learning_service_;
 
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;

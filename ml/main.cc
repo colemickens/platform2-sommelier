@@ -9,7 +9,6 @@
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
-  LOG(INFO) << "Starting the ML service\n";
   ml::Daemon daemon;
   daemon.Run();
   return 0;

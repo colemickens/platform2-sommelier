@@ -1,0 +1,23 @@
+// Copyright 2018 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
+// //chromeos/services/machine_learning/public/mojom/.
+// Example: A backwards-compatible interface change and corresponding
+// implementation change can be made here first, then replicated to the client
+// (Chromium) later.
+
+module chromeos.machine_learning.mojom;
+
+import "mojom/tensor.mojom";
+
+// API for performing inference on a TensorFlow graph. A given graph can be
+// executed multiple times with a single instance of GraphExecutor.
+interface GraphExecutor {
+  // Initializes input node values as specified in |inputs|, then executes the
+  // graph. The returned |outputs| are the values for the nodes specified in
+  // |output_names|.
+  Execute(map<string, Tensor> inputs, array<string> output_names)
+      => (array<Tensor> outputs);
+};
