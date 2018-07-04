@@ -1,2 +1,3 @@
-define(`arc', ifelse(arc_version, `none', , $1))
-define(`no_arc', ifelse(arc_version, `none', $1, ))
+define(`has_arc', ifelse(arc_version, `none', $2, $1))
+define(`no_arc', has_arc(, $1))
+define(`is_arc_nyc', has_arc(ifelse(arc_version, `n', $1, $2), ))

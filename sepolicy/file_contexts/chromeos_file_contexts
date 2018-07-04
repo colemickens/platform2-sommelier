@@ -21,10 +21,14 @@
 # All the following files are created dynamically and need to be labeled at
 # runtime.
 
-/run/arc/cmdline.android        u:object_r:proc_cmdline:s0
+has_arc(`
+/run/arc/cmdline.android        u:object_r:is_arc_nyc(proc, proc_cmdline):s0
+')
+
 /run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
 
 /run/arc/debugfs                           u:object_r:debugfs:s0
+
 /sys/kernel/debug(/.*)?                    u:object_r:debugfs:s0
 /sys/kernel/debug/tracing(/.*)?            u:object_r:debugfs_tracing:s0
 /sys/kernel/debug/tracing/trace_marker     u:object_r:debugfs_trace_marker:s0
@@ -83,6 +87,12 @@
 # Chrome OS shared memory files.
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0
 /dev/console                    u:object_r:console_device:s0
+
+is_arc_nyc(`
+# Label /dev/bus/usb/NNN/MMM
+# (USB device nodes passed by Chrome / permission broker)
+/dev/bus/usb(/.*)?              u:object_r:usb_device:s0
+')
 
 
 (/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0

@@ -2,8 +2,8 @@
 # For non-ARC++ builds, define cros_downloads_file as a file type.
 # For ARC++ builds, alias cros_downloads_file to media_rw_data_file.
 
-no_arc(type cros_downloads_file, file_type);
-arc(typealias media_rw_data_file alias cros_downloads_file);
+no_arc(`type cros_downloads_file, file_type');
+has_arc(`typealias media_rw_data_file alias cros_downloads_file');
 
 # Add create permissions for ChromeOS domain subjects.
 allow chromeos_domain cros_downloads_file:dir create_dir_perms;
