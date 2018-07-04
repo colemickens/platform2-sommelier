@@ -51,19 +51,6 @@ for FILE in \
   fi
 done
 
-# powerd_suspend writes to this file to suspend the system. It runs as
-# root:power. Also, |legacy_dark_resume.cc| expects to write to this file as the
-# power user, thus this file needs to be group writable as well.
-chown root:power /sys/power/state
-chmod 0664 /sys/power/state
-
-# Prepare for recovery from dark resume to a full resume.  TODO(chirantan):
-# Remove this when selective resume is ready.
-if [ -e "${PM_TEST_DELAY_FILE}" ]; then
-  # Wait for 5 milliseconds before starting the resume.
-  echo 5 > "${PM_TEST_DELAY_FILE}"
-fi
-
 if [ -e "/sys/power/pm_print_times" ]; then
   echo 1 > /sys/power/pm_print_times
 fi

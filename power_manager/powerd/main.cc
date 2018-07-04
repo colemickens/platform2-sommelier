@@ -45,7 +45,6 @@
 #include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
-#include "power_manager/powerd/system/legacy_dark_resume.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
@@ -208,16 +207,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
       system::PowerSupplyInterface* power_supply,
       PrefsInterface* prefs,
       system::InputWatcherInterface* input_watcher) override {
-    // TODO(b/38025089): Link is the only device with legacy dark resume
-    // enabled. Given that we have no plans to enable new dark resume logic on
-    // Link, only one of the logics will be enabled on any given board. Delete
-    // this code after Link falls out of auto_update cycle (April 2018).
-    if (system::LegacyDarkResume::ShouldUse(prefs)) {
-      auto legacy_dark_resume = std::make_unique<system::LegacyDarkResume>();
-      legacy_dark_resume->Init(power_supply, prefs);
-      return legacy_dark_resume;
-    }
-
     auto dark_resume = std::make_unique<system::DarkResume>();
     dark_resume->Init(prefs, input_watcher);
     return dark_resume;
