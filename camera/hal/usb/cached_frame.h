@@ -42,12 +42,15 @@ class CachedFrame {
   int GetHeight() const;
 
   // Caller should fill everything except |data_size| and |fd| of |out_frame|.
-  // The function will do format conversion and scale to fit |out_frame|
-  // requirement.
+  // The function will do crop of the center image by |crop_width| and
+  // |crop_height| first, and then do format conversion and scale to fit
+  // |out_frame| requirement.
   // If |video_hack| is true, it outputs YU12 when |hal_pixel_format| is YV12
   // (swapping U/V planes). Caller should fill |fourcc|, |data|, and
   // Return non-zero error code on failure; return 0 on success.
   int Convert(const android::CameraMetadata& metadata,
+              int crop_width,
+              int crop_height,
               FrameBuffer* out_frame,
               bool video_hack = false);
 
@@ -66,8 +69,9 @@ class CachedFrame {
   // CachedFrame does not take the ownership of |source_frame_|.
   const FrameBuffer* source_frame_;
 
-  // Temporary buffer for cropped and rotated results.
-  std::unique_ptr<SharedFrameBuffer> rotated_frame_;
+  // Temporary buffer for cropped, rotated and scaled results.
+  std::unique_ptr<SharedFrameBuffer> temp_frame_;
+  std::unique_ptr<SharedFrameBuffer> temp_frame2_;
 
   // Cache YU12 decoded results.
   std::unique_ptr<SharedFrameBuffer> yu12_frame_;

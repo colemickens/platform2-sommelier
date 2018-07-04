@@ -14,7 +14,8 @@ namespace cros {
 
 CachedFrame::CachedFrame()
     : source_frame_(nullptr),
-      rotated_frame_(new SharedFrameBuffer(0)),
+      temp_frame_(new SharedFrameBuffer(0)),
+      temp_frame2_(new SharedFrameBuffer(0)),
       yu12_frame_(new SharedFrameBuffer(0)),
       image_processor_(new ImageProcessor()) {}
 
@@ -70,13 +71,60 @@ int CachedFrame::GetHeight() const {
 }
 
 int CachedFrame::Convert(const android::CameraMetadata& metadata,
+                         int crop_width,
+                         int crop_height,
                          FrameBuffer* out_frame,
                          bool video_hack) {
+  VLOGF(2) << "Convert Image, crop " << crop_width << "," << crop_height
+           << ". Output Image " << out_frame->GetWidth() << ", "
+           << out_frame->GetHeight();
   if (video_hack && out_frame->GetFourcc() == V4L2_PIX_FMT_YVU420) {
     out_frame->SetFourcc(V4L2_PIX_FMT_YUV420);
   }
-  return image_processor_->ConvertFormat(
-      metadata, *yu12_frame_.get(), out_frame);
+
+  bool is_scale = (out_frame->GetWidth() != crop_width ||
+                   out_frame->GetHeight() != crop_height);
+  int ret;
+  if (is_scale) {
+    temp_frame2_->SetWidth(out_frame->GetWidth());
+    temp_frame2_->SetHeight(out_frame->GetHeight());
+  }
+
+  // Check if we need to do crop.
+  if (crop_width != yu12_frame_->GetWidth() ||
+      crop_height != yu12_frame_->GetHeight()) {
+    temp_frame_->SetWidth(crop_width);
+    temp_frame_->SetHeight(crop_height);
+    int ret = image_processor_->Crop(*yu12_frame_.get(), temp_frame_.get());
+    if (ret) {
+      LOGF(ERROR) << "Crop fails.";
+      return ret;
+    }
+
+    // crop and scale case.
+    if (is_scale) {
+      ret = image_processor_->Scale(*temp_frame_.get(), temp_frame2_.get());
+      LOGF_IF(ERROR, ret) << "Scale failed: " << ret;
+      return image_processor_->ConvertFormat(metadata, *temp_frame2_.get(),
+                                             out_frame);
+    }
+
+    // crop but no scale case.
+    return image_processor_->ConvertFormat(metadata, *temp_frame_.get(),
+                                           out_frame);
+  }
+
+  // No crop but scale case.
+  if (is_scale) {
+    ret = image_processor_->Scale(*yu12_frame_.get(), temp_frame2_.get());
+    LOGF_IF(ERROR, ret) << "Scale failed: " << ret;
+    return image_processor_->ConvertFormat(metadata, *temp_frame2_.get(),
+                                           out_frame);
+  }
+
+  // No crop and no scale case.
+  return image_processor_->ConvertFormat(metadata, *yu12_frame_.get(),
+                                         out_frame);
 }
 
 int CachedFrame::ConvertToYU12(bool test_pattern) {
@@ -133,11 +181,11 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   }
   int cropped_height = yu12_frame_->GetHeight();
   // SetWidth and SetHeight are for final image after crop and rotation.
-  rotated_frame_->SetWidth(cropped_height);
-  rotated_frame_->SetHeight(cropped_width);
+  temp_frame_->SetWidth(cropped_height);
+  temp_frame_->SetHeight(cropped_width);
 
-  int ret = image_processor_->CropAndRotate(*yu12_frame_.get(),
-                                           rotated_frame_.get(), rotate_degree);
+  int ret = image_processor_->ProcessForInsetPortraitMode(
+      *yu12_frame_.get(), temp_frame_.get(), rotate_degree);
   if (ret) {
     LOGF(ERROR) << "Crop and Rotate " << rotate_degree << " degree fails.";
     return ret;
@@ -155,7 +203,7 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   //                           ---------------------
   //
 
-  ret = image_processor_->Scale(*rotated_frame_.get(), yu12_frame_.get());
+  ret = image_processor_->Scale(*temp_frame_.get(), yu12_frame_.get());
   LOGF_IF(ERROR, ret) << "Scale failed: " << ret;
   return ret;
 }

@@ -180,7 +180,7 @@ class CameraClient {
     int WriteStreamBuffer(int stream_index,
                           int num_streams,
                           const android::CameraMetadata& metadata,
-                          camera3_stream_buffer_t* buffer);
+                          const camera3_stream_buffer_t* buffer);
 
     // Some devices may output invalid image after stream on. Skip frames
     // after stream on.

@@ -463,12 +463,48 @@ void CameraClient::RequestHandler::HandleRequest(
   VLOGFID(1, device_id_) << "Request Frame:" << capture_result.frame_number
                          << ", Number of output buffers: "
                          << capture_result.num_output_buffers;
+  bool constant_frame_rate = ShouldEnableConstantFrameRate(*metadata);
+  VLOGFID(1, device_id_) << "constant_frame_rate " << std::boolalpha
+                         << constant_frame_rate;
+
+  // Check if it requires different configuration for blob format in larger
+  // resolution.
+  bool stream_resolution_reconfigure = false;
+  Size old_resolution = stream_on_resolution_;
+  Size new_resolution = stream_on_resolution_;
+  for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
+    const camera3_stream_buffer_t* buffer = &capture_result.output_buffers[i];
+    // Only need to reconfigure the stream if we can't scale down from a larger
+    // stream.
+    if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB &&
+        (buffer->stream->width > new_resolution.width ||
+         buffer->stream->height > new_resolution.height)) {
+      stream_resolution_reconfigure = true;
+      new_resolution.width = buffer->stream->width;
+      new_resolution.height = buffer->stream->height;
+    }
+  }
+
+  if (stream_resolution_reconfigure ||
+      constant_frame_rate != constant_frame_rate_) {
+    VLOGFID(1, device_id_) << "Restart stream";
+    int ret = StreamOffImpl();
+    if (ret) {
+      HandleAbortedRequest(&capture_result);
+      return;
+    }
+
+    ret = StreamOnImpl(new_resolution, constant_frame_rate);
+    if (ret) {
+      HandleAbortedRequest(&capture_result);
+      return;
+    }
+  }
 
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
     int ret = WriteStreamBuffer(i, capture_result.num_output_buffers, *metadata,
-                                const_cast<camera3_stream_buffer_t*>(
-                                    &capture_result.output_buffers[i]));
+                                &capture_result.output_buffers[i]);
     if (ret) {
       LOGFID(ERROR, device_id_)
           << "Handle stream buffer failed for output buffer id: " << i;
@@ -498,6 +534,20 @@ void CameraClient::RequestHandler::HandleRequest(
   // After process_capture_result, HAL cannot access the output buffer in
   // camera3_stream_buffer anymore unless the release fence is not -1.
   callback_ops_->process_capture_result(callback_ops_, &capture_result);
+
+  // Switch back to old resolution for non-blob format.
+  if (stream_resolution_reconfigure) {
+    VLOGFID(1, device_id_) << "Switch back stream";
+    ret = StreamOffImpl();
+    if (ret) {
+      return;
+    }
+
+    ret = StreamOnImpl(old_resolution, constant_frame_rate_);
+    if (ret) {
+      return;
+    }
+  }
 }
 
 void CameraClient::RequestHandler::HandleFlush(
@@ -668,49 +718,20 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
     int stream_index,
     int num_streams,
     const android::CameraMetadata& metadata,
-    camera3_stream_buffer_t* buffer) {
+    const camera3_stream_buffer_t* buffer) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-
-  bool constant_frame_rate = ShouldEnableConstantFrameRate(metadata);
 
   VLOGFID(1, device_id_) << "output buffer stream format: "
                          << buffer->stream->format
                          << ", buffer ptr: " << *buffer->buffer
                          << ", width: " << buffer->stream->width
-                         << ", height: " << buffer->stream->height
-                         << ", constant_frame_rate " << std::boolalpha
-                         << constant_frame_rate;
+                         << ", height: " << buffer->stream->height;
 
-  // Require different configuration. We have to restart the stream.
-  bool stream_restart = false;
   int ret = 0;
-  if (buffer->stream->width != stream_on_resolution_.width ||
-      buffer->stream->height != stream_on_resolution_.height ||
-      constant_frame_rate != constant_frame_rate_) {
-    VLOGFID(1, device_id_) << "Restart stream";
-    // If stream_index is not 0, we have to return the current v4l2 buffer
-    // first.
-    if (stream_index) {
-      ret = EnqueueV4L2Buffer();
-      if (ret) {
-        return ret;
-      }
-    }
-    ret = StreamOffImpl();
-    if (ret) {
-      return ret;
-    }
-    Size new_resolution(buffer->stream->width, buffer->stream->height);
 
-    ret = StreamOnImpl(new_resolution, constant_frame_rate);
-    if (ret) {
-      return ret;
-    }
-    stream_restart = true;
-  }
-
-  // Get frame data from device only for the first buffer or new stream.
-  if (stream_index == 0 || stream_restart == true) {
+  // Get frame data from device only for the first buffer.
+  // We reuse the buffer for all streams.
+  if (stream_index == 0) {
     int32_t pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
     if (metadata.exists(ANDROID_SENSOR_TEST_PATTERN_MODE)) {
       camera_metadata_ro_entry entry =
@@ -728,11 +749,42 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 
   GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
                                   buffer->stream->height);
+
   ret = output_frame.Map();
   if (ret) {
     return -EINVAL;
   }
-  ret = input_frame_.Convert(metadata, &output_frame);
+
+  // Crop the stream image to the same ratio as the current buffer image.
+  // We want to compare w1/h1 and w2/h2. To avoid floating point precision loss
+  // we compare w1*h2 and w2*h1 instead, with w1 and h1 being the width and
+  // height of the stream; w2 and h2 those of the buffer.
+  int buffer_aspect_ratio =
+      buffer->stream->width * stream_on_resolution_.height;
+  int stream_aspect_ratio =
+      stream_on_resolution_.width * buffer->stream->height;
+  int crop_width;
+  int crop_height;
+
+  // Same Ratio.
+  if (stream_aspect_ratio == buffer_aspect_ratio) {
+    crop_width = stream_on_resolution_.width;
+    crop_height = stream_on_resolution_.height;
+  } else if (stream_aspect_ratio > buffer_aspect_ratio) {
+    // Need to crop width.
+    crop_width = buffer_aspect_ratio / buffer->stream->height;
+    crop_height = stream_on_resolution_.height;
+  } else {
+    // Need to crop height.
+    crop_width = stream_on_resolution_.width;
+    crop_height = stream_aspect_ratio / buffer->stream->width;
+  }
+
+  // Make sure crop size is even.
+  crop_width = (crop_width + 1) & (~1);
+  crop_height = (crop_height + 1) & (~1);
+
+  ret = input_frame_.Convert(metadata, crop_width, crop_height, &output_frame);
   if (ret) {
     return -EINVAL;
   }

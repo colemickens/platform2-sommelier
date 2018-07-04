@@ -293,9 +293,9 @@ int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
   return ret;
 }
 
-int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
-                                  FrameBuffer* out_frame,
-                                  int rotate_degree) {
+int ImageProcessor::ProcessForInsetPortraitMode(const FrameBuffer& in_frame,
+                                                FrameBuffer* out_frame,
+                                                int rotate_degree) {
   if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420 &&
       in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
     LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
@@ -339,6 +339,47 @@ int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
       out_frame->GetWidth() / 2, margin, 0, in_frame.GetWidth(),
       in_frame.GetHeight(), out_frame->GetHeight(), out_frame->GetWidth(),
       rotation_mode, libyuv::FourCC::FOURCC_I420);
+
+  LOGF_IF(ERROR, ret) << "ConvertToI420 failed: " << ret;
+  return ret;
+}
+
+int ImageProcessor::Crop(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
+  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420 &&
+      in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
+    LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
+                << " is unsupported.";
+    return -EINVAL;
+  }
+
+  VLOGF(1) << "Crop from " << in_frame.GetWidth() << "," << in_frame.GetHeight()
+           << " to " << out_frame->GetWidth() << "," << out_frame->GetHeight();
+  if (out_frame->GetWidth() > in_frame.GetWidth() ||
+      out_frame->GetHeight() > in_frame.GetHeight()) {
+    LOGF(ERROR) << "Crop to larger size";
+    return -EINVAL;
+  }
+  out_frame->SetFourcc(in_frame.GetFourcc());
+  size_t data_size = GetConvertedSize(*out_frame);
+
+  if (out_frame->SetDataSize(data_size)) {
+    LOGF(ERROR) << "Set data size failed";
+    return -EINVAL;
+  }
+
+  int crop_x = (in_frame.GetWidth() - out_frame->GetWidth()) / 2;
+  int crop_y = (in_frame.GetHeight() - out_frame->GetHeight()) / 2;
+
+  int ret = libyuv::ConvertToI420(
+      in_frame.GetData(), in_frame.GetDataSize(), out_frame->GetData(),
+      out_frame->GetWidth(),
+      out_frame->GetData() + out_frame->GetWidth() * out_frame->GetHeight(),
+      out_frame->GetWidth() / 2,
+      out_frame->GetData() +
+          out_frame->GetWidth() * out_frame->GetHeight() * 5 / 4,
+      out_frame->GetWidth() / 2, crop_x, crop_y, in_frame.GetWidth(),
+      in_frame.GetHeight(), out_frame->GetWidth(), out_frame->GetHeight(),
+      libyuv::RotationMode::kRotate0, libyuv::FourCC::FOURCC_I420);
 
   LOGF_IF(ERROR, ret) << "ConvertToI420 failed: " << ret;
   return ret;
