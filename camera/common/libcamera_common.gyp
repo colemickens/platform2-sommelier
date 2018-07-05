@@ -1,11 +1,19 @@
 {
   'includes': ['../build/cros-camera-common.gypi'],
+  'target_defaults': {
+    'variables': {
+      'deps': [
+        'libudev',
+      ],
+    },
+  },
   'targets': [
     {
       'target_name': 'libcamera_common',
       'type': 'shared_library',
       'sources': [
         'future.cc',
+        'udev_watcher.cc',
       ],
     },
   ],
