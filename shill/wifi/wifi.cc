@@ -83,13 +83,13 @@ static string ObjectID(WiFi* w) { return w->GetRpcIdentifier(); }
 // statics
 const char* const WiFi::kDefaultBgscanMethod =
     WPASupplicant::kNetworkBgscanMethodSimple;
-const uint16_t WiFi::kDefaultBgscanShortIntervalSeconds = 30;
-const int32_t WiFi::kDefaultBgscanSignalThresholdDbm = -62;
+const uint16_t WiFi::kDefaultBgscanShortIntervalSeconds = 64;
+const int32_t WiFi::kDefaultBgscanSignalThresholdDbm = -72;
 const uint16_t WiFi::kDefaultScanIntervalSeconds = 60;
 const uint16_t WiFi::kDefaultRoamThresholdDb = 18;  // Supplicant's default.
 
 // Scan interval while connected.
-const uint16_t WiFi::kBackgroundScanIntervalSeconds = 3601;
+const uint16_t WiFi::kBackgroundScanIntervalSeconds = 360;
 // Age (in seconds) beyond which a BSS cache entry will not be preserved,
 // across a suspend/resume.
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
