@@ -71,6 +71,9 @@ extern const int kKeyFileMax;
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
 extern const char kEphemeralDir[];
+// Daemon store directories.
+extern const char kEtcDaemonStoreBaseDir[];
+extern const char kRunDaemonStoreBaseDir[];
 
 class BootLockbox;
 class ChapsClientFactory;
@@ -704,6 +707,21 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   |is_owner| - true if mounted for an owner user, false otherwise.
   // Returns true if successful, false otherwise.
   bool UserSignInEffects(bool is_mount, bool is_owner);
+
+  // Bind-mounts
+  //   /home/.shadow/$hash/mount/root/$daemon (*)
+  // to
+  //   /run/daemon-store/$daemon/$hash
+  // for a hardcoded list of $daemon directories.
+  //
+  // This can be used to make the Cryptohome mount propagate into the daemon's
+  // mount namespace. See
+  // https://chromium.googlesource.com/chromiumos/docs/+/master/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders
+  // for details.
+  //
+  // (*) Path for a regular mount. The path is different for an ephemeral mount.
+  bool MountDaemonStoreDirectories(const base::FilePath& root_home,
+                                   const std::string& obfuscated_username);
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.

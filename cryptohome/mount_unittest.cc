@@ -249,6 +249,7 @@ class MountTest
   // Sets expectations for cryptohome mount.
   void ExpectCryptohomeMount(const TestUser& user) {
     ExpectCryptohomeKeySetup(user);
+    ExpectDaemonStoreMounts(user, false /* ephemeral_mount */);
     if (ShouldTestEcryptfs()) {
       EXPECT_CALL(platform_, Mount(user.vault_path, user.vault_mount_path,
                                    "ecryptfs", _))
@@ -310,6 +311,61 @@ class MountTest
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, FileExists(_))
         .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, SetOwnership(_, _, _, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
+    ExpectDaemonStoreMounts(user, true /* ephemeral_mount */);
+  }
+
+  // Sets expectations for Mount::MountDaemonStoreDirectories. In particular,
+  // sets up |platform_| to pretend that all daemon store directories exists, so
+  // that they're all mounted. Without calling this method, daemon store
+  // directories are pretended to not exist.
+  void ExpectDaemonStoreMounts(const TestUser& user, bool ephemeral_mount) {
+    // Return a mock daemon store directory in /etc/daemon-store.
+    constexpr char kDaemonName[] = "mock-daemon";
+    constexpr uid_t kDaemonUid = 123;
+    constexpr gid_t kDaemonGid = 234;
+    struct stat stat_data = {};
+    stat_data.st_mode = S_IFDIR;
+    stat_data.st_uid = kDaemonUid;
+    stat_data.st_gid = kDaemonGid;
+    const base::FilePath daemon_store_base_dir(kEtcDaemonStoreBaseDir);
+    const FileEnumerator::FileInfo daemon_info(
+        daemon_store_base_dir.AppendASCII(kDaemonName), stat_data);
+    NiceMock<MockFileEnumerator>* daemon_enumerator =
+        new NiceMock<MockFileEnumerator>();
+    daemon_enumerator->entries_.push_back(daemon_info);
+    EXPECT_CALL(platform_, GetFileEnumerator(daemon_store_base_dir, false,
+                                             base::FileEnumerator::DIRECTORIES))
+        .WillOnce(Return(daemon_enumerator));
+
+    const FilePath run_daemon_store_path =
+        FilePath(kRunDaemonStoreBaseDir).Append(kDaemonName);
+
+    EXPECT_CALL(platform_, DirectoryExists(run_daemon_store_path))
+        .WillOnce(Return(true));
+
+    const FilePath root_home = ephemeral_mount ? user.root_ephemeral_mount_path
+                                               : user.root_vault_mount_path;
+    const FilePath mount_source = root_home.Append(kDaemonName);
+    const FilePath mount_target =
+        run_daemon_store_path.Append(user.obfuscated_username);
+
+    EXPECT_CALL(platform_, CreateDirectory(mount_source))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_, CreateDirectory(mount_target))
+        .WillOnce(Return(true));
+
+    EXPECT_CALL(platform_, SetOwnership(mount_source, stat_data.st_uid,
+                                        stat_data.st_gid, false))
+        .WillOnce(Return(true));
+
+    EXPECT_CALL(platform_, SetPermissions(mount_source, stat_data.st_mode))
+        .WillOnce(Return(true));
+
+    EXPECT_CALL(platform_, Bind(mount_source, mount_target))
+        .WillOnce(Return(true));
   }
 
   void ExpectCryptohomeRemoval(const TestUser& user) {
@@ -477,9 +533,7 @@ TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   MountError error = MOUNT_ERROR_NONE;
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
-  EXPECT_CALL(platform_, Unmount(_, _, _))
-      .Times(ShouldTestEcryptfs() ? 5 : 4)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
 
   // Unmount here to avoid the scoped Mount doing it implicitly.
   EXPECT_CALL(platform_, GetCurrentTime())
@@ -1140,6 +1194,9 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)))
     .WillRepeatedly(Return(true));
 
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
+
   ExpectCryptohomeMount(*user);
 
   // Fake successful mount to /home/chronos/user/*
@@ -1204,9 +1261,7 @@ TEST_P(MountTest, UserActivityTimestampUpdated) {
   static const int kMagicTimestamp2 = 234;
   EXPECT_CALL(platform_, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp2)));
-  EXPECT_CALL(platform_, Unmount(_, _, _))
-      .Times(ShouldTestEcryptfs() ? 5 : 4)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
   mount_->UnmountCryptohome();
   SerializedVaultKeyset serialized2;
   ASSERT_TRUE(serialized2.ParseFromArray(updated_keyset.data(),
@@ -1935,6 +1990,8 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   ExpectCryptohomeKeySetup(*user);
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
@@ -1952,6 +2009,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
+  ExpectDaemonStoreMounts(*user, false /* is_ephemeral */);
 
   // First user to login -> an owner.
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::Owner))
@@ -1990,10 +2048,16 @@ TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(user->image_path))
     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
+      .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
+      .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
 
   if (ShouldTestEcryptfs()) {
     EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
@@ -2154,6 +2218,10 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
     .WillOnce(Return(true));  // user mount
   EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
     .WillOnce(Return(true));  // legacy mount
+  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
+                                          StartsWith(kRunDaemonStoreBaseDir)),
+                                 _, _))
+      .WillOnce(Return(true));  // daemon store mounts
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(true));
 
@@ -2423,6 +2491,10 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
       .WillOnce(Return(true));  // user mount
   EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
       .WillOnce(Return(true));  // legacy mount
+  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
+                                          StartsWith(kRunDaemonStoreBaseDir)),
+                                 _, _))
+      .WillOnce(Return(true));  // daemon store mounts
   EXPECT_CALL(platform_, ClearUserKeyring())
       .WillRepeatedly(Return(true));
 
@@ -2523,11 +2595,6 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
 
   EXPECT_CALL(platform_, Stat(_, _))
     .WillRepeatedly(Return(false));
-
-  ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(true));
-
   EXPECT_CALL(platform_, CreateDirectory(user->vault_path))
     .Times(0);
   EXPECT_CALL(platform_, CreateDirectory(_))
@@ -2535,6 +2602,10 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(_, _))
     .WillRepeatedly(Return(true));
+
+  ExpectCryptohomeMount(*user);
+  EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
+
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeleteFile(_, _))
@@ -2576,6 +2647,10 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
       .WillOnce(Return(true));  // user mount
   EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
       .WillOnce(Return(true));  // legacy mount
+  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
+                                          StartsWith(kRunDaemonStoreBaseDir)),
+                                 _, _))
+      .WillOnce(Return(true));  // daemon store mounts
   EXPECT_CALL(platform_, ClearUserKeyring())
       .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());

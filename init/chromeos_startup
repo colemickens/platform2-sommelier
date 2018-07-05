@@ -460,6 +460,20 @@ mkdir -m 0755 /var/run /var/lock
 mount -o bind /run /var/run
 mount -o bind /run/lock /var/lock
 
+# Create daemon store folders.
+# See https://chromium.googlesource.com/chromiumos/docs/+/master/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders.
+mkdir -m 0755 /run/daemon-store
+for etc_daemon_store in /etc/daemon-store/*; do
+    # If /etc/daemon-store is empty, $etc_daemon_store is /etc/daemon-store/*.
+    # This if statement filters that out.
+    if [ -d "$etc_daemon_store" ]; then
+        daemon_name=${etc_daemon_store##*/}
+        run_daemon_store=/run/daemon-store/${daemon_name}
+        mkdir -m 0755 ${run_daemon_store}
+        mount -o bind --make-shared ${run_daemon_store} ${run_daemon_store}
+    fi
+done
+
 # Make sure required /var subdirectories exist.
 mkdir -p -m 0755 /var/cache /var/db /var/empty /var/log/metrics \
                  /var/spool /var/tmp /var/lib/misc

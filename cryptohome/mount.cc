@@ -94,6 +94,10 @@ const char kEphemeralMountOptions[] = "";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 const gid_t kDaemonStoreGid = 400;
 
+// User daemon store directories.
+const char kRunDaemonStoreBaseDir[] = "/run/daemon-store/";
+const char kEtcDaemonStoreBaseDir[] = "/etc/daemon-store/";
+
 // A helper class for scoping umask changes.
 class ScopedUmask {
  public:
@@ -660,6 +664,13 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
     }
+
+    if (!MountDaemonStoreDirectories(root_home, obfuscated_username)) {
+      LOG(ERROR) << "Failed to mount daemon-store directories, aborting mount";
+      UnmountAll();
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
   }
 
   if (!UserSignInEffects(true /* is_mount */, is_owner)) {
@@ -807,6 +818,12 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
   if (!RememberBind(user_multi_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_multi_home.value() << " -> "
                 << multi_home.value();
+    return false;
+  }
+
+  if (!MountDaemonStoreDirectories(root_home, obfuscated_username)) {
+    LOG(ERROR)
+        << "Failed to mount daemon-store directories, aborting ephemeral mount";
     return false;
   }
 
@@ -2001,6 +2018,82 @@ bool Mount::UserSignInEffects(bool is_mount, bool is_owner) {
   Tpm::UserType user_type =
       (is_mount & is_owner) ? Tpm::UserType::Owner : Tpm::UserType::NonOwner;
   return tpm->SetUserType(user_type);
+}
+
+bool Mount::MountDaemonStoreDirectories(
+    const FilePath& root_home, const std::string& obfuscated_username) {
+  // Iterate over all directories in /etc/daemon-store. This list is on rootfs,
+  // so it's tamper-proof and nobody can sneak in additional directories that we
+  // blindly mount. The actual mounts happen on /run/daemon-store, though.
+  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
+      FilePath(kEtcDaemonStoreBaseDir), false /* recursive */,
+      base::FileEnumerator::DIRECTORIES));
+
+  // /etc/daemon-store/<daemon-name>
+  FilePath etc_daemon_store_path;
+  while (!(etc_daemon_store_path = file_enumerator->Next()).empty()) {
+    const FilePath& daemon_name = etc_daemon_store_path.BaseName();
+
+    // /run/daemon-store/<daemon-name>
+    FilePath run_daemon_store_path =
+        FilePath(kRunDaemonStoreBaseDir).Append(daemon_name);
+    if (!platform_->DirectoryExists(run_daemon_store_path)) {
+      // The chromeos_startup script should make sure this exist.
+      PLOG(ERROR) << "Daemon store directory does not exist: "
+                  << run_daemon_store_path.value();
+      return false;
+    }
+
+    // /home/.shadow/<user_hash>/mount/root/<daemon-name>
+    const FilePath mount_source = root_home.Append(daemon_name);
+
+    // /run/daemon-store/<daemon-name>/<user_hash>
+    const FilePath mount_target =
+        run_daemon_store_path.Append(obfuscated_username);
+
+    if (!platform_->CreateDirectory(mount_source)) {
+      PLOG(ERROR) << "Directory creation failed for " << mount_source.value();
+      return false;
+    }
+
+    if (!platform_->CreateDirectory(mount_target)) {
+      PLOG(ERROR) << "Directory creation failed for " << mount_target.value();
+      return false;
+    }
+
+    // Copy ownership from |etc_daemon_store_path| to |mount_source|. After the
+    // bind operation, this guarantees that ownership for |mount_target| is the
+    // same as for |etc_daemon_store_path| (usually
+    // <daemon_user>:<daemon_group>), which is what the daemon intended.
+    // Otherwise, it would end up being root-owned.
+    const struct stat& etc_daemon_path_stat = file_enumerator->GetInfo().stat();
+    if (!platform_->SetOwnership(mount_source, etc_daemon_path_stat.st_uid,
+                                 etc_daemon_path_stat.st_gid,
+                                 false /* follow_links */)) {
+      PLOG(ERROR) << "Failed to set ownership for " << mount_source.value();
+      return false;
+    }
+
+    // Similarly, transfer directory permissions. Should usually be 0700, so
+    // that only the daemon has full access.
+    if (!platform_->SetPermissions(mount_source,
+                                   etc_daemon_path_stat.st_mode)) {
+      PLOG(ERROR) << "Failed to set permissions for " << mount_source.value();
+      return false;
+    }
+
+    // Assuming that |run_daemon_store_path| is a shared mount and the daemon
+    // runs in a file system namespace with |run_daemon_store_path| mounted as
+    // slave, this mount event propagates into the daemon.
+    if (!RememberBind(mount_source, mount_target)) {
+      LOG(ERROR) << "Bind mount of daemon store directory from "
+                 << mount_source.value() << " to " << mount_target.value()
+                 << " failed: " << errno;
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace cryptohome
