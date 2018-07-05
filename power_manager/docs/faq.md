@@ -17,6 +17,24 @@ dev or test images. To set it manually, write `1` to
 `/var/lib/power_manager/disable_idle_suspend`. powerd will apply the updated
 pref immediately.
 
+Similarly, you can keep your development system awake while its lid is closed by
+running the following as the `root` user:
+
+```sh
+# ectool forcelidopen 1
+# echo 0 >/var/lib/power_manager/use_lid
+# restart powerd
+```
+
+This should persist as long as you don't wipe the device's stateful partition.
+To undo it, run the following:
+
+```sh
+# ectool forcelidopen 0
+# rm -f /var/lib/power_manager/use_lid
+# restart powerd
+```
+
 ## How do I trigger a suspend manually?
 
 The `powerd_dbus_suspend` program can be run from crosh or an SSH session to
@@ -28,7 +46,7 @@ to suspend the system. See also `memory_suspend_test` and `suspend_stress_test`.
 There are several different techniques that can be used to temporarily override
 the power manager's default behavior:
 
-### `set_power_policy`
+### set_power_policy
 
 This utility program was added in R26 to exercise the code path that Chrome uses
 to override the default power management policy (which was needed for
