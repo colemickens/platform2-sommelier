@@ -1840,7 +1840,8 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       // initialization stage of PackageManagerService.
       "--copy-packages-cache",
       GetEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"),
-      "--mount-demo-apps", mount_demo_apps ? "1" : "0", "--is-child",
+      "--mount-demo-apps", mount_demo_apps ? "1" : "0", "--is-demo-session",
+      GetEnvOrDie(arc_paths_->env.get(), "IS_DEMO_SESSION"), "--is-child",
       GetEnvOrDie(arc_paths_->env.get(), "IS_CHILD"), "--locale",
       GetEnvOrDie(arc_paths_->env.get(), "LOCALE"), "--preferred-languages",
       GetEnvOrDie(arc_paths_->env.get(), "PREFERRED_LANGUAGES")};
