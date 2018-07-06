@@ -72,6 +72,13 @@
       ],
     },
     {
+      'target_name': 'crash_sender',
+      'type': 'executable',
+      'sources': [
+        'crash_sender.cc',
+      ],
+    },
+    {
       'target_name': 'list_proxies',
       'type': 'executable',
       'variables': {

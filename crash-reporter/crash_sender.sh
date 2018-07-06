@@ -788,7 +788,7 @@ if ! grep -q '^NoNewPrivs:.*1$' /proc/$$/status; then
   # We need network access in order to upload things.
   # We don't use -i as the scheduler waits for the first process to exit.
   exec /sbin/minijail0 -c 0x2 --ambient -n -l -p -r -v -t --uts -- \
-    /sbin/crash_sender "$@"
+    /sbin/crash_sender.sh "$@"
 fi
 
 (
