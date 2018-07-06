@@ -43,10 +43,11 @@ namespace authpolicy {
 
 class Anonymizer;
 class AuthPolicyMetrics;
+class CryptohomeClient;
 class PathService;
 class ProcessExecutor;
 
-class SambaInterface {
+class SambaInterface : public TgtManager::Delegate {
  public:
   SambaInterface(AuthPolicyMetrics* metrics,
                  const PathService* path_service,
@@ -61,6 +62,9 @@ class SambaInterface {
   // - if a directory failed to create or
   // - if |expect_config| is true and the config file fails to load.
   ErrorType Initialize(bool expect_config) WARN_UNUSED_RESULT;
+
+  // Sets the interface to Cryptohome.
+  void SetCryptohomeClient(std::unique_ptr<CryptohomeClient> cryptohome_client);
 
   // Cleans all persistent state files. Returns true if all files were cleared.
   static bool CleanState(const PathService* path_service);
@@ -130,13 +134,18 @@ class SambaInterface {
   ErrorType FetchDeviceGpos(protos::GpoPolicyData* gpo_policy_data)
       WARN_UNUSED_RESULT;
 
+  // Should be called when the user session state changed (e.g. "started",
+  // "stopped"). User auth state can only be backed up when the session is in
+  // "started" state.
+  void OnSessionStateChanged(const std::string& state);
+
   // Sets the default log level, see AuthPolicyFlags::DefaultLevel for details.
   // The level persists between restarts of authpolicyd, but gets reset on
   // reboot.
   void SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level);
 
   // Returns the user's principal name (sAMAccountName @ realm).
-  std::string GetUserPrincipal() const { return user_account_.GetPrincipal(); }
+  std::string GetUserPrincipal() const;
 
   const std::string& user_account_id() const { return user_account_id_; }
 
@@ -151,11 +160,11 @@ class SambaInterface {
     return device_account_.netbios_name;
   }
 
+  // TgtManager::Delegate:
+  void OnTgtRenewed() override;
+
   // Disable retry sleep for unit tests.
-  void DisableRetrySleepForTesting() {
-    retry_sleep_disabled_for_testing_ = true;
-    device_tgt_manager_.DisableRetrySleepForTesting();
-  }
+  void DisableRetrySleepForTesting();
 
   void SetFixedAuthTriesForTesting(int auth_tries) {
     auth_tries_for_testing_ = auth_tries;
@@ -167,9 +176,7 @@ class SambaInterface {
   }
 
   // Renew the user ticket-granting-ticket.
-  ErrorType RenewUserTgtForTesting() WARN_UNUSED_RESULT {
-    return user_tgt_manager_.RenewTgt();
-  }
+  ErrorType RenewUserTgtForTesting() WARN_UNUSED_RESULT;
 
   // Returns the ticket-granting-ticket manager for the user account.
   TgtManager& GetUserTgtManagerForTesting() { return user_tgt_manager_; }
@@ -193,7 +200,7 @@ class SambaInterface {
   }
 
   // Resets internal state (useful for doing multiple domain joins).
-  void ResetForTesting() { Reset(); }
+  void ResetForTesting();
 
  private:
   // User or device specific information. The user might be logging on to a
@@ -380,7 +387,7 @@ class SambaInterface {
   // Sets and fixes the current user by account id key. Only one account id is
   // allowed per user. Calling this multiple times with different account ids
   // crashes the daemon.
-  void SetUser(const std::string& account_id_key);
+  void SetUserAccountId(const std::string& account_id_key);
 
   // Similar to SetUser, but sets user_account_.realm.
   void SetUserRealm(const std::string& user_realm);
@@ -391,6 +398,17 @@ class SambaInterface {
 
   // Sets encryption types used by Kerberos tickets.
   void SetKerberosEncryptionTypes(KerberosEncryptionTypes encryption_types);
+
+  // Backs up user authentication state (including the credentials cache) on the
+  // user's Cryptohome if the user is logged in (i.e. AuthenticateUser()
+  // succeeded).
+  void MaybeBackupUserAuthState();
+
+  // Restores user authentication state (including the credentials cache) from
+  // the user's Cryptohome if the backup data exists and the user isn't logged
+  // in yet. The restored state is equivalent to the state if AuthenticateUser()
+  // succeeds.
+  void MaybeRestoreUserAuthState();
 
   // Anonymizes |realm| in different capitalizations as well as all parts. For
   // instance, if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
@@ -419,16 +437,20 @@ class SambaInterface {
 
   // User account_id (aka objectGUID).
   std::string user_account_id_;
-  // User logon name.
-  std::string user_sam_account_name_;
   // Timestamp of last password change on server.
   uint64_t user_pwd_last_set_ = 0;
-  // Is the user logged in?
+  // Whether AuthenticateUser() succeeded or the equivalent auth state could be
+  // restored from a backup.
   bool user_logged_in_ = false;
   // Is the user affiliated with the machine's domain?
   bool is_user_affiliated_ = false;
   // Last AuthenticateUser() error.
   ErrorType last_auth_error_ = ERROR_NONE;
+  // Path for user data backup, e.g. /run/daemon-store/authpolicyd/<user_hash>.
+  // Note that this is essentially bound to /home/root/<user_hash>/authpolicyd.
+  base::FilePath user_daemon_store_path_;
+  // Whether the user session has been started, so Cryptohome is available.
+  bool in_user_session_ = false;
 
   AccountData user_account_;
   AccountData device_account_;
@@ -441,6 +463,9 @@ class SambaInterface {
 
   // Lookup for file paths, not owned.
   const PathService* paths_;
+
+  // D-Bus interface to Cryptohome.
+  std::unique_ptr<CryptohomeClient> cryptohome_client_;
 
   // Removes sensitive data from logs.
   std::unique_ptr<Anonymizer> anonymizer_;

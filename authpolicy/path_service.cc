@@ -66,6 +66,8 @@ const char kDebugFlagsPath[] = "/etc/authpolicyd_flags";
 const char kFlagsDefaultLevelPath[] = "/run/authpolicyd/flags_default_level";
 // Kerberos trace logs (kinit, kpasswd).
 const char kKrb5Trace[] = "/krb5_trace";
+// Per-user daemon store base path.
+const char kDaemonStorePath[] = "/run/daemon-store/authpolicyd";
 
 }  // namespace
 
@@ -127,6 +129,7 @@ void PathService::Initialize() {
   Insert(Path::FLAGS_DEFAULT_LEVEL, kFlagsDefaultLevelPath);
   // Trace has to be in a place writable for authpolicyd-exec!
   Insert(Path::KRB5_TRACE, samba_dir + kKrb5Trace);
+  Insert(Path::DAEMON_STORE, kDaemonStorePath);
 }
 
 const std::string& PathService::Get(Path path_key) const {

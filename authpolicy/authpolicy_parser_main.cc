@@ -363,7 +363,6 @@ int ParseGpoList(const std::string& net_out,
   if (!found_separator) {
     // This usually happens when something went wrong, e.g. connection error.
     LOG(ERROR) << "Failed to parse GPO data (no separator, did net fail?)";
-    LOG(ERROR) << "Net response: " << net_out;
     return EXIT_CODE_PARSE_INPUT_FAILED;
   }
 

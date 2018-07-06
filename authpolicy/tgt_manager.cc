@@ -276,6 +276,7 @@ TgtManager::TgtManager(const PathService* path_service,
                        const protos::DebugFlags* flags,
                        const JailHelper* jail_helper,
                        Anonymizer* anonymizer,
+                       Delegate* delegate,
                        Path config_path,
                        Path credential_cache_path)
     : paths_(path_service),
@@ -283,6 +284,7 @@ TgtManager::TgtManager(const PathService* path_service,
       flags_(flags),
       jail_helper_(jail_helper),
       anonymizer_(anonymizer),
+      delegate_(delegate),
       config_path_(config_path),
       credential_cache_path_(credential_cache_path) {}
 
@@ -409,6 +411,9 @@ ErrorType TgtManager::RenewTgt() {
   // Trigger signal if files changed.
   MaybeTriggerKerberosFilesChanged();
 
+  // Let the delegate do its thing.
+  delegate_->OnTgtRenewed();
+
   return error;
 }
 
@@ -474,6 +479,7 @@ ErrorType TgtManager::ChangePassword(const std::string& old_password,
     return ERROR_LOCAL_IO;
 
   // Setup and run kpasswd command.
+  DCHECK(!principal_.empty());
   ProcessExecutor kpasswd_cmd({paths_->Get(Path::KPASSWD), principal_});
   kpasswd_cmd.SetInputFile(password_fd.get());
   kpasswd_cmd.SetEnv(kKrb5ConfEnvKey, kFilePrefix + paths_->Get(config_path_));
@@ -484,6 +490,69 @@ ErrorType TgtManager::ChangePassword(const std::string& old_password,
     return GetKPasswdError(kpasswd_cmd, is_machine_principal_);
   }
   return ERROR_NONE;
+}
+
+bool TgtManager::Backup(protos::TgtState* state) {
+  // Read the TGT first since it can fail.
+  // Note: The krb5cc is readable only by authpolicyd-exec.
+  std::string krb5cc;
+  {
+    ScopedSwitchToSavedUid switch_scope;
+    base::FilePath krb5cc_path(paths_->Get(credential_cache_path_));
+    if (!base::ReadFileToStringWithMaxSize(krb5cc_path, &krb5cc,
+                                           kKrb5FileSizeLimit)) {
+      PLOG(ERROR)
+          << "TGT backup failed to read Kerberos credential cache from '"
+          << krb5cc_path.value() << "'";
+      return false;
+    }
+  }
+
+  // Store data in the state blob.
+  DCHECK(state);
+  state->set_realm(realm_);
+  state->set_kdc_ip(kdc_ip_);
+  state->set_principal(principal_);
+  state->set_krb5cc(krb5cc);
+  return true;
+}
+
+bool TgtManager::Restore(const protos::TgtState& state) {
+  // Verify state.
+  if (!state.has_realm() || !state.has_kdc_ip() || !state.has_principal() ||
+      !state.has_krb5cc()) {
+    LOG(ERROR) << "TGT restore failed, invalid state";
+    return false;
+  }
+
+  // Write TGT first since it can fail.
+  // Note: The krb5cc is writeable only by authpolicyd-exec.
+  {
+    ScopedSwitchToSavedUid switch_scope;
+    const base::FilePath krb5cc_path(paths_->Get(credential_cache_path_));
+    const int size = static_cast<int>(state.krb5cc().size());
+    if (base::WriteFile(krb5cc_path, state.krb5cc().data(), size) != size) {
+      PLOG(ERROR) << "TGT restore failed to write Kerberos credential cache to "
+                  << krb5cc_path.value();
+      return false;
+    }
+  }
+
+  realm_ = state.realm();
+  kdc_ip_ = state.kdc_ip();
+  SetPrincipal(state.principal());
+
+  // Do a best effort restoring the config. It is needed e.g. for
+  // GetKerberosFiles(). Don't exit here since we'd be in an undefined state.
+  // Even if this fails here, it'll eventually recover since many instances
+  // write the config.
+  ignore_result(WriteKrb5Conf());
+
+  // Trigger files changed signal.
+  kerberos_files_dirty_ = true;
+  MaybeTriggerKerberosFilesChanged();
+
+  return true;
 }
 
 ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,

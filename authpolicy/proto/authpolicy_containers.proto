@@ -105,3 +105,27 @@ message GpoPolicyData {
   // Extension policy can be both in user and device GPOs.
   repeated ExtensionPolicy extension_policies = 2;
 }
+
+// Backup data for Kerberos ticket manager state.
+message TgtState {
+  // Realm used to acquire the ticket-granting-ticket.
+  optional string realm = 1;
+  // Key distribution center (KDC) IP address.
+  optional string kdc_ip = 2;
+  // User principal (user@REALM).
+  optional string principal = 3;
+  // Kerberos credential cache.
+  optional string krb5cc = 4;
+}
+
+// Backup data for user authentication state. Stored on the user's Cryptohome.
+message UserBackupData {
+  // Kerberos ticket manager state.
+  optional TgtState tgt_state = 1;
+  // Timestamp of last password change on server.
+  optional uint64 pwd_last_set = 2;
+  // User sAMAccountName.
+  optional string user_name = 3;
+  // Is the user affiliated with the machine's domain?
+  optional bool is_user_affiliated = 4;
+}

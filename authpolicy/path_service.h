@@ -67,6 +67,7 @@ enum class Path {
   FLAGS_DEFAULT_LEVEL,  // File with flags default level (as integer), see
                         // AuthPolicyFlags::DefaultLevel.
   KRB5_TRACE,           // kinit and kpasswd trace log.
+  DAEMON_STORE,         // Per-user daemon store base path.
 };
 
 // Simple path service.

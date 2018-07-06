@@ -14,6 +14,7 @@
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 
 #include "authpolicy/authpolicy_metrics.h"
+#include "authpolicy/cryptohome_client.h"
 #include "authpolicy/log_colors.h"
 #include "authpolicy/path_service.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
@@ -180,6 +181,7 @@ void AuthPolicy::RegisterAsync(
         completion_callback) {
   DCHECK(!dbus_object_);
   dbus_object_ = std::move(dbus_object);
+
   // Make sure the task runner used in some places is actually the D-Bus task
   // runner. This guarantees that tasks scheduled on the task runner won't
   // interfere with D-Bus calls.
@@ -190,6 +192,17 @@ void AuthPolicy::RegisterAsync(
 
   session_manager_client_ =
       std::make_unique<SessionManagerClient>(dbus_object_.get());
+
+  // Listen to session state changes for backing up user TGT and other data.
+  session_manager_client_->ConnectToSessionStateChangedSignal(base::Bind(
+      &SambaInterface::OnSessionStateChanged, base::Unretained(&samba_)));
+
+  // Set proper session state.
+  samba_.OnSessionStateChanged(session_manager_client_->RetrieveSessionState());
+
+  // Give Samba access to Cryptohome.
+  samba_.SetCryptohomeClient(
+      std::make_unique<CryptohomeClient>(dbus_object_.get()));
 }
 
 void AuthPolicy::AuthenticateUser(

@@ -95,6 +95,7 @@
         'authpolicy_flags.cc',
         'authpolicy_metrics.cc',
         'constants.cc',
+        'cryptohome_client.cc',
         'jail_helper.cc',
         'log_colors.cc',
         'path_service.cc',

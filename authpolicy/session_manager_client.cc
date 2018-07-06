@@ -30,6 +30,16 @@ void PrintError(const char* method,
   LOG(ERROR) << "Call to " << method << " failed. " << error_msg;
 }
 
+// Prints an error if connecting to a signal failed.
+void LogOnSignalConnected(const std::string& interface_name,
+                          const std::string& signal_name,
+                          bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to signal " << signal_name
+               << " of interface " << interface_name;
+  }
+}
+
 }  // namespace
 
 SessionManagerClient::SessionManagerClient(
@@ -61,20 +71,6 @@ void SessionManagerClient::StoreUnsignedPolicyEx(
                  weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
-void SessionManagerClient::OnPolicyStored(
-    const base::Callback<void(bool success)>& callback,
-    dbus::Response* response) {
-  brillo::ErrorPtr error;
-  if (!response ||
-      !brillo::dbus_utils::ExtractMethodCallResults(response, &error)) {
-    PrintError(login_manager::kSessionManagerStoreUnsignedPolicyEx, response,
-               error.get());
-    callback.Run(false /* success */);
-    return;
-  }
-  callback.Run(true /* success */);
-}
-
 bool SessionManagerClient::ListStoredComponentPolicies(
     const std::string& descriptor_blob,
     std::vector<std::string>* component_ids) {
@@ -98,6 +94,58 @@ bool SessionManagerClient::ListStoredComponentPolicies(
     return false;
   }
   return true;
+}
+
+void SessionManagerClient::ConnectToSessionStateChangedSignal(
+    const base::Callback<void(const std::string& state)>& callback) {
+  session_manager_proxy_->ConnectToSignal(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionStateChangedSignal,
+      base::Bind(&SessionManagerClient::OnSessionStateChanged,
+                 weak_ptr_factory_.GetWeakPtr(), callback),
+      base::Bind(&LogOnSignalConnected));
+}
+
+std::string SessionManagerClient::RetrieveSessionState() {
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerRetrieveSessionState);
+  dbus::MessageWriter writer(&method_call);
+  std::unique_ptr<dbus::Response> response =
+      session_manager_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!response)
+    return std::string();
+
+  dbus::MessageReader reader(response.get());
+  std::string state;
+  if (!reader.PopString(&state))
+    return std::string();
+
+  return state;
+}
+
+void SessionManagerClient::OnPolicyStored(
+    const base::Callback<void(bool success)>& callback,
+    dbus::Response* response) {
+  brillo::ErrorPtr error;
+  if (!response ||
+      !brillo::dbus_utils::ExtractMethodCallResults(response, &error)) {
+    PrintError(login_manager::kSessionManagerStoreUnsignedPolicyEx, response,
+               error.get());
+    callback.Run(false /* success */);
+    return;
+  }
+  callback.Run(true /* success */);
+}
+
+void SessionManagerClient::OnSessionStateChanged(
+    const base::Callback<void(const std::string& state)>& callback,
+    dbus::Signal* signal) {
+  dbus::MessageReader signal_reader(signal);
+  std::string state;
+  CHECK(signal_reader.PopString(&state));
+  callback.Run(state);
 }
 
 }  // namespace authpolicy

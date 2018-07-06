@@ -15,6 +15,7 @@
 namespace dbus {
 class ObjectProxy;
 class Response;
+class Signal;
 }  // namespace dbus
 
 namespace brillo {
@@ -44,11 +45,25 @@ class SessionManagerClient {
   bool ListStoredComponentPolicies(const std::string& descriptor_blob,
                                    std::vector<std::string>* component_ids);
 
+  // Connect to the signal invoked when the session state changes. See
+  // session_manager_impl.cc for a list of possible states.
+  void ConnectToSessionStateChangedSignal(
+      const base::Callback<void(const std::string& state)>& callback);
+
+  // Retrieves the session state immediately. Returns an empty string on error.
+  std::string RetrieveSessionState();
+
  private:
   // Callback called when StoreUnsignedPolicyEx() finishes. Prints errors and
   // calls |callback|.
   void OnPolicyStored(const base::Callback<void(bool success)>& callback,
                       dbus::Response* response);
+
+  // Callback called on SessionStateChanged signal. Calls callback with the new
+  // session state.
+  void OnSessionStateChanged(
+      const base::Callback<void(const std::string& state)>& callback,
+      dbus::Signal* signal);
 
   dbus::ObjectProxy* session_manager_proxy_ = nullptr;  // Not owned.
   base::WeakPtrFactory<SessionManagerClient> weak_ptr_factory_;

@@ -24,6 +24,7 @@
 #include <policy/device_policy_impl.h>
 
 #include "authpolicy/anonymizer.h"
+#include "authpolicy/cryptohome_client.h"
 #include "authpolicy/log_colors.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
@@ -34,7 +35,7 @@ namespace authpolicy {
 namespace {
 
 // Samba configuration file data.
-const char kSmbConfData[] =
+constexpr char kSmbConfData[] =
     "[global]\n"
     "\tnetbios name = %s\n"
     "\tsecurity = ADS\n"
@@ -53,15 +54,15 @@ const char kSmbConfData[] =
     "\tclient ipc min protocol = SMB2\n"
     "\tclient ldap sasl wrapping = sign\n";
 
-const int kFileMode_rwr = base::FILE_PERMISSION_READ_BY_USER |
-                          base::FILE_PERMISSION_WRITE_BY_USER |
-                          base::FILE_PERMISSION_READ_BY_GROUP;
+constexpr int kFileMode_rwr = base::FILE_PERMISSION_READ_BY_USER |
+                              base::FILE_PERMISSION_WRITE_BY_USER |
+                              base::FILE_PERMISSION_READ_BY_GROUP;
 
-const int kFileMode_rwxrx = kFileMode_rwr |
-                            base::FILE_PERMISSION_EXECUTE_BY_USER |
-                            base::FILE_PERMISSION_EXECUTE_BY_GROUP;
+constexpr int kFileMode_rwxrx = kFileMode_rwr |
+                                base::FILE_PERMISSION_EXECUTE_BY_USER |
+                                base::FILE_PERMISSION_EXECUTE_BY_GROUP;
 
-const int kFileMode_rwxrwx =
+constexpr int kFileMode_rwxrwx =
     kFileMode_rwxrx | base::FILE_PERMISSION_WRITE_BY_GROUP;
 
 // Directories with permissions to be created. AUTHPOLICY_TMP_DIR needs group rx
@@ -80,18 +81,21 @@ constexpr struct CreateDirectories {
                      {Path::SAMBA_PRIVATE_DIR, kFileMode_rwxrwx, true}};
 
 // Directory / filenames for user and device policy.
-const char kPRegUserDir[] = "User";
-const char kPRegDeviceDir[] = "Machine";
-const char kPRegFileName[] = "registry.pol";
+constexpr char kPRegUserDir[] = "User";
+constexpr char kPRegDeviceDir[] = "Machine";
+constexpr char kPRegFileName[] = "registry.pol";
 
 // Size limit when loading the config file (256 kb).
-const size_t kConfigSizeLimit = 256 * 1024;
+constexpr size_t kConfigSizeLimit = 256 * 1024;
+
+// SessionStateChanged signal payload we care about.
+constexpr char kSessionStarted[] = "started";
 
 // Maximum total time for user authentication tries. The last try might exceed
 // this time.
 constexpr base::TimeDelta kAuthMaxTime = base::TimeDelta::FromSeconds(10);
 // Try user authentication at least twice.
-const int kAuthMinTries = 2;
+constexpr int kAuthMinTries = 2;
 // Minimum time delta between two user authentication tries. Should be
 // relatively short because we want to reply quickly since the user might be
 // waiting.
@@ -99,7 +103,7 @@ constexpr base::TimeDelta kAuthMinDeltaBetweenTries =
     base::TimeDelta::FromMilliseconds(500);
 
 // Maximum smbclient tries.
-const int kSmbClientMaxTries = 5;
+constexpr int kSmbClientMaxTries = 5;
 // Wait interval between two smbclient tries.
 constexpr base::TimeDelta kSmbClientRetryDelay =
     base::TimeDelta::FromSeconds(1);
@@ -109,79 +113,80 @@ constexpr base::TimeDelta kPasswordChangeCheckRate =
     base::TimeDelta::FromMinutes(120);
 
 // Keys for interpreting net output.
-const char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
-const char kKeyInvalidMachineName[] = "Improperly formed account name";
-const char kKeyInvalidMachineName2[] =
+constexpr char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
+constexpr char kKeyInvalidMachineName[] = "Improperly formed account name";
+constexpr char kKeyInvalidMachineName2[] =
     "The name provided is not a properly formed account name";
-const char kKeyMachineNameTooLong[] = "Our netbios name can be at most";
-const char kKeyUserHitJoinQuota[] =
+constexpr char kKeyMachineNameTooLong[] = "Our netbios name can be at most";
+constexpr char kKeyUserHitJoinQuota[] =
     "Insufficient quota exists to complete the operation";
-const char kKeyJoinFailedToFindDC[] = "failed to find DC";
-const char kKeyNoLogonServers[] = "No logon servers";
-const char kKeyJoinLogonFailure[] = "Logon failure";
-const char kKeyJoinLogonFailure2[] = "The attempted logon is invalid";
-const char kKeyJoinMustChangePassword[] = "Must change password";
-const char kKeyJoinMustChangePassword2[] = "password must be changed";
+constexpr char kKeyJoinFailedToFindDC[] = "failed to find DC";
+constexpr char kKeyNoLogonServers[] = "No logon servers";
+constexpr char kKeyJoinLogonFailure[] = "Logon failure";
+constexpr char kKeyJoinLogonFailure2[] = "The attempted logon is invalid";
+constexpr char kKeyJoinMustChangePassword[] = "Must change password";
+constexpr char kKeyJoinMustChangePassword2[] = "password must be changed";
 // Setting OU during domain join failed. More specific errors below.
-const char kKeyBadOuCommon[] = "failed to precreate account in ou";
+constexpr char kKeyBadOuCommon[] = "failed to precreate account in ou";
 // The domain join createcomputer argument specified a non-existent OU.
-const char kKeyBadOuNoSuchObject[] = "No such object";
+constexpr char kKeyBadOuNoSuchObject[] = "No such object";
 // The domain join createcomputer argument syntax was invalid. Caused by some
 // special characters in OU names, e.g. 'ou=123!' or 'a"b'. Seems like a Samba
 // issue since OUs allow all characters and we do escape names properly.
-const char kKeyBadOuInvalidDnSyntax[] = "Invalid DN syntax";
+constexpr char kKeyBadOuInvalidDnSyntax[] = "Invalid DN syntax";
 // Domain join operation would have violated an attribute constraint.
-const char kKeyBadOuConstrainViolation[] = "Constraint violation";
+constexpr char kKeyBadOuConstrainViolation[] = "Constraint violation";
 // Domain join required access permissions that the user does not possess.
-const char kKeyBadOuInsufficientAccess[] = "Insufficient access";
+constexpr char kKeyBadOuInsufficientAccess[] = "Insufficient access";
 // All other OU errors result in a generic ERROR_SETTING_OU_FAILED, e.g.
 //  - "Referral": dc=... specification resulted in a referral to another server.
 //  - "Operations error": Unspecific error.
 // Keys for interpreting smbclient output.
-const char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
-const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
-const char kKeyObjectNameNotFound[] =
+constexpr char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
+constexpr char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
+constexpr char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
-const char kKeyEncTypeNotSupported[] = "KDC has no support for encryption type";
-const char kKeyEncTypeNotSupported2[] =
+constexpr char kKeyEncTypeNotSupported[] =
+    "KDC has no support for encryption type";
+constexpr char kKeyEncTypeNotSupported2[] =
     "The encryption type requested is not supported by the KDC";
 
 // Replacement strings for anonymization.
-const char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
-const char kLogonNamePlaceholder[] = "<USER_LOGON_NAME>";
-const char kGivenNamePlaceholder[] = "<USER_GIVEN_NAME>";
-const char kDisplayNamePlaceholder[] = "<USER_DISPLAY_NAME>";
-const char kSAMAccountNamePlaceholder[] = "<USER_SAM_ACCOUNT_NAME>";
-const char kCommonNamePlaceholder[] = "<USER_COMMON_NAME>";
-const char kAccountIdPlaceholder[] = "<USER_ACCOUNT_ID>";
-const char kWorkgroupPlaceholder[] = "<WORKGROUP>";
-const char kDeviceRealmPlaceholder[] = "<DEVICE_REALM>";
-const char kUserRealmPlaceholder[] = "<USER_REALM>";
-const char kForestPlaceholder[] = "<FOREST>";
-const char kDomainPlaceholder[] = "<DOMAIN>";
-const char kServerNamePlaceholder[] = "<SERVER_NAME>";
-const char kSiteNamePlaceholder[] = "<SITE_NAME>";
-const char kIpAddressPlaceholder[] = "<IP_ADDRESS>";
-const char kPasswordPlaceholder[] = "<PASSWORD>";
+constexpr char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
+constexpr char kLogonNamePlaceholder[] = "<USER_LOGON_NAME>";
+constexpr char kGivenNamePlaceholder[] = "<USER_GIVEN_NAME>";
+constexpr char kDisplayNamePlaceholder[] = "<USER_DISPLAY_NAME>";
+constexpr char kSAMAccountNamePlaceholder[] = "<USER_SAM_ACCOUNT_NAME>";
+constexpr char kCommonNamePlaceholder[] = "<USER_COMMON_NAME>";
+constexpr char kAccountIdPlaceholder[] = "<USER_ACCOUNT_ID>";
+constexpr char kWorkgroupPlaceholder[] = "<WORKGROUP>";
+constexpr char kDeviceRealmPlaceholder[] = "<DEVICE_REALM>";
+constexpr char kUserRealmPlaceholder[] = "<USER_REALM>";
+constexpr char kForestPlaceholder[] = "<FOREST>";
+constexpr char kDomainPlaceholder[] = "<DOMAIN>";
+constexpr char kServerNamePlaceholder[] = "<SERVER_NAME>";
+constexpr char kSiteNamePlaceholder[] = "<SITE_NAME>";
+constexpr char kIpAddressPlaceholder[] = "<IP_ADDRESS>";
+constexpr char kPasswordPlaceholder[] = "<PASSWORD>";
 
 // Keys for net ads searches.
-const char kKeyWorkgroup[] = "Workgroup";
-const char kKeyAdsDnsParseRrSrv[] = "ads_dns_parse_rr_srv";
-const char kKeyPdcDnsName[] = "pdc_dns_name";
-const char kKeyAdsDcName[] = "ads_dc_name";
-const char kKeyPdcName[] = "pdc_name";
-const char kKeyServerSite[] = "server_site";
-const char kKeyClientSite[] = "client_site";
-const char kKeyForest[] = "Forest";
-const char kKeyDomain[] = "Domain";
-const char kKeyDomainController[] = "Domain Controller";
-const char kKeyPreWin2kDomain[] = "Pre-Win2k Domain";
-const char kKeyPreWin2kHostname[] = "Pre-Win2k Hostname";
-const char kKeyServerSiteName[] = "Server Site Name";
-const char kKeyClientSiteName[] = "Client Site Name";
-const char kKeyKdcServer[] = "KDC server";
-const char kKeyLdapServer[] = "LDAP server";
-const char kKeyLdapServerName[] = "LDAP server name";
+constexpr char kKeyWorkgroup[] = "Workgroup";
+constexpr char kKeyAdsDnsParseRrSrv[] = "ads_dns_parse_rr_srv";
+constexpr char kKeyPdcDnsName[] = "pdc_dns_name";
+constexpr char kKeyAdsDcName[] = "ads_dc_name";
+constexpr char kKeyPdcName[] = "pdc_name";
+constexpr char kKeyServerSite[] = "server_site";
+constexpr char kKeyClientSite[] = "client_site";
+constexpr char kKeyForest[] = "Forest";
+constexpr char kKeyDomain[] = "Domain";
+constexpr char kKeyDomainController[] = "Domain Controller";
+constexpr char kKeyPreWin2kDomain[] = "Pre-Win2k Domain";
+constexpr char kKeyPreWin2kHostname[] = "Pre-Win2k Hostname";
+constexpr char kKeyServerSiteName[] = "Server Site Name";
+constexpr char kKeyClientSiteName[] = "Client Site Name";
+constexpr char kKeyKdcServer[] = "KDC server";
+constexpr char kKeyLdapServer[] = "LDAP server";
+constexpr char kKeyLdapServerName[] = "LDAP server name";
 
 // Kerberos encryption types strings for smb.conf.
 constexpr char kEncTypesAll[] = "all";
@@ -192,7 +197,11 @@ constexpr char kEncTypesLegacy[] = "legacy";
 // The method is called through the authpolicy_debug crosh command. The time is
 // limited so users don't have to remember to turn logging off.
 // Keep in sync with description in crosh!
-int kMaxDefaultLogLevelUptimeMinutes = 30;
+constexpr int kMaxDefaultLogLevelUptimeMinutes = 30;
+
+// Auth state backup filename in user daemon store.
+constexpr char kBackupFileName[] = "user_backup_data";
+constexpr int kMaxBackupSizeBytes = 4 * 1024 * 1024;
 
 WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
                                          const std::string& net_command) {
@@ -480,6 +489,7 @@ SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
                         &flags_,
                         &jail_helper_,
                         anonymizer_.get(),
+                        this /* TgtManager::Delegate */,
                         Path::USER_KRB5_CONF,
                         Path::USER_CREDENTIAL_CACHE),
       device_tgt_manager_(paths_,
@@ -487,6 +497,7 @@ SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
                           &flags_,
                           &jail_helper_,
                           anonymizer_.get(),
+                          this /* TgtManager::Delegate */,
                           Path::DEVICE_KRB5_CONF,
                           Path::DEVICE_CREDENTIAL_CACHE) {
   DCHECK(paths_);
@@ -542,6 +553,11 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
   }
 
   return ERROR_NONE;
+}
+
+void SambaInterface::SetCryptohomeClient(
+    std::unique_ptr<CryptohomeClient> cryptohome_client) {
+  cryptohome_client_ = std::move(cryptohome_client);
 }
 
 // static
@@ -628,7 +644,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     int password_fd,
     ActiveDirectoryAccountInfo* account_info) {
   if (!account_id.empty())
-    SetUser(account_id);
+    SetUserAccountId(account_id);
 
   // We technically don't have to be in joined state, but check it anyway,
   // because the device should always be joined during auth.
@@ -671,7 +687,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   user_tgt_manager_.EnableTgtAutoRenewal(should_auto_renew);
 
   if (account_id.empty())
-    SetUser(account_info->account_id());
+    SetUserAccountId(account_info->account_id());
 
   // Figure out if the user is affiliated.
   is_user_affiliated_ = IsUserAffiliated();
@@ -686,6 +702,9 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (account_info->has_pwd_last_set())
     user_pwd_last_set_ = account_info->pwd_last_set();
   user_logged_in_ = true;
+
+  // Backup state on user's Cryptohome.
+  MaybeBackupUserAuthState();
   return ERROR_NONE;
 }
 
@@ -694,8 +713,12 @@ ErrorType SambaInterface::GetUserStatus(
     const std::string& account_id,
     ActiveDirectoryUserStatus* user_status) {
   ReloadDebugFlags();
-  SetUser(account_id);
+  SetUserAccountId(account_id);
   user_status->Clear();
+
+  // Try to restore TGT if it doesn't exist. The TGT is required for reading the
+  // account info below.
+  MaybeRestoreUserAuthState();
 
   // We technically don't have to be in joined state, but check it anyway,
   // because the device should always be joined during getting status.
@@ -778,7 +801,11 @@ ErrorType SambaInterface::GetUserStatus(
 ErrorType SambaInterface::GetUserKerberosFiles(const std::string& account_id,
                                                KerberosFiles* files) {
   ReloadDebugFlags();
-  SetUser(account_id);
+  SetUserAccountId(account_id);
+
+  // Try to restore TGT, user_account_id_ etc. if it doesn't exist.
+  MaybeRestoreUserAuthState();
+
   return user_tgt_manager_.GetKerberosFiles(files);
 }
 
@@ -884,7 +911,10 @@ ErrorType SambaInterface::JoinMachine(
 ErrorType SambaInterface::FetchUserGpos(
     const std::string& account_id, protos::GpoPolicyData* gpo_policy_data) {
   ReloadDebugFlags();
-  SetUser(account_id);
+  SetUserAccountId(account_id);
+
+  // Try to restore TGT, user_account_id_ etc. if it doesn't exist.
+  MaybeRestoreUserAuthState();
 
   if (!user_logged_in_) {
     LOG(ERROR) << "User not logged in. Did AuthenticateUser() fail?";
@@ -989,15 +1019,42 @@ ErrorType SambaInterface::FetchDeviceGpos(
   return ERROR_NONE;
 }
 
+void SambaInterface::OnSessionStateChanged(const std::string& state) {
+  LOG(INFO) << "Session state changed to '" << state << "'";
+  in_user_session_ = state == kSessionStarted;
+  MaybeBackupUserAuthState();
+}
+
 void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
   flags_default_level_ = level;
   LOG(INFO) << "Flags default level = " << flags_default_level_;
   SaveFlagsDefaultLevel();
 }
 
+std::string SambaInterface::GetUserPrincipal() const {
+  return user_account_.GetPrincipal();
+}
+
+void SambaInterface::OnTgtRenewed() {
+  MaybeBackupUserAuthState();
+}
+
+void SambaInterface::DisableRetrySleepForTesting() {
+  retry_sleep_disabled_for_testing_ = true;
+  device_tgt_manager_.DisableRetrySleepForTesting();
+}
+
+ErrorType SambaInterface::RenewUserTgtForTesting() {
+  return user_tgt_manager_.RenewTgt();
+}
+
 void SambaInterface::SetDevicePolicyImplForTesting(
     std::unique_ptr<policy::DevicePolicyImpl> policy_impl) {
   device_policy_impl_for_testing = std::move(policy_impl);
+}
+
+void SambaInterface::ResetForTesting() {
+  Reset();
 }
 
 ErrorType SambaInterface::UpdateKdcIpAndServerTime(AccountData* account) const {
@@ -1984,12 +2041,25 @@ ErrorType SambaInterface::CheckMachinePasswordChange() {
   return ERROR_NONE;
 }
 
-void SambaInterface::SetUser(const std::string& account_id) {
+void SambaInterface::SetUserAccountId(const std::string& account_id) {
   // Don't allow authenticating multiple users. Chrome should prevent that.
   CHECK(!account_id.empty());
-  CHECK(user_account_id_.empty() || user_account_id_ == account_id)
-      << "Multi-user not supported";
+  if (user_account_id_ == account_id)
+    return;
+  CHECK(user_account_id_.empty()) << "Multi-user not supported";
   user_account_id_ = account_id;
+
+  // Get the user daemon store path to back up auth data.
+  DCHECK(cryptohome_client_);
+  std::string sanitized_username =
+      cryptohome_client_->GetSanitizedUsername(GetAccountIdKey(account_id));
+  if (sanitized_username.empty()) {
+    LOG(ERROR) << "Failed to get sanitized username. "
+                  "Auth state backups won't work.";
+    return;
+  }
+  user_daemon_store_path_ = base::FilePath(paths_->Get(Path::DAEMON_STORE))
+                                .Append(sanitized_username);
 }
 
 void SambaInterface::SetUserRealm(const std::string& user_realm) {
@@ -2022,6 +2092,90 @@ void SambaInterface::SetKerberosEncryptionTypes(
   encryption_types_ = encryption_types;
   user_tgt_manager_.SetKerberosEncryptionTypes(encryption_types_);
   device_tgt_manager_.SetKerberosEncryptionTypes(encryption_types_);
+}
+
+void SambaInterface::MaybeBackupUserAuthState() {
+  if (!user_logged_in_ || !in_user_session_ || user_daemon_store_path_.empty())
+    return;
+  DCHECK(!user_account_id_.empty());
+
+  // Since we're in the session, Cryptohome should be mounted.
+  DCHECK(base::PathExists(user_daemon_store_path_));
+
+  // Back up TGT state.
+  protos::UserBackupData data;
+  if (!user_tgt_manager_.Backup(data.mutable_tgt_state()))
+    return;
+
+  // Put all other data we want to serialize into the proto.
+  data.set_pwd_last_set(user_pwd_last_set_);
+  data.set_user_name(user_account_.user_name);
+  data.set_is_user_affiliated(is_user_affiliated_);
+
+  // Convert proto to string.
+  std::string data_blob;
+  if (!data.SerializeToString(&data_blob)) {
+    LOG(WARNING) << "Backup failed to serialize backup data to string";
+    return;
+  }
+
+  // Save string to disk.
+  const int size = static_cast<int>(data_blob.size());
+  const base::FilePath backup_path =
+      user_daemon_store_path_.Append(kBackupFileName);
+  if (base::WriteFile(backup_path, data_blob.data(), size) != size) {
+    LOG(WARNING) << "Backup failed to write data to " << backup_path.value();
+    return;
+  }
+
+  LOG(INFO) << "Backup successfully written to " << backup_path.value();
+}
+
+void SambaInterface::MaybeRestoreUserAuthState() {
+  if (user_logged_in_ || !in_user_session_ || user_daemon_store_path_.empty())
+    return;
+  DCHECK(!user_account_id_.empty());
+
+  // Exit quietly if the backup path doesn't exist (yet).
+  const base::FilePath backup_path =
+      user_daemon_store_path_.Append(kBackupFileName);
+  if (!base::PathExists(backup_path))
+    return;
+
+  // Read string from disk.
+  std::string data_blob;
+  if (!base::ReadFileToStringWithMaxSize(backup_path, &data_blob,
+                                         kMaxBackupSizeBytes)) {
+    PLOG(ERROR) << "Backup failed to read data from " << backup_path.value();
+    return;
+  }
+
+  // Convert string to proto.
+  protos::UserBackupData data;
+  if (!data.ParseFromString(data_blob)) {
+    LOG(WARNING) << "Backup failed to parse backup data from string";
+    return;
+  }
+
+  // Check proto.
+  if (!data.has_tgt_state() || !data.has_pwd_last_set() ||
+      !data.has_user_name() || data.user_name().empty() ||
+      !data.has_is_user_affiliated()) {
+    LOG(WARNING) << "Backup data is bad";
+    return;
+  }
+
+  // Restore TGT state.
+  if (!user_tgt_manager_.Restore(data.tgt_state()))
+    return;
+
+  // Restore all other data from the proto.
+  user_pwd_last_set_ = data.pwd_last_set();
+  user_account_.user_name = data.user_name();
+  is_user_affiliated_ = data.is_user_affiliated();
+  user_logged_in_ = true;
+
+  LOG(INFO) << "Backup successfully restored from " << backup_path.value();
 }
 
 void SambaInterface::AnonymizeRealm(const std::string& realm,

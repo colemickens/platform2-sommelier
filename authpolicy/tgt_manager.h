@@ -16,8 +16,9 @@
 namespace authpolicy {
 
 namespace protos {
-class TgtLifetime;
 class DebugFlags;
+class TgtLifetime;
+class TgtState;
 }  // namespace protos
 
 class Anonymizer;
@@ -32,11 +33,20 @@ class ProcessExecutor;
 // or a keytab file.
 class TgtManager {
  public:
+  class Delegate {
+   public:
+    virtual ~Delegate() = default;
+
+    // Called when the Kerberos ticket has been auto-renewed.
+    virtual void OnTgtRenewed() = 0;
+  };
+
   TgtManager(const PathService* path_service,
              AuthPolicyMetrics* metrics,
              const protos::DebugFlags* flags,
              const JailHelper* jail_helper,
              Anonymizer* anonymizer,
+             Delegate* delegate,
              Path config_path,
              Path credential_cache_path);
   ~TgtManager();
@@ -105,6 +115,13 @@ class TgtManager {
   // Returns the file path of the Kerberos credential cache.
   Path GetCredentialCachePath() const { return credential_cache_path_; }
 
+  // Saves internal state to the given |state| blob. Fails if the TGT does not
+  // exist or cannot be read.
+  bool Backup(protos::TgtState* state);
+
+  // Restores internal state from the given |state| blob.
+  bool Restore(const protos::TgtState& state);
+
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() {
     kinit_retry_sleep_disabled_for_testing_ = true;
@@ -151,6 +168,7 @@ class TgtManager {
   const protos::DebugFlags* const flags_ = nullptr;  // Debug flags, not owned.
   const JailHelper* const jail_helper_ = nullptr;    // Minijail, not owned.
   Anonymizer* const anonymizer_ = nullptr;  // Log anonymizer, not owned.
+  Delegate* delegate_ = nullptr;  // Delegate to receive events, not owned.
   const Path config_path_ = Path::INVALID;
   const Path credential_cache_path_ = Path::INVALID;
   base::Closure kerberos_files_changed_;

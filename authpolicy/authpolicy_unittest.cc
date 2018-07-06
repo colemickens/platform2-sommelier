@@ -19,6 +19,7 @@
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/file_utils.h>
 #include <dbus/bus.h>
+#include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
@@ -53,9 +54,10 @@ using dbus::Response;
 using login_manager::PolicyDescriptor;
 using testing::_;
 using testing::AnyNumber;
-using testing::AtMost;
 using testing::Invoke;
+using testing::NiceMock;
 using testing::Return;
+using testing::SaveArg;
 
 namespace em = enterprise_management;
 
@@ -91,7 +93,17 @@ constexpr char kKrb5EncTypesStrong[] =
     "aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96";
 
 // Error message when passing different account IDs to authpolicy.
-const char kMultiUserNotSupported[] = "Multi-user not supported";
+constexpr char kMultiUserNotSupported[] = "Multi-user not supported";
+
+// Stub user hash, returned from the stub Cryptohome proxy's
+// GetSanitizedUsername call. Used as part of the user daemon store path.
+constexpr char kSanitizedUsername[] = "user_hash";
+// Stub daemon store directory used to back up auth state.
+constexpr char kDaemonStoreDir[] = "daemon-store";
+
+// SessionStateChanged signal payload we care about.
+const char kSessionStarted[] = "started";
+const char kSessionStopped[] = "stopped";
 
 struct SmbConf {
   std::string machine_name;
@@ -133,6 +145,17 @@ base::ScopedFD MakePasswordFd() {
 
 // Stub completion callback for RegisterAsync().
 void DoNothing(bool /* unused */) {}
+
+// Creates a D-Bus response with the given |response_str| as message.
+dbus::Response* RespondWithString(dbus::MethodCall* method_call,
+                                  const std::string& response_str) {
+  method_call->SetSerial(kDBusSerial);
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendString(response_str);
+  return response.release();
+}
 
 // If |error| is ERROR_NONE, parses |proto_blob| into the |proto| if given.
 // Otherwise, makes sure |proto_blob| is empty.
@@ -217,6 +240,7 @@ class TestPathService : public PathService {
     Insert(Path::KPASSWD, stub_path.Append("stub_kpasswd").value());
     Insert(Path::NET, stub_path.Append("stub_net").value());
     Insert(Path::SMBCLIENT, stub_path.Append("stub_smbclient").value());
+    Insert(Path::DAEMON_STORE, base_path.Append(kDaemonStoreDir).value());
 
     // Fill in the rest of the paths and build dependend paths.
     Initialize();
@@ -338,6 +362,14 @@ class AuthPolicyTest : public testing::Test {
         base::FilePath(paths_->Get(Path::STATE_DIR));
     CHECK(base::CreateDirectory(state_path));
 
+    // Create daemon store directory where authpolicyd backs up auth state.
+    user_daemon_store_path_ =
+        base_path_.Append(kDaemonStoreDir).Append(kSanitizedUsername);
+    CHECK(base::CreateDirectory(user_daemon_store_path_));
+
+    // Stub path where the Kerberos ticket is backed up.
+    backup_path_ = user_daemon_store_path_.Append("user_backup_data");
+
     // Set stub preg path. Since it is not trivial to pass the full path to the
     // stub binaries, we simply use the directory from the krb5.conf file.
     const base::FilePath gpo_dir =
@@ -356,18 +388,11 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
         .Times(1)
         .WillOnce(Return(message_loop_->task_runner().get()));
-    EXPECT_CALL(*mock_exported_object_.get(), ExportMethod(_, _, _, _))
+    EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
         .Times(AnyNumber());
-    EXPECT_CALL(*mock_exported_object_.get(), SendSignal(_))
+    EXPECT_CALL(*mock_exported_object_, SendSignal(_))
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::HandleUserKerberosFilesChanged));
-
-    // Create AuthPolicy instance.
-    authpolicy_ = std::make_unique<AuthPolicy>(metrics_.get(), paths_.get());
-    EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
-
-    // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
-    samba().DisableRetrySleepForTesting();
 
     // Set up mock object proxy for session manager called from authpolicy.
     mock_session_manager_proxy_ = new MockObjectProxy(
@@ -378,11 +403,44 @@ class AuthPolicyTest : public testing::Test {
                                dbus::ObjectPath(
                                    login_manager::kSessionManagerServicePath)))
         .WillOnce(Return(mock_session_manager_proxy_.get()));
-    EXPECT_CALL(*mock_session_manager_proxy_.get(), CallMethod(_, _, _))
+    EXPECT_CALL(*mock_session_manager_proxy_, CallMethod(_, _, _))
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::StubCallStorePolicyMethod));
+    EXPECT_CALL(
+        *mock_session_manager_proxy_,
+        ConnectToSignal(login_manager::kSessionManagerInterface,
+                        login_manager::kSessionStateChangedSignal, _, _))
+        .WillOnce((SaveArg<2>(&session_state_changed_callback_)));
+    EXPECT_CALL(*mock_session_manager_proxy_.get(),
+                MockCallMethodAndBlock(_, _))
+        .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout) {
+          return RespondWithString(method_call, kSessionStopped);
+        }));
 
+    // Set up mock object proxy for Cryptohome called from authpolicy.
+    mock_cryptohome_proxy_ = new NiceMock<MockObjectProxy>(
+        mock_bus_.get(), cryptohome::kCryptohomeServiceName,
+        dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
+    EXPECT_CALL(
+        *mock_bus_,
+        GetObjectProxy(cryptohome::kCryptohomeServiceName,
+                       dbus::ObjectPath(cryptohome::kCryptohomeServicePath)))
+        .WillOnce(Return(mock_cryptohome_proxy_.get()));
+
+    // Make Cryptohome's GetSanitizedUsername call return kSanitizedUsername.
+    ON_CALL(*mock_cryptohome_proxy_.get(), MockCallMethodAndBlock(_, _))
+        .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout) {
+          return RespondWithString(method_call, kSanitizedUsername);
+        }));
+
+    // Create AuthPolicy instance. Do this AFTER creating the proxy mocks since
+    // they might be accessed during initialization.
+    authpolicy_ = std::make_unique<AuthPolicy>(metrics_.get(), paths_.get());
+    EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
     authpolicy_->RegisterAsync(std::move(dbus_object), base::Bind(&DoNothing));
+
+    // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
+    samba().DisableRetrySleepForTesting();
   }
 
   // Stub method called by the Session Manager mock to store policy. Validates
@@ -791,11 +849,15 @@ class AuthPolicyTest : public testing::Test {
   }
 
   // Returns the modification time of the file at |path|.
-  base::Time GetLastModified(Path path) {
-    const base::FilePath filepath(paths_->Get(path));
+  base::Time GetLastModified(const base::FilePath& path) {
     base::File::Info file_info;
-    EXPECT_TRUE(GetFileInfo(filepath, &file_info));
+    EXPECT_TRUE(GetFileInfo(path, &file_info));
     return file_info.last_modified;
+  }
+
+  // Returns the modification time of the file at |path|.
+  base::Time GetLastModified(Path path) {
+    return GetLastModified(base::FilePath(paths_->Get(path)));
   }
 
   void SetLastModified(Path path, const base::Time& last_modified) {
@@ -814,11 +876,25 @@ class AuthPolicyTest : public testing::Test {
     return str;
   }
 
+  // Sends the session started signal to authpolicyd.
+  void NotifySessionStarted() {
+    // Tell authpolicyd that the session started.
+    dbus::Signal signal(login_manager::kSessionManagerInterface,
+                        login_manager::kSessionStateChangedSignal);
+    dbus::MessageWriter writer(&signal);
+    writer.AppendString("started");
+    session_state_changed_callback_.Run(&signal);
+  }
+
   std::unique_ptr<base::MessageLoop> message_loop_;
 
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
   scoped_refptr<MockExportedObject> mock_exported_object_;
   scoped_refptr<MockObjectProxy> mock_session_manager_proxy_;
+  scoped_refptr<MockObjectProxy> mock_cryptohome_proxy_;
+
+  // Notifies authpolicy that the session state changed (e.g. "started").
+  base::Callback<void(dbus::Signal* signal)> session_state_changed_callback_;
 
   // Keep this order! auth_policy_ must be last as it depends on the other two.
   std::unique_ptr<TestMetrics> metrics_;
@@ -828,6 +904,8 @@ class AuthPolicyTest : public testing::Test {
   base::FilePath base_path_;
   base::FilePath stub_gpo1_path_;
   base::FilePath stub_gpo2_path_;
+  base::FilePath user_daemon_store_path_;
+  base::FilePath backup_path_;
 
   // Markers to check whether various callbacks are actually called.
   bool store_policy_called_ = false;          // StubCallStorePolicyMethod()
@@ -1239,7 +1317,8 @@ TEST_F(AuthPolicyTest, AuthFailsBadPassword) {
   // unlocked Cryptohome.
   ActiveDirectoryUserStatus status;
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
-  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED, status.tgt_status());
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED,
+            status.password_status());
 }
 
 // Authentication fails for expired password.
@@ -2043,6 +2122,96 @@ TEST_F(AuthPolicyTest, CleanStateDir) {
   EXPECT_FALSE(base::IsDirectoryEmpty(state_path));
   EXPECT_TRUE(AuthPolicy::CleanState(paths_.get()));
   EXPECT_TRUE(base::IsDirectoryEmpty(state_path));
+}
+
+// Authentication doesn't back up auth state if Cryptohome is not mounted.
+TEST_F(AuthPolicyTest, DoesNotBackUpOnAuthIfCryptohomeIsNotMounted) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_FALSE(base::PathExists(backup_path_));
+}
+
+// Authentication backs up auth state if Cryptohome is already mounted.
+TEST_F(AuthPolicyTest, BacksUpOnAuthIfCryptohomeIsMounted) {
+  samba().OnSessionStateChanged(kSessionStarted);
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_FALSE(base::PathExists(backup_path_));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_TRUE(base::PathExists(backup_path_));
+}
+
+// The session state change signal handler triggers a backup of user auth state.
+TEST_F(AuthPolicyTest, BacksUpOnSessionStarted) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_FALSE(base::PathExists(backup_path_));
+  NotifySessionStarted();
+  EXPECT_TRUE(base::PathExists(backup_path_));
+}
+
+// Kerberos ticket renewal triggers a backup of user auth state.
+TEST_F(AuthPolicyTest, BacksUpOnTgtAutoRenewal) {
+  // Join and authenticate with Cryptohome mounted, so that a backup is written.
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  NotifySessionStarted();
+
+  // Trigger TGT renewal and check if the backup file got re-written.
+  base::Time orig_backup_time = GetLastModified(backup_path_);
+  EXPECT_EQ(ERROR_NONE, samba().RenewUserTgtForTesting());
+  base::Time new_backup_time = GetLastModified(backup_path_);
+  EXPECT_LT(orig_backup_time, new_backup_time);
+}
+
+// Restarting authpolicy reloads the backup data and user-specific calls work
+// without another AuthenticateUser() call.
+TEST_F(AuthPolicyTest, LoadsBackupAndRestoresState) {
+  // Join and authenticate with Cryptohome mounted, so that a backup is written.
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  NotifySessionStarted();
+  EXPECT_TRUE(base::PathExists(backup_path_));
+
+  // Restart authpolicyd.
+  samba().ResetForTesting();
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+
+  // GetUserKerberosFiles should restore the backup including the Kerberos
+  // ticket, so the Kerberos files changed signal should be called.
+  KerberosFiles files;
+  EXPECT_EQ(1, user_kerberos_files_changed_count_);
+  EXPECT_EQ(ERROR_NONE, GetUserKerberosFiles(kAccountId, &files));
+  EXPECT_EQ(2, user_kerberos_files_changed_count_);
+  EXPECT_TRUE(files.has_krb5cc());
+  EXPECT_TRUE(files.has_krb5conf());
+  EXPECT_FALSE(files.krb5cc().empty());
+  EXPECT_FALSE(files.krb5conf().empty());
+
+  // The state should look like as if the user was logged in with valid TGT.
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kUserPrincipal, kAccountId, &status));
+  EXPECT_TRUE(status.has_tgt_status());
+  EXPECT_EQ(ActiveDirectoryUserStatus::TGT_VALID, status.tgt_status());
+  EXPECT_TRUE(status.has_password_status());
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_VALID,
+            status.password_status());
+  EXPECT_TRUE(status.has_account_info());
+  EXPECT_TRUE(status.account_info().has_pwd_last_set());
+  EXPECT_TRUE(status.account_info().has_user_account_control());
+
+  // TGT renewal still works. Do this before auth to check all state for renewal
+  // got properly restored (auth overrides this).
+  EXPECT_EQ(ERROR_NONE, samba().RenewUserTgtForTesting());
+
+  // User policy fetch still works and that the affiliation state has been
+  // properly restored from backup.
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  EXPECT_FALSE(user_affiliation_marker_set_);
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  EXPECT_TRUE(user_affiliation_marker_set_);
+
+  // Can also authenticate again to fetch a new TGT.
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
 }
 
 // By default, nothing should call the (expensive) anonymizer since no sensitive
