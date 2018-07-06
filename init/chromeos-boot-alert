@@ -25,13 +25,12 @@ EOF
 # Prints out system locale by searching cached settings or VPD.
 find_current_locale() {
   # TODO(hungte) Find some better way other than hard coding file path here.
-  local state_file='/mnt/stateful_partition/home/chronos/Local State'
+  local state_file='/mnt/stateful_partition/encrypted/chronos/Local State'
   local locale=""
-  if [ -f "$state_file" ]; then
-    locale="$(grep -w '"app_locale":' "$state_file" |
-              sed 's/.*"\([^"]*\)",$/\1/')" || locale=""
+  if [ -f "${state_file}" ]; then
+    locale="$(jq --raw-output -e ".intl.app_locale" "${state_file}")"
   fi
-  if [ -z "${locale}" ]; then
+  if [ -z "${locale}" ] || [ "${locale}" = "null" ]; then
     locale="$(cros_region_data -s locales)"
   fi
   echo "${locale}"
