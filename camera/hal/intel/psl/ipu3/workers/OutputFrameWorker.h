@@ -21,6 +21,8 @@
 #include "tasks/ICaptureEventSource.h"
 #include "tasks/JpegEncodeTask.h"
 
+#include <cros-camera/camera_thread.h>
+
 namespace android {
 namespace camera2 {
 
@@ -81,18 +83,15 @@ private:
     };
 
 private:
+    status_t handlePostRun();
     bool isHalUsingRequestBuffer();
     std::shared_ptr<CameraBuffer> findBuffer(Camera3Request* request,
                                              camera3_stream_t* stream);
     status_t prepareBuffer(std::shared_ptr<CameraBuffer>& buffer);
     bool checkListenerBuffer(Camera3Request* request);
-    std::shared_ptr<CameraBuffer> getOutputBufferForListener();
 
 private:
-    std::shared_ptr<CameraBuffer> mOutputBuffer;
-    std::shared_ptr<CameraBuffer> mWorkingBuffer;
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */
-    bool mAllDone;
     bool mNeedPostProcess;
     IPU3NodeNames mNodeName;
 
@@ -101,8 +100,21 @@ private:
     // For listeners
     std::vector<camera3_stream_t*> mListeners;
     std::vector<std::unique_ptr<SWPostProcessor> > mListenerProcessors;
-    // Put to ISP if requests require listeners'buffer only
-    std::shared_ptr<CameraBuffer> mOutputForListener;
+
+    std::vector<std::shared_ptr<CameraBuffer>> mInternalBuffers;
+
+    /**
+     * Thread control members
+     */
+    cros::CameraThread mCameraThread;
+
+    struct ProcessingData {
+        std::shared_ptr<CameraBuffer> mOutputBuffer;
+        std::shared_ptr<CameraBuffer> mWorkingBuffer;
+        std::shared_ptr<DeviceMessage> mMsg;
+    };
+    std::queue<ProcessingData> mProcessingDataQueue;
+    std::mutex mProcessingDataLock;
 };
 
 } /* namespace camera2 */
