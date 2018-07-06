@@ -479,6 +479,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    UpgradeContainerExpectationsBuilder& SetIsDemoSession(bool v) {
+      is_demo_session_ = v;
+      return *this;
+    }
+
     UpgradeContainerExpectationsBuilder& SetDemoSessionAppsPath(
         const std::string& v) {
       demo_session_apps_path_ = v;
@@ -525,6 +530,7 @@ class SessionManagerImplTest : public ::testing::Test,
               "CONTAINER_PID=" + std::to_string(kAndroidPid),
               "IS_CHILD=" + std::to_string(is_child_),
               "DEMO_SESSION_APPS_PATH=" + demo_session_apps_path_,
+              "IS_DEMO_SESSION=" + std::to_string(is_demo_session_),
               ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
               ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
               "LOCALE=" + locale_,
@@ -536,6 +542,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool dev_mode_ = false;
     bool disable_boot_completed_callback_ = false;
     bool enable_vendor_privileged_ = false;
+    bool is_demo_session_ = false;
     std::string demo_session_apps_path_;
     bool skip_packages_cache_ = false;
     bool copy_packages_cache_ = false;
@@ -2327,6 +2334,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kContinueArcBootImpulse,
                   UpgradeContainerExpectationsBuilder(this)
+                      .SetIsDemoSession(true)
                       .SetDemoSessionAppsPath(
                           "/run/imageloader/0.1/demo_apps/img.squash")
                       .Build(),
@@ -2352,8 +2360,78 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_is_demo_session(true);
   upgrade_request.set_demo_session_apps_path(
       "/run/imageloader/0.1/demo_apps/img.squash");
+  ExpectUpgradeArcContainer();
+  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
+  EXPECT_TRUE(impl_->UpgradeArcContainer(
+      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(android_container_.running());
+
+  EXPECT_TRUE(impl_->StopArcInstance(&error));
+  EXPECT_FALSE(android_container_.running());
+}
+
+TEST_F(SessionManagerImplTest,
+       UpgradeArcContainerForDemoSessionWithoutDemoApps) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcInstanceImpulse,
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  brillo::ErrorPtr error;
+  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
+  std::string container_instance_id;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(
+      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
+      &container_instance_id));
+  EXPECT_FALSE(container_instance_id.empty());
+
+  // Then, upgrade it to a fully functional one.
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_FALSE(impl_->GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
+  }
+
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder(this)
+                                 .SetIsDemoSession(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                  InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcNetworkImpulse,
+                  ElementsAre(std::string("CONTAINER_NAME=") +
+                                  SessionManagerImpl::kArcContainerName,
+                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
+                                     ElementsAre(),
+                                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_is_demo_session(true);
   ExpectUpgradeArcContainer();
   brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
   EXPECT_TRUE(impl_->UpgradeArcContainer(
