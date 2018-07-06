@@ -378,7 +378,8 @@ is_chrome_feature_enabled() {
   reply=$(dbus-send --system --type=method_call --print-reply \
     --dest=org.chromium.ChromeFeaturesService \
     /org/chromium/ChromeFeaturesService \
-    "org.chromium.ChromeFeaturesServiceInterface.${method}" 2>/dev/null)
+    "org.chromium.ChromeFeaturesServiceInterface.${method}" \
+    "string:${CROS_USER_ID_HASH}" 2>/dev/null)
   status=$?
   [ ${status} -eq 0 -a ${reply##* } == "true" ]
 }
