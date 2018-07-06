@@ -18,6 +18,7 @@
       'sources' : [
         'esim_qmi_impl.cc',
         'lpd.cc',
+        'qmi_uim.c',
         'smdp_fi_impl.cc',
       ],
     },

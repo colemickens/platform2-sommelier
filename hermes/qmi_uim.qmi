@@ -1,0 +1,43 @@
+package uim;
+
+const ARRAY_SIZE = 256;
+
+struct qmi_result {
+  u16 result;
+  u16 error;
+};
+
+struct card_result_t {
+  u8 sw1;
+  u8 sw2;
+};
+
+request open_logical_channel_req {
+  required u8 slot = 0x01;
+  optional u8 aid(255) = 0x10;
+} = 0x42;
+
+response open_logical_channel_resp {
+  required qmi_result result = 0x2;
+  optional u8 channel_id = 0x10;
+  optional card_result_t card_result = 0x11;
+  optional u8 select_response(255) = 0x12;
+} = 0x42;
+
+request reset_req {
+} = 0x00;
+
+response reset_resp {
+  required qmi_result result = 0x2;
+} = 0x00;
+
+request send_apdu_req {
+  required u8 slot = 0x01;
+  required u8 apdu(255) = 0x02;
+  optional u8 channel_id = 0x10;
+} = 59;
+
+response send_apdu_resp {
+  required qmi_result result = 0x2;
+  optional u8 adpu_response(255) = 0x10;
+} = 59;
