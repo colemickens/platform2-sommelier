@@ -25,6 +25,9 @@ class Response;
 }  // namespace dbus
 
 namespace power_manager {
+
+class Clock;
+
 namespace system {
 
 class ArcTimerManager {
@@ -105,6 +108,8 @@ class ArcTimerManager {
   // Finds |ArcTimerInfo| entry in |timers_| corresponding to |timer_id|.
   // Returns non-null pointer iff entry is present.
   ArcTimerInfo* FindArcTimerInfo(TimerId timer_id);
+
+  std::unique_ptr<Clock> clock_;
 
   // Map that stores |ArcTimerInfo|s corresponding to different timer ids.
   std::map<TimerId, std::unique_ptr<ArcTimerInfo>> timers_;

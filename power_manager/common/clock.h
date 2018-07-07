@@ -27,26 +27,35 @@ class Clock {
   void set_current_time_for_testing(base::TimeTicks now) {
     current_time_for_testing_ = now;
   }
+  void set_current_boot_time_for_testing(base::TimeTicks now) {
+    current_boot_time_for_testing_ = now;
+  }
   void set_current_wall_time_for_testing(base::Time now) {
     current_wall_time_for_testing_ = now;
   }
-  void advance_current_wall_time_for_testing(base::TimeDelta delta) {
-    current_wall_time_for_testing_ += delta;
+  void advance_current_boot_time_for_testing(base::TimeDelta delta) {
+    current_boot_time_for_testing_ += delta;
   }
   void set_time_step_for_testing(base::TimeDelta step) {
     time_step_for_testing_ = step;
   }
 
   // Returns the last-set monotonically-increasing time, or the actual time
-  // if |current_time_for_testing_| is unset.
+  // (i.e. CLOCK_MONOTONIC) if |current_time_for_testing_| is unset. Time does
+  // not advance while the system is suspended.
   base::TimeTicks GetCurrentTime();
 
-  // Returns the last-set wall time, or the actual time if
+  // Similar to GetCurrentTime(), except time also advances while the system is
+  // suspended (i.e. CLOCK_BOOTTIME).
+  base::TimeTicks GetCurrentBootTime();
+
+  // Returns the last-set wall time, or the actual time (i.e. gettimeofday()) if
   // |current_wall_time_for_testing_| is unset.
   base::Time GetCurrentWallTime();
 
  private:
   base::TimeTicks current_time_for_testing_;
+  base::TimeTicks current_boot_time_for_testing_;
   base::Time current_wall_time_for_testing_;
 
   // Amount of time that |current_*time_for_testing_| should be advanced by each

@@ -361,8 +361,8 @@ class Suspender : public SuspendDelayObserver {
   uint64_t wakeup_count_ = 0;
   bool wakeup_count_valid_ = false;
 
-  // Wall time at which the suspend request started.
-  base::Time suspend_request_start_time_;
+  // Boot time at which the suspend request started.
+  base::TimeTicks suspend_request_start_time_;
 
   // Time to wait before retrying a failed suspend attempt.
   base::TimeDelta retry_delay_;
@@ -381,9 +381,9 @@ class Suspender : public SuspendDelayObserver {
   // dark resume.
   int initial_num_attempts_ = 0;
 
-  // The time at which the system entered dark resume. Set by HandleDarkResume()
-  // when it sees a sucessful dark resume.
-  base::Time dark_resume_start_time_;
+  // The boot time at which the system entered dark resume. Set by
+  // HandleDarkResume() when it sees a sucessful dark resume.
+  base::TimeTicks dark_resume_start_time_;
 
   // Information about each wake that occurred during dark resume. This vector
   // is cleared by StartRequest() and reported by FinishRequest().

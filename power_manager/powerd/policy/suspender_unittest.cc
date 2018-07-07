@@ -107,7 +107,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     suspend_wakeup_count_valid_ = wakeup_count_valid;
     suspend_duration_ = duration;
     if (clock_)
-      clock_->advance_current_wall_time_for_testing(suspend_advance_time_);
+      clock_->advance_current_boot_time_for_testing(suspend_advance_time_);
     return suspend_result_;
   }
 
@@ -156,7 +156,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   // Updated by SetSuspendAnnounced() and returned by GetSuspendAnnounced().
   bool suspend_announced_ = false;
 
-  // If non-null, |clock_|'s wall time is advanced by |suspend_advance_time_|
+  // If non-null, |clock_|'s boot time is advanced by |suspend_advance_time_|
   // each time DoSuspend() is called.
   Clock* clock_ = nullptr;
   base::TimeDelta suspend_advance_time_;
@@ -197,8 +197,8 @@ class SuspenderTest : public testing::Test {
   void Init() {
     prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
     prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
-    test_api_.clock()->set_current_wall_time_for_testing(
-        base::Time::UnixEpoch());
+    test_api_.clock()->set_current_boot_time_for_testing(
+        base::TimeTicks() + base::TimeDelta::FromHours(1));
     delegate_.set_clock(test_api_.clock());
     suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_, &prefs_);
   }
@@ -613,22 +613,6 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
-// Tests that the SuspendDone signal contains a zero duration rather than a
-// negative duration if the system clock jumps backward between suspend and
-// resume.
-TEST_F(SuspenderTest, SystemClockGoesBackward) {
-  Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
-
-  delegate_.set_suspend_advance_time(base::TimeDelta::FromSeconds(-1));
-  dbus_wrapper_.ClearSentSignals();
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  SuspendDone done_proto;
-  EXPECT_TRUE(
-      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
-  EXPECT_EQ(base::TimeDelta().ToInternalValue(), done_proto.suspend_duration());
-}
-
 // Tests that things don't go haywire when
 // Suspender::Delegate::UndoPrepareToSuspend() synchronously starts another
 // suspend request. Previously, this could result in the new request being
@@ -1012,7 +996,7 @@ TEST_F(SuspenderTest, DarkResumeWakeDataOneDarkResume) {
   // Simulate the system being briefly awake in the dark resume state.
   const base::TimeDelta kDarkResumeDuration =
       base::TimeDelta::FromMilliseconds(4566);
-  test_api_.clock()->advance_current_wall_time_for_testing(kDarkResumeDuration);
+  test_api_.clock()->advance_current_boot_time_for_testing(kDarkResumeDuration);
 
   dark_resume_.set_in_dark_resume(false);
   const base::TimeDelta kDarkSuspendDuration = base::TimeDelta::FromMinutes(3);
@@ -1043,7 +1027,7 @@ TEST_F(SuspenderTest, DarkResumeWakeDataFailedResuspend) {
 
   // Simulate the system being briefly awake in the dark resume state.
   const base::TimeDelta kDarkResumeDuration = base::TimeDelta::FromSeconds(5);
-  test_api_.clock()->advance_current_wall_time_for_testing(kDarkResumeDuration);
+  test_api_.clock()->advance_current_boot_time_for_testing(kDarkResumeDuration);
 
   // Now simulate a failed resuspend.
   const std::string kWakeReason = "WiFi.Pattern";
@@ -1056,7 +1040,7 @@ TEST_F(SuspenderTest, DarkResumeWakeDataFailedResuspend) {
   dark_resume_.set_in_dark_resume(false);
   const base::TimeDelta kResuspendRetryDuration =
       base::TimeDelta::FromSeconds(10);
-  test_api_.clock()->advance_current_wall_time_for_testing(
+  test_api_.clock()->advance_current_boot_time_for_testing(
       kResuspendRetryDuration);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::SUCCESS);
   const base::TimeDelta kResuspendDuration = base::TimeDelta::FromMinutes(3);

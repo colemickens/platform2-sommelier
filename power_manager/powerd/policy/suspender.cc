@@ -383,7 +383,7 @@ void Suspender::StartRequest() {
     wakeup_count_valid_ = delegate_->ReadSuspendWakeupCount(&wakeup_count_);
   }
 
-  suspend_request_start_time_ = clock_->GetCurrentWallTime();
+  suspend_request_start_time_ = clock_->GetCurrentBootTime();
   current_num_attempts_ = 0;
   initial_num_attempts_ = 0;
 
@@ -405,14 +405,21 @@ void Suspender::StartRequest() {
 }
 
 void Suspender::FinishRequest(bool success) {
+  const base::TimeTicks end_time = clock_->GetCurrentBootTime();
+  base::TimeDelta suspend_duration = end_time - suspend_request_start_time_;
+  if (suspend_duration < base::TimeDelta()) {
+    LOG(ERROR) << "Boot time went backward: started at "
+               << suspend_request_start_time_ << ", ended at " << end_time;
+    suspend_duration = base::TimeDelta();
+  }
+
   LOG(INFO) << "Finishing request " << suspend_request_id_ << " "
-            << (success ? "" : "un") << "successfully";
+            << (success ? "" : "un") << "successfully after "
+            << util::TimeDeltaToString(suspend_duration);
+
   resuspend_timer_.Stop();
   suspend_delay_controller_->FinishSuspend(suspend_request_id_);
   dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
-  base::TimeDelta suspend_duration =
-      std::max(base::TimeDelta(),
-               clock_->GetCurrentWallTime() - suspend_request_start_time_);
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration);
   delegate_->SetSuspendAnnounced(false);
   delegate_->UndoPrepareToSuspend(
@@ -453,7 +460,7 @@ Suspender::State Suspender::Suspend() {
     dark_resume_wake_durations_.back().first = last_dark_resume_wake_reason_;
     dark_resume_wake_durations_.back().second =
         std::max(base::TimeDelta(),
-                 clock_->GetCurrentWallTime() - dark_resume_start_time_);
+                 clock_->GetCurrentBootTime() - dark_resume_start_time_);
   }
 
   current_num_attempts_++;
@@ -501,7 +508,7 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
 
   if (result == Delegate::SuspendResult::SUCCESS) {
     // This is the start of a new dark resume wake.
-    dark_resume_start_time_ = clock_->GetCurrentWallTime();
+    dark_resume_start_time_ = clock_->GetCurrentBootTime();
     dark_resume_wake_durations_.push_back(
         DarkResumeInfo(kDefaultWakeReason, base::TimeDelta()));
     last_dark_resume_wake_reason_ = kDefaultWakeReason;
