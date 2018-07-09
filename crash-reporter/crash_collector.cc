@@ -494,11 +494,13 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory) {
   if (!dir) {
     return false;
   }
-  struct dirent ent_buf;
   struct dirent* ent;
   bool full = false;
   std::set<std::string> basenames;
-  while (readdir_r(dir, &ent_buf, &ent) == 0 && ent) {
+  // readdir_r is deprecated from glibc and we need to use readdir instead.
+  // readdir is safe for glibc because it guarantees readdir is thread safe,
+  // and atm we aren't supporting other C libraries
+  while ((ent = readdir(dir))) {
     if ((strcmp(ent->d_name, ".") == 0) || (strcmp(ent->d_name, "..") == 0))
       continue;
 
