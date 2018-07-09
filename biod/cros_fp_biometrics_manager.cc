@@ -22,7 +22,9 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <crypto/random.h>
+#include <metrics/metrics_library.h>
 
+#include "biod/biod_metrics.h"
 extern "C" {
 // Cros EC host commands definition as used by cros_fp.
 #include "biod/ec/cros_ec_dev.h"
@@ -115,6 +117,7 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback);
 
   bool FpMode(uint32_t mode);
+  bool GetFpStats(int* capture_ms, int* matcher_ms, int* overall_ms);
   bool GetDirtyMap(std::bitset<32>* bitmap);
   bool GetTemplate(int index, VendorTemplate* out);
   bool UploadTemplate(const VendorTemplate& tmpl);
@@ -262,6 +265,24 @@ bool CrosFpBiometricsManager::CrosFpDevice::UpdateFpInfo() {
     return false;
   }
   info_ = *cmd.Resp();
+  return true;
+}
+
+bool CrosFpBiometricsManager::CrosFpDevice::GetFpStats(int* capture_ms,
+                                                       int* matcher_ms,
+                                                       int* overall_ms) {
+  EcCommand<EmptyParam, struct ec_response_fp_stats> cmd(EC_CMD_FP_STATS);
+  if (!cmd.Run(cros_fd_.get()))
+    return false;
+
+  uint8_t inval = cmd.Resp()->timestamps_invalid;
+  if (inval & (FPSTATS_CAPTURE_INV | FPSTATS_MATCHING_INV))
+    return false;
+
+  *capture_ms = cmd.Resp()->capture_time_us / 1000;
+  *matcher_ms = cmd.Resp()->matching_time_us / 1000;
+  *overall_ms = cmd.Resp()->overall_time_us / 1000;
+
   return true;
 }
 
@@ -561,6 +582,10 @@ void CrosFpBiometricsManager::SetSessionFailedHandler(
   on_session_failed_ = on_session_failed;
 }
 
+bool CrosFpBiometricsManager::SendStatsOnLogin() {
+  return biod_metrics_->SendEnrolledFingerCount(records_.size());
+}
+
 void CrosFpBiometricsManager::EndEnrollSession() {
   LOG(INFO) << __func__;
   KillMcuSession();
@@ -580,6 +605,7 @@ void CrosFpBiometricsManager::KillMcuSession() {
 CrosFpBiometricsManager::CrosFpBiometricsManager()
     : session_weak_factory_(this),
       weak_factory_(this),
+      biod_metrics_(std::make_unique<BiodMetrics>()),
       biod_storage_(kCrosFpBiometricsManagerName,
                     base::Bind(&CrosFpBiometricsManager::LoadRecord,
                                base::Unretained(this))) {}
@@ -812,6 +838,15 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
 
   // Send back the result directly (as we are running on the main thread).
   OnAuthScanDone(result, std::move(matches));
+
+  int capture_ms, matcher_ms, overall_ms;
+  if (cros_dev_->GetFpStats(&capture_ms, &matcher_ms, &overall_ms)) {
+    // SCAN_RESULT_SUCCESS and EC_MKBP_FP_ERR_MATCH_NO means "no match".
+    bool matched = (result == ScanResult::SCAN_RESULT_SUCCESS &&
+        match_result != EC_MKBP_FP_ERR_MATCH_NO);
+    biod_metrics_->SendFpLatencyStats(matched, capture_ms, matcher_ms,
+                                      overall_ms);
+  }
 
   // Record updated templates
   // TODO(vpalatin): this is slow, move to end of session ?

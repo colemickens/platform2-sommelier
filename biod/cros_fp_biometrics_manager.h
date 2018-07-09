@@ -19,6 +19,8 @@
 
 namespace biod {
 
+class BiodMetrics;
+
 class CrosFpBiometricsManager : public BiometricsManager {
  public:
   static std::unique_ptr<BiometricsManager> Create();
@@ -41,6 +43,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
                                   on_auth_scan_done) override;
   void SetSessionFailedHandler(const BiometricsManager::SessionFailedCallback&
                                    on_session_failed) override;
+
+  bool SendStatsOnLogin() override;
 
  protected:
   void EndEnrollSession() override;
@@ -129,6 +133,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   base::WeakPtrFactory<CrosFpBiometricsManager> session_weak_factory_;
   base::WeakPtrFactory<CrosFpBiometricsManager> weak_factory_;
 
+  std::unique_ptr<BiodMetrics> biod_metrics_;
   BiodStorage biod_storage_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosFpBiometricsManager);

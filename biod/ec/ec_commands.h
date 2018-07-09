@@ -21,6 +21,10 @@
 #include "common.h"
 #endif
 
+#if !defined(__KERNEL__)
+#include "compile_time_macros.h"
+#endif
+
 /*
  * Current version of this protocol
  *
@@ -351,6 +355,15 @@
 #define EC_ACPI_MEM_DEVICE_FEATURES7 0x11
 
 #define EC_ACPI_MEM_BATTERY_INDEX    0x12
+
+/*
+ * USB Port Power. Each bit indicates whether the corresponding USB ports' power
+ * is enabled (1) or disabled (0).
+ *   bit 0 USB port ID 0
+ *   ...
+ *   bit 7 USB port ID 7
+ */
+#define EC_ACPI_MEM_USB_PORT_POWER 0x13
 
 /*
  * ACPI addresses 0x20 - 0xff map to EC_MEMMAP offset 0x00 - 0xdf.  This data
@@ -1252,6 +1265,8 @@ enum ec_feature_code {
 	EC_FEATURE_EXEC_IN_RAM = 34,
 	/* EC supports CEC commands */
 	EC_FEATURE_CEC = 35,
+	/* EC supports tight sensor timestamping. */
+	EC_FEATURE_MOTION_SENSE_TIGHT_TIMESTAMPS = 36,
 };
 
 #define EC_FEATURE_MASK_0(event_code) (1UL << (event_code % 32))
@@ -2281,6 +2296,7 @@ enum motionsensor_chip {
 	MOTIONSENSE_CHIP_GPIO = 12,
 	MOTIONSENSE_CHIP_LIS2DH = 13,
 	MOTIONSENSE_CHIP_LSM6DSM = 14,
+	MOTIONSENSE_CHIP_LIS2DE = 15,
 	MOTIONSENSE_CHIP_MAX,
 };
 
@@ -2319,7 +2335,9 @@ struct __ec_todo_packed ec_response_motion_sense_fifo_info {
 	uint16_t size;
 	/* Amount of space used in the fifo */
 	uint16_t count;
-	/* Timestamp recorded in us */
+	/* Timestamp recorded in us.
+	 * aka accurate timestamp when host event was triggered.
+	 */
 	uint32_t timestamp;
 	/* Total amount of vector lost */
 	uint16_t total_lost;
@@ -3022,6 +3040,17 @@ struct __ec_align1 ec_params_mkbp_simulate_key {
 	uint8_t pressed;
 };
 
+#define EC_CMD_GET_KEYBOARD_ID 0x0063
+
+struct __ec_align4 ec_response_keyboard_id {
+	uint32_t keyboard_id;
+};
+
+enum keyboard_id {
+	KEYBOARD_ID_UNSUPPORTED = 0,
+	KEYBOARD_ID_UNREADABLE = 0xffffffff,
+};
+
 /* Configure keyboard scanning */
 #define EC_CMD_MKBP_SET_CONFIG 0x0064
 #define EC_CMD_MKBP_GET_CONFIG 0x0065
@@ -3172,7 +3201,10 @@ enum ec_mkbp_event {
 	EC_MKBP_EVENT_HOST_EVENT64 = 7,
 
 	/* Notify the AP that something happened on CEC */
-	EC_MKBP_EVENT_CEC = 8,
+	EC_MKBP_EVENT_CEC_EVENT = 8,
+
+	/* Send an incoming CEC message to the AP */
+	EC_MKBP_EVENT_CEC_MESSAGE = 9,
 
 	/* Number of MKBP events */
 	EC_MKBP_EVENT_COUNT,
@@ -3203,10 +3235,44 @@ union __ec_align_offset1 ec_response_get_next_data {
 	uint32_t cec_events;
 };
 
+union __ec_align_offset1 ec_response_get_next_data_v1 {
+	uint8_t key_matrix[16];
+
+	/* Unaligned */
+	uint32_t host_event;
+	uint64_t host_event64;
+
+	struct __ec_todo_unpacked {
+		/* For aligning the fifo_info */
+		uint8_t reserved[3];
+		struct ec_response_motion_sense_fifo_info info;
+	} sensor_fifo;
+
+	uint32_t buttons;
+
+	uint32_t switches;
+
+	uint32_t fp_events;
+
+	uint32_t sysrq;
+
+	/* CEC events from enum mkbp_cec_event */
+	uint32_t cec_events;
+
+	uint8_t cec_message[16];
+};
+BUILD_ASSERT(sizeof(union ec_response_get_next_data_v1) == 16);
+
 struct __ec_align1 ec_response_get_next_event {
 	uint8_t event_type;
 	/* Followed by event data if any */
 	union ec_response_get_next_data data;
+};
+
+struct __ec_align1 ec_response_get_next_event_v1 {
+	uint8_t event_type;
+	/* Followed by event data if any */
+	union ec_response_get_next_data_v1 data;
 };
 
 /* Bit indices for buttons and switches.*/
@@ -3790,6 +3856,8 @@ enum charge_state_params {
 	CS_PARAM_DEBUG_SEEMS_DEAD,
 	CS_PARAM_DEBUG_SEEMS_DISCONNECTED,
 	CS_PARAM_DEBUG_BATT_REMOVED,
+	CS_PARAM_DEBUG_MANUAL_CURRENT,
+	CS_PARAM_DEBUG_MANUAL_VOLTAGE,
 	CS_PARAM_DEBUG_MAX = 0x2ffff,
 
 	/* Other custom param ranges go here... */
@@ -4115,14 +4183,6 @@ struct __ec_align1 ec_params_cec_write {
 	uint8_t msg[MAX_CEC_MSG_LEN];
 };
 
-/* CEC message from a CEC sink reported back to the AP */
-#define EC_CMD_CEC_READ_MSG 0x00B9
-
-/* Message read from to the CEC bus */
-struct __ec_align1 ec_response_cec_read {
-	uint8_t msg[MAX_CEC_MSG_LEN];
-};
-
 /* Set various CEC parameters */
 #define EC_CMD_CEC_SET 0x00BA
 
@@ -4155,8 +4215,6 @@ enum mkbp_cec_event {
 	EC_MKBP_CEC_SEND_OK			= 1 << 0,
 	/* Outgoing message was not acknowledged */
 	EC_MKBP_CEC_SEND_FAILED			= 1 << 1,
-	/* Incoming message can be read out by AP */
-	EC_MKBP_CEC_HAVE_DATA			= 1 << 2,
 };
 
 /*****************************************************************************/
@@ -4410,6 +4468,17 @@ struct __ec_align4 ec_response_usb_pd_power_info {
 	uint32_t max_power;
 };
 
+
+/*
+ * This command will return the number of USB PD charge port + the number
+ * of dedicated port present.
+ * EC_CMD_USB_PD_PORTS does NOT include the dedicated ports
+ */
+#define EC_CMD_CHARGE_PORT_COUNT 0x0105
+struct __ec_align1 ec_response_charge_port_count {
+	uint8_t port_count;
+};
+
 /* Write USB-PD device FW */
 #define EC_CMD_USB_PD_FW_UPDATE 0x0110
 
@@ -4613,7 +4682,7 @@ enum ec_pd_control_cmd {
 };
 
 struct __ec_align1 ec_params_pd_control {
-	uint8_t chip;         /* chip id (should be 0) */
+	uint8_t chip;         /* chip id */
 	uint8_t subcmd;
 };
 
@@ -4693,6 +4762,7 @@ enum cbi_data_tag {
 	CBI_TAG_BOARD_VERSION = 0, /* uint16_t or uint8_t[] = {minor,major} */
 	CBI_TAG_OEM_ID = 1,        /* uint8_t */
 	CBI_TAG_SKU_ID = 2,        /* uint8_t */
+	CBI_TAG_DRAM_PART_NUM = 3, /* variable length ascii, nul terminated. */
 	CBI_TAG_COUNT,
 };
 
@@ -4725,6 +4795,81 @@ struct __ec_align1 ec_params_set_cbi {
 	uint32_t flag;		/* CBI_SET_* */
 	uint32_t size;		/* Data size */
 	uint8_t data[];		/* For string and raw data */
+};
+
+/*
+ * Information about resets of the AP by the EC and the EC's own uptime.
+ */
+#define EC_CMD_GET_UPTIME_INFO 0x0121
+
+struct __ec_align4 ec_response_uptime_info {
+	/*
+	 * Number of milliseconds since the last EC boot. Sysjump resets
+	 * typically do not restart the EC's time_since_boot epoch.
+	 *
+	 * WARNING: The EC's sense of time is much less accurate than the AP's
+	 * sense of time, in both phase and frequency.  This timebase is similar
+	 * to CLOCK_MONOTONIC_RAW, but with 1% or more frequency error.
+	 */
+	uint32_t time_since_ec_boot_ms;
+
+	/*
+	 * Number of times the AP was reset by the EC since the last EC boot.
+	 * Note that the AP may be held in reset by the EC during the initial
+	 * boot sequence, such that the very first AP boot may count as more
+	 * than one here.
+	 */
+	uint32_t ap_resets_since_ec_boot;
+
+	/*
+	 * The set of flags which describe the EC's most recent reset.  See
+	 * include/system.h RESET_FLAG_* for details.
+	 */
+	uint32_t ec_reset_flags;
+
+	/* Empty log entries have both the cause and timestamp set to zero. */
+	struct ap_reset_log_entry {
+		/*
+		 * See include/chipset.h: enum chipset_{reset,shutdown}_reason
+		 * for details.
+		 */
+		uint16_t reset_cause;
+
+		/* Reserved for protocol growth. */
+		uint16_t reserved;
+
+		/*
+		 * The time of the reset's assertion, in milliseconds since the
+		 * last EC boot, in the same epoch as time_since_ec_boot_ms.
+		 * Set to zero if the log entry is empty.
+		 */
+		uint32_t reset_time_ms;
+	} recent_ap_reset[4];
+};
+
+/*
+ * Add entropy to the device secret (stored in the rollback region).
+ *
+ * Depending on the chip, the operation may take a long time (e.g. to erase
+ * flash), so the commands are asynchronous.
+ */
+#define EC_CMD_ADD_ENTROPY	0x0122
+
+enum add_entropy_action {
+	/* Add entropy to the current secret. */
+	ADD_ENTROPY_ASYNC = 0,
+	/*
+	 * Add entropy, and also make sure that the previous secret is erased.
+	 * (this can be implemented by adding entropy multiple times until
+	 * all rolback blocks have been overwritten).
+	 */
+	ADD_ENTROPY_RESET_ASYNC = 1,
+	/* Read back result from the previous operation. */
+	ADD_ENTROPY_GET_RESULT = 2,
+};
+
+struct __ec_align1 ec_params_rollback_add_entropy {
+	uint8_t action;
 };
 
 /*****************************************************************************/
@@ -4791,6 +4936,8 @@ struct __ec_align2 ec_params_fp_sensor_config {
 #define FP_CAPTURE_PATTERN1      3
 /* Capture for Quality test with fixed contrast */
 #define FP_CAPTURE_QUALITY_TEST  4
+/* Capture for pixel reset value test */
+#define FP_CAPTURE_RESET_TEST    5
 /* Extracts the capture type from the sensor 'mode' word */
 #define FP_CAPTURE_TYPE(mode) (((mode) >> FP_MODE_CAPTURE_TYPE_SHIFT) \
 					& FP_MODE_CAPTURE_TYPE_MASK)
@@ -4816,6 +4963,8 @@ struct __ec_align4 ec_response_fp_mode {
 
 /* Number of dead pixels detected on the last maintenance */
 #define FP_ERROR_DEAD_PIXELS(errors) ((errors) & 0x3FF)
+/* Unknown number of dead pixels detected on the last maintenance */
+#define FP_ERROR_DEAD_PIXELS_UNKNOWN (0x3FF)
 /* No interrupt from the sensor */
 #define FP_ERROR_NO_IRQ    (1 << 12)
 /* SPI communication error */
@@ -4905,6 +5054,23 @@ struct __ec_align4 ec_params_fp_context {
 
 struct __ec_align4 ec_response_fp_context {
 	uint32_t nonce[FP_CONTEXT_NONCE_WORDS];
+};
+
+#define EC_CMD_FP_STATS 0x0407
+
+#define FPSTATS_CAPTURE_INV  (1 << 0)
+#define FPSTATS_MATCHING_INV (1 << 1)
+
+struct __ec_align2 ec_response_fp_stats {
+	uint32_t capture_time_us;
+	uint32_t matching_time_us;
+	uint32_t overall_time_us;
+	struct {
+		uint32_t lo;
+		uint32_t hi;
+	} overall_t0;
+	uint8_t timestamps_invalid;
+	int8_t template_matched;
 };
 
 /*****************************************************************************/

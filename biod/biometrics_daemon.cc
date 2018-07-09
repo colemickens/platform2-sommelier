@@ -528,6 +528,7 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
       for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
         biometrics_manager_wrapper->get().ReadRecords(new_active_users);
         biometrics_manager_wrapper->RefreshRecordObjects();
+        biometrics_manager_wrapper->get().SendStatsOnLogin();
       }
     }
   } else if (state == dbus_constants::kSessionStateStopping) {

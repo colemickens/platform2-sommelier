@@ -4,6 +4,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libmetrics-<(libbase_ver)',
         # system_api depends on protobuf (or protobuf-lite). It must appear
         # before protobuf here or the linker flags won't be in the right
         # order.
@@ -18,6 +19,7 @@
       'type': 'static_library',
       'sources': [
         'bio_library.cc',
+        'biod_metrics.cc',
         'biod_storage.cc',
         'biometrics_daemon.cc',
         'cros_fp_biometrics_manager.cc',
@@ -72,6 +74,7 @@
             ],
           },
           'sources': [
+            'biod_metrics_test.cc',
             'biod_storage_test.cc',
           ],
         },

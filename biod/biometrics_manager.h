@@ -182,6 +182,8 @@ class BiometricsManager {
   virtual void SetSessionFailedHandler(
       const SessionFailedCallback& on_session_failed) = 0;
 
+  virtual bool SendStatsOnLogin() { return true; }
+
  protected:
   virtual void EndEnrollSession() = 0;
   virtual void EndAuthSession() = 0;

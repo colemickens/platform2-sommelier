@@ -1,0 +1,66 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "biod/biod_metrics.h"
+
+#include <metrics/metrics_library.h>
+
+namespace biod {
+
+namespace metrics {
+
+constexpr char kFpEnrolledFingerCount[] =
+    "Fingerprint.Unlock.EnrolledFingerCount";
+constexpr char kFpMatchDurationCapture[] =
+    "Fingerprint.Unlock.Match.Duration.Capture";
+constexpr char kFpMatchDurationMatcher[] =
+    "Fingerprint.Unlock.Match.Duration.Matcher";
+constexpr char kFpMatchDurationOverall[] =
+    "Fingerprint.Unlock.Match.Duration.Overall";
+constexpr char kFpNoMatchDurationCapture[] =
+    "Fingerprint.Unlock.NoMatch.Duration.Capture";
+constexpr char kFpNoMatchDurationMatcher[] =
+    "Fingerprint.Unlock.NoMatch.Duration.Matcher";
+constexpr char kFpNoMatchDurationOverall[] =
+    "Fingerprint.Unlock.NoMatch.Duration.Overall";
+
+}   // namespace metrics
+
+BiodMetrics::BiodMetrics()
+    : metrics_lib_(std::make_unique<MetricsLibrary>()) {
+  metrics_lib_->Init();
+}
+
+bool BiodMetrics::SendEnrolledFingerCount(int finger_count) {
+  return metrics_lib_->SendEnumToUMA(metrics::kFpEnrolledFingerCount,
+                                     finger_count, 10);
+}
+
+bool BiodMetrics::SendFpLatencyStats(bool matched, int capture_ms, int match_ms,
+                        int overall_ms) {
+  bool rc = true;
+  if (!metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationCapture :
+                               metrics::kFpNoMatchDurationCapture,
+                               capture_ms, 0, 200, 20)) {
+    rc = false;
+  }
+  if (!metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationMatcher :
+                               metrics::kFpNoMatchDurationMatcher,
+                               match_ms, 100, 800, 50)) {
+    rc = false;
+  }
+  if (!metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationOverall :
+                                     metrics::kFpNoMatchDurationOverall,
+                                     overall_ms, 100, 1000, 50)) {
+    rc = false;
+  }
+  return rc;
+}
+
+void BiodMetrics::SetMetricsLibraryForTesting(
+    std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
+  metrics_lib_ = std::move(metrics_lib);
+}
+
+}   // namespace biod
