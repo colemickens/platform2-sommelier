@@ -407,6 +407,17 @@ ProtoBlob SmbProvider::ParseNetBiosPacket(const std::vector<uint8_t>& packet,
   return out_blob;
 }
 
+void SmbProvider::StartCopy(const ProtoBlob& options_blob,
+                            int32_t* error_code,
+                            int32_t* copy_token) {
+  NOTREACHED();
+}
+
+int32_t SmbProvider::ContinueCopy(int32_t mount_id, int32_t copy_token) {
+  NOTREACHED();
+  return 0;
+}
+
 HostnamesProto SmbProvider::BuildHostnamesProto(
     const std::vector<std::string>& hostnames) const {
   HostnamesProto hostnames_proto;

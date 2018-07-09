@@ -110,6 +110,12 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   ProtoBlob ParseNetBiosPacket(const std::vector<uint8_t>& packet,
                                uint16_t transaction_id) override;
 
+  void StartCopy(const ProtoBlob& options_blob,
+                 int32_t* error_code,
+                 int32_t* copy_token) override;
+
+  int32_t ContinueCopy(int32_t mount_id, int32_t copy_token) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
