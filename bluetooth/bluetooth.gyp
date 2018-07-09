@@ -45,6 +45,8 @@
       'sources': [
         'newblued/newblue.cc',
         'newblued/newblue_daemon.cc',
+        'newblued/util.cc',
+        'newblued/uuid.cc',
       ],
     },
     {
@@ -88,6 +90,8 @@
             'dispatcher/suspend_manager_unittest.cc',
             'newblued/newblue_daemon_unittest.cc',
             'newblued/newblue_unittest.cc',
+            'newblued/util_unittest.cc',
+            'newblued/uuid_unittest.cc',
           ],
         },
       ],

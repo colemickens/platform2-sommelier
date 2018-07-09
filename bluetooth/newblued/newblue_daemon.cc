@@ -205,7 +205,7 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
   VLOG(1) << "Discovered device "
           << base::StringPrintf("address = %s, rssi = %d, addr type = %s",
                                 device.address.c_str(), device.rssi,
-                                device.is_random_addr ? "random" : "public");
+                                device.is_random_address ? "random" : "public");
 
   std::string device_path_string = base::StringPrintf(
       "%s/dev_%s", kAdapterObjectPath, device.address.c_str());

@@ -290,7 +290,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       .WillOnce(Return(exported_device_object.get()));
   ExpectDeviceMethodsExported(exported_device_object);
   ExpectPropertiesMethodsExported(exported_device_object);
-  Device device = {.address = kTestDeviceAddress};
+  Device device(kTestDeviceAddress);
   on_device_discovered.Run(device);
 
   // StopDiscovery

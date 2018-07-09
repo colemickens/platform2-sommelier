@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -16,9 +17,24 @@
 #include <base/single_thread_task_runner.h>
 
 #include "bluetooth/newblued/libnewblue.h"
+#include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
 
+// The default values of Flags, TX Power, EIR Class, Appearance and
+// Manufacturer ID come from the assigned numbers and Supplement to the
+// Bluetooth Core Specification defined by Bluetooth SIG. These default values
+// are used to determine whether the fields are ever received in EIR and set
+// for a device.
+constexpr int8_t kDefaultRssi = -128;
+constexpr int8_t kDefaultTxPower = -128;
+constexpr uint32_t kDefaultEirClass = 0x1F00;
+constexpr uint16_t kDefaultAppearance = 0;
+constexpr uint16_t kDefaultManufacturerId = 0xFFFF;
+
+// These are based on the numbers assigned by Bluetooth SIG, see
+// www.bluetooth.com/specifications/assigned-numbers/generic-access-profile.
+// Note that only the subset of all EIR data types is needed for now.
 enum class EirType : uint8_t {
   FLAGS = 0x01,
   UUID16_INCOMPLETE = 0x02,
@@ -31,16 +47,8 @@ enum class EirType : uint8_t {
   NAME_COMPLETE = 0x09,
   TX_POWER = 0x0a,
   CLASS_OF_DEV = 0x0d,
-  SSP_HASH = 0x0e,
-  SSP_RANDOMIZER = 0x0f,
-  DEVICE_ID = 0x10,
-  SOLICIT16 = 0x14,
-  SOLICIT128 = 0x15,
   SVC_DATA16 = 0x16,
-  PUB_TRGT_ADDR = 0x17,
-  RND_TRGT_ADDR = 0x18,
   GAP_APPEARANCE = 0x19,
-  SOLICIT32 = 0x1f,
   SVC_DATA32 = 0x20,
   SVC_DATA128 = 0x21,
   MANUFACTURER_DATA = 0xff,
@@ -48,17 +56,29 @@ enum class EirType : uint8_t {
 
 // Structure representing a discovered device.
 struct Device {
+  Device() = default;
+  explicit Device(const std::string& addr) : address(addr) {}
+
   // MAC address (in format XX:XX:XX:XX:XX:XX).
   std::string address;
   // Whether the MAC address is a random address.
-  bool is_random_addr;
+  bool is_random_address = false;
   // RSSI of last received inquiry response.
-  int8_t rssi;
+  int8_t rssi = kDefaultRssi;
 
   // Data parsed from Extended Inquiry Response (EIR).
+
+  // No default value should be set for flags according to Supplement to the
+  // Bluetooth Core Specification.
+  std::vector<uint8_t> flags;
+  std::set<Uuid> service_uuids;
+  std::map<Uuid, std::vector<uint8_t>> service_data;
   std::string name;
-  uint32_t eir_class;
-  uint16_t appearance;
+  int8_t tx_power = kDefaultTxPower;
+  uint32_t eir_class = kDefaultEirClass;
+  uint16_t appearance = kDefaultAppearance;
+  uint16_t manufacturer_id = kDefaultManufacturerId;
+  std::vector<uint8_t> manufacturer_data;
 };
 
 // A higher-level API wrapper of the low-level libnewblue C interface.
@@ -123,6 +143,20 @@ class Newblue {
                          int8_t rssi,
                          uint8_t reply_type,
                          const std::vector<uint8_t>& eir);
+
+  // Updates the service UUIDs based on data of EirTypes including
+  // UUID16_INCOMPLETE, UUID16_COMPLETE, UUID32_INCOMPLETE, UUID32_COMPLETE,
+  // UUID128_INCOMPLETE and UUID128_COMPLETE.
+  static void UpdateServiceUuids(Device* device,
+                                 uint8_t uuid_size,
+                                 const uint8_t* data,
+                                 uint8_t data_len);
+  // Updates the service data based on data of EirTypes including SVC_DATA16,
+  // SVC_DATA32 and SVC_DATA128.
+  static void UpdateServiceData(Device* device,
+                                uint8_t uuid_size,
+                                const uint8_t* data,
+                                uint8_t data_len);
 
   std::unique_ptr<LibNewblue> libnewblue_;
 

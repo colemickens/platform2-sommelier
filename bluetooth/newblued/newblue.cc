@@ -13,6 +13,8 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
 
+#include "bluetooth/newblued/util.h"
+
 namespace bluetooth {
 
 namespace {
@@ -126,6 +128,14 @@ bool Newblue::StopDiscovery() {
 
 void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
   uint8_t pos = 0;
+
+  // Reset service UUIDs and service data so that |service_uuids| and
+  // |service_data| reflect the latest EIR. This is different from BlueZ where
+  // it memorizes all service UUIDs and service data ever received for the same
+  // device.
+  device->service_uuids.clear();
+  device->service_data.clear();
+
   while (pos + 1 < eir.size()) {
     uint8_t field_len = eir[pos];
 
@@ -144,9 +154,34 @@ void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
     // | 1-byte field_len | 1-byte type | (field length - 1) bytes data ... |
     uint8_t data_len = field_len - 1;
 
-    // TODO(sonnysasaka): Implement more EIR types.
     switch (eir_type) {
-      // name
+      case EirType::FLAGS:
+        // Flags field can be 0 or more octets long. If the length is 1, then
+        // flags[0] is octet[0]. Store only octet[0] for now due to lack of
+        // definition of the following octets in Supplement to the Bluetooth
+        // Core Specification.
+        if (data_len > 0)
+          device->flags.assign(data, data + 1);
+        else
+          device->flags.clear();
+        break;
+
+      // If there are more than one instance of either COMPLETE or INCOMPLETE
+      // type of a UUID size, the later one(s) will be cached as well.
+      case EirType::UUID16_INCOMPLETE:
+      case EirType::UUID16_COMPLETE:
+        UpdateServiceUuids(device, kUuid16Size, data, data_len);
+        break;
+      case EirType::UUID32_INCOMPLETE:
+      case EirType::UUID32_COMPLETE:
+        UpdateServiceUuids(device, kUuid32Size, data, data_len);
+        break;
+      case EirType::UUID128_INCOMPLETE:
+      case EirType::UUID128_COMPLETE:
+        UpdateServiceUuids(device, kUuid128Size, data, data_len);
+        break;
+
+      // Name
       case EirType::NAME_SHORT:
       case EirType::NAME_COMPLETE: {
         char c_name[HCI_DEV_NAME_LEN + 1];
@@ -161,17 +196,41 @@ void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
 
         device->name = AsciiString(c_name);
       } break;
-      case EirType::CLASS_OF_DEV:
-        if (data_len != 3)
-          break;
-        // 24-bit little endian data
-        device->eir_class = data[0] | (data[1] << 8) | (data[2] << 16);
+
+      case EirType::TX_POWER:
+        if (data_len == 1)
+          device->tx_power = static_cast<int8_t>(*data);
         break;
+      case EirType::CLASS_OF_DEV:
+        // 24-bit little endian data
+        if (data_len == 3)
+          device->eir_class = GetNumFromLE24(data);
+        break;
+
+      // If the UUID already exists, the service data will be updated.
+      case EirType::SVC_DATA16:
+        UpdateServiceData(device, kUuid16Size, data, data_len);
+        break;
+      case EirType::SVC_DATA32:
+        UpdateServiceData(device, kUuid32Size, data, data_len);
+        break;
+      case EirType::SVC_DATA128:
+        UpdateServiceData(device, kUuid128Size, data, data_len);
+        break;
+
       case EirType::GAP_APPEARANCE:
-        if (data_len != 2)
-          break;
         // 16-bit little endian data
-        device->appearance = data[0] | (data[1] << 8);
+        if (data_len == 2)
+          device->appearance = GetNumFromLE16(data);
+        break;
+      case EirType::MANUFACTURER_DATA:
+        if (data_len >= 2)
+          device->manufacturer_id = GetNumFromLE16(data);
+        // The order of manufacturer data is not specified explicitly in
+        // Supplement to the Bluetooth Core Specification, so the original
+        // order used in BlueZ is adopted.
+        if (data_len > 2)
+          device->manufacturer_data.assign(data + 2, data + data_len);
         break;
       default:
         // Do nothing for unhandled EIR type.
@@ -229,16 +288,55 @@ void Newblue::DiscoveryCallback(const std::string& address,
   }
 
   if (!base::ContainsKey(discovered_devices_, address))
-    discovered_devices_[address] = std::make_unique<Device>();
+    discovered_devices_[address] = std::make_unique<Device>(address);
 
   Device* device = discovered_devices_[address].get();
-
-  device->address = address;
-  device->is_random_addr = (address_type == BT_ADDR_TYPE_LE_RANDOM);
+  device->is_random_address = (address_type == BT_ADDR_TYPE_LE_RANDOM);
   device->rssi = rssi;
   UpdateEir(device, eir);
 
   device_discovered_callback_.Run(*device);
+}
+
+void Newblue::UpdateServiceUuids(Device* device,
+                                 uint8_t uuid_size,
+                                 const uint8_t* data,
+                                 uint8_t data_len) {
+  CHECK(device && data);
+
+  if (!data_len || data_len % uuid_size != 0) {
+    LOG(WARNING) << "Failed to parse EIR service UUIDs";
+    return;
+  }
+
+  // Service UUIDs are presented in little-endian order.
+  for (uint8_t i = 0; i < data_len; i += uuid_size) {
+    Uuid uuid(GetBytesFromLE(data + i, uuid_size));
+    CHECK(uuid.format() != UuidFormat::UUID_INVALID);
+    device->service_uuids.insert(uuid);
+  }
+}
+
+void Newblue::UpdateServiceData(Device* device,
+                                uint8_t uuid_size,
+                                const uint8_t* data,
+                                uint8_t data_len) {
+  CHECK(device && data);
+
+  if (!data_len || data_len <= uuid_size) {
+    LOG(WARNING) << "Failed to parse EIR service data";
+    return;
+  }
+
+  // A service UUID and its data are presented in little-endian order where the
+  // format is {<bytes of service UUID>, <bytes of service data>}. For instance,
+  // the service data associated with the battery service can be
+  // {0x0F, 0x18, 0x22, 0x11}
+  // where {0x18 0x0F} is the UUID and {0x11, 0x22} is the data.
+  Uuid uuid(GetBytesFromLE(data, uuid_size));
+  CHECK_NE(UuidFormat::UUID_INVALID, uuid.format());
+  device->service_data[uuid] =
+      GetBytesFromLE(data + uuid_size, data_len - uuid_size);
 }
 
 }  // namespace bluetooth
