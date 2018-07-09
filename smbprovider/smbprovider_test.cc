@@ -2680,4 +2680,111 @@ TEST_F(SmbProviderTest, ParseNetBiosPacketFailsOnInvalidPacket) {
   EXPECT_EQ(0, hostnames_proto.hostnames().size());
 }
 
+TEST_F(SmbProviderTest, StartCopyFailsOnNonExistantSouce) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/non_existent.txt", "/target.txt");
+
+  int32_t error_code;
+  int32_t copy_token;
+  smbprovider_->StartCopy(copy_blob, &error_code, &copy_token);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+}
+
+TEST_F(SmbProviderTest, StartCopyFailsWhenTargetAlreadyExists) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/file.txt"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dir1"));
+  fake_samba_->AddFile(GetDefaultFullPath("/dir1/file.txt"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/file.txt", "/dir1/file.txt");
+
+  int32_t error_code;
+  int32_t copy_token;
+  smbprovider_->StartCopy(copy_blob, &error_code, &copy_token);
+
+  EXPECT_EQ(ERROR_EXISTS, error_code);
+}
+
+TEST_F(SmbProviderTest, StartCopySucceedsOnFile) {
+  const std::vector<uint8_t> file_data = {10, 11, 12, 13, 14, 15};
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddFile(GetDefaultFullPath("/dog1.jpg"), kFileDate, file_data);
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/dog1.jpg", "/dogs/dog1.jpg");
+
+  int32_t error_code;
+  int32_t copy_token;
+  smbprovider_->StartCopy(copy_blob, &error_code, &copy_token);
+
+  EXPECT_EQ(ERROR_OK, error_code);
+
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dog1.jpg")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs/dog1.jpg")));
+}
+
+TEST_F(SmbProviderTest, StartCopySucceedsOnEmptyDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/animals"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/dogs", "/animals/dogs");
+
+  int32_t error_code;
+  int32_t copy_token;
+
+  smbprovider_->StartCopy(copy_blob, &error_code, &copy_token);
+  EXPECT_EQ(ERROR_OK, error_code);
+
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/animals/dogs")));
+}
+
+TEST_F(SmbProviderTest, ContinueCopySucceeds) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/dogs/1"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/animals"));
+
+  ProtoBlob copy_blob =
+      CreateCopyEntryOptionsBlob(mount_id, "/dogs", "/animals/dogs");
+
+  int32_t error_code;
+  int32_t copy_token;
+
+  // Copy /dogs to /animals/dogs.
+  smbprovider_->StartCopy(copy_blob, &error_code, &copy_token);
+  EXPECT_EQ(ERROR_COPY_PENDING, error_code);
+  EXPECT_GE(copy_token, 0);
+
+  // Copy /dogs/1 to /animals/dogs/1.
+  error_code = smbprovider_->ContinueCopy(mount_id, copy_token);
+  EXPECT_EQ(ERROR_OK, error_code);
+
+  // Verify the copy completed correctly.
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/dogs/1")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/animals/dogs")));
+  EXPECT_TRUE(fake_samba_->EntryExists(GetDefaultFullPath("/animals/dogs/1")));
+}
+
+TEST_F(SmbProviderTest, ContinueCopyFailsWhenCalledWithInvalidToken) {
+  const int32_t mount_id = PrepareMount();
+  const int32_t invalid_copy_token = 123;
+
+  int32_t error_code = smbprovider_->ContinueCopy(mount_id, invalid_copy_token);
+
+  EXPECT_EQ(ERROR_COPY_FAILED, error_code);
+}
+
 }  // namespace smbprovider

@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <dbus_adaptors/org.chromium.SmbProvider.h>
 
+#include "smbprovider/copy_progress_interface.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -387,11 +388,53 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   HostnamesProto BuildHostnamesProto(
       const std::vector<std::string>& hostnames) const;
 
+  // Starts a copy of |source_path| to |target_path|.
+  // Returns ERROR_COPY_PENDING and sets |copy_token| if the copy must be
+  // continued, ERROR_OK if the copy was completed successfully, and any other
+  // ErrorType if an error is encountered.
+  ErrorType StartCopy(const CopyEntryOptionsProto& options,
+                      const std::string& source_path,
+                      const std::string& target_path,
+                      int32_t* copy_token);
+
+  // Starts a recursive copy of the directory at |source_path| to |target_path|.
+  // Returns ERROR_COPY_PENDING and sets |copy_token| if the copy must be
+  // continued, ERROR_OK if the copy was completed successfully, and any other
+  // ErrorType if an error is encountered.
+  ErrorType StartDirectoryCopy(const CopyEntryOptionsProto& options,
+                               const std::string& source_path,
+                               const std::string& target_path,
+                               int32_t* copy_token);
+
+  // Starts a copy of the file at |source_path| to |target_path|.
+  // Returns ERROR_COPY_PENDING and sets |copy_token| if the copy must be
+  // continued, ERROR_OK if the copy was completed successfully, and any other
+  // ErrorType if an error is encountered.
+  ErrorType StartFileCopy(const CopyEntryOptionsProto& options,
+                          const std::string& source_path,
+                          const std::string& target_path,
+                          int32_t* copy_token);
+
+  template <typename CopyProgressType>
+  ErrorType StartCopyProgress(const CopyEntryOptionsProto& options,
+                              const std::string& source_path,
+                              const std::string& target_path,
+                              int32_t* copy_token);
+
+  // Continues the copy mapped to |copy_token|. Returns ERROR_COPY_PENDING
+  // if the copy must be continued, ERROR_OK if the copy was completed
+  // successfully, and any other ErrorType if an error is encountered.
+  ErrorType ContinueCopy(int32_t copy_token);
+
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
   std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer_;
   TempFileManager temp_file_manager_;
+  // Keeps track of in-progress copy operations. Maps a copy token to a
+  // CopyProgress.
+  int32_t copy_counter_ = 0;
+  std::map<int32_t, std::unique_ptr<CopyProgressInterface>> copy_tracker_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbProvider);
 };

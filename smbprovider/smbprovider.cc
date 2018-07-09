@@ -12,6 +12,7 @@
 #include <base/memory/ptr_util.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/file_copy_progress.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/iterator/post_depth_first_iterator.h"
 #include "smbprovider/iterator/share_iterator.h"
@@ -19,6 +20,7 @@
 #include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
+#include "smbprovider/recursive_copy_progress.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider_helper.h"
 
@@ -410,12 +412,52 @@ ProtoBlob SmbProvider::ParseNetBiosPacket(const std::vector<uint8_t>& packet,
 void SmbProvider::StartCopy(const ProtoBlob& options_blob,
                             int32_t* error_code,
                             int32_t* copy_token) {
-  NOTREACHED();
+  DCHECK(error_code);
+  DCHECK(copy_token);
+
+  std::string source_path;
+  std::string target_path;
+  CopyEntryOptionsProto options;
+
+  if (!ParseOptionsAndPaths(options_blob, &options, &source_path, &target_path,
+                            error_code)) {
+    return;
+  }
+
+  ErrorType error = StartCopy(options, source_path, target_path, copy_token);
+  if (error != ERROR_OK || error != ERROR_COPY_PENDING) {
+    LogAndSetError(options, error, error_code);
+    return;
+  }
+
+  *error_code = static_cast<int32_t>(error);
 }
 
 int32_t SmbProvider::ContinueCopy(int32_t mount_id, int32_t copy_token) {
-  NOTREACHED();
-  return 0;
+  DCHECK_GE(mount_id, 0);
+  DCHECK_GE(copy_token, 0);
+
+  int32_t error_code;
+  if (!copy_tracker_.count(copy_token)) {
+    LogAndSetError(kContinueCopyMethod, mount_id, ERROR_COPY_FAILED,
+                   &error_code);
+    return error_code;
+  }
+
+  if (!mount_manager_->IsAlreadyMounted(mount_id)) {
+    copy_tracker_.erase(copy_token);
+    LogAndSetError(kContinueCopyMethod, mount_id, ERROR_COPY_FAILED,
+                   &error_code);
+    return error_code;
+  }
+
+  ErrorType error = ContinueCopy(copy_token);
+  if (error != ERROR_OK || error != ERROR_COPY_PENDING) {
+    LogAndSetError(kContinueCopyMethod, mount_id, error, &error_code);
+    return error_code;
+  }
+
+  return static_cast<int32_t>(error);
 }
 
 HostnamesProto SmbProvider::BuildHostnamesProto(
@@ -895,6 +937,95 @@ bool SmbProvider::CopyFile(const CopyEntryOptionsProto& options,
   return true;
 }
 
+ErrorType SmbProvider::StartCopy(const CopyEntryOptionsProto& options,
+                                 const std::string& source_path,
+                                 const std::string& target_path,
+                                 int32_t* copy_token) {
+  DCHECK(copy_token);
+
+  bool is_directory;
+  int32_t get_type_result;
+  if (!GetEntryType(source_path, &get_type_result, &is_directory)) {
+    return GetErrorFromErrno(get_type_result);
+  }
+
+  if (is_directory) {
+    return StartDirectoryCopy(options, source_path, target_path, copy_token);
+  }
+
+  return StartFileCopy(options, source_path, target_path, copy_token);
+}
+
+template <typename CopyProgressType>
+ErrorType SmbProvider::StartCopyProgress(const CopyEntryOptionsProto& options,
+                                         const std::string& source_path,
+                                         const std::string& target_path,
+                                         int32_t* copy_token) {
+  DCHECK(copy_token);
+
+  auto copy_progress =
+      std::make_unique<CopyProgressType>(samba_interface_.get());
+
+  int32_t copy_result;
+  bool should_continue_copy =
+      copy_progress->StartCopy(source_path, target_path, &copy_result);
+  if (should_continue_copy) {
+    // The copy needs to be continued.
+    *copy_token = copy_counter_++;
+    copy_tracker_[*copy_token] = std::move(copy_progress);
+    return ERROR_COPY_PENDING;
+  }
+  if (copy_result == 0) {
+    // The copy is complete.
+    return ERROR_OK;
+  }
+
+  return GetErrorFromErrno(copy_result);
+}
+
+ErrorType SmbProvider::StartDirectoryCopy(const CopyEntryOptionsProto& options,
+                                          const std::string& source_path,
+                                          const std::string& target_path,
+                                          int32_t* copy_token) {
+  DCHECK(copy_token);
+
+  return StartCopyProgress<RecursiveCopyProgress>(options, source_path,
+                                                  target_path, copy_token);
+}
+
+ErrorType SmbProvider::StartFileCopy(const CopyEntryOptionsProto& options,
+                                     const std::string& source_path,
+                                     const std::string& target_path,
+                                     int32_t* copy_token) {
+  DCHECK(copy_token);
+
+  return StartCopyProgress<FileCopyProgress>(options, source_path, target_path,
+                                             copy_token);
+}
+
+ErrorType SmbProvider::ContinueCopy(int32_t copy_token) {
+  DCHECK_GE(copy_token, 0);
+
+  int32_t copy_result;
+  const bool should_continue_copy =
+      copy_tracker_[copy_token]->ContinueCopy(&copy_result);
+  if (should_continue_copy) {
+    // The copy needs to be continued.
+    return ERROR_COPY_PENDING;
+  }
+
+  // The copy no longer needs to be continued as it has either completed
+  // successfully or it failed so remove it from |copy_tracker_|.
+  copy_tracker_.erase(copy_token);
+
+  if (copy_result == 0) {
+    // The copy is complete.
+    return ERROR_OK;
+  }
+
+  return GetErrorFromErrno(copy_result);
+}
+
 template <typename Proto>
 bool SmbProvider::ReadToBuffer(const Proto& options,
                                int32_t file_id,
@@ -1024,5 +1155,17 @@ std::string SmbProvider::GetRelativePath(int32_t mount_id,
                                          const std::string& entry_path) {
   return mount_manager_->GetRelativePath(mount_id, entry_path);
 }
+
+// These are required to explicitly instantiate the template functions.
+template ErrorType SmbProvider::StartCopyProgress<FileCopyProgress>(
+    const CopyEntryOptionsProto&,
+    const std::string&,
+    const std::string&,
+    int32_t*);
+template ErrorType SmbProvider::StartCopyProgress<RecursiveCopyProgress>(
+    const CopyEntryOptionsProto&,
+    const std::string&,
+    const std::string&,
+    int32_t*);
 
 }  // namespace smbprovider
