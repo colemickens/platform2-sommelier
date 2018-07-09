@@ -10,17 +10,12 @@
 #include <utility>
 #include <vector>
 
-#include <base/memory/ref_counted.h>
-#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>
 
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/org.chromium.AuthPolicy.h"
 #include "authpolicy/samba_interface.h"
-
-using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace login_manager {
 class PolicyDescriptor;
@@ -31,6 +26,7 @@ namespace authpolicy {
 class ActiveDirectoryAccountInfo;
 class Anonymizer;
 class AuthPolicyMetrics;
+class SessionManagerClient;
 class PathService;
 class ResponseTracker;
 
@@ -52,13 +48,16 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   AuthPolicy(AuthPolicyMetrics* metrics, const PathService* path_service);
 
+  ~AuthPolicy();
+
   // Initializes internals. See SambaInterface::Initialize() for details.
   ErrorType Initialize(bool device_is_locked) WARN_UNUSED_RESULT;
 
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-      const AsyncEventSequencer::CompletionAction& completion_callback);
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+          completion_callback);
 
   // Cleans all persistent state files. Returns true if all files were cleared.
   static bool CleanState(const PathService* path_service) {
@@ -129,11 +128,6 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                          const std::string& policy_blob,
                          scoped_refptr<ResponseTracker> response_tracker);
 
-  // Response callback from SessionManager, logs the result and calls callback.
-  void OnPolicyStored(login_manager::PolicyDescriptor descriptor,
-                      scoped_refptr<ResponseTracker> response_tracker,
-                      dbus::Response* response);
-
   AuthPolicyMetrics* metrics_;  // Not owned.
   SambaInterface samba_;
 
@@ -143,8 +137,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   bool device_is_locked_ = false;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  dbus::ObjectProxy* session_manager_proxy_ = nullptr;
-  base::WeakPtrFactory<AuthPolicy> weak_ptr_factory_;
+  std::unique_ptr<SessionManagerClient> session_manager_client_;
 
   DISALLOW_COPY_AND_ASSIGN(AuthPolicy);
 };

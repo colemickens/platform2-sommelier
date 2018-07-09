@@ -42,8 +42,9 @@ class Daemon : public brillo::DBusServiceDaemon {
   }
 
  protected:
-  void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    AsyncEventSequencer::Handler handler =
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
+    brillo::dbus_utils::AsyncEventSequencer::Handler handler =
         sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true);
     auth_policy_.RegisterAsync(
         AuthPolicy::GetDBusObject(object_manager_.get()),
@@ -52,8 +53,9 @@ class Daemon : public brillo::DBusServiceDaemon {
   }
 
  private:
-  void OnAuthPolicyRegistered(const AsyncEventSequencer::Handler& handler,
-                              bool success) {
+  void OnAuthPolicyRegistered(
+      const brillo::dbus_utils::AsyncEventSequencer::Handler& handler,
+      bool success) {
     // If it wasn't successful, the sequencer handler should print an error and
     // exit.
     handler.Run(success);

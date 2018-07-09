@@ -10,9 +10,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <brillo/dbus/dbus_method_invoker.h>
 #include <dbus/authpolicy/dbus-constants.h>
-#include <dbus/login_manager/dbus-constants.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 
 #include "authpolicy/authpolicy_metrics.h"
@@ -21,12 +19,12 @@
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_helper.h"
 #include "authpolicy/samba_interface.h"
+#include "authpolicy/session_manager_client.h"
 #include "bindings/device_management_backend.pb.h"
 
 namespace em = enterprise_management;
 
 using brillo::dbus_utils::DBusObject;
-using brillo::dbus_utils::ExtractMethodCallResults;
 using login_manager::PolicyDescriptor;
 
 namespace authpolicy {
@@ -116,12 +114,9 @@ class ResponseTracker : public base::RefCountedThreadSafe<ResponseTracker> {
   // the corresponding StorePolicy call was never made, e.g. due to an error on
   // call parameter setup. If |error_message| is empty, assumes that the
   // StorePolicy call succeeded.
-  void OnResponseFinished(const std::string error_message) {
-    const bool succeeded = error_message.empty();
-    if (!succeeded) {
+  void OnResponseFinished(bool success) {
+    if (!success)
       all_responses_succeeded_ = false;
-      LOG(ERROR) << error_message;
-    }
 
     // Don't use DCHECK here since bad policy store call counting could have
     // security implications.
@@ -170,8 +165,9 @@ AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
       samba_(metrics,
              path_service,
              base::Bind(&AuthPolicy::OnUserKerberosFilesChanged,
-                        base::Unretained(this))),
-      weak_ptr_factory_(this) {}
+                        base::Unretained(this))) {}
+
+AuthPolicy::~AuthPolicy() {}
 
 ErrorType AuthPolicy::Initialize(bool device_is_locked) {
   device_is_locked_ = device_is_locked;
@@ -180,7 +176,8 @@ ErrorType AuthPolicy::Initialize(bool device_is_locked) {
 
 void AuthPolicy::RegisterAsync(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+        completion_callback) {
   DCHECK(!dbus_object_);
   dbus_object_ = std::move(dbus_object);
   // Make sure the task runner used in some places is actually the D-Bus task
@@ -190,10 +187,9 @@ void AuthPolicy::RegisterAsync(
            dbus_object_->GetBus()->GetDBusTaskRunner());
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);
-  session_manager_proxy_ = dbus_object_->GetBus()->GetObjectProxy(
-      login_manager::kSessionManagerServiceName,
-      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
-  DCHECK(session_manager_proxy_);
+
+  session_manager_client_ =
+      std::make_unique<SessionManagerClient>(dbus_object_.get());
 }
 
 void AuthPolicy::AuthenticateUser(
@@ -444,6 +440,7 @@ void AuthPolicy::StoreSinglePolicy(
     DCHECK(descriptor.account_type() == login_manager::ACCOUNT_TYPE_DEVICE);
     policy_data.set_device_id(samba_.machine_name());
   }
+
   // TODO(crbug.com/831995): Use timer that can never run backwards and enable
   // timestamp validation in the Chromium Active Directory policy manager.
   policy_data.set_timestamp(base::Time::Now().ToJavaTime());
@@ -460,48 +457,14 @@ void AuthPolicy::StoreSinglePolicy(
   std::string response_blob;
   if (!policy_data.SerializeToString(policy_response.mutable_policy_data()) ||
       !policy_response.SerializeToString(&response_blob)) {
-    response_tracker->OnResponseFinished("Failed to serialize policy data");
+    LOG(ERROR) << "Failed to serialize policy data";
+    response_tracker->OnResponseFinished(false);
     return;
   }
 
-  const std::string descriptor_blob = descriptor.SerializeAsString();
-
-  dbus::MethodCall method_call(
-      login_manager::kSessionManagerInterface,
-      login_manager::kSessionManagerStoreUnsignedPolicyEx);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(descriptor_blob.data()),
-      descriptor_blob.size());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(response_blob.data()),
-      response_blob.size());
-  session_manager_proxy_->CallMethod(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::Bind(&AuthPolicy::OnPolicyStored, weak_ptr_factory_.GetWeakPtr(),
-                 descriptor, response_tracker));
-}
-
-void AuthPolicy::OnPolicyStored(PolicyDescriptor descriptor,
-                                scoped_refptr<ResponseTracker> response_tracker,
-                                dbus::Response* response) {
-  brillo::ErrorPtr brillo_error;
-  std::string error_message;
-  if (!response) {
-    // In case of error, session_manager_proxy_ prints out the error string and
-    // response is empty.
-    error_message =
-        base::StringPrintf("Call to %s failed. No response or error.",
-                           login_manager::kSessionManagerStoreUnsignedPolicyEx);
-  } else if (!ExtractMethodCallResults(response, &brillo_error)) {
-    // Response is expected have no call results.
-    error_message = base::StringPrintf(
-        "Call to %s failed. %s",
-        login_manager::kSessionManagerStoreUnsignedPolicyEx,
-        brillo_error ? brillo_error->GetMessage().c_str() : "Unknown error.");
-  }
-
-  response_tracker->OnResponseFinished(error_message);
+  session_manager_client_->StoreUnsignedPolicyEx(
+      descriptor.SerializeAsString(), response_blob,
+      base::Bind(&ResponseTracker::OnResponseFinished, response_tracker));
 }
 
 }  // namespace authpolicy

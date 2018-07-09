@@ -105,6 +105,7 @@
         'process_executor.cc',
         'samba_helper.cc',
         'samba_interface.cc',
+        'session_manager_client.cc',
         'tgt_manager.cc',
       ],
       'link_settings': {
