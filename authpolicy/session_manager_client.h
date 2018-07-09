@@ -6,6 +6,7 @@
 #define AUTHPOLICY_SESSION_MANAGER_CLIENT_H_
 
 #include <string>
+#include <vector>
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
@@ -30,12 +31,18 @@ class SessionManagerClient {
   explicit SessionManagerClient(brillo::dbus_utils::DBusObject* dbus_object);
   virtual ~SessionManagerClient();
 
-  // Exposes Session Manager's StoreUnsignedPolicyEx method. See Session Manager
-  // for a description of the arguments.
+  // Exposed Session Manager methods.
+  // See Session Manager for a description of the arguments.
+
+  // Asynchronous to achieve higher IO queue depth when writing many policies.
   void StoreUnsignedPolicyEx(
       const std::string& descriptor_blob,
       const std::string& policy_blob,
       const base::Callback<void(bool success)>& callback);
+
+  // Blocking for convenience / code simplicity.
+  bool ListStoredComponentPolicies(const std::string& descriptor_blob,
+                                   std::vector<std::string>* component_ids);
 
  private:
   // Callback called when StoreUnsignedPolicyEx() finishes. Prints errors and

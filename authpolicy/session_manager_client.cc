@@ -75,4 +75,29 @@ void SessionManagerClient::OnPolicyStored(
   callback.Run(true /* success */);
 }
 
+bool SessionManagerClient::ListStoredComponentPolicies(
+    const std::string& descriptor_blob,
+    std::vector<std::string>* component_ids) {
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerListStoredComponentPolicies);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(descriptor_blob.data()),
+      descriptor_blob.size());
+
+  std::unique_ptr<dbus::Response> response =
+      session_manager_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+
+  brillo::ErrorPtr error;
+  if (!response || !brillo::dbus_utils::ExtractMethodCallResults(
+                       response.get(), &error, component_ids)) {
+    PrintError(login_manager::kSessionManagerListStoredComponentPolicies,
+               response.get(), error.get());
+    return false;
+  }
+  return true;
+}
+
 }  // namespace authpolicy
