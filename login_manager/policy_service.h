@@ -34,7 +34,7 @@ class PolicyStore;
 // Whether policy signature must be checked in PolicyService::Store().
 enum class SignatureCheck { kEnabled, kDisabled };
 
-// Policies are namespaced by domain and component id.
+// Policies are namespaced by domain and component ID.
 using PolicyNamespace = std::pair<PolicyDomain, std::string>;
 
 // Returns the namespace for Chrome policies.
@@ -50,10 +50,10 @@ class PolicyService {
   // File name of Chrome policy.
   static const base::FilePath::CharType kChromePolicyFileName[];
   // Prefix of the filename of extension policy. The full file name is suffixed
-  // by the extension id.
+  // by the extension ID.
   static const base::FilePath::CharType kExtensionsPolicyFileNamePrefix[];
   // Prefix of the filename of sign-in extension policy. The full file name is
-  // suffixed by the extension id.
+  // suffixed by the extension ID.
   static const base::FilePath::CharType kSignInExtensionsPolicyFileNamePrefix[];
 
   // Flags determining what do to with new keys in Store().
@@ -106,6 +106,11 @@ class PolicyService {
   // namespace |ns|. Returns true if successful, false otherwise.
   virtual bool Retrieve(const PolicyNamespace& ns,
                         std::vector<uint8_t>* policy_blob);
+
+  // Returns a list of all component IDs in the given |domain| for which policy
+  // is stored. Returns an empty vector if |domain| does not support component
+  // IDs (e.g. POLICY_DOMAIN_CHROME).
+  virtual std::vector<std::string> ListComponentIds(PolicyDomain domain);
 
   // Persists policy of the namespace |ns| to disk synchronously and passes
   // |completion| and the result to OnPolicyPersisted().
@@ -173,6 +178,14 @@ class PolicyService {
 
   // Returns the file path of the policy for the given namespace |ns|.
   base::FilePath GetPolicyPath(const PolicyNamespace& ns);
+
+  using ComponentIdFilter = bool (*)(const std::string& component_id);
+
+  // Returns the component ID parts of all policy filenames in |policy_dir_|
+  // that start with |policy_filename_prefix|. IDs where |filter| returns false
+  // are filtered out.
+  std::vector<std::string> FindComponentIds(
+      const std::string& policy_filename_prefix, ComponentIdFilter filter);
 
   using PolicyStoreMap =
       std::map<PolicyNamespace, std::unique_ptr<PolicyStore>>;

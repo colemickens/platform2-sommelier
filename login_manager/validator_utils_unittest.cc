@@ -173,4 +173,26 @@ TEST(ValidatorUtilsTest, PolicyDescriptorExtensionDomainInvalidExtensionId) {
   EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kStore));
 }
 
+TEST(ValidatorUtilsTest, PolicyDescriptorInvalidForChromeDomainAndList) {
+  PolicyDescriptor desc;
+  desc.set_account_type(ACCOUNT_TYPE_DEVICE);
+  desc.set_domain(POLICY_DOMAIN_CHROME);
+  EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kList));
+}
+
+TEST(ValidatorUtilsTest, PolicyDescriptorInvalidForValidComponentIdAndList) {
+  PolicyDescriptor desc;
+  desc.set_account_type(ACCOUNT_TYPE_DEVICE);
+  desc.set_domain(POLICY_DOMAIN_EXTENSIONS);
+  desc.set_component_id(kValidExtensionId);
+  EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kList));
+}
+
+TEST(ValidatorUtilsTest, PolicyDescriptorValidForNoComponentIdAndList) {
+  PolicyDescriptor desc;
+  desc.set_account_type(ACCOUNT_TYPE_DEVICE);
+  desc.set_domain(POLICY_DOMAIN_EXTENSIONS);
+  EXPECT_TRUE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kList));
+}
+
 }  // namespace login_manager

@@ -35,6 +35,7 @@ class MockDevicePolicyService : public DevicePolicyService {
                     SignatureCheck,
                     const Completion&));
   MOCK_METHOD2(Retrieve, bool(const PolicyNamespace&, std::vector<uint8_t>*));
+  MOCK_METHOD1(ListComponentIds, std::vector<std::string>(PolicyDomain));
   MOCK_METHOD4(
       CheckAndHandleOwnerLogin,
       bool(const std::string&, PK11SlotInfo*, bool*, brillo::ErrorPtr*));

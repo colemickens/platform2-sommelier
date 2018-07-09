@@ -406,6 +406,25 @@ TEST_F(PolicyServiceTest, Retrieve) {
   EXPECT_EQ(SerializeAsBlob(policy_proto_), out_policy_blob);
 }
 
+// Makes sure ListComponentIds doesn't return anything if POLICY_DOMAIN_CHROME
+// is passed, even if policy is stored.
+TEST_F(PolicyServiceTest, ListEmpty) {
+  InitPolicy(fake_data_, empty_blob_, empty_blob_, empty_blob_);
+
+  Sequence s1, s2;
+  ExpectSetPolicy(&s1);
+  ExpectPersistPolicy(&s2);
+
+  EXPECT_TRUE(service_->Store(
+      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
+      SignatureCheck::kDisabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
+
+  fake_loop_.Run();
+
+  EXPECT_TRUE(service_->ListComponentIds(POLICY_DOMAIN_CHROME).empty());
+}
+
 TEST_F(PolicyServiceTest, PersistPolicySuccess) {
   EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
   EXPECT_CALL(delegate_, OnPolicyPersisted(true)).Times(1);
@@ -431,14 +450,14 @@ class PolicyServiceNamespaceTest : public testing::Test {
     service_ = std::make_unique<PolicyService>(temp_dir_.GetPath(), nullptr,
                                                nullptr, false);
 
-    const std::string extension_id = "abcdefghijklmnopabcdefghijklmnop";
+    const std::string kExtensionId1 = "abcdefghijklmnopabcdefghijklmnop";
     ns1_ = PolicyNamespace(POLICY_DOMAIN_CHROME, "");
-    ns2_ = PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, extension_id);
+    ns2_ = PolicyNamespace(POLICY_DOMAIN_EXTENSIONS, kExtensionId1);
 
     policy_path1_ =
         temp_dir_.GetPath().Append(PolicyService::kChromePolicyFileName);
     policy_path2_ = temp_dir_.GetPath().Append(
-        PolicyService::kExtensionsPolicyFileNamePrefix + extension_id);
+        PolicyService::kExtensionsPolicyFileNamePrefix + kExtensionId1);
   }
 
  protected:
@@ -554,6 +573,84 @@ TEST_F(PolicyServiceNamespaceTest, LoadPolicyFromDisk) {
   SavePolicyToFile(policy_path1_, kPolicyValue1);
   const std::string actual_value = RetrievePolicy(ns1_);
   EXPECT_EQ(kPolicyValue1, actual_value);
+}
+
+// ListComponentIds returns the expected component id(s) after a StorePolicy()
+// call.
+TEST_F(PolicyServiceNamespaceTest, ListComponentIdsFromPolicyInStore) {
+  EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
+  StorePolicy(kPolicyValue2, ns2_);
+  EXPECT_FALSE(base::PathExists(policy_path2_));
+  EXPECT_EQ(service_->ListComponentIds(POLICY_DOMAIN_EXTENSIONS),
+            std::vector<std::string>({ns2_.second}));
+  // Make expectations happy.
+  fake_loop_.Run();
+}
+
+// ListComponentIds returns the expected component id(s) from policy stored on
+// disk (and no PolicyStore instance in the service).
+TEST_F(PolicyServiceNamespaceTest, ListComponentIdsFromPolicyOnDisk) {
+  EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
+  SavePolicyToFile(policy_path2_, "good");
+  EXPECT_EQ(service_->ListComponentIds(POLICY_DOMAIN_EXTENSIONS),
+            std::vector<std::string>({ns2_.second}));
+}
+
+// ListComponentIds returns no duplicates if a policy exists on disk and the
+// store exists as well.
+TEST_F(PolicyServiceNamespaceTest, ListComponentIdsHasNoDuplicates) {
+  EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
+  StorePolicy(kPolicyValue2, ns2_);
+  fake_loop_.Run();
+  EXPECT_TRUE(base::PathExists(policy_path2_));
+  EXPECT_EQ(service_->ListComponentIds(POLICY_DOMAIN_EXTENSIONS),
+            std::vector<std::string>({ns2_.second}));
+}
+
+// Policy files with bad component ids are ignored.
+TEST_F(PolicyServiceNamespaceTest, ListComponentIdsIgnoresBadIds) {
+  // Invalidate component id.
+  ns2_.second = "deadl0ccfail3db19";
+  policy_path2_ = temp_dir_.GetPath().Append(
+      PolicyService::kExtensionsPolicyFileNamePrefix + ns2_.second);
+
+  EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
+  SavePolicyToFile(policy_path2_, "bad");
+  EXPECT_EQ(service_->ListComponentIds(POLICY_DOMAIN_EXTENSIONS),
+            std::vector<std::string>());
+}
+
+// Make sure the list command doesn't leak component ids across domains.
+TEST_F(PolicyServiceNamespaceTest, ListComponentIdsDoesntLeakAcrossDomains) {
+  // Write
+  //   - 2 extension policies,
+  //   - 1 signin extension policy,
+  //   - 1 Chrome policy.
+  const std::string kExtensionId1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const std::string kExtensionId2 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const std::string kSigninExtensionId = "cccccccccccccccccccccccccccccccc";
+
+  const base::FilePath kExtensionPath1 = temp_dir_.GetPath().Append(
+      PolicyService::kExtensionsPolicyFileNamePrefix + kExtensionId1);
+  const base::FilePath kExtensionPath2 = temp_dir_.GetPath().Append(
+      PolicyService::kExtensionsPolicyFileNamePrefix + kExtensionId2);
+  const base::FilePath kSigninExtensionPath = temp_dir_.GetPath().Append(
+      PolicyService::kSignInExtensionsPolicyFileNamePrefix +
+      kSigninExtensionId);
+  const base::FilePath kChromePath =
+      temp_dir_.GetPath().Append(PolicyService::kChromePolicyFileName);
+
+  SavePolicyToFile(kExtensionPath1, "Extension policy 1");
+  SavePolicyToFile(kExtensionPath2, "Extension policy 2");
+  SavePolicyToFile(kSigninExtensionPath, "Signin extension policy");
+  SavePolicyToFile(kChromePath, "Chrome policy");
+
+  EXPECT_EQ(std::vector<std::string>({kExtensionId1, kExtensionId2}),
+            service_->ListComponentIds(POLICY_DOMAIN_EXTENSIONS));
+  EXPECT_EQ(std::vector<std::string>({kSigninExtensionId}),
+            service_->ListComponentIds(POLICY_DOMAIN_SIGNIN_EXTENSIONS));
+  EXPECT_EQ(std::vector<std::string>(),
+            service_->ListComponentIds(POLICY_DOMAIN_CHROME));
 }
 
 }  // namespace login_manager

@@ -140,14 +140,21 @@ bool ValidatePolicyDescriptor(const PolicyDescriptor& descriptor,
 
   switch (descriptor.domain()) {
     case POLICY_DOMAIN_CHROME:
+      if (usage == PolicyDescriptorUsage::kList)
+        return false;
       if (!descriptor.component_id().empty())
         return false;
       break;
 
     case POLICY_DOMAIN_EXTENSIONS:
     case POLICY_DOMAIN_SIGNIN_EXTENSIONS:
-      if (!ValidateExtensionId(descriptor.component_id()))
-        return false;
+      if (usage == PolicyDescriptorUsage::kList) {
+        if (!descriptor.component_id().empty())
+          return false;
+      } else {
+        if (!ValidateExtensionId(descriptor.component_id()))
+          return false;
+      }
       break;
   }
 

@@ -247,6 +247,10 @@ class SessionManagerImpl
   bool RetrievePolicyEx(brillo::ErrorPtr* error,
                         const std::vector<uint8_t>& in_descriptor_blob,
                         std::vector<uint8_t>* out_policy_blob) override;
+  bool ListStoredComponentPolicies(
+      brillo::ErrorPtr* error,
+      const std::vector<uint8_t>& in_descriptor_blob,
+      std::vector<std::string>* out_component_ids) override;
 
   std::string RetrieveSessionState() override;
   std::map<std::string, std::string> RetrieveActiveSessions() override;

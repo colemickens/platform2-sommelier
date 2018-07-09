@@ -6,11 +6,13 @@
 
 #include <stdint.h>
 
+#include <set>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/file_enumerator.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
@@ -75,6 +77,39 @@ bool PolicyService::Retrieve(const PolicyNamespace& ns,
                              std::vector<uint8_t>* policy_blob) {
   *policy_blob = SerializeAsBlob(GetOrCreateStore(ns)->Get());
   return true;
+}
+
+std::vector<std::string> PolicyService::ListComponentIds(PolicyDomain domain) {
+  // Get all component IDs from policy files stored on disk.
+  std::vector<std::string> file_component_ids;
+  switch (domain) {
+    case POLICY_DOMAIN_CHROME:
+      // Does not support component IDs, early out.
+      return std::vector<std::string>();
+
+    case POLICY_DOMAIN_EXTENSIONS:
+      file_component_ids = FindComponentIds(kExtensionsPolicyFileNamePrefix,
+                                            &ValidateExtensionId);
+      break;
+
+    case POLICY_DOMAIN_SIGNIN_EXTENSIONS:
+      file_component_ids = FindComponentIds(
+          kSignInExtensionsPolicyFileNamePrefix, &ValidateExtensionId);
+      break;
+  }
+
+  // We might have missed some IDs from component policy that has not been
+  // written out yet, so check the stores as well.
+  std::set<std::string> component_ids(file_component_ids.begin(),
+                                      file_component_ids.end());
+  for (const auto& kv : policy_stores_) {
+    const PolicyNamespace& ns = kv.first;
+    const std::string& component_id = ns.second;
+    if (ns.first == domain)
+      component_ids.insert(component_id);
+  }
+
+  return std::vector<std::string>(component_ids.begin(), component_ids.end());
 }
 
 void PolicyService::PersistPolicy(const PolicyNamespace& ns,
@@ -227,16 +262,34 @@ base::FilePath PolicyService::GetPolicyPath(const PolicyNamespace& ns) {
     case POLICY_DOMAIN_CHROME:
       return policy_dir_.AppendASCII(kChromePolicyFileName);
     case POLICY_DOMAIN_EXTENSIONS:
-      // Double-check extension id (should have already been checked before).
+      // Double-check extension ID (should have already been checked before).
       CHECK(ValidateExtensionId(component_id));
       return policy_dir_.AppendASCII(kExtensionsPolicyFileNamePrefix +
                                      component_id);
     case POLICY_DOMAIN_SIGNIN_EXTENSIONS:
-      // Double-check extension id (should have already been checked before).
+      // Double-check extension ID (should have already been checked before).
       CHECK(ValidateExtensionId(component_id));
       return policy_dir_.AppendASCII(kSignInExtensionsPolicyFileNamePrefix +
                                      component_id);
   }
+}
+
+std::vector<std::string> PolicyService::FindComponentIds(
+    const std::string& policy_filename_prefix, ComponentIdFilter filter) {
+  std::vector<std::string> component_ids;
+  base::FileEnumerator policy_files(policy_dir_, false /* recursive */,
+                                    base::FileEnumerator::FILES,
+                                    policy_filename_prefix + "*");
+  base::FilePath policy_path;
+  while (!(policy_path = policy_files.Next()).empty()) {
+    const base::FilePath policy_filename = policy_path.BaseName();
+    DCHECK_GE(policy_filename.value().size(), policy_filename_prefix.size());
+    std::string component_id =
+        policy_filename.value().substr(policy_filename_prefix.size());
+    if (filter(component_id))
+      component_ids.push_back(std::move(component_id));
+  }
+  return component_ids;
 }
 
 }  // namespace login_manager

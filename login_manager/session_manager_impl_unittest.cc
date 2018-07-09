@@ -1255,6 +1255,30 @@ TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   EXPECT_EQ(policy_blob, out_blob);
 }
 
+TEST_F(SessionManagerImplTest, ListStoredComponentPolicies) {
+  // Create a descriptor to query component ids.
+  // Note: The component_id() field must be empty for this!
+  PolicyDescriptor descriptor;
+  descriptor.set_account_type(ACCOUNT_TYPE_DEVICE);
+  descriptor.set_account_id(kEmptyAccountId);
+  descriptor.set_domain(POLICY_DOMAIN_SIGNIN_EXTENSIONS);
+  std::vector<uint8_t> descriptor_blob =
+      StringToBlob(descriptor.SerializeAsString());
+
+  // Tell the mock store to return some component ids for ListComponentIds.
+  std::vector<std::string> expected_component_ids({"id1", "id2"});
+  EXPECT_CALL(*device_policy_service_, ListComponentIds(descriptor.domain()))
+      .WillOnce(Return(expected_component_ids));
+
+  // Query component ids and validate the result.
+  brillo::ErrorPtr error;
+  std::vector<std::string> component_ids;
+  EXPECT_TRUE(impl_->ListStoredComponentPolicies(&error, descriptor_blob,
+                                                 &component_ids));
+  EXPECT_FALSE(error.get());
+  EXPECT_EQ(expected_component_ids, component_ids);
+}
+
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSync) {
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
 

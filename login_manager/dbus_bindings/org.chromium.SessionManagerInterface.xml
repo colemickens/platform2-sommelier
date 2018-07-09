@@ -156,7 +156,7 @@
         Signatures are checked against the owner key, key rotation is not
         allowed.
 
-        Extension policy is rejected by the implementation at this point since
+        Component policy is rejected by the implementation at this point since
         it is stored by Chrome directly.
     -->
     <method name="StorePolicyEx">
@@ -168,9 +168,9 @@
     <!--
         StoreUnsignedPolicyEx:
         @descriptor_blob: Serialized PolicyDescriptor protobuf containing
-            metadata about the policy (user, device or extension policy).
+            metadata about the policy (user, device or component policy).
         @policy_blob: Serialized PolicyFetchResponse protobuf containing user,
-            device or extension policy, but no signature.
+            device or component policy, but no signature.
 
         Similar to StorePolicyEx, but stores policy without signature
         verification for AD managed devices. Locked down through busconfig to be
@@ -181,6 +181,22 @@
       <arg type="ay" name="descriptor_blob" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
+        ListStoredComponentPolicies:
+        @descriptor_blob: Serialized PolicyDescriptor protobuf specifying the
+            account (e.g. user, device) and the policy domain for which stored
+            policies should be listed. The domain must support component ids
+            (e.g. extensions, but not not Chrome policy). The component id field
+            must be empty.
+
+        Lists stored component policies for a given account (e.g. user, device)
+        and policy domain (e.g. extensions).
+    -->
+    <method name="ListStoredComponentPolicies">
+      <arg type="ay" name="descriptor_blob" direction="in" />
+      <arg type="as" name="component_ids" direction="out" />
     </method>
 
     <!--

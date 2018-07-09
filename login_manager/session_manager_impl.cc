@@ -747,6 +747,36 @@ bool SessionManagerImpl::RetrievePolicyEx(
   return true;
 }
 
+bool SessionManagerImpl::ListStoredComponentPolicies(
+    brillo::ErrorPtr* error,
+    const std::vector<uint8_t>& in_descriptor_blob,
+    std::vector<std::string>* out_component_ids) {
+  PolicyDescriptor descriptor;
+  if (!descriptor.ParseFromArray(in_descriptor_blob.data(),
+                                 in_descriptor_blob.size())) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
+    return false;
+  }
+
+  if (!ValidatePolicyDescriptor(descriptor, PolicyDescriptorUsage::kList)) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorInvalid);
+    return false;
+  }
+
+  PolicyService* policy_service = GetPolicyService(descriptor);
+  if (!policy_service) {
+    const std::string message =
+        base::StringPrintf(kCannotGetPolicyServiceFormat,
+                           static_cast<int>(descriptor.account_type()));
+    LOG(ERROR) << message;
+    *error = CreateError(dbus_error::kGetServiceFail, message);
+    return false;
+  }
+
+  *out_component_ids = policy_service->ListComponentIds(descriptor.domain());
+  return true;
+}
+
 std::string SessionManagerImpl::RetrieveSessionState() {
   if (!session_started_)
     return kStopped;
