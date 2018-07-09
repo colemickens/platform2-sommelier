@@ -53,6 +53,12 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/run/cups", "/run/cups", 0))
     LOG(FATAL) << "minijail_bind(\"/run/cups\") failed";
 
+  // Since shill provides network resolution settings, bind mount it.
+  // In case we start before shill, make sure the path exists.
+  mkdir("/run/shill", 0755);
+  if (minijail_bind(j.get(), "/run/shill", "/run/shill", 0))
+    LOG(FATAL) << "minijail_bind(\"/run/shill\") failed";
+
   // Mount /run/arc/bugreport to be able to collect ARC bug reports.
   // In case we start before ARC, make sure the path exists.
   mkdir("/run/arc", 0755);
