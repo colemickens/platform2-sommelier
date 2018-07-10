@@ -25,7 +25,7 @@ namespace cryptohome {
 
 SignatureSealedData MakeFakeSignatureSealedData(
     const Blob& public_key_spki_der) {
-  constexpr char kFakeTpm2SrkWrappedSecret[] = {'a', 'b'};
+  constexpr char kFakeTpm2SrkWrappedSecret[] = "ab";
   SignatureSealedData sealed_data;
   // Fill some fields of the protobuf message just to make test/mock assertions
   // more meaningful. Note that it's unimportant that we use TPM2-specific
