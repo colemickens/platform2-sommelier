@@ -1844,7 +1844,13 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       GetEnvOrDie(arc_paths_->env.get(), "IS_DEMO_SESSION"), "--is-child",
       GetEnvOrDie(arc_paths_->env.get(), "IS_CHILD"), "--locale",
       GetEnvOrDie(arc_paths_->env.get(), "LOCALE"), "--preferred-languages",
-      GetEnvOrDie(arc_paths_->env.get(), "PREFERRED_LANGUAGES")};
+      GetEnvOrDie(arc_paths_->env.get(), "PREFERRED_LANGUAGES"),
+      // Whether ARC should transition the supervision setup
+      //   "0": No transition necessary.
+      //   "1": Child -> regular transition, should disable supervision.
+      //   "2": Regular -> child transition, should enable supervision.
+      "--supervision-transition",
+      GetEnvOrDie(arc_paths_->env.get(), "SUPERVISION_TRANSITION")};
 
   base::ElapsedTimer timer;
   if (!LaunchAndWait(command_line)) {
