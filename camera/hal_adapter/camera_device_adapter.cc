@@ -15,6 +15,7 @@
 #include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <drm_fourcc.h>
+#include <libyuv.h>
 #include <sync/sync.h>
 
 #include "common/camera_buffer_handle.h"
@@ -32,7 +33,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       fence_sync_thread_("FenceSyncThread"),
       close_callback_(close_callback),
       device_closed_(false),
-      camera_device_(camera_device) {
+      camera_device_(camera_device),
+      buffer_manager_(CameraBufferManager::GetInstance()) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
@@ -52,7 +54,8 @@ CameraDeviceAdapter::~CameraDeviceAdapter() {
   camera_callback_ops_thread_.Stop();
 }
 
-bool CameraDeviceAdapter::Start() {
+bool CameraDeviceAdapter::Start(
+    ReprocessEffectCallback reprocess_effect_callback) {
   if (!camera_device_ops_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraDeviceOpsThread";
     return false;
@@ -63,6 +66,7 @@ bool CameraDeviceAdapter::Start() {
   }
   device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(
       this, camera_device_ops_thread_.task_runner()));
+  reprocess_effect_callback_ = std::move(reprocess_effect_callback);
   return true;
 }
 
@@ -213,6 +217,70 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
   }
 
+  // Apply reprocessing effects
+  if (req.input_buffer) {
+    VLOGF(1) << "Applying reprocessing effects on input buffer";
+    buffer_handle_t reprocess_output_buffer;
+    // Here we assume reprocessing effects can provide only one output of the
+    // same size and format as that of input. Invoke HAL reprocessing if more
+    // outputs, scaling and/or format conversion are required since ISP
+    // may provide hardware acceleration for these operations.
+    bool need_hal_reprocessing = (req.num_output_buffers != 1) ||
+                                 (req.input_buffer->stream->width !=
+                                  req.output_buffers[0].stream->width) ||
+                                 (req.input_buffer->stream->height !=
+                                  req.output_buffers[0].stream->height) ||
+                                 (req.input_buffer->stream->format !=
+                                  req.output_buffers[0].stream->format);
+    if (need_hal_reprocessing) {
+      uint32_t stride;
+      if (buffer_manager_->Allocate(
+              req.input_buffer->stream->width, req.input_buffer->stream->height,
+              req.input_buffer->stream->format,
+              GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN,
+              cros::GRALLOC, &reprocess_output_buffer, &stride) != 0) {
+        LOGF(ERROR) << "Failed to allocate output buffer handle";
+        return -ENOMEM;
+      }
+    }
+    // TODO(hywu): post a task to run reprocessing effect asynchronously so that
+    // it does not block other requests.
+    android::CameraMetadata reprocess_result_metadata;
+    int32_t result = reprocess_effect_callback_.Run(
+        *req.settings, *req.input_buffer->buffer,
+        req.input_buffer->stream->width, req.input_buffer->stream->height,
+        &reprocess_result_metadata,
+        need_hal_reprocessing ? reprocess_output_buffer
+                              : *req.output_buffers[0].buffer);
+    {
+      base::AutoLock reprocess_result_metadata_lock(
+          reprocess_result_metadata_lock_);
+      reprocess_result_metadata_.emplace(req.frame_number,
+                                         reprocess_result_metadata);
+    }
+    if (result == 0) {
+      if (need_hal_reprocessing) {
+        // Replace the input buffer with reprocessing output buffer
+        base::AutoLock reprocess_handles_lock(reprocess_handles_lock_);
+        reprocess_handles_[reprocess_output_buffer] =
+            std::make_pair(reprocess_output_buffer,
+                           reinterpret_cast<const camera_buffer_handle_t*>(
+                               *req.input_buffer->buffer)
+                               ->buffer_id);
+        req.input_buffer->buffer =
+            &reprocess_handles_.at(reprocess_output_buffer).first;
+        result =
+            camera_device_->ops->process_capture_request(camera_device_, &req);
+      }
+      // TODO(hywu): callback capture result if HAL reprocessing is not needed
+      return result;
+    } else if (result != -ENOENT) {
+      return result;
+    }
+    // If no reprocessing effect is applied, i.e. |result| equals -ENOENT,
+    // continue to invoke HAL reprocessing.
+  }
+
   return camera_device_->ops->process_capture_request(camera_device_, &req);
 }
 
@@ -323,8 +391,43 @@ void CameraDeviceAdapter::ProcessCaptureResult(
   VLOGF_ENTER();
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
-  mojom::Camera3CaptureResultPtr result_ptr =
-      self->PrepareCaptureResult(result);
+
+  camera3_capture_result_t res = *result;
+  camera3_stream_buffer_t in_buf = {};
+  mojom::Camera3CaptureResultPtr result_ptr;
+  {
+    base::AutoLock reprocess_handles_lock(self->reprocess_handles_lock_);
+    if (result->input_buffer &&
+        self->reprocess_handles_.find(*result->input_buffer->buffer) !=
+            self->reprocess_handles_.end()) {
+      in_buf = *result->input_buffer;
+      // Restore original input buffer and free reprocessing buffer
+      buffer_handle_t* reprocess_buffer = res.input_buffer->buffer;
+      base::AutoLock buffer_handles_lock(self->buffer_handles_lock_);
+      in_buf.buffer =
+          &self->buffer_handles_
+               .at(self->reprocess_handles_.at(*reprocess_buffer).second)
+               ->self;
+      self->buffer_manager_->Free(*reprocess_buffer);
+      self->reprocess_handles_.erase(*reprocess_buffer);
+      res.input_buffer = &in_buf;
+    }
+  }
+  {
+    base::AutoLock reprocess_result_metadata_lock(
+        self->reprocess_result_metadata_lock_);
+    auto it = self->reprocess_result_metadata_.find(res.frame_number);
+    if (it != self->reprocess_result_metadata_.end() && !it->second.isEmpty() &&
+        res.result != nullptr) {
+      it->second.append(res.result);
+      res.result = it->second.getAndLock();
+    }
+    result_ptr = self->PrepareCaptureResult(&res);
+    if (res.result != nullptr) {
+      self->reprocess_result_metadata_.erase(res.frame_number);
+    }
+  }
+
   base::AutoLock l(self->callback_ops_delegate_lock_);
   if (self->callback_ops_delegate_) {
     self->callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));

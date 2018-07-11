@@ -1,0 +1,70 @@
+/*
+ * Copyright 2018 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+#ifndef HAL_ADAPTER_REPROCESS_EFFECT_REPROCESS_EFFECT_H_
+#define HAL_ADAPTER_REPROCESS_EFFECT_REPROCESS_EFFECT_H_
+
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/callback.h>
+#include <camera/camera_metadata.h>
+#include <hardware/gralloc.h>
+#include <system/camera_metadata.h>
+
+namespace cros {
+
+class ReprocessEffect {
+ public:
+  // Initializes the reprocessing effect and get the vendor tags the effect
+  // requests.
+  // Args:
+  //    |request_vendor_tags|: names and types of request vendor tags
+  //    |result_vendor_tags|: names and types of result vendor tags
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  virtual int32_t InitializeAndGetVendorTags(
+      std::vector<std::pair<std::string, uint8_t>>* request_vendor_tags,
+      std::vector<std::pair<std::string, uint8_t>>* result_vendor_tags) = 0;
+
+  // Sets the vendor tags that are allocated for the reprocessing effects.
+  // Args:
+  //    |request_vendor_tag_start|: start value of allocated request vendor tags
+  //    |request_vendor_tag_count|: number of allocated request vendor tags
+  //    |result_vendor_tag_start|: start value of allocated result vendor tags
+  //    |result_vendor_tag_count|: number of allocated result vendor tags
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  virtual int32_t SetVendorTags(uint32_t request_vendor_tag_start,
+                                uint32_t request_vendor_tag_count,
+                                uint32_t result_vendor_tag_start,
+                                uint32_t result_vendor_tag_count) = 0;
+
+  // Applies the reprocessing effect. Currently it is assumed that all effects
+  // have the same output resolution and format as that of input.
+  // Args:
+  //    |settings|: input metadata settings
+  //    |input_buffer|: input buffer
+  //    |width|: width of input buffer
+  //    |height|: height of input buffer
+  //    |v4l2_format|: format of input buffer
+  //    |result_metadata|: output result metadata
+  //    |output_buffer|: output buffer
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  virtual int32_t ReprocessRequest(const camera_metadata_t& settings,
+                                   buffer_handle_t input_buffer,
+                                   uint32_t width,
+                                   uint32_t height,
+                                   uint32_t v4l2_format,
+                                   android::CameraMetadata* result_metadata,
+                                   buffer_handle_t output_buffer) = 0;
+};
+
+}  // namespace cros
+
+#endif  // HAL_ADAPTER_REPROCESS_EFFECT_REPROCESS_EFFECT_H_

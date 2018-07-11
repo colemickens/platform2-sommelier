@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
 #include <system/camera_metadata_hidden.h>
@@ -19,6 +20,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
+#include "camera/camera_metadata.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/camera_device_adapter.h"
@@ -143,7 +145,11 @@ int32_t CameraHalAdapter::OpenDevice(
                  base::ThreadTaskRunnerHandle::Get(), camera_id);
   device_adapters_[camera_id].reset(
       new CameraDeviceAdapter(camera_device, close_callback));
-  if (!device_adapters_[camera_id]->Start()) {
+  CameraDeviceAdapter::ReprocessEffectCallback reprocess_effect_callback =
+      base::Bind(&ReprocessEffectManager::ReprocessRequest,
+                 base::Unretained(&reprocess_effect_manager_));
+  if (!device_adapters_[camera_id]->Start(
+          std::move(reprocess_effect_callback))) {
     device_adapters_.erase(camera_id);
     return -ENODEV;
   }
@@ -186,12 +192,39 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
     dump_camera_metadata(info.static_camera_characteristics, 2, 3);
   }
 
+  // Append vendor tags to request, result and characteristics keys
+  android::CameraMetadata metadata(
+      clone_camera_metadata(info.static_camera_characteristics));
+  std::vector<int32_t> vendor_tags;
+  for (const auto& it : vendor_tag_map_) {
+    vendor_tags.push_back(it.first);
+  }
+  std::vector<int32_t> key_tags(
+      {ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+       ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,
+       ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS});
+  for (const auto& it : key_tags) {
+    camera_metadata_ro_entry_t ro_entry;
+    if (find_camera_metadata_ro_entry(info.static_camera_characteristics, it,
+                                      &ro_entry) != 0) {
+      LOGF(ERROR) << "Failed to get " << get_camera_metadata_tag_name(it);
+      continue;
+    }
+    std::vector<int32_t> keys(ro_entry.data.i32,
+                              ro_entry.data.i32 + ro_entry.count);
+    keys.insert(keys.end(), vendor_tags.begin(), vendor_tags.end());
+    if (metadata.update(it, keys.data(), keys.size()) != 0) {
+      LOGF(ERROR) << "Failed to add vendor tags to "
+                  << get_camera_metadata_tag_name(it);
+    }
+  }
+
   mojom::CameraInfoPtr info_ptr = mojom::CameraInfo::New();
   info_ptr->facing = static_cast<mojom::CameraFacing>(info.facing);
   info_ptr->orientation = info.orientation;
   info_ptr->device_version = info.device_version;
   info_ptr->static_camera_characteristics =
-      internal::SerializeCameraMetadata(info.static_camera_characteristics);
+      internal::SerializeCameraMetadata(metadata.getAndLock());
 
   *camera_info = std::move(info_ptr);
   return 0;
@@ -471,6 +504,16 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
   num_builtin_cameras_ = cameras.size();
   next_external_camera_id_ = num_builtin_cameras_;
 
+  if (reprocess_effect_manager_.Initialize() != 0) {
+    LOGF(ERROR) << "Failed to initialize reprocess effect manager";
+    callback.Run(false);
+    return;
+  }
+  if (reprocess_effect_manager_.GetAllVendorTags(&vendor_tag_map_) != 0) {
+    LOGF(ERROR) << "Failed to get reprocess effect manager vendor tags";
+    callback.Run(false);
+    return;
+  }
   CameraHalAdapter::get_tag_count = CameraHalAdapter::GetTagCount;
   CameraHalAdapter::get_all_tags = CameraHalAdapter::GetAllTags;
   CameraHalAdapter::get_section_name = CameraHalAdapter::GetSectionName;

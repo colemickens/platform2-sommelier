@@ -20,6 +20,7 @@
 #include <base/threading/thread.h>
 
 #include "cros-camera/future.h"
+#include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
 #include "mojo/camera3.mojom.h"
 #include "mojo/camera_common.mojom.h"
 
@@ -193,6 +194,9 @@ class CameraHalAdapter : public vendor_tag_ops_t {
 
   // The vendor tag names and types. The key of the map is vendor tag id.
   std::unordered_map<uint32_t, std::pair<std::string, uint8_t>> vendor_tag_map_;
+
+  // The reprocess effect manager.
+  ReprocessEffectManager reprocess_effect_manager_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraHalAdapter);
 };
