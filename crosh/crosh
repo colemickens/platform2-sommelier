@@ -400,7 +400,8 @@ imageloader() {
     2>&1 >/dev/null
 }
 
-USAGE_vmc='[ start <name> | stop <name> | destroy <name> | list ]'
+USAGE_vmc='[ start <name> | stop <name> | destroy <name> | export <vm name> <file name> [removable storage name] | list ]
+'
 HELP_vmc='
   Start or stop a VM.
 '
@@ -477,6 +478,18 @@ cmd_vmc() (
       metrics_client -v "Vm.DiskEraseFailed"
       return 1
     fi
+    ;;
+  export)
+    if [ $# -lt 2 -o $# -gt 3 ]; then
+      help "Specify the name of the VM, a backup file, and optionally a removable media name"
+      return 1
+    fi
+    local vm_name="$1"; shift
+    local export_name="$1"; shift
+    concierge_client --export_disk --name="${vm_name}" \
+        --cryptohome_id="${CROS_USER_ID_HASH}" \
+        --export_name="${export_name}" \
+        --removable_media="${1:-}"
     ;;
   list)
     concierge_client --list_disks --cryptohome_id="${CROS_USER_ID_HASH}"
