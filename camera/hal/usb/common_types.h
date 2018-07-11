@@ -23,10 +23,10 @@ struct DeviceInfo {
   // ex: /dev/video0
   std::string device_path;
 
-  // USB vender id
+  // USB vendor id, the emulated vivid devices do not have this field.
   std::string usb_vid;
 
-  // USB product id
+  // USB product id, the emulated vivid devices do not have this field.
   std::string usb_pid;
 
   // Some cameras need to wait several frames to output correct images.

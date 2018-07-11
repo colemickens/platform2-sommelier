@@ -224,30 +224,39 @@ void CameraHal::CloseDevice(int id, scoped_refptr<cros::Future<void>> future) {
 }
 
 void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
-  udev_device* parent_dev = udev_device_get_parent_with_subsystem_devtype(
-      dev.get(), "usb", "usb_device");
-  if (!parent_dev) {
-    // TODO(shik): The vivid device might not be a usb device.
-    VLOGF(2) << "Non USB device is ignored";
-    return;
-  }
-
   const char* path = udev_device_get_devnode(dev.get());
   if (!path) {
     LOGF(ERROR) << "udev_device_get_devnode failed";
     return;
   }
 
-  const char* vid = udev_device_get_sysattr_value(parent_dev, "idVendor");
-  if (!vid) {
-    LOGF(ERROR) << "Failed to get vid";
-    return;
-  }
+  const char* vid = "";
+  const char* pid = "";
 
-  const char* pid = udev_device_get_sysattr_value(parent_dev, "idProduct");
-  if (!pid) {
-    LOGF(ERROR) << "Failed to get pid";
-    return;
+  bool is_vivid = false;
+  const char* product =
+      udev_device_get_property_value(dev.get(), "ID_V4L_PRODUCT");
+  if (product && strcmp(product, "vivid") == 0) {
+    is_vivid = true;
+  } else {
+    udev_device* parent_dev = udev_device_get_parent_with_subsystem_devtype(
+        dev.get(), "usb", "usb_device");
+    if (!parent_dev) {
+      VLOGF(2) << "Non USB device is ignored";
+      return;
+    }
+
+    vid = udev_device_get_sysattr_value(parent_dev, "idVendor");
+    if (!vid) {
+      LOGF(ERROR) << "Failed to get vid";
+      return;
+    }
+
+    pid = udev_device_get_sysattr_value(parent_dev, "idProduct");
+    if (!pid) {
+      LOGF(ERROR) << "Failed to get pid";
+      return;
+    }
   }
 
   {
@@ -273,8 +282,12 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     return;
   }
 
-  LOGF(INFO) << "New camera device at " << path << " vid: " << vid
-             << " pid: " << pid;
+  if (is_vivid) {
+    LOGF(INFO) << "New vivid camera device at " << path;
+  } else {
+    LOGF(INFO) << "New usb camera device at " << path << " vid: " << vid
+               << " pid: " << pid;
+  }
 
   const DeviceInfo* info_ptr = characteristics_.Find(vid, pid);
   DeviceInfo info;
