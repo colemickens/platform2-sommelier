@@ -110,6 +110,9 @@ constexpr char kDefaultContainerName[] = "penguin";
 // Path to process file descriptors.
 constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 
+// Only allow hex digits in the cryptohome id.
+constexpr char kValidCryptoHomeCharacters[] = "abcdefABCDEF0123456789";
+
 // Common environment for all LXD functionality.
 const std::map<string, string> kLxdEnv = {
     {"LXD_DIR", "/mnt/stateful/lxd"},
@@ -237,6 +240,11 @@ bool GetDiskPathFromName(const std::string& disk_path,
                          StorageLocation storage_location,
                          bool create_parent_dir,
                          base::FilePath* path_out) {
+  if (!base::ContainsOnlyChars(cryptohome_id, kValidCryptoHomeCharacters)) {
+    LOG(ERROR) << "Invalid cryptohome_id specified";
+    return false;
+  }
+
   // Base64 encode the given disk name to ensure it only has valid characters.
   std::string disk_name;
   base::Base64UrlEncode(disk_path, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
@@ -1036,15 +1044,6 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
-  if (disk_path.ReferencesParent()) {
-    LOG(ERROR) << "Disk path references parent";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Disk path references parent");
-    writer.AppendProtoAsArrayOfBytes(response);
-
-    return dbus_response;
-  }
-
   if (base::PathExists(disk_path)) {
     response.set_status(DISK_STATUS_EXISTS);
     response.set_disk_path(disk_path.value());
@@ -1133,15 +1132,6 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
                            &disk_path)) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to delete vm image");
-    writer.AppendProtoAsArrayOfBytes(response);
-
-    return dbus_response;
-  }
-
-  if (disk_path.ReferencesParent()) {
-    LOG(ERROR) << "Disk path references parent";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Disk path references parent");
     writer.AppendProtoAsArrayOfBytes(response);
 
     return dbus_response;
