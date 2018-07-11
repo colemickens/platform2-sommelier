@@ -39,6 +39,8 @@ using std::string;
 namespace {
 
 constexpr int kDefaultTimeoutMs = 80 * 1000;
+// Extra long timeout for backing up a VM disk image.
+constexpr int kExportDiskTimeoutMs = 15 * 60 * 1000;
 
 constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";
@@ -46,6 +48,14 @@ constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
+// File extension for qcow2 disk types.
+constexpr char kQcowImageExtension[] = ".qcow2";
+
+// Cryptohome user base path.
+constexpr char kCryptohomeUser[] = "/home/user";
+
+// Downloads directory for a user.
+constexpr char kDownloadsDir[] = "Downloads";
 
 // Converts an IPv4 address in network byte order into a string.
 void IPv4AddressToString(uint32_t addr, string* address) {
@@ -478,6 +488,91 @@ int DestroyDiskImage(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int ExportDiskImage(dbus::ObjectProxy* proxy,
+                    string cryptohome_id,
+                    string vm_name,
+                    string export_name,
+                    string removable_media) {
+  if (cryptohome_id.empty()) {
+    LOG(ERROR) << "Cryptohome id cannot be empty";
+    return -1;
+  }
+  if (vm_name.empty()) {
+    LOG(ERROR) << "Name cannot be empty";
+    return -1;
+  }
+  if (export_name.empty()) {
+    LOG(ERROR) << "Export name cannot be empty";
+    return -1;
+  }
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kExportDiskImageMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  base::FilePath export_disk_path;
+  if (!removable_media.empty()) {
+    export_disk_path = base::FilePath(kRemovableMediaRoot)
+                    .Append(removable_media)
+                    .Append(export_name + kQcowImageExtension);
+  } else {
+    export_disk_path = base::FilePath(kCryptohomeUser)
+                    .Append(cryptohome_id)
+                    .Append(kDownloadsDir)
+                    .Append(export_name + kQcowImageExtension);
+  }
+  if (export_disk_path.ReferencesParent()) {
+    LOG(ERROR) << "Invalid removable_vm_path";
+    return -1;
+  }
+  if (base::PathExists(export_disk_path)) {
+    LOG(ERROR) << "Export disk image already exists, refusing to overwrite it.";
+    return -1;
+  }
+
+  base::ScopedFD disk_fd(HANDLE_EINTR(open(export_disk_path.value().c_str(),
+                                           O_CREAT | O_RDWR | O_NOFOLLOW,
+                                           0600)));
+  if (!disk_fd.is_valid()) {
+    LOG(ERROR) << "Failed opening export file "
+               << export_disk_path.MaybeAsASCII();
+    return -1;
+  }
+
+  LOG(INFO) << "Exporting disk image to " << export_disk_path.MaybeAsASCII();
+
+  vm_tools::concierge::ExportDiskImageRequest request;
+  request.set_cryptohome_id(std::move(cryptohome_id));
+  request.set_disk_path(std::move(vm_name));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode ExportDiskImageRequest protobuf";
+    return -1;
+  }
+  writer.AppendFileDescriptor(disk_fd.get());
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kExportDiskTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::ExportDiskImageResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (response.status() != vm_tools::concierge::DISK_STATUS_CREATED) {
+    LOG(ERROR) << "Failed to export disk image: " << response.failure_reason();
+    return -1;
+  }
+
+  return 0;
+}
+
 int ListDiskImages(dbus::ObjectProxy* proxy,
                    string cryptohome_id,
                    string storage_location) {
@@ -750,6 +845,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(create_external_disk, false,
               "Create a disk image on removable media");
   DEFINE_bool(destroy_disk, false, "Destroy a disk image");
+  DEFINE_bool(export_disk, false, "Export a disk image from a VM");
   DEFINE_bool(list_disks, false, "List disk images");
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
@@ -762,6 +858,7 @@ int main(int argc, char** argv) {
   DEFINE_string(kernel, "", "Path to the VM kernel");
   DEFINE_string(rootfs, "", "Path to the VM rootfs");
   DEFINE_string(name, "", "Name to assign to the VM");
+  DEFINE_string(export_name, "", "Name to give the exported disk image");
   DEFINE_string(extra_disks, "",
                 "Additional disk images to be mounted inside the VM");
   DEFINE_string(container_name, "", "Name of the container within the VM");
@@ -804,11 +901,13 @@ int main(int argc, char** argv) {
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
-      FLAGS_destroy_disk + FLAGS_list_disks + FLAGS_start_container != 1) {
+      FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_list_disks +
+      FLAGS_start_container != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
                << "--create_disk, --create_external_disk --destroy_disk, "
-               << "--list_disks, --start_termina_vm or --start_container "
+               << "--export_disk --list_disks, --start_termina_vm, or "
+               << "--start_container "
                << "must be provided";
     return -1;
   }
@@ -837,6 +936,11 @@ int main(int argc, char** argv) {
     return DestroyDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                             std::move(FLAGS_name),
                             std::move(FLAGS_storage_location));
+  } else if (FLAGS_export_disk) {
+    return ExportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
+                           std::move(FLAGS_name),
+                           std::move(FLAGS_export_name),
+                           std::move(FLAGS_removable_media));
   } else if (FLAGS_list_disks) {
     return ListDiskImages(proxy, std::move(FLAGS_cryptohome_id),
                           std::move(FLAGS_storage_location));

@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <sys/mount.h>
+#include <sys/sendfile.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -375,6 +376,7 @@ bool Service::Init() {
       {kGetVmInfoMethod, &Service::GetVmInfo},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
+      {kExportDiskImageMethod, &Service::ExportDiskImage},
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kStartContainerMethod, &Service::StartContainer},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
@@ -1170,6 +1172,89 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
   response.set_status(DISK_STATUS_DESTROYED);
   writer.AppendProtoAsArrayOfBytes(response);
 
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::ExportDiskImage(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  LOG(INFO) << "Received ExportDiskImage request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ExportDiskImageResponse response;
+  response.set_status(DISK_STATUS_FAILED);
+
+  ExportDiskImageRequest request;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ExportDiskImageRequest from message";
+    response.set_failure_reason("Unable to parse ExportDiskRequest");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::FilePath disk_path;
+  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+                           STORAGE_CRYPTOHOME_ROOT,
+                           false, /* create_parent_dir */
+                           &disk_path)) {
+    response.set_failure_reason("Failed to delete vm image");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!base::PathExists(disk_path)) {
+    response.set_status(DISK_STATUS_DOES_NOT_EXIST);
+    response.set_failure_reason("Export image doesn't exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  int64_t disk_size;
+  if (!base::GetFileSize(disk_path, &disk_size)) {
+    LOG(ERROR) << "Disk path size unknown";
+    response.set_failure_reason("Failed to get size of disk");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD disk_fd(HANDLE_EINTR(open(disk_path.value().c_str(),
+                                           O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
+  if (!disk_fd.is_valid()) {
+    LOG(ERROR) << "Failed opening VM disk for export";
+    response.set_failure_reason("Failed opening VM disk for export");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Get the FD to fill with disk image data.
+  base::ScopedFD storage_fd;
+  if (!reader.PopFileDescriptor(&storage_fd)) {
+    LOG(ERROR) << "export: no fd found";
+    response.set_failure_reason("export: no fd found");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  ssize_t bytes_sent;
+  size_t total_bytes_sent = 0;
+  while (total_bytes_sent < disk_size) {
+    bytes_sent = HANDLE_EINTR(sendfile(storage_fd.get(), disk_fd.get(), nullptr,
+                                       disk_size - total_bytes_sent));
+    if (bytes_sent < 0) {
+      response.set_failure_reason("sendfile failed");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    total_bytes_sent += bytes_sent;
+  }
+
+  response.set_status(DISK_STATUS_CREATED);
+  writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
