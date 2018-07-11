@@ -42,6 +42,13 @@
         'cros_installer_main.cc',
       ],
     },
+    {
+      'target_name': 'evwaitkey',
+      'type': 'executable',
+      'sources': [
+        'util/evwaitkey.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_mtd == 1', {
