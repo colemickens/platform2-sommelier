@@ -104,7 +104,18 @@ class NewblueDaemonTest : public ::testing::Test {
         .Times(1);
   }
 
-  void TestInit(scoped_refptr<dbus::MockExportedObject> exported_root_object) {
+  scoped_refptr<dbus::MockExportedObject> SetupExportedRootObject() {
+    dbus::ObjectPath root_path(
+        newblue_object_manager::kNewblueObjectManagerServicePath);
+    scoped_refptr<dbus::MockExportedObject> exported_root_object =
+        new dbus::MockExportedObject(bus_.get(), root_path);
+    EXPECT_CALL(*bus_, GetExportedObject(root_path))
+        .WillRepeatedly(Return(exported_root_object.get()));
+    return exported_root_object;
+  }
+
+  void ExpectTestInit(
+      scoped_refptr<dbus::MockExportedObject> exported_root_object) {
     EXPECT_CALL(*bus_,
                 RequestOwnershipAndBlock(
                     newblue_object_manager::kNewblueObjectManagerServiceName,
@@ -128,10 +139,15 @@ class NewblueDaemonTest : public ::testing::Test {
     // Standard methods on org.freedesktop.DBus.Properties interface should be
     // exported.
     ExpectPropertiesMethodsExported(exported_root_object);
+  }
+
+  void TestInit(scoped_refptr<dbus::MockExportedObject> exported_root_object) {
+    ExpectTestInit(exported_root_object);
 
     EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
-    EXPECT_CALL(*newblue_, ListenReadyForUp(_)).Times(1);
-    newblue_daemon_->Init(bus_, nullptr /* no need to access the delegator */);
+    EXPECT_CALL(*newblue_, ListenReadyForUp(_)).WillOnce(Return(true));
+    EXPECT_TRUE(newblue_daemon_->Init(
+        bus_, nullptr /* no need to access the delegator */));
   }
 
   void TestAdapterBringUp(
@@ -180,13 +196,31 @@ class NewblueDaemonTest : public ::testing::Test {
   dbus::ExportedObject::MethodCallCallback dummy_method_handler_;
 };
 
-TEST_F(NewblueDaemonTest, InitAndBringUp) {
-  dbus::ObjectPath root_path(
-      newblue_object_manager::kNewblueObjectManagerServicePath);
+TEST_F(NewblueDaemonTest, InitFailed) {
   scoped_refptr<dbus::MockExportedObject> exported_root_object =
-      new dbus::MockExportedObject(bus_.get(), root_path);
-  EXPECT_CALL(*bus_, GetExportedObject(root_path))
-      .WillOnce(Return(exported_root_object.get()));
+      SetupExportedRootObject();
+
+  // Newblue::Init() fails
+  ExpectTestInit(exported_root_object);
+  EXPECT_CALL(*newblue_, Init()).WillOnce(Return(false));
+  EXPECT_FALSE(newblue_daemon_->Init(
+      bus_, nullptr /* no need to access the delegator */));
+
+  // Newblue::ListenReadyForUp() fails
+  ExpectTestInit(exported_root_object);
+  EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
+  EXPECT_CALL(*newblue_, ListenReadyForUp(_)).WillOnce(Return(false));
+  EXPECT_FALSE(newblue_daemon_->Init(
+      bus_, nullptr /* no need to access the delegator */));
+
+  // Shutdown now to make sure ExportedObjectManagerWrapper is destructed first
+  // before the mocked objects.
+  newblue_daemon_->Shutdown();
+}
+
+TEST_F(NewblueDaemonTest, InitSuccessAndBringUp) {
+  scoped_refptr<dbus::MockExportedObject> exported_root_object =
+      SetupExportedRootObject();
 
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
@@ -207,12 +241,8 @@ TEST_F(NewblueDaemonTest, InitAndBringUp) {
 }
 
 TEST_F(NewblueDaemonTest, DiscoveryAPI) {
-  dbus::ObjectPath root_path(
-      newblue_object_manager::kNewblueObjectManagerServicePath);
   scoped_refptr<dbus::MockExportedObject> exported_root_object =
-      new dbus::MockExportedObject(bus_.get(), root_path);
-  EXPECT_CALL(*bus_, GetExportedObject(root_path))
-      .WillOnce(Return(exported_root_object.get()));
+      SetupExportedRootObject();
 
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   scoped_refptr<dbus::MockExportedObject> exported_adapter_object =

@@ -43,13 +43,16 @@ bool Newblue::Init() {
   return true;
 }
 
-void Newblue::ListenReadyForUp(base::Closure callback) {
+bool Newblue::ListenReadyForUp(base::Closure callback) {
   // Dummy MAC address. NewBlue doesn't actually use the MAC address as it's
   // exclusively controlled by BlueZ.
   static const uint8_t kZeroMac[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
+  if (!libnewblue_->HciUp(kZeroMac, &Newblue::OnStackReadyForUpThunk, this))
+    return false;
+
   ready_for_up_callback_ = callback;
-  libnewblue_->HciUp(kZeroMac, &Newblue::OnStackReadyForUpThunk, this);
+  return true;
 }
 
 bool Newblue::BringUp() {

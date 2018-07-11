@@ -61,10 +61,20 @@ TEST_F(NewblueTest, ListenReadyForUp) {
 
   EXPECT_CALL(*libnewblue_, HciUp(_, _, _))
       .WillOnce(Invoke(this, &NewblueTest::StubHciUp));
-  newblue_->ListenReadyForUp(
+  bool success = newblue_->ListenReadyForUp(
       base::Bind(&NewblueTest::OnReadyForUp, base::Unretained(this)));
+  EXPECT_TRUE(success);
   message_loop_.RunUntilIdle();
   EXPECT_TRUE(is_ready_for_up_);
+}
+
+TEST_F(NewblueTest, ListenReadyForUpFailed) {
+  newblue_->Init();
+
+  EXPECT_CALL(*libnewblue_, HciUp(_, _, _)).WillOnce(Return(false));
+  bool success = newblue_->ListenReadyForUp(
+      base::Bind(&NewblueTest::OnReadyForUp, base::Unretained(this)));
+  EXPECT_FALSE(success);
 }
 
 TEST_F(NewblueTest, BringUp) {

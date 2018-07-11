@@ -71,8 +71,11 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  newblue_->ListenReadyForUp(
-      base::Bind(&NewblueDaemon::OnHciReadyForUp, base::Unretained(this)));
+  if (!newblue_->ListenReadyForUp(base::Bind(&NewblueDaemon::OnHciReadyForUp,
+                                             base::Unretained(this)))) {
+    LOG(ERROR) << "Error listening to HCI ready for up";
+    return false;
+  }
 
   LOG(INFO) << "newblued initialized";
   return true;

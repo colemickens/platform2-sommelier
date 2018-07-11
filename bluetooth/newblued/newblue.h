@@ -79,7 +79,8 @@ class Newblue {
 
   // Listens to reset complete event from the chip. This is useful to detect
   // when NewBlue is ready to bring up the stack.
-  virtual void ListenReadyForUp(base::Closure callback);
+  // Returns true on success and false otherwise.
+  virtual bool ListenReadyForUp(base::Closure callback);
 
   // Brings up the NewBlue stack. This should be called when the adapter has
   // just been turned on, detected when there is reset complete event from the
