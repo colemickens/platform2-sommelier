@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -90,6 +91,17 @@ class PackageKitProxy {
                                        int* status,
                                        std::string* out_error);
 
+  // Called to refresh the package lists from the remote repositories.
+  void RefreshCacheOnDBusThread();
+
+  // Called to get the list of packages that have updates that are managed by
+  // us. If anything is updatable it will then initiate the upgrade.
+  void GetUpdatableManagedPackagesOnDBusThread();
+
+  // Attempts to perform upgrades on the passed in package IDs.
+  void UpgradePackagesOnDBusThread(
+      std::shared_ptr<std::vector<std::string>> package_ids);
+
   // Calbacks for when D-Bus signals are connected for an install request.
   void OnErrorSignalConnectedForInstall(dbus::ObjectProxy* transaction_proxy,
                                         const base::FilePath& file_path,
@@ -122,6 +134,52 @@ class PackageKitProxy {
       const std::string& signal_name,
       bool is_connected);
 
+  // Callbacks for when D-Bus signals are connected for a cache refresh.
+  void OnErrorSignalConnectedForRefresh(
+      dbus::ObjectProxy* transaction_proxy,
+      const dbus::ObjectPath& transaction_path,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+  void OnFinishedSignalConnectedForRefresh(dbus::ObjectProxy* transaction_proxy,
+                                           const std::string& interface_name,
+                                           const std::string& signal_name,
+                                           bool is_connected);
+
+  // Callbacks for when D-Bus signals are connected for a GetUpdates.
+  void OnErrorSignalConnectedForGetUpdates(
+      dbus::ObjectProxy* transaction_proxy,
+      const dbus::ObjectPath& transaction_path,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+  void OnFinishedSignalConnectedForGetUpdates(
+      dbus::ObjectProxy* transaction_proxy,
+      std::shared_ptr<std::vector<std::string>> package_ids,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+  void OnPackageSignalConnectedForGetUpdates(
+      dbus::ObjectProxy* transaction_proxy,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+
+  // Callback for when D-Bus signals are connected for an upgrade.
+  void OnErrorSignalConnectedForUpgrade(
+      dbus::ObjectProxy* transaction_proxy,
+      const dbus::ObjectPath& transaction_path,
+      std::shared_ptr<std::vector<std::string>> package_ids,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+  void OnFinishedSignalConnectedForUpgrade(
+      dbus::ObjectProxy* transaction_proxy,
+      std::shared_ptr<std::vector<std::string>> package_ids,
+      const std::string& interface_name,
+      const std::string& signal_name,
+      bool is_connected);
+
   // Callback for the D-Bus signals for ErrorCode, Finished and Changed during
   // installs.
   void OnPackageKitInstallError(dbus::Signal* signal);
@@ -137,9 +195,33 @@ class PackageKitProxy {
   void OnPackageKitInfoDetails(std::shared_ptr<PackageInfoTransactionData> data,
                                dbus::Signal* signal);
 
+  // Callback for the D-Bus signals for ErrorCode and Finished during refreshes.
+  void OnPackageKitRefreshError(dbus::Signal* signal);
+  void OnPackageKitRefreshFinished(const dbus::ObjectPath& transaction_path,
+                                   dbus::Signal* signal);
+
+  // Callback for the D-Bus signals for ErrorCode, Finished and Package during
+  // GetUpdates.
+  void OnPackageKitGetUpdatesError(dbus::Signal* signal);
+  void OnPackageKitGetUpdatesPackage(
+      std::shared_ptr<std::vector<std::string>> package_ids,
+      dbus::Signal* signal);
+  void OnPackageKitGetUpdatesFinished(
+      const dbus::ObjectPath& transaction_path,
+      std::shared_ptr<std::vector<std::string>> package_ids,
+      dbus::Signal* signal);
+
+  // Callback for the D-Bus signal for ErrorCode Finished during upgrades.
+  void OnPackageKitUpgradeError(dbus::Signal* signal);
+  void OnPackageKitUpgradeFinished(const dbus::ObjectPath& transaction_path,
+                                   dbus::Signal* signal);
+
   // Called to clear local state for an install operation and make a call to the
   // observer with the result.
   void HandleInstallCompletion(bool success, const std::string& failure_reason);
+
+  // Called to schedule the next refresh of the package cache.
+  void ScheduleNextCacheRefresh();
 
   // Callback for ownership change of PackageKit service, used to detect if it
   // crashes while we are waiting on something that doesn't have a timeout.
