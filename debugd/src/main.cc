@@ -18,6 +18,9 @@
 
 namespace {
 
+// For TPM 1.2 only: Directory to mount for access to tcsd socket.
+constexpr char kTcsdDir[] = "/run/tcsd";
+
 // @brief Enter a VFS namespace.
 //
 // We don't want anyone other than our descendants to see our tmpfs.
@@ -81,6 +84,15 @@ void enter_vfs_namespace() {
   if (minijail_mount_with_data(j.get(), "/sys", "/sys", "bind",
                                MS_BIND | MS_REC, nullptr)) {
     LOG(FATAL) << "minijail_mount_with_data(\"/sys\") failed";
+  }
+
+  if (USE_TPM) {
+    // For TPM 1.2 only: Enable utilities that communicate with TPM via tcsd -
+    // mount directory containing tcsd socket.
+    mkdir(kTcsdDir, 0755);
+    if (minijail_bind(j.get(), kTcsdDir, kTcsdDir, 0)) {
+      LOG(FATAL) << "minijail_bind(\"" << kTcsdDir << "\") failed";
+    }
   }
 
   minijail_enter(j.get());

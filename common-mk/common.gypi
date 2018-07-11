@@ -53,6 +53,7 @@
     'USE_systemd%': 0,
     'USE_tcmalloc%': 0,
     'USE_test%': 0,
+    'USE_tpm%': 0,
     'USE_tpm2%': 0,
     'USE_tpm2_simulator%': 0,
     'USE_vpn%': 0,

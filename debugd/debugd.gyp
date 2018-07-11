@@ -12,6 +12,7 @@
     'defines': [
       'USE_CELLULAR=<(USE_cellular)',
       'USE_IWLWIFI_DUMP=<(USE_iwlwifi_dump)',
+      'USE_TPM=<(USE_tpm)',
       'USE_WIMAX=<(USE_wimax)',
     ],
   },
