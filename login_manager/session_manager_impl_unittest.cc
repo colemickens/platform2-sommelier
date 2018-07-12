@@ -195,6 +195,12 @@ MATCHER_P3(SignalEq, method_name, payload1, payload2, "") {
           payload2 == actual2.value);
 }
 
+// Checks whether a PolicyNamespace is not a POLICY_DOMAIN_CHROME namespace and
+// has a component id.
+MATCHER(IsComponentNamespace, "") {
+  return arg.first != POLICY_DOMAIN_CHROME && !arg.second.empty();
+}
+
 constexpr pid_t kAndroidPid = 10;
 
 enum class DataDirType {
@@ -630,6 +636,12 @@ class SessionManagerImplTest : public ::testing::Test,
                          SignatureCheck signature_check) {
     EXPECT_CALL(*service, Store(MakeChromePolicyNamespace(), policy_blob, flags,
                                 signature_check, _))
+        .WillOnce(Return(true));
+  }
+
+  void ExpectDeletePolicy(MockDevicePolicyService* service) {
+    EXPECT_CALL(*service,
+                Delete(IsComponentNamespace(), SignatureCheck::kDisabled))
         .WillOnce(Return(true));
   }
 
@@ -1229,6 +1241,24 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterpriseAD) {
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
+}
+
+TEST_F(SessionManagerImplTest, StorePolicyEx_DeleteComponentPolicy) {
+  PolicyDescriptor descriptor;
+  descriptor.set_account_type(ACCOUNT_TYPE_DEVICE);
+  descriptor.set_account_id(kEmptyAccountId);
+  descriptor.set_domain(POLICY_DOMAIN_EXTENSIONS);
+  descriptor.set_component_id("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  std::vector<uint8_t> descriptor_blob =
+      StringToBlob(descriptor.SerializeAsString());
+
+  SetDeviceMode("enterprise_ad");
+  ExpectDeletePolicy(device_policy_service_);
+
+  ResponseCapturer capturer;
+  impl_->StoreUnsignedPolicyEx(capturer.CreateMethodResponse<>(),
+                               StringToBlob(descriptor.SerializeAsString()),
+                               std::vector<uint8_t>() /* policy_blob */);
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {

@@ -98,4 +98,11 @@ void PolicyStore::Set(
   policy_.CheckTypeAndMergeFrom(policy);
 }
 
+bool PolicyStore::Delete() {
+  if (!base::DeleteFile(policy_path_, false))
+    return false;
+  policy_.Clear();
+  return true;
+}
+
 }  // namespace login_manager

@@ -37,6 +37,20 @@ PolicyNamespace MakeChromePolicyNamespace() {
   return std::make_pair(POLICY_DOMAIN_CHROME, std::string());
 }
 
+// Returns true if the domain, when part of a PolicyNamespace, expects a
+// non-empty |component_id()|.
+bool IsComponentDomain(PolicyDomain domain) {
+  switch (domain) {
+    case POLICY_DOMAIN_CHROME:
+      return false;
+    case POLICY_DOMAIN_EXTENSIONS:
+    case POLICY_DOMAIN_SIGNIN_EXTENSIONS:
+      return true;
+  }
+  NOTREACHED();
+  return false;
+}
+
 constexpr char PolicyService::kChromePolicyFileName[] = "policy";
 constexpr char PolicyService::kExtensionsPolicyFileNamePrefix[] =
     "policy_extension_id_";
@@ -76,6 +90,32 @@ bool PolicyService::Store(const PolicyNamespace& ns,
 bool PolicyService::Retrieve(const PolicyNamespace& ns,
                              std::vector<uint8_t>* policy_blob) {
   *policy_blob = SerializeAsBlob(GetOrCreateStore(ns)->Get());
+  return true;
+}
+
+bool PolicyService::Delete(const PolicyNamespace& ns,
+                           SignatureCheck signature_check) {
+  // Don't delete Chrome user or device policy.
+  if (!IsComponentDomain(ns.first)) {
+    LOG(ERROR) << "Deletion only allowed for component policy.";
+    return false;
+  }
+
+  // Don't delete signed policy.
+  if (signature_check != SignatureCheck::kDisabled) {
+    LOG(ERROR) << "Deletion of signed policy not allowed.";
+    return false;
+  }
+
+  // Delete file on disk if it exists.
+  if (!GetOrCreateStore(ns)->Delete()) {
+    LOG(ERROR) << "Failed to delete store.";
+    return false;
+  }
+
+  // Delete store.
+  policy_stores_.erase(ns);
+
   return true;
 }
 

@@ -37,12 +37,15 @@ class PolicyStore {
 
   virtual const enterprise_management::PolicyFetchResponse& Get() const;
 
-  // Persist |policy_| to disk at |policy_file_|
+  // Persist |policy_| to disk at |policy_file_|.
   // Returns false if there's an error while writing data.
   virtual bool Persist();
 
   // Clobber the stored policy with new data.
   virtual void Set(const enterprise_management::PolicyFetchResponse& policy);
+
+  // Deletes the policy file at |policy_file_| and clears the stored policy.
+  virtual bool Delete();
 
   const base::FilePath policy_path() const { return policy_path_; }
 

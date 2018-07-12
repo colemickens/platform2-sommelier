@@ -653,4 +653,19 @@ TEST_F(PolicyServiceNamespaceTest, ListComponentIdsDoesntLeakAcrossDomains) {
             service_->ListComponentIds(POLICY_DOMAIN_CHROME));
 }
 
+TEST_F(PolicyServiceNamespaceTest, DeleteFailsForChromeNamespace) {
+  EXPECT_EQ(ns1_.first, POLICY_DOMAIN_CHROME);
+  EXPECT_FALSE(service_->Delete(ns1_, SignatureCheck::kDisabled));
+}
+
+TEST_F(PolicyServiceNamespaceTest, DeleteFailsForEnabledSignatureCheck) {
+  EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
+  EXPECT_FALSE(service_->Delete(ns2_, SignatureCheck::kEnabled));
+}
+
+TEST_F(PolicyServiceNamespaceTest, DeleteSucceeds) {
+  EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
+  EXPECT_TRUE(service_->Delete(ns2_, SignatureCheck::kDisabled));
+}
+
 }  // namespace login_manager

@@ -170,7 +170,8 @@
         @descriptor_blob: Serialized PolicyDescriptor protobuf containing
             metadata about the policy (user, device or component policy).
         @policy_blob: Serialized PolicyFetchResponse protobuf containing user,
-            device or component policy, but no signature.
+            device or component policy, but no signature. If empty and
+            |descriptor_blob| specifies component policy, the policy is deleted.
 
         Similar to StorePolicyEx, but stores policy without signature
         verification for AD managed devices. Locked down through busconfig to be

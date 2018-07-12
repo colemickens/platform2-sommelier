@@ -103,9 +103,15 @@ class PolicyService {
                      const Completion& completion);
 
   // Retrieves the current policy blob (does not verify the signature) from the
-  // namespace |ns|. Returns true if successful, false otherwise.
+  // namespace |ns|. Returns true on success.
   virtual bool Retrieve(const PolicyNamespace& ns,
                         std::vector<uint8_t>* policy_blob);
+
+  // Deletes the policy for the namespace |ns|. This operation is only allowed
+  // if |ns| specifies a component policy namespace (e.g. extensions) and if the
+  // |signature_check| is disabled. Returns true on success.
+  virtual bool Delete(const PolicyNamespace& ns,
+                      SignatureCheck signature_check);
 
   // Returns a list of all component IDs in the given |domain| for which policy
   // is stored. Returns an empty vector if |domain| does not support component

@@ -32,6 +32,10 @@ class ResilientPolicyStore : public PolicyStore {
   // Returns false if there's an error while writing data.
   bool Persist() override;
 
+  // Not implemented yet - this class is meant for Chrome device policy,
+  // but deletion is only allowed for component policy.
+  bool Delete() override;
+
   bool resilient_for_testing() const override { return true; }
 
  private:

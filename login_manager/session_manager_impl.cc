@@ -1567,10 +1567,21 @@ void SessionManagerImpl::StorePolicyInternalEx(
   int key_flags = GetKeyInstallFlags(descriptor);
   PolicyNamespace ns(descriptor.domain(), descriptor.component_id());
 
+  // If the blob is empty, delete the policy.
   DCHECK(dbus_service_);
-  policy_service->Store(ns, policy_blob, key_flags, signature_check,
-                        dbus_service_->CreatePolicyServiceCompletionCallback(
-                            std::move(response)));
+  if (policy_blob.empty()) {
+    if (!policy_service->Delete(ns, signature_check)) {
+      auto error =
+          CreateError(dbus_error::kDeleteFail, "Failed to delete policy");
+      response->ReplyWithError(error.get());
+      return;
+    }
+    response->Return();
+  } else {
+    policy_service->Store(ns, policy_blob, key_flags, signature_check,
+                          dbus_service_->CreatePolicyServiceCompletionCallback(
+                              std::move(response)));
+  }
 }
 
 void SessionManagerImpl::RestartDevice(const std::string& reason) {

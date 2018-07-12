@@ -98,4 +98,18 @@ TEST_F(PolicyStoreTest, LoadStoreFromDisk) {
   CheckExpectedPolicy(&store2, policy);
 }
 
+TEST_F(PolicyStoreTest, DeleteRemovesFileAndData) {
+  PolicyStore store(tmpfile_);
+  enterprise_management::PolicyFetchResponse policy;
+  policy.set_error_message("policy");
+  store.Set(policy);
+  EXPECT_TRUE(store.Persist());
+  CheckExpectedPolicy(&store, policy);
+
+  EXPECT_TRUE(base::PathExists(tmpfile_));
+  EXPECT_TRUE(store.Delete());
+  EXPECT_FALSE(base::PathExists(tmpfile_));
+  CheckExpectedPolicy(&store, em::PolicyFetchResponse());
+}
+
 }  // namespace login_manager

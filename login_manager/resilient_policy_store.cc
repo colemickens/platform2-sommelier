@@ -118,6 +118,11 @@ bool ResilientPolicyStore::Persist() {
       policy::GetResilientPolicyFilePathForIndex(policy_path_, new_index));
 }
 
+bool ResilientPolicyStore::Delete() {
+  NOTREACHED();
+  return false;
+}
+
 void ResilientPolicyStore::CleanupPolicyFiles(
     const std::map<int, base::FilePath>& sorted_policy_file_paths) {
   DCHECK(metrics_);
