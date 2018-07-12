@@ -5,6 +5,7 @@
 #include "authpolicy/authpolicy.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -328,6 +329,11 @@ void CheckError(ErrorType expected_error,
   *was_called = true;
 }
 
+// Matcher for D-Bus method names to be used in CallMethod*().
+MATCHER_P(IsMethod, method_name, "") {
+  return arg->GetMember() == method_name;
+}
+
 }  // namespace
 
 // Integration test for the authpolicyd D-Bus interface.
@@ -405,16 +411,29 @@ class AuthPolicyTest : public testing::Test {
                                dbus::ObjectPath(
                                    login_manager::kSessionManagerServicePath)))
         .WillOnce(Return(mock_session_manager_proxy_.get()));
-    EXPECT_CALL(*mock_session_manager_proxy_, CallMethod(_, _, _))
+    EXPECT_CALL(
+        *mock_session_manager_proxy_,
+        CallMethod(
+            IsMethod(login_manager::kSessionManagerStoreUnsignedPolicyEx), _,
+            _))
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::StubCallStorePolicyMethod));
+    EXPECT_CALL(
+        *mock_session_manager_proxy_,
+        MockCallMethodAndBlock(
+            IsMethod(login_manager::kSessionManagerListStoredComponentPolicies),
+            _))
+        .WillRepeatedly(
+            Invoke(this, &AuthPolicyTest::StubListComponentIdsMethod));
     EXPECT_CALL(
         *mock_session_manager_proxy_,
         ConnectToSignal(login_manager::kSessionManagerInterface,
                         login_manager::kSessionStateChangedSignal, _, _))
         .WillOnce((SaveArg<2>(&session_state_changed_callback_)));
-    EXPECT_CALL(*mock_session_manager_proxy_.get(),
-                MockCallMethodAndBlock(_, _))
+    EXPECT_CALL(
+        *mock_session_manager_proxy_.get(),
+        MockCallMethodAndBlock(
+            IsMethod(login_manager::kSessionManagerRetrieveSessionState), _))
         .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout) {
           return RespondWithString(method_call, kSessionStopped);
         }));
@@ -430,7 +449,7 @@ class AuthPolicyTest : public testing::Test {
         .WillOnce(Return(mock_cryptohome_proxy_.get()));
 
     // Make Cryptohome's GetSanitizedUsername call return kSanitizedUsername.
-    ON_CALL(*mock_cryptohome_proxy_.get(), MockCallMethodAndBlock(_, _))
+    ON_CALL(*mock_cryptohome_proxy_, MockCallMethodAndBlock(_, _))
         .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout) {
           return RespondWithString(method_call, kSanitizedUsername);
         }));
@@ -460,7 +479,7 @@ class AuthPolicyTest : public testing::Test {
     if (!store_policy_called_) {
       EXPECT_FALSE(user_policy_validated_);
       EXPECT_FALSE(device_policy_validated_);
-      EXPECT_EQ(0, extension_policy_validated_count_);
+      EXPECT_EQ(0, validated_extension_ids_.size());
     } else {
       // The first policy stored is always user or device policy.
       EXPECT_TRUE(user_policy_validated_ ^ device_policy_validated_);
@@ -479,27 +498,46 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_TRUE(ExtractMethodCallResults(method_call, &error, &descriptor_blob,
                                          &response_blob));
 
-    // Unwrap the three gazillion layers or policy.
-    const std::string response_blob_str(response_blob.begin(),
-                                        response_blob.end());
-    em::PolicyFetchResponse policy_response;
-    EXPECT_TRUE(policy_response.ParseFromString(response_blob_str));
-    em::PolicyData policy_data;
-    EXPECT_TRUE(policy_data.ParseFromString(policy_response.policy_data()));
-
-    // Unpack descriptor and check type.
+    // Unpack descriptor.
     PolicyDescriptor descriptor;
     const std::string descriptor_blob_str(descriptor_blob.begin(),
                                           descriptor_blob.end());
     EXPECT_TRUE(descriptor.ParseFromString(descriptor_blob_str));
 
-    // Run the policy through the appropriate policy validator.
-    ValidatePolicy(descriptor, policy_data);
+    // If policy is deleted, response_blob is an empty string.
+    if (response_blob.empty()) {
+      EXPECT_EQ(descriptor.domain(), login_manager::POLICY_DOMAIN_EXTENSIONS);
+      deleted_extension_ids_.insert(descriptor.component_id());
+    } else {
+      // Unwrap the three gazillion layers or policy.
+      const std::string response_blob_str(response_blob.begin(),
+                                          response_blob.end());
+      em::PolicyFetchResponse policy_response;
+      EXPECT_TRUE(policy_response.ParseFromString(response_blob_str));
+      em::PolicyData policy_data;
+      EXPECT_TRUE(policy_data.ParseFromString(policy_response.policy_data()));
+
+      // Run the policy through the appropriate policy validator.
+      ValidatePolicy(descriptor, policy_data);
+    }
 
     // Answer authpolicy with an empty response to signal that policy has been
     // stored.
     EXPECT_FALSE(callback.is_null());
     callback.Run(Response::CreateEmpty().get());
+  }
+
+  // Stub method called by the Session Manager mock to list stored component
+  // policy ids.
+  dbus::Response* StubListComponentIdsMethod(dbus::MethodCall* method_call,
+                                             int /* timeout_ms */) {
+    method_call->SetSerial(kDBusSerial);
+    auto response = dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+    writer.AppendArrayOfStrings(stored_extension_ids_);
+
+    // Note: The mock wraps this back into a std::unique_ptr.
+    return response.release();
   }
 
   void TearDown() override {
@@ -631,7 +669,8 @@ class AuthPolicyTest : public testing::Test {
     store_policy_called_ = false;
     user_policy_validated_ = false;
     device_policy_validated_ = false;
-    extension_policy_validated_count_ = 0;
+    validated_extension_ids_.clear();
+    deleted_extension_ids_.clear();
     bool callback_was_called = false;
     AuthPolicy::PolicyResponseCallback callback =
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
@@ -648,7 +687,7 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_EQ(expected_error == ERROR_NONE, store_policy_called_);
     EXPECT_EQ(expected_error == ERROR_NONE, user_policy_validated_);
     EXPECT_FALSE(expected_error != ERROR_NONE &&
-                 extension_policy_validated_count_ > 0);
+                 validated_extension_ids_.size() > 0);
     EXPECT_FALSE(device_policy_validated_);
     EXPECT_TRUE(callback_was_called);  // Make sure CheckError() was called.
   }
@@ -664,7 +703,8 @@ class AuthPolicyTest : public testing::Test {
     store_policy_called_ = false;
     user_policy_validated_ = false;
     device_policy_validated_ = false;
-    extension_policy_validated_count_ = 0;
+    validated_extension_ids_.clear();
+    deleted_extension_ids_.clear();
     bool callback_was_called = false;
     AuthPolicy::PolicyResponseCallback callback =
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
@@ -681,7 +721,7 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_EQ(expected_error == ERROR_NONE, store_policy_called_);
     EXPECT_EQ(expected_error == ERROR_NONE, device_policy_validated_);
     EXPECT_FALSE(expected_error != ERROR_NONE &&
-                 extension_policy_validated_count_ > 0);
+                 validated_extension_ids_.size());
     EXPECT_FALSE(user_policy_validated_);
     EXPECT_TRUE(callback_was_called);  // Make sure CheckError() was called.
   }
@@ -724,7 +764,7 @@ class AuthPolicyTest : public testing::Test {
         // policy_value() is the raw JSON string here.
         validate_extension_policy_(descriptor.component_id(),
                                    policy_data.policy_value());
-        extension_policy_validated_count_++;
+        validated_extension_ids_.insert(descriptor.component_id());
       }
     }
   }
@@ -914,10 +954,16 @@ class AuthPolicyTest : public testing::Test {
   base::FilePath backup_path_;
 
   // Markers to check whether various callbacks are actually called.
-  bool store_policy_called_ = false;          // StubCallStorePolicyMethod()
-  bool user_policy_validated_ = false;        // Policy validation
-  bool device_policy_validated_ = false;      //   callbacks
-  int extension_policy_validated_count_ = 0;  //   below.
+  bool store_policy_called_ = false;      // StubCallStorePolicyMethod()
+  bool user_policy_validated_ = false;    // Policy validation
+  bool device_policy_validated_ = false;  //   callbacks below.
+
+  // IDs of extensions for which policy was validated.
+  std::multiset<std::string> validated_extension_ids_;
+  // IDs of extensions for which policy was deleted.
+  std::multiset<std::string> deleted_extension_ids_;
+  // IDs returned from the stub Session Manager for ListStoredComponentPolicies.
+  std::vector<std::string> stored_extension_ids_;
 
   // Set by ValidatePolicy during user policy validation if the affiliation
   // marker is set.
@@ -1726,7 +1772,31 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithDataAndExtensions) {
   validate_extension_policy_ = &CheckDefaultExtensionPolicy;
   JoinAndFetchDevicePolicy(kOneGpoMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, extension_policy_validated_count_);
+  EXPECT_EQ(2, validated_extension_ids_.size());
+}
+
+// Successful user policy fetch that also contains extension policy.
+TEST_F(AuthPolicyTest, StaleExtensionPoliciesAreDeleted) {
+  // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
+  policy::PRegPolicyWriter writer;
+  writer.SetKeysForExtensionPolicy(kExtensionId);
+  writer.AppendString(kExtensionPolicy1, kPolicyStr);
+  writer.WriteToFile(stub_gpo1_path_);
+
+  // Pretend that Session Manager has stored policy for these two extensions.
+  stored_extension_ids_.push_back(kExtensionId);
+  stored_extension_ids_.push_back(kOtherExtensionId);
+
+  // Fetch and validate. This should trigger policy kOtherExtensionId to be
+  // deleted because the GPO only contains kExtensionId.
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  validate_extension_policy_ = &CheckDefaultExtensionPolicy;
+  JoinAndFetchDevicePolicy(kOneGpoMachineName);
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  EXPECT_EQ(validated_extension_ids_,
+            std::multiset<std::string>({kExtensionId}));
+  EXPECT_EQ(deleted_extension_ids_,
+            std::multiset<std::string>({kOtherExtensionId}));
 }
 
 // Verify that PolicyLevel is encoded properly.
@@ -2066,7 +2136,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithDataAndExtensions) {
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   MarkDeviceAsLocked();
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(2, extension_policy_validated_count_);
+  EXPECT_EQ(2, validated_extension_ids_.size());
 }
 
 // Completely empty GPO list fails. GPO lists should always contain at least

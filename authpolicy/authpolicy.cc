@@ -4,6 +4,7 @@
 
 #include "authpolicy/authpolicy.h"
 
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -51,7 +52,7 @@ bool DomainRequiresComponentId(login_manager::PolicyDomain domain) {
   NOTREACHED() << "Invalid domain";
 }
 
-void PrintError(const char* msg, ErrorType error) {
+void PrintResult(const char* msg, ErrorType error) {
   if (error == ERROR_NONE) {
     LOG(INFO) << kColorRequestSuccess << msg << " succeeded" << kColorReset;
   } else {
@@ -133,7 +134,7 @@ class ResponseTracker : public base::RefCountedThreadSafe<ResponseTracker> {
 
       const char* request =
           is_refresh_user_policy_ ? "RefreshUserPolicy" : "RefreshDevicePolicy";
-      PrintError(request, error);
+      PrintResult(request, error);
 
       // Destroy the timer, which triggers the metric. It's going to be
       // destroyed with this instance, anyway, but doing it here explicitly is
@@ -225,7 +226,7 @@ void AuthPolicy::AuthenticateUser(
   if (error == ERROR_NONE)
     error = SerializeProto(account_info, account_info_blob);
 
-  PrintError("AuthenticateUser", error);
+  PrintResult("AuthenticateUser", error);
   metrics_->ReportError(ERROR_OF_AUTHENTICATE_USER, error);
   *int_error = static_cast<int>(error);
 }
@@ -248,7 +249,7 @@ void AuthPolicy::GetUserStatus(
   if (error == ERROR_NONE)
     error = SerializeProto(user_status, user_status_blob);
 
-  PrintError("GetUserStatus", error);
+  PrintResult("GetUserStatus", error);
   metrics_->ReportError(ERROR_OF_GET_USER_STATUS, error);
   *int_error = static_cast<int>(error);
 }
@@ -265,7 +266,7 @@ void AuthPolicy::GetUserKerberosFiles(
   ErrorType error = samba_.GetUserKerberosFiles(account_id, &kerberos_files);
   if (error == ERROR_NONE)
     error = SerializeProto(kerberos_files, kerberos_files_blob);
-  PrintError("GetUserKerberosFiles", error);
+  PrintResult("GetUserKerberosFiles", error);
   metrics_->ReportError(ERROR_OF_GET_USER_KERBEROS_FILES, error);
   *int_error = static_cast<int>(error);
 }
@@ -292,7 +293,7 @@ void AuthPolicy::JoinADDomain(
                                password_fd.get(), joined_domain);
   }
 
-  PrintError("JoinADDomain", error);
+  PrintResult("JoinADDomain", error);
   metrics_->ReportError(ERROR_OF_JOIN_AD_DOMAIN, error);
   *int_error = static_cast<int>(error);
 }
@@ -309,7 +310,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
 
   // Return immediately on error.
   if (error != ERROR_NONE) {
-    PrintError("RefreshUserPolicy", error);
+    PrintResult("RefreshUserPolicy", error);
     metrics_->ReportError(ERROR_OF_REFRESH_USER_POLICY, error);
     callback->Return(error);
     return;
@@ -348,7 +349,7 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
 
   // Return immediately on error.
   if (error != ERROR_NONE) {
-    PrintError("RefreshDevicePolicy", error);
+    PrintResult("RefreshDevicePolicy", error);
     metrics_->ReportError(ERROR_OF_REFRESH_DEVICE_POLICY, error);
     callback->Return(error);
     return;
@@ -388,22 +389,9 @@ void AuthPolicy::StorePolicy(
     const std::string* account_id_key,
     std::unique_ptr<ScopedTimerReporter> timer,
     PolicyResponseCallback callback) {
-  // Count total number of StorePolicy responses we're expecting and create a
-  // tracker object that counts the number of outstanding responses and keeps
-  // some unique pointers.
-  const bool is_refresh_user_policy = account_id_key != nullptr;
-  const int num_extensions = gpo_policy_data->extension_policies_size();
-  const int num_store_policy_calls = 1 + num_extensions;
-
-  LOG(INFO) << "Sending " << (is_refresh_user_policy ? "user" : "device")
-            << " policy to Session Manager (Chrome policy, " << num_extensions
-            << " extensions)";
-
-  scoped_refptr<ResponseTracker> response_tracker =
-      new ResponseTracker(is_refresh_user_policy, num_store_policy_calls,
-                          metrics_, std::move(timer), std::move(callback));
-
+  // Build descriptor that specifies where the policy is stored.
   PolicyDescriptor descriptor;
+  const bool is_refresh_user_policy = account_id_key != nullptr;
   const char* policy_type = nullptr;
   if (is_refresh_user_policy) {
     DCHECK(!account_id_key->empty());
@@ -415,23 +403,71 @@ void AuthPolicy::StorePolicy(
     policy_type = kChromeDevicePolicyType;
   }
 
+  // Query IDs of extension policy stored by Session Manager.
+  descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
+  std::vector<std::string> existing_extension_ids;
+  if (!session_manager_client_->ListStoredComponentPolicies(
+          descriptor.SerializeAsString(), &existing_extension_ids)) {
+    // If this call fails, worst thing that can happen is stale extension
+    // policy. Still seems better than not pushing policy at all, so keep going.
+    existing_extension_ids.clear();
+    LOG(WARNING) << "Cannot clean up stale extension policies: "
+                    "Failed to get list of stored extension policies.";
+  }
+
+  // Extension policies that are no longer coming down from Active Directory
+  // have to be deleted. Those are (IDs in Session Manager) - (IDs from AD).
+  std::unordered_set<std::string> extension_ids_to_delete;
+  extension_ids_to_delete.insert(existing_extension_ids.begin(),
+                                 existing_extension_ids.end());
+  for (int n = 0; n < gpo_policy_data->extension_policies_size(); ++n)
+    extension_ids_to_delete.erase(gpo_policy_data->extension_policies(n).id());
+
+  // Count total number of StorePolicy responses we're expecting and create a
+  // tracker object that counts the number of outstanding responses and keeps
+  // some unique pointers.
+  const int num_extensions_to_store =
+      gpo_policy_data->extension_policies_size();
+  const int num_extensions_to_delete =
+      static_cast<int>(extension_ids_to_delete.size());
+  const int num_store_policy_calls =
+      1 + num_extensions_to_store + num_extensions_to_delete;
+  LOG(INFO) << "Sending " << (is_refresh_user_policy ? "user" : "device")
+            << " policy to Session Manager (Chrome policy, "
+            << num_extensions_to_store << " extensions). Deleting "
+            << num_extensions_to_delete << " stale extensions.";
+
+  scoped_refptr<ResponseTracker> response_tracker =
+      new ResponseTracker(is_refresh_user_policy, num_store_policy_calls,
+                          metrics_, std::move(timer), std::move(callback));
+
   // For double checking we counted the number of store calls right.
   int store_policy_call_count = 0;
 
   // Store the user or device policy.
   descriptor.set_domain(login_manager::POLICY_DOMAIN_CHROME);
   StoreSinglePolicy(descriptor, policy_type,
-                    gpo_policy_data->user_or_device_policy(), response_tracker);
+                    &gpo_policy_data->user_or_device_policy(),
+                    response_tracker);
   store_policy_call_count++;
 
   // Store extension policies.
   descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
-  for (int n = 0; n < num_extensions; ++n) {
+  for (int n = 0; n < num_extensions_to_store; ++n) {
     const protos::ExtensionPolicy& extension_policy =
         gpo_policy_data->extension_policies(n);
     descriptor.set_component_id(extension_policy.id());
     StoreSinglePolicy(descriptor, kChromeExtensionPolicyType,
-                      extension_policy.json_data(), response_tracker);
+                      &extension_policy.json_data(), response_tracker);
+    store_policy_call_count++;
+  }
+
+  // Remove policies for extensions that are no longer coming down from AD.
+  descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
+  for (const std::string& extension_id : extension_ids_to_delete) {
+    descriptor.set_component_id(extension_id);
+    StoreSinglePolicy(descriptor, kChromeExtensionPolicyType,
+                      nullptr /* policy_blob */, response_tracker);
     store_policy_call_count++;
   }
 
@@ -443,11 +479,18 @@ void AuthPolicy::StorePolicy(
 void AuthPolicy::StoreSinglePolicy(
     const PolicyDescriptor& descriptor,
     const char* policy_type,
-    const std::string& policy_blob,
+    const std::string* policy_blob,
     scoped_refptr<ResponseTracker> response_tracker) {
+  // Sending an empty response_blob deletes the policy.
+  if (!policy_blob) {
+    session_manager_client_->StoreUnsignedPolicyEx(
+        descriptor.SerializeAsString(), std::string() /* response_blob */,
+        base::Bind(&ResponseTracker::OnResponseFinished, response_tracker));
+    return;
+  }
   // Wrap up the policy in a PolicyFetchResponse.
   em::PolicyData policy_data;
-  policy_data.set_policy_value(policy_blob);
+  policy_data.set_policy_value(*policy_blob);
   policy_data.set_policy_type(policy_type);
   if (descriptor.account_type() == login_manager::ACCOUNT_TYPE_USER) {
     policy_data.set_username(samba_.GetUserPrincipal());
