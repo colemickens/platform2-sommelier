@@ -1721,6 +1721,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
   // Retrieval of policy without user session should not create a persistent
   // PolicyService.
   ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
+
+  // Make sure the policy service is deleted.
+  base::MessageLoop::current()->RunUntilIdle();
 }
 
 TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicyNoAccount) {

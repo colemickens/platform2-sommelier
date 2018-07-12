@@ -715,19 +715,8 @@ bool SessionManagerImpl::RetrievePolicyEx(
     return false;
   }
 
-  // Special case for SESSIONLESS_USER_POLICY, which has a different lifetime
-  // management than all other cases (unique_ptr vs plain ptr).
-  // TODO(crbug.com/771638): Clean this up when the bug is fixed and sessionless
-  // users are handled differently.
-  std::unique_ptr<PolicyService> policy_service_ptr;
-  PolicyService* policy_service;
-  if (descriptor.account_type() == ACCOUNT_TYPE_SESSIONLESS_USER) {
-    policy_service_ptr =
-        user_policy_factory_->CreateForHiddenUserHome(descriptor.account_id());
-    policy_service = policy_service_ptr.get();
-  } else {
-    policy_service = GetPolicyService(descriptor);
-  }
+  std::unique_ptr<PolicyService> storage;
+  PolicyService* policy_service = GetPolicyService(descriptor, &storage);
   if (!policy_service) {
     const std::string message =
         base::StringPrintf(kCannotGetPolicyServiceFormat,
@@ -763,7 +752,8 @@ bool SessionManagerImpl::ListStoredComponentPolicies(
     return false;
   }
 
-  PolicyService* policy_service = GetPolicyService(descriptor);
+  std::unique_ptr<PolicyService> storage;
+  PolicyService* policy_service = GetPolicyService(descriptor, &storage);
   if (!policy_service) {
     const std::string message =
         base::StringPrintf(kCannotGetPolicyServiceFormat,
@@ -1490,23 +1480,31 @@ brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
 }
 
 PolicyService* SessionManagerImpl::GetPolicyService(
-    const PolicyDescriptor& descriptor) {
+    const PolicyDescriptor& descriptor,
+    std::unique_ptr<PolicyService>* storage) {
+  DCHECK(storage);
   switch (descriptor.account_type()) {
-    case ACCOUNT_TYPE_DEVICE:
+    case ACCOUNT_TYPE_DEVICE: {
       return device_policy_.get();
+    }
     case ACCOUNT_TYPE_USER: {
       UserSessionMap::const_iterator it =
           user_sessions_.find(descriptor.account_id());
       return it != user_sessions_.end() ? it->second->policy_service.get()
                                         : nullptr;
     }
-    case ACCOUNT_TYPE_SESSIONLESS_USER:
-      // Descriptor validation should prevent this case.
-      NOTREACHED();
-      return nullptr;
-    case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
+    case ACCOUNT_TYPE_SESSIONLESS_USER: {
+      // Special case, different lifetime management than all other cases
+      // (unique_ptr vs plain ptr). TODO(crbug.com/771638): Clean this up when
+      // the bug is fixed and sessionless users are handled differently.
+      *storage = user_policy_factory_->CreateForHiddenUserHome(
+          descriptor.account_id());
+      return storage->get();
+    }
+    case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT: {
       return device_local_account_manager_->GetPolicyService(
           descriptor.account_id());
+    }
   }
 }
 
@@ -1548,7 +1546,8 @@ void SessionManagerImpl::StorePolicyInternalEx(
     return;
   }
 
-  PolicyService* policy_service = GetPolicyService(descriptor);
+  std::unique_ptr<PolicyService> storage;
+  PolicyService* policy_service = GetPolicyService(descriptor, &storage);
   if (!policy_service) {
     const std::string message =
         base::StringPrintf(kCannotGetPolicyServiceFormat,
