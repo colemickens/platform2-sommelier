@@ -201,42 +201,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceAutoUpdateP2PEnabled, kBool);
   EXPECT_EQ(kBool, policy.auto_update_settings().p2p_enabled());
 
-  EncodeStringList(&policy, key::kDeviceAutoUpdateTimeRestrictions,
-                   {R"({
-                         "start": {
-                           "day_of_week": "MONDAY",
-                           "time": 12840000
-                         },
-                         "end": {
-                           "day_of_week": "MONDAY",
-                           "time": 21720000
-                         }
-                       })",
-                    R"({
-                         "start": {
-                           "day_of_week": "FRIDAY",
-                           "time": 38640000
-                         },
-                         "end": {
-                           "day_of_week": "FRIDAY",
-                           "time": 57600000
-                         }
-                       })"});
-  const auto& auto_update_disallowed_intervals =
-      policy.auto_update_settings().disallowed_time_intervals();
-  EXPECT_EQ(2, auto_update_disallowed_intervals.size());
-  {
-    const auto& interval1 = auto_update_disallowed_intervals.Get(0);
-    const auto& interval2 = auto_update_disallowed_intervals.Get(1);
-    EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.start().day_of_week());
-    EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.end().day_of_week());
-    EXPECT_EQ(12840000, interval1.start().time());
-    EXPECT_EQ(21720000, interval1.end().time());
-    EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.start().day_of_week());
-    EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.end().day_of_week());
-    EXPECT_EQ(38640000, interval2.start().time());
-    EXPECT_EQ(57600000, interval2.end().time());
-  }
+  EncodeString(&policy, key::kDeviceAutoUpdateTimeRestrictions, kString);
+  EXPECT_EQ(kString, policy.auto_update_settings().disallowed_time_intervals());
+
+  // key::kDeviceUpdateStagingPercentOfFleetPerWeek is an int list (which we
+  // don't support right now), but it's going to change to a string. Ignore for
+  // now.
+  MarkHandled(key::kDeviceUpdateStagingPercentOfFleetPerWeek);
 
   //
   // Accessibility policies.

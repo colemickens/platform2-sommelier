@@ -305,26 +305,14 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
   EncodeBoolean(key::kDeviceAutoUpdateP2PEnabled, [policy](bool value) {
     policy->mutable_auto_update_settings()->set_p2p_enabled(value);
   });
-  EncodeStringList(
+  EncodeString(
       key::kDeviceAutoUpdateTimeRestrictions,
-      [policy](const std::vector<std::string>& values) {
-        auto proto = policy->mutable_auto_update_settings();
-        proto->clear_disallowed_time_intervals();
-        for (const std::string& value : values) {
-          std::string error;
-          std::unique_ptr<base::DictionaryValue> dict_value =
-              JsonToDictionary(value, &error);
-          if (!dict_value ||
-              !EncodeWeeklyTimeIntervalProto(
-                  *dict_value, proto->add_disallowed_time_intervals())) {
-            LOG(ERROR) << "Invalid JSON string '"
-                       << (!error.empty() ? error : value) << "' for policy '"
-                       << key::kDeviceAutoUpdateTimeRestrictions
-                       << "', ignoring.";
-            continue;
-          }
-        }
+      [policy](const std::string& value) {
+        policy->mutable_auto_update_settings()->set_disallowed_time_intervals(
+            value);
       });
+  // kDeviceUpdateStagingPercentOfFleetPerWeek is going to change to a string,
+  // ignore it for now.
 }
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
