@@ -74,6 +74,13 @@
     {
       'target_name': 'crash_sender',
       'type': 'executable',
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+          'libminijail',
+        ],
+      },
       'sources': [
         'crash_sender.cc',
       ],

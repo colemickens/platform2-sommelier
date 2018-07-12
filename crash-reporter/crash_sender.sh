@@ -778,19 +778,6 @@ main() {
   done
 }
 
-# If we aren't sandboxed yet, do so now.
-if ! grep -q '^NoNewPrivs:.*1$' /proc/$$/status; then
-  # We currently need to run as root:
-  # - System crash reports in /var/spool/crash are owned by root.
-  # - User crash reports in /home/chronos/ are owned by chronos.
-  # We keep CAP_DAC_OVERRIDE in order to access non-root paths.
-  # We use --ambient because crash_sender is a shell script and we run `rm`.
-  # We need network access in order to upload things.
-  # We don't use -i as the scheduler waits for the first process to exit.
-  exec /sbin/minijail0 -c 0x2 --ambient -n -l -p -r -v -t --uts -- \
-    /sbin/crash_sender.sh "$@"
-fi
-
 (
 if ! flock -n 9; then
   lecho "Already running; quitting."
