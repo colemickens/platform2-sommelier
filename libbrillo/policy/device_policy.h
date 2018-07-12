@@ -9,6 +9,7 @@
 
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
@@ -50,6 +51,15 @@ class DevicePolicy {
     base::TimeDelta start_time;
     int end_day_of_week;
     base::TimeDelta end_time;
+  };
+
+  // Identifies a <day, percentage> pair in a staging schedule.
+  struct DayPercentagePair {
+    bool operator==(const DayPercentagePair& other) const {
+      return days == other.days && percentage == other.percentage;
+    }
+    int days;
+    int percentage;
   };
 
   DevicePolicy();
@@ -202,15 +212,17 @@ class DevicePolicy {
   virtual bool GetDisallowedTimeIntervals(
       std::vector<WeeklyTimeInterval>* intervals_out) const = 0;
 
-  // Writes the value of the DeviceUpdateStagingPercentOfFleetPerWeek policy to
+  // Writes the value of the DeviceUpdateStagingSchedule policy to
   // |staging_schedule_out|. Returns true on success.
-  // Values are expected to be mononically increasing in the range of [0, 100].
-  // Each value describes the percentage of the fleet that is expected to
-  // receive an update per week, e.g. [5, 20, 30, 100] means that 5% of devices
-  // should be updated in the first week, 20% should be updated in the second
-  // week, and so on.
+  // The schedule is a list of <days, percentage> pairs. The percentages are
+  // expected to be mononically increasing in the range of [1, 100]. Similarly,
+  // days are expected to be monotonically increasing in the range [1, 28]. Each
+  // pair describes the |percentage| of the fleet that is expected to receive an
+  // update after |days| days after an update was discovered. e.g. [<4, 30>, <8,
+  // 100>] means that 30% of devices should be updated in the first 4 days, and
+  // then 100% should be updated after 8 days.
   virtual bool GetDeviceUpdateStagingSchedule(
-      std::vector<int> *staging_schedule_out) const = 0;
+      std::vector<DayPercentagePair>* staging_schedule_out) const = 0;
 
  private:
   // Verifies that the policy signature is correct.

@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
+#include <string>
 
 #include <base/containers/adapters.h>
 #include <base/files/file_util.h>
@@ -17,9 +19,6 @@
 #include <base/values.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
-
-#include <set>
-#include <string>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
@@ -144,6 +143,28 @@ bool DecodeWeeklyTimeFromValue(const base::DictionaryValue& dict_value,
   *time_out =
       base::TimeDelta::FromMinutes(minutes) + base::TimeDelta::FromHours(hours);
   return true;
+}
+
+std::unique_ptr<base::ListValue> DecodeListValueFromJSON(
+    const std::string& json_string) {
+  std::string error;
+  std::unique_ptr<base::Value> decoded_json =
+      base::JSONReader::ReadAndReturnError(json_string,
+                                           base::JSON_ALLOW_TRAILING_COMMAS,
+                                           nullptr, &error);
+  if (!decoded_json) {
+    LOG(ERROR) << "Invalid JSON string: " << error;
+    return nullptr;
+  }
+
+  std::unique_ptr<base::ListValue> list_val =
+      base::ListValue::From(std::move(decoded_json));
+  if (!list_val) {
+    LOG(ERROR) << "JSON string is not a list";
+    return nullptr;
+  }
+
+  return list_val;
 }
 
 }  // namespace
@@ -503,20 +524,34 @@ bool DevicePolicyImpl::GetUsbDetachableWhitelist(
 }
 
 bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
-    std::vector<int> *staging_schedule_out) const {
+    std::vector<DayPercentagePair>* staging_schedule_out) const {
+  staging_schedule_out->clear();
+
   if (!device_policy_.has_auto_update_settings())
     return false;
 
   const em::AutoUpdateSettingsProto &proto =
       device_policy_.auto_update_settings();
 
-  if (proto.staging_percent_of_fleet_per_week_size() == 0)
+  if (!proto.has_staging_schedule())
     return false;
 
-  for (int i = 0; i < proto.staging_percent_of_fleet_per_week_size(); i++) {
-    // Limit the percentage to [0, 100]
-    staging_schedule_out->push_back(
-        std::max(std::min(proto.staging_percent_of_fleet_per_week(i), 100), 0));
+  std::unique_ptr<base::ListValue> list_val =
+      DecodeListValueFromJSON(proto.staging_schedule());
+  if (!list_val)
+    return false;
+
+  for (base::Value* const& pair_value : *list_val) {
+    base::DictionaryValue* day_percentage_pair;
+    if (!pair_value->GetAsDictionary(&day_percentage_pair))
+      return false;
+    int days, percentage;
+    if (!day_percentage_pair->GetInteger("days", &days) ||
+        !day_percentage_pair->GetInteger("percentage", &percentage))
+      return false;
+    // Limit the percentage to [0, 100] and days to [1, 28];
+    staging_schedule_out->push_back({std::max(std::min(days, 28), 1),
+                                     std::max(std::min(percentage, 100), 0)});
   }
 
   return true;
@@ -580,6 +615,8 @@ bool DevicePolicyImpl::GetSecondFactorAuthenticationMode(int* mode_out) const {
 
 bool DevicePolicyImpl::GetDisallowedTimeIntervals(
     std::vector<WeeklyTimeInterval>* intervals_out) const {
+  intervals_out->clear();
+
   if (!device_policy_.has_auto_update_settings()) {
     return false;
   }
@@ -591,27 +628,12 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
     return false;
   }
 
-  // Decode the JSON string
-  std::string error;
-  std::unique_ptr<base::Value> decoded_json =
-      base::JSONReader::ReadAndReturnError(proto.disallowed_time_intervals(),
-                                           base::JSON_ALLOW_TRAILING_COMMAS,
-                                           NULL, &error);
-  if (!decoded_json) {
-    LOG(ERROR) << "Invalid JSON string " << error;
-    return false;
-  }
-
   std::unique_ptr<base::ListValue> list_val =
-      base::ListValue::From(std::move(decoded_json));
-  if (!list_val) {
-    LOG(ERROR) << "JSON string is not a list";
+      DecodeListValueFromJSON(proto.disallowed_time_intervals());
+  if (!list_val)
     return false;
-  }
 
-  intervals_out->clear();
-
-  for (const auto& interval_value : *list_val) {
+  for (base::Value* const& interval_value : *list_val) {
     base::DictionaryValue* interval_dict;
     if (!interval_value->GetAsDictionary(&interval_dict)) {
       LOG(ERROR) << "Invalid JSON string given. Interval is not a dict.";

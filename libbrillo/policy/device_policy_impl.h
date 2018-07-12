@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -81,7 +82,7 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetDisallowedTimeIntervals(
       std::vector<WeeklyTimeInterval>* intervals_out) const override;
   bool GetDeviceUpdateStagingSchedule(
-      std::vector<int> *staging_schedule_out) const override;
+      std::vector<DayPercentagePair> *staging_schedule_out) const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(
