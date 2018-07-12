@@ -44,7 +44,7 @@ void Lpd::Authenticate() {
 
 void Lpd::OnOpenLogicalChannel(const Lpd::SuccessCallback& success_callback,
                                const std::vector<uint8_t>&) {
-  esim_->GetInfo(kEsimInfo1,
+  esim_->GetInfo(kEsimInfo1Tag,
                  base::Bind(&Lpd::OnEsimInfoResult, base::Unretained(this),
                             success_callback),
                  esim_error_handler_);
