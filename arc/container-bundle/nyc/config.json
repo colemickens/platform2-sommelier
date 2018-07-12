@@ -95,7 +95,9 @@
 			"type": "bind",
 			"source": "rootfs/root/dev/pts/ptmx",
 			"options": [
-				"bind"
+				"bind",
+				"rw",
+				"dev"
 			]
 		},
 		{
