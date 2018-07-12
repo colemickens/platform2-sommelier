@@ -19,6 +19,7 @@
     'variables': {
       'deps': [
         'dbus-1',
+        'libtirpc',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
       ],
