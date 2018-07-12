@@ -124,12 +124,6 @@ constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
 
 namespace {
 
-// Error message emitted when parsing a PolicyDescriptor proto fails.
-constexpr char kDescriptorParsingFailed[] = "PolicyDescriptor parsing failed.";
-
-// Error message emitted when encountering an invalid PolicyDescriptor.
-constexpr char kDescriptorInvalid[] = "PolicyDescriptor invalid.";
-
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 
@@ -169,8 +163,6 @@ constexpr char kTPMFirmwareUpdateModePreserveStateful[] = "preserve_stateful";
 
 // Policy storage constants.
 constexpr char kEmptyAccountId[] = "";
-constexpr char kCannotGetPolicyServiceFormat[] =
-    "Cannot get policy service for account type %i";
 constexpr char kSigEncodeFailMessage[] = "Failed to retrieve policy data.";
 
 const char* ToSuccessSignal(bool success) {
@@ -198,6 +190,31 @@ std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
   descriptor.set_account_id(account_id);
   descriptor.set_domain(POLICY_DOMAIN_CHROME);
   return StringToBlob(descriptor.SerializeAsString());
+}
+
+// Parses |descriptor_blob| into |descriptor| and validates it assuming the
+// given |usage|. Returns true and sets |descriptor| on success. Returns false
+// and sets |error| on failure.
+bool ParseAndValidatePolicyDescriptor(
+    const std::vector<uint8_t>& descriptor_blob,
+    PolicyDescriptorUsage usage,
+    PolicyDescriptor* descriptor,
+    brillo::ErrorPtr* error) {
+  DCHECK(descriptor);
+  DCHECK(error);
+  if (!descriptor->ParseFromArray(descriptor_blob.data(),
+                                  descriptor_blob.size())) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS,
+                         "PolicyDescriptor parsing failed.");
+    return false;
+  }
+
+  if (!ValidatePolicyDescriptor(*descriptor, usage)) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS, "PolicyDescriptor invalid.");
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace
@@ -705,26 +722,16 @@ bool SessionManagerImpl::RetrievePolicyEx(
     const std::vector<uint8_t>& in_descriptor_blob,
     std::vector<uint8_t>* out_policy_blob) {
   PolicyDescriptor descriptor;
-  if (!descriptor.ParseFromArray(in_descriptor_blob.data(),
-                                 in_descriptor_blob.size())) {
-    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
-    return false;
-  }
-  if (!ValidatePolicyDescriptor(descriptor, PolicyDescriptorUsage::kRetrieve)) {
-    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorInvalid);
+  if (!ParseAndValidatePolicyDescriptor(in_descriptor_blob,
+                                        PolicyDescriptorUsage::kRetrieve,
+                                        &descriptor, error)) {
     return false;
   }
 
   std::unique_ptr<PolicyService> storage;
-  PolicyService* policy_service = GetPolicyService(descriptor, &storage);
-  if (!policy_service) {
-    const std::string message =
-        base::StringPrintf(kCannotGetPolicyServiceFormat,
-                           static_cast<int>(descriptor.account_type()));
-    LOG(ERROR) << message;
-    *error = CreateError(dbus_error::kGetServiceFail, message);
+  PolicyService* policy_service = GetPolicyService(descriptor, &storage, error);
+  if (!policy_service)
     return false;
-  }
 
   PolicyNamespace ns(descriptor.domain(), descriptor.component_id());
 
@@ -741,27 +748,16 @@ bool SessionManagerImpl::ListStoredComponentPolicies(
     const std::vector<uint8_t>& in_descriptor_blob,
     std::vector<std::string>* out_component_ids) {
   PolicyDescriptor descriptor;
-  if (!descriptor.ParseFromArray(in_descriptor_blob.data(),
-                                 in_descriptor_blob.size())) {
-    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
-    return false;
-  }
-
-  if (!ValidatePolicyDescriptor(descriptor, PolicyDescriptorUsage::kList)) {
-    *error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorInvalid);
+  if (!ParseAndValidatePolicyDescriptor(in_descriptor_blob,
+                                        PolicyDescriptorUsage::kList,
+                                        &descriptor, error)) {
     return false;
   }
 
   std::unique_ptr<PolicyService> storage;
-  PolicyService* policy_service = GetPolicyService(descriptor, &storage);
-  if (!policy_service) {
-    const std::string message =
-        base::StringPrintf(kCannotGetPolicyServiceFormat,
-                           static_cast<int>(descriptor.account_type()));
-    LOG(ERROR) << message;
-    *error = CreateError(dbus_error::kGetServiceFail, message);
+  PolicyService* policy_service = GetPolicyService(descriptor, &storage, error);
+  if (!policy_service)
     return false;
-  }
 
   *out_component_ids = policy_service->ListComponentIds(descriptor.domain());
   return true;
@@ -1481,17 +1477,23 @@ brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
 
 PolicyService* SessionManagerImpl::GetPolicyService(
     const PolicyDescriptor& descriptor,
-    std::unique_ptr<PolicyService>* storage) {
+    std::unique_ptr<PolicyService>* storage,
+    brillo::ErrorPtr* error) {
   DCHECK(storage);
+  DCHECK(error);
+  PolicyService* policy_service = nullptr;
   switch (descriptor.account_type()) {
     case ACCOUNT_TYPE_DEVICE: {
-      return device_policy_.get();
+      policy_service = device_policy_.get();
+      break;
     }
     case ACCOUNT_TYPE_USER: {
       UserSessionMap::const_iterator it =
           user_sessions_.find(descriptor.account_id());
-      return it != user_sessions_.end() ? it->second->policy_service.get()
-                                        : nullptr;
+      policy_service = it != user_sessions_.end()
+                           ? it->second->policy_service.get()
+                           : nullptr;
+      break;
     }
     case ACCOUNT_TYPE_SESSIONLESS_USER: {
       // Special case, different lifetime management than all other cases
@@ -1499,13 +1501,25 @@ PolicyService* SessionManagerImpl::GetPolicyService(
       // the bug is fixed and sessionless users are handled differently.
       *storage = user_policy_factory_->CreateForHiddenUserHome(
           descriptor.account_id());
-      return storage->get();
+      policy_service = storage->get();
+      break;
     }
     case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT: {
-      return device_local_account_manager_->GetPolicyService(
+      policy_service = device_local_account_manager_->GetPolicyService(
           descriptor.account_id());
+      break;
     }
   }
+  if (policy_service)
+    return policy_service;
+
+  // Error case
+  const std::string message =
+      base::StringPrintf("Cannot get policy service for account type %i",
+                         static_cast<int>(descriptor.account_type()));
+  LOG(ERROR) << message;
+  *error = CreateError(dbus_error::kGetServiceFail, message);
+  return nullptr;
 }
 
 int SessionManagerImpl::GetKeyInstallFlags(const PolicyDescriptor& descriptor) {
@@ -1533,27 +1547,19 @@ void SessionManagerImpl::StorePolicyInternalEx(
     const std::vector<uint8_t>& policy_blob,
     SignatureCheck signature_check,
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  brillo::ErrorPtr error;
   PolicyDescriptor descriptor;
-  if (!descriptor.ParseFromArray(descriptor_blob.data(),
-                                 descriptor_blob.size())) {
-    auto error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorParsingFailed);
-    response->ReplyWithError(error.get());
-    return;
-  }
-  if (!ValidatePolicyDescriptor(descriptor, PolicyDescriptorUsage::kStore)) {
-    auto error = CreateError(DBUS_ERROR_INVALID_ARGS, kDescriptorInvalid);
+  if (!ParseAndValidatePolicyDescriptor(descriptor_blob,
+                                        PolicyDescriptorUsage::kStore,
+                                        &descriptor, &error)) {
     response->ReplyWithError(error.get());
     return;
   }
 
   std::unique_ptr<PolicyService> storage;
-  PolicyService* policy_service = GetPolicyService(descriptor, &storage);
+  PolicyService* policy_service =
+      GetPolicyService(descriptor, &storage, &error);
   if (!policy_service) {
-    const std::string message =
-        base::StringPrintf(kCannotGetPolicyServiceFormat,
-                           static_cast<int>(descriptor.account_type()));
-    LOG(ERROR) << message;
-    auto error = CreateError(dbus_error::kGetServiceFail, message);
     response->ReplyWithError(error.get());
     return;
   }
