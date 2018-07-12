@@ -182,6 +182,23 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
     // Loopback devices have to be mounted outside.
     bool mount_in_ns = !mount.performInIntermediateNamespace && !loopback;
 
+    // Bind-mounts cannot adjust the mount flags in the same call to mount(2),
+    // so in order to do so, an explicit remount is needed. In order to avoid
+    // clobbering unnecessary flags, we try to grab them from the closest
+    // original mount point.
+    int original_flags = 0;
+    if (!new_mount) {
+      for (const auto& mountpoint : mountpoints) {
+        if (!base::StartsWith(source.value(), mountpoint.path.value(),
+                              base::CompareCase::SENSITIVE)) {
+          continue;
+        }
+        original_flags = mountpoint.mountflags;
+        break;
+      }
+    }
+    int new_flags = (original_flags & ~negated_mount_flags) | mount_flags;
+
     if (new_mount) {
       // This is a brand new mount. We pass in all the arguments that were
       // provided in the config.
@@ -194,12 +211,14 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
           mount_flags, uid, gid, 0750, mount_in_ns, true /* create */,
           loopback);
     } else if (bind_mount_flags) {
-      // Bind-mounts only get the MS_BIND and maybe MS_REC mount flags.
+      // Bind-mounts only get the MS_BIND and maybe MS_REC|MS_RDONLY mount
+      // flags.
       container_config_add_mount(
           config_out, "mount", source.value().c_str(),
           mount.destination.value().c_str(), mount.type.c_str(),
-          nullptr /* options */, nullptr /* verity_options */, bind_mount_flags,
-          uid, gid, 0750, mount_in_ns, true /* create */, false /* loopback */);
+          nullptr /* options */, nullptr /* verity_options */,
+          bind_mount_flags | (new_flags & MS_RDONLY), uid, gid, 0750,
+          mount_in_ns, true /* create */, false /* loopback */);
     }
     if (mount_propagation_flags) {
       // Mount propagation flags need to be updated separately from the original
@@ -211,36 +230,18 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
           mount_propagation_flags, uid, gid, 0750, mount_in_ns,
           false /* create */, false /* loopback */);
     }
-    if (!new_mount && (mount_flags | negated_mount_flags)) {
-      // Bind-mounts cannot adjust the mount flags in the same call to mount(2),
-      // so in order to do so, an explicit remount is needed. In order to avoid
-      // clobbering unnecessary flags, we try to grab them from the closest
-      // original mount point.
-      int original_flags = 0;
-      for (const auto& mountpoint : mountpoints) {
-        if (!base::StartsWith(source.value(), mountpoint.path.value(),
-                              base::CompareCase::SENSITIVE)) {
-          continue;
-        }
-        original_flags = mountpoint.mountflags;
-        break;
-      }
-      int new_flags = (original_flags & ~negated_mount_flags) | mount_flags;
-      if (new_flags != original_flags) {
-        if ((mount_flags | negated_mount_flags) == MS_RDONLY) {
-          // The only thing that is changing is the read-only flag. The kernel
-          // allows just changing this flag if we pass both MS_REMOUNT and
-          // MS_BIND, even within user namespaces.
-          new_flags |= MS_REMOUNT | MS_BIND;
-        } else {
-          new_flags |= MS_REMOUNT;
-        }
-        container_config_add_mount(
-            config_out, "mount", "" /* source */,
-            mount.destination.value().c_str(), "" /* type */,
-            nullptr /* options */, nullptr /* verity_options */, new_flags, uid,
-            gid, 0750, mount_in_ns, false /* create */, false /* loopback */);
-      }
+    if (!new_mount && new_flags != original_flags) {
+      // Adding MS_BIND to the MS_REMOUNT will make the kernel apply the new
+      // flags to the mount itself and not the superblock. This makes the
+      // operation work in unprivileged user namespaces, since the container is
+      // only allowed to modify its copy of the mount and not the underlying
+      // superblock.
+      new_flags |= MS_REMOUNT | MS_BIND;
+      container_config_add_mount(
+          config_out, "mount", "" /* source */,
+          mount.destination.value().c_str(), "" /* type */,
+          nullptr /* options */, nullptr /* verity_options */, new_flags, uid,
+          gid, 0750, mount_in_ns, false /* create */, false /* loopback */);
     }
   }
 }
