@@ -41,6 +41,7 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'll_address_unittest.cc',
             'nd_msg_unittest.cc',
           ],
         },
