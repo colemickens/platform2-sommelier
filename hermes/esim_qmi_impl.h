@@ -10,13 +10,14 @@
 #include <memory>
 
 #include <base/files/scoped_file.h>
+#include <base/message_loop/message_loop.h>
 
 #include "hermes/esim.h"
 #include "hermes/qmi_constants.h"
 
 namespace hermes {
 
-class EsimQmiImpl : public Esim {
+class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
  public:
   static std::unique_ptr<EsimQmiImpl> Create();
   static std::unique_ptr<EsimQmiImpl> CreateForTest(base::ScopedFD* sock);
@@ -56,9 +57,18 @@ class EsimQmiImpl : public Esim {
                        const DataCallback& callback,
                        const ErrorCallback& error_callback) const;
 
+  // base::MessageLoopForIO::Watcher overrides.
+  void OnFileCanReadWithoutBlocking(int fd) override;
+  void OnFileCanWriteWithoutBlocking(int fd) override;
+
+  // FileDescriptorWatcher to watch the QRTR socket for reads.
+  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+
   // The slot that the logical channel to the eSIM will be made. Initialized in
   // constructor, hardware specific.
   uint8_t slot_;
+
+  DataBlob buffer_;
 
   // ScopedFD to hold the qrtr socket file descriptor returned by qrtr_open.
   // Initialized in Create or CreateForTest, which will be passed to the

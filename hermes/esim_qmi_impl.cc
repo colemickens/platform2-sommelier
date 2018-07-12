@@ -29,7 +29,11 @@ bool CreateSocketPair(base::ScopedFD* one, base::ScopedFD* two) {
 namespace hermes {
 
 EsimQmiImpl::EsimQmiImpl(const uint8_t slot, base::ScopedFD fd)
-    : slot_(slot), qrtr_socket_fd_(std::move(fd)), weak_factory_(this) {}
+    : watcher_(FROM_HERE),
+      slot_(slot),
+      buffer_(4096),
+      qrtr_socket_fd_(std::move(fd)),
+      weak_factory_(this) {}
 
 void EsimQmiImpl::Initialize(const DataCallback& data_callback,
                              const ErrorCallback& error_callback) {
@@ -145,6 +149,42 @@ void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
                                   const DataCallback& data_callback,
                                   const ErrorCallback& error_callback) const {
   SendEsimMessage(command, DataBlob(), data_callback, error_callback);
+}
+
+void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
+  DCHECK_EQ(qrtr_socket_fd_.get(), fd);
+
+  uint32_t node, port;
+
+  int bytes_received =
+      qrtr_recvfrom(qrtr_socket_fd_.get(), buffer_.data(), buffer_.size(),
+                    &node, &port);
+  if (bytes_received < 0) {
+    LOG(ERROR) << "qrtr_recvfrom failed";
+    return;
+  }
+
+  sockaddr_qrtr qrtr_sock;
+  qrtr_sock.sq_family = AF_QIPCRTR;
+  qrtr_sock.sq_node = node;
+  qrtr_sock.sq_port = port;
+
+  qrtr_packet pkt;
+  int ret = qrtr_decode(&pkt, buffer_.data(), bytes_received, &qrtr_sock);
+  if (ret < 0) {
+    LOG(ERROR) << "qrtr_decode failed";
+    return;
+  }
+
+  if (pkt.data_len == 0) {
+    return;
+  }
+
+  // TODO(jruthe): parse qrtr packet into different responses
+}
+
+void EsimQmiImpl::OnFileCanWriteWithoutBlocking(int fd) {
+  NOTREACHED();
 }
 
 }  // namespace hermes

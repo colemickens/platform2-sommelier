@@ -8,6 +8,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 
 #include "hermes/esim_qmi_impl.h"
 #include "hermes/lpd.h"
@@ -18,16 +19,14 @@ void ErrorCallback(hermes::LpdError error) {}
 
 void SuccessCallback() {}
 
-void InitCallback(const std::vector<uint8_t>& data) {}
-
 void InitError(hermes::EsimError error) {}
 
 int main(int argc, char** argv) {
-  base::MessageLoop message_loop;
+  base::MessageLoop message_loop(base::MessageLoop::TYPE_IO);
   auto esim = hermes::EsimQmiImpl::Create();
-  esim->Initialize(base::Bind(&InitCallback), base::Bind(&InitError));
   hermes::Lpd lpd(std::move(esim), std::make_unique<hermes::SmdpFiImpl>());
   lpd.InstallProfile(base::Bind(&SuccessCallback), base::Bind(&ErrorCallback));
+  base::RunLoop().Run();
 
   return EXIT_SUCCESS;
 }
