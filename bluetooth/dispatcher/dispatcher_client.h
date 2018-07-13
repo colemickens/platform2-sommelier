@@ -5,11 +5,13 @@
 #ifndef BLUETOOTH_DISPATCHER_DISPATCHER_CLIENT_H_
 #define BLUETOOTH_DISPATCHER_DISPATCHER_CLIENT_H_
 
+#include <memory>
 #include <string>
 
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
 
+#include "bluetooth/dispatcher/catch_all_forwarder.h"
 #include "bluetooth/dispatcher/dbus_connection_factory.h"
 
 namespace bluetooth {
@@ -30,6 +32,9 @@ class DispatcherClient {
   // Registers a listener to be notified when this client becomes unavailable
   // (disconnected from D-Bus). This should be called only once.
   void WatchClientUnavailable(const base::Closure& client_unavailable_callback);
+
+  // Starts "upward forwarding": forwarding method calls from server to client.
+  void StartUpwardForwarding();
 
  private:
   // Accepts matched messages from D-Bus daemon, relays it to |HandleMessage|.
@@ -56,6 +61,8 @@ class DispatcherClient {
 
   // Callback to call when the client becomes unavailable.
   base::Closure client_unavailable_callback_;
+
+  std::unique_ptr<CatchAllForwarder> catch_all_forwarder_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

@@ -29,6 +29,7 @@ DispatcherClient* ClientManager::EnsureClientAdded(
   VLOG(1) << "Adding new client " << client_address;
   auto client = std::make_unique<DispatcherClient>(
       bus_, client_address, dbus_connection_factory_.get());
+  client->StartUpwardForwarding();
   client->WatchClientUnavailable(base::Bind(&ClientManager::OnClientUnavailable,
                                             weak_ptr_factory_.GetWeakPtr(),
                                             client_address));

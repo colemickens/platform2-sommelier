@@ -32,6 +32,7 @@
       'type': 'static_library',
       'sources': [
         'dispatcher/bluez_interface_handler.cc',
+        'dispatcher/catch_all_forwarder.cc',
         'dispatcher/client_manager.cc',
         'dispatcher/dbus_connection_factory.cc',
         'dispatcher/dbus_util.cc',
@@ -88,6 +89,7 @@
           'sources': [
             'common/exported_object_manager_wrapper_unittest.cc',
             'common/property_unittest.cc',
+            'dispatcher/catch_all_forwarder_unittest.cc',
             'dispatcher/dispatcher_client_unittest.cc',
             'dispatcher/dispatcher_unittest.cc',
             'dispatcher/impersonation_object_manager_interface_unittest.cc',

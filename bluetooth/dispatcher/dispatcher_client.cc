@@ -100,6 +100,15 @@ void DispatcherClient::WatchClientUnavailable(
                << ": " << error.message();
 }
 
+void DispatcherClient::StartUpwardForwarding() {
+  if (catch_all_forwarder_)
+    return;
+
+  catch_all_forwarder_ = std::make_unique<CatchAllForwarder>(
+      GetClientBus(), bus_, client_address_);
+  catch_all_forwarder_->Init();
+}
+
 DBusHandlerResult DispatcherClient::HandleMessageThunk(
     DBusConnection* connection, DBusMessage* raw_message, void* user_data) {
   DispatcherClient* self = reinterpret_cast<DispatcherClient*>(user_data);
