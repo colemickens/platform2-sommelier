@@ -19,6 +19,7 @@
 #include <dbus/property.h>
 #include <gtest/gtest.h>
 
+#include "bluetooth/dispatcher/client_manager.h"
 #include "bluetooth/dispatcher/mock_dbus_connection_factory.h"
 
 using ::testing::_;
@@ -83,7 +84,11 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
  public:
   void SetUp() override {
     bus_ = new dbus::MockBus(dbus::Bus::Options());
-    dbus_connection_factory_ = std::make_unique<MockDBusConnectionFactory>();
+    auto dbus_connection_factory =
+        std::make_unique<MockDBusConnectionFactory>();
+    dbus_connection_factory_ = dbus_connection_factory.get();
+    client_manager_ = std::make_unique<ClientManager>(
+        bus_, std::move(dbus_connection_factory));
     EXPECT_CALL(*bus_, GetDBusTaskRunner())
         .Times(1)
         .WillOnce(Return(message_loop_.task_runner().get()));
@@ -295,7 +300,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
   std::unique_ptr<ExportedObjectManagerWrapper>
       exported_object_manager_wrapper_;
   brillo::dbus_utils::MockExportedObjectManager* exported_object_manager_;
-  std::unique_ptr<MockDBusConnectionFactory> dbus_connection_factory_;
+  std::unique_ptr<ClientManager> client_manager_;
+  MockDBusConnectionFactory* dbus_connection_factory_;
   dbus::ExportedObject::MethodCallCallback dummy_method_handler_;
 };
 
@@ -308,7 +314,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
-          dbus_connection_factory_.get());
+          client_manager_.get());
 
   scoped_refptr<dbus::MockExportedObject> exported_object1 =
       new dbus::MockExportedObject(bus_.get(), object_path1);
@@ -402,12 +408,12 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
-          dbus_connection_factory_.get());
+          client_manager_.get());
   auto impersonation_om_interface2 =
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName2,
-          dbus_connection_factory_.get());
+          client_manager_.get());
 
   // D-Bus properties methods should be exported.
   ExpectExportPropertiesMethods(exported_object.get());
@@ -491,7 +497,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
-          dbus_connection_factory_.get());
+          client_manager_.get());
 
   // ObjectAdded event happens before CreateProperties. This shouldn't happen.
   // Make sure we only ignore the event and don't crash if this happens.
@@ -560,7 +566,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
-          dbus_connection_factory_.get());
+          client_manager_.get());
   EXPECT_CALL(*object_manager_, RegisterInterface(kTestInterfaceName1, _));
   impersonation_om_interface->RegisterToObjectManager(object_manager_.get(),
                                                       kTestServiceName);
@@ -614,7 +620,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MethodHandler) {
       std::make_unique<ImpersonationObjectManagerInterface>(
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
-          dbus_connection_factory_.get());
+          client_manager_.get());
   EXPECT_CALL(*object_manager_, RegisterInterface(kTestInterfaceName1, _));
   impersonation_om_interface->RegisterToObjectManager(object_manager_.get(),
                                                       kTestServiceName);

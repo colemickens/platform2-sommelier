@@ -12,6 +12,7 @@
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/object_manager.h>
 
+#include "bluetooth/dispatcher/client_manager.h"
 #include "bluetooth/dispatcher/impersonation_object_manager_interface.h"
 
 namespace bluetooth {
@@ -57,7 +58,7 @@ class Dispatcher {
   std::map<std::string, std::unique_ptr<ImpersonationObjectManagerInterface>>
       impersonation_object_manager_interfaces_;
 
-  std::unique_ptr<DBusConnectionFactory> dbus_connection_factory_;
+  std::unique_ptr<ClientManager> client_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Dispatcher);
 };

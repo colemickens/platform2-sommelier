@@ -16,7 +16,8 @@ namespace bluetooth {
 
 Dispatcher::Dispatcher(scoped_refptr<dbus::Bus> bus)
     : bus_(bus),
-      dbus_connection_factory_(std::make_unique<DBusConnectionFactory>()) {}
+      client_manager_(std::make_unique<ClientManager>(
+          bus, std::make_unique<DBusConnectionFactory>())) {}
 
 Dispatcher::~Dispatcher() = default;
 
@@ -85,7 +86,7 @@ bool Dispatcher::Init(PassthroughMode mode) {
     std::string interface_name = kv.first;
     auto interface = std::make_unique<ImpersonationObjectManagerInterface>(
         bus_.get(), exported_object_manager_wrapper_.get(),
-        std::move(kv.second), interface_name, dbus_connection_factory_.get());
+        std::move(kv.second), interface_name, client_manager_.get());
     interface->RegisterToObjectManager(source_object_manager_,
                                        object_manager_service_name);
     impersonation_object_manager_interfaces_.emplace(interface_name,

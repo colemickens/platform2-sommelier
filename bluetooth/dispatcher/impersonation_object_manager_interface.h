@@ -17,6 +17,7 @@
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/common/property.h"
+#include "bluetooth/dispatcher/client_manager.h"
 #include "bluetooth/dispatcher/dispatcher_client.h"
 #include "bluetooth/dispatcher/object_manager_interface_multiplexer.h"
 
@@ -50,13 +51,13 @@ class ImpersonationObjectManagerInterface
  public:
   // Doesn't own |object_manager| and |exported_object_manager_wrapper|, so
   // clients should make sure that those pointers outlive this object.
-  // |dbus_connection_factory| is not owned, must outlive this object.
+  // |client_manager| is not owned, must outlive this object.
   ImpersonationObjectManagerInterface(
       const scoped_refptr<dbus::Bus>& bus,
       ExportedObjectManagerWrapper* exported_object_manager_wrapper,
       std::unique_ptr<InterfaceHandler> interface_handler,
       const std::string& interface_name,
-      DBusConnectionFactory* dbus_connection_factory);
+      ClientManager* client_manager);
 
   // CreateProperties, ObjectAdded, and ObjectRemoved are
   // ObjectManagerInterfaceMultiplexer overrides.
@@ -109,12 +110,6 @@ class ImpersonationObjectManagerInterface
       brillo::dbus_utils::DBusInterface* prop_interface,
       brillo::dbus_utils::ExportedPropertySet* property_set);
 
-  // Adds a new DispatcherClient for address |client_address| if not yet added.
-  DispatcherClient* EnsureClientAdded(const std::string& client_address);
-
-  // Called when a client is disconnected from D-Bus.
-  void OnClientUnavailable(const std::string& client_address);
-
   scoped_refptr<dbus::Bus> bus_;
 
   // The destination object manager that impersonates the source.
@@ -123,12 +118,8 @@ class ImpersonationObjectManagerInterface
   // Defines what properties are to be impersonated.
   std::unique_ptr<InterfaceHandler> interface_handler_;
 
-  // Keeps which clients called the exposed methods. A client will be removed
-  // from this list when it's disconnected from D-Bus.
-  // It's a map of DispatcherClient objects indexed by their D-Bus addresses.
-  std::map<std::string, std::unique_ptr<DispatcherClient>> clients_;
-
-  DBusConnectionFactory* dbus_connection_factory_;
+  // Keeps track of clients who have called the exposed methods.
+  ClientManager* client_manager_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

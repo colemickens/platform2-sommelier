@@ -29,6 +29,7 @@
       'type': 'static_library',
       'sources': [
         'dispatcher/bluez_interface_handler.cc',
+        'dispatcher/client_manager.cc',
         'dispatcher/dbus_connection_factory.cc',
         'dispatcher/dispatcher.cc',
         'dispatcher/dispatcher_client.cc',

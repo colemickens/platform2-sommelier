@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include <base/stl_util.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/dbus.h>
@@ -56,12 +55,12 @@ ImpersonationObjectManagerInterface::ImpersonationObjectManagerInterface(
     ExportedObjectManagerWrapper* exported_object_manager_wrapper,
     std::unique_ptr<InterfaceHandler> interface_handler,
     const std::string& interface_name,
-    DBusConnectionFactory* dbus_connection_factory)
+    ClientManager* client_manager)
     : ObjectManagerInterfaceMultiplexer(interface_name),
       bus_(bus),
       exported_object_manager_wrapper_(exported_object_manager_wrapper),
       interface_handler_(std::move(interface_handler)),
-      dbus_connection_factory_(dbus_connection_factory),
+      client_manager_(client_manager),
       weak_ptr_factory_(this) {
   exported_object_manager_wrapper_->SetPropertyHandlerSetupCallback(base::Bind(
       &ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers,
@@ -208,7 +207,7 @@ void ImpersonationObjectManagerInterface::
   VLOG(1) << "Method " << method_call->GetMember() << " called by "
           << method_call->GetSender();
   std::string client_address = method_call->GetSender();
-  DispatcherClient* client = EnsureClientAdded(client_address);
+  DispatcherClient* client = client_manager_->EnsureClientAdded(client_address);
   VLOG(1) << "client = " << client;
   HandleForwardMessage(client->GetClientBus(), method_call, response_sender);
 }
@@ -233,30 +232,6 @@ void ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers(
   prop_interface->AddRawMethodHandler(
       dbus::kPropertiesChanged, weak_ptr_factory_.GetWeakPtr(),
       &ImpersonationObjectManagerInterface::HandlePropertiesChanged);
-}
-
-DispatcherClient* ImpersonationObjectManagerInterface::EnsureClientAdded(
-    const std::string& client_address) {
-  if (base::ContainsKey(clients_, client_address))
-    return clients_[client_address].get();
-
-  VLOG(1) << "Adding new client " << client_address;
-  auto client = std::make_unique<DispatcherClient>(bus_, client_address,
-                                                   dbus_connection_factory_);
-  client->WatchClientUnavailable(
-      base::Bind(&ImpersonationObjectManagerInterface::OnClientUnavailable,
-                 weak_ptr_factory_.GetWeakPtr(), client_address));
-  clients_[client_address] = std::move(client);
-  return clients_[client_address].get();
-}
-
-void ImpersonationObjectManagerInterface::OnClientUnavailable(
-    const std::string& client_address) {
-  VLOG(1) << "Client " << client_address << " becomes unavailable";
-  if (base::ContainsKey(clients_, client_address)) {
-    VLOG(1) << "Removing client " << client_address;
-    clients_.erase(client_address);
-  }
 }
 
 }  // namespace bluetooth
