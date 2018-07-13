@@ -126,4 +126,10 @@ BluezMediaTransportInterfaceHandler::BluezMediaTransportInterfaceHandler() {
   AddPropertyFactory<uint16_t>(bluetooth_media_transport::kVolumeProperty);
 }
 
+BluezAgentManagerInterfaceHandler::BluezAgentManagerInterfaceHandler() {
+  AddMethodName(bluetooth_agent_manager::kRegisterAgent);
+  AddMethodName(bluetooth_agent_manager::kUnregisterAgent);
+  AddMethodName(bluetooth_agent_manager::kRequestDefaultAgent);
+}
+
 }  // namespace bluetooth

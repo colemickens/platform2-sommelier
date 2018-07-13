@@ -126,6 +126,15 @@ class BluezMediaTransportInterfaceHandler : public BluezInterfaceHandler {
   DISALLOW_COPY_AND_ASSIGN(BluezMediaTransportInterfaceHandler);
 };
 
+// org.bluez.AgentManager1 interface.
+class BluezAgentManagerInterfaceHandler : public BluezInterfaceHandler {
+ public:
+  BluezAgentManagerInterfaceHandler();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(BluezAgentManagerInterfaceHandler);
+};
+
 }  // namespace bluetooth
 
 #endif  // BLUETOOTH_DISPATCHER_BLUEZ_INTERFACE_HANDLER_H_

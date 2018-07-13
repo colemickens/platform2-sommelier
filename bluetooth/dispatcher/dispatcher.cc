@@ -77,6 +77,8 @@ bool Dispatcher::Init(PassthroughMode mode) {
   interface_handlers
       [bluetooth_media_transport::kBluetoothMediaTransportInterface] =
           std::make_unique<BluezMediaTransportInterfaceHandler>();
+  interface_handlers[bluetooth_agent_manager::kBluetoothAgentManagerInterface] =
+      std::make_unique<BluezAgentManagerInterfaceHandler>();
 
   // Register the interfaces.
   for (auto& kv : interface_handlers) {
