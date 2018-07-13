@@ -9,9 +9,6 @@ set -e
 # Default product ID in crash report (used if GOOGLE_CRASH_* is undefined).
 CHROMEOS_PRODUCT=ChromeOS
 
-# Crash sender lock in case the sender is already running.
-CRASH_SENDER_LOCK="/run/lock/crash_sender"
-
 # The base directory where we keep various state flags.
 CRASH_RUN_STATE_DIR="/run/crash_reporter"
 
@@ -753,9 +750,9 @@ main() {
     exit 1
   fi
 
-  # We don't perform checks on this because we have a master lock with the
-  # CRASH_SENDER_LOCK file.  This pid file is for the system to keep track
-  # (like with autotests) that we're still running.
+  # We don't perform checks on this because we have a master lock with a
+  # separate lock file.  This pid file is for the system to keep track (like
+  # with autotests) that we're still running.
   echo $$ > "${RUN_FILE}"
 
   for dependency in "${FIND}" "${METRICS_CLIENT}" \
@@ -778,11 +775,4 @@ main() {
   done
 }
 
-(
-if ! flock -n 9; then
-  lecho "Already running; quitting."
-  crash_done
-  exit 1
-fi
 main "$@"
-) 9>"${CRASH_SENDER_LOCK}"

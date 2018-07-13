@@ -4,16 +4,47 @@
 
 #include <stdlib.h>
 #include <sys/capability.h>
+#include <sys/file.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <base/files/file.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
 namespace {
+
+// The base directory where we keep various state flags.
+#define RUN_STATE_DIR FILE_PATH_LITERAL("/run/crash_reporter")
+
+// File whose existence mocks crash sending.  If empty we pretend the
+// crash sending was successful, otherwise unsuccessful.
+constexpr base::FilePath::CharType kMockCrashSending[] =
+    RUN_STATE_DIR "/mock-crash-sending";
+
+// Crash sender lock in case the sender is already running.
+constexpr base::FilePath::CharType kLockFile[] = "/run/lock/crash_sender";
+
+// Returns true if mock is enabled.
+bool IsMock() {
+  return base::PathExists(base::FilePath(kMockCrashSending));
+}
+
+// Records that the crash sending is done.
+void RecordCrashDone() {
+  if (IsMock()) {
+    // For testing purposes, emit a message to log so that we
+    // know when the test has received all the messages from this run.
+    // The string is referenced in
+    // third_party/autotest/files/client/cros/crash/crash_test.py
+    LOG(INFO) << "crash_sender done. (mock)";
+  }
+}
 
 // Sets up the minijail sandbox.
 //
@@ -39,6 +70,31 @@ void SetUpSandbox(struct minijail* jail) {
   minijail_forward_signals(jail);
 }
 
+// Locks on the file, or exits if locking fails.
+void LockOrExit(const base::File& lock_file) {
+  if (flock(lock_file.GetPlatformFile(), LOCK_EX | LOCK_NB) != 0) {
+    if (errno == EWOULDBLOCK) {
+      LOG(ERROR) << "Already running; quitting.";
+    } else {
+      PLOG(ERROR) << "Failed to acquire a lock.";
+    }
+    RecordCrashDone();
+    exit(EXIT_FAILURE);
+  }
+}
+
+// Runs the main function for the child process.
+int RunChildMain(int argc, char* argv[]) {
+  // Ensure only one instance of crash_sender runs at the same time.
+  base::File lock_file(base::FilePath(kLockFile), base::File::FLAG_OPEN_ALWAYS);
+  LockOrExit(lock_file);
+
+  char shell_script_path[] = "/sbin/crash_sender.sh";
+  argv[0] = shell_script_path;
+  execve(argv[0], argv, environ);
+  return EXIT_FAILURE;  // execve() failed.
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -50,13 +106,8 @@ int main(int argc, char* argv[]) {
   SetUpSandbox(jail.get());
   const pid_t pid = minijail_fork(jail.get());
 
-  if (pid == 0) {
-    // Child process.
-    char shell_script_path[] = "/sbin/crash_sender.sh";
-    argv[0] = shell_script_path;
-    execve(argv[0], argv, environ);
-    return EXIT_FAILURE;  // execve() failed.
-  }
+  if (pid == 0)
+    return RunChildMain(argc, argv);
 
   // We rely on the child handling its own exit status, and a non-zero status
   // isn't necessarily a bug (e.g. if mocked out that way).  Only warn for an
