@@ -21,6 +21,7 @@
 
 #include "bluetooth/dispatcher/client_manager.h"
 #include "bluetooth/dispatcher/mock_dbus_connection_factory.h"
+#include "bluetooth/dispatcher/test_helper.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -128,43 +129,14 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     on_exported_callback.Run(interface_name, method_name, true /* success */);
   }
 
-  // A fake D-Bus method handler. What it does is reply with a test response
-  // message if the MethodCall is as expected.
-  void StubHandleMethod(const std::string& expected_interface_name,
-                        const std::string& expected_method_name,
-                        const std::string& expected_payload,
-                        dbus::MethodCall* method_call,
-                        int timeout_ms,
-                        dbus::ObjectProxy::ResponseCallback callback,
-                        dbus::ObjectProxy::ErrorCallback error_callback) {
-    // This stub doesn't handle method calls other than expected method.
-    if (method_call->GetInterface() != expected_interface_name ||
-        method_call->GetMember() != expected_method_name)
-      return;
-
-    dbus::MessageReader reader(method_call);
-    std::string method_call_string;
-    reader.PopString(&method_call_string);
-    // This stub only accepts the expected test payload.
-    if (method_call_string != expected_payload)
-      return;
-
-    method_call->SetSerial(kTestSerial);
-    std::unique_ptr<dbus::Response> response =
-        dbus::Response::FromMethodCall(method_call);
-    dbus::MessageWriter writer(response.get());
-    writer.AppendString(kTestResponseString);
-    callback.Run(response.get());
-  }
-
   void StubHandlePropertiesSet(
       dbus::MethodCall* method_call,
       int timeout_ms,
       dbus::ObjectProxy::ResponseCallback callback,
       dbus::ObjectProxy::ErrorCallback error_callback) {
     StubHandleMethod(dbus::kPropertiesInterface, dbus::kPropertiesSet,
-                     kTestMethodCallString, method_call, timeout_ms, callback,
-                     error_callback);
+                     kTestMethodCallString, kTestResponseString, method_call,
+                     timeout_ms, callback, error_callback);
   }
 
   void StubHandleTestMethod1(dbus::MethodCall* method_call,
@@ -172,8 +144,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
                              dbus::ObjectProxy::ResponseCallback callback,
                              dbus::ObjectProxy::ErrorCallback error_callback) {
     StubHandleMethod(kTestInterfaceName1, kTestMethodName1,
-                     kTestMethodCallString, method_call, timeout_ms, callback,
-                     error_callback);
+                     kTestMethodCallString, kTestResponseString, method_call,
+                     timeout_ms, callback, error_callback);
   }
 
   void StubHandleTestMethod2(dbus::MethodCall* method_call,
@@ -181,8 +153,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
                              dbus::ObjectProxy::ResponseCallback callback,
                              dbus::ObjectProxy::ErrorCallback error_callback) {
     StubHandleMethod(kTestInterfaceName1, kTestMethodName2,
-                     kTestMethodCallString, method_call, timeout_ms, callback,
-                     error_callback);
+                     kTestMethodCallString, kTestResponseString, method_call,
+                     timeout_ms, callback, error_callback);
   }
 
  protected:

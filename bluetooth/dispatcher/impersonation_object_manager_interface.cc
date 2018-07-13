@@ -11,32 +11,9 @@
 #include <dbus/dbus.h>
 #include <dbus/object_manager.h>
 
+#include "bluetooth/dispatcher/dbus_util.h"
+
 namespace {
-
-// Called when the return of a forwarded message is received.
-void OnMessageForwardResponse(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender,
-    dbus::Response* response) {
-  // To forward the response back to the original client, we need to set the
-  // D-Bus reply serial and destination fields after copying the response
-  // message.
-  // TODO(sonnysasaka): Avoid using libdbus' dbus_message_copy directly and
-  // use dbus::Response::CopyMessage() when it's available in libchrome.
-  std::unique_ptr<dbus::Response> response_copy(dbus::Response::FromRawMessage(
-      dbus_message_copy(response->raw_message())));
-  response_copy->SetReplySerial(method_call->GetSerial());
-  response_copy->SetDestination(method_call->GetSender());
-  response_sender.Run(std::move(response_copy));
-}
-
-// Called when the error return of the forwarded message is received.
-void OnMessageForwardError(dbus::MethodCall* method_call,
-                           dbus::ExportedObject::ResponseSender response_sender,
-                           dbus::ErrorResponse* response) {
-  // Relay the error return back to the original client.
-  OnMessageForwardResponse(method_call, response_sender, response);
-}
 
 // Called when an interface of a D-Bus object is exported.
 void OnInterfaceExported(std::string object_path,
@@ -180,24 +157,12 @@ void ImpersonationObjectManagerInterface::HandleForwardMessage(
     scoped_refptr<dbus::Bus> bus,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  // Here we forward a D-Bus message to another service.
-  // After copying the message, we don't need to set destination/serial/sender
-  // manually as this will be done by the lower level API already.
-  std::unique_ptr<dbus::MethodCall> method_call_copy(
-      dbus::MethodCall::FromRawMessage(
-          dbus_message_copy(method_call->raw_message())));
   // Since we don't do any real multiplexing yet, we assume that there is only
   // one service to impersonate, so we get the service name by taking the first
   // and only one.
   CHECK(!object_managers().empty()) << "There is no service to impersonate";
   std::string service_name = object_managers().begin()->first;
-  // TODO(sonnysasaka): Migrate to CallMethodWithErrorResponse after libchrome
-  // is uprevved.
-  bus->GetObjectProxy(service_name, method_call->GetPath())
-      ->CallMethodWithErrorCallback(
-          method_call_copy.get(), dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          base::Bind(&OnMessageForwardResponse, method_call, response_sender),
-          base::Bind(&OnMessageForwardError, method_call, response_sender));
+  DBusUtil::ForwardMethodCall(bus, service_name, method_call, response_sender);
 }
 
 void ImpersonationObjectManagerInterface::
