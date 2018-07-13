@@ -103,6 +103,10 @@ class NeighborDiscoveryMessage {
   // Indicates that this RA has been proxied.  If receiving a proxied
   // RA, RFC 4389 states that this RA should be dropped and not proxied.
   bool GetProxyFlag(bool* proxy_flag) const;
+  // Modifies the value of the proxy bit in RA messages.  This should be
+  // used in the implementation of ND Proxy if directly copying received RA
+  // messages.
+  bool SetProxyFlag(bool proxy_flag);
 
   // Lifetime associated with the default route.  0 implies it is
   // unspecified.
@@ -240,12 +244,6 @@ class NeighborDiscoveryMessage {
 
   // Pointer to array of byte indexes of ND options.
   std::map<OptionType, std::vector<uint32_t>> options_;
-
-  friend class ParsedRouterSolicitationTest;
-  friend class ParsedRouterAdvertisementTest;
-  friend class ParsedNeighborSolicitTest;
-  friend class ParsedNeighborAdvertTest;
-  friend class ParsedRedirectTest;
 };
 
 }  // namespace portier

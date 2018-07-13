@@ -313,6 +313,8 @@ TEST(NeighborDiscoveryMessageTest, TestEmptyInstance) {
   bool proxy_flag = false;
   EXPECT_FALSE(message.GetProxyFlag(&proxy_flag));
   EXPECT_EQ(proxy_flag, false);
+  EXPECT_FALSE(message.SetProxyFlag(true));
+  EXPECT_FALSE(message.SetProxyFlag(false));
 
   EXPECT_FALSE(message.GetRouterLifetime(nullptr));
   TimeDelta router_lifetime = TimeDelta::FromSeconds(8888);
@@ -778,7 +780,94 @@ TEST(CreateNeighborDiscoveryMessageTest, Redirect) {
   EXPECT_TRUE(expected_ip_header_and_data.Equals(ip_header_and_data));
 }
 
-// TEST(NeighborDiscoveryMessageTest, )
+TEST(ModifyNeighborDiscoveryMessageTest, SetSourceLinkLayerOption) {
+  // Create a base RS message.
+  NeighborDiscoveryMessage rs_message =
+      NeighborDiscoveryMessage::RouterSolicit();
+  EXPECT_TRUE(rs_message.IsValid());
+
+  // Push option.
+  EXPECT_TRUE(rs_message.PushSourceLinkLayerAddress(kSourceLL1));
+
+  // Modify option.
+  ASSERT_TRUE(rs_message.HasSourceLinkLayerAddress());
+  EXPECT_TRUE(rs_message.SetSourceLinkLayerAddress(0, kSourceLL2));
+
+  // Verify modification.
+  EXPECT_EQ(rs_message.OptionCount(
+                NeighborDiscoveryMessage::kOptionTypeSourceLinkLayerAddress),
+            1);
+
+  LLAddress source_ll;
+  EXPECT_TRUE(rs_message.GetSourceLinkLayerAddress(0, &source_ll));
+
+  EXPECT_TRUE(source_ll.IsValid());
+  EXPECT_TRUE(kSourceLL2.Equals(source_ll));
+}
+
+TEST(ModifyNeighborDiscoveryMessageTest, SetTargetLinkLayerOption) {
+  NeighborDiscoveryMessage na_message =
+      NeighborDiscoveryMessage::NeighborAdvert(
+          kNARouterFlag1, kNASolicitedFlag1, kNAOverrideFlag1,
+          kNATargetAddress1);
+
+  EXPECT_TRUE(na_message.IsValid());
+
+  // Push options.
+  EXPECT_TRUE(na_message.PushTargetLinkLayerAddress(kTargetLL1));
+
+  // Modify option.
+  ASSERT_TRUE(na_message.HasTargetLinkLayerAddress());
+  EXPECT_TRUE(na_message.SetTargetLinkLayerAddress(0, kTargetLL2));
+
+  // Verify modification.
+  EXPECT_EQ(na_message.OptionCount(
+                NeighborDiscoveryMessage::kOptionTypeTargetLinkLayerAddress),
+            1);
+
+  LLAddress target_ll;
+  EXPECT_TRUE(na_message.GetTargetLinkLayerAddress(0, &target_ll));
+
+  EXPECT_TRUE(target_ll.IsValid());
+  EXPECT_TRUE(kTargetLL2.Equals(target_ll));
+}
+
+TEST(ModifyNeighborDiscoveryMessageTest, SetProxyFlag) {
+  NeighborDiscoveryMessage ra_message = NeighborDiscoveryMessage::RouterAdvert(
+      kRACurHopLimit1, kRAManagedFlag1, kRAOtherFlag1, kRAProxyFlag1,
+      kRARouterLifetime1, kRAReachableTime1, kRARetransTimer1);
+
+  EXPECT_TRUE(ra_message.IsValid());
+
+  // Modify flag.
+  EXPECT_TRUE(ra_message.SetProxyFlag(!kRAProxyFlag1));
+
+  // Verify change to proxy flag.
+  bool proxy_flag;
+  EXPECT_TRUE(ra_message.GetProxyFlag(&proxy_flag));
+  EXPECT_EQ(proxy_flag, !kRAProxyFlag1);
+
+  // Verify no changes to non-proxy flags.
+  bool managed_flag;
+  EXPECT_TRUE(ra_message.GetManagedAddressConfigurationFlag(&managed_flag));
+  EXPECT_EQ(managed_flag, kRAManagedFlag1);
+  bool other_flag;
+  EXPECT_TRUE(ra_message.GetOtherConfigurationFlag(&other_flag));
+  EXPECT_EQ(other_flag, kRAOtherFlag1);
+
+  // Modify back.
+  EXPECT_TRUE(ra_message.SetProxyFlag(kRAProxyFlag1));
+
+  // Verify change back.
+  EXPECT_TRUE(ra_message.GetProxyFlag(&proxy_flag));
+  EXPECT_EQ(proxy_flag, kRAProxyFlag1);
+
+  // Verify no changes to non-proxy flags.
+  EXPECT_TRUE(ra_message.GetManagedAddressConfigurationFlag(&managed_flag));
+  EXPECT_EQ(managed_flag, kRAManagedFlag1);
+  EXPECT_TRUE(ra_message.GetOtherConfigurationFlag(&other_flag));
+  EXPECT_EQ(other_flag, kRAOtherFlag1);
+}
 
 // Router Solicitation Test.
 

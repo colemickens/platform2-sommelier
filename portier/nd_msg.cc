@@ -419,6 +419,20 @@ bool NeighborDiscoveryMessage::GetProxyFlag(bool* proxy_flag) const {
   return true;
 }
 
+bool NeighborDiscoveryMessage::SetProxyFlag(bool proxy_flag) {
+  if (!IsValid() || type() != kTypeRouterAdvert) {
+    return false;
+  }
+  struct nd_router_advert* nd_ra =
+      reinterpret_cast<struct nd_router_advert*>(GetData());
+  if (proxy_flag) {
+    nd_ra->nd_ra_flags_reserved |= kRouterAdvertProxyBit;
+  } else {
+    nd_ra->nd_ra_flags_reserved &= ~kRouterAdvertProxyBit;
+  }
+  return true;
+}
+
 bool NeighborDiscoveryMessage::GetRouterLifetime(
     TimeDelta* router_lifetime) const {
   if (!IsValid() || type() != kTypeRouterAdvert || nullptr == router_lifetime) {
