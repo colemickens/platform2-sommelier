@@ -17,6 +17,8 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
+#include "crash-reporter/crash_sender_util.h"
+
 namespace {
 
 // The base directory where we keep various state flags.
@@ -89,9 +91,11 @@ int RunChildMain(int argc, char* argv[]) {
   base::File lock_file(base::FilePath(kLockFile), base::File::FLAG_OPEN_ALWAYS);
   LockOrExit(lock_file);
 
+  util::ParseCommandLine(argc, argv);
+
   char shell_script_path[] = "/sbin/crash_sender.sh";
-  argv[0] = shell_script_path;
-  execve(argv[0], argv, environ);
+  char* shell_argv[] = {shell_script_path, nullptr};
+  execve(shell_argv[0], shell_argv, environ);
   return EXIT_FAILURE;  // execve() failed.
 }
 

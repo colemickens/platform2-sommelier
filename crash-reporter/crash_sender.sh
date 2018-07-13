@@ -21,10 +21,6 @@ CRASH_TEST_IN_PROGRESS_FILE="${CRASH_RUN_STATE_DIR}/crash-test-in-progress"
 # Path to find which is required for computing the crash rate.
 FIND="/usr/bin/find"
 
-# Set this to 1 in the environment to allow uploading crash reports
-# for unofficial versions.
-FORCE_OFFICIAL=${FORCE_OFFICIAL:-0}
-
 # Path to hardware class description.
 HWCLASS_PATH="/sys/devices/platform/chromeos_acpi/HWID"
 
@@ -34,22 +30,12 @@ LEAVE_CORE_FILE="/root/.leave_core"
 # Path to list_proxies.
 LIST_PROXIES="/usr/bin/list_proxies"
 
-# Maximum crashes to send per day.
-MAX_CRASH_RATE=${MAX_CRASH_RATE:-32}
-
 # Path to metrics_client.
 METRICS_CLIENT="/usr/bin/metrics_client"
 
 # File whose existence mocks crash sending.  If empty we pretend the
 # crash sending was successful, otherwise unsuccessful.
 MOCK_CRASH_SENDING="${CRASH_RUN_STATE_DIR}/mock-crash-sending"
-
-# Set this to 1 in the environment to pretend to have booted in developer
-# mode.  This is used by autotests.
-MOCK_DEVELOPER_MODE=${MOCK_DEVELOPER_MODE:-0}
-
-# Ignore PAUSE_CRASH_SENDING file if set.
-OVERRIDE_PAUSE_SENDING=${OVERRIDE_PAUSE_SENDING:-0}
 
 # File whose existence causes crash sending to be delayed (for testing).
 # Must be stateful to enable testing kernel crashes.
@@ -64,9 +50,6 @@ RESTRICTED_CERTIFICATES_PATH="/usr/share/chromeos-ca-certificates"
 
 # File whose existence implies we're running and not to start again.
 RUN_FILE="/run/crash_sender.pid"
-
-# Maximum time to sleep between sends.
-SECONDS_SEND_SPREAD=${SECONDS_SEND_SPREAD:-600}
 
 # Set this to 1 to allow uploading of device coredumps.
 DEVCOREDUMP_UPLOAD_FLAG_FILE=\
@@ -692,52 +675,13 @@ send_crashes() {
   done
 }
 
-usage() {
-  cat <<EOF
-Usage: crash_sender [options]
-
-Options:
- -e <var>=<val>     Set env |var| to |val| (only some vars)
-EOF
-  exit ${1:-1}
-}
-
-parseargs() {
-  # Parse the command line arguments.
-  while [ $# -gt 0 ]; do
-    case $1 in
-    -e)
-      shift
-      case $1 in
-      FORCE_OFFICIAL=*|\
-      MAX_CRASH_RATE=*|\
-      MOCK_DEVELOPER_MODE=*|\
-      OVERRIDE_PAUSE_SENDING=*|\
-      SECONDS_SEND_SPREAD=*)
-        export "$1"
-        ;;
-      *)
-        lecho "Unknown var passed to -e: $1"
-        exit 1
-        ;;
-      esac
-      ;;
-    -h)
-      usage 0
-      ;;
-    *)
-      lecho "Unknown options: $*"
-      exit 1
-      ;;
-    esac
-    shift
-  done
-}
-
 main() {
   trap cleanup EXIT INT TERM
 
-  parseargs "$@"
+  if [ $# -ne 0 ]; then
+    lecho "Command line flags should not be passed: $*"
+    exit 1
+  fi
 
   if [ -e "${PAUSE_CRASH_SENDING}" ] && \
      [ ${OVERRIDE_PAUSE_SENDING} -eq 0 ]; then
