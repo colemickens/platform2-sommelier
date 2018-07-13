@@ -85,7 +85,6 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageHasEverConnected[];
   static const char kStorageName[];
   static const char kStoragePriority[];
-  static const char kStoragePriorityWithinTechnology[];
   static const char kStorageProxyConfig[];
   static const char kStorageSaveCredentials[];
   static const char kStorageType[];
@@ -405,7 +404,6 @@ class Service : public base::RefCounted<Service> {
   int32_t priority_within_technology() const {
       return priority_within_technology_;
   }
-  bool SetPriorityWithinTechnology(const int32_t& priority, Error* error);
 
   size_t crypto_algorithm() const { return crypto_algorithm_; }
   bool key_rotation() const { return key_rotation_; }
@@ -751,7 +749,6 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortIsOnline[];
   static const char kServiceSortIsPortalled[];
   static const char kServiceSortPriority[];
-  static const char kServiceSortPriorityWithinTechnology[];
   static const char kServiceSortSecurity[];
   static const char kServiceSortProfileOrder[];
   static const char kServiceSortEtc[];
@@ -785,7 +782,6 @@ class Service : public base::RefCounted<Service> {
   virtual bool SetNameProperty(const std::string& name, Error* error);
 
   int32_t GetPriority(Error* error);
-  int32_t GetPriorityWithinTechnology(Error* error);
 
   std::string GetProfileRpcId(Error* error);
   bool SetProfileRpcId(const std::string& profile, Error* error);

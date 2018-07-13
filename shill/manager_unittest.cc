@@ -4040,7 +4040,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*vpn_service.get(), IsVisible())
       .WillRepeatedly(Return(true));
-  wifi_service2->SetAutoConnect(false);
+  vpn_service->SetAutoConnect(false);
   vpn_service->SetConnectable(true);
   EXPECT_CALL(*vpn_service.get(), technology())
       .WillRepeatedly(Return(Technology::kVPN));

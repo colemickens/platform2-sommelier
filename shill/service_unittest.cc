@@ -2181,23 +2181,18 @@ TEST_F(ServiceTest, Compare) {
   service2->SetSecurity(Service::kCryptoAes, true, true);
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
-  // PriorityWithinTechnology.
-  service10->SetPriorityWithinTechnology(1, nullptr);
-  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
-  service2->SetPriorityWithinTechnology(2, nullptr);
-  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
-
-  // Technology.
-  EXPECT_CALL(*service2.get(), technology())
-      .WillRepeatedly(Return((Technology::kWifi)));
-  EXPECT_CALL(*service10.get(), technology())
-      .WillRepeatedly(Return(Technology::kEthernet));
-
-  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
+  // A service that has been connected before should be considered
+  // above a service that has never been connected to before.
+  service10->has_ever_connected_ = true;
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
-  technology_order_for_sorting_ = {Technology::kWifi, Technology::kEthernet};
+  // Auto-connect.
+  service2->SetAutoConnect(true);
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Managed credentials
+  service10->managed_credentials_ = true;
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Priority.
   service2->SetPriority(1, nullptr);
@@ -2205,28 +2200,19 @@ TEST_F(ServiceTest, Compare) {
   service10->SetPriority(2, nullptr);
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
-  // A service that has been connected before should be considered
-  // above a service that has never been connected to before.
-  service2->has_ever_connected_ = true;
-  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+  // Technology.
+  EXPECT_CALL(*service2.get(), technology())
+      .WillRepeatedly(Return(Technology::kEthernet));
+  EXPECT_CALL(*service10.get(), technology())
+      .WillRepeatedly(Return((Technology::kWifi)));
 
-  // Auto-connect.
-  service10->SetAutoConnect(true);
-  service2->SetAutoConnect(false);
-  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
-
-  // Managed credentials
-  service10->managed_credentials_ = false;
-  service2->managed_credentials_ = true;
+  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Test is-dependent-on.
-  EXPECT_CALL(*service10.get(),
-              IsDependentOn(IsRefPtrTo(service2.get())))
-      .WillOnce(Return(true))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*service10.get(), IsDependentOn(IsRefPtrTo(service2.get())))
+      .WillOnce(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
-  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // It doesn't make sense to have is-dependent-on ranking comparison in any of
   // the remaining subtests below.  Reset to the default.

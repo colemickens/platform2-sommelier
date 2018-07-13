@@ -1176,23 +1176,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			Services with priorities are sorted ahead of services
 			without.  Services with the same priority are ordered
 			by other means such as service type signal strength
-			or technology.
-
-			By default services are not assigned a priority;
-			clients must set one if they desire.  To remove an
-			existing priority use the ClearProperty method.
-
-		int32 PriorityWithinTechnology [readwrite]
-
-			An optional value used to calculate the priority order
-			of this service.  Priorities are between 1 to 100.
-			Services with priorities are sorted ahead of services
-			without.  Services with the same priority are ordered
-			by other means such as service type and signal
-			strength, but notably not technology.  This property
-			can be used instead of the Priority property when
-			the intent is to rank the service relative to other
-			services of the same technology.
+			or security level.
 
 			By default services are not assigned a priority;
 			clients must set one if they desire.  To remove an
