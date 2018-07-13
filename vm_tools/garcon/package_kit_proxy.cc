@@ -24,6 +24,9 @@
 
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 
+namespace vm_tools {
+namespace garcon {
+
 namespace {
 
 // Package ID suffix we require in order to perform an automatic upgrade, this
@@ -83,14 +86,17 @@ constexpr base::TimeDelta kRefreshCacheStartupDelay =
 // after startup.
 constexpr base::TimeDelta kRefreshCachePeriod = base::TimeDelta::FromDays(1);
 
-}  // namespace
+// Bitmask values for all the signals from PackageKit
+constexpr uint32_t kErrorCodeSignalMask = 1 << 0;
+constexpr uint32_t kFinishedSignalMask = 1 << 1;
+constexpr uint32_t kPackageSignalMask = 1 << 2;
+constexpr uint32_t kDetailsSignalMask = 1 << 3;
+constexpr uint32_t kPropertiesSignalMask = 1 << 4;
+constexpr uint32_t kValidSignalMask =
+    kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask |
+    kDetailsSignalMask | kPropertiesSignalMask;
 
-namespace vm_tools {
-namespace garcon {
-
-// Handles the property changed signals that come back from PackageKit.
-struct PackageKitProxy::PackageKitTransactionProperties
-    : public dbus::PropertySet {
+struct PackageKitTransactionProperties : public dbus::PropertySet {
   // These are the only 2 properties we care about.
   dbus::Property<uint32_t> status;
   dbus::Property<uint32_t> percentage;
@@ -102,6 +108,688 @@ struct PackageKitProxy::PackageKitTransactionProperties
     RegisterProperty("Percentage", &percentage);
   }
 };
+
+// Base class for the helpers for interacting with PackageKit. This will handle
+// all the odd D-Bus failures as well as PackageKit death. This object manages
+// its own lifecycle, so it should always be created in a leaky fashion, but
+// StartTransaction must ALWAYS be invoked after object creation to ensure
+// proper cleanup.
+class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
+ public:
+  explicit PackageKitTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      base::WeakPtr<PackageKitProxy> packagekit_proxy,
+      dbus::ObjectProxy* packagekit_service_proxy,
+      uint32_t signal_mask)
+      : bus_(bus),
+        packagekit_proxy_(packagekit_proxy),
+        packagekit_service_proxy_(packagekit_service_proxy),
+        signal_mask_(signal_mask),
+        weak_ptr_factory_(this) {
+    DCHECK_EQ(signal_mask, signal_mask & kValidSignalMask);
+    packagekit_proxy_->AddPackageKitDeathObserver(this);
+  }
+  virtual ~PackageKitTransaction() {
+    if (transaction_path_.IsValid()) {
+      bus_->RemoveObjectProxy(kPackageKitServiceName, transaction_path_,
+                              base::Bind(&base::DoNothing));
+    }
+    packagekit_proxy_->RemovePackageKitDeathObserver(this);
+  }
+
+  // This MUST be invoked after object construction in order to ensure proper
+  // cleanup. Returns true on successful start of the process, false otherwise.
+  // Even if this returns false, it will take care of it's own destruction.
+  bool StartTransaction() {
+    // Create a transaction with PackageKit for performing the operation.
+    dbus::MethodCall method_call(kPackageKitInterface,
+                                 kCreateTransactionMethod);
+    dbus::MessageWriter writer(&method_call);
+    std::unique_ptr<dbus::Response> dbus_response =
+        packagekit_service_proxy_->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response) {
+      GeneralErrorInternal("Failure calling CreateTransaction");
+      return false;
+    }
+    // CreateTransaction returns the object path for the transaction session we
+    // have created.
+    dbus::MessageReader reader(dbus_response.get());
+    if (!reader.PopObjectPath(&transaction_path_)) {
+      GeneralErrorInternal(
+          "Failure reading object path from transaction result");
+      return false;
+    }
+    transaction_proxy_ =
+        bus_->GetObjectProxy(kPackageKitServiceName, transaction_path_);
+    if (!transaction_proxy_) {
+      GeneralErrorInternal("Failed to get proxy for transaction");
+      return false;
+    }
+
+    // Set the hint that we don't support interactivity. I haven't seen a case
+    // of this yet, but it seems like a good idea to set it if it does occur.
+    dbus::MethodCall sethints_call(kPackageKitTransactionInterface,
+                                   kSetHintsMethod);
+    dbus::MessageWriter sethints_writer(&sethints_call);
+    sethints_writer.AppendArrayOfStrings({"interactive=false"});
+    dbus_response = transaction_proxy_->CallMethodAndBlock(
+        &sethints_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response) {
+      // Don't propagate a failure, this was just a hint.
+      LOG(WARNING) << "Failure calling SetHints";
+    }
+
+    // Hook up all the necessary signals to PackageKit for monitoring the
+    // transaction. After these are all hooked up, we will invoke the method
+    // so the subclass can initiate the actual request.
+
+    // The properties Signal is special, there exists a helper class for that
+    // where we don't manage hooking up the signals ourself.
+    if (signal_mask_ & kPropertiesSignalMask) {
+      // Remove the bit from the mask to indicate we processed it already.
+      signal_mask_ = signal_mask_ & ~kPropertiesSignalMask;
+      transaction_properties_ =
+          std::make_unique<PackageKitTransactionProperties>(
+              transaction_proxy_,
+              base::Bind(&PackageKitTransaction::OnPackageKitPropertyChanged,
+                         weak_ptr_factory_.GetWeakPtr()));
+      transaction_properties_->ConnectSignals();
+      transaction_properties_->GetAll();
+    }
+
+    if (signal_mask_ == 0) {
+      // No signals to hookup, just go right into the request.
+      if (!ExecuteRequest(transaction_proxy_)) {
+        GeneralErrorInternal(
+            "Failure executing the request in the transaction");
+        return false;
+      }
+    }
+    ConnectNextSignal();
+    return true;
+  }
+
+  // Override to execute the actual request within the transaction such as
+  // GetUpdates, RefreshCache, etc. Returns true if the call succeeded, false
+  // otherwise. If this method fails, then GeneralError will be invoked.
+  virtual bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) = 0;
+
+  // Invoked when something went wrong in the D-Bus communication, the object
+  // will self-destruct after this call.
+  virtual void GeneralError(const std::string& details) {
+    LOG(ERROR) << details;
+  }
+
+  // Invoked when the corresponding signals are received and decoded. If a
+  // Finished signal occurs, then no other calls will be made after that and
+  // this object will self-destruct.
+  virtual void ErrorReceived(uint32_t error_code, const std::string& details) {
+    LOG(ERROR) << "Error occured with PackageKit transaction with code: "
+               << error_code << " and details: " << details;
+  }
+  virtual void FinishedReceived(uint32_t exit_code) {
+    if (exit_code == kPackageKitExitCodeSuccess) {
+      LOG(INFO) << "PackageKit transaction completed successfully";
+    } else {
+      LOG(ERROR) << "PackageKit transaction failed with code: " << exit_code;
+    }
+  }
+  virtual void PackageReceived(uint32_t code,
+                               const std::string& package_id,
+                               const std::string& summary) {}
+  virtual void DetailsReceived(const std::string& package_id,
+                               const std::string& license,
+                               const std::string& description,
+                               const std::string& project_url,
+                               uint64_t size,
+                               const std::string& summary) {}
+  virtual void PropertyChangeReceived(
+      const std::string& name, PackageKitTransactionProperties* properties) {}
+
+ private:
+  // PackageKitDeathObserver overrides:
+  void OnPackageKitDeath() {
+    GeneralErrorInternal("PackageKit D-Bus service died, abort operation");
+  }
+
+  void GeneralErrorInternal(const std::string& details) {
+    GeneralError(details);
+    // An unknown error has occurred, we should self-destruct now.
+    delete this;
+  }
+
+  void ConnectNextSignal() {
+    std::string signal_name;
+    dbus::ObjectProxy::SignalCallback signal_callback;
+    if (signal_mask_ & kErrorCodeSignalMask) {
+      signal_mask_ = signal_mask_ & ~kErrorCodeSignalMask;
+      signal_name.assign(kErrorCodeSignal);
+      signal_callback = base::Bind(&PackageKitTransaction::OnErrorSignal,
+                                   weak_ptr_factory_.GetWeakPtr());
+    } else if (signal_mask_ & kFinishedSignalMask) {
+      signal_mask_ = signal_mask_ & ~kFinishedSignalMask;
+      signal_name.assign(kFinishedSignal);
+      signal_callback = base::Bind(&PackageKitTransaction::OnFinishedSignal,
+                                   weak_ptr_factory_.GetWeakPtr());
+    } else if (signal_mask_ & kPackageSignalMask) {
+      signal_mask_ = signal_mask_ & ~kPackageSignalMask;
+      signal_name.assign(kPackageSignal);
+      signal_callback = base::Bind(&PackageKitTransaction::OnPackageSignal,
+                                   weak_ptr_factory_.GetWeakPtr());
+    } else if (signal_mask_ & kDetailsSignalMask) {
+      signal_mask_ = signal_mask_ & ~kDetailsSignalMask;
+      signal_name.assign(kDetailsSignal);
+      signal_callback = base::Bind(&PackageKitTransaction::OnDetailsSignal,
+                                   weak_ptr_factory_.GetWeakPtr());
+    } else {
+      NOTREACHED();
+    }
+
+    transaction_proxy_->ConnectToSignal(
+        kPackageKitTransactionInterface, signal_name, signal_callback,
+        base::Bind(&PackageKitTransaction::OnSignalConnected,
+                   weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  void OnSignalConnected(const std::string& interface_name,
+                         const std::string& signal_name,
+                         bool is_connected) {
+    if (!is_connected) {
+      // Any failures in signal hookups mean we should abort.
+      GeneralErrorInternal("Failed to hookup " + signal_name + " signal");
+      return;
+    }
+    if (signal_mask_ == 0) {
+      // Done hooking up our signals, let the subclass invoke the request.
+      if (!ExecuteRequest(transaction_proxy_)) {
+        GeneralErrorInternal(
+            "Failure executing the request in the transaction");
+      }
+    } else {
+      ConnectNextSignal();
+    }
+  }
+
+  void OnErrorSignal(dbus::Signal* signal) {
+    CHECK(signal);
+    dbus::MessageReader reader(signal);
+    uint32_t code;
+    std::string details;
+    if (!reader.PopUint32(&code) || !reader.PopString(&details)) {
+      GeneralErrorInternal("Failure parsing PackageKit error signal");
+      return;
+    }
+    ErrorReceived(code, details);
+  }
+
+  void OnFinishedSignal(dbus::Signal* signal) {
+    CHECK(signal);
+    dbus::MessageReader reader(signal);
+    uint32_t exit_code;
+    if (!reader.PopUint32(&exit_code)) {
+      GeneralErrorInternal("Failure parsing PackageKit finished signal");
+      return;
+    }
+    FinishedReceived(exit_code);
+    // We are done, we should self-destruct.
+    delete this;
+  }
+
+  void OnPackageSignal(dbus::Signal* signal) {
+    CHECK(signal);
+    dbus::MessageReader reader(signal);
+    uint32_t code;
+    std::string package_id;
+    std::string summary;
+    if (!reader.PopUint32(&code) || !reader.PopString(&package_id) ||
+        !reader.PopString(&summary)) {
+      GeneralErrorInternal("Failure parsing PackageKit Package signal");
+      return;
+    }
+    PackageReceived(code, package_id, summary);
+  }
+
+  void OnDetailsSignal(dbus::Signal* signal) {
+    CHECK(signal);
+    dbus::MessageReader reader(signal);
+    // Read all of the details on the package. This is an array of dict entries
+    // with string keys and variant values.
+    dbus::MessageReader array_reader(nullptr);
+    if (!reader.PopArray(&array_reader)) {
+      GeneralErrorInternal("Failure parsing PackageKit Details signal");
+      return;
+    }
+    std::string package_id;
+    std::string license;
+    std::string description;
+    std::string project_url;
+    uint64_t size = 0;
+    std::string summary;
+    while (array_reader.HasMoreData()) {
+      dbus::MessageReader dict_entry_reader(nullptr);
+      if (array_reader.PopDictEntry(&dict_entry_reader)) {
+        dbus::MessageReader value_reader(nullptr);
+        std::string name;
+        if (!dict_entry_reader.PopString(&name) ||
+            !dict_entry_reader.PopVariant(&value_reader)) {
+          LOG(WARNING) << "Error popping dictionary entry from D-Bus message";
+          continue;
+        }
+        if (name == kDetailsKeyPackageId) {
+          if (!value_reader.PopString(&package_id)) {
+            LOG(WARNING) << "Error popping package_id from details";
+          }
+        } else if (name == kDetailsKeyLicense) {
+          if (!value_reader.PopString(&license)) {
+            LOG(WARNING) << "Error popping license from details";
+          }
+        } else if (name == kDetailsKeyDescription) {
+          if (!value_reader.PopString(&description)) {
+            LOG(WARNING) << "Error popping description from details";
+          }
+        } else if (name == kDetailsKeyUrl) {
+          if (!value_reader.PopString(&project_url)) {
+            LOG(WARNING) << "Error popping url from details";
+          }
+        } else if (name == kDetailsKeySize) {
+          if (!value_reader.PopUint64(&size)) {
+            LOG(WARNING) << "Error popping size from details";
+          }
+        } else if (name == kDetailsKeySummary) {
+          if (!value_reader.PopString(&summary)) {
+            LOG(WARNING) << "Error popping summary from details";
+          }
+        }
+      }
+    }
+    DetailsReceived(package_id, license, description, project_url, size,
+                    summary);
+  }
+
+  void OnPackageKitPropertyChanged(const std::string& name) {
+    PropertyChangeReceived(name, transaction_properties_.get());
+  }
+
+ protected:
+  scoped_refptr<dbus::Bus> bus_;
+  base::WeakPtr<PackageKitProxy> packagekit_proxy_;
+  dbus::ObjectProxy* packagekit_service_proxy_;  // Not owned.
+
+ private:
+  uint32_t signal_mask_;
+
+  dbus::ObjectProxy* transaction_proxy_;  // Owned by bus_.
+  dbus::ObjectPath transaction_path_;
+  std::unique_ptr<PackageKitTransactionProperties> transaction_properties_;
+
+  base::WeakPtrFactory<PackageKitTransaction> weak_ptr_factory_;
+  DISALLOW_COPY_AND_ASSIGN(PackageKitTransaction);
+};
+
+// Sublcass for handling GetDetailsLocal transaction.
+class GetDetailsLocalTransaction : public PackageKitTransaction {
+ public:
+  GetDetailsLocalTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      base::WeakPtr<PackageKitProxy> packagekit_proxy,
+      dbus::ObjectProxy* packagekit_service_proxy,
+      std::shared_ptr<PackageKitProxy::PackageInfoTransactionData> data)
+      : PackageKitTransaction(
+            bus,
+            packagekit_proxy,
+            packagekit_service_proxy,
+            kErrorCodeSignalMask | kFinishedSignalMask | kDetailsSignalMask),
+        data_(data) {
+    data_->result = false;
+  }
+
+  void GeneralError(const std::string& details) override {
+    LOG(ERROR) << "Problem with GetDetailsLocal transaction: " << details;
+    // Check if we've already indicated we are done.
+    if (data_->event.IsSignaled())
+      return;
+    data_->error.assign(details);
+    data_->event.Signal();
+  }
+
+  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
+    dbus::MethodCall method_call(kPackageKitTransactionInterface,
+                                 kGetDetailsLocalMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendArrayOfStrings({data_->file_path.value()});
+    std::unique_ptr<dbus::Response> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    return !!dbus_response;
+  }
+
+  void ErrorReceived(uint32_t error_code, const std::string& details) override {
+    LOG(ERROR) << "Failure querying Linux package of: " << details;
+    // Check if we've already indicated we are done.
+    if (data_->event.IsSignaled())
+      return;
+    // We will still get a Finished signal where we finalize everything.
+    data_->error.assign(details);
+  }
+
+  void FinishedReceived(uint32_t exit_code) override {
+    LOG(INFO) << "Finished with query for Linux package info";
+    // Check if we've already indicated we are done.
+    if (data_->event.IsSignaled())
+      return;
+    // If this is a failure, the error message should have already been set via
+    // that callback.
+    data_->result = kPackageKitExitCodeSuccess == exit_code;
+    data_->event.Signal();
+  }
+
+  void DetailsReceived(const std::string& package_id,
+                       const std::string& license,
+                       const std::string& description,
+                       const std::string& project_url,
+                       uint64_t size,
+                       const std::string& summary) override {
+    // Check if we've already indicated we are done.
+    if (data_->event.IsSignaled())
+      return;
+    data_->pkg_info->package_id.assign(package_id);
+    data_->pkg_info->license.assign(license);
+    data_->pkg_info->description.assign(description);
+    data_->pkg_info->project_url.assign(project_url);
+    data_->pkg_info->size = size;
+    data_->pkg_info->summary.assign(summary);
+  }
+
+ private:
+  std::shared_ptr<PackageKitProxy::PackageInfoTransactionData> data_;
+};
+
+// This is for tracking if an install is currently in progress.
+bool install_active = false;
+
+// Sublcass for handling InstallFiles transaction.
+class InstallFilesTransaction : public PackageKitTransaction {
+ public:
+  InstallFilesTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      base::WeakPtr<PackageKitProxy> packagekit_proxy,
+      dbus::ObjectProxy* packagekit_service_proxy,
+      base::WeakPtr<PackageKitProxy::PackageKitObserver> observer,
+      base::FilePath file_path)
+      : PackageKitTransaction(
+            bus,
+            packagekit_proxy,
+            packagekit_service_proxy,
+            kErrorCodeSignalMask | kFinishedSignalMask | kPropertiesSignalMask),
+        file_path_(file_path),
+        observer_(observer) {}
+  ~InstallFilesTransaction() { install_active = false; }
+
+  void GeneralError(const std::string& details) override {
+    if (!observer_)
+      return;
+    observer_->OnInstallCompletion(false, details);
+    observer_.reset();
+  }
+
+  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
+    dbus::MethodCall method_call(kPackageKitTransactionInterface,
+                                 kInstallFilesMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendUint64(0);  // Allow installing untrusted files.
+    writer.AppendArrayOfStrings({file_path_.value()});
+    std::unique_ptr<dbus::Response> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    return !!dbus_response;
+  }
+
+  void ErrorReceived(uint32_t error_code, const std::string& details) override {
+    LOG(ERROR) << "Failure installing Linux package of: " << details;
+    if (!observer_)
+      return;
+    observer_->OnInstallCompletion(false, details);
+    observer_.reset();
+  }
+
+  void FinishedReceived(uint32_t exit_code) override {
+    LOG(INFO) << "Finished installing Linux package result: " << exit_code;
+    if (!observer_)
+      return;
+    observer_->OnInstallCompletion(
+        kPackageKitExitCodeSuccess == exit_code,
+        "Exit Code: " + base::IntToString(exit_code));
+    observer_.reset();
+  }
+
+  void PropertyChangeReceived(
+      const std::string& name,
+      PackageKitTransactionProperties* properties) override {
+    if (!observer_)
+      return;
+    // There's only 2 progress states we actually care about which are logical
+    // to report to the user. These are downloading and installing, which
+    // correspond to similar experiences in Android and elsewhere. There are
+    // various other phases this goes through, but they happen rather quickly
+    // and would not be worth informing the user of.
+    if (name != properties->percentage.name()) {
+      // We only want to see progress percentage changes and then we filter
+      // these below based on the current status.
+      return;
+    }
+    vm_tools::container::InstallLinuxPackageProgressInfo::Status status;
+    switch (properties->status.value()) {
+      case kPackageKitStatusDownload:
+        status =
+            vm_tools::container::InstallLinuxPackageProgressInfo::DOWNLOADING;
+        break;
+      case kPackageKitStatusInstall:
+        status =
+            vm_tools::container::InstallLinuxPackageProgressInfo::INSTALLING;
+        break;
+      default:
+        // Not a status state we care about.
+        return;
+    }
+    int percentage = properties->percentage.value();
+    // PackageKit uses 101 for the percent when it doesn't know, treat that as
+    // zero because you see this at the beginning of phases.
+    if (percentage == 101)
+      percentage = 0;
+    observer_->OnInstallProgress(status, percentage);
+  }
+
+ private:
+  base::FilePath file_path_;
+  base::WeakPtr<PackageKitProxy::PackageKitObserver> observer_;
+};
+
+// Sublcass for handling UpdatePackages transaction.
+class UpdatePackagesTransaction : public PackageKitTransaction {
+ public:
+  UpdatePackagesTransaction(scoped_refptr<dbus::Bus> bus,
+                            base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                            dbus::ObjectProxy* packagekit_service_proxy,
+                            std::vector<std::string> package_ids)
+      : PackageKitTransaction(bus,
+                              packagekit_proxy,
+                              packagekit_service_proxy,
+                              kErrorCodeSignalMask | kFinishedSignalMask),
+        package_ids_(package_ids) {
+    LOG(INFO) << "Attempting to upgrade package IDs: "
+              << base::JoinString(package_ids, ", ");
+  }
+
+  void GeneralError(const std::string& details) override {
+    LOG(ERROR) << "Error occurred with UpdatePackages: " << details;
+  }
+
+  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
+    dbus::MethodCall method_call(kPackageKitTransactionInterface,
+                                 kUpdatePackagesMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendUint64(0);  // No transaction flag.
+    writer.AppendArrayOfStrings(package_ids_);
+    std::unique_ptr<dbus::Response> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    return !!dbus_response;
+  }
+
+  void ErrorReceived(uint32_t error_code, const std::string& details) override {
+    LOG(ERROR) << "Failure with UpdatePackages of: " << details;
+  }
+
+  void FinishedReceived(uint32_t exit_code) override {
+    if (exit_code == kPackageKitExitCodeSuccess) {
+      LOG(INFO) << "Successfully performed upgrade of managed packages";
+    } else {
+      // PackageKit will log the specific error itself.
+      LOG(ERROR) << "Failure performing upgrade of managed packages, code: "
+                 << exit_code;
+    }
+  }
+
+ private:
+  std::vector<std::string> package_ids_;
+};
+
+// Sublcass for handling GetUpdates transaction.
+class GetUpdatesTransaction : public PackageKitTransaction {
+ public:
+  GetUpdatesTransaction(scoped_refptr<dbus::Bus> bus,
+                        base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                        dbus::ObjectProxy* packagekit_service_proxy)
+      : PackageKitTransaction(
+            bus,
+            packagekit_proxy,
+            packagekit_service_proxy,
+            kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask) {}
+
+  void GeneralError(const std::string& details) override {
+    LOG(ERROR) << "Error occurred with GetUpdates: " << details;
+  }
+
+  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
+    dbus::MethodCall method_call(kPackageKitTransactionInterface,
+                                 kGetUpdatesMethod);
+    dbus::MessageWriter writer(&method_call);
+    // Set the filter to installed packages.
+    writer.AppendUint64(kPackageKitFilterInstalled);
+    std::unique_ptr<dbus::Response> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    return !!dbus_response;
+  }
+
+  void ErrorReceived(uint32_t error_code, const std::string& details) override {
+    LOG(ERROR) << "Failure with GetUpdates of: " << details;
+  }
+
+  void PackageReceived(uint32_t code,
+                       const std::string& package_id,
+                       const std::string& /* summary */) override {
+    if (base::EndsWith(package_id, kManagedPackageIdSuffix,
+                       base::CompareCase::SENSITIVE)) {
+      LOG(INFO) << "Found managed package that is upgradeable, add it to the "
+                << "list: " << package_id;
+      package_ids_.emplace_back(package_id);
+    }
+  }
+
+  void FinishedReceived(uint32_t exit_code) override {
+    if (exit_code == kPackageKitExitCodeSuccess) {
+      LOG(INFO) << "PackageKit GetUpdates transaction has completed with "
+                << package_ids_.size() << " available managed updates";
+      if (!package_ids_.empty()) {
+        // This object is intentionally leaked and will clean itself up when
+        // done with all the D-Bus communication.
+        UpdatePackagesTransaction* transaction = new UpdatePackagesTransaction(
+            bus_, packagekit_proxy_, packagekit_service_proxy_,
+            std::move(package_ids_));
+        transaction->StartTransaction();
+      }
+    } else {
+      LOG(ERROR) << "Failure performing GetUpdates, code: " << exit_code;
+    }
+  }
+
+ private:
+  std::vector<std::string> package_ids_;
+};
+
+// Sublcass for handling RefreshCache transaction.
+class RefreshCacheTransaction : public PackageKitTransaction {
+ public:
+  RefreshCacheTransaction(scoped_refptr<dbus::Bus> bus,
+                          base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                          dbus::ObjectProxy* packagekit_service_proxy)
+      : PackageKitTransaction(bus,
+                              packagekit_proxy,
+                              packagekit_service_proxy,
+                              kErrorCodeSignalMask | kFinishedSignalMask) {}
+
+  static void RefreshCacheNow(scoped_refptr<dbus::Bus> bus,
+                              base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                              dbus::ObjectProxy* packagekit_service_proxy) {
+    LOG(INFO) << "Refreshing the remote repository packages";
+    // This object is intentionally leaked and will clean itself up when done
+    // with all the D-Bus communication.
+    RefreshCacheTransaction* transaction = new RefreshCacheTransaction(
+        bus, packagekit_proxy, packagekit_service_proxy);
+    transaction->StartTransaction();
+  }
+
+  void GeneralError(const std::string& details) override {
+    LOG(ERROR) << "Error occurred with RefreshCache: " << details;
+    ScheduleNextCacheRefresh();
+  }
+
+  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
+    dbus::MethodCall method_call(kPackageKitTransactionInterface,
+                                 kRefreshCacheMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendBool(false);  // Don't force cache wipe.
+    std::unique_ptr<dbus::Response> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    return !!dbus_response;
+  }
+
+  void ErrorReceived(uint32_t error_code, const std::string& details) override {
+    LOG(ERROR) << "Failure with RefreshCache of: " << details;
+  }
+
+ private:
+  void ScheduleNextCacheRefresh() {
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(&RefreshCacheNow, bus_, packagekit_proxy_,
+                   packagekit_service_proxy_),
+        kRefreshCachePeriod);
+  }
+
+ public:
+  void FinishedReceived(uint32_t exit_code) override {
+    if (exit_code == kPackageKitExitCodeSuccess) {
+      LOG(INFO) << "Successfully performed refresh of package cache";
+      // Now we need to get the list of updatable packages that we control so we
+      // can perform upgrades on anything that's available.
+      // This object is intentionally leaked and will clean itself up when done
+      // with all the D-Bus communication.
+      GetUpdatesTransaction* transaction = new GetUpdatesTransaction(
+          bus_, packagekit_proxy_, packagekit_service_proxy_);
+      transaction->StartTransaction();
+    } else {
+      LOG(ERROR) << "Failure performing refresh of package cache, code: "
+                 << exit_code;
+    }
+    ScheduleNextCacheRefresh();
+  }
+};
+
+}  // namespace
 
 PackageKitProxy::PackageInfoTransactionData::PackageInfoTransactionData(
     const base::FilePath& file_path_in,
@@ -151,8 +839,8 @@ bool PackageKitProxy::Init() {
   // upgrades on our managed packages.
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&PackageKitProxy::RefreshCacheOnDBusThread,
-                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&RefreshCacheTransaction::RefreshCacheNow, bus_,
+                 weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_),
       kRefreshCacheStartupDelay);
 
   return true;
@@ -183,13 +871,6 @@ bool PackageKitProxy::GetLinuxPackageInfo(
     out_error->assign(data->error);
     result = data->result;
   }
-
-  // Delete the D-Bus proxy on the D-Bus thread, this'll clean up all the
-  // callbacks and release the shared_ptr that we allocated above.
-  task_runner_->PostTask(
-      FROM_HERE,
-      base::Bind(&PackageKitProxy::RemoveObjectProxyOnDBusThread,
-                 weak_ptr_factory_.GetWeakPtr(), data->info_transaction_path));
   return result;
 }
 
@@ -206,50 +887,27 @@ int PackageKitProxy::InstallLinuxPackage(const base::FilePath& file_path,
   return status;
 }
 
+void PackageKitProxy::AddPackageKitDeathObserver(
+    PackageKitDeathObserver* observer) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  death_observers_.AddObserver(observer);
+}
+
+void PackageKitProxy::RemovePackageKitDeathObserver(
+    PackageKitDeathObserver* observer) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  death_observers_.RemoveObserver(observer);
+}
+
 void PackageKitProxy::GetLinuxPackageInfoOnDBusThread(
     std::shared_ptr<PackageInfoTransactionData> data) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Getting information on local Linux package";
-  // Create a transaction with PackageKit for performing the query.
-  dbus::MethodCall method_call(kPackageKitInterface, kCreateTransactionMethod);
-  dbus::MessageWriter writer(&method_call);
-  std::unique_ptr<dbus::Response> dbus_response =
-      packagekit_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  data->result = false;
-  if (!dbus_response) {
-    data->error.assign("Failure calling CreateTransaction");
-    LOG(ERROR) << data->error;
-    data->event.Signal();
-    return;
-  }
-  // CreateTransaction returns the object path for the transaction session we
-  // have created.
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopObjectPath(&data->info_transaction_path)) {
-    data->error.assign("Failure reading object path from transaction result");
-    LOG(ERROR) << data->error;
-    data->event.Signal();
-    return;
-  }
-  dbus::ObjectProxy* transaction_proxy =
-      bus_->GetObjectProxy(kPackageKitServiceName, data->info_transaction_path);
-  if (!transaction_proxy) {
-    data->error.assign("Failed to get proxy for transaction");
-    LOG(ERROR) << data->error;
-    data->event.Signal();
-    return;
-  }
-
-  // Hook up all the necessary signals to PackageKit for monitoring the
-  // transaction. After these are all hooked up, we will initiate the info
-  // request.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kErrorCodeSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitInfoError,
-                 weak_ptr_factory_.GetWeakPtr(), data),
-      base::Bind(&PackageKitProxy::OnErrorSignalConnectedForInfo,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy, data));
+  // This object is intentionally leaked and will clean itself up when done
+  // with all the D-Bus communication.
+  GetDetailsLocalTransaction* transaction = new GetDetailsLocalTransaction(
+      bus_, weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_, data);
+  transaction->StartTransaction();
 }
 
 void PackageKitProxy::InstallLinuxPackageOnDBusThread(
@@ -262,7 +920,7 @@ void PackageKitProxy::InstallLinuxPackageOnDBusThread(
   CHECK(status);
   CHECK(out_error);
   // Make sure we don't already have one in progress.
-  if (transaction_properties_) {
+  if (install_active) {
     *status = vm_tools::container::InstallLinuxPackageResponse::
         INSTALL_ALREADY_ACTIVE;
     *out_error = "Install is already active";
@@ -270,832 +928,32 @@ void PackageKitProxy::InstallLinuxPackageOnDBusThread(
     event->Signal();
     return;
   }
-  // Create a transaction with PackageKit for performing the installation.
-  dbus::MethodCall method_call(kPackageKitInterface, kCreateTransactionMethod);
-  dbus::MessageWriter writer(&method_call);
-  std::unique_ptr<dbus::Response> dbus_response =
-      packagekit_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
+  install_active = true;
+  // This object is intentionally leaked and will clean itself up when done
+  // with all the D-Bus communication.
+  InstallFilesTransaction* transaction = new InstallFilesTransaction(
+      bus_, weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_,
+      observer_, file_path);
+  if (!transaction->StartTransaction()) {
+    install_active = false;
     *status = vm_tools::container::InstallLinuxPackageResponse::FAILED;
-    *out_error = "Failure calling CreateTransaction";
+    *out_error = "Failure with D-Bus communication";
     LOG(ERROR) << *out_error;
     event->Signal();
     return;
   }
-  // CreateTransaction returns the object path for the transaction session we
-  // have created.
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopObjectPath(&install_transaction_path_)) {
-    *status = vm_tools::container::InstallLinuxPackageResponse::FAILED;
-    *out_error = "Failure reading object path from transaction result";
-    LOG(ERROR) << *out_error;
-    event->Signal();
-    return;
-  }
-  dbus::ObjectProxy* transaction_proxy =
-      bus_->GetObjectProxy(kPackageKitServiceName, install_transaction_path_);
-  if (!transaction_proxy) {
-    *status = vm_tools::container::InstallLinuxPackageResponse::FAILED;
-    *out_error = "Failed to get proxy for transaction";
-    LOG(ERROR) << *out_error;
-    event->Signal();
-    return;
-  }
-
-  // Set the hint that we don't support interactive installs. I haven't seen a
-  // case of this yet, but it seems like a good idea to set it if it does occur.
-  dbus::MethodCall sethints_call(kPackageKitTransactionInterface,
-                                 kSetHintsMethod);
-  dbus::MessageWriter sethints_writer(&sethints_call);
-  sethints_writer.AppendArrayOfStrings({"interactive=false"});
-  dbus_response = transaction_proxy->CallMethodAndBlock(
-      &sethints_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    // Don't propagate a failure, this was just a hint.
-    LOG(ERROR) << "Failure calling SetHints";
-  }
-
-  // Hook up all the necessary signals to PackageKit for monitoring the
-  // transaction. After these are all hooked up, we will initiate the install.
-  transaction_properties_ = std::make_unique<PackageKitTransactionProperties>(
-      transaction_proxy,
-      base::Bind(&PackageKitProxy::OnPackageKitPropertyChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
-  transaction_properties_->ConnectSignals();
-  transaction_properties_->GetAll();
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kErrorCodeSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitInstallError,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&PackageKitProxy::OnErrorSignalConnectedForInstall,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy, file_path));
 
   *status = vm_tools::container::InstallLinuxPackageResponse::STARTED;
   *out_error = "";
   event->Signal();
 }
 
-void PackageKitProxy::RefreshCacheOnDBusThread() {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  LOG(INFO) << "Refreshing the remote repository packages";
-  // Create a transaction with PackageKit for performing the query.
-  dbus::MethodCall method_call(kPackageKitInterface, kCreateTransactionMethod);
-  dbus::MessageWriter writer(&method_call);
-  std::unique_ptr<dbus::Response> dbus_response =
-      packagekit_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failure in D-Bus call to create PackageKit transaction";
-    return;
-  }
-  // CreateTransaction returns the object path for the transaction session we
-  // have created.
-  dbus::ObjectPath transaction_path;
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopObjectPath(&transaction_path)) {
-    LOG(ERROR) << "Failure reading object path from transaction result";
-    return;
-  }
-  dbus::ObjectProxy* transaction_proxy =
-      bus_->GetObjectProxy(kPackageKitServiceName, transaction_path);
-  if (!transaction_proxy) {
-    LOG(ERROR) << "Failed to get proxy for transaction";
-    return;
-  }
-
-  // Hook up all the necessary signals to PackageKit for monitoring the
-  // transaction. After these are all hooked up, we will initiate the refresh.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kErrorCodeSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitRefreshError,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&PackageKitProxy::OnErrorSignalConnectedForRefresh,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy,
-                 transaction_path));
-}
-
-void PackageKitProxy::GetUpdatableManagedPackagesOnDBusThread() {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  LOG(INFO) << "Determining which packages have updates";
-  // Create a transaction with PackageKit for performing the query.
-  dbus::MethodCall method_call(kPackageKitInterface, kCreateTransactionMethod);
-  dbus::MessageWriter writer(&method_call);
-  std::unique_ptr<dbus::Response> dbus_response =
-      packagekit_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failure in D-Bus call to create PackageKit transaction";
-    return;
-  }
-  // CreateTransaction returns the object path for the transaction session we
-  // have created.
-  dbus::ObjectPath transaction_path;
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopObjectPath(&transaction_path)) {
-    LOG(ERROR) << "Failure reading object path from transaction result";
-    return;
-  }
-  dbus::ObjectProxy* transaction_proxy =
-      bus_->GetObjectProxy(kPackageKitServiceName, transaction_path);
-  if (!transaction_proxy) {
-    LOG(ERROR) << "Failed to get proxy for transaction";
-    return;
-  }
-
-  // Hook up all the necessary signals to PackageKit for monitoring the
-  // transaction. After these are all hooked up, we will initiate the call to
-  // get the updates.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kErrorCodeSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitGetUpdatesError,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&PackageKitProxy::OnErrorSignalConnectedForGetUpdates,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy,
-                 transaction_path));
-}
-
-void PackageKitProxy::UpgradePackagesOnDBusThread(
-    std::shared_ptr<std::vector<std::string>> package_ids) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  LOG(INFO) << "Attempting to upgrade package IDs: "
-            << base::JoinString(*package_ids.get(), ", ");
-  // Create a transaction with PackageKit for performing the query.
-  dbus::MethodCall method_call(kPackageKitInterface, kCreateTransactionMethod);
-  dbus::MessageWriter writer(&method_call);
-  std::unique_ptr<dbus::Response> dbus_response =
-      packagekit_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failure in D-Bus call to create PackageKit transaction";
-    return;
-  }
-  // CreateTransaction returns the object path for the transaction session we
-  // have created.
-  dbus::ObjectPath transaction_path;
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopObjectPath(&transaction_path)) {
-    LOG(ERROR) << "Failure reading object path from transaction result";
-    return;
-  }
-  dbus::ObjectProxy* transaction_proxy =
-      bus_->GetObjectProxy(kPackageKitServiceName, transaction_path);
-  if (!transaction_proxy) {
-    LOG(ERROR) << "Failed to get proxy for transaction";
-    return;
-  }
-
-  // Hook up all the necessary signals to PackageKit for monitoring the
-  // transaction. After these are all hooked up, we will initiate the upgrade.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kErrorCodeSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitUpgradeError,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&PackageKitProxy::OnErrorSignalConnectedForUpgrade,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy,
-                 transaction_path, package_ids));
-}
-
-void PackageKitProxy::OnErrorSignalConnectedForInstall(
-    dbus::ObjectProxy* transaction_proxy,
-    const base::FilePath& file_path,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    // Any failures in signal hookups mean we should abort.
-    HandleInstallCompletion(false,
-                            "Failed to hookup " + signal_name + " signal");
-    return;
-  }
-  DCHECK_EQ(signal_name, kErrorCodeSignal);
-  // This is the first signal we hook up, then we hook up the Finished one
-  // next.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kFinishedSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitInstallFinished,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&PackageKitProxy::OnFinishedSignalConnectedForInstall,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy, file_path));
-}
-
-void PackageKitProxy::OnFinishedSignalConnectedForInstall(
-    dbus::ObjectProxy* transaction_proxy,
-    const base::FilePath& file_path,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    // Any failures in signal hookups mean we should abort.
-    HandleInstallCompletion(false,
-                            "Failed to hookup " + signal_name + " signal");
-    return;
-  }
-  DCHECK_EQ(signal_name, kFinishedSignal);
-  // Now we invoke the call for performing the actual installation since all
-  // of our signals are hooked up.
-  dbus::MethodCall method_call(kPackageKitTransactionInterface,
-                               kInstallFilesMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendUint64(0);  // Allow installing untrusted files.
-  writer.AppendArrayOfStrings({file_path.value()});
-  std::unique_ptr<dbus::Response> dbus_response =
-      transaction_proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failure calling InstallFiles";
-    HandleInstallCompletion(false, "Failure calling InstallFiles");
-  }
-}
-
-void PackageKitProxy::OnErrorSignalConnectedForInfo(
-    dbus::ObjectProxy* transaction_proxy,
-    std::shared_ptr<PackageInfoTransactionData> data,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    // Any failures in signal hookups mean we should abort.
-    data->result = false;
-    data->error.assign("Failed to hookup " + signal_name + " signal");
-    data->event.Signal();
-    return;
-  }
-  CHECK(transaction_proxy);
-  DCHECK_EQ(signal_name, kErrorCodeSignal);
-  // This is the first signal we hook up, then we hook up the Finished one
-  // next.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kFinishedSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitInfoFinished,
-                 weak_ptr_factory_.GetWeakPtr(), data),
-      base::Bind(&PackageKitProxy::OnFinishedSignalConnectedForInfo,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy, data));
-}
-
-void PackageKitProxy::OnFinishedSignalConnectedForInfo(
-    dbus::ObjectProxy* transaction_proxy,
-    std::shared_ptr<PackageInfoTransactionData> data,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    // Any failures in signal hookups mean we should abort.
-    data->result = false;
-    data->error.assign("Failed to hookup " + signal_name + " signal");
-    data->event.Signal();
-    return;
-  }
-  CHECK(transaction_proxy);
-  DCHECK_EQ(signal_name, kFinishedSignal);
-  // This is the second signal we hook up, then we hook up the Details one
-  // next.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kDetailsSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitInfoDetails,
-                 weak_ptr_factory_.GetWeakPtr(), data),
-      base::Bind(&PackageKitProxy::OnDetailsSignalConnectedForInfo,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy, data));
-}
-
-void PackageKitProxy::OnDetailsSignalConnectedForInfo(
-    dbus::ObjectProxy* transaction_proxy,
-    std::shared_ptr<PackageInfoTransactionData> data,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    // Any failures in signal hookups mean we should abort.
-    data->result = false;
-    data->error.assign("Failed to hookup " + signal_name + " signal");
-    data->event.Signal();
-    return;
-  }
-  CHECK(transaction_proxy);
-  DCHECK_EQ(signal_name, kDetailsSignal);
-  // Now we invoke the call for performing the actual query since all
-  // of our signals are hooked up.
-  dbus::MethodCall method_call(kPackageKitTransactionInterface,
-                               kGetDetailsLocalMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfStrings({data->file_path.value()});
-  std::unique_ptr<dbus::Response> dbus_response =
-      transaction_proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    data->error.assign("Failure calling GetDetailsLocal");
-    LOG(ERROR) << data->error;
-    data->result = false;
-    data->event.Signal();
-  }
-}
-
-void PackageKitProxy::OnErrorSignalConnectedForRefresh(
-    dbus::ObjectProxy* transaction_proxy,
-    const dbus::ObjectPath& transaction_path,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    LOG(ERROR) << "Failed to hookup " << signal_name << " signal";
-    ScheduleNextCacheRefresh();
-    return;
-  }
-  DCHECK_EQ(signal_name, kErrorCodeSignal);
-  // This is the first signal we hook up, then we hook up the Finished one
-  // next.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kFinishedSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitRefreshFinished,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_path),
-      base::Bind(&PackageKitProxy::OnFinishedSignalConnectedForRefresh,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy));
-}
-
-void PackageKitProxy::OnFinishedSignalConnectedForRefresh(
-    dbus::ObjectProxy* transaction_proxy,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    LOG(ERROR) << "Failed to hookup " << signal_name << " signal";
-    ScheduleNextCacheRefresh();
-    return;
-  }
-  DCHECK_EQ(signal_name, kFinishedSignal);
-  // Now we invoke the call for performing the actual refresh since all
-  // of our signals are hooked up.
-  dbus::MethodCall method_call(kPackageKitTransactionInterface,
-                               kRefreshCacheMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendBool(false);  // Don't force cache wipe.
-  std::unique_ptr<dbus::Response> dbus_response =
-      transaction_proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failure calling RefreshCache";
-    ScheduleNextCacheRefresh();
-  }
-}
-
-void PackageKitProxy::OnErrorSignalConnectedForGetUpdates(
-    dbus::ObjectProxy* transaction_proxy,
-    const dbus::ObjectPath& transaction_path,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    LOG(ERROR) << "Failed to hookup " << signal_name << " signal";
-    return;
-  }
-  DCHECK_EQ(signal_name, kErrorCodeSignal);
-  // This is the first signal we hook up, then we hook up the Finished one
-  // next.
-  std::shared_ptr<std::vector<std::string>> package_ids =
-      std::make_shared<std::vector<std::string>>();
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kFinishedSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitGetUpdatesFinished,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_path, package_ids),
-      base::Bind(&PackageKitProxy::OnFinishedSignalConnectedForGetUpdates,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy,
-                 package_ids));
-}
-
-void PackageKitProxy::OnFinishedSignalConnectedForGetUpdates(
-    dbus::ObjectProxy* transaction_proxy,
-    std::shared_ptr<std::vector<std::string>> package_ids,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    LOG(ERROR) << "Failed to hookup " << signal_name << " signal";
-    return;
-  }
-  DCHECK_EQ(signal_name, kFinishedSignal);
-  // This is the second signal we hook up, then we hook up the Package one
-  // next.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kPackageSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitGetUpdatesPackage,
-                 weak_ptr_factory_.GetWeakPtr(), package_ids),
-      base::Bind(&PackageKitProxy::OnPackageSignalConnectedForGetUpdates,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy));
-}
-
-void PackageKitProxy::OnPackageSignalConnectedForGetUpdates(
-    dbus::ObjectProxy* transaction_proxy,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    LOG(ERROR) << "Failed to hookup " << signal_name << " signal";
-    return;
-  }
-  DCHECK_EQ(signal_name, kPackageSignal);
-  // Now we invoke the call for getting the updates since all of our signals are
-  // hooked up.
-  dbus::MethodCall method_call(kPackageKitTransactionInterface,
-                               kGetUpdatesMethod);
-  dbus::MessageWriter writer(&method_call);
-  // Set the filter to installed packages.
-  writer.AppendUint64(kPackageKitFilterInstalled);
-  std::unique_ptr<dbus::Response> dbus_response =
-      transaction_proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failure calling GetUpdates";
-  }
-}
-
-void PackageKitProxy::OnErrorSignalConnectedForUpgrade(
-    dbus::ObjectProxy* transaction_proxy,
-    const dbus::ObjectPath& transaction_path,
-    std::shared_ptr<std::vector<std::string>> package_ids,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    LOG(ERROR) << "Failed to hookup " << signal_name << " signal";
-    ScheduleNextCacheRefresh();
-    return;
-  }
-  DCHECK_EQ(signal_name, kErrorCodeSignal);
-  // This is the first signal we hook up, then we hook up the Finished one
-  // next and perform the upgrade at that point.
-  transaction_proxy->ConnectToSignal(
-      kPackageKitTransactionInterface, kFinishedSignal,
-      base::Bind(&PackageKitProxy::OnPackageKitUpgradeFinished,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_path),
-      base::Bind(&PackageKitProxy::OnFinishedSignalConnectedForUpgrade,
-                 weak_ptr_factory_.GetWeakPtr(), transaction_proxy,
-                 package_ids));
-}
-
-void PackageKitProxy::OnFinishedSignalConnectedForUpgrade(
-    dbus::ObjectProxy* transaction_proxy,
-    std::shared_ptr<std::vector<std::string>> package_ids,
-    const std::string& interface_name,
-    const std::string& signal_name,
-    bool is_connected) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!is_connected) {
-    LOG(ERROR) << "Failed to hookup " << signal_name << " signal";
-    return;
-  }
-  DCHECK_EQ(signal_name, kFinishedSignal);
-
-  // Now we invoke the call for performing the actual upgrades since all of our
-  // signals are hooked up.
-  dbus::MethodCall method_call(kPackageKitTransactionInterface,
-                               kUpdatePackagesMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendUint64(0);  // No transaction flag.
-  writer.AppendArrayOfStrings(*package_ids.get());
-  std::unique_ptr<dbus::Response> dbus_response =
-      transaction_proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failure calling UpdatePackages";
-  }
-}
-
-void PackageKitProxy::OnPackageKitInstallError(dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t code;
-  std::string details;
-  if (!reader.PopUint32(&code) || !reader.PopString(&details)) {
-    HandleInstallCompletion(false, "Failure parsing PackageKit error signal");
-    return;
-  }
-  LOG(ERROR) << "Failure installing Linux package of: " << details;
-  HandleInstallCompletion(false, details);
-}
-
-void PackageKitProxy::OnPackageKitInstallFinished(dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t exit_code;
-  if (!reader.PopUint32(&exit_code)) {
-    // We really don't know if this succeeded or failed, but it should be
-    // considered over and we will treat it as a failure. This is a really ugly
-    // error case to be in but shouldn't happen.
-    HandleInstallCompletion(false,
-                            "Failure parsing PackageKit finished signal");
-    return;
-  }
-  LOG(INFO) << "Finished installing Linux package result: " << exit_code;
-  HandleInstallCompletion(kPackageKitExitCodeSuccess == exit_code,
-                          "Exit Code: " + base::IntToString(exit_code));
-}
-
-void PackageKitProxy::OnPackageKitInfoError(
-    std::shared_ptr<PackageInfoTransactionData> data, dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  // Check if we've already indicated we are done.
-  if (data->event.IsSignaled())
-    return;
-  dbus::MessageReader reader(signal);
-  uint32_t code;
-  std::string details;
-  if (!reader.PopUint32(&code) || !reader.PopString(&details)) {
-    data->error.assign("Failure parsing PackageKit error signal");
-    LOG(ERROR) << data->error;
-    // There's something wrong with the D-Bus data, so terminate this operation.
-    data->result = false;
-    data->event.Signal();
-    return;
-  }
-  LOG(ERROR) << "Failure querying Linux package of: " << details;
-  // We will still get a Finished signal where we finalize everything.
-  data->error.assign(details);
-}
-
-void PackageKitProxy::OnPackageKitInfoFinished(
-    std::shared_ptr<PackageInfoTransactionData> data, dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  // Check if we've already indicated we are done.
-  if (data->event.IsSignaled())
-    return;
-  dbus::MessageReader reader(signal);
-  uint32_t exit_code;
-  if (!reader.PopUint32(&exit_code)) {
-    // We really don't know if this succeeded or failed, but it should be
-    // considered over and we will treat it as a failure. This is a really ugly
-    // error case to be in but shouldn't happen.
-    data->error.assign("Failure parsing PackageKit finished signal");
-    LOG(ERROR) << data->error;
-    data->result = false;
-    data->event.Signal();
-    return;
-  }
-  LOG(INFO) << "Finished with query for Linux package info";
-  // If this is a failure, the error message should have already been set via
-  // that callback.
-  data->result = kPackageKitExitCodeSuccess == exit_code;
-  data->event.Signal();
-}
-
-void PackageKitProxy::OnPackageKitInfoDetails(
-    std::shared_ptr<PackageInfoTransactionData> data, dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  // Check if we've already indicated we are done.
-  if (data->event.IsSignaled())
-    return;
-  dbus::MessageReader reader(signal);
-  // Read all of the details on the package and set that in the structure. This
-  // is an array of dict entries with string keys and variant values.
-  dbus::MessageReader array_reader(nullptr);
-  if (!reader.PopArray(&array_reader)) {
-    data->error.assign("Failure parsing PackageKit Details signal");
-    LOG(ERROR) << data->error;
-    // There's something wrong with the D-Bus data, so terminate this operation.
-    data->result = false;
-    data->event.Signal();
-    return;
-  }
-  while (array_reader.HasMoreData()) {
-    dbus::MessageReader dict_entry_reader(nullptr);
-    if (array_reader.PopDictEntry(&dict_entry_reader)) {
-      dbus::MessageReader value_reader(nullptr);
-      std::string name;
-      if (!dict_entry_reader.PopString(&name) ||
-          !dict_entry_reader.PopVariant(&value_reader)) {
-        LOG(WARNING) << "Error popping dictionary entry from D-Bus message";
-        continue;
-      }
-      if (name == kDetailsKeyPackageId) {
-        if (!value_reader.PopString(&data->pkg_info->package_id)) {
-          LOG(WARNING) << "Error popping package_id from details";
-        }
-      } else if (name == kDetailsKeyLicense) {
-        if (!value_reader.PopString(&data->pkg_info->license)) {
-          LOG(WARNING) << "Error popping license from details";
-        }
-      } else if (name == kDetailsKeyDescription) {
-        if (!value_reader.PopString(&data->pkg_info->description)) {
-          LOG(WARNING) << "Error popping description from details";
-        }
-      } else if (name == kDetailsKeyUrl) {
-        if (!value_reader.PopString(&data->pkg_info->project_url)) {
-          LOG(WARNING) << "Error popping url from details";
-        }
-      } else if (name == kDetailsKeySize) {
-        if (!value_reader.PopUint64(&data->pkg_info->size)) {
-          LOG(WARNING) << "Error popping size from details";
-        }
-      } else if (name == kDetailsKeySummary) {
-        if (!value_reader.PopString(&data->pkg_info->summary)) {
-          LOG(WARNING) << "Error popping summary from details";
-        }
-      }
-    }
-  }
-}
-
-void PackageKitProxy::OnPackageKitPropertyChanged(const std::string& name) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (!transaction_properties_)
-    return;
-  // There's only 2 progress states we actually care about which are logical to
-  // report to the user. These are downloading and installing, which correspond
-  // to similar experiences in Android and elsewhere. There are various other
-  // phases this goes through, but they happen rather quickly and would not be
-  // worth informing the user of.
-  if (name != transaction_properties_->percentage.name()) {
-    // We only want to see progress percentage changes and then we filter these
-    // below based on the current status.
-    return;
-  }
-  vm_tools::container::InstallLinuxPackageProgressInfo::Status status;
-  switch (transaction_properties_->status.value()) {
-    case kPackageKitStatusDownload:
-      status =
-          vm_tools::container::InstallLinuxPackageProgressInfo::DOWNLOADING;
-      break;
-    case kPackageKitStatusInstall:
-      status = vm_tools::container::InstallLinuxPackageProgressInfo::INSTALLING;
-      break;
-    default:
-      // Not a status state we care about.
-      return;
-  }
-  int percentage = transaction_properties_->percentage.value();
-  // PackageKit uses 101 for the percent when it doesn't know, treat that as
-  // zero because you see this at the beginning of phases.
-  if (percentage == 101)
-    percentage = 0;
-  observer_->OnInstallProgress(status, percentage);
-}
-
-void PackageKitProxy::OnPackageKitRefreshError(dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t code;
-  std::string details;
-  if (!reader.PopUint32(&code) || !reader.PopString(&details)) {
-    LOG(ERROR) << "Failure parsing PackageKit error signal";
-    return;
-  }
-  LOG(ERROR) << "Failure with RefreshCache of: " << details;
-}
-
-void PackageKitProxy::OnPackageKitRefreshFinished(
-    const dbus::ObjectPath& transaction_path, dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t exit_code = 0;
-  if (!reader.PopUint32(&exit_code)) {
-    LOG(ERROR) << "Failure parsing PackageKit finished signal";
-  } else if (exit_code == kPackageKitExitCodeSuccess) {
-    LOG(INFO) << "Successfully performed refresh of package cache";
-    // Now we need to get the list of updatable packages that we control so we
-    // can perform upgrades on anything that's available.
-    GetUpdatableManagedPackagesOnDBusThread();
-  } else {
-    LOG(ERROR) << "Failure performing refresh of package cache, code: "
-               << exit_code;
-  }
-  RemoveObjectProxyOnDBusThread(transaction_path);
-  ScheduleNextCacheRefresh();
-}
-
-void PackageKitProxy::OnPackageKitGetUpdatesError(dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t code;
-  std::string details;
-  if (!reader.PopUint32(&code) || !reader.PopString(&details)) {
-    LOG(ERROR) << "Failure parsing PackageKit error signal";
-    return;
-  }
-  LOG(ERROR) << "Failure with GetUpdates of: " << details;
-}
-
-void PackageKitProxy::OnPackageKitGetUpdatesPackage(
-    std::shared_ptr<std::vector<std::string>> package_ids,
-    dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t code;
-  std::string package_id;
-  if (!reader.PopUint32(&code) || !reader.PopString(&package_id)) {
-    LOG(ERROR) << "Failure parsing PackageKit Package signal";
-    return;
-  }
-  if (base::EndsWith(package_id, kManagedPackageIdSuffix,
-                     base::CompareCase::SENSITIVE)) {
-    LOG(INFO) << "Found managed package that is upgradeable, add it to the "
-              << "list: " << package_id;
-    package_ids->emplace_back(package_id);
-  }
-}
-
-void PackageKitProxy::OnPackageKitGetUpdatesFinished(
-    const dbus::ObjectPath& transaction_path,
-    std::shared_ptr<std::vector<std::string>> package_ids,
-    dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t exit_code = 0;
-  if (!reader.PopUint32(&exit_code)) {
-    LOG(ERROR) << "Failure parsing PackageKit finished signal";
-  } else if (exit_code == kPackageKitExitCodeSuccess) {
-    LOG(INFO) << "PackageKit GetUpdates transaction has completed with "
-              << package_ids->size() << " available managed updates";
-    if (!package_ids->empty()) {
-      UpgradePackagesOnDBusThread(package_ids);
-    }
-  } else {
-    LOG(ERROR) << "Failure performing GetUpdates, code: " << exit_code;
-  }
-
-  RemoveObjectProxyOnDBusThread(transaction_path);
-}
-
-void PackageKitProxy::OnPackageKitUpgradeError(dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t code;
-  std::string details;
-  if (!reader.PopUint32(&code) || !reader.PopString(&details)) {
-    LOG(ERROR) << "Failure parsing PackageKit error signal";
-    return;
-  }
-  LOG(ERROR) << "Failure with UpdatePackages of: " << details;
-}
-
-void PackageKitProxy::OnPackageKitUpgradeFinished(
-    const dbus::ObjectPath& transaction_path, dbus::Signal* signal) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(signal);
-  dbus::MessageReader reader(signal);
-  uint32_t exit_code = 0;
-  if (!reader.PopUint32(&exit_code)) {
-    LOG(ERROR) << "Failure parsing PackageKit finished signal";
-  } else if (exit_code == kPackageKitExitCodeSuccess) {
-    LOG(INFO) << "Successfully performed upgrade of managed packages";
-  } else {
-    // PackageKit will log the specific error itself.
-    LOG(ERROR) << "Failure performing upgrade of managed packages, code: "
-               << exit_code;
-  }
-  RemoveObjectProxyOnDBusThread(transaction_path);
-}
-
-void PackageKitProxy::HandleInstallCompletion(
-    bool success, const std::string& failure_reason) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  // If we've already cleared the transaction then don't send a message, we may
-  // end up seeing a failure come across multiple ways.
-  if (!transaction_properties_)
-    return;
-
-  // Destroy our property listener for the transaction to indicate it is done
-  // and remove the transaction proxy object from the bus.
-  transaction_properties_.reset();
-  RemoveObjectProxyOnDBusThread(install_transaction_path_);
-  observer_->OnInstallCompletion(success, failure_reason);
-}
-
-void PackageKitProxy::ScheduleNextCacheRefresh() {
-  task_runner_->PostDelayedTask(
-      FROM_HERE,
-      base::Bind(&PackageKitProxy::RefreshCacheOnDBusThread,
-                 weak_ptr_factory_.GetWeakPtr()),
-      kRefreshCachePeriod);
-}
-
 void PackageKitProxy::OnPackageKitNameOwnerChanged(
     const std::string& old_owner, const std::string& new_owner) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  if (new_owner.empty() && transaction_properties_) {
-    LOG(ERROR) << "Detected PackageKit D-Bus service going down during an "
-               << "install, send a failure event";
-    HandleInstallCompletion(false, "PackageKit service exited unexpectedly");
+  if (new_owner.empty()) {
+    for (PackageKitDeathObserver& obs : death_observers_)
+      obs.OnPackageKitDeath();
   }
 }
 
@@ -1105,13 +963,6 @@ void PackageKitProxy::OnPackageKitServiceAvailable(bool service_is_available) {
         base::Bind(&PackageKitProxy::OnPackageKitNameOwnerChanged,
                    weak_ptr_factory_.GetWeakPtr()));
   }
-}
-
-void PackageKitProxy::RemoveObjectProxyOnDBusThread(
-    const dbus::ObjectPath& object_path) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  bus_->RemoveObjectProxy(kPackageKitServiceName, object_path,
-                          base::Bind(&base::DoNothing));
 }
 
 }  // namespace garcon
