@@ -21,6 +21,11 @@ class ChildExitHandler {
   // Returns true if it consumes the exit event (i.e., no more following
   // handlers will be notified by ChildExitDispatcher). Otherwise false.
   virtual bool HandleExit(const siginfo_t& status) = 0;
+
+  // Returns a string like "exit code 1" or "signal 11 (Segmentation fault)"
+  // based on the contents of |status|. This is a helper method for logging
+  // information from handlers.
+  static std::string GetExitDescription(const siginfo_t& status);
 };
 
 }  // namespace login_manager

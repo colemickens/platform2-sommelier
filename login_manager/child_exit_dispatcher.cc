@@ -56,15 +56,10 @@ bool ChildExitDispatcher::OnSigChld(const struct signalfd_siginfo& sig_info) {
 }
 
 void ChildExitDispatcher::Dispatch(const siginfo_t& info) {
-  LOG(INFO) << "Handling " << info.si_pid << " exit.";
   if (info.si_code == CLD_EXITED) {
-    LOG_IF(ERROR, info.si_status != 0)
-        << "  Exited with exit code " << info.si_status;
-    CHECK_NE(info.si_status, ChildJobInterface::kCantSetUid);
-    CHECK_NE(info.si_status, ChildJobInterface::kCantSetEnv);
-    CHECK_NE(info.si_status, ChildJobInterface::kCantExec);
-  } else {
-    LOG(ERROR) << "  Exited with signal " << info.si_status;
+    CHECK_NE(info.si_status, ChildJobInterface::kCantSetUid) << info.si_pid;
+    CHECK_NE(info.si_status, ChildJobInterface::kCantSetEnv) << info.si_pid;
+    CHECK_NE(info.si_status, ChildJobInterface::kCantExec) << info.si_pid;
   }
 
   for (auto* handler : handlers_) {
@@ -73,8 +68,9 @@ void ChildExitDispatcher::Dispatch(const siginfo_t& info) {
     }
   }
 
-  // No handler handles the exit.
-  DLOG(INFO) << info.si_pid << " is not a managed job.";
+  // No handler handled the exit.
+  VLOG(1) << "Unmanaged process " << info.si_pid << " exited with "
+          << ChildExitHandler::GetExitDescription(info);
 }
 
 }  // namespace login_manager

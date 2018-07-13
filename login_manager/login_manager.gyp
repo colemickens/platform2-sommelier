@@ -63,6 +63,7 @@
         'blob_util.cc',
         'browser_job.cc',
         'child_exit_dispatcher.cc',
+        'child_exit_handler.cc',
         'child_job.cc',
         'chrome_setup.cc',
         'container_manager_interface.cc',

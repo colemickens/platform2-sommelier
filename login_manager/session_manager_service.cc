@@ -294,7 +294,8 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   if (!IsBrowser(status.si_pid))
     return false;
 
-  LOG(INFO) << "Exiting process is " << browser_->GetName() << ".";
+  LOG(INFO) << "Browser process " << status.si_pid << " exited with "
+            << GetExitDescription(status);
 
   // Clears up the whole job's process group.
   browser_->KillEverything(SIGKILL, "Ensuring browser processes are gone.");

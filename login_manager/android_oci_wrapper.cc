@@ -47,6 +47,9 @@ bool AndroidOciWrapper::HandleExit(const siginfo_t& status) {
   if (!container_pid_ || status.si_pid != container_pid_)
     return false;
 
+  LOG(INFO) << "Android container " << status.si_pid << " exited with "
+            << GetExitDescription(status);
+
   stateful_mode_ = StatefulMode::STATELESS;
   CleanUpContainer();
   return true;

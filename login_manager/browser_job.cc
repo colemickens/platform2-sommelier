@@ -145,7 +145,7 @@ bool BrowserJob::RunInBackground() {
 
   const std::vector<std::string> argv(ExportArgv());
   const std::vector<std::string> env_vars(ExportEnvironmentVariables());
-  LOG(INFO) << "Running child " << base::JoinString(argv, " ");
+  LOG(INFO) << "Running browser " << base::JoinString(argv, " ");
   RecordTime();
   return subprocess_->ForkAndExec(argv, env_vars);
 }
@@ -154,31 +154,35 @@ void BrowserJob::KillEverything(int signal, const std::string& message) {
   if (subprocess_->GetPid() < 0)
     return;
 
-  LOG(INFO) << "Terminating process group: " << message;
+  LOG(INFO) << "Terminating process group for browser " << subprocess_->GetPid()
+            << " with signal " << signal << ": " << message;
   subprocess_->KillEverything(signal);
 }
 
 void BrowserJob::Kill(int signal, const std::string& message) {
-  if (subprocess_->GetPid() < 0)
+  const pid_t pid = subprocess_->GetPid();
+  if (pid < 0)
     return;
 
-  LOG(INFO) << "Terminating process: " << message;
+  LOG(INFO) << "Terminating browser process " << pid << " with signal "
+            << signal << ": " << message;
   subprocess_->Kill(signal);
 }
 
 void BrowserJob::WaitAndAbort(base::TimeDelta timeout) {
-  if (subprocess_->GetPid() < 0)
+  const pid_t pid = subprocess_->GetPid();
+  if (pid < 0)
     return;
-  if (!system_->ProcessGroupIsGone(subprocess_->GetPid(), timeout)) {
-    LOG(WARNING) << "Aborting child process " << subprocess_->GetPid()
-                 << "'s process group " << timeout.InSeconds()
-                 << " seconds after sending signal";
+
+  if (!system_->ProcessGroupIsGone(pid, timeout)) {
+    LOG(WARNING) << "Aborting browser process " << pid << "'s process group "
+                 << timeout.InSeconds() << " seconds after sending signal";
     std::string message = base::StringPrintf("Browser took more than %" PRId64
                                              " seconds to exit after signal.",
                                              timeout.InSeconds());
     KillEverything(SIGABRT, message);
   } else {
-    DLOG(INFO) << "Cleaned up child " << subprocess_->GetPid();
+    DLOG(INFO) << "Cleaned up browser process " << pid;
   }
 }
 

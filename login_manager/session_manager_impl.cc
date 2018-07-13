@@ -368,14 +368,14 @@ void SessionManagerImpl::SetPolicyServicesForTesting(
 void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
   if (session_started_) {
     session_stopping_ = true;
-    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopping;
+    DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged:" << kStopping;
     adaptor_.SendSessionStateChangedSignal(kStopping);
   }
 }
 
 void SessionManagerImpl::AnnounceSessionStopped() {
   session_stopping_ = session_started_ = false;
-  DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
+  DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged:" << kStopped;
   adaptor_.SendSessionStateChangedSignal(kStopped);
 }
 
@@ -551,7 +551,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   manager_->SetBrowserSessionForUser(actual_account_id, user_session->userhash);
   session_started_ = true;
   user_sessions_[actual_account_id] = std::move(user_session);
-  DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
+  DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged:" << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
 
   // Active Directory managed devices are not expected to have a policy key.
