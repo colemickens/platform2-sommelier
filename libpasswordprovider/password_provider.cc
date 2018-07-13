@@ -4,7 +4,9 @@
 
 #include "libpasswordprovider/password_provider.h"
 
+#include <grp.h>
 #include <keyutils.h>
+#include <vector>
 
 #include "base/logging.h"
 #include "libpasswordprovider/password.h"
@@ -13,10 +15,13 @@ namespace password_provider {
 
 namespace {
 
+constexpr int kDefaultGroupStringsLength = 1024;
+
 constexpr char kKeyringDescription[] = "password keyring";
 constexpr char kKeyringKeyType[] = "keyring";
 constexpr char kPasswordKeyDescription[] = "password";
 constexpr char kPasswordKeyType[] = "user";
+constexpr char kPasswordViewersGroupName[] = "password-viewers";
 
 key_serial_t RequestKey(const char* type, const char* description) {
   key_serial_t keyring_serial =
@@ -60,6 +65,25 @@ bool PasswordProvider::SavePassword(const Password& password) const {
   DCHECK_GT(password.size(), 0);
   DCHECK(password.GetRaw());
 
+  // Get the group ID for password-viewers
+  long group_name_length = sysconf(_SC_GETGR_R_SIZE_MAX);  // NOLINT long
+  if (group_name_length == -1) {
+    group_name_length = kDefaultGroupStringsLength;
+  }
+  struct group group_info, *group_infop;
+  std::vector<char> group_name_buf(group_name_length);
+  int result =
+      getgrnam_r(kPasswordViewersGroupName, &group_info, group_name_buf.data(),
+                 group_name_length, &group_infop);
+  if (result) {
+    LOG(WARNING) << "Error retrieving group ID for "
+                 << kPasswordViewersGroupName << " error: " << result;
+    group_info.gr_gid = -1;
+  } else if (group_infop == NULL) {
+    LOG(WARNING) << "Could not find group ID for " << kPasswordViewersGroupName;
+    group_info.gr_gid = -1;
+  }
+
   key_serial_t keyring_id = add_key(kKeyringKeyType, kKeyringDescription, NULL,
                                     0, KEY_SPEC_PROCESS_KEYRING);
   if (keyring_id == -1) {
@@ -67,9 +91,18 @@ bool PasswordProvider::SavePassword(const Password& password) const {
     return false;
   }
 
-  int result =
-      keyctl_setperm(keyring_id, KEY_POS_ALL | KEY_USR_VIEW | KEY_USR_READ |
-                                     KEY_USR_SEARCH | KEY_USR_WRITE);
+  result = keyctl_chown(keyring_id, -1, group_info.gr_gid);
+  if (result == -1) {
+    // Don't return false here. Failing to change the group means that the key
+    // can't be retrieved by the users in the specified group. The security of
+    // the key is not compromised. Unit tests are not run as a superuser, and so
+    // can't chown the key and this call will always fail.
+    PLOG(ERROR) << "Could not change keyring group.";
+  }
+
+  result =
+      keyctl_setperm(keyring_id, KEY_POS_ALL | KEY_GRP_VIEW | KEY_GRP_READ |
+                                     KEY_GRP_SEARCH | KEY_GRP_WRITE);
 
   if (result == -1) {
     PLOG(ERROR) << "Error setting permissions on keyring. ";
@@ -85,9 +118,18 @@ bool PasswordProvider::SavePassword(const Password& password) const {
     return false;
   }
 
+  result = keyctl_chown(key_serial, -1, group_info.gr_gid);
+  if (result == -1) {
+    // Don't return false here. Failing to change the group means that the key
+    // can't be retrieved by the users in the specified group. The security of
+    // the key is not compromised. Unit tests are not run as a superuser, and so
+    // can't chown the key and this call will always fail.
+    PLOG(ERROR) << "Could not change key group.";
+  }
+
   result =
-      keyctl_setperm(key_serial, KEY_POS_ALL | KEY_USR_VIEW | KEY_USR_READ |
-                                     KEY_USR_SEARCH | KEY_USR_WRITE);
+      keyctl_setperm(key_serial, KEY_POS_ALL | KEY_GRP_VIEW | KEY_GRP_READ |
+                                     KEY_GRP_SEARCH | KEY_GRP_WRITE);
 
   if (result == -1) {
     PLOG(ERROR) << "Error setting permissions on key. ";
