@@ -142,6 +142,9 @@
         'common/mock_tpm_nvram_interface.cc',
         'common/mock_tpm_ownership_interface.cc',
       ],
+      'dependencies': [
+        'proto_library',
+      ],
     },
   ],
   'conditions': [
