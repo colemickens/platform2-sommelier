@@ -165,8 +165,8 @@
             'uploader/upload_service_test.cc',
           ],
           'dependencies': [
-             '../common-mk/testrunner.gyp:testrunner',
-             'libupload_service',
+            '../common-mk/testrunner.gyp:testrunner',
+            'libupload_service',
           ],
           'include_dirs': ['.'],
         },
