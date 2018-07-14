@@ -103,6 +103,14 @@ BluezGattServiceInterfaceHandler::BluezGattServiceInterfaceHandler() {
       bluetooth_gatt_service::kIncludesProperty);
 }
 
+BluezLeAdvertisingManagerInterfaceHandler::
+    BluezLeAdvertisingManagerInterfaceHandler() {
+  AddMethodName(bluetooth_advertising_manager::kRegisterAdvertisement);
+  AddMethodName(bluetooth_advertising_manager::kUnregisterAdvertisement);
+  AddMethodName(bluetooth_advertising_manager::kSetAdvertisingIntervals);
+  AddMethodName(bluetooth_advertising_manager::kResetAdvertising);
+}
+
 BluezGattDescriptorInterfaceHandler::BluezGattDescriptorInterfaceHandler() {
   AddPropertyFactory<std::string>(bluetooth_gatt_descriptor::kUUIDProperty);
   AddPropertyFactory<dbus::ObjectPath>(

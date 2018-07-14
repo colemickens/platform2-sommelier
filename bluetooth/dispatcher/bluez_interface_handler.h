@@ -102,7 +102,7 @@ class BluezGattServiceInterfaceHandler : public BluezInterfaceHandler {
 // org.bluez.LEAdvertisingManager1 interface.
 class BluezLeAdvertisingManagerInterfaceHandler : public BluezInterfaceHandler {
  public:
-  BluezLeAdvertisingManagerInterfaceHandler() = default;
+  BluezLeAdvertisingManagerInterfaceHandler();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BluezLeAdvertisingManagerInterfaceHandler);
