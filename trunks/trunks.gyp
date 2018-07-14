@@ -18,7 +18,8 @@
   'target_defaults': {
     'includes': ['../common-mk/common.gypi'],
     'variables': {
-      'deps': [  # This is a list of pkg-config dependencies
+      # This is a list of pkg-config dependencies
+      'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'openssl',
@@ -69,14 +70,14 @@
         'hmac_session_impl.cc',
         'password_authorization_delegate.cc',
         'policy_session_impl.cc',
-        'session_manager_impl.cc',
         'scoped_key_handle.cc',
+        'session_manager_impl.cc',
         'tpm_generated.cc',
         'tpm_pinweaver.cc',
         'tpm_state_impl.cc',
         'tpm_utility_impl.cc',
-        'trunks_factory_impl.cc',
         'trunks_dbus_proxy.cc',
+        'trunks_factory_impl.cc',
       ],
       'dependencies': [
         'interface_proto',
@@ -84,19 +85,18 @@
       ],
       'conditions': [
         ['USE_ftdi_tpm == 1', {
-            'sources': [
-              'ftdi/mpsse.c',
-              'ftdi/support.c',
-              'trunks_ftdi_spi.cc',
-            ],
-            'libraries': [
-              '-lftdi1',
-            ],
-            'defines': [
-              'SPI_OVER_FTDI=1',
-            ],
-          },
-        ],
+          'sources': [
+            'ftdi/mpsse.c',
+            'ftdi/support.c',
+            'trunks_ftdi_spi.cc',
+          ],
+          'libraries': [
+            '-lftdi1',
+          ],
+          'defines': [
+            'SPI_OVER_FTDI=1',
+          ],
+        }],
       ],
     },
     {
@@ -178,17 +178,15 @@
       ],
       'conditions': [
         ['USE_ftdi_tpm == 1', {
-            'defines': [
-              'SPI_OVER_FTDI=1',
-            ],
-          },
-        ],
+          'defines': [
+            'SPI_OVER_FTDI=1',
+          ],
+        }],
         ['USE_tpm2_simulator == 1', {
-            'libraries': [
-              '-ltpm2',
-            ],
-          },
-        ],
+          'libraries': [
+            '-ltpm2',
+          ],
+        }],
       ],
     },
   ],
@@ -223,13 +221,13 @@
           },
           'sources': [
             'background_command_transceiver_test.cc',
-            'scoped_global_session_test.cc',
             'hmac_authorization_delegate_test.cc',
             'hmac_session_test.cc',
             'password_authorization_delegate_test.cc',
             'policy_session_test.cc',
             'power_manager_test.cc',
             'resource_manager_test.cc',
+            'scoped_global_session_test.cc',
             'scoped_key_handle_test.cc',
             'session_manager_test.cc',
             'tpm_generated_test.cc',
