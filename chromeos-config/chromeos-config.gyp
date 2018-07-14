@@ -17,8 +17,8 @@
         'libcros_config/cros_config_json.cc',
         'libcros_config/fake_cros_config.cc',
         'libcros_config/identity.cc',
-        'libcros_config/identity_x86.cc',
         'libcros_config/identity_arm.cc',
+        'libcros_config/identity_x86.cc',
       ],
       'link_settings': {
         'libraries': [
