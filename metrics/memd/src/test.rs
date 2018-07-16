@@ -88,6 +88,7 @@ fn mkfifo(path: &PathBuf) -> Result<()> {
 // The types of events which are generated internally for testing.  They
 // simulate state changes (for instance, change in the memory pressure level),
 // chrome events, and kernel events.
+#[derive(Clone,Copy,PartialEq)]
 enum TestEventType {
     EnterHighPressure,    // enter low available RAM (below margin) state
     EnterLowPressure,     // enter high available RAM state
@@ -319,7 +320,7 @@ impl MockDbus {
 pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
     for test_desc in TEST_DESCRIPTORS.iter() {
         // Every test run requires a (mock) restart of the daemon.
-        println!("--------------\nrunning test:\n{}", test_desc);
+        println!("\n--------------\nrunning test:\n{}", test_desc);
         // Clean up log directory.
         std::fs::remove_dir_all(&paths.log_directory).expect("cannot remove /var/log/memd");
         std::fs::create_dir_all(&paths.log_directory).expect("cannot create /var/log/memd");
@@ -395,6 +396,7 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
 // removed.  Also, indentation (common all-space prefixes) is removed.
 
 const TEST_DESCRIPTORS: &[&str] = &[
+
     // Very simple test: go from slow poll to fast poll and back.  No clips
     // are collected.
     "
@@ -407,6 +409,7 @@ const TEST_DESCRIPTORS: &[&str] = &[
     .M...H..1.....L
     ..00000000001..
     ",
+
     // Two full disjoint clips.  Also tests kernel-reported and chrome-reported OOM
     // kills.
     "
@@ -418,7 +421,6 @@ const TEST_DESCRIPTORS: &[&str] = &[
     // memory pressure returns quickly to a low level.  Note that the
     // medium-pressure event (M) is at t = 1s, but the fast poll starts at 2s
     // (multiple of 2s slow-poll period).
-
     "
     .MH1L.....
     ..000000..
@@ -433,6 +435,13 @@ const TEST_DESCRIPTORS: &[&str] = &[
               |   5      |
     ....000000|0011111111|112222..
     ",
+
+    // Enter low-mem, then exit, then enter it again.
+    "
+    .MHM......|......H...|...L
+    ..00000...|.111111111|1...
+    ",
+
 ];
 
 fn trim_descriptor(descriptor: &str) -> Vec<Vec<u8>> {
@@ -573,21 +582,30 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
     assert_approx_eq!(end_time, expected_end_time, slack_ms,
                       "unexpected end time for {}", clip_name);
 
-    // Check sample count.
-    let expected_sample_count_from_events: usize = events.iter()
-        .map(|e| if e.time <= start_time || e.time > end_time {
+    // Check sample count.  Must keep track of low_mem -> not low_mem transitions.
+    let mut in_low_mem = false;
+    let expected_sample_count_from_events: usize = events.iter().map(|e| {
+        let sample_count_for_event = if e.time <= start_time || e.time > end_time {
             0
         } else {
             match e.event_type {
                 // OomKillKernel generates two samples.
                 TestEventType::OomKillKernel => 2,
-                // These generate 0 samples.
+                // These generate 1 sample only when moving out of high pressure.
                 TestEventType::EnterLowPressure |
-                TestEventType::EnterMediumPressure => 0,
+                TestEventType::EnterMediumPressure => if in_low_mem { 1 } else { 0 },
                 _ => 1,
             }
-        })
-        .sum();
+        };
+        match e.event_type {
+            TestEventType::EnterHighPressure => in_low_mem = true,
+            TestEventType::EnterLowPressure |
+            TestEventType::EnterMediumPressure => in_low_mem = false,
+            _ => {},
+        }
+        sample_count_for_event
+    }).sum();
+
     // We include samples both at the beginning and end of the range, so we
     // need to add 1.  Note that here we use the actual sample times, not the
     // expected times.
@@ -607,7 +625,8 @@ fn verify_test_results(descriptor: &str, log_directory: &PathBuf) -> Result<()> 
 
     // Check that there are no more clips than expected.
     let files_count = std::fs::read_dir(log_directory)?.count();
-    assert_eq!(clips.len() + 1, files_count, "wrong number of clip files");
+    // Subtract one for the memd.parameters file.
+    assert_eq!(clips.len(), files_count - 1, "wrong number of clip files");
 
     let mut clip_number = 0;
     for clip in clips {

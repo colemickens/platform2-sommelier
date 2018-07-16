@@ -980,18 +980,30 @@ impl<'a> Sampler<'a> {
                 self.enqueue_sample(SampleType::Sleeper)?;
             }
 
+            // The low_mem file is level-triggered, not edge-triggered (my bad)
+            // so we don't watch it when memory stays low, because it would
+            // fire continuously.  Instead we poll it at every event, and when
+            // we detect a low-to-high transition we start watching it again.
+            // Unfortunately this requires an extra select() call: however we
+            // don't expect to spend too much time in this state (and when we
+            // do, this is the least of our worries).
+            if in_low_mem && self.low_mem_watcher.watch(&null_duration, &mut *self.timer)? == 0 {
+                // Refresh time since we may have blocked.  (That should
+                // not happen often because currently the run times between
+                // sleeps are well below the minimum timeslice.)
+                self.current_time = self.timer.now();
+                debug!("leaving low mem at {}", self.current_time);
+                in_low_mem = false;
+                self.enqueue_sample(SampleType::LeaveLowMem)?;
+                self.watcher.set(&self.files.low_mem_file_option.as_ref().unwrap())?;
+            }
+
             if fired_count == 0 {
                 // Timer event.
                 self.enqueue_sample(SampleType::Timer)?;
             } else {
-                // The low_mem file is level-triggered, not edge-triggered (my bad)
-                // so we don't watch it when memory stays low, because it would
-                // fire continuously.  Instead we poll it at every event, and when
-                // we detect a low-to-high transition we start watching it again.
-                // Unfortunately this requires an extra select() call: however we
-                // don't expect to spend too much time in this state (and when we
-                // do, this is the least of our worries).
-                let low_mem_has_fired = match self.files.low_mem_file_option {
+                // See comment above about watching low_mem.
+                let low_mem_has_fired = !in_low_mem && match self.files.low_mem_file_option {
                     Some(ref low_mem_file) => self.watcher.has_fired(low_mem_file)?,
                     _ => false,
                 };
@@ -1004,16 +1016,6 @@ impl<'a> Sampler<'a> {
                     // Make this interesting at least until chrome events are
                     // plumbed, maybe permanently.
                     event_is_interesting = true;
-                } else if in_low_mem && self.low_mem_watcher.watch(&null_duration,
-                                                                   &mut *self.timer)? == 0 {
-                    // Refresh time since we may have blocked.  (That should
-                    // not happen often because currently the run times between
-                    // sleeps are well below the minimum timeslice.)
-                    self.current_time = self.timer.now();
-                    debug!("leaving low mem at {}", self.current_time);
-                    in_low_mem = false;
-                    self.enqueue_sample(SampleType::LeaveLowMem)?;
-                    self.watcher.set(&self.files.low_mem_file_option.as_ref().unwrap())?;
                 }
 
                 // Check for Chrome events.
