@@ -48,6 +48,54 @@ on the host.
 Portier is currently in development.  More information about its design and
 how to use it will be made available when ready.
 
+## Portier Library
+
+The Portier library `libportier` contains several components, some specific
+to Portier and others generic for Linux networking.
+
+### Status
+
+The `Status` object is used to return status codes and debugging messages from
+function calls in Portier.  The error codes defined in `Status::Code` are
+specific for use in Portier, but can be modified and extended based on the
+needs of developers.
+
+In general, if the Status is OK, then there should not be any message.
+
+Example.
+
+```C++
+Status GetInterfaceIndex(const string& if_name, int* if_idx) {
+  ...
+  if ((*if_idx = if_nametoindex(if_name)) < 0) {
+    return Status(Code::DOES_NOT_EXIST) << "Interface " << if_name
+      << " does not exist";
+  }
+  ...
+}
+
+Status GetInterfaceInformation(const string& if_name) {
+  ...
+  PORTIER_RETURN_ON_FAILURE(GetInterfaceIndex(if_name, &if_idx))
+    << "Failed to get interface index";
+  ...
+}
+
+bool InitializeInterface(const string& if_name) {
+  ...
+
+  Status res = GetInterfaceInformation(if_name);
+  if (!res) {
+    LOG(ERROR) << res;
+    return false;
+  }
+  ...
+}
+```
+
+Output on failure (assume `if_name = "eth0"`):
+
+`[ERROR:my_program.cc(42)] Does Not Exist: Failed to get interface index: Interface eth0 does not exist`
 
 [RFC 4389]: https://tools.ietf.org/html/rfc4389
 [RFC 4861]: https://tools.ietf.org/html/rfc4861

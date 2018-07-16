@@ -20,6 +20,7 @@
       'sources': [
         'll_address.cc',
         'nd_msg.cc',
+        'status.cc',
       ],
     },
   ],
@@ -43,6 +44,7 @@
           'sources': [
             'll_address_unittest.cc',
             'nd_msg_unittest.cc',
+            'status_unittest.cc',
           ],
         },
       ],
