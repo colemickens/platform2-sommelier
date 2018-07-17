@@ -16,13 +16,12 @@ using std::string;
 
 namespace {
 
-const char kHelpMessage[] = (
-    PROGRAM_NAME ":\n"
-    "  add <dev> <part_no> <start> <length>\n"
-    "  del <dev> <part_no>\n"
-    "\n"
-    "  both start and length are in bytes.\n"
-);
+const char kHelpMessage[] = (PROGRAM_NAME
+                             ":\n"
+                             "  add <dev> <part_no> <start> <length>\n"
+                             "  del <dev> <part_no>\n"
+                             "\n"
+                             "  both start and length are in bytes.\n");
 const char kCommandAdd[] = "add";
 const char kCommandDel[] = "del";
 
@@ -49,8 +48,9 @@ int main(int argc, char** argv) {
     }
 
     if (command == kCommandDel && args.size() == 3) {
-      return (brillo::installer::RemoveNandPartition(dev, part_no) ?
-              EXIT_SUCCESS : EXIT_FAILURE);
+      return (brillo::installer::RemoveNandPartition(dev, part_no)
+                  ? EXIT_SUCCESS
+                  : EXIT_FAILURE);
     } else if (command == kCommandAdd && args.size() == 5) {
       string s_offset = args[optind++];
       string s_length = args[optind++];
@@ -61,8 +61,9 @@ int main(int argc, char** argv) {
         return ShowHelp();
       }
 
-      return brillo::installer::AddNandPartition(
-          dev, part_no, offset, length) ? EXIT_SUCCESS : EXIT_FAILURE;
+      return brillo::installer::AddNandPartition(dev, part_no, offset, length)
+                 ? EXIT_SUCCESS
+                 : EXIT_FAILURE;
     }
   }
 

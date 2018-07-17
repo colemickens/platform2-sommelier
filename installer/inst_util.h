@@ -40,7 +40,7 @@ class ScopedFileDescriptor {
   int fd_;
 
   ScopedFileDescriptor(const ScopedFileDescriptor& other) {}
-  void operator =(const ScopedFileDescriptor& other) {}
+  void operator=(const ScopedFileDescriptor& other) {}
 };
 
 // A class to automatically remove directories/files with nftw().
@@ -61,21 +61,22 @@ class ScopedPathRemover {
   void operator=(const ScopedPathRemover& other) {}
 };
 
-#define RUN_OR_RETURN_FALSE(_x)                                 \
-  do {                                                          \
-    if (RunCommand(_x) != 0) return false;                      \
+#define RUN_OR_RETURN_FALSE(_x) \
+  do {                          \
+    if (RunCommand(_x) != 0)    \
+      return false;             \
   } while (0)
 
 // Find a pointer to the first element of a statically sized array.
-template<typename T, size_t N>
-T * begin(T (&ra)[N]) {
-    return ra + 0;
+template <typename T, size_t N>
+T* begin(T (&ra)[N]) {
+  return ra + 0;
 }
 
 // Find a pointer to the element after the end of a statically sized array.
-template<typename T, size_t N>
-T * end(T (&ra)[N]) {
-    return ra + N;
+template <typename T, size_t N>
+T* end(T (&ra)[N]) {
+  return ra + N;
 }
 
 // Return true if |s| starts with |prefix|.
@@ -90,16 +91,16 @@ void LoggingTimerStart();
 // Log how long since LoggingTimerStart was last called.
 void LoggingTimerFinish();
 
-__attribute__((format(printf, 1, 2)))
-std::string StringPrintf(const char* format, ...);
+__attribute__((format(printf, 1, 2))) std::string StringPrintf(
+    const char* format, ...);
 
 void SplitString(const std::string& str,
                  char split,
                  std::vector<std::string>* output);
 
 void JoinStrings(const std::vector<std::string>& strs,
-                const std::string& split,
-                std::string* output);
+                 const std::string& split,
+                 std::string* output);
 
 // This is a place holder to invoke the backing scripts. Once all scripts have
 // been rewritten as library calls this command should be deleted.
@@ -135,8 +136,7 @@ int GetPartitionFromPartitionDev(const std::string& partition_dev);
 //   * Root partitions ubiblockX_0
 //   * Kernel partitions mtdX
 //   * Stateful and OEM partitions ubiX_0
-std::string MakePartitionDev(const std::string& partition_dev,
-                             int partition);
+std::string MakePartitionDev(const std::string& partition_dev, int partition);
 
 // Convert /blah/file to /blah
 std::string Dirname(const std::string& filename);

@@ -37,16 +37,14 @@ bool ConfigureInstall(const string& install_dev,
       slot = "B";
       break;
     default:
-      fprintf(stderr,
-              "Not a valid target partition number: %i\n", root.number());
+      fprintf(stderr, "Not a valid target partition number: %i\n",
+              root.number());
       return false;
   }
 
-  string kernel_dev = MakePartitionDev(root.base_device(),
-                                       root.number() - 1);
+  string kernel_dev = MakePartitionDev(root.base_device(), root.number() - 1);
 
-  string boot_dev = MakePartitionDev(root.base_device(),
-                                     PART_NUM_EFI_SYSTEM);
+  string boot_dev = MakePartitionDev(root.base_device(), PART_NUM_EFI_SYSTEM);
 
   // if we don't know the bios type, detect it. Errors are logged
   // by the detect method.
@@ -110,9 +108,9 @@ namespace {
 // script_name the script in /usr/share/cros to run
 // script_arg the args to run the script with
 //
-int RunCr50Script(const string &install_dir,
-                  const string &script_name,
-                  const string &script_arg) {
+int RunCr50Script(const string& install_dir,
+                  const string& script_name,
+                  const string& script_arg) {
   string script = install_dir + "/usr/share/cros/" + script_name;
   string command = script + " " + script_arg;
 
@@ -130,9 +128,9 @@ int RunCr50Script(const string &install_dir,
 // kernels may lead to recovery screen (due to new key).
 // TODO(hungte) Replace the shell execution by native code (crosbug.com/25407).
 // Note that this returns an exit code, not bool success/failure.
-int FirmwareUpdate(const string &install_dir, bool is_update) {
+int FirmwareUpdate(const string& install_dir, bool is_update) {
   int result;
-  const char *mode;
+  const char* mode;
   string command = install_dir + "/usr/sbin/chromeos-firmwareupdate";
 
   if (access(command.c_str(), X_OK) != 0) {
@@ -160,13 +158,15 @@ int FirmwareUpdate(const string &install_dir, bool is_update) {
   if (result == 0) {
     printf("Firmware update completed.\n");
   } else if (result == 3) {
-    printf("Firmware can't be updated. Booted from RW Firmware B"
-           " (error code: %d)\n",
-           result);
+    printf(
+        "Firmware can't be updated. Booted from RW Firmware B"
+        " (error code: %d)\n",
+        result);
   } else if (result == 4) {
-    printf("RO Firmware needs update, but is really marked RO."
-           " (error code: %d)\n",
-           result);
+    printf(
+        "RO Firmware needs update, but is really marked RO."
+        " (error code: %d)\n",
+        result);
   } else {
     printf("Firmware update failed (error code: %d).\n", result);
   }
@@ -181,12 +181,11 @@ void FixUnencryptedPermission() {
   string unencrypted_dir = string(kStatefulMount) + "/unencrypted";
   printf("Checking %s permission.\n", unencrypted_dir.c_str());
   struct stat unencrypted_stat;
-  const mode_t target_mode = S_IFDIR | S_IRWXU | (S_IRGRP | S_IXGRP) | (
-      S_IROTH | S_IXOTH);  // 040755
+  const mode_t target_mode =
+      S_IFDIR | S_IRWXU | (S_IRGRP | S_IXGRP) | (S_IROTH | S_IXOTH);  // 040755
   if (stat(unencrypted_dir.c_str(), &unencrypted_stat) != 0) {
     perror("Couldn't check the current permission, ignored");
-  } else if (unencrypted_stat.st_uid == 0 &&
-             unencrypted_stat.st_gid == 0 &&
+  } else if (unencrypted_stat.st_uid == 0 && unencrypted_stat.st_gid == 0 &&
              unencrypted_stat.st_mode == target_mode) {
     printf("Permission is ok.\n");
   } else {
@@ -206,9 +205,9 @@ void FixUnencryptedPermission() {
 }
 
 // Do board specific post install stuff, if available.
-bool RunBoardPostInstall(const string &install_dir) {
+bool RunBoardPostInstall(const string& install_dir) {
   int result;
-  string script =  install_dir + "/usr/sbin/board-postinst";
+  string script = install_dir + "/usr/sbin/board-postinst";
   string command = script + " " + install_dir;
 
   if (access(script.c_str(), X_OK)) {
@@ -247,8 +246,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   Touch(install_config.root.mount() + "/.nodelta");  // Ignore Error on purpse
 
   printf("Set boot target to %s: Partition %d, Slot %s\n",
-         install_config.root.device().c_str(),
-         install_config.root.number(),
+         install_config.root.device().c_str(), install_config.root.number(),
          install_config.slot.c_str());
 
   if (!SetImage(install_config)) {
@@ -292,17 +290,15 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
                                       new_kern_successful);
   if (result != kCgptSuccess) {
     printf("Unable to set successful to %d for kernel %d\n",
-           new_kern_successful,
-           install_config.kernel.number());
+           new_kern_successful, install_config.kernel.number());
     return false;
   }
 
   int numTries = 6;
-  result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number(),
-                                        numTries);
+  result =
+      cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
   if (result != kCgptSuccess) {
-    printf("Unable to set NumTriesLeft to %d for kernel %d\n",
-           numTries,
+    printf("Unable to set NumTriesLeft to %d for kernel %d\n", numTries,
            install_config.kernel.number());
     return false;
   }
@@ -336,7 +332,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
   // If present, remove firmware checking completion file to force a disk
   // firmware check at reboot.
-  string disk_fw_check_complete = string(kStatefulMount) +
+  string disk_fw_check_complete =
+      string(kStatefulMount) +
       "/unencrypted/cache/.disk_firmware_upgrade_completed";
   unlink(disk_fw_check_complete.c_str());
 
@@ -347,11 +344,11 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   }
 
   // In postinst in future, we may provide an option (ex, --update_firmware).
-  string firmware_tag_file = (install_config.root.mount() +
-                              "/root/.force_update_firmware");
+  string firmware_tag_file =
+      (install_config.root.mount() + "/root/.force_update_firmware");
 
-  bool attempt_firmware_update = (!is_factory_install &&
-                                  (access(firmware_tag_file.c_str(), 0) == 0));
+  bool attempt_firmware_update =
+      (!is_factory_install && (access(firmware_tag_file.c_str(), 0) == 0));
 
   // In factory process, firmware is either pre-flashed or assigned by
   // mini-omaha server, and we don't want to try updates inside postinst.
@@ -363,8 +360,9 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // are not running legacy (non-ChromeOS) firmware. If the firmware
       // updater crashes or writes corrupt data rather than gracefully
       // failing, we'll probably need to recover with a recovery image.
-      printf("Rolling back update due to failure installing required "
-             "firmware.\n");
+      printf(
+          "Rolling back update due to failure installing required "
+          "firmware.\n");
 
       // In all these checks below, we continue even if there's a failure
       // so as to cleanup as much as possible.
@@ -375,8 +373,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       if (result != kCgptSuccess) {
         rollback_successful = false;
         printf("Unable to set successful to %d for kernel %d\n",
-               new_kern_successful,
-               install_config.kernel.number());
+               new_kern_successful, install_config.kernel.number());
       }
 
       numTries = 0;
@@ -384,18 +381,16 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
                                             numTries);
       if (result != kCgptSuccess) {
         rollback_successful = false;
-        printf("Unable to set NumTriesLeft to %d for kernel %d\n",
-               numTries,
+        printf("Unable to set NumTriesLeft to %d for kernel %d\n", numTries,
                install_config.kernel.number());
       }
 
       int priority = 0;
-      result = cgpt_manager.SetPriority(install_config.kernel.number(),
-                                        priority);
+      result =
+          cgpt_manager.SetPriority(install_config.kernel.number(), priority);
       if (result != kCgptSuccess) {
         rollback_successful = false;
-        printf("Unable to set Priority to %d for kernel %d\n",
-               priority,
+        printf("Unable to set Priority to %d for kernel %d\n", priority,
                install_config.kernel.number());
       }
 
@@ -439,18 +434,14 @@ bool RunPostInstall(const string& install_dev,
                     int* exit_code) {
   InstallConfig install_config;
 
-  if (!ConfigureInstall(install_dev,
-                        install_dir,
-                        bios_type,
-                        &install_config)) {
+  if (!ConfigureInstall(install_dev, install_dir, bios_type, &install_config)) {
     printf("Configure failed.\n");
     return false;
   }
 
   // Log how we are configured.
   printf("PostInstall Configured: (%s, %s, %s, %s)\n",
-         install_config.slot.c_str(),
-         install_config.root.device().c_str(),
+         install_config.slot.c_str(), install_config.root.device().c_str(),
          install_config.kernel.device().c_str(),
          install_config.boot.device().c_str());
 
@@ -486,12 +477,10 @@ bool RunPostInstall(const string& install_dev,
 
   string cmd;
 
-  cmd = StringPrintf("/bin/mkdir -p %s",
-                     install_config.boot.mount().c_str());
+  cmd = StringPrintf("/bin/mkdir -p %s", install_config.boot.mount().c_str());
   RUN_OR_RETURN_FALSE(cmd);
 
-  cmd = StringPrintf("/bin/mount %s %s",
-                     install_config.boot.device().c_str(),
+  cmd = StringPrintf("/bin/mount %s %s", install_config.boot.device().c_str(),
                      install_config.boot.mount().c_str());
   RUN_OR_RETURN_FALSE(cmd);
 
@@ -528,8 +517,7 @@ bool RunPostInstall(const string& install_dev,
       break;
   }
 
-  cmd = StringPrintf("/bin/umount %s",
-                     install_config.boot.device().c_str());
+  cmd = StringPrintf("/bin/umount %s", install_config.boot.device().c_str());
   if (RunCommand(cmd.c_str()) != 0) {
     printf("Cmd: '%s' failed.\n", cmd.c_str());
     success = false;

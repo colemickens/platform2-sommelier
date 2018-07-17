@@ -95,8 +95,7 @@ int WriteGptToNor(const string& file_name) {
                   "RW_GPT_PRIMARY")) {
     ret++;
   }
-  if (!WriteToNor(gpt_data.substr(gpt_data.length() / 2),
-                  "RW_GPT_SECONDARY")) {
+  if (!WriteToNor(gpt_data.substr(gpt_data.length() / 2), "RW_GPT_SECONDARY")) {
     ret++;
   }
 
@@ -114,6 +113,7 @@ int WriteGptToNor(const string& file_name) {
     }
     default: {
       errx(-1, "Unexpected number of write failures (%d)", ret);
+      break;
     }
   }
   return ret;
@@ -132,8 +132,8 @@ bool IsMtd(const string& block_dev, bool* is_mtd) {
 
 // Return the size of MTD device |block_dev| in |ret|.
 bool GetMtdSize(const string& block_dev, uint64_t* ret) {
-  string size_file = StringPrintf("/sys/class/mtd/%s/size",
-                                  basename(block_dev.c_str()));
+  string size_file =
+      StringPrintf("/sys/class/mtd/%s/size", basename(block_dev.c_str()));
   string size_string;
   if (!ReadFileToString(size_file, &size_string)) {
     warnx("Cannot read MTD size from %s.\n", size_file.c_str());
@@ -156,10 +156,7 @@ bool GetMtdSize(const string& block_dev, uint64_t* ret) {
 
 // This file implements the C++ wrapper methods over the C cgpt methods.
 
-CgptManager::CgptManager():
-  device_size_(0),
-  is_initialized_(false) {
-}
+CgptManager::CgptManager() : device_size_(0), is_initialized_(false) {}
 
 CgptManager::~CgptManager() {
   Finalize();
@@ -213,7 +210,7 @@ CgptErrorCode CgptManager::ClearAll() {
   CgptCreateParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.zap = 0;
 
@@ -225,19 +222,19 @@ CgptErrorCode CgptManager::ClearAll() {
 }
 
 CgptErrorCode CgptManager::AddPartition(const string& label,
-                              const Guid& partition_type_guid,
-                              const Guid& unique_id,
-                              uint64_t beginning_offset,
-                              uint64_t num_sectors) {
+                                        const Guid& partition_type_guid,
+                                        const Guid& unique_id,
+                                        uint64_t beginning_offset,
+                                        uint64_t num_sectors) {
   if (!is_initialized_)
     return kCgptNotInitialized;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
-  params.label = const_cast<char *>(label.c_str());
+  params.label = const_cast<char*>(label.c_str());
 
   params.type_guid = partition_type_guid;
   params.set_type = 1;
@@ -249,8 +246,8 @@ CgptErrorCode CgptManager::AddPartition(const string& label,
   params.set_size = 1;
 
   if (!GuidIsZero(&unique_id)) {
-     params.unique_guid = unique_id;
-     params.set_unique = 1;
+    params.unique_guid = unique_id;
+    params.set_unique = 1;
   }
 
   int retval = CgptAdd(&params);
@@ -271,7 +268,7 @@ CgptErrorCode CgptManager::GetNumNonEmptyPartitions(
   CgptShowParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   int retval = CgptGetNumNonEmptyPartitions(&params);
 
@@ -291,10 +288,10 @@ CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
   CgptBootParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   if (!boot_file_name.empty())
-    params.bootfile = const_cast<char *>(boot_file_name.c_str());
+    params.bootfile = const_cast<char*>(boot_file_name.c_str());
 
   params.partition = boot_partition_number;
   params.create_pmbr = should_create_legacy_partition;
@@ -307,7 +304,7 @@ CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
 }
 
 CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
-                                    uint32_t* boot_partition) const {
+    uint32_t* boot_partition) const {
   if (!is_initialized_)
     return kCgptNotInitialized;
 
@@ -317,7 +314,7 @@ CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
   CgptBootParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
 
   int retval = CgptGetBootPartitionNumber(&params);
@@ -328,16 +325,15 @@ CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
   return kCgptSuccess;
 }
 
-CgptErrorCode CgptManager::SetSuccessful(
-                               uint32_t partition_number,
-                               bool is_successful) {
+CgptErrorCode CgptManager::SetSuccessful(uint32_t partition_number,
+                                         bool is_successful) {
   if (!is_initialized_)
     return kCgptNotInitialized;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -362,7 +358,7 @@ CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -382,7 +378,7 @@ CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -407,7 +403,7 @@ CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -427,7 +423,7 @@ CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -452,7 +448,7 @@ CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -475,7 +471,7 @@ CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -498,7 +494,7 @@ CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -521,7 +517,7 @@ CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -544,7 +540,7 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.partition = partition_number;
 
@@ -557,8 +553,7 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
 }
 
 CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
-                    const Guid& unique_id,
-                    uint32_t* partition_number) const {
+    const Guid& unique_id, uint32_t* partition_number) const {
   if (!is_initialized_)
     return kCgptNotInitialized;
 
@@ -568,7 +563,7 @@ CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.unique_guid = unique_id;
   params.set_unique = 1;
@@ -589,7 +584,7 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
   CgptPrioritizeParams params;
   memset(&params, 0, sizeof(params));
 
-  params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_name = const_cast<char*>(device_name_.c_str());
   params.drive_size = device_size_;
   params.set_partition = partition_number;
   params.max_priority = highest_priority;

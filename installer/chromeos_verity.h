@@ -26,12 +26,12 @@ extern "C" {
  * return - 0 for success, non-zero indicates failure
  *
  */
-int chromeos_verity(const char *alg,
-                    const char *device,
+int chromeos_verity(const char* alg,
+                    const char* device,
                     unsigned blocksize,
                     uint64_t fs_blocks,
-                    const char *salt,
-                    const char *expected,
+                    const char* salt,
+                    const char* expected,
                     int warn);
 
 #ifdef __cplusplus

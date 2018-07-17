@@ -10,11 +10,10 @@
 #include "installer/chromeos_install_config.h"
 
 // Create the configuration structure used during an install.
-bool ConfigureInstall(
-    const std::string& install_dev,
-    const std::string& install_dir,
-    BiosType bios_type,
-    InstallConfig* install_config);
+bool ConfigureInstall(const std::string& install_dev,
+                      const std::string& install_dir,
+                      BiosType bios_type,
+                      InstallConfig* install_config);
 
 // Find the current kernel command line and use it to find the
 // current bios type.

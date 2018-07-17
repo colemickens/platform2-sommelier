@@ -26,9 +26,7 @@ void TestConfigureInstall(const string& install_dev,
 
   BiosType expected_bios = kBiosTypeSecure;
 
-  EXPECT_EQ(ConfigureInstall(install_dev,
-                             install_dir,
-                             expected_bios,
+  EXPECT_EQ(ConfigureInstall(install_dev, install_dir, expected_bios,
                              &install_config),
             expected_success);
 
@@ -47,8 +45,7 @@ void TestStrToBiosType(string name,
                        BiosType expected_result) {
   BiosType bios_type = kBiosTypeUnknown;
 
-  EXPECT_EQ(StrToBiosType(name, &bios_type),
-            expected_success);
+  EXPECT_EQ(StrToBiosType(name, &bios_type), expected_success);
 
   if (!expected_success)
     return;
@@ -70,25 +67,19 @@ void TestKernelConfigToBiosType(string kernel_config,
   EXPECT_EQ(bios_type, expected_result);
 }
 
-class InstallConfigTest : public ::testing::Test { };
+class InstallConfigTest : public ::testing::Test {};
 
 TEST(InstallConfigTest, ConfigureInstallTest) {
-  TestConfigureInstall("/dev/sda3", "/mnt",
-                       true,
-                       "A", "/dev/sda3", "/dev/sda2", "/dev/sda12");
-  TestConfigureInstall("/dev/sda5", "/mnt",
-                       true,
-                       "B", "/dev/sda5", "/dev/sda4", "/dev/sda12");
-  TestConfigureInstall("/dev/mmcblk0p3", "/mnt",
-                       true, "A",
-                       "/dev/mmcblk0p3", "/dev/mmcblk0p2", "/dev/mmcblk0p12");
-  TestConfigureInstall("/dev/mmcblk0p5", "/mnt",
-                       true, "B",
-                       "/dev/mmcblk0p5", "/dev/mmcblk0p4", "/dev/mmcblk0p12");
-  TestConfigureInstall("/dev/sda2", "/mnt",
-                       false, "", "", "", "");
-  TestConfigureInstall("/dev/sda", "/mnt",
-                       false, "", "", "", "");
+  TestConfigureInstall("/dev/sda3", "/mnt", true, "A", "/dev/sda3", "/dev/sda2",
+                       "/dev/sda12");
+  TestConfigureInstall("/dev/sda5", "/mnt", true, "B", "/dev/sda5", "/dev/sda4",
+                       "/dev/sda12");
+  TestConfigureInstall("/dev/mmcblk0p3", "/mnt", true, "A", "/dev/mmcblk0p3",
+                       "/dev/mmcblk0p2", "/dev/mmcblk0p12");
+  TestConfigureInstall("/dev/mmcblk0p5", "/mnt", true, "B", "/dev/mmcblk0p5",
+                       "/dev/mmcblk0p4", "/dev/mmcblk0p12");
+  TestConfigureInstall("/dev/sda2", "/mnt", false, "", "", "", "");
+  TestConfigureInstall("/dev/sda", "/mnt", false, "", "", "", "");
 }
 
 TEST(InstallConfigTest, StrToBiosTypeTest) {
@@ -105,12 +96,9 @@ TEST(InstallConfigTest, KernelConfigToBiosTypeTest) {
   legacy_bios = kBiosTypeUBoot;
 #endif
 
-  TestKernelConfigToBiosType("kernel_config cros_secure",
-                             true, kBiosTypeSecure);
-  TestKernelConfigToBiosType("cros_legacy kernel_config",
-                             true, legacy_bios);
-  TestKernelConfigToBiosType("kernel_config cros_efi foo",
-                             true, kBiosTypeEFI);
-  TestKernelConfigToBiosType("kernel_config",
-                             false, kBiosTypeUnknown);
+  TestKernelConfigToBiosType("kernel_config cros_secure", true,
+                             kBiosTypeSecure);
+  TestKernelConfigToBiosType("cros_legacy kernel_config", true, legacy_bios);
+  TestKernelConfigToBiosType("kernel_config cros_efi foo", true, kBiosTypeEFI);
+  TestKernelConfigToBiosType("kernel_config", false, kBiosTypeUnknown);
 }

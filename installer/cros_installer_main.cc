@@ -15,14 +15,14 @@
 
 using std::string;
 
-const char* usage = (
+constexpr char usage[] =
     "cros_installer:\n"
     "   --help\n"
     "   --debug\n"
     "   cros_installer postinst <install_dev> <mount_point> [ args ]\n"
     "     --bios [ secure | legacy | efi | uboot ]\n"
     "     --legacy\n"
-    "     --postcommit\n");
+    "     --postcommit\n";
 
 int showHelp() {
   printf("%s", usage);
@@ -31,11 +31,11 @@ int showHelp() {
 
 int main(int argc, char** argv) {
   struct option long_options[] = {
-    {"bios", required_argument, NULL, 'b'},
-    {"debug", no_argument, NULL, 'd'},
-    {"help", no_argument, NULL, 'h'},
-    {"postcommit", no_argument, NULL, 'p'},
-    {NULL, 0, NULL, 0},
+      {"bios", required_argument, NULL, 'b'},
+      {"debug", no_argument, NULL, 'd'},
+      {"help", no_argument, NULL, 'h'},
+      {"postcommit", no_argument, NULL, 'p'},
+      {NULL, 0, NULL, 0},
   };
 
   // Unkown means we will attempt to autodetect later on.

@@ -28,5 +28,4 @@ bool EfiGrubUpdate(const std::string& input,
                    const std::string& verity_args,
                    std::string* output);
 
-
 #endif  // INSTALLER_CHROMEOS_LEGACY_H_

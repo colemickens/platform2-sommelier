@@ -17,10 +17,10 @@
 using std::string;
 using std::vector;
 
-class UtilTest : public ::testing::Test { };
+class UtilTest : public ::testing::Test {};
 
 const string GetSourceFile(const string& file) {
-  static const char *srcdir = getenv("SRC");
+  static const char* srcdir = getenv("SRC");
 
   return srcdir ? string(srcdir) + "/" + file : file;
 }
@@ -199,26 +199,18 @@ TEST(UtilTest, LsbReleaseValueTest) {
   string result_string;
   string lsb_file = GetSourceFile("lsb-release-test.txt");
 
-  EXPECT_EQ(LsbReleaseValue("bogus",
-                            "CHROMEOS_RELEASE_BOARD",
-                            &result_string),
+  EXPECT_EQ(LsbReleaseValue("bogus", "CHROMEOS_RELEASE_BOARD", &result_string),
             false);
 
-  EXPECT_EQ(LsbReleaseValue(lsb_file,
-                            "CHROMEOS_RELEASE_BOARD",
-                            &result_string),
+  EXPECT_EQ(LsbReleaseValue(lsb_file, "CHROMEOS_RELEASE_BOARD", &result_string),
             true);
   EXPECT_EQ(result_string, "x86-mario");
 
-  EXPECT_EQ(LsbReleaseValue(lsb_file,
-                            "CHROMEOS_RELEASE",
-                            &result_string),
+  EXPECT_EQ(LsbReleaseValue(lsb_file, "CHROMEOS_RELEASE", &result_string),
             true);
   EXPECT_EQ(result_string, "1568.0.2012_01_19_1424");
 
-  EXPECT_EQ(LsbReleaseValue(lsb_file,
-                            "CHROMEOS_AUSERVER",
-                            &result_string),
+  EXPECT_EQ(LsbReleaseValue(lsb_file, "CHROMEOS_AUSERVER", &result_string),
             true);
   EXPECT_EQ(result_string, "http://blah.blah:8080/update");
 }
@@ -446,8 +438,7 @@ TEST(UtilTest, SetKernelArgTest) {
   // Change a value that requires quotes to be removed
   working_config = kernel_config;
   EXPECT_EQ(SetKernelArg("dm", "ab", &working_config), true);
-  EXPECT_EQ(working_config,
-            "root=/dev/dm-1 dm=ab fuzzy=wuzzy root2=/dev/dm-2");
+  EXPECT_EQ(working_config, "root=/dev/dm-1 dm=ab fuzzy=wuzzy root2=/dev/dm-2");
 
   // Change a quoted value that stays quoted
   working_config = kernel_config;
@@ -501,9 +492,7 @@ TEST(UtilTest, ScopedPathRemoverWithFile) {
   EXPECT_EQ(access(filename.c_str(), F_OK), 0);
 
   // No releasing, the file should be removed.
-  {
-    ScopedPathRemover remover(filename);
-  }
+  { ScopedPathRemover remover(filename); }
   EXPECT_EQ(access(filename.c_str(), F_OK), -1);
 }
 
@@ -514,9 +503,7 @@ TEST(UtilTest, ScopedPathRemoverWithDirectory) {
   ASSERT_EQ(access(dirname.c_str(), F_OK), 0);
   EXPECT_EQ(WriteStringToFile("abc", filename), true);
   ASSERT_EQ(access(filename.c_str(), F_OK), 0);
-  {
-    ScopedPathRemover remover(dirname);
-  }
+  { ScopedPathRemover remover(dirname); }
   EXPECT_EQ(access(filename.c_str(), F_OK), -1);
   EXPECT_EQ(access(dirname.c_str(), F_OK), -1);
 }
@@ -524,9 +511,7 @@ TEST(UtilTest, ScopedPathRemoverWithDirectory) {
 TEST(UtilTest, ScopedPathRemoverWithNonExistingPath) {
   string filename = tmpnam(NULL);
   ASSERT_EQ(access(filename.c_str(), F_OK), -1);
-  {
-    ScopedPathRemover remover(filename);
-  }
+  { ScopedPathRemover remover(filename); }
   // There should be no crash.
 }
 

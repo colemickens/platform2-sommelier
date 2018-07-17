@@ -55,8 +55,10 @@ string MakeNandPartitionDevForMounting(int partition) {
 }
 
 // Callback used by nftw().
-int RemoveFileOrDir(const char* fpath, const struct stat* /* sb */,
-                    int /* typeflag */, struct FTW* /*ftwbuf */) {
+int RemoveFileOrDir(const char* fpath,
+                    const struct stat* /* sb */,
+                    int /* typeflag */,
+                    struct FTW* /*ftwbuf */) {
   return remove(fpath);
 }
 
@@ -124,10 +126,7 @@ string StringPrintf(const char* format, ...) {
   va_list ap;
 
   va_start(ap, format);
-  int v_result = vsnprintf(NULL,
-                           0,
-                           format,
-                           ap);
+  int v_result = vsnprintf(NULL, 0, format, ap);
   va_end(ap);
 
   if (v_result < 0) {
@@ -137,7 +136,7 @@ string StringPrintf(const char* format, ...) {
 
   const int size = v_result + 1;
 
-  char* sprintf_buffer = reinterpret_cast<char *>(malloc(size));
+  char* sprintf_buffer = reinterpret_cast<char*>(malloc(size));
 
   if (!sprintf_buffer) {
     printf("Error in SpringPrintf - memory allocation\n");
@@ -145,10 +144,7 @@ string StringPrintf(const char* format, ...) {
   }
 
   va_start(ap, format);
-  v_result = vsnprintf(sprintf_buffer,
-                       size,
-                       format,
-                       ap);
+  v_result = vsnprintf(sprintf_buffer, size, format, ap);
   va_end(ap);
 
   if (v_result < 0 || v_result >= size) {
@@ -170,7 +166,7 @@ void SplitString(const string& str, char split, vector<string>* output) {
     size_t split_at = str.find(split, i);
     if (split_at == str.npos)
       break;
-    output->push_back(str.substr(i, split_at-i));
+    output->push_back(str.substr(i, split_at - i));
     i = split_at + 1;
   }
 
@@ -178,8 +174,8 @@ void SplitString(const string& str, char split, vector<string>* output) {
 }
 
 void JoinStrings(const vector<string>& strs,
-                const string& split,
-                string* output) {
+                 const string& split,
+                 string* output) {
   output->clear();
 
   bool first_line = true;
@@ -217,8 +213,8 @@ int RunCommand(const string& command) {
   }
 
   if (WIFSIGNALED(result)) {
-    printf("Failed Command: %s - Signal %d\n",
-           command.c_str(), WTERMSIG(result));
+    printf("Failed Command: %s - Signal %d\n", command.c_str(),
+           WTERMSIG(result));
     return 1;
   }
 
@@ -256,12 +252,10 @@ bool ReadFileToString(const string& path, string* contents) {
   return true;
 }
 
-
 // Open a file and write the contents of an ASCII string into it.
 // return "" on error.
 bool WriteStringToFile(const string& contents, const string& path) {
-  int fd = open(path.c_str(),
-                O_WRONLY  | O_CREAT | O_TRUNC,
+  int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   if (fd == -1) {
@@ -302,8 +296,7 @@ bool CopyFile(const string& from_path, const string& to_path) {
 
   bool success = true;
 
-  int fd_to = open(to_path.c_str(),
-                   O_WRONLY  | O_CREAT | O_TRUNC,
+  int fd_to = open(to_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   if (fd_to == -1) {
@@ -359,7 +352,7 @@ bool LsbReleaseValue(const string& file, const string& key, string* result) {
 
 // This is an array of device names that are allowed in end in a digit, and
 // which use the 'p' notation to denote partitions.
-const char *numbered_devices[] = { "/dev/loop", "/dev/mmcblk", "/dev/nvme" };
+const char* numbered_devices[] = {"/dev/loop", "/dev/mmcblk", "/dev/nvme"};
 
 bool StartsWith(const string& s, const string& prefix) {
   return s.compare(0, prefix.length(), prefix) == 0;
@@ -380,15 +373,15 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
 
   size_t i = partition_dev.length();
 
-  while (i > 0 && isdigit(partition_dev[i-1]))
+  while (i > 0 && isdigit(partition_dev[i - 1]))
     i--;
 
-  for (const char **nd = begin(numbered_devices);
-       nd != end(numbered_devices); nd++) {
+  for (const char** nd = begin(numbered_devices); nd != end(numbered_devices);
+       nd++) {
     size_t nd_len = strlen(*nd);
     // numbered_devices are of the form "/dev/mmcblk12p34"
     if (partition_dev.compare(0, nd_len, *nd) == 0) {
-      if ((i == nd_len) || (partition_dev[i-1] != 'p')) {
+      if ((i == nd_len) || (partition_dev[i - 1] != 'p')) {
         // If there was no partition at the end (/dev/mmcblk12) return
         // unmodified.
         return partition_dev;
@@ -408,21 +401,21 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
     i -= 2;
   }
 
-  while (i > 0 && isdigit(partition_dev[i-1]))
+  while (i > 0 && isdigit(partition_dev[i - 1]))
     i--;
 
-  for (const char **nd = begin(numbered_devices);
-       nd != end(numbered_devices); nd++) {
+  for (const char** nd = begin(numbered_devices); nd != end(numbered_devices);
+       nd++) {
     size_t nd_len = strlen(*nd);
     // numbered_devices are of the form "/dev/mmcblk12p34"
     // If there is no ending p, there is no partition at the end (/dev/mmcblk12)
     if ((partition_dev.compare(0, nd_len, *nd) == 0) &&
-        ((i == nd_len) || (partition_dev[i-1] != 'p'))) {
+        ((i == nd_len) || (partition_dev[i - 1] != 'p'))) {
       return 0;
     }
   }
 
-  string partition_str = partition_dev.substr(i, i+1);
+  string partition_str = partition_dev.substr(i, i + 1);
 
   int result = atoi(partition_str.c_str());
 
@@ -433,13 +426,12 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
 }
 
 string MakePartitionDev(const string& block_dev, int partition) {
-  if (StartsWith(block_dev, "/dev/mtd") ||
-      StartsWith(block_dev, "/dev/ubi")) {
+  if (StartsWith(block_dev, "/dev/mtd") || StartsWith(block_dev, "/dev/ubi")) {
     return MakeNandPartitionDevForMounting(partition);
   }
 
-  for (const char **nd = begin(numbered_devices);
-       nd != end(numbered_devices); nd++) {
+  for (const char** nd = begin(numbered_devices); nd != end(numbered_devices);
+       nd++) {
     size_t nd_len = strlen(*nd);
     if (block_dev.compare(0, nd_len, *nd) == 0)
       return StringPrintf("%sp%d", block_dev.c_str(), partition);
@@ -460,15 +452,15 @@ string Dirname(const string& filename) {
 
 // rm *pack from /dirname
 bool RemovePackFiles(const string& dirname) {
-  DIR *dp;
-  struct dirent *ep;
+  DIR* dp;
+  struct dirent* ep;
 
   dp = opendir(dirname.c_str());
 
   if (dp == NULL)
     return false;
 
-  while ( (ep = readdir(dp)) ) {
+  while ((ep = readdir(dp))) {
     string filename = ep->d_name;
 
     // Skip . files
@@ -491,8 +483,7 @@ bool RemovePackFiles(const string& dirname) {
 }
 
 bool Touch(const string& filename) {
-  int fd = open(filename.c_str(),
-                O_WRONLY | O_CREAT,
+  int fd = open(filename.c_str(), O_WRONLY | O_CREAT,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   if (fd == -1)
@@ -514,8 +505,7 @@ bool ReplaceInFile(const string& pattern,
   size_t offset = contents.find(pattern);
 
   if (offset == string::npos) {
-    printf("ReplaceInFile failed to find '%s' in %s\n",
-           pattern.c_str(),
+    printf("ReplaceInFile failed to find '%s' in %s\n", pattern.c_str(),
            path.c_str());
     return false;
   }
@@ -551,14 +541,14 @@ bool MakeFileSystemRw(const string& dev_name) {
 
   uint16_t fs_id;
   if (read(fd, &fs_id, sizeof(fs_id)) != sizeof(fs_id)) {
-      printf("Can't read the filesystem identifier\n");
-      return false;
+    printf("Can't read the filesystem identifier\n");
+    return false;
   }
 
   if (fs_id != 0xef53) {
-      printf("Non-EXT filesystem with magic 0x%04x can't be made writable.\n",
-             fs_id);
-      return false;
+    printf("Non-EXT filesystem with magic 0x%04x can't be made writable.\n",
+           fs_id);
+    return false;
   }
 
   if (fd == -1) {
@@ -587,21 +577,20 @@ extern "C" {
 // The external dumpkernelconfig.a library depends on this symbol
 // existing, so I redefined it here. I deserve to suffer
 // very, very painfully for this, but hey.
-__attribute__((__format__(__printf__, 1, 2)))
-void VbExError(const char* format, ...) {
+__attribute__((__format__(__printf__, 1, 2))) void VbExError(const char* format,
+                                                             ...) {
   va_list ap;
   va_start(ap, format);
   fprintf(stderr, "ERROR: ");
   vfprintf(stderr, format, ap);
   va_end(ap);
 }
-
 }
 
 string DumpKernelConfig(const string& kernel_dev) {
   string result;
 
-  char *config = FindKernelConfig(kernel_dev.c_str(), USE_PREAMBLE_LOAD_ADDR);
+  char* config = FindKernelConfig(kernel_dev.c_str(), USE_PREAMBLE_LOAD_ADDR);
   if (!config) {
     printf("Error retrieving kernel config from '%s'\n", kernel_dev.c_str());
     return result;
@@ -663,21 +652,17 @@ bool FindKernelArgValueOffsets(const string& kernel_config,
   return true;
 }
 
-string ExtractKernelArg(const string& kernel_config,
-                        const string& key) {
+string ExtractKernelArg(const string& kernel_config, const string& key) {
   size_t value_offset;
   size_t value_length;
 
-  if (!FindKernelArgValueOffsets(kernel_config,
-                                 key,
-                                 &value_offset,
+  if (!FindKernelArgValueOffsets(kernel_config, key, &value_offset,
                                  &value_length))
     return "";
 
   string result = kernel_config.substr(value_offset, value_length);
 
-  if ((result.length() >= 2) &&
-      (result[0] == '"') &&
+  if ((result.length() >= 2) && (result[0] == '"') &&
       (result[result.length() - 1] == '"')) {
     result = result.substr(1, result.length() - 2);
   }
@@ -691,9 +676,7 @@ bool SetKernelArg(const string& key,
   size_t value_offset;
   size_t value_length;
 
-  if (!FindKernelArgValueOffsets(*kernel_config,
-                                 key,
-                                 &value_offset,
+  if (!FindKernelArgValueOffsets(*kernel_config, key, &value_offset,
                                  &value_length))
     return false;
 
@@ -724,11 +707,8 @@ bool GetKernelInfo(std::string* result) {
     return false;
   }
 
-  *result = string("") +
-      "sysname(" + buf.sysname +
-      ") nodename(" + buf.nodename +
-      ") release(" + buf.release +
-      ") version(" + buf.version +
-      ") machine(" + buf.machine + ")";
+  *result = string("") + "sysname(" + buf.sysname + ") nodename(" +
+            buf.nodename + ") release(" + buf.release + ") version(" +
+            buf.version + ") machine(" + buf.machine + ")";
   return true;
 }

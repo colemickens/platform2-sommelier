@@ -37,17 +37,13 @@ bool StrToBiosType(string name, BiosType* bios_type) {
 // chromium-os:29457 covers exporting these methods. We should
 // use the exported ones as soon as they are available.
 #define GUID_STRLEN 37
-void GuidToStr(const Guid *guid, char *str, unsigned int buflen) {
-  snprintf(str, buflen,
-           "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
-           le32toh(guid->u.Uuid.time_low),
-           le16toh(guid->u.Uuid.time_mid),
+void GuidToStr(const Guid* guid, char* str, unsigned int buflen) {
+  snprintf(str, buflen, "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+           le32toh(guid->u.Uuid.time_low), le16toh(guid->u.Uuid.time_mid),
            le16toh(guid->u.Uuid.time_high_and_version),
-           guid->u.Uuid.clock_seq_high_and_reserved,
-           guid->u.Uuid.clock_seq_low,
-           guid->u.Uuid.node[0], guid->u.Uuid.node[1],
-           guid->u.Uuid.node[2], guid->u.Uuid.node[3],
-           guid->u.Uuid.node[4], guid->u.Uuid.node[5]);
+           guid->u.Uuid.clock_seq_high_and_reserved, guid->u.Uuid.clock_seq_low,
+           guid->u.Uuid.node[0], guid->u.Uuid.node[1], guid->u.Uuid.node[2],
+           guid->u.Uuid.node[3], guid->u.Uuid.node[4], guid->u.Uuid.node[5]);
 }
 
 string Partition::uuid() const {

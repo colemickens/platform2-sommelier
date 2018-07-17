@@ -18,7 +18,6 @@ enum CgptErrorCode {
   kCgptInvalidArgument = 3,
 };
 
-
 // CgptManager exposes methods to manipulate the Guid Partition Table as needed
 // for ChromeOS scenarios.
 class CgptManager {
@@ -52,10 +51,10 @@ class CgptManager {
   // with the new label, type, unique Id, offset and size.
   // Returns kCgptSuccess or an appropriate error code.
   CgptErrorCode AddPartition(const std::string& label,
-                   const Guid& partition_type_guid,
-                   const Guid& unique_id,
-                   uint64_t beginning_offset,
-                   uint64_t num_sectors);
+                             const Guid& partition_type_guid,
+                             const Guid& unique_id,
+                             uint64_t beginning_offset,
+                             uint64_t num_sectors);
 
   // Populates num_partitions parameter with the number of partitions
   // that are currently on this device and not empty.
@@ -91,8 +90,7 @@ class CgptManager {
   // Sets the "NumTriesLeft" attribute of the given kernelPartition to
   // the given num_tries_left value.
   // Returns kCgptSuccess or an appropriate error code.
-  CgptErrorCode SetNumTriesLeft(uint32_t partition_number,
-                                int num_tries_left);
+  CgptErrorCode SetNumTriesLeft(uint32_t partition_number, int num_tries_left);
 
   // Populates the num_tries_left parameter with the value of the
   // NumTriesLeft attribute of the given kernelPartition.
@@ -103,14 +101,12 @@ class CgptManager {
   // Sets the "Priority" attribute of the given kernelPartition to
   // the given priority value.
   // Returns kCgptSuccess or an appropriate error code.
-  CgptErrorCode SetPriority(uint32_t partition_number,
-                            uint8_t priority);
+  CgptErrorCode SetPriority(uint32_t partition_number, uint8_t priority);
 
   // Populates the priority parameter with the value of the Priority
   // attribute of the given kernelPartition.
   // Returns kCgptSuccess or an appropriate error code.
-  CgptErrorCode GetPriority(uint32_t partition_number,
-                            uint8_t* priority) const;
+  CgptErrorCode GetPriority(uint32_t partition_number, uint8_t* priority) const;
 
   // Populates the offset parameter with the beginning offset of the
   // given partition.
@@ -139,9 +135,8 @@ class CgptManager {
   // Populates the partition_number parameter with the partition number of
   // the partition which is uniquely identified by the given unique_id.
   // Returns kCgptSuccess or an appropriate error code.
-  CgptErrorCode GetPartitionNumberByUniqueId(
-                    const Guid& unique_id,
-                    uint32_t* partition_number) const;
+  CgptErrorCode GetPartitionNumberByUniqueId(const Guid& unique_id,
+                                             uint32_t* partition_number) const;
 
   // Sets the "Priority" attribute of given kernelPartition to the value
   // specified in higestPriority parameter. In addition, also reduces the
@@ -174,8 +169,8 @@ class CgptManager {
   uint64_t device_size_;
   bool is_initialized_;
 
-  CgptManager(const CgptManager &);
-  void operator=(const CgptManager &);
+  CgptManager(const CgptManager&);
+  void operator=(const CgptManager&);
 };
 
 #endif  // INSTALLER_CGPT_MANAGER_H_

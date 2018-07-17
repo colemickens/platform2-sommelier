@@ -19,8 +19,8 @@ using std::string;
 using std::vector;
 
 bool UpdateLegacyKernel(const InstallConfig& install_config) {
-  string kernel_from = StringPrintf("%s/boot/vmlinuz",
-                                    install_config.root.mount().c_str());
+  string kernel_from =
+      StringPrintf("%s/boot/vmlinuz", install_config.root.mount().c_str());
 
   string kernel_to = StringPrintf("%s/syslinux/vmlinuz.%s",
                                   install_config.boot.mount().c_str(),
@@ -64,12 +64,11 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
   // Prepare the new default.cfg
 
-  string verity_enabled = (IsReadonly(kernel_config_root) ?
-                           "chromeos-vhd" : "chromeos-hd");
+  string verity_enabled =
+      (IsReadonly(kernel_config_root) ? "chromeos-vhd" : "chromeos-hd");
 
-  string default_syslinux_cfg = StringPrintf("DEFAULT %s.%s\n",
-                                             verity_enabled.c_str(),
-                                             install_config.slot.c_str());
+  string default_syslinux_cfg = StringPrintf(
+      "DEFAULT %s.%s\n", verity_enabled.c_str(), install_config.slot.c_str());
 
   if (!WriteStringToFile(default_syslinux_cfg,
                          StringPrintf("%s/syslinux/default.cfg",
@@ -91,12 +90,11 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
   // Insert the proper root device for non-verity boots
   if (!ReplaceInFile(StringPrintf("HDROOT%s", install_config.slot.c_str()),
-                     install_config.root.device(),
-                     root_cfg_file))
+                     install_config.root.device(), root_cfg_file))
     return false;
 
-  string kernel_config_dm = ExplandVerityArguments(kernel_config,
-                                                   install_config.root.uuid());
+  string kernel_config_dm =
+      ExplandVerityArguments(kernel_config, install_config.root.uuid());
 
   if (kernel_config_dm.empty()) {
     printf("Failed to extract Verity arguments.");
@@ -105,21 +103,21 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
   // Insert the proper verity options for verity boots
   if (!ReplaceInFile(StringPrintf("DMTABLE%s", install_config.slot.c_str()),
-                     kernel_config_dm,
-                     root_cfg_file))
+                     kernel_config_dm, root_cfg_file))
     return false;
 
   return true;
 }
 
 // Copy a file from the root partition to the boot partition.
-bool CopyBootFile(const InstallConfig& install_config, const char *src,
-                  const char *dst) {
+bool CopyBootFile(const InstallConfig& install_config,
+                  const char* src,
+                  const char* dst) {
   bool result = true;
-  string src_path = StringPrintf("%s/%s", install_config.root.mount().c_str(),
-                                 src);
-  string dst_path = StringPrintf("%s/%s", install_config.boot.mount().c_str(),
-                                 dst);
+  string src_path =
+      StringPrintf("%s/%s", install_config.root.mount().c_str(), src);
+  string dst_path =
+      StringPrintf("%s/%s", install_config.boot.mount().c_str(), dst);
 
   // If the source file file exists, copy it into place, else do nothing.
   if (access(src_path.c_str(), R_OK) == 0) {
@@ -136,13 +134,14 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
   printf("Running LegacyUBootPostInstall\n");
 
   result &= CopyBootFile(
-    install_config,
-    StringPrintf("boot/boot-%s.scr.uimg", install_config.slot.c_str()).c_str(),
-    "u-boot/boot.scr.uimg");
+      install_config,
+      StringPrintf("boot/boot-%s.scr.uimg", install_config.slot.c_str())
+          .c_str(),
+      "u-boot/boot.scr.uimg");
   result &= CopyBootFile(
-    install_config,
-    StringPrintf("boot/uEnv.%s.txt", install_config.slot.c_str()).c_str(),
-    "uEnv.txt");
+      install_config,
+      StringPrintf("boot/uEnv.%s.txt", install_config.slot.c_str()).c_str(),
+      "uEnv.txt");
   result &= CopyBootFile(install_config, "boot/MLO", "MLO");
   result &= CopyBootFile(install_config, "boot/u-boot.img", "u-boot.img");
 
@@ -180,22 +179,18 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   string root_uuid = install_config.root.uuid();
   string kernel_config_dm = ExplandVerityArguments(kernel_config, root_uuid);
 
-  string grub_filename = StringPrintf("%s/efi/boot/grub.cfg",
-                                      install_config.boot.mount().c_str());
+  string grub_filename =
+      StringPrintf("%s/efi/boot/grub.cfg", install_config.boot.mount().c_str());
 
   // Read in the grub.cfg to be updated.
   string grub_src;
-  if (!ReadFileToString(grub_filename,  &grub_src)) {
-    printf("Unable to read grub template file %s\n",
-           grub_filename.c_str());
+  if (!ReadFileToString(grub_filename, &grub_src)) {
+    printf("Unable to read grub template file %s\n", grub_filename.c_str());
     return false;
   }
 
   string output;
-  if (!EfiGrubUpdate(grub_src,
-                     install_config.slot,
-                     root_uuid,
-                     kernel_config_dm,
+  if (!EfiGrubUpdate(grub_src, install_config.slot, root_uuid, kernel_config_dm,
                      &output)) {
     return false;
   }
