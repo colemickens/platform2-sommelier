@@ -188,6 +188,9 @@
     {
       'target_name': 'mount_encrypted_lib',
       'type': 'static_library',
+      'dependencies': [
+        'cryptohome-proto',
+      ],
       'sources': [
         'mount_encrypted/encryption_key.cc',
         'mount_encrypted/tpm.cc',
