@@ -358,8 +358,9 @@ status_t CameraBuffer::lock()
     }
 
     if (mLocked) {
-        LOGE("@%s: Error: Cannot lock buffer from stream(%d), already locked",
-             __FUNCTION__,mOwner->seqNo());
+        if (mOwner) {
+            LOGE("@%s: Error: stream(%d) already locked", __FUNCTION__,mOwner->seqNo());
+        }
         return INVALID_OPERATION;
     }
 
@@ -421,8 +422,10 @@ void CameraBuffer::dumpImage(const int type, const char *name)
 void CameraBuffer::dumpImage(const char *name)
 {
 #ifdef DUMP_IMAGE
-    status_t status = lock();
-    CheckError((status != OK), VOID_VALUE, "failed to lock dump buffer");
+    if (!isLocked()) {
+        status_t status = lock();
+        CheckError(status != NO_ERROR, VOID_VALUE, "@%s, lock fails", __FUNCTION__);
+    }
 
     dumpImage(mDataPtr, mSize, mWidth, mHeight, name);
 
