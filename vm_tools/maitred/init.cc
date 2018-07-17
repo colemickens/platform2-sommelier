@@ -84,7 +84,7 @@ constexpr base::TimeDelta kRespawnWindowSeconds =
 
 // Number of seconds that we should wait before force-killing processes for
 // shutdown.
-constexpr base::TimeDelta kShutdownTimeout = base::TimeDelta::FromSeconds(5);
+constexpr base::TimeDelta kShutdownTimeout = base::TimeDelta::FromSeconds(10);
 
 // Mounts that must be created on boot.
 constexpr struct {

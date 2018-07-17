@@ -79,7 +79,7 @@ constexpr char kVmRootfsName[] = "vm_rootfs.img";
 constexpr int kMaxExtraDisks = 10;
 
 // How long to wait before timing out on `lxd waitready`.
-constexpr int kLxdWaitreadyTimeoutSeconds = 50;
+constexpr int kLxdWaitreadyTimeoutSeconds = 150;
 constexpr base::TimeDelta kLxdWaitreadyTimeout =
     base::TimeDelta::FromSeconds(kLxdWaitreadyTimeoutSeconds);
 

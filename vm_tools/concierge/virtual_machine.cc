@@ -50,13 +50,13 @@ constexpr char kLoggerBin[] = "/usr/bin/logger";
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 
 // How long to wait before timing out on shutdown RPCs.
-constexpr int64_t kShutdownTimeoutSeconds = 6;
+constexpr int64_t kShutdownTimeoutSeconds = 30;
 
 // How long to wait before timing out on regular RPCs.
-constexpr int64_t kDefaultTimeoutSeconds = 2;
+constexpr int64_t kDefaultTimeoutSeconds = 10;
 
 // How long to wait before timing out on child process exits.
-constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
 // Offset in a subnet of the gateway/host.
 constexpr size_t kHostAddressOffset = 0;
