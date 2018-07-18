@@ -474,6 +474,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // https://crbug.com/784495
   builder->AddVmodulePattern("*chromeos/login/*=1");
 
+  // TODO(xiaohuic): Remove after native assistant has launched:
+  // http://crbug.com/814097
+  builder->AddVmodulePattern("*/assistant/*=1");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
