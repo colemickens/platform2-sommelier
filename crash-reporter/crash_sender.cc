@@ -58,8 +58,11 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;  // execve() failed.
   }
 
+  // We rely on the child handling its own exit status, and a non-zero status
+  // isn't necessarily a bug (e.g. if mocked out that way).  Only warn for an
+  // internal error.
   const int status = minijail_wait(jail.get());
-  LOG_IF(ERROR, status != 0)
+  LOG_IF(ERROR, status < 0)
       << "Child process " << pid << " did not finish cleanly: " << status;
   return status;
 }
