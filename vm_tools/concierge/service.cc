@@ -21,7 +21,6 @@
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <map>
-#include <thread>  // NOLINT(build/c++11)
 #include <utility>
 #include <vector>
 
@@ -840,23 +839,14 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   LOG(INFO) << "Received StopAllVms request";
 
-  std::vector<std::thread> threads;
-  threads.reserve(vms_.size());
-
   // Spawn a thread for each VM to shut it down.
   for (auto& iter : vms_) {
     // Notify cicerone that we have stopped a VM.
     NotifyCiceroneOfVmStopped(iter.first.first, iter.first.second);
 
-    // By resetting the unique_ptr, each thread calls the destructor for that
-    // VM, which will shut it down.
-    threads.emplace_back([](std::unique_ptr<VirtualMachine> vm) { vm.reset(); },
-                         std::move(iter.second));
-  }
-
-  // Wait for all VMs to shutdown.
-  for (auto& thread : threads) {
-    thread.join();
+    // Resetting the unique_ptr will call the destructor for that VM, which
+    // will shut it down.
+    iter.second.reset();
   }
 
   vms_.clear();
