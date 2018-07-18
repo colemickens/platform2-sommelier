@@ -84,7 +84,7 @@ TEST_F(CrashCollectorTest, Sanitize) {
   EXPECT_EQ("_", collector_.Sanitize(" "));
 }
 
-TEST_F(CrashCollectorTest, StripSensitiveDataBasic) {
+TEST_F(CrashCollectorTest, StripMacAddressesBasic) {
   // Basic tests of StripSensitiveData...
 
   // Make sure we work OK with a string w/ no MAC addresses.
@@ -135,7 +135,7 @@ TEST_F(CrashCollectorTest, StripSensitiveDataBasic) {
   EXPECT_EQ(kLowerMacStripped, lower_mac);
 }
 
-TEST_F(CrashCollectorTest, StripSensitiveDataBulk) {
+TEST_F(CrashCollectorTest, StripMacAddressesBulk) {
   // Test calling StripSensitiveData w/ lots of MAC addresses in the "log".
 
   // Test that stripping code handles more than 256 unique MAC addresses, since
@@ -153,7 +153,7 @@ TEST_F(CrashCollectorTest, StripSensitiveDataBulk) {
         " 00:00:00:00:%02X:%02x", ((i + 1) & 0xff00) >> 8, (i + 1) & 0x00ff);
   }
   std::string lotsa_macs(lotsa_macs_orig);
-  collector_.StripSensitiveData(&lotsa_macs);
+  collector_.StripMacAddresses(&lotsa_macs);
   EXPECT_EQ(lotsa_macs_stripped, lotsa_macs);
 }
 
@@ -189,8 +189,30 @@ TEST_F(CrashCollectorTest, StripSensitiveDataSample) {
       " QCUSBNet Ethernet Device, 00:00:00:00:00:02\n"
       "<7>[111566.131728] PM: Entering mem sleep\n";
   std::string crash_with_macs(kCrashWithMacsOrig);
-  collector_.StripSensitiveData(&crash_with_macs);
+  collector_.StripMacAddresses(&crash_with_macs);
   EXPECT_EQ(kCrashWithMacsStripped, crash_with_macs);
+}
+
+TEST_F(CrashCollectorTest, StripEmailAddresses) {
+  std::string logs =
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit,"
+      " sed do eiusmod tempor incididunt ut labore et dolore \n"
+      "magna aliqua. Ut enim ad minim veniam, quis nostrud "
+      "exercitation ullamco foo.bar+baz@secret.com laboris \n"
+      "nisi ut aliquip ex ea commodo consequat. Duis aute "
+      "irure dolor in reprehenderit (support@example.com) in \n"
+      "voluptate velit esse cillum dolore eu fugiat nulla "
+      "pariatur. Excepteur sint occaecat:abuse@dev.reallylong,\n"
+      "cupidatat non proident, sunt in culpa qui officia "
+      "deserunt mollit anim id est laborum.";
+  collector_.StripEmailAddresses(&logs);
+  EXPECT_EQ(0, logs.find("Lorem ipsum"));
+  EXPECT_EQ(std::string::npos, logs.find("foo.bar"));
+  EXPECT_EQ(std::string::npos, logs.find("secret"));
+  EXPECT_EQ(std::string::npos, logs.find("support"));
+  EXPECT_EQ(std::string::npos, logs.find("example.com"));
+  EXPECT_EQ(std::string::npos, logs.find("abuse"));
+  EXPECT_EQ(std::string::npos, logs.find("dev.reallylong"));
 }
 
 TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {

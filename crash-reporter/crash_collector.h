@@ -73,9 +73,10 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, IsUserSpecificDirectoryEnabled);
   FRIEND_TEST(CrashCollectorTest, MetaData);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
-  FRIEND_TEST(CrashCollectorTest, StripSensitiveDataBasic);
-  FRIEND_TEST(CrashCollectorTest, StripSensitiveDataBulk);
+  FRIEND_TEST(CrashCollectorTest, StripMacAddressesBasic);
+  FRIEND_TEST(CrashCollectorTest, StripMacAddressesBulk);
   FRIEND_TEST(CrashCollectorTest, StripSensitiveDataSample);
+  FRIEND_TEST(CrashCollectorTest, StripEmailAddresses);
   FRIEND_TEST(CrashCollectorTest, TruncatedLog);
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
   FRIEND_TEST(ForkExecAndPipeTest, BadExecutable);
@@ -112,6 +113,8 @@ class CrashCollector {
   // Strip any data that the user might not want sent up to the crash server.
   // |contents| is modified in-place.
   void StripSensitiveData(std::string* contents);
+  void StripMacAddresses(std::string* contents);
+  void StripEmailAddresses(std::string* contents);
 
   virtual bool GetActiveUserSessions(
       std::map<std::string, std::string>* sessions);

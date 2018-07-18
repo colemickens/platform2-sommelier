@@ -220,7 +220,17 @@ std::string CrashCollector::Sanitize(const std::string& name) {
 }
 
 void CrashCollector::StripSensitiveData(std::string* contents) {
-  // At the moment, the only sensitive data we strip is MAC addresses.
+  // At the moment, the only sensitive data we strip is MAC addresses and
+  // emails.
+  StripMacAddresses(contents);
+  StripEmailAddresses(contents);
+}
+
+void CrashCollector::StripMacAddresses(std::string* contents) {
+  std::ostringstream result;
+  pcrecpp::StringPiece input(*contents);
+  std::string pre_re_str;
+  std::string re_str;
 
   // Get rid of things that look like MAC addresses, since they could possibly
   // give information about where someone has been.  This is strings that look
@@ -231,11 +241,7 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
   //   MAC found with 00:00:00:00:00:01, the second with ...:02, etc.
   // - ACPI commands look like MAC addresses.  We'll specifically avoid getting
   //   rid of those.
-  std::ostringstream result;
-  std::string pre_mac_str;
-  std::string mac_str;
   std::map<std::string, std::string> mac_map;
-  pcrecpp::StringPiece input(*contents);
 
   // This RE will find the next MAC address and can return us the data preceding
   // the MAC and the MAC itself.
@@ -257,13 +263,13 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
       pcrecpp::RE_Options().set_multiline(true).set_dotall(true));
 
   // Keep consuming, building up a result string as we go.
-  while (mac_re.Consume(&input, &pre_mac_str, &mac_str)) {
-    if (acpi_re.PartialMatch(pre_mac_str)) {
+  while (mac_re.Consume(&input, &pre_re_str, &re_str)) {
+    if (acpi_re.PartialMatch(pre_re_str)) {
       // We really saw an ACPI command; add to result w/ no stripping.
-      result << pre_mac_str << mac_str;
+      result << pre_re_str << re_str;
     } else {
       // Found a MAC address; look up in our hash for the mapping.
-      std::string replacement_mac = mac_map[mac_str];
+      std::string replacement_mac = mac_map[re_str];
       if (replacement_mac == "") {
         // It wasn't present, so build up a replacement string.
         int mac_id = mac_map.size();
@@ -273,11 +279,11 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
             "00:00:%02x:%02x:%02x:%02x", (mac_id & 0xff000000) >> 24,
             (mac_id & 0x00ff0000) >> 16, (mac_id & 0x0000ff00) >> 8,
             (mac_id & 0x000000ff));
-        mac_map[mac_str] = replacement_mac;
+        mac_map[re_str] = replacement_mac;
       }
 
       // Dump the string before the MAC and the fake MAC address into result.
-      result << pre_mac_str << replacement_mac;
+      result << pre_re_str << replacement_mac;
     }
   }
 
@@ -285,6 +291,35 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
   result << input;
 
   // We'll just assign right back to |contents|.
+  *contents = result.str();
+}
+
+void CrashCollector::StripEmailAddresses(std::string* contents) {
+  std::ostringstream result;
+  pcrecpp::StringPiece input(*contents);
+  std::string pre_re_str;
+  std::string re_str;
+
+  // Email regex according RFC 5322. I feel dirty after this...
+  pcrecpp::RE email_re(
+      "(.*?)(\\b"
+      "(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*"
+      "|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]"
+      "|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")"
+      "@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+"
+      "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])"
+      "|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]"
+      "|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:"
+      "(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-"
+      "\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])"
+      "\\b)",
+      pcrecpp::RE_Options().set_multiline(true).set_dotall(true));
+  CHECK_EQ("", email_re.error());
+
+  while (email_re.Consume(&input, &pre_re_str, &re_str)) {
+    result << pre_re_str << "<redacted email address>";
+  }
+  result << input;
   *contents = result.str();
 }
 
