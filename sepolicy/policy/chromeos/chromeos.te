@@ -13,12 +13,9 @@ r_dir_file(chromeos, sysfs);
 
 allow kernel chromeos:process { share };
 allow chromeos kernel:fd { use };
-allow chromeos device:chr_file { read write };
 
 allow chromeos self:capability { dac_override sys_boot };
 allow chromeos device:chr_file ioctl;
 allow chromeos proc:file write;
 allow chromeos self:capability sys_resource;
-
-allow chromeos fs_type:dir mounton;
 

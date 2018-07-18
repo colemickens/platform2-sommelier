@@ -11,6 +11,7 @@
 
 # /etc
 /etc/init(/.*)?                 u:object_r:cros_init_conf_file:s0
+/etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
 
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
@@ -87,6 +88,7 @@ has_arc(`
 # Chrome OS shared memory files.
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0
 /dev/console                    u:object_r:console_device:s0
+/dev/null                       u:object_r:null_device:s0
 
 is_arc_nyc(`
 # Label /dev/bus/usb/NNN/MMM

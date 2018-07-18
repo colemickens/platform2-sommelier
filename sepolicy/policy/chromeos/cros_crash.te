@@ -7,7 +7,7 @@ permissive cros_crash;
 allow cros_crash chromeos:fd use;
 
 allow cros_crash devpts:chr_file rw_file_perms;
-allow cros_crash device:chr_file rw_file_perms;
+allow cros_crash cros_labeled_dev_type:chr_file rw_file_perms;
 
 allow cros_crash cros_syslog:file r_file_perms;
 

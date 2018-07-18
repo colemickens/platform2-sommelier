@@ -1,2 +1,5 @@
 attribute chromeos_domain;
 attribute cros_miscdomain;
+
+attribute cros_dev_type;
+attribute cros_labeled_dev_type;
