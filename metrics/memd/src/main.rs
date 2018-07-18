@@ -1315,29 +1315,23 @@ fn build_sample_header() -> String {
 }
 
 fn main() {
-    let mut testing = false;
     let mut always_poll_fast = false;
-
-    debug!("memd started");
+    let mut debug_log = false;
 
     let args: Vec<String> = std::env::args().collect();
     for arg in &args[1..] {
         match arg.as_ref() {
-            "test" => testing = true,
             "always-poll-fast" => always_poll_fast = true,
-            _ => panic!("usage: memd [test|always-poll-fast]*")
+            "debug-log" => debug_log = true,
+            _ => panic!("usage: memd [always-poll-fast|debug-log]*")
         }
     }
 
-    // Send log messages to stdout in test mode, to syslog otherwise.
-    if testing {
-        env_logger::init();
-    } else {
-        syslog::init(syslog::Facility::LOG_USER,
-                     log::LevelFilter::Warn,
-                     Some("memd")).expect("cannot initialize syslog");
-    }
+    syslog::init(syslog::Facility::LOG_USER,
+                 if debug_log { log::LevelFilter::Debug } else { log::LevelFilter::Warn },
+                 Some("memd")).expect("cannot initialize syslog");
 
+    warn!("memd started");
     run_memory_daemon(always_poll_fast);
 }
 
@@ -1348,11 +1342,11 @@ fn testing_root() -> String {
 
 #[test]
 fn memory_daemon_test() {
+    env_logger::init();
     run_memory_daemon(false);
 }
 
 fn run_memory_daemon(always_poll_fast: bool) {
-    warn!("memd started");
     let testing_root = testing_root();
     // make_paths! returns a Paths object initializer with these fields.
     let paths = make_paths!(
