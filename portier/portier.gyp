@@ -19,6 +19,7 @@
       },
       'sources': [
         'ether_socket.cc',
+        'ipv6_util.cc',
         'll_address.cc',
         'nd_msg.cc',
         'network_socket.cc',
@@ -44,6 +45,7 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'ipv6_util_unittest.cc',
             'll_address_unittest.cc',
             'nd_msg_unittest.cc',
             'status_unittest.cc',

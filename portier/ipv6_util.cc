@@ -1,0 +1,145 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <arpa/inet.h>
+#include <limits.h>
+
+#include <base/logging.h>
+
+#include "portier/ipv6_util.h"
+
+namespace portier {
+
+using shill::ByteString;
+using shill::IPAddress;
+
+using Code = Status::Code;
+
+namespace {
+
+// Used to mask the lower 16 bits of a 32-bit number.
+const uint32_t kMask16 = 0xffff;
+
+// IPv6 Pseudo-Header.
+// This struct is created in such a way that it is byte-aligned with the
+// actual pseudo header format.
+struct IPv6PseudoHeader {
+  struct in6_addr ip6_pseudo_src;
+  struct in6_addr ip6_pseudo_dst;
+  uint32_t ip6_pseudo_len;  // Upper-layer data length.
+  uint8_t ip6_pseudo_st_zeros[3];
+  uint8_t ip6_pseudo_nxt;
+};
+static_assert(sizeof(IPv6PseudoHeader) == 40,
+              "IPv6PseudoHeader size is not correct");
+
+// Calculates the 16-bit one's complement of the provided data.
+uint16_t InternetChecksum16(const uint8_t* data, size_t data_length) {
+  uint32_t sum = 0;
+
+  // Iterate over each 16-bits of data and add to sum.  Checking
+  // (i + 1) < data_length to avoid the case where there is an odd
+  // mumber of bytes.
+  for (size_t i = 0; (i + 1) < data_length; i += 2) {
+    const uint16_t* dptr = reinterpret_cast<const uint16_t*>(&data[i]);
+    sum += static_cast<uint32_t>(*dptr);
+  }
+
+  if ((data_length & 1) == 1) {
+    // Accommodate the final byte.
+    uint16_t value = 0;
+    // This works for both big endian vs little endian architectures.
+    uint8_t* vptr = reinterpret_cast<uint8_t*>(&value);
+    *vptr = data[data_length - 1];
+    sum += static_cast<uint32_t>(value);
+  }
+
+  // Add all the 16-bit overflows back into the 16-bit sum.
+  sum = (sum & kMask16) + (sum >> 16);
+
+  if (sum == kMask16) {
+    sum = 0;
+  }
+
+  return static_cast<uint16_t>(sum);
+}
+
+// Calculates the 16-bit one's complement sum of two numbers.
+//  Note: Do not try to call this repeatedly, it is not very
+//  efficient for large arrays.
+uint16_t InternetChecksum16Pair(uint16_t a, uint16_t b) {
+  uint32_t sum = static_cast<uint32_t>(a) + static_cast<uint32_t>(b);
+  if (sum > kMask16) {
+    // Any 16-bit overflow can only have a carry of 1.
+    sum = (sum & kMask16) + 1;
+  }
+  if (sum == kMask16) {
+    sum = 0;
+  }
+  return static_cast<uint16_t>(sum);
+}
+
+}  // namespace
+
+Status IPv6UpperLayerChecksum16(const IPAddress& source_address,
+                                const IPAddress& destination_address,
+                                uint8_t next_header,
+                                const uint8_t* upper_layer_data,
+                                size_t data_length,
+                                uint16_t* checksum_out) {
+  // A null pointer for upper_layer_data is ok if the length is zero.
+  // In that case, the checksum will be of the pseudo header only.
+  DCHECK(upper_layer_data == 0 || upper_layer_data != nullptr)
+      << "Expected non-null value for `upper_layer_data'";
+
+  DCHECK(checksum_out != nullptr)
+      << "Expected non-null value for `checksum_out'";
+
+  DCHECK(source_address.family() == IPAddress::kFamilyIPv6 &&
+         destination_address.family() == IPAddress::kFamilyIPv6)
+      << "The source and destination addresses must be IPv6";
+
+  DCHECK(data_length < (1 << 17))
+      << "Cannot accurately compute checksum for 2^17 or more bytes of data";
+
+  // Populate the IPv6 pseudo header.
+  IPv6PseudoHeader ip6_pseudo_hdr;
+  memset(&ip6_pseudo_hdr, 0, sizeof(IPv6PseudoHeader));
+
+  memcpy(&ip6_pseudo_hdr.ip6_pseudo_src, source_address.GetConstData(),
+         sizeof(ip6_pseudo_hdr.ip6_pseudo_src));
+  memcpy(&ip6_pseudo_hdr.ip6_pseudo_dst, destination_address.GetConstData(),
+         sizeof(ip6_pseudo_hdr.ip6_pseudo_dst));
+  ip6_pseudo_hdr.ip6_pseudo_len = htonl(data_length);
+  ip6_pseudo_hdr.ip6_pseudo_nxt = next_header;
+
+  // Get the checksum of the header.
+  const uint16_t pseudo_checksum =
+      InternetChecksum16(reinterpret_cast<const uint8_t*>(&ip6_pseudo_hdr),
+                         sizeof(IPv6PseudoHeader));
+
+  // Get the checksum of the upper layer.
+  if (data_length > 0) {
+    const uint16_t upper_layer_checksum =
+        InternetChecksum16(upper_layer_data, data_length);
+    *checksum_out =
+        InternetChecksum16Pair(pseudo_checksum, upper_layer_checksum);
+  } else {
+    *checksum_out = pseudo_checksum;
+  }
+
+  return Status();
+}
+
+Status IPv6UpperLayerChecksum16(const IPAddress& source_address,
+                                const IPAddress& destination_address,
+                                uint8_t next_header,
+                                const ByteString& upper_layer_data,
+                                uint16_t* checksum_out) {
+  return IPv6UpperLayerChecksum16(source_address, destination_address,
+                                  next_header, upper_layer_data.GetConstData(),
+                                  upper_layer_data.GetLength(), checksum_out);
+}
+
+}  // namespace portier
