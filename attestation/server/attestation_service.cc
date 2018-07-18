@@ -1648,7 +1648,7 @@ int AttestationService::CreateIdentity(int identity_features,
   IdentityKey* key_pb = identity_data->mutable_identity_key();
   key_pb->set_identity_public_key(rsa_identity_public_key_der);
   key_pb->set_identity_key_blob(rsa_identity_key_blob);
-  if (identity_features && IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+  if (identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
     key_pb->set_enrollment_id(database_pb->enrollment_id());
   }
   IdentityBinding* binding_pb = identity_data->mutable_identity_binding();
