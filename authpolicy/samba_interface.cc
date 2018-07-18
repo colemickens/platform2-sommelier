@@ -241,11 +241,15 @@ WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
       LOG(ERROR) << error_msg << "computer OU invalid";
       return ERROR_INVALID_OU;
     }
-    if (Contains(net_out, kKeyBadOuConstrainViolation) ||
-        Contains(net_out, kKeyBadOuInsufficientAccess)) {
+    if (Contains(net_out, kKeyBadOuConstrainViolation)) {
+      LOG(ERROR) << error_msg << "constraint violation setting computer OU";
+      return ERROR_OU_CONSTRAINT_VIOLATION;
+    }
+    if (Contains(net_out, kKeyBadOuInsufficientAccess)) {
       LOG(ERROR) << error_msg << "access denied setting computer OU";
       return ERROR_OU_ACCESS_DENIED;
     }
+    // Fall back to generic OU error.
     LOG(ERROR) << error_msg << "setting computer OU failed, unspecified error";
     return ERROR_SETTING_OU_FAILED;
   }
