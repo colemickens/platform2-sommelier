@@ -674,7 +674,7 @@ int Attestation::CreateIdentity(int identity_features,
   key_pb->set_identity_key_blob(identity_key_blob.data(),
                                 identity_key_blob.size());
 
-  if (identity_features && IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+  if (identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
     key_pb->set_enrollment_id(database_pb_.enrollment_id());
   }
 
