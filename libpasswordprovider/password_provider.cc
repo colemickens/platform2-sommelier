@@ -22,7 +22,9 @@ key_serial_t RequestKey(const char* type, const char* description) {
   key_serial_t keyring_serial =
       find_key_by_type_and_desc(kKeyringKeyType, kKeyringDescription, 0);
   if (keyring_serial == -1) {
-    PLOG(ERROR) << "Error finding keyring.";
+    // This is also called in cases where keys might not exist (e.g., cleaning
+    // up on logout) so not finding any keys is not an error.
+    VLOG(1) << "Error finding keyring. errno: " << errno;
     return keyring_serial;
   }
 
@@ -130,7 +132,9 @@ std::unique_ptr<Password> PasswordProvider::GetPassword() const {
 bool PasswordProvider::DiscardPassword() const {
   int result = RevokeKey(kPasswordKeyType, kPasswordKeyDescription);
   if (result != 0) {
-    PLOG(ERROR) << "Error revoking key.";
+    // This is also called in cases where keys might not exist (e.g., cleaning
+    // up on logout) so not finding any keys is not an error.
+    VLOG(1) << "Error revoking key. errno: " << errno;
     return false;
   }
 
