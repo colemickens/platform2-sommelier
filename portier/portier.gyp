@@ -18,8 +18,10 @@
         'deps': ['<@(exported_deps)'],
       },
       'sources': [
+        'ether_socket.cc',
         'll_address.cc',
         'nd_msg.cc',
+        'network_socket.cc',
         'status.cc',
       ],
     },

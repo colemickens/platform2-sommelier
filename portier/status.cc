@@ -28,16 +28,20 @@ string Status::GetCodeName(Code code) {
       return "Bad Permissions";
     case Code::DOES_NOT_EXIST:
       return "Does Not Exist";
+    case Code::RESULT_UNAVAILABLE:
+      return "Result Unavailable";
     case Code::UNEXPECTED_FAILURE:
       return "Unexpected Failure";
     case Code::INVALID_ARGUMENT:
       return "Invalid Argument";
-    case Code::NULL_POINTER:
-      return "Null Pointer";
     case Code::MTU_EXCEEDED:
       return "MTU Exceeded";
     case Code::MALFORMED_PACKET:
       return "Malformed Packet";
+    case Code::RESOURCE_IN_USE:
+      return "Resource In Use";
+    case Code::UNSUPPORTED_TYPE:
+      return "Unsupported Type";
     case Code::BAD_INTERNAL_STATE:
       return "Bad Internal State";
   }
