@@ -143,4 +143,15 @@ bool IsFormatSupported(const SupportedFormats& supported_formats,
   return false;
 }
 
+float GetMaximumFrameRate(const SupportedFormat& format) {
+  float max_fps = 0;
+  for (const auto& frame_rate : format.frame_rates) {
+    if (frame_rate > max_fps) {
+      max_fps = frame_rate;
+    }
+  }
+
+  return max_fps;
+}
+
 }  // namespace cros

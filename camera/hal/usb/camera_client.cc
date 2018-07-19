@@ -21,6 +21,13 @@ namespace cros {
 
 const int kBufferFenceReady = -1;
 
+// We need to compare the aspect ratio from native sensor resolution.
+// The native resolution may not be just the size. It may be a little larger.
+// Add a margin to check if the sensor aspect ratio fall in the specific aspect
+// ratio.
+// 16:9=1.778, 16:10=1.6, 3:2=1.5, 4:3=1.333
+const float kAspectRatioMargin = 0.04;
+
 CameraClient::CameraClient(int id,
                            const DeviceInfo& device_info,
                            const camera_metadata_t& static_info,
@@ -159,9 +166,9 @@ int CameraClient::ConfigureStreams(
         stream_config->num_streams > 1)
       continue;
 
-    // Find maximum resolution of stream_config to stream on.
-    if (stream_config->streams[i]->width > stream_on_resolution.width ||
-        stream_config->streams[i]->height > stream_on_resolution.height) {
+    // Find maximum area of stream_config to stream on.
+    if (stream_config->streams[i]->width * stream_config->streams[i]->height >
+        stream_on_resolution.width * stream_on_resolution.height) {
       stream_on_resolution.width = stream_config->streams[i]->width;
       stream_on_resolution.height = stream_config->streams[i]->height;
     }
@@ -172,6 +179,14 @@ int CameraClient::ConfigureStreams(
     return -EINVAL;
   }
 
+  Size resolution(0, 0);
+  bool use_native_sensor_ratio;
+  use_native_sensor_ratio =
+      ShouldUseNativeSensorRatio(*stream_config, &resolution);
+  if (use_native_sensor_ratio) {
+    stream_on_resolution = resolution;
+  }
+
   // We don't have enough information to decide whether to enable constant frame
   // rate or not here.  Tried some common camera apps and seems that true is a
   // sensible default.
@@ -179,7 +194,8 @@ int CameraClient::ConfigureStreams(
 
   int num_buffers;
   int ret = StreamOn(stream_on_resolution, constant_frame_rate,
-                     crop_rotate_scale_degrees, &num_buffers);
+                     crop_rotate_scale_degrees, &num_buffers,
+                     use_native_sensor_ratio);
   if (ret) {
     LOGFID(ERROR, id_) << "StreamOn failed";
     StreamOff();
@@ -325,7 +341,8 @@ void CameraClient::SetUpStreams(int num_buffers,
 int CameraClient::StreamOn(Size stream_on_resolution,
                            bool constant_frame_rate,
                            int crop_rotate_scale_degrees,
-                           int* num_buffers) {
+                           int* num_buffers,
+                           bool use_native_sensor_ratio) {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   if (!request_handler_.get()) {
@@ -345,10 +362,11 @@ int CameraClient::StreamOn(Size stream_on_resolution,
       base::Bind(&CameraClient::StreamOnCallback, base::Unretained(this),
                  base::RetainedRef(future), num_buffers);
   request_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraClient::RequestHandler::StreamOn,
-                            base::Unretained(request_handler_.get()),
-                            stream_on_resolution, constant_frame_rate,
-                            crop_rotate_scale_degrees, streamon_callback));
+      FROM_HERE,
+      base::Bind(&CameraClient::RequestHandler::StreamOn,
+                 base::Unretained(request_handler_.get()), stream_on_resolution,
+                 constant_frame_rate, crop_rotate_scale_degrees,
+                 use_native_sensor_ratio, streamon_callback));
   return future->Get();
 }
 
@@ -387,6 +405,70 @@ void CameraClient::StreamOffCallback(scoped_refptr<cros::Future<int>> future,
   future->Set(result);
 }
 
+bool CameraClient::ShouldUseNativeSensorRatio(
+    const camera3_stream_configuration_t& stream_config, Size* resolution) {
+  bool try_native_sensor_ratio = false;
+
+  // Check if we have more than 1 resolution.
+  for (size_t i = 1; i < stream_config.num_streams; i++) {
+    if (stream_config.streams[0]->width != stream_config.streams[i]->width ||
+        stream_config.streams[0]->height != stream_config.streams[i]->height) {
+      try_native_sensor_ratio = true;
+      break;
+    }
+  }
+  if (!try_native_sensor_ratio)
+    return false;
+
+  // Find maximum width and height of all streams.
+  Size max_stream_resolution(0, 0);
+  for (size_t i = 0; i < stream_config.num_streams; i++) {
+    if (stream_config.streams[i]->width > max_stream_resolution.width) {
+      max_stream_resolution.width = stream_config.streams[i]->width;
+    }
+    if (stream_config.streams[i]->height > max_stream_resolution.height) {
+      max_stream_resolution.height = stream_config.streams[i]->height;
+    }
+  }
+
+  bool use_native_sensor_ratio = false;
+  // Find the same ratio maximium resolution with minimum 30 fps.
+  float target_aspect_ratio =
+      static_cast<float>(device_info_.sensor_info_pixel_array_size_width) /
+      device_info_.sensor_info_pixel_array_size_height;
+
+  resolution->width = 0;
+  resolution->height = 0;
+
+  VLOGFID(1, id_) << "native aspect ratio:" << target_aspect_ratio;
+  for (const auto& format : qualified_formats_) {
+    float max_fps = GetMaximumFrameRate(format);
+    if (max_fps < 29.0) {
+      continue;
+    }
+    if (format.width < max_stream_resolution.width ||
+        format.height < max_stream_resolution.height) {
+      continue;
+    }
+    if (format.width < resolution->width ||
+        format.height < resolution->height) {
+      continue;
+    }
+    float aspect_ratio = static_cast<float>(format.width) / format.height;
+    VLOGFID(2, id_) << "Try " << format.width << "," << format.height << "("
+                    << aspect_ratio << ")";
+    if (std::fabs(target_aspect_ratio - aspect_ratio) < kAspectRatioMargin) {
+      resolution->width = format.width;
+      resolution->height = format.height;
+      use_native_sensor_ratio = true;
+    }
+  }
+  LOGFID(INFO, id_) << "Use native sensor ratio:" << std::boolalpha
+                    << use_native_sensor_ratio << " " << resolution->width
+                    << "," << resolution->height;
+  return use_native_sensor_ratio;
+}
+
 CameraClient::RequestHandler::RequestHandler(
     const int device_id,
     const DeviceInfo& device_info,
@@ -414,12 +496,14 @@ void CameraClient::RequestHandler::StreamOn(
     Size stream_on_resolution,
     bool constant_frame_rate,
     int crop_rotate_scale_degrees,
+    bool use_native_sensor_ratio,
     const base::Callback<void(int, int)>& callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   crop_rotate_scale_degrees_ = crop_rotate_scale_degrees;
 
-  int ret = StreamOnImpl(stream_on_resolution, constant_frame_rate);
+  int ret = StreamOnImpl(stream_on_resolution, constant_frame_rate,
+                         use_native_sensor_ratio);
   if (ret) {
     callback.Run(0, ret);
   }
@@ -467,21 +551,23 @@ void CameraClient::RequestHandler::HandleRequest(
   VLOGFID(1, device_id_) << "constant_frame_rate " << std::boolalpha
                          << constant_frame_rate;
 
-  // Check if it requires different configuration for blob format in larger
-  // resolution.
   bool stream_resolution_reconfigure = false;
   Size old_resolution = stream_on_resolution_;
   Size new_resolution = stream_on_resolution_;
-  for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
-    const camera3_stream_buffer_t* buffer = &capture_result.output_buffers[i];
-    // Only need to reconfigure the stream if we can't scale down from a larger
-    // stream.
-    if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB &&
-        (buffer->stream->width > new_resolution.width ||
-         buffer->stream->height > new_resolution.height)) {
-      stream_resolution_reconfigure = true;
-      new_resolution.width = buffer->stream->width;
-      new_resolution.height = buffer->stream->height;
+  if (!use_native_sensor_ratio_) {
+    // Fallback to stream on/off operation case.
+    // Check if it requires different configuration for blob format.
+    // (Note: We only support one blob format stream.)
+    for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
+      const camera3_stream_buffer_t* buffer = &capture_result.output_buffers[i];
+      if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB &&
+          (new_resolution.width != buffer->stream->width ||
+           new_resolution.height != buffer->stream->height)) {
+        stream_resolution_reconfigure = true;
+        new_resolution.width = buffer->stream->width;
+        new_resolution.height = buffer->stream->height;
+        break;
+      }
     }
   }
 
@@ -494,7 +580,8 @@ void CameraClient::RequestHandler::HandleRequest(
       return;
     }
 
-    ret = StreamOnImpl(new_resolution, constant_frame_rate);
+    ret = StreamOnImpl(new_resolution, constant_frame_rate,
+                       use_native_sensor_ratio_);
     if (ret) {
       HandleAbortedRequest(&capture_result);
       return;
@@ -543,7 +630,8 @@ void CameraClient::RequestHandler::HandleRequest(
       return;
     }
 
-    ret = StreamOnImpl(old_resolution, constant_frame_rate_);
+    ret = StreamOnImpl(old_resolution, constant_frame_rate_,
+                       use_native_sensor_ratio_);
     if (ret) {
       return;
     }
@@ -563,7 +651,8 @@ void CameraClient::RequestHandler::HandleFlush(
 }
 
 int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
-                                               bool constant_frame_rate) {
+                                               bool constant_frame_rate,
+                                               bool use_native_sensor_ratio) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   int ret;
@@ -592,12 +681,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
     return -EINVAL;
   }
 
-  float max_fps = 0;
-  for (const auto& frame_rate : format->frame_rates) {
-    if (frame_rate > max_fps) {
-      max_fps = frame_rate;
-    }
-  }
+  float max_fps = GetMaximumFrameRate(*format);
   VLOGFID(1, device_id_) << "streamOn with width " << format->width
                          << ", height " << format->height << ", fps " << max_fps
                          << ", format " << FormatToString(format->fourcc)
@@ -629,6 +713,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
 
   stream_on_resolution_ = stream_on_resolution;
   constant_frame_rate_ = constant_frame_rate;
+  use_native_sensor_ratio_ = use_native_sensor_ratio;
   SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
 
   // Reset test pattern.
@@ -740,6 +825,8 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
     }
 
     do {
+      // Add log here to see timestamp log.
+      VLOGFID(2, device_id_) << "before DequeueV4L2Buffer";
       ret = DequeueV4L2Buffer(pattern_mode);
     } while (ret == -EAGAIN);
     if (ret) {

@@ -37,6 +37,9 @@ SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats);
 bool IsFormatSupported(const SupportedFormats& supported_formats,
                        const camera3_stream_t& stream);
 
+// Get the maximum frame rate of |format|.
+float GetMaximumFrameRate(const SupportedFormat& format);
+
 }  // namespace cros
 
 #endif  // HAL_USB_STREAM_FORMAT_H_

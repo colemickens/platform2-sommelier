@@ -89,7 +89,8 @@ class CameraClient {
   int StreamOn(Size stream_on_resolution,
                bool constant_frame_rate,
                int crop_rotate_scale_degrees,
-               int* num_buffers);
+               int* num_buffers,
+               bool use_native_sensor_ratio);
 
   // Stop streaming and |request_thread_|.
   void StreamOff();
@@ -102,6 +103,19 @@ class CameraClient {
 
   // Callback function for RequestHandler::StreamOff.
   void StreamOffCallback(scoped_refptr<cros::Future<int>> future, int result);
+
+  // Check if we need and can use native sensor ratio.
+  // Return true means we need to use native sensor ratio. The resolution will
+  // be returned in |resolution|.
+  // Use aspect ratio of native resolution to crop/scale to other resolutions in
+  // HAL when there are more than 1 resolution. So we can prevent stream on/off
+  // operations. Some USB cameras performance is not good for stream on/off.
+  // If we can't find the resolution with native ratio, we fallback to
+  // 1) stream on/off operations for BLOB format stream.
+  // 2) crop/scale image of the maximum resolution stream for other streams.
+  //    It may do scale up operation.
+  bool ShouldUseNativeSensorRatio(
+      const camera3_stream_configuration_t& stream_config, Size* resolution);
 
   // Camera device id.
   const int id_;
@@ -152,6 +166,7 @@ class CameraClient {
     void StreamOn(Size stream_on_resolution,
                   bool constant_frame_rate,
                   int crop_rotate_scale_degrees,
+                  bool use_native_sensor_ratio,
                   const base::Callback<void(int, int)>& callback);
 
     // Synchronous call to stop streaming.
@@ -165,7 +180,9 @@ class CameraClient {
 
    private:
     // Start streaming implementation.
-    int StreamOnImpl(Size stream_on_resolution, bool constant_frame_rate);
+    int StreamOnImpl(Size stream_on_resolution,
+                     bool constant_frame_rate,
+                     bool use_native_sensor_ratio);
 
     // Stop streaming implementation.
     int StreamOffImpl();
@@ -242,6 +259,10 @@ class CameraClient {
 
     // The constant_frame_rate setting for stream on.
     bool constant_frame_rate_;
+
+    // Use the resolution of native sensor ratio.
+    // So the image is not cropped by USB device, it is cropped in SW.
+    bool use_native_sensor_ratio_;
 
     // Current using buffer id for |input_buffers_|.
     int current_v4l2_buffer_id_;
