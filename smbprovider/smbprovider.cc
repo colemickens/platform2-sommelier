@@ -403,7 +403,7 @@ ProtoBlob SmbProvider::ParseNetBiosPacket(const std::vector<uint8_t>& packet,
 
   const HostnamesProto hostnames_proto = BuildHostnamesProto(servers);
   std::vector<uint8_t> out_blob;
-  if (!SerializeProtoToBlob(hostnames_proto, &out_blob)) {
+  if (SerializeProtoToBlob(hostnames_proto, &out_blob) != ERROR_OK) {
     return ProtoBlob();
   }
   return out_blob;
