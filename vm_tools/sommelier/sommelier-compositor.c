@@ -85,6 +85,7 @@ static void sl_virtwl_dmabuf_sync(int fd, __u32 flags) {
   sync.flags = flags;
   rv = ioctl(fd, VIRTWL_IOCTL_DMABUF_SYNC, &sync);
   assert(!rv);
+  UNUSED(rv);
 }
 
 static void sl_virtwl_dmabuf_begin_write(int fd) {
