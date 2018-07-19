@@ -53,10 +53,10 @@ message StartContainerRequest {
   string container_name = 1;
 
   // SSH public key.
-  string container_public_key = 2;
+  string host_public_key = 2;
 
   // SSH private key.
-  string host_private_key = 3;
+  string container_private_key = 3;
 
   // Container token.
   string token = 4;

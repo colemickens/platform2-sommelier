@@ -1460,6 +1460,9 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
                                    : request.container_name();
   response.set_container_public_key(GetGuestSshPublicKey(
       request.cryptohome_id(), request.vm_name(), container_name));
+  response.set_container_private_key(GetGuestSshPrivateKey(
+      request.cryptohome_id(), request.vm_name(), container_name));
+  response.set_host_public_key(GetHostSshPublicKey(request.cryptohome_id()));
   response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
   response.set_hostname(base::StringPrintf(
       "%s.%s.linux.test", container_name.c_str(), request.vm_name().c_str()));

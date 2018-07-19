@@ -211,6 +211,17 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                 std::string* owner_id_out,
                                 std::string* name_out);
 
+  // Gets the container's SSH keys from concierge.
+  bool GetContainerSshKeys(const std::string& owner_id,
+                           const std::string& vm_name,
+                           const std::string& container_name,
+                           std::string* host_pubkey_out,
+                           std::string* host_privkey_out,
+                           std::string* container_pubkey_out,
+                           std::string* container_privkey_out,
+                           std::string* hostname_out,
+                           std::string* error_out);
+
   // Registers |hostname| and |ip| with the hostname resolver service so that
   // the container is reachable from a known hostname.
   void RegisterHostname(const std::string& hostname, const std::string& ip);

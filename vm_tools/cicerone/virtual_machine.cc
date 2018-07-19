@@ -416,8 +416,8 @@ VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
 
 VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
     const std::string& container_name,
-    const std::string& container_public_key,
-    const std::string& host_private_key,
+    const std::string& container_private_key,
+    const std::string& host_public_key,
     const std::string& token,
     std::string* out_error) {
   DCHECK(out_error);
@@ -430,8 +430,8 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
   vm_tools::tremplin::StartContainerResponse response;
 
   request.set_container_name(container_name);
-  request.set_container_public_key(container_public_key);
-  request.set_host_private_key(host_private_key);
+  request.set_container_private_key(container_private_key);
+  request.set_host_public_key(host_public_key);
   request.set_token(token);
 
   grpc::ClientContext ctx;

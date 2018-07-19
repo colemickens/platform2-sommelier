@@ -1191,42 +1191,24 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
                                    ? kDefaultContainerName
                                    : request.container_name();
 
-  // Request SSH keys from concierge.
-  dbus::MethodCall keys_method_call(
-      vm_tools::concierge::kVmConciergeInterface,
-      vm_tools::concierge::kGetContainerSshKeysMethod);
-  vm_tools::concierge::ContainerSshKeysRequest keys_request;
-  vm_tools::concierge::ContainerSshKeysResponse keys_response;
-  dbus::MessageWriter keys_writer(&keys_method_call);
-
-  keys_request.set_vm_name(request.vm_name());
-  keys_request.set_container_name(container_name);
-  keys_request.set_cryptohome_id(request.owner_id());
-  keys_writer.AppendProtoAsArrayOfBytes(keys_request);
-  std::unique_ptr<dbus::Response> keys_dbus_response =
-      concierge_service_proxy_->CallMethodAndBlock(
-          &keys_method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!keys_dbus_response) {
-    LOG(ERROR) << "Failed to get SSH keys from concierge";
-    response.set_failure_reason("failed to get SSH keys from concierge");
+  std::string container_private_key, host_public_key;
+  std::string error_msg;
+  if (!GetContainerSshKeys(request.owner_id(), request.vm_name(),
+                           container_name, &host_public_key,
+                           nullptr,  // host private key
+                           nullptr,  // container public key
+                           &container_private_key,
+                           nullptr,  // hostname
+                           &error_msg)) {
+    response.set_failure_reason(error_msg);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-  dbus::MessageReader keys_reader(keys_dbus_response.get());
-  if (!keys_reader.PopArrayOfBytesAsProto(&keys_response)) {
-    LOG(ERROR) << "Unable to parse ContainerSshKeysResponse from message";
-    response.set_failure_reason(
-        "unable to parse ContainerSshKeysResponse from message");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   std::string container_token = vm->GenerateContainerToken(container_name);
 
-  std::string error_msg;
-  VirtualMachine::StartLxdContainerStatus status = vm->StartLxdContainer(
-      container_name, keys_response.container_public_key(),
-      keys_response.host_private_key(), container_token, &error_msg);
+  VirtualMachine::StartLxdContainerStatus status =
+      vm->StartLxdContainer(container_name, container_private_key,
+                            host_public_key, container_token, &error_msg);
 
   switch (status) {
     case VirtualMachine::StartLxdContainerStatus::UNKNOWN:
@@ -1451,6 +1433,61 @@ bool Service::GetVirtualMachineForVmIp(uint32_t vm_ip,
     return true;
   }
   return false;
+}
+
+bool Service::GetContainerSshKeys(const std::string& owner_id,
+                                  const std::string& vm_name,
+                                  const std::string& container_name,
+                                  std::string* host_pubkey_out,
+                                  std::string* host_privkey_out,
+                                  std::string* container_pubkey_out,
+                                  std::string* container_privkey_out,
+                                  std::string* hostname_out,
+                                  std::string* error_out) {
+  DCHECK(error_out);
+  // Request SSH keys from concierge.
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kGetContainerSshKeysMethod);
+  vm_tools::concierge::ContainerSshKeysRequest request;
+  vm_tools::concierge::ContainerSshKeysResponse response;
+  dbus::MessageWriter writer(&method_call);
+
+  request.set_cryptohome_id(owner_id);
+  request.set_vm_name(vm_name);
+  request.set_container_name(container_name);
+  writer.AppendProtoAsArrayOfBytes(request);
+  std::unique_ptr<dbus::Response> dbus_response =
+      concierge_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to get SSH keys from concierge";
+    error_out->assign("failed to get SSH keys from concierge");
+    return false;
+  }
+  dbus::MessageReader reader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Unable to parse ContainerSshKeysResponse from message";
+    error_out->assign("unable to parse ContainerSshKeysResponse from message");
+    return false;
+  }
+
+  if (host_pubkey_out) {
+    *host_pubkey_out = std::move(response.host_public_key());
+  }
+  if (host_privkey_out) {
+    *host_privkey_out = std::move(response.host_private_key());
+  }
+  if (container_pubkey_out) {
+    *container_pubkey_out = std::move(response.container_public_key());
+  }
+  if (container_privkey_out) {
+    *container_privkey_out = std::move(response.container_private_key());
+  }
+  if (hostname_out) {
+    *hostname_out = std::move(response.hostname());
+  }
+
+  return true;
 }
 
 void Service::RegisterHostname(const std::string& hostname,
