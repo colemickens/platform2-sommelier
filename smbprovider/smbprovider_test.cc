@@ -166,7 +166,10 @@ class SmbProviderTest : public testing::Test {
     return dir_id;
   }
 
-  void SetUpSmbProvider() {
+  // Sets up SmbProvider with caching set to |enable_metadata_cache|. This is
+  // called by default before each test with caching disabled. Pass true and
+  // call as the first line in a test to enable caching.
+  void SetUpSmbProvider(bool enable_metadata_cache) {
     std::unique_ptr<FakeSambaInterface> fake_ptr =
         std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
@@ -177,6 +180,11 @@ class SmbProviderTest : public testing::Test {
     auto fake_artifact_client = std::make_unique<FakeKerberosArtifactClient>();
     kerberos_client_ = fake_artifact_client.get();
 
+    // Make sure there is a fresh directory in the case this is called more
+    // than once.
+    if (krb_temp_dir_.IsValid()) {
+      EXPECT_TRUE(krb_temp_dir_.Delete());
+    }
     EXPECT_TRUE(krb_temp_dir_.CreateUniqueTempDir());
 
     krb5_conf_path_ = CreateKrb5ConfPath(krb_temp_dir_.GetPath());
@@ -192,8 +200,13 @@ class SmbProviderTest : public testing::Test {
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
         std::move(fake_ptr), std::move(mount_manager_ptr),
-        std::move(kerberos_artifact_synchronizer),
-        false /* enable_metadata_cache */);
+        std::move(kerberos_artifact_synchronizer), enable_metadata_cache);
+  }
+
+  // Sets up the SmbProvider with caching disabled. This is the default
+  // for most tests.
+  void SetUpSmbProvider() {
+    SetUpSmbProvider(false /* enabled_metadata_cache */);
   }
 
   // Helper method that asserts there are no entries that have not been
@@ -374,6 +387,19 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithInvalidProto) {
   EXPECT_TRUE(results.empty());
 }
 
+// ReadDirectory (cache enabled) fails when an invalid protobuf with missing
+// fields is passed.
+TEST_F(SmbProviderTest, ReadDirectoryCacheEnabledFailsWithInvalidProto) {
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+
+  int32_t err;
+  ProtoBlob results;
+  ProtoBlob empty_blob;
+  smbprovider_->ReadDirectory(empty_blob, &err, &results);
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
+  EXPECT_TRUE(results.empty());
+}
+
 // ReadDirectory fails when passed a |mount_id| that wasn't previously mounted.
 TEST_F(SmbProviderTest, ReadDirectoryFailsWithUnmountedShare) {
   ProtoBlob results;
@@ -399,8 +425,44 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithInvalidDir) {
   EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
 }
 
+// Read directory (cache enabled) fails when passed a path that doesn't exist.
+TEST_F(SmbProviderTest, ReadDirectoryCacheEnabledFailsWithInvalidDir) {
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+  int32_t mount_id = PrepareMount();
+
+  ProtoBlob results;
+  int32_t err;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, "/test/invalid");
+  smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
+  EXPECT_TRUE(results.empty());
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
+}
+
 // ReadDirectory succeeds when reading an empty directory.
 TEST_F(SmbProviderTest, ReadDirectorySucceedsWithEmptyDir) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+
+  ProtoBlob results;
+  int32_t err;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+  smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
+
+  DirectoryEntryListProto entries;
+  const std::string parsed_proto(results.begin(), results.end());
+  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, CastError(err));
+  EXPECT_EQ(0, entries.entries_size());
+  ExpectNoOpenEntries();
+}
+
+// ReadDirectory (cache enabled) succeeds when reading an empty directory.
+TEST_F(SmbProviderTest, ReadDirectoryCacheEnabledSucceedsWithEmptyDir) {
+  SetUpSmbProvider(true /* enable_metadata_cache */);
   int32_t mount_id = PrepareMount();
 
   fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
@@ -424,7 +486,6 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithNonEmptyDir) {
   int32_t mount_id = PrepareMount();
 
   fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
-
   fake_samba_->AddFile(GetDefaultFullPath("/path/file.jpg"), kFileSize);
   fake_samba_->AddDirectory(GetDefaultFullPath("/path/images"));
 
@@ -448,6 +509,43 @@ TEST_F(SmbProviderTest, ReadDirectorySucceedsWithNonEmptyDir) {
   const DirectoryEntryProto& entry2 = entries.entries(1);
   EXPECT_TRUE(entry2.is_directory());
   EXPECT_EQ("images", entry2.name());
+}
+
+// Read directory (cache enabled) succeeds and returns expected entries.
+TEST_F(SmbProviderTest, ReadDirectoryCacheEnabledPopulatesMetadata) {
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetDefaultFullPath("/path/file.jpg"), kFileSize,
+                       kFileDate);
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/images"),
+                            false /* is_locked */, SMBC_DIR, kFileDate);
+
+  ProtoBlob results;
+  int32_t error_code;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
+
+  DirectoryEntryListProto entries;
+  const std::string parsed_proto(results.begin(), results.end());
+  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_EQ(2, entries.entries_size());
+
+  const DirectoryEntryProto& entry1 = entries.entries(0);
+  EXPECT_FALSE(entry1.is_directory());
+  EXPECT_EQ("file.jpg", entry1.name());
+  EXPECT_EQ(kFileSize, entry1.size());
+  EXPECT_EQ(kFileDate, entry1.last_modified_time());
+
+  const DirectoryEntryProto& entry2 = entries.entries(1);
+  EXPECT_TRUE(entry2.is_directory());
+  EXPECT_EQ("images", entry2.name());
+  EXPECT_EQ(0, entry2.size());
+  EXPECT_EQ(kFileDate, entry2.last_modified_time());
 }
 
 // Read directory succeeds and omits "." and ".." entries.

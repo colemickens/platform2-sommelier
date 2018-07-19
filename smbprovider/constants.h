@@ -16,6 +16,9 @@ namespace smbprovider {
 // Buffer size used for reading a directory.
 constexpr size_t kDirEntBufferSize = 1024 * 32;
 
+// Default number of entries at a time to buffer in directory iterators.
+constexpr size_t kDefaultMetadataBatchSize = 512;
+
 // Default flags for created files.
 constexpr int kCreateFileFlags = O_CREAT | O_WRONLY | O_TRUNC | O_EXCL;
 

@@ -363,6 +363,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // on failure.
   template <typename Proto, typename Iterator>
   void ReadDirectoryEntries(const ProtoBlob& options_blob,
+                            bool include_metadata,
                             int32_t* error_code,
                             ProtoBlob* out_entries);
 

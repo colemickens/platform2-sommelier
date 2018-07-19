@@ -141,11 +141,12 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
   DCHECK(out_entries);
 
   ReadDirectoryEntries<ReadDirectoryOptionsProto, DirectoryIterator>(
-      options_blob, error_code, out_entries);
+      options_blob, metadata_cache_enabled_, error_code, out_entries);
 }
 
 template <typename Proto, typename Iterator>
 void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
+                                       bool include_metadata,
                                        int32_t* error_code,
                                        ProtoBlob* out_entries) {
   DCHECK(error_code);
@@ -155,10 +156,13 @@ void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
   std::string full_path;
   Proto options;
 
-  ParseOptionsAndPath(options_blob, &options, &full_path, error_code) &&
-      GetEntries(options,
-                 GetIterator<Iterator>(full_path, samba_interface_.get()),
-                 error_code, out_entries);
+  if (ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
+    Iterator it =
+        include_metadata
+            ? GetMetadataIterator<Iterator>(full_path, samba_interface_.get())
+            : GetIterator<Iterator>(full_path, samba_interface_.get());
+    GetEntries(options, std::move(it), error_code, out_entries);
+  }
 }
 
 void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
@@ -382,7 +386,7 @@ void SmbProvider::GetShares(const ProtoBlob& options_blob,
   DCHECK(shares);
 
   ReadDirectoryEntries<GetSharesOptionsProto, ShareIterator>(
-      options_blob, error_code, shares);
+      options_blob, false /* include_metadata */, error_code, shares);
 }
 
 void SmbProvider::SetupKerberos(SetupKerberosCallback callback,

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "smbprovider/constants.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/samba_interface.h"
 #include "smbprovider/smbprovider_helper.h"
@@ -144,8 +145,24 @@ class DirectoryIterator : public BaseDirectoryIterator {
 
 template <typename Iterator>
 Iterator GetIterator(const std::string& full_path,
+                     SambaInterface* samba_interface,
+                     size_t batch_size,
+                     bool include_metadata) {
+  return Iterator(full_path, samba_interface, batch_size, include_metadata);
+}
+
+template <typename Iterator>
+Iterator GetIterator(const std::string& full_path,
                      SambaInterface* samba_interface) {
   return Iterator(full_path, samba_interface);
+}
+
+template <typename Iterator>
+Iterator GetMetadataIterator(const std::string& full_path,
+                             SambaInterface* samba_interface) {
+  return GetIterator<Iterator>(full_path, samba_interface,
+                               kDefaultMetadataBatchSize,
+                               true /* include_metadata */);
 }
 
 }  // namespace smbprovider
