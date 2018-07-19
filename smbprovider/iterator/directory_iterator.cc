@@ -20,7 +20,7 @@ constexpr int32_t kNoMoreEntriesError = -1;
 
 BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
                                              SambaInterface* samba_interface)
-    : BaseDirectoryIterator(dir_path, samba_interface, kBufferSize) {}
+    : BaseDirectoryIterator(dir_path, samba_interface, kDirEntBufferSize) {}
 
 BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
                                              SambaInterface* samba_interface,

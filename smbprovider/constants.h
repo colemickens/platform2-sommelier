@@ -12,7 +12,7 @@
 namespace smbprovider {
 
 // Buffer size used for reading a directory.
-constexpr size_t kBufferSize = 1024 * 32;
+constexpr size_t kDirEntBufferSize = 1024 * 32;
 
 // Default flags for created files.
 constexpr int kCreateFileFlags = O_CREAT | O_WRONLY | O_TRUNC | O_EXCL;

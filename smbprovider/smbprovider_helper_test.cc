@@ -46,13 +46,13 @@ TEST_F(SmbProviderHelperTest, WriteEntrySucceedsWithProperBufferSize) {
 
 // WriteEntry should write the proper fields.
 TEST_F(SmbProviderHelperTest, WriteEntrySucceeds) {
-  std::vector<uint8_t> dir_buf(kBufferSize);
+  std::vector<uint8_t> dir_buf(kDirEntBufferSize);
   smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
   const std::string name("test_folder");
   uint32_t type = SMBC_DIR;
 
-  DCHECK_GE(kBufferSize, CalculateEntrySize(name));
-  EXPECT_TRUE(WriteEntry(name, type, kBufferSize, dirent));
+  DCHECK_GE(kDirEntBufferSize, CalculateEntrySize(name));
+  EXPECT_TRUE(WriteEntry(name, type, kDirEntBufferSize, dirent));
   EXPECT_EQ(name, dirent->name);
   EXPECT_EQ(type, dirent->smbc_type);
   EXPECT_EQ(CalculateEntrySize(name), dirent->dirlen);
