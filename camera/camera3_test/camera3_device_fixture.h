@@ -171,7 +171,7 @@ class Camera3Device::StaticInfo {
   bool IsHardwareLevelAtLeastLimited() const;
 
   // Determine whether the current device supports a capability or not
-  bool IsCapabilitySupported(int capability) const;
+  bool IsCapabilitySupported(uint8_t capability) const;
 
   // Check if depth output is supported, based on the depth capability
   bool IsDepthOutputSupported() const;
@@ -217,7 +217,7 @@ class Camera3Device::StaticInfo {
   // when it's exposed to when it's available to the framework
   // Returns: number of maximum pipeline stages on success; corresponding error
   // code on failure.
-  int32_t GetRequestPipelineMaxDepth() const;
+  uint8_t GetRequestPipelineMaxDepth() const;
 
   // Get the maxium size of JPEG image
   // Returns: maximum size of JPEG image on success; corresponding error code
@@ -243,7 +243,7 @@ class Camera3Device::StaticInfo {
 
   // Get available AF modes
   // Returns: 0 on success; corresponding error code on failure.
-  int32_t GetAvailableAFModes(std::vector<int32_t>* af_modes) const;
+  int32_t GetAvailableAFModes(std::vector<uint8_t>* af_modes) const;
 
   // Get available sensor test pattern modes
   // Returns: 0 on success; corresponding error code on failure.
@@ -262,7 +262,7 @@ class Camera3Device::StaticInfo {
  private:
   // Return the supported hardware level of the device, or fail if no value is
   // reported
-  int32_t GetHardwareLevel() const;
+  uint8_t GetHardwareLevel() const;
 
   bool IsHardwareLevelAtLeast(int32_t level) const;
 

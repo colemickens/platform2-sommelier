@@ -624,10 +624,10 @@ TEST_P(Camera3SimpleStillCaptureTest, JpegExifTest) {
 void Camera3SimpleStillCaptureTest::TakePictureTest(
     uint32_t num_still_pictures) {
   auto IsAFSupported = [this]() {
-    std::vector<int32_t> available_af_modes;
+    std::vector<uint8_t> available_af_modes;
     cam_service_.GetStaticInfo(cam_id_)->GetAvailableAFModes(
         &available_af_modes);
-    int32_t af_modes[] = {ANDROID_CONTROL_AF_MODE_AUTO,
+    uint8_t af_modes[] = {ANDROID_CONTROL_AF_MODE_AUTO,
                           ANDROID_CONTROL_AF_MODE_CONTINUOUS_PICTURE,
                           ANDROID_CONTROL_AF_MODE_CONTINUOUS_VIDEO,
                           ANDROID_CONTROL_AF_MODE_MACRO};

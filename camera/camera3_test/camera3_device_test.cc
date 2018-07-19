@@ -146,7 +146,7 @@ bool Camera3Device::StaticInfo::AreKeysAvailable(
   return true;
 }
 
-int32_t Camera3Device::StaticInfo::GetHardwareLevel() const {
+uint8_t Camera3Device::StaticInfo::GetHardwareLevel() const {
   camera_metadata_ro_entry_t entry;
   if (find_camera_metadata_ro_entry(characteristics_,
                                     ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
@@ -155,7 +155,7 @@ int32_t Camera3Device::StaticInfo::GetHardwareLevel() const {
         << "Cannot find the metadata ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL";
     return -EINVAL;
   }
-  return entry.data.i32[0];
+  return entry.data.u8[0];
 }
 
 bool Camera3Device::StaticInfo::IsHardwareLevelAtLeast(int32_t level) const {
@@ -176,18 +176,15 @@ bool Camera3Device::StaticInfo::IsHardwareLevelAtLeastLimited() const {
 }
 
 bool Camera3Device::StaticInfo::IsCapabilitySupported(
-    int32_t capability) const {
+    uint8_t capability) const {
   EXPECT_GE(capability, 0) << "Capability must be non-negative";
 
   camera_metadata_ro_entry_t entry;
   if (find_camera_metadata_ro_entry(characteristics_,
                                     ANDROID_REQUEST_AVAILABLE_CAPABILITIES,
                                     &entry) == 0) {
-    for (size_t i = 0; i < entry.count; i++) {
-      if (entry.data.i32[i] == capability) {
-        return true;
-      }
-    }
+    return std::find(entry.data.u8, entry.data.u8 + entry.count, capability) !=
+           entry.data.u8 + entry.count;
   }
   return false;
 }
@@ -385,7 +382,7 @@ bool Camera3Device::StaticInfo::IsAELockSupported() const {
         << "Cannot find the metadata ANDROID_CONTROL_AE_LOCK_AVAILABLE";
     return false;
   }
-  return entry.data.i32[0] == ANDROID_CONTROL_AE_LOCK_AVAILABLE_TRUE;
+  return entry.data.u8[0] == ANDROID_CONTROL_AE_LOCK_AVAILABLE_TRUE;
 }
 
 bool Camera3Device::StaticInfo::IsAWBLockSupported() const {
@@ -396,7 +393,7 @@ bool Camera3Device::StaticInfo::IsAWBLockSupported() const {
         << "Cannot find the metadata ANDROID_CONTROL_AWB_LOCK_AVAILABLE";
     return false;
   }
-  return entry.data.i32[0] == ANDROID_CONTROL_AWB_LOCK_AVAILABLE_TRUE;
+  return entry.data.u8[0] == ANDROID_CONTROL_AWB_LOCK_AVAILABLE_TRUE;
 }
 
 int32_t Camera3Device::StaticInfo::GetPartialResultCount() const {
@@ -410,7 +407,7 @@ int32_t Camera3Device::StaticInfo::GetPartialResultCount() const {
   return entry.data.i32[0];
 }
 
-int32_t Camera3Device::StaticInfo::GetRequestPipelineMaxDepth() const {
+uint8_t Camera3Device::StaticInfo::GetRequestPipelineMaxDepth() const {
   camera_metadata_ro_entry_t entry;
   if (find_camera_metadata_ro_entry(
           characteristics_, ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &entry) != 0) {
@@ -418,7 +415,7 @@ int32_t Camera3Device::StaticInfo::GetRequestPipelineMaxDepth() const {
         << "Cannot find the metadata ANDROID_REQUEST_PIPELINE_MAX_DEPTH";
     return -EINVAL;
   }
-  return entry.data.i32[0];
+  return entry.data.u8[0];
 }
 
 int32_t Camera3Device::StaticInfo::GetJpegMaxSize() const {
@@ -517,12 +514,12 @@ int32_t Camera3Device::StaticInfo::GetAvailableApertures(
 }
 
 int32_t Camera3Device::StaticInfo::GetAvailableAFModes(
-    std::vector<int32_t>* af_modes) const {
+    std::vector<uint8_t>* af_modes) const {
   camera_metadata_ro_entry_t entry;
   if (find_camera_metadata_ro_entry(
           characteristics_, ANDROID_CONTROL_AF_AVAILABLE_MODES, &entry) == 0) {
     for (size_t i = 0; i < entry.count; i++) {
-      af_modes->push_back(entry.data.i32[i]);
+      af_modes->push_back(entry.data.u8[i]);
     }
   }
   return 0;
