@@ -9,6 +9,7 @@
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
@@ -18,6 +19,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
@@ -51,6 +53,33 @@ constexpr char kUrlSchemeDelimiter[] = "://";
 // Hostnames we replace with the container IP if they are sent over in URLs to
 // be opened by the host.
 const char* const kLocalhostReplaceNames[] = {"localhost", "127.0.0.1"};
+
+// Directory for runtime files.
+constexpr char kRuntimeDir[] = "/run/vm_cicerone";
+
+// SSH port for containers.
+constexpr char kContainerSshPort[] = "2222";
+
+// SSH binary name.
+constexpr char kSshBin[] = "/usr/bin/ssh";
+
+// SSH identity file name.
+constexpr char kSshIdentityFilename[] = "private_key";
+
+// SSH known_hosts file name.
+constexpr char kSshKnownHostsFilename[] = "known_hosts";
+
+// TCP ports to statically forward to the container over SSH.
+const uint16_t kStaticForwardPorts[] = {
+    3000,  // Rails
+    4200,  // Angular
+    5000,  // Flask
+    8000,  // Django
+    8008,  // HTTP alternative port
+    8080,  // HTTP alternative port
+    8888,  // ipython/jupyter
+    9005,  // Firebase login
+};
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -231,7 +260,9 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
     return;
   }
 
-  if (siginfo.ssi_signo == SIGTERM) {
+  if (siginfo.ssi_signo == SIGCHLD) {
+    HandleChildExit();
+  } else if (siginfo.ssi_signo == SIGTERM) {
     HandleSigterm();
   } else {
     LOG(ERROR) << "Received unknown signal from signal fd: "
@@ -423,6 +454,15 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
         string_ip);
     if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
       RegisterHostname(kDefaultContainerHostname, string_ip);
+
+      std::string username, error_msg;
+      if (vm->GetLxdContainerUsername(container_name, &username, &error_msg) !=
+          VirtualMachine::GetLxdContainerUsernameStatus::SUCCESS) {
+        LOG(ERROR) << "Failed to get container " << container_name
+                   << " username for SSH forwarding: " << error_msg;
+      } else {
+        StartSshForwarding(owner_id, string_ip, username);
+      }
     }
   }
 
@@ -469,6 +509,7 @@ void Service::ContainerShutdown(const std::string& container_token,
       "%s.%s.linux.test", container_name.c_str(), vm_name.c_str()));
   if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
     UnregisterHostname(kDefaultContainerHostname);
+    ssh_process_.Reset(0);
   }
 
   LOG(INFO) << "Shutdown of container " << container_name << " for VM "
@@ -736,9 +777,10 @@ bool Service::Init() {
   }
   LOG(INFO) << "Started tremplin grpc server";
 
-  // Set up the signalfd for receiving SIGTERM.
+  // Set up the signalfd for receiving SIGCHLD and SIGTERM.
   sigset_t mask;
   sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
   sigaddset(&mask, SIGTERM);
 
   signal_fd_.reset(signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC));
@@ -765,6 +807,37 @@ bool Service::Init() {
   return true;
 }
 
+void Service::HandleChildExit() {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  // We can't just rely on the information in the siginfo structure because
+  // more than one child may have exited but only one SIGCHLD will be
+  // generated.
+  while (true) {
+    int status;
+    pid_t pid = waitpid(-1, &status, WNOHANG);
+    if (pid <= 0) {
+      if (pid == -1 && errno != ECHILD) {
+        PLOG(ERROR) << "Unable to reap child processes";
+      }
+      break;
+    }
+
+    if (WIFEXITED(status)) {
+      LOG(INFO) << " Process " << pid << " exited with status "
+                << WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      LOG(INFO) << " Process " << pid << " killed by signal "
+                << WTERMSIG(status)
+                << (WCOREDUMP(status) ? " (core dumped)" : "");
+    } else {
+      LOG(WARNING) << "Unknown exit status " << status << " for process "
+                   << pid;
+    }
+
+    ssh_process_.Release();
+    ssh_process_.Reset(0);
+  }
+}
 void Service::HandleSigterm() {
   LOG(INFO) << "Shutting down due to SIGTERM";
 
@@ -1550,6 +1623,90 @@ bool Service::GetVirtualMachineForCid(const uint32_t cid,
   return false;
 }
 
+void Service::StartSshForwarding(const std::string& owner_id,
+                                 const std::string& ip,
+                                 const std::string& username) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+
+  std::string host_private_key, container_public_key, hostname;
+  std::string error_msg;
+
+  if (!GetContainerSshKeys(owner_id, kDefaultVmName, kDefaultContainerName,
+                           nullptr,  // host public key
+                           &host_private_key, &container_public_key,
+                           nullptr,  // container private key
+                           nullptr,  // hostname
+                           &error_msg)) {
+    LOG(ERROR) << "Failed to get keys for SSH forwarding: " << error_msg;
+    return;
+  }
+
+  // Set up a known_hosts file and an identity file.
+  base::FilePath ssh_dir(kRuntimeDir);
+  base::File::Error dir_error;
+  if (!base::DirectoryExists(ssh_dir) &&
+      !base::CreateDirectoryAndGetError(ssh_dir, &dir_error)) {
+    LOG(ERROR) << "Failed to create directory for cicerone SSH: "
+               << base::File::ErrorToString(dir_error);
+    return;
+  }
+
+  std::string known_hosts =
+      base::StringPrintf("[%s]:%s %s", ip.c_str(), kContainerSshPort,
+                         container_public_key.c_str());
+  base::FilePath known_hosts_path =
+      base::FilePath(kRuntimeDir).Append(kSshKnownHostsFilename);
+  if (!base::WriteFile(known_hosts_path, known_hosts.c_str(),
+                       known_hosts.length())) {
+    LOG(ERROR) << "Failed to write to container SSH pubkey file";
+    return;
+  }
+
+  base::FilePath identity_path = ssh_dir.Append(kSshIdentityFilename);
+  if (!base::WriteFile(identity_path, host_private_key.c_str(),
+                       host_private_key.length())) {
+    LOG(ERROR) << "Failed to write to SSH identity file";
+    return;
+  }
+  if (!base::SetPosixFilePermissions(identity_path,
+                                     base::FILE_PERMISSION_READ_BY_USER |
+                                         base::FILE_PERMISSION_WRITE_BY_USER)) {
+    LOG(ERROR) << "Failed to set permissions on SSH identity file";
+    return;
+  }
+  ssh_process_.Reset(0);
+
+  ssh_process_.AddArg(kSshBin);
+
+  // Specify the identity file.
+  ssh_process_.AddArg("-i");
+  ssh_process_.AddArg(identity_path.value());
+
+  // Specify the known hosts file.
+  ssh_process_.AddArg("-o");
+  ssh_process_.AddArg(std::string("UserKnownHostsFile=") +
+                      known_hosts_path.value());
+
+  // Don't run a command; port forward only.
+  ssh_process_.AddArg("-N");
+
+  // cros-sftp uses a nonstandard port.
+  ssh_process_.AddArg("-p");
+  ssh_process_.AddArg(kContainerSshPort);
+
+  for (const uint16_t port : kStaticForwardPorts) {
+    ssh_process_.AddArg("-L");
+    ssh_process_.AddArg(base::StringPrintf("%u:localhost:%u", port, port));
+  }
+
+  ssh_process_.AddArg(username + "@" + ip);
+
+  if (!ssh_process_.Start()) {
+    LOG(ERROR) << "Failed to start SSH process";
+    return;
+  }
+}
+
 bool Service::GetContainerSshKeys(const std::string& owner_id,
                                   const std::string& vm_name,
                                   const std::string& container_name,
@@ -1653,6 +1810,7 @@ void Service::UnregisterVmContainers(VirtualMachine* vm,
       if (vm_name == kDefaultVmName &&
           container_name == kDefaultContainerName) {
         UnregisterHostname(kDefaultContainerHostname);
+        ssh_process_.Reset(0);
       }
     }
 

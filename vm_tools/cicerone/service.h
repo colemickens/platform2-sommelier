@@ -17,6 +17,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
+#include <brillo/process.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -146,6 +147,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // its methods, and taking ownership of it's name.
   bool Init();
 
+  // Handles the termination of a child process.
+  void HandleChildExit();
+
   // Handles a SIGTERM.
   void HandleSigterm();
 
@@ -222,6 +226,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                std::string* owner_id_out,
                                std::string* name_out);
 
+  // Starts SSH port forwarding for known ports to the default VM/container.
+  // SSH forwarding will not work for other VMs/containers.
+  void StartSshForwarding(const std::string& owner_id,
+                          const std::string& ip,
+                          const std::string& username);
+
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,
                            const std::string& vm_name,
@@ -261,7 +271,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   VirtualMachine* FindVm(const std::string& owner_id,
                          const std::string& vm_name);
 
-  // File descriptor for the SIGTERM event.
+  // File descriptor for SIGTERM/SIGCHLD event.
   base::ScopedFD signal_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher watcher_;
 
@@ -313,6 +323,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Owner of the primary VM, we only do hostname mappings for the primary VM.
   std::string primary_owner_id_;
+
+  // Handle to the SSH port forwarding process.
+  brillo::ProcessImpl ssh_process_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 
