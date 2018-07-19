@@ -93,6 +93,7 @@ bool Crtc::IsInternalDisplay() const {
     case DRM_MODE_CONNECTOR_eDP:
     case DRM_MODE_CONNECTOR_LVDS:
     case DRM_MODE_CONNECTOR_DSI:
+    case DRM_MODE_CONNECTOR_VIRTUAL:
       return true;
     default:
       return false;
