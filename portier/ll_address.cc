@@ -11,74 +11,105 @@
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 
 #include "portier/ll_address.h"
 
 namespace portier {
 
-using ::shill::ByteString;
-using ::std::string;
+using shill::ByteString;
+using std::string;
 
 using Type = LLAddress::Type;
 
 // Static methods for Type.
 
-const Type LLAddress::kTypeInvalid = LLAddress::Type::Invalid;
-const Type LLAddress::kTypeEui48 = LLAddress::Type::Eui48;
-const Type LLAddress::kTypeEui64 = LLAddress::Type::Eui64;
-
 namespace {
 
-bool ParseStringLinkLayerAddress(LLAddress::Type type,
-                                 const string& address_string,
-                                 unsigned char* out) {
-  // Covert to lower case.
-  string lower_address(address_string);
-  std::transform(lower_address.begin(), lower_address.end(),
-                 lower_address.begin(), tolower);
-
-  // Two expected string forms for the LL address, XX:XX or XX-XX.
-  switch (type) {
-    case LLAddress::kTypeEui48:
-      if (sscanf(lower_address.c_str(),
-                 "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &out[0], &out[1],
-                 &out[2], &out[3], &out[4], &out[5]) == 6) {
-        // Parse successful.
-        return true;
-      } else if (sscanf(lower_address.c_str(),
-                        "%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx", &out[0],
-                        &out[1], &out[2], &out[3], &out[4], &out[5]) == 6) {
-        return true;
-      }
-      break;
-    case LLAddress::kTypeEui64:
-      if (sscanf(lower_address.c_str(),
-                 "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
-                 &out[0], &out[1], &out[2], &out[3], &out[4], &out[5], &out[6],
-                 &out[7]) == 8) {
-        // Parse successful.
-        return true;
-      } else if (sscanf(
-                     lower_address.c_str(),
-                     "%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx",
-                     &out[0], &out[1], &out[2], &out[3], &out[4], &out[5],
-                     &out[6], &out[7]) == 8) {
-        return true;
-      }
-      break;
-    default:
-      break;
+uint8_t ParseHexDigit(char c) {
+  DCHECK(base::IsHexDigit(c));
+  if (base::IsAsciiDigit(c)) {
+    return c - '0';
   }
-  return false;
+  if (base::IsAsciiLower(c)) {
+    return c - 'a' + 10;
+  }
+  return c - 'A' + 10;
+}
+
+// Given a specified link-layer address type and a string
+// representation of the address, this function will attempt to
+// extract the bytes of the address.
+//
+// EUI-48 and EUI-64 are very similar in format, only difference being
+// their lengths (6 bytes for EUI-48 and 8 bytes for EUI-64).  The
+// accepted format is a sequences of hexadecimal character pais,
+// representing a byte, each byte is separated by a colon ':'.
+// No leading or trailing white space is allowed.
+//
+// EUI-48: xx:xx:xx:xx:xx:xx
+// EUI-64: xx:xx:xx:xx:xx:xx:xx:xx
+//
+// Function returns true if the input string was parsed correctly
+// and false otherwise.
+bool ParseLinkLayerAddressString(LLAddress::Type type,
+                                 string address_string,
+                                 uint8_t* out) {
+  // Covert to lower case.
+  address_string = base::ToLowerASCII(address_string);
+
+  // Ensure that all the characters provided are part of the address.
+  //  |hex_count| tracks that each octet is 2 hex digits.
+  //  |octet_count| counts the number of octets.
+  uint32_t hex_count = 0;
+  uint32_t octet_count = 0;
+  for (const char c : address_string) {
+    if (base::IsHexDigit(c) && hex_count < 2) {
+      // If it is a hexadecimal, there cannot be more than 2 per byte.
+      hex_count++;
+    } else if (c == ':' && hex_count == 2) {
+      // If there is a colon, it must come after 2 hexadecimal characters.
+      hex_count = 0;
+      octet_count++;
+    } else {
+      // All other cases are invalid.
+      return false;
+    }
+  }
+
+  // Check that there was at least one hexadecimal after the final
+  // octet separator.
+  if (hex_count != 2) {
+    return false;
+  }
+  octet_count++;
+
+  // Verify length.
+  if (!((type == Type::kEui48 && octet_count == 6) ||
+        (type == Type::kEui64 && octet_count == 8))) {
+    return false;
+  }
+
+  const char* in_cursor = address_string.c_str();
+  uint8_t* out_cursor = out;
+  while (*in_cursor) {
+    uint8_t upper = ParseHexDigit(*in_cursor++);
+    uint8_t lower = ParseHexDigit(*in_cursor++);
+    *out_cursor++ = (upper << 4) | lower;
+    if (*in_cursor && *in_cursor == ':') {
+      in_cursor++;
+    }
+  }
+  return true;
 }
 
 }  // namespace
 
 string LLAddress::GetTypeName(LLAddress::Type type) {
   switch (type) {
-    case kTypeEui48:
+    case Type::kEui48:
       return "EUI-48";
-    case kTypeEui64:
+    case Type::kEui64:
       return "EUI-64";
     default:
       return "unknown";
@@ -87,9 +118,9 @@ string LLAddress::GetTypeName(LLAddress::Type type) {
 
 int32_t LLAddress::GetTypeLength(LLAddress::Type type) {
   switch (type) {
-    case kTypeEui48:
+    case Type::kEui48:
       return 6;
-    case kTypeEui64:
+    case Type::kEui64:
       return 8;
     default:
       return -1;
@@ -98,9 +129,9 @@ int32_t LLAddress::GetTypeLength(LLAddress::Type type) {
 
 uint16_t LLAddress::GetTypeArpType(Type type) {
   switch (type) {
-    case kTypeEui48:
+    case Type::kEui48:
       return ARPHRD_ETHER;
-    case kTypeEui64:
+    case Type::kEui64:
       return ARPHRD_EUI64;
     default:
       return ARPHRD_VOID;
@@ -109,13 +140,13 @@ uint16_t LLAddress::GetTypeArpType(Type type) {
 
 // Constructors.
 
-LLAddress::LLAddress() : type_(kTypeInvalid), address_(0) {}
+LLAddress::LLAddress() : type_(Type::kInvalid), address_(0) {}
 
 LLAddress::LLAddress(LLAddress::Type type) : type_(type), address_(0) {
   const int32_t len = GetTypeLength(type);
   if (len <= 0) {
     // |type| is invalid.
-    type_ = kTypeInvalid;
+    type_ = Type::kInvalid;
   } else {
     address_.Resize(len);
   }
@@ -126,7 +157,7 @@ LLAddress::LLAddress(LLAddress::Type type, const ByteString& address)
   // Check if invalid.
   const int32_t len = GetTypeLength(type);
   if (len <= 0 || address.GetLength() != len) {
-    type_ = kTypeInvalid;
+    type_ = Type::kInvalid;
     address_.Clear();
   }
 }
@@ -135,34 +166,34 @@ LLAddress::LLAddress(LLAddress::Type type, const string& address)
     : type_(type), address_(0) {
   const int32_t len = GetTypeLength(type);
   if (len <= 0) {
-    type_ = kTypeInvalid;
+    type_ = Type::kInvalid;
     return;
   }
 
   address_.Resize(len);
-  if (!ParseStringLinkLayerAddress(type, address, address_.GetData())) {
-    type_ = kTypeInvalid;
+  if (!ParseLinkLayerAddressString(type, address, address_.GetData())) {
+    type_ = Type::kInvalid;
     address_.Clear();
   }
 }
 
 LLAddress::LLAddress(const struct sockaddr_ll* address_struct) {
   if (NULL == address_struct) {
-    type_ = kTypeInvalid;
+    type_ = Type::kInvalid;
     return;
   }
 
-  if (GetTypeArpType(kTypeEui48) == address_struct->sll_hatype &&
+  if (GetTypeArpType(Type::kEui48) == address_struct->sll_hatype &&
       6 == address_struct->sll_halen) {
-    type_ = kTypeEui48;
+    type_ = Type::kEui48;
     address_ = ByteString(address_struct->sll_addr, 6);
-  } else if (GetTypeArpType(kTypeEui64) == address_struct->sll_hatype &&
+  } else if (GetTypeArpType(Type::kEui64) == address_struct->sll_hatype &&
              8 == address_struct->sll_halen) {
-    type_ = kTypeEui64;
+    type_ = Type::kEui64;
     address_ = ByteString(address_struct->sll_addr, 8);
   } else {
     // Assume invalid.
-    type_ = kTypeInvalid;
+    type_ = Type::kInvalid;
   }
 }
 
@@ -181,19 +212,11 @@ LLAddress& LLAddress::operator=(const LLAddress& other) {
 
 // Getters.
 
-LLAddress::Type LLAddress::type() const {
-  return type_;
-}
-
-uint16_t LLAddress::arpType() const {
+uint16_t LLAddress::GetArpType() const {
   return GetTypeArpType(type());
 }
 
-const ByteString& LLAddress::address() const {
-  return address_;
-}
-
-const unsigned char* LLAddress::GetConstData() const {
+const uint8_t* LLAddress::GetConstData() const {
   return address_.GetConstData();
 }
 
@@ -204,7 +227,7 @@ uint32_t LLAddress::GetLength() const {
 // Address information
 
 bool LLAddress::IsValid() const {
-  return kTypeInvalid != type_;
+  return Type::kInvalid != type_;
 }
 
 bool LLAddress::IsUnicast() const {
@@ -212,7 +235,7 @@ bool LLAddress::IsUnicast() const {
   if (!IsValid()) {
     return false;
   }
-  const unsigned char first = GetConstData()[0];
+  const uint8_t first = GetConstData()[0];
   return ((first & 0x01) == 0x00);
 }
 
@@ -229,9 +252,9 @@ bool LLAddress::IsBroadcast() const {
   if (!IsValid()) {
     return false;
   }
-  const unsigned char* data = GetConstData();
+  const uint8_t* data = GetConstData();
   return std::all_of(data, data + GetLength(),
-                     [](unsigned char c) { return (0xff == c); });
+                     [](uint8_t c) { return (0xff == c); });
 }
 
 bool LLAddress::IsUniversal() const {
@@ -240,7 +263,7 @@ bool LLAddress::IsUniversal() const {
   if (!IsValid()) {
     return false;
   }
-  const unsigned char first = GetConstData()[0];
+  const uint8_t first = GetConstData()[0];
   return ((first & 0x02) == 0x00);
 }
 
@@ -257,15 +280,15 @@ std::string LLAddress::ToString() const {
   if (!IsValid()) {
     return "invalid";
   }
-  const unsigned char* data = GetConstData();
-  if (kTypeEui64 == type()) {
+  const uint8_t* data = GetConstData();
+  if (Type::kEui64 == type()) {
     return base::StringPrintf(
-        "%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx", data[0],
+        "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", data[0],
         data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
   }
   // Else must be EUI-48.
-  CHECK(kTypeEui48 == type());
-  return base::StringPrintf("%02hhx-%02hhx-%02hhx-%02hhx-%02hhx-%02hhx",
+  CHECK_EQ(Type::kEui48, type());
+  return base::StringPrintf("%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
                             data[0], data[1], data[2], data[3], data[4],
                             data[5]);
 }

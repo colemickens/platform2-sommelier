@@ -20,11 +20,8 @@ namespace portier {
 class LLAddress {
  public:
   // Link-Layer types.
-  enum class Type : uint8_t { Invalid, Eui48, Eui64 };
-  static const Type kTypeInvalid;
-  static const Type kTypeEui48;
-  static const Type kTypeEui64;
   // Add more types should their support be needed.
+  enum class Type : uint8_t { kInvalid, kEui48, kEui64 };
 
   // Static methods for Type.
   static std::string GetTypeName(Type type);
@@ -41,10 +38,10 @@ class LLAddress {
   explicit LLAddress(Type type);
   // Construct from raw byte string.  Byte string must be a valid length
   // for the type.
-  LLAddress(Type type, const ::shill::ByteString& address);
+  LLAddress(Type type, const shill::ByteString& address);
 
   // Construct from string representation.
-  explicit LLAddress(Type type, const std::string& ll_address_string);
+  LLAddress(Type type, const std::string& ll_address_string);
 
   // Construct from Kernel supplied struct.
   explicit LLAddress(const struct sockaddr_ll* address_struct);
@@ -56,11 +53,11 @@ class LLAddress {
   LLAddress& operator=(const LLAddress& other);
 
   // Getters.
-  Type type() const;
-  uint16_t arpType() const;
+  Type type() const { return type_; }
+  uint16_t GetArpType() const;
 
-  const ::shill::ByteString& address() const;
-  const unsigned char* GetConstData() const;
+  const shill::ByteString& address() const { return address_; }
+  const uint8_t* GetConstData() const;
   uint32_t GetLength() const;
 
   // Bytes provided in constructor create a valid LL address based
@@ -83,7 +80,7 @@ class LLAddress {
 
  private:
   Type type_;
-  ::shill::ByteString address_;
+  shill::ByteString address_;
 };  // LLAddress
 
 }  // namespace portier

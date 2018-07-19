@@ -47,33 +47,35 @@ const OptionType NeighborDiscoveryMessage::kOptionTypeMTU = ND_OPT_MTU;
 // Local constants.
 namespace {
 
-const uint32_t kTypeMinLengthRouterSolicit = sizeof(struct nd_router_solicit);
-const uint32_t kTypeMinLengthRouterAdvert = sizeof(struct nd_router_advert);
-const uint32_t kTypeMinLengthNeighborSolicit =
+constexpr uint32_t kTypeMinLengthRouterSolicit =
+    sizeof(struct nd_router_solicit);
+constexpr uint32_t kTypeMinLengthRouterAdvert = sizeof(struct nd_router_advert);
+constexpr uint32_t kTypeMinLengthNeighborSolicit =
     sizeof(struct nd_neighbor_solicit);
-const uint32_t kTypeMinLengthNeighborAdvert = sizeof(struct nd_neighbor_advert);
-const uint32_t kTypeMinLengthRedirect = sizeof(struct nd_redirect);
+constexpr uint32_t kTypeMinLengthNeighborAdvert =
+    sizeof(struct nd_neighbor_advert);
+constexpr uint32_t kTypeMinLengthRedirect = sizeof(struct nd_redirect);
 
 // Link layer addresses are variable length.
-const uint32_t kOptionTypeMinLengthSourceLinkLayerAddress =
+constexpr uint32_t kOptionTypeMinLengthSourceLinkLayerAddress =
     sizeof(struct nd_opt_hdr);
-const uint32_t kOptionTypeMinLengthTargetLinkLayerAddress =
+constexpr uint32_t kOptionTypeMinLengthTargetLinkLayerAddress =
     sizeof(struct nd_opt_hdr);
-const uint32_t kOptionTypeMinLengthPrefixInformation =
+constexpr uint32_t kOptionTypeMinLengthPrefixInformation =
     sizeof(struct nd_opt_prefix_info);
-const uint32_t kOptionTypeMinLengthRedirectHeader =
+constexpr uint32_t kOptionTypeMinLengthRedirectHeader =
     sizeof(struct nd_opt_rd_hdr);
-const uint32_t kOptionTypeMinLengthMTU = sizeof(struct nd_opt_mtu);
+constexpr uint32_t kOptionTypeMinLengthMTU = sizeof(struct nd_opt_mtu);
 
 // Option length to byte units.
-const uint32_t kBytesPerOptLen = 8;
+constexpr uint32_t kBytesPerOptLen = 8;
 
 // Route advertisement flags.
 // RFC 4861 - Section 4.2.
-const uint8_t kRouterAdvertManagedBit = ND_RA_FLAG_MANAGED;
-const uint8_t kRouterAdvertOtherBit = ND_RA_FLAG_OTHER;
+constexpr uint8_t kRouterAdvertManagedBit = ND_RA_FLAG_MANAGED;
+constexpr uint8_t kRouterAdvertOtherBit = ND_RA_FLAG_OTHER;
 // RFC 4389 - Section 3.
-const uint8_t kRouterAdvertProxyBit = 0x04;
+constexpr uint8_t kRouterAdvertProxyBit = 0x04;
 }  // namespace
 
 // static
@@ -332,14 +334,6 @@ NeighborDiscoveryMessage::NeighborDiscoveryMessage(const ByteString& raw_packet)
   }
 }
 
-Type NeighborDiscoveryMessage::type() const {
-  return type_;
-}
-
-const ByteString& NeighborDiscoveryMessage::message() const {
-  return message_;
-}
-
 bool NeighborDiscoveryMessage::IsValid() const {
   switch (type()) {
     case kTypeRouterSolicit:
@@ -490,7 +484,7 @@ bool NeighborDiscoveryMessage::GetTargetAddress(
         reinterpret_cast<const struct nd_neighbor_solicit*>(GetConstData());
     *target_address = IPAddress(
         IPAddress::kFamilyIPv6,
-        ByteString(reinterpret_cast<const unsigned char*>(&nd_ns->nd_ns_target),
+        ByteString(reinterpret_cast<const uint8_t*>(&nd_ns->nd_ns_target),
                    sizeof(nd_ns->nd_ns_target)));
     return true;
   }
@@ -501,7 +495,7 @@ bool NeighborDiscoveryMessage::GetTargetAddress(
         reinterpret_cast<const struct nd_neighbor_advert*>(GetConstData());
     *target_address = IPAddress(
         IPAddress::kFamilyIPv6,
-        ByteString(reinterpret_cast<const unsigned char*>(&nd_na->nd_na_target),
+        ByteString(reinterpret_cast<const uint8_t*>(&nd_na->nd_na_target),
                    sizeof(nd_na->nd_na_target)));
     return true;
   }
@@ -511,7 +505,7 @@ bool NeighborDiscoveryMessage::GetTargetAddress(
       reinterpret_cast<const struct nd_redirect*>(GetConstData());
   *target_address = IPAddress(
       IPAddress::kFamilyIPv6,
-      ByteString(reinterpret_cast<const unsigned char*>(&nd_rd->nd_rd_target),
+      ByteString(reinterpret_cast<const uint8_t*>(&nd_rd->nd_rd_target),
                  sizeof(nd_rd->nd_rd_target)));
   return true;
 }
@@ -566,20 +560,20 @@ bool NeighborDiscoveryMessage::GetDestinationAddress(
 
   const struct nd_redirect* nd_rd =
       reinterpret_cast<const struct nd_redirect*>(GetConstData());
-  *destination_address = IPAddress(
-      IPAddress::kFamilyIPv6,
-      ByteString(reinterpret_cast<const unsigned char*>(&nd_rd->nd_rd_dst),
-                 sizeof(nd_rd->nd_rd_dst)));
+  *destination_address =
+      IPAddress(IPAddress::kFamilyIPv6,
+                ByteString(reinterpret_cast<const uint8_t*>(&nd_rd->nd_rd_dst),
+                           sizeof(nd_rd->nd_rd_dst)));
   return true;
 }
 
 // Raw accessors.
-const unsigned char* NeighborDiscoveryMessage::GetConstData() const {
+const uint8_t* NeighborDiscoveryMessage::GetConstData() const {
   return message_.GetConstData();
 }
 
 // private
-unsigned char* NeighborDiscoveryMessage::GetData() {
+uint8_t* NeighborDiscoveryMessage::GetData() {
   return message_.GetData();
 }
 
@@ -592,14 +586,13 @@ size_t NeighborDiscoveryMessage::GetLength() const {
 namespace {
 
 // Helpers for options without a well-define structure.
-const unsigned char* OptionConstData(const struct nd_opt_hdr* opt_hdr) {
-  return &(reinterpret_cast<const unsigned char*>(
-      opt_hdr)[sizeof(struct nd_opt_hdr)]);
+const uint8_t* OptionConstData(const struct nd_opt_hdr* opt_hdr) {
+  return &(
+      reinterpret_cast<const uint8_t*>(opt_hdr)[sizeof(struct nd_opt_hdr)]);
 }
 
-unsigned char* OptionData(struct nd_opt_hdr* opt_hdr) {
-  return &(
-      reinterpret_cast<unsigned char*>(opt_hdr)[sizeof(struct nd_opt_hdr)]);
+uint8_t* OptionData(struct nd_opt_hdr* opt_hdr) {
+  return &(reinterpret_cast<uint8_t*>(opt_hdr)[sizeof(struct nd_opt_hdr)]);
 }
 
 uint32_t OptionDataLength(const struct nd_opt_hdr* opt_hdr) {
@@ -635,7 +628,7 @@ bool NeighborDiscoveryMessage::GetRawOption(OptionType opt_type,
     return false;
   }
 
-  const unsigned char* opt_ptr = GetConstOptionPointer(opt_type, opt_index);
+  const uint8_t* opt_ptr = GetConstOptionPointer(opt_type, opt_index);
   CHECK(nullptr != opt_ptr);
 
   // Determine the length of the option.
@@ -660,12 +653,12 @@ void NeighborDiscoveryMessage::ClearOptions() {
 
 // Internal option accessor.
 
-unsigned char* NeighborDiscoveryMessage::GetOptionPointer(OptionType opt_type,
-                                                          uint32_t opt_index) {
-  return const_cast<unsigned char*>(GetConstOptionPointer(opt_type, opt_index));
+uint8_t* NeighborDiscoveryMessage::GetOptionPointer(OptionType opt_type,
+                                                    uint32_t opt_index) {
+  return const_cast<uint8_t*>(GetConstOptionPointer(opt_type, opt_index));
 }
 
-const unsigned char* NeighborDiscoveryMessage::GetConstOptionPointer(
+const uint8_t* NeighborDiscoveryMessage::GetConstOptionPointer(
     OptionType opt_type, uint32_t opt_index) const {
   // Verify sanity
   CHECK(IsValid());
@@ -832,9 +825,9 @@ bool NeighborDiscoveryMessage::GetPrefix(uint32_t opt_index,
 
   CHECK_EQ(opt_prefix_info->nd_opt_pi_type, kOptionTypePrefixInformation);
 
-  ByteString prefix_bytes(reinterpret_cast<const unsigned char*>(
-                              &opt_prefix_info->nd_opt_pi_prefix),
-                          sizeof(opt_prefix_info->nd_opt_pi_prefix));
+  ByteString prefix_bytes(
+      reinterpret_cast<const uint8_t*>(&opt_prefix_info->nd_opt_pi_prefix),
+      sizeof(opt_prefix_info->nd_opt_pi_prefix));
 
   // Convert, but validate before returning.
   IPAddress temp_prefix(IPAddress::kFamilyIPv6, prefix_bytes);
@@ -885,7 +878,7 @@ bool NeighborDiscoveryMessage::PushPrefixInformation(
   opt_prefix_info->nd_opt_pi_preferred_time =
       htonl(static_cast<uint32_t>(preferred_lifetime.InSeconds()));
 
-  memcpy(reinterpret_cast<unsigned char*>(&opt_prefix_info->nd_opt_pi_prefix),
+  memcpy(reinterpret_cast<uint8_t*>(&opt_prefix_info->nd_opt_pi_prefix),
          prefix.GetConstData(), sizeof(opt_prefix_info->nd_opt_pi_prefix));
 
   // Add to the current message, and index new option.
@@ -908,7 +901,7 @@ bool NeighborDiscoveryMessage::GetIpHeaderAndData(
     return false;
   }
 
-  const unsigned char* opt_ptr =
+  const uint8_t* opt_ptr =
       GetConstOptionPointer(kOptionTypeRedirectHeader, opt_index);
   const struct nd_opt_rd_hdr* opt_rd_hdr =
       reinterpret_cast<const struct nd_opt_rd_hdr*>(opt_ptr);
@@ -1016,7 +1009,7 @@ bool NeighborDiscoveryMessage::GetLinkLayerAddress(
     return false;
   }
 
-  const unsigned char* opt_ptr = GetConstOptionPointer(opt_type, opt_index);
+  const uint8_t* opt_ptr = GetConstOptionPointer(opt_type, opt_index);
   const struct nd_opt_hdr* opt_hdr =
       reinterpret_cast<const struct nd_opt_hdr*>(opt_ptr);
 
@@ -1024,12 +1017,13 @@ bool NeighborDiscoveryMessage::GetLinkLayerAddress(
 
   ByteString opt_data(OptionConstData(opt_hdr), OptionDataLength(opt_hdr));
 
-  if (opt_data.GetLength() != LLAddress::GetTypeLength(LLAddress::kTypeEui48)) {
+  if (opt_data.GetLength() !=
+      LLAddress::GetTypeLength(LLAddress::Type::kEui48)) {
     // Unknown length of EUI
     return false;
   }
 
-  *ll_address = LLAddress(LLAddress::kTypeEui48, opt_data);
+  *ll_address = LLAddress(LLAddress::Type::kEui48, opt_data);
   return true;
 }
 
@@ -1042,14 +1036,14 @@ bool NeighborDiscoveryMessage::SetLinkLayerAddress(
   if (opt_index >= OptionCount(opt_type) || !ll_address.IsValid()) {
     return false;
   }
-  if (ll_address.type() != LLAddress::kTypeEui48) {
+  if (ll_address.type() != LLAddress::Type::kEui48) {
     NOTIMPLEMENTED() << "Current can't handle non-Ethernet link-layer "
                      << "addresses, got "
                      << LLAddress::GetTypeName(ll_address.type());
     return false;
   }
 
-  unsigned char* opt_ptr = GetOptionPointer(opt_type, opt_index);
+  uint8_t* opt_ptr = GetOptionPointer(opt_type, opt_index);
   struct nd_opt_hdr* opt_hdr = reinterpret_cast<struct nd_opt_hdr*>(opt_ptr);
 
   if (ll_address.GetLength() != OptionDataLength(opt_hdr)) {
@@ -1072,7 +1066,7 @@ bool NeighborDiscoveryMessage::PushLinkLayerAddress(
   if (!IsValid()) {
     return false;
   }
-  if (ll_address.type() != LLAddress::kTypeEui48) {
+  if (ll_address.type() != LLAddress::Type::kEui48) {
     NOTIMPLEMENTED() << "Current can't handle non-Ethernet link-layer "
                      << "addresses, got "
                      << LLAddress::GetTypeName(ll_address.type());
@@ -1121,7 +1115,7 @@ bool NeighborDiscoveryMessage::IndexOptions() {
 
   uint32_t data_index = min_len;
   do {
-    const unsigned char* opt_ptr = &GetConstData()[data_index];
+    const uint8_t* opt_ptr = &GetConstData()[data_index];
     const struct nd_opt_hdr* opt_hdr =
         reinterpret_cast<const struct nd_opt_hdr*>(opt_ptr);
     const uint32_t opt_len = (opt_hdr->nd_opt_len * kBytesPerOptLen);

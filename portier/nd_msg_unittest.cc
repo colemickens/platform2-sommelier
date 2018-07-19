@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Standard C Library.
-
-// Standard C++ Library.
-
 // Chrome OS Library.
 #include <base/time/time.h>
 #include <shill/net/byte_string.h>
@@ -28,14 +24,14 @@ namespace {
 
 // clang-format off
 
-constexpr unsigned char kRSMessage1[] = {
+constexpr uint8_t kRSMessage1[] = {
   // Type=RS (133), Code=0, Checksum=0 (ignored)
   0x85, 0x00, 0x00, 0x00,
   // Reserved
   0x00, 0x00, 0x00, 0x00
 };
 
-constexpr unsigned char kRAMessage1[] = {
+constexpr uint8_t kRAMessage1[] = {
   // Type=RA (134), Code=0, Checksum=0 (ignored)
   0x86, 0x00, 0x00, 0x00,
   // Cur Hop Limit=255, M=1, O=0, P=1, Router Lifetime=9000 s,
@@ -55,7 +51,7 @@ constexpr TimeDelta kRAReachableTime1 = TimeDelta::FromDays(1);
 constexpr TimeDelta kRARetransTimer1 = TimeDelta::FromMinutes(10);
 
 // Target:
-constexpr unsigned char kNSMessage1[] = {
+constexpr uint8_t kNSMessage1[] = {
   // Type=NS (135), Code=0, Checksum=0 (ignored)
   0x87, 0x00, 0x00, 0x00,
   // Reserved
@@ -68,7 +64,7 @@ constexpr unsigned char kNSMessage1[] = {
 };
 const IPAddress kNSTargetAddress1 = IPAddress("fe80::9832:3d50:3aa3:5af9");
 
-constexpr unsigned char kNAMessage1[] = {
+constexpr uint8_t kNAMessage1[] = {
   // Type=NA (136), Code=0, Checksum=0 (ignored)
   0x88, 0x00, 0x00, 0x00,
   // R=0, S=1, O=0
@@ -85,7 +81,7 @@ constexpr bool kNASolicitedFlag1 = true;
 constexpr bool kNAOverrideFlag1 = false;
 const IPAddress kNATargetAddress1 = IPAddress("fe80::846d:e6ff:fe2d:acf3");
 
-constexpr unsigned char kRMessage1[] = {
+constexpr uint8_t kRMessage1[] = {
   // Type=R (137), Code=0, Checksum=0 (ignored)
   0x89, 0x00, 0x00, 0x00,
   // Reserved
@@ -107,14 +103,14 @@ const IPAddress kRTargetAddress1 =
 const IPAddress kRDestinationAddress1 =
     IPAddress("2401:fa00:480:56:495e:b40c:9318:3ca5");
 
-constexpr unsigned char kNonNDMessage[] = {
+constexpr uint8_t kNonNDMessage[] = {
   // Type=Ping Request (128),
   0x80, 0x00, 0x00, 0x00,
   // ID=1337, Seq=9001
   0x05, 0x39, 0x23, 0x29
 };
 
-constexpr unsigned char kNAMessageBadSize[] = {
+constexpr uint8_t kNAMessageBadSize[] = {
   // Type=NA (136), Code=0, Checksum=0 (ignored)
   0x88, 0x00, 0x00, 0x00,
   // R=0, S=0, O=0
@@ -126,50 +122,50 @@ constexpr unsigned char kNAMessageBadSize[] = {
 };
 
 // Option - Source link-layer - a0:8c:fd:c3:b3:bf
-constexpr unsigned char kSourceLinkLayerOptionRaw1[] = {
+constexpr uint8_t kSourceLinkLayerOptionRaw1[] = {
   // Type=Src LL Addr (1), Length=8 bytes (1), MAC=a0:8c:fd:c3:b3:bf
   0x01, 0x01, 0xa0, 0x8c,
   0xfd, 0xc3, 0xb3, 0xbf
 };
 
-const LLAddress kSourceLL1(LLAddress::kTypeEui48, "a0:8c:fd:c3:b3:bf");
+const LLAddress kSourceLL1(LLAddress::Type::kEui48, "a0:8c:fd:c3:b3:bf");
 
 // Option - Source link-layer - a0:8c:fd:c3:b3:c0
-constexpr unsigned char kSourceLinkLayerOptionRaw2[] = {
+constexpr uint8_t kSourceLinkLayerOptionRaw2[] = {
   // Type=Src LL Addr (1), Length=8 bytes (1), MAC=a0:8c:fd:c3:b3:c0
   0x01, 0x01, 0xa0, 0x8c,
   0xfd, 0xc3, 0xb3, 0xc0
 };
 
-const LLAddress kSourceLL2(LLAddress::kTypeEui48, "a0:8c:fd:c3:b3:c0");
+const LLAddress kSourceLL2(LLAddress::Type::kEui48, "a0:8c:fd:c3:b3:c0");
 
 // Bad Option - Source link-layer - 00:00:00:00:00:00 - BAD SIZE
-constexpr unsigned char kSourceLinkLayerOptionZeroSizeRaw[] = {
+constexpr uint8_t kSourceLinkLayerOptionZeroSizeRaw[] = {
   // Length 0
   0x01, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00
 };
 
 // Option - Target link-layer - 32:85:6c:5b:a1:ca
-constexpr unsigned char kTargetLinkLayerOptionRaw1[] = {
+constexpr uint8_t kTargetLinkLayerOptionRaw1[] = {
   // Type=Targ LL Addr (2), Length=8 bytes (1), MAC=32:85:6c:5b:a1:ca
   0x02, 0x01, 0x32, 0x85,
   0x6c, 0x5b, 0xa1, 0xca
 };
 
-const LLAddress kTargetLL1(LLAddress::kTypeEui48, "32:85:6c:5b:a1:ca");
+const LLAddress kTargetLL1(LLAddress::Type::kEui48, "32:85:6c:5b:a1:ca");
 
 // Option - Target link-layer - d4:25:8b:b2:cc:cb
-constexpr unsigned char kTargetLinkLayerOptionRaw2[] = {
+constexpr uint8_t kTargetLinkLayerOptionRaw2[] = {
   // Type=Targ LL Addr (2), Length=8 bytes (1), MAC=d4:25:8b:b2:cc:cb
   0x02, 0x01, 0xd4, 0x25,
   0x8b, 0xb2, 0xcc, 0xcb
 };
 
-const LLAddress kTargetLL2(LLAddress::kTypeEui48, "d4:25:8b:b2:cc:cb");
+const LLAddress kTargetLL2(LLAddress::Type::kEui48, "d4:25:8b:b2:cc:cb");
 
 // Warn Option - Target link-layer - 11:22:33:44:55:66:77:88:99 - OVERSIZE
-constexpr unsigned char kTargetLinkLayerOptionOverSizeRaw[] = {
+constexpr uint8_t kTargetLinkLayerOptionOverSizeRaw[] = {
   0x02, 0x02, 0x11, 0x22,
   0x33, 0x44, 0x55, 0x66,
   0x77, 0x88, 0x99, 0x00,
@@ -178,7 +174,7 @@ constexpr unsigned char kTargetLinkLayerOptionOverSizeRaw[] = {
 
 // Option - Prefix Information - 2620:0:1000:1511::/64
 //    On-Link, Autonomous, Valid for 72 hours, Preferred for 70 hours
-constexpr unsigned char kPrefixOptionRaw1[] = {
+constexpr uint8_t kPrefixOptionRaw1[] = {
   // Type=Prefix (3), Length=32-bytes (4), Prefix Length=64, L=1, A=1
   0x03, 0x04, 0x40, 0xc0,
   // Valid Lifetime= 72 hr (259200 s)
@@ -203,7 +199,7 @@ const IPAddress kPrefix1 = IPAddress("2620:0:1000:1511::");
 
 // Option - Prefix Information - 2401:fa00:480::/48
 //    Valid for 24 hours, Preferred for 12 hours
-constexpr unsigned char kPrefixOptionRaw2[] = {
+constexpr uint8_t kPrefixOptionRaw2[] = {
   // Type=Prefix (3), Length=32-bytes (4), Prefix Length=48, L=0, A=0
   0x03, 0x04, 0x30, 0x00,
   // Valid Lifetime= 24 hr (86400 s)
@@ -229,7 +225,7 @@ const IPAddress kPrefix2 = IPAddress("2401:fa00:480::");
 
 // Option - Redirected Header
 //    Length = 32 bytes (payload 24 bytes)
-constexpr unsigned char kRedirectedHeader1[] = {
+constexpr uint8_t kRedirectedHeader1[] = {
   // Type=Redirected Header (4), Length=32 bytes (4)
   0x04, 0x04, 0x00, 0x00,
   // Reserved
@@ -243,7 +239,7 @@ constexpr unsigned char kRedirectedHeader1[] = {
   0x6b, 0x65, 0x72, 0x73
 };
 
-constexpr unsigned char kIPHeaderAndData1[] = {
+constexpr uint8_t kIPHeaderAndData1[] = {
   0x49, 0x20, 0x6c, 0x69,
   0x6b, 0x65, 0x20, 0x63,
   0x68, 0x65, 0x65, 0x73,
@@ -253,7 +249,7 @@ constexpr unsigned char kIPHeaderAndData1[] = {
 };
 
 // Option - MTU - 1500
-constexpr unsigned char kMTUOptionRaw1[] = {
+constexpr uint8_t kMTUOptionRaw1[] = {
   // Type=MTU (5), Length=8 bytes (1)
   0x05, 0x01, 0x00, 0x00,
   // MTU=1500
@@ -263,7 +259,7 @@ constexpr unsigned char kMTUOptionRaw1[] = {
 constexpr uint32_t kMTU1 = 1500;
 
 // Option - Unknown (7)
-constexpr unsigned char kUnknownOption[] = {
+constexpr uint8_t kUnknownOption[] = {
   // Type=7, Length=8 bytes (1)
   0x07, 0x01, 0xde, 0xad,
   0xbe, 0xef, 0x13, 0x37
@@ -371,17 +367,17 @@ TEST(NeighborDiscoveryMessageTest, TestEmptyInstance) {
   }
 
   EXPECT_FALSE(message.HasSourceLinkLayerAddress());
-  LLAddress source_ll_address(LLAddress::kTypeEui48, "58:6d:8f:99:e5:be");
+  LLAddress source_ll_address(LLAddress::Type::kEui48, "58:6d:8f:99:e5:be");
   EXPECT_FALSE(message.GetSourceLinkLayerAddress(0, &source_ll_address));
   EXPECT_FALSE(message.GetSourceLinkLayerAddress(1000, &source_ll_address));
-  EXPECT_TRUE(LLAddress(LLAddress::kTypeEui48, "58:6d:8f:99:e5:be")
+  EXPECT_TRUE(LLAddress(LLAddress::Type::kEui48, "58:6d:8f:99:e5:be")
                   .Equals(source_ll_address));
 
   EXPECT_FALSE(message.HasTargetLinkLayerAddress());
-  LLAddress target_ll_address(LLAddress::kTypeEui48, "32:85:6c:5b:a1:ca");
+  LLAddress target_ll_address(LLAddress::Type::kEui48, "32:85:6c:5b:a1:ca");
   EXPECT_FALSE(message.GetTargetLinkLayerAddress(0, &target_ll_address));
   EXPECT_FALSE(message.GetTargetLinkLayerAddress(1000, &target_ll_address));
-  EXPECT_TRUE(LLAddress(LLAddress::kTypeEui48, "32:85:6c:5b:a1:ca")
+  EXPECT_TRUE(LLAddress(LLAddress::Type::kEui48, "32:85:6c:5b:a1:ca")
                   .Equals(target_ll_address));
 
   EXPECT_FALSE(message.HasPrefixInformation());

@@ -77,8 +77,8 @@ class NeighborDiscoveryMessage {
   explicit NeighborDiscoveryMessage(const shill::ByteString& raw_packet);
 
   // Getters.
-  Type type() const;
-  const shill::ByteString& message() const;
+  Type type() const { return type_; }
+  const shill::ByteString& message() const { return message_; }
 
   // Is the provided packet a properly formated ND ICMPv6 packet.
   bool IsValid() const;
@@ -208,12 +208,12 @@ class NeighborDiscoveryMessage {
   bool GetMTU(uint32_t opt_index, uint32_t* mtu) const;
   bool PushMTU(uint32_t mtu);
 
-  const unsigned char* GetConstData() const;
+  const uint8_t* GetConstData() const;
   size_t GetLength() const;
 
  private:
   // Gets the character bytes of the data.
-  unsigned char* GetData();
+  uint8_t* GetData();
 
   // Generic option methods for link-layer addresses.  Used for
   // both source and target ll address option methods.
@@ -232,9 +232,9 @@ class NeighborDiscoveryMessage {
 
   void AddOptionIndex(OptionType opt_type, uint32_t data_index);
 
-  unsigned char* GetOptionPointer(OptionType opt_type, uint32_t opt_index);
-  const unsigned char* GetConstOptionPointer(OptionType opt_type,
-                                             uint32_t opt_index) const;
+  uint8_t* GetOptionPointer(OptionType opt_type, uint32_t opt_index);
+  const uint8_t* GetConstOptionPointer(OptionType opt_type,
+                                       uint32_t opt_index) const;
 
   // ND type.
   Type type_;
