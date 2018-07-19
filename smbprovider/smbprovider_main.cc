@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/time/default_tick_clock.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 
@@ -158,8 +159,10 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
             GetKrb5ConfPath(), GetCCachePath(),
             std::move(kerberos_artifact_client));
 
-    auto mount_manager =
-        std::make_unique<MountManager>(std::move(credential_store));
+    auto tick_clock = std::make_unique<base::DefaultTickClock>();
+
+    auto mount_manager = std::make_unique<MountManager>(
+        std::move(credential_store), std::move(tick_clock));
 
     smb_provider_ = std::make_unique<SmbProvider>(
         std::move(dbus_object), std::move(samba_interface),

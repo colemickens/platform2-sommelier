@@ -14,6 +14,10 @@
 
 #include "smbprovider/metadata_cache.h"
 
+namespace base {
+class TickClock;
+};
+
 namespace smbprovider {
 
 class CredentialStore;
@@ -22,7 +26,8 @@ class CredentialStore;
 // with each mount.
 class MountManager {
  public:
-  explicit MountManager(std::unique_ptr<CredentialStore> credential_store);
+  explicit MountManager(std::unique_ptr<CredentialStore> credential_store,
+                        std::unique_ptr<base::TickClock> tick_clock);
   ~MountManager();
 
   // Returns true if |mount_id| is already mounted.
@@ -102,6 +107,7 @@ class MountManager {
   std::map<int32_t, MountInfo> mounts_;
   int32_t next_mount_id_ = 0;
   std::unique_ptr<CredentialStore> credential_store_;
+  std::unique_ptr<base::TickClock> tick_clock_;
 
   DISALLOW_COPY_AND_ASSIGN(MountManager);
 };

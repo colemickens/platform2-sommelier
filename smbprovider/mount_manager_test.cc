@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/test/simple_test_tick_clock.h>
 #include <gtest/gtest.h>
 
 #include "smbprovider/in_memory_credential_store.h"
@@ -25,7 +26,10 @@ class MountManagerTest : public testing::Test {
   MountManagerTest() {
     auto credential_store = std::make_unique<InMemoryCredentialStore>();
     credential_store_ = credential_store.get();
-    mounts_ = std::make_unique<MountManager>(std::move(credential_store));
+    auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
+    tick_clock_ = tick_clock.get();
+    mounts_ = std::make_unique<MountManager>(std::move(credential_store),
+                                             std::move(tick_clock));
   }
 
   ~MountManagerTest() override = default;
@@ -81,6 +85,7 @@ class MountManagerTest : public testing::Test {
   std::unique_ptr<MountManager> mounts_;
   TempFileManager temp_files_;
   CredentialStore* credential_store_;
+  base::SimpleTestTickClock* tick_clock_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountManagerTest);

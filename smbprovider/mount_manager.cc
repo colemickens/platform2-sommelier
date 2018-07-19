@@ -8,14 +8,17 @@
 #include <utility>
 
 #include <base/strings/string_util.h>
+#include <base/time/tick_clock.h>
 
 #include "smbprovider/credential_store.h"
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
 
-MountManager::MountManager(std::unique_ptr<CredentialStore> credential_store)
-    : credential_store_(std::move(credential_store)) {}
+MountManager::MountManager(std::unique_ptr<CredentialStore> credential_store,
+                           std::unique_ptr<base::TickClock> tick_clock)
+    : credential_store_(std::move(credential_store)),
+      tick_clock_(std::move(tick_clock)) {}
 
 MountManager::~MountManager() = default;
 

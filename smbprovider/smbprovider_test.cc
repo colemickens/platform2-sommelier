@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/test/simple_test_tick_clock.h>
 #include <dbus/mock_bus.h>
 #include <dbus/object_path.h>
 #include <dbus/smbprovider/dbus-constants.h>
@@ -174,8 +175,12 @@ class SmbProviderTest : public testing::Test {
     std::unique_ptr<FakeSambaInterface> fake_ptr =
         std::make_unique<FakeSambaInterface>();
     fake_samba_ = fake_ptr.get();
+
+    auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
+    fake_tick_clock_ = tick_clock.get();
+
     auto mount_manager_ptr = std::make_unique<MountManager>(
-        std::make_unique<InMemoryCredentialStore>());
+        std::make_unique<InMemoryCredentialStore>(), std::move(tick_clock));
     mount_manager_ = mount_manager_ptr.get();
 
     auto fake_artifact_client = std::make_unique<FakeKerberosArtifactClient>();
@@ -247,6 +252,7 @@ class SmbProviderTest : public testing::Test {
       new dbus::MockBus(dbus::Bus::Options());
   std::unique_ptr<SmbProvider> smbprovider_;
   FakeSambaInterface* fake_samba_;
+  base::SimpleTestTickClock* fake_tick_clock_;
   MountManager* mount_manager_;
   TempFileManager temp_file_manager_;
   FakeKerberosArtifactClient* kerberos_client_;
