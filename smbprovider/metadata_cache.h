@@ -12,6 +12,10 @@
 
 #include "smbprovider/proto.h"
 
+namespace base {
+class TickClock;
+}
+
 namespace smbprovider {
 
 // Maintains a cache of file and directory metadata. This is the data
@@ -28,7 +32,7 @@ namespace smbprovider {
 //    * Purging entries based on time.
 class MetadataCache {
  public:
-  MetadataCache();
+  explicit MetadataCache(base::TickClock* tick_clock);
   ~MetadataCache();
 
   MetadataCache& operator=(MetadataCache&& other) = default;
@@ -59,6 +63,7 @@ class MetadataCache {
   };
 
   std::map<std::string, CacheEntry> cache_;
+  base::TickClock* tick_clock_;  // Not owned
   DISALLOW_COPY_AND_ASSIGN(MetadataCache);
 };
 

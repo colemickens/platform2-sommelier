@@ -4,9 +4,12 @@
 
 #include "smbprovider/metadata_cache.h"
 
+#include <base/time/tick_clock.h>
+
 namespace smbprovider {
 
-MetadataCache::MetadataCache() = default;
+MetadataCache::MetadataCache(base::TickClock* tick_clock)
+    : tick_clock_(tick_clock) {}
 
 MetadataCache::~MetadataCache() = default;
 

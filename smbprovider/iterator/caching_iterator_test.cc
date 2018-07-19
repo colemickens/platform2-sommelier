@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include <base/test/simple_test_tick_clock.h>
 #include <gtest/gtest.h>
 
 #include "smbprovider/fake_samba_interface.h"
@@ -16,7 +17,10 @@ namespace smbprovider {
 
 class CachingIteratorTest : public testing::Test {
  public:
-  CachingIteratorTest() { cache_ = std::make_unique<MetadataCache>(); }
+  CachingIteratorTest() {
+    tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
+    cache_ = std::make_unique<MetadataCache>(tick_clock_.get());
+  }
 
   ~CachingIteratorTest() override = default;
 
@@ -32,6 +36,7 @@ class CachingIteratorTest : public testing::Test {
   }
 
   FakeSambaInterface fake_samba_;
+  std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<MetadataCache> cache_;
 
   DISALLOW_COPY_AND_ASSIGN(CachingIteratorTest);

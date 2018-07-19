@@ -86,8 +86,9 @@ class MountManager {
   // the metadata cache.
   struct MountInfo {
     MountInfo() = default;
-    explicit MountInfo(const std::string& mount_root) : mount_root(mount_root) {
-      cache = std::make_unique<MetadataCache>();
+    MountInfo(const std::string& mount_root, base::TickClock* tick_clock)
+        : mount_root(mount_root) {
+      cache = std::make_unique<MetadataCache>(tick_clock);
     }
 
     MountInfo& operator=(MountInfo&& other) = default;

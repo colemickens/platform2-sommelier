@@ -57,7 +57,7 @@ bool MountManager::AddMount(const std::string& mount_root,
   }
 
   can_remount_ = false;
-  mounts_[next_mount_id_] = MountInfo(mount_root);
+  mounts_[next_mount_id_] = MountInfo(mount_root, tick_clock_.get());
   *mount_id = next_mount_id_++;
   return true;
 }
@@ -76,7 +76,7 @@ bool MountManager::Remount(const std::string& mount_root,
     return false;
   }
 
-  mounts_[mount_id] = MountInfo(mount_root);
+  mounts_[mount_id] = MountInfo(mount_root, tick_clock_.get());
   next_mount_id_ = std::max(next_mount_id_, mount_id) + 1;
   return true;
 }

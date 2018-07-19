@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include <base/test/simple_test_tick_clock.h>
 #include <gtest/gtest.h>
 
 #include "smbprovider/metadata_cache.h"
@@ -21,12 +22,16 @@ bool AreEntriesEqual(const DirectoryEntry& lhs, const DirectoryEntry& rhs) {
 
 class MetadataCacheTest : public testing::Test {
  public:
-  MetadataCacheTest() { cache_ = std::make_unique<MetadataCache>(); }
+  MetadataCacheTest() {
+    tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
+    cache_ = std::make_unique<MetadataCache>(tick_clock_.get());
+  }
 
   ~MetadataCacheTest() override = default;
 
  protected:
   std::unique_ptr<MetadataCache> cache_;
+  std::unique_ptr<base::SimpleTestTickClock> tick_clock_;
 
   DISALLOW_COPY_AND_ASSIGN(MetadataCacheTest);
 };
