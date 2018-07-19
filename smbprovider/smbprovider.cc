@@ -178,6 +178,13 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
     return;
   }
 
+  // If the cache is enabled and we have the result, then return it.
+  if (metadata_cache_enabled_ &&
+      GetCachedEntry(options.mount_id(), full_path, out_entry)) {
+    *error_code = static_cast<int32_t>(ERROR_OK);
+    return;
+  }
+
   struct stat stat_info;
   int32_t get_status_error =
       samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
@@ -1145,6 +1152,29 @@ int32_t SmbProvider::GenerateDeleteList(
   // while-loop is only exited from if there's an iterator error.
   DCHECK_NE(0, it_result);
   return it_result;
+}
+
+bool SmbProvider::GetCachedEntry(int32_t mount_id,
+                                 const std::string full_path,
+                                 ProtoBlob* out_entry) {
+  MetadataCache* cache = nullptr;
+  if (!mount_manager_->GetMetadataCache(mount_id, &cache)) {
+    return false;
+  }
+
+  DCHECK(cache);
+  DirectoryEntry entry;
+  if (!cache->FindEntry(full_path, &entry)) {
+    return false;
+  }
+
+  DirectoryEntryProto proto;
+  ConvertToProto(entry, &proto);
+  if (SerializeProtoToBlob(proto, out_entry) != ERROR_OK) {
+    return false;
+  }
+
+  return true;
 }
 
 brillo::dbus_utils::FileDescriptor SmbProvider::GenerateEmptyFile() {

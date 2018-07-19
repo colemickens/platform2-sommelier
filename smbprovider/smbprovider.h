@@ -374,6 +374,10 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                              bool is_directory,
                              DeleteListProto* delete_list);
 
+  bool GetCachedEntry(int32_t mount_id,
+                      const std::string full_path,
+                      ProtoBlob* out_entry);
+
   // Generates an empty file with a file descriptor for transport over D-Bus.
   // This is needed since FileDescriptor causes a crash while being transported
   // if it is not valid.

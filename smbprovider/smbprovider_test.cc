@@ -665,9 +665,34 @@ TEST_F(SmbProviderTest, GetMetadataFailsWithInvalidProto) {
   EXPECT_TRUE(result.empty());
 }
 
+// GetMetadata (cache enabled) fails when an invalid protobuf with missing
+// fields is passed.
+TEST_F(SmbProviderTest, GetMetadataCacheEnabledFailsWithInvalidProto) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
+  int32_t err;
+  ProtoBlob result;
+  ProtoBlob empty_blob;
+  smbprovider_->GetMetadataEntry(empty_blob, &err, &result);
+  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
+  EXPECT_TRUE(result.empty());
+}
+
 // GetMetadata fails with when passed a |mount_id| that wasn't previously
 // mounted.
 TEST_F(SmbProviderTest, GetMetadataFailsWithUnmountedShare) {
+  int32_t err;
+  ProtoBlob result;
+  ProtoBlob get_metadata_blob =
+      CreateGetMetadataOptionsBlob(123, GetDefaultDirectoryPath());
+  smbprovider_->GetMetadataEntry(get_metadata_blob, &err, &result);
+  EXPECT_TRUE(result.empty());
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(err));
+}
+
+// GetMetadata (cache enabled) fails with when passed a |mount_id| that wasn't
+// previously mounted.
+TEST_F(SmbProviderTest, GetMetadataCacheEnabledFailsWithUnmountedShare) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
   int32_t err;
   ProtoBlob result;
   ProtoBlob get_metadata_blob =
@@ -713,6 +738,87 @@ TEST_F(SmbProviderTest, GetMetadataSucceeds) {
   EXPECT_EQ(kFileSize, entry.size());
   EXPECT_EQ(kFileDate, entry.last_modified_time());
 }
+
+// GetMetadata (cache enabled) succeeds when passed a valid share path
+// when the entry is not in the cache.
+TEST_F(SmbProviderTest, GetMetadataSucceedsCacheMiss) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
+
+  // Get the cache.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Nothing is in the cache, so the cache should miss and fall back to
+  // calling against the FakeSambaInterface.
+  EXPECT_TRUE(cache->IsEmpty());
+
+  ProtoBlob result;
+  int32_t error_code;
+  ProtoBlob get_metadata_blob =
+      CreateGetMetadataOptionsBlob(mount_id, GetDefaultFilePath());
+  smbprovider_->GetMetadataEntry(get_metadata_blob, &error_code, &result);
+
+  DirectoryEntryProto entry;
+  const std::string parsed_proto(result.begin(), result.end());
+  EXPECT_TRUE(entry.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_FALSE(entry.is_directory());
+  EXPECT_EQ("dog.jpg", entry.name());
+  EXPECT_EQ(kFileSize, entry.size());
+  EXPECT_EQ(kFileDate, entry.last_modified_time());
+}
+
+// GetMetadata (cache enabled) succeeds when passed a valid share path
+// and gets the cached value.
+TEST_F(SmbProviderTest, GetMetadataSucceedsCacheHit) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
+
+  // Get the cache and insert an entry that is different to the one
+  // that would be returned from the underlying interface.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Make an entry in the cache with a different size and date to the real
+  // underlying file.
+  const int64_t cached_file_size = kFileSize + 1;
+  const int64_t cached_date = kFileDate + 1;
+  DirectoryEntry cached_entry(false /* is_directory */, "dog.jpg",
+                              GetAddedFullFilePath(), cached_file_size,
+                              cached_date);
+  cache->AddEntry(cached_entry);
+  EXPECT_FALSE(cache->IsEmpty());
+
+  ProtoBlob result;
+  int32_t error_code;
+  ProtoBlob get_metadata_blob =
+      CreateGetMetadataOptionsBlob(mount_id, GetDefaultFilePath());
+  smbprovider_->GetMetadataEntry(get_metadata_blob, &error_code, &result);
+
+  DirectoryEntryProto entry;
+  const std::string parsed_proto(result.begin(), result.end());
+  EXPECT_TRUE(entry.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_FALSE(entry.is_directory());
+  EXPECT_EQ("dog.jpg", entry.name());
+
+  // Should get the values from the cache, not the real values.
+  EXPECT_EQ(cached_file_size, entry.size());
+  EXPECT_EQ(cached_date, entry.last_modified_time());
+}
+
+// TODO(zentaro): Future CL adds tests for expiration.
 
 // OpenFile fails when called on a non existent file.
 TEST_F(SmbProviderTest, OpenFileFailsFileDoesNotExist) {
