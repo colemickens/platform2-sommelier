@@ -12,6 +12,8 @@
 #include <base/files/file_util.h>
 #include <base/macros.h>
 
+#include "smbprovider/metadata_cache.h"
+
 namespace smbprovider {
 
 class CredentialStore;
@@ -66,6 +68,9 @@ class MountManager {
                    const std::string& entry_path,
                    std::string* full_path) const;
 
+  // Gets a pointer to the metadata cache for |mount_id|.
+  bool GetMetadataCache(int32_t mount_id, MetadataCache** cache) const;
+
   // Uses the mount root associated with |mount_id| to remove the root path
   // from |full_path| to yield a relative path.
   std::string GetRelativePath(int32_t mount_id,
@@ -74,16 +79,16 @@ class MountManager {
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.
-  //
-  // TODO(zentaro): Add cache in follow up CL.
   struct MountInfo {
     MountInfo() = default;
-    explicit MountInfo(const std::string& mount_root)
-        : mount_root(mount_root) {}
+    explicit MountInfo(const std::string& mount_root) : mount_root(mount_root) {
+      cache = std::make_unique<MetadataCache>();
+    }
 
     MountInfo& operator=(MountInfo&& other) = default;
 
     std::string mount_root;
+    std::unique_ptr<MetadataCache> cache;
 
     DISALLOW_COPY_AND_ASSIGN(MountInfo);
   };

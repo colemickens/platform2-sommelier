@@ -106,6 +106,20 @@ bool MountManager::GetFullPath(int32_t mount_id,
   return true;
 }
 
+bool MountManager::GetMetadataCache(int32_t mount_id,
+                                    MetadataCache** cache) const {
+  DCHECK(cache);
+
+  auto mount_iter = mounts_.find(mount_id);
+  if (mount_iter == mounts_.end()) {
+    return false;
+  }
+
+  *cache = mount_iter->second.cache.get();
+  DCHECK(*cache);
+  return true;
+}
+
 std::string MountManager::GetRelativePath(int32_t mount_id,
                                           const std::string& full_path) const {
   auto mount_iter = mounts_.find(mount_id);

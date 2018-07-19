@@ -194,6 +194,30 @@ TEST_F(MountManagerTest, TestGetFullPath) {
   EXPECT_EQ(expected_full_path, actual_full_path);
 }
 
+TEST_F(MountManagerTest, TestGetCacheNoMounts) {
+  MetadataCache* cache = nullptr;
+
+  EXPECT_FALSE(mounts_->GetMetadataCache(0, &cache));
+}
+
+TEST_F(MountManagerTest, TestGetCache) {
+  int32_t mount_id;
+  EXPECT_TRUE(AddMount("smb://server/share", &mount_id));
+
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mounts_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+}
+
+TEST_F(MountManagerTest, TestGetCacheForInvalidMount) {
+  int32_t mount_id;
+  EXPECT_TRUE(AddMount("smb://server/share", &mount_id));
+
+  // mount_id + 1 does not exist.
+  MetadataCache* cache = nullptr;
+  EXPECT_FALSE(mounts_->GetMetadataCache(mount_id + 1, &cache));
+}
+
 TEST_F(MountManagerTest, TestGetFullPathWithInvalidId) {
   // Add a new mount.
   const std::string root_path = "smb://server/share";

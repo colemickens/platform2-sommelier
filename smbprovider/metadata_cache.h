@@ -31,6 +31,8 @@ class MetadataCache {
   MetadataCache();
   ~MetadataCache();
 
+  MetadataCache& operator=(MetadataCache&& other) = default;
+
   // Adds an entry to the cache.
   void AddEntry(const DirectoryEntry& entry);
 
