@@ -587,8 +587,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     FilePath dest = mount_args.to_migrate_from_ecryptfs ?
         GetUserTemporaryMountDirectory(obfuscated_username) : mount_point_;
     if (!RememberMount(vault_path, dest, "ecryptfs", ecryptfs_options)) {
-      PLOG(ERROR) << "Cryptohome mount failed for vault "
-                  << vault_path.value();
+      LOG(ERROR) << "Cryptohome mount failed";
       UnmountAll();
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
@@ -619,7 +618,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // as passthrough directories.
   CreateTrackedSubdirectories(credentials, created);
 
-  FilePath user_home = GetMountedUserHomePath(obfuscated_username);
+  const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
+  const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
   if (created)
     CopySkeleton(user_home);
 
@@ -630,47 +630,15 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   shadow_only_ = mount_args.shadow_only;
+
   // When migrating, it's better to avoid exposing the new ext4 crypto dir.
   // Also don't expose home directory if a shadow-only mount was requested.
-  if (!mount_args.to_migrate_from_ecryptfs && !mount_args.shadow_only) {
-    if (legacy_mount_)
-      MountLegacyHome(user_home, mount_error);
-
-    FilePath user_multi_home = GetUserPath(username);
-    if (!RememberBind(user_home, user_multi_home)) {
-      PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
-                  << user_multi_home.value();
-      UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
-      return false;
-    }
-
-    // Mount /home/chronos/u<s_h_o_u>.
-    FilePath multi_home = GetNewUserPath(username);
-    if (!RememberBind(user_home, multi_home)) {
-      PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
-                  << multi_home.value();
-      UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
-      return false;
-    }
-
-    FilePath root_home = GetMountedRootHomePath(obfuscated_username);
-    FilePath root_multi_home = GetRootPath(username);
-    if (!RememberBind(root_home, root_multi_home)) {
-      PLOG(ERROR) << "Bind mount failed: " << root_home.value() << " -> "
-                  << root_multi_home.value();
-      UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
-      return false;
-    }
-
-    if (!MountDaemonStoreDirectories(root_home, obfuscated_username)) {
-      LOG(ERROR) << "Failed to mount daemon-store directories, aborting mount";
-      UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
-      return false;
-    }
+  if (!mount_args.to_migrate_from_ecryptfs && !mount_args.shadow_only &&
+      !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
+                                 root_home)) {
+    UnmountAll();
+    *mount_error = MOUNT_ERROR_FATAL;
+    return false;
   }
 
   if (!UserSignInEffects(true /* is_mount */, is_owner)) {
@@ -787,7 +755,7 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
                      mount_point,
                      kEphemeralMountType,
                      kEphemeralMountOptions)) {
-    PLOG(ERROR) << "Can't mount ephemeral mount point";
+    LOG(ERROR) << "Can't mount ephemeral mount point";
     return false;
   }
 
@@ -801,29 +769,12 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
       GetMountedEphemeralUserHomePath(obfuscated_username);
   const FilePath root_home =
       GetMountedEphemeralRootHomePath(obfuscated_username);
-  const FilePath user_multi_home = GetUserPath(username);
-  const FilePath root_multi_home = GetRootPath(username);
-  if (!SetUpEphemeralCryptohome(user_home, user_multi_home))
-    return false;
-  if (!RememberBind(root_home, root_multi_home)) {
-    LOG(ERROR) << "Mount of ephemeral root home at " << root_multi_home.value()
-               << "failed: " << errno;
-    return false;
-  }
 
-  if (legacy_mount_ && !MountLegacyHome(user_multi_home, nullptr))
+  if (!SetUpEphemeralCryptohome(user_home))
     return false;
 
-  FilePath multi_home = GetNewUserPath(username);
-  if (!RememberBind(user_multi_home, multi_home)) {
-    PLOG(ERROR) << "Bind mount failed: " << user_multi_home.value() << " -> "
-                << multi_home.value();
-    return false;
-  }
-
-  if (!MountDaemonStoreDirectories(root_home, obfuscated_username)) {
-    LOG(ERROR)
-        << "Failed to mount daemon-store directories, aborting ephemeral mount";
+  if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
+                                 root_home)) {
     return false;
   }
 
@@ -836,8 +787,7 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
   return true;
 }
 
-bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
-                                     const FilePath& home_dir) {
+bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path) {
   CopySkeleton(source_path);
 
   // Create the Downloads directory if it does not exist so that it can later be
@@ -867,32 +817,31 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
   if (!SetupGroupAccess(FilePath(source_path)))
     return false;
 
-  if (!RememberBind(source_path, home_dir)) {
-    LOG(ERROR) << "Bind mount of ephemeral user home from "
-               << source_path.value() << " to "
-               << home_dir.value() << " failed: " << errno;
-    return false;
-  }
   return true;
 }
 
 bool Mount::RememberMount(const FilePath& src,
                           const FilePath& dest, const std::string& type,
                           const std::string& options) {
-  if (platform_->Mount(src, dest, type, options)) {
-    mounts_.Push(src, dest);
-    return true;
+  if (!platform_->Mount(src, dest, type, options)) {
+    PLOG(ERROR) << "Mount failed: " << src.value() << " -> " << dest.value();
+    return false;
   }
-  return false;
+
+  mounts_.Push(src, dest);
+  return true;
 }
 
 bool Mount::RememberBind(const FilePath& src,
                          const FilePath& dest) {
-  if (platform_->Bind(src, dest)) {
-    mounts_.Push(src, dest);
-    return true;
+  if (!platform_->Bind(src, dest)) {
+    PLOG(ERROR) << "Bind mount failed: " << src.value() << " -> "
+                << dest.value();
+    return false;
   }
-  return false;
+
+  mounts_.Push(src, dest);
+  return true;
 }
 
 void Mount::UnmountAll() {
@@ -1918,19 +1867,15 @@ FilePath Mount::GetEphemeralSparseFile(const std::string& obfuscated_username) {
       .Append(obfuscated_username);
 }
 
-bool Mount::MountLegacyHome(const FilePath& from, MountError* mount_error) {
+bool Mount::MountLegacyHome(const FilePath& from) {
   // Multiple mounts can't live on the legacy mountpoint.
   if (platform_->IsDirectoryMounted(FilePath(kDefaultHomeDir))) {
     LOG(INFO) << "Skipping binding to /home/chronos/user.";
-  } else if (!RememberBind(from, FilePath(kDefaultHomeDir))) {
-    PLOG(ERROR) << "Bind mount failed: " << from.value()
-                << " -> " << kDefaultHomeDir;
-    UnmountAll();
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
-    return false;
+    return true;
   }
+
+  if (!RememberBind(from, FilePath(kDefaultHomeDir)))
+    return false;
 
   return true;
 }
@@ -2020,6 +1965,36 @@ bool Mount::UserSignInEffects(bool is_mount, bool is_owner) {
   return tpm->SetUserType(user_type);
 }
 
+bool Mount::MountHomesAndDaemonStores(const std::string& username,
+                                      const std::string& obfuscated_username,
+                                      const FilePath& user_home,
+                                      const FilePath& root_home) {
+  // Mount /home/chronos/user.
+  if (legacy_mount_ && !MountLegacyHome(user_home))
+    return false;
+
+  // Mount  /home/chronos/u-<user_hash>
+  const FilePath new_user_path = GetNewUserPath(username);
+  if (!RememberBind(user_home, new_user_path))
+    return false;
+
+  // Mount /home/user/<user_hash>.
+  const FilePath user_multi_home = GetUserPath(username);
+  if (!RememberBind(user_home, user_multi_home))
+    return false;
+
+  // Mount /home/root/<user_hash>.
+  const FilePath root_multi_home = GetRootPath(username);
+  if (!RememberBind(root_home, root_multi_home))
+    return false;
+
+  // Mount directories used by daemons to store per-user data.
+  if (!MountDaemonStoreDirectories(root_home, obfuscated_username))
+    return false;
+
+  return true;
+}
+
 bool Mount::MountDaemonStoreDirectories(
     const FilePath& root_home, const std::string& obfuscated_username) {
   // Iterate over all directories in /etc/daemon-store. This list is on rootfs,
@@ -2085,12 +2060,8 @@ bool Mount::MountDaemonStoreDirectories(
     // Assuming that |run_daemon_store_path| is a shared mount and the daemon
     // runs in a file system namespace with |run_daemon_store_path| mounted as
     // slave, this mount event propagates into the daemon.
-    if (!RememberBind(mount_source, mount_target)) {
-      LOG(ERROR) << "Bind mount of daemon store directory from "
-                 << mount_source.value() << " to " << mount_target.value()
-                 << " failed: " << errno;
+    if (!RememberBind(mount_source, mount_target))
       return false;
-    }
   }
 
   return true;

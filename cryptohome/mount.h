@@ -589,9 +589,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   source_path - A name for the mount point which will appear in /etc/mtab.
-  //   home_dir - The path at which the user's cryptohome has been mounted.
-  bool SetUpEphemeralCryptohome(const base::FilePath& source_path,
-                                const base::FilePath& home_dir);
+  bool SetUpEphemeralCryptohome(const base::FilePath& source_path);
 
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to the default_user_
@@ -694,7 +692,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Mount the legacy home directory.
   // The legacy home directory is from before multiprofile and is mounted at
   // /home/chronos/user.
-  bool MountLegacyHome(const base::FilePath& from, MountError* mount_error);
+  bool MountLegacyHome(const base::FilePath& from);
 
   // TODO(chromium:795310): include all side-effects into the following hook
   // and move it out of mount.cc.
@@ -707,6 +705,20 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   |is_owner| - true if mounted for an owner user, false otherwise.
   // Returns true if successful, false otherwise.
   bool UserSignInEffects(bool is_mount, bool is_owner);
+
+  // Sets up bind mounts from |user_home| and |root_home| to
+  //   - /home/chronos/user (see MountLegacyHome()),
+  //   - /home/chronos/u-<user_hash>,
+  //   - /home/user/<user_hash>,
+  //   - /home/root/<user_hash> and
+  //   - /run/daemon-store/$daemon/<user_hash>
+  //     (see MountDaemonStoreDirectories()).
+  // The parameters have the same meaning as in MountCryptohomeInner resp.
+  // MountEphemeralCryptohomeInner. Returns true if successful, false otherwise.
+  bool MountHomesAndDaemonStores(const std::string& username,
+                                 const std::string& obfuscated_username,
+                                 const base::FilePath& user_home,
+                                 const base::FilePath& root_home);
 
   // Bind-mounts
   //   /home/.shadow/$hash/mount/root/$daemon (*)

@@ -3173,16 +3173,15 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
         Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
         Property(&FilePath::value, StartsWith("/home/user/"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-      Bind(
-        Property(&FilePath::value, StartsWith("/home/user/")),
-        FilePath("/home/chronos/user")))
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-      Bind(
-        Property(&FilePath::value, StartsWith("/home/user/")),
-        Property(&FilePath::value, StartsWith("/home/chronos/u-"))))
-    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(Property(&FilePath::value,
+                                       StartsWith(kEphemeralCryptohomeDir)),
+                              FilePath("/home/chronos/user")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      platform_,
+      Bind(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
+           Property(&FilePath::value, StartsWith("/home/chronos/u-"))))
+      .WillOnce(Return(true));
 
   // Guest -> not an owner.
   // Also will be called on implicit Unmount.
