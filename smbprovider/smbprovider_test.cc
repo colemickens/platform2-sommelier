@@ -15,6 +15,7 @@
 #include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
+#include "smbprovider/metadata_cache.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -526,8 +527,34 @@ TEST_F(SmbProviderTest, ReadDirectoryCacheEnabledPopulatesMetadata) {
   int32_t error_code;
   ProtoBlob read_directory_blob =
       CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
-  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
 
+  // Get the cache which should initially be empty.
+  MetadataCache* cache = nullptr;
+  mount_manager_->GetMetadataCache(mount_id, &cache);
+  EXPECT_TRUE(cache->IsEmpty());
+
+  // Read the directory and the cache should be populated.
+  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
+  EXPECT_FALSE(cache->IsEmpty());
+
+  // Check the cache entries.
+  DirectoryEntry cache_entry1;
+  EXPECT_TRUE(
+      cache->FindEntry(GetDefaultFullPath("/path/file.jpg"), &cache_entry1));
+  EXPECT_FALSE(cache_entry1.is_directory);
+  EXPECT_EQ("file.jpg", cache_entry1.name);
+  EXPECT_EQ(kFileSize, cache_entry1.size);
+  EXPECT_EQ(kFileDate, cache_entry1.last_modified_time);
+
+  DirectoryEntry cache_entry2;
+  EXPECT_TRUE(
+      cache->FindEntry(GetDefaultFullPath("/path/images"), &cache_entry2));
+  EXPECT_TRUE(cache_entry2.is_directory);
+  EXPECT_EQ("images", cache_entry2.name);
+  EXPECT_EQ(0, cache_entry2.size);
+  EXPECT_EQ(kFileDate, cache_entry2.last_modified_time);
+
+  // Check the metadata in the response.
   DirectoryEntryListProto entries;
   const std::string parsed_proto(results.begin(), results.end());
   EXPECT_TRUE(entries.ParseFromString(parsed_proto));

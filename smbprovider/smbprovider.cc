@@ -13,6 +13,7 @@
 
 #include "smbprovider/constants.h"
 #include "smbprovider/file_copy_progress.h"
+#include "smbprovider/iterator/caching_iterator.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/iterator/post_depth_first_iterator.h"
 #include "smbprovider/iterator/share_iterator.h"
@@ -155,13 +156,25 @@ void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
 
   std::string full_path;
   Proto options;
-
   if (ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
-    Iterator it =
-        include_metadata
-            ? GetMetadataIterator<Iterator>(full_path, samba_interface_.get())
-            : GetIterator<Iterator>(full_path, samba_interface_.get());
-    GetEntries(options, std::move(it), error_code, out_entries);
+    MetadataCache* cache = nullptr;
+    if (include_metadata) {
+      bool got_cache =
+          mount_manager_->GetMetadataCache(GetMountId(options), &cache);
+      DCHECK(got_cache);
+      DCHECK(cache);
+    }
+
+    if (include_metadata && cache) {
+      GetEntries(options,
+                 GetCachingIterator<Iterator>(full_path, samba_interface_.get(),
+                                              cache),
+                 error_code, out_entries);
+    } else {
+      GetEntries(options,
+                 GetIterator<Iterator>(full_path, samba_interface_.get()),
+                 error_code, out_entries);
+    }
   }
 }
 
