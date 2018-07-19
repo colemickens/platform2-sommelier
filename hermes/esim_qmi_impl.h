@@ -22,17 +22,21 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   static std::unique_ptr<EsimQmiImpl> Create();
   static std::unique_ptr<EsimQmiImpl> CreateForTest(base::ScopedFD* sock);
 
-  ~EsimQmiImpl() override = default;
-
-  // Open logical channel on |slot_| to the eSIM. The slot specified should be
-  // the one associated with the eSIM chip.
+  // Sets up FileDescriptorWatcher and transaction handling. Gets node and port
+  // for UIM service from QRTR. Calls |success_callback| upon successful
+  // intialization, |error_callback| on error.
   //
   // Parameters
-  //  callback      - function to call once the channel has been successfully
-  //                  opened
-  //  error_callack - function handle error if eSIM fails to open channel
-  void Initialize(const DataCallback& data_callback,
+  //  success_callback  - Closure to continue execution after eSIM is
+  //                      initialized
+  //  error_callack     - function to handle error if initialization fails
+  void Initialize(const base::Closure& success_callback,
                   const ErrorCallback& error_callback) override;
+
+  ~EsimQmiImpl() override = default;
+
+  void OpenLogicalChannel(const DataCallback& data_callback,
+                          const ErrorCallback& error_callback) override;
   void GetInfo(int which,
                const DataCallback& data_callback,
                const ErrorCallback& error_callback) override;
@@ -43,11 +47,8 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
                           const ErrorCallback& error_callback) override;
 
  private:
-  EsimQmiImpl(const uint8_t slot, base::ScopedFD fd);
+  EsimQmiImpl(uint8_t slot, base::ScopedFD fd);
 
-  void OnOpenChannel(const DataCallback& data_callback,
-                     const ErrorCallback& error_callback,
-                     const DataBlob& return_data);
   void CloseChannel();
   void SendEsimMessage(const QmiCommand command,
                        const DataBlob& data,
@@ -69,6 +70,19 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   uint8_t slot_;
 
   DataBlob buffer_;
+
+  // Node and port to pass to qrtr_sendto, returned from qrtr_new_lookup
+  // response, which contains QRTR_TYPE_NEW_SERVER and the node and port number
+  // to use in following qrtr_sendto calls.
+  uint32_t node_;
+  uint32_t port_;
+
+  // Logical Channel that will be used to communicate with the chip, returned
+  // from OPEN_LOGICAL_CHANNEL request sent once the QRTR socket has been
+  // opened.
+  uint8_t channel_;
+
+  base::Closure initialize_callback_;
 
   // ScopedFD to hold the qrtr socket file descriptor returned by qrtr_open.
   // Initialized in Create or CreateForTest, which will be passed to the

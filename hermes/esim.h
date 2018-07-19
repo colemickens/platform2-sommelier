@@ -35,8 +35,19 @@ class Esim {
 
   virtual ~Esim() = default;
 
-  virtual void Initialize(const DataCallback& data_callback,
+  virtual void Initialize(const base::Closure& success_callback,
                           const ErrorCallback& error_callback) = 0;
+
+  // Makes eSIM API call to request the eSIM to open a logical channel to
+  // communicate through. This will be the method through which all two way
+  // communication will be dealt with the hardware. Calls |data_callback|
+  // on successful open channel, or |error_callback| on error.
+  //
+  // Parameters
+  //  data_callback   - function to call on successful channel opening
+  //  error_callback  - function to handle error returned from eSIM
+  virtual void OpenLogicalChannel(const DataCallback& data_callback,
+                                  const ErrorCallback& error_callback) = 0;
 
   // Makes eSIM API call to request the eSIM to return either the info1 or
   // the info2 block of data to send to the SM-DP+ server to begin

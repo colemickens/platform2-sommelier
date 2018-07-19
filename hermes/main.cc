@@ -19,13 +19,18 @@ void ErrorCallback(hermes::LpdError error) {}
 
 void SuccessCallback() {}
 
-void InitError(hermes::EsimError error) {}
+void OnInitialization(hermes::Lpd* lpd) {
+  lpd->InstallProfile(base::Bind(&SuccessCallback), base::Bind(&ErrorCallback));
+}
+
+void InitError(hermes::LpdError error) {}
 
 int main(int argc, char** argv) {
   base::MessageLoop message_loop(base::MessageLoop::TYPE_IO);
   auto esim = hermes::EsimQmiImpl::Create();
+  CHECK(esim);
   hermes::Lpd lpd(std::move(esim), std::make_unique<hermes::SmdpFiImpl>());
-  lpd.InstallProfile(base::Bind(&SuccessCallback), base::Bind(&ErrorCallback));
+  lpd.Initialize(base::Bind(&OnInitialization, &lpd), base::Bind(&InitError));
   base::RunLoop().Run();
 
   return EXIT_SUCCESS;

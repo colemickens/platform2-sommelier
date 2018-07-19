@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 
 #include "hermes/qmi_constants.h"
 
@@ -28,20 +29,25 @@ bool CreateSocketPair(base::ScopedFD* one, base::ScopedFD* two) {
 
 namespace hermes {
 
-EsimQmiImpl::EsimQmiImpl(const uint8_t slot, base::ScopedFD fd)
+EsimQmiImpl::EsimQmiImpl(uint8_t slot, base::ScopedFD fd)
     : watcher_(FROM_HERE),
       slot_(slot),
       buffer_(4096),
+      node_(-1),
+      port_(-1),
+      channel_(-1),
       qrtr_socket_fd_(std::move(fd)),
       weak_factory_(this) {}
 
-void EsimQmiImpl::Initialize(const DataCallback& data_callback,
+void EsimQmiImpl::Initialize(const base::Closure& success_callback,
                              const ErrorCallback& error_callback) {
-  SendEsimMessage(
-      QmiCommand::kOpenLogicalChannel, DataBlob(1, slot_),
-      base::Bind(&EsimQmiImpl::OnOpenChannel, weak_factory_.GetWeakPtr(),
-                 data_callback, error_callback),
-      error_callback);
+  bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
+      qrtr_socket_fd_.get(), true /* persistant */,
+      base::MessageLoopForIO::WATCH_READ, &watcher_, this);
+  CHECK(ret);
+  qrtr_new_lookup(qrtr_socket_fd_.get(), kQrtrUimService, 1 /* version */,
+                  0 /* instance */);
+  initialize_callback_ = success_callback;
 }
 
 // static
@@ -50,10 +56,7 @@ std::unique_ptr<EsimQmiImpl> EsimQmiImpl::Create() {
   if (!fd.is_valid()) {
     return nullptr;
   }
-  // qrtr_new_lookup(fd, service, version, instance)
-  qrtr_new_lookup(fd.get(), kQrtrUimService, 1, 0);
-  return std::unique_ptr<EsimQmiImpl>(
-      new EsimQmiImpl(kEsimSlot, std::move(fd)));
+  return base::WrapUnique(new EsimQmiImpl(kEsimSlot, std::move(fd)));
 }
 
 // static
@@ -63,8 +66,13 @@ std::unique_ptr<EsimQmiImpl> EsimQmiImpl::CreateForTest(base::ScopedFD* sock) {
     return nullptr;
   }
 
-  return std::unique_ptr<EsimQmiImpl>(
-      new EsimQmiImpl(kEsimSlot, std::move(fd)));
+  return base::WrapUnique(new EsimQmiImpl(kEsimSlot, std::move(fd)));
+}
+
+void EsimQmiImpl::OpenLogicalChannel(const DataCallback& data_callback,
+                                     const ErrorCallback& error_callback) {
+  SendEsimMessage(QmiCommand::kOpenLogicalChannel, data_callback,
+                  error_callback);
 }
 
 // TODO(jruthe): pass |which| to EsimQmiImpl::SendEsimMessage to make the
@@ -106,13 +114,6 @@ void EsimQmiImpl::AuthenticateServer(const DataBlob& server_data,
   }
 
   SendEsimMessage(QmiCommand::kSendApdu, data_callback, error_callback);
-}
-
-void EsimQmiImpl::OnOpenChannel(const DataCallback& data_callback,
-                                const ErrorCallback& error_callback,
-                                const DataBlob& return_data) {
-  // TODO(jruthe): need qmi packet parsing
-  data_callback.Run(return_data);
 }
 
 void EsimQmiImpl::SendEsimMessage(const QmiCommand command,
@@ -181,6 +182,18 @@ void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
   }
 
   // TODO(jruthe): parse qrtr packet into different responses
+  switch (pkt.type) {
+    case QRTR_TYPE_NEW_SERVER:
+      if (pkt.service == kQrtrUimService && channel_ == kInvalidChannel) {
+        port_ = pkt.port;
+        node_ = pkt.node;
+        initialize_callback_.Run();
+      }
+      break;
+    default:
+      DLOG(INFO) << "unkown QRTR packet type";
+      break;
+  }
 }
 
 void EsimQmiImpl::OnFileCanWriteWithoutBlocking(int fd) {

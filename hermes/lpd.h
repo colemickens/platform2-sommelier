@@ -37,6 +37,9 @@ class Lpd {
   Lpd(std::unique_ptr<Esim> esim, std::unique_ptr<Smdp> smpd);
   ~Lpd();
 
+  void Initialize(const SuccessCallback& success_callback,
+                  const LpdErrorCallback& error_callback);
+
   // Performs the Common Mutual Authentication Procedure as specified in SGP.22
   // section 3.1.2, as well as the Profile Download and Installation as
   // specified in SGP.22 section 3.1.3. There are three major steps to install a
@@ -66,6 +69,10 @@ class Lpd {
 
   void OnAuthenticateError(LpdError error);
 
+  // Second parameter is not needed in this case, but this keeps the function
+  // signature the same as the rest of the Esim callbacks.
+  void OnOpenLogicalChannel(const SuccessCallback& success_callback,
+                            const std::vector<uint8_t>&);
   void OnEsimInfoResult(const SuccessCallback& success_callback,
                         const std::vector<uint8_t>& info);
   void OnEsimChallengeResult(const SuccessCallback& success_callback,

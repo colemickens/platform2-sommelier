@@ -29,11 +29,24 @@ void Lpd::InstallProfile(const SuccessCallback& success_callback,
   Authenticate();
 }
 
+void Lpd::Initialize(const SuccessCallback& success_callback,
+                     const Lpd::LpdErrorCallback& error_callback) {
+  esim_->Initialize(success_callback, esim_error_handler_);
+}
+
 void Lpd::Authenticate() {
+  esim_->OpenLogicalChannel(
+      base::Bind(
+          &Lpd::OnOpenLogicalChannel, base::Unretained(this),
+          base::Bind(&Lpd::OnAuthenticateSuccess, base::Unretained(this))),
+      esim_error_handler_);
+}
+
+void Lpd::OnOpenLogicalChannel(const Lpd::SuccessCallback& success_callback,
+                               const std::vector<uint8_t>&) {
   esim_->GetInfo(kEsimInfo1,
                  base::Bind(&Lpd::OnEsimInfoResult, base::Unretained(this),
-                            base::Bind(&Lpd::OnAuthenticateSuccess,
-                                       base::Unretained(this))),
+                            success_callback),
                  esim_error_handler_);
 }
 

@@ -18,6 +18,8 @@ constexpr uint16_t kEsimInfo1 = 0xBF20;
 // support different slots in the future.
 constexpr uint8_t kEsimSlot = 0x01;
 
+constexpr uint8_t kInvalidChannel = -1;
+
 // QMI UIM command codes as specified by QMI UIM service.
 enum class QmiCommand {
   kSendApdu = 0x003B,
