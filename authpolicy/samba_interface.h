@@ -140,6 +140,13 @@ class SambaInterface {
 
   const std::string& user_account_id() const { return user_account_id_; }
 
+  // Returns true if the current user's domain is trusted by the machine domain.
+  // Must be logged in.
+  bool is_user_affiliated() const {
+    DCHECK(user_logged_in_);
+    return is_user_affiliated_;
+  }
+
   const std::string& machine_name() const {
     return device_account_.netbios_name;
   }
@@ -254,8 +261,15 @@ class SambaInterface {
   ErrorType UpdateAccountData(AccountData* account) WARN_UNUSED_RESULT;
 
   // Checks whether the ADS server for |account| is available. Currently
-  // implementing by calling net ads workgroup.
+  // implemented by calling net ads workgroup.
   ErrorType PingServer(AccountData* account) WARN_UNUSED_RESULT;
+
+  // Returns true if the current user is affiliated with the machine domain in
+  // the sense that the machine domain trusts the user domain. Returns false
+  // otherwise and on error. Currently implemented by calling net ads search for
+  // the machine account using the user's Kerberos ticket. The search command is
+  // sent to the device's server.
+  bool IsUserAffiliated() WARN_UNUSED_RESULT;
 
   // Acquire a Kerberos ticket-granting-ticket for the user account.
   // |password_fd| is a file descriptor containing the user's password.
@@ -411,6 +425,8 @@ class SambaInterface {
   uint64_t user_pwd_last_set_ = 0;
   // Is the user logged in?
   bool user_logged_in_ = false;
+  // Is the user affiliated with the machine's domain?
+  bool is_user_affiliated_ = false;
   // Last AuthenticateUser() error.
   ErrorType last_auth_error_ = ERROR_NONE;
 

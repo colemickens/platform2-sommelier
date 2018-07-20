@@ -29,9 +29,9 @@ using login_manager::PolicyDescriptor;
 
 namespace authpolicy {
 
-const char kChromeUserPolicyType[] = "google/chromeos/user";
-const char kChromeDevicePolicyType[] = "google/chromeos/device";
-const char kChromeExtensionPolicyType[] = "google/chrome/extension";
+constexpr char kChromeUserPolicyType[] = "google/chromeos/user";
+constexpr char kChromeDevicePolicyType[] = "google/chromeos/device";
+constexpr char kChromeExtensionPolicyType[] = "google/chrome/extension";
 
 namespace {
 
@@ -436,9 +436,12 @@ void AuthPolicy::StoreSinglePolicy(
     policy_data.set_username(samba_.GetUserPrincipal());
     // Device id in the proto also could be used as an account/client id.
     policy_data.set_device_id(samba_.user_account_id());
+    if (samba_.is_user_affiliated())
+      policy_data.add_user_affiliation_ids(kAffiliationMarker);
   } else {
     DCHECK(descriptor.account_type() == login_manager::ACCOUNT_TYPE_DEVICE);
     policy_data.set_device_id(samba_.machine_name());
+    policy_data.add_device_affiliation_ids(kAffiliationMarker);
   }
 
   // TODO(crbug.com/831995): Use timer that can never run backwards and enable

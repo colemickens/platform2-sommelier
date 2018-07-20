@@ -637,6 +637,9 @@ class AuthPolicyTest : public testing::Test {
         validate_user_policy_(policy);
         user_policy_validated_ = true;
       }
+      user_affiliation_marker_set_ =
+          policy_data.user_affiliation_ids_size() == 1 &&
+          policy_data.user_affiliation_ids(0) == kAffiliationMarker;
     } else if (policy_data.policy_type() == kChromeDevicePolicyType) {
       EXPECT_EQ(descriptor.account_type(), login_manager::ACCOUNT_TYPE_DEVICE);
       EXPECT_TRUE(descriptor.account_id().empty());
@@ -648,6 +651,8 @@ class AuthPolicyTest : public testing::Test {
         validate_device_policy_(policy);
         device_policy_validated_ = true;
       }
+      EXPECT_EQ(1, policy_data.device_affiliation_ids_size());
+      EXPECT_EQ(kAffiliationMarker, policy_data.device_affiliation_ids(0));
     } else if (policy_data.policy_type() == kChromeExtensionPolicyType) {
       EXPECT_EQ(descriptor.domain(), login_manager::POLICY_DOMAIN_EXTENSIONS);
       EXPECT_EQ(descriptor.component_id(), policy_data.settings_entity_id());
@@ -829,6 +834,10 @@ class AuthPolicyTest : public testing::Test {
   bool user_policy_validated_ = false;        // Policy validation
   bool device_policy_validated_ = false;      //   callbacks
   int extension_policy_validated_count_ = 0;  //   below.
+
+  // Set by ValidatePolicy during user policy validation if the affiliation
+  // marker is set.
+  bool user_affiliation_marker_set_ = false;
 
   // How often the UserKerberosFilesChanged signal was fired.
   int user_kerberos_files_changed_count_ = 0;
@@ -1572,6 +1581,24 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_DOWNLOAD_GPO_COUNT));
+}
+
+// For affiliated users, the affiliation marker should be set during user policy
+// fetch.
+TEST_F(AuthPolicyTest, AffiliationMarkerSetForAffiliatedUsers) {
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  JoinAndFetchDevicePolicy(kMachineName);
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  EXPECT_TRUE(user_affiliation_marker_set_);
+}
+
+// For unaffiliated users, the affiliation marker should not be set during user
+// policy fetch.
+TEST_F(AuthPolicyTest, AffiliationMarkerNotSetForUnaffiliatedUsers) {
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  JoinAndFetchDevicePolicy(kUnaffiliatedMachineName);
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+  EXPECT_FALSE(user_affiliation_marker_set_);
 }
 
 // Successful user policy fetch with actual data.

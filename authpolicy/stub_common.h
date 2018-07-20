@@ -13,6 +13,7 @@ namespace authpolicy {
 
 extern const int kExitCodeOk;
 extern const int kExitCodeError;
+extern const int kExitCodeUnspecifiedError;
 
 // Realms.
 extern const char kUserRealm[];
@@ -131,6 +132,9 @@ extern const char kExpectKeytabMachineName[];
 extern const char kChangePasswordMachineName[];
 // Triggers ADS server ping to fail, which causes GetUserStatus to return error.
 extern const char kPingServerFailMachineName[];
+// Triggers net ads search to return an unspecified error during the user
+// affiliation check.
+extern const char kUnaffiliatedMachineName[];
 // Triggers kinit to be retried a few times for the machine TGT (simulates that
 // the account hasn't propagated yet).
 extern const char kPropagationRetryMachineName[];

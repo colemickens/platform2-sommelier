@@ -15,6 +15,7 @@ namespace authpolicy {
 
 const int kExitCodeOk = 0;
 const int kExitCodeError = 1;
+const int kExitCodeUnspecifiedError = 255;
 
 const char kUserRealm[] = "REALM.EXAMPLE.COM";
 const char kMachineRealm[] = "DEVICES.EXAMPLE.COM";
@@ -86,6 +87,7 @@ const char kLoopbackGpoMachineName[] = "loopback";
 const char kExpectKeytabMachineName[] = "expectkeytab";
 const char kChangePasswordMachineName[] = "changepassword";
 const char kPingServerFailMachineName[] = "pingfail";
+const char kUnaffiliatedMachineName[] = "unaffiliated";
 const char kPropagationRetryMachineName[] = "propagat.nretry";
 
 const char kGpo1Guid[] = "{11111111-1111-1111-1111-111111111111}";

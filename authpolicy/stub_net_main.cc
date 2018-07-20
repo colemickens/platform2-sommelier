@@ -607,6 +607,11 @@ int HandleSearch(const std::string& command_line) {
       FindSearchValue(command_line, kSearchSAMAccountName);
   std::string object_guid_octet =
       FindSearchValue(command_line, kSearchObjectGUID);
+
+  // Handle the net ads search command to detect unaffiliated users.
+  if (sam_account_name == base::ToUpperASCII(kUnaffiliatedMachineName) + "$")
+    return kExitCodeUnspecifiedError;
+
   std::string search_result;
   if (!object_guid_octet.empty()) {
     // Search by objectGUID aka account id.

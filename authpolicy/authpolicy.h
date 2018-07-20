@@ -121,8 +121,8 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                    PolicyResponseCallback callback);
 
   // Sends a single policy blob to Session Manager. |policy_type| is the policy
-  // type passed into enterprise_management::PolicyData. |response_tracker| is
-  // a data structure to track all responses from Session Manager.
+  // type passed into enterprise_management::PolicyData. |response_tracker| is a
+  // data structure to track all responses from Session Manager.
   void StoreSinglePolicy(const login_manager::PolicyDescriptor& descriptor,
                          const char* policy_type,
                          const std::string& policy_blob,

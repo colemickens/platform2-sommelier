@@ -52,6 +52,12 @@ extern const char kEncTypesAll[];
 extern const char kEncTypesStrong[];
 extern const char kEncTypesLegacy[];
 
+// Marker for user affiliation (whether the device domain trusts the user
+// domain). This marker is added to PolicyData.device_affiliation_ids for device
+// policy. For user policy, it is added if and only if
+// SambaInterface::IsUserAffiliated indicates that the user is affiliated.
+extern const char kAffiliationMarker[];
+
 // Parses user_name@some.realm into its components and normalizes (uppercases)
 // the part behind the @. |user_name| is 'user_name', |realm| is |SOME.REALM|
 // and |normalized_user_principal_name| is user_name@SOME.REALM.

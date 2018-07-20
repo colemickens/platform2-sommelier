@@ -673,6 +673,11 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (account_id.empty())
     SetUser(account_info->account_id());
 
+  // Figure out if the user is affiliated.
+  is_user_affiliated_ = IsUserAffiliated();
+  LOG(INFO) << "User is " << (is_user_affiliated_ ? "" : "not ")
+            << "affiliated";
+
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
   // wants the sAMAccountName. Also note that pwd_last_set is zero and stale
   // at this point if AcquireTgtWithPassword() set a new password, but that's
@@ -935,7 +940,11 @@ ErrorType SambaInterface::FetchUserGpos(
   if (error != ERROR_NONE)
     return error;
 
-  return ParsePolicyData(gpo_policy_data_blob, gpo_policy_data);
+  error = ParsePolicyData(gpo_policy_data_blob, gpo_policy_data);
+  if (error != ERROR_NONE)
+    return error;
+
+  return ERROR_NONE;
 }
 
 ErrorType SambaInterface::FetchDeviceGpos(
@@ -1271,6 +1280,43 @@ ErrorType SambaInterface::PingServer(AccountData* account) {
   if (error != ERROR_NONE)
     prev_workgroup.swap(account->workgroup);
   return error;
+}
+
+bool SambaInterface::IsUserAffiliated() {
+  // Call net ads search using
+  //   - the device smb.conf, but
+  //   - the user's credentials!
+  // This enforces a trust check, which tells us about affiliation.
+  const std::string& smb_conf_path = paths_->Get(device_account_.smb_conf_path);
+  std::string search_string = base::StringPrintf(
+      "(sAMAccountName=%s)", device_account_.user_name.c_str());
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
+                           search_string, kSearchSAMAccountName, kConfigParam,
+                           smb_conf_path, kDebugParam, flags_.net_log_level(),
+                           kKerberosParam});
+  net_cmd.SetEnv(kKrb5CCEnvKey,
+                 paths_->Get(user_tgt_manager_.GetCredentialCachePath()));
+  const bool net_result = jail_helper_.SetupJailAndRun(
+      &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH);
+
+  // net is expected to fail if the user is not affiliated. In my test setup
+  // with different KDCs, net failed with exit code 255 and no error message,
+  // resulting in ERROR_NET_FAILED (there was a "Cannot read password" error in
+  // debug logs). It's unclear, though, if that's always the case, so just print
+  // out the error otherwise and assume the user is not affiliated. By no means
+  // bail on error here.
+  if (!net_result) {
+    ErrorType error = GetNetError(net_cmd, "search");
+    if (error != ERROR_NET_FAILED)
+      LOG(ERROR) << "Affiliation check failed with error " << error;
+    return false;
+  }
+
+  // Expected output in case of success:
+  // Got 1 replies
+  //
+  // sAMAccountName: <MACHINE_NAME>
+  return Contains(net_cmd.GetStdout(), kSearchSAMAccountName);
 }
 
 ErrorType SambaInterface::AcquireUserTgt(int password_fd) {
@@ -1998,6 +2044,7 @@ void SambaInterface::Reset() {
   user_account_id_.clear();
   user_pwd_last_set_ = 0;
   user_logged_in_ = false;
+  is_user_affiliated_ = false;
   user_account_ = AccountData(Path::USER_SMB_CONF);
   device_account_ = AccountData(Path::DEVICE_SMB_CONF);
   user_tgt_manager_.Reset();

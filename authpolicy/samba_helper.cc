@@ -101,6 +101,8 @@ constexpr char kEncTypesAll[] = "all";
 constexpr char kEncTypesStrong[] = "strong";
 constexpr char kEncTypesLegacy[] = "legacy";
 
+constexpr char kAffiliationMarker[] = "ad_affiliation_marker";
+
 // Random number generator, used for testing purposes.
 RandomBytesGenerator* g_rand_bytes = nullptr;
 
