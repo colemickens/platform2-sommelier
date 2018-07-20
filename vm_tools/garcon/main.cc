@@ -210,6 +210,10 @@ int main(int argc, char** argv) {
   }
 
   host_notifier->set_grpc_server(server_copy);
+  if (!host_notifier->Init()) {
+    LOG(ERROR) << "Failed to set up host notifier";
+    return -1;
+  }
 
   // Start the main run loop now for the HostNotifier.
   run_loop.Run();

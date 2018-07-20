@@ -73,12 +73,7 @@ namespace garcon {
 // static
 std::unique_ptr<HostNotifier> HostNotifier::Create(
     base::Closure shutdown_closure) {
-  auto notifier =
-      base::WrapUnique(new HostNotifier(std::move(shutdown_closure)));
-  if (!notifier->Init()) {
-    notifier.reset();
-  }
-  return notifier;
+  return base::WrapUnique(new HostNotifier(std::move(shutdown_closure)));
 }
 
 // static

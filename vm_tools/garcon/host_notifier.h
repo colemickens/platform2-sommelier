@@ -36,6 +36,11 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
 
   ~HostNotifier();
 
+  // Notifies the host that garcon is ready. This will send the initial update
+  // for the application list and also establish a watcher for any updates to
+  // the list of installed applications. Returns false if there was any failure.
+  bool Init();
+
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
@@ -58,10 +63,6 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
 
  private:
   explicit HostNotifier(base::Closure shutdown_closure);
-  // This will notify the host that garcon is ready and send the initial update
-  // for the application list and also establish a watcher for any updates to
-  // the list of installed applications. Returns false if there was any failure.
-  bool Init();
 
   // Sends a message to the host indicating that our server is ready for
   // accepting incoming calls.
