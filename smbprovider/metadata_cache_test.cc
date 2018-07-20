@@ -91,4 +91,35 @@ TEST_F(MetadataCacheTest, ClearRemovesItems) {
   EXPECT_TRUE(cache_->IsEmpty());
 }
 
+TEST_F(MetadataCacheTest, RemoveItemExplicitly) {
+  EXPECT_TRUE(cache_->IsEmpty());
+
+  const std::string name = "path";
+  const std::string full_path = "smb://server/share/some/" + name;
+  cache_->AddEntry(DirectoryEntry(false /* is_directory */, name, full_path,
+                                  1234 /* size */, 999999 /* date */));
+
+  EXPECT_FALSE(cache_->IsEmpty());
+  EXPECT_TRUE(cache_->RemoveEntry(full_path));
+  EXPECT_TRUE(cache_->IsEmpty());
+}
+
+TEST_F(MetadataCacheTest, RemoveItemThatDoesntExist) {
+  EXPECT_TRUE(cache_->IsEmpty());
+
+  const std::string name = "path";
+  const std::string full_path = "smb://server/share/some/" + name;
+  cache_->AddEntry(DirectoryEntry(false /* is_directory */, name, full_path,
+                                  1234 /* size */, 999999 /* date */));
+
+  EXPECT_FALSE(cache_->IsEmpty());
+
+  // Removal of an entry that doesn't exist returns false and
+  // doesn't change the cache.
+  EXPECT_FALSE(cache_->RemoveEntry(full_path + "2"));
+  EXPECT_FALSE(cache_->IsEmpty());
+  DirectoryEntry entry;
+  EXPECT_TRUE(cache_->FindEntry(full_path, &entry));
+}
+
 }  // namespace smbprovider

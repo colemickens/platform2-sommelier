@@ -52,6 +52,9 @@ class MetadataCache {
   // Returns true if the cache is empty.
   bool IsEmpty() const;
 
+  // Removes the entry at |entry_path| from the cache.
+  bool RemoveEntry(const std::string& entry_path);
+
  private:
   struct CacheEntry {
     CacheEntry() = default;

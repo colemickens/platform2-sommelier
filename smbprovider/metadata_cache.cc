@@ -38,4 +38,8 @@ bool MetadataCache::IsEmpty() const {
   return cache_.empty();
 }
 
+bool MetadataCache::RemoveEntry(const std::string& entry_path) {
+  return cache_.erase(entry_path) > 0;
+}
+
 }  // namespace smbprovider
