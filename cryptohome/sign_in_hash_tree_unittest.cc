@@ -118,7 +118,7 @@ TEST(SignInHashTreeUnitTest, GenerateAndStoreHashCacheFile) {
   // Check that the root hash was calculated successfully.
   std::vector<uint8_t> result_hash;
   std::vector<uint8_t> cred_data;
-  bool metadata_lost;
+  bool metadata_lost = false;
   auto label = SignInHashTree::Label(0, 0, 1);
   ASSERT_TRUE(tree.GetLabelData(label, &result_hash, &cred_data,
                                 &metadata_lost));
@@ -158,7 +158,7 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 6, 2), kSampleHash1,
                                kSampleCredData1, false));
   std::vector<uint8_t> returned_hash, cred_data;
-  bool metadata_lost;
+  bool metadata_lost = true;
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(21, 6, 2),
                                  &returned_hash, &cred_data, &metadata_lost));
   EXPECT_EQ(kSampleHash1, returned_hash);
@@ -168,6 +168,7 @@ TEST(SignInHashTreeUnitTest, InsertAndRetrieveLeafLabel) {
   // Try the insert and retrieve for invalid labels too.
   returned_hash.clear();
   cred_data.clear();
+  metadata_lost = false;
   ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 6, 2), kSampleHash1,
                                kSampleCredData1, true));
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(21, 6, 2),
@@ -200,7 +201,7 @@ TEST(SignInHashTreeUnitTest, UpdateHashCacheOnInsertRemove) {
   tree->GenerateAndStoreHashCache();
 
   std::vector<uint8_t> returned_hash, cred_data;
-  bool metadata_lost;
+  bool metadata_lost = false;
   ASSERT_TRUE(tree->GetLabelData(SignInHashTree::Label(0, 0, 2), &returned_hash,
                                  &cred_data, &metadata_lost));
   ASSERT_EQ(kRootHash14_4_1, returned_hash);
