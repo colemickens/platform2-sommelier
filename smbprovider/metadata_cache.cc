@@ -26,6 +26,11 @@ bool MetadataCache::FindEntry(const std::string& full_path,
     return false;
   }
 
+  if (IsExpired(entry_iter->second)) {
+    cache_.erase(entry_iter);
+    return false;
+  }
+
   *out_entry = entry_iter->second.entry;
   return true;
 }

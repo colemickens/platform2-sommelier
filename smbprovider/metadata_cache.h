@@ -29,7 +29,6 @@ namespace smbprovider {
 // requests for metadata.
 //
 // TODO(zentaro): Follow up CL's will implement;
-//    * Invalidating requested entries based on time.
 //    * Purging entries based on time.
 class MetadataCache {
  public:
