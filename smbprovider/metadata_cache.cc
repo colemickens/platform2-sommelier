@@ -47,8 +47,26 @@ bool MetadataCache::RemoveEntry(const std::string& entry_path) {
   return cache_.erase(entry_path) > 0;
 }
 
+void MetadataCache::PurgeExpiredEntries() {
+  const base::TimeTicks threshold = tick_clock_->NowTicks();
+
+  auto it = cache_.cbegin();
+  while (it != cache_.cend()) {
+    if (MetadataCache::IsExpired(it->second, threshold)) {
+      it = cache_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+bool MetadataCache::IsExpired(const CacheEntry& cache_entry,
+                              base::TimeTicks threshold) {
+  return threshold > cache_entry.expiration_time;
+}
+
 bool MetadataCache::IsExpired(const MetadataCache::CacheEntry& cache_entry) {
-  return tick_clock_->NowTicks() > cache_entry.expiration_time;
+  return MetadataCache::IsExpired(cache_entry, tick_clock_->NowTicks());
 }
 
 }  // namespace smbprovider

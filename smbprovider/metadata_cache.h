@@ -27,9 +27,6 @@ namespace smbprovider {
 // requests for metadata. This cache will store the results found
 // when reading a directory, then use the cache to attempt to satisfy
 // requests for metadata.
-//
-// TODO(zentaro): Follow up CL's will implement;
-//    * Purging entries based on time.
 class MetadataCache {
  public:
   // |entry_lifetime| determines how long an entry remains valid in the cache.
@@ -54,6 +51,9 @@ class MetadataCache {
   // Removes the entry at |entry_path| from the cache.
   bool RemoveEntry(const std::string& entry_path);
 
+  // Removes all entries in the cache that have expired.
+  void PurgeExpiredEntries();
+
  private:
   struct CacheEntry {
     CacheEntry() = default;
@@ -69,6 +69,8 @@ class MetadataCache {
 
   // Returns true if the expiration time of this entry has passed.
   bool IsExpired(const CacheEntry& cache_entry);
+  static bool IsExpired(const CacheEntry& cache_entry,
+                        base::TimeTicks threshold);
 
   std::map<std::string, CacheEntry> cache_;
   base::TickClock* tick_clock_;  // Not owned

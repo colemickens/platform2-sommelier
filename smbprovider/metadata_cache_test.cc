@@ -103,6 +103,44 @@ TEST_F(MetadataCacheTest, AddAndFindEntryOnExpirationBoundary) {
   EXPECT_TRUE(cache_->IsEmpty());
 }
 
+TEST_F(MetadataCacheTest, PurgeExpiresEntries) {
+  const std::string name = "file";
+  const std::string full_path = "smb://server/share/dir/" + name;
+
+  DirectoryEntry found_entry;
+  EXPECT_FALSE(cache_->FindEntry(full_path, &found_entry));
+
+  const int64_t expected_size = 1234;
+  const int64_t expected_date = 9999999;
+  const DirectoryEntry expected_entry(false /* is_directory */, name, full_path,
+                                      expected_size, expected_date);
+  cache_->AddEntry(expected_entry);
+  EXPECT_FALSE(cache_->IsEmpty());
+  EXPECT_TRUE(cache_->FindEntry(full_path, &found_entry));
+  EXPECT_TRUE(AreEntriesEqual(expected_entry, found_entry));
+
+  // Advance the clock to the last tick where it is still valid.
+  tick_clock_->Advance(
+      base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds));
+
+  // Purge the cache but it shouldn't expire anything
+  cache_->PurgeExpiredEntries();
+  EXPECT_FALSE(cache_->IsEmpty());
+
+  // Verify it can be found again.
+  DirectoryEntry found_entry2;
+  EXPECT_TRUE(cache_->FindEntry(full_path, &found_entry2));
+  EXPECT_TRUE(AreEntriesEqual(expected_entry, found_entry2));
+  EXPECT_FALSE(cache_->IsEmpty());
+
+  // Advance one more tick to expire it.
+  tick_clock_->Advance(base::TimeDelta::FromMicroseconds(1));
+
+  // Purging should now remove the entry.
+  cache_->PurgeExpiredEntries();
+  EXPECT_TRUE(cache_->IsEmpty());
+}
+
 TEST_F(MetadataCacheTest, IsEmptyOnNewCache) {
   EXPECT_TRUE(cache_->IsEmpty());
 }
