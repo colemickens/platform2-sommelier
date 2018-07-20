@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
   DEFINE_string(name, "", "Name of container");
   brillo::FlagHelper::Init(argc, argv,
                            "Mounts a container image out of an extension.");
-  brillo::InitLog(brillo::kLogToSyslog);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   if (FLAGS_name.empty()) {
     LOG(ERROR) << "Nothing to mount";

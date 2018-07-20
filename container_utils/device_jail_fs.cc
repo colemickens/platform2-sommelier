@@ -265,15 +265,18 @@ static struct fuse_operations fops = {
 }  // namespace device_jail
 
 int main(int argc, char** argv) {
+  brillo::FlagHelper::Init(argc, argv,
+                           "Start a device jail on a mount point.");
   brillo::OpenLog("device_jail_fs", true);
-  brillo::InitLog(brillo::kLogToSyslog);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  base::CommandLine command_line(argc, argv);
-  if (argc != 2) {
+  const base::CommandLine::StringVector args =
+      base::CommandLine::ForCurrentProcess()->GetArgs();
+  if (args.size() != 1) {
     LOG(ERROR) << "Usage: device_jail_fs <mount point>";
     return EX_USAGE;
   }
-  std::string mount_point = command_line.GetArgs()[0];
+  std::string mount_point = args[0];
 
   base::AtExitManager at_exit_manager;
 
@@ -291,14 +294,15 @@ int main(int argc, char** argv) {
     return EX_SOFTWARE;
   }
 
-  struct fuse_args args = FUSE_ARGS_INIT(0, nullptr);
-  fuse_opt_add_arg(&args, argv[0]);
-  fuse_opt_add_arg(&args, "-f");
-  fuse_opt_add_arg(&args, "-odev,allow_other,default_permissions");
-  fuse_opt_add_arg(&args, mount_point.c_str());
+  struct fuse_args fargs = FUSE_ARGS_INIT(0, nullptr);
+  fuse_opt_add_arg(&fargs, argv[0]);
+  fuse_opt_add_arg(&fargs, "-f");
+  fuse_opt_add_arg(&fargs, "-odev,allow_other,default_permissions");
+  fuse_opt_add_arg(&fargs, mount_point.c_str());
 
-  int ret = fuse_main(args.argc, args.argv, &device_jail::fops, fs_data.get());
-  fuse_opt_free_args(&args);
+  int ret = fuse_main(fargs.argc, fargs.argv, &device_jail::fops,
+                      fs_data.get());
+  fuse_opt_free_args(&fargs);
   DVLOG(1) << "device_jail_fs exiting";
   return ret;
 }
