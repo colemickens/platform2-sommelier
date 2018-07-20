@@ -413,9 +413,9 @@ TEST_F(LECredentialManagerUnitTest, LogReplayLostInsertRemove) {
 }
 
 // Initialize the LECredManager and take a snapshot after 2 operations,
-// then perform 2 checks. Then, restore the snapshot (in effect "losing"
-// the last 2 operations). The log functionality should restore the "lost"
-// state.
+// then perform |kLogSize| checks. Then, restore the snapshot (in effect
+// "losing" the last |kLogSize| operations). The log functionality should
+// restore the "lost" state.
 TEST_F(LECredentialManagerUnitTest, LogReplayLostChecks) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
@@ -455,6 +455,124 @@ TEST_F(LECredentialManagerUnitTest, LogReplayLostChecks) {
             le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
   EXPECT_EQ(LE_CRED_SUCCESS,
             le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret));
+}
+
+// Initialize the LECredManager and take a snapshot after 2 operations,
+// then perform |kLogSize| inserts. Then, restore the snapshot (in effect
+// "losing" the last |kLogSize| operations). The log functionality should
+// restore the "lost" state.
+TEST_F(LECredentialManagerUnitTest, LogReplayLostInserts) {
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kLeSecret2(std::begin(kLeSecret2Array),
+                                std::end(kLeSecret2Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+  uint64_t label2;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform inserts to fill up the replay log.
+  uint64_t temp_label;
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_EQ(LE_CRED_SUCCESS,
+              le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                        stub_delay_sched, &temp_label));
+  }
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // Subsequent operations should work.
+  brillo::SecureBlob he_secret;
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret));
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &temp_label));
+  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+}
+
+// Initialize the LECredManager, insert 2 base credentials. Then, insert
+// |kLogSize| credentials. Then, take a snapshot, and then remove the
+// |kLogSize| credentials. Then, restore the snapshot (in effect "losing" the
+// last |kLogSize| operations). The log functionality should restore the "lost"
+// state.
+TEST_F(LECredentialManagerUnitTest, LogReplayLostRemoves) {
+  std::map<uint32_t, uint32_t> stub_delay_sched;
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+  brillo::SecureBlob kLeSecret2(std::begin(kLeSecret2Array),
+                                std::end(kLeSecret2Array));
+  brillo::SecureBlob kHeSecret1(std::begin(kHeSecret1Array),
+                                std::end(kHeSecret1Array));
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label1));
+  uint64_t label2;
+  ASSERT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &label2));
+
+  // Perform |kLogSize| credential inserts.
+  std::vector<uint64_t> labels_to_remove;
+  uint64_t temp_label;
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_EQ(LE_CRED_SUCCESS,
+              le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                        stub_delay_sched, &temp_label));
+    labels_to_remove.push_back(temp_label);
+  }
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Fill the replay log with |kLogSize| RemoveCredential operations.
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(labels_to_remove[i]));
+  }
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // Verify that the removed credentials are actually gone.
+  brillo::SecureBlob he_secret;
+  for (int i = 0; i < kFakeLogSize; i++) {
+    EXPECT_EQ(
+        LE_CRED_ERROR_INVALID_LABEL,
+        le_mgr_->CheckCredential(labels_to_remove[i], kLeSecret1, &he_secret));
+  }
+
+  // Subsequent operations should work.
+  he_secret.clear();
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret));
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret));
+  EXPECT_EQ(LE_CRED_SUCCESS,
+            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                      stub_delay_sched, &temp_label));
+  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
 }
 
 // Verify behaviour when more operations are lost than the log can save.
