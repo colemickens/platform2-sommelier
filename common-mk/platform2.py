@@ -128,8 +128,8 @@ class Platform2(object):
 
   def get_platform2_use_flags(self):
     """Returns the set of USE flags set for the Platform2 package."""
-    equery_bin = 'equery' if not self.board else 'equery-%s' % self.board
-    cmd = [equery_bin, 'u', 'platform2']
+    portageq_bin = 'portageq' if not self.board else 'portageq-%s' % self.board
+    cmd = [portageq_bin, 'envvar', 'USE']
 
     ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True)
     return set(x for x in ret.output.splitlines() if x)
