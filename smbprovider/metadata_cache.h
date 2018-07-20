@@ -68,6 +68,9 @@ class MetadataCache {
     DISALLOW_COPY_AND_ASSIGN(CacheEntry);
   };
 
+  // Returns true if the expiration time of this entry has passed.
+  bool IsExpired(const CacheEntry& cache_entry);
+
   std::map<std::string, CacheEntry> cache_;
   base::TickClock* tick_clock_;  // Not owned
   base::TimeDelta entry_lifetime_;

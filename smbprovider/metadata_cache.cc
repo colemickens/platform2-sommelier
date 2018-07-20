@@ -42,4 +42,8 @@ bool MetadataCache::RemoveEntry(const std::string& entry_path) {
   return cache_.erase(entry_path) > 0;
 }
 
+bool MetadataCache::IsExpired(const MetadataCache::CacheEntry& cache_entry) {
+  return tick_clock_->NowTicks() > cache_entry.expiration_time;
+}
+
 }  // namespace smbprovider
