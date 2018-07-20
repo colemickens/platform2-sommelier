@@ -2,7 +2,11 @@
 # are used for the resulting executable targets.
 {
   'target_defaults': {
+    'variables': {
+      'USE_pinweaver%': 0,
+    },
     'defines': [
+      'USE_PINWEAVER=<(USE_pinweaver)',
       'USE_TPM2=<(USE_tpm2)',
     ],
   },

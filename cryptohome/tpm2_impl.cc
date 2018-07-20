@@ -1487,7 +1487,11 @@ bool Tpm2Impl::SetUserType(Tpm::UserType type) {
 }
 
 LECredentialBackend* Tpm2Impl::GetLECredentialBackend() {
+#if USE_PINWEAVER
   return &le_credential_backend_;
+#else
+  return nullptr;
+#endif
 }
 
 SignatureSealingBackend* Tpm2Impl::GetSignatureSealingBackend() {

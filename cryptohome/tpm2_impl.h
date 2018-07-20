@@ -258,7 +258,9 @@ class Tpm2Impl : public Tpm {
   std::unique_ptr<tpm_manager::TpmOwnershipDBusProxy> default_tpm_owner_;
   tpm_manager::TpmNvramInterface* tpm_nvram_ = nullptr;
   std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
+#if USE_PINWEAVER
   PinweaverLECredentialBackend le_credential_backend_{this};
+#endif
   SignatureSealingBackendTpm2Impl signature_sealing_backend_{this};
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2Impl);
