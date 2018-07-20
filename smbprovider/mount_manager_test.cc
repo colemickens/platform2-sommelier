@@ -15,12 +15,6 @@
 
 namespace smbprovider {
 
-namespace {
-
-constexpr int32_t kBufferSize = 256;
-
-}  // namespace
-
 class MountManagerTest : public testing::Test {
  public:
   MountManagerTest() {
@@ -68,13 +62,14 @@ class MountManagerTest : public testing::Test {
                               const std::string& workgroup,
                               const std::string& username,
                               const std::string& password) {
-    char workgroup_buffer[kBufferSize];
-    char username_buffer[kBufferSize];
-    char password_buffer[kBufferSize];
+    constexpr size_t kComparisonBufferSize = 256;
+    char workgroup_buffer[kComparisonBufferSize];
+    char username_buffer[kComparisonBufferSize];
+    char password_buffer[kComparisonBufferSize];
 
     EXPECT_TRUE(credential_store_->GetAuthentication(
-        mount_root, workgroup_buffer, kBufferSize, username_buffer, kBufferSize,
-        password_buffer, kBufferSize));
+        mount_root, workgroup_buffer, kComparisonBufferSize, username_buffer,
+        kComparisonBufferSize, password_buffer, kComparisonBufferSize));
 
     EXPECT_EQ(std::string(workgroup_buffer), workgroup);
     EXPECT_EQ(std::string(username_buffer), username);
