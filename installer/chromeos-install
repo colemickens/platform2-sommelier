@@ -75,11 +75,12 @@ fast_dd() {
   # units of DST_BLKSIZE. Supply 0 for <count> to not include any count=
   # argument in dd.
   local user_count="$1"
-  shift
-  local user_seek="$1"
-  shift
-  local user_skip="$1"
-  shift
+  local user_seek="$2"
+  local user_skip="$3"
+  shift 3
+  # Provide some simple progress updates to the user.
+  set -- "$@" status=progress
+
   # Try to convert count, seek, and skip into a common large block size.
   local ideal_block_size=$((2 * 1024 * 1024))  # 2 MiB
   local count_ideal=$((user_count * SRC_BLKSIZE / ideal_block_size))
@@ -109,7 +110,7 @@ fast_dd() {
     return
   fi
 
-  # Give up and do the user's slow dd
+  # Give up and do the user's slow dd.
   echo
   echo "WARNING: DOING A SLOW MISALIGNED dd OPERATION. PLEASE FIX"
 
