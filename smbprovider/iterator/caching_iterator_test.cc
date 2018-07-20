@@ -19,7 +19,9 @@ class CachingIteratorTest : public testing::Test {
  public:
   CachingIteratorTest() {
     tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
-    cache_ = std::make_unique<MetadataCache>(tick_clock_.get());
+    cache_ = std::make_unique<MetadataCache>(
+        tick_clock_.get(),
+        base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds));
   }
 
   ~CachingIteratorTest() override = default;

@@ -16,6 +16,9 @@ namespace smbprovider {
 // Buffer size used for reading a directory.
 constexpr size_t kDirEntBufferSize = 1024 * 32;
 
+// Number of microseconds to keep metadata in the cache.
+constexpr uint64_t kMetadataCacheLifetimeMicroseconds = 30 * 1000 * 1000;
+
 // Default number of entries at a time to buffer in directory iterators.
 constexpr size_t kDefaultMetadataBatchSize = 512;
 

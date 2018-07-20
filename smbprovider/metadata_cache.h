@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/time/time.h>
 
 #include "smbprovider/proto.h"
 
@@ -32,7 +33,8 @@ namespace smbprovider {
 //    * Purging entries based on time.
 class MetadataCache {
  public:
-  explicit MetadataCache(base::TickClock* tick_clock);
+  // |entry_lifetime| determines how long an entry remains valid in the cache.
+  MetadataCache(base::TickClock* tick_clock, base::TimeDelta entry_lifetime);
   ~MetadataCache();
 
   MetadataCache& operator=(MetadataCache&& other) = default;
@@ -53,17 +55,19 @@ class MetadataCache {
  private:
   struct CacheEntry {
     CacheEntry() = default;
-    explicit CacheEntry(const DirectoryEntry& entry) : entry(entry) {}
+    CacheEntry(const DirectoryEntry& entry, base::TimeTicks expiration_time)
+        : entry(entry), expiration_time(expiration_time) {}
     CacheEntry& operator=(CacheEntry&& other) = default;
 
     DirectoryEntry entry;
-    // TODO(zentaro): Add a time for invalidation.
+    base::TimeTicks expiration_time;
 
     DISALLOW_COPY_AND_ASSIGN(CacheEntry);
   };
 
   std::map<std::string, CacheEntry> cache_;
   base::TickClock* tick_clock_;  // Not owned
+  base::TimeDelta entry_lifetime_;
   DISALLOW_COPY_AND_ASSIGN(MetadataCache);
 };
 

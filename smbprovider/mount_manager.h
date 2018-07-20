@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/macros.h>
 
+#include "smbprovider/constants.h"
 #include "smbprovider/metadata_cache.h"
 
 namespace base {
@@ -88,7 +89,9 @@ class MountManager {
     MountInfo() = default;
     MountInfo(const std::string& mount_root, base::TickClock* tick_clock)
         : mount_root(mount_root) {
-      cache = std::make_unique<MetadataCache>(tick_clock);
+      cache = std::make_unique<MetadataCache>(
+          tick_clock, base::TimeDelta::FromMicroseconds(
+                          kMetadataCacheLifetimeMicroseconds));
     }
 
     MountInfo& operator=(MountInfo&& other) = default;

@@ -8,13 +8,15 @@
 
 namespace smbprovider {
 
-MetadataCache::MetadataCache(base::TickClock* tick_clock)
-    : tick_clock_(tick_clock) {}
+MetadataCache::MetadataCache(base::TickClock* tick_clock,
+                             base::TimeDelta entry_lifetime)
+    : tick_clock_(tick_clock), entry_lifetime_(entry_lifetime) {}
 
 MetadataCache::~MetadataCache() = default;
 
 void MetadataCache::AddEntry(const DirectoryEntry& entry) {
-  cache_[entry.full_path] = CacheEntry(entry);
+  cache_[entry.full_path] =
+      CacheEntry(entry, tick_clock_->NowTicks() + entry_lifetime_);
 }
 
 bool MetadataCache::FindEntry(const std::string& full_path,
