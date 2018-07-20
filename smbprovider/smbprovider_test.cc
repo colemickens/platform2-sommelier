@@ -581,6 +581,44 @@ TEST_F(SmbProviderTest, ReadDirectoryCacheEnabledPopulatesMetadata) {
   EXPECT_EQ(kFileDate, entry2.last_modified_time());
 }
 
+// Read directory (cache enabled) purges expired entries from the cache
+// before doing the next ReadDirectory.
+TEST_F(SmbProviderTest, ReadDirectoryCacheEnabledPurgesBeforeRead) {
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+  int32_t mount_id = PrepareMount();
+
+  // Setup an empty directory so that the new ReadDirectory won't add
+  // to the cache.
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+
+  // Get the cache.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Add an entry to the cache.
+  DirectoryEntry cached_entry(false /* is_directory */, "dog.jpg",
+                              GetAddedFullFilePath(), kFileSize, kFileDate);
+  cache->AddEntry(cached_entry);
+  EXPECT_FALSE(cache->IsEmpty());
+
+  // Advance the clock so that the entry is expired. The clock doesn't
+  // cause the entry to be removed. It is only removed when it is accessed
+  // or PurgeExpiredEntries() is called.
+  fake_tick_clock_->Advance(base::TimeDelta::FromMicroseconds(
+      kMetadataCacheLifetimeMicroseconds + 1));
+  EXPECT_FALSE(cache->IsEmpty());
+
+  ProtoBlob results;
+  int32_t error_code;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+
+  // Read an empty directory and the cache should be purged.
+  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
+  EXPECT_TRUE(cache->IsEmpty());
+}
+
 // Read directory succeeds and omits "." and ".." entries.
 TEST_F(SmbProviderTest, ReadDirectoryDoesntReturnSelfAndParentEntries) {
   int32_t mount_id = PrepareMount();

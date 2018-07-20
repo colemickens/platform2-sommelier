@@ -166,6 +166,8 @@ void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
     }
 
     if (include_metadata && cache) {
+      // Purge the cache of expired entries before reading next directory.
+      cache->PurgeExpiredEntries();
       GetEntries(options,
                  GetCachingIterator<Iterator>(full_path, samba_interface_.get(),
                                               cache),
