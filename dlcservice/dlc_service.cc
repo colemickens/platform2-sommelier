@@ -10,6 +10,13 @@
 
 namespace dlcservice {
 
+namespace {
+// The root dir that stores all available DLC manifests.
+constexpr char kManifestDir[] = "/opt/google/dlc";
+// The root dir that stores all installed DLC content.
+constexpr char kContentDir[] = "/home/chronos/dlc";
+}  // namespace
+
 // kDlcServiceName is defined in chromeos/dbus/service_constant.h
 DlcService::DlcService() : DBusServiceDaemon(kDlcServiceName) {}
 
@@ -18,7 +25,9 @@ void DlcService::RegisterDBusObjectsAsync(
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr, bus_,
       org::chromium::DlcServiceInterfaceAdaptor::GetObjectPath());
-  dbus_adaptor_ = std::make_unique<dlcservice::DlcServiceDBusAdaptor>();
+  dbus_adaptor_ = std::make_unique<dlcservice::DlcServiceDBusAdaptor>(
+      std::make_unique<org::chromium::ImageLoaderInterfaceProxy>(bus_),
+      base::FilePath(kManifestDir), base::FilePath(kContentDir));
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed.", true));

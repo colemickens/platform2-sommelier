@@ -8,6 +8,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libbrillo-<(libbase_ver)',
+        'libimageloader-client',
       ],
     },
   },
@@ -25,8 +26,8 @@
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
-      'target_name': 'dlcservice',
-      'type': 'executable',
+      'target_name': 'libdlcservice',
+      'type': 'static_library',
       'dependencies': [
         'dlcservice_adaptors',
       ],
@@ -35,8 +36,41 @@
         'dlc_service.h',
         'dlc_service_dbus_adaptor.cc',
         'dlc_service_dbus_adaptor.h',
+      ],
+    },
+    {
+      'target_name': 'dlcservice',
+      'type': 'executable',
+      'dependencies': [
+        'libdlcservice',
+      ],
+      'sources': [
         'main.cc',
       ],
     },
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'dlcservice_unittests',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            'libdlcservice',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+              'libimageloader-client-test',
+            ],
+          },
+          'sources': [
+            'dlc_service_dbus_adaptor_unittest.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
