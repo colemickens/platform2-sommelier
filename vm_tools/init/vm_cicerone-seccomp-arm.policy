@@ -22,7 +22,7 @@ brk: 1
 close: 1
 getsockopt: 1
 rt_sigprocmask: 1
-socket: arg0 == AF_INET6 || arg0 == AF_UNIX || arg0 == AF_INET
+socket: arg0 == AF_INET6 || arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_VSOCK
 eventfd2: 1
 geteuid32: 1
 epoll_create1: 1

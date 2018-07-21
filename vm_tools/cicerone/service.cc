@@ -7,7 +7,10 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
 #include <sys/types.h>
+
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <utility>
 #include <vector>
@@ -232,7 +235,7 @@ void Service::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
 }
 
-void Service::ConnectTremplin(uint32_t vm_ip,
+void Service::ConnectTremplin(uint32_t cid,
                               bool* result,
                               base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -242,19 +245,13 @@ void Service::ConnectTremplin(uint32_t vm_ip,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForVmIp(vm_ip, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
 
   // Found the VM with a matching VM IP, so connect to the tremplin instance.
-  std::string ip_string;
-  if (!IPv4AddressToString(vm_ip, &ip_string)) {
-    LOG(ERROR) << "Failed to convert VM IP to string";
-    event->Signal();
-    return;
-  }
-  if (!vm->ConnectTremplin(ip_string)) {
+  if (!vm->ConnectTremplin()) {
     LOG(ERROR) << "Failed to connect to tremplin";
     event->Signal();
     return;
@@ -271,7 +268,7 @@ void Service::ConnectTremplin(uint32_t vm_ip,
   event->Signal();
 }
 
-void Service::LxdContainerCreated(const uint32_t vm_ip,
+void Service::LxdContainerCreated(const uint32_t cid,
                                   std::string container_name,
                                   Service::CreateStatus status,
                                   std::string failure_reason,
@@ -285,7 +282,7 @@ void Service::LxdContainerCreated(const uint32_t vm_ip,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForVmIp(vm_ip, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -319,7 +316,7 @@ void Service::LxdContainerCreated(const uint32_t vm_ip,
   event->Signal();
 }
 
-void Service::LxdContainerDownloading(const uint32_t vm_ip,
+void Service::LxdContainerDownloading(const uint32_t cid,
                                       std::string container_name,
                                       int download_progress,
                                       bool* result,
@@ -332,7 +329,7 @@ void Service::LxdContainerDownloading(const uint32_t vm_ip,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForVmIp(vm_ip, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -671,7 +668,7 @@ bool Service::Init() {
 
   if (!SetupListenerService(
           &grpc_thread_tremplin_, tremplin_listener_.get(),
-          base::StringPrintf("[::]:%u", vm_tools::kTremplinListenerPort),
+          base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kTremplinListenerPort),
           &grpc_server_tremplin_)) {
     LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
     return false;
@@ -736,7 +733,8 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStarted(
   vms_[std::make_pair(request.owner_id(), std::move(request.vm_name()))] =
       std::make_unique<VirtualMachine>(request.container_ipv4_subnet(),
                                        request.container_ipv4_netmask(),
-                                       request.ipv4_address());
+                                       request.ipv4_address(),
+                                       request.cid());
   if (primary_owner_id_.empty() || vms_.empty()) {
     primary_owner_id_ = request.owner_id();
   }
@@ -1415,16 +1413,16 @@ bool Service::GetVirtualMachineForContainerIp(uint32_t container_ip,
   return false;
 }
 
-bool Service::GetVirtualMachineForVmIp(uint32_t vm_ip,
-                                       VirtualMachine** vm_out,
-                                       std::string* owner_id_out,
-                                       std::string* name_out) {
+bool Service::GetVirtualMachineForCid(const uint32_t cid,
+                                      VirtualMachine** vm_out,
+                                      std::string* owner_id_out,
+                                      std::string* name_out) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
   CHECK(vm_out);
   CHECK(owner_id_out);
   CHECK(name_out);
   for (const auto& vm : vms_) {
-    if (vm.second->ipv4_address() != vm_ip) {
+    if (vm.second->cid() != cid) {
       continue;
     }
     *owner_id_out = vm.first.first;

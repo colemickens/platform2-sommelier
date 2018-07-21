@@ -390,9 +390,7 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     return grpc::Status(grpc::INTERNAL, "lxd waitready returned non-zero");
   }
 
-  string host_ip = AddressToString(request->tremplin_ipv4_address());
-  if (!init_->Spawn({"tremplin", "-host_addr", host_ip, "-lxd_subnet",
-                     request->lxd_ipv4_subnet()},
+  if (!init_->Spawn({"tremplin", "-lxd_subnet", request->lxd_ipv4_subnet()},
                     kLxdEnv, true /*respawn*/, false /*use_console*/,
                     false /*wait_for_exit*/, &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn tremplin");

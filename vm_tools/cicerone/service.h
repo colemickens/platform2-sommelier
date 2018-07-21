@@ -45,8 +45,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
-  // Connect to the Tremplin instance on the VM with the given vm_ip.
-  void ConnectTremplin(const uint32_t vm_ip,
+  // Connect to the Tremplin instance on the VM with the given cid.
+  void ConnectTremplin(const uint32_t cid,
                        bool* result,
                        base::WaitableEvent* event);
 
@@ -59,21 +59,21 @@ class Service final : public base::MessageLoopForIO::Watcher {
     FAILED,
   };
 
-  // Notifies the service that a VM with |vm_ip| has finished its create
+  // Notifies the service that a VM with |cid| has finished its create
   // operation of |container_name| with |status|. |failure_reason| will describe
   // the failure reason if status != CREATED. Sets |result| to true if the VM IP
   // is known. Signals |event| when done.
-  void LxdContainerCreated(const uint32_t vm_ip,
+  void LxdContainerCreated(const uint32_t cid,
                            std::string container_name,
                            CreateStatus status,
                            std::string failure_reason,
                            bool* result,
                            base::WaitableEvent* event);
 
-  // Notifies the service that a VM with |vm_ip| is downloading a container
+  // Notifies the service that a VM with |cid| is downloading a container
   // |container_name| with |download_progress| percentage complete. Sets
   // |result| to true if the VM IP is known. Signals |event| when done.
-  void LxdContainerDownloading(const uint32_t vm_ip,
+  void LxdContainerDownloading(const uint32_t cid,
                                std::string container_name,
                                int download_progress,
                                bool* result,
@@ -206,10 +206,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                        std::string* owner_id_out,
                                        std::string* name_out);
 
-  bool GetVirtualMachineForVmIp(uint32_t vm_ip,
-                                VirtualMachine** vm_out,
-                                std::string* owner_id_out,
-                                std::string* name_out);
+  bool GetVirtualMachineForCid(const uint32_t cid,
+                               VirtualMachine** vm_out,
+                               std::string* owner_id_out,
+                               std::string* name_out);
 
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,

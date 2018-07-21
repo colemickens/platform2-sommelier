@@ -70,7 +70,8 @@ class VirtualMachine {
 
   VirtualMachine(uint32_t container_subnet,
                  uint32_t container_netmask,
-                 uint32_t ipv4_address);
+                 uint32_t ipv4_address,
+                 uint32_t cid);
   ~VirtualMachine();
 
   // The VM's container subnet netmask in network byte order.
@@ -82,8 +83,11 @@ class VirtualMachine {
   // The first address in the VM's container subnet in network byte order.
   uint32_t ipv4_address() const { return ipv4_address_; }
 
+  // The VM's cid.
+  uint32_t cid() const { return vsock_cid_; }
+
   // Connect to the tremplin instance in the VM.
-  bool ConnectTremplin(const std::string& uri);
+  bool ConnectTremplin();
 
   // Registers a container with the VM using the |container_ip| address and
   // |container_token|. Returns true if the token is valid, false otherwise.
@@ -186,6 +190,9 @@ class VirtualMachine {
   uint32_t container_subnet_;
   uint32_t container_netmask_;
   uint32_t ipv4_address_;
+
+  // Virtual socket context id to be used when communicating with this VM.
+  uint32_t vsock_cid_;
 
   // Mapping of container tokens to names. The tokens are used to securely
   // identify a container when it connects back to concierge to identify itself.

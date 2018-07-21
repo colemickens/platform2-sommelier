@@ -40,17 +40,19 @@ constexpr int64_t kStartLxdContainerTimeoutSeconds = 15;
 
 VirtualMachine::VirtualMachine(uint32_t container_subnet,
                                uint32_t container_netmask,
-                               uint32_t ipv4_address)
+                               uint32_t ipv4_address,
+                               uint32_t cid)
     : container_subnet_(container_subnet),
       container_netmask_(container_netmask),
-      ipv4_address_(ipv4_address) {}
+      ipv4_address_(ipv4_address),
+      vsock_cid_(cid) {}
 
 VirtualMachine::~VirtualMachine() = default;
 
-bool VirtualMachine::ConnectTremplin(const std::string& ipv4_address) {
+bool VirtualMachine::ConnectTremplin() {
   tremplin_stub_ =
       std::make_unique<vm_tools::tremplin::Tremplin::Stub>(grpc::CreateChannel(
-          base::StringPrintf("%s:%d", ipv4_address.c_str(), kTremplinPort),
+          base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort),
           grpc::InsecureChannelCredentials()));
   return tremplin_stub_ != nullptr;
 }
