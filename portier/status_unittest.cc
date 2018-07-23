@@ -31,9 +31,9 @@ const char kExpectedBadCodeName[] = "Unknown (120)";
 const char kMessage1Part1[] = "Output parameter `";
 const char kMessage1Variable[] = "ll_address";
 const char kMessage1Part2[] = "' must not be null";
-Code kCode1 = Status::Code::NULL_POINTER;
+Code kCode1 = Status::Code::INVALID_ARGUMENT;
 const char kExpectedToString1[] =
-    "Null Pointer: Output parameter `ll_address' must not be null";
+    "Invalid Argument: Output parameter `ll_address' must not be null";
 
 const char kSubMessage2[] = "Require CAP_NET_RAW to open raw socket";
 const char kMessage2[] = "Failed to open socket";
@@ -67,9 +67,10 @@ const char kExpectedToString6[] =
     "MTU Exceeded: Outgoing packet is larger than MTU size";
 
 const Code kBadCodes[] = {Code::BAD_PERMISSIONS,    Code::DOES_NOT_EXIST,
-                          Code::UNEXPECTED_FAILURE, Code::INVALID_ARGUMENT,
-                          Code::NULL_POINTER,       Code::MTU_EXCEEDED,
-                          Code::MALFORMED_PACKET,   Code::BAD_INTERNAL_STATE};
+                          Code::RESULT_UNAVAILABLE, Code::UNEXPECTED_FAILURE,
+                          Code::INVALID_ARGUMENT,   Code::MTU_EXCEEDED,
+                          Code::MALFORMED_PACKET,   Code::RESOURCE_IN_USE,
+                          Code::UNSUPPORTED_TYPE,   Code::BAD_INTERNAL_STATE};
 
 const size_t kBadCodesLength = sizeof(kBadCodes) / sizeof(Code);
 

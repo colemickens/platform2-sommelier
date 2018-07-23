@@ -117,7 +117,7 @@ Status NetworkSocket::GetLinkLayerAddress(LLAddress* ll_address) const {
                                  ifreq.ifr_hwaddr.sa_family);
   }
 
-  *ll_address = LLAddress(LLAddress::kTypeEui48,
+  *ll_address = LLAddress(LLAddress::Type::kEui48,
                           ByteString(ifreq.ifr_hwaddr.sa_data, ETHER_ADDR_LEN));
 
   return Status();
