@@ -13,6 +13,10 @@
 
 namespace hermes {
 
+// TODO(jruthe): remove header length once ASN.1 parsing is complete
+constexpr uint8_t kChallengeHeaderLength = 5;
+constexpr uint8_t kEsimChallengeLength = 16;
+
 Lpd::Lpd(std::unique_ptr<Esim> esim, std::unique_ptr<Smdp> smdp)
     : esim_(std::move(esim)), smdp_(std::move(smdp)) {}
 
@@ -69,24 +73,39 @@ void Lpd::OnEsimInfoResult(const Lpd::SuccessCallback& success_callback,
 void Lpd::OnEsimChallengeResult(const Lpd::SuccessCallback& success_callback,
                                 const std::vector<uint8_t>& info1,
                                 const std::vector<uint8_t>& challenge) {
+  if (challenge.size() - kChallengeHeaderLength != kEsimChallengeLength) {
+    user_error_.Run(LpdError::kFailure);
+    return;
+  }
+  // TODO(jruthe): this is currently a trick to send only the value bytes of
+  // the challenge to SmdpImpl, but should probably be parsed more correctly
+  // here (along with most of the rest of the ASN.1 encoded data).
   smdp_->InitiateAuthentication(
-      info1, challenge,
-      base::Bind(&Lpd::OnInitiateAuthResult, base::Unretained(this),
+      info1,
+      std::vector<uint8_t>(challenge.begin() + 5 /* length of header */,
+                           challenge.end()),
+      base::Bind(&Lpd::OnInitiateAuthenticationResult, base::Unretained(this),
                  success_callback),
       smdp_error_handler_);
 }
 
-void Lpd::OnInitiateAuthResult(const Lpd::SuccessCallback& success_callback,
-                               const std::vector<uint8_t>& data) {
+void Lpd::OnInitiateAuthenticationResult(
+    const Lpd::SuccessCallback& success_callback,
+    const std::vector<uint8_t>& server_signed1,
+    const std::vector<uint8_t>& server_signature1,
+    const std::vector<uint8_t>& public_keys_to_use,
+    const std::vector<uint8_t>& server_certificate) {
+  // TODO(jruthe): update parameters to Esim::AuthenticateServer
   esim_->AuthenticateServer(
-      data,
-      base::Bind(&Lpd::OnAuthServerResult, base::Unretained(this),
+      std::vector<uint8_t>(),
+      base::Bind(&Lpd::OnAuthenticateServerResult, base::Unretained(this),
                  success_callback),
       esim_error_handler_);
 }
 
-void Lpd::OnAuthServerResult(const Lpd::SuccessCallback& success_callback,
-                             const std::vector<uint8_t>& data) {
+void Lpd::OnAuthenticateServerResult(
+    const Lpd::SuccessCallback& success_callback,
+    const std::vector<uint8_t>& data) {
   success_callback.Run();
 }
 

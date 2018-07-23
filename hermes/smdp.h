@@ -6,10 +6,12 @@
 #define HERMES_SMDP_H_
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
+#include <base/values.h>
 
 namespace hermes {
 
@@ -18,10 +20,14 @@ namespace hermes {
 // connection to the server.
 class Smdp {
  public:
-  using DataCallback =
-      base::Callback<void(const std::vector<uint8_t>& smdp_data)>;
+  using InitiateAuthenticationCallback =
+      base::Callback<void(const std::vector<uint8_t>& server_signed1,
+                          const std::vector<uint8_t>& server_signature1,
+                          const std::vector<uint8_t>& public_keys_to_use,
+                          const std::vector<uint8_t>& server_certificate)>;
   using ErrorCallback =
       base::Callback<void(const std::vector<uint8_t>& error_data)>;
+  using DictionaryPtr = std::unique_ptr<base::DictionaryValue>;
 
   virtual ~Smdp() = default;
 
@@ -35,20 +41,16 @@ class Smdp {
   //    challenge - eSIM challenge as returned by Esim.GetEuiccChallenge
   //    info1 - eSIM info1 as returned by Esim.GetEuiccInfo
   virtual void InitiateAuthentication(
-      const std::vector<uint8_t>& challenge,
       const std::vector<uint8_t>& info1,
-      const DataCallback& callback,
-      const ErrorCallback& error_callback) const = 0;
+      const std::vector<uint8_t>& challenge,
+      const InitiateAuthenticationCallback& data_callback,
+      const ErrorCallback& error_callback) = 0;
 
+  // TODO(jruthe): update callback parameters
   virtual void AuthenticateClient(
       const std::vector<uint8_t>& data,
-      const DataCallback& callback,
+      const base::Closure& callback,
       const ErrorCallback& error_callback) const = 0;
-
- protected:
-  virtual void OpenConnection() const = 0;
-  virtual void CloseConnection() const = 0;
-  virtual void SendServerMessage() const = 0;
 };
 
 }  // namespace hermes

@@ -78,12 +78,14 @@ class Lpd {
   void OnEsimChallengeResult(const SuccessCallback& success_callback,
                              const std::vector<uint8_t>& info1,
                              const std::vector<uint8_t>& challenge);
-  void OnInitiateAuthResult(const SuccessCallback& success_callback,
-                            const std::vector<uint8_t>& data);
-  void OnAuthServerResult(const SuccessCallback& success_callback,
-                          const std::vector<uint8_t>& data);
-  void OnAuthClientResult(const SuccessCallback& success_callback,
-                          const std::vector<uint8_t>& data);
+  void OnInitiateAuthenticationResult(
+      const SuccessCallback& success_callback,
+      const std::vector<uint8_t>& server_signed1,
+      const std::vector<uint8_t>& server_signature1,
+      const std::vector<uint8_t>& public_keys_to_use,
+      const std::vector<uint8_t>& server_certificate);
+  void OnAuthenticateServerResult(const SuccessCallback& success_callback,
+                                  const std::vector<uint8_t>& data);
 
   void HandleEsimError(const LpdErrorCallback& lpd_callback,
                        EsimError esim_error);

@@ -4,26 +4,138 @@
 
 #include "hermes/smdp_impl.h"
 
+#include <utility>
+
+#include <base/base64.h>
+#include <base/bind.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
+#include <base/values.h>
+
 namespace hermes {
 
+SmdpImpl::SmdpImpl(const std::string& server_hostname)
+    : server_hostname_(server_hostname),
+      server_transport_(brillo::http::Transport::CreateDefault()),
+      weak_factory_(this) {}
+
 void SmdpImpl::InitiateAuthentication(
-    const std::vector<uint8_t>& challenge,
     const std::vector<uint8_t>& info1,
-    const DataCallback& callback,
-    const ErrorCallback& error_callback) const {
-  const std::vector<uint8_t> return_data = {5, 10, 15, 20, 25};
-  callback.Run(return_data);
+    const std::vector<uint8_t>& challenge,
+    const InitiateAuthenticationCallback& data_callback,
+    const ErrorCallback& error_callback) {
+  std::string encoded_info1(info1.begin(), info1.end());
+  base::Base64Encode(encoded_info1, &encoded_info1);
+  std::string encoded_challenge(challenge.begin(), challenge.end());
+  base::Base64Encode(encoded_challenge, &encoded_challenge);
+
+  base::DictionaryValue http_params;
+  http_params.SetString("euiccInfo1", encoded_info1);
+  http_params.SetString("euiccChallenge", encoded_challenge);
+  http_params.SetString("smdpAddress", server_hostname_);
+  std::string http_body;
+  base::JSONWriter::Write(http_params, &http_body);
+
+  SendJsonRequest(
+      "https://" + server_hostname_ +
+          "/gsma/rsp2/es9plus/initiateAuthentication",
+      http_body,
+      base::Bind(&SmdpImpl::OnInitiateAuthenticationResponse,
+                 weak_factory_.GetWeakPtr(), data_callback, error_callback),
+      error_callback);
 }
 
+void SmdpImpl::OnHttpResponse(
+    const base::Callback<void(DictionaryPtr)>& data_callback,
+    const ErrorCallback& error_callback,
+    brillo::http::RequestID request_id,
+    std::unique_ptr<brillo::http::Response> response) {
+  if (!response) {
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+
+  std::string raw_data = response->ExtractDataAsString();
+
+  std::unique_ptr<base::Value> result = base::JSONReader::Read(raw_data);
+  if (result) {
+    data_callback.Run(base::DictionaryValue::From(std::move(result)));
+  } else {
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+}
+
+void SmdpImpl::OnInitiateAuthenticationResponse(
+    const InitiateAuthenticationCallback& data_callback,
+    const ErrorCallback& error_callback,
+    std::unique_ptr<base::DictionaryValue> json_dict) {
+  std::string encoded_buffer;
+  std::string server_signed1;
+  if (!json_dict->GetString("serverSigned1", &encoded_buffer)) {
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &server_signed1);
+
+  std::string server_signature1;
+  if (!json_dict->GetString("serverSignature1", &encoded_buffer)) {
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &server_signature1);
+
+  std::string public_keys_to_use;
+  if (!json_dict->GetString("euiccCiPKIdToBeUsed", &encoded_buffer)) {
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &public_keys_to_use);
+
+  std::string server_certificate;
+  if (!json_dict->GetString("serverCertificate", &encoded_buffer)) {
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &server_certificate);
+
+  data_callback.Run(
+      std::vector<uint8_t>(server_signed1.begin(), server_signed1.end()),
+      std::vector<uint8_t>(server_signature1.begin(), server_signature1.end()),
+      std::vector<uint8_t>(public_keys_to_use.begin(),
+                           public_keys_to_use.end()),
+      std::vector<uint8_t>(server_certificate.begin(),
+                           server_certificate.end()));
+}
+
+void SmdpImpl::OnInitiateAuthenticationError(
+    const ErrorCallback& error_callback,
+    brillo::http::RequestID request_id,
+    const brillo::Error* error) {}
+
+void SmdpImpl::SendJsonRequest(
+    const std::string& url,
+    const std::string& json_data,
+    const base::Callback<void(DictionaryPtr)>& data_callback,
+    const ErrorCallback& error_callback) {
+  brillo::ErrorPtr error = nullptr;
+  brillo::http::Request request(url, brillo::http::request_type::kPost,
+                                server_transport_);
+  request.SetContentType("application/json");
+  request.SetUserAgent("gsma-rsp-lpad");
+  request.AddHeader("X-Admin-Protocol", "gsma/rsp/v2.0.0");
+  request.AddRequestBody(json_data.data(), json_data.size(), &error);
+  CHECK(!error);
+  request.GetResponse(
+      base::Bind(&SmdpImpl::OnHttpResponse, weak_factory_.GetWeakPtr(),
+                 data_callback, error_callback),
+      base::Bind(&SmdpImpl::OnInitiateAuthenticationError,
+                 weak_factory_.GetWeakPtr(), error_callback));
+}
+
+// TODO(jruthe): update data_callback to the correct base::Callback signature
 void SmdpImpl::AuthenticateClient(const std::vector<uint8_t>& data,
-                                    const DataCallback& callback,
-                                    const ErrorCallback& error_callback) const {
-  const std::vector<uint8_t> return_data = {2, 4, 6, 8, 10};
-  callback.Run(return_data);
-}
-
-void SmdpImpl::OpenConnection() const {}
-void SmdpImpl::CloseConnection() const {}
-void SmdpImpl::SendServerMessage() const {}
+                                  const base::Closure& data_callback,
+                                  const ErrorCallback& error_callback) const {}
 
 }  // namespace hermes
