@@ -128,7 +128,6 @@ def CheckSubdirs():
       'modem-utilities',
       'mtpd',
       'peerd',
-      'regions',
       'salsa',
       'smogcheck',
       'thd',
