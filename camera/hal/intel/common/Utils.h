@@ -41,6 +41,8 @@ typedef int64_t nsecs_t;       // nano-seconds
 // return the system-time according to the specified clock
 nsecs_t systemTime();
 
+void dumpToFile(const void* data, int size, int width, int height, int reqId, const std::string& name);
+
 } NAMESPACE_DECLARATION_END
 
 #endif // CAMERA3_HAL_UTILS_H

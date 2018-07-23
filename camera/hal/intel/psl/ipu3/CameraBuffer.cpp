@@ -16,6 +16,7 @@
 
 #define LOG_TAG "CameraBuffer"
 #include "LogHelper.h"
+#include "Utils.h"
 #include <sys/mman.h>
 #include "PlatformData.h"
 #include "CameraBuffer.h"
@@ -24,10 +25,6 @@
 #include <unistd.h>
 #include <sync/sync.h>
 #include <cros-camera/camera_buffer_manager.h>
-
-#include <sys/types.h>
-#include <dirent.h>
-#include <algorithm>
 
 NAMESPACE_DECLARATION {
 extern int32_t gDumpInterval;
@@ -427,71 +424,9 @@ void CameraBuffer::dumpImage(const char *name)
         CheckError(status != NO_ERROR, VOID_VALUE, "@%s, lock fails", __FUNCTION__);
     }
 
-    dumpImage(mDataPtr, mSize, mWidth, mHeight, name);
+    dumpToFile(mDataPtr, mSize, mWidth, mHeight, mRequestID, name);
 
     unlock();
-#endif
-}
-
-void CameraBuffer::dumpImage(const void *data, const int size, int width, int height,
-                                 const char *name)
-{
-#ifdef DUMP_IMAGE
-    static unsigned int count = 0;
-    count++;
-
-    if (gDumpInterval > 1) {
-        if (count % gDumpInterval != 0) {
-            return;
-        }
-    }
-
-    // one example for the file name: /tmp/dump_1920x1080_00000346_PREVIEW_0
-    std::string fileName;
-    std::string dumpPrefix = "dump_";
-    char dumpSuffix[100] = {};
-    snprintf(dumpSuffix, sizeof(dumpSuffix),
-        "%dx%d_%08u_%s_%d", width, height, count, name, mRequestID);
-    fileName = std::string(gDumpPath) + dumpPrefix + std::string(dumpSuffix);
-
-    LOG2("%s filename is %s", __FUNCTION__, fileName.data());
-
-    FILE *fp = fopen (fileName.data(), "w+");
-    if (fp == nullptr) {
-        LOGE("open file failed");
-        return;
-    }
-    LOG1("Begin write image %s", fileName.data());
-
-    if ((fwrite(data, size, 1, fp)) != 1)
-        LOGW("Error or short count writing %d bytes to %s", size, fileName.data());
-    fclose (fp);
-
-    // always leave the latest gDumpCount "dump_xxx" files
-    if (gDumpCount <= 0) {
-        return;
-    }
-    // read the "dump_xxx" files name into vector
-    std::vector<std::string> fileNames;
-    DIR* dir = opendir(gDumpPath);
-    CheckError(dir == nullptr, VOID_VALUE, "@%s, call opendir() fail", __FUNCTION__);
-    struct dirent* dp = nullptr;
-    while ((dp = readdir(dir)) != nullptr) {
-        char* ret = strstr(dp->d_name, dumpPrefix.c_str());
-        if (ret) {
-            fileNames.push_back(dp->d_name);
-        }
-    }
-    closedir(dir);
-
-    // remove the old files when the file number is > gDumpCount
-    if (fileNames.size() > gDumpCount) {
-        std::sort(fileNames.begin(), fileNames.end());
-        for (size_t i = 0; i < (fileNames.size() - gDumpCount); ++i) {
-            std::string fullName = gDumpPath + fileNames[i];
-            remove(fullName.c_str());
-        }
-    }
 #endif
 }
 

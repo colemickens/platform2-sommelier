@@ -147,6 +147,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         // Work for mStream
         LOG2("@%s, stream:%p, mStream:%p", __FUNCTION__,
              buffer->getOwner()->getStream(), mStream);
+        buffer->setRequestId(request->getId());
         status = prepareBuffer(buffer);
         if (status != NO_ERROR) {
             LOGE("prepare buffer error!");
@@ -295,9 +296,9 @@ status_t OutputFrameWorker::postRun()
                               HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
             || mOutputBuffer->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         if (stream->usage() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
-            mOutputBuffer->dumpImage(CAMERA_DUMP_VIDEO, "VIDEO");
+            mOutputBuffer->dumpImage(CAMERA_DUMP_VIDEO, "video.nv12");
         } else {
-            mOutputBuffer->dumpImage(CAMERA_DUMP_PREVIEW, "PREVIEW");
+            mOutputBuffer->dumpImage(CAMERA_DUMP_PREVIEW, "preview.nv12");
         }
     }
 
@@ -585,7 +586,9 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
             mPostProcessBufs.push_back(buf);
         }
 
-        mPostProcessBufs.back()->dumpImage(CAMERA_DUMP_JPEG, "before_nv12_to_jpeg");
+        mPostProcessBufs.back()->setRequestId(request->getId());
+
+        mPostProcessBufs.back()->dumpImage(CAMERA_DUMP_JPEG, "before_nv12_to_jpeg.nv12");
 
         // update settings for jpeg
         status = mJpegTask->handleMessageSettings(*(settings.get()));

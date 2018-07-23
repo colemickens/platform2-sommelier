@@ -17,9 +17,11 @@
 #define LOG_TAG "InputFrameWorker"
 
 #include "InputFrameWorker.h"
+#include <sys/mman.h>
 
 #include "PerformanceTraces.h"
 #include "NodeTypes.h"
+#include "Utils.h"
 
 namespace android {
 namespace camera2 {
@@ -69,10 +71,32 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         LOGE("@%s unsupported memory type %d.", __func__, memType);
         return BAD_VALUE;
     }
+
     status |= mNode->PutFrame(&mBuffers[index]);
 
-    msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->Sequence());
+    Camera3Request* request = msg->pMsg.processingSettings->request;
+    CheckError(!request, BAD_VALUE, "@%s request is nullptr", __func__);
+
+    request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->Sequence());
     PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->Sequence());
+
+    if (LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW) &&
+        LogHelper::isDumpTypeEnable(CAMERA_DUMP_JPEG)) {
+        int jpegBufCnt = request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
+        if (jpegBufCnt > 0) {
+            cros::V4L2Buffer* v4l2Buf = &mBuffers[index];
+            if (v4l2Buf->Memory() == V4L2_MEMORY_DMABUF) {
+                uint32_t size = v4l2Buf->Length(0);
+                int fd = v4l2Buf->Fd(0);
+                void* addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+                CheckError((addr == MAP_FAILED), BAD_VALUE, "@%s mmap fails", __func__);
+                dumpToFile(addr, size, mFormat.Width(), mFormat.Height(), request->getId(), "vector_raw_for_jpeg");
+                munmap(addr, size);
+            } else {
+                LOGE("@%s, just support V4L2_MEMORY_DMABUF dump", __FUNCTION__);
+            }
+        }
+    }
 
     return status;
 }

@@ -24,6 +24,10 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include <sys/types.h>
+#include <dirent.h>
+#include <algorithm>
+
 NAMESPACE_DECLARATION {
 void getTokens(const char *s, const char delim, std::vector<std::string> &tokens)
 {
@@ -133,6 +137,64 @@ nsecs_t systemTime()
     t.tv_sec = t.tv_nsec = 0;
     clock_gettime(CLOCK_MONOTONIC, &t);
     return nsecs_t(t.tv_sec)*1000000000LL + t.tv_nsec;
+}
+
+void dumpToFile(const void* data, int size, int width, int height, int reqId, const std::string& name)
+{
+#ifdef DUMP_IMAGE
+    static unsigned int count = 0;
+    count++;
+
+    if (gDumpInterval > 1) {
+        if (count % gDumpInterval != 0) {
+            return;
+        }
+    }
+
+    // one example for the file name: /tmp/dump_00000003_34_4096x3072_before_nv12_to_jpeg.nv12
+    std::string fileName;
+    std::string dumpPrefix("dump_");
+    char dumpSuffix[100] = {};
+    snprintf(dumpSuffix, sizeof(dumpSuffix),
+        "%08u_%d_%dx%d_%s", count, reqId, width, height, name.c_str());
+    fileName = std::string(gDumpPath) + dumpPrefix + std::string(dumpSuffix);
+
+    LOG2("%s filename is %s", __FUNCTION__, fileName.data());
+
+    FILE* fp = fopen (fileName.data(), "w+");
+    CheckError(fp == nullptr, VOID_VALUE, "@%s, open file failed", __FUNCTION__);
+
+    LOG1("Begin write image %s", fileName.data());
+    if ((fwrite(data, size, 1, fp)) != 1)
+        LOGW("Error or short count writing %d bytes to %s", size, fileName.data());
+    fclose (fp);
+
+    // always leave the latest gDumpCount "dump_xxx" files
+    if (gDumpCount <= 0) {
+        return;
+    }
+    // read the "dump_xxx" files name into vector
+    std::vector<std::string> fileNames;
+    DIR* dir = opendir(gDumpPath);
+    CheckError(dir == nullptr, VOID_VALUE, "@%s, call opendir() fail", __FUNCTION__);
+    struct dirent* dp = nullptr;
+    while ((dp = readdir(dir)) != nullptr) {
+        char* ret = strstr(dp->d_name, dumpPrefix.c_str());
+        if (ret) {
+            fileNames.push_back(dp->d_name);
+        }
+    }
+    closedir(dir);
+
+    // remove the old files when the file number is > gDumpCount
+    if (fileNames.size() > gDumpCount) {
+        std::sort(fileNames.begin(), fileNames.end());
+        for (size_t i = 0; i < (fileNames.size() - gDumpCount); ++i) {
+            std::string fullName = gDumpPath + fileNames[i];
+            remove(fullName.c_str());
+        }
+    }
+#endif
 }
 
 } NAMESPACE_DECLARATION_END
