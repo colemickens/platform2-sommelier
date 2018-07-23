@@ -70,6 +70,11 @@ const size_t kRenewUntilOffset = 11;
 // String in klist output that prefixes the renewal lifetime.
 const char kRenewUntil[] = "renew until ";
 
+// Grace time before printing warnings like "TGT not yet valid?" since it's
+// generating a lot of false positives otherwise. The reason could be time
+// discrepancies between client and server.
+const int kTgtWarningGraceTimeSeconds = 300;
+
 struct GpoEntry {
   GpoEntry() { Clear(); }
 
@@ -499,11 +504,11 @@ int ParseTgtLifetime(const std::string& klist_out) {
       // If the caller checked klist -s beforehand, the TGT should be valid and
       // these warnings should never be printed.
       time_t now = time(NULL);
-      if (now < valid_from) {
+      if (now < valid_from + kTgtWarningGraceTimeSeconds) {
         LOG(WARNING) << "TGT not yet valid? (now=" << now
                      << ", valid_from=" << valid_from << ")";
       }
-      if (now > expires) {
+      if (now + kTgtWarningGraceTimeSeconds > expires) {
         LOG(WARNING) << "TGT already expired? (now=" << now
                      << ", expires=" << expires << ")";
       }
