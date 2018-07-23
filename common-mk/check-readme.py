@@ -135,7 +135,6 @@ def CheckSubdirs():
       'smogcheck',
       'thd',
       'timberslide',
-      'tpm2-simulator',
       'tpm_manager',
       'trim',
       'userfeedback',
