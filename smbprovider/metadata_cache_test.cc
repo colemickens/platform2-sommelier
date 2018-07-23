@@ -48,6 +48,7 @@ TEST_F(MetadataCacheTest, AddAndFindEntry) {
   const DirectoryEntry expected_entry(false /* is_directory */, name, full_path,
                                       expected_size, expected_date);
   cache_->AddEntry(expected_entry);
+  EXPECT_FALSE(cache_->IsEmpty());
   EXPECT_TRUE(cache_->FindEntry(full_path, &found_entry));
   EXPECT_TRUE(AreEntriesEqual(expected_entry, found_entry));
 
@@ -55,6 +56,29 @@ TEST_F(MetadataCacheTest, AddAndFindEntry) {
   DirectoryEntry found_entry2;
   EXPECT_TRUE(cache_->FindEntry(full_path, &found_entry2));
   EXPECT_TRUE(AreEntriesEqual(expected_entry, found_entry2));
+}
+
+TEST_F(MetadataCacheTest, IsEmptyOnNewCache) {
+  EXPECT_TRUE(cache_->IsEmpty());
+}
+
+TEST_F(MetadataCacheTest, ClearOnEmptyCache) {
+  EXPECT_TRUE(cache_->IsEmpty());
+  cache_->ClearAll();
+  EXPECT_TRUE(cache_->IsEmpty());
+}
+
+TEST_F(MetadataCacheTest, ClearRemovesItems) {
+  EXPECT_TRUE(cache_->IsEmpty());
+
+  const std::string name = "path";
+  const std::string full_path = "smb://server/share/some/" + name;
+  cache_->AddEntry(DirectoryEntry(false /* is_directory */, name, full_path,
+                                  1234 /* size */, 999999 /* date */));
+
+  EXPECT_FALSE(cache_->IsEmpty());
+  cache_->ClearAll();
+  EXPECT_TRUE(cache_->IsEmpty());
 }
 
 }  // namespace smbprovider

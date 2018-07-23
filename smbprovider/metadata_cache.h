@@ -24,7 +24,6 @@ namespace smbprovider {
 // requests for metadata.
 //
 // TODO(zentaro): Follow up CL's will implement;
-//    * Clearing the entire cache.
 //    * Invalidating requested entries based on time.
 //    * Purging entries based on time.
 class MetadataCache {
@@ -38,6 +37,12 @@ class MetadataCache {
   // Finds an entry at |full_path|. If found, returns true and out_entry
   // is set. |full_path| is a full smb url.
   bool FindEntry(const std::string& full_path, DirectoryEntry* out_entry);
+
+  // Deletes all entries from the cache.
+  void ClearAll();
+
+  // Returns true if the cache is empty.
+  bool IsEmpty() const;
 
  private:
   struct CacheEntry {

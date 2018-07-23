@@ -25,4 +25,12 @@ bool MetadataCache::FindEntry(const std::string& full_path,
   return true;
 }
 
+void MetadataCache::ClearAll() {
+  cache_.clear();
+}
+
+bool MetadataCache::IsEmpty() const {
+  return cache_.empty();
+}
+
 }  // namespace smbprovider
