@@ -634,13 +634,20 @@ void FakeSambaInterface::AddShare(const std::string& path) {
 void FakeSambaInterface::AddDirectory(const std::string& path,
                                       bool locked,
                                       uint32_t smbc_type) {
+  AddDirectory(path, locked, smbc_type, 0 /* date */);
+}
+
+void FakeSambaInterface::AddDirectory(const std::string& path,
+                                      bool locked,
+                                      uint32_t smbc_type,
+                                      uint64_t date) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
   FakeDirectory* directory = GetDirectory(GetDirPath(path));
   DCHECK(directory);
   directory->entries.emplace_back(
-      std::make_unique<FakeDirectory>(path, locked, smbc_type));
+      std::make_unique<FakeDirectory>(path, locked, smbc_type, date));
 }
 
 void FakeSambaInterface::AddLockedDirectory(const std::string& path) {

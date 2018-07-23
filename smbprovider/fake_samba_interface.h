@@ -82,6 +82,10 @@ class FakeSambaInterface : public SambaInterface {
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);
   void AddDirectory(const std::string& path, bool locked, uint32_t smbc_type);
+  void AddDirectory(const std::string& path,
+                    bool locked,
+                    uint32_t smbc_type,
+                    uint64_t date);
 
   // Adds a directory that has the type SMBC_FILE_SHARE.
   void AddShare(const std::string& path);
@@ -189,11 +193,14 @@ class FakeSambaInterface : public SambaInterface {
     using Entries = std::vector<std::unique_ptr<FakeEntry>>;
     using EntriesIterator = Entries::iterator;
 
-    FakeDirectory(const std::string& full_path, bool locked, uint32_t smbc_type)
-        : FakeEntry(full_path, smbc_type, 0 /* size */, 0 /* date */, locked) {}
+    FakeDirectory(const std::string& full_path,
+                  bool locked,
+                  uint32_t smbc_type,
+                  uint64_t date)
+        : FakeEntry(full_path, smbc_type, 0 /* size */, date, locked) {}
 
     FakeDirectory(const std::string& full_path, bool locked)
-        : FakeDirectory(full_path, locked, SMBC_DIR) {}
+        : FakeDirectory(full_path, locked, SMBC_DIR, 0) {}
 
     explicit FakeDirectory(const std::string& full_path)
         : FakeDirectory(full_path, false /* locked */) {}
