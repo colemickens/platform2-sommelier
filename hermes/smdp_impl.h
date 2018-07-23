@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef HERMES_SMDP_FI_IMPL_H_
-#define HERMES_SMDP_FI_IMPL_H_
+#ifndef HERMES_SMDP_IMPL_H_
+#define HERMES_SMDP_IMPL_H_
 
 #include <vector>
 
@@ -11,10 +11,10 @@
 
 namespace hermes {
 
-class SmdpFiImpl : public Smdp {
+class SmdpImpl : public Smdp {
  public:
-  SmdpFiImpl() = default;
-  ~SmdpFiImpl() = default;
+  SmdpImpl() = default;
+  ~SmdpImpl() = default;
 
   void InitiateAuthentication(
       const std::vector<uint8_t>& challenge,
@@ -34,4 +34,4 @@ class SmdpFiImpl : public Smdp {
 
 }  // namespace hermes
 
-#endif  // HERMES_SMDP_FI_IMPL_H_
+#endif  // HERMES_SMDP_IMPL_H_

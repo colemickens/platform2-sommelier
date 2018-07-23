@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hermes/smdp_fi_impl.h"
+#include "hermes/smdp_impl.h"
 
 namespace hermes {
 
-void SmdpFiImpl::InitiateAuthentication(
+void SmdpImpl::InitiateAuthentication(
     const std::vector<uint8_t>& challenge,
     const std::vector<uint8_t>& info1,
     const DataCallback& callback,
@@ -15,15 +15,15 @@ void SmdpFiImpl::InitiateAuthentication(
   callback.Run(return_data);
 }
 
-void SmdpFiImpl::AuthenticateClient(const std::vector<uint8_t>& data,
+void SmdpImpl::AuthenticateClient(const std::vector<uint8_t>& data,
                                     const DataCallback& callback,
                                     const ErrorCallback& error_callback) const {
   const std::vector<uint8_t> return_data = {2, 4, 6, 8, 10};
   callback.Run(return_data);
 }
 
-void SmdpFiImpl::OpenConnection() const {}
-void SmdpFiImpl::CloseConnection() const {}
-void SmdpFiImpl::SendServerMessage() const {}
+void SmdpImpl::OpenConnection() const {}
+void SmdpImpl::CloseConnection() const {}
+void SmdpImpl::SendServerMessage() const {}
 
 }  // namespace hermes

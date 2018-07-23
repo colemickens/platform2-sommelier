@@ -12,7 +12,7 @@
 
 #include "hermes/esim_qmi_impl.h"
 #include "hermes/lpd.h"
-#include "hermes/smdp_fi_impl.h"
+#include "hermes/smdp_impl.h"
 
 // TODO(jruthe): update this with some actual functionality to mimic caller.
 void ErrorCallback(hermes::LpdError error) {}
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   base::MessageLoop message_loop(base::MessageLoop::TYPE_IO);
   auto esim = hermes::EsimQmiImpl::Create();
   CHECK(esim);
-  hermes::Lpd lpd(std::move(esim), std::make_unique<hermes::SmdpFiImpl>());
+  hermes::Lpd lpd(std::move(esim), std::make_unique<hermes::SmdpImpl>());
   lpd.Initialize(base::Bind(&OnInitialization, &lpd), base::Bind(&InitError));
   base::RunLoop().Run();
 
