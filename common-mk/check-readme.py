@@ -109,7 +109,6 @@ def CheckSubdirs():
       'apmanager',
       'attestation',
       'avtest_label_detect',
-      'bootstat',
       'buffet',
       'container_utils',
       'crash-reporter',
