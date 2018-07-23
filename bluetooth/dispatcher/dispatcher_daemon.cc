@@ -13,7 +13,8 @@ DispatcherDaemon::DispatcherDaemon(PassthroughMode passthrough_mode)
 
 bool DispatcherDaemon::Init(scoped_refptr<dbus::Bus> bus,
                             DBusDaemon* dbus_daemon) {
-  LOG(INFO) << "Bluetooth daemon started";
+  LOG(INFO) << "Bluetooth daemon started with passthrough mode = "
+            << passthrough_mode_;
 
   suspend_manager_ = std::make_unique<SuspendManager>(bus);
   dispatcher_ = std::make_unique<Dispatcher>(bus);
