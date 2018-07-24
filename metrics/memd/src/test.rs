@@ -18,6 +18,7 @@ use std::time::Duration;
 use Dbus;
 use errno;
 use FileWatcher;
+use get_runnables;
 use PAGE_SIZE;
 use Paths;
 use Result;
@@ -690,4 +691,24 @@ pub fn setup_test_environment(paths: &Paths) {
         .expect("cannot initialize extra_free_kbytes");
 
     mkfifo(&paths.low_mem_device).expect("could not make mock low-mem device");
+}
+
+pub fn read_vmstat() {
+    // Calling getpid() is always safe.
+    let temp_file_name = format!("/tmp/memd-loadavg-{}", unsafe { libc::getpid() });
+    let mut temp_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(&temp_file_name).expect("cannot create");
+    // Unlink file immediately for more reliable cleanup.
+    std::fs::remove_file(&temp_file_name).expect(&format!("cannot remove"));
+
+    temp_file.write_all("0.42 0.31 1.50 44/1234 56789".as_bytes()).expect("cannot write");
+    temp_file.seek(std::io::SeekFrom::Start(0)).expect("cannot seek");
+    assert_eq!(get_runnables(&temp_file).unwrap(), 44);
+    temp_file.seek(std::io::SeekFrom::Start(0)).expect("cannot seek");
+    temp_file.write_all("1122.12 25.87 19.51 33/1234 56789".as_bytes()).expect("cannot write");
+    temp_file.seek(std::io::SeekFrom::Start(0)).expect("cannot seek");
+    assert_eq!(get_runnables(&temp_file).unwrap(), 33);
 }

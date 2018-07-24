@@ -455,17 +455,15 @@ impl SampleQueue {
 
 // Returns number of tasks in the run queue as reported in /proc/loadavg, which
 // must be accessible via runnables_file.
-fn get_runnables(runnables_file: &File) -> Result<u32> {
+pub fn get_runnables(runnables_file: &File) -> Result<u32> {
     // It is safe to leave the content of buffer uninitialized because we read
     // into it and only look at the part of it initialized by reading.
     let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
     let content = pread(runnables_file, &mut buffer[..])?;
-    // Example: "0.81 0.66 0.86 22/3873 7043" (22 runnables here).  The format is
-    // fixed, so just skip the first 14 characters.
-    if content.len() < 16 {
-        return Err("unexpected /proc/loadavg format".into());
-    }
-    let (value, _) = parse_int_prefix(&content[14..])?;
+    // Example: "0.81 0.66 0.86 22/3873 7043" (22 runnables here).
+    let slash_pos = content.find('/').ok_or_else(|| "cannot find '/'")?;
+    let space_pos = &content[..slash_pos].rfind(' ').ok_or_else(|| "cannot find ' '")?;
+    let (value, _) = parse_int_prefix(&content[space_pos + 1..])?;
     Ok(value)
 }
 
@@ -1344,6 +1342,11 @@ fn testing_root() -> String {
 fn memory_daemon_test() {
     env_logger::init();
     run_memory_daemon(false);
+}
+
+#[test]
+fn read_vmstat_test() {
+    test::read_vmstat();
 }
 
 fn run_memory_daemon(always_poll_fast: bool) {
