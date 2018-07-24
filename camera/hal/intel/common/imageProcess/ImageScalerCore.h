@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (C) 2012-2018 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,67 +17,80 @@
 #ifndef _IMAGESCALER_CORE_H_
 #define _IMAGESCALER_CORE_H_
 #include <memory>
-#include "CommonBuffer.h"
+#include <libyuv.h>
 
 NAMESPACE_DECLARATION {
-/**
- * \class ImageScalerCore
- *
- */
 class ImageScalerCore {
 public:
-    static void downScaleImage(std::shared_ptr<CommonBuffer> srcBuf,
-            std::shared_ptr<CommonBuffer> dstBuf);
-    static void downScaleImage(void *src, void *dest,
-            int dest_w, int dest_h, int dest_stride,
-            int src_w, int src_h, int src_stride,
-            int format, int src_skip_lines_top = 0,
-            int src_skip_lines_bottom = 0);
+    template<typename T>
+    static void scaleFrame(std::shared_ptr<T> input, std::shared_ptr<T> output) {
+        // Y plane
+        libyuv::ScalePlane(static_cast<uint8*>(input->data()),
+                            input->stride(),
+                            input->width(),
+                            input->height(),
+                            static_cast<uint8*>(output->data()),
+                            output->stride(),
+                            output->width(),
+                            output->height(),
+                            libyuv::kFilterNone);
 
-protected:
-    static void downScaleYUY2Image(unsigned char *dest, const unsigned char *src,
-        const int dest_w, const int dest_h, const int dest_stride,
-        const int src_w, const int src_h, const int src_stride);
+        // UV plane
+        int inUVOffsetByte = input->stride() * input->height();
+        int outUVOffsetByte = output->stride() * output->height();
+        libyuv::ScalePlane_16(static_cast<uint16*>(input->data()) + inUVOffsetByte / sizeof(uint16),
+                                input->stride() / 2,
+                                input->width() / 2,
+                                input->height() / 2,
+                                static_cast<uint16*>(output->data()) + outUVOffsetByte / sizeof(uint16),
+                                output->stride() / 2,
+                                output->width() / 2,
+                                output->height() / 2,
+                                libyuv::kFilterNone);
+    }
 
-    static void downScaleAndCropNv12Image(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_w, const int dest_h, const int dest_stride,
-        const int src_w, const int src_h, const int src_stride,
-        const int src_skip_lines_top = 0,
-        const int src_skip_lines_bottom = 0);
+    template<typename T>
+    static status_t rotateFrame(std::shared_ptr<T> input, std::shared_ptr<T> output,
+                                int angle, std::vector<uint8_t>& rotateBuf) {
+        CheckError((output->width() != input->height() || output->height() != input->width()),
+                    BAD_VALUE, "output resolution mis-match [%d x %d] -> [%d x %d]",
+                    input->width(), input->height(), output->width(), output->height());
+        CheckError((angle != 90 && angle != 270), BAD_VALUE, "angle value:%d is wrong", angle);
 
-    static void trimNv12Image(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_w, const int dest_h, const int dest_stride,
-        const int src_w, const int src_h, const int src_stride,
-        const int src_skip_lines_top = 0,
-        const int src_skip_lines_bottom = 0);
+        const uint8* inBuffer = static_cast<uint8*>(input->data());
+        uint8* outBuffer = static_cast<uint8*>(output->data());
+        int outW = output->width();
+        int outH = output->height();
+        int outStride = output->stride();
+        int inW = input->width();
+        int inH = input->height();
+        int inStride = input->stride();
+        if (rotateBuf.size() < input->size()) {
+            rotateBuf.resize(input->size());
+        }
 
-    static void downScaleAndCropNv12ImageQvga(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_stride, const int src_stride);
+        // TODO: find a way to rotate NV12 directly.
+        uint8* I420Buffer = rotateBuf.data();
+        int ret = libyuv::NV12ToI420Rotate(
+            inBuffer, inStride, inBuffer + inH * inStride, inStride,
+            I420Buffer, outW,
+            I420Buffer + outW * outH, outW / 2,
+            I420Buffer + outW * outH * 5 / 4, outW / 2,
+            inW, inH,
+            (angle == 90) ? libyuv::RotationMode::kRotate90
+                          : libyuv::RotationMode::kRotate270);
+        CheckError((ret < 0), UNKNOWN_ERROR, "@%s, rotate fail [%d]!", __FUNCTION__, ret);
 
-    static void downScaleAndCropNv12ImageQcif(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_stride, const int src_stride);
+        ret = libyuv::I420ToNV12(I420Buffer, outW,
+                                 I420Buffer + outW * outH, outW / 2,
+                                 I420Buffer + outW * outH * 5 / 4, outW / 2,
+                                 outBuffer, outStride,
+                                 outBuffer +  outStride * outH, outStride,
+                                 outW, outH);
+        CheckError((ret < 0), UNKNOWN_ERROR, "@%s, convert fail [%d]!", __FUNCTION__, ret);
 
-    static void downScaleNv12ImageFrom800x600ToQvga(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_stride, const int src_stride);
-
-private:
-    static const int MFP = 16;            // Fractional bits for fixed point calculations
-
-private:
-    static void cropComposeCopy(void *src, void *dst, unsigned int size);
-    static void cropComposeUpscaleNV12_bl(
-        void *src, unsigned int srcH, unsigned int srcStride,
-        unsigned int srcCropLeft, unsigned int srcCropTop,
-        unsigned int srcCropW, unsigned int srcCropH,
-        void *dst, unsigned int dstH, unsigned int dstStride,
-        unsigned int dstCropLeft, unsigned int dstCropTop,
-        unsigned int dstCropW, unsigned int dstCropH);
-
+        return OK;
+    }
 };
 
 } NAMESPACE_DECLARATION_END

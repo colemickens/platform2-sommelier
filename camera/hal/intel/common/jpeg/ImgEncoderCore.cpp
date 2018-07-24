@@ -112,7 +112,7 @@ void ImgEncoderCore::thumbBufferDownScale(EncodePackage & pkg)
                     return;
                 }
             }
-            ImageScalerCore::downScaleImage(pkg.thumb, mThumbScaled);
+            ImageScalerCore::scaleFrame<CommonBuffer>(pkg.thumb, mThumbScaled);
             pkg.thumb = mThumbScaled;
         }
     }
@@ -155,7 +155,7 @@ void ImgEncoderCore::mainBufferDownScale(EncodePackage & pkg)
                 return;
             }
         }
-        ImageScalerCore::downScaleImage(pkg.main, mMainScaled);
+        ImageScalerCore::scaleFrame<CommonBuffer>(pkg.main, mMainScaled);
         pkg.main = mMainScaled;
     }
 }

@@ -58,8 +58,7 @@ PLATFORMDATASRC = common/platformdata/CameraConf.cpp \
 MEDIACONTROLLERSRC = common/mediacontroller/MediaController.cpp \
                      common/mediacontroller/MediaEntity.cpp
 
-IMAGEPROCESSSRC = common/imageProcess/ColorConverter.cpp \
-                  common/imageProcess/ImageScalerCore.cpp
+IMAGEPROCESSSRC = common/imageProcess/ColorConverter.cpp
 
 COMMONSRC = common/SysCall.cpp \
             common/Camera3V4l2Format.cpp \

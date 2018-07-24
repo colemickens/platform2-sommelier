@@ -22,7 +22,7 @@
 #include "ColorConverter.h"
 #include "NodeTypes.h"
 #include "Camera3GFXFormat.h"
-#include <libyuv.h>
+#include "ImageScalerCore.h"
 #include <sys/mman.h>
 
 namespace android {
@@ -517,10 +517,10 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                 mPostProcessBufs.push_back(buf);
             }
             // Rotate to internal post-processing buffer
-            status = rotateFrame(input, mPostProcessBufs[0], angle);
+            status = ImageScalerCore::rotateFrame(input, mPostProcessBufs[0], angle, mRotateBuffer);
         } else {
             // Rotate to output dst buffer
-            status = rotateFrame(input, output, angle);
+            status = ImageScalerCore::rotateFrame(input, output, angle, mRotateBuffer);
         }
         CheckError((status != OK), status, "@%s, Rotate frame failed! [%d]!",
                    __FUNCTION__, status);
@@ -551,10 +551,10 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                 mPostProcessBufs.push_back(buf);
             }
             // Scale to internal post-processing buffer
-            status = scaleFrame(mPostProcessBufs[0], mPostProcessBufs[1]);
+            ImageScalerCore::scaleFrame(mPostProcessBufs[0], mPostProcessBufs[1]);
         } else {
             // Scale to output dst buffer
-            status = scaleFrame(mPostProcessBufs[0], output);
+            ImageScalerCore::scaleFrame(mPostProcessBufs[0], output);
         }
         CheckError((status != OK), status, "@%s, Scale frame failed! [%d]!",
                    __FUNCTION__, status);
@@ -653,88 +653,5 @@ status_t OutputFrameWorker::SWPostProcessor::convertJpeg(
 
     return status;
 }
-
-status_t OutputFrameWorker::SWPostProcessor::rotateFrame(
-                               std::shared_ptr<CameraBuffer> input,
-                               std::shared_ptr<CameraBuffer> output,
-                               int angle)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
-    // Check the output buffer resolution with device config resolution
-    CheckError(
-        (output->width() != input->height()
-         || output->height() != input->width()),
-        UNKNOWN_ERROR, "output resolution mis-match [%d x %d] -> [%d x %d]",
-        input->width(), input->height(),
-        output->width(), output->height());
-
-    const uint8* inBuffer = (uint8*)(input->data());
-    uint8* outBuffer = (uint8*)(output->data());
-    int outW = output->width();
-    int outH = output->height();
-    int outStride = output->stride();
-    int inW = input->width();
-    int inH = input->height();
-    int inStride = input->stride();
-    if (mRotateBuffer.size() < input->size()) {
-        mRotateBuffer.resize(input->size());
-    }
-
-    uint8* I420Buffer = mRotateBuffer.data();
-    int ret = libyuv::NV12ToI420Rotate(
-        inBuffer, inStride, inBuffer + inH * inStride, inStride,
-        I420Buffer, outW,
-        I420Buffer + outW * outH, outW / 2,
-        I420Buffer + outW * outH * 5 / 4, outW / 2,
-        inW, inH,
-        (angle == 90) ? libyuv::RotationMode::kRotate90
-                      : libyuv::RotationMode::kRotate270);
-    CheckError((ret < 0), UNKNOWN_ERROR, "@%s, rotate fail [%d]!",
-               __FUNCTION__, ret);
-
-    ret = libyuv::I420ToNV12(I420Buffer, outW,
-                             I420Buffer + outW * outH, outW / 2,
-                             I420Buffer + outW * outH * 5 / 4, outW / 2,
-                             outBuffer, outStride,
-                             outBuffer +  outStride * outH, outStride,
-                             outW, outH);
-    CheckError((ret < 0), UNKNOWN_ERROR, "@%s, convert fail [%d]!",
-               __FUNCTION__, ret);
-
-    return OK;
-}
-
-status_t OutputFrameWorker::SWPostProcessor::scaleFrame(
-                               std::shared_ptr<CameraBuffer> input,
-                               std::shared_ptr<CameraBuffer> output)
-{
-    // Y plane
-    libyuv::ScalePlane((uint8*)input->data(),
-                input->stride(),
-                input->width(),
-                input->height(),
-                (uint8*)output->data(),
-                output->stride(),
-                output->width(),
-                output->height(),
-                libyuv::kFilterNone);
-
-    // UV plane
-    // TODO: should get bpl to calculate offset
-    int inUVOffsetByte = input->stride() * input->height();
-    int outUVOffsetByte = output->stride() * output->height();
-    libyuv::ScalePlane_16((uint16*)input->data() + inUVOffsetByte / 2,
-                input->stride() / 2,
-                input->width() / 2,
-                input->height() / 2,
-                (uint16*)output->data() + outUVOffsetByte / 2,
-                output->stride() / 2,
-                output->width() / 2,
-                output->height() / 2,
-                libyuv::kFilterNone);
-    return OK;
-}
-
 } /* namespace camera2 */
 } /* namespace android */
