@@ -28,10 +28,6 @@ dump_var_log arc-system-mount.log
 dump_var_log arc-ureadahead-trace.log
 dump_var_log arc-ureadahead.log
 
-# TODO(yusukes): Remove these in M70.
-rm -f /var/log/arc-setup-for-login-screen.log
-rm -f /var/log/arc-setup.log
-
 # TODO(hidehiko): Remove these in M71.
 rm -f /var/log/arc-adbd.log
 rm -f /var/log/arc-obb-mounter.log
