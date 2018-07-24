@@ -5,6 +5,7 @@
 #include "vm_tools/cicerone/virtual_machine.h"
 
 #include <arpa/inet.h>
+#include <inttypes.h>
 
 #include <algorithm>
 #include <memory>
@@ -45,7 +46,8 @@ VirtualMachine::VirtualMachine(uint32_t container_subnet,
     : container_subnet_(container_subnet),
       container_netmask_(container_netmask),
       ipv4_address_(ipv4_address),
-      vsock_cid_(cid) {}
+      vsock_cid_(cid),
+      weak_ptr_factory_(this) {}
 
 VirtualMachine::~VirtualMachine() = default;
 
@@ -58,314 +60,97 @@ bool VirtualMachine::ConnectTremplin() {
 }
 
 bool VirtualMachine::RegisterContainer(const std::string& container_token,
+                                       const uint32_t garcon_vsock_port,
                                        const std::string& container_ip) {
   // The token will be in the pending map if this is the first start of the
   // container. It will be in the main map if this is from a crash/restart of
   // the garcon process in the container.
-  std::string container_name;
-  auto iter = pending_container_token_to_name_.find(container_token);
-  if (iter != pending_container_token_to_name_.end()) {
-    container_name = iter->second;
-    container_token_to_name_[container_token] = container_name;
-    pending_container_token_to_name_.erase(iter);
+  auto pending_iter = pending_containers_.find(container_token);
+  if (pending_iter != pending_containers_.end()) {
+    containers_[pending_iter->first] = std::move(pending_iter->second);
+    pending_containers_.erase(pending_iter);
   } else {
-    container_name = GetContainerNameForToken(container_token);
+    string container_name = GetContainerNameForToken(container_token);
     if (container_name.empty()) {
       return false;
     }
   }
-  auto channel = grpc::CreateChannel(
-      base::StringPrintf("%s:%u", container_ip.c_str(), vm_tools::kGarconPort),
-      grpc::InsecureChannelCredentials());
-  container_name_to_garcon_channel_[container_name] = channel;
-  container_name_to_garcon_stub_[container_name] =
-      std::make_unique<vm_tools::container::Garcon::Stub>(channel);
+
+  auto iter = containers_.find(container_token);
+  std::string garcon_addr;
+  if (garcon_vsock_port != 0) {
+    garcon_addr = base::StringPrintf("vsock:%" PRIu32 ":%" PRIu32, vsock_cid_,
+                                     garcon_vsock_port);
+  } else {
+    garcon_addr = base::StringPrintf("%s:%d", container_ip.c_str(),
+                                     vm_tools::kGarconPort);
+  }
+
+  iter->second->ConnectToGarcon(garcon_addr);
+
   return true;
 }
 
 bool VirtualMachine::UnregisterContainer(const std::string& container_token) {
-  auto token_iter = container_token_to_name_.find(container_token);
-  if (token_iter == container_token_to_name_.end()) {
+  auto iter = containers_.find(container_token);
+  if (iter == containers_.end()) {
     return false;
   }
-  auto name_iter = container_name_to_garcon_stub_.find(token_iter->second);
-  DCHECK(name_iter != container_name_to_garcon_stub_.end());
-  auto chan_iter = container_name_to_garcon_channel_.find(token_iter->second);
-  DCHECK(chan_iter != container_name_to_garcon_channel_.end());
-  container_token_to_name_.erase(token_iter);
-  container_name_to_garcon_stub_.erase(name_iter);
-  container_name_to_garcon_channel_.erase(chan_iter);
+  containers_.erase(iter);
   return true;
 }
 
 std::string VirtualMachine::GenerateContainerToken(
     const std::string& container_name) {
   std::string token = base::GenerateGUID();
-  pending_container_token_to_name_[token] = container_name;
+  pending_containers_[token] = std::make_unique<Container>(
+      container_name, token, weak_ptr_factory_.GetWeakPtr());
   return token;
 }
 
 std::string VirtualMachine::GetContainerNameForToken(
     const std::string& container_token) {
-  auto iter = container_token_to_name_.find(container_token);
-  if (iter == container_token_to_name_.end()) {
+  auto iter = containers_.find(container_token);
+  if (iter == containers_.end()) {
     return "";
   }
-  return iter->second;
+  return iter->second->name();
 }
 
-bool VirtualMachine::LaunchContainerApplication(
-    const std::string& container_name,
-    const std::string& desktop_file_id,
-    std::vector<std::string> files,
-    std::string* out_error) {
-  CHECK(out_error);
-  // Get the gRPC stub for communicating with the container.
-  auto iter = container_name_to_garcon_stub_.find(container_name);
-  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
-    LOG(ERROR) << "Requested container " << container_name
-               << " is not registered with the corresponding VM";
-    out_error->assign("Requested container is not registered");
-    return false;
+Container* VirtualMachine::GetContainerForToken(
+    const std::string& container_token) {
+  auto iter = containers_.find(container_token);
+  if (iter == containers_.end()) {
+    return nullptr;
   }
 
-  vm_tools::container::LaunchApplicationRequest container_request;
-  vm_tools::container::LaunchApplicationResponse container_response;
-  container_request.set_desktop_file_id(desktop_file_id);
-  std::copy(std::make_move_iterator(files.begin()),
-            std::make_move_iterator(files.end()),
-            google::protobuf::RepeatedFieldBackInserter(
-                container_request.mutable_files()));
-
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
-
-  grpc::Status status = iter->second->LaunchApplication(&ctx, container_request,
-                                                        &container_response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to launch application " << desktop_file_id
-               << " in container " << container_name << ": "
-               << status.error_message();
-    out_error->assign("gRPC failure launching application: " +
-                      status.error_message());
-    return false;
-  }
-  out_error->assign(container_response.failure_reason());
-  return container_response.success();
+  return iter->second.get();
 }
 
-bool VirtualMachine::LaunchVshd(const std::string& container_name,
-                                uint32_t port,
-                                std::string* out_error) {
-  // Get the gRPC stub for communicating with the container.
-  auto iter = container_name_to_garcon_stub_.find(container_name);
-  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
-    LOG(ERROR) << "Requested container " << container_name
-               << " is not registered with the corresponding VM";
-    out_error->assign("Requested container is not registered");
-    return false;
+Container* VirtualMachine::GetPendingContainerForToken(
+    const std::string& container_token) {
+  auto iter = pending_containers_.find(container_token);
+  if (iter == pending_containers_.end()) {
+    return nullptr;
   }
 
-  vm_tools::container::LaunchVshdRequest container_request;
-  vm_tools::container::LaunchVshdResponse container_response;
-  container_request.set_port(port);
-
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
-
-  grpc::Status status =
-      iter->second->LaunchVshd(&ctx, container_request, &container_response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to launch vshd in container " << container_name
-               << ": " << status.error_message()
-               << " code: " << status.error_code();
-    out_error->assign("gRPC failure launching vshd in container: " +
-                      status.error_message());
-    return false;
-  }
-  out_error->assign(container_response.failure_reason());
-  return container_response.success();
+  return iter->second.get();
 }
 
-bool VirtualMachine::GetDebugInformation(const std::string& container_name,
-                                         std::string* out) {
-  // Get the gRPC stub for communicating with the container.
-  auto iter = container_name_to_garcon_stub_.find(container_name);
-  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
-    LOG(ERROR) << "Requested container " << container_name
-               << " is not registered with the corresponding VM";
-    out->assign("Requested container is not registered");
-    return false;
+Container* VirtualMachine::GetContainerForName(
+    const std::string& container_name) {
+  for (auto iter = containers_.begin(); iter != containers_.end(); ++iter) {
+    if (iter->second->name() == container_name) {
+      return iter->second.get();
+    }
   }
-
-  vm_tools::container::GetDebugInformationRequest container_request;
-  vm_tools::container::GetDebugInformationResponse container_response;
-
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
-
-  grpc::Status status = iter->second->GetDebugInformation(
-      &ctx, container_request, &container_response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to get debug information in container "
-               << container_name << ": " << status.error_message()
-               << " code: " << status.error_code();
-    out->assign("gRPC failure to get debug information in container: " +
-                status.error_message());
-    return false;
-  }
-  out->assign(container_response.debug_information());
-  return true;
-}
-
-bool VirtualMachine::GetContainerAppIcon(
-    const std::string& container_name,
-    std::vector<std::string> desktop_file_ids,
-    uint32_t icon_size,
-    uint32_t scale,
-    std::vector<Icon>* icons) {
-  CHECK(icons);
-
-  // Get the gRPC stub for communicating with the container.
-  auto iter = container_name_to_garcon_stub_.find(container_name);
-  if (iter == container_name_to_garcon_stub_.end()) {
-    LOG(ERROR) << "Requested container " << container_name
-               << " is not registered with the corresponding VM";
-    return false;
-  }
-
-  vm_tools::container::IconRequest container_request;
-  vm_tools::container::IconResponse container_response;
-
-  google::protobuf::RepeatedPtrField<std::string> ids(
-      std::make_move_iterator(desktop_file_ids.begin()),
-      std::make_move_iterator(desktop_file_ids.end()));
-  container_request.mutable_desktop_file_ids()->Swap(&ids);
-  container_request.set_icon_size(icon_size);
-  container_request.set_scale(scale);
-
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
-
-  grpc::Status status =
-      iter->second->GetIcon(&ctx, container_request, &container_response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to get icons in container " << container_name << ": "
-               << status.error_message();
-    return false;
-  }
-
-  for (auto& icon : *container_response.mutable_desktop_icons()) {
-    icons->emplace_back(
-        Icon{.desktop_file_id = std::move(*icon.mutable_desktop_file_id()),
-             .content = std::move(*icon.mutable_icon())});
-  }
-  return true;
-}
-
-bool VirtualMachine::GetLinuxPackageInfo(const std::string& container_name,
-                                         const std::string& file_path,
-                                         LinuxPackageInfo* out_pkg_info,
-                                         std::string* out_error) {
-  CHECK(out_pkg_info);
-  // Get the gRPC stub for communicating with the container.
-  auto iter = container_name_to_garcon_stub_.find(container_name);
-  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
-    LOG(ERROR) << "Requested container " << container_name
-               << " is not registered with the corresponding VM";
-    out_error->assign("Requested container is not registered");
-    return false;
-  }
-
-  vm_tools::container::LinuxPackageInfoRequest container_request;
-  vm_tools::container::LinuxPackageInfoResponse container_response;
-  container_request.set_file_path(file_path);
-
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
-
-  grpc::Status status = iter->second->GetLinuxPackageInfo(
-      &ctx, container_request, &container_response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to get Linux package info from container "
-               << container_name << ": " << status.error_message()
-               << " code: " << status.error_code();
-    out_error->assign(
-        "gRPC failure getting Linux package info from container: " +
-        status.error_message());
-    return false;
-  }
-  out_error->assign(container_response.failure_reason());
-  out_pkg_info->package_id = std::move(container_response.package_id());
-  out_pkg_info->license = std::move(container_response.license());
-  out_pkg_info->description = std::move(container_response.description());
-  out_pkg_info->project_url = std::move(container_response.project_url());
-  out_pkg_info->size = container_response.size();
-  out_pkg_info->summary = std::move(container_response.summary());
-  return container_response.success();
-}
-
-int VirtualMachine::InstallLinuxPackage(const std::string& container_name,
-                                        const std::string& file_path,
-                                        std::string* out_error) {
-  // Get the gRPC stub for communicating with the container.
-  auto iter = container_name_to_garcon_stub_.find(container_name);
-  if (iter == container_name_to_garcon_stub_.end() || !iter->second) {
-    LOG(ERROR) << "Requested container " << container_name
-               << " is not registered with the corresponding VM";
-    out_error->assign("Requested container is not registered");
-    return vm_tools::container::InstallLinuxPackageResponse::FAILED;
-  }
-
-  vm_tools::container::InstallLinuxPackageRequest container_request;
-  vm_tools::container::InstallLinuxPackageResponse container_response;
-  container_request.set_file_path(file_path);
-
-  grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
-
-  grpc::Status status = iter->second->InstallLinuxPackage(
-      &ctx, container_request, &container_response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to install Linux package in container "
-               << container_name << ": " << status.error_message()
-               << " code: " << status.error_code();
-    out_error->assign("gRPC failure installing Linux package in container: " +
-                      status.error_message());
-    return vm_tools::container::InstallLinuxPackageResponse::FAILED;
-  }
-  out_error->assign(container_response.failure_reason());
-  return container_response.status();
-}
-
-bool VirtualMachine::IsContainerRunning(const std::string& container_name) {
-  auto iter = container_name_to_garcon_channel_.find(container_name);
-  if (iter == container_name_to_garcon_channel_.end() || !iter->second) {
-    LOG(INFO) << "No such container: " << container_name;
-    return false;
-  }
-  auto channel_state = iter->second->GetState(true);
-  return channel_state == GRPC_CHANNEL_IDLE ||
-         channel_state == GRPC_CHANNEL_CONNECTING ||
-         channel_state == GRPC_CHANNEL_READY;
+  return nullptr;
 }
 
 std::vector<std::string> VirtualMachine::GetContainerNames() {
   std::vector<std::string> retval;
-  for (auto& container_entry : container_name_to_garcon_stub_) {
-    retval.emplace_back(container_entry.first);
+  for (auto& container_entry : containers_) {
+    retval.emplace_back(container_entry.second->name());
   }
   return retval;
 }
@@ -554,6 +339,50 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
   }
 
   return VirtualMachine::SetUpLxdContainerUserStatus::SUCCESS;
+}
+
+VirtualMachine::GetLxdContainerInfoStatus VirtualMachine::GetLxdContainerInfo(
+    const std::string& container_name,
+    VirtualMachine::LxdContainerInfo* out_info,
+    std::string* out_error) {
+  DCHECK(out_info);
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::GetLxdContainerInfoStatus::FAILED;
+  }
+
+  vm_tools::tremplin::GetContainerInfoRequest request;
+  vm_tools::tremplin::GetContainerInfoResponse response;
+
+  request.set_container_name(container_name);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->GetContainerInfo(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "GetContainerInfo RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::GetLxdContainerInfoStatus::FAILED;
+  }
+
+  out_info->ipv4_address = response.ipv4_address();
+  out_error->assign(response.failure_reason());
+
+  switch (response.status()) {
+    case tremplin::GetContainerInfoResponse::RUNNING:
+      return VirtualMachine::GetLxdContainerInfoStatus::RUNNING;
+    case tremplin::GetContainerInfoResponse::STOPPED:
+      return VirtualMachine::GetLxdContainerInfoStatus::STOPPED;
+    case tremplin::GetContainerInfoResponse::NOT_FOUND:
+      return VirtualMachine::GetLxdContainerInfoStatus::NOT_FOUND;
+    default:
+      return VirtualMachine::GetLxdContainerInfoStatus::UNKNOWN;
+  }
 }
 
 }  // namespace cicerone

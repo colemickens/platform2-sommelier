@@ -14,6 +14,8 @@
 
 #include <base/macros.h>
 
+#include "vm_tools/cicerone/container.h"
+
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "tremplin.grpc.pb.h"         // NOLINT(build/include)
 
@@ -23,21 +25,6 @@ namespace cicerone {
 // Represents a single instance of a virtual machine.
 class VirtualMachine {
  public:
-  // Linux application ID and its icon content.
-  struct Icon {
-    std::string desktop_file_id;
-    std::string content;
-  };
-  // Information about a Linux package file.
-  struct LinuxPackageInfo {
-    std::string package_id;
-    std::string license;
-    std::string description;
-    std::string project_url;
-    uint64_t size;
-    std::string summary;
-  };
-
   enum class CreateLxdContainerStatus {
     UNKNOWN,
     CREATING,
@@ -68,6 +55,21 @@ class VirtualMachine {
     FAILED,
   };
 
+  enum class GetLxdContainerInfoStatus {
+    UNKNOWN,
+    RUNNING,
+    STOPPED,
+    NOT_FOUND,
+    FAILED,
+  };
+
+  // Info about the LXD container.
+  struct LxdContainerInfo {
+    // The IPv4 address of the container in network byte order.
+    // This field is only valid if the container status is RUNNING.
+    uint32_t ipv4_address;
+  };
+
   VirtualMachine(uint32_t container_subnet,
                  uint32_t container_netmask,
                  uint32_t ipv4_address,
@@ -89,9 +91,11 @@ class VirtualMachine {
   // Connect to the tremplin instance in the VM.
   bool ConnectTremplin();
 
-  // Registers a container with the VM using the |container_ip| address and
-  // |container_token|. Returns true if the token is valid, false otherwise.
+  // Registers a container with the VM using the |container_ip| address,
+  // |vsock_garcon_port|, and |container_token|. Returns true if the token is
+  // valid, false otherwise.
   bool RegisterContainer(const std::string& container_token,
+                         const uint32_t vsock_garcon_port,
                          const std::string& container_ip);
 
   // Unregister a container with |container_token| within this VM. Returns true
@@ -106,56 +110,32 @@ class VirtualMachine {
   // Returns the name of the container associated with the passed in
   // |container_token|. Returns the empty string if no such mapping exists. This
   // will only return a name that has been confirmed after calling
-  // RegisterContainerIp.
+  // RegisterContainer.
   std::string GetContainerNameForToken(const std::string& container_token);
 
-  // Launches the application associated with |desktop_file_id| in the container
-  // named |container_name| within this VM. Returns true on success, false
-  // otherwise and fills out |out_error| on failure.
-  bool LaunchContainerApplication(const std::string& container_name,
-                                  const std::string& desktop_file_id,
-                                  std::vector<std::string> files,
-                                  std::string* out_error);
+  // Returns a pointer to the container associated with the passed in
+  // |container_token|. Returns nullptr if the container does not exist.
+  // This function will only return a container that has been confirmed after
+  // calling RegisterContainer.
+  //
+  // The pointer returned is owned by VirtualMachine and may not be stored.
+  Container* GetContainerForToken(const std::string& container_token);
 
-  // Launches vshd.
-  bool LaunchVshd(const std::string& container_name,
-                  uint32_t port,
-                  std::string* out_error);
+  // Returns a pointer to the pending container associated with the passed in
+  // |container_token|. Returns nullptr if the container does not exist.
+  // This function will only return a container that has NOT been confirmed by
+  // calling RegisterContainer.
+  //
+  // The pointer returned is owned by VirtualMachine and may not be stored.
+  Container* GetPendingContainerForToken(const std::string& container_token);
 
-  // Gets information about a Linux package from container |container_name| from
-  // the container's filesystem at |file_path|. Returns true on success, false
-  // otherwise. On failure, |out_error| is set with failure details. On success,
-  // the fields in the |out_pkg_info| struct will be filled in.
-  bool GetLinuxPackageInfo(const std::string& container_name,
-                           const std::string& file_path,
-                           LinuxPackageInfo* out_pkg_info,
-                           std::string* out_error);
-
-  // Installs a Linux package into container |container_name| from the
-  // container's filesystem at |file_path|. Returns a status value which
-  // corresponds to the Status enum in the InstallLinuxPackageResponse protobuf
-  // (either the cicerone or container_guest one, they have matching values),
-  // if the status is FAILED then |out_error| is set with failure details.
-  int InstallLinuxPackage(const std::string& container_name,
-                          const std::string& file_path,
-                          std::string* out_error);
-
-  // Gets container debug information.
-  bool GetDebugInformation(const std::string& container_name, std::string* out);
-
-  // Returns whether there is a connected stub to Garcon running inside the
-  // named |container_name| within this VM.
-  bool IsContainerRunning(const std::string& container_name);
-
-  // Gets icons of those applications with their desktop file IDs specified
-  // by |desktop_file_ids| from the container named |container_name| within
-  // this VM. The icons should have size of |icon_size| and designed scale of
-  // |scale|. The icons are returned through the paramenter |icons|.
-  bool GetContainerAppIcon(const std::string& container_name,
-                           std::vector<std::string> desktop_file_ids,
-                           uint32_t icon_size,
-                           uint32_t scale,
-                           std::vector<Icon>* icons);
+  // Returns a pointer to the container associated with the passed in
+  // |container_name|. Returns nullptr if the container does not exist.
+  // This function will only return a name that has been confirmed after calling
+  // RegisterContainer.
+  //
+  // The pointer returned is owned by VirtualMachine and may not be stored.
+  Container* GetContainerForName(const std::string& container_name);
 
   // Creates an LXD container.
   CreateLxdContainerStatus CreateLxdContainer(const std::string& container_name,
@@ -183,6 +163,12 @@ class VirtualMachine {
       const std::string& container_username,
       std::string* out_error);
 
+  // Gets info about an LXD container.
+  GetLxdContainerInfoStatus GetLxdContainerInfo(
+      const std::string& container_name,
+      LxdContainerInfo* out_info,
+      std::string* out_error);
+
   // Gets a list of all the active container names in this VM.
   std::vector<std::string> GetContainerNames();
 
@@ -194,29 +180,21 @@ class VirtualMachine {
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
 
-  // Mapping of container tokens to names. The tokens are used to securely
+  // Mapping of tokens to containers. The tokens are used to securely
   // identify a container when it connects back to concierge to identify itself.
-  std::map<std::string, std::string> container_token_to_name_;
+  std::map<std::string, std::unique_ptr<Container>> containers_;
 
-  // Pending map of container tokens to names. The tokens are put in here when
+  // Pending map of tokens to containers. The tokens are put in here when
   // they are generated and removed once we have a connection from the
-  // container. We do not immediately put them in the contaienr_token_to_name_
-  // map because we may get redundant requests to start a container that is
-  // already running and we don't want to invalidate an in-use token.
-  std::map<std::string, std::string> pending_container_token_to_name_;
+  // container. We do not immediately put them in the containers map because we
+  // may get redundant requests to start a container that is already running
+  // and we don't want to invalidate an in-use token.
+  std::map<std::string, std::unique_ptr<Container>> pending_containers_;
 
   // The stub for the tremplin instance in this VM.
   std::unique_ptr<vm_tools::tremplin::Tremplin::Stub> tremplin_stub_;
 
-  // Mapping of container names to a stub for making RPC requests to the garcon
-  // process inside the container.
-  std::map<std::string, std::unique_ptr<vm_tools::container::Garcon::Stub>>
-      container_name_to_garcon_stub_;
-
-  // Mapping of container names to a grpc Channel to the garcon process inside
-  // the container, which we can test for connectedness.
-  std::map<std::string, std::shared_ptr<grpc::Channel>>
-      container_name_to_garcon_channel_;
+  base::WeakPtrFactory<VirtualMachine> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(VirtualMachine);
 };

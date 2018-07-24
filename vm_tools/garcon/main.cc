@@ -3,8 +3,11 @@
 // found in the LICENSE file.
 
 #include <limits.h>
+#include <sys/socket.h>
 #include <syslog.h>
 #include <unistd.h>
+
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <memory>
 #include <string>
@@ -76,7 +79,8 @@ bool LogToSyslog(logging::LogSeverity severity,
 
 void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
                       base::WaitableEvent* event,
-                      std::shared_ptr<grpc::Server>* server_copy) {
+                      std::shared_ptr<grpc::Server>* server_copy,
+                      int* vsock_listen_port) {
   // We don't want to receive SIGTERM on this thread.
   sigset_t mask;
   sigemptyset(&mask);
@@ -85,6 +89,9 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
 
   // Build the server.
   grpc::ServerBuilder builder;
+  builder.AddListeningPort(
+      base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, VMADDR_PORT_ANY),
+      grpc::InsecureServerCredentials(), vsock_listen_port);
   builder.AddListeningPort(base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
                            grpc::InsecureServerCredentials());
 
@@ -93,11 +100,17 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
 
+  // Now that the server is built, check the bound port for vsock.
+  if (*vsock_listen_port == 0) {
+    LOG(WARNING) << "garcon failed to bind port to listen on vsock";
+  }
+
   *server_copy = server;
   event->Signal();
 
   if (server) {
-    LOG(INFO) << "Server listening on port " << vm_tools::kGarconPort;
+    LOG(INFO) << "Server listening on vsock port " << *vsock_listen_port
+              << " IPv4 port " << vm_tools::kGarconPort;
     // The following call will never return since we have no mechanism for
     // actually shutting down garcon.
     server->Wait();
@@ -188,9 +201,10 @@ int main(int argc, char** argv) {
   std::shared_ptr<grpc::Server> server_copy;
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
+  int vsock_listen_port = 0;
   bool ret = grpc_thread.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&RunGarconService, pk_proxy.get(), &event, &server_copy));
+      FROM_HERE, base::Bind(&RunGarconService, pk_proxy.get(), &event,
+                            &server_copy, &vsock_listen_port));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return -1;
@@ -210,7 +224,7 @@ int main(int argc, char** argv) {
   }
 
   host_notifier->set_grpc_server(server_copy);
-  if (!host_notifier->Init()) {
+  if (!host_notifier->Init(static_cast<uint32_t>(vsock_listen_port))) {
     LOG(ERROR) << "Failed to set up host notifier";
     return -1;
   }

@@ -135,6 +135,7 @@
         ],
       },
       'sources': [
+        'cicerone/container.cc',
         'cicerone/container_listener_impl.cc',
         'cicerone/service.cc',
         'cicerone/tremplin_listener_impl.cc',

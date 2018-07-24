@@ -25,6 +25,7 @@
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
 
+#include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
@@ -45,7 +46,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
-  // Connect to the Tremplin instance on the VM with the given cid.
+  // Connect to the Tremplin instance on the VM with the given |cid|.
   void ConnectTremplin(const uint32_t cid,
                        bool* result,
                        base::WaitableEvent* event);
@@ -79,54 +80,60 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                bool* result,
                                base::WaitableEvent* event);
 
-  // Notifies the service that a container with |container_token| and IP of
-  // |container_ip| has completed startup. Sets |result| to true if this maps to
+  // Notifies the service that a container with |container_token| and running
+  // in a VM |cid| has completed startup. Sets |result| to true if this maps to
   // a subnet inside a currently running VM and |container_token| matches a
   // security token for that VM; false otherwise. Signals |event| when done.
   void ContainerStartupCompleted(const std::string& container_token,
-                                 const uint32_t container_ip,
+                                 const uint32_t cid,
+                                 const uint32_t garcon_vsock_port,
+                                 uint32_t container_ip,
                                  bool* result,
                                  base::WaitableEvent* event);
 
-  // Notifies the service that a container with |container_token| and IP of
-  // |container_ip| is shutting down. Sets |result| to true if this maps to
+  // Notifies the service that a container with |container_token| and running
+  // in a VM with |cid| is shutting down. Sets |result| to true if this maps to
   // a subnet inside a currently running VM and |container_token| matches a
   // security token for that VM; false otherwise. Signals |event| when done.
   void ContainerShutdown(const std::string& container_token,
+                         const uint32_t cid,
                          const uint32_t container_ip,
                          bool* result,
                          base::WaitableEvent* event);
 
   // This will send a D-Bus message to Chrome to inform it of the current
-  // installed application list for a container. It will use |container_ip| to
+  // installed application list for a container. It will use |cid| to
   // resolve the request to a VM and then |container_token| to resolve it to a
   // container. |app_list| should be populated with the list of installed
   // applications but the vm & container names should be left blank; it must
   // remain valid for the lifetime of this call. |result| is set to true on
   // success, false otherwise. Signals |event| when done.
   void UpdateApplicationList(const std::string& container_token,
+                             const uint32_t cid,
                              const uint32_t container_ip,
                              vm_tools::apps::ApplicationList* app_list,
                              bool* result,
                              base::WaitableEvent* event);
 
   // Sends a D-Bus message to Chrome to tell it to open the |url| in a new tab.
-  // |container_ip| should be the IP address of the container the request is
-  // coming form. |result| is set to true on success, false otherwise. Signals
+  // |result| is set to true on success, false otherwise. Signals
   // |event| when done.
-  void OpenUrl(const std::string& url,
+  void OpenUrl(const std::string& container_token,
+               const std::string& url,
+               uint32_t cid,
                uint32_t container_ip,
                bool* result,
                base::WaitableEvent* event);
 
   // Sends a D-Bus signal to inform listeners on update for the progress or
-  // completion of a Linux package install. It will use |container_ip| to
+  // completion of a Linux package install. It will use |cid| to
   // resolve the request to a VM and then |container_token| to resolve it to a
   // container. |progress_signal| should have all related fields from the
   // container request set in it. |result| is set to true on success, false
   // otherwise. Signals |event| when done.
   void InstallLinuxPackageProgress(
       const std::string& container_token,
+      const uint32_t cid,
       const uint32_t container_ip,
       InstallLinuxPackageProgressSignal* progress_signal,
       bool* result,
@@ -206,6 +213,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                        std::string* owner_id_out,
                                        std::string* name_out);
 
+  // Gets the VirtualMachine that corresponds to a container at |cid|
+  // and sets |vm_out| to the VirtualMachine, |owner_id_out| to the owner id of
+  // the VM, and |name_out| to the name of the VM. Returns false if no such
+  // mapping exists.
   bool GetVirtualMachineForCid(const uint32_t cid,
                                VirtualMachine** vm_out,
                                std::string* owner_id_out,

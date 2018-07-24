@@ -5,6 +5,8 @@
 #include "vm_tools/cicerone/container_listener_impl.h"
 
 #include <arpa/inet.h>
+#include <inttypes.h>
+#include <stdio.h>
 
 #include <memory>
 #include <string>
@@ -49,6 +51,14 @@ uint32_t ExtractIpFromPeerAddress(const std::string& peer_address) {
   return int_ip;
 }
 
+// Returns 0 on failure, otherwise the parsed vsock cid from a
+// vsock:cid:port string.
+uint32_t ExtractCidFromPeerAddress(const std::string& peer_address) {
+  uint32_t cid = 0;
+  sscanf(peer_address.c_str(), "vsock:%" SCNu32, &cid);
+  return cid;
+}
+
 }  // namespace
 
 namespace vm_tools {
@@ -66,10 +76,14 @@ grpc::Status ContainerListenerImpl::ContainerReady(
     const vm_tools::container::ContainerStartupInfo* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
-  if (ip == 0) {
+  uint32_t ip = 0;
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    ip = ExtractIpFromPeerAddress(peer_address);
+  }
+  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing IPv4 address for ContainerListener");
+                        "Failed parsing cid/IP for ContainerListener");
   }
   bool result = false;
   base::WaitableEvent event(false /*manual_reset*/,
@@ -77,7 +91,8 @@ grpc::Status ContainerListenerImpl::ContainerReady(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::ContainerStartupCompleted,
-                 service_, request->token(), ip, &result, &event));
+                 service_, request->token(), cid, request->garcon_port(), ip,
+                 &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerReady but could not find matching VM: "
@@ -94,17 +109,22 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
     const vm_tools::container::ContainerShutdownInfo* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
-  if (ip == 0) {
+  uint32_t ip = 0;
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    ip = ExtractIpFromPeerAddress(peer_address);
+  }
+  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing IPv4 address for ContainerListener");
+                        "Failed parsing cid/IP for ContainerListener");
   }
   bool result = false;
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ContainerShutdown,
-                            service_, request->token(), ip, &result, &event));
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::ContainerShutdown, service_,
+                 request->token(), cid, ip, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerShutdown but could not find matching VM: "
@@ -121,10 +141,14 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
     const vm_tools::container::UpdateApplicationListRequest* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
-  if (ip == 0) {
+  uint32_t ip = 0;
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    ip = ExtractIpFromPeerAddress(peer_address);
+  }
+  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing IPv4 address for ContainerListener");
+                        "Failed parsing cid/IP for ContainerListener");
   }
   vm_tools::apps::ApplicationList app_list;
   // vm_name and container_name are set in the UpdateApplicationList call but we
@@ -164,7 +188,7 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::UpdateApplicationList, service_,
-                 request->token(), ip, &app_list, &result, &event));
+                 request->token(), cid, ip, &app_list, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating application list from ContainerListener";
@@ -197,17 +221,22 @@ grpc::Status ContainerListenerImpl::OpenUrl(
     }
   }
   std::string peer_address = ctx->peer();
-  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
-  if (ip == 0) {
+  uint32_t ip = 0;
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    ip = ExtractIpFromPeerAddress(peer_address);
+  }
+  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing IPv4 address for ContainerListener");
+                        "Failed parsing cid/IP for ContainerListener");
   }
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
   bool result = false;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::OpenUrl, service_,
-                            request->url(), ip, &result, &event));
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::OpenUrl, service_,
+                 request->token(), request->url(), cid, ip, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure opening URL from ContainerListener";
@@ -221,10 +250,14 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
     const vm_tools::container::InstallLinuxPackageProgressInfo* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
-  if (ip == 0) {
+  uint32_t ip = 0;
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    ip = ExtractIpFromPeerAddress(peer_address);
+  }
+  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing IPv4 address for ContainerListener");
+                        "Failed parsing cid/IP for ContainerListener");
   }
   InstallLinuxPackageProgressSignal progress_signal;
   if (!InstallLinuxPackageProgressSignal::Status_IsValid(
@@ -243,7 +276,7 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::InstallLinuxPackageProgress,
-                 service_, request->token(), ip, &progress_signal, &result,
+                 service_, request->token(), cid, ip, &progress_signal, &result,
                  &event));
   event.Wait();
   if (!result) {

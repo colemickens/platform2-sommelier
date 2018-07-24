@@ -69,7 +69,8 @@ void HandleSynchronousDBusMethodCall(
 // the pointer to the grpc server in |server_copy| and then signals |event|.
 // It will listen on the address specified in |listener_address|.
 void RunListenerService(grpc::Service* listener,
-                        const std::string& listener_address,
+                        const std::string& vsock_listener_address,
+                        const std::string& ipv4_listener_address,
                         base::WaitableEvent* event,
                         std::shared_ptr<grpc::Server>* server_copy) {
   // We are not interested in getting SIGCHLD or SIGTERM on this thread.
@@ -81,7 +82,12 @@ void RunListenerService(grpc::Service* listener,
 
   // Build the grpc server.
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(listener_address, grpc::InsecureServerCredentials());
+  builder.AddListeningPort(vsock_listener_address,
+                           grpc::InsecureServerCredentials());
+  if (!ipv4_listener_address.empty()) {
+    builder.AddListeningPort(ipv4_listener_address,
+                             grpc::InsecureServerCredentials());
+  }
   builder.RegisterService(listener);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
@@ -100,7 +106,8 @@ void RunListenerService(grpc::Service* listener,
 // |server_copy|. Returns true if setup & started successfully, false otherwise.
 bool SetupListenerService(base::Thread* grpc_thread,
                           grpc::Service* listener_impl,
-                          const std::string& listener_address,
+                          const std::string& vsock_listener_address,
+                          const std::string& ipv4_listener_address,
                           std::shared_ptr<grpc::Server>* server_copy) {
   // Start the grpc thread.
   if (!grpc_thread->Start()) {
@@ -111,8 +118,9 @@ bool SetupListenerService(base::Thread* grpc_thread,
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
   bool ret = grpc_thread->task_runner()->PostTask(
-      FROM_HERE, base::Bind(&RunListenerService, listener_impl,
-                            listener_address, &event, server_copy));
+      FROM_HERE,
+      base::Bind(&RunListenerService, listener_impl, vsock_listener_address,
+                 ipv4_listener_address, &event, server_copy));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return false;
@@ -346,7 +354,9 @@ void Service::LxdContainerDownloading(const uint32_t cid,
 }
 
 void Service::ContainerStartupCompleted(const std::string& container_token,
-                                        const uint32_t container_ip,
+                                        const uint32_t cid,
+                                        const uint32_t garcon_vsock_port,
+                                        uint32_t container_ip,
                                         bool* result,
                                         base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -356,10 +366,35 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
+      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
                                        &vm_name)) {
     event->Signal();
     return;
+  }
+
+  Container* container = vm->GetPendingContainerForToken(container_token);
+  if (!container) {
+    // This could be a garcon restart.
+    container = vm->GetContainerForToken(container_token);
+    if (!container) {
+      LOG(ERROR) << "Received ContainerStartupCompleted for unknown container";
+      return;
+    }
+  }
+  if (container_ip == 0) {
+    VirtualMachine::LxdContainerInfo info;
+    std::string error;
+    VirtualMachine::GetLxdContainerInfoStatus status =
+        vm->GetLxdContainerInfo(container->name(), &info, &error);
+    if (status != VirtualMachine::GetLxdContainerInfoStatus::RUNNING) {
+      LOG(ERROR) << "Failed to retreive IPv4 address for container: " << error;
+      return;
+    }
+    container_ip = info.ipv4_address;
+    container->set_ipv4_address(info.ipv4_address);
+  } else {
+    container->set_ipv4_address(container_ip);
   }
 
   // Found the VM with a matching container subnet, register the IP address
@@ -370,7 +405,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
     event->Signal();
     return;
   }
-  if (!vm->RegisterContainer(container_token, string_ip)) {
+  if (!vm->RegisterContainer(container_token, garcon_vsock_port, string_ip)) {
     LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
                << " of " << container_token;
     event->Signal();
@@ -404,6 +439,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
 }
 
 void Service::ContainerShutdown(const std::string& container_token,
+                                const uint32_t cid,
                                 const uint32_t container_ip,
                                 bool* result,
                                 base::WaitableEvent* event) {
@@ -415,7 +451,8 @@ void Service::ContainerShutdown(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
+      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
                                        &vm_name)) {
     event->Signal();
     return;
@@ -450,6 +487,7 @@ void Service::ContainerShutdown(const std::string& container_token,
 }
 
 void Service::UpdateApplicationList(const std::string& container_token,
+                                    const uint32_t cid,
                                     const uint32_t container_ip,
                                     vm_tools::apps::ApplicationList* app_list,
                                     bool* result,
@@ -462,7 +500,8 @@ void Service::UpdateApplicationList(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
+      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
                                        &vm_name)) {
     event->Signal();
     return;
@@ -497,7 +536,9 @@ void Service::UpdateApplicationList(const std::string& container_token,
   event->Signal();
 }
 
-void Service::OpenUrl(const std::string& url,
+void Service::OpenUrl(const std::string& container_token,
+                      const std::string& url,
+                      uint32_t cid,
                       uint32_t container_ip,
                       bool* result,
                       base::WaitableEvent* event) {
@@ -508,8 +549,24 @@ void Service::OpenUrl(const std::string& url,
   dbus::MethodCall method_call(chromeos::kUrlHandlerServiceInterface,
                                chromeos::kUrlHandlerServiceOpenUrlMethod);
   dbus::MessageWriter writer(&method_call);
+
+  std::string owner_id;
+  std::string vm_name;
+  VirtualMachine* vm;
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
+      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
+                                       &vm_name)) {
+    event->Signal();
+    return;
+  }
+  Container* container = vm->GetContainerForToken(container_token);
+  if (!container) {
+    LOG(ERROR) << "No container found matching token: " << container_token;
+    event->Signal();
+    return;
+  }
   std::string container_ip_str;
-  if (!IPv4AddressToString(container_ip, &container_ip_str)) {
+  if (!IPv4AddressToString(container->ipv4_address(), &container_ip_str)) {
     LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
     event->Signal();
     return;
@@ -531,6 +588,7 @@ void Service::OpenUrl(const std::string& url,
 
 void Service::InstallLinuxPackageProgress(
     const std::string& container_token,
+    const uint32_t cid,
     const uint32_t container_ip,
     InstallLinuxPackageProgressSignal* progress_signal,
     bool* result,
@@ -544,7 +602,8 @@ void Service::InstallLinuxPackageProgress(
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
+      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
                                        &vm_name)) {
     event->Signal();
     return;
@@ -660,16 +719,18 @@ bool Service::Init() {
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
           &grpc_thread_container_, container_listener_.get(),
+          base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
+                             vm_tools::kGarconPort),
           base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
           &grpc_server_container_)) {
     LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
 
-  if (!SetupListenerService(
-          &grpc_thread_tremplin_, tremplin_listener_.get(),
-          base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kTremplinListenerPort),
-          &grpc_server_tremplin_)) {
+  if (!SetupListenerService(&grpc_thread_tremplin_, tremplin_listener_.get(),
+                            base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
+                                               vm_tools::kTremplinListenerPort),
+                            "", &grpc_server_tremplin_)) {
     LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
     return false;
   }
@@ -832,9 +893,17 @@ std::unique_ptr<dbus::Response> Service::IsContainerRunning(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
-  response.set_container_running(
-      vm->IsContainerRunning(std::move(request.container_name())));
+  response.set_container_running(container->IsRunning());
   writer.AppendProtoAsArrayOfBytes(response);
 
   return dbus_response;
@@ -870,6 +939,17 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_success(false);
+    response.set_failure_reason("Requested container does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
   if (request.desktop_file_id().empty()) {
     LOG(ERROR) << "LaunchContainerApplicationRequest had an empty "
@@ -881,9 +961,7 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
   }
 
   std::string error_msg;
-  response.set_success(vm->LaunchContainerApplication(
-      request.container_name().empty() ? kDefaultContainerName
-                                       : request.container_name(),
+  response.set_success(container->LaunchContainerApplication(
       request.desktop_file_id(),
       std::vector<string>(
           std::make_move_iterator(request.mutable_files()->begin()),
@@ -918,6 +996,15 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
   if (request.desktop_file_ids().size() == 0) {
     LOG(ERROR) << "ContainerAppIconRequest had an empty desktop_file_ids";
@@ -930,14 +1017,12 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     desktop_file_ids.emplace_back(std::move(id));
   }
 
-  std::vector<VirtualMachine::Icon> icons;
+  std::vector<Container::Icon> icons;
   icons.reserve(desktop_file_ids.size());
 
-  if (!vm->GetContainerAppIcon(request.container_name().empty()
-                                   ? kDefaultContainerName
-                                   : request.container_name(),
-                               std::move(desktop_file_ids), request.size(),
-                               request.scale(), &icons)) {
+  if (!container->GetContainerAppIcon(std::move(desktop_file_ids),
+                                      request.size(), request.scale(),
+                                      &icons)) {
     LOG(ERROR) << "GetContainerAppIcon failed";
   }
 
@@ -966,12 +1051,15 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
   LaunchVshdResponse response;
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse LaunchVshdRequest from message";
+    response.set_failure_reason(
+        "unable to parse LaunchVshdRequest from message");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
   if (request.port() == 0) {
     LOG(ERROR) << "Port is not set in LaunchVshdRequest";
+    response.set_failure_reason("port is not set in LaunchVshdRequest");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -983,15 +1071,26 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
                              : std::move(request.owner_id());
   VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
   if (!vm) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    LOG(ERROR) << "Requested VM does not exist: " << request.vm_name();
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_failure_reason(base::StringPrintf(
+        "requested container does not exist: %s", container_name.c_str()));
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
   std::string error_msg;
-  vm->LaunchVshd(request.container_name().empty() ? kDefaultContainerName
-                                                  : request.container_name(),
-                 request.port(), &error_msg);
+  container->LaunchVshd(request.port(), &error_msg);
 
   response.set_success(true);
   response.set_failure_reason(error_msg);
@@ -1028,17 +1127,27 @@ std::unique_ptr<dbus::Response> Service::GetLinuxPackageInfo(
   VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
   if (!vm) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
-    response.set_failure_reason("Requested VM does not exist");
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_failure_reason(base::StringPrintf(
+        "requested container does not exist: %s", container_name.c_str()));
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
   std::string error_msg;
-  VirtualMachine::LinuxPackageInfo pkg_info;
-  response.set_success(vm->GetLinuxPackageInfo(
-      request.container_name().empty() ? kDefaultContainerName
-                                       : request.container_name(),
-      request.file_path(), &pkg_info, &error_msg));
+  Container::LinuxPackageInfo pkg_info;
+  response.set_success(container->GetLinuxPackageInfo(request.file_path(),
+                                                      &pkg_info, &error_msg));
   if (response.success()) {
     response.set_package_id(pkg_info.package_id);
     response.set_license(pkg_info.license);
@@ -1087,12 +1196,20 @@ std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_failure_reason(base::StringPrintf(
+        "requested container does not exist: %s", container_name.c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
   std::string error_msg;
-  int status = vm->InstallLinuxPackage(request.container_name().empty()
-                                           ? kDefaultContainerName
-                                           : request.container_name(),
-                                       request.file_path(), &error_msg);
+  int status = container->InstallLinuxPackage(request.file_path(), &error_msg);
   response.set_status(static_cast<InstallLinuxPackageResponse::Status>(status));
   response.set_failure_reason(error_msg);
 
@@ -1369,8 +1486,8 @@ std::unique_ptr<dbus::Response> Service::GetDebugInformation(
       *debug_information += "\n";
 
       container_debug_information.clear();
-      if (!vm.second->GetDebugInformation(container_name,
-                                          &container_debug_information)) {
+      Container* container = vm.second->GetContainerForName(container_name);
+      if (!container->GetDebugInformation(&container_debug_information)) {
         *debug_information += "\t\tfailed to get debug information\n";
         *debug_information += "\t\t";
         *debug_information += container_debug_information;

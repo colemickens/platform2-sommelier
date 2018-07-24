@@ -39,7 +39,7 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // Notifies the host that garcon is ready. This will send the initial update
   // for the application list and also establish a watcher for any updates to
   // the list of installed applications. Returns false if there was any failure.
-  bool Init();
+  bool Init(uint32_t vsock_port);
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -66,7 +66,7 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
 
   // Sends a message to the host indicating that our server is ready for
   // accepting incoming calls.
-  bool NotifyHostGarconIsReady();
+  bool NotifyHostGarconIsReady(uint32_t vsock_port);
 
   // Sends a message to the host indicating the container is shutting down.
   void NotifyHostOfContainerShutdown();
@@ -76,6 +76,10 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
 
   // Callback for when desktop file path changes occur.
   void DesktopPathsChanged(const base::FilePath& path, bool error);
+
+  // Creates a ContainerListener::Stub, defaulting to vsock but falling back
+  // to IPv4 if the host doesn't support vsock.
+  void SetUpContainerListenerStub(const std::string& host_ip);
 
   // gRPC stub for communicating with cicerone on the host.
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub_;

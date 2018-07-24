@@ -187,13 +187,49 @@ message ContainerCreationProgress {
   string failure_reason = 4;
 }
 
-// Service that is notified of events from tremplin.
+message GetContainerInfoRequest {
+  // Name of the container to get information for.
+  string container_name = 1;
+}
+
+message GetContainerInfoResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // The container is currently running.
+    RUNNING = 1;
+
+    // The container is not running.
+    STOPPED = 2;
+
+    // The container with that name doesn't exist.
+    NOT_FOUND = 3;
+
+    // Some part of the operation failed.
+    FAILED = 4;
+  }
+
+  // Current container status.
+  Status status = 1;
+
+  // The failure_reason if container info could not be returned.
+  string failure_reason = 2;
+
+  // The IPv4 address of the container. This field is only valid if the
+  // container is running.
+  fixed32 ipv4_address = 3;
+}
+
+// Tremplin service methods.
 service Tremplin {
   rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
   rpc StartContainer(StartContainerRequest) returns (StartContainerResponse);
   rpc GetContainerUsername(GetContainerUsernameRequest)
       returns (GetContainerUsernameResponse);
   rpc SetUpUser(SetUpUserRequest) returns (SetUpUserResponse);
+  rpc GetContainerInfo(GetContainerInfoRequest)
+      returns (GetContainerInfoResponse);
 }
 
 // Service that is notified of events from tremplin.

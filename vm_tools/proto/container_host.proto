@@ -16,6 +16,9 @@ import "common.proto";
 message ContainerStartupInfo {
   // The security token the container was given.
   string token = 1;
+
+  // The vsock port on which garcon will be listening.
+  uint32 garcon_port = 2;
 }
 
 // Request protobuf for notifying host that a container is shutting down.
@@ -63,6 +66,9 @@ message UpdateApplicationListRequest {
 message OpenUrlRequest {
   // The URL to open.
   string url = 1;
+
+  // The security token the container was given.
+  string token = 2;
 }
 
 // Progress update when a Linux package install is in progress or completed.

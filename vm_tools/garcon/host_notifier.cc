@@ -5,6 +5,9 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
+
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <map>
 #include <set>
@@ -88,6 +91,7 @@ bool HostNotifier::OpenUrlInHost(const std::string& url) {
       grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
   vm_tools::container::OpenUrlRequest url_request;
+  url_request.set_token(token);
   url_request.set_url(url);
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub.OpenUrl(&ctx, url_request, &empty);
@@ -167,17 +171,14 @@ void HostNotifier::OnInstallProgress(
   }
 }
 
-bool HostNotifier::Init() {
+bool HostNotifier::Init(uint32_t vsock_port) {
   std::string host_ip = GetHostIp();
   token_ = GetSecurityToken();
   if (token_.empty() || host_ip.empty()) {
     return false;
   }
-  stub_ = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(
-          base::StringPrintf("%s:%u", host_ip.c_str(), vm_tools::kGarconPort),
-          grpc::InsecureChannelCredentials()));
-  if (!NotifyHostGarconIsReady()) {
+  SetUpContainerListenerStub(std::move(host_ip));
+  if (!NotifyHostGarconIsReady(vsock_port)) {
     return false;
   }
 
@@ -232,11 +233,12 @@ bool HostNotifier::Init() {
   return true;
 }
 
-bool HostNotifier::NotifyHostGarconIsReady() {
+bool HostNotifier::NotifyHostGarconIsReady(uint32_t vsock_port) {
   // Notify the host system that we are ready.
   grpc::ClientContext ctx;
   vm_tools::container::ContainerStartupInfo startup_info;
   startup_info.set_token(token_);
+  startup_info.set_garcon_port(vsock_port);
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub_->ContainerReady(&ctx, startup_info, &empty);
   if (!status.ok()) {
@@ -373,6 +375,28 @@ void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
                  weak_ptr_factory_.GetWeakPtr()),
       kFilesystemChangeCoalesceTime);
   update_app_list_posted_ = true;
+}
+
+void HostNotifier::SetUpContainerListenerStub(const std::string& host_ip) {
+  stub_ = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+
+  // Test the stub. If it doesn't work, fall back to IPv4.
+  // We just need to do any RPC to force a connection so don't set the token
+  // or URL.
+  vm_tools::container::OpenUrlRequest request;
+  vm_tools::EmptyMessage empty;
+  grpc::ClientContext ctx;
+  grpc::Status status = stub_->OpenUrl(&ctx, request, &empty);
+  if (status.ok() || status.error_code() != grpc::StatusCode::UNAVAILABLE) {
+    return;
+  }
+  stub_ = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(
+          base::StringPrintf("%s:%u", host_ip.c_str(), vm_tools::kGarconPort),
+          grpc::InsecureChannelCredentials()));
 }
 
 }  // namespace garcon
