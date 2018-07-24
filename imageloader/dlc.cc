@@ -7,9 +7,9 @@
 #include <set>
 
 #include <base/files/file_util.h>
+#include <brillo/imageloader/manifest.h>
 
 #include "imageloader/component.h"
-#include "imageloader/manifest.h"
 
 namespace imageloader {
 
@@ -105,7 +105,7 @@ bool Dlc::Mount(HelperProcessProxy* proxy,
     LOG(ERROR) << "Could not read manifest file." << manifest_path.value();
     return false;
   }
-  Manifest manifest;
+  brillo::imageloader::Manifest manifest;
   if (!manifest.ParseManifest(manifest_raw))
     return false;
 

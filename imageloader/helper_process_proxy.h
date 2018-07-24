@@ -13,14 +13,12 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <brillo/imageloader/manifest.h>
 
 // Forward declare classes in sys/socket.h
 struct msghdr;
 
 namespace imageloader {
-
-// Forward declare the FileSystem enum.
-enum class FileSystem;
 
 // Forward declare classes in ipc.pb.h
 class ImageCommand;
@@ -40,8 +38,9 @@ class HelperProcessProxy {
 
   // Sends a message telling the helper process to mount the file backed by |fd|
   // at the |path|.
-  virtual bool SendMountCommand(int fd, const std::string& path,
-                                FileSystem fs_type,
+  virtual bool SendMountCommand(int fd,
+                                const std::string& path,
+                                brillo::imageloader::FileSystem fs_type,
                                 const std::string& table);
 
   // Sends a message telling the helper process to enumerate all mount point
