@@ -18,11 +18,12 @@ import ctypes
 import ctypes.util
 import errno
 import os
-import psutil
 import re
 import signal
 import sys
 import tempfile
+
+import psutil
 
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
