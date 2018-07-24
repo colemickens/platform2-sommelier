@@ -48,16 +48,25 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::InstallLinuxPackageProgressInfo* request,
       vm_tools::EmptyMessage* response) override;
+  grpc::Status OpenTerminal(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::OpenTerminalRequest* request,
+      vm_tools::EmptyMessage* response) override;
 
  private:
+  // Returns true if the performing an open window/tab operation will be within
+  // the rules for rate limiting, false if it should be blocked. This will also
+  // increment the rate limit counter as a side effect.
+  bool CheckOpenRateLimit();
+
   base::WeakPtr<vm_tools::cicerone::Service> service_;  // not owned
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
-  // We rate limit the requests to open a URL in Chrome to prevent an
+  // We rate limit the requests to open a window/tab in Chrome to prevent an
   // accidental DOS of Chrome from a bad script in Linux. We use a fixed window
   // rate control algorithm to do this.
-  uint32_t open_url_count_;
-  base::TimeTicks open_url_rate_window_start_;
+  uint32_t open_count_;
+  base::TimeTicks open_rate_window_start_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerListenerImpl);
 };

@@ -49,6 +49,7 @@ constexpr char kLogPrefix[] = "garcon: ";
 constexpr char kServerSwitch[] = "server";
 constexpr char kClientSwitch[] = "client";
 constexpr char kUrlSwitch[] = "url";
+constexpr char kTerminalSwitch[] = "terminal";
 
 bool LogToSyslog(logging::LogSeverity severity,
                  const char* /* file */,
@@ -162,6 +163,12 @@ int main(int argc, char** argv) {
         }
       }
       return 0;
+    } else if (cl->HasSwitch(kTerminalSwitch)) {
+      std::vector<std::string> args = cl->GetArgs();
+      if (vm_tools::garcon::HostNotifier::OpenTerminal(std::move(args)))
+        return 0;
+      else
+        return -1;
     }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();

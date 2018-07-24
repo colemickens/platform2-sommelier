@@ -9,6 +9,7 @@
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <string>
@@ -98,6 +99,34 @@ bool HostNotifier::OpenUrlInHost(const std::string& url) {
   if (!status.ok()) {
     LOG(WARNING) << "Failed to request host system to open url \"" << url
                  << "\" error: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
+bool HostNotifier::OpenTerminal(std::vector<std::string> args) {
+  std::string host_ip = GetHostIp();
+  std::string token = GetSecurityToken();
+  if (token.empty() || host_ip.empty()) {
+    return false;
+  }
+  vm_tools::container::ContainerListener::Stub stub(grpc::CreateChannel(
+      base::StringPrintf("%s:%u", host_ip.c_str(), vm_tools::kGarconPort),
+      grpc::InsecureChannelCredentials()));
+  grpc::ClientContext ctx;
+  vm_tools::container::OpenTerminalRequest terminal_request;
+  std::copy(std::make_move_iterator(args.begin()),
+            std::make_move_iterator(args.end()),
+            google::protobuf::RepeatedFieldBackInserter(
+                terminal_request.mutable_params()));
+
+  terminal_request.set_token(token);
+
+  vm_tools::EmptyMessage empty;
+  grpc::Status status = stub.OpenTerminal(&ctx, terminal_request, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed request to open terminal, error: "
+                 << status.error_message();
     return false;
   }
   return true;

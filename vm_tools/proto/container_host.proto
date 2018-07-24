@@ -102,6 +102,16 @@ message InstallLinuxPackageProgressInfo {
   string failure_details = 4;
 }
 
+// Request protobuf for opening a new terminal in the container.
+message OpenTerminalRequest {
+  // The security token the container was given.
+  string token = 1;
+
+  // Extra parameters to use when launching a terminal application that allow
+  // executing a command inside the terminal.
+  repeated string params = 2;
+}
+
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
@@ -125,4 +135,8 @@ service ContainerListener {
   // and completion/failure.
   rpc InstallLinuxPackageProgress(InstallLinuxPackageProgressInfo)
       returns (EmptyMessage);
+
+  // Called by a container to have the host open a new terminal that is
+  // connected to the container.
+  rpc OpenTerminal(OpenTerminalRequest) returns (EmptyMessage);
 }

@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -23,10 +24,10 @@
 namespace {
 constexpr char kIpv4Prefix[] = "ipv4:";
 constexpr size_t kIpv4PrefixSize = sizeof(kIpv4Prefix) - 1;
-// These rate limit settings ensure that the OpenUrl call can't be made more
-// than 10 times in a 15 second interval approximately.
-constexpr base::TimeDelta kOpenUrlRateWindow = base::TimeDelta::FromSeconds(15);
-constexpr uint32_t kOpenUrlRateLimit = 10;
+// These rate limit settings ensure that calls that open a new window/tab can't
+// be made more than 10 times in a 15 second interval approximately.
+constexpr base::TimeDelta kOpenRateWindow = base::TimeDelta::FromSeconds(15);
+constexpr uint32_t kOpenRateLimit = 10;
 
 // Returns 0 on failure, otherwise the parsed 32 bit IP address from an
 // ipv4:aaa.bbb.ccc.ddd:eee string.
@@ -68,8 +69,8 @@ ContainerListenerImpl::ContainerListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
     : service_(service),
       task_runner_(base::ThreadTaskRunnerHandle::Get()),
-      open_url_count_(0),
-      open_url_rate_window_start_(base::TimeTicks::Now()) {}
+      open_count_(0),
+      open_rate_window_start_(base::TimeTicks::Now()) {}
 
 grpc::Status ContainerListenerImpl::ContainerReady(
     grpc::ServerContext* ctx,
@@ -204,21 +205,9 @@ grpc::Status ContainerListenerImpl::OpenUrl(
     const vm_tools::container::OpenUrlRequest* request,
     vm_tools::EmptyMessage* response) {
   // Check on rate limiting before we process this.
-  base::TimeTicks now = base::TimeTicks::Now();
-  if (now - open_url_rate_window_start_ > kOpenUrlRateWindow) {
-    // Beyond the window, reset the window start time and counter.
-    open_url_rate_window_start_ = now;
-    open_url_count_ = 1;
-  } else {
-    open_url_count_++;
-    if (open_url_count_ > kOpenUrlRateLimit) {
-      // Only log the first one over the limit to prevent log spam if this is
-      // getting hit quickly.
-      LOG_IF(ERROR, open_url_count_ == kOpenUrlRateLimit + 1)
-          << "OpenUrl rate limit hit, blocking requests until window closes";
-      return grpc::Status(grpc::RESOURCE_EXHAUSTED,
-                          "OpenUrl rate limit exceeded, blocking request");
-    }
+  if (!CheckOpenRateLimit()) {
+    return grpc::Status(grpc::RESOURCE_EXHAUSTED,
+                        "OpenUrl rate limit exceeded, blocking request");
   }
   std::string peer_address = ctx->peer();
   uint32_t ip = 0;
@@ -288,5 +277,56 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
 
   return grpc::Status::OK;
 }
+
+grpc::Status ContainerListenerImpl::OpenTerminal(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::OpenTerminalRequest* request,
+    vm_tools::EmptyMessage* response) {
+  // Check on rate limiting before we process this.
+  if (!CheckOpenRateLimit()) {
+    return grpc::Status(grpc::RESOURCE_EXHAUSTED,
+                        "OpenTerminal rate limit exceeded, blocking request");
+  }
+  std::string peer_address = ctx->peer();
+  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
+  if (ip == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing IPv4 address for ContainerListener");
+  }
+  vm_tools::apps::TerminalParams terminal_params;
+  terminal_params.mutable_params()->CopyFrom(request->params());
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::OpenTerminal,
+                            service_, request->token(),
+                            std::move(terminal_params), ip, &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure opening terminal from ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION, "Failure in OpenTerminal");
+  }
+  return grpc::Status::OK;
+}
+
+bool ContainerListenerImpl::CheckOpenRateLimit() {
+  base::TimeTicks now = base::TimeTicks::Now();
+  if (now - open_rate_window_start_ > kOpenRateWindow) {
+    // Beyond the window, reset the window start time and counter.
+    open_rate_window_start_ = now;
+    open_count_ = 1;
+    return true;
+  }
+  if (++open_count_ <= kOpenRateLimit)
+    return true;
+  // Only log the first one over the limit to prevent log spam if this is
+  // getting hit quickly.
+  LOG_IF(ERROR, open_count_ == kOpenRateLimit + 1)
+      << "OpenUrl/Terminal rate limit hit, blocking requests until window "
+         "closes";
+  return false;
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

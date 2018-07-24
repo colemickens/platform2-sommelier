@@ -667,6 +667,47 @@ void Service::InstallLinuxPackageProgress(
   event->Signal();
 }
 
+void Service::OpenTerminal(const std::string& container_token,
+                           vm_tools::apps::TerminalParams terminal_params,
+                           uint32_t container_ip,
+                           bool* result,
+                           base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  std::string owner_id;
+  std::string vm_name;
+  VirtualMachine* vm;
+  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
+                                       &vm_name)) {
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (container_name.empty()) {
+    event->Signal();
+    return;
+  }
+  terminal_params.set_vm_name(vm_name);
+  terminal_params.set_container_name(container_name);
+  terminal_params.set_owner_id(owner_id);
+  dbus::MethodCall method_call(
+      vm_tools::apps::kVmApplicationsServiceInterface,
+      vm_tools::apps::kVmApplicationsServiceLaunchTerminalMethod);
+  dbus::MessageWriter(&method_call)
+      .AppendProtoAsArrayOfBytes(std::move(terminal_params));
+  std::unique_ptr<dbus::Response> dbus_response =
+      vm_applications_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to Chrome for OpenTerminal";
+  } else {
+    *result = true;
+  }
+  event->Signal();
+}
+
 bool Service::Init() {
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;

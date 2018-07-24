@@ -34,6 +34,11 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // the web browser. Returns true on success, false otherwise.
   static bool OpenUrlInHost(const std::string& url);
 
+  // Sends a gRPC call to the host to notify it to open a terminal window that
+  // is connected to this container. |args| will be executed as a program in
+  // the terminal if any are passed.
+  static bool OpenTerminal(std::vector<std::string> args);
+
   ~HostNotifier();
 
   // Notifies the host that garcon is ready. This will send the initial update
