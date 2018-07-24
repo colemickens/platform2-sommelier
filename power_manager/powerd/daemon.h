@@ -130,7 +130,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   void ShutDownForDarkResume() override;
 
   // Overridden from policy::WifiController::Delegate:
-  void SetWifiTransmitPower(TabletMode tablet_mode) override;
+  void SetWifiTransmitPower(RadioTransmitPower power) override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;

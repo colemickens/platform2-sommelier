@@ -264,6 +264,12 @@ enum class LidState {
   NOT_PRESENT,
 };
 
+enum class RadioTransmitPower {
+  LOW,
+  HIGH,
+  UNSPECIFIED,
+};
+
 // Convertible Chromebooks may either be folded into a tablet or used as a
 // clamshell.
 enum class TabletMode {

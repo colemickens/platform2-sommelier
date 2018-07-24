@@ -27,8 +27,8 @@ class WifiController : public system::UdevSubsystemObserver {
    public:
     virtual ~Delegate() = default;
 
-    // Updates the wifi transmit power appropriately for |tablet_mode|.
-    virtual void SetWifiTransmitPower(TabletMode tablet_mode) = 0;
+    // Updates the wifi transmit power to |power|.
+    virtual void SetWifiTransmitPower(RadioTransmitPower power) = 0;
   };
 
   // Net subsystem and wlan devtype for udev events.
