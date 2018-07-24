@@ -31,6 +31,14 @@ constexpr uniq_t kDiscoveryHandle = 11;
 
 class NewblueTest : public ::testing::Test {
  public:
+  // A dummy struct that hosts the device information from discovery callback.
+  struct MockDevice {
+    std::string address;
+    std::string name;
+    int16_t rssi;
+    uint32_t eir_class;
+  };
+
   void SetUp() override {
     auto libnewblue = std::make_unique<MockLibNewblue>();
     libnewblue_ = libnewblue.get();
@@ -47,7 +55,9 @@ class NewblueTest : public ::testing::Test {
   void OnReadyForUp() { is_ready_for_up_ = true; }
 
   void OnDeviceDiscovered(const Device& device) {
-    discovered_devices_.push_back(device);
+    discovered_devices_.push_back({device.address, device.name.value(),
+                                   device.rssi.value(),
+                                   device.eir_class.value()});
   }
 
  protected:
@@ -55,7 +65,7 @@ class NewblueTest : public ::testing::Test {
   bool is_ready_for_up_ = false;
   std::unique_ptr<Newblue> newblue_;
   MockLibNewblue* libnewblue_;
-  std::vector<Device> discovered_devices_;
+  std::vector<MockDevice> discovered_devices_;
 };
 
 TEST_F(NewblueTest, ListenReadyForUp) {
@@ -134,6 +144,16 @@ TEST_F(NewblueTest, StartDiscovery) {
       5, static_cast<uint8_t>(EirType::NAME_SHORT), 'b', 'o', 'b', '\0'};
   inquiry_response_callback(inquiry_response_callback_data, &addr2, -102,
                             HCI_ADV_TYPE_ADV_IND, &eir2, arraysize(eir2));
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(2, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ("bob", discovered_devices_[1].name);
+  EXPECT_EQ("07:06:05:04:03:02", discovered_devices_[1].address);
+  EXPECT_EQ(-102, discovered_devices_[1].rssi);
+
   // Scan response for device 1.
   uint8_t eir3[] = {4, static_cast<uint8_t>(EirType::CLASS_OF_DEV), 0x21, 0x22,
                     0x23};
@@ -142,19 +162,13 @@ TEST_F(NewblueTest, StartDiscovery) {
 
   message_loop_.RunUntilIdle();
 
-  ASSERT_EQ(3, discovered_devices_.size());
-  ASSERT_EQ("alice", discovered_devices_[0].name);
-  ASSERT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
-  ASSERT_EQ(-101, discovered_devices_[0].rssi);
-  ASSERT_EQ("bob", discovered_devices_[1].name);
-  ASSERT_EQ("07:06:05:04:03:02", discovered_devices_[1].address);
-  ASSERT_EQ(-102, discovered_devices_[1].rssi);
   // The third discovery event should be an update to the first device, not a
   // new device.
-  ASSERT_EQ("alice", discovered_devices_[2].name);
-  ASSERT_EQ("06:05:04:03:02:01", discovered_devices_[2].address);
-  ASSERT_EQ(-103, discovered_devices_[2].rssi);
-  ASSERT_EQ(0x232221, discovered_devices_[2].eir_class);
+  EXPECT_EQ(3, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[2].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[2].address);
+  EXPECT_EQ(-103, discovered_devices_[2].rssi);
+  EXPECT_EQ(0x232221, discovered_devices_[2].eir_class);
 
   EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kDiscoveryHandle))
       .WillOnce(Return(true));
@@ -164,7 +178,7 @@ TEST_F(NewblueTest, StartDiscovery) {
                             HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
   message_loop_.RunUntilIdle();
   // Check that discovered_devices_ is still the same.
-  ASSERT_EQ(3, discovered_devices_.size());
+  EXPECT_EQ(3, discovered_devices_.size());
 }
 
 TEST_F(NewblueTest, UpdateEirNormal) {
@@ -205,25 +219,26 @@ TEST_F(NewblueTest, UpdateEirNormal) {
 
   Newblue::UpdateEir(&device, std::vector<uint8_t>(eir, eir + arraysize(eir)));
 
-  EXPECT_EQ(std::vector<uint8_t>({0xAA}), device.flags);
-  EXPECT_THAT(device.service_uuids,
+  EXPECT_EQ(std::vector<uint8_t>({0xAA}), device.flags.value());
+  EXPECT_THAT(device.service_uuids.value(),
               UnorderedElementsAre(battery_service_uuid16,
                                    blood_pressure_uuid32, uuid128));
-  EXPECT_EQ("foo", device.name);
-  EXPECT_EQ(-57, device.tx_power);
-  EXPECT_EQ(0x00030201, device.eir_class);
-  EXPECT_THAT(device.service_data,
+  EXPECT_EQ("foo", device.name.value());
+  EXPECT_EQ(-57, device.tx_power.value());
+  EXPECT_EQ(0x00030201, device.eir_class.value());
+  EXPECT_THAT(device.service_data.value(),
               UnorderedElementsAre(Pair(battery_service_uuid16,
                                         std::vector<uint8_t>({0x11, 0x22})),
                                    Pair(bond_management_service_uuid32,
                                         std::vector<uint8_t>({0x33, 0x44}))));
-  EXPECT_EQ(0x0201, device.appearance);
-  EXPECT_EQ(0x000E, device.manufacturer_id);
-  EXPECT_EQ(std::vector<uint8_t>({0x55, 0x66}), device.manufacturer_data);
+  EXPECT_EQ(0x0201, device.appearance.value());
+  EXPECT_THAT(
+      device.manufacturer.value(),
+      UnorderedElementsAre(Pair(0x000E, std::vector<uint8_t>({0x55, 0x66}))));
 
   uint8_t eir2[] = {
-      // Flag
-      2, static_cast<uint8_t>(EirType::FLAGS), 0xCC,
+      // Flag with zero octet
+      1, static_cast<uint8_t>(EirType::FLAGS),
       // UUID32_INCOMPLETE - Bond Management Service
       5, static_cast<uint8_t>(EirType::UUID32_INCOMPLETE), 0x1E, 0x18, 0x00,
       0x00,
@@ -234,25 +249,24 @@ TEST_F(NewblueTest, UpdateEirNormal) {
   Newblue::UpdateEir(&device,
                      std::vector<uint8_t>(eir2, eir2 + arraysize(eir2)));
 
-  EXPECT_EQ(std::vector<uint8_t>({0xCC}), device.flags);
-  EXPECT_THAT(device.service_uuids,
+  EXPECT_TRUE(device.flags.value().empty());
+  EXPECT_THAT(device.service_uuids.value(),
               UnorderedElementsAre(bond_management_service_uuid32));
-  EXPECT_EQ("foo", device.name);
-  EXPECT_EQ(-57, device.tx_power);
-  EXPECT_EQ(0x00030201, device.eir_class);
-  EXPECT_THAT(device.service_data,
+  EXPECT_EQ("foo", device.name.value());
+  EXPECT_EQ(-57, device.tx_power.value());
+  EXPECT_EQ(0x00030201, device.eir_class.value());
+  EXPECT_THAT(device.service_data.value(),
               UnorderedElementsAre(Pair(bond_management_service_uuid32,
                                         std::vector<uint8_t>({0x55, 0x66}))));
-  EXPECT_EQ(0x0201, device.appearance);
-  EXPECT_EQ(0x000E, device.manufacturer_id);
-  EXPECT_EQ(std::vector<uint8_t>({0x55, 0x66}), device.manufacturer_data);
+  EXPECT_EQ(0x0201, device.appearance.value());
+  EXPECT_THAT(
+      device.manufacturer.value(),
+      UnorderedElementsAre(Pair(0x000E, std::vector<uint8_t>({0x55, 0x66}))));
 }
 
 TEST_F(NewblueTest, UpdateEirAbnormal) {
   Device device;
   uint8_t eir[] = {
-      // Flags with zero octet
-      1, static_cast<uint8_t>(EirType::FLAGS),
       // Even if there are more than one instance of a UUID size of either
       // COMPLETE or INCOMPLETE type, the later one will still be honored
       3, static_cast<uint8_t>(EirType::UUID16_COMPLETE), 0x0F, 0x18,  //
@@ -278,17 +292,17 @@ TEST_F(NewblueTest, UpdateEirAbnormal) {
   Newblue::UpdateEir(&device, std::vector<uint8_t>(eir, eir + arraysize(eir)));
 
   // Non-ascii characters are replaced with spaces.
-  EXPECT_TRUE(device.flags.empty());
+  EXPECT_TRUE(device.flags.value().empty());
   EXPECT_THAT(
-      device.service_uuids,
+      device.service_uuids.value(),
       UnorderedElementsAre(battery_service_uuid16, blood_pressure_uuid16));
-  EXPECT_EQ("  a", device.name);
-  EXPECT_EQ(-128, device.tx_power);
-  EXPECT_EQ(0x1F00, device.eir_class);
-  EXPECT_TRUE(device.service_data.empty());
-  EXPECT_EQ(0x0000, device.appearance);
-  EXPECT_EQ(0xFFFF, device.manufacturer_id);
-  EXPECT_TRUE(device.manufacturer_data.empty());
+  EXPECT_EQ("  a", device.name.value());
+  EXPECT_EQ(-128, device.tx_power.value());
+  EXPECT_EQ(0x1F00, device.eir_class.value());
+  EXPECT_TRUE(device.service_data.value().empty());
+  EXPECT_EQ(0x0000, device.appearance.value());
+  EXPECT_THAT(device.manufacturer.value(),
+              UnorderedElementsAre(Pair(0xFFFF, std::vector<uint8_t>())));
 }
 
 }  // namespace bluetooth

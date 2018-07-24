@@ -19,6 +19,17 @@ namespace bluetooth {
 
 namespace {
 
+// The default values of Flags, TX Power, EIR Class, Appearance and
+// Manufacturer ID come from the assigned numbers and Supplement to the
+// Bluetooth Core Specification defined by Bluetooth SIG. These default values
+// are used to determine whether the fields are ever received in EIR and set
+// for a device.
+constexpr int8_t kDefaultRssi = -128;
+constexpr int8_t kDefaultTxPower = -128;
+constexpr uint32_t kDefaultEirClass = 0x1F00;
+constexpr uint16_t kDefaultAppearance = 0;
+constexpr uint16_t kDefaultManufacturerId = 0xFFFF;
+
 // Filters out non-ASCII characters from a string by replacing them with spaces.
 std::string AsciiString(std::string name) {
   /* Replace all non-ASCII characters with spaces */
@@ -30,7 +41,70 @@ std::string AsciiString(std::string name) {
   return name;
 }
 
+std::map<uint16_t, std::vector<uint8_t>> MakeManufacturer(
+    uint16_t manufacturer_id, std::vector<uint8_t> manufacturer_data) {
+  std::map<uint16_t, std::vector<uint8_t>> manufacturer;
+  manufacturer.emplace(manufacturer_id, std::move(manufacturer_data));
+  return manufacturer;
+}
+
+// These value are defined at https://www.bluetooth.com/specifications/gatt/
+// viewer?attributeXmlFile=org.bluetooth.characteristic.gap.appearance.xml.
+// The translated strings come from BlueZ.
+std::string ConvertAppearanceToIcon(uint16_t appearance) {
+  switch ((appearance & 0xffc0) >> 6) {
+    case 0x00:
+      return "unknown";
+    case 0x01:
+      return "phone";
+    case 0x02:
+      return "computer";
+    case 0x05:
+      return "video-display";
+    case 0x0a:
+      return "multimedia-player";
+    case 0x0b:
+      return "scanner";
+    case 0x0f:  // HID Generic
+      switch (appearance & 0x3f) {
+        case 0x01:
+          return "input-keyboard";
+        case 0x02:
+          return "input-mouse";
+        case 0x03:
+        case 0x04:
+          return "input-gaming";
+        case 0x05:
+          return "input-tablet";
+        case 0x08:
+          return "scanner";
+      }
+      break;
+    default:
+      break;
+  }
+  return std::string();
+}
+
 }  // namespace
+
+Device::Device() : Device("") {}
+
+Device::Device(const std::string& address)
+    : address(address),
+      is_random_address(false),
+      paired(false),
+      connected(false),
+      trusted(false),
+      blocked(false),
+      services_resolved(false),
+      tx_power(kDefaultTxPower),
+      rssi(kDefaultRssi),
+      eir_class(kDefaultEirClass),
+      appearance(kDefaultAppearance),
+      icon(ConvertAppearanceToIcon(kDefaultAppearance)),
+      manufacturer(
+          MakeManufacturer(kDefaultManufacturerId, std::vector<uint8_t>())) {}
 
 Newblue::Newblue(std::unique_ptr<LibNewblue> libnewblue)
     : libnewblue_(std::move(libnewblue)), weak_ptr_factory_(this) {}
@@ -127,14 +201,11 @@ bool Newblue::StopDiscovery() {
 }
 
 void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
-  uint8_t pos = 0;
+  CHECK(device);
 
-  // Reset service UUIDs and service data so that |service_uuids| and
-  // |service_data| reflect the latest EIR. This is different from BlueZ where
-  // it memorizes all service UUIDs and service data ever received for the same
-  // device.
-  device->service_uuids.clear();
-  device->service_data.clear();
+  uint8_t pos = 0;
+  std::set<Uuid> service_uuids;
+  std::map<Uuid, std::vector<uint8_t>> service_data;
 
   while (pos + 1 < eir.size()) {
     uint8_t field_len = eir[pos];
@@ -156,29 +227,28 @@ void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
 
     switch (eir_type) {
       case EirType::FLAGS:
-        // Flags field can be 0 or more octets long. If the length is 1, then
-        // flags[0] is octet[0]. Store only octet[0] for now due to lack of
-        // definition of the following octets in Supplement to the Bluetooth
-        // Core Specification.
-        if (data_len > 0)
-          device->flags.assign(data, data + 1);
-        else
-          device->flags.clear();
+        // No default value should be set for flags according to Supplement to
+        // the Bluetooth Core Specification. Flags field can be 0 or more octets
+        // long. If the length is 1, then flags[0] is octet[0]. Store only
+        // octet[0] for now due to lack of definition of the following octets
+        // in Supplement to the Bluetooth Core Specification.
+        device->flags.SetValue(
+            std::vector<uint8_t>(data, data + (data_len > 0 ? 1 : 0)));
         break;
 
       // If there are more than one instance of either COMPLETE or INCOMPLETE
       // type of a UUID size, the later one(s) will be cached as well.
       case EirType::UUID16_INCOMPLETE:
       case EirType::UUID16_COMPLETE:
-        UpdateServiceUuids(device, kUuid16Size, data, data_len);
+        UpdateServiceUuids(&service_uuids, kUuid16Size, data, data_len);
         break;
       case EirType::UUID32_INCOMPLETE:
       case EirType::UUID32_COMPLETE:
-        UpdateServiceUuids(device, kUuid32Size, data, data_len);
+        UpdateServiceUuids(&service_uuids, kUuid32Size, data, data_len);
         break;
       case EirType::UUID128_INCOMPLETE:
       case EirType::UUID128_COMPLETE:
-        UpdateServiceUuids(device, kUuid128Size, data, data_len);
+        UpdateServiceUuids(&service_uuids, kUuid128Size, data, data_len);
         break;
 
       // Name
@@ -193,51 +263,77 @@ void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
             std::min(data_len, static_cast<uint8_t>(HCI_DEV_NAME_LEN));
         strncpy(c_name, reinterpret_cast<const char*>(data), name_len);
         c_name[name_len] = '\0';
-
-        device->name = AsciiString(c_name);
+        device->name.SetValue(AsciiString(c_name));
       } break;
 
       case EirType::TX_POWER:
         if (data_len == 1)
-          device->tx_power = static_cast<int8_t>(*data);
+          device->tx_power.SetValue(static_cast<int8_t>(*data));
         break;
       case EirType::CLASS_OF_DEV:
         // 24-bit little endian data
         if (data_len == 3)
-          device->eir_class = GetNumFromLE24(data);
+          device->eir_class.SetValue(GetNumFromLE24(data));
         break;
 
       // If the UUID already exists, the service data will be updated.
       case EirType::SVC_DATA16:
-        UpdateServiceData(device, kUuid16Size, data, data_len);
+        UpdateServiceData(&service_data, kUuid16Size, data, data_len);
         break;
       case EirType::SVC_DATA32:
-        UpdateServiceData(device, kUuid32Size, data, data_len);
+        UpdateServiceData(&service_data, kUuid32Size, data, data_len);
         break;
       case EirType::SVC_DATA128:
-        UpdateServiceData(device, kUuid128Size, data, data_len);
+        UpdateServiceData(&service_data, kUuid128Size, data, data_len);
         break;
 
       case EirType::GAP_APPEARANCE:
         // 16-bit little endian data
-        if (data_len == 2)
-          device->appearance = GetNumFromLE16(data);
+        if (data_len == 2) {
+          uint16_t appearance = GetNumFromLE16(data);
+          device->appearance.SetValue(appearance);
+          device->icon.SetValue(ConvertAppearanceToIcon(appearance));
+        }
         break;
       case EirType::MANUFACTURER_DATA:
-        if (data_len >= 2)
-          device->manufacturer_id = GetNumFromLE16(data);
-        // The order of manufacturer data is not specified explicitly in
-        // Supplement to the Bluetooth Core Specification, so the original
-        // order used in BlueZ is adopted.
-        if (data_len > 2)
-          device->manufacturer_data.assign(data + 2, data + data_len);
+        if (data_len >= 2) {
+          // The order of manufacturer data is not specified explicitly in
+          // Supplement to the Bluetooth Core Specification, so the original
+          // order used in BlueZ is adopted.
+          device->manufacturer.SetValue(MakeManufacturer(
+              GetNumFromLE16(data),
+              std::vector<uint8_t>(data + 2,
+                                   data + std::max<uint8_t>(data_len, 2))));
+        }
         break;
       default:
         // Do nothing for unhandled EIR type.
         break;
     }
+
     pos += field_len + 1;
   }
+
+  // In BlueZ, if alias is never provided or is set to empty for a device, the
+  // value of Alias property is set to the value of Name property if
+  // |device.name| is not empty. If |device.name| is also empty, then Alias
+  // is set to |device.address| in the following string format.
+  // xx-xx-xx-xx-xx-xx
+  if (device->internal_alias.empty()) {
+    std::string alias;
+    if (!device->name.value().empty()) {
+      alias = device->name.value();
+    } else {
+      alias = device->address;
+      std::replace(alias.begin(), alias.end(), ':', '-');
+    }
+    device->alias.SetValue(std::move(alias));
+  }
+
+  // This is different from BlueZ where it memorizes all service UUIDs and
+  // service data ever received for the same device.
+  device->service_uuids.SetValue(std::move(service_uuids));
+  device->service_data.SetValue(std::move(service_data));
 }
 
 bool Newblue::PostTask(const tracked_objects::Location& from_here,
@@ -301,17 +397,19 @@ void Newblue::DiscoveryCallback(const std::string& address,
 
   Device* device = discovered_devices_[address].get();
   device->is_random_address = (address_type == BT_ADDR_TYPE_LE_RANDOM);
-  device->rssi = rssi;
+  device->rssi.SetValue(rssi);
   UpdateEir(device, eir);
 
   device_discovered_callback_.Run(*device);
+
+  ClearPropertiesUpdated(device);
 }
 
-void Newblue::UpdateServiceUuids(Device* device,
+void Newblue::UpdateServiceUuids(std::set<Uuid>* service_uuids,
                                  uint8_t uuid_size,
                                  const uint8_t* data,
                                  uint8_t data_len) {
-  CHECK(device && data);
+  CHECK(service_uuids && data);
 
   if (!data_len || data_len % uuid_size != 0) {
     LOG(WARNING) << "Failed to parse EIR service UUIDs";
@@ -322,15 +420,16 @@ void Newblue::UpdateServiceUuids(Device* device,
   for (uint8_t i = 0; i < data_len; i += uuid_size) {
     Uuid uuid(GetBytesFromLE(data + i, uuid_size));
     CHECK(uuid.format() != UuidFormat::UUID_INVALID);
-    device->service_uuids.insert(uuid);
+    service_uuids->insert(uuid);
   }
 }
 
-void Newblue::UpdateServiceData(Device* device,
-                                uint8_t uuid_size,
-                                const uint8_t* data,
-                                uint8_t data_len) {
-  CHECK(device && data);
+void Newblue::UpdateServiceData(
+    std::map<Uuid, std::vector<uint8_t>>* service_data,
+    uint8_t uuid_size,
+    const uint8_t* data,
+    uint8_t data_len) {
+  CHECK(service_data && data);
 
   if (!data_len || data_len <= uuid_size) {
     LOG(WARNING) << "Failed to parse EIR service data";
@@ -344,8 +443,27 @@ void Newblue::UpdateServiceData(Device* device,
   // where {0x18 0x0F} is the UUID and {0x11, 0x22} is the data.
   Uuid uuid(GetBytesFromLE(data, uuid_size));
   CHECK_NE(UuidFormat::UUID_INVALID, uuid.format());
-  device->service_data[uuid] =
-      GetBytesFromLE(data + uuid_size, data_len - uuid_size);
+  service_data->emplace(uuid,
+                        GetBytesFromLE(data + uuid_size, data_len - uuid_size));
+}
+
+void Newblue::ClearPropertiesUpdated(Device* device) {
+  device->paired.ClearUpdated();
+  device->connected.ClearUpdated();
+  device->trusted.ClearUpdated();
+  device->blocked.ClearUpdated();
+  device->services_resolved.ClearUpdated();
+  device->alias.ClearUpdated();
+  device->name.ClearUpdated();
+  device->tx_power.ClearUpdated();
+  device->rssi.ClearUpdated();
+  device->eir_class.ClearUpdated();
+  device->appearance.ClearUpdated();
+  device->icon.ClearUpdated();
+  device->flags.ClearUpdated();
+  device->service_uuids.ClearUpdated();
+  device->service_data.ClearUpdated();
+  device->manufacturer.ClearUpdated();
 }
 
 }  // namespace bluetooth

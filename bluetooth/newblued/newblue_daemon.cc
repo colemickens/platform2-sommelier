@@ -4,9 +4,12 @@
 
 #include "bluetooth/newblued/newblue_daemon.h"
 
+#include <algorithm>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <sysexits.h>
 
@@ -18,6 +21,8 @@
 #include "bluetooth/common/dbus_daemon.h"
 #include "bluetooth/newblued/libnewblue.h"
 
+namespace bluetooth {
+
 namespace {
 
 // Chrome OS device has only 1 Bluetooth adapter, so the name is always hci0.
@@ -25,6 +30,8 @@ namespace {
 constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
 
 constexpr char kErrorBluezFailed[] = "org.bluez.Failed";
+
+constexpr char kDeviceTypeLe[] = "LE";
 
 // Called when an interface of a D-Bus object is exported.
 void OnInterfaceExported(std::string object_path,
@@ -34,9 +41,29 @@ void OnInterfaceExported(std::string object_path,
           << object_path << ", success = " << success;
 }
 
-}  // namespace
+// Canonicalizes UUIDs and wraps them as a vector for exposing or updating
+// service UUIDs.
+std::vector<std::string> CanonicalizeUuids(const std::set<Uuid>& uuids) {
+  std::vector<std::string> result;
+  result.reserve(uuids.size());
+  for (const auto& uuid : uuids)
+    result.push_back(uuid.canonical_value());
 
-namespace bluetooth {
+  return result;
+}
+
+// Canonicalizes UUIDs associated with service data for exposing or updating
+// service data.
+std::map<std::string, std::vector<uint8_t>> CanonicalizeServiceData(
+    const std::map<Uuid, std::vector<uint8_t>>& service_data) {
+  std::map<std::string, std::vector<uint8_t>> result;
+  for (const auto& data : service_data)
+    result.emplace(data.first.canonical_value(), data.second);
+
+  return result;
+}
+
+}  // namespace
 
 NewblueDaemon::NewblueDaemon(std::unique_ptr<Newblue> newblue)
     : newblue_(std::move(newblue)), weak_ptr_factory_(this) {}
@@ -202,11 +229,11 @@ bool NewblueDaemon::HandleConnect(brillo::ErrorPtr* error,
 }
 
 void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
-  VLOG(1) << "Discovered device "
-          << base::StringPrintf("address = %s, rssi = %d, addr type = %s",
-                                device.address.c_str(), device.rssi,
-                                device.is_random_address ? "random" : "public");
+  VLOG(1) << base::StringPrintf("Discovered device with %s address %s, rssi %d",
+                                device.is_random_address ? "random" : "public",
+                                device.address.c_str(), device.rssi.value());
 
+  bool is_new_device = false;
   std::string device_path_string = base::StringPrintf(
       "%s/dev_%s", kAdapterObjectPath, device.address.c_str());
   std::replace(device_path_string.begin(), device_path_string.end(), ':', '_');
@@ -218,6 +245,7 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
   // The first time a device of this address is discovered, create the D-Bus
   // object representing that device.
   if (device_interface == nullptr) {
+    is_new_device = true;
     exported_object_manager_wrapper_->AddExportedInterface(
         device_path, bluetooth_device::kBluetoothDeviceInterface);
 
@@ -246,58 +274,65 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
                    bluetooth_device::kBluetoothDeviceInterface));
   }
 
-  // Update the device object's properties.
-  device_interface
-      ->EnsureExportedPropertyRegistered<std::string>(
-          bluetooth_device::kAddressProperty)
-      ->SetValue(device.address);
-  device_interface
-      ->EnsureExportedPropertyRegistered<std::string>(
-          bluetooth_device::kNameProperty)
-      ->SetValue(device.name);
-  device_interface
-      ->EnsureExportedPropertyRegistered<int16_t>(
-          bluetooth_device::kRSSIProperty)
-      ->SetValue(device.rssi);
-  device_interface
-      ->EnsureExportedPropertyRegistered<uint32_t>(
-          bluetooth_device::kClassProperty)
-      ->SetValue(device.eir_class);
-  device_interface
-      ->EnsureExportedPropertyRegistered<uint16_t>(
-          bluetooth_device::kAppearanceProperty)
-      ->SetValue(device.appearance);
+  UpdateDeviceProperties(device_interface, device, is_new_device);
+}
 
-  // These are properties that are required to exist (bluez: doc/device-api.txt)
-  // But newblued doesn't support these yet, so assign static values.
-  device_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_device::kPairedProperty)
-      ->SetValue(false);
-  device_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_device::kConnectedProperty)
-      ->SetValue(false);
-  device_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_device::kTrustedProperty)
-      ->SetValue(false);
-  device_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_device::kBlockedProperty)
-      ->SetValue(false);
-  device_interface
-      ->EnsureExportedPropertyRegistered<std::string>(
-          bluetooth_device::kAliasProperty)
-      ->SetValue("");
-  device_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_device::kLegacyPairingProperty)
-      ->SetValue(false);
-  device_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_device::kServicesResolvedProperty)
-      ->SetValue(false);
+void NewblueDaemon::UpdateDeviceProperties(ExportedInterface* interface,
+                                           const Device& device,
+                                           bool is_new_device) {
+  CHECK(interface);
+
+  // TODO(mcchou): Properties Modalias and MTU is not yet sorted out.
+
+  // The following properties are exported when |is_new_device| is true or when
+  // they are updated.
+  if (is_new_device) {
+    // Expose immutable and non-optional properties for the new device.
+    interface->EnsureExportedPropertyRegistered<std::string>(
+        bluetooth_device::kAddressProperty)->SetValue(device.address);
+    interface->EnsureExportedPropertyRegistered<std::string>(
+        bluetooth_device::kTypeProperty)->SetValue(kDeviceTypeLe);
+    interface->EnsureExportedPropertyRegistered<bool>(
+        bluetooth_device::kLegacyPairingProperty)->SetValue(false);
+  }
+
+  UpdateDeviceProperty(interface, bluetooth_device::kPairedProperty,
+                       device.paired, is_new_device);
+  UpdateDeviceProperty(interface, bluetooth_device::kConnectedProperty,
+                       device.connected, is_new_device);
+  UpdateDeviceProperty(interface, bluetooth_device::kTrustedProperty,
+                       device.trusted, is_new_device);
+  UpdateDeviceProperty(interface, bluetooth_device::kBlockedProperty,
+                       device.blocked, is_new_device);
+  UpdateDeviceProperty(interface, bluetooth_device::kAliasProperty,
+                       device.alias, is_new_device);
+  UpdateDeviceProperty(interface, bluetooth_device::kServicesResolvedProperty,
+                       device.services_resolved, is_new_device);
+  UpdateDeviceProperty(interface,
+                       bluetooth_device::kAdvertisingDataFlagsProperty,
+                       device.flags, is_new_device);
+  // Although RSSI is an optional device property in BlueZ, it is always
+  // provided by libnewblue, thus it is exposed by default.
+  UpdateDeviceProperty(interface, bluetooth_device::kRSSIProperty, device.rssi,
+                       is_new_device);
+
+  // The following properties are exported only when they are updated.
+  UpdateDeviceProperty(interface, bluetooth_device::kUUIDsProperty,
+                       device.service_uuids, &CanonicalizeUuids, false);
+  UpdateDeviceProperty(interface, bluetooth_device::kServiceDataProperty,
+                       device.service_data, &CanonicalizeServiceData, false);
+  UpdateDeviceProperty(interface, bluetooth_device::kNameProperty, device.name,
+                       false);
+  UpdateDeviceProperty(interface, bluetooth_device::kTxPowerProperty,
+                       device.tx_power, false);
+  UpdateDeviceProperty(interface, bluetooth_device::kClassProperty,
+                       device.eir_class, false);
+  UpdateDeviceProperty(interface, bluetooth_device::kAppearanceProperty,
+                       device.appearance, false);
+  UpdateDeviceProperty(interface, bluetooth_device::kIconProperty, device.icon,
+                       false);
+  UpdateDeviceProperty(interface, bluetooth_device::kManufacturerDataProperty,
+                       device.manufacturer, false);
 }
 
 }  // namespace bluetooth

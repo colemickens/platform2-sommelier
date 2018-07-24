@@ -6,6 +6,8 @@
 
 #include <algorithm>
 
+#include <base/strings/stringprintf.h>
+
 namespace bluetooth {
 
 Uuid::Uuid(const std::vector<uint8_t>& value) {
@@ -28,6 +30,12 @@ Uuid::Uuid(const std::vector<uint8_t>& value) {
       format_ = UuidFormat::UUID_INVALID;
       value128_.fill(0);
   }
+  value_canonical_ = base::StringPrintf(
+      "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+      value128_[0], value128_[1], value128_[2], value128_[3], value128_[4],
+      value128_[5], value128_[6], value128_[7], value128_[8], value128_[9],
+      value128_[10], value128_[11], value128_[12], value128_[13], value128_[14],
+      value128_[15]);
 }
 
 bool Uuid::operator<(const Uuid& uuid) const {

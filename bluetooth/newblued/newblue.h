@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -17,20 +18,10 @@
 #include <base/single_thread_task_runner.h>
 
 #include "bluetooth/newblued/libnewblue.h"
+#include "bluetooth/newblued/property.h"
 #include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
-
-// The default values of Flags, TX Power, EIR Class, Appearance and
-// Manufacturer ID come from the assigned numbers and Supplement to the
-// Bluetooth Core Specification defined by Bluetooth SIG. These default values
-// are used to determine whether the fields are ever received in EIR and set
-// for a device.
-constexpr int8_t kDefaultRssi = -128;
-constexpr int8_t kDefaultTxPower = -128;
-constexpr uint32_t kDefaultEirClass = 0x1F00;
-constexpr uint16_t kDefaultAppearance = 0;
-constexpr uint16_t kDefaultManufacturerId = 0xFFFF;
 
 // These are based on the numbers assigned by Bluetooth SIG, see
 // www.bluetooth.com/specifications/assigned-numbers/generic-access-profile.
@@ -56,29 +47,55 @@ enum class EirType : uint8_t {
 
 // Structure representing a discovered device.
 struct Device {
-  Device() = default;
-  explicit Device(const std::string& addr) : address(addr) {}
+  Device();
+  explicit Device(const std::string& address);
 
   // MAC address (in format XX:XX:XX:XX:XX:XX).
   std::string address;
   // Whether the MAC address is a random address.
-  bool is_random_address = false;
-  // RSSI of last received inquiry response.
-  int8_t rssi = kDefaultRssi;
+  bool is_random_address;
 
-  // Data parsed from Extended Inquiry Response (EIR).
+  // [mandatory] Whether the device is paired.
+  Property<bool> paired;
+  // [mandatory] Whether the device is connected.
+  Property<bool> connected;
+  // [mandatory] Whether the device is in the white list.
+  Property<bool> trusted;
+  // [mandatory] Whether the device is in the black list.
+  Property<bool> blocked;
+  // [mandatory] Whether the services provided by the device has been resolved.
+  Property<bool> services_resolved;
 
-  // No default value should be set for flags according to Supplement to the
-  // Bluetooth Core Specification.
-  std::vector<uint8_t> flags;
-  std::set<Uuid> service_uuids;
-  std::map<Uuid, std::vector<uint8_t>> service_data;
-  std::string name;
-  int8_t tx_power = kDefaultTxPower;
-  uint32_t eir_class = kDefaultEirClass;
-  uint16_t appearance = kDefaultAppearance;
-  uint16_t manufacturer_id = kDefaultManufacturerId;
-  std::vector<uint8_t> manufacturer_data;
+  // [mandatory] A readable and writable alias given to the device.
+  Property<std::string> alias;
+  // Actual alias provided by the user.
+  std::string internal_alias;
+  // [optional] A readable name of the device.
+  Property<std::string> name;
+
+  // [optional] Transmission power level of the advertisement packet
+  Property<int16_t> tx_power;
+  // [optional] RSSI of last received inquiry response.
+  Property<int16_t> rssi;
+
+  // [optional] Class of the device.
+  Property<uint32_t> eir_class;
+  // [optional] External appearance of the device.
+  Property<uint16_t> appearance;
+  // [optional] Icon type of the device based on the value of |appearance|.
+  Property<std::string> icon;
+
+  // [optional] Advertising flags.
+  Property<std::vector<uint8_t>> flags;
+  // [optional] Service UUIDs of 16-bit 32-bit and 128-bit.
+  Property<std::set<Uuid>> service_uuids;
+  // [optional] Service data associated with UUIDs.
+  Property<std::map<Uuid, std::vector<uint8_t>>> service_data;
+
+  // [optional] Manufacturer identifier with the extra manufacturer data
+  Property<std::map<uint16_t, std::vector<uint8_t>>> manufacturer;
+
+  DISALLOW_COPY_AND_ASSIGN(Device);
 };
 
 // A higher-level API wrapper of the low-level libnewblue C interface.
@@ -147,16 +164,20 @@ class Newblue {
   // Updates the service UUIDs based on data of EirTypes including
   // UUID16_INCOMPLETE, UUID16_COMPLETE, UUID32_INCOMPLETE, UUID32_COMPLETE,
   // UUID128_INCOMPLETE and UUID128_COMPLETE.
-  static void UpdateServiceUuids(Device* device,
+  static void UpdateServiceUuids(std::set<Uuid>* service_uuids,
                                  uint8_t uuid_size,
                                  const uint8_t* data,
                                  uint8_t data_len);
   // Updates the service data based on data of EirTypes including SVC_DATA16,
   // SVC_DATA32 and SVC_DATA128.
-  static void UpdateServiceData(Device* device,
-                                uint8_t uuid_size,
-                                const uint8_t* data,
-                                uint8_t data_len);
+  static void UpdateServiceData(
+      std::map<Uuid, std::vector<uint8_t>>* service_data,
+      uint8_t uuid_size,
+      const uint8_t* data,
+      uint8_t data_len);
+
+  // Resets the update status of device properties.
+  void ClearPropertiesUpdated(Device* device);
 
   std::unique_ptr<LibNewblue> libnewblue_;
 

@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <array>
+#include <string>
 #include <vector>
 
 namespace bluetooth {
@@ -51,6 +52,8 @@ class Uuid {
   UuidFormat format() const { return format_; }
   // If |format_| is UuidFormat::UUID_INVALID, the return value is not valid.
   const std::array<uint8_t, 16>& value() const { return value128_; }
+  // If |format_| is UuidFormat::UUID_INVALID, the return value is not valid.
+  const std::string& canonical_value() const { return value_canonical_; }
 
   // Permit sufficient comparison to allow a UUID to be used as a key in a
   // std::map.
@@ -64,7 +67,13 @@ class Uuid {
   // Format provided originally when the instance was constructed.
   UuidFormat format_;
   // The 128-bit UUID representation of the UUID.
+  // Take GAP for instance, this is {0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x10,
+  // 0x00, 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb}.
   std::array<uint8_t, 16> value128_;
+  // |value_128_| represented as a string in the following format:
+  // xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  // Take GAP for instance, this is 00001800-0000-1000-8000-00805f9b34fb.
+  std::string value_canonical_;
 };
 
 }  // namespace bluetooth

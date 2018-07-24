@@ -91,6 +91,7 @@
             'dispatcher/suspend_manager_unittest.cc',
             'newblued/newblue_daemon_unittest.cc',
             'newblued/newblue_unittest.cc',
+            'newblued/property_unittest.cc',
             'newblued/util_unittest.cc',
             'newblued/uuid_unittest.cc',
           ],
