@@ -216,6 +216,13 @@ bool RegisterAllBinFmtMiscEntries(ArcMounter* mounter,
     // install them if they are present.
     if (!base::PathExists(entry_path))
       continue;
+    const base::FilePath format_path = binfmt_misc_directory.Append(entry_name);
+    if (base::PathExists(format_path)) {
+      // If we had already registered this format earlier and failed
+      // unregistering it for some reason, the next operation will fail.
+      LOG(WARNING) << "Skipping re-registration of " << entry_path.value();
+      continue;
+    }
     if (!base::CopyFile(entry_path, binfmt_misc_register_path)) {
       PLOG(ERROR) << "Failed to register " << entry_path.value();
       return false;
