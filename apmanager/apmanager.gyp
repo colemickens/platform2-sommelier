@@ -8,10 +8,12 @@
     },
     'cflags': [
       '-Wextra',
-      '-Wno-unused-parameter',  # base/lazy_instance.h, etc.
+      # base/lazy_instance.h, etc.
+      '-Wno-unused-parameter',
     ],
     'cflags_cc': [
-      '-Wno-missing-field-initializers', # for LAZY_INSTANCE_INITIALIZER
+      # for LAZY_INSTANCE_INITIALIZER.
+      '-Wno-missing-field-initializers',
     ],
   },
   'targets': [
@@ -111,7 +113,7 @@
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
-      ]
+      ],
     },
   ],
   'conditions': [
