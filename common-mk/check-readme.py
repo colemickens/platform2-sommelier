@@ -125,6 +125,7 @@ def CheckSubdirs():
       'mtpd',
       'peerd',
       'salsa',
+      'shill',
       'thd',
       'timberslide',
       'tpm_manager',
