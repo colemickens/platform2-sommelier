@@ -12,6 +12,7 @@ ENV{POWERD_TAGS}!="",      TAG+="powerd"
 # The "powerd" tag needs to be added to subsystems which powerd observes.
 SUBSYSTEM=="drm",          TAG+="powerd"
 SUBSYSTEM=="i2c-dev",      TAG+="powerd"
+SUBSYSTEM=="iio",          TAG+="powerd"
 SUBSYSTEM=="input",        TAG+="powerd"
 SUBSYSTEM=="leds",         TAG+="powerd"
 SUBSYSTEM=="net",          TAG+="powerd"
