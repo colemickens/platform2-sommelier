@@ -58,6 +58,13 @@ import SHILL_PASSIVE_MODE
 import SHILL_PREPEND_DNS_SERVERS
 import SHILL_TEST_DEVICES
 
+# Make shill killable, because if it has a leak it's better to
+# restart it than to OOM-panic.
+oom score -100
+# Let the daemon crash if it grows too much.  "as" is "address space" (vm
+# size).  We expect a typical VM size of about 40MB for the daemon.
+limit as 200000000 unlimited
+
 pre-start exec /bin/sh /usr/share/cros/init/shill-pre-start.sh
 
 post-stop exec bootstat shill-stop
