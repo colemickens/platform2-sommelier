@@ -48,9 +48,6 @@ REPORT_UPLOAD_PROD_URL="https://clients2.google.com/cr/report"
 # a certificate for ${REPORT_UPLOAD_PROD_URL}.
 RESTRICTED_CERTIFICATES_PATH="/usr/share/chromeos-ca-certificates"
 
-# File whose existence implies we're running and not to start again.
-RUN_FILE="/run/crash_sender.pid"
-
 # Set this to 1 to allow uploading of device coredumps.
 DEVCOREDUMP_UPLOAD_FLAG_FILE=\
 "${CRASH_LIB_STATE_DIR}/device_coredump_upload_allowed"
@@ -85,22 +82,6 @@ is_mock_successful() {
   local mock_in=$(cat "${MOCK_CRASH_SENDING}")
   [ "${mock_in}" = "" ] && return 0  # empty file means success
   return 1
-}
-
-cleanup() {
-  if [ -n "${TMP_DIR}" ]; then
-    rm -rf "${TMP_DIR}"
-  fi
-  rm -f "${RUN_FILE}"
-  crash_done
-}
-
-crash_done() {
-  if is_mock; then
-    # For testing purposes, emit a message to log so that we
-    # know when the test has received all the messages from this run.
-    lecho "crash_sender done."
-  fi
 }
 
 is_official_image() {
@@ -676,8 +657,6 @@ send_crashes() {
 }
 
 main() {
-  trap cleanup EXIT INT TERM
-
   if [ $# -ne 0 ]; then
     lecho "Command line flags should not be passed: $*"
     exit 1
@@ -693,11 +672,6 @@ main() {
     lecho "Exiting early due to test image."
     exit 1
   fi
-
-  # We don't perform checks on this because we have a master lock with a
-  # separate lock file.  This pid file is for the system to keep track (like
-  # with autotests) that we're still running.
-  echo $$ > "${RUN_FILE}"
 
   for dependency in "${FIND}" "${METRICS_CLIENT}" \
                     "${RESTRICTED_CERTIFICATES_PATH}"; do

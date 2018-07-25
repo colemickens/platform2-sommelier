@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
@@ -31,6 +32,9 @@ constexpr base::FilePath::CharType kMockCrashSending[] =
 
 // Crash sender lock in case the sender is already running.
 constexpr base::FilePath::CharType kLockFile[] = "/run/lock/crash_sender";
+
+// File whose existence implies we're running and not to start again.
+constexpr base::FilePath::CharType kRunFile[] = "/run/crash_sender.pid";
 
 // Returns true if mock is enabled.
 bool IsMock() {
@@ -85,12 +89,22 @@ void LockOrExit(const base::File& lock_file) {
   }
 }
 
+// Creates a PID file. This pid file is for the system (like autotests) to keep
+// track that crash_sender is still running.
+void CreatePidFile(int pid) {
+  std::string content = base::IntToString(pid) + "\n";
+  const int size =
+      base::WriteFile(base::FilePath(kRunFile), content.data(), content.size());
+  CHECK_EQ(size, content.size());
+}
+
 // Runs the main function for the child process.
 int RunChildMain(int argc, char* argv[]) {
   // Ensure only one instance of crash_sender runs at the same time.
   base::File lock_file(base::FilePath(kLockFile), base::File::FLAG_OPEN_ALWAYS);
   LockOrExit(lock_file);
 
+  CreatePidFile(getpid());
   util::ParseCommandLine(argc, argv);
 
   char shell_script_path[] = "/sbin/crash_sender.sh";
@@ -99,11 +113,24 @@ int RunChildMain(int argc, char* argv[]) {
   return EXIT_FAILURE;  // execve() failed.
 }
 
+// Cleans up. This function runs in the parent process (not sandboxed), hence
+// should be very minimal. No need to delete temporary files manually in /tmp,
+// that's a unique tmpfs provided by minijail, that'll automatically go away
+// when the child process is terminated.
+void CleanUp() {
+  // TODO(crbug.com/868166): Remove the PID file creation once the autotest is
+  // fixed.
+  base::DeleteFile(base::FilePath(kRunFile), false /* recursive */);
+  RecordCrashDone();
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
   // Log to syslog (/var/log/messages), and stderr if stdin is a tty.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  // Register the cleanup function to be called at exit.
+  atexit(&CleanUp);
 
   // Set up a sandbox, and jail the child process.
   ScopedMinijail jail(minijail_new());
