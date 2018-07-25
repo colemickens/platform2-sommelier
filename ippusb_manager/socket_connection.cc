@@ -116,8 +116,11 @@ bool SocketConnection::GetMessage(std::string* msg) {
     total_size += gotten_size;
   }
 
-  msg->assign(buf.get(), message_length - 1);
-  return true;
+  if (total_size > 0) {
+    msg->assign(buf.get(), message_length - 1);
+    return true;
+  }
+  return false;
 }
 
 bool SocketConnection::SendMessage(const std::string& msg) {
