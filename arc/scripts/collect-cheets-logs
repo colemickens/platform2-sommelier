@@ -21,7 +21,6 @@ dump_var_log arc-removable-media.log
 dump_var_log arc-sensor.log
 dump_var_log arc-start-sysctl.log
 dump_var_log arc-stop-sysctl.log
-dump_var_log arc-system-mount.log
 dump_var_log arc-ureadahead-trace.log
 dump_var_log arc-ureadahead.log
 
@@ -36,6 +35,7 @@ rm -f /var/log/arc-stale-directory-remover.log
 rm -f /var/log/arc-boot-continue.log
 rm -f /var/log/arc-lifetime.log
 rm -f /var/log/arc-network.log
+rm -f /var/log/arc-system-mount.log
 
 if [ -d /var/log/android ] ; then
   # Dump only the last 3 log files.
