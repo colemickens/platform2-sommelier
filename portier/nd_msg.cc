@@ -363,6 +363,27 @@ bool NeighborDiscoveryMessage::IsValid() const {
   return true;
 }
 
+// Checksum.
+
+bool NeighborDiscoveryMessage::GetChecksum(uint16_t* checksum) const {
+  if (!IsValid() || nullptr == checksum) {
+    return false;
+  }
+  const struct icmp6_hdr* icmp6_hdr =
+      reinterpret_cast<const struct icmp6_hdr*>(GetConstData());
+  *checksum = icmp6_hdr->icmp6_cksum;
+  return true;
+}
+
+bool NeighborDiscoveryMessage::SetChecksum(uint16_t checksum) {
+  if (!IsValid()) {
+    return false;
+  }
+  struct icmp6_hdr* icmp6_hdr = reinterpret_cast<struct icmp6_hdr*>(GetData());
+  icmp6_hdr->icmp6_cksum = checksum;
+  return true;
+}
+
 // RS related.
 
 // RA related.

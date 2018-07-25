@@ -83,6 +83,12 @@ class NeighborDiscoveryMessage {
   // Is the provided packet a properly formated ND ICMPv6 packet.
   bool IsValid() const;
 
+  // Checksum.
+  // Returns the checksum in network byte order.
+  bool GetChecksum(uint16_t* checksum) const;
+
+  bool SetChecksum(uint16_t checksum);
+
   // RS related.
 
   // RA related.

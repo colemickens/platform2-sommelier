@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Chrome OS Library.
+#include <arpa/inet.h>
+
 #include <base/time/time.h>
 #include <shill/net/byte_string.h>
 #include <shill/net/ip_address.h>
 
-// Chrome OS Testing Library.
 #include <gtest/gtest.h>
 
-// Portier Library.
 #include "portier/nd_msg.h"
 
 namespace portier {
@@ -25,15 +24,17 @@ namespace {
 // clang-format off
 
 constexpr uint8_t kRSMessage1[] = {
-  // Type=RS (133), Code=0, Checksum=0 (ignored)
-  0x85, 0x00, 0x00, 0x00,
+  // Type=RS (133), Code=0, Checksum=0x1234.
+  0x85, 0x00, 0x12, 0x34,
   // Reserved
   0x00, 0x00, 0x00, 0x00
 };
 
+constexpr uint16_t kRSChecksum1 = 0x1234;
+
 constexpr uint8_t kRAMessage1[] = {
-  // Type=RA (134), Code=0, Checksum=0 (ignored)
-  0x86, 0x00, 0x00, 0x00,
+  // Type=RA (134), Code=0, Checksum=0x78ab.
+  0x86, 0x00, 0x78, 0xab,
   // Cur Hop Limit=255, M=1, O=0, P=1, Router Lifetime=9000 s,
   0xff, 0x84, 0x23, 0x28,
   // Reachable Time=1 day (86400000 ms)
@@ -42,6 +43,7 @@ constexpr uint8_t kRAMessage1[] = {
   0x00, 0x09, 0x27, 0xc0
 };
 
+constexpr uint16_t kRAChecksum1 = 0x78ab;
 constexpr uint8_t kRACurHopLimit1 = 0xff;
 constexpr bool kRAManagedFlag1 = true;
 constexpr bool kRAOtherFlag1 = false;
@@ -52,8 +54,8 @@ constexpr TimeDelta kRARetransTimer1 = TimeDelta::FromMinutes(10);
 
 // Target:
 constexpr uint8_t kNSMessage1[] = {
-  // Type=NS (135), Code=0, Checksum=0 (ignored)
-  0x87, 0x00, 0x00, 0x00,
+  // Type=NS (135), Code=0, Checksum=0x8999.
+  0x87, 0x00, 0x89, 0x99,
   // Reserved
   0x00, 0x00, 0x00, 0x00,
   // Target Address=fe80::9832:3d50:3aa3:5af9
@@ -62,11 +64,13 @@ constexpr uint8_t kNSMessage1[] = {
   0x98, 0x32, 0x3d, 0x50,
   0x3a, 0xa3, 0x5a, 0xf9
 };
+
+constexpr uint16_t kNSChecksum1 = 0x8999;
 const IPAddress kNSTargetAddress1 = IPAddress("fe80::9832:3d50:3aa3:5af9");
 
 constexpr uint8_t kNAMessage1[] = {
-  // Type=NA (136), Code=0, Checksum=0 (ignored)
-  0x88, 0x00, 0x00, 0x00,
+  // Type=NA (136), Code=0, Checksum=1.
+  0x88, 0x00, 0x00, 0x01,
   // R=0, S=1, O=0
   0x40, 0x00, 0x00, 0x00,
   // Target Address=fe80::846d:e6ff:fe2d:acf3
@@ -76,14 +80,15 @@ constexpr uint8_t kNAMessage1[] = {
   0xfe, 0x2d, 0xac, 0xf3
 };
 
+constexpr uint16_t kNAChecksum1 = 0x1;
 constexpr bool kNARouterFlag1 = false;
 constexpr bool kNASolicitedFlag1 = true;
 constexpr bool kNAOverrideFlag1 = false;
 const IPAddress kNATargetAddress1 = IPAddress("fe80::846d:e6ff:fe2d:acf3");
 
 constexpr uint8_t kRMessage1[] = {
-  // Type=R (137), Code=0, Checksum=0 (ignored)
-  0x89, 0x00, 0x00, 0x00,
+  // Type=R (137), Code=0, Checksum=0x100.
+  0x89, 0x00, 0x01, 0x00,
   // Reserved
   0x00, 0x00, 0x00, 0x00,
   // Target Address=2401:fa00:480:56:c5f1:8aa4:c5c2:5972
@@ -98,6 +103,7 @@ constexpr uint8_t kRMessage1[] = {
   0x93, 0x18, 0x3c, 0xa5
 };
 
+constexpr uint16_t kRChecksum1 = 0x100;
 const IPAddress kRTargetAddress1 =
     IPAddress("2401:fa00:480:56:c5f1:8aa4:c5c2:5972");
 const IPAddress kRDestinationAddress1 =
@@ -286,6 +292,12 @@ TEST(NeighborDiscoveryMessageTest, TestEmptyInstance) {
   EXPECT_NE(message.type(), NeighborDiscoveryMessage::kTypeNeighborSolicit);
   EXPECT_NE(message.type(), NeighborDiscoveryMessage::kTypeNeighborAdvert);
   EXPECT_NE(message.type(), NeighborDiscoveryMessage::kTypeRedirect);
+
+  EXPECT_FALSE(message.GetChecksum(nullptr));
+  uint16_t checksum = 0x5f5f;
+  EXPECT_FALSE(message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, 0x5f5f);
+  EXPECT_FALSE(message.SetChecksum(checksum));
 
   // Test all methods related to Type specific data.  All should fail
   // and output parameters should not be changed.
@@ -525,6 +537,14 @@ TEST(CreateNeighborDiscoveryMessageTest, RouterSolicit) {
   ASSERT_TRUE(rs_message.IsValid());
   EXPECT_EQ(rs_message.type(), NeighborDiscoveryMessage::kTypeRouterSolicit);
 
+  // Set and validate checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(rs_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, 0);
+  EXPECT_TRUE(rs_message.SetChecksum(htons(kRSChecksum1)));
+  EXPECT_TRUE(rs_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kRSChecksum1));
+
   // Push options.
   EXPECT_TRUE(rs_message.PushSourceLinkLayerAddress(kSourceLL1));
 
@@ -548,6 +568,14 @@ TEST(CreateNeighborDiscoveryMessageTest, RouterAdvert) {
 
   ASSERT_TRUE(ra_message.IsValid());
   EXPECT_EQ(ra_message.type(), NeighborDiscoveryMessage::kTypeRouterAdvert);
+
+  // Set and validate checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(ra_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, 0);
+  EXPECT_TRUE(ra_message.SetChecksum(htons(kRAChecksum1)));
+  EXPECT_TRUE(ra_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kRAChecksum1));
 
   // Push options.
   EXPECT_TRUE(ra_message.PushSourceLinkLayerAddress(kSourceLL1));
@@ -672,6 +700,14 @@ TEST(CreateNeighborDiscoveryMessageTest, NeighborSolicit) {
   ASSERT_TRUE(ns_message.IsValid());
   EXPECT_EQ(ns_message.type(), NeighborDiscoveryMessage::kTypeNeighborSolicit);
 
+  // Set and validate checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(ns_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, 0);
+  EXPECT_TRUE(ns_message.SetChecksum(htons(kNSChecksum1)));
+  EXPECT_TRUE(ns_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kNSChecksum1));
+
   // Push opotions.
   EXPECT_TRUE(ns_message.PushSourceLinkLayerAddress(kSourceLL2));
 
@@ -700,6 +736,14 @@ TEST(CreateNeighborDiscoveryMessageTest, NeighborAdvert) {
 
   ASSERT_TRUE(na_message.IsValid());
   EXPECT_EQ(na_message.type(), NeighborDiscoveryMessage::kTypeNeighborAdvert);
+
+  // Set and validate checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(na_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, 0);
+  EXPECT_TRUE(na_message.SetChecksum(htons(kNAChecksum1)));
+  EXPECT_TRUE(na_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kNAChecksum1));
 
   // Push options.
   EXPECT_TRUE(na_message.PushTargetLinkLayerAddress(kTargetLL1));
@@ -740,6 +784,14 @@ TEST(CreateNeighborDiscoveryMessageTest, Redirect) {
 
   ASSERT_TRUE(rd_message.IsValid());
   EXPECT_EQ(rd_message.type(), NeighborDiscoveryMessage::kTypeRedirect);
+
+  // Set and validate checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(rd_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, 0);
+  EXPECT_TRUE(rd_message.SetChecksum(htons(kRChecksum1)));
+  EXPECT_TRUE(rd_message.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kRChecksum1));
 
   // Push options.
   EXPECT_TRUE(rd_message.PushTargetLinkLayerAddress(kTargetLL2));
@@ -890,6 +942,11 @@ TEST_F(ParsedRouterSolicitationTest, HeaderCorrect) {
 
   // Verify the RS header was parsed corretly.
   EXPECT_EQ(rs_message_.type(), NeighborDiscoveryMessage::kTypeRouterSolicit);
+
+  // Verify checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(rs_message_.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kRSChecksum1));
 }
 
 TEST_F(ParsedRouterSolicitationTest, SourceLinkLayerOptionCorrect) {
@@ -952,6 +1009,10 @@ TEST_F(ParsedRouterAdvertisementTest, HeaderCorrect) {
 
   // Verify the header was parsed correctly.
   EXPECT_EQ(ra_message_.type(), NeighborDiscoveryMessage::kTypeRouterAdvert);
+  // Verify checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(ra_message_.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kRAChecksum1));
   // Cur Hop Limit.
   uint8_t cur_hop_limit = 0;
   EXPECT_TRUE(ra_message_.GetCurrentHopLimit(&cur_hop_limit));
@@ -1086,6 +1147,10 @@ TEST_F(ParsedNeighborSolicitTest, HeaderCorrect) {
 
   // Verify the header was parsed corretly.
   EXPECT_EQ(ns_message_.type(), NeighborDiscoveryMessage::kTypeNeighborSolicit);
+  // Verify checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(ns_message_.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kNSChecksum1));
   // Target address.
   IPAddress target_address;
   EXPECT_TRUE(ns_message_.GetTargetAddress(&target_address));
@@ -1127,6 +1192,10 @@ TEST_F(ParsedNeighborAdvertTest, HeaderCorrect) {
   ASSERT_TRUE(na_message_.IsValid()) << "NA Message is invalid.";
 
   EXPECT_EQ(na_message_.type(), NeighborDiscoveryMessage::kTypeNeighborAdvert);
+  // Verify checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(na_message_.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kNAChecksum1));
   // Router flag.
   bool router_flag = !kNARouterFlag1;
   EXPECT_TRUE(na_message_.GetRouterFlag(&router_flag));
@@ -1186,6 +1255,10 @@ TEST_F(ParsedRedirectTest, HeaderCorrect) {
 
   // Verify the header was parsed corretly.
   EXPECT_EQ(rd_message_.type(), NeighborDiscoveryMessage::kTypeRedirect);
+  // Verify checksum.
+  uint16_t checksum;
+  EXPECT_TRUE(rd_message_.GetChecksum(&checksum));
+  EXPECT_EQ(checksum, htons(kRChecksum1));
   // Target address.
   IPAddress target_address;
   EXPECT_TRUE(rd_message_.GetTargetAddress(&target_address));
