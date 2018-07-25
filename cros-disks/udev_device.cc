@@ -33,7 +33,6 @@ const char kAttributeRange[] = "range";
 const char kAttributeReadOnly[] = "ro";
 const char kAttributeRemovable[] = "removable";
 const char kAttributeSize[] = "size";
-const char kDriverMMCBlock[] = "mmcblk";
 const char kPropertyBlkIdFilesystemType[] = "TYPE";
 const char kPropertyBlkIdFilesystemLabel[] = "LABEL";
 const char kPropertyBlkIdFilesystemUUID[] = "UUID";
@@ -46,6 +45,8 @@ const char kPropertyDeviceType[] = "DEVTYPE";
 const char kPropertyDeviceTypeUSBDevice[] = "usb_device";
 const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
 const char kPropertyMistSupportedDevice[] = "MIST_SUPPORTED_DEVICE";
+const char kPropertyMmcType[] = "MMC_TYPE";
+const char kPropertyMmcTypeSd[] = "SD";
 const char kPropertyModel[] = "ID_MODEL";
 const char kPropertyPartitionEntryType[] = "ID_PART_ENTRY_TYPE";
 const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
@@ -205,7 +206,7 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   if (IsPropertyTrue(kPropertyCDROM))
     return DEVICE_MEDIA_OPTICAL_DISC;
 
-  if (IsOnMMCDevice())
+  if (IsOnSdDevice())
     return DEVICE_MEDIA_SD;
 
   string vendor_id, product_id;
@@ -346,10 +347,11 @@ bool UdevDevice::IsOnBootDevice() const {
   return false;
 }
 
-bool UdevDevice::IsOnMMCDevice() const {
+bool UdevDevice::IsOnSdDevice() const {
   for (udev_device* dev = dev_; dev; dev = udev_device_get_parent(dev)) {
-    const char* driver = udev_device_get_driver(dev);
-    if (driver && strcmp(driver, kDriverMMCBlock) == 0) {
+    const char* mmc_type =
+        udev_device_get_property_value(dev, kPropertyMmcType);
+    if (mmc_type && strcmp(mmc_type, kPropertyMmcTypeSd) == 0) {
       return true;
     }
   }

@@ -113,8 +113,8 @@ class UdevDevice {
   // base::IsStringUTF8) or an empty string otherwise.
   static std::string EnsureUTF8String(const std::string& str);
 
-  // Checks if the device is on a MMC/SD card device.
-  bool IsOnMMCDevice() const;
+  // Checks if the device is on a SD card device.
+  bool IsOnSdDevice() const;
 
   // Checks if a string contains a "1" (as Boolean true).
   static bool IsValueBooleanTrue(const char* value);
