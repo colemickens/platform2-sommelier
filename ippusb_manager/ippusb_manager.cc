@@ -79,7 +79,8 @@ void SpawnXD(const std::string& socket_path, UsbPrinterInfo* printer_info) {
   minijail_namespace_ipc(jail.get());
   minijail_namespace_uts(jail.get());
   minijail_namespace_net(jail.get());
-  minijail_namespace_cgroups(jail.get());
+  // TODO(valleau): Add cgroups once devices with kernel 3.8 reach EOL.
+  // crbug.com/867644
   minijail_namespace_pids(jail.get());
   minijail_namespace_vfs(jail.get());
 
