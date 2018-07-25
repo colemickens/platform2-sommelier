@@ -50,8 +50,10 @@ void UdevStub::RemoveSysattr(const std::string& syspath,
 }
 
 void UdevStub::AddSubsystemDevice(const std::string& subsystem,
-                                  const UdevDeviceInfo& udev_device) {
+                                  const UdevDeviceInfo& udev_device,
+                                  std::initializer_list<std::string> dlinks) {
   subsystem_devices_[subsystem].push_back(udev_device);
+  devlinks_.emplace(udev_device.syspath, dlinks);
 }
 
 void UdevStub::AddSubsystemObserver(const std::string& subsystem,
@@ -128,6 +130,16 @@ bool UdevStub::FindParentWithSysattr(const std::string& syspath,
                                      const std::string& stop_at_devtype,
                                      std::string* parent_syspath) {
   *parent_syspath = syspath;
+  return true;
+}
+
+bool UdevStub::GetDevlinks(const std::string& syspath,
+                           std::vector<std::string>* out) {
+  auto iter = devlinks_.find(syspath);
+  if (iter == devlinks_.end())
+    return false;
+
+  *out = iter->second;
   return true;
 }
 

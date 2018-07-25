@@ -43,7 +43,8 @@ class UdevStub : public UdevInterface {
 
   // Adds a device to be returned by GetSubsystemDevices.
   void AddSubsystemDevice(const std::string& subsystem,
-                          const UdevDeviceInfo& udev_device);
+                          const UdevDeviceInfo& udev_device,
+                          std::initializer_list<std::string> devlinks);
 
   // UdevInterface implementation:
   void AddSubsystemObserver(const std::string& subsystem,
@@ -65,6 +66,8 @@ class UdevStub : public UdevInterface {
                              const std::string& sysattr,
                              const std::string& stop_at_devtype,
                              std::string* parent_syspath) override;
+  bool GetDevlinks(const std::string& syspath,
+                   std::vector<std::string>* out) override;
 
  private:
   // List of subsystem devices returned when GetSubsystemDevices is called.
@@ -81,6 +84,9 @@ class UdevStub : public UdevInterface {
 
   // Maps a syspath to the corresponding TaggedDevice.
   std::map<std::string, TaggedDevice> tagged_devices_;
+
+  // Maps a syspath to the corresponding devlinks.
+  std::map<std::string, std::vector<std::string>> devlinks_;
 
   // Maps a pair (device syspath, sysattr name) to the corresponding sysattr
   // value.

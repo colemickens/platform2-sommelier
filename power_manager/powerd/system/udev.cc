@@ -15,6 +15,7 @@
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
+#include "power_manager/powerd/system/udev_util.h"
 
 namespace power_manager {
 namespace system {
@@ -64,6 +65,13 @@ bool GetDeviceInfo(struct udev_device* dev, UdevDeviceInfo* device_info_out) {
 
   return true;
 }
+
+struct UdevDeviceDeleter {
+  void operator()(udev_device* dev) {
+    if (dev)
+      udev_device_unref(dev);
+  }
+};
 
 };  // namespace
 
@@ -272,6 +280,34 @@ bool Udev::FindParentWithSysattr(const std::string& syspath,
     *parent_syspath = udev_device_get_syspath(parent);
   udev_device_unref(device);
   return parent != NULL;
+}
+
+bool Udev::GetDevlinks(const std::string& syspath,
+                       std::vector<std::string>* out) {
+  DCHECK(udev_);
+  DCHECK(out);
+
+  std::unique_ptr<udev_device, UdevDeviceDeleter> device(
+      udev_device_new_from_syspath(udev_, syspath.c_str()));
+  if (!device) {
+    PLOG(WARNING) << "Failed to open udev device: " << syspath;
+    return false;
+  }
+
+  out->clear();
+
+  // TODO(egranata): maybe write a wrapper around udev_list to support
+  // for(entry : list) {...}
+  struct udev_list_entry* devlink =
+      udev_device_get_devlinks_list_entry(device.get());
+  while (devlink) {
+    const char* name = udev_list_entry_get_name(devlink);
+    if (name)
+      out->push_back(name);
+    devlink = udev_list_entry_get_next(devlink);
+  }
+
+  return true;
 }
 
 void Udev::OnFileCanReadWithoutBlocking(int fd) {

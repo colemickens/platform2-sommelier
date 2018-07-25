@@ -171,7 +171,7 @@ class InputWatcherTest : public testing::Test {
     input_device_info.sysname = name;
     input_device_info.syspath = syspath;
     udev_.AddSubsystemDevice(InputWatcher::kInputUdevSubsystem,
-                             input_device_info);
+                             input_device_info, {});
     event_device_factory_->RegisterDevice(path, device);
   }
 

@@ -96,6 +96,11 @@ class UdevInterface {
                                      const std::string& sysattr,
                                      const std::string& stop_at_devtype,
                                      std::string* parent_syspath) = 0;
+
+  // For the device specified by |syspath|, finds all the devlinks that
+  // udev configured, and stores their paths in |out|.
+  virtual bool GetDevlinks(const std::string& syspath,
+                           std::vector<std::string>* out) = 0;
 };
 
 // Actual implementation of UdevInterface.
@@ -127,6 +132,8 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
                              const std::string& sysattr,
                              const std::string& stopat_devtype,
                              std::string* parent_syspath) override;
+  bool GetDevlinks(const std::string& syspath,
+                   std::vector<std::string>* out) override;
 
   // base::MessageLoopForIO::Watcher implementation:
   void OnFileCanReadWithoutBlocking(int fd) override;
