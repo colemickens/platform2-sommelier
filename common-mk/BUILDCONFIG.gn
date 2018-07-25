@@ -59,26 +59,29 @@ if (current_os == "") {
 }
 
 # All binary targets will get this list of configs by default.
-_shared_binary_target_configs = [ "//common-mk:compiler_defaults" ]
+_binary_target_configs = [ "//common-mk:compiler_defaults" ]
 
 if (!enable_exceptions) {
-  _shared_binary_target_configs += [ "//common-mk:no_exceptions" ]
+  _binary_target_configs += [ "//common-mk:no_exceptions" ]
 }
 
 set_defaults("executable") {
-  configs = _shared_binary_target_configs
+  configs = _binary_target_configs
   configs += [ "//common-mk:executable_config" ]
 }
 set_defaults("static_library") {
-  configs = _shared_binary_target_configs
-  configs += [ "//common-mk:static_library_config" ]
+  configs = _binary_target_configs
+  configs += [
+    "//common-mk:pie",
+    "//common-mk:use_thin_archive",
+  ]
 }
 set_defaults("shared_library") {
-  configs = _shared_binary_target_configs
+  configs = _binary_target_configs
   configs += [ "//common-mk:shared_library_config" ]
 }
 set_defaults("source_set") {
-  configs = _shared_binary_target_configs
+  configs = _binary_target_configs
 }
 
 set_default_toolchain("//common-mk/toolchain")
