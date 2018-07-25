@@ -6,28 +6,20 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":net_poll_tool",
-    ":static_node_tool",
+    ":timberslide",
   ]
 }
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libbrillo-${libbase_ver}",
   ]
 }
 
-executable("net_poll_tool") {
+executable("timberslide") {
   configs += [ ":target_defaults" ]
   sources = [
-    "net_poll_tool.cc",
-  ]
-}
-
-executable("static_node_tool") {
-  configs += [ ":target_defaults" ]
-  sources = [
-    "static_node_tool.cc",
+    "timberslide.cc",
   ]
 }

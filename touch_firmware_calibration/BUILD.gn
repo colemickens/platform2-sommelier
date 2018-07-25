@@ -6,8 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":net_poll_tool",
-    ":static_node_tool",
+    ":override-max-pressure",
   ]
 }
 
@@ -18,16 +17,9 @@ pkg_config("target_defaults") {
   ]
 }
 
-executable("net_poll_tool") {
+executable("override-max-pressure") {
   configs += [ ":target_defaults" ]
   sources = [
-    "net_poll_tool.cc",
-  ]
-}
-
-executable("static_node_tool") {
-  configs += [ ":target_defaults" ]
-  sources = [
-    "static_node_tool.cc",
+    "override_max_pressure.cc",
   ]
 }

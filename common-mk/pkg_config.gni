@@ -7,7 +7,7 @@
 # inside the template invocation.
 template("pkg_config") {
   config(target_name) {
-    forward_variables_from(invoker, [ "pkg_deps" ])
+    forward_variables_from(invoker, "*", ["ldflags", "libs", "cflags"])
     assert(defined(pkg_deps), "pkg_deps must be set")
 
     ldflags = exec_script("//common-mk/args_generator_wrapper.py",
@@ -22,5 +22,14 @@ template("pkg_config") {
     cflags = exec_script("//common-mk/args_generator_wrapper.py",
                          [ pkg_config ] + pkg_deps + [ "--cflags" ],
                          "list lines")
+    if (defined(invoker.ldflags)) {
+      ldflags += invoker.ldflags
+    }
+    if (defined(invoker.libs)) {
+      libs += invoker.libs
+    }
+    if (defined(invoker.cflags)) {
+      cflags += invoker.cflags
+    }
   }
 }

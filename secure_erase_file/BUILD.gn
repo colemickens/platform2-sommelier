@@ -6,8 +6,8 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":net_poll_tool",
-    ":static_node_tool",
+    ":libsecure_erase_file",
+    ":secure_erase_file",
   ]
 }
 
@@ -18,16 +18,19 @@ pkg_config("target_defaults") {
   ]
 }
 
-executable("net_poll_tool") {
+shared_library("libsecure_erase_file") {
   configs += [ ":target_defaults" ]
   sources = [
-    "net_poll_tool.cc",
+    "secure_erase_file.cc",
   ]
 }
 
-executable("static_node_tool") {
+executable("secure_erase_file") {
   configs += [ ":target_defaults" ]
   sources = [
-    "static_node_tool.cc",
+    "secure_erase_file_main.cc",
+  ]
+  deps = [
+    ":libsecure_erase_file",
   ]
 }

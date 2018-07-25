@@ -528,6 +528,9 @@ def CheckGypData(name, data):
 
 def CheckGypFile(gypfile):
   """Check |gypfile| for common mistakes."""
+  if not os.path.exists(gypfile):
+    # The file has been deleted.
+    return
   with open(gypfile) as fp:
     return CheckGypData(gypfile, fp.read())
 

@@ -1,0 +1,43 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":bootstat",
+    ":libbootstat",
+  ]
+  if (use.test) {
+    deps += [ ":libbootstat_unittests" ]
+  }
+}
+
+shared_library("libbootstat") {
+  sources = [
+    "bootstat_log.c",
+  ]
+  libs = [ "-lrootdev" ]
+}
+
+executable("bootstat") {
+  sources = [
+    "bootstat.c",
+  ]
+  deps = [
+    ":libbootstat",
+  ]
+}
+
+if (use.test) {
+  executable("libbootstat_unittests") {
+    configs += ["//common-mk:test"]
+    sources = [
+      "log_unit_tests.cc",
+    ]
+    deps = [
+      ":libbootstat",
+    ]
+  }
+}

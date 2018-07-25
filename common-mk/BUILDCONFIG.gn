@@ -21,7 +21,7 @@ declare_args() {
   # The path to src/platform2.
   platform2_root = ""
 
-  # Libbase revision number read from BASE_VER variable for file.
+  # Libbase revision number read from BASE_VER variable or file.
   libbase_ver = ""
 
   # Set true to allow C++ code to use exceptions.

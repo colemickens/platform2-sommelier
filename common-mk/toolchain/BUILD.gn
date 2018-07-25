@@ -40,7 +40,7 @@ toolchain("toolchain") {
 
   tool("alink") {
     rspfile = "{{output}}.rsp"
-    command = "rm -f {{output}} && $ar rcs {{output}} @$rspfile"
+    command = "rm -f {{output}} && $ar {{arflags}} {{output}} @$rspfile"
     description = "AR {{target_output_name}}{{output_extension}}"
 
     rspfile_content = "{{inputs}}"
