@@ -18,7 +18,6 @@ dump_var_log arc.log
 dump_var_log android.kmsg
 dump_var_log arc-camera.log
 dump_var_log arc-removable-media.log
-dump_var_log arc-sensor.log
 
 # TODO(hidehiko): Remove these in M71.
 rm -f /var/log/arc-adbd.log
@@ -31,6 +30,7 @@ rm -f /var/log/arc-stale-directory-remover.log
 rm -f /var/log/arc-boot-continue.log
 rm -f /var/log/arc-lifetime.log
 rm -f /var/log/arc-network.log
+rm -f /var/log/arc-sensor.log
 rm -f /var/log/arc-start-sysctl.log
 rm -f /var/log/arc-stop-sysctl.log
 rm -f /var/log/arc-system-mount.log
