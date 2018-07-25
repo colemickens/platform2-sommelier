@@ -19,8 +19,6 @@ dump_var_log android.kmsg
 dump_var_log arc-camera.log
 dump_var_log arc-removable-media.log
 dump_var_log arc-sensor.log
-dump_var_log arc-ureadahead-trace.log
-dump_var_log arc-ureadahead.log
 
 # TODO(hidehiko): Remove these in M71.
 rm -f /var/log/arc-adbd.log
@@ -36,6 +34,8 @@ rm -f /var/log/arc-network.log
 rm -f /var/log/arc-start-sysctl.log
 rm -f /var/log/arc-stop-sysctl.log
 rm -f /var/log/arc-system-mount.log
+rm -f /var/log/arc-ureadahead.log
+rm -f /var/log/arc-ureadahead-trace.log
 
 if [ -d /var/log/android ] ; then
   # Dump only the last 3 log files.
