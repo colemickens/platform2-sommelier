@@ -65,6 +65,10 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityCorrectBasename);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityStrangeNames);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityUsual);
+  FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsMode);
+  FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsNonDir);
+  FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsSubdir);
+  FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsSymlinks);
   FRIEND_TEST(CrashCollectorTest, ForkExecAndPipe);
   FRIEND_TEST(CrashCollectorTest, FormatDumpBasename);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfo);
@@ -140,6 +144,14 @@ class CrashCollector {
                                       base::FilePath* crash_file_path,
                                       bool* out_of_capacity);
 
+  // Create a directory using the specified mode/user/group, and make sure it
+  // is actually a directory with the specified permissions.
+  static bool CreateDirectoryWithSettings(const base::FilePath& dir,
+                                          mode_t mode,
+                                          uid_t owner,
+                                          gid_t group,
+                                          int* dir_fd);
+
   // Format crash name based on components.
   std::string FormatDumpBasename(const std::string& exec_name,
                                  time_t timestamp,
@@ -163,6 +175,8 @@ class CrashCollector {
   // Check given crash directory still has remaining capacity for another
   // crash.
   bool CheckHasCapacity(const base::FilePath& crash_directory);
+  bool CheckHasCapacity(const base::FilePath& crash_directory,
+                        const std::string display_path);
 
   // Write a log applicable to |exec_name| to |output_file| based on the
   // log configuration file at |config_path|.

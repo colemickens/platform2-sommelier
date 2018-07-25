@@ -20,6 +20,7 @@
 #include <pcrecpp.h>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/scoped_clear_errno.h>
@@ -102,59 +103,105 @@ const uid_t CrashCollector::kRootUid = 0;
 using base::FilePath;
 using base::StringPrintf;
 
-namespace {
-
 // Create a directory using the specified mode/user/group, and make sure it
 // is actually a directory with the specified permissions.
-bool CreateDirectoryWithSettings(const FilePath& dir,
-                                 mode_t mode,
-                                 uid_t owner,
-                                 gid_t group) {
-  const char* dir_c_str = dir.value().c_str();
+// static
+bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
+                                                 mode_t mode,
+                                                 uid_t owner,
+                                                 gid_t group,
+                                                 int* dirfd_out) {
+  std::vector<FilePath::StringType> components;
+  const FilePath parent_dir = dir.DirName();
+  const FilePath final_dir = dir.BaseName();
+  int dirfd, parentfd;
 
-  // If it's not a directory, nuke it.
-  if (!base::DirectoryExists(dir)) {
-    if (!base::DeleteFile(dir, false)) {
-      PLOG(ERROR) << "Unable to cleanup crash directory: " << dir_c_str;
+  // Walk the directory tree to make sure we avoid symlinks.
+  // All parent parts must already exist else we abort.
+  parent_dir.GetComponents(&components);
+  parentfd = AT_FDCWD;
+  for (const auto& component : components) {
+    dirfd = openat(parentfd, component.c_str(),
+                   O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW | O_PATH);
+    if (dirfd < 0) {
+      PLOG(ERROR) << "Unable to access crash path: " << dir.value() << " ("
+                  << component << ")";
+      if (parentfd != AT_FDCWD)
+        close(parentfd);
+      return false;
+    }
+    if (parentfd != AT_FDCWD)
+      close(parentfd);
+    parentfd = dirfd;
+  }
+
+  // Now handle the final part of the crash dir.  This one we can initialize.
+  // Note: We omit O_CLOEXEC on purpose as children will use it.
+  const char* final_dir_str = final_dir.value().c_str();
+  dirfd = openat(parentfd, final_dir_str, O_DIRECTORY | O_NOFOLLOW | O_RDONLY);
+  if (dirfd < 0) {
+    if (errno != ENOENT) {
+      // Delete whatever is there.
+      if (unlinkat(parentfd, final_dir_str, 0) < 0) {
+        PLOG(ERROR) << "Unable to clean up crash path: " << dir.value();
+        close(parentfd);
+        return false;
+      }
+    }
+
+    // It doesn't exist, so create it!  We'll recheck the mode below.
+    if (mkdirat(parentfd, final_dir_str, mode) < 0) {
+      if (errno != EEXIST) {
+        PLOG(ERROR) << "Unable to create crash directory: " << dir.value();
+        close(parentfd);
+        return false;
+      }
+    }
+
+    // Try once more before we give up.
+    // Note: We omit O_CLOEXEC on purpose as children will use it.
+    dirfd =
+        openat(parentfd, final_dir_str, O_DIRECTORY | O_NOFOLLOW | O_RDONLY);
+    if (dirfd < 0) {
+      close(parentfd);
       return false;
     }
   }
-
-  // Create the directory.  This will use a default mode of 0700 and current
-  // user/group for ownership (which we'll adjust below).
-  if (!base::CreateDirectory(dir)) {
-    PLOG(ERROR) << "Unable to create crash directory: " << dir_c_str;
-    return false;
-  }
+  close(parentfd);
 
   // Make sure the ownership/permissions are correct in case they got reset.
   // We stat it to avoid pointless metadata updates in the common case.
   struct stat st;
-  if (stat(dir_c_str, &st)) {
-    PLOG(ERROR) << "Unable to stat crash directory: " << dir_c_str;
+  if (fstat(dirfd, &st) < 0) {
+    PLOG(ERROR) << "Unable to stat crash path: " << dir.value();
+    close(dirfd);
     return false;
   }
 
   // Change the ownership before we change the mode.
   if (st.st_uid != owner || st.st_gid != group) {
-    if (chown(dir_c_str, owner, group)) {
-      PLOG(ERROR) << "Unable to chown crash directory: " << dir_c_str;
+    if (fchown(dirfd, owner, group)) {
+      PLOG(ERROR) << "Unable to chown crash directory: " << dir.value();
+      close(dirfd);
       return false;
     }
   }
 
   // Update the mode bits.
   if ((st.st_mode & 07777) != mode) {
-    if (chmod(dir_c_str, mode)) {
-      PLOG(ERROR) << "Unable to chmod crash directory: " << dir_c_str;
+    if (fchmod(dirfd, mode)) {
+      PLOG(ERROR) << "Unable to chmod crash directory: " << dir.value();
+      close(dirfd);
       return false;
     }
   }
 
+  if (dirfd_out)
+    *dirfd_out = dirfd;
+  else
+    close(dirfd);
   return true;
 }
-
-}  // namespace
 
 CrashCollector::CrashCollector() : CrashCollector(false) {}
 
@@ -426,6 +473,7 @@ bool CrashCollector::GetUserInfoFromName(const std::string& name,
 bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
                                                     FilePath* crash_directory,
                                                     bool* out_of_capacity) {
+  base::FilePath full_path;
   uid_t default_user_id;
   gid_t default_user_group;
 
@@ -446,21 +494,34 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
-  *crash_directory = GetCrashDirectoryInfo(euid, default_user_id,
-                                           default_user_group, &directory_mode,
-                                           &directory_owner, &directory_group);
+  full_path = GetCrashDirectoryInfo(euid, default_user_id, default_user_group,
+                                    &directory_mode, &directory_owner,
+                                    &directory_group);
 
-  if (!CreateDirectoryWithSettings(*crash_directory, directory_mode,
-                                   directory_owner, directory_group)) {
+  // Note: We "leak" dirfd to children so the /proc symlink below stays valid
+  // in their own context.  We can't pass other /proc paths as they might not
+  // be accessible in the children (when dropping privs), and we don't want to
+  // pass the direct path in the filesystem as it'd be subject to TOCTOU.
+  int dirfd;
+  if (!CreateDirectoryWithSettings(full_path, directory_mode, directory_owner,
+                                   directory_group, &dirfd)) {
     return false;
   }
 
-  if (!CheckHasCapacity(*crash_directory)) {
+  // Have all the rest of the tools access the directory by file handle.  This
+  // avoids any TOCTOU races in case the underlying dir is changed on us.
+  const FilePath crash_dir_procfd =
+      FilePath("/proc/self/fd").Append(std::to_string(dirfd));
+  LOG(INFO) << "Accessing crash dir '" << full_path.value()
+            << "' via symlinked handle '" << crash_dir_procfd.value() << "'";
+
+  if (!CheckHasCapacity(crash_dir_procfd, full_path.value())) {
     if (out_of_capacity)
       *out_of_capacity = true;
     return false;
   }
 
+  *crash_directory = crash_dir_procfd;
   return true;
 }
 
@@ -561,7 +622,8 @@ bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
 
 // Return true if the given crash directory has not already reached
 // maximum capacity.
-bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory) {
+bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory,
+                                      const std::string display_path) {
   DIR* dir = opendir(crash_directory.value().c_str());
   if (!dir) {
     return false;
@@ -590,7 +652,7 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory) {
     basenames.insert(basename);
 
     if (basenames.size() >= static_cast<size_t>(kMaxCrashDirectorySize)) {
-      LOG(WARNING) << "Crash directory " << crash_directory.value()
+      LOG(WARNING) << "Crash directory " << display_path
                    << " already full with " << kMaxCrashDirectorySize
                    << " pending reports";
       full = true;
@@ -599,6 +661,10 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory) {
   }
   closedir(dir);
   return !full;
+}
+
+bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory) {
+  return CheckHasCapacity(crash_directory, crash_directory.value());
 }
 
 bool CrashCollector::GetLogContents(const FilePath& config_path,
@@ -820,17 +886,18 @@ unsigned CrashCollector::HashString(base::StringPiece input) {
 
 bool CrashCollector::InitializeSystemCrashDirectories() {
   if (!CreateDirectoryWithSettings(FilePath(kSystemCrashPath),
-                                   kSystemCrashPathMode, kRootUid, kRootGroup))
+                                   kSystemCrashPathMode, kRootUid, kRootGroup,
+                                   nullptr))
     return false;
 
   if (!CreateDirectoryWithSettings(FilePath(kSystemRunStatePath),
                                    kSystemRunStatePathMode, kRootUid,
-                                   kRootGroup))
+                                   kRootGroup, nullptr))
     return false;
 
   if (!CreateDirectoryWithSettings(FilePath(kCrashReporterStatePath),
                                    kCrashReporterStatePathMode, kRootUid,
-                                   kRootGroup))
+                                   kRootGroup, nullptr))
     return false;
 
   return true;

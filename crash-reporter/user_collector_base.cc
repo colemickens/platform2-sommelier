@@ -271,7 +271,10 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
                 << " due to conversion error";
     return error_type;
   } else {
-    LOG(INFO) << "Stored minidump to " << minidump_path.value();
+    base::FilePath target;
+    if (!NormalizeFilePath(minidump_path, &target))
+      target = minidump_path;
+    LOG(INFO) << "Stored minidump to " << target.value();
   }
 
   base::TimeDelta start_time;

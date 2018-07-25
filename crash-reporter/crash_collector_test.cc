@@ -465,3 +465,106 @@ TEST_F(CrashCollectorTest, TruncatedLog) {
   EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
   EXPECT_EQ("These are \n<TRUNCATED>\n", contents);
 }
+
+// Check that the mode is reset properly.
+TEST_F(CrashCollectorTest, CreateDirectoryWithSettingsMode) {
+  int mode;
+  EXPECT_TRUE(base::SetPosixFilePermissions(test_dir_, 0700));
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      test_dir_, 0755, getuid(), getgid(), nullptr));
+  EXPECT_TRUE(base::GetPosixFilePermissions(test_dir_, &mode));
+  EXPECT_EQ(0755, mode);
+}
+
+// Check non-dir handling.
+TEST_F(CrashCollectorTest, CreateDirectoryWithSettingsNonDir) {
+  const base::FilePath file = test_dir_.Append("file");
+
+  // Do not walk past a non-dir.
+  EXPECT_EQ(0, base::WriteFile(file, "", 0));
+  EXPECT_FALSE(CrashCollector::CreateDirectoryWithSettings(
+      file.Append("subdir"), 0755, getuid(), getgid(), nullptr));
+  EXPECT_TRUE(base::PathExists(file));
+  EXPECT_FALSE(base::DirectoryExists(file));
+
+  // Remove files and create dirs.
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(file, 0755, getuid(),
+                                                          getgid(), nullptr));
+  EXPECT_TRUE(base::DirectoryExists(file));
+}
+
+// Check we only create a single subdir.
+TEST_F(CrashCollectorTest, CreateDirectoryWithSettingsSubdir) {
+  const base::FilePath subdir = test_dir_.Append("sub");
+  const base::FilePath subsubdir = subdir.Append("subsub");
+
+  // Accessing sub/subsub/ should fail.
+  EXPECT_FALSE(CrashCollector::CreateDirectoryWithSettings(
+      subsubdir, 0755, getuid(), getgid(), nullptr));
+  EXPECT_FALSE(base::PathExists(subdir));
+
+  // Accessing sub/ should work.
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      subdir, 0755, getuid(), getgid(), nullptr));
+  EXPECT_TRUE(base::DirectoryExists(subdir));
+
+  // Accessing sub/subsub/ should now work.
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      subsubdir, 0755, getuid(), getgid(), nullptr));
+  EXPECT_TRUE(base::DirectoryExists(subsubdir));
+}
+
+// Check symlink handling.
+TEST_F(CrashCollectorTest, CreateDirectoryWithSettingsSymlinks) {
+  base::FilePath td;
+
+  // Do not walk an intermediate symlink (final target doesn't exist).
+  // test/sub/
+  // test/sym -> sub
+  // Then access test/sym/subsub/.
+  td = test_dir_.Append("1");
+  EXPECT_TRUE(base::CreateDirectory(td.Append("sub")));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(base::FilePath("sub"), td.Append("sym")));
+  EXPECT_FALSE(CrashCollector::CreateDirectoryWithSettings(
+      td.Append("sym1/subsub"), 0755, getuid(), getgid(), nullptr));
+  EXPECT_TRUE(base::IsLink(td.Append("sym")));
+  EXPECT_FALSE(base::PathExists(td.Append("sub/subsub")));
+
+  // Do not walk an intermediate symlink (final target exists).
+  // test/sub/subsub/
+  // test/sym -> sub
+  // Then access test/sym/subsub/.
+  td = test_dir_.Append("2");
+  EXPECT_TRUE(base::CreateDirectory(td.Append("sub/subsub")));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(base::FilePath("sub"), td.Append("sym")));
+  EXPECT_FALSE(CrashCollector::CreateDirectoryWithSettings(
+      td.Append("sym/subsub"), 0755, getuid(), getgid(), nullptr));
+  EXPECT_TRUE(base::IsLink(td.Append("sym")));
+
+  // If the final path is a symlink, we should remove it and make a dir.
+  // test/sub/
+  // test/sub/sym -> subsub
+  td = test_dir_.Append("3");
+  EXPECT_TRUE(base::CreateDirectory(td.Append("sub/subsub")));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(base::FilePath("subsub"), td.Append("sub/sym")));
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      td.Append("sub/sym"), 0755, getuid(), getgid(), nullptr));
+  EXPECT_FALSE(base::IsLink(td.Append("sub/sym")));
+  EXPECT_TRUE(base::DirectoryExists(td.Append("sub/sym")));
+
+  // If the final path is a symlink, we should remove it and make a dir.
+  // test/sub/subsub
+  // test/sub/sym -> subsub
+  td = test_dir_.Append("4");
+  EXPECT_TRUE(base::CreateDirectory(td.Append("sub")));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(base::FilePath("subsub"), td.Append("sub/sym")));
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      td.Append("sub/sym"), 0755, getuid(), getgid(), nullptr));
+  EXPECT_FALSE(base::IsLink(td.Append("sub/sym")));
+  EXPECT_TRUE(base::DirectoryExists(td.Append("sub/sym")));
+  EXPECT_FALSE(base::PathExists(td.Append("sub/subsub")));
+}
