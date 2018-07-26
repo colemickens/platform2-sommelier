@@ -7,26 +7,27 @@
 
 set -e
 
-ROOTFSIMAGE=/usr/share/mount-passthrough/rootfs.squashfs
 SOURCE_IN_CONTAINER=/mnt/source
 DEST_IN_CONTAINER=/mnt/dest
 
 main() {
-  if [ $# -ne 4 ]; then
-    echo "Usage: $0 source dest container_root umask"
+  if [ $# -ne 3 ]; then
+    echo "Usage: $0 source dest umask"
     exit 1
   fi
 
   local source="$1"
   local dest="$2"
-  local container_root="$3"
-  local umask="$4"
+  local umask="$3"
 
   # Set large enough open file limit since this process handles many open files.
   ulimit -n 8192
 
   # Start constructing minijail0 args...
   set --
+
+  # Use minimalistic-mountns profile.
+  set -- "$@" --profile=minimalistic-mountns
 
   # Enter a new UTS namespace.
   set -- "$@" --uts
@@ -49,28 +50,17 @@ main() {
   # Run as chronos/chronos.
   set -- "$@" -u chronos -g chronos -G
 
-  # pivot_root to $container_root.
-  set -- "$@" -P "${container_root}"
-
   # Allow sharing mounts between CrOS and Android.
   # WARNING: BE CAREFUL not to unexpectedly expose shared mounts in following
   # bind mounts! Always remount them with MS_REC|MS_PRIVATE unless you want to
   # share those mounts explicitly.
   set -- "$@" -K
 
-  # Do read-only bind mounts.
-  # This code assumes no new mount point appears under those directories
-  # during setup of minijail. Otherwise they can be bind-mounted read-write to
-  # the container.
-  # We need this assumption because MS_REMOUNT and MS_REC can not be used
-  # together.
-  for i in bin etc lib sbin usr; do
-    set -- "$@" -k "/${i},/${i},none,0x1000"  # bind
-    set -- "$@" -k "/${i},/${i},none,0x1027"  # bind,remount,nodev,nosuid,ro
-  done
+  # Mount tmpfs on /mnt.
+  set -- "$@" -k "tmpfs,/mnt,tmpfs,MS_NOSUID|MS_NODEV|MS_NOEXEC"
 
-  # Mount /proc.
-  set -- "$@" -b "/proc,/proc,1"
+  # Bind /dev/fuse to mount FUSE file systems.
+  set -- "$@" -b /dev/fuse
 
   # Mark PRIVATE recursively under (pivot) root, in order not to expose shared
   # mount points accidentally.

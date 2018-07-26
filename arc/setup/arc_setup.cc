@@ -100,16 +100,12 @@ constexpr char kHostDownloadsDirectory[] = "/home/chronos/user/Downloads";
 constexpr char kMediaDestDirectory[] = "/run/arc/media/removable";
 constexpr char kMediaMountDirectory[] = "/run/arc/media";
 constexpr char kMediaProfileFile[] = "media_profiles.xml";
-constexpr char kMediaRootfsDirectory[] =
-    "/opt/google/containers/arc-removable-media/mountpoints/container-root";
 constexpr char kObbMountDirectory[] = "/run/arc/obb";
 constexpr char kObbRootfsDirectory[] =
     "/opt/google/containers/arc-obb-mounter/mountpoints/container-root";
 constexpr char kObbRootfsImage[] =
     "/opt/google/containers/arc-obb-mounter/rootfs.squashfs";
 constexpr char kOemMountDirectory[] = "/run/arc/oem";
-constexpr char kPassthroughImage[] =
-    "/usr/share/mount-passthrough/rootfs.squashfs";
 constexpr char kPlatformXmlFileRelative[] = "etc/permissions/platform.xml";
 constexpr char kRestoreconWhitelistSync[] = "/sys/kernel/debug/sync";
 constexpr char kSdcardConfigfsDirectory[] = "/sys/kernel/config/sdcardfs";
@@ -448,7 +444,6 @@ struct ArcPaths {
   const base::FilePath media_dest_directory{kMediaDestDirectory};
   const base::FilePath media_mount_directory{kMediaMountDirectory};
   const base::FilePath media_profile_file{kMediaProfileFile};
-  const base::FilePath media_rootfs_directory{kMediaRootfsDirectory};
   const base::FilePath obb_mount_directory{kObbMountDirectory};
   const base::FilePath obb_rootfs_directory{kObbRootfsDirectory};
   const base::FilePath oem_mount_directory{kOemMountDirectory};
@@ -1910,8 +1905,6 @@ void ArcSetup::MountOnOnetimeSetup() {
   // Unlike system.raw.img, we don't remount them as exec either. The images do
   // not contain any executables.
   EXIT_IF(!arc_mounter_->LoopMount(
-      kPassthroughImage, arc_paths_->media_rootfs_directory, kBaseFlags));
-  EXIT_IF(!arc_mounter_->LoopMount(
       kSdcardRootfsImage, arc_paths_->sdcard_rootfs_directory, kBaseFlags));
   EXIT_IF(!arc_mounter_->LoopMount(
       kObbRootfsImage, arc_paths_->obb_rootfs_directory, kBaseFlags));
@@ -1920,7 +1913,6 @@ void ArcSetup::MountOnOnetimeSetup() {
 void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->obb_rootfs_directory));
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->sdcard_rootfs_directory));
-  IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->media_rootfs_directory));
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
