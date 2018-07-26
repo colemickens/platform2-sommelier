@@ -58,17 +58,17 @@ int Daemon::OnInit() {
 void Daemon::InitDBus() {
   // Get or create the ExportedObject for the ML service.
   dbus::ExportedObject* const ml_service_exported_object =
-      bus_->GetExportedObject(dbus::ObjectPath(kMlServicePath));
+      bus_->GetExportedObject(dbus::ObjectPath(kMachineLearningServicePath));
   CHECK(ml_service_exported_object);
 
   // Register a handler of the BootstrapMojoConnection method.
   CHECK(ml_service_exported_object->ExportMethodAndBlock(
-      kMlInterfaceName, kBootstrapMojoConnectionMethod,
+      kMachineLearningInterfaceName, kBootstrapMojoConnectionMethod,
       base::Bind(&Daemon::BootstrapMojoConnection,
                  weak_ptr_factory_.GetWeakPtr())));
 
   // Take ownership of the ML service.
-  CHECK(bus_->RequestOwnershipAndBlock(kMlServiceName,
+  CHECK(bus_->RequestOwnershipAndBlock(kMachineLearningServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
 
