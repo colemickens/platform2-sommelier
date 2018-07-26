@@ -163,6 +163,10 @@ class HammerUpdater {
   // The UMA metrics object.
   std::unique_ptr<MetricsLibraryInterface> metrics_;
 
+  // Utility functions for dealing with vendor and version strings.
+  std::string VersionString(TouchpadInfo info);
+  std::string VendorString(TouchpadInfo info);
+
   DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
 };
 

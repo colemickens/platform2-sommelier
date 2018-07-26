@@ -535,6 +535,35 @@ void HammerUpdater::NotifyUpdateFinished(bool is_success) {
   }
 }
 
+std::string HammerUpdater::VersionString(TouchpadInfo info) {
+  std::string base_fw_ver;
+  if (info.vendor == ST_VENDOR_ID) {
+    base_fw_ver = base::StringPrintf(
+      kStFormatString,
+      info.st.fw_version & 0x00ff,
+      (info.st.fw_version & 0xff00) >> 8);
+  } else {
+    base_fw_ver = base::StringPrintf(
+      kElanFormatString, info.elan.fw_version);
+  }
+  return base_fw_ver;
+}
+
+std::string HammerUpdater::VendorString(TouchpadInfo info) {
+  std::string vendor;
+  switch (info.vendor) {
+    case ST_VENDOR_ID:
+      return "ST";
+      break;
+    case ELAN_VENDOR_ID:
+      return "ELAN";
+      break;
+    default:
+      return "UNKNOWN";
+      break;
+  }
+}
+
 HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   if (!touchpad_image_.size()) {  // We are missing the touchpad file.
     LOG(INFO) << "Touchpad will remain unmodified as binary is not provided.";
@@ -558,13 +587,17 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
   }
   LOG(INFO) << "Current touchpad information from base:";
   LOG(INFO) << "status: 0x" << std::hex << static_cast<int>(response.status);
-  LOG(INFO) << "vendor: 0x" << std::hex << response.vendor;
+  LOG(INFO) << "vendor: 0x" << std::hex << response.vendor <<
+    " " << VendorString(response);
   LOG(INFO) << "fw_address: 0x" << std::hex << response.fw_address;
   LOG(INFO) << "fw_size: " << response.fw_size << " bytes";
   LOG(INFO) << "allowed_fw_hash: 0x" <<
       base::HexEncode(response.allowed_fw_hash, SHA256_DIGEST_LENGTH);
   LOG(INFO) << "product_id: " << response.elan.id << ".0";
-  LOG(INFO) << "fw_ver: " << response.elan.fw_version << ".0";
+
+  std::string base_fw_ver = VersionString(response);
+  LOG(INFO) << "fw_ver: " << base_fw_ver;
+
   LOG(INFO) << "fw_checksum: 0x" << std::hex << response.elan.fw_checksum;
 
   if (response.status != static_cast<uint8_t>(EcResponseStatus::kSuccess)) {
@@ -608,11 +641,12 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
 
   if (!task_.update_tp) {
     // If fw_ver match, then we skip the update. Otherwise, flash it.
-    std::string base_fw_ver = base::StringPrintf(
-        kElanFormatString, response.elan.fw_version);
+
+
     LOG(INFO) << base::StringPrintf(
         "Checking touchpad firmware version: Local(%s) vs. Base(%s)",
         touchpad_fw_ver_.c_str(), base_fw_ver.c_str());
+
     if (base_fw_ver == touchpad_fw_ver_) {
       LOG(INFO) << "Version matched, skip update.";
       return HammerUpdater::RunStatus::kTouchpadUpToDate;

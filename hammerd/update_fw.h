@@ -178,6 +178,12 @@ SectionName OtherSection(SectionName name);
 // product_id format from elan_i2c.h. definition of ETP_PRODUCT_ID_FORMAT_STRING
 constexpr char kElanFormatString[] = "%d.0";
 constexpr uint8_t kElanBrokenFwVersion = 0xff;
+
+constexpr char kStFormatString[] = "%d.%d";
+
+const uint16_t ST_VENDOR_ID = 0x0483;
+const uint16_t ELAN_VENDOR_ID = 0x04f3;
+
 // Below is the touchpad_info struct from src/platform/ec/include/update_fw.h.
 struct __attribute__((packed)) TouchpadInfo {
   uint8_t status;       // Indicate if we get info from touchpad
@@ -187,11 +193,18 @@ struct __attribute__((packed)) TouchpadInfo {
   uint32_t fw_size;     // Size of the touchpad firmware
   // Checksum of the entire touchpad firmware accepted by the EC image
   uint8_t allowed_fw_hash[SHA256_DIGEST_LENGTH];
-  struct {
-    uint16_t id;
-    uint16_t fw_version;
-    uint16_t fw_checksum;
-  } elan;
+  union {
+    struct {
+      uint16_t id;
+      uint16_t fw_version;
+      uint16_t fw_checksum;
+    } elan;
+    struct {
+      uint16_t id;
+      uint16_t fw_version;
+      uint16_t fw_checksum;
+    } st;
+  };
 };
 
 // The section information of the new EC image.
