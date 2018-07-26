@@ -110,14 +110,14 @@ TEST(ArcSetup, TestMockArcMounter) {
 
 // Tests --onetime-setup and --onetime-stop.
 TEST(ArcSetup, TestOnetimeSetupStop) {
-  const char* argv[] = {"test", "--onetime-setup"};
+  const char* argv[] = {"test", "--mode=onetime-setup"};
   base::CommandLine::ForCurrentProcess()->InitFromArgv(arraysize(argv), argv);
   std::unique_ptr<base::Environment> env(base::Environment::Create());
 
   // ArcSetup needs some environment variables.
   ASSERT_TRUE(env->SetVar("WRITABLE_MOUNT", "0"));
 
-  ArcSetup setup;
+  ArcSetup setup(Mode::ONETIME_SETUP);
   setup.set_arc_mounter_for_testing(std::make_unique<MockArcMounter>());
 
   // Do the one-time setup and confirm both loop and non-loop mount points are

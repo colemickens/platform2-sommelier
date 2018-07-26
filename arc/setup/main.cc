@@ -14,21 +14,58 @@
 #include <base/command_line.h>
 #include <base/timer/elapsed_timer.h>
 #include <base/logging.h>
+#include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 
 #include "arc/setup/arc_setup.h"
 
+namespace {
+
+arc::Mode GetMode(const std::string& mode) {
+  static constexpr std::pair<const char*, arc::Mode> kModeNameMapping[] = {
+      {"setup", arc::Mode::SETUP},
+      {"boot-continue", arc::Mode::BOOT_CONTINUE},
+      {"stop", arc::Mode::STOP},
+      {"onetime-setup", arc::Mode::ONETIME_SETUP},
+      {"onetime-stop", arc::Mode::ONETIME_STOP},
+      {"pre-chroot", arc::Mode::PRE_CHROOT},
+      {"read-ahead", arc::Mode::READ_AHEAD},
+      {"mount-sdcard", arc::Mode::MOUNT_SDCARD},
+  };
+  for (const auto& mode_name : kModeNameMapping) {
+    if (mode == mode_name.first)
+      return mode_name.second;
+  }
+
+  CHECK(false) << "Invalid mode '" << mode << "'";
+  return arc::Mode::UNKNOWN;
+}
+
+}  // namespace
+
 int main(int argc, char** argv) {
+  DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
+  DEFINE_string(log_tag, "", "Tag to be used in syslog");
+  DEFINE_string(mode, "", "arc-setup mode of operation");
+
   base::ElapsedTimer timer;
   base::AtExitManager at_exit;
 
-  base::CommandLine::Init(argc, argv);
-  logging::InitLogging(logging::LoggingSettings());
+  brillo::FlagHelper::Init(argc, argv, "ARC setup");
+
+  CHECK(!FLAGS_log_tag.empty()) << "Must specify --log_tag";
+  brillo::OpenLog(FLAGS_log_tag.c_str(), true /*log_pid*/);
+
+  int flags = brillo::kLogToSyslog | brillo::kLogHeader;
+  if (FLAGS_log_to_stderr)
+    flags |= brillo::kLogToStderr;
+  brillo::InitLog(flags);
 
   const std::string command_line =
       base::CommandLine::ForCurrentProcess()->GetCommandLineString();
   LOG(INFO) << "Starting " << command_line;
   {
-    arc::ArcSetup setup;
+    arc::ArcSetup setup(GetMode(FLAGS_mode));
     setup.Run();
   }
   LOG(INFO) << command_line << " took "

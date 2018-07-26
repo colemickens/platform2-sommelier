@@ -145,53 +145,10 @@ constexpr gid_t kLogGid = AID_LOG + kShiftGid;
 constexpr gid_t kSdcardRwGid = AID_SDCARD_RW + kShiftGid;
 constexpr gid_t kEverybodyGid = AID_EVERYBODY + kShiftGid;
 
-constexpr char kSwitchSetup[] = "setup";
-constexpr char kSwitchBootContinue[] = "boot-continue";
-constexpr char kSwitchStop[] = "stop";
-constexpr char kSwitchOnetimeSetup[] = "onetime-setup";
-constexpr char kSwitchOnetimeStop[] = "onetime-stop";
-constexpr char kSwitchPreChroot[] = "pre-chroot";
-constexpr char kSwitchReadAhead[] = "read-ahead";
-constexpr char kSwitchMountSdcard[] = "mount-sdcard";
-
 // The maximum time arc::EmulateArcUreadahead() can spend.
 constexpr base::TimeDelta kReadAheadTimeout = base::TimeDelta::FromSeconds(7);
 // The maximum time to wait for /data/media setup.
 constexpr base::TimeDelta kInstalldTimeout = base::TimeDelta::FromSeconds(60);
-
-enum class Mode {
-  SETUP = 0,
-  BOOT_CONTINUE,
-  STOP,
-  ONETIME_SETUP,
-  ONETIME_STOP,
-  PRE_CHROOT,
-  READ_AHEAD,
-  MOUNT_SDCARD,
-  UNKNOWN,
-};
-
-Mode GetMode() {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kSwitchSetup))
-    return Mode::SETUP;
-  if (command_line->HasSwitch(kSwitchBootContinue))
-    return Mode::BOOT_CONTINUE;
-  if (command_line->HasSwitch(kSwitchStop))
-    return Mode::STOP;
-  if (command_line->HasSwitch(kSwitchOnetimeSetup))
-    return Mode::ONETIME_SETUP;
-  if (command_line->HasSwitch(kSwitchOnetimeStop))
-    return Mode::ONETIME_STOP;
-  if (command_line->HasSwitch(kSwitchPreChroot))
-    return Mode::PRE_CHROOT;
-  if (command_line->HasSwitch(kSwitchReadAhead))
-    return Mode::READ_AHEAD;
-  if (command_line->HasSwitch(kSwitchMountSdcard))
-    return Mode::MOUNT_SDCARD;
-  CHECK(false) << "Missing mode";
-  return Mode::UNKNOWN;
-}
 
 bool RegisterAllBinFmtMiscEntries(ArcMounter* mounter,
                                   const base::FilePath& entry_directory,
@@ -416,8 +373,10 @@ bool WaitForSdcardSource(const base::FilePath& android_root) {
 }  // namespace
 
 struct ArcPaths {
+  explicit ArcPaths(Mode mode) : mode(mode) {}
+
   std::unique_ptr<base::Environment> env{base::Environment::Create()};
-  const Mode mode{GetMode()};
+  const Mode mode;
 
   // Lexicographically sorted.
   const base::FilePath adbd_mount_directory{kAdbdMountDirectory};
@@ -470,9 +429,9 @@ struct ArcPaths {
                          : base::FilePath();
 };
 
-ArcSetup::ArcSetup()
+ArcSetup::ArcSetup(Mode mode)
     : arc_mounter_(GetDefaultMounter()),
-      arc_paths_(std::make_unique<ArcPaths>()),
+      arc_paths_(std::make_unique<ArcPaths>(mode)),
       arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()),
       sdk_version_(GetSdkVersion()) {}
 
@@ -2046,7 +2005,7 @@ void ArcSetup::OnBootContinue() {
                               should_delete_data_app_executables);
 
   // The socket isn't created when the mini-container is started, so the
-  // arc-setup --pre-chroot call won't label it. Label it here instead.
+  // arc-setup --mode=pre-chroot call won't label it. Label it here instead.
   EXIT_IF(!Chcon(kArcBridgeSocketContext, arc_paths_->arc_bridge_socket_path));
 
   // Set up |android_mutable_source|. Although the container does not use

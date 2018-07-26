@@ -52,11 +52,23 @@ enum class ArcBinaryTranslationType {
   NDK_TRANSLATION = 2,
 };
 
+// Enum that describes what action ArcSetup will perform.
+enum class Mode {
+  SETUP = 0,
+  BOOT_CONTINUE,
+  STOP,
+  ONETIME_SETUP,
+  ONETIME_STOP,
+  PRE_CHROOT,
+  READ_AHEAD,
+  MOUNT_SDCARD,
+  UNKNOWN,
+};
 
 // A class that does the actual setup (and stop) operations.
 class ArcSetup {
  public:
-  ArcSetup();
+  explicit ArcSetup(Mode mode);
   ~ArcSetup();
 
   // Does the setup or stop operations depending on the environment variable.

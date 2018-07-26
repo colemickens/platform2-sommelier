@@ -338,7 +338,9 @@
 				"path": "/usr/sbin/arc-setup",
 				"args": [
 					"arc-setup",
-					"--pre-chroot"
+					"--log_to_stderr",
+					"--log_tag=arc-setup-prechroot",
+					"--mode=pre-chroot"
 				],
 				"timeout": 8
 			}
