@@ -61,6 +61,9 @@ bool SupportsAllKeys(const int fd, const std::vector<int>& events) {
 }
 
 int WaitForKeys(const int fd, const std::vector<int>& events) {
+  // Boolean array to keep track of whether a key is currently up or down.
+  bool key_states[KEY_MAX + 1] = {false};
+
   while (true) {
     struct input_event ev;
     int rd = read(fd, &ev, sizeof(ev));
@@ -70,10 +73,26 @@ int WaitForKeys(const int fd, const std::vector<int>& events) {
     }
 
     // A keyboard device may generate events other than EV_KEY, so we should
-    // explicitly check here.
-    if (ev.type == EV_KEY &&
+    // explicitly check here. Also explicitly check |ev.code| is in range, just
+    // in case.
+    if (ev.type == EV_KEY && ev.code <= KEY_MAX &&
         find(events.begin(), events.end(), ev.code) != events.end()) {
-      return ev.code;
+      // We need to perform a bit of extra logic to handle buttons that may have
+      // already been pressed when we entered recovery. For example, if a user
+      // is holding down their volume keys as they enter recovery, then the key
+      // repeat event will get fed into here, and we don't want to act on it
+      // since it does not constitute acknowledgment.
+      //
+      // So, we force that we must have seen the key be pressed and then
+      // released in the time that we have been in recovery.
+      if (ev.value == 0 && key_states[ev.code]) {
+        // Key was released while we knew it was pressed; we're done.
+        return ev.code;
+      } else if (ev.value == 1) {
+        // Only count first presses, long holds/key repeats from entering
+        // recovery will have |ev.value| == 2, so won't go down here.
+        key_states[ev.code] = true;
+      }
     }
   }
 
