@@ -334,7 +334,7 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           NOTIMPLEMENTED() << "Unknown RTNL message type.";
       }
     }
-    buf += hdr->nlmsg_len;
+    buf += NLMSG_ALIGN(hdr->nlmsg_len);
   }
 }
 
