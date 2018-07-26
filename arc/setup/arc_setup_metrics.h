@@ -31,6 +31,7 @@ enum class ArcCodeRelocationResult {
   ERROR_BOOTLOCKBOXD_NOT_READY = 1,
   ERROR_UNABLE_TO_RELOCATE = 2,
   ERROR_UNABLE_TO_SIGN = 3,
+  SALT_EMPTY = 4,
   COUNT
 };
 

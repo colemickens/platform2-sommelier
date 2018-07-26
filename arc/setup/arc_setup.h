@@ -12,6 +12,7 @@
 #include <base/macros.h>
 
 #include "arc/setup/android_sdk_version.h"
+#include "arc/setup/arc_setup_metrics.h"
 #include "arc/setup/arc_setup_util.h"
 
 namespace base {
@@ -137,7 +138,8 @@ class ArcSetup {
   // Generates boot*.art files on host side and stores them in
   // |host_dalvik_cache_directory|. Returns true on success.
   bool GenerateHostSideCodeInternal(
-      const base::FilePath& host_dalvik_cache_directory);
+      const base::FilePath& host_dalvik_cache_directory,
+      ArcCodeRelocationResult* result);
 
   // Calls GenerateHostSideCodeInternal(). If the internal function returns
   // false, deletes all files in |host_dalvik_cache_directory|.

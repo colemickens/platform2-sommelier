@@ -42,7 +42,6 @@
 #include <metrics/metrics_library.h>
 
 #include "arc/setup/arc_read_ahead.h"
-#include "arc/setup/arc_setup_metrics.h"
 #include "arc/setup/art_container.h"
 
 #define EXIT_IF(f)                            \
@@ -962,7 +961,9 @@ void ArcSetup::SetUpFilesystemForObbMounter() {
 }
 
 bool ArcSetup::GenerateHostSideCodeInternal(
-    const base::FilePath& host_dalvik_cache_directory) {
+    const base::FilePath& host_dalvik_cache_directory,
+    ArcCodeRelocationResult* result) {
+  *result = ArcCodeRelocationResult::ERROR_UNABLE_TO_RELOCATE;
   base::ElapsedTimer timer;
   std::unique_ptr<ArtContainer> art_container =
       ArtContainer::CreateContainer(arc_mounter_.get(), sdk_version());
@@ -971,8 +972,10 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     return false;
   }
   const std::string salt = GetSalt();
-  if (salt.empty())
+  if (salt.empty()) {
+    *result = ArcCodeRelocationResult::SALT_EMPTY;
     return false;
+  }
 
   const uint64_t offset_seed =
       GetArtCompilationOffsetSeed(GetSystemImageFingerprint(), salt);
@@ -980,33 +983,31 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     LOG(ERROR) << "Failed to relocate boot images";
     return false;
   }
+  *result = ArcCodeRelocationResult::SUCCESS;
   arc_setup_metrics_->SendCodeRelocationTime(timer.Elapsed());
   return true;
 }
 
 bool ArcSetup::GenerateHostSideCode(
     const base::FilePath& host_dalvik_cache_directory) {
-  bool result = true;
+  ArcCodeRelocationResult result;
   base::ElapsedTimer timer;
-  if (!GenerateHostSideCodeInternal(host_dalvik_cache_directory)) {
+  if (!GenerateHostSideCodeInternal(host_dalvik_cache_directory, &result)) {
     // If anything fails, delete code in cache.
     LOG(INFO) << "Failed to generate host-side code. Deleting existing code in "
               << host_dalvik_cache_directory.value();
     DeleteFilesInDir(host_dalvik_cache_directory);
-    result = false;
   }
   base::TimeDelta time_delta = timer.Elapsed();
   LOG(INFO) << "GenerateHostSideCode took "
             << time_delta.InMillisecondsRoundedUp() << "ms";
-  arc_setup_metrics_->SendCodeRelocationResult(
-      result ? ArcCodeRelocationResult::SUCCESS
-             : ArcCodeRelocationResult::ERROR_UNABLE_TO_RELOCATE);
+  arc_setup_metrics_->SendCodeRelocationResult(result);
 
   // Make sure directories for all ISA are there just to make config.json happy.
   for (const auto* isa : {"arm", "x86", "x86_64"})
     EXIT_IF(!MkdirRecursively(host_dalvik_cache_directory.Append(isa)));
 
-  return result;
+  return result == ArcCodeRelocationResult::SUCCESS;
 }
 
 bool ArcSetup::InstallLinksToHostSideCodeInternal(
