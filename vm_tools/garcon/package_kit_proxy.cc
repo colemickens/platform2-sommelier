@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <dbus/message.h>
@@ -85,6 +86,15 @@ constexpr base::TimeDelta kRefreshCacheStartupDelay =
 // Periodic delay between repository cache refreshes after we do the initial one
 // after startup.
 constexpr base::TimeDelta kRefreshCachePeriod = base::TimeDelta::FromDays(1);
+
+// Ridiculously large size for a config file.
+constexpr size_t kMaxConfigFileSize = 10 * 1024;  // 10 KB
+// Constants for the configuration directory/files.
+constexpr char kXdgConfigHomeEnvVar[] = "XDG_CONFIG_HOME";
+constexpr char kDefaultConfigDir[] = ".config";
+constexpr char kConfigFilename[] = "cros-garcon.conf";
+constexpr char kDisableAutoUpdatesSetting[] =
+    "DisableAutomaticCrosPackageUpdates";
 
 // Bitmask values for all the signals from PackageKit
 constexpr uint32_t kErrorCodeSignalMask = 1 << 0;
@@ -730,9 +740,48 @@ class RefreshCacheTransaction : public PackageKitTransaction {
                               packagekit_service_proxy,
                               kErrorCodeSignalMask | kFinishedSignalMask) {}
 
+  static bool AreAutoUpdatesDisabled() {
+    base::FilePath config_dir;
+    const char* xdg_config_dir = getenv(kXdgConfigHomeEnvVar);
+    if (!xdg_config_dir || strlen(xdg_config_dir) == 0) {
+      config_dir = base::GetHomeDir().Append(kDefaultConfigDir);
+    } else {
+      config_dir = base::FilePath(xdg_config_dir);
+    }
+    base::FilePath config_file = config_dir.Append(kConfigFilename);
+    // First read in the file as a string.
+    std::string config_contents;
+    if (!ReadFileToStringWithMaxSize(config_file, &config_contents,
+                                     kMaxConfigFileSize)) {
+      LOG(ERROR) << "Failed reading in config file: " << config_file.value();
+      return false;
+    }
+    base::StringPairs config_pairs;
+    base::SplitStringIntoKeyValuePairs(config_contents, '=', '\n',
+                                       &config_pairs);
+    for (auto entry : config_pairs) {
+      if (entry.first == kDisableAutoUpdatesSetting) {
+        return entry.second == "true";
+      }
+    }
+    return false;
+  }
+
   static void RefreshCacheNow(scoped_refptr<dbus::Bus> bus,
                               base::WeakPtr<PackageKitProxy> packagekit_proxy,
                               dbus::ObjectProxy* packagekit_service_proxy) {
+    if (AreAutoUpdatesDisabled()) {
+      // Don't do the update now, but schedule another one for later and we will
+      // check the setting again then.
+      LOG(INFO) << "Not performing automatic update because they are disabled";
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&RefreshCacheNow, bus, packagekit_proxy,
+                     packagekit_service_proxy),
+          kRefreshCachePeriod);
+      return;
+    }
+
     LOG(INFO) << "Refreshing the remote repository packages";
     // This object is intentionally leaked and will clean itself up when done
     // with all the D-Bus communication.
