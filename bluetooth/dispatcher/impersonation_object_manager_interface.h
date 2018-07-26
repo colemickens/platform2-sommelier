@@ -76,6 +76,15 @@ class ImpersonationObjectManagerInterface
                      const std::string& interface_name) override;
 
  private:
+  bool HasImpersonatedServicesForObject(const std::string& object_path) const;
+  void AddImpersonatedServiceForObject(const std::string& object_path,
+                                       const std::string& service_name);
+  void RemoveImpersonatedServiceForObject(const std::string& object_path,
+                                          const std::string& service_name);
+  // Returns the default service that exports the object. The default is chosen
+  // to be the one which is registered first via RegisterToObjectManager().
+  std::string GetDefaultServiceForObject(const std::string& object_path) const;
+
   // Returns the ObjectManager of the service |service_name|. The returned
   // pointer is owned by |bus_|.
   dbus::ObjectManager* GetObjectManager(const std::string& service_name);
@@ -111,6 +120,10 @@ class ImpersonationObjectManagerInterface
       brillo::dbus_utils::ExportedPropertySet* property_set);
 
   scoped_refptr<dbus::Bus> bus_;
+
+  // Keeps which services expose any object, in the form of map of
+  // object_path -> set of service names.
+  std::map<std::string, std::set<std::string>> impersonated_services_;
 
   // The destination object manager that impersonates the source.
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;

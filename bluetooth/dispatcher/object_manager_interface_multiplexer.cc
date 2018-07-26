@@ -57,6 +57,7 @@ void ObjectManagerInterfaceMultiplexer::RegisterToObjectManager(
   object_manager_interfaces_.emplace(service_name,
                                      std::move(forwarding_interface));
   object_managers_.emplace(service_name, object_manager);
+  service_names_.push_back(service_name);
 }
 
 }  // namespace bluetooth

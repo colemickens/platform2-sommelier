@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/stl_util.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/dbus.h>
@@ -64,9 +65,13 @@ dbus::PropertySet* ImpersonationObjectManagerInterface::CreateProperties(
 
   // When CreateProperties is called that means the source service exports
   // interface |interface_name| on object |object_path|. So here we mimic
-  // that to our exported object manager.
-  exported_object_manager_wrapper_->AddExportedInterface(object_path,
-                                                         interface_name);
+  // that to our exported object manager. However we skip adding exported
+  // if another service has already exposed this object at this interface.
+  if (!HasImpersonatedServicesForObject(object_path.value())) {
+    exported_object_manager_wrapper_->AddExportedInterface(object_path,
+                                                           interface_name);
+  }
+  AddImpersonatedServiceForObject(object_path.value(), service_name);
 
   return property_set.release();
 }
@@ -77,14 +82,18 @@ void ImpersonationObjectManagerInterface::ObjectAdded(
     const std::string& interface_name) {
   VLOG(1) << "Service " << service_name << " added object "
           << object_path.value() << " on interface " << interface_name;
+
   // Whenever we detect that an interface has been added to the impersonated
   // service, we immediately export the same interface to the impersonating
   // service.
   ExportedInterface* exported_interface =
       exported_object_manager_wrapper_->GetExportedInterface(object_path,
                                                              interface_name);
-  if (!exported_interface)
+  if (!exported_interface || exported_interface->is_exported()) {
+    // Skip exporting the interface if another service has triggered this
+    // interface export.
     return;
+  }
 
   // Export the methods that are defined by |interface_handler_|.
   // Any method call will be forwarded the the impersonated service via a
@@ -105,11 +114,57 @@ void ImpersonationObjectManagerInterface::ObjectRemoved(
     const std::string& interface_name) {
   VLOG(1) << "Service " << service_name << " removed object "
           << object_path.value() << " on interface " << interface_name;
+
+  RemoveImpersonatedServiceForObject(object_path.value(), service_name);
+
   // Whenever we detect that an interface has been removed from the impersonated
   // service, we immediately unexport the same interface from the impersonating
-  // service.
-  exported_object_manager_wrapper_->RemoveExportedInterface(object_path,
-                                                            interface_name);
+  // service if this is the last service exposing this object at this interface.
+  if (!HasImpersonatedServicesForObject(object_path.value())) {
+    exported_object_manager_wrapper_->RemoveExportedInterface(object_path,
+                                                              interface_name);
+  } else {
+    // One of the services removed this object, but there is still other
+    // services exposing this object. Update all the property values to reflect
+    // the properties of the other service's object.
+    std::string service = GetDefaultServiceForObject(object_path.value());
+    for (const auto& kv : interface_handler_->GetPropertyFactoryMap()) {
+      std::string property_name = kv.first;
+      OnPropertyChanged(service, object_path, interface_name, property_name);
+    }
+  }
+}
+
+bool ImpersonationObjectManagerInterface::HasImpersonatedServicesForObject(
+    const std::string& object_path) const {
+  return base::ContainsKey(impersonated_services_, object_path);
+}
+
+std::string ImpersonationObjectManagerInterface::GetDefaultServiceForObject(
+    const std::string& object_path) const {
+  CHECK(base::ContainsKey(impersonated_services_, object_path) &&
+        !impersonated_services_.find(object_path)->second.empty());
+
+  for (const std::string& service : service_names()) {
+    if (base::ContainsKey(impersonated_services_.find(object_path)->second,
+                          service))
+      return service;
+  }
+
+  LOG(FATAL) << "Default service not found";
+  return "";
+}
+
+void ImpersonationObjectManagerInterface::AddImpersonatedServiceForObject(
+    const std::string& object_path, const std::string& service_name) {
+  impersonated_services_[object_path].insert(service_name);
+}
+
+void ImpersonationObjectManagerInterface::RemoveImpersonatedServiceForObject(
+    const std::string& object_path, const std::string& service_name) {
+  impersonated_services_[object_path].erase(service_name);
+  if (impersonated_services_[object_path].empty())
+    impersonated_services_.erase(object_path);
 }
 
 dbus::ObjectManager* ImpersonationObjectManagerInterface::GetObjectManager(
@@ -127,6 +182,10 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
     const std::string& property_name) {
   VLOG(2) << "Property " << property_name << " on interface " << interface_name
           << " of object " << object_path.value() << " changed.";
+
+  // Ignore any changed property of non-default services.
+  if (service_name != GetDefaultServiceForObject(object_path.value()))
+    return;
 
   PropertyFactoryBase* property_factory =
       interface_handler_->GetPropertyFactoryMap()
@@ -157,11 +216,17 @@ void ImpersonationObjectManagerInterface::HandleForwardMessage(
     scoped_refptr<dbus::Bus> bus,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  // Since we don't do any real multiplexing yet, we assume that there is only
-  // one service to impersonate, so we get the service name by taking the first
-  // and only one.
-  CHECK(!object_managers().empty()) << "There is no service to impersonate";
-  std::string service_name = object_managers().begin()->first;
+  if (!HasImpersonatedServicesForObject(method_call->GetPath().value())) {
+    LOG(WARNING) << "No destination to forward method "
+                 << method_call->GetInterface() << "."
+                 << method_call->GetMember() << " for object  "
+                 << method_call->GetPath().value() << " on interface "
+                 << interface_name();
+    return;
+  }
+
+  std::string service_name =
+      GetDefaultServiceForObject(method_call->GetPath().value());
   DBusUtil::ForwardMethodCall(bus, service_name, method_call, response_sender);
 }
 

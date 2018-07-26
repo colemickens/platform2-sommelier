@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <dbus/object_manager.h>
 #include <dbus/property.h>
@@ -58,6 +59,8 @@ class ObjectManagerInterfaceMultiplexer {
   explicit ObjectManagerInterfaceMultiplexer(const std::string& interface_name);
   virtual ~ObjectManagerInterfaceMultiplexer() = default;
 
+  const std::string& interface_name() const { return interface_name_; }
+
   // Starts listening to ObjectManager events from |object_manager|.
   // |object_manager| is not owned and callers should make sure it outlives
   // this object.
@@ -68,6 +71,13 @@ class ObjectManagerInterfaceMultiplexer {
   // registered via |RegisterToObjectManager|.
   const std::map<std::string, dbus::ObjectManager*>& object_managers() const {
     return object_managers_;
+  }
+  // The list of service names, keeping the order based on registration via
+  // RegisterToObjectManager(). The ordering is useful to determine the priority
+  // of services in case the same object/interface is exported by more than one
+  // service.
+  const std::vector<std::string>& service_names() const {
+    return service_names_;
   }
 
   // CreateProperties, ObjectAdded, and ObjectRemoved are like
@@ -100,6 +110,7 @@ class ObjectManagerInterfaceMultiplexer {
 
   // The list of dbus::ObjectManager* corresponding to their service name.
   std::map<std::string, dbus::ObjectManager*> object_managers_;
+  std::vector<std::string> service_names_;
 
   DISALLOW_COPY_AND_ASSIGN(ObjectManagerInterfaceMultiplexer);
 };
