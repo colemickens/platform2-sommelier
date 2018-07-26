@@ -26,6 +26,9 @@ class ExportedInterface {
 
   ~ExportedInterface() = default;
 
+  // True if already exported.
+  bool is_exported() const { return is_exported_; }
+
   // Exports the interface.
   void ExportAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -52,16 +55,22 @@ class ExportedInterface {
   }
 
   // Copies the value of the property having name |property_name| to the
-  // corresponding exported property. Doesn't own |property_base| and
-  // |property_factory| and doesn't keep them.
-  void CopyPropertyToExportedProperty(const std::string& property_name,
+  // corresponding exported property, or unregisters the corresponding exported
+  // property if property |property_name| is no longer valid.
+  // Doesn't own |property_base| and |property_factory| and doesn't keep them.
+  void SyncPropertyToExportedProperty(const std::string& property_name,
                                       dbus::PropertyBase* property_base,
                                       PropertyFactoryBase* property_factory);
 
-  // Exports the specified property if not already exported.
+  // Registers the specified exported property if not already registered.
   // Doesn't own |property_factory| and doesn't keep it.
   brillo::dbus_utils::ExportedPropertyBase* EnsureExportedPropertyRegistered(
       const std::string& property_name, PropertyFactoryBase* property_factory);
+  // Unregisters the specified exported property if it's currently registered.
+  void EnsureExportedPropertyUnregistered(const std::string& property_name);
+  // Returns the exported property |property_name| or nullptr if not registered.
+  brillo::dbus_utils::ExportedPropertyBase* GetRegisteredExportedProperty(
+      const std::string& property_name);
 
   // Exports the specified property having the specified type |T|, if not
   // already exported.
@@ -82,6 +91,9 @@ class ExportedInterface {
   // The exported DBusObject, owned by ExportedObject which outlives
   // this ExportedInterface object.
   brillo::dbus_utils::DBusObject* dbus_object_;
+
+  // Whether this interface is already exported.
+  bool is_exported_ = false;
 
   // The currently exported property names.
   std::map<std::string,

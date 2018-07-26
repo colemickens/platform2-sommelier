@@ -138,7 +138,7 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
   // service.
   exported_object_manager_wrapper_
       ->GetExportedInterface(object_path, interface_name)
-      ->CopyPropertyToExportedProperty(
+      ->SyncPropertyToExportedProperty(
           property_name,
           static_cast<PropertySet*>(
               GetObjectManager(service_name)

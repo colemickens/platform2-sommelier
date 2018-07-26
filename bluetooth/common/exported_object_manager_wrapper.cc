@@ -42,6 +42,7 @@ ExportedInterface::ExportedInterface(
 void ExportedInterface::ExportAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& callback) {
   dbus_object_->ExportInterfaceAsync(interface_name_, callback);
+  is_exported_ = true;
 }
 
 void ExportedInterface::Unexport() {
@@ -52,6 +53,7 @@ void ExportedInterface::Unexport() {
     interface->RemoveProperty(kv.first);
 
   dbus_object_->RemoveInterface(interface_name_);
+  is_exported_ = false;
 }
 
 void ExportedInterface::AddRawMethodHandler(
@@ -62,10 +64,15 @@ void ExportedInterface::AddRawMethodHandler(
       ->AddRawMethodHandler(method_name, handler);
 }
 
-void ExportedInterface::CopyPropertyToExportedProperty(
+void ExportedInterface::SyncPropertyToExportedProperty(
     const std::string& property_name,
     dbus::PropertyBase* property_base,
     PropertyFactoryBase* property_factory) {
+  if (!property_base->is_valid()) {
+    EnsureExportedPropertyUnregistered(property_name);
+    return;
+  }
+
   brillo::dbus_utils::ExportedPropertyBase* exported_property_base =
       EnsureExportedPropertyRegistered(property_name, property_factory);
   property_factory->CopyPropertyToExportedProperty(property_base,
@@ -91,6 +98,26 @@ ExportedInterface::EnsureExportedPropertyRegistered(
   return exported_property;
 }
 
+void ExportedInterface::EnsureExportedPropertyUnregistered(
+    const std::string& property_name) {
+  if (!base::ContainsKey(exported_properties_, property_name))
+    return;
+
+  VLOG(2) << "Removing property " << property_name << " to exported object "
+          << object_path_.value() << " on interface " << interface_name_;
+
+  dbus_object_->FindInterface(interface_name_)->RemoveProperty(property_name);
+  exported_properties_.erase(property_name);
+}
+
+brillo::dbus_utils::ExportedPropertyBase*
+ExportedInterface::GetRegisteredExportedProperty(
+    const std::string& property_name) {
+  if (!base::ContainsKey(exported_properties_, property_name))
+    return nullptr;
+
+  return exported_properties_[property_name].get();
+}
 ////////////////////////////////////////////////////////////////////////////////
 
 ExportedObject::ExportedObject(

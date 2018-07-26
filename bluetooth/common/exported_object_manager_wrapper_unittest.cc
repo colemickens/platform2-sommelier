@@ -155,7 +155,7 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedInterface) {
   exported_property->SetValue(set_value + 1);
 }
 
-TEST_F(ExportedObjectManagerWrapperTest, CopyProperty) {
+TEST_F(ExportedObjectManagerWrapperTest, SyncProperty) {
   dbus::ObjectPath object_path(kTestObjectPath);
   auto dbus_object = std::make_unique<brillo::dbus_utils::MockDBusObject>(
       exported_object_manager_.get(), bus_, object_path);
@@ -174,6 +174,7 @@ TEST_F(ExportedObjectManagerWrapperTest, CopyProperty) {
       object_proxy_.get(), kTestInterfaceName1,
       base::Bind([](const std::string& property_name) {}));
   property_base->Init(property_set.get(), kTestPropertyName);
+  property_base->set_valid(true);
   dbus::Property<int>* property =
       static_cast<dbus::Property<int>*>(property_base.get());
   int expected_value = 3;
@@ -182,18 +183,26 @@ TEST_F(ExportedObjectManagerWrapperTest, CopyProperty) {
   property->ReplaceValueWithSetValue();
   ASSERT_EQ(expected_value, property->value());
 
-  interface->CopyPropertyToExportedProperty(
+  interface->SyncPropertyToExportedProperty(
       kTestPropertyName, property_base.get(), &property_factory);
 
   // Check that the property is exported and the exported property has the
   // same value as the origin property.
   brillo::dbus_utils::ExportedPropertyBase* exported_property_base =
-      interface->EnsureExportedPropertyRegistered(
-          kTestPropertyName, nullptr /* PropertyFactory no longer needed */);
+      interface->GetRegisteredExportedProperty(kTestPropertyName);
+  ASSERT_NE(nullptr, exported_property_base);
   brillo::dbus_utils::ExportedProperty<int>* exported_property =
       static_cast<brillo::dbus_utils::ExportedProperty<int>*>(
           exported_property_base);
   EXPECT_EQ(expected_value, exported_property->value());
+
+  // Syncing an invalidated property will remove the exported property.
+  property_base->set_valid(false);
+  interface->SyncPropertyToExportedProperty(
+      kTestPropertyName, property_base.get(), &property_factory);
+  // Check that the property is no longer exported.
+  ASSERT_EQ(nullptr,
+            interface->GetRegisteredExportedProperty(kTestPropertyName));
 }
 
 TEST_F(ExportedObjectManagerWrapperTest, ExportedObject) {
