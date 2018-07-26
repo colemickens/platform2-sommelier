@@ -7,6 +7,7 @@
 
 #include <dlfcn.h>
 
+#include <map>
 #include <vector>
 
 #include <base/logging.h>
@@ -47,6 +48,38 @@ class ResolutionInfo {
 
  private:
   int32_t width_, height_;
+};
+
+class CameraModuleCallbacksHandler {
+ public:
+  static void camera_device_status_change(
+      const camera_module_callbacks_t* callbacks,
+      int camera_id,
+      int new_status);
+
+  static void torch_mode_status_change(
+      const camera_module_callbacks_t* callbacks,
+      const char* camera_id,
+      int new_status);
+
+  static CameraModuleCallbacksHandler* GetInstance();
+
+  bool IsExternalCameraPresent(int camera_id);
+
+ private:
+  void CameraDeviceStatusChange(int camera_id,
+                                camera_device_status_t new_status);
+
+  void TorchModeStatusChange(int camera_id, torch_mode_status_t new_status);
+
+  // All operations are sequenced by |lock_|.
+  base::Lock lock_;
+
+  std::map<int, camera_device_status_t> device_status_;
+};
+
+struct CameraModuleCallbacksAux : camera_module_callbacks_t {
+  CameraModuleCallbacksHandler* handler;
 };
 
 class Camera3Module {

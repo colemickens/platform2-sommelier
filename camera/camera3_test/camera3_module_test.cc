@@ -20,7 +20,56 @@
 namespace camera3_test {
 
 static camera_module_t* g_cam_module = NULL;
+
+// TODO(shik): Objects with static storage duration are forbidden unless they
+// are trivially destructible. CameraThread is trivially not trivially
+// destructible.
 static cros::CameraThread g_module_thread("Camera3 Test Module Thread");
+
+// static
+void CameraModuleCallbacksHandler::camera_device_status_change(
+    const camera_module_callbacks_t* callbacks, int camera_id, int new_status) {
+  auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
+  aux->handler->CameraDeviceStatusChange(
+      camera_id, static_cast<camera_device_status_t>(new_status));
+}
+
+// static
+void CameraModuleCallbacksHandler::torch_mode_status_change(
+    const camera_module_callbacks_t* callbacks,
+    const char* camera_id,
+    int new_status) {
+  auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
+  aux->handler->TorchModeStatusChange(
+      atoi(camera_id), static_cast<torch_mode_status_t>(new_status));
+}
+
+// static
+CameraModuleCallbacksHandler* CameraModuleCallbacksHandler::GetInstance() {
+  static auto* instance = new CameraModuleCallbacksHandler();
+  return instance;
+}
+
+bool CameraModuleCallbacksHandler::IsExternalCameraPresent(int camera_id) {
+  base::AutoLock l(lock_);
+  auto it = device_status_.find(camera_id);
+  return it != device_status_.end() &&
+         it->second == CAMERA_DEVICE_STATUS_PRESENT;
+}
+
+// TODO(shik): Run tests on external cameras as well if detected.  We need to
+// relax the requirements for them just like what CTS did.
+void CameraModuleCallbacksHandler::CameraDeviceStatusChange(
+    int camera_id, camera_device_status_t new_status) {
+  base::AutoLock l(lock_);
+  LOGF(INFO) << "camera_id = " << camera_id << ", new status = " << new_status;
+  device_status_[camera_id] = new_status;
+}
+
+void CameraModuleCallbacksHandler::TorchModeStatusChange(
+    int camera_id, torch_mode_status_t new_status) {
+  LOGF(INFO) << "camera_id = " << camera_id << ", new status = " << new_status;
+}
 
 int32_t ResolutionInfo::Width() const {
   return width_;
@@ -44,6 +93,26 @@ bool ResolutionInfo::operator<(const ResolutionInfo& resolution) const {
          (Area() == resolution.Area() && width_ < resolution.Width());
 }
 
+static void InitCameraModuleOnThread(camera_module_t* cam_module) {
+  static CameraModuleCallbacksAux* callbacks = []() {
+    auto* aux = new CameraModuleCallbacksAux();
+    aux->camera_device_status_change =
+        &CameraModuleCallbacksHandler::camera_device_status_change;
+    aux->torch_mode_status_change =
+        &CameraModuleCallbacksHandler::torch_mode_status_change;
+    aux->handler = CameraModuleCallbacksHandler::GetInstance();
+    return aux;
+  }();
+
+  if (cam_module->init) {
+    ASSERT_EQ(0, cam_module->init());
+  }
+  int num_builtin_cameras = cam_module->get_number_of_cameras();
+  VLOGF(1) << "num_builtin_cameras = " << num_builtin_cameras;
+  ASSERT_EQ(0, cam_module->set_callbacks(callbacks));
+  g_cam_module = cam_module;
+}
+
 static void InitCameraModule(void** cam_hal_handle,
                              const char* camera_hal_path) {
   *cam_hal_handle = dlopen(camera_hal_path, RTLD_NOW);
@@ -58,7 +127,9 @@ static void InitCameraModule(void** cam_hal_handle,
       << "get_camera_info is not implemented";
   ASSERT_NE(nullptr, cam_module->common.methods->open)
       << "open() is unimplemented";
-  g_cam_module = cam_module;
+  ASSERT_EQ(0,
+            g_module_thread.PostTaskSync(
+                FROM_HERE, base::Bind(&InitCameraModuleOnThread, cam_module)));
 }
 
 static void InitPerfLog() {
@@ -339,11 +410,20 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
 }
 
 TEST_F(Camera3ModuleFixture, OpenDeviceOfBadIndices) {
-  int bad_indices[] = {-1, cam_module_.GetNumberOfCameras(),
-                       cam_module_.GetNumberOfCameras() + 1};
-  for (size_t i = 0; i < arraysize(bad_indices); ++i) {
-    ASSERT_EQ(nullptr, cam_module_.OpenDevice(bad_indices[i]))
-        << "Open camera device of bad index " << bad_indices[i];
+  auto* callbacks_handler = CameraModuleCallbacksHandler::GetInstance();
+  std::vector<int> bad_ids = {-1};
+  for (int id = cam_module_.GetNumberOfCameras(); bad_ids.size() < 3; id++) {
+    if (callbacks_handler->IsExternalCameraPresent(id)) {
+      LOG(INFO) << "Camera " << id << " is an external camera, skip it";
+      continue;
+    }
+    bad_ids.push_back(id);
+  }
+  // Possible TOCTOU race here if the external camera is plugged after
+  // |IsExternalCameraPresent()|, but before |OpenDevice()|.
+  for (int id : bad_ids) {
+    ASSERT_EQ(nullptr, cam_module_.OpenDevice(id))
+        << "Open camera device of bad id " << id;
   }
 }
 
@@ -1021,9 +1101,9 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   }
 
   // Open camera HAL and get module
+  camera3_test::g_module_thread.Start();
   camera3_test::InitCameraModule(cam_hal_handle,
                                  camera_hal_path.value().c_str());
-  camera3_test::g_module_thread.Start();
 
   camera3_test::InitPerfLog();
 
