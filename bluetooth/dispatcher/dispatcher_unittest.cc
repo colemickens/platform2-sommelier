@@ -52,7 +52,7 @@ class DispatcherTest : public ::testing::Test {
 
  protected:
   void TestPassthrough(PassthroughMode passthrough_mode,
-                       std::string source_object_manager_service_name) {
+                       const std::vector<std::string>& service_names) {
     dbus::ObjectPath root_path(
         bluetooth_object_manager::kBluetoothObjectManagerServicePath);
 
@@ -67,9 +67,10 @@ class DispatcherTest : public ::testing::Test {
             bluetooth_object_manager::kBluetoothObjectManagerServiceName, _))
         .WillOnce(Return(true));
 
-    EXPECT_CALL(*bus_,
-                GetObjectManager(source_object_manager_service_name, root_path))
-        .WillOnce(Return(source_object_manager_.get()));
+    for (const std::string& service_name : service_names) {
+      EXPECT_CALL(*bus_, GetObjectManager(service_name, root_path))
+          .WillRepeatedly(Return(source_object_manager_.get()));
+    }
 
     // org.freedesktop.DBus.ObjectManager interface methods should be exported.
     EXPECT_CALL(*exported_root_object,
@@ -105,14 +106,15 @@ class DispatcherTest : public ::testing::Test {
 
     // Should listen to BlueZ interfaces.
     for (const std::string& interface_name : bluez_interfaces)
-      EXPECT_CALL(*source_object_manager_,
-                  RegisterInterface(interface_name, _));
+      EXPECT_CALL(*source_object_manager_, RegisterInterface(interface_name, _))
+          .Times(service_names.size());
     dispatcher_->Init(passthrough_mode);
 
     // Free up all resources.
     EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
     for (const std::string& interface_name : bluez_interfaces)
-      EXPECT_CALL(*source_object_manager_, UnregisterInterface(interface_name));
+      EXPECT_CALL(*source_object_manager_, UnregisterInterface(interface_name))
+          .Times(service_names.size());
     dispatcher_->Shutdown();
   }
 
@@ -126,17 +128,18 @@ class DispatcherTest : public ::testing::Test {
 TEST_F(DispatcherTest, NoPassthrough) {
   // No passthrough fallbacks to BlueZ passthrough.
   TestPassthrough(PassthroughMode::MULTIPLEX,
-                  bluez_object_manager::kBluezObjectManagerServiceName);
+                  {bluez_object_manager::kBluezObjectManagerServiceName,
+                   newblue_object_manager::kNewblueObjectManagerServiceName});
 }
 
 TEST_F(DispatcherTest, PassthroughBluez) {
   TestPassthrough(PassthroughMode::BLUEZ_ONLY,
-                  bluez_object_manager::kBluezObjectManagerServiceName);
+                  {bluez_object_manager::kBluezObjectManagerServiceName});
 }
 
 TEST_F(DispatcherTest, PassthroughNewblue) {
   TestPassthrough(PassthroughMode::NEWBLUE_ONLY,
-                  newblue_object_manager::kNewblueObjectManagerServiceName);
+                  {newblue_object_manager::kNewblueObjectManagerServiceName});
 }
 
 }  // namespace bluetooth

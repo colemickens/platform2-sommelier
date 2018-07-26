@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
@@ -68,14 +69,15 @@ class Dispatcher {
   std::unique_ptr<ExportedObjectManagerWrapper>
       exported_object_manager_wrapper_;
 
-  // Connects to the source object manager (BlueZ or NewBlue). Owned by |bus_|.
-  dbus::ObjectManager* source_object_manager_;
-
   // Impersonates BlueZ's objects on various interfaces.
   std::map<std::string, std::unique_ptr<ImpersonationObjectManagerInterface>>
       impersonation_object_manager_interfaces_;
 
   std::unique_ptr<ClientManager> client_manager_;
+
+  // Contains the D-Bus names of the services to dispatch messages to, e.g.
+  // "org.bluez", "org.chromium.Newblue".
+  std::vector<std::string> service_names_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
