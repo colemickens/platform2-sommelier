@@ -331,10 +331,11 @@ void Intel3aCore::convertFromAndroidToIaCoordinates(const CameraWindow &srcWindo
 {
     const ia_coordinate_system iaCoord = {IA_COORDINATE_TOP, IA_COORDINATE_LEFT,
                                           IA_COORDINATE_BOTTOM, IA_COORDINATE_RIGHT};
-    ia_coordinate_system androidCoord = {mActivePixelArray.top(),
-                                         mActivePixelArray.left(),
-                                         mActivePixelArray.bottom(),
-                                         mActivePixelArray.right()};
+
+    //construct android coordinate based on active pixel array
+    ia_coordinate_system androidCoord = {0, 0,
+                                         mActivePixelArray.height(),
+                                         mActivePixelArray.width()};
     ia_coordinate topleft = {0, 0};
     ia_coordinate bottomright = {0, 0};
 
@@ -362,10 +363,11 @@ void Intel3aCore::convertFromIaToAndroidCoordinates(const CameraWindow &srcWindo
 {
     const ia_coordinate_system iaCoord = {IA_COORDINATE_TOP, IA_COORDINATE_LEFT,
                                           IA_COORDINATE_BOTTOM, IA_COORDINATE_RIGHT};
-    ia_coordinate_system androidCoord = {mActivePixelArray.top(),
-                                         mActivePixelArray.left(),
-                                         mActivePixelArray.bottom(),
-                                         mActivePixelArray.right()};
+
+    //construct android coordinate based on active pixel array
+    ia_coordinate_system androidCoord = {0, 0,
+                                         mActivePixelArray.height(),
+                                         mActivePixelArray.width()};
     ia_coordinate topleft = {0, 0};
     ia_coordinate bottomright = {0, 0};
 
