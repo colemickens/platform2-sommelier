@@ -10,7 +10,6 @@
     'variables': {
       'deps': [
         'libbrillo-<(libbase_ver)',
-        'libchrome-<(libbase_ver)',
         'vboot_host',
       ],
     },
@@ -38,6 +37,9 @@
       'target_name': 'cros_installer',
       'type': 'executable',
       'dependencies': ['libcros_installer'],
+      'variables': {
+        'deps': ['libchrome-<(libbase_ver)'],
+      },
       'sources': [
         'cros_installer_main.cc',
       ],
@@ -45,8 +47,21 @@
     {
       'target_name': 'evwaitkey',
       'type': 'executable',
+      'variables': {
+        'deps': ['libchrome-<(libbase_ver)'],
+      },
       'sources': [
         'util/evwaitkey.cc',
+      ],
+    },
+    {
+      'target_name': 'cros_oobe_crypto',
+      'type': 'executable',
+      'variables': {
+        'deps': ['libcrypto'],
+      },
+      'sources': [
+        'util/cros_oobe_crypto.c',
       ],
     },
   ],
@@ -57,6 +72,9 @@
           'target_name': 'nand_partition',
           'type': 'executable',
           'dependencies': ['libcros_installer'],
+          'variables': {
+            'deps': ['libchrome-<(libbase_ver)'],
+          },
           'sources': [
             'nand_partition.cc',
             'nand_partition_main.cc',
@@ -75,6 +93,7 @@
           ],
           'variables': {
             'deps': [
+              'libchrome-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
             ],
           },
