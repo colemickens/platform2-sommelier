@@ -61,13 +61,22 @@ class NewblueTest : public ::testing::Test {
 TEST_F(NewblueTest, ListenReadyForUp) {
   newblue_->Init();
 
+  hciReadyForUpCbk up_callback;
   EXPECT_CALL(*libnewblue_, HciUp(_, _, _))
-      .WillOnce(Invoke(this, &NewblueTest::StubHciUp));
+      .WillOnce(DoAll(SaveArg<1>(&up_callback),
+                      Invoke(this, &NewblueTest::StubHciUp)));
   bool success = newblue_->ListenReadyForUp(
       base::Bind(&NewblueTest::OnReadyForUp, base::Unretained(this)));
   EXPECT_TRUE(success);
   message_loop_.RunUntilIdle();
   EXPECT_TRUE(is_ready_for_up_);
+
+  // If libnewblue says the stack is ready for up again, ignore that.
+  // We shouldn't bring up the stack more than once.
+  is_ready_for_up_ = false;
+  up_callback(newblue_.get());
+  message_loop_.RunUntilIdle();
+  EXPECT_FALSE(is_ready_for_up_);
 }
 
 TEST_F(NewblueTest, ListenReadyForUpFailed) {

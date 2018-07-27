@@ -253,8 +253,17 @@ void Newblue::OnStackReadyForUpThunk(void* data) {
 }
 
 void Newblue::OnStackReadyForUp() {
-  if (!ready_for_up_callback_.is_null())
-    ready_for_up_callback_.Run();
+  if (ready_for_up_callback_.is_null()) {
+    // libnewblue says it's ready for up but I don't have any callback. Most
+    // probably another stack (e.g. BlueZ) just re-initialized the adapter.
+    LOG(WARNING) << "No callback when stack is ready for up";
+    return;
+  }
+
+  ready_for_up_callback_.Run();
+  // It only makes sense to bring up the stack once and for all. Reset the
+  // callback here so we won't bring up the stack twice.
+  ready_for_up_callback_.Reset();
 }
 
 void Newblue::DiscoveryCallbackThunk(void* data,
