@@ -13,6 +13,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/process/launch.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
@@ -66,6 +67,12 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
       // Note: If this log message is changed, the desktopui_HangDetector
       // autotest must be updated.
       LOG(WARNING) << "Aborting browser process.";
+      // TODO(dcastagna): Remove this after https://crbug.com/865739 is fixed.
+      std::string lsof_output;
+      base::GetAppOutput({"lsof", "/dev/dri/card0"}, &lsof_output);
+      LOG(WARNING) << "Processes keeping /dev/dri/card0 open:";
+      LOG(WARNING) << lsof_output;
+
       manager_->AbortBrowser(SIGABRT,
                              "Browser did not respond to DBus liveness check.");
       // HandleChildExit() will reap the process and restart if needed.
