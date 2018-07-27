@@ -659,7 +659,8 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
   // If new stream configuration is the same as current stream, do nothing.
   if (stream_on_resolution.width == stream_on_resolution_.width &&
       stream_on_resolution.height == stream_on_resolution_.height &&
-      constant_frame_rate == constant_frame_rate_) {
+      constant_frame_rate == constant_frame_rate_ &&
+      use_native_sensor_ratio == use_native_sensor_ratio_) {
     VLOGFID(1, device_id_) << "Skip stream on for the same configuration";
     return 0;
   } else if (!input_buffers_.empty()) {
