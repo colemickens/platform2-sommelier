@@ -3,9 +3,8 @@
 # found in the LICENSE file.
 
 # Defines a config specifying the result of running pkg-config for the given
-# packages. Put the package names you want to query in the "packages" variable
+# packages. Put the package names you want to query in the "pkg_deps" variable
 # inside the template invocation.
-
 template("pkg_config") {
   config(target_name) {
     forward_variables_from(invoker, [ "pkg_deps" ])
