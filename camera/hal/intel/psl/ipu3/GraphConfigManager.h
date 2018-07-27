@@ -22,7 +22,6 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include "SharedItemPool.h"
 #include "MediaCtlPipeConfig.h"
 #include "MediaController.h"
 
@@ -217,7 +216,7 @@ private:
     std::vector<PlatformGraphConfigKey> mStillStreamKeys;
     std::vector<ResolutionItem> mVideoStreamResolutions;
     std::vector<ResolutionItem> mStillStreamResolutions;
-    SharedItemPool<GraphConfig> mGraphConfigPool;
+    std::shared_ptr<GraphConfig> mGraphConfig;
 
     /**
      * Map to get the virtual sink id from a client stream pointer.

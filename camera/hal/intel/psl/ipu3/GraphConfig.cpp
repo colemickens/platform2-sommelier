@@ -69,21 +69,16 @@ const string MEDIACTL_POSTVIEWNAME = "ipu3-imgu postview";
 const string MEDIACTL_STATNAME = "ipu3-imgu 3a stat";
 
 GraphConfig::GraphConfig() :
-        mManager(nullptr),
         mSettings(nullptr),
         mReqId(0),
-        mMetaEnabled(false),
-        mFallback(false),
         mCIO2Format(V4L2_PIX_FMT_IPU3_SGRBG10),
         mPipeType(PIPE_PREVIEW),
         mSourceType(SRC_NONE)
 {
     //CLEAR(mProgramGroup);
-    mSourcePortName.clear();
     mSinkPeerPort.clear();
     mStreamToSinkIdMap.clear();
     mStream2TuningMap.clear();
-    createKernelListStructures();
     mCSIBE = CSI_BE + "0";
     mMainNodeName.clear();
     mSecondNodeName.clear();
@@ -100,14 +95,11 @@ GraphConfig::~GraphConfig()
  */
 void GraphConfig::fullReset()
 {
-    mSourcePortName.clear();
     mSinkPeerPort.clear();
     mStreamToSinkIdMap.clear();
     mStreamIds.clear();
-    deleteKernelInfo();
     delete mSettings;
     mSettings = nullptr;
-    mManager = nullptr;
     mReqId = 0;
     mStream2TuningMap.clear();
 }
@@ -122,13 +114,6 @@ void GraphConfig::reset(GraphConfig *me)
     } else {
         LOGE("Trying to reset a null GraphConfig - BUG!");
     }
-}
-
-void GraphConfig::deleteKernelInfo() {
-}
-
-void GraphConfig::createKernelListStructures()
-{
 }
 
 const GCSS::IGraphConfig* GraphConfig::getInterface(Node *node) const
@@ -161,15 +146,11 @@ void GraphConfig::init(int32_t reqId)
  * \param[in] streamToSinkIdMap
  * \param[in] active
  */
-status_t GraphConfig::prepare(GraphConfigManager *manager,
-                              Node *settings,
-                              StreamToSinkMap &streamToSinkIdMap,
-                              bool fallback)
+status_t GraphConfig::prepare(Node *settings,
+                             StreamToSinkMap &streamToSinkIdMap)
 {
     mStreamIds.clear();
-    mManager = manager;
     mSettings = settings;
-    mFallback = fallback;
     status_t ret = OK;
 
     if (CC_UNLIKELY(settings == nullptr)) {
@@ -184,8 +165,6 @@ status_t GraphConfig::prepare(GraphConfigManager *manager,
         LOGE("Failed to get output ports");
         return ret;
     }
-
-    ret = generateKernelListsForStreams();
 
     calculateSinkDependencies();
     storeTuningModes();
@@ -232,25 +211,6 @@ void GraphConfig::storeTuningModes()
         }
     }
 }
-/**
- * Retrieve the tuning mode associated with a given stream id.
- *
- * The tuning mode is defined by IQ-studio and represent and index to different
- * set of tuning parameters in the AIQB (a.k.a CPF)
- *
- * The tuning mode is an input parameter for AIC.
- * \param [in] streamId Identifier for the branch (video/still/isa)
- * \return tuning mode, if stream id is not found defaults to 0
- */
-int32_t GraphConfig::getTuningMode(int32_t streamId)
-{
-    auto item = mStream2TuningMap.find(streamId);
-    if (item != mStream2TuningMap.end()) {
-        return item->second;
-    }
-    LOGW("Could not find tuning mode for requested stream id %d", streamId);
-    return 0;
-}
 
 /*
  * According to the node, analyze the source type:
@@ -263,7 +223,6 @@ status_t GraphConfig::analyzeSourceType()
     ret = mSettings->getDescendant(GCSS_KEY_SENSOR, &inputDevNode);
     if (ret == css_err_none) {
         mSourceType = SRC_SENSOR;
-        mSourcePortName = SENSOR_PORT_NAME;
     } else {
         LOG1("No sensor node from the graph");
     }
@@ -272,7 +231,7 @@ status_t GraphConfig::analyzeSourceType()
 
 /**
  * Finds the sink nodes and the output port peer. Use streamToSinkIdMap
- * since we are intrested only in sinks that serve a stream. Takes an
+ * since we are interested only in sinks that serve a stream. Takes an
  * internal copy of streamToSinkIdMap to be used later.
  *
  * \param[in] streamToSinkIdMap to get the virtual sink id from a client stream pointer
@@ -380,143 +339,6 @@ GraphConfig::Node *GraphConfig::getOutputPortForSink(const string &sinkName)
         return nullptr;
     }
     return portNode;
-}
-
-/**
- * Returns true if the given node is used to output a video record
- * stream. The sink name is found and used to find client stream from the
- * mStreamToSinkIdMap.
- * Then the video encoder gralloc flag is checked from the stream flags of the
- * client stream.
- * \param[in] peer output port to find the sink node of.
- * \return true if sink port serves a video record stream.
- * \return false if sink port does not serve a video record stream.
- */
-bool GraphConfig::isVideoRecordPort(Node *sink)
-{
-    css_err_t ret = css_err_none;
-    string sinkName;
-    camera3_stream_t* clientStream = nullptr;
-
-    if (sink == nullptr) {
-        LOGE("No sink node provided");
-        return false;
-    }
-
-    ret = sink->getValue(GCSS_KEY_NAME, sinkName);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        LOGE("Failed to get sink name");
-        return false;
-    }
-
-    // Find the client stream for the sink port
-    StreamToSinkMap::iterator it1;
-    it1 = mStreamToSinkIdMap.begin();
-
-    for (; it1 != mStreamToSinkIdMap.end(); ++it1) {
-        if (GCSS::ItemUID::key2str(it1->second) == sinkName) {
-            clientStream = it1->first;
-            break;
-        }
-    }
-
-    if (clientStream == nullptr) {
-        LOGE("Failed to find client stream");
-        return false;
-    }
-
-    if (CHECK_FLAG(clientStream->usage, GRALLOC_USAGE_HW_VIDEO_ENCODER)) {
-        LOG2("%s is video record port", NODE_NAME(sink));
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Takes a stream id, and checks if it exists in the graph.
- *
- * \param[in] streamId
- * \return true if found, false otherwise
- */
-bool GraphConfig::hasStreamInGraph(int streamId)
-{
-    status_t status;
-    StreamsVector streamsFound;
-
-    status = graphGetStreamIds(streamsFound);
-    if (status != OK)
-        return false;
-
-    for (size_t i = 0; i < streamsFound.size(); i++) {
-        if (streamsFound[i] == streamId)
-            return true;
-    }
-    return false;
-}
-
-/**
- * check whether the kernel is in this stream
- *
- * \param[in] streamId stream id.
- * \param[in] kernelId kernel id.
- * \param[out] whether the kernel in this stream
- * \return true the kernel is in this stream
- * \return false the kernel isn't in this stream.
- *
- */
-bool GraphConfig::isKernelInStream(uint32_t streamId, uint32_t kernelId)
-{
-    return false;
-}
-
-/**
- * get program group id for some kernel
- *
- * \param[in] streamId stream id.
- * \param[in] kernelId kernel pal uuid.
- * \param[out] program group id that contain this kernel with the same stream id
- * \return error if can't find the kernel id in any ot the PGs in this stream
- */
-status_t GraphConfig::getPgIdForKernel(const uint32_t streamId, const int32_t kernelId, int32_t &pgId)
-{
-    css_err_t ret = css_err_none;
-    status_t retErr;
-    NodesPtrVector programGroups;
-
-    // Get all program groups with the stream id
-    retErr = streamGetProgramGroups(streamId, programGroups);
-    if (retErr != OK) {
-        LOGE("ERROR: couldn't get program groups");
-        return retErr;
-    }
-
-    // Go through all the program groups with the selected streamID
-    for (uint32_t i = 0; i < programGroups.size(); i++) {
-        /* Iterate through program group nodes, find kernel and get the PG id */
-        GCSS::GraphConfigItem::const_iterator it = programGroups[i]->begin();
-        while (it != programGroups[i]->end()) {
-            Node *kernelNode = nullptr;
-            // Look for kernel with the requested uuid
-            ret = programGroups[i]->getDescendant(GCSS_KEY_PAL_UUID,
-                                                  kernelId,
-                                                  it,
-                                                  &kernelNode);
-            if (ret != css_err_none)
-                continue;
-
-            ret = programGroups[i]->getValue(GCSS_KEY_PG_ID, pgId);
-            if (CC_LIKELY(ret == css_err_none)) {
-                LOG2("got the pgid:%d for kernel id:%d in stream:%d",
-                        pgId, kernelId, streamId);
-                return NO_ERROR;
-            }
-            LOGE("ERROR: Couldn't get pg id for kernel %d", kernelId);
-            return BAD_VALUE;
-        }
-    }
-    LOGE("ERROR: Couldn't get pal_uuid");
-    return BAD_VALUE;
 }
 
 /**
@@ -765,164 +587,6 @@ int32_t GraphConfig::getIsaOutputCount() const
     return mIsaActiveDestinations.size();
 }
 
-bool GraphConfig::isIsaOutputDestinationActive(uid_t destinationPortId) const
-{
-    std::map<uid_t, uid_t>::const_iterator it = mIsaActiveDestinations.begin();
-    for (; it != mIsaActiveDestinations.end(); ++it) {
-        if (destinationPortId == it->first) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool GraphConfig::isIsaStreamActive(int32_t streamId) const
-{
-    if (mActiveStreamId.find(streamId) != mActiveStreamId.end())
-        return true;
-    return false;
-}
-
-status_t GraphConfig::getActiveDestinations(std::vector<uid_t> &terminalIds) const
-{
-    std::map<uid_t, uid_t>::const_iterator it = mIsaActiveDestinations.begin();
-    for (; it != mIsaActiveDestinations.end(); ++it) {
-        terminalIds.push_back(it->first);
-    }
-
-    return OK;
-}
-
-/**
- * Query the connection info structs for a given pipeline defined by
- * stream id.
- *
- * \param[in] sinkName to be used as key to get pipeline connections
- * \param[out] stream id connect with sink
- * \param[out] connections for pipeline configuation
- * \return OK in case of success.
- * \return UNKNOWN_ERROR or BAD_VALUE in case of fail.
- * \if sinkName is not supported, NAME_NOT_FOUND is returned.
- * \sink name support list as below defined in graph_descriptor.xml
- * \<sink name="video0"/>
- * \<sink name="video1"/>
- * \<sink name="video2"/>
- * \<sink name="still0"/>
- * \<sink name="still1"/>
- * \<sink name="still2"/>
- * \<sink name="raw"/>
- */
-status_t GraphConfig::pipelineGetInternalConnections(
-                          const std::string &sinkName,
-                          int &streamId,
-                          std::vector<PSysPipelineConnection> &confVector)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
-    status_t status = OK;
-    css_err_t ret = css_err_none;
-    NodesPtrVector sinks;
-    NodesPtrVector programGroups;
-    NodesPtrVector alreadyConnectedPorts;
-    Node *peerPort = nullptr;
-    Node *port = nullptr;
-    PSysPipelineConnection aConnection;
-
-    alreadyConnectedPorts.clear();
-    status = graphGetSinksByName(sinkName, sinks);
-    if (CC_UNLIKELY(status != OK) || sinks.empty()) {
-        LOGD("No %s sinks in graph", sinkName.c_str());
-        return NAME_NOT_FOUND;
-    }
-
-    streamId = sinkGetStreamId(sinks[0]);
-    if (CC_UNLIKELY(streamId <= 0)) {
-        LOGE("Sink node lacks stream id attribute - fix your config");
-        return BAD_VALUE;
-    }
-
-    status = streamGetProgramGroups(streamId, programGroups);
-    if (CC_UNLIKELY(status != OK || programGroups.empty())) {
-        LOGE("No Program groups associated with stream id %d", streamId);
-        return BAD_VALUE;
-    }
-
-    for (size_t i = 0; i < programGroups.size(); i++) {
-
-        Node::const_iterator it = programGroups[i]->begin();
-
-        while (it != programGroups[i]->end()) {
-            ret = programGroups[i]->getDescendant(GCSS_KEY_TYPE, "port",
-                                                it, &port);
-            if (ret != css_err_none)
-                continue;
-
-            /*
-             * Since we are iterating through the ports
-             * check if this port is already connected to avoid setting
-             * the connection twice
-             */
-            if (std::find(alreadyConnectedPorts.begin(),
-                          alreadyConnectedPorts.end(),
-                          port) != alreadyConnectedPorts.end()) {
-                continue;
-            }
-            LOG1("Configuring Port from PG[%zu]", i);
-
-            status = portGetFormat(port, aConnection.portFormatSettings);
-            if (CC_UNLIKELY(status != OK)) {
-                LOGE("Failed to get port format info in port from PG[%zu] "
-                     "from stream id %d", i, streamId);
-                return BAD_VALUE;
-            }
-            if (aConnection.portFormatSettings.enabled == 0) {
-                LOG1("Port from PG[%zu] from stream id %d disabled",
-                        i, streamId);
-                confVector.push_back(aConnection);
-                continue;
-            } else {
-                LOG1("Port: 0x%x format(%dx%d)fourcc: %s bpl: %d bpp: %d",
-                        aConnection.portFormatSettings.terminalId,
-                        aConnection.portFormatSettings.width,
-                        aConnection.portFormatSettings.height,
-                        v4l2Fmt2Str(aConnection.portFormatSettings.fourcc),
-                        aConnection.portFormatSettings.bpl,
-                        aConnection.portFormatSettings.bpp);
-            }
-
-            /*
-             * for each port get the connection info and pass it
-             * to the pipeline object
-             */
-            status = portGetConnection(port,
-                                       aConnection.connectionConfig,
-                                       &peerPort);
-            if (CC_UNLIKELY(status != OK )) {
-                LOGE("Failed to create connection info in port from PG[%zu]"
-                     "from stream id %d", i, streamId);
-                return BAD_VALUE;
-            }
-
-            aConnection.hasEdgePort = false;
-            if (isPipeEdgePort(port)) {
-                camera3_stream_t *clientStream = nullptr;
-                status = portGetClientStream(peerPort, &clientStream);
-                if (CC_UNLIKELY(status != OK)) {
-                    LOGE("Failed to find client stream for v-sink");
-                    return UNKNOWN_ERROR;
-                }
-                aConnection.stream = clientStream;
-                aConnection.hasEdgePort = true;
-            }
-            confVector.push_back(aConnection);
-            alreadyConnectedPorts.push_back(port);
-            alreadyConnectedPorts.push_back(peerPort);
-        }
-    }
-
-    return OK;
-}
-
 /**
  * Find distinct stream ids from the graph and return them in a vector.
  * \param streamIds Vector to be populated with stream ids.
@@ -1024,49 +688,6 @@ int32_t GraphConfig::portGetStreamId(Node *port)
     return streamId;
 }
 
-
-/**
- * Retrieve a list of program groups that belong to a  given stream id.
- * Iterates through the graph configuration storing the program groups
- * that match this stream id into the provided vector.
- *
- * \param[in] streamId Id of the stream to match.
- * \param[out] programGroups Vector with the nodes that match the criteria.
- */
-status_t GraphConfig::streamGetProgramGroups(int32_t streamId,
-                                             NodesPtrVector &programGroups)
-{
-    css_err_t ret = css_err_none;
-    GraphConfigNode *result;
-    NodesPtrVector allProgramGroups;
-    int32_t streamIdFound = -1;
-
-    GraphConfigNode::const_iterator it = mSettings->begin();
-
-    while (it != mSettings->end()) {
-
-        ret = mSettings->getDescendant(GCSS_KEY_TYPE, "hw",
-                                       it, &result);
-        if (ret == css_err_none)
-            allProgramGroups.push_back(result);
-    }
-
-    if (allProgramGroups.empty()) {
-        LOGE("Failed to find any HW's for stream id %d"
-             " BUG(check graph config file)", streamId);
-        return UNKNOWN_ERROR;
-    }
-
-    for (size_t i = 0; i < allProgramGroups.size(); i++) {
-        ret = allProgramGroups[i]->getValue(GCSS_KEY_STREAM_ID, streamIdFound);
-        if ((ret == css_err_none) && (streamIdFound == streamId)) {
-            programGroups.push_back(allProgramGroups[i]);
-        }
-    }
-
-    return OK;
-}
-
 status_t GraphConfig::streamGetInputPort(int32_t streamId, Node **port)
 {
     css_err_t ret = css_err_none;
@@ -1110,73 +731,6 @@ status_t GraphConfig::streamGetInputPort(int32_t streamId, Node **port)
 }
 
 /**
- *
- * Traverse the graph settings to find program groups that belong to
- * the given stream id.
- * collect the output ports of those program groups whose peer has a different
- * stream ID.
- * It also stores the UID of the peer port of each output port.
- * This is useful to detect wither the peer is active or not.
- *
- * \param [in] streamId  The stream id we want to find the output ports from.
- * \param [out] outputPorts Vector of pointers to Nodes with the ports.
- * \param [out] peerPorts  Vector of pointers to Nodes with the peer ports.
- */
-status_t
-GraphConfig::streamGetConnectedOutputPorts(int32_t streamId,
-                                           NodesPtrVector &outputPorts,
-                                           NodesPtrVector &peerPorts)
-{
-    css_err_t ret = css_err_none;
-    status_t status = OK;
-    Node *pgNode = nullptr;
-    Node *port;
-    Node *peer = nullptr;
-    int32_t streamIdFound = -1;
-    int32_t peerStreamId = 0;
-    outputPorts.clear();
-    peerPorts.clear();
-
-    Node::const_iterator it = mSettings->begin();
-
-    while (it != mSettings->end()) {
-        ret = mSettings->getDescendant(GCSS_KEY_TYPE, "program_group",
-                                       it, &pgNode);
-        if (ret != css_err_none)
-            continue;
-        ret = pgNode->getValue(GCSS_KEY_STREAM_ID, streamIdFound);
-        if ((ret == css_err_none) && (streamIdFound == streamId)) {
-
-            Node::const_iterator it = pgNode->begin();
-
-            while (it != pgNode->end()) {
-                ret = pgNode->getDescendant(GCSS_KEY_TYPE, "port", it, &port);
-                if (ret != css_err_none)
-                    continue;
-
-                int32_t direction = portGetDirection(port);
-
-                if (direction == PORT_DIRECTION_OUTPUT) {
-                    status = portGetPeer(port, &peer);
-                    if (status == INVALID_OPERATION)
-                        continue; // disabled terminal
-                    if (status == OK) {
-                        peerStreamId = portGetStreamId(peer);
-                        if (peerStreamId != streamId) {
-                            outputPorts.push_back(port);
-                            peerPorts.push_back(peer);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if (outputPorts.empty())
-        LOGW("No outputports for stream %d", streamId);
-    return OK;
-}
-
-/**
  * Retrieve the graph config node of the port that is connected to a given port.
  *
  * \param[in] port Node with the info of the port that we want to find its peer.
@@ -1212,192 +766,6 @@ status_t GraphConfig::portGetPeer(Node *port, Node **peer)
         LOGE("Failed to find peer by name %s", peerName.c_str());
         return BAD_VALUE;
     }
-    return OK;
-}
-
-/**
- * Generate the connection configuration information for a given port.
- *
- * This connection configuration  information is required by CIPF to build
- * the pipeline
- *
- * \param[in] port Pointer to the port node
- * \param[out] connectionInfo Reference to the connection info object
- * \param[out] peerPort Reference to the peer port
- * \return OK in case of success
- * \return BAD_VALUE in case of error while retrieving the information.
- * \return INVALID_OPERATION in case of the port being disabled.
- */
-status_t GraphConfig::portGetConnection(Node *port,
-                                        ConnectionConfig &connectionInfo,
-                                        Node **peerPort)
-{
-    status_t status = OK;
-    css_err_t ret = css_err_none;
-    int32_t direction;
-
-    status = portGetPeer(port, peerPort);
-    if (CC_UNLIKELY(status != OK)) {
-        if (status == INVALID_OPERATION) {
-            LOGE("Port %s disabled, cannot get the connection",
-                    getNodeName(port).c_str());
-        } else {
-            LOGE("Failed to get the peer port for port %s",getNodeName(port).c_str());
-        }
-        return status;
-    }
-
-    ret = port->getValue(GCSS_KEY_DIRECTION, direction);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-       LOGE("Failed to get port direction");
-       return BAD_VALUE;
-    }
-
-    /*
-     * Iterations are not used
-     */
-    connectionInfo.mSinkIteration = 0;
-    connectionInfo.mSourceIteration = 0;
-
-    if (direction == PORT_DIRECTION_INPUT) {
-        // input port is the sink in a connection
-        status = portGetFourCCInfo(*port,
-                                    connectionInfo.mSinkStage,
-                                    connectionInfo.mSinkTerminal);
-        if (CC_UNLIKELY(status != OK)) {
-            LOGE("Failed to create fourcc info for sink port");
-            return BAD_VALUE;
-        }
-        if (*peerPort != nullptr && !portIsVirtual(*peerPort)) {
-            status = portGetFourCCInfo(**peerPort,
-                                       connectionInfo.mSourceStage,
-                                       connectionInfo.mSourceTerminal);
-            if (CC_UNLIKELY(status != OK)) {
-                LOGE("Failed to create fourcc info for source port");
-                return BAD_VALUE;
-            }
-        } else {
-            connectionInfo.mSourceStage = 0;
-            connectionInfo.mSourceTerminal = 0;
-        }
-    } else {
-        //output port is the source in a connection
-        status = portGetFourCCInfo(*port,
-                                    connectionInfo.mSourceStage,
-                                    connectionInfo.mSourceTerminal);
-        if (CC_UNLIKELY(status != OK)) {
-            LOGE("Failed to create fourcc info for source port");
-            return BAD_VALUE;
-        }
-
-        if (*peerPort != nullptr && !portIsVirtual(*peerPort)) {
-            status = portGetFourCCInfo(**peerPort,
-                                    connectionInfo.mSinkStage,
-                                    connectionInfo.mSinkTerminal);
-            if (CC_UNLIKELY(status != OK)) {
-                LOGE("Failed to create fourcc info for sink port");
-                return BAD_VALUE;
-            }
-        } else {
-            connectionInfo.mSinkStage = 0;
-            connectionInfo.mSinkTerminal = 0;
-        }
-    }
-
-    return status;
-}
-
-/**
- * Retrieve the format information of a port
- * if the port doesn't have any format set, it gets the format from the peer
- * port (i.e. the port connected to this one)
- *
- * \param[in] port Port to query the format.
- * \param[out] format Format settings for this port.
- */
-status_t GraphConfig::portGetFormat(Node *port,
-                                    PortFormatSettings &format)
-{
-    GraphConfigNode *peerNode = nullptr; // The peer port node
-    GraphConfigNode *tmpNode = port; // The port node node we are interrogating
-    css_err_t ret = css_err_none;
-    uint32_t stageId; // ignored
-
-    if (CC_UNLIKELY(port == nullptr)) {
-        LOGE("Invalid parameter, could not get port format");
-        return BAD_VALUE;
-    }
-
-    ret = port->getValue(GCSS_KEY_ENABLED, format.enabled);
-    if (ret != css_err_none) {
-        // if not present by default is enabled
-        format.enabled = 1;
-    }
-
-    status_t status = portGetFourCCInfo(*tmpNode, stageId, format.terminalId);
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Could not get port uid");
-        return INVALID_OPERATION;
-    }
-
-    // if disabled there is no need to query the format
-    if (format.enabled == 0) {
-        return OK;
-    }
-
-    format.width = 0;
-    format.height = 0;
-
-    ret = port->getValue(GCSS_KEY_WIDTH, format.width);
-    if (ret != css_err_none) {
-        /*
-         * It could be the port configuration is not in settings, that is normal
-         * it means that we need to ask the format from the peer.
-         */
-        ret = portGetPeer(port, &peerNode);
-        if (CC_UNLIKELY(ret != css_err_none)) {
-            LOGE("Could not find peer port - Fix your graph");
-            return BAD_VALUE;
-        }
-
-        tmpNode = peerNode;
-
-        ret = tmpNode->getValue(GCSS_KEY_WIDTH, format.width);
-        if (CC_UNLIKELY(ret != css_err_none)) {
-            LOGE("Could not find port format info: width (from peer)");
-            return BAD_VALUE;
-        }
-    }
-
-    ret = tmpNode->getValue(GCSS_KEY_HEIGHT, format.height);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        LOGE("Could not find port format info: height");
-        return BAD_VALUE;
-    }
-
-    string fourccFormat;
-    ret = tmpNode->getValue(GCSS_KEY_FORMAT, fourccFormat);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        LOGE("Could not find port format info: fourcc");
-        return BAD_VALUE;
-    }
-
-    format.fourcc = get_fourcc(fourccFormat[0],fourccFormat[1],
-                              fourccFormat[2],fourccFormat[3]);
-
-    format.bpl = gcu::getBpl(format.fourcc, format.width);
-    LOG1("bpl set to %d for %s", format.bpl, fourccFormat.c_str());
-
-    // if settings are specifying bpl, owerwrite the calculated one
-    int bplFromSettings = 0;
-    ret = tmpNode->getValue(GCSS_KEY_BYTES_PER_LINE, bplFromSettings);
-    if (CC_UNLIKELY(ret == css_err_none)) {
-        LOG1("Overwriting bpl(%d) from settings %d", format.bpl, bplFromSettings);
-        format.bpl = bplFromSettings;
-    }
-
-    format.bpp = gcu::getBppFromCommon(format.fourcc);
-
     return OK;
 }
 
@@ -1577,153 +945,6 @@ status_t GraphConfig::portGetPeerIdByName(string name,
 
     portGetFourCCInfo(*peerNode, stageId, terminalId);
     return OK;
-}
-
-/**
- * This method is used by pSysIsaTask to get the stream ids
- * which are used in setting, at the same time return the
- * mIsaOutputPort2StreamId
- * \param[out] isaStreamIdVector
- * \param[out] isaOutputPort2StreamIdMap
- */
-status_t GraphConfig::getIsaStreamIds(vector<int32_t> &isaStreamIdVector,
-                                      map<string, int32_t> &isaOutputPort2StreamIdMap)
-{
-    for (auto isaOutputPort : mIsaOutputPort2StreamId) {
-         int32_t streamIdFound = isaOutputPort.second;
-         // save the stream id into the vector
-         unsigned int i = 0;
-         for (; i < isaStreamIdVector.size(); i ++) {
-              if (isaStreamIdVector[i] == streamIdFound) {
-                  break;
-              }
-         }
-         if (i == isaStreamIdVector.size())
-             isaStreamIdVector.push_back(streamIdFound);
-    }
-
-    if (isaStreamIdVector.size() == 0) {
-        LOGE("Fail to get stream id");
-        return UNKNOWN_ERROR;
-    }
-    isaOutputPort2StreamIdMap = mIsaOutputPort2StreamId;
-    return OK;
-}
-
-/**
- * retrieve the pointer to the client stream associated with a virtual sink
- *
- * I.e. access the mapping done at stream config time between the pointers
- * to camera3_stream_t and the names video0, video1, still0 etc...
- *
- * \param[in] port Node to the virtual sink (with name videoX or stillX etc..)
- * \param[out] stream Pointer to the client stream associated with that virtual
- *                    sink.
- * \return OK
- * \return BAD_VALUE in case of invalid parameters (null pointers)
- * \return INVALID_OPERATION in case the Node is not a virtual sink.
- */
-status_t GraphConfig::portGetClientStream(Node *port, camera3_stream_t **stream)
-{
-    css_err_t ret = css_err_none;
-    string portName;
-
-    if (CC_UNLIKELY(!port || !stream)) {
-        LOGE("Could not get client stream - bad parameters");
-        return BAD_VALUE;
-    }
-
-    if (!portIsVirtual(port)) {
-        LOGE("Trying to find the client stream from a non virtual port");
-        return INVALID_OPERATION;
-    }
-
-    ret = port->getValue(GCSS_KEY_NAME, portName);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        LOGE("Failed to get name for port");
-        port->dumpNodeTree(port, 1);
-        return BAD_VALUE;
-    }
-
-    uid_t vPortId = GCSS::ItemUID::str2key(portName);
-    *stream = mManager->getStreamByVirtualId(vPortId);
-
-    return OK;
-}
-
-/**
- * A port is at the edge of the video stream (pipeline) if its peer is in a PG
- * that has a different streamID (a.k.a. pipeline id) or if its peer is a
- * virtual sink.
- *
- * Here we check for both conditions and return true if this port is at either
- * edge of a pipeline
- */
-bool GraphConfig::isPipeEdgePort(Node *port)
-{
-    status_t status = OK;
-    css_err_t ret = css_err_none;
-    GraphConfig::Node *peer = nullptr;
-    GraphConfig::Node *peerAncestor = nullptr;
-    int32_t portDirection;
-    int32_t streamId = -1;
-    int32_t peerStreamId = -1;
-    string peerType;
-
-    portDirection = portGetDirection(port);
-
-    status = portGetPeer(port, &peer);
-    if (status == INVALID_OPERATION) {
-        LOG1("port is disabled, so it is an edge port");
-        return true;
-    }
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Failed to create fourcc info for source port");
-        return false;
-    }
-
-    streamId = portGetStreamId(port);
-    if (CC_UNLIKELY(streamId < 0))
-        return false;
-    /*
-     * get the stream id of the peer port
-     * we also check the ancestor for that. If the peer is a virtual sink then
-     * it does not have ancestor.
-     */
-    if (!portIsVirtual(peer)) {
-        peer->getAncestor(&peerAncestor);
-        ret = peerAncestor->getValue(GCSS_KEY_STREAM_ID, peerStreamId);
-        if (CC_UNLIKELY(ret != css_err_none)) {
-            LOGE("Failed to get stream ID of peer PG");
-            return false;
-        }
-        /*
-         * Retrieve the type of node the peer ancestor is. It could be is not a
-         * program group node but a sink or hw block
-         */
-        peerAncestor->getValue(GCSS_KEY_TYPE, peerType);
-    }
-
-    if (portDirection == GraphConfig::PORT_DIRECTION_INPUT) {
-        /*
-         *  input port,
-         *  if the peer is a source or hw block then it is on the edge,
-         *  or if the peer is on a different stream id
-         */
-        if ((streamId != peerStreamId) || (peerType == string("hw"))) {
-            return true;
-        }
-    } else {
-        /*
-         *  output port,
-         *  if the peer is a virtual port, or has a different stream id
-         *  then it is on the edge,
-         */
-        if (portIsVirtual(peer) || (streamId != peerStreamId)) {
-            return true;
-        }
-    }
-    return false;
 }
 
 /**
@@ -2416,7 +1637,6 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
     }
 }
 
-
 /*
  * Imgu helper function
  */
@@ -2445,7 +1665,6 @@ bool GraphConfig::doesNodeExist(string nodeName)
 
     return true;
 }
-
 
 /*
  * Get values for MediaCtlConfig control params.
@@ -2839,71 +2058,6 @@ void GraphConfig::addLinkParams(const string &srcName,
 }
 
 /**
- * Gets all stream id's and generates kernel list for each of those.
- * Generated kernel lists are stored inside a mKernels map, from where
- * they can be retrieved with streamId.
- *
- */
-status_t GraphConfig::generateKernelListsForStreams()
-{
-    return OK;
-}
-
-/**
- * query source frame parameters according to the different input
- * device: sensor or tpg
- */
-status_t
-GraphConfig::getSourceFrameParams(ia_aiq_frame_params &frameParams)
-{
-    status_t status = UNKNOWN_ERROR;
-    if (mSourceType == SRC_SENSOR) {
-        status = getSensorFrameParams(frameParams);
-    } else if (mSourceType == SRC_TPG) {
-        status = getTPGFrameParams(frameParams);
-    } else {
-        LOGE("wrong source");
-    }
-    return status;
-}
-
-/**
- * Retrieve the resolution of the tpg in use.
- */
-status_t
-GraphConfig::getTPGFrameParams(ia_aiq_frame_params &tpgFrameParams)
-{
-    css_err_t ret = css_err_none;
-
-    if (mSourceType == SRC_TPG) {
-        int32_t w,h;
-        Node *tpgPortNode = nullptr;
-        ret = mSettings->getDescendantByString(TPG_PORT_NAME, &tpgPortNode);
-        if (CC_UNLIKELY(ret != css_err_none)) {
-            LOGE("Error: Couldn't get tpg port_0 node from the graph");
-            return UNKNOWN_ERROR;
-        }
-
-        ret = getDimensions(tpgPortNode, w, h);
-        if (CC_UNLIKELY(ret != css_err_none)) {
-            LOGE("Failed to get dimension for tpg port_0 Node");
-            return UNKNOWN_ERROR;
-        }
-
-        tpgFrameParams.cropped_image_width = w;
-        tpgFrameParams.cropped_image_height = h;
-        tpgFrameParams.horizontal_crop_offset = 0;
-        tpgFrameParams.vertical_crop_offset = 0;
-        tpgFrameParams.horizontal_scaling_numerator = 1;
-        tpgFrameParams.horizontal_scaling_denominator = 1;
-        tpgFrameParams.vertical_scaling_numerator = 1;
-        tpgFrameParams.vertical_scaling_denominator = 1;
-        return OK;
-    }
-    return UNKNOWN_ERROR;
-}
-
-/**
  * Retrieve the resolution of the sensor mode in use.
  * sensor frame params is used to inform 3A what is the size of the
  * image that arrives to the ISP, in this case the ISA PG.
@@ -3083,52 +2237,6 @@ GraphConfig::getSensorFrameParams(ia_aiq_frame_params &sensorFrameParams)
     sensorFrameParams.vertical_scaling_numerator = SCALING_FACTOR;
     sensorFrameParams.vertical_scaling_denominator = SCALING_FACTOR;
     return OK;
-}
-
-/**
- * Retrieve the resolution of the first port for a given stream id
- *
- * Fill the resolution inside the a frame params struct for convenience
- *
- * \param[in] streamId  Id of the stream to use.
- * \param[out] frameParams
- *
- * \return OK
- * \return UNKNOWN_ERROR if it could not find the stream id or the port
- */
-status_t
-GraphConfig::streamGetFrameParams(ia_aiq_frame_params &frameParams,
-                                  int32_t streamId)
-{
-    Node *portNode = nullptr;
-    status_t status = OK;
-    PortFormatSettings format;
-
-    status = streamGetInputPort(streamId, &portNode);
-    status |= portGetFormat(portNode, format);
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Failed to get input port format from stream %d", streamId);
-        return UNKNOWN_ERROR;
-    }
-
-    frameParams.cropped_image_width = format.width;
-    frameParams.cropped_image_height = format.height;
-    frameParams.horizontal_crop_offset = 0;
-    frameParams.vertical_crop_offset = 0;
-    frameParams.horizontal_scaling_numerator = 1;
-    frameParams.horizontal_scaling_denominator = 1;
-    frameParams.vertical_scaling_numerator = 1;
-    frameParams.vertical_scaling_denominator = 1;
-    return OK;
-}
-
-void GraphConfig::dumpSettings()
-{
-    mSettings->dumpNodeTree(mSettings, 2);
-}
-
-void GraphConfig::dumpKernels(int32_t streamId)
-{
 }
 
 GraphConfig::Rectangle::Rectangle(): w(0),h(0),t(0),l(0) {}

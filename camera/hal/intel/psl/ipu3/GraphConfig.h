@@ -45,8 +45,6 @@ class GraphConfigManager;
 const int32_t ACTIVE_ISA_OUTPUT_BUFFER = 2;
 const int32_t MAX_STREAMS = 4; // max number of streams
 const uint32_t MAX_KERNEL_COUNT = 30; // max number of kernels in the kernel list
-const std::string SENSOR_PORT_NAME("sensor:port_0");
-const std::string TPG_PORT_NAME("tpg:port_0");
 // Declare string consts
 const std::string CSI_BE = "ipu3-cio2 ";
 const std::string CSI_RECEIVER = "ipu3-csi2 0";
@@ -109,69 +107,6 @@ public:
     static const int32_t PORT_DIRECTION_INPUT = 0;
     static const int32_t PORT_DIRECTION_OUTPUT = 1;
 
-    class ConnectionConfig {
-    public:
-        ConnectionConfig(): mSourceStage(0),
-                            mSourceTerminal(0),
-                            mSourceIteration(0),
-                            mSinkStage(0),
-                            mSinkTerminal(0),
-                            mSinkIteration(0) {}
-
-        ConnectionConfig(uint32_t sourceStage,
-                         uint32_t sourceTerminal,
-                         uint32_t sourceIteration,
-                         uint32_t sinkStage,
-                         uint32_t sinkTerminal,
-                         uint32_t sinkIteration):
-                            mSourceStage(sourceStage),
-                            mSourceTerminal(sourceTerminal),
-                            mSourceIteration(sourceIteration),
-                            mSinkStage(sinkStage),
-                            mSinkTerminal(sinkTerminal),
-                            mSinkIteration(sinkIteration) {}
-        void dump() {
-            LOGE("connection src 0x%x (0x%x) sink 0x%x(0x%x)",
-                    mSourceStage, mSourceTerminal,
-                    mSinkStage, mSinkTerminal);
-        }
-
-        uint32_t mSourceStage;
-        uint32_t mSourceTerminal;
-        uint32_t mSourceIteration;
-        uint32_t mSinkStage;
-        uint32_t mSinkTerminal;
-        uint32_t mSinkIteration;
-    };
-   /**
-    * \struct PortFormatSettings
-    * Format settings for a port in the graph
-    */
-    struct PortFormatSettings {
-        int32_t      enabled;
-        uint32_t     terminalId; /**< Unique terminal id (is a fourcc code) */
-        int32_t      width;    /**< Width of the frame in pixels */
-        int32_t      height;   /**< Height of the frame in lines */
-        int32_t      fourcc;   /**< Frame format */
-        int32_t      bpl;      /**< Bytes per line*/
-        int32_t      bpp;      /**< Bits per pixel */
-    };
-
-   /**
-    * \struct PSysPipelineConnection
-    * Group port format, connection, stream, edge port for
-    * pipeline configuration
-    */
-    struct PSysPipelineConnection {
-        PortFormatSettings portFormatSettings;
-        ConnectionConfig connectionConfig;
-        camera3_stream_t *stream;
-        bool hasEdgePort;
-        PSysPipelineConnection() : stream(nullptr), hasEdgePort(0) {
-            CLEAR(portFormatSettings);
-        }
-    };
-
 public:
      GraphConfig();
     ~GraphConfig();
@@ -181,11 +116,6 @@ public:
      */
     const GCSS::IGraphConfig* getInterface(Node *node) const;
     const GCSS::IGraphConfig* getInterface() const;
-    bool hasStreamInGraph(int streamId);
-    bool isKernelInStream(uint32_t streamId, uint32_t kernelId);
-    status_t getPgIdForKernel(const uint32_t streamId, const int32_t kernelId,
-                              int32_t &pgId);
-    int32_t getTuningMode(int32_t streamId);
     /*
      * Graph Interrogation methods
      */
@@ -206,52 +136,23 @@ public:
     /*
      * Stream Interrogation methods
      */
-    status_t streamGetProgramGroups(int32_t streamId,
-                                    NodesPtrVector &programGroups);
     status_t streamGetInputPort(int32_t streamId, Node **port);
-    status_t streamGetConnectedOutputPorts(int32_t streamId,
-                                           NodesPtrVector &outputPorts,
-                                           NodesPtrVector &peerPorts);
-    status_t streamGetFrameParams(ia_aiq_frame_params &sensorFrameParams,
-                                  int32_t streamId);
     /*
      * Port Interrogation methods
      */
     status_t portGetFullName(Node *port, std::string &fullName);
     status_t portGetPeer(Node *port, Node **peer);
-    status_t portGetFormat(Node *port, PortFormatSettings &format);
-    status_t portGetConnection(Node *port,
-                               ConnectionConfig &connectionInfo,
-                               Node **peerPort);
-    status_t portGetClientStream(Node *port, camera3_stream_t **stream);
     int32_t portGetDirection(Node *port);
     bool portIsVirtual(Node *port);
     status_t portGetPeerIdByName(std::string name,
                                  uid_t &terminalId);
-    bool isPipeEdgePort(Node *port); // TODO: should be renamed as portIsEdgePort
-    status_t getSourceFrameParams(ia_aiq_frame_params &frameParams);
     status_t getDimensions(const Node *node, int &w, int &h) const;
     status_t getDimensions(const Node *node, int &w, int &h, int &l,int &t) const;
     /*
      * ISA support methods
      */
     int32_t getIsaOutputCount() const;
-    status_t getActiveDestinations(std::vector<uid_t> &terminalIds) const;
-    bool isIsaOutputDestinationActive(uid_t destinationPortId) const;
-    bool isIsaStreamActive(int32_t streamId) const;
 
-    bool getSensorEmbeddedMetadataEnabled() const { return mMetaEnabled; }
-    /*
-     * Pipeline connection support
-     */
-    status_t pipelineGetInternalConnections(
-                        const std::string &sinkName,
-                        int &streamId,
-                        std::vector<PSysPipelineConnection> &confVector);
-    /*
-     * Phase-in control
-     */
-    bool isFallback() const { return mFallback; }
     /*
      * re-cycler static method
      */
@@ -260,14 +161,10 @@ public:
     /*
      * Debugging support
      */
-    void dumpSettings();
-    void dumpKernels(int32_t streamId);
     std::string getNodeName(Node *node);
     status_t getValue(string &nodeName, uint32_t id, int &value);
     bool doesNodeExist(string nodeName);
 
-    status_t getIsaStreamIds(std::vector<int32_t> &streamIdVector,
-                             std::map<string, int32_t> &isaOutputPort2StreamIdMap);
     enum PipeType {
         PIPE_STILL = 0,
         PIPE_PREVIEW,
@@ -343,10 +240,8 @@ private:
     friend class GraphConfigManager;
     // Private initializer: only used by our friend GraphConfigManager.
     void init(int32_t reqId);
-    status_t prepare(GraphConfigManager *manager,
-                     Node *settings,
-                     StreamToSinkMap &streamToSinkIdMap,
-                     bool fallback);
+    status_t prepare(Node *settings,
+                     StreamToSinkMap &streamToSinkIdMap);
     status_t analyzeSourceType();
     void setActiveSinks(std::vector<uid_t> &activeSinks);
     void setActiveStreamId(const std::vector<uid_t> &activeSinks);
@@ -357,7 +252,6 @@ private:
      * Helpers for constructing mediaCtlConfigs from graph config
      */
     status_t parseSensorNodeInfo(Node* sensorNode, SourceNodeInfo &info);
-    status_t parseTPGNodeInfo(Node* tpgNode, SourceNodeInfo &info);
     status_t getMediaCtlData(MediaCtlConfig* mediaCtlConfig);
     status_t getImguMediaCtlData(int32_t cameraId,
                                  int32_t testPatternMode,
@@ -407,8 +301,6 @@ private:
                                  const struct v4l2_subdev_selection &select,
                                  MediaCtlConfig* config);
     status_t getNodeInfo(const ia_uid uid, const Node &parent, int *width, int *height);
-    status_t getTPGMediaCtlData(MediaCtlConfig &mediaCtlConfig);
-    status_t getSensorMediaCtlData(MediaCtlConfig &mediaCtlConfig);
     void dumpMediaCtlConfig(const MediaCtlConfig &config) const;
 
     // Private helpers for port nodes
@@ -418,13 +310,6 @@ private:
     status_t getActiveOutputPorts(
             const StreamToSinkMap &streamToSinkIdMap);
     Node *getOutputPortForSink(const std::string &sinkName);
-    status_t getSinkFormatOptions();
-    bool isVideoRecordPort(Node *sink);
-    // Kernel list generation methods
-    void deleteKernelInfo();
-    void createKernelListStructures();
-    status_t generateKernelListsForStreams();
-    status_t getTPGFrameParams(ia_aiq_frame_params &tpgFrameParams);
 
 public:
     // Imgu used from ParameterWorker
@@ -436,15 +321,11 @@ private:
     GraphConfig& operator=(const GraphConfig &);
 
 private:
-    GraphConfigManager *mManager; /* GraphConfig doesn't own mManager */
     GCSS::GraphConfigNode *mSettings;
     int32_t mReqId;
     StreamsMap mStreamIds;
     std::map<int32_t, size_t> mKernelCountsMap; // key is stream id
 
-    bool mMetaEnabled; // indicates if the specific sensor provides sensor
-                       // embedded metadata
-    bool mFallback;
     int mCIO2Format;
     PipeType mPipeType;
     enum SourceType {
@@ -453,7 +334,6 @@ private:
         SRC_TPG,
     };
     SourceType mSourceType;
-    std::string mSourcePortName; // Sensor or TPG port name
 
     /**
      * pre-computed state done *per request*.

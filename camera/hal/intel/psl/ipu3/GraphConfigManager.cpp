@@ -77,8 +77,6 @@ GraphConfigManager::GraphConfigManager(int32_t camId,
         LOGE("Failed to allocate Graph Query Manager -- FATAL");
         return;
     }
-
-    mGraphConfigPool.init(MAX_REQ_IN_FLIGHT, GraphConfig::reset);
 }
 
 /**
@@ -118,10 +116,6 @@ void GraphConfigManager::initStreamResolutionIds()
 
 GraphConfigManager::~GraphConfigManager()
 {
-    // Check that all graph config objects are returned to the pool
-    if(!mGraphConfigPool.isFull()) {
-        LOGE("GraphConfig pool is missing objects at destruction!");
-    }
 }
 
 /**
@@ -515,29 +509,16 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     }
     dumpStreamConfig(streams); // TODO: remove this when GC integration is done
 
-    /*
-     * Currently it is enough to refresh information in graph config objects
-     * per stream config. Here we populate all gc objects in the pool.
-     */
-    std::shared_ptr<GraphConfig> gc = nullptr;
-    int poolSize = mGraphConfigPool.availableItems();
-    for (int i = 0; i < poolSize; i++) {
-        mGraphConfigPool.acquireItem(gc);
-        ret = prepareGraphConfig(gc);
-        if (ret != OK) {
-            LOGE("Failed to prepare graph config");
-            dumpQuery(mQuery);
-            return UNKNOWN_ERROR;
-        }
-    }
-
-    if (gc.get() == nullptr) {
-        LOGE("Graph config is NULL, BUG!");
+    mGraphConfig = std::make_shared<GraphConfig>();
+    ret = prepareGraphConfig(mGraphConfig);
+    if (ret != OK) {
+        LOGE("Failed to prepare graph config");
+        dumpQuery(mQuery);
         return UNKNOWN_ERROR;
     }
 
     bool swapVideoPreview = needSwapVideoPreview(mFirstQueryResults[0], id);
-    gc->setMediaCtlConfig(mMediaCtl, swapVideoPreview, needEnableStill);
+    mGraphConfig->setMediaCtlConfig(mMediaCtl, swapVideoPreview, needEnableStill);
 
     // Get media control config
     for (size_t i = 0; i < MEDIA_TYPE_MAX_COUNT; i++) {
@@ -551,11 +532,11 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
         mMediaCtlConfigs[i].mControlParams.clear();
         mMediaCtlConfigs[i].mVideoNodes.clear();
     }
-    ret = gc->getMediaCtlData(&mMediaCtlConfigs[CIO2]);
+    ret = mGraphConfig->getMediaCtlData(&mMediaCtlConfigs[CIO2]);
     if (ret != OK) {
         LOGE("Couldn't get mediaCtl data");
     }
-    ret = gc->getImguMediaCtlData(mCameraId,
+    ret = mGraphConfig->getImguMediaCtlData(mCameraId,
                                   testPatternMode,
                                   &mMediaCtlConfigs[IMGU_COMMON],
                                   &mMediaCtlConfigs[IMGU_VIDEO],
@@ -587,7 +568,7 @@ status_t GraphConfigManager::prepareGraphConfig(std::shared_ptr<GraphConfig> gc)
         return UNKNOWN_ERROR;
     }
 
-    status = gc->prepare(this, result, mStreamToSinkIdMap, mFallback);
+    status = gc->prepare(result, mStreamToSinkIdMap);
     LOG1("Graph config object prepared");
 
     return status;
@@ -710,10 +691,9 @@ const MediaCtlConfig* GraphConfigManager::getMediaCtlConfigPrev(IStreamConfigPro
 std::shared_ptr<GraphConfig>
 GraphConfigManager::getGraphConfig(Camera3Request &request)
 {
-    std::shared_ptr<GraphConfig> gc;
+    std::shared_ptr<GraphConfig> gc = mGraphConfig;
     status_t status = OK;
 
-    status = mGraphConfigPool.acquireItem(gc);
     if (CC_UNLIKELY(status != OK) || gc == nullptr) {
         LOGE("Failed to acquire GraphConfig from pool!!- BUG");
         return gc;
@@ -745,10 +725,9 @@ GraphConfigManager::getGraphConfig(Camera3Request &request)
  */
 std::shared_ptr<GraphConfig> GraphConfigManager::getBaseGraphConfig()
 {
-    std::shared_ptr<GraphConfig> gc;
+    std::shared_ptr<GraphConfig> gc = mGraphConfig;
     status_t status = OK;
 
-    status = mGraphConfigPool.acquireItem(gc);
     if (CC_UNLIKELY(status != OK || gc.get() == nullptr)) {
         LOGE("Failed to acquire GraphConfig from pool!!- BUG");
         return gc;
