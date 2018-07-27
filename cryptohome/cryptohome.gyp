@@ -147,7 +147,6 @@
         'mount_encrypted/encrypted_fs.cc',
         'mount_encrypted/encryption_key.cc',
         'mount_encrypted/tpm.cc',
-        'mount_helpers.cc',
       ],
       'variables': {
         'deps': [
