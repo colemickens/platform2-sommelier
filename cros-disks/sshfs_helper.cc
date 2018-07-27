@@ -25,7 +25,6 @@ const char kUserName[] = "fuse-sshfs";
 const char kHelperTool[] = "/usr/bin/sshfs";
 const char kType[] = "sshfs";
 
-const char kOptionFollowSymlinks[] = "follow_symlinks";
 const char kOptionIdentityFile[] = "IdentityFile=";
 const char kOptionIdentityBase64[] = "IdentityBase64=";
 const char kOptionUserKnownHostsFile[] = "UserKnownHostsFile=";
@@ -37,6 +36,7 @@ const char* const kEnforcedOptions[] = {
     "KbdInteractiveAuthentication=no",
     "PasswordAuthentication=no",
     "BatchMode=yes",
+    "follow_symlinks",
     FUSEHelper::kOptionAllowOther,
     FUSEHelper::kOptionDefaultPermissions,
 };
@@ -98,7 +98,6 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
   for (const auto& opt : kEnforcedOptions) {
     mount_options.EnforceOption(opt);
   }
-  mount_options.WhitelistOption(kOptionFollowSymlinks);
   // We don't whitelist *Base64 versions as we replace them with files.
   mount_options.WhitelistOptionPrefix(kOptionIdentityFile);
   mount_options.WhitelistOptionPrefix(kOptionUserKnownHostsFile);
