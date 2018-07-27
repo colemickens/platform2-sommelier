@@ -198,6 +198,7 @@ bool CrosDisksServer::GetDeviceProperties(
   }
 
   brillo::VariantDictionary temp_properties;
+  temp_properties[kIsAutoMountable] = disk.is_auto_mountable;
   temp_properties[kDeviceIsDrive] = disk.is_drive;
   temp_properties[kDevicePresentationHide] = disk.is_hidden;
   temp_properties[kDeviceIsMounted] = disk.IsMounted();

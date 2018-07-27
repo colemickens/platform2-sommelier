@@ -12,6 +12,7 @@
       <tp:member name="DeviceIsOnBootDevice" type="b" />
       <tp:member name="DeviceIsOnRemovableDevice" type="b" />
       <tp:member name="DeviceIsVirtual" type="b" />
+      <tp:member name="IsAutoMountable" type="b" />
       <tp:member name="IdUuid" type="s" />
       <tp:member name="IdLabel" type="s" />
       <tp:member name="VendorId" type="s" />
