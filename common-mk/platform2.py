@@ -201,6 +201,7 @@ class Platform2(object):
                                   'gen/components_*'))
 
   def should_use_gn(self):
+    """Returns true if GN should be used on configure."""
     build_gn = os.path.join(self.get_platform2_root(), self.platform_subdir,
                             'BUILD.gn')
     return os.path.isfile(build_gn)
@@ -243,7 +244,7 @@ class Platform2(object):
         'build_root': self.get_buildroot(),
         'platform2_root': self.get_platform2_root(),
         'libbase_ver': self.libbase_ver,
-        'enable_exceptions': os.environ.get('CXXEXCEPTIONS', 0) == "1",
+        'enable_exceptions': os.environ.get('CXXEXCEPTIONS', 0) == '1',
         'external_cflags': flags(os.environ.get('CFLAGS', '')),
         'external_cxxflags': flags(os.environ.get('CXXFLAGS', '')),
         'external_cppflags': flags(os.environ.get('CPPFLAGS', '')),
@@ -279,7 +280,7 @@ class Platform2(object):
     for k, v in common_args.iteritems():
       if isinstance(v, bool):
         v = int(v)
-      gyp_args.append("-D%s=%s" % (k, v))
+      gyp_args.append('-D%s=%s' % (k, v))
 
     # USE flags allow some chars that gyp does not, so normalize them.
     gyp_args += ['-DUSE_%s=1' % (use_flag.replace('-', '_'),)
@@ -401,7 +402,7 @@ def GetParser():
                       help='number of jobs to run in parallel')
   parser.add_argument('--verbose', action='store_true', default=None,
                       help='enable verbose log output')
-  parser.add_argument('--platform_subdir',
+  parser.add_argument('--platform_subdir', required=True,
                       help='subdir in platform2 where the package is located')
   parser.add_argument('args', nargs='*')
 
