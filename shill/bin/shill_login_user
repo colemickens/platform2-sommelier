@@ -91,13 +91,25 @@ if [ ! -d "$profile_dir" ]; then
     logger -t "$script_name" \
       "Failed to create shill user profile directory $profile_dir"
     exit 1
-  else
-    if ! chown shill:shill "$profile_dir" ; then
-      logger -t "$script_name" \
-        "Failed to chown shill user profile directory $profile_dir"
-      exit 1
-    fi
   fi
+fi
+
+# We need to ensure this dir (and files within it) are owned by shill:shill,
+# regardless of whether we are creating it on this login or it already existed
+# before now. By default, the 'chown -R' command does not follow symlinks, so
+# there is no way shill can put a symlink in this dir as means of tricking the
+# system into making other files owned by 'shill'. Also, this being the "shill
+# user profile directory", it is fine to give shill ownership of all of its
+# contents. Although 'chown -R' doesn't follow symlinks, it does affect bind
+# mounts, so this code is only safe as long as shill runs without
+# CAP_SYS_ADMIN. Ideally we should have some kind of test to make sure shill
+# capabilities are never widened to include CAP_SYS_ADMIN -- filed
+# crbug.com/869170 to track this issue in the general sense for CrOS system
+# services.
+if ! chown -R shill:shill "$profile_dir" ; then
+  logger -t "$script_name" \
+    "Failed to chown shill user profile directory $profile_dir"
+  exit 1
 fi
 
 if ! mkdir -p --mode 0700 "$profile_link_root"; then
