@@ -167,7 +167,8 @@ public:
 
     enum PipeType {
         PIPE_STILL = 0,
-        PIPE_PREVIEW,
+        PIPE_VIDEO,
+        PIPE_MAX
     };
     PipeType getPipeType() const { return mPipeType; }
     void setPipeType(PipeType type) { mPipeType = type; }

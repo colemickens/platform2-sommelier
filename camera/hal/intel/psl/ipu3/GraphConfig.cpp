@@ -72,7 +72,7 @@ GraphConfig::GraphConfig() :
         mSettings(nullptr),
         mReqId(0),
         mCIO2Format(V4L2_PIX_FMT_IPU3_SGRBG10),
-        mPipeType(PIPE_PREVIEW),
+        mPipeType(PIPE_VIDEO),
         mSourceType(SRC_NONE)
 {
     //CLEAR(mProgramGroup);

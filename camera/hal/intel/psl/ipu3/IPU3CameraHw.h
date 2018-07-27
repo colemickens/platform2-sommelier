@@ -74,7 +74,7 @@ class IPU3CameraHw: public ICameraHw {
     camera3_stream_t* findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams);
 
     UseCase checkUseCase(Camera3Request* request) const;
-    status_t reconfigureStreams(UseCase newUseCase, uint32_t operation_mode, int32_t testPatternMode);
+    status_t configStreamsPrivate(uint32_t operation_mode);
 
  private:  //members
     int mCameraId;

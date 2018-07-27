@@ -119,8 +119,8 @@ IPU3CameraHw::deInit()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mImguUnit) {
-       mImguUnit->cleanListener();
-       mImguUnit->flush();
+        mImguUnit->cleanListener();
+        mImguUnit->flush();
     }
 
     if (mCaptureUnit) {
@@ -257,8 +257,6 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     uint32_t maxBufs, usage;
-    status_t status = NO_ERROR;
-    bool configChanged = true;
 
     mOperationMode = operation_mode;
     mStreamsStill.clear();
@@ -304,12 +302,6 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
         }
     }
 
-    /* Flush to make sure we return all graph config objects to the pool before
-       next stream config. */
-    mCaptureUnit->flush();
-    mImguUnit->flush();
-    mControlUnit->flush();
-
     mUseCase = USECASE_VIDEO; // Configure video pipe by default
     if (mStreamsVideo.empty() && !hasInputStream) {
         mUseCase = USECASE_STILL;
@@ -317,30 +309,7 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     LOG1("%s: select usecase %d, video/still stream num: %zu/%zu", __FUNCTION__,
             mUseCase, mStreamsVideo.size(), mStreamsStill.size());
 
-    std::vector<camera3_stream_t*> &configuredStreams =
-            (mUseCase == USECASE_STILL) ? mStreamsStill : mStreamsVideo;
-
-    status = mGCM.configStreams(configuredStreams, operation_mode, mTestPatternMode);
-    if (status != NO_ERROR) {
-        LOGE("Unable to configure stream: No matching graph config found! BUG");
-        return status;
-    }
-
-    status = mCaptureUnit->configStreams(configuredStreams, configChanged);
-    if (status != NO_ERROR) {
-        LOGE("Unable to configure stream");
-        return status;
-    }
-
-    status = mImguUnit->configStreams(configuredStreams);
-    if (status != NO_ERROR) {
-        LOGE("Unable to configure stream for ImguUnit");
-        return status;
-    }
-
-    status = mControlUnit->configStreamsDone(configChanged);
-
-    return status;
+    return configStreamsPrivate(operation_mode);
 }
 
 status_t
@@ -387,7 +356,9 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
             return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED;
         }
 
-        status = reconfigureStreams(newUseCase, mOperationMode, testPatternMode);
+        mUseCase = newUseCase;
+        mTestPatternMode = testPatternMode;
+        status = configStreamsPrivate(mOperationMode);
     }
 
     if (status == NO_ERROR) {
@@ -432,11 +403,8 @@ status_t IPU3CameraHw::getTestPatternMode(Camera3Request* request, int32_t* test
     return NO_ERROR;
 }
 
-status_t IPU3CameraHw::reconfigureStreams(UseCase newUseCase,
-                                  uint32_t operation_mode, int32_t testPatternMode)
+status_t IPU3CameraHw::configStreamsPrivate(uint32_t operation_mode)
 {
-    mUseCase = newUseCase;
-    mTestPatternMode = testPatternMode;
     std::vector<camera3_stream_t*>& streams = (mUseCase == USECASE_STILL) ?
                                               mStreamsStill : mStreamsVideo;
 
@@ -446,23 +414,17 @@ status_t IPU3CameraHw::reconfigureStreams(UseCase newUseCase,
     mImguUnit->flush();
     mControlUnit->flush();
 
-    status_t status = mGCM.configStreams(streams, operation_mode, testPatternMode);
+    status_t status = mGCM.configStreams(streams, operation_mode, mTestPatternMode);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");
         return status;
     }
 
     status = mCaptureUnit->configStreams(streams, true);
-    if (status != NO_ERROR) {
-        LOGE("Unable to configure stream");
-        return status;
-    }
+    CheckError(status != NO_ERROR, status, "Unable to configure stream for CaptureUnit");
 
     status = mImguUnit->configStreams(streams);
-    if (status != NO_ERROR) {
-        LOGE("Unable to configure stream for ImguUnit");
-        return status;
-    }
+    CheckError(status != NO_ERROR, status, "Unable to configure stream for ImguUnit");
 
     return mControlUnit->configStreamsDone(true);
 }
