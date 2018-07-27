@@ -20,7 +20,6 @@
       <tp:member name="ProductName" type="s" />
       <tp:member name="DeviceFile" type="s" />
       <tp:member name="DriveModel" type="s" />
-      <tp:member name="DriveIsRotational" type="b" />
       <tp:member name="DeviceIsReadOnly" type="b" />
       <tp:member name="DeviceSize" type="t" />
       <tp:member name="FileSystemType" type="s" />
