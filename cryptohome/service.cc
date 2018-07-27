@@ -4,8 +4,9 @@
 
 #include "cryptohome/service.h"
 #if USE_TPM2
+#include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/service_distributed.h"
-#endif
+#endif  // USE_TPM2
 #include "cryptohome/service_monolithic.h"
 
 #include <inttypes.h>
@@ -2924,7 +2925,10 @@ scoped_refptr<cryptohome::Mount> Service::GetOrCreateMountForUser(
   base::AutoLock _lock(mounts_lock_);
   if (mounts_.count(username) == 0U) {
     m = mount_factory_->New();
-    m->Init(platform_, crypto_, user_timestamp_cache_.get());
+    m->Init(platform_, crypto_,
+            user_timestamp_cache_.get(),
+            base::BindRepeating(&Service::PreMountCallback,
+                                base::Unretained(this)));
     m->set_enterprise_owned(enterprise_owned_);
     m->set_legacy_mount(legacy_mount_);
     mounts_[username] = m;
@@ -3183,6 +3187,17 @@ gboolean Service::GetCurrentSpaceForGid(guint32 gid,
                                         GError** error) {
   *OUT_cur_space = arc_disk_quota_->GetCurrentSpaceForGid(gid);
   return TRUE;
+}
+
+void Service::PreMountCallback() {
+#if USE_TPM2
+  // Lock NVRamBootLockbox
+  auto nvram_boot_lockbox_client =
+      BootLockboxClient::CreateBootLockboxClient();
+  if (!nvram_boot_lockbox_client->Finalize()) {
+    LOG(WARNING) << "Failed to finalize nvram lockbox.";
+  }
+#endif  // USE_TMP2
 }
 
 }  // namespace cryptohome

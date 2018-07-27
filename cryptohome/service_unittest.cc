@@ -541,9 +541,12 @@ const Mounts kShadowMounts[] = {
   { FilePath("/home/.shadow/b"), FilePath("/home/user/1")},
   { FilePath("/home/.shadow/a"), FilePath("/home/chronos/user")},
   { FilePath("/home/.shadow/b"), FilePath("/home/root/1")},
-  { FilePath("/home/user/b/Downloads"), FilePath("/home/user/b/MyFiles/Downloads")},
-  { FilePath("/home/chronos/u-b/Downloads"), FilePath("/home/chronos/u-b/MyFiles/Downloads")},
-  { FilePath("/home/chronos/user/Downloads"), FilePath("/home/chronos/user/MyFiles/Downloads")},
+  { FilePath("/home/user/b/Downloads"),
+    FilePath("/home/user/b/MyFiles/Downloads")},
+  { FilePath("/home/chronos/u-b/Downloads"),
+    FilePath("/home/chronos/u-b/MyFiles/Downloads")},
+  { FilePath("/home/chronos/user/Downloads"),
+    FilePath("/home/chronos/user/MyFiles/Downloads")},
 };
 const int kShadowMountsCount = 8;
 
@@ -772,7 +775,7 @@ TEST_F(ServiceTestNotInitialized,
     .WillOnce(Return(false));
   ASSERT_TRUE(service_.Initialize());
 
-  EXPECT_CALL(*mount, Init(&platform_, service_.crypto(), _))
+  EXPECT_CALL(*mount, Init(&platform_, service_.crypto(), _, _))
     .WillOnce(Return(true));
   EXPECT_CALL(*mount, MountCryptohome(_, _, _))
     .WillOnce(Return(true));

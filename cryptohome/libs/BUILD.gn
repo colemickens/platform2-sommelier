@@ -396,6 +396,17 @@ if (use.tpm2) {
     ]
   }
 
+  static_library("libnvram-boot-lockbox-client") {
+    configs += [ ":target_defaults"]
+    sources = [ "../bootlockbox/boot_lockbox_client.cc" ]
+    all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
+
+    deps = [
+      ":bootlockbox-client-headers",
+      ":bootlockbox-proto",
+    ]
+  }
+
   static_library("libnvram-boot-lockbox") {
     configs += [ ":target_defaults" ]
     sources = [
@@ -405,18 +416,8 @@ if (use.tpm2) {
     all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
 
     deps = [
-      ":bootlockbox-proto",
+      ":cryptohome-proto",
       ":libcrosplatform",
-    ]
-  }
-
-  static_library("libnvram-boot-lockbox-client") {
-    configs += [ ":target_defaults"]
-    sources = [ "../bootlockbox/boot_lockbox_client.cc" ]
-    all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
-
-    deps = [
-      ":bootlockbox-client-headers",
       ":bootlockbox-proto",
     ]
   }

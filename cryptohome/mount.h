@@ -85,6 +85,9 @@ class UserOldestActivityTimestampCache;
 // the directory's crypto key.
 class Mount : public base::RefCountedThreadSafe<Mount> {
  public:
+  // Called before mount cryptohome.
+  using PreMountCallback = base::RepeatingCallback<void()>;
+
   enum class MountType {
     NONE,  // Not mounted.
     ECRYPTFS,  // Encrypted with ecryptfs.
@@ -115,7 +118,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Gets the uid/gid of the default user and loads the system salt
   virtual bool Init(Platform* platform, Crypto* crypto,
-                    UserOldestActivityTimestampCache *cache);
+                    UserOldestActivityTimestampCache *cache,
+                    PreMountCallback pre_mount_callback);
 
   // Attempts to mount the cryptohome for the given credentials
   //
@@ -843,6 +847,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   BootLockbox* boot_lockbox_;
   std::unique_ptr<BootLockbox> default_boot_lockbox_;
+
+  PreMountCallback pre_mount_callback_;
 
   dircrypto_data_migrator::MigrationHelper* active_dircrypto_migrator_ =
       nullptr;

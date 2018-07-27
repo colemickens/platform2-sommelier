@@ -432,6 +432,7 @@ if (use.test) {
       "scrypt",
     ]
     deps = [
+      "libs:bootlockbox-client-headers",
       "libs:libcrostpm",
       "libs:libcryptohome",
       "libs:cryptohome-proto",

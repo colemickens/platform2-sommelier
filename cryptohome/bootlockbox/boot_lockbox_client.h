@@ -12,11 +12,16 @@
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 
-#include "bootlockbox/dbus-proxies.h"
-
 namespace base {
 class FilePath;
 }  // namespace base
+
+// Uses forward declaration because b/120999677.
+namespace org {
+namespace chromium {
+class BootLockboxInterfaceProxy;
+}  // namespace chromium
+}  // namespace org
 
 namespace cryptohome {
 

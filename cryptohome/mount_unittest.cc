@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -172,6 +174,7 @@ class MountTest
     homedirs_.set_shadow_root(kImageDir);
     EXPECT_TRUE(homedirs_.GetSystemSalt(nullptr /* blob */));
     set_policy(false, "", false);
+    premount_callback_counter_ = 0;
   }
 
   void TearDown() {
@@ -182,6 +185,10 @@ class MountTest
   void InsertTestUsers(const TestUserInfo* user_info_list, int count) {
     helper_.InitTestData(kImageDir, user_info_list,
                          static_cast<size_t>(count), ShouldTestEcryptfs());
+  }
+
+  void PreMountCallback() {
+    premount_callback_counter_ += 1;
   }
 
   bool DoMountInit() {
@@ -196,7 +203,10 @@ class MountTest
     EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
       .WillOnce(DoAll(SetArgPointee<1>(shared_gid_),
                       Return(true)));
-    return mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get());
+    return mount_->Init(&platform_, &crypto_,
+                        user_timestamp_cache_.get(),
+                        base::BindRepeating(&MountTest::PreMountCallback,
+                                            base::Unretained(this)));
   }
 
   bool LoadSerializedKeyset(const brillo::Blob& contents,
@@ -548,6 +558,7 @@ class MountTest
   MockChapsClientFactory chaps_client_factory_;
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
   scoped_refptr<Mount> mount_;
+  int premount_callback_counter_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTest);
@@ -584,7 +595,9 @@ TEST_P(MountTest, BadInitTest) {
                     Return(true)));
   EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
     .WillOnce(DoAll(SetArgPointee<1>(1002), Return(true)));
-  EXPECT_FALSE(mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get()));
+  EXPECT_FALSE(mount_->Init(&platform_, &crypto_,
+                            user_timestamp_cache_.get(),
+                            base::BindRepeating(&base::DoNothing)));
   ASSERT_FALSE(mount_->AreValid(up));
 }
 
@@ -778,7 +791,9 @@ class ChapsDirectoryTest : public ::testing::Test {
         mount_(new Mount()),
         user_timestamp_cache_(new UserOldestActivityTimestampCache()) {
     crypto_.set_platform(&platform_);
-    mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get());
+    mount_->Init(&platform_, &crypto_,
+                 user_timestamp_cache_.get(),
+                 base::BindRepeating(&base::DoNothing));
     mount_->chaps_user_ = kChapsUID;
     mount_->default_access_group_ = kSharedGID;
     // By default, set stats to the expected values.
@@ -1629,8 +1644,10 @@ TEST_P(MountTest, LockboxGetsFinalized) {
   UsernamePasskey up("username", SecureBlob("password"));
   Mount::MountArgs args = GetDefaultMountArgs();
   MountError error = MOUNT_ERROR_NONE;
+  EXPECT_EQ(premount_callback_counter_, 0);
   mount_->MountCryptohome(up, args, &error);
   mount_->MountGuestCryptohome();
+  EXPECT_EQ(premount_callback_counter_, 2);
 }
 
 TEST_P(MountTest, TwoWayKeysetMigrationTest) {

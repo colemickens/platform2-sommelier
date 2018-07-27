@@ -197,6 +197,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   // in CleanUpStaleMounts.
   virtual bool CleanUpHiddenMounts();
 
+  // Mount::PreMountCallback. Called before Mount starts to mount cryptohome.
+  virtual void PreMountCallback();
+
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
   void set_force_ecryptfs(bool force_ecryptfs) {
     force_ecryptfs_ = force_ecryptfs;

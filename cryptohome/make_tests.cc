@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <memory>
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -226,7 +228,8 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
       .WillRepeatedly(DoAll(SetArgPointee<1>(sec_salt), Return(true)));
   EXPECT_CALL(platform, DirectoryExists(shadow_root))
     .WillRepeatedly(Return(true));
-  mount->Init(&platform, &crypto, &timestamp_cache);
+  mount->Init(&platform, &crypto, &timestamp_cache,
+              base::Bind(&base::DoNothing));
 
   cryptohome::Crypto::PasswordToPasskey(password,
                                         salt,

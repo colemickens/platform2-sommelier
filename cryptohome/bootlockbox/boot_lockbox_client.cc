@@ -13,6 +13,8 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus.h>
 
+#include "bootlockbox/dbus-proxies.h"
+
 #include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {

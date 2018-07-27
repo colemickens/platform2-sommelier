@@ -147,10 +147,12 @@ Mount::~Mount() {
 }
 
 bool Mount::Init(Platform* platform, Crypto* crypto,
-                 UserOldestActivityTimestampCache *cache) {
+                 UserOldestActivityTimestampCache *cache,
+                 PreMountCallback pre_mount_callback) {
   platform_ = platform;
   crypto_ = crypto;
   user_timestamp_cache_ = cache;
+  pre_mount_callback_ = pre_mount_callback;
 
   bool result = true;
 
@@ -280,6 +282,10 @@ bool Mount::MountCryptohome(const Credentials& credentials,
   CHECK(boot_lockbox_ || !use_tpm_);
   if (boot_lockbox_ && !boot_lockbox_->FinalizeBoot()) {
     LOG(WARNING) << "Failed to finalize boot lockbox.";
+  }
+
+  if (!pre_mount_callback_.is_null()) {
+    pre_mount_callback_.Run();
   }
 
   if (IsMounted()) {
@@ -1387,6 +1393,10 @@ bool Mount::MountGuestCryptohome() {
   CHECK(boot_lockbox_ || !use_tpm_);
   if (boot_lockbox_ && !boot_lockbox_->FinalizeBoot()) {
     LOG(WARNING) << "Failed to finalize boot lockbox.";
+  }
+
+  if (!pre_mount_callback_.is_null()) {
+    pre_mount_callback_.Run();
   }
 
   current_user_->Reset();

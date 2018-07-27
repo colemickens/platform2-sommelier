@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -1434,7 +1435,9 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   newcreds.GetPasskey(&newkey);
   UsernamePasskey oldcreds(newcreds.username().c_str(), oldkey);
   scoped_refptr<Mount> mount = mount_factory_->New();
-  mount->Init(platform_, crypto_, timestamp_cache_);
+  mount->Init(platform_, crypto_, timestamp_cache_,
+              base::BindRepeating(&base::DoNothing));
+
   std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
   if (!mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
     LOG(ERROR) << "Migrate: Mount failed";
