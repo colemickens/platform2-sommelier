@@ -4,6 +4,9 @@
 
 #include "cryptohome/mount_encrypted/encryption_key.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -14,7 +17,6 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/tpm.h"
-#include "cryptohome/mount_helpers.h"
 
 namespace paths {
 const char kStatefulMount[] = "mnt/stateful_partition";
@@ -92,6 +94,54 @@ bool WriteKeyFile(const base::FilePath& path,
   }
 
   return true;
+}
+
+// ShredFile - Overwrite file contents. Useless on SSD. :(
+// Currently, if the TPM is not ready, we encrypt the encryption key data
+// with a static key and write it to disk. This function is a best-attempt to
+// clear the contents of the key file.
+// We'd ideally never write an insufficiently protected key to disk. This
+// is already the case for TPM 2.0 devices as they can create system keys as
+// needed, and we can improve the situation for TPM 1.2 devices as well by (1)
+// using an NVRAM space that doesn't get lost on TPM clear and (2) allowing
+// mount-encrypted to take ownership and create the NVRAM space if necessary.
+void ShredFile(const base::FilePath& file) {
+  uint8_t patterns[] = {0xA5, 0x5A, 0xFF, 0x00};
+  FILE* target;
+  struct stat info;
+  uint8_t* pattern;
+  int i;
+
+  // Give up if we can't safely open or stat the target.
+  base::ScopedFD fd(
+    HANDLE_EINTR(open(file.value().c_str(),
+                      O_WRONLY | O_NOFOLLOW | O_CLOEXEC)));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << file;
+    return;
+  }
+  if (fstat(fd.get(), &info)) {
+    PLOG(ERROR) << file;
+    return;
+  }
+  if (!(target = fdopen(fd.get(), "w"))) {
+    PLOG(ERROR) << file;
+    return;
+  }
+
+  // Ignore errors here, since there's nothing we can really do.
+  pattern = static_cast<uint8_t*>(malloc(info.st_size));
+  for (i = 0; i < sizeof(patterns); ++i) {
+    memset(pattern, patterns[i], info.st_size);
+    if (fseek(target, 0, SEEK_SET))
+      PLOG(ERROR) << file;
+    if (fwrite(pattern, info.st_size, 1, target) != 1)
+      PLOG(ERROR) << file;
+    if (fflush(target))
+      PLOG(ERROR) << file;
+    if (fdatasync(fd.get()))
+      PLOG(ERROR) << file;
+  }
 }
 
 std::string HexEncode(const brillo::SecureBlob& data) {
@@ -346,7 +396,7 @@ void EncryptionKey::Finalize() {
   // the old block. See comment above regarding options to get rid of the
   // finalization intent file in the long run.
   if (base::PathExists(needs_finalization_path_)) {
-    shred(needs_finalization_path_.value().c_str());
+    ShredFile(needs_finalization_path_);
     base::DeleteFile(needs_finalization_path_, false /* recursive */);
   }
 }

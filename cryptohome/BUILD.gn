@@ -163,7 +163,6 @@ static_library("mount_encrypted_lib") {
     "mount_encrypted/encrypted_fs.cc",
     "mount_encrypted/encryption_key.cc",
     "mount_encrypted/tpm.cc",
-    "mount_helpers.cc",
   ]
   defines = [ "CHROMEOS_ENVIRONMENT=1" ]
   deps = [

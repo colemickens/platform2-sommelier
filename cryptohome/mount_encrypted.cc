@@ -28,7 +28,6 @@
 #include "cryptohome/mount_encrypted/encrypted_fs.h"
 #include "cryptohome/mount_encrypted/encryption_key.h"
 #include "cryptohome/mount_encrypted/tpm.h"
-#include "cryptohome/mount_helpers.h"
 
 #define PROP_SIZE 64
 
