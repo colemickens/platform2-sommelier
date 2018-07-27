@@ -319,6 +319,29 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
         return status;
     }
 
+    //AIQ vblanking should include IF crop size.
+    ia_aiq_exposure_sensor_descriptor *desc = &outMsg.data.event.exposureDesc;
+    string baseNode = string("imgu:");
+    string node;
+    unsigned short ifWidth, ifHeight;
+    unsigned short inputWidth, inputHeight;
+
+    if(baseConfig->doesNodeExist(baseNode + GC_PREVIEW + ":if")) {
+      node = baseNode + GC_PREVIEW + ":if";
+    } else if (baseConfig->doesNodeExist(baseNode + GC_VIDEO + ":if")) {
+      node = baseNode + GC_VIDEO + ":if";
+    }
+    status = baseConfig->graphGetDimensionsByName(node, ifWidth, ifHeight);
+
+    node = baseNode + GC_INPUT;
+    status |= baseConfig->graphGetDimensionsByName(node, inputWidth, inputHeight);
+
+    if(status == OK) {
+        desc->line_periods_vertical_blanking += (inputHeight - ifHeight);
+    } else {
+        LOGE("@%s: get input or IF size error", __FUNCTION__);
+    }
+
     outMsg.data.event.frameParams = isysConfigResult.sensorFrameParams;
 
     notifyListeners(&outMsg);
