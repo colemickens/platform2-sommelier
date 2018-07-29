@@ -327,6 +327,11 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   // Expect an empty reply as success.
   DispatchEvents();
   EXPECT_TRUE(ReplyIsEmpty());
+
+  // Reset pointers from local variables that will be destroyed before
+  // |service_|.
+  service_.set_homedirs(&homedirs_);
+  service_.set_crypto(&crypto_);
 }
 
 TEST_F(ServiceTest, GetPublicMountPassKey) {
