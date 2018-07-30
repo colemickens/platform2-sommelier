@@ -8,6 +8,11 @@
 
 from __future__ import print_function
 
+# Usually we should use cros_build_lib.RunCommand over subprocess.check_output
+# to avoid possible issues in subprocess. Here we use subprocess exceptionally,
+# because the usage is simple enough, and lower overhead is important as it
+# being called about ten times per each ebuild. See crbug.com/868820 for the
+# time comparison.
 import subprocess
 
 def parse_shell_args(s):
@@ -21,5 +26,5 @@ def parse_shell_args(s):
   # The dummy variable prevents the first value in s from interpreted as a flag
   # for echo. IFS is set to separate $* with newlines.
   output = subprocess.check_output(
-      ['eval "set -- dummy $0"; IFS=$\'\\n\'; echo -n "$*"', s], shell=True)
+      ['eval "set -- dummy $0"; IFS=$\'\\n\'; printf "%s" "$*"', s], shell=True)
   return output.splitlines()[1:]
