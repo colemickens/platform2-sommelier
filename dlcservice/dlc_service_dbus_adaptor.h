@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <imageloader/dbus-proxies.h>
+#include <update_engine/dbus-proxies.h>
 
 #include "dlcservice/dbus_adaptors/org.chromium.DlcServiceInterface.h"
 
@@ -25,6 +26,8 @@ class DlcServiceDBusAdaptor
   DlcServiceDBusAdaptor(
       std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
           image_loader_proxy,
+      std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
+          update_engine_proxy,
       const base::FilePath& manifest_dir,
       const base::FilePath& content_dir);
   ~DlcServiceDBusAdaptor();
@@ -41,6 +44,8 @@ class DlcServiceDBusAdaptor
 
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
       image_loader_proxy_;
+  std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
+      update_engine_proxy_;
 
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;

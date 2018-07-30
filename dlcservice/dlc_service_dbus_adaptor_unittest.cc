@@ -9,6 +9,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 #include <imageloader/dbus-proxy-mocks.h>
+#include <update_engine/dbus-proxy-mocks.h>
 
 #include "dlcservice/dlc_service_dbus_adaptor.h"
 
@@ -55,7 +56,9 @@ TEST_F(DlcServiceDBusAdaptorTest, LoadDlcImages) {
       .Times(0);
 
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
-      std::move(mock_image_loader_proxy), manifest_path_, content_path_);
+      std::move(mock_image_loader_proxy),
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
+      manifest_path_, content_path_);
 }
 
 }  // namespace dlcservice

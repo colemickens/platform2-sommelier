@@ -15,10 +15,13 @@ namespace dlcservice {
 DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
     std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
         image_loader_proxy,
+    std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
+        update_engine_proxy,
     const base::FilePath& manifest_dir,
     const base::FilePath& content_dir)
     : org::chromium::DlcServiceInterfaceAdaptor(this),
       image_loader_proxy_(std::move(image_loader_proxy)),
+      update_engine_proxy_(std::move(update_engine_proxy)),
       manifest_dir_(manifest_dir),
       content_dir_(content_dir) {
   LoadDlcImages();

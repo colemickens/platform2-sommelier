@@ -9,6 +9,7 @@
         'libchrome-<(libbase_ver)',
         'libbrillo-<(libbase_ver)',
         'libimageloader-client',
+        'libupdate_engine-client',
       ],
     },
   },
@@ -64,6 +65,7 @@
             'deps': [
               'libchrome-test-<(libbase_ver)',
               'libimageloader-client-test',
+              'libupdate_engine-client-test',
             ],
           },
           'sources': [
