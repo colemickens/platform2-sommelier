@@ -7,6 +7,8 @@ typeattribute device cros_dev_type;
 type cros_system_file, exec_type, file_type;
 type cros_crash_reporter_exec, exec_type, file_type;
 type cros_shill_exec, exec_type, file_type;
+type cros_modprobe_exec, exec_type, file_type;
+type cros_wpa_supplicant_exec, exec_type, file_type;
 
 type cros_syslog, file_type;
 

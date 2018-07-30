@@ -1,0 +1,5 @@
+type modprobe, chromeos_domain, domain;
+
+permissive modprobe;
+
+domain_auto_trans(chromeos_domain, cros_modprobe_exec, modprobe);

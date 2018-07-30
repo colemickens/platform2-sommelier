@@ -39,4 +39,6 @@ allow kernel device:filesystem getattr;
 allow kernel device:chr_file relabelfrom;
 allow kernel cros_dev_type:chr_file relabelto;
 
+allow kernel cros_modprobe_exec:{ file lnk_file } r_file_perms;
+
 neverallow * kernel:process { transition dyntransition };
