@@ -5,6 +5,8 @@
 #include <arpa/inet.h>
 #include <limits.h>
 
+#include <algorithm>
+
 #include <base/logging.h>
 
 #include "portier/ipv6_util.h"
@@ -19,7 +21,28 @@ using Code = Status::Code;
 namespace {
 
 // Used to mask the lower 16 bits of a 32-bit number.
-const uint32_t kMask16 = 0xffff;
+constexpr uint32_t kMask16 = 0xffff;
+
+// Length of a EUI-48 (MAC) address.
+constexpr int32_t kEui48Length = 6;
+// The byte offset of the last 32-bits (4 bytes) of an IPv6 address.
+constexpr int32_t kIPv6Low32BitsOffset = 12;
+// Number of bytes copied from the IPv6 multicast address to the
+// link-layer mulicast address.
+constexpr int32_t kMulticastIPv6ComponentSize = 4;
+
+// The address prefix for the IPv6 link-local subnet.
+const IPAddress kLinkLocalSubnet("fe80::");
+// IPv6 link-local subnet mask (10 bits).
+const IPAddress kLinkLocalSubnetMask("ffc0::");
+
+// Value of the first byte of multicast IPv6 addresses.
+constexpr uint8_t kMulticastIdentifier = 0xff;
+
+// The subnet and mask for solicited-node multicast addresses.
+const IPAddress kSolicitedNodeSubnet("ff02:0:0:0:0:1:ff00:0");
+const IPAddress kSolicitedNodeSubnetMask(
+    "ffff:ffff:ffff:ffff:ffff:ffff:ff00:0");
 
 // IPv6 Pseudo-Header.
 // This struct is created in such a way that it is byte-aligned with the
@@ -37,7 +60,6 @@ static_assert(sizeof(IPv6PseudoHeader) == 40,
 // Calculates the 16-bit one's complement of the provided data.
 uint16_t InternetChecksum16(const uint8_t* data, size_t data_length) {
   uint32_t sum = 0;
-
   // Iterate over each 16-bits of data and add to sum.  Checking
   // (i + 1) < data_length to avoid the case where there is an odd
   // mumber of bytes.
@@ -57,7 +79,6 @@ uint16_t InternetChecksum16(const uint8_t* data, size_t data_length) {
 
   // Add all the 16-bit overflows back into the 16-bit sum.
   sum = (sum & kMask16) + (sum >> 16);
-
   if (sum == kMask16) {
     sum = 0;
   }
@@ -92,14 +113,11 @@ Status IPv6UpperLayerChecksum16(const IPAddress& source_address,
   // In that case, the checksum will be of the pseudo header only.
   DCHECK(upper_layer_data == 0 || upper_layer_data != nullptr)
       << "Expected non-null value for `upper_layer_data'";
-
   DCHECK(checksum_out != nullptr)
       << "Expected non-null value for `checksum_out'";
-
   DCHECK(source_address.family() == IPAddress::kFamilyIPv6 &&
          destination_address.family() == IPAddress::kFamilyIPv6)
       << "The source and destination addresses must be IPv6";
-
   DCHECK(data_length < (1 << 17))
       << "Cannot accurately compute checksum for 2^17 or more bytes of data";
 
@@ -140,6 +158,57 @@ Status IPv6UpperLayerChecksum16(const IPAddress& source_address,
   return IPv6UpperLayerChecksum16(source_address, destination_address,
                                   next_header, upper_layer_data.GetConstData(),
                                   upper_layer_data.GetLength(), checksum_out);
+}
+
+bool IPv6AddressIsUnspecified(const IPAddress& ip_address) {
+  DCHECK(ip_address.family() == IPAddress::kFamilyIPv6);
+  const ByteString& bytes = ip_address.address();
+  return std::all_of(bytes.GetConstData(),
+                     bytes.GetConstData() + bytes.GetLength(),
+                     [](unsigned char byte) { return (0 == byte); });
+}
+
+bool IPv6AddressIsLinkLocal(const IPAddress& ip_address) {
+  DCHECK(ip_address.family() == IPAddress::kFamilyIPv6);
+  return kLinkLocalSubnet.Equals(ip_address.MaskWith(kLinkLocalSubnetMask));
+}
+
+bool IPv6AddressIsSolicitedNodeMulticast(const IPAddress& multicast_address,
+                                         const IPAddress& solicited_address) {
+  DCHECK(multicast_address.family() == IPAddress::kFamilyIPv6);
+  DCHECK(solicited_address.family() == IPAddress::kFamilyIPv6);
+  // Check that |multicast_address| is of the same subnet.
+  const bool solicited_node_net_match = kSolicitedNodeSubnet.Equals(
+      multicast_address.MaskWith(kSolicitedNodeSubnetMask));
+  // Check that the least-significant 24-bits of both address match.
+  const bool solicited_bottom_bits_match =
+      kSolicitedNodeSubnetMask.MergeWith(multicast_address)
+          .Equals(kSolicitedNodeSubnetMask.MergeWith(solicited_address));
+  // If both conditions are true, then |multicast_address| is the
+  // solicited-node multicast address of |solicited_address|.
+  return solicited_node_net_match && solicited_bottom_bits_match;
+}
+
+bool IPv6AddressIsMulticast(const shill::IPAddress& multicast_address) {
+  DCHECK(multicast_address.family() == IPAddress::kFamilyIPv6);
+  // Only the first byte needs to be checked to determine if the
+  // address is a mulicast address.
+  const uint8_t* first_byte = multicast_address.GetConstData();
+  return *first_byte == kMulticastIdentifier;
+}
+
+bool IPv6GetMulticastLinkLayerAddress(const IPAddress& ip_address,
+                                      LLAddress* multicast_ll_out) {
+  DCHECK(ip_address.family() == IPAddress::kFamilyIPv6);
+  DCHECK(multicast_ll_out != nullptr);
+  // Form an address of 33:33:xx:xx:xx:xx.
+  uint8_t raw_address[kEui48Length];
+  raw_address[0] = raw_address[1] = 0x33;
+  memcpy(&raw_address[2], ip_address.GetConstData() + kIPv6Low32BitsOffset,
+         kMulticastIPv6ComponentSize);
+  *multicast_ll_out = LLAddress(LLAddress::Type::kEui48,
+                                ByteString(raw_address, sizeof(raw_address)));
+  return true;
 }
 
 }  // namespace portier

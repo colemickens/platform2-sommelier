@@ -8,6 +8,7 @@
 #include <shill/net/byte_string.h>
 #include <shill/net/ip_address.h>
 
+#include "portier/ll_address.h"
 #include "portier/status.h"
 
 namespace portier {
@@ -56,6 +57,40 @@ Status IPv6UpperLayerChecksum16(const shill::IPAddress& source_address,
                                 uint8_t next_header,
                                 const shill::ByteString& upper_layer_data,
                                 uint16_t* checksum_out);
+
+// Check if the provied IP address is an IPv6 unspecified address (all zeros).
+bool IPv6AddressIsUnspecified(const shill::IPAddress& ip_address);
+
+// Checks if the provided address is a Link-Local address as defined in
+// RFC4291: IPv6 Addressing Architecture.  Link-local IPv6 addresses
+// are all addresses part of the fe80::/10 subnet.
+bool IPv6AddressIsLinkLocal(const shill::IPAddress& ip_address);
+
+// A solicited-node multicast address is of the form,
+// ff02:0:0:0:0:1:ffXX:XXXX, where the trailing 24-bits are the same
+// as the last 24-bits of the solicited address.
+// Args:
+//  - |multicast_address| The address that is tested to be a
+//    solicited-node multicast address.
+//  - |solicited_address| The address that is being solicited.
+bool IPv6AddressIsSolicitedNodeMulticast(
+    const shill::IPAddress& multicast_address,
+    const shill::IPAddress& solicited_address);
+
+// Detemines if the given IPv6 address is a multicast address as
+// defined in RFC 4291: IPv6 Address Architecture, section 2.7.
+// Multicast addresses are identified by belonging to the the ff00::/8
+// subnet. Any address that does not start with all 1's in the first
+// octet is not a multicast address.
+bool IPv6AddressIsMulticast(const shill::IPAddress& multicast_address);
+
+// Generates the multicast ethernet MAC address for IPv6 multicast
+// packets.  The mulicast MAC address is defined in RFC 7042 section
+// 2.3.1.  These multicast addresses lie in the range from
+// 33:33:00:00:00:00 to 33:33:ff:ff:ff:ff.  The lower 32-bits of the
+// MAC address are taken from the lower 32-bits of the IPv6 address.
+bool IPv6GetMulticastLinkLayerAddress(const shill::IPAddress& ip_address,
+                                      LLAddress* multicast_ll_out);
 
 }  // namespace portier
 
