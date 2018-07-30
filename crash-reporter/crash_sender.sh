@@ -178,8 +178,10 @@ get_extension() {
 
 # Return which kind of report the given metadata file relates to
 get_kind() {
-  local payload="$(get_key_value "$1" "payload")"
-  if [ ! -r "${payload}" ]; then
+  local meta_path="$1"
+  local payload="$(get_file_path "${meta_path}" "payload")"
+
+  if [ "${payload}" = "undefined" -o ! -r "${payload}" ]; then
     lecho "Missing payload: ${payload}"
     echo "undefined"
     return
@@ -203,6 +205,22 @@ get_key_value() {
   fi
 
   echo "${value:-undefined}"
+}
+
+# Get the full path to the file pointed at by the meta data.
+get_file_path() {
+  local file="$1"
+  local key="$2"
+  local value="$(get_key_value "${file}" "${key}")"
+
+  if [ "${value}" = "undefined" ]; then
+    echo "undefined"
+    return
+  fi
+
+  # Paths are relative to the metadata file.
+  # TODO: Reject reports w/absolute paths in M72+.
+  echo "$(dirname "${file}")/$(basename "${value}")"
 }
 
 # Try to find $key in a cached version of $file in this order:
@@ -279,7 +297,7 @@ get_hardware_class() {
 
 send_crash() {
   local meta_path="$1"
-  local report_payload="$(get_key_value "${meta_path}" "payload")"
+  local report_payload="$(get_file_path "${meta_path}" "payload")"
 
   if [ "${report_payload}" = "undefined" ]; then
     lecho "Failed reading payload from metadata."
@@ -297,7 +315,7 @@ send_crash() {
   local board="$(get_board)"
   local hwclass="$(get_hardware_class)"
   local write_payload_size="$(get_key_value "${meta_path}" "payload_size")"
-  local log="$(get_key_value "${meta_path}" "log")"
+  local log="$(get_file_path "${meta_path}" "log")"
   local sig="$(get_key_value "${meta_path}" "sig")"
   local send_payload_size="$(stat --printf=%s "${report_payload}" 2>/dev/null)"
   local product="$(get_key_value "${meta_path}" "upload_var_prod")"

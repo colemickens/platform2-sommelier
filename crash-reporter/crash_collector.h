@@ -196,7 +196,7 @@ class CrashCollector {
   // Write a file of metadata about crash.
   void WriteCrashMetaData(const base::FilePath& meta_path,
                           const std::string& exec_name,
-                          const std::string& payload_path);
+                          const std::string& payload_name);
 
   // Returns true if the a crash test is currently running.
   bool IsCrashTestInProgress();

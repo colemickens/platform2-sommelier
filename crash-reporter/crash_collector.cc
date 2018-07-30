@@ -678,8 +678,13 @@ void CrashCollector::AddCrashMetaData(const std::string& key,
 
 void CrashCollector::AddCrashMetaUploadFile(const std::string& key,
                                             const std::string& path) {
-  if (!path.empty())
-    AddCrashMetaData(kUploadFilePrefix + key, path);
+  if (!path.empty()) {
+    // TODO(vapier): Make it fatal if the name is not relative.
+    FilePath file_path = FilePath(path);
+    if (!NormalizeFilePath(file_path, &file_path))
+      PLOG(WARNING) << "Could not normalize " << path;
+    AddCrashMetaData(kUploadFilePrefix + key, file_path.value());
+  }
 }
 
 void CrashCollector::AddCrashMetaUploadData(const std::string& key,
@@ -690,8 +695,13 @@ void CrashCollector::AddCrashMetaUploadData(const std::string& key,
 
 void CrashCollector::AddCrashMetaUploadText(const std::string& key,
                                             const std::string& path) {
-  if (!path.empty())
-    AddCrashMetaData(kUploadTextPrefix + key, path);
+  if (!path.empty()) {
+    // TODO(vapier): Make it fatal if the name is not relative.
+    FilePath file_path = FilePath(path);
+    if (!NormalizeFilePath(file_path, &file_path))
+      PLOG(WARNING) << "Could not normalize " << path;
+    AddCrashMetaData(kUploadTextPrefix + key, file_path.value());
+  }
 }
 
 std::string CrashCollector::GetVersion() const {
@@ -726,7 +736,13 @@ std::string CrashCollector::GetVersion() const {
 
 void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
                                         const std::string& exec_name,
-                                        const std::string& payload_path) {
+                                        const std::string& payload_name) {
+  // TODO(vapier): Make it fatal if the name is not relative.
+  FilePath payload_path = FilePath(payload_name);
+  payload_path = meta_path.DirName().Append(payload_path.BaseName());
+  if (!NormalizeFilePath(payload_path, &payload_path))
+    PLOG(WARNING) << "Could not normalize " << payload_name;
+
   int64_t payload_size = -1;
   base::GetFileSize(FilePath(payload_path), &payload_size);
   const std::string version = GetVersion();
@@ -738,7 +754,7 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
       "\n"
       "done=1\n",
       extra_metadata_.c_str(), exec_name.c_str(), version.c_str(),
-      payload_path.c_str(), payload_size);
+      payload_path.value().c_str(), payload_size);
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.

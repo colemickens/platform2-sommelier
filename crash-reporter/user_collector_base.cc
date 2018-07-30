@@ -251,8 +251,12 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   FilePath minidump_path = GetCrashPath(crash_path, dump_basename, "dmp");
   FilePath log_path = GetCrashPath(crash_path, dump_basename, "log");
 
-  if (GetLogContents(FilePath(log_config_path_), exec, log_path))
-    AddCrashMetaData("log", log_path.value());
+  if (GetLogContents(FilePath(log_config_path_), exec, log_path)) {
+    FilePath full_path = log_path;
+    if (!NormalizeFilePath(log_path, &full_path))
+      full_path = log_path;
+    AddCrashMetaData("log", full_path.value());
+  }
 
 #if USE_DIRENCRYPTION
   // Join the session keyring, if one exists.

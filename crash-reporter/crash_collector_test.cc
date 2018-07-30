@@ -384,6 +384,7 @@ TEST_F(CrashCollectorTest, MetaData) {
   FilePath meta_file = test_dir_.Append(kMetaFileBasename);
   FilePath lsb_release = test_dir_.Append("lsb-release");
   FilePath payload_file = test_dir_.Append("payload-file");
+  FilePath payload_full_path;
   std::string contents;
   collector_.set_lsb_release_for_test(lsb_release);
   const char kLsbContents[] =
@@ -394,16 +395,18 @@ TEST_F(CrashCollectorTest, MetaData) {
   const char kPayload[] = "foo";
   ASSERT_TRUE(base::WriteFile(payload_file, kPayload, strlen(kPayload)));
   collector_.AddCrashMetaData("foo", "bar");
+  ASSERT_TRUE(NormalizeFilePath(payload_file, &payload_full_path));
   collector_.WriteCrashMetaData(meta_file, "kernel", payload_file.value());
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
-  const char kExpectedMeta[] =
+  std::string expected_meta = StringPrintf(
       "foo=bar\n"
       "exec_name=kernel\n"
       "ver=6727.0.2015_01_26_0853\n"
-      "payload=test/payload-file\n"
+      "payload=%s\n"
       "payload_size=3\n"
-      "done=1\n";
-  EXPECT_EQ(kExpectedMeta, contents);
+      "done=1\n",
+      payload_full_path.value().c_str());
+  EXPECT_EQ(expected_meta, contents);
 
   // Test target of symlink is not overwritten.
   payload_file = test_dir_.Append("payload2-file");
@@ -417,7 +420,7 @@ TEST_F(CrashCollectorTest, MetaData) {
   // Target metadata contents should have stayed the same.
   contents.clear();
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
-  EXPECT_EQ(kExpectedMeta, contents);
+  EXPECT_EQ(expected_meta, contents);
   EXPECT_TRUE(FindLog("Unable to write"));
 
   // Test target of dangling symlink is not created.
