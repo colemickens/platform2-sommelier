@@ -20,6 +20,7 @@
 
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "debugd/src/battery_tool.h"
+#include "debugd/src/campfire_tool.h"
 #include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/cups_tool.h"
@@ -171,12 +172,15 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       override;
   void StopVmConcierge() override;
   bool SetRlzPingSent(brillo::ErrorPtr* error) override;
+  std::string CampfireEnableAltOS(int size_gb) override;
+  std::string CampfireDisableAltOS() override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<BatteryTool> battery_tool_;
+  std::unique_ptr<CampfireTool> campfire_tool_;
   std::unique_ptr<ContainerTool> container_tool_;
   std::unique_ptr<CrashSenderTool> crash_sender_tool_;
   std::unique_ptr<CupsTool> cups_tool_;
