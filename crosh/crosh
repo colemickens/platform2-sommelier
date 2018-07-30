@@ -747,7 +747,10 @@ cmd_authpolicy_debug() (
     if [ ${level} -gt 0 ]; then
       echo "Debug logs turned on for 30 minutes. Be sure to turn them off again"
       echo "when you are done, e.g. by rebooting the device or setting the"
-      echo "level to 0."
+      echo "level to 0. Authpolicy debugging info will be written into"
+      echo "/var/log/authpolicy.log, and will be attached to the next Feedback"
+      echo "report you send to Google. You may review these logs before sending"
+      echo "them."
     else
       echo "Debug logs turned off."
     fi
