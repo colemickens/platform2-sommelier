@@ -17,10 +17,10 @@ namespace hermes {
 
 class EsimQmiTester {
  public:
-  MOCK_METHOD1(OnInfoResult, void(const Esim::DataBlob& data));
+  MOCK_METHOD1(OnInfoResult, void(const std::vector<uint8_t>& data));
   MOCK_METHOD2(OnChallengeResult,
-               void(const Esim::DataBlob& info,
-                    const Esim::DataBlob& challenge));
+               void(const std::vector<uint8_t>& info,
+                    const std::vector<uint8_t>& challenge));
   MOCK_METHOD1(FakeError, void(EsimError error));
 };
 
@@ -69,7 +69,7 @@ TEST_F(EsimQmiImplTest, GetInfoTest) {
 // EsimQmiTester::OnChallengeResult gets called once and
 // EsimQmiTester::FakeError does not get called.
 TEST_F(EsimQmiImplTest, GetChallengeTest) {
-  const Esim::DataBlob info = {0x00, 0x01, 0x02, 0x03};
+  const std::vector<uint8_t> info = {0x00, 0x01, 0x02, 0x03};
   EXPECT_CALL(esim_tester_, OnChallengeResult(info, _)).Times(1);
   EXPECT_CALL(esim_tester_, FakeError(_)).Times(0);
 

@@ -162,7 +162,7 @@ void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
 
 // TODO(jruthe): pass |server_data| to EsimQmiImpl::SendEsimMessage to make
 // correct libqrtr call to the eSIM chip.
-void EsimQmiImpl::AuthenticateServer(const DataBlob& server_data,
+void EsimQmiImpl::AuthenticateServer(const std::vector<uint8_t>& server_data,
                                      const DataCallback& data_callback,
                                      const ErrorCallback& error_callback) {
   if (!qrtr_socket_fd_.is_valid()) {
@@ -175,7 +175,7 @@ void EsimQmiImpl::AuthenticateServer(const DataBlob& server_data,
   // SendApdu(QmiUimCommand::kSendApdu, data_callback, error_callback);
 }
 
-void EsimQmiImpl::SendApdu(const DataBlob& data_buffer,
+void EsimQmiImpl::SendApdu(const std::vector<uint8_t>& data_buffer,
                            const DataCallback& data_callback,
                            const ErrorCallback& error_callback) {
   size_t len;

@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/message_loop/message_loop.h>
@@ -45,7 +46,7 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
                const ErrorCallback& error_callback) override;
   void GetChallenge(const DataCallback& data_callback,
                     const ErrorCallback& error_callback) override;
-  void AuthenticateServer(const DataBlob& server_data,
+  void AuthenticateServer(const std::vector<uint8_t>& server_data,
                           const DataCallback& data_callback,
                           const ErrorCallback& error_callback) override;
 
@@ -53,7 +54,7 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   EsimQmiImpl(uint8_t slot, base::ScopedFD fd);
 
   void CloseChannel();
-  void SendApdu(const DataBlob& data_buffer,
+  void SendApdu(const std::vector<uint8_t>& data_buffer,
                 const DataCallback& callback,
                 const ErrorCallback& error_callback);
 
@@ -116,7 +117,7 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   uint8_t slot_;
 
   // Buffer for storing data from the QRTR socket.
-  DataBlob buffer_;
+  std::vector<uint8_t> buffer_;
 
   // Node and port to pass to qrtr_sendto, returned from qrtr_new_lookup
   // response, which contains QRTR_TYPE_NEW_SERVER and the node and port number
@@ -134,7 +135,7 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   uint8_t sw2_;
 
   // All APDU bytes. sw1_ and sw2_ are extracted immediately after reception.
-  DataBlob payload_;
+  std::vector<uint8_t> payload_;
 
   // Closure given to Esim::Initialize to call once the UIM service has been
   // exposed through QRTR and |node_| and |port_| have been set.
