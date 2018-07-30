@@ -2,20 +2,39 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "crash-reporter/crash_sender_util.h"
+
 #include <stdlib.h>
 
 #include <base/command_line.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
-#include "crash-reporter/crash_sender_util.h"
+#include "crash-reporter/crash_sender_paths.h"
 
 namespace util {
 
 class CrashSenderUtilTest : public testing::Test {
+ protected:
+  // Creates a file at |file_path| with |content|, with parent directories.
+  bool CreateFile(const base::FilePath& file_path, base::StringPiece content) {
+    if (!base::CreateDirectory(file_path.DirName()))
+      return false;
+    return base::WriteFile(file_path, content.data(), content.size()) == 0;
+  }
+
  private:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    paths::SetPrefixForTesting(temp_dir_.GetPath());
+  }
+
   void TearDown() override {
+    paths::SetPrefixForTesting(base::FilePath());
+
     // ParseCommandLine() sets the environment variables. Reset these here to
     // avoid side effects.
     for (const EnvPair& pair : kEnvironmentVariables)
@@ -27,6 +46,8 @@ class CrashSenderUtilTest : public testing::Test {
       base::CommandLine::Reset();
     brillo::FlagHelper::ResetForTesting();
   }
+
+  base::ScopedTempDir temp_dir_;
 };
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_MalformedValue) {
@@ -74,6 +95,12 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Usage) {
   // where the usage message is written to.
   EXPECT_EXIT(ParseCommandLine(arraysize(argv), argv),
               testing::ExitedWithCode(0), "");
+}
+
+TEST_F(CrashSenderUtilTest, IsMock) {
+  EXPECT_FALSE(IsMock());
+  ASSERT_TRUE(CreateFile(paths::Get(paths::kMockCrashSending), ""));
+  EXPECT_TRUE(IsMock());
 }
 
 }  // namespace util

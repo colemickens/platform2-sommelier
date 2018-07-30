@@ -2,17 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "crash-reporter/crash_sender_util.h"
+
 #include <stdlib.h>
 
 #include <map>
 #include <string>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 
-#include "crash-reporter/crash_sender_util.h"
+#include "crash-reporter/crash_sender_paths.h"
 
 namespace util {
 
@@ -79,6 +82,10 @@ void ParseCommandLine(int argc, const char* const* argv) {
   // Set the predefined environment variables.
   for (const auto& it : env_vars)
     setenv(it.first.c_str(), it.second.c_str(), 1 /* overwrite */);
+}
+
+bool IsMock() {
+  return base::PathExists(paths::Get(paths::kMockCrashSending));
 }
 
 }  // namespace util

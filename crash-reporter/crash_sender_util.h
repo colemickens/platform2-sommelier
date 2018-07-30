@@ -43,6 +43,9 @@ constexpr EnvPair kEnvironmentVariables[] = {
 // first-encountered error.
 void ParseCommandLine(int argc, const char* const* argv);
 
+// Returns true if mock is enabled.
+bool IsMock();
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_CRASH_SENDER_UTIL_H_

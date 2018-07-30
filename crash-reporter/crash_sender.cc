@@ -18,31 +18,14 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
+#include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crash_sender_util.h"
 
 namespace {
 
-// The base directory where we keep various state flags.
-#define RUN_STATE_DIR "/run/crash_reporter"
-
-// File whose existence mocks crash sending.  If empty we pretend the
-// crash sending was successful, otherwise unsuccessful.
-constexpr char kMockCrashSending[] = RUN_STATE_DIR "/mock-crash-sending";
-
-// Crash sender lock in case the sender is already running.
-constexpr char kLockFile[] = "/run/lock/crash_sender";
-
-// File whose existence implies we're running and not to start again.
-constexpr char kRunFile[] = "/run/crash_sender.pid";
-
-// Returns true if mock is enabled.
-bool IsMock() {
-  return base::PathExists(base::FilePath(kMockCrashSending));
-}
-
 // Records that the crash sending is done.
 void RecordCrashDone() {
-  if (IsMock()) {
+  if (util::IsMock()) {
     // For testing purposes, emit a message to log so that we
     // know when the test has received all the messages from this run.
     // The string is referenced in
@@ -92,15 +75,16 @@ void LockOrExit(const base::File& lock_file) {
 // track that crash_sender is still running.
 void CreatePidFile(int pid) {
   std::string content = base::IntToString(pid) + "\n";
-  const int size =
-      base::WriteFile(base::FilePath(kRunFile), content.data(), content.size());
+  const int size = base::WriteFile(paths::Get(paths::kRunFile), content.data(),
+                                   content.size());
   CHECK_EQ(size, content.size());
 }
 
 // Runs the main function for the child process.
 int RunChildMain(int argc, char* argv[]) {
   // Ensure only one instance of crash_sender runs at the same time.
-  base::File lock_file(base::FilePath(kLockFile), base::File::FLAG_OPEN_ALWAYS);
+  base::File lock_file(paths::Get(paths::kLockFile),
+                       base::File::FLAG_OPEN_ALWAYS);
   LockOrExit(lock_file);
 
   CreatePidFile(getpid());
@@ -119,7 +103,7 @@ int RunChildMain(int argc, char* argv[]) {
 void CleanUp() {
   // TODO(crbug.com/868166): Remove the PID file creation once the autotest is
   // fixed.
-  base::DeleteFile(base::FilePath(kRunFile), false /* recursive */);
+  base::DeleteFile(paths::Get(paths::kRunFile), false /* recursive */);
   RecordCrashDone();
 }
 

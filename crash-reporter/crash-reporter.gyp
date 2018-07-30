@@ -83,6 +83,7 @@
       },
       'sources': [
         'crash_sender.cc',
+        'crash_sender_paths.cc',
         'crash_sender_util.cc',
       ],
     },
@@ -164,6 +165,8 @@
             'crash_collector_test.cc',
             'crash_collector_test.h',
             'crash_reporter_logs_test.cc',
+            'crash_sender_paths.cc',
+            'crash_sender_paths_test.cc',
             'crash_sender_util.cc',
             'crash_sender_util_test.cc',
             'ec_collector_test.cc',
