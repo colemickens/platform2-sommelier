@@ -30,8 +30,6 @@
 namespace android {
 namespace camera2 {
 
-#define CONFIGURE_LARGE_SIZE (1920*1080)
-
 // Camera factory
 ICameraHw *CreatePSLCamera(int cameraId) {
     return new IPU3CameraHw(cameraId);
@@ -45,7 +43,6 @@ IPU3CameraHw::IPU3CameraHw(int cameraId):
         mControlUnit(nullptr),
         mCaptureUnit(nullptr),
         mGCM(cameraId),
-        mUseCase(USECASE_VIDEO),
         mOperationMode(0),
         mTestPatternMode(ANDROID_SENSOR_TEST_PATTERN_MODE_OFF)
 {
@@ -223,34 +220,6 @@ status_t IPU3CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*> 
     return OK;
 }
 
-camera3_stream_t*
-IPU3CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams)
-{
-    camera3_stream_t* jpegStream = nullptr;
-    std::vector<camera3_stream_t*> yuvStreams;
-    for (auto* s : streams) {
-        if (s->width * s->height > CONFIGURE_LARGE_SIZE) {
-            return s;
-        }
-
-        if (s->format == HAL_PIXEL_FORMAT_BLOB) {
-            jpegStream = s;
-        } else if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
-            || s->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-            yuvStreams.push_back(s);
-        }
-    }
-
-    if (jpegStream && yuvStreams.size() >= 2) {
-        // Check if it is video snapshot case
-        int jpegSize = jpegStream->width * jpegStream->height;
-        if (jpegSize == yuvStreams[0]->width * yuvStreams[0]->height
-            || jpegSize == yuvStreams[1]->width * yuvStreams[1]->height)
-            return nullptr;
-    }
-    return jpegStream;
-}
-
 status_t
 IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
                             uint32_t operation_mode)
@@ -258,15 +227,13 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     uint32_t maxBufs, usage;
 
-    mOperationMode = operation_mode;
-    mStreamsStill.clear();
-    mStreamsVideo.clear();
-
     if (checkStreamSizes(activeStreams) != OK)
         return BAD_VALUE;
 
     if (checkStreamRotation(activeStreams) != OK)
         return BAD_VALUE;
+
+    mOperationMode = operation_mode;
 
     maxBufs = mPipelineDepth;  /* value from XML static metadata */
     if (maxBufs > MAX_REQUEST_IN_PROCESS_NUM)
@@ -280,36 +247,15 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
             GRALLOC_USAGE_SW_WRITE_NEVER |
             GRALLOC_USAGE_HW_CAMERA_WRITE;
 
-    bool hasInputStream = false;
-
-    camera3_stream_t* stillStream = findStreamForStillCapture(activeStreams);
+    mActiveStreams.clear();
     for (unsigned int i = 0; i < activeStreams.size(); i++) {
         activeStreams[i]->max_buffers = maxBufs;
         activeStreams[i]->usage |= usage;
-        if (activeStreams[i]->stream_type == CAMERA3_STREAM_INPUT) {
-            hasInputStream = true;
-            continue;
-        }
 
-        if (activeStreams[i] != stillStream) {
-            mStreamsVideo.push_back(activeStreams[i]);
-            mStreamsStill.push_back(activeStreams[i]);
-        } else if (stillStream) {
-            // always insert BLOB as fisrt stream if exists
-            LOG1("%s: find still stream %dx%d, 0x%x", __FUNCTION__, stillStream->width,
-                  stillStream->height, stillStream->format);
-            mStreamsStill.insert(mStreamsStill.begin(), stillStream);
-        }
+        mActiveStreams.push_back(activeStreams[i]);
     }
 
-    mUseCase = USECASE_VIDEO; // Configure video pipe by default
-    if (mStreamsVideo.empty() && !hasInputStream) {
-        mUseCase = USECASE_STILL;
-    }
-    LOG1("%s: select usecase %d, video/still stream num: %zu/%zu", __FUNCTION__,
-            mUseCase, mStreamsVideo.size(), mStreamsStill.size());
-
-    return configStreamsPrivate(operation_mode);
+    return configStreamsPrivate();
 }
 
 status_t
@@ -340,47 +286,25 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
         return RequestThread::REQBLK_WAIT_ONE_REQUEST_COMPLETED;
     }
 
-    status_t status = NO_ERROR;
-    // Check reconfiguration
-    UseCase newUseCase = checkUseCase(request);
-    CheckError(newUseCase == USECASE_NONE, UNKNOWN_ERROR, "@%s: none usecase", __FUNCTION__);
-
     int32_t testPatternMode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
-    status = getTestPatternMode(request, &testPatternMode);
+    status_t status = getTestPatternMode(request, &testPatternMode);
     CheckError(status != NO_ERROR, status, "@%s: failed to get test pattern mode", __FUNCTION__);
 
-    if (newUseCase != mUseCase || testPatternMode != mTestPatternMode) {
-        LOG1("%s: request %d need reconfigure, infilght %d, usecase %d -> %d", __FUNCTION__,
-                request->getId(), inFlightCount, mUseCase, newUseCase);
+    if (testPatternMode != mTestPatternMode) {
+        LOG1("%s: request %d need reconfigure, infilght %d", __FUNCTION__,
+                request->getId(), inFlightCount);
         if (inFlightCount > 1) {
             return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED;
         }
 
-        mUseCase = newUseCase;
         mTestPatternMode = testPatternMode;
-        status = configStreamsPrivate(mOperationMode);
+        status = configStreamsPrivate();
     }
 
     if (status == NO_ERROR) {
         mControlUnit->processRequest(request);
     }
     return status;
-}
-
-IPU3CameraHw::UseCase IPU3CameraHw::checkUseCase(Camera3Request* request) const
-{
-    if (mStreamsStill.size() == mStreamsVideo.size()) {
-        return USECASE_VIDEO;
-    }
-    const std::vector<camera3_stream_buffer>* buffers = request->getOutputBuffers();
-    CheckError(buffers == nullptr, USECASE_NONE, "@%s: output buffer is nullptr", __FUNCTION__);
-
-    for (const auto & buf : *buffers) {
-        if (buf.stream == mStreamsStill[0]) {
-            return USECASE_STILL;
-        }
-    }
-    return USECASE_VIDEO;
 }
 
 status_t IPU3CameraHw::getTestPatternMode(Camera3Request* request, int32_t* testPatternMode)
@@ -403,27 +327,27 @@ status_t IPU3CameraHw::getTestPatternMode(Camera3Request* request, int32_t* test
     return NO_ERROR;
 }
 
-status_t IPU3CameraHw::configStreamsPrivate(uint32_t operation_mode)
+status_t IPU3CameraHw::configStreamsPrivate()
 {
-    std::vector<camera3_stream_t*>& streams = (mUseCase == USECASE_STILL) ?
-                                              mStreamsStill : mStreamsVideo;
-
     /* Flush to make sure we return all graph config objects to the pool before
        next stream config. */
     mCaptureUnit->flush();
     mImguUnit->flush();
     mControlUnit->flush();
 
-    status_t status = mGCM.configStreams(streams, operation_mode, mTestPatternMode);
+    mMediaCtl->resetLinks();
+    mImguMediaCtl->resetLinks();
+
+    status_t status = mGCM.configStreams(mActiveStreams, mOperationMode, mTestPatternMode);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");
         return status;
     }
 
-    status = mCaptureUnit->configStreams(streams, true);
+    status = mCaptureUnit->configStreams(mActiveStreams, true);
     CheckError(status != NO_ERROR, status, "Unable to configure stream for CaptureUnit");
 
-    status = mImguUnit->configStreams(streams);
+    status = mImguUnit->configStreams(mActiveStreams);
     CheckError(status != NO_ERROR, status, "Unable to configure stream for ImguUnit");
 
     return mControlUnit->configStreamsDone(true);

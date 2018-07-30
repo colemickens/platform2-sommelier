@@ -56,12 +56,6 @@ class IPU3CameraHw: public ICameraHw {
     virtual status_t flush();
     virtual void dump(int fd);
 
- private:
-    enum UseCase {
-        USECASE_STILL,
-        USECASE_VIDEO,
-        USECASE_NONE
-    };
  // prevent copy constructor and assignment operator
  private:
     IPU3CameraHw(const IPU3CameraHw& other);
@@ -71,10 +65,8 @@ class IPU3CameraHw: public ICameraHw {
     status_t  initStaticMetadata();
     status_t checkStreamSizes(std::vector<camera3_stream_t*> &activeStreams);
     status_t checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams);
-    camera3_stream_t* findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams);
 
-    UseCase checkUseCase(Camera3Request* request) const;
-    status_t configStreamsPrivate(uint32_t operation_mode);
+    status_t configStreamsPrivate();
 
  private:  //members
     int mCameraId;
@@ -93,12 +85,8 @@ class IPU3CameraHw: public ICameraHw {
     std::shared_ptr<MediaController> mMediaCtl;
     std::shared_ptr<MediaController> mImguMediaCtl;
 
-    // Configuring ISP with large size will lead to low fps.
-    // So ignore stream with large size if requests don't require its output.
-    // The bool flag records if those streams are configured.
-    UseCase mUseCase;
-    std::vector<camera3_stream_t*> mStreamsStill;
-    std::vector<camera3_stream_t*> mStreamsVideo;
+    std::vector<camera3_stream_t*> mActiveStreams;
+
     uint32_t mOperationMode;
     int32_t mTestPatternMode;
     status_t getTestPatternMode(Camera3Request* request, int32_t* testPatternMode);
