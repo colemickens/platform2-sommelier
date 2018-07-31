@@ -28,7 +28,7 @@ void OnInitialization(hermes::Lpd* lpd) {
 void InitError(hermes::LpdError error) {}
 
 void Usage() {
-  LOG(INFO) << "usage: ./hermes <smdp_hostname>";
+  LOG(INFO) << "usage: ./hermes <smdp_hostname> <imei_number>";
 }
 
 int main(int argc, char** argv) {
@@ -36,18 +36,19 @@ int main(int argc, char** argv) {
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
   DEFINE_string(smdp_hostname, "", "SM-DP+ server hostname");
+  DEFINE_string(imei, "", "IMEI number");
+  DEFINE_string(matching_id, "", "Profile's matching ID number");
   brillo::FlagHelper::Init(argc, argv, "Chromium OS eSIM LPD Daemon");
   brillo::InitLog(brillo::kLogToStderrIfTty);
   logging::SetMinLogLevel(FLAGS_log_level);
 
   base::MessageLoop message_loop(base::MessageLoop::TYPE_IO);
-  auto esim = hermes::EsimQmiImpl::Create();
+  auto esim = hermes::EsimQmiImpl::Create(FLAGS_imei, FLAGS_matching_id);
   CHECK(esim);
   hermes::Lpd lpd(std::move(esim),
                   std::make_unique<hermes::SmdpImpl>(FLAGS_smdp_hostname));
   lpd.Initialize(base::Bind(&OnInitialization, &lpd), base::Bind(&InitError));
   base::RunLoop().Run();
-  lpd.InstallProfile(base::Bind(&SuccessCallback), base::Bind(&ErrorCallback));
 
   return EXIT_SUCCESS;
 }

@@ -10,7 +10,7 @@
 
 #include <libqrtr.h>
 
-#define ARRAY_SIZE 256
+#define ARRAY_SIZE 260
 
 struct uim_qmi_result {
   uint16_t result;

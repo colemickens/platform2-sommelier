@@ -93,11 +93,12 @@ void Lpd::OnInitiateAuthenticationResult(
     const Lpd::SuccessCallback& success_callback,
     const std::vector<uint8_t>& server_signed1,
     const std::vector<uint8_t>& server_signature1,
-    const std::vector<uint8_t>& public_keys_to_use,
+    const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
     const std::vector<uint8_t>& server_certificate) {
   // TODO(jruthe): update parameters to Esim::AuthenticateServer
   esim_->AuthenticateServer(
-      std::vector<uint8_t>(),
+      server_signed1, server_signature1, euicc_ci_pk_id_to_be_used,
+      server_certificate,
       base::Bind(&Lpd::OnAuthenticateServerResult, base::Unretained(this),
                  success_callback),
       esim_error_handler_);

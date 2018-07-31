@@ -14,14 +14,17 @@ namespace hermes {
 
 class SmdpFiTester {
  public:
-  MOCK_METHOD1(OnInitiateAuth, void(const std::vector<uint8_t>& data));
-  MOCK_METHOD1(OnAuthClient, void(const std::vector<uint8_t>& data));
+  MOCK_METHOD4(OnInitiateAuth, void(const std::vector<uint8_t>&,
+                                    const std::vector<uint8_t>&,
+                                    const std::vector<uint8_t>&,
+                                    const std::vector<uint8_t>&));
+  MOCK_METHOD0(OnAuthClient, void());
   MOCK_METHOD1(FakeError, void(const std::vector<uint8_t>& error_data));
 };
 
 class SmdpImplTest : public testing::Test {
  public:
-  SmdpImplTest() = default;
+  SmdpImplTest() : smdp_("") {}
   ~SmdpImplTest() = default;
 
  protected:
@@ -32,7 +35,7 @@ class SmdpImplTest : public testing::Test {
 TEST_F(SmdpImplTest, InitiateAuthenticationTest) {
   const std::vector<uint8_t> fake_info1 = {0x00, 0x01};
   const std::vector<uint8_t> fake_challenge = {0x02, 0x03};
-  EXPECT_CALL(smdp_tester_, OnInitiateAuth(_)).Times(1);
+  EXPECT_CALL(smdp_tester_, OnInitiateAuth(_, _, _, _)).Times(1);
   EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
 
   smdp_.InitiateAuthentication(
@@ -44,7 +47,7 @@ TEST_F(SmdpImplTest, InitiateAuthenticationTest) {
 
 TEST_F(SmdpImplTest, AuthenticateClientTest) {
   const std::vector<uint8_t> esim_data = {0, 1, 2, 3, 4};
-  EXPECT_CALL(smdp_tester_, OnAuthClient(_)).Times(1);
+  EXPECT_CALL(smdp_tester_, OnAuthClient()).Times(1);
   EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
 
   smdp_.AuthenticateClient(

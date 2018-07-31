@@ -5,10 +5,12 @@
 #include "hermes/esim_qmi_impl.h"
 
 #include <algorithm>
+#include <iterator>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
 namespace {
@@ -24,18 +26,61 @@ bool CreateSocketPair(base::ScopedFD* one, base::ScopedFD* two) {
   two->reset(raw_socks[1]);
   return true;
 }
+
+// Convert ASCII-encoded hex character to its corresponding digit
+bool HexToDigit(uint8_t hex_char, uint8_t* digit) {
+  DLOG_ASSERT(digit);
+  if ('0' <= hex_char && hex_char <= '9') {
+    *digit = hex_char - '0';
+  } else if ('A' <= hex_char && hex_char <= 'F') {
+    *digit = hex_char - 'A' + 10;
+  } else if ('a' <= hex_char && hex_char <= 'f') {
+    *digit = hex_char - 'a' + 10;
+  } else {
+    return false;
+  }
+  return true;
+}
 }  // namespace
 
 namespace hermes {
 
+// Maximum size of an APDU data packet.
+constexpr size_t kMaxApduDataSize = 255;
+
+// P1 byte based on the length of the data field P3 in a transport command.
+constexpr uint8_t kP1MoreBlocks = 0x11;
+constexpr uint8_t kP1LastBlock = 0x91;
+
+// Status byte for response okay as defined in ISO 7816.
+constexpr uint8_t kApduStatusOkay = 0x90;
+
 // Status byte for more response as defined in ISO 7816.
-constexpr uint8_t kSw1MoreResponse = 0x61;
+constexpr uint8_t kApduStatusMoreResponse = 0x61;
 
 // Command code to request more bytes from the chip.
 constexpr uint8_t kGetMoreResponseCommand = 0xC0;
 
-// Store data class
-constexpr uint8_t kStoreDataCla = 0x80;
+// Store data class as defined in ISO 7816.
+constexpr uint8_t kClaStoreData = 0x80;
+
+// Store data instruction as defined in ISO 7816.
+constexpr uint8_t kInsStoreData = 0xE2;
+
+// Indicator that the length field will be two bytes, instead of one as defined
+// in ISO 7816.
+constexpr uint8_t kTwoByteLengthIndicator = 0x82;
+
+// Le byte as defined in SGP.22
+constexpr uint8_t kLeByte = 0x00;
+
+// ASN.1 Tags for primitive types
+constexpr uint8_t kAsn1TagCtx0 = 0x80;
+constexpr uint8_t kAsn1TagCtx2 = 0x82;
+
+// ASN.1 Tags for constructed types
+constexpr uint8_t kAsn1TagCtxCmp0 = 0xA0;
+constexpr uint8_t kAsn1TagCtxCmp1 = 0xA1;
 
 // Application identifier for opening a logical channel to the eSIM slot
 constexpr std::array<uint8_t, 16> kIsdrAid = {
@@ -43,9 +88,14 @@ constexpr std::array<uint8_t, 16> kIsdrAid = {
     0xFF, 0xFF, 0xFF, 0x89, 0x00, 0x00, 0x01, 0x00,
 };
 
-EsimQmiImpl::EsimQmiImpl(uint8_t slot, base::ScopedFD fd)
+EsimQmiImpl::EsimQmiImpl(uint8_t slot,
+                         const std::string& imei,
+                         const std::string& matching_id,
+                         base::ScopedFD fd)
     : watcher_(FROM_HERE),
       current_transaction_(1),
+      imei_(imei),
+      matching_id_(matching_id),
       slot_(slot),
       buffer_(4096),
       node_(-1),
@@ -70,22 +120,27 @@ void EsimQmiImpl::Initialize(const base::Closure& success_callback,
 }
 
 // static
-std::unique_ptr<EsimQmiImpl> EsimQmiImpl::Create() {
+std::unique_ptr<EsimQmiImpl> EsimQmiImpl::Create(std::string imei,
+                                                 std::string matching_id) {
   base::ScopedFD fd(qrtr_open(kQrtrPort));
   if (!fd.is_valid()) {
     return nullptr;
   }
-  return base::WrapUnique(new EsimQmiImpl(kEsimSlot, std::move(fd)));
+
+  return base::WrapUnique(
+      new EsimQmiImpl(kEsimSlot, imei, matching_id, std::move(fd)));
 }
 
 // static
-std::unique_ptr<EsimQmiImpl> EsimQmiImpl::CreateForTest(base::ScopedFD* sock) {
+std::unique_ptr<EsimQmiImpl> EsimQmiImpl::CreateForTest(
+    base::ScopedFD* sock, std::string imei, std::string matching_id) {
   base::ScopedFD fd;
   if (!CreateSocketPair(&fd, sock)) {
     return nullptr;
   }
 
-  return base::WrapUnique(new EsimQmiImpl(kEsimSlot, std::move(fd)));
+  return base::WrapUnique(
+      new EsimQmiImpl(kEsimSlot, imei, matching_id, std::move(fd)));
 }
 
 void EsimQmiImpl::OpenLogicalChannel(const DataCallback& data_callback,
@@ -124,18 +179,14 @@ void EsimQmiImpl::GetInfo(int which,
   }
 
   const std::vector<uint8_t> get_info_request = {
-      static_cast<uint8_t>(kStoreDataCla | channel_),
-      0xE2,
-      0x91,
-      0x00,
-      0x03,
       static_cast<uint8_t>((which >> 8) & 0xFF),
       static_cast<uint8_t>(which & 0xFF),
-      0x00,
-      0x00,
+      0x00,  // APDU length
   };
+
   payload_.clear();
-  SendApdu(get_info_request, data_callback, error_callback);
+  QueueStoreData(get_info_request);
+  SendApdu(data_callback, error_callback);
 }
 
 void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
@@ -146,40 +197,103 @@ void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
   }
 
   const std::vector<uint8_t> get_challenge_request = {
-      static_cast<uint8_t>(kStoreDataCla | channel_),
-      0xE2,
-      0x91,
-      0x00,
-      0x03,
       static_cast<uint8_t>((kEsimChallengeTag >> 8) & 0xFF),
       static_cast<uint8_t>(kEsimChallengeTag & 0xFF),
-      0x00,
-      0x00,
+      0x00,  // APDU Length
   };
   payload_.clear();
-  SendApdu(get_challenge_request, data_callback, error_callback);
+  QueueStoreData(get_challenge_request);
+  SendApdu(data_callback, error_callback);
 }
 
 // TODO(jruthe): pass |server_data| to EsimQmiImpl::SendEsimMessage to make
 // correct libqrtr call to the eSIM chip.
-void EsimQmiImpl::AuthenticateServer(const std::vector<uint8_t>& server_data,
-                                     const DataCallback& data_callback,
-                                     const ErrorCallback& error_callback) {
+void EsimQmiImpl::AuthenticateServer(
+    const std::vector<uint8_t>& server_signed1,
+    const std::vector<uint8_t>& server_signature,
+    const std::vector<uint8_t>& public_key,
+    const std::vector<uint8_t>& server_certificate,
+    const DataCallback& data_callback,
+    const ErrorCallback& error_callback) {
   if (!qrtr_socket_fd_.is_valid()) {
     error_callback.Run(EsimError::kEsimNotConnected);
     return;
   }
 
+  std::vector<uint8_t> ctx_params;
+  if (!ConstructCtxParams(&ctx_params)) {
+    LOG(ERROR) << __func__ << ": failed to construct ctx_params";
+    error_callback.Run(EsimError::kEsimError);
+    return;
+  }
+
+  size_t payload_size = server_signed1.size() + server_signature.size() +
+                        public_key.size() + server_certificate.size() +
+                        ctx_params.size();
+
+  std::vector<uint8_t> raw_data_buffer;
+  raw_data_buffer.push_back(
+      static_cast<uint8_t>((kAuthenticateServerTag >> 8) & 0xFF));
+  raw_data_buffer.push_back(
+      static_cast<uint8_t>(kAuthenticateServerTag & 0xFF));
+  raw_data_buffer.push_back(kTwoByteLengthIndicator);
+  raw_data_buffer.push_back(static_cast<uint8_t>((payload_size >> 8) & 0xFF));
+  raw_data_buffer.push_back(static_cast<uint8_t>(payload_size & 0xFF));
+  raw_data_buffer.insert(raw_data_buffer.end(), server_signed1.begin(),
+                         server_signed1.end());
+  raw_data_buffer.insert(raw_data_buffer.end(), server_signature.begin(),
+                         server_signature.end());
+  raw_data_buffer.insert(raw_data_buffer.end(), public_key.begin(),
+                         public_key.end());
+  raw_data_buffer.insert(raw_data_buffer.end(), server_certificate.begin(),
+                         server_certificate.end());
+  raw_data_buffer.insert(raw_data_buffer.end(), ctx_params.begin(),
+                         ctx_params.end());
+
   payload_.clear();
-  // TODO(jruthe): Add AuthenticateServer Tag to qmi_constants.
-  // SendApdu(QmiUimCommand::kSendApdu, data_callback, error_callback);
+  QueueStoreData(raw_data_buffer);
+
+  SendApdu(data_callback, error_callback);
 }
 
-void EsimQmiImpl::SendApdu(const std::vector<uint8_t>& data_buffer,
-                           const DataCallback& data_callback,
+void EsimQmiImpl::QueueStoreData(const std::vector<uint8_t>& payload) {
+  FragmentAndQueueApdu(kClaStoreData, kInsStoreData, payload);
+}
+
+void EsimQmiImpl::FragmentAndQueueApdu(
+    uint8_t cla, uint8_t ins, const std::vector<uint8_t>& apdu_payload) {
+  size_t total_packets = std::max(1u,
+      (apdu_payload.size() + kMaxApduDataSize - 1) / kMaxApduDataSize);
+  auto front_iterator = apdu_payload.begin();
+  size_t i;
+  for (i = 0; i < total_packets - 1; ++i) {
+    std::vector<uint8_t> buf{cla, ins, kP1MoreBlocks, static_cast<uint8_t>(i),
+                             kMaxApduDataSize};
+    buf.reserve(kMaxApduDataSize + 5);
+    buf.insert(buf.end(), front_iterator, front_iterator + kMaxApduDataSize);
+    apdu_queue_.push_back(std::move(buf));
+    std::advance(front_iterator, kMaxApduDataSize);
+  }
+  uint8_t final_packet_size = apdu_payload.end() - front_iterator;
+  std::vector<uint8_t> buf{cla, ins, kP1LastBlock, static_cast<uint8_t>(i),
+                           final_packet_size};
+  buf.reserve(final_packet_size + 6);
+  buf.insert(buf.end(), front_iterator, front_iterator + final_packet_size);
+  buf.push_back(kLeByte);
+  apdu_queue_.push_back(std::move(buf));
+}
+
+void EsimQmiImpl::SendApdu(const DataCallback& data_callback,
                            const ErrorCallback& error_callback) {
-  size_t len;
-  std::vector<uint8_t> raw_buffer(kBufferDataSize);
+  if (apdu_queue_.empty()) {
+    LOG(ERROR) << __func__ << " called with empty queue";
+    error_callback.Run(EsimError::kEsimError);
+    return;
+  }
+
+  std::vector<uint8_t> raw_buffer(kMaxApduDataSize * 2);
+  std::vector<uint8_t> data_buffer = apdu_queue_.front();
+  apdu_queue_.pop_front();
 
   qrtr_packet buffer;
   buffer.data = raw_buffer.data();
@@ -190,9 +304,10 @@ void EsimQmiImpl::SendApdu(const std::vector<uint8_t>& data_buffer,
   request.channel_id_valid = true;
   request.channel_id = channel_;
   request.apdu_len = data_buffer.size();
+
   std::copy(data_buffer.begin(), data_buffer.end(), request.apdu);
 
-  len = qmi_encode_message(
+  size_t len = qmi_encode_message(
       &buffer, QMI_REQUEST, static_cast<uint32_t>(QmiUimCommand::kSendApdu),
       current_transaction_, &request, uim_send_apdu_req_ei);
 
@@ -293,10 +408,15 @@ void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
 
       if (MorePayloadIncoming()) {
         const std::vector<uint8_t> get_more_request = {
-            static_cast<uint8_t>(kStoreDataCla | channel_),
+            static_cast<uint8_t>(kClaStoreData | channel_),
             kGetMoreResponseCommand, 0x00, 0x00, sw2_};
 
-        SendApdu(get_more_request, transaction_callbacks.data_callback,
+        apdu_queue_.push_back(get_more_request);
+        SendApdu(transaction_callbacks.data_callback,
+                 transaction_callbacks.error_callback);
+        return;
+      } else if (payload_.empty() && sw1_ == kApduStatusOkay) {
+        SendApdu(transaction_callbacks.data_callback,
                  transaction_callbacks.error_callback);
         return;
       }
@@ -312,6 +432,76 @@ void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
   }
 }
 
+bool EsimQmiImpl::StringToBcdBytes(const std::string& source,
+                                   std::vector<uint8_t>* dest) {
+  DLOG_ASSERT(dest);
+  dest->reserve((source.size() + 1) / 2);
+  size_t i = 0;
+  uint8_t msb, lsb;
+  for (; i < source.size() / 2; ++i) {
+    if (!HexToDigit(source[2*i], &lsb) ||
+        !HexToDigit(source[2*i + 1], &msb)) {
+      return false;
+    }
+    dest->push_back((msb << 4) | lsb);
+  }
+  if (source.size() % 2) {
+    if (!HexToDigit(source[2*i - 1], &lsb)) {
+      return false;
+    }
+    dest->push_back(lsb);
+  }
+  return true;
+}
+
+bool EsimQmiImpl::ConstructCtxParams(std::vector<uint8_t>* ctx_params) {
+  const std::vector<uint8_t> device_caps = {
+      0x80, 0x03, 0x0D, 0x00, 0x00, 0x81, 0x03, 0x0D, 0x00, 0x00,
+      0x85, 0x03, 0x0D, 0x00, 0x00, 0x87, 0x03, 0x02, 0x02, 0x00,
+  };
+
+  std::vector<uint8_t> imei_bytes;
+  if (!StringToBcdBytes(imei_, &imei_bytes)) {
+    LOG(ERROR) << __func__ << ": failed to convert imei (" << imei_
+               << ") to BCD format";
+    return false;
+  }
+
+  std::vector<uint8_t> tac(imei_bytes.begin(), imei_bytes.begin() + 4);
+
+  std::vector<uint8_t> matching_id_bytes;
+  if (!StringToBcdBytes(matching_id_, &matching_id_bytes)) {
+    LOG(ERROR) << __func__ << ": failed to convert matching_id ("
+               << matching_id_ << ") to BCD format";
+    return false;
+  }
+
+  uint8_t total_len = matching_id_bytes.size() + device_caps.size() +
+                      imei_bytes.size() + tac.size() + 10;
+
+  ctx_params->push_back(kAsn1TagCtxCmp0);
+  ctx_params->push_back(total_len);
+
+  ctx_params->push_back(kAsn1TagCtx0);
+  ctx_params->push_back(static_cast<uint8_t>(matching_id_bytes.size()));
+  ctx_params->insert(ctx_params->end(), matching_id_bytes.begin(),
+                     matching_id_bytes.end());
+  ctx_params->push_back(kAsn1TagCtxCmp1);
+  ctx_params->push_back(
+      static_cast<uint8_t>(tac.size() + device_caps.size() + imei_.size()) + 6);
+  ctx_params->push_back(kAsn1TagCtx0);
+  ctx_params->push_back(static_cast<uint8_t>(tac.size()));
+  ctx_params->insert(ctx_params->end(), tac.begin(), tac.end());
+  ctx_params->push_back(kAsn1TagCtxCmp0);
+  ctx_params->push_back(static_cast<uint8_t>(device_caps.size()));
+  ctx_params->insert(ctx_params->end(), device_caps.begin(), device_caps.end());
+  ctx_params->push_back(kAsn1TagCtx2);
+  ctx_params->push_back(static_cast<uint8_t>(imei_.size()));
+  ctx_params->insert(ctx_params->end(), imei_.begin(), imei_.end());
+
+  return true;
+}
+
 uint16_t EsimQmiImpl::GetTransactionNumber(const qrtr_packet& packet) const {
   if (packet.data_len < 3)
     return 0;
@@ -324,7 +514,7 @@ bool EsimQmiImpl::ResponseSuccess(uint16_t response) const {
 }
 
 bool EsimQmiImpl::MorePayloadIncoming() const {
-  return (sw1_ == kSw1MoreResponse);
+  return (sw1_ == kApduStatusMoreResponse);
 }
 
 uint8_t EsimQmiImpl::GetNextPayloadSize() const {

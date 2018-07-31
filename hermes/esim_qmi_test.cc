@@ -27,7 +27,7 @@ class EsimQmiTester {
 class EsimQmiImplTest : public testing::Test {
  public:
   EsimQmiImplTest() {
-    esim_ = EsimQmiImpl::CreateForTest(&fd_);
+    esim_ = EsimQmiImpl::CreateForTest(&fd_, "", "");
     esim_->Initialize(
         base::Bind(&EsimQmiImplTest::FakeSuccess, base::Unretained(this)),
         base::Bind(&EsimQmiImplTest::FakeError, base::Unretained(this)));

@@ -79,14 +79,23 @@ class Esim {
   // the eSIM's response. If the authentication fails, call |error_callback|.
   //
   // Parameters
-  //  server_data    - data that has been signed with server_signature
-  //  callback       - function to call with the data returned from the eSIM on
-  //                   successful authentication of |server_data|
-  //  error_callback - function to call if |server_data| is determined to be
-  //                   invalid by eSIM chip
-  virtual void AuthenticateServer(const std::vector<uint8_t>& server_data,
-                                  const DataCallback& data_callback,
-                                  const ErrorCallback& error_callback) = 0;
+  //  server_signed1            - data that has been signed with
+  //                              |server_signature| server_signature SM-DP+
+  //                              encryption signature
+  //  euicc_ci_pk_id_to_be_used - list of public keys for the eSIM to choose
+  //  server_certificate        - SM-DP+ certificate
+  //  data_callback             - function to call with the data returned from
+  //                              the eSIM on successful authentication of
+  //                              |server_data|
+  //  error_callback            - function to call if |server_data| is
+  //                              determined to be invalid by eSIM chip
+  virtual void AuthenticateServer(
+      const std::vector<uint8_t>& server_signed1,
+      const std::vector<uint8_t>& server_signature1,
+      const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
+      const std::vector<uint8_t>& server_certificate,
+      const DataCallback& data_callback,
+      const ErrorCallback& error_callback) = 0;
 };
 
 }  // namespace hermes

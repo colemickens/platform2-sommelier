@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <deque>
 #include <utility>
 #include <vector>
 
@@ -23,8 +24,11 @@ namespace hermes {
 
 class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
  public:
-  static std::unique_ptr<EsimQmiImpl> Create();
-  static std::unique_ptr<EsimQmiImpl> CreateForTest(base::ScopedFD* sock);
+  static std::unique_ptr<EsimQmiImpl> Create(std::string imei,
+                                             std::string matching_id);
+  static std::unique_ptr<EsimQmiImpl> CreateForTest(base::ScopedFD* sock,
+                                                    std::string imei,
+                                                    std::string matching_id);
 
   // Sets up FileDescriptorWatcher and transaction handling. Gets node and port
   // for UIM service from QRTR. Calls |success_callback| upon successful
@@ -46,17 +50,38 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
                const ErrorCallback& error_callback) override;
   void GetChallenge(const DataCallback& data_callback,
                     const ErrorCallback& error_callback) override;
-  void AuthenticateServer(const std::vector<uint8_t>& server_data,
+  void AuthenticateServer(const std::vector<uint8_t>& server_signed1,
+                          const std::vector<uint8_t>& server_signature,
+                          const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
+                          const std::vector<uint8_t>& server_certificate,
                           const DataCallback& data_callback,
                           const ErrorCallback& error_callback) override;
 
  private:
-  EsimQmiImpl(uint8_t slot, base::ScopedFD fd);
+  // TODO(jruthe): IMEI is hardware specific and should be retrieved from the
+  // hardware configuration
+  EsimQmiImpl(uint8_t slot,
+              const std::string& imei,
+              const std::string& matching_id,
+              base::ScopedFD fd);
 
   void CloseChannel();
-  void SendApdu(const std::vector<uint8_t>& data_buffer,
-                const DataCallback& callback,
+  void SendApdu(const DataCallback& callback,
                 const ErrorCallback& error_callback);
+
+  // APDUs have a payload size limit of 255 bytes. Thus payloads that are
+  // greater than 255 bytes, must be fragmented into several APDUs that are
+  // sent sequentially. Each time a payload of 255 bytes is constructed, it is
+  // appended to |apdu_queue_|. If |apdu_payload| is smaller than 255 bytes, it
+  // is simply given a header and appended to |apdu_queue_|.
+  //
+  // Parameters
+  //  cla           - CLA byte as defined in ISO 7816 5.1.1
+  //  ins           - INS byte as defined in ISO 7816 5.1.2
+  //  apdu_payload  - Buffer containing an APDU payload
+  void FragmentAndQueueApdu(uint8_t cla,
+                            uint8_t ins,
+                            const std::vector<uint8_t>& apdu_payload);
 
   // Messages sent between the Lpd and the eSIM chip are done through a series
   // of transactions. The Lpd can intiate transactions and the eSIM will
@@ -82,6 +107,17 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   //  packet          - QRTR packet to decode and process.
   void FinalizeTransaction(const qrtr_packet& packet);
 
+  // Build CtxParams object described in SGP.22 5.7.13 including matchingId,
+  // deviceInfo and their respective parameters.
+  //
+  // Parameters
+  //  ctx_params  - vector of bytes that will be filled with ctx_params endoded
+  //                in ASN.1 format. ctx_params is not modified if the
+  //                construction fails
+  //
+  // Returns  - True if ctx_params are constructed, false otherwise.
+  bool ConstructCtxParams(std::vector<uint8_t>* ctx_params);
+
   uint16_t GetTransactionNumber(const qrtr_packet& packet) const;
 
   bool ResponseSuccess(uint16_t response) const;
@@ -89,6 +125,10 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   bool MorePayloadIncoming() const;
 
   uint8_t GetNextPayloadSize() const;
+
+  bool StringToBcdBytes(const std::string& source, std::vector<uint8_t>* dest);
+
+  void QueueStoreData(const std::vector<uint8_t>& payload);
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -99,6 +139,12 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
 
   // Counter for each initiated transaction.
   uint16_t current_transaction_;
+
+  // IMEI number
+  std::string imei_;
+
+  // Matching ID of profile to install
+  std::string matching_id_;
 
   struct TransactionCallback {
     TransactionCallback() = default;
@@ -111,6 +157,10 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
   // Mapping of transactions to callbacks from Lpd once the eSIM has responded
   // to a request.
   std::map<int, TransactionCallback> response_callbacks_;
+
+  // Queue of completed packets to send to the eSIM, these will be sent one at
+  // a time through EsimQmiImpl::SendApdu as success responses are received.
+  std::deque<std::vector<uint8_t> > apdu_queue_;
 
   // The slot that the logical channel to the eSIM will be made. Initialized in
   // constructor, hardware specific.

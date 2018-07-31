@@ -23,7 +23,7 @@ class Smdp {
   using InitiateAuthenticationCallback =
       base::Callback<void(const std::vector<uint8_t>& server_signed1,
                           const std::vector<uint8_t>& server_signature1,
-                          const std::vector<uint8_t>& public_keys_to_use,
+                          const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
                           const std::vector<uint8_t>& server_certificate)>;
   using ErrorCallback =
       base::Callback<void(const std::vector<uint8_t>& error_data)>;

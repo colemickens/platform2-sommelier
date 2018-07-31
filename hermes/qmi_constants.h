@@ -28,6 +28,10 @@ constexpr uint16_t kEsimInfo1Tag = 0xBF20;
 // QMI UIM Challenge tag as specified in SGP.22 ES10b.GetEuiccChallenge
 constexpr uint16_t kEsimChallengeTag = 0xBF2E;
 
+// QMI UIM Authenticate Server tag as specified in SGP.22
+// ES10b.AuthenticateServer
+constexpr uint16_t kAuthenticateServerTag = 0xBF38;
+
 // TODO(jruthe): this is currently the slot on Cheza, but Esim should be able to
 // support different slots in the future.
 constexpr uint8_t kEsimSlot = 0x01;

@@ -85,12 +85,12 @@ void SmdpImpl::OnInitiateAuthenticationResponse(
   }
   base::Base64Decode(encoded_buffer, &server_signature1);
 
-  std::string public_keys_to_use;
+  std::string euicc_ci_pk_id_to_be_used;
   if (!json_dict->GetString("euiccCiPKIdToBeUsed", &encoded_buffer)) {
     error_callback.Run(std::vector<uint8_t>());
     return;
   }
-  base::Base64Decode(encoded_buffer, &public_keys_to_use);
+  base::Base64Decode(encoded_buffer, &euicc_ci_pk_id_to_be_used);
 
   std::string server_certificate;
   if (!json_dict->GetString("serverCertificate", &encoded_buffer)) {
@@ -102,8 +102,8 @@ void SmdpImpl::OnInitiateAuthenticationResponse(
   data_callback.Run(
       std::vector<uint8_t>(server_signed1.begin(), server_signed1.end()),
       std::vector<uint8_t>(server_signature1.begin(), server_signature1.end()),
-      std::vector<uint8_t>(public_keys_to_use.begin(),
-                           public_keys_to_use.end()),
+      std::vector<uint8_t>(euicc_ci_pk_id_to_be_used.begin(),
+                           euicc_ci_pk_id_to_be_used.end()),
       std::vector<uint8_t>(server_certificate.begin(),
                            server_certificate.end()));
 }
