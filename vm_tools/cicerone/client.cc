@@ -583,8 +583,14 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // Every D-Bus method for cicerone requires owner ID, VM name, and container
-  // name.
+  // Check for the get_info command early because it has the unique property of
+  // not requiring owner ID, VM name, or container name.
+  if (FLAGS_get_info) {
+    return GetInfo(proxy);
+  }
+
+  // Every D-Bus method for cicerone, other than the above get_info method,
+  // requires owner ID, VM name, and container name.
   if (FLAGS_owner_id.empty()) {
     LOG(ERROR) << "--owner_id is required";
     return -1;
@@ -623,8 +629,6 @@ int main(int argc, char** argv) {
                    std::move(FLAGS_container_name),
                    std::move(FLAGS_application), FLAGS_icon_size, FLAGS_scale,
                    std::move(FLAGS_output_filepath));
-  } else if (FLAGS_get_info) {
-    return GetInfo(proxy);
   } else if (FLAGS_install_package) {
     return InstallLinuxPackage(proxy, FLAGS_vm_name, FLAGS_container_name,
                                FLAGS_owner_id, std::move(FLAGS_file_path));
