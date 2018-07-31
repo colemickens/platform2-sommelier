@@ -1,0 +1,8 @@
+#####################################
+# minijail_netns_new(domain)
+# When minijail is used with minijail_namespace_net() or the CLI is used with
+# the "-e" option, it tries to enter a new network namespace.
+#
+define(`minijail_netns_new', `
+allowxperm $1 $1:unix_dgram_socket ioctl { SIOCSIFFLAGS SIOCGIFFLAGS };
+')

@@ -14,3 +14,5 @@ allow cros_crash cros_syslog:file r_file_perms;
 allow cros_crash unlabeled:dir search;
 
 domain_auto_trans(chromeos_domain, cros_crash_reporter_exec, cros_crash);
+
+minijail_netns_new(cros_crash)
