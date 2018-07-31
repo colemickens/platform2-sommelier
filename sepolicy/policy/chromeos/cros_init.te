@@ -1,0 +1,28 @@
+type cros_init, chromeos_domain, domain, mlstrustedsubject;
+
+permissive cros_init;
+
+type chromeos_init_exec, exec_type, file_type;
+
+allow kernel cros_init:process share;
+allow cros_init kernel:fd use;
+allow cros_init unlabeled:dir search;
+
+#allow cros_init device:chr_file r_file_perms;
+allow cros_init console_device:chr_file rw_file_perms;
+allow cros_init device:dir search;
+
+allow cros_init self:capability { sys_boot sys_resource };
+
+allow cros_init rootfs:dir create_dir_perms;
+
+allow cros_init self:key { write search setattr };
+
+allow domain cros_init:key search;
+
+# Transition from kernel to cros_init by executing chromeos's init.
+domain_auto_trans(kernel, chromeos_init_exec, cros_init)
+
+r_dir_file(cros_init, sysfs);
+r_dir_file(cros_init, cros_system_file);
+r_dir_file(cros_init, cros_init_conf_file);

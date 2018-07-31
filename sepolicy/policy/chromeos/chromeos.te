@@ -1,13 +1,10 @@
 # chromeos domain
-type chromeos, cros_miscdomain, chromeos_domain, domain, mlstrustedsubject;
+type chromeos, chromeos_domain, cros_miscdomain, domain, mlstrustedsubject;
 net_domain(chromeos)
 
 permissive chromeos;
 
-type chromeos_init_exec, exec_type, file_type;
-
-# Transition from kernel to chromeos by executing chromeos's init.
-domain_auto_trans(kernel, chromeos_init_exec, chromeos)
+domain_auto_trans(cros_init, unlabeled, chromeos);
 
 r_dir_file(chromeos, sysfs);
 
@@ -16,4 +13,3 @@ allow chromeos kernel:fd { use };
 
 allow chromeos device:chr_file ioctl;
 allow chromeos proc:file write;
-

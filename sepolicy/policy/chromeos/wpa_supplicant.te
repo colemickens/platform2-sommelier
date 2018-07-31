@@ -2,4 +2,4 @@ type wpa_supplicant, chromeos_domain, domain;
 
 permissive wpa_supplicant;
 
-domain_auto_trans(chromeos, cros_wpa_supplicant_exec, wpa_supplicant);
+domain_auto_trans(chromeos_domain, cros_wpa_supplicant_exec, wpa_supplicant);

@@ -1,0 +1,17 @@
+typeattribute device cros_dev_type;
+
+type random_device, dev_type, cros_dev_type, cros_labeled_dev_type;
+type urandom_device, dev_type, cros_dev_type, cros_labeled_dev_type;
+type console_device, dev_type, cros_dev_type, cros_labeled_dev_type;
+type zero_device, dev_type, cros_dev_type, cros_labeled_dev_type;
+
+typeattribute null_device dev_type, cros_dev_type, cros_labeled_dev_type;
+
+allow chromeos_domain null_device:chr_file rw_file_perms;
+allow chromeos_domain console_device:chr_file rw_file_perms;
+allow chromeos_domain random_device:chr_file rw_file_perms;
+allow chromeos_domain urandom_device:chr_file rw_file_perms;
+allow chromeos_domain zero_device:chr_file rw_file_perms;
+
+allow cros_labeled_dev_type device:filesystem associate;
+
