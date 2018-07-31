@@ -357,12 +357,16 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
-  // Chromebox for meetings devices need to start with this flag till
-  // crbug.com/653531 gets fixed. TODO(pbos): Remove this once this feature is
-  // enabled by default.
   if (builder->UseFlagIsSet("cfm_enabled_device")) {
     if (IsEnrolledChromeboxForMeetings()) {
+      // Chromebox For Meetings devices need to start with this flag till
+      // crbug.com/653531 gets fixed. TODO(pbos): Remove this once this feature
+      // is enabled by default.
       builder->AddBlinkFeatureEnableOverride("MediaStreamTrackContentHint");
+      // Chromebox For Meetings devices need to start with MojoVideoCapture
+      // enabled until it is the default for video capture on CrOS.
+      // See crbug.com/820608 for roll out.
+      builder->AddFeatureEnableOverride("MojoVideoCapture");
     }
     if (builder->UseFlagIsSet("screenshare_sw_codec")) {
       builder->AddFeatureEnableOverride("WebRtcScreenshareSwEncoding");
