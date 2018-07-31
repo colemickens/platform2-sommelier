@@ -14,11 +14,9 @@ dump_var_log() {
 
 dump_var_log arc.log
 
-# TODO(hidehiko): Move these logs into arc.log.
-dump_var_log arc-camera.log
-
 # TODO(hidehiko): Remove these in M71.
 rm -f /var/log/arc-adbd.log
+rm -f /var/log/arc-camera.log
 rm -f /var/log/arc-obb-mounter.log
 rm -f /var/log/arc-sdcard.log
 rm -f /var/log/arc-setfattr.log
