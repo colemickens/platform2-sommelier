@@ -9,6 +9,7 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_piece.h>
@@ -16,16 +17,19 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 
-#include "hal/usb/v4l2_camera_device.h"
-
 constexpr char kDestinationDir[] =
     "/mnt/stateful_partition/encrypted/var/cache/camera";
 constexpr char kMediaProfileFileName[] = "media_profiles.xml";
 constexpr char kMediaProfileDir[] = "/etc/camera";
 
-cros::DeviceInfos GetCameraDeviceInfos() {
-  cros::V4L2CameraDevice device;
-  return device.GetCameraDeviceInfos();
+int GetNumberOfBuiltinCameras() {
+  base::FileEnumerator cameras(base::FilePath("/dev"), /*recursive=*/false,
+                               base::FileEnumerator::FILES, "camera-internal*");
+  int cnt = 0;
+  while (!cameras.Next().empty()) {
+    cnt++;
+  }
+  return cnt;
 }
 
 cros::Camcorder GetDefaultCamcorder() {
@@ -89,7 +93,7 @@ std::string GetCamcorderString(int id) {
   return str;
 }
 
-bool GenerateCameraProfile(const cros::DeviceInfos& device_info) {
+bool GenerateCameraProfile(int num_cameras) {
   const base::FilePath profile =
       base::FilePath(kMediaProfileDir).Append(kMediaProfileFileName);
   std::string content;
@@ -111,7 +115,7 @@ bool GenerateCameraProfile(const cros::DeviceInfos& device_info) {
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
   CHECK(file.IsValid());
 
-  int i;
+  size_t i;
   for (i = 0; i < lines.size(); i++) {
     file.WriteAtCurrentPos(lines[i].data(), lines[i].length());
     file.WriteAtCurrentPos("\n", 1);
@@ -121,7 +125,7 @@ bool GenerateCameraProfile(const cros::DeviceInfos& device_info) {
   }
   // TODO(henryhsu): Write camcorder according to correct value from
   // configuration file instead of using default value.
-  for (int id = 1; id < device_info.size(); id++) {
+  for (int id = 1; id < num_cameras; id++) {
     std::string camcorder_string = GetCamcorderString(id);
     file.WriteAtCurrentPos(camcorder_string.c_str(), camcorder_string.length());
   }
@@ -146,9 +150,9 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(log_flags);
 
   LOG(INFO) << "Starting to generate media profiles";
-  cros::DeviceInfos device_infos = GetCameraDeviceInfos();
+  int num_builtin_cameras = GetNumberOfBuiltinCameras();
 
-  if (!GenerateCameraProfile(device_infos)) {
+  if (!GenerateCameraProfile(num_builtin_cameras)) {
     LOG(ERROR) << "Generate media profile error";
     return -1;
   }
