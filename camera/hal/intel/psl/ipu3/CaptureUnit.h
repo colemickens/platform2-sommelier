@@ -140,8 +140,7 @@ public:
                            bool configChanged);
 
     status_t doCapture(Camera3Request* request,
-                       std::shared_ptr<CaptureUnitSettings>  &aiqCaptureSettings,
-                       std::shared_ptr<GraphConfig> graphConfig);
+                       std::shared_ptr<CaptureUnitSettings>  &aiqCaptureSettings);
     LensHw* getLensControlInterface();
 
     /* IISysObserver interface */
@@ -165,13 +164,11 @@ private:
     struct  InflightRequestState {
         Camera3Request *request;
         std::shared_ptr<CaptureUnitSettings> aiqCaptureSettings;
-        std::shared_ptr<GraphConfig> graphConfig;
         uint32_t mediaRequestId;
         bool shutterDone;
 
         static void reset(InflightRequestState *me) {
             me->aiqCaptureSettings.reset();
-            me->graphConfig.reset();
             me->mediaRequestId = 0;
             me->request = nullptr;
         }
@@ -183,7 +180,6 @@ private:
 
         ~InflightRequestState() {
             aiqCaptureSettings = nullptr;
-            graphConfig = nullptr;
         }
     };
 

@@ -186,7 +186,6 @@ status_t CaptureUnit::handleFlush()
     if (mLastInflightRequest) {
         if (mLastInflightRequest->aiqCaptureSettings)
             mLastInflightRequest->aiqCaptureSettings.reset();
-        mLastInflightRequest->graphConfig.reset();
         mLastInflightRequest->request = nullptr;
     }
 
@@ -420,8 +419,7 @@ status_t CaptureUnit::getSensorModeData(ia_aiq_exposure_sensor_descriptor &desc)
 }
 
 status_t CaptureUnit::doCapture(Camera3Request* request,
-        std::shared_ptr<CaptureUnitSettings>  &aiqCaptureSettings,
-        std::shared_ptr<GraphConfig> graphConfig)
+        std::shared_ptr<CaptureUnitSettings>  &aiqCaptureSettings)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
@@ -433,7 +431,6 @@ status_t CaptureUnit::doCapture(Camera3Request* request,
         return UNKNOWN_ERROR;
     }
     msg.inFlightRequest->request = request;
-    msg.inFlightRequest->graphConfig = graphConfig;
     msg.inFlightRequest->aiqCaptureSettings = aiqCaptureSettings;
     msg.inFlightRequest->shutterDone = false;
 
@@ -559,14 +556,7 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
     std::shared_ptr<cros::V4L2Buffer> v4l2BufPtr = nullptr;
-    std::shared_ptr<GraphConfig> gc = nullptr;
     int32_t reqId = reqState->aiqCaptureSettings->aiqResults.requestId;
-
-    gc = reqState->graphConfig;
-    if (CC_UNLIKELY(gc.get() == nullptr)) {
-        LOGE("Failed to retrieve graphConfig");
-        return UNKNOWN_ERROR;
-    }
 
     if (!skip) {
         // get a capture buffer from the pool
@@ -735,7 +725,6 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
-    std::shared_ptr<GraphConfig> gc = nullptr;
     std::shared_ptr<cros::V4L2Buffer> isysBufferPtr = nullptr;
     cros::V4L2Buffer *outBuf = nullptr;
     ICaptureEventListener::CaptureMessage outMsg;
@@ -795,7 +784,6 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
     state = it->second;
     CheckError(state == nullptr, UNKNOWN_ERROR, "@%s: state is nullptr", __FUNCTION__);
 
-    gc = state->graphConfig;
     // notify shutter event
     if (state->shutterDone == false) {
         outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_SHUTTER;

@@ -59,8 +59,7 @@ public:
     status_t init();
     status_t configStreamsDone(bool configChanged);
 
-    status_t processRequest(Camera3Request* request,
-                            std::shared_ptr<GraphConfig> graphConfig);
+    status_t processRequest(Camera3Request* request);
 
     /* ICaptureEventListener interface*/
     bool notifyCaptureEvent(CaptureMessage *captureMsg);

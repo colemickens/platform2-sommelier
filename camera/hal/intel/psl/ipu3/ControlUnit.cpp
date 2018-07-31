@@ -224,7 +224,6 @@ void RequestCtrlState::reset(RequestCtrlState* me)
         me->processingSettings.reset();
         me->captureBufs.rawBuffer.reset();
         me->captureBufs.rawNonScaledBuffer.reset();
-        me->graphConfig.reset();
         DELETE_ARRAY_AND_NULLIFY(me->rGammaLut);
         DELETE_ARRAY_AND_NULLIFY(me->gGammaLut);
         DELETE_ARRAY_AND_NULLIFY(me->bGammaLut);
@@ -233,11 +232,9 @@ void RequestCtrlState::reset(RequestCtrlState* me)
     }
 }
 
-void RequestCtrlState::init(Camera3Request *req,
-                                         std::shared_ptr<GraphConfig> aGraphConfig)
+void RequestCtrlState::init(Camera3Request *req)
 {
     request = req;
-    graphConfig = aGraphConfig;
     aiqInputParams.init();
     if (CC_LIKELY(captureSettings)) {
         captureSettings->aiqResults.init();
@@ -252,7 +249,6 @@ void RequestCtrlState::init(Camera3Request *req,
     }
     if (CC_LIKELY(processingSettings.get() != nullptr)) {
         processingSettings->captureSettings = captureSettings;
-        processingSettings->graphConfig = aGraphConfig;
         processingSettings->request = req;
     } else {
         LOGE(" Failed to init Ctrl State: no processing settings!! - BUG");
@@ -422,8 +418,7 @@ ControlUnit::acquireRequestStateStruct(std::shared_ptr<RequestCtrlState>& state)
  * unit and send the message to be handled in the internal message thread.
  */
 status_t
-ControlUnit::processRequest(Camera3Request* request,
-                            std::shared_ptr<GraphConfig> graphConfig)
+ControlUnit::processRequest(Camera3Request* request)
 {
     status_t status = NO_ERROR;
     std::shared_ptr<RequestCtrlState> state;
@@ -434,7 +429,7 @@ ControlUnit::processRequest(Camera3Request* request,
         return status;  // error log already done in the helper method
     }
 
-    state->init(request, graphConfig);
+    state->init(request);
 
     base::Callback<status_t()> closure =
             base::Bind(&ControlUnit::handleNewRequest, base::Unretained(this),
@@ -578,8 +573,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
     m3ARunner->updateInputParams(reqState->aiqInputParams);
 
     status = mCaptureUnit->doCapture(reqState->request,
-                                     reqState->captureSettings,
-                                     reqState->graphConfig);
+                                     reqState->captureSettings);
     if (CC_UNLIKELY(status != NO_ERROR)) {
         LOGE("Failed to issue capture request for id %d", reqId);
     }
@@ -741,9 +735,8 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
     int reqId = reqState->captureSettings->aiqResults.requestId;
     bool updateMeta = false;
 
-    LOG2("complete processing req %d frames arrived %d total %d",
-             reqId, reqState->framesArrived,
-             reqState->graphConfig->getIsaOutputCount());
+    LOG2("complete processing req %d frames arrived %d",
+             reqId, reqState->framesArrived);
 
     // We do this only once per request when the first buffer arrives
     if (reqState->framesArrived == 1) {

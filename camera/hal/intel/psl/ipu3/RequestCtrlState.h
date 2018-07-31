@@ -47,7 +47,7 @@ enum AlgorithmState {
  * It also tracks the status of each algorithm for this request
  */
 struct RequestCtrlState {
-    void init(Camera3Request *req, std::shared_ptr<GraphConfig> aGraphConfig);
+    void init(Camera3Request *req);
     static void reset(RequestCtrlState* me);
     CameraMetadata *ctrlUnitResult; /**< metadata results written in the
                                          context of the ControlUnit */
@@ -60,8 +60,6 @@ struct RequestCtrlState {
     std::shared_ptr<CaptureUnitSettings> captureSettings; /**< Results from 3A calculations */
     std::shared_ptr<ProcUnitSettings> processingSettings; /**< Per request parameters
                                                         for the processing unit */
-    std::shared_ptr<GraphConfig> graphConfig; /**< Details of the graph configuration for this request */
-
     AlgorithmState  afState;
     AlgorithmState  aeState;
     AlgorithmState  awbState;

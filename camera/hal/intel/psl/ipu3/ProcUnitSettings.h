@@ -40,7 +40,6 @@ struct ProcUnitSettings {
     AAAControls android3Actrl;
     CameraWindow cropRegion; /**< Crop region in ANDROID_COORDINATES */
     std::shared_ptr<CaptureUnitSettings> captureSettings;
-    std::shared_ptr<GraphConfig> graphConfig;
     bool dump; /**< 'true' if (PAL) dump needs to be done */
 
     ProcUnitSettings() :
@@ -67,7 +66,6 @@ struct ProcUnitSettings {
             me->request = nullptr;
             me->dump = false;
             me->captureSettings.reset();
-            me->graphConfig.reset();
         } else {
             LOGE("Trying to reset a null ProcUnitSettings structure !! - BUG ");
         }

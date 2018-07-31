@@ -391,8 +391,7 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
     }
 
     if (status == NO_ERROR) {
-        mControlUnit->processRequest(request,
-                                     mGCM.getGraphConfig(*request));
+        mControlUnit->processRequest(request);
     }
     return status;
 }
