@@ -302,16 +302,6 @@ INSTALL_ATTRIBUTES_FILE=\
 # Checks if developer mode is blocked.
 dev_check_block_dev_mode "${DEV_MODE_FILE}"
 
-# 'firmware-boot-update' is provided by chromeos-firmware for legacy systems.
-# On most new boards, it should be simply an empty file.
-#
-# NOTE that in some cases (on any board that doesn't have a
-# chromeos-firmware-* ebuild package) this file may not exist at all and that's
-# OK. /bin/sh will yell about "command not found" but then will continue
-# executing the rest of the script since errors aren't fatal.
-# See https://crbug.com/806383
-firmware-boot-update || true
-
 # File used to trigger a stateful reset.  Contains arguments for
 # the "clobber-state" call.  This file may exist at boot time, as
 # some use cases operate by creating this file with the necessary
