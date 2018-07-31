@@ -756,6 +756,71 @@ bool TpmUtilityV2::ReadPCR(uint32_t pcr_index, std::string* pcr_value) const {
   return true;
 }
 
+bool TpmUtilityV2::CertifyNV(uint32_t nv_index,
+                             int nv_size,
+                             const std::string& key_blob,
+                             std::string* quoted_data,
+                             std::string* quote) {
+  TPM_RC result;
+
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+
+  MultipleAuthorizations authorization;
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+
+  TPM_HANDLE key_handle;
+  result = trunks_utility_->LoadKey(
+            key_blob, empty_password_authorization.get(),
+            &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to load key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  TpmObjectScoper scoper(trunks_factory_, key_handle);
+  std::string key_name;
+  result = trunks_utility_->GetKeyName(key_handle, &key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key name: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
+  trunks::TPMT_SIG_SCHEME scheme;
+  scheme.scheme = trunks::TPM_ALG_RSASSA;
+  scheme.details.rsassa.hash_alg = trunks::TPM_ALG_SHA256;
+
+  trunks::TPM2B_ATTEST quoted_struct;
+  trunks::TPMT_SIGNATURE signature;
+  result = trunks_factory_->GetTpm()->NV_CertifySync(
+      key_handle,  // sign_handle
+      key_name,    // sign_handle_name
+      nv_index,    // auth_handle
+      "",          // auth_handle_name
+      nv_index,    // nv_index
+      "",          // nv_index_name
+      trunks::Make_TPM2B_DATA(""),  // qualifying data
+      scheme,      // in_scheme
+      nv_size,     // size to read
+      0,           // offset
+      &quoted_struct,
+      &signature,
+      &authorization);
+
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to certify the NVs: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
+  *quoted_data = StringFrom_TPM2B_ATTEST(quoted_struct);
+  *quote = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+  return true;
+}
+
+
 bool TpmUtilityV2::GetRSAPublicKeyFromTpmPublicKey(
     const std::string& tpm_public_key_object,
     std::string* public_key_der) {

@@ -83,6 +83,11 @@ class TpmUtilityV1 : public TpmUtility {
                 std::string* quote) override;
   bool IsQuoteForPCR(const std::string& quote,
                      uint32_t pcr_index) const override;
+  bool CertifyNV(uint32_t nv_index,
+                 int nv_size,
+                 const std::string& key_blob,
+                 std::string* quoted_data,
+                 std::string* quote) override;
   bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const override;
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der) override;

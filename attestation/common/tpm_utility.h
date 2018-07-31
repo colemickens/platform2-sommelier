@@ -150,6 +150,17 @@ class TpmUtility {
   // populates |_pcr_value|.
   virtual bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const = 0;
 
+  // Certifies NV data at |nv_index|. The amount of data to be certified,
+  // starting at offset 0, is specified by |nv_size|. The |key_blob| must be a
+  // restricted signing key. On success returns true and populates:
+  //   |quoted_data| - The exact serialized data that was signed.
+  //   |quote| - The signature.
+  virtual bool CertifyNV(uint32_t nv_index,
+                         int nv_size,
+                         const std::string& key_blob,
+                         std::string* quoted_data,
+                         std::string* quote) = 0;
+
   // Convert a |tpm_public_key_object|, that is, a serialized TPM_PUBKEY for
   // TPM 1.2 or serialized TPMT_PUBLIC for TPM 2.0, to a DER encoded PKCS #1
   // RSAPublicKey.

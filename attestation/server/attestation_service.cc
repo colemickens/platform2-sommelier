@@ -1072,6 +1072,7 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
       identity_data.identity_binding().identity_public_key());
   *request_pb.mutable_pcr0_quote() = identity_data.pcr_quotes().at(0);
   *request_pb.mutable_pcr1_quote() = identity_data.pcr_quotes().at(1);
+  *request_pb.mutable_nvram_quotes() = identity_data.nvram_quotes();
 
   if (identity_data.features() & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
     std::string enterprise_enrollment_nonce =
@@ -1640,6 +1641,22 @@ int AttestationService::CreateIdentity(int identity_features,
     LOG(ERROR) << "Attestation: Failed to generate quote for PCR1.";
     return -1;
   }
+  // Certify device-specific NV data. This is an almost identical process
+  // to the PCR quotes above.
+  std::string certified_board_id;
+  std::string board_id_signature;
+  if (!tpm_utility_->CertifyNV(0x013fff00 /* board_id */, 12 /* size */,
+                               rsa_identity_key_blob,
+                               &certified_board_id, &board_id_signature)) {
+    LOG(WARNING) << "Attestation: Failed to certify board id NV data";
+  }
+  std::string certified_sn_bits;
+  std::string sn_bits_signature;
+  if (!tpm_utility_->CertifyNV(0x013fff01 /* sn_bits */, 16 /* size */,
+                               rsa_identity_key_blob,
+                               &certified_sn_bits, &sn_bits_signature)) {
+    LOG(WARNING) << "Attestation: Failed to certify sn bits NV data";
+  }
 
   AttestationDatabase::Identity* identity_data =
       database_pb->mutable_identities()->Add();
@@ -1656,13 +1673,13 @@ int AttestationService::CreateIdentity(int identity_features,
   binding_pb->set_identity_public_key(rsa_identity_public_key);
 
   // Store PCR quotes in the identity.
-  auto* map = identity_data->mutable_pcr_quotes();
+  auto* pcr_quote_map = identity_data->mutable_pcr_quotes();
 
   Quote quote_pb0;
   quote_pb0.set_quote(quote0);
   quote_pb0.set_quoted_data(quoted_data0);
   quote_pb0.set_quoted_pcr_value(quoted_pcr_value0);
-  auto in0 = map->insert(QuoteMap::value_type(0, quote_pb0));
+  auto in0 = pcr_quote_map->insert(QuoteMap::value_type(0, quote_pb0));
   if (!in0.second) {
     LOG(ERROR) << "Attestation: Failed to store PCR0 quote for identity "
                << identity << ".";
@@ -1675,9 +1692,36 @@ int AttestationService::CreateIdentity(int identity_features,
   quote_pb1.set_quoted_pcr_value(quoted_pcr_value1);
   quote_pb1.set_pcr_source_hint(hwid_);
 
-  auto in1 = map->insert(QuoteMap::value_type(1, quote_pb1));
+  auto in1 = pcr_quote_map->insert(QuoteMap::value_type(1, quote_pb1));
   if (!in1.second) {
     LOG(ERROR) << "Attestation: Failed to store PCR1 quote for identity "
+               << identity << ".";
+    return false;
+  }
+
+  auto* nv_quote_map = identity_data->mutable_nvram_quotes();
+
+  // The map keys used here correspond to the NVRAMQuoteType enum in
+  // attestation_ca.proto
+
+  Quote board_id_pb;
+  board_id_pb.set_quote(board_id_signature);
+  board_id_pb.set_quoted_data(certified_board_id);
+
+  auto in_bid = nv_quote_map->insert(QuoteMap::value_type(0, board_id_pb));
+  if (!in_bid.second) {
+    LOG(ERROR) << "Attestation: Failed to store board id quote for identity "
+               << identity << ".";
+    return false;
+  }
+
+  Quote sn_bits_pb;
+  sn_bits_pb.set_quote(sn_bits_signature);
+  sn_bits_pb.set_quoted_data(certified_sn_bits);
+
+  auto in_snbits = nv_quote_map->insert(QuoteMap::value_type(1, sn_bits_pb));
+  if (!in_snbits.second) {
+    LOG(ERROR) << "Attestation: Failed to store sn bits quote for identity "
                << identity << ".";
     return false;
   }

@@ -86,6 +86,12 @@ class MockTpmUtility : public TpmUtility {
                     std::string*,
                     std::string*,
                     std::string*));
+  MOCK_METHOD5(CertifyNV,
+               bool(uint32_t,
+                    int,
+                    const std::string&,
+                    std::string*,
+                    std::string*));
   MOCK_CONST_METHOD2(IsQuoteForPCR, bool(const std::string&, uint32_t));
   MOCK_CONST_METHOD2(ReadPCR, bool(uint32_t, std::string*));
   MOCK_METHOD2(GetRSAPublicKeyFromTpmPublicKey,
