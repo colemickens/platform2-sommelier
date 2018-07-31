@@ -15,7 +15,6 @@ dump_var_log() {
 dump_var_log arc.log
 
 # TODO(hidehiko): Move these logs into arc.log.
-dump_var_log android.kmsg
 dump_var_log arc-camera.log
 
 # TODO(hidehiko): Remove these in M71.
@@ -26,6 +25,7 @@ rm -f /var/log/arc-setfattr.log
 rm -f /var/log/arc-stale-directory-remover.log
 
 # TODO(hidehiko): Remove these in M72.
+rm -f /var/log/android.kmsg
 rm -f /var/log/arc-boot-continue.log
 rm -f /var/log/arc-lifetime.log
 rm -f /var/log/arc-network.log
