@@ -48,13 +48,18 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0))
     LOG(FATAL) << "minijail_bind(\"/run/dbus\") failed";
 
-  // Mount /tmp and /run/cups to be able to communicate with CUPS.
+  // Mount /tmp, /run/cups, and /run/ippusb to be able to communicate with CUPS.
   if (minijail_bind(j.get(), "/tmp", "/tmp", 1))
     LOG(FATAL) << "minijail_bind(\"/tmp\") failed";
   // In case we start before cups, make sure the path exists.
   mkdir("/run/cups", 0755);
   if (minijail_bind(j.get(), "/run/cups", "/run/cups", 0))
     LOG(FATAL) << "minijail_bind(\"/run/cups\") failed";
+  // In case we start before upstart-socket-bridge, make sure the path exists.
+  mkdir("/run/ippusb", 0755);
+  // Mount /run/ippusb to be able to communicate with CUPS.
+  if (minijail_bind(j.get(), "/run/ippusb", "/run/ippusb", 0))
+    LOG(FATAL) << "minijail_bind(\"/run/ippusb\") failed";
 
   // Since shill provides network resolution settings, bind mount it.
   // In case we start before shill, make sure the path exists.
