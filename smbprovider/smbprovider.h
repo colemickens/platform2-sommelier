@@ -123,6 +123,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
  private:
+  // Returns a pointer to the SambaInterface corresponding to |mount_id|.
+  SambaInterface* GetSambaInterface(int32_t mount_id) const;
+
   // Uses |options| to create the full path based on the mount id and entry path
   // supplied in |options|. |full_path| will be unmodified on failure.
   template <typename Proto>
@@ -160,19 +163,22 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   // Tests whether |mount_root| is a valid path to be mounted by attemping
   // to open the directory.
-  bool CanAccessMount(const std::string& mount_root, int32_t* error_code);
+  bool CanAccessMount(int32_t mount_id,
+                      const std::string& mount_root,
+                      int32_t* error_code);
 
   // Helper method to get the type of an entry. Returns boolean indicating
   // success. Sets is_directory to true for directory, and false for file.
   // Fails when called on non-file, non-directory.
   // On failure, returns false and sets |error_code|.
-  bool GetEntryType(const std::string& full_path,
+  bool GetEntryType(int32_t mount_id,
+                    const std::string& full_path,
                     int32_t* error_code,
                     bool* is_directory);
 
   // Helper method to close the directory with id |dir_id|. Logs an error if the
   // directory fails to close.
-  void CloseDirectory(int32_t dir_id);
+  void CloseDirectory(int32_t mount_id, int32_t dir_id);
 
   // Removes |mount_id| from the |mount_manager_| object and sets |error_code|
   // on failure.
@@ -245,21 +251,22 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Calls delete on the contents of |dir_path| via postorder traversal.
   // RecursiveDelete exits and returns error if an entry cannot be deleted
   // or there was a Samba error iterating over entries.
-  int32_t RecursiveDelete(const std::string& dir_path);
+  int32_t RecursiveDelete(int32_t mount_id, const std::string& dir_path);
 
   // Calls delete on a DirectoryEntry. Returns the result from either DeleteFile
   // or DeleteDirectory.
-  int32_t DeleteDirectoryEntry(const DirectoryEntry& entry);
+  int32_t DeleteDirectoryEntry(int32_t mount_id, const DirectoryEntry& entry);
 
   // Calls Unlink.
-  int32_t DeleteFile(const std::string& file_path);
+  int32_t DeleteFile(int32_t mount_id, const std::string& file_path);
 
   // Calls RemoveDirectory.
-  int32_t DeleteDirectory(const std::string& dir_path);
+  int32_t DeleteDirectory(int32_t mount_id, const std::string& dir_path);
 
   // Helper method to construct a PostDepthFirstIterator for a given
   // |full_path|.
-  PostDepthFirstIterator GetPostOrderIterator(const std::string& full_path);
+  PostDepthFirstIterator GetPostOrderIterator(int32_t mount_id,
+                                              const std::string& full_path);
 
   // Opens a file located at |full_path| with permissions based on the protobuf.
   // |file_id| is the file handle for the opened file, and error will be set on
@@ -431,6 +438,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // if the copy must be continued, ERROR_OK if the copy was completed
   // successfully, and any other ErrorType if an error is encountered.
   ErrorType ContinueCopy(int32_t copy_token);
+
+  // Returns true if |mount_id_| corresponds to a valid mount. Returns false and
+  // sets |error_code| to ERROR_NOT_FOUND otherwise.
+  template <typename Proto>
+  bool IsMounted(const Proto& options, int32_t* error_code) const;
 
   std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

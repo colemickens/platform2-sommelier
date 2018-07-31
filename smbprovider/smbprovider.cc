@@ -93,7 +93,7 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
       ParseOptionsProto(options_blob, &options, error_code) &&
       AddMount(options.path(), options.workgroup(), options.username(),
                password_fd, error_code, mount_id) &&
-      CanAccessMount(options.path(), error_code);
+      CanAccessMount(*mount_id, options.path(), error_code);
 
   if (!success) {
     // If AddMount() was successful but the mount could not be accessed, remove
@@ -110,15 +110,15 @@ int32_t SmbProvider::Remount(const ProtoBlob& options_blob,
   RemountOptionsProto options;
   const bool remounted =
       ParseOptionsProto(options_blob, &options, &error_code) &&
-      Remount(options.path(), options.mount_id(), options.workgroup(),
+      Remount(options.path(), GetMountId(options), options.workgroup(),
               options.username(), password_fd, &error_code);
 
   if (!remounted) {
     return error_code;
   }
 
-  if (!CanAccessMount(options.path(), &error_code)) {
-    RemoveMountIfMounted(options.mount_id());
+  if (!CanAccessMount(GetMountId(options), options.path(), &error_code)) {
+    RemoveMountIfMounted(GetMountId(options));
   }
 
   return error_code;
@@ -128,6 +128,7 @@ int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
   UnmountOptionsProto options;
   if (!ParseOptionsProto(options_blob, &options, &error_code) ||
+      !IsMounted(options, &error_code) ||
       !RemoveMount(GetMountId(options), &error_code)) {
     return error_code;
   }
@@ -165,16 +166,16 @@ void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
       DCHECK(cache);
     }
 
+    SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
     if (include_metadata && cache) {
       // Purge the cache of expired entries before reading next directory.
       cache->PurgeExpiredEntries();
-      GetEntries(options,
-                 GetCachingIterator<Iterator>(full_path, samba_interface_.get(),
-                                              cache),
-                 error_code, out_entries);
+      GetEntries(
+          options,
+          GetCachingIterator<Iterator>(full_path, samba_interface, cache),
+          error_code, out_entries);
     } else {
-      GetEntries(options,
-                 GetIterator<Iterator>(full_path, samba_interface_.get()),
+      GetEntries(options, GetIterator<Iterator>(full_path, samba_interface),
                  error_code, out_entries);
     }
   }
@@ -195,14 +196,15 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
 
   // If the cache is enabled and we have the result, then return it.
   if (metadata_cache_enabled_ &&
-      GetCachedEntry(options.mount_id(), full_path, out_entry)) {
+      GetCachedEntry(GetMountId(options), full_path, out_entry)) {
     *error_code = static_cast<int32_t>(ERROR_OK);
     return;
   }
 
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
   struct stat stat_info;
   int32_t get_status_error =
-      samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
+      samba_interface->GetEntryStatus(full_path.c_str(), &stat_info);
   if (get_status_error != 0) {
     LogAndSetError(options, GetErrorFromErrno(get_status_error), error_code);
     return;
@@ -237,6 +239,10 @@ int32_t SmbProvider::CloseFile(const ProtoBlob& options_blob) {
     return error_code;
   }
 
+  if (!IsMounted(options, &error_code)) {
+    return error_code;
+  }
+
   if (!CloseFile(options, options.file_id(), &error_code)) {
     return error_code;
   }
@@ -254,7 +260,8 @@ int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
 
   bool is_directory;
   int32_t get_type_result;
-  if (!GetEntryType(full_path, &get_type_result, &is_directory)) {
+  if (!GetEntryType(GetMountId(options), full_path, &get_type_result,
+                    &is_directory)) {
     LogAndSetError(options, GetErrorFromErrno(get_type_result), &error_code);
     return error_code;
   }
@@ -262,12 +269,12 @@ int32_t SmbProvider::DeleteEntry(const ProtoBlob& options_blob) {
   int32_t result;
   if (is_directory) {
     if (options.recursive()) {
-      result = RecursiveDelete(full_path);
+      result = RecursiveDelete(GetMountId(options), full_path);
     } else {
-      result = DeleteDirectory(full_path);
+      result = DeleteDirectory(GetMountId(options), full_path);
     }
   } else {
-    result = DeleteFile(full_path);
+    result = DeleteFile(GetMountId(options), full_path);
   }
 
   if (result != 0) {
@@ -291,7 +298,7 @@ void SmbProvider::ReadFile(const ProtoBlob& options_blob,
   // The functions below will set the error if they fail.
   *error_code = static_cast<int32_t>(ERROR_OK);
   bool success = ParseOptionsProto(options_blob, &options, error_code) &&
-                 Seek(options, error_code) &&
+                 IsMounted(options, error_code) && Seek(options, error_code) &&
                  ReadFileIntoBuffer(options, error_code, &buffer) &&
                  WriteTempFile(options, buffer, error_code, temp_fd);
 
@@ -318,7 +325,8 @@ int32_t SmbProvider::CreateFile(const ProtoBlob& options_blob) {
   // Close the file handle from CreateFile().
   if (!CloseFile(options, file_id, &error_code)) {
     // Attempt to delete the file since file will not be usable.
-    int32_t unlink_result = samba_interface_->Unlink(full_path);
+    SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+    int32_t unlink_result = samba_interface->Unlink(full_path);
     if (unlink_result != 0) {
       // Log the unlink error but return the original error.
       LOG(ERROR) << "Error unlinking after error closing file: "
@@ -497,6 +505,11 @@ HostnamesProto SmbProvider::BuildHostnamesProto(
   return hostnames_proto;
 }
 
+// TODO(baileyberro): Return a different SambaInterface for each mount.
+SambaInterface* SmbProvider::GetSambaInterface(int32_t mount_id) const {
+  return samba_interface_.get();
+}
+
 template <typename Proto>
 bool SmbProvider::GetFullPath(const Proto* options,
                               std::string* full_path) const {
@@ -588,11 +601,16 @@ bool SmbProvider::ParseOptionsAndPaths(const ProtoBlob& blob,
   return true;
 }
 
-bool SmbProvider::GetEntryType(const std::string& full_path,
+bool SmbProvider::GetEntryType(int32_t mount_id,
+                               const std::string& full_path,
                                int32_t* error_code,
                                bool* is_directory) {
+  DCHECK(error_code);
+  DCHECK(is_directory);
+
+  SambaInterface* samba_interface = GetSambaInterface(mount_id);
   struct stat stat_info;
-  *error_code = samba_interface_->GetEntryStatus(full_path.c_str(), &stat_info);
+  *error_code = samba_interface->GetEntryStatus(full_path.c_str(), &stat_info);
   if (*error_code != 0) {
     return false;
   }
@@ -611,7 +629,10 @@ bool SmbProvider::GetEntryType(const std::string& full_path,
 
 template <typename Proto>
 bool SmbProvider::Seek(const Proto& options, int32_t* error_code) {
-  int32_t result = samba_interface_->Seek(options.file_id(), options.offset());
+  DCHECK(error_code);
+
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t result = samba_interface->Seek(options.file_id(), options.offset());
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
@@ -619,21 +640,26 @@ bool SmbProvider::Seek(const Proto& options, int32_t* error_code) {
   return true;
 }
 
-bool SmbProvider::CanAccessMount(const std::string& mount_root,
+bool SmbProvider::CanAccessMount(int32_t mount_id,
+                                 const std::string& mount_root,
                                  int32_t* error_code) {
+  DCHECK(error_code);
+
+  SambaInterface* samba_interface = GetSambaInterface(mount_id);
   int32_t dir_id = -1;
-  int32_t result = samba_interface_->OpenDirectory(mount_root, &dir_id);
+  int32_t result = samba_interface->OpenDirectory(mount_root, &dir_id);
   if (result != 0) {
     LogAndSetError(kMountMethod, -1, GetErrorFromErrno(result), error_code);
     return false;
   }
 
-  CloseDirectory(dir_id);
+  CloseDirectory(mount_id, dir_id);
   return true;
 }
 
-void SmbProvider::CloseDirectory(int32_t dir_id) {
-  int32_t result = samba_interface_->CloseDirectory(dir_id);
+void SmbProvider::CloseDirectory(int32_t mount_id, int32_t dir_id) {
+  SambaInterface* samba_interface = GetSambaInterface(mount_id);
+  int32_t result = samba_interface->CloseDirectory(dir_id);
   if (result != 0) {
     LOG(ERROR) << "Error closing directory " << dir_id;
   }
@@ -725,8 +751,9 @@ bool SmbProvider::WriteFileFromBuffer(const Proto& options,
                                       int32_t* error_code) {
   DCHECK(error_code);
 
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
   int32_t result =
-      samba_interface_->WriteFile(file_id, buffer.data(), buffer.size());
+      samba_interface->WriteFile(file_id, buffer.data(), buffer.size());
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
@@ -734,15 +761,16 @@ bool SmbProvider::WriteFileFromBuffer(const Proto& options,
   return true;
 }
 
-int32_t SmbProvider::RecursiveDelete(const std::string& dir_path) {
-  PostDepthFirstIterator it = GetPostOrderIterator(dir_path);
+int32_t SmbProvider::RecursiveDelete(int32_t mount_id,
+                                     const std::string& dir_path) {
+  PostDepthFirstIterator it = GetPostOrderIterator(mount_id, dir_path);
   int32_t it_result = it.Init();
   while (it_result == 0) {
     if (it.IsDone()) {
       return 0;
     }
 
-    int32_t del_result = DeleteDirectoryEntry(it.Get());
+    int32_t del_result = DeleteDirectoryEntry(mount_id, it.Get());
     if (del_result != 0) {
       return del_result;
     }
@@ -755,24 +783,30 @@ int32_t SmbProvider::RecursiveDelete(const std::string& dir_path) {
   return it_result;
 }
 
-int32_t SmbProvider::DeleteDirectoryEntry(const DirectoryEntry& entry) {
+int32_t SmbProvider::DeleteDirectoryEntry(int32_t mount_id,
+                                          const DirectoryEntry& entry) {
   if (entry.is_directory) {
-    return DeleteDirectory(entry.full_path);
+    return DeleteDirectory(mount_id, entry.full_path);
   }
-  return DeleteFile(entry.full_path);
+  return DeleteFile(mount_id, entry.full_path);
 }
 
-int32_t SmbProvider::DeleteFile(const std::string& file_path) {
-  return samba_interface_->Unlink(file_path.c_str());
+int32_t SmbProvider::DeleteFile(int32_t mount_id,
+                                const std::string& file_path) {
+  SambaInterface* samba_interface = GetSambaInterface(mount_id);
+  return samba_interface->Unlink(file_path.c_str());
 }
 
-int32_t SmbProvider::DeleteDirectory(const std::string& dir_path) {
-  return samba_interface_->RemoveDirectory(dir_path.c_str());
+int32_t SmbProvider::DeleteDirectory(int32_t mount_id,
+                                     const std::string& dir_path) {
+  SambaInterface* samba_interface = GetSambaInterface(mount_id);
+  return samba_interface->RemoveDirectory(dir_path.c_str());
 }
 
 PostDepthFirstIterator SmbProvider::GetPostOrderIterator(
-    const std::string& full_path) {
-  return PostDepthFirstIterator(full_path, samba_interface_.get());
+    int32_t mount_id, const std::string& full_path) {
+  SambaInterface* samba_interface = GetSambaInterface(mount_id);
+  return PostDepthFirstIterator(full_path, samba_interface);
 }
 
 template <typename Proto>
@@ -780,7 +814,11 @@ bool SmbProvider::OpenFile(const Proto& options,
                            const std::string& full_path,
                            int32_t* error,
                            int32_t* file_id) {
-  int32_t result = samba_interface_->OpenFile(
+  DCHECK(error);
+  DCHECK(file_id);
+
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t result = samba_interface->OpenFile(
       full_path, GetOpenFilePermissions(options), file_id);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error);
@@ -793,7 +831,10 @@ template <typename Proto>
 bool SmbProvider::CloseFile(const Proto& options,
                             int32_t file_id,
                             int32_t* error) {
-  int32_t result = samba_interface_->CloseFile(file_id);
+  DCHECK(error);
+
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t result = samba_interface->CloseFile(file_id);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error);
     return false;
@@ -806,7 +847,10 @@ bool SmbProvider::TruncateAndCloseFile(const Proto& options,
                                        const int32_t file_id,
                                        int64_t length,
                                        int32_t* error) {
-  int32_t truncate_result = samba_interface_->Truncate(file_id, length);
+  DCHECK(error);
+
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t truncate_result = samba_interface->Truncate(file_id, length);
   if (truncate_result != 0) {
     LogAndSetError(options, GetErrorFromErrno(truncate_result), error);
     // Continue to close on error.
@@ -831,7 +875,9 @@ bool SmbProvider::MoveEntry(const MoveEntryOptionsProto& options,
                             const std::string& target_path,
                             int32_t* error) {
   DCHECK(error);
-  int32_t result = samba_interface_->MoveEntry(source_path, target_path);
+
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t result = samba_interface->MoveEntry(source_path, target_path);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error);
     return false;
@@ -905,7 +951,8 @@ bool SmbProvider::CreateSingleDirectory(const Proto& options,
                                         int32_t* error_code) {
   DCHECK(error_code);
 
-  const int32_t result = samba_interface_->CreateDirectory(full_path);
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  const int32_t result = samba_interface->CreateDirectory(full_path);
   if (ShouldReportCreateDirError(result, ignore_existing)) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
@@ -922,7 +969,8 @@ bool SmbProvider::CreateFile(const Proto& options,
   DCHECK(file_id);
   DCHECK(error);
 
-  int32_t result = samba_interface_->CreateFile(full_path, file_id);
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t result = samba_interface->CreateFile(full_path, file_id);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error);
     return false;
@@ -937,7 +985,8 @@ bool SmbProvider::CopyEntry(const CopyEntryOptionsProto& options,
   DCHECK(error_code);
   bool is_directory;
   int32_t get_type_result;
-  if (!GetEntryType(source_path, &get_type_result, &is_directory)) {
+  if (!GetEntryType(GetMountId(options), source_path, &get_type_result,
+                    &is_directory)) {
     LogAndSetError(options, GetErrorFromErrno(get_type_result), error_code);
     return false;
   }
@@ -956,7 +1005,8 @@ bool SmbProvider::CopyFile(const CopyEntryOptionsProto& options,
                            int32_t* error_code) {
   DCHECK(error_code);
 
-  int32_t result = samba_interface_->CopyFile(source_path, target_path);
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t result = samba_interface->CopyFile(source_path, target_path);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
@@ -973,7 +1023,8 @@ ErrorType SmbProvider::StartCopy(const CopyEntryOptionsProto& options,
 
   bool is_directory;
   int32_t get_type_result;
-  if (!GetEntryType(source_path, &get_type_result, &is_directory)) {
+  if (!GetEntryType(GetMountId(options), source_path, &get_type_result,
+                    &is_directory)) {
     return GetErrorFromErrno(get_type_result);
   }
 
@@ -991,8 +1042,8 @@ ErrorType SmbProvider::StartCopyProgress(const CopyEntryOptionsProto& options,
                                          int32_t* copy_token) {
   DCHECK(copy_token);
 
-  auto copy_progress =
-      std::make_unique<CopyProgressType>(samba_interface_.get());
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  auto copy_progress = std::make_unique<CopyProgressType>(samba_interface);
 
   int32_t copy_result;
   bool should_continue_copy =
@@ -1064,8 +1115,9 @@ bool SmbProvider::ReadToBuffer(const Proto& options,
   DCHECK(bytes_read);
   DCHECK(error_code);
 
-  int32_t result = samba_interface_->ReadFile(file_id, buffer->data(),
-                                              buffer->size(), bytes_read);
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  int32_t result = samba_interface->ReadFile(file_id, buffer->data(),
+                                             buffer->size(), bytes_read);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
@@ -1095,7 +1147,8 @@ void SmbProvider::GetDeleteList(const ProtoBlob& options_blob,
 
   bool is_directory;
   int32_t get_type_result;
-  if (!GetEntryType(full_path, &get_type_result, &is_directory)) {
+  if (!GetEntryType(GetMountId(options), full_path, &get_type_result,
+                    &is_directory)) {
     LogAndSetError(options, GetErrorFromErrno(get_type_result), error_code);
     *temp_fd = GenerateEmptyFile();
     return;
@@ -1152,7 +1205,8 @@ int32_t SmbProvider::GenerateDeleteList(
     return 0;
   }
 
-  PostDepthFirstIterator it = GetPostOrderIterator(full_path);
+  PostDepthFirstIterator it =
+      GetPostOrderIterator(GetMountId(options), full_path);
   int32_t it_result = it.Init();
   while (it_result == 0) {
     if (it.IsDone()) {
@@ -1205,6 +1259,15 @@ brillo::dbus_utils::FileDescriptor SmbProvider::GenerateEmptyFile() {
 std::string SmbProvider::GetRelativePath(int32_t mount_id,
                                          const std::string& entry_path) {
   return mount_manager_->GetRelativePath(mount_id, entry_path);
+}
+
+template <typename Proto>
+bool SmbProvider::IsMounted(const Proto& options, int32_t* error_code) const {
+  const bool is_valid = mount_manager_->IsAlreadyMounted(GetMountId(options));
+  if (!is_valid) {
+    LogAndSetError(options, ERROR_NOT_FOUND, error_code);
+  }
+  return is_valid;
 }
 
 // These are required to explicitly instantiate the template functions.
