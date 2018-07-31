@@ -348,11 +348,13 @@ TEST_F(KernelCollectorTest, CollectOK) {
   ASSERT_TRUE(base::PathExists(path));
   ASSERT_TRUE(base::ReadFileToString(path, &contents));
   ASSERT_TRUE(
-      contents.find("payload=" + path.ReplaceExtension("kcrash").value()) !=
+      contents.find("payload=" +
+                    path.ReplaceExtension("kcrash").BaseName().value()) !=
       std::string::npos);
-  ASSERT_TRUE(contents.find("upload_file_bios_log=" +
-                            path.ReplaceExtension("bios_log").value()) !=
-              std::string::npos);
+  ASSERT_TRUE(
+      contents.find("upload_file_bios_log=" +
+                    path.ReplaceExtension("bios_log").BaseName().value()) !=
+      std::string::npos);
 }
 
 void KernelCollectorTest::WatchdogOKHelper(const FilePath& path) {

@@ -717,7 +717,8 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
         PLOG(WARNING) << "Failed to write BIOS log to "
                       << bios_dump_path.value() << " (ignoring)";
       } else {
-        AddCrashMetaUploadFile(kBiosDumpName, bios_dump_path.value());
+        AddCrashMetaUploadFile(kBiosDumpName,
+                               bios_dump_path.BaseName().value());
         LOG(INFO) << "Stored BIOS log to " << bios_dump_path.value();
       }
     }
@@ -725,7 +726,7 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
     AddCrashMetaData(kKernelSignatureKey, signature);
     FinishCrash(root_crash_directory.Append(
                     StringPrintf("%s.meta", dump_basename.c_str())),
-                kKernelExecName, kernel_crash_path.value());
+                kKernelExecName, kernel_crash_path.BaseName().value());
 
     LOG(INFO) << "Stored kcrash to " << kernel_crash_path.value();
   }

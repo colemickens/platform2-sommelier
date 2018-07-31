@@ -100,7 +100,7 @@ bool ChromeCollector::HandleCrashWithDumpData(const std::string& data,
     // Call AddCrashMetaUploadFile() rather than AddCrashMetaData() here. The
     // former adds a prefix to the key name; without the prefix, only the key
     // "logs" appears to be displayed on the crash server.
-    AddCrashMetaUploadFile(it.first, it.second.value());
+    AddCrashMetaUploadFile(it.first, it.second.BaseName().value());
   }
 
   base::FilePath aborted_path(kAbortedBrowserPidPath);
@@ -114,7 +114,7 @@ bool ChromeCollector::HandleCrashWithDumpData(const std::string& data,
   }
 
   // We're done.
-  FinishCrash(meta_path, exe_name, minidump_path.value());
+  FinishCrash(meta_path, exe_name, minidump_path.BaseName().value());
 
   // In production |output_file_ptr_| must be stdout because chrome expects to
   // read the magic string there.
@@ -203,7 +203,7 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         // Some other file.
         FilePath path = GetCrashPath(dir, basename + "-" + filename, "other");
         if (WriteNewFile(path, data.c_str() + at, size) >= 0) {
-          AddCrashMetaUploadFile(desc, path.value());
+          AddCrashMetaUploadFile(desc, path.BaseName().value());
         }
       }
     } else {
@@ -255,7 +255,7 @@ void ChromeCollector::AddLogIfNotTooBig(
     const base::FilePath& complete_file_name,
     std::map<std::string, base::FilePath>* logs) {
   if (get_bytes_written() <= max_upload_bytes_) {
-    (*logs)[log_map_key] = complete_file_name;
+    (*logs)[log_map_key] = complete_file_name.BaseName();
   } else {
     // Logs were really big, don't upload them.
     LOG(WARNING) << "Skipping upload of " << complete_file_name.value()

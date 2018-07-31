@@ -273,9 +273,9 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
             meta_file_contents.size() + output_dump_file_contents.size() +
                 other_file_contents.size());
   EXPECT_THAT(meta_file_contents,
-              HasSubstr("payload=" + output_dump_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_some_file=" + other_file.value()));
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
@@ -327,9 +327,9 @@ TEST_F(ChromeCollectorTest, HandleCrashWithEmbeddedNuls) {
             meta_file_contents.size() + output_dump_file_contents.size() +
                 other_file_contents.size());
   EXPECT_THAT(meta_file_contents,
-              HasSubstr("payload=" + output_dump_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_some_file=" + other_file.value()));
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
@@ -390,14 +390,14 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorState) {
                 dri_error_file_contents.size() + other_file_contents.size() +
                 output_dump_file_contents.size());
   EXPECT_THAT(meta_file_contents,
-              HasSubstr("payload=" + output_dump_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_some_file=" + other_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_chrome.txt=" + output_log.value()));
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_chrome.txt=" +
+                                            output_log.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_i915_error_state.log.xz=" +
-                        output_dri_error_file.value()));
+                        output_dri_error_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
@@ -437,9 +437,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
       collector_.get_bytes_written(),
       meta_file_contents.size() + kOutputDumpFileSize + kOutputOtherFileSize);
   EXPECT_THAT(meta_file_contents,
-              HasSubstr("payload=" + output_dump_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_some_file=" + other_file.value()));
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_chrome.txt")));
   EXPECT_THAT(meta_file_contents,
               Not(HasSubstr("upload_file_i915_error_state.log.xz")));
@@ -488,13 +488,13 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
             meta_file_contents.size() + kOutputDumpFileSize +
                 kOutputOtherFileSize + dri_error_file_contents.size());
   EXPECT_THAT(meta_file_contents,
-              HasSubstr("payload=" + output_dump_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_some_file=" + other_file.value()));
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_chrome.txt")));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_i915_error_state.log.xz=" +
-                        output_dri_error_file.value()));
+                        output_dri_error_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
@@ -544,11 +544,11 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
             meta_file_contents.size() + kOutputDumpFileSize +
                 kOutputOtherFileSize + output_log_compressed_size);
   EXPECT_THAT(meta_file_contents,
-              HasSubstr("payload=" + output_dump_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_some_file=" + other_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_chrome.txt=" + output_log.value()));
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_chrome.txt=" +
+                                            output_log.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               Not(HasSubstr("upload_file_i915_error_state.log.xz=")));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
@@ -591,9 +591,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogsAndLargeDriErrorFiles) {
       collector_.get_bytes_written(),
       meta_file_contents.size() + kOutputDumpFileSize + kOutputOtherFileSize);
   EXPECT_THAT(meta_file_contents,
-              HasSubstr("payload=" + output_dump_file.value()));
-  EXPECT_THAT(meta_file_contents,
-              HasSubstr("upload_file_some_file=" + other_file.value()));
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_chrome.txt=")));
   EXPECT_THAT(meta_file_contents,
               Not(HasSubstr("upload_file_i915_error_state.log.xz=")));

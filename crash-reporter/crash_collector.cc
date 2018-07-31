@@ -1033,19 +1033,11 @@ void CrashCollector::AddCrashMetaData(const std::string& key,
 void CrashCollector::AddCrashMetaUploadFile(const std::string& key,
                                             const std::string& path) {
   if (!path.empty()) {
-    FilePath file_path = FilePath(path);
-    switch (crash_sending_mode_) {
-      case kNormalCrashSendMode:
-        // TODO(vapier): Make it fatal if the name is not relative.
-        if (!NormalizeFilePath(file_path, &file_path))
-          PLOG(WARNING) << "Could not normalize " << path;
-        break;
-      case kCrashLoopSendingMode:
-        // Only the base name is recorded in the metadata file.
-        file_path = file_path.BaseName();
-        break;
+    if (path.find('/') != std::string::npos) {
+      LOG(ERROR) << "Upload files must be basenames only: " << path;
+      return;
     }
-    AddCrashMetaData(kUploadFilePrefix + key, file_path.value());
+    AddCrashMetaData(kUploadFilePrefix + key, path);
   }
 }
 
@@ -1058,19 +1050,11 @@ void CrashCollector::AddCrashMetaUploadData(const std::string& key,
 void CrashCollector::AddCrashMetaUploadText(const std::string& key,
                                             const std::string& path) {
   if (!path.empty()) {
-    FilePath file_path = FilePath(path);
-    switch (crash_sending_mode_) {
-      case kNormalCrashSendMode:
-        // TODO(vapier): Make it fatal if the name is not relative.
-        if (!NormalizeFilePath(file_path, &file_path))
-          PLOG(WARNING) << "Could not normalize " << path;
-        break;
-      case kCrashLoopSendingMode:
-        // Only the base name is recorded in the metadata file.
-        file_path = file_path.BaseName();
-        break;
+    if (path.find('/') != std::string::npos) {
+      LOG(ERROR) << "Upload files must be basenames only: " << path;
+      return;
     }
-    AddCrashMetaData(kUploadTextPrefix + key, file_path.value());
+    AddCrashMetaData(kUploadTextPrefix + key, path);
   }
 }
 
@@ -1139,20 +1123,13 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
                                  const std::string& payload_name) {
   DCHECK(!is_finished_);
 
-  // TODO(vapier): Make it fatal if the name is not relative.
-  FilePath payload_path = FilePath(payload_name);
-  switch (crash_sending_mode_) {
-    case kNormalCrashSendMode:
-      payload_path = meta_path.DirName().Append(payload_path.BaseName());
-      if (!NormalizeFilePath(payload_path, &payload_path))
-        PLOG(WARNING) << "Could not normalize " << payload_name;
-      break;
-    case kCrashLoopSendingMode:
-      // Only the base name of the payload is recorded in the metadata file.
-      payload_path = payload_path.BaseName();
-      break;
+  // All files are relative to the metadata, so reject anything else.
+  if (payload_name.find('/') != std::string::npos) {
+    LOG(ERROR) << "Upload files must be basenames only: " << payload_name;
+    return;
   }
 
+  const FilePath payload_path = meta_path.DirName().Append(payload_name);
   const std::string version = GetOsVersion();
   const std::string description = GetOsDescription();
   const std::string kernel_name = GetKernelName();
@@ -1166,21 +1143,20 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
         StringPrintf("os_millis=%" PRId64 "\n",
                      (os_timestamp - base::Time::UnixEpoch()).InMilliseconds());
   }
-  std::string meta_data =
-      StringPrintf("%supload_var_reportTimeMillis=%" PRId64
-                   "\n"
-                   "upload_var_lsb-release=%s\n"
-                   "upload_var_osName=%s\n"
-                   "upload_var_osVersion=%s\n"
-                   "exec_name=%s\n"
-                   "ver=%s\n"
-                   "payload=%s\n"
-                   "%s"
-                   "done=1\n",
-                   extra_metadata_.c_str(), now_millis, description.c_str(),
-                   kernel_name.c_str(), kernel_version.c_str(),
-                   exec_name.c_str(), version.c_str(),
-                   payload_path.value().c_str(), os_timestamp_str.c_str());
+  std::string meta_data = StringPrintf(
+      "%supload_var_reportTimeMillis=%" PRId64
+      "\n"
+      "upload_var_lsb-release=%s\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
+      "exec_name=%s\n"
+      "ver=%s\n"
+      "payload=%s\n"
+      "%s"
+      "done=1\n",
+      extra_metadata_.c_str(), now_millis, description.c_str(),
+      kernel_name.c_str(), kernel_version.c_str(), exec_name.c_str(),
+      version.c_str(), payload_name.c_str(), os_timestamp_str.c_str());
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.

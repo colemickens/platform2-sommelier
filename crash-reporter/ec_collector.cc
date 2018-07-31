@@ -94,7 +94,7 @@ bool ECCollector::Collect() {
     AddCrashMetaData("sig", signature);
     FinishCrash(root_crash_directory.Append(
                     StringPrintf("%s.meta", dump_basename.c_str())),
-                kECExecName, ec_crash_path.value());
+                kECExecName, ec_crash_path.BaseName().value());
 
     LOG(INFO) << "Stored EC crash to " << ec_crash_path.value();
   }

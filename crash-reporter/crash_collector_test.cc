@@ -754,8 +754,8 @@ TEST_F(CrashCollectorTest, MetaData) {
   const char kMetaFileBasename[] = "generated.meta";
   FilePath meta_file = test_dir_.Append(kMetaFileBasename);
   FilePath lsb_release = paths::Get("/etc/lsb-release");
-  FilePath payload_file = test_dir_.Append("payload-file");
-  FilePath payload_full_path;
+  const char kPayloadName[] = "payload-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
   std::string contents;
   collector_.set_lsb_release_for_test(lsb_release);
   const char kLsbContents[] =
@@ -774,7 +774,6 @@ TEST_F(CrashCollectorTest, MetaData) {
   const char kPayload[] = "foo";
   ASSERT_TRUE(test_util::CreateFile(payload_file, kPayload));
   collector_.AddCrashMetaData("foo", "bar");
-  ASSERT_TRUE(NormalizeFilePath(payload_file, &payload_full_path));
   std::unique_ptr<base::SimpleTestClock> test_clock =
       std::make_unique<base::SimpleTestClock>();
   test_clock->SetNow(base::Time::UnixEpoch() +
@@ -783,7 +782,7 @@ TEST_F(CrashCollectorTest, MetaData) {
   const char kKernelName[] = "Linux";
   const char kKernelVersion[] = "3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018";
   collector_.set_test_kernel_info(kKernelName, kKernelVersion);
-  collector_.FinishCrash(meta_file, "kernel", payload_file.value());
+  collector_.FinishCrash(meta_file, "kernel", kPayloadName);
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   std::string expected_meta = StringPrintf(
       "upload_var_collector=mock\n"
@@ -799,7 +798,7 @@ TEST_F(CrashCollectorTest, MetaData) {
       "os_millis=%" PRId64
       "\n"
       "done=1\n",
-      kFakeNow, kKernelName, kKernelVersion, payload_full_path.value().c_str(),
+      kFakeNow, kKernelName, kKernelVersion, kPayloadName,
       (os_time - base::Time::UnixEpoch()).InMilliseconds());
   EXPECT_EQ(expected_meta, contents);
   EXPECT_EQ(collector_.get_bytes_written(), expected_meta.size());
@@ -818,11 +817,12 @@ TEST_F(CrashCollectorTest, MetaDataDoesntOverwriteSymlink) {
   ASSERT_EQ(0, symlink(kSymlinkTarget, meta_symlink_path.value().c_str()));
   ASSERT_TRUE(base::PathExists(meta_symlink_path));
 
-  FilePath payload_file = test_dir_.Append("payload2-file");
+  const char kPayloadName[] = "payload2-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
   ASSERT_TRUE(test_util::CreateFile(payload_file, "whatever"));
 
   brillo::ClearLog();
-  collector_.FinishCrash(meta_symlink_path, "kernel", payload_file.value());
+  collector_.FinishCrash(meta_symlink_path, "kernel", kPayloadName);
   // Target file contents should have stayed the same.
   std::string contents;
   EXPECT_TRUE(base::ReadFileToString(symlink_target_path, &contents));
@@ -841,11 +841,12 @@ TEST_F(CrashCollectorTest, MetaDataDoesntCreateSymlink) {
   ASSERT_EQ(0, symlink(kSymlinkTarget, meta_symlink_path.value().c_str()));
   ASSERT_FALSE(base::PathExists(meta_symlink_path));
 
-  FilePath payload_file = test_dir_.Append("payload2-file");
+  const char kPayloadName[] = "payload2-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
   ASSERT_TRUE(test_util::CreateFile(payload_file, "whatever"));
 
   brillo::ClearLog();
-  collector_.FinishCrash(meta_symlink_path, "kernel", payload_file.value());
+  collector_.FinishCrash(meta_symlink_path, "kernel", kPayloadName);
   EXPECT_FALSE(base::PathExists(symlink_target_path));
   EXPECT_TRUE(FindLog("Unable to write"));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
@@ -1287,7 +1288,7 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
   EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)),
             strlen(kBuffer));
   EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
-  collector.FinishCrash(kMetaFilePath, "kernel", kPath.value());
+  collector.FinishCrash(kMetaFilePath, "kernel", kPath.BaseName().value());
   EXPECT_GT(collector.get_bytes_written(), strlen(kBuffer));
 }
 

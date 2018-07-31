@@ -553,11 +553,11 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
       return false;
     }
 
-    AddCrashMetaUploadText(kExceptionInfoField, info_path.value());
+    AddCrashMetaUploadText(kExceptionInfoField, info_path.BaseName().value());
   }
 
   const FilePath meta_path = GetCrashPath(crash_dir, basename, "meta");
-  FinishCrash(meta_path, process, log_path.value());
+  FinishCrash(meta_path, process, log_path.BaseName().value());
   return true;
 }
 

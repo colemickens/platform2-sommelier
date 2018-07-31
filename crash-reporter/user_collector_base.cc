@@ -287,17 +287,11 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   FilePath proc_log_path = GetCrashPath(crash_path, dump_basename, "proclog");
 
   if (GetLogContents(FilePath(log_config_path_), exec, log_path)) {
-    FilePath full_path = log_path;
-    if (!NormalizeFilePath(log_path, &full_path))
-      full_path = log_path;
-    AddCrashMetaUploadFile("log", full_path.value());
+    AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
 
   if (GetProcessTree(pid, proc_log_path)) {
-    FilePath full_path = proc_log_path;
-    if (!NormalizeFilePath(proc_log_path, &full_path))
-      full_path = proc_log_path;
-    AddCrashMetaUploadFile("process_tree", full_path.value());
+    AddCrashMetaUploadFile("process_tree", proc_log_path.BaseName().value());
   }
 
 #if USE_DIRENCRYPTION
@@ -331,7 +325,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   // Here we commit to sending this file.  We must not return false
   // after this point or we will generate a log report as well as a
   // crash report.
-  FinishCrash(meta_path, exec, minidump_path.value());
+  FinishCrash(meta_path, exec, minidump_path.BaseName().value());
 
   if (!util::IsDeveloperImage()) {
     base::DeleteFile(core_path, false);
@@ -441,7 +435,7 @@ void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
     PLOG(ERROR) << "Error writing new file " << log_path.value();
     return;
   }
-  FinishCrash(meta_path, exec, log_path.value());
+  FinishCrash(meta_path, exec, log_path.BaseName().value());
 }
 
 std::vector<std::string> UserCollectorBase::GetCommandLine(pid_t pid) const {

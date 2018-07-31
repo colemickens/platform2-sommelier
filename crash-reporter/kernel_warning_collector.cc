@@ -108,7 +108,7 @@ bool KernelWarningCollector::Collect(WarningType type) {
     AddCrashMetaUploadFile("log", log_path.value());
   }
 
-  FinishCrash(meta_path, exec_name, kernel_crash_path.value());
+  FinishCrash(meta_path, exec_name, kernel_crash_path.BaseName().value());
 
   LOG(INFO) << "Stored kernel warning into " << kernel_crash_path.value();
   return true;
