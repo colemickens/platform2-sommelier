@@ -73,9 +73,13 @@ class MetadataCache {
   static bool IsExpired(const CacheEntry& cache_entry,
                         base::TimeTicks threshold);
 
+  // Returns true if all the entries in the cache are expired.
+  bool AreAllEntriesExpired() const;
+
   std::unordered_map<std::string, CacheEntry> cache_;
   base::TickClock* tick_clock_;  // Not owned
   base::TimeDelta entry_lifetime_;
+  base::TimeTicks max_expiration_time_;
   DISALLOW_COPY_AND_ASSIGN(MetadataCache);
 };
 

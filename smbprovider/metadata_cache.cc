@@ -15,8 +15,10 @@ MetadataCache::MetadataCache(base::TickClock* tick_clock,
 MetadataCache::~MetadataCache() = default;
 
 void MetadataCache::AddEntry(const DirectoryEntry& entry) {
-  cache_[entry.full_path] =
-      CacheEntry(entry, tick_clock_->NowTicks() + entry_lifetime_);
+  // NowTicks() is non-decreasing so any value we get will always be at
+  // at least equal to the higest version we've seen before.
+  max_expiration_time_ = tick_clock_->NowTicks() + entry_lifetime_;
+  cache_[entry.full_path] = CacheEntry(entry, max_expiration_time_);
 }
 
 bool MetadataCache::FindEntry(const std::string& full_path,
@@ -48,6 +50,18 @@ bool MetadataCache::RemoveEntry(const std::string& entry_path) {
 }
 
 void MetadataCache::PurgeExpiredEntries() {
+  if (IsEmpty()) {
+    // Nothing to do if it is already empty.
+    return;
+  }
+
+  // If all entries are expired, just clear the entire map.
+  if (AreAllEntriesExpired()) {
+    ClearAll();
+    return;
+  }
+
+  // Otherwise iterate through the map removing the expired entries.
   const base::TimeTicks threshold = tick_clock_->NowTicks();
 
   auto it = cache_.cbegin();
@@ -68,6 +82,10 @@ bool MetadataCache::IsExpired(const CacheEntry& cache_entry,
 bool MetadataCache::IsExpired(
     const MetadataCache::CacheEntry& cache_entry) const {
   return MetadataCache::IsExpired(cache_entry, tick_clock_->NowTicks());
+}
+
+bool MetadataCache::AreAllEntriesExpired() const {
+  return tick_clock_->NowTicks() > max_expiration_time_;
 }
 
 }  // namespace smbprovider
