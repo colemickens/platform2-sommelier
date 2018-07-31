@@ -2042,7 +2042,6 @@ void ArcSetup::OnBootContinue() {
 
 void ArcSetup::OnStop() {
   CleanUpBinFmtMiscSetUp();
-  UnmountSdcard();
   UnmountOnStop();
   RemoveBugreportPipe();
   RemoveAndroidKmsgFifo();
@@ -2100,6 +2099,10 @@ void ArcSetup::OnMountSdcard() {
   SetUpSdcard();
 }
 
+void ArcSetup::OnUnmountSdcard() {
+  UnmountSdcard();
+}
+
 void ArcSetup::Run() {
   switch (arc_paths_->mode) {
     case Mode::SETUP:
@@ -2125,6 +2128,9 @@ void ArcSetup::Run() {
       break;
     case Mode::MOUNT_SDCARD:
       OnMountSdcard();
+      break;
+    case Mode::UNMOUNT_SDCARD:
+      OnUnmountSdcard();
       break;
     case Mode::UNKNOWN:
       NOTREACHED();
