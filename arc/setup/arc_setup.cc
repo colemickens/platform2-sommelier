@@ -39,6 +39,7 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
 
 #include "arc/setup/arc_read_ahead.h"
@@ -2106,7 +2107,9 @@ void ArcSetup::OnUnmountSdcard() {
 void ArcSetup::Run() {
   switch (arc_paths_->mode) {
     case Mode::SETUP:
+      bootstat_log("mini-android-start");
       OnSetup();
+      bootstat_log("arc-setup-for-mini-android-end");
       break;
     case Mode::STOP:
       OnStop();

@@ -5,9 +5,9 @@
 
 export ENVFILE=/etc/init/arc-setup-env
 
-bootstat mini-android-start
+# The script should always end with exec to not confuse run_oci's process
+# tracking.
 set -e -x
 . $ENVFILE
-/usr/sbin/arc-setup --log_to_stderr --log_tag=arc-setup-precreate --mode=setup
-bootstat arc-setup-for-mini-android-end
-exit 0
+exec /usr/sbin/arc-setup --log_to_stderr --log_tag=arc-setup-precreate \
+  --mode=setup

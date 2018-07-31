@@ -52,6 +52,11 @@
           ],
         }],
       ],
+      'link_settings': {
+        'libraries': [
+          '-lbootstat',
+        ],
+      },
     },
     {
       'target_name': 'arc-setup',
