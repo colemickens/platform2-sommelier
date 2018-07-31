@@ -1,5 +1,5 @@
 # chromeos domain
-type chromeos, chromeos_domain, domain, mlstrustedsubject;
+type chromeos, cros_miscdomain, chromeos_domain, domain, mlstrustedsubject;
 net_domain(chromeos)
 
 permissive chromeos;
@@ -14,8 +14,6 @@ r_dir_file(chromeos, sysfs);
 allow kernel chromeos:process { share };
 allow chromeos kernel:fd { use };
 
-allow chromeos self:capability { dac_override sys_boot };
 allow chromeos device:chr_file ioctl;
 allow chromeos proc:file write;
-allow chromeos self:capability sys_resource;
 

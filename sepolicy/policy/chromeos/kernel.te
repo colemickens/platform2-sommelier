@@ -27,10 +27,6 @@ allow kernel device:dir add_name; # for dm-X device.
 allow kernel device:blk_file create_file_perms;
 
 allow kernel self:global_capability_class_set sys_nice;
-arc_nyc_cts_fails(
-# Violating neverallow { domain -debuggerd -vold -dumpstate -system_server } self:capability sys_ptrace;
-allow kernel self:capability *;
-)
 
 allow kernel sysfs:filesystem getattr;
 allow kernel labeledfs:filesystem getattr;
