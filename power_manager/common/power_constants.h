@@ -213,6 +213,9 @@ extern const char kSuspendToIdlePref[];
 // If true, update wifi transmit power when in tablet vs. clamshell mode.
 extern const char kSetWifiTransmitPowerForTabletModePref[];
 
+// If true, update wifi transmit power based on proximity sensors.
+extern const char kSetWifiTransmitPowerForProximityPref[];
+
 // Miscellaneous constants.
 
 // sysfs directory containing internal backlight devices and a glob-style
