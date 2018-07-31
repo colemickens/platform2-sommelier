@@ -5,8 +5,8 @@
 #ifndef SMBPROVIDER_METADATA_CACHE_H_
 #define SMBPROVIDER_METADATA_CACHE_H_
 
-#include <map>
 #include <string>
+#include <unordered_map>
 
 #include <base/macros.h>
 #include <base/time/time.h>
@@ -72,7 +72,7 @@ class MetadataCache {
   static bool IsExpired(const CacheEntry& cache_entry,
                         base::TimeTicks threshold);
 
-  std::map<std::string, CacheEntry> cache_;
+  std::unordered_map<std::string, CacheEntry> cache_;
   base::TickClock* tick_clock_;  // Not owned
   base::TimeDelta entry_lifetime_;
   DISALLOW_COPY_AND_ASSIGN(MetadataCache);
