@@ -281,6 +281,14 @@ enum class TabletMode {
   UNSUPPORTED,
 };
 
+// Chromebooks may have one or more sensors that are able to indicate
+// the user's physical proximity to the device.
+enum class UserProximity {
+  NEAR,
+  FAR,
+  UNKNOWN,
+};
+
 enum class SessionState {
   STOPPED,
   STARTED,
@@ -322,6 +330,7 @@ enum class ShutdownReason {
 std::string PowerSourceToString(PowerSource source);
 std::string LidStateToString(LidState state);
 std::string TabletModeToString(TabletMode mode);
+std::string UserProximityToString(UserProximity proximity);
 std::string SessionStateToString(SessionState state);
 std::string DisplayModeToString(DisplayMode mode);
 std::string ButtonStateToString(ButtonState state);

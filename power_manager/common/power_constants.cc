@@ -139,6 +139,19 @@ std::string TabletModeToString(TabletMode mode) {
   return base::StringPrintf("unknown (%d)", static_cast<int>(mode));
 }
 
+std::string UserProximityToString(UserProximity proximity) {
+  switch (proximity) {
+    case UserProximity::NEAR:
+      return "near";
+    case UserProximity::FAR:
+      return "far";
+    case UserProximity::UNKNOWN:
+      return "unknown";
+  }
+  NOTREACHED() << "Unhandled user proximity " << static_cast<int>(proximity);
+  return base::StringPrintf("unknown (%d)", static_cast<int>(proximity));
+}
+
 std::string SessionStateToString(SessionState state) {
   switch (state) {
     case SessionState::STOPPED:
