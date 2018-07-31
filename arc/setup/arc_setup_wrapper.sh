@@ -6,7 +6,6 @@
 export ENVFILE=/etc/init/arc-setup-env
 
 bootstat mini-android-start
-echo "$(date --rfc-3339=ns): arc-setup --mode=setup"
 set -e -x
 . $ENVFILE
 /usr/sbin/arc-setup --log_to_stderr --log_tag=arc-setup-precreate --mode=setup
