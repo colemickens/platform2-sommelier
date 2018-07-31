@@ -58,7 +58,11 @@ enum class Mode {
   BOOT_CONTINUE,
   STOP,
   ONETIME_SETUP,
+
+  // None of our scripts for production uses ONETIME_STOP. Only our development
+  // script does to unmount system/vendor images before pushing new ones.
   ONETIME_STOP,
+
   PRE_CHROOT,
   READ_AHEAD,
   MOUNT_SDCARD,
@@ -304,7 +308,7 @@ class ArcSetup {
   void EnsureContainerDirectories();
 
   // Creates model-specific build properties from shared unibuild templates.
-  // Called during --onetime-setup.
+  // Called during --mode=onetime-setup.
   void CreateBuildProperties();
 
   // Expands a template Android property file into /run/arc/properties.
@@ -334,28 +338,29 @@ class ArcSetup {
   // image hasn't been mounted yet.
   AndroidSdkVersion GetSdkVersion();
 
-  // Called when arc-setup is called with --setup
+  // Called when arc-setup is called with --mode=setup
   void OnSetup();
 
-  // Called when arc-setup is called with ---boot-continue.
+  // Called when arc-setup is called with --mode=boot-continue.
   void OnBootContinue();
 
-  // Called when arc-setup is called with --stop.
+  // Called when arc-setup is called with --mode=stop.
   void OnStop();
 
-  // Does a setup that is only needed once per Chrome OS boot.
+  // Does a setup that is only needed once per Chrome OS boot (i.e.
+  // --mode=onetime-setup).
   void OnOnetimeSetup();
 
-  // Does a shutdown that is only needed once per Chrome OS boot.
+  // Called when arc-setup is called with --mode=onetime-stop.
   void OnOnetimeStop();
 
-  // Called when arc-setup is called with --pre-chroot.
+  // Called when arc-setup is called with --mode=pre-chroot.
   void OnPreChroot();
 
-  // Called when arc-setup is called with --read-ahead.
+  // Called when arc-setup is called with --mode=read-ahead.
   void OnReadAhead();
 
-  // Called when arc-setup is called with --mount-sdcard.
+  // Called when arc-setup is called with --mode=mount-sdcard.
   void OnMountSdcard();
 
   // Called when arc-setup is called with --mode=unmount-sdcard.

@@ -108,7 +108,7 @@ TEST(ArcSetup, TestMockArcMounter) {
   EXPECT_FALSE(mounter.LoopUmount(base::FilePath("/d")));  // now /d is unknown
 }
 
-// Tests --onetime-setup and --onetime-stop.
+// Tests --mode=onetime-setup and --mode=onetime-stop.
 TEST(ArcSetup, TestOnetimeSetupStop) {
   const char* argv[] = {"test", "--mode=onetime-setup"};
   base::CommandLine::ForCurrentProcess()->InitFromArgv(arraysize(argv), argv);

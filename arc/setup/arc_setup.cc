@@ -419,7 +419,7 @@ struct ArcPaths {
   const base::FilePath restorecon_whitelist_sync{kRestoreconWhitelistSync};
   // session_manager must start arc-setup job with ANDROID_DATA_DIR parameter
   // containing the path of the real android-data directory. They are passed
-  // only when the mode is --boot-continue.
+  // only when the mode is boot-continue.
   const bool kHasAndroidDataDir = mode == Mode::BOOT_CONTINUE;
   const base::FilePath android_data_directory =
       kHasAndroidDataDir ? GetFilePathOrDie(env.get(), "ANDROID_DATA_DIR")
