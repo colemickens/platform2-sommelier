@@ -36,7 +36,8 @@ class MetadataHandler {
 
   static int FillMetadataFromSupportedFormats(
       const SupportedFormats& supported_formats,
-      android::CameraMetadata* metadata);
+      android::CameraMetadata* metadata,
+      bool is_external);
 
   static int FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
                                         android::CameraMetadata* metadata);

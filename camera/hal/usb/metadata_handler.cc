@@ -232,7 +232,8 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
 
 int MetadataHandler::FillMetadataFromSupportedFormats(
     const SupportedFormats& supported_formats,
-    android::CameraMetadata* metadata) {
+    android::CameraMetadata* metadata,
+    bool is_external) {
   if (supported_formats.empty()) {
     return -EINVAL;
   }
@@ -335,18 +336,20 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   UPDATE(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, active_array_size,
          ARRAY_SIZE(active_array_size));
 
-  // It's a sensible value for external camera, since it's required on all
-  // devices per spec.  For built-in camera, this would be overwritten in
-  // FillMetadataFromDeviceInfo() using the value from the configuration file.
-  // References:
-  // * The official document for this field
-  //   https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics.html#SENSOR_INFO_PIXEL_ARRAY_SIZE
-  // * The implementation of external camera in Android P
-  //   https://googleplex-android.git.corp.google.com/platform/hardware/interfaces/+/6ad8708bf8b631561fa11eb1f4889907d1772d78/camera/device/3.4/default/ExternalCameraDevice.cpp#687
-  int32_t pixel_array_size[] = {static_cast<int32_t>(maximum_format.width),
-                                static_cast<int32_t>(maximum_format.height)};
-  UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
-         ARRAY_SIZE(pixel_array_size));
+  if (is_external) {
+    // It's a sensible value for external camera, since it's required on all
+    // devices per spec.  For built-in camera, this would be filled in
+    // FillMetadataFromDeviceInfo() using the value from the configuration file.
+    // References:
+    // * The official document for this field
+    //   https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics.html#SENSOR_INFO_PIXEL_ARRAY_SIZE
+    // * The implementation of external camera in Android P
+    //   https://googleplex-android.git.corp.google.com/platform/hardware/interfaces/+/6ad8708bf8b631561fa11eb1f4889907d1772d78/camera/device/3.4/default/ExternalCameraDevice.cpp#687
+    int32_t pixel_array_size[] = {static_cast<int32_t>(maximum_format.width),
+                                  static_cast<int32_t>(maximum_format.height)};
+    UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
+           ARRAY_SIZE(pixel_array_size));
+  }
 
   return 0;
 }
