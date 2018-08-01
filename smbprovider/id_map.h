@@ -5,6 +5,7 @@
 #ifndef SMBPROVIDER_ID_MAP_H_
 #define SMBPROVIDER_ID_MAP_H_
 
+#include <stack>
 #include <unordered_map>
 #include <utility>
 
@@ -38,7 +39,15 @@ class IdMap {
 
   bool Contains(int32_t id) const { return ids_.count(id) > 0; }
 
-  bool Remove(int32_t id) { return ids_.erase(id) > 0; }
+  bool Remove(int32_t id) {
+    // If the id was being used add to the free list to be reused.
+    if (ids_.erase(id) > 0) {
+      free_ids_.push(id);
+      return true;
+    }
+
+    return false;
+  }
 
   size_t Count() const { return ids_.size(); }
 
@@ -47,10 +56,19 @@ class IdMap {
  private:
   // Returns the next ID and updates the internal state to ensure that
   // an ID that is already in use is not returned.
-  int32_t GetNextId() { return next_id_++; }
+  int32_t GetNextId() {
+    if (!free_ids_.empty()) {
+      int32_t next_id = free_ids_.top();
+      free_ids_.pop();
+      return next_id;
+    }
+
+    return next_unused_id_++;
+  }
 
   MapType ids_;
-  int32_t next_id_ = 0;
+  std::stack<int32_t> free_ids_;
+  int32_t next_unused_id_ = 0;
   DISALLOW_COPY_AND_ASSIGN(IdMap);
 };
 

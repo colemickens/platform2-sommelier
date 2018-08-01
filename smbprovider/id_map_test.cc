@@ -131,4 +131,24 @@ TEST_F(IdMapTest, TestInsertRemoveInsertRemove) {
   EXPECT_EQ(0, map_.Count());
 }
 
+TEST_F(IdMapTest, TestIdReuse) {
+  const int32_t id1 = map_.Insert("Foo");
+  const int32_t id2 = map_.Insert("Bar");
+
+  EXPECT_GE(id1, 0);
+  EXPECT_GE(id2, 0);
+  EXPECT_NE(id1, id2);
+
+  // Remove the id and check that it is reused.
+  map_.Remove(id2);
+  const int32_t id3 = map_.Insert("Baz");
+  EXPECT_EQ(id3, id2);
+
+  // Get another unused id.
+  const int32_t id4 = map_.Insert("Qux");
+  EXPECT_GE(id4, 0);
+  EXPECT_NE(id1, id4);
+  EXPECT_NE(id3, id4);
+}
+
 }  // namespace smbprovider
