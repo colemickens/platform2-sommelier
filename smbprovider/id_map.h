@@ -13,8 +13,9 @@
 
 namespace smbprovider {
 
-// Class that maps an increasing int32_t ID to another type. Used for
-// handing out pseudo file descriptors.
+// Class that maps an int32_t ID to another type. Each new ID is not currently
+// in use, but IDs can be reused after that item is removed from the map.
+// Primarily used for handing out pseudo file descriptors.
 template <typename T>
 class IdMap {
  public:
@@ -24,10 +25,11 @@ class IdMap {
   ~IdMap() = default;
 
   int32_t Insert(T value) {
-    DCHECK_EQ(0, ids_.count(next_id_));
+    const int32_t next_id = GetNextId();
+    DCHECK_EQ(0, ids_.count(next_id));
 
-    ids_.insert({next_id_, std::move(value)});
-    return next_id_++;
+    ids_.insert({next_id, std::move(value)});
+    return next_id;
   }
 
   typename MapType::const_iterator Find(int32_t id) const {
@@ -43,6 +45,10 @@ class IdMap {
   typename MapType::const_iterator End() const { return ids_.end(); }
 
  private:
+  // Returns the next ID and updates the internal state to ensure that
+  // an ID that is already in use is not returned.
+  int32_t GetNextId() { return next_id_++; }
+
   MapType ids_;
   int32_t next_id_ = 0;
   DISALLOW_COPY_AND_ASSIGN(IdMap);
