@@ -23,6 +23,7 @@ struct ContainerOptions {
   bool use_current_user;
   bool run_as_init;
   base::FilePath log_file;
+  std::string log_tag;
 
   ContainerOptions()
       : bind_mounts(),
@@ -30,7 +31,8 @@ struct ContainerOptions {
         extra_program_args(),
         use_current_user(false),
         run_as_init(true),
-        log_file() {}
+        log_file(),
+        log_tag() {}
 };
 
 }  // namespace run_oci

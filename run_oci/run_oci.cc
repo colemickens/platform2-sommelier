@@ -401,13 +401,11 @@ bool RunOneHook(const OciHook& hook,
     options.environ = hook.env;
   }
 
-  int write_pipe_fds[2] = {0};
-  if (HANDLE_EINTR(pipe(write_pipe_fds)) != 0) {
-    LOG(ERROR) << "Bad write pipe";
+  base::ScopedFD write_pipe_read_fd, write_pipe_write_fd;
+  if (!run_oci::Pipe(&write_pipe_read_fd, &write_pipe_write_fd, 0)) {
+    PLOG(ERROR) << "Bad write pipe";
     return false;
   }
-  base::ScopedFD write_pipe_read_fd(write_pipe_fds[0]);
-  base::ScopedFD write_pipe_write_fd(write_pipe_fds[1]);
   base::FileHandleMappingVector fds_to_remap{
       {write_pipe_read_fd.get(), STDIN_FILENO}, {STDERR_FILENO, STDERR_FILENO}};
   options.fds_to_remap = &fds_to_remap;
@@ -951,6 +949,7 @@ const struct option longopts[] = {
     {"signal", required_argument, nullptr, 'S'},
     {"container_path", required_argument, nullptr, 'c'},
     {"log_dir", required_argument, nullptr, 'l'},
+    {"log_tag", required_argument, nullptr, 't'},
     {0, 0, 0, 0},
 };
 
@@ -977,6 +976,7 @@ void print_help(const char* argv0) {
       "  -l, --log_dir=<PATH>           Write logging messages to a file\n"
       "                                 in <PATH> instead of syslog.\n"
       "                                 Also redirects hooks' stdout/stderr.\n"
+      "  -t, --log_tag=<TAG>            Use <TAG> as the syslog tag.\n"
       "\n"
       "run/start:\n"
       "\n"
@@ -1073,6 +1073,9 @@ int main(int argc, char** argv) {
           log_dir = current_directory.Append(log_dir);
         }
         break;
+      case 't':
+        container_options.log_tag = optarg;
+        break;
       case 'h':
         run_oci::print_help(argv[0]);
         return 0;
@@ -1104,9 +1107,10 @@ int main(int argc, char** argv) {
   for (; optind < argc; optind++)
     container_options.extra_program_args.push_back(std::string(argv[optind]));
 
-  // If the user has specified a value for |log_dir|, ensure the directory,
-  // create a unique(-ish) file and redirect logging and output to it.
+  std::unique_ptr<run_oci::SyslogStdioAdapter> syslog_stdio_adapter;
   if (!log_dir.empty()) {
+    // If the user has specified a value for |log_dir|, ensure the directory,
+    // create a unique(-ish) file and redirect logging and output to it.
     if (!base::DirectoryExists(log_dir)) {
       // Not using base::CreateDirectory() since we want to set more relaxed
       // permissions.
@@ -1121,6 +1125,16 @@ int main(int argc, char** argv) {
         brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
     if (!run_oci::RedirectLoggingAndStdio(container_options.log_file))
       return -1;
+  } else if (!container_options.log_tag.empty()) {
+    // brillo::OpenLog can be called safely even after log operations have been
+    // made before.
+    brillo::OpenLog(container_options.log_tag.c_str(), true /*log_pid*/);
+
+    syslog_stdio_adapter = run_oci::SyslogStdioAdapter::Create();
+    if (!syslog_stdio_adapter) {
+      LOG(ERROR) << "Failed to create the syslog stdio adapter";
+      return -1;
+    }
   }
 
   if (command == "run") {

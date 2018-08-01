@@ -54,7 +54,7 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   // run_oci path and arguments.
   constexpr static char kRunOciPath[] = "/usr/bin/run_oci";
   // Argument to setup run_oci's logging.
-  constexpr static char kRunOciLogging[] = "--log_dir=/var/log/android";
+  constexpr static char kRunOciLogging[] = "--log_tag=arc-container";
   // Command sent to run_oci to start the container.
   constexpr static char kRunOciStartCommand[] = "start";
   // Command sent to run_oci to shut down container.

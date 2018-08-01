@@ -75,6 +75,7 @@ class AndroidOciWrapperTest : public ::testing::Test {
   void ExpectKill(bool forceful, int exit_code) {
     std::vector<std::string> argv;
     argv.push_back(AndroidOciWrapper::kRunOciPath);
+    argv.push_back(AndroidOciWrapper::kRunOciLogging);
     if (forceful)
       argv.push_back(AndroidOciWrapper::kRunOciKillSignal);
     argv.push_back(AndroidOciWrapper::kRunOciKillCommand);
@@ -85,7 +86,7 @@ class AndroidOciWrapperTest : public ::testing::Test {
 
   void ExpectDestroy(int exit_code) {
     const std::vector<std::string> argv = {
-        AndroidOciWrapper::kRunOciPath,
+        AndroidOciWrapper::kRunOciPath, AndroidOciWrapper::kRunOciLogging,
         AndroidOciWrapper::kRunOciDestroyCommand,
         AndroidOciWrapper::kContainerId};
     EXPECT_CALL(system_utils_, LaunchAndWait(argv, _))

@@ -8,24 +8,178 @@
 #include <mntent.h>
 #include <stdio.h>
 #include <sys/capability.h>
+#include <sys/epoll.h>
 #include <sys/mount.h>
+#include <sys/signal.h>
 #include <sys/stat.h>
-#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-#include <memory>
-#include <string>
 #include <type_traits>
+#include <utility>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <libmount/libmount.h>
 
+// Avoid including syslog.h because it interacts badly with base::logging.
+extern "C" void syslog(int priority, const char* format, ...);
+
 namespace run_oci {
+
+namespace {
+
+// We avoid using LOG_* because they interacts badly with base::logging, which
+// re-defines LOG_* and causes all sorts of confusion.
+constexpr int kSyslogLogWarningPriority = 4;
+constexpr int kSyslogLogInfoPriority = 6;
+
+// Creates a pipe where the read end of it is made to be close-on-exec and the
+// write end of it is associated with one of the well-known stdio FDs (e.g.
+// STDOUT_FILENO/STDERR_FILENO).
+bool CreateStdioPipe(base::ScopedFD* pipe_read_fd, int stdio_fd) {
+  base::ScopedFD pipe_write_fd;
+
+  if (!Pipe(pipe_read_fd, &pipe_write_fd, O_CLOEXEC)) {
+    PLOG(ERROR) << "Failed to create pipe for " << stdio_fd;
+    return false;
+  }
+
+  if (pipe_write_fd.get() == stdio_fd) {
+    // The write fd is already the correct fd number, but it needs to have the
+    // close-on-exec flag cleared.
+    if (fcntl(pipe_write_fd.get(), F_SETFD, 0) == -1) {
+      PLOG(ERROR) << "Failed to set FD_CLOEXEC on read end of pipe for "
+                  << stdio_fd;
+      return false;
+    }
+    // Finally, release it so that it is not closed upon returning.
+    ignore_result(pipe_write_fd.release());
+  } else {
+    if (dup2(pipe_write_fd.get(), stdio_fd) == -1) {
+      PLOG(ERROR) << "Failed to redirect stdio for " << stdio_fd;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}  // namespace
+
+SyslogStdioAdapter::SyslogStdioAdapter(base::Process child)
+    : child_(std::move(child)) {}
+
+SyslogStdioAdapter::~SyslogStdioAdapter() {
+  if (!child_.Terminate(0 /* exit_code */, true /* wait */))
+    LOG(ERROR) << "Failed to terminate logger process";
+}
+
+std::unique_ptr<SyslogStdioAdapter> SyslogStdioAdapter::Create() {
+  base::ScopedFD stdout_pipe_read_fd, stderr_pipe_read_fd;
+
+  if (!CreateStdioPipe(&stdout_pipe_read_fd, STDOUT_FILENO))
+    return nullptr;
+  if (!CreateStdioPipe(&stderr_pipe_read_fd, STDERR_FILENO))
+    return nullptr;
+
+  // Redirect all minijail logs to avoid them appearing in multiple places.
+  minijail_log_to_fd(STDOUT_FILENO, kSyslogLogInfoPriority);
+
+  brillo::SetLogFlags(brillo::kLogToSyslog | brillo::kLogHeader);
+  logging::SetLogItems(false /* pid */, false /* tid */, false /* timestamp */,
+                       false /* tick_count */);
+
+  pid_t child = fork();
+  if (child == -1) {
+    PLOG(ERROR) << "Failed to fork";
+    return nullptr;
+  }
+
+  if (child == 0) {
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+    SyslogStdioAdapter::RunLoop(std::move(stdout_pipe_read_fd),
+                                std::move(stderr_pipe_read_fd));
+    _exit(1);
+  }
+
+  return std::unique_ptr<SyslogStdioAdapter>(
+      new SyslogStdioAdapter(base::Process(child)));
+}
+
+// static
+void SyslogStdioAdapter::RunLoop(base::ScopedFD stdout_fd,
+                                 base::ScopedFD stderr_fd) {
+  base::ScopedFD epollfd(epoll_create(1 /*arbitrary, ignored by kernel*/));
+  if (!epollfd.is_valid()) {
+    PLOG(ERROR) << "Failed to open epoll fd";
+    return;
+  }
+
+  struct EpollDescriptor {
+    base::ScopedFD* fd;
+    const char* name;
+    int priority;
+  } epoll_descriptors[2] = {{&stdout_fd, "stdout", kSyslogLogInfoPriority},
+                            {&stderr_fd, "stderr", kSyslogLogWarningPriority}};
+  for (auto& descriptor : epoll_descriptors) {
+    struct epoll_event ev;
+    ev.events = EPOLLIN;
+    ev.data.ptr = &descriptor;
+    if (epoll_ctl(epollfd.get(), EPOLL_CTL_ADD, descriptor.fd->get(), &ev) ==
+        -1) {
+      PLOG(ERROR) << "Failed to register " << descriptor.name;
+      return;
+    }
+  }
+
+  char buffer[4096];
+  struct epoll_event events[arraysize(epoll_descriptors)];
+  while (true) {
+    int nfds =
+        HANDLE_EINTR(epoll_wait(epollfd.get(), events, arraysize(events), -1));
+    if (nfds == -1) {
+      PLOG(ERROR) << "Failed to epoll_wait";
+      return;
+    }
+
+    for (int i = 0; i < nfds; i++) {
+      EpollDescriptor* descriptor =
+          reinterpret_cast<EpollDescriptor*>(events[i].data.ptr);
+      ssize_t bytes =
+          HANDLE_EINTR(read(descriptor->fd->get(), buffer, sizeof(buffer)));
+      if (bytes <= 0) {
+        PLOG(ERROR) << "Failed to read from " << descriptor->name;
+        epoll_ctl(epollfd.get(), EPOLL_CTL_DEL, descriptor->fd->get(), nullptr);
+        descriptor->fd->reset();
+        continue;
+      }
+      if (bytes == 0) {
+        LOG(ERROR) << descriptor->name << " was closed";
+        epoll_ctl(epollfd.get(), EPOLL_CTL_DEL, descriptor->fd->get(), nullptr);
+        descriptor->fd->reset();
+        continue;
+      }
+
+      // This assumes that the writer's output is buffered and flushed on a
+      // line-by-line basis. This is true in practice and requires much simpler
+      // code, but may lead to lines that straddle a buffer size or partial
+      // lines that are output using raw write(2) syscalls being split across
+      // two read(2) syscalls.
+      base::StringPiece lines(buffer, bytes);
+      for (const auto& line :
+           base::SplitString(lines.as_string(), "\n", base::KEEP_WHITESPACE,
+                             base::SPLIT_WANT_NONEMPTY)) {
+        syslog(descriptor->priority, "[%s] %s", descriptor->name, line.data());
+      }
+    }
+  }
+}
 
 bool Mountpoint::operator==(const Mountpoint& other) const {
   return path == other.path && mountflags == other.mountflags &&
@@ -159,15 +313,20 @@ bool RedirectLoggingAndStdio(const base::FilePath& log_file) {
     return false;
   }
   // Redirect all minijail logs to make them easier to find.
-  // We avoid including <sys/syslog.h> to get LOG_INFO (whose value is 6)
-  // because it interacts badly with base::logging, which defines a different
-  // LOG_INFO and causes build errors.
-  constexpr int kSyslogLogInfoPriority = 6;
   minijail_log_to_fd(STDERR_FILENO, kSyslogLogInfoPriority);
 
   brillo::SetLogFlags(brillo::kLogHeader | brillo::kLogToStderr);
   logging::SetLogItems(true /* pid */, false /* tid */, true /* timestamp */,
                        false /* tick_count */);
+  return true;
+}
+
+bool Pipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd, int flags) {
+  int pipe_fds[2];
+  if (HANDLE_EINTR(pipe2(pipe_fds, flags)) != 0)
+    return false;
+  read_fd->reset(pipe_fds[0]);
+  write_fd->reset(pipe_fds[1]);
   return true;
 }
 

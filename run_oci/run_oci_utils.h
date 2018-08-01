@@ -5,12 +5,42 @@
 #ifndef RUN_OCI_RUN_OCI_UTILS_H_
 #define RUN_OCI_RUN_OCI_UTILS_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
+#include <base/macros.h>
+#include <base/process/process.h>
 
 namespace run_oci {
+
+// A class that redirects stderr/stdout to syslog. It forks another process,
+// similar to how logger(1) works.
+class SyslogStdioAdapter {
+ public:
+  ~SyslogStdioAdapter();
+
+  // Creates a fully-initialized instance of SyslogStdioAdapter, or nullptr if
+  // something failed.
+  static std::unique_ptr<SyslogStdioAdapter> Create();
+
+ private:
+  explicit SyslogStdioAdapter(base::Process child);
+
+  // The child process' run loop. Reads from the stdout/stderr read ends of the
+  // pipe and logs all lines with INFO/ERROR severity.
+  //
+  // Runs forever until there is an error reading the pipes (e.g. they are both
+  // closed) or the parent kills it.
+  static void RunLoop(base::ScopedFD stdout_fd, base::ScopedFD stderr_fd);
+
+  // The child process.
+  base::Process child_;
+
+  DISALLOW_COPY_AND_ASSIGN(SyslogStdioAdapter);
+};
 
 struct Mountpoint {
   base::FilePath path;
@@ -39,6 +69,9 @@ bool HasCapSysAdmin();
 
 // Redirects all logging and stdout/stdio to |log_file|.
 bool RedirectLoggingAndStdio(const base::FilePath& log_file);
+
+// A wrapper around pipe(2) that provides base::ScopedFDs.
+bool Pipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd, int flags);
 
 }  // namespace run_oci
 

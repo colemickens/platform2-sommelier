@@ -64,8 +64,9 @@ void AndroidOciWrapper::RequestJobExit(ArcContainerStopReason reason) {
   if (stateful_mode_ != StatefulMode::STATELESS && RequestTermination())
     return;
 
-  std::vector<std::string> argv = {kRunOciPath, kRunOciKillSignal,
-                                   kRunOciKillCommand, kContainerId};
+  std::vector<std::string> argv = {kRunOciPath, kRunOciLogging,
+                                   kRunOciKillSignal, kRunOciKillCommand,
+                                   kContainerId};
 
   int exit_code = -1;
   if (!system_utils_->LaunchAndWait(argv, &exit_code)) {
@@ -137,8 +138,8 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
     // Since we've killed run_oci asynchronously, run_oci might have died
     // without cleaning up the container directory. Run run_oci again to make
     // sure the directory is gone.
-    std::vector<std::string> argv = {kRunOciPath, kRunOciDestroyCommand,
-                                     kContainerId};
+    std::vector<std::string> argv = {kRunOciPath, kRunOciLogging,
+                                     kRunOciDestroyCommand, kContainerId};
     int exit_code = -1;
     if (!system_utils_->LaunchAndWait(argv, &exit_code)) {
       PLOG(ERROR) << "Failed to run run_oci";
@@ -245,8 +246,8 @@ void AndroidOciWrapper::ExecuteRunOciToStartContainer(
 
 bool AndroidOciWrapper::RequestTermination() {
   // Use run_oci to perform graceful shutdown.
-  std::vector<std::string> argv = {kRunOciPath, kRunOciKillCommand,
-                                   kContainerId};
+  std::vector<std::string> argv = {kRunOciPath, kRunOciLogging,
+                                   kRunOciKillCommand, kContainerId};
 
   int exit_code = -1;
   if (!system_utils_->LaunchAndWait(argv, &exit_code)) {
@@ -267,8 +268,8 @@ void AndroidOciWrapper::CleanUpContainer() {
     return;
 
   LOG(INFO) << "Cleaning up container " << pid;
-  std::vector<std::string> argv = {kRunOciPath, kRunOciDestroyCommand,
-                                   kContainerId};
+  std::vector<std::string> argv = {kRunOciPath, kRunOciLogging,
+                                   kRunOciDestroyCommand, kContainerId};
 
   int exit_code = -1;
   if (!system_utils_->LaunchAndWait(argv, &exit_code)) {

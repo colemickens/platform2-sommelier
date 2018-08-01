@@ -329,7 +329,6 @@
 				"path": "/usr/sbin/arc-setup",
 				"args": [
 					"arc-setup",
-					"--log_to_stderr",
 					"--log_tag=arc-setup-precreate",
 					"--mode=setup"
 				],
@@ -341,7 +340,6 @@
 				"path": "/usr/sbin/arc-setup",
 				"args": [
 					"arc-setup",
-					"--log_to_stderr",
 					"--log_tag=arc-setup-prechroot",
 					"--mode=pre-chroot"
 				],
