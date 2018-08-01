@@ -5,7 +5,7 @@
 #ifndef SMBPROVIDER_ID_MAP_H_
 #define SMBPROVIDER_ID_MAP_H_
 
-#include <map>
+#include <unordered_map>
 #include <utility>
 
 #include <base/logging.h>
@@ -18,7 +18,7 @@ namespace smbprovider {
 template <typename T>
 class IdMap {
  public:
-  using MapType = std::map<int32_t, T>;
+  using MapType = std::unordered_map<int32_t, T>;
 
   IdMap() = default;
   ~IdMap() = default;
