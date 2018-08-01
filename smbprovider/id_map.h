@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SMBPROVIDER_SEQUENTIAL_ID_MAP_H_
-#define SMBPROVIDER_SEQUENTIAL_ID_MAP_H_
+#ifndef SMBPROVIDER_ID_MAP_H_
+#define SMBPROVIDER_ID_MAP_H_
 
 #include <map>
 #include <utility>
@@ -16,10 +16,10 @@ namespace smbprovider {
 // Class that maps an increasing int32_t ID to another type. Used for
 // handing out pseudo file descriptors.
 template <typename T>
-class SequentialIdMap {
+class IdMap {
  public:
-  SequentialIdMap() = default;
-  ~SequentialIdMap() = default;
+  IdMap() = default;
+  ~IdMap() = default;
 
   int32_t Insert(T value) {
     DCHECK_EQ(0, ids_.count(next_id_));
@@ -45,9 +45,9 @@ class SequentialIdMap {
  private:
   std::map<int32_t, T> ids_;
   int32_t next_id_ = 0;
-  DISALLOW_COPY_AND_ASSIGN(SequentialIdMap);
+  DISALLOW_COPY_AND_ASSIGN(IdMap);
 };
 
 }  // namespace smbprovider
 
-#endif  // SMBPROVIDER_SEQUENTIAL_ID_MAP_H_
+#endif  // SMBPROVIDER_ID_MAP_H_

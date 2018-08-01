@@ -11,8 +11,8 @@
 #include <base/callback.h>
 #include <dbus/smbprovider/dbus-constants.h>
 
+#include "smbprovider/id_map.h"
 #include "smbprovider/samba_interface.h"
-#include "smbprovider/sequential_id_map.h"
 
 namespace smbprovider {
 
@@ -135,7 +135,7 @@ class SambaInterfaceImpl : public SambaInterface {
   smbc_stat_fn smbc_stat_ctx_ = nullptr;
   smbc_unlink_fn smbc_unlink_ctx_ = nullptr;
   smbc_write_fn smbc_write_ctx_ = nullptr;
-  SequentialIdMap<SMBCFILE*> fds_;
+  IdMap<SMBCFILE*> fds_;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceImpl);
 };

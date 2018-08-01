@@ -6,14 +6,14 @@
 
 #include <gtest/gtest.h>
 
-#include "smbprovider/sequential_id_map.h"
+#include "smbprovider/id_map.h"
 
 namespace smbprovider {
 
-class SequentialIdMapTest : public testing::Test {
+class IdMapTest : public testing::Test {
  public:
-  SequentialIdMapTest() = default;
-  ~SequentialIdMapTest() override = default;
+  IdMapTest() = default;
+  ~IdMapTest() override = default;
 
  protected:
   void ExpectFound(int32_t id, std::string expected) {
@@ -29,16 +29,16 @@ class SequentialIdMapTest : public testing::Test {
     EXPECT_FALSE(map_.Contains(id));
   }
 
-  SequentialIdMap<const std::string> map_;
-  DISALLOW_COPY_AND_ASSIGN(SequentialIdMapTest);
+  IdMap<const std::string> map_;
+  DISALLOW_COPY_AND_ASSIGN(IdMapTest);
 };
 
-TEST_F(SequentialIdMapTest, FindOnEmpty) {
+TEST_F(IdMapTest, FindOnEmpty) {
   EXPECT_EQ(0, map_.Count());
   ExpectNotFound(0);
 }
 
-TEST_F(SequentialIdMapTest, TestInsertandFind) {
+TEST_F(IdMapTest, TestInsertandFind) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
@@ -48,7 +48,7 @@ TEST_F(SequentialIdMapTest, TestInsertandFind) {
   EXPECT_EQ(1, map_.Count());
 }
 
-TEST_F(SequentialIdMapTest, TestInsertAndContains) {
+TEST_F(IdMapTest, TestInsertAndContains) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
@@ -58,7 +58,7 @@ TEST_F(SequentialIdMapTest, TestInsertAndContains) {
   EXPECT_FALSE(map_.Contains(id + 1));
 }
 
-TEST_F(SequentialIdMapTest, TestInsertandFindNonExistant) {
+TEST_F(IdMapTest, TestInsertandFindNonExistant) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
@@ -68,7 +68,7 @@ TEST_F(SequentialIdMapTest, TestInsertandFindNonExistant) {
   ExpectNotFound(id + 1);
 }
 
-TEST_F(SequentialIdMapTest, TestInsertMultipleAndFind) {
+TEST_F(IdMapTest, TestInsertMultipleAndFind) {
   const std::string expected1 = "Foo1";
   const std::string expected2 = "Foo2";
   const int32_t id1 = map_.Insert(expected1);
@@ -84,11 +84,11 @@ TEST_F(SequentialIdMapTest, TestInsertMultipleAndFind) {
   ExpectFound(id2, expected2);
 }
 
-TEST_F(SequentialIdMapTest, TestRemoveOnEmpty) {
+TEST_F(IdMapTest, TestRemoveOnEmpty) {
   EXPECT_FALSE(map_.Remove(0));
 }
 
-TEST_F(SequentialIdMapTest, TestRemoveNonExistant) {
+TEST_F(IdMapTest, TestRemoveNonExistant) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
@@ -99,7 +99,7 @@ TEST_F(SequentialIdMapTest, TestRemoveNonExistant) {
   EXPECT_FALSE(map_.Remove(id + 1));
 }
 
-TEST_F(SequentialIdMapTest, TestInsertAndRemove) {
+TEST_F(IdMapTest, TestInsertAndRemove) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
@@ -113,7 +113,7 @@ TEST_F(SequentialIdMapTest, TestInsertAndRemove) {
   EXPECT_EQ(0, map_.Count());
 }
 
-TEST_F(SequentialIdMapTest, TestInsertRemoveInsertRemove) {
+TEST_F(IdMapTest, TestInsertRemoveInsertRemove) {
   const std::string expected = "Foo";
   const int32_t id1 = map_.Insert(expected);
 
