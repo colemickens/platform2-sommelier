@@ -408,6 +408,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool GetRandomMACEnabled(Error* error);
   bool SetRandomMACEnabled(const bool& enabled, Error* error);
 
+  void AssocStatusChanged(const int32_t new_assoc_status);
+  void AuthStatusChanged(const int32_t new_auth_status);
   void CurrentBSSChanged(const std::string& new_bss);
   void DisconnectReasonChanged(const int32_t new_disconnect_reason);
   void CurrentAuthModeChanged(const std::string& auth_mode);
@@ -656,6 +658,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
   std::string supplicant_bss_;
+  int32_t supplicant_assoc_status_;
+  int32_t supplicant_auth_status_;
   int32_t supplicant_disconnect_reason_;
   // The auth mode of the last successful connection.
   std::string supplicant_auth_mode_;

@@ -149,6 +149,8 @@ WiFi::WiFi(ControlInterface* control_interface,
           Bind(&WiFi::OnSupplicantVanish, Unretained(this)))),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
+      supplicant_assoc_status_(IEEE_80211::kStatusCodeSuccessful),
+      supplicant_auth_status_(IEEE_80211::kStatusCodeSuccessful),
       supplicant_disconnect_reason_(kDefaultDisconnectReason),
       supplicant_auth_mode_(WPASupplicant::kAuthModeUnknown),
       need_bss_flush_(false),
@@ -783,6 +785,22 @@ bool WiFi::SetRandomMACEnabled(const bool& enabled, Error* error) {
 
 void WiFi::ClearBgscanMethod(Error* /*error*/) {
   bgscan_method_.clear();
+}
+
+void WiFi::AssocStatusChanged(const int32_t new_assoc_status) {
+  SLOG(this, 3) << "WiFi " << link_name()
+                << " supplicant updated AssocStatusCode to "
+                << new_assoc_status << " (was "
+                << supplicant_assoc_status_ << ")";
+  supplicant_assoc_status_ = new_assoc_status;
+}
+
+void WiFi::AuthStatusChanged(const int32_t new_auth_status) {
+  SLOG(this, 3) << "WiFi " << link_name()
+                << " supplicant updated AuthStatusCode to "
+                << new_auth_status << " (was "
+                << supplicant_auth_status_ << ")";
+  supplicant_auth_status_ = new_auth_status;
 }
 
 void WiFi::CurrentBSSChanged(const string& new_bss) {
@@ -1478,6 +1496,18 @@ void WiFi::PropertiesChangedTask(
   }
 
   if (properties.ContainsInt(
+        WPASupplicant::kInterfacePropertyAssocStatusCode)) {
+    AssocStatusChanged(
+        properties.GetInt(WPASupplicant::kInterfacePropertyAssocStatusCode));
+  }
+
+  if (properties.ContainsInt(
+        WPASupplicant::kInterfacePropertyAuthStatusCode)) {
+    AuthStatusChanged(
+        properties.GetInt(WPASupplicant::kInterfacePropertyAuthStatusCode));
+  }
+
+  if (properties.ContainsInt(
       WPASupplicant::kInterfacePropertyDisconnectReason)) {
     DisconnectReasonChanged(
         properties.GetInt(WPASupplicant::kInterfacePropertyDisconnectReason));
@@ -1721,10 +1751,17 @@ void WiFi::StateChanged(const string& new_state) {
     has_already_completed_ = true;
   } else if (new_state == WPASupplicant::kInterfaceStateAssociated) {
     affected_service->SetState(Service::kStateAssociating);
+    // Supplicant does not indicate successful association in assoc status
+    // messages, but we know at this point that 802.11 association succeeded
+    supplicant_assoc_status_ = IEEE_80211::kStatusCodeSuccessful;
   } else if (new_state == WPASupplicant::kInterfaceStateAuthenticating ||
              new_state == WPASupplicant::kInterfaceStateAssociating ||
              new_state == WPASupplicant::kInterfaceState4WayHandshake ||
              new_state == WPASupplicant::kInterfaceStateGroupHandshake) {
+    if (new_state == WPASupplicant::kInterfaceStateAssociating) {
+      // Ensure auth status is kept up-to-date
+      supplicant_auth_status_ = IEEE_80211::kStatusCodeSuccessful;
+    }
     // Ignore transitions into these states from Completed, to avoid
     // bothering the user when roaming, or re-keying.
     if (old_state != WPASupplicant::kInterfaceStateCompleted)
