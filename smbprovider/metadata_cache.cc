@@ -65,7 +65,8 @@ bool MetadataCache::IsExpired(const CacheEntry& cache_entry,
   return threshold > cache_entry.expiration_time;
 }
 
-bool MetadataCache::IsExpired(const MetadataCache::CacheEntry& cache_entry) {
+bool MetadataCache::IsExpired(
+    const MetadataCache::CacheEntry& cache_entry) const {
   return MetadataCache::IsExpired(cache_entry, tick_clock_->NowTicks());
 }
 

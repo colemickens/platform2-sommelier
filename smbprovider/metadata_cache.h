@@ -69,7 +69,7 @@ class MetadataCache {
   };
 
   // Returns true if the expiration time of this entry has passed.
-  bool IsExpired(const CacheEntry& cache_entry);
+  bool IsExpired(const CacheEntry& cache_entry) const;
   static bool IsExpired(const CacheEntry& cache_entry,
                         base::TimeTicks threshold);
 
