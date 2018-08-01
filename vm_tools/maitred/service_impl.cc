@@ -369,9 +369,9 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
                                             strerror(saved_errno));
   }
 
-  if (!init_->Spawn({"lxd", "--group", "lxd"}, kLxdEnv, true /*respawn*/,
-                    false /*use_console*/, false /*wait_for_exit*/,
-                    &launch_info)) {
+  if (!init_->Spawn({"lxd", "--group", "lxd", "--syslog"}, kLxdEnv,
+                    true /*respawn*/, false /*use_console*/,
+                    false /*wait_for_exit*/, &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn lxd");
   }
   if (launch_info.status != Init::ProcessStatus::LAUNCHED) {
