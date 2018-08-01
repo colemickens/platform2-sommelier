@@ -59,6 +59,8 @@ class IdMap {
 
   size_t Count() const { return ids_.size(); }
 
+  typename MapType::const_iterator Begin() const { return ids_.begin(); }
+
   typename MapType::const_iterator End() const { return ids_.end(); }
 
  private:

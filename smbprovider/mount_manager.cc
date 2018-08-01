@@ -26,8 +26,8 @@ MountManager::MountManager(std::unique_ptr<CredentialStore> credential_store,
 MountManager::~MountManager() = default;
 
 bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
-  auto mount_iter = mounts_.find(mount_id);
-  if (mount_iter == mounts_.end()) {
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
     return false;
   }
 
@@ -51,7 +51,6 @@ bool MountManager::AddMount(const std::string& mount_root,
                             const std::string& username,
                             const base::ScopedFD& password_fd,
                             int32_t* mount_id) {
-  DCHECK(!IsAlreadyMounted(next_mount_id_));
   DCHECK(mount_id);
 
   if (!credential_store_->AddCredentials(mount_root, workgroup, username,
@@ -60,9 +59,8 @@ bool MountManager::AddMount(const std::string& mount_root,
   }
 
   can_remount_ = false;
-  mounts_[next_mount_id_] =
-      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run());
-  *mount_id = next_mount_id_++;
+  *mount_id = mounts_.Insert(
+      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run()));
   return true;
 }
 
@@ -80,15 +78,15 @@ bool MountManager::Remount(const std::string& mount_root,
     return false;
   }
 
-  mounts_[mount_id] =
-      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run());
-  next_mount_id_ = std::max(next_mount_id_, mount_id) + 1;
+  mounts_.InsertWithSpecificId(
+      mount_id,
+      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run()));
   return true;
 }
 
 bool MountManager::RemoveMount(int32_t mount_id) {
-  auto mount_iter = mounts_.find(mount_id);
-  if (mount_iter == mounts_.end()) {
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
     return false;
   }
 
@@ -96,7 +94,7 @@ bool MountManager::RemoveMount(int32_t mount_id) {
       credential_store_->RemoveCredentials(mount_iter->second.mount_root);
   DCHECK(removed);
 
-  mounts_.erase(mount_iter);
+  mounts_.Remove(mount_iter->first);
   return true;
 }
 
@@ -105,8 +103,8 @@ bool MountManager::GetFullPath(int32_t mount_id,
                                std::string* full_path) const {
   DCHECK(full_path);
 
-  auto mount_iter = mounts_.find(mount_id);
-  if (mount_iter == mounts_.end()) {
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
     return false;
   }
 
@@ -118,8 +116,8 @@ bool MountManager::GetMetadataCache(int32_t mount_id,
                                     MetadataCache** cache) const {
   DCHECK(cache);
 
-  auto mount_iter = mounts_.find(mount_id);
-  if (mount_iter == mounts_.end()) {
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
     return false;
   }
 
@@ -130,8 +128,8 @@ bool MountManager::GetMetadataCache(int32_t mount_id,
 
 std::string MountManager::GetRelativePath(int32_t mount_id,
                                           const std::string& full_path) const {
-  auto mount_iter = mounts_.find(mount_id);
-  DCHECK(mount_iter != mounts_.end());
+  auto mount_iter = mounts_.Find(mount_id);
+  DCHECK(mount_iter != mounts_.End());
 
   DCHECK(StartsWith(full_path, mount_iter->second.mount_root,
                     base::CompareCase::INSENSITIVE_ASCII));
@@ -143,8 +141,8 @@ bool MountManager::GetSambaInterface(int32_t mount_id,
                                      SambaInterface** samba_interface) const {
   DCHECK(samba_interface);
 
-  auto mount_iter = mounts_.find(mount_id);
-  if (mount_iter == mounts_.end()) {
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
     return false;
   }
 
@@ -159,8 +157,9 @@ SambaInterface* MountManager::GetSystemSambaInterface() const {
 }
 
 bool MountManager::ExistsInMounts(const std::string& mount_root) const {
-  for (auto const& mount : mounts_) {
-    if (mount.second.mount_root == mount_root) {
+  for (auto mount_iter = mounts_.Begin(); mount_iter != mounts_.End();
+       ++mount_iter) {
+    if (mount_iter->second.mount_root == mount_root) {
       return true;
     }
   }

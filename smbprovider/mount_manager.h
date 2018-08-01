@@ -5,7 +5,6 @@
 #ifndef SMBPROVIDER_MOUNT_MANAGER_H_
 #define SMBPROVIDER_MOUNT_MANAGER_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,6 +14,7 @@
 #include <base/macros.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/id_map.h"
 #include "smbprovider/metadata_cache.h"
 #include "smbprovider/samba_interface.h"
 
@@ -73,7 +73,7 @@ class MountManager {
   bool RemoveMount(int32_t mount_id);
 
   // Returns the number of mounts.
-  size_t MountCount() const { return mounts_.size(); }
+  size_t MountCount() const { return mounts_.Count(); }
 
   // Uses the mount root associated with |mount_id| and appends |entry_path|
   // to form |full_path|.
@@ -101,6 +101,7 @@ class MountManager {
   // the metadata cache.
   struct MountInfo {
     MountInfo() = default;
+    MountInfo(MountInfo&& other) = default;
     MountInfo(const std::string& mount_root,
               base::TickClock* tick_clock,
               std::unique_ptr<SambaInterface> samba_interface)
@@ -125,8 +126,7 @@ class MountManager {
   bool ExistsInMounts(const std::string& mount_root) const;
 
   bool can_remount_ = true;
-  std::map<int32_t, MountInfo> mounts_;
-  int32_t next_mount_id_ = 0;
+  IdMap<MountInfo> mounts_;
   std::unique_ptr<CredentialStore> credential_store_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<SambaInterface> system_samba_interface_;

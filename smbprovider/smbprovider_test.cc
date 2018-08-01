@@ -362,36 +362,6 @@ TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
 }
 
-// Mount ids should not be reused.
-TEST_F(SmbProviderTest, MountIdsDontGetReused) {
-  fake_samba_->AddDirectory("smb://wdshare");
-  fake_samba_->AddDirectory("smb://wdshare/dogs");
-
-  // Create the first mount.
-  int32_t error;
-  int32_t mount_id_1;
-  ProtoBlob mount_options_blob_1 = CreateMountOptionsBlob("smb://wdshare/dogs");
-  smbprovider_->Mount(mount_options_blob_1, base::ScopedFD(), &error,
-                      &mount_id_1);
-  EXPECT_EQ(1, mount_manager_->MountCount());
-  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id_1));
-
-  // Unmount the original mount.
-  ProtoBlob unmount_options_blob = CreateUnmountOptionsBlob(mount_id_1);
-  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Unmount(unmount_options_blob)));
-  EXPECT_EQ(0, mount_manager_->MountCount());
-  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id_1));
-
-  // Mount a second mount and verify it got a new id.
-  int32_t mount_id_2;
-  ProtoBlob mount_options_blob_2 = CreateMountOptionsBlob("smb://wdshare/dogs");
-  smbprovider_->Mount(mount_options_blob_2, base::ScopedFD(), &error,
-                      &mount_id_2);
-  EXPECT_EQ(1, mount_manager_->MountCount());
-  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id_2));
-  EXPECT_NE(mount_id_1, mount_id_2);
-}
-
 // ReadDirectory fails when an invalid protobuf with missing fields is passed.
 TEST_F(SmbProviderTest, ReadDirectoryFailsWithInvalidProto) {
   int32_t err;
