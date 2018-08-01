@@ -42,8 +42,7 @@ TEST_F(IdMapTest, TestInsertandFind) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
-  // First id is 0.
-  EXPECT_EQ(0, id);
+  EXPECT_GE(id, 0);
   ExpectFound(id, expected);
   EXPECT_EQ(1, map_.Count());
 }
@@ -52,8 +51,7 @@ TEST_F(IdMapTest, TestInsertAndContains) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
-  // First id is 0.
-  EXPECT_EQ(0, id);
+  EXPECT_GE(id, 0);
   EXPECT_TRUE(map_.Contains(id));
   EXPECT_FALSE(map_.Contains(id + 1));
 }
@@ -62,8 +60,7 @@ TEST_F(IdMapTest, TestInsertandFindNonExistant) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
-  // First id is 0.
-  EXPECT_EQ(0, id);
+  EXPECT_GE(id, 0);
   ExpectFound(id, expected);
   ExpectNotFound(id + 1);
 }
@@ -76,11 +73,12 @@ TEST_F(IdMapTest, TestInsertMultipleAndFind) {
   const int32_t id2 = map_.Insert(expected2);
   EXPECT_EQ(2, map_.Count());
 
-  // First id is 0, second is 1.
-  EXPECT_EQ(0, id1);
-  ExpectFound(id1, expected1);
+  // Both ids are >= 0 and not the same.
+  EXPECT_GE(id1, 0);
+  EXPECT_GE(id2, 0);
+  EXPECT_NE(id1, id2);
 
-  EXPECT_EQ(1, id2);
+  ExpectFound(id1, expected1);
   ExpectFound(id2, expected2);
 }
 
@@ -92,8 +90,7 @@ TEST_F(IdMapTest, TestRemoveNonExistant) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
-  // First id is 0.
-  EXPECT_EQ(0, id);
+  EXPECT_GE(id, 0);
   ExpectFound(id, expected);
   ExpectNotFound(id + 1);
   EXPECT_FALSE(map_.Remove(id + 1));
@@ -103,13 +100,12 @@ TEST_F(IdMapTest, TestInsertAndRemove) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
-  // First id is 0.
-  EXPECT_EQ(0, id);
+  EXPECT_GE(id, 0);
   EXPECT_TRUE(map_.Contains(id));
   EXPECT_EQ(1, map_.Count());
 
   EXPECT_TRUE(map_.Remove(id));
-  ExpectNotFound(0);
+  ExpectNotFound(id);
   EXPECT_EQ(0, map_.Count());
 }
 
@@ -117,23 +113,21 @@ TEST_F(IdMapTest, TestInsertRemoveInsertRemove) {
   const std::string expected = "Foo";
   const int32_t id1 = map_.Insert(expected);
 
-  // First id is 0.
-  EXPECT_EQ(0, id1);
+  EXPECT_GE(id1, 0);
   EXPECT_TRUE(map_.Contains(id1));
   EXPECT_EQ(1, map_.Count());
 
   EXPECT_TRUE(map_.Remove(id1));
-  ExpectNotFound(0);
+  ExpectNotFound(id1);
   EXPECT_EQ(0, map_.Count());
 
-  // Second id is 1.
   const int32_t id2 = map_.Insert(expected);
-  EXPECT_EQ(1, id2);
+  EXPECT_GE(id2, 0);
   EXPECT_TRUE(map_.Contains(id2));
   EXPECT_EQ(1, map_.Count());
 
   EXPECT_TRUE(map_.Remove(id2));
-  ExpectNotFound(0);
+  ExpectNotFound(id2);
   EXPECT_EQ(0, map_.Count());
 }
 
