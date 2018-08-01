@@ -14,8 +14,9 @@ MachineLearningServiceImpl::MachineLearningServiceImpl(
   binding_.set_connection_error_handler(std::move(connection_error_handler));
 }
 
-void MachineLearningServiceImpl::GetModelProvider(
-    chromeos::machine_learning::mojom::ModelProviderRequest request) {
+void MachineLearningServiceImpl::LoadModel(
+    chromeos::machine_learning::mojom::ModelSpecPtr spec,
+    chromeos::machine_learning::mojom::ModelRequest request) {
   NOTIMPLEMENTED();
 }
 

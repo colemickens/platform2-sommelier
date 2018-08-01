@@ -24,8 +24,9 @@ class MachineLearningServiceImpl
 
  private:
   // chromeos::machine_learning::mojom::MachineLearningService:
-  void GetModelProvider(
-      chromeos::machine_learning::mojom::ModelProviderRequest request) override;
+  void LoadModel(
+      chromeos::machine_learning::mojom::ModelSpecPtr spec,
+      chromeos::machine_learning::mojom::ModelRequest request) override;
 
   mojo::Binding<chromeos::machine_learning::mojom::MachineLearningService>
       binding_;
