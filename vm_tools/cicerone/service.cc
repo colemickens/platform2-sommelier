@@ -77,6 +77,7 @@ const uint16_t kStaticForwardPorts[] = {
     8000,  // Django
     8008,  // HTTP alternative port
     8080,  // HTTP alternative port
+    8085,  // Cloud SDK
     8888,  // ipython/jupyter
     9005,  // Firebase login
 };
