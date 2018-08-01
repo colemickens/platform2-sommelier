@@ -39,7 +39,8 @@ class MetadataCache {
   void AddEntry(const DirectoryEntry& entry);
 
   // Finds an entry at |full_path|. If found, returns true and out_entry
-  // is set. |full_path| is a full smb url.
+  // is set. |full_path| is a full smb url. If an entry is found but it
+  // is expired, it is removed from the cache.
   bool FindEntry(const std::string& full_path, DirectoryEntry* out_entry);
 
   // Deletes all entries from the cache.
