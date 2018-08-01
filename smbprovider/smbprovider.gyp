@@ -115,6 +115,8 @@
             'fake_kerberos_artifact_client.h',
             'fake_samba_interface.cc',
             'fake_samba_interface.h',
+            'fake_samba_proxy.cc',
+            'fake_samba_proxy.h',
             'fake_samba_test.cc',
             'file_copy_progress_test.cc',
             'in_memory_credential_store_test.cc',
