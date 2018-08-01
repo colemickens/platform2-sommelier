@@ -18,6 +18,8 @@ namespace smbprovider {
 template <typename T>
 class IdMap {
  public:
+  using MapType = std::map<int32_t, T>;
+
   IdMap() = default;
   ~IdMap() = default;
 
@@ -28,7 +30,7 @@ class IdMap {
     return next_id_++;
   }
 
-  typename std::map<int32_t, T>::const_iterator Find(int32_t id) const {
+  typename MapType::const_iterator Find(int32_t id) const {
     return ids_.find(id);
   }
 
@@ -38,12 +40,10 @@ class IdMap {
 
   size_t Count() const { return ids_.size(); }
 
-  typename std::map<int32_t, T>::const_iterator End() const {
-    return ids_.end();
-  }
+  typename MapType::const_iterator End() const { return ids_.end(); }
 
  private:
-  std::map<int32_t, T> ids_;
+  MapType ids_;
   int32_t next_id_ = 0;
   DISALLOW_COPY_AND_ASSIGN(IdMap);
 };
