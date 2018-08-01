@@ -163,10 +163,29 @@ int CameraHal::Init() {
     return -ENODEV;
   }
 
-  // TODO(shik): Some skus of unibuild devices may have only user-facing
-  // camera as "camera1" in |characteristics_|.  They are currently running
-  // HALv1, and we need to fix this before migrating them to HALv3 with
-  // v1-over-v3 adapter. (b/111770440)
+  // TODO(shik): Some unibuild devices like vayne may have only user-facing
+  // camera as "camera1" in |characteristics_|. It's a workaround for them until
+  // we revise our config format. (b/111770440)
+  if (device_infos_.size() == 1 && device_infos_.cbegin()->first == 1 &&
+      num_builtin_cameras_ == 2) {
+    LOGF(INFO) << "Renumber camera1 to camera0";
+
+    device_infos_.emplace(0, std::move(device_infos_[1]));
+    device_infos_.erase(1);
+    device_infos_[0].camera_id = 0;
+
+    DCHECK_EQ(path_to_id_.size(), 1);
+    DCHECK_EQ(path_to_id_.begin()->second, 1);
+    path_to_id_.begin()->second = 0;
+
+    DCHECK_EQ(static_infos_.size(), 1);
+    DCHECK_EQ(static_infos_.begin()->first, 1);
+    static_infos_.emplace(0, std::move(static_infos_[1]));
+    static_infos_.erase(1);
+
+    num_builtin_cameras_ = 1;
+  }
+
   for (int i = 0; i < num_builtin_cameras_; i++) {
     if (!IsValidCameraId(i)) {
       LOGF(ERROR)
