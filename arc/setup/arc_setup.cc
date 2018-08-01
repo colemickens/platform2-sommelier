@@ -2139,6 +2139,46 @@ void ArcSetup::OnUnmountSdcard() {
   UnmountSdcard();
 }
 
+void ArcSetup::OnUpdateRestoreconLast() {
+  // On Android, /init writes the security.restorecon_last attribute to /data
+  // (and /cache on N) after it finishes updating labels of the files in the
+  // directories, but on ARC, writing the attribute fails silently because
+  // processes in user namespace are not allowed to write arbitrary entries
+  // under security.* even with CAP_SYS_ADMIN. (b/33084415, b/33402785)
+  // As a workaround, let this command outside the container set the
+  // attribute for ARC.
+  constexpr char kRestoreconLastXattr[] = "security.restorecon_last";
+  std::vector<base::FilePath> context_files;
+  std::vector<base::FilePath> target_directories = {
+      arc_paths_->android_mutable_source.Append("data")};
+
+  switch (sdk_version()) {
+    case AndroidSdkVersion::ANDROID_N_MR1:
+      context_files.push_back(
+          arc_paths_->android_rootfs_directory.Append("file_contexts.bin"));
+      // Unlike P, N uses a dedicated partition for /cache.
+      target_directories.push_back(
+          arc_paths_->android_mutable_source.Append("cache"));
+      break;
+    case AndroidSdkVersion::ANDROID_P:
+      // The order of files to read is important. Do not reorder.
+      context_files.push_back(
+          arc_paths_->android_rootfs_directory.Append("plat_file_contexts"));
+      context_files.push_back(
+          arc_paths_->android_rootfs_directory.Append("vendor_file_contexts"));
+      break;
+    case AndroidSdkVersion::ANDROID_M:
+    case AndroidSdkVersion::UNKNOWN:
+      NOTREACHED();
+  }
+
+  std::string hash;
+  EXIT_IF(!GetSha1HashOfFiles(context_files, &hash));
+  for (const auto& target : target_directories) {
+    EXIT_IF(!SetXattr(target, kRestoreconLastXattr, hash));
+  }
+}
+
 void ArcSetup::Run() {
   switch (arc_paths_->mode) {
     case Mode::SETUP:
@@ -2171,6 +2211,9 @@ void ArcSetup::Run() {
       break;
     case Mode::UNMOUNT_SDCARD:
       OnUnmountSdcard();
+      break;
+    case Mode::UPDATE_RESTORECON_LAST:
+      OnUpdateRestoreconLast();
       break;
     case Mode::UNKNOWN:
       NOTREACHED();

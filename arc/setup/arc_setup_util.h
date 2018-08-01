@@ -315,6 +315,15 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
 // Returns true if the process with |pid| is alive or zombie.
 bool IsProcessAlive(pid_t pid);
 
+// Reads files in the vector and returns SHA1 hash of the files.
+bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
+                        std::string* out_hash);
+
+// Sets an extended attribute of the |path| to |value|.
+bool SetXattr(const base::FilePath& path,
+              const char* name,
+              const std::string& value);
+
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_

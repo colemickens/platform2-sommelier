@@ -32,6 +32,7 @@ arc::Mode GetMode(const std::string& mode) {
       {"read-ahead", arc::Mode::READ_AHEAD},
       {"mount-sdcard", arc::Mode::MOUNT_SDCARD},
       {"unmount-sdcard", arc::Mode::UNMOUNT_SDCARD},
+      {"update-restorecon-last", arc::Mode::UPDATE_RESTORECON_LAST},
   };
   for (const auto& mode_name : kModeNameMapping) {
     if (mode == mode_name.first)

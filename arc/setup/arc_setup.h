@@ -67,6 +67,7 @@ enum class Mode {
   READ_AHEAD,
   MOUNT_SDCARD,
   UNMOUNT_SDCARD,
+  UPDATE_RESTORECON_LAST,
   UNKNOWN,
 };
 
@@ -358,6 +359,9 @@ class ArcSetup {
 
   // Called when arc-setup is called with --mode=unmount-sdcard.
   void OnUnmountSdcard();
+
+  // Called when arc-setup is called with --mode=update-restorecon-last.
+  void OnUpdateRestoreconLast();
 
   std::unique_ptr<ArcMounter> arc_mounter_;
   std::unique_ptr<ArcPaths> arc_paths_;

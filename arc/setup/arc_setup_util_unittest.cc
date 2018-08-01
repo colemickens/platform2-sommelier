@@ -19,6 +19,7 @@
 
 #include <limits>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
@@ -1104,6 +1105,43 @@ TEST(ArcSetupUtil, TestIsProcessAlive) {
   // We can reasonably expect that a process with a large enough pid doesn't
   // exist.
   EXPECT_FALSE(IsProcessAlive(std::numeric_limits<pid_t>::max()));
+}
+
+TEST(ArcSetupUtil, TestGetSha1HashOfFiles) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  const base::FilePath file1 = temp_directory.GetPath().Append("file1");
+  const base::FilePath file2 = temp_directory.GetPath().Append("file2");
+
+  // Create the files.
+  EXPECT_TRUE(WriteToFile(file1, 0700, "The quick brown fox "));
+  EXPECT_TRUE(WriteToFile(file2, 0700, "jumps over the lazy dog"));
+
+  // Get the hash of these files.
+  std::string hash;
+  EXPECT_TRUE(GetSha1HashOfFiles({file1, file2}, &hash));
+
+  // Compare it with the pre-computed value. The value can be obtained with:
+  //   $ echo -n "The quick brown fox jumps over the lazy dog" |
+  //       openssl sha1 -binary | base64
+  std::string hash_expected;
+  EXPECT_TRUE(
+      base::Base64Decode("L9ThxnotKPzthJ7hu3bnORuT6xI=", &hash_expected));
+  EXPECT_EQ(hash_expected, hash);
+
+  // Check that the function can accept an empty input.
+  EXPECT_TRUE(GetSha1HashOfFiles({}, &hash));
+  EXPECT_TRUE(
+      base::Base64Decode("2jmj7l5rSw0yVb/vlWAYkK/YBwk=", &hash_expected));
+  EXPECT_EQ(hash_expected, hash);
+
+  // Check that the function returns false when one of the input files does not
+  // exist.
+  const base::FilePath file3 =
+      temp_directory.GetPath().Append("file3");  // does not exist.
+  EXPECT_FALSE(GetSha1HashOfFiles({file2, file3}, &hash));
+  EXPECT_FALSE(GetSha1HashOfFiles({file3, file2}, &hash));
+  EXPECT_FALSE(GetSha1HashOfFiles({file3}, &hash));
 }
 
 }  // namespace arc

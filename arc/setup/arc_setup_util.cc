@@ -11,6 +11,7 @@
 #include <mntent.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <openssl/sha.h>
 #include <selinux/restorecon.h>
 #include <selinux/selinux.h>
 #include <signal.h>
@@ -22,6 +23,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -1312,6 +1314,37 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
 
 bool IsProcessAlive(pid_t pid) {
   return kill(pid, 0 /* sig */) == 0;
+}
+
+bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
+                        std::string* out_hash) {
+  SHA_CTX sha_context;
+  SHA1_Init(&sha_context);
+  for (const auto& file : files) {
+    std::string file_str;
+    if (!base::ReadFileToString(file, &file_str))
+      return false;
+    SHA1_Update(&sha_context, file_str.data(), file_str.size());
+  }
+  unsigned char hash[SHA_DIGEST_LENGTH];
+  SHA1_Final(hash, &sha_context);
+  out_hash->assign(reinterpret_cast<const char*>(hash), sizeof(hash));
+  return true;
+}
+
+bool SetXattr(const base::FilePath& path,
+              const char* name,
+              const std::string& value) {
+  base::ScopedFD fd(OpenSafely(path, O_RDONLY, 0));
+  if (!fd.is_valid())
+    return false;
+
+  if (fsetxattr(fd.get(), name, value.data(), value.size(), 0 /* flags */) !=
+      0) {
+    PLOG(ERROR) << "Failed to change xattr " << name << " of " << path.value();
+    return false;
+  }
+  return true;
 }
 
 }  // namespace arc
