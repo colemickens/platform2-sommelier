@@ -5,6 +5,7 @@
 #ifndef SMBPROVIDER_ID_MAP_H_
 #define SMBPROVIDER_ID_MAP_H_
 
+#include <algorithm>
 #include <stack>
 #include <unordered_map>
 #include <utility>
@@ -31,6 +32,13 @@ class IdMap {
 
     ids_.insert({next_id, std::move(value)});
     return next_id;
+  }
+
+  void InsertWithSpecificId(int32_t id, T value) {
+    DCHECK_EQ(0, ids_.count(id));
+
+    ids_.insert({id, std::move(value)});
+    next_unused_id_ = std::max(next_unused_id_, id) + 1;
   }
 
   typename MapType::const_iterator Find(int32_t id) const {
