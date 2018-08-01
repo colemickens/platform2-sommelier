@@ -129,6 +129,13 @@ bool CreateSmbConfFile() {
                          kSmbConfData, data_size) == data_size;
 }
 
+std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
+    InMemoryCredentialStore* credential_store) {
+  return SambaInterfaceImpl::Create(base::Bind(
+      base::IgnoreResult(&InMemoryCredentialStore::GetAuthentication),
+      credential_store->AsWeakPtr()));
+}
+
 }  // namespace
 
 class SmbProviderDaemon : public brillo::DBusServiceDaemon {
@@ -139,14 +146,6 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
     auto credential_store = std::make_unique<InMemoryCredentialStore>();
-    std::unique_ptr<SambaInterfaceImpl> samba_interface =
-        SambaInterfaceImpl::Create(base::Bind(
-            base::IgnoreResult(&InMemoryCredentialStore::GetAuthentication),
-            credential_store->AsWeakPtr()));
-    if (!samba_interface) {
-      LOG(ERROR) << "SambaInterface failed to initialize";
-      exit(EXIT_FAILURE);
-    }
 
     auto dbus_object = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath());
@@ -160,13 +159,16 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
             std::move(kerberos_artifact_client));
 
     auto tick_clock = std::make_unique<base::DefaultTickClock>();
+    auto samba_interface_factory =
+        base::Bind(&SambaInterfaceFactoryFunction, credential_store.get());
 
     auto mount_manager = std::make_unique<MountManager>(
-        std::move(credential_store), std::move(tick_clock));
+        std::move(credential_store), std::move(tick_clock),
+        std::move(samba_interface_factory));
 
     smb_provider_ = std::make_unique<SmbProvider>(
-        std::move(dbus_object), std::move(samba_interface),
-        std::move(mount_manager), std::move(kerberos_artifact_synchronizer),
+        std::move(dbus_object), std::move(mount_manager),
+        std::move(kerberos_artifact_synchronizer),
         true /* enable_metadata_cache */);
     smb_provider_->RegisterAsync(
         sequencer->GetHandler("SmbProvider.RegisterAsync() failed.", true));

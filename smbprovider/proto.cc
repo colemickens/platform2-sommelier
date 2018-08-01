@@ -6,6 +6,7 @@
 
 #include <dbus/smbprovider/dbus-constants.h>
 
+#include "smbprovider/constants.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 
 namespace smbprovider {
@@ -218,7 +219,7 @@ int32_t GetMountId(const MountOptionsProto& unused) {
 
 template <>
 int32_t GetMountId(const GetSharesOptionsProto& unused) {
-  return -1;
+  return kInternalMountId;
 }
 
 void SerializeDirEntryVectorToProto(

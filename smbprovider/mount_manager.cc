@@ -5,7 +5,6 @@
 #include "smbprovider/mount_manager.h"
 
 #include <algorithm>
-#include <utility>
 
 #include <base/strings/string_util.h>
 #include <base/time/tick_clock.h>
@@ -16,9 +15,13 @@
 namespace smbprovider {
 
 MountManager::MountManager(std::unique_ptr<CredentialStore> credential_store,
-                           std::unique_ptr<base::TickClock> tick_clock)
+                           std::unique_ptr<base::TickClock> tick_clock,
+                           SambaInterfaceFactory samba_interface_factory)
     : credential_store_(std::move(credential_store)),
-      tick_clock_(std::move(tick_clock)) {}
+      tick_clock_(std::move(tick_clock)),
+      samba_interface_factory_(std::move(samba_interface_factory)) {
+  system_samba_interface_ = samba_interface_factory_.Run();
+}
 
 MountManager::~MountManager() = default;
 
@@ -57,7 +60,8 @@ bool MountManager::AddMount(const std::string& mount_root,
   }
 
   can_remount_ = false;
-  mounts_[next_mount_id_] = MountInfo(mount_root, tick_clock_.get());
+  mounts_[next_mount_id_] =
+      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run());
   *mount_id = next_mount_id_++;
   return true;
 }
@@ -76,7 +80,8 @@ bool MountManager::Remount(const std::string& mount_root,
     return false;
   }
 
-  mounts_[mount_id] = MountInfo(mount_root, tick_clock_.get());
+  mounts_[mount_id] =
+      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run());
   next_mount_id_ = std::max(next_mount_id_, mount_id) + 1;
   return true;
 }
@@ -132,6 +137,25 @@ std::string MountManager::GetRelativePath(int32_t mount_id,
                     base::CompareCase::INSENSITIVE_ASCII));
 
   return full_path.substr(mount_iter->second.mount_root.length());
+}
+
+bool MountManager::GetSambaInterface(int32_t mount_id,
+                                     SambaInterface** samba_interface) const {
+  DCHECK(samba_interface);
+
+  auto mount_iter = mounts_.find(mount_id);
+  if (mount_iter == mounts_.end()) {
+    return false;
+  }
+
+  *samba_interface = mount_iter->second.samba_interface.get();
+  DCHECK(*samba_interface);
+
+  return true;
+}
+
+SambaInterface* MountManager::GetSystemSambaInterface() const {
+  return system_samba_interface_.get();
 }
 
 bool MountManager::ExistsInMounts(const std::string& mount_root) const {

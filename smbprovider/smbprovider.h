@@ -48,7 +48,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   SmbProvider(
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-      std::unique_ptr<SambaInterface> samba_interface,
       std::unique_ptr<MountManager> mount_manager,
       std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
       bool enable_metadata_cache);
@@ -444,7 +443,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   template <typename Proto>
   bool IsMounted(const Proto& options, int32_t* error_code) const;
 
-  std::unique_ptr<SambaInterface> samba_interface_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
   std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer_;

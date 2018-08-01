@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/ptr_util.h>
+#include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/file_copy_progress.h"
@@ -22,7 +23,7 @@
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/recursive_copy_progress.h"
-#include "smbprovider/samba_interface_impl.h"
+#include "smbprovider/samba_interface.h"
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
@@ -58,12 +59,10 @@ bool GetEntries(const Proto& options,
 
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    std::unique_ptr<SambaInterface> samba_interface,
     std::unique_ptr<MountManager> mount_manager,
     std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
     bool enable_metadata_cache)
     : org::chromium::SmbProviderAdaptor(this),
-      samba_interface_(std::move(samba_interface)),
       dbus_object_(std::move(dbus_object)),
       mount_manager_(std::move(mount_manager)),
       kerberos_synchronizer_(std::move(kerberos_synchronizer)),
@@ -505,9 +504,18 @@ HostnamesProto SmbProvider::BuildHostnamesProto(
   return hostnames_proto;
 }
 
-// TODO(baileyberro): Return a different SambaInterface for each mount.
 SambaInterface* SmbProvider::GetSambaInterface(int32_t mount_id) const {
-  return samba_interface_.get();
+  SambaInterface* samba_interface;
+  if (mount_id == kInternalMountId) {
+    samba_interface = mount_manager_->GetSystemSambaInterface();
+  } else {
+    bool success =
+        mount_manager_->GetSambaInterface(mount_id, &samba_interface);
+    DCHECK(success);
+  }
+
+  DCHECK(samba_interface);
+  return samba_interface;
 }
 
 template <typename Proto>

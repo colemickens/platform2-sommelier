@@ -5,25 +5,43 @@
 #include <memory>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <gtest/gtest.h>
 
+#include "smbprovider/fake_samba_interface.h"
+#include "smbprovider/fake_samba_proxy.h"
 #include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/smbprovider_test_helper.h"
 #include "smbprovider/temp_file_manager.h"
 
 namespace smbprovider {
+namespace {
+
+std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
+    FakeSambaInterface* fake_samba) {
+  return std::make_unique<FakeSambaProxy>(fake_samba);
+}
+
+}  // namespace
 
 class MountManagerTest : public testing::Test {
  public:
   MountManagerTest() {
     auto credential_store = std::make_unique<InMemoryCredentialStore>();
     credential_store_ = credential_store.get();
+
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
     tick_clock_ = tick_clock.get();
-    mounts_ = std::make_unique<MountManager>(std::move(credential_store),
-                                             std::move(tick_clock));
+
+    auto fake_samba_ = std::make_unique<FakeSambaInterface>();
+    auto samba_interface_factory =
+        base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
+
+    mounts_ = std::make_unique<MountManager>(
+        std::move(credential_store), std::move(tick_clock),
+        std::move(samba_interface_factory));
   }
 
   ~MountManagerTest() override = default;

@@ -34,6 +34,10 @@ constexpr uint16_t kFileAttributeDirectory = 0x10;
 // SMB Url scheme
 constexpr char kSmbUrlScheme[] = "smb://";
 
+// MountId used to differentiate between an error case and a method that
+// operates without a mount.
+constexpr int32_t kInternalMountId = -2;
+
 // Entries returned by smbc_getdents() that we ignore.
 extern const char kEntryParent[];
 extern const char kEntrySelf[];

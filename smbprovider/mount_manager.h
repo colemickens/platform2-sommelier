@@ -8,12 +8,15 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
+#include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/metadata_cache.h"
+#include "smbprovider/samba_interface.h"
 
 namespace base {
 class TickClock;
@@ -27,8 +30,12 @@ class CredentialStore;
 // with each mount.
 class MountManager {
  public:
-  explicit MountManager(std::unique_ptr<CredentialStore> credential_store,
-                        std::unique_ptr<base::TickClock> tick_clock);
+  using SambaInterfaceFactory =
+      base::Callback<std::unique_ptr<SambaInterface>()>;
+
+  MountManager(std::unique_ptr<CredentialStore> credential_store,
+               std::unique_ptr<base::TickClock> tick_clock,
+               SambaInterfaceFactory samba_interface_factory);
   ~MountManager();
 
   // Returns true if |mount_id| is already mounted.
@@ -82,13 +89,22 @@ class MountManager {
   std::string GetRelativePath(int32_t mount_id,
                               const std::string& full_path) const;
 
+  // Returns a pointer to the SambaInterface corresponding to |mount_id|.
+  bool GetSambaInterface(int32_t mount_id,
+                         SambaInterface** samba_interface) const;
+
+  // Returns a pointer to the system SambaInterface.
+  SambaInterface* GetSystemSambaInterface() const;
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.
   struct MountInfo {
     MountInfo() = default;
-    MountInfo(const std::string& mount_root, base::TickClock* tick_clock)
-        : mount_root(mount_root) {
+    MountInfo(const std::string& mount_root,
+              base::TickClock* tick_clock,
+              std::unique_ptr<SambaInterface> samba_interface)
+        : mount_root(mount_root), samba_interface(std::move(samba_interface)) {
       cache = std::make_unique<MetadataCache>(
           tick_clock, base::TimeDelta::FromMicroseconds(
                           kMetadataCacheLifetimeMicroseconds));
@@ -97,6 +113,7 @@ class MountManager {
     MountInfo& operator=(MountInfo&& other) = default;
 
     std::string mount_root;
+    std::unique_ptr<SambaInterface> samba_interface;
     std::unique_ptr<MetadataCache> cache;
 
     DISALLOW_COPY_AND_ASSIGN(MountInfo);
@@ -112,6 +129,8 @@ class MountManager {
   int32_t next_mount_id_ = 0;
   std::unique_ptr<CredentialStore> credential_store_;
   std::unique_ptr<base::TickClock> tick_clock_;
+  std::unique_ptr<SambaInterface> system_samba_interface_;
+  SambaInterfaceFactory samba_interface_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(MountManager);
 };

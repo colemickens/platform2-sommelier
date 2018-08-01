@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <dbus/mock_bus.h>
 #include <dbus/object_path.h>
@@ -13,6 +14,7 @@
 
 #include "smbprovider/fake_kerberos_artifact_client.h"
 #include "smbprovider/fake_samba_interface.h"
+#include "smbprovider/fake_samba_proxy.h"
 #include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
@@ -89,6 +91,11 @@ void ExpectKerberosCallback(bool expected_result,
   bool result;
   EXPECT_TRUE(reader.PopBool(&result));
   EXPECT_EQ(expected_result, result);
+}
+
+std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
+    FakeSambaInterface* fake_samba) {
+  return std::make_unique<FakeSambaProxy>(fake_samba);
 }
 
 }  // namespace
@@ -172,15 +179,16 @@ class SmbProviderTest : public testing::Test {
   // called by default before each test with caching disabled. Pass true and
   // call as the first line in a test to enable caching.
   void SetUpSmbProvider(bool enable_metadata_cache) {
-    std::unique_ptr<FakeSambaInterface> fake_ptr =
-        std::make_unique<FakeSambaInterface>();
-    fake_samba_ = fake_ptr.get();
+    fake_samba_ = std::make_unique<FakeSambaInterface>();
 
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
     fake_tick_clock_ = tick_clock.get();
+    auto samba_interface_factory =
+        base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
 
     auto mount_manager_ptr = std::make_unique<MountManager>(
-        std::make_unique<InMemoryCredentialStore>(), std::move(tick_clock));
+        std::make_unique<InMemoryCredentialStore>(), std::move(tick_clock),
+        std::move(samba_interface_factory));
     mount_manager_ = mount_manager_ptr.get();
 
     auto fake_artifact_client = std::make_unique<FakeKerberosArtifactClient>();
@@ -205,8 +213,8 @@ class SmbProviderTest : public testing::Test {
     const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
-        std::move(fake_ptr), std::move(mount_manager_ptr),
-        std::move(kerberos_artifact_synchronizer), enable_metadata_cache);
+        std::move(mount_manager_ptr), std::move(kerberos_artifact_synchronizer),
+        enable_metadata_cache);
   }
 
   // Sets up the SmbProvider with caching disabled. This is the default
@@ -251,7 +259,7 @@ class SmbProviderTest : public testing::Test {
   scoped_refptr<dbus::MockBus> mock_bus_ =
       new dbus::MockBus(dbus::Bus::Options());
   std::unique_ptr<SmbProvider> smbprovider_;
-  FakeSambaInterface* fake_samba_;
+  std::unique_ptr<FakeSambaInterface> fake_samba_;
   base::SimpleTestTickClock* fake_tick_clock_;
   MountManager* mount_manager_;
   TempFileManager temp_file_manager_;
@@ -2632,10 +2640,10 @@ TEST_F(SmbProviderTest, GetEntriesFailsWithNonExistentDirectory) {
   ProtoBlob entries;
   ReadDirectoryOptionsProto proto =
       CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
-  GetEntries(
-      proto,
-      GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(), fake_samba_),
-      &error_code, &entries);
+  GetEntries(proto,
+             GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(),
+                                            fake_samba_.get()),
+             &error_code, &entries);
 
   DirectoryEntryListProto entry_list =
       GetDirectoryEntryListProtoFromBlob(entries);
@@ -2650,10 +2658,10 @@ TEST_F(SmbProviderTest, GetEntriesSucceedsWithEmptyDirectory) {
   ProtoBlob entries;
   ReadDirectoryOptionsProto proto =
       CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
-  GetEntries(
-      proto,
-      GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(), fake_samba_),
-      &error_code, &entries);
+  GetEntries(proto,
+             GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(),
+                                            fake_samba_.get()),
+             &error_code, &entries);
 
   DirectoryEntryListProto entry_list =
       GetDirectoryEntryListProtoFromBlob(entries);
@@ -2671,10 +2679,10 @@ TEST_F(SmbProviderTest, GetEntriesSucceedsWithMultipleEntries) {
   ProtoBlob entries;
   ReadDirectoryOptionsProto proto =
       CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
-  GetEntries(
-      proto,
-      GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(), fake_samba_),
-      &error_code, &entries);
+  GetEntries(proto,
+             GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(),
+                                            fake_samba_.get()),
+             &error_code, &entries);
 
   DirectoryEntryListProto entry_list =
       GetDirectoryEntryListProtoFromBlob(entries);
