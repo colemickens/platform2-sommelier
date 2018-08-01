@@ -204,10 +204,8 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDeviceAutoUpdateTimeRestrictions, kString);
   EXPECT_EQ(kString, policy.auto_update_settings().disallowed_time_intervals());
 
-  // key::kDeviceUpdateStagingPercentOfFleetPerWeek is an int list (which we
-  // don't support right now), but it's going to change to a string. Ignore for
-  // now.
-  MarkHandled(key::kDeviceUpdateStagingPercentOfFleetPerWeek);
+  EncodeString(&policy, key::kDeviceUpdateStagingSchedule, kString);
+  EXPECT_EQ(kString, policy.auto_update_settings().staging_schedule());
 
   //
   // Accessibility policies.

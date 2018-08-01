@@ -311,8 +311,10 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
         policy->mutable_auto_update_settings()->set_disallowed_time_intervals(
             value);
       });
-  // kDeviceUpdateStagingPercentOfFleetPerWeek is going to change to a string,
-  // ignore it for now.
+  EncodeString(
+      key::kDeviceUpdateStagingSchedule, [policy](const std::string& value) {
+        policy->mutable_auto_update_settings()->set_staging_schedule(value);
+      });
 }
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
