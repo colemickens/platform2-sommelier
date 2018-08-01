@@ -50,6 +50,7 @@
         'camera_hal_server_impl.cc',
         'camera_module_callbacks_delegate.cc',
         'camera_module_delegate.cc',
+        'camera_trace_event.cc',
         'cros_camera_main.cc',
         'cros_camera_mojo_utils.cc',
         'reprocess_effect/portrait_mode_effect.cc',

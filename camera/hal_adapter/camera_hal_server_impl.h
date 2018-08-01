@@ -44,6 +44,8 @@ class CameraHalServerImpl final : public mojom::CameraHalServer,
   // error the process will simply exit.
   void OnShutdownComplete() final;
 
+  void SetTracingEnabled(bool enabled);
+
  private:
   // Callback method for the unix domain socket file change events.  The method
   // will try to establish the Mojo connection to the CameraHalDispatcher

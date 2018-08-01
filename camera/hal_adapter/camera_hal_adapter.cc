@@ -26,6 +26,7 @@
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_delegate.h"
 #include "hal_adapter/camera_module_delegate.h"
+#include "hal_adapter/camera_trace_event.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
 #include "hal_adapter/vendor_tag_ops_delegate.h"
 
@@ -71,6 +72,7 @@ CameraHalAdapter::~CameraHalAdapter() {
 
 bool CameraHalAdapter::Start() {
   VLOGF_ENTER();
+  TRACE_CAMERA_INSTANT();
 
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
@@ -92,6 +94,7 @@ bool CameraHalAdapter::Start() {
 void CameraHalAdapter::OpenCameraHal(
     mojom::CameraModuleRequest camera_module_request) {
   VLOGF_ENTER();
+  TRACE_CAMERA_SCOPED();
   auto module_delegate = std::make_unique<CameraModuleDelegate>(
       this, camera_module_thread_.task_runner());
   uint32_t module_id = module_id_++;
@@ -110,6 +113,7 @@ int32_t CameraHalAdapter::OpenDevice(
     int32_t camera_id, mojom::Camera3DeviceOpsRequest device_ops_request) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED("camera_id", camera_id);
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -160,6 +164,7 @@ int32_t CameraHalAdapter::OpenDevice(
 int32_t CameraHalAdapter::GetNumberOfCameras() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED();
   return num_builtin_cameras_;
 }
 
@@ -167,6 +172,7 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
                                         mojom::CameraInfoPtr* camera_info) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED("camera_id", camera_id);
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -234,6 +240,7 @@ int32_t CameraHalAdapter::SetCallbacks(
     mojom::CameraModuleCallbacksPtr callbacks) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED();
 
   auto callbacks_delegate = std::make_unique<CameraModuleCallbacksDelegate>(
       camera_module_callbacks_thread_.task_runner());
@@ -257,6 +264,7 @@ int32_t CameraHalAdapter::SetCallbacks(
 int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED();
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -277,6 +285,7 @@ int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
 int32_t CameraHalAdapter::Init() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED();
   return 0;
 }
 
@@ -311,6 +320,7 @@ void CameraHalAdapter::camera_device_status_change(
     int internal_camera_id,
     int new_status) {
   VLOGF_ENTER();
+  TRACE_CAMERA_SCOPED();
 
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
@@ -326,6 +336,7 @@ void CameraHalAdapter::torch_mode_status_change(
     const char* internal_camera_id,
     int new_status) {
   VLOGF_ENTER();
+  TRACE_CAMERA_SCOPED();
 
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
@@ -342,6 +353,7 @@ void CameraHalAdapter::CameraDeviceStatusChange(
     camera_device_status_t new_status) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED();
 
   int external_camera_id = GetExternalId(aux->module_id, internal_camera_id);
 
@@ -402,6 +414,7 @@ void CameraHalAdapter::TorchModeStatusChange(
     torch_mode_status_t new_status) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED();
 
   int camera_id = GetExternalId(aux->module_id, internal_camera_id);
   if (camera_id == -1) {
@@ -577,6 +590,7 @@ int CameraHalAdapter::GetExternalId(int module_id, int camera_id) {
 void CameraHalAdapter::CloseDevice(int32_t camera_id) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_CAMERA_SCOPED("camera_id", camera_id);
   if (device_adapters_.find(camera_id) == device_adapters_.end()) {
     LOGF(ERROR) << "Failed to close camera device " << camera_id
                 << ": device is not opened";

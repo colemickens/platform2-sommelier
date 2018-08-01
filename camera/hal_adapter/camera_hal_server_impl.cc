@@ -36,6 +36,7 @@
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/ipc_util.h"
+#include "hal_adapter/camera_trace_event.h"
 
 namespace cros {
 
@@ -82,6 +83,11 @@ void CameraHalServerImpl::CreateChannel(
 }
 
 void CameraHalServerImpl::OnShutdownComplete() {}
+
+void CameraHalServerImpl::SetTracingEnabled(bool enabled) {
+  VLOGF_ENTER();
+  TRACE_CAMERA_ENABLE(enabled);
+}
 
 void CameraHalServerImpl::OnSocketFileStatusChange(
     const base::FilePath& socket_path,
