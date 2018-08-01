@@ -66,11 +66,21 @@ const Code kCode6 = Code::MTU_EXCEEDED;
 const char kExpectedToString6[] =
     "MTU Exceeded: Outgoing packet is larger than MTU size";
 
-const Code kBadCodes[] = {Code::BAD_PERMISSIONS,    Code::DOES_NOT_EXIST,
-                          Code::RESULT_UNAVAILABLE, Code::UNEXPECTED_FAILURE,
-                          Code::INVALID_ARGUMENT,   Code::MTU_EXCEEDED,
-                          Code::MALFORMED_PACKET,   Code::RESOURCE_IN_USE,
-                          Code::UNSUPPORTED_TYPE,   Code::BAD_INTERNAL_STATE};
+// clang-format off
+const Code kBadCodes[] = {
+    Code::BAD_PERMISSIONS,
+    Code::DOES_NOT_EXIST,
+    Code::ALREADY_EXISTS,
+    Code::RESULT_UNAVAILABLE,
+    Code::UNEXPECTED_FAILURE,
+    Code::INVALID_ARGUMENT,
+    Code::MTU_EXCEEDED,
+    Code::MALFORMED_PACKET,
+    Code::RESOURCE_IN_USE,
+    Code::UNSUPPORTED_TYPE,
+    Code::BAD_INTERNAL_STATE
+};
+// clang-format on
 
 const size_t kBadCodesLength = sizeof(kBadCodes) / sizeof(Code);
 

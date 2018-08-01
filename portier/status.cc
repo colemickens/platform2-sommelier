@@ -28,6 +28,8 @@ string Status::GetCodeName(Code code) {
       return "Bad Permissions";
     case Code::DOES_NOT_EXIST:
       return "Does Not Exist";
+    case Code::ALREADY_EXISTS:
+      return "Already Exists";
     case Code::RESULT_UNAVAILABLE:
       return "Result Unavailable";
     case Code::UNEXPECTED_FAILURE:
