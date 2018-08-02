@@ -14,7 +14,8 @@ namespace hermes {
 
 class SmdpFiTester {
  public:
-  MOCK_METHOD4(OnInitiateAuth, void(const std::vector<uint8_t>&,
+  MOCK_METHOD5(OnInitiateAuth, void(const std::string&,
+                                    const std::vector<uint8_t>&,
                                     const std::vector<uint8_t>&,
                                     const std::vector<uint8_t>&,
                                     const std::vector<uint8_t>&));
@@ -35,7 +36,7 @@ class SmdpImplTest : public testing::Test {
 TEST_F(SmdpImplTest, InitiateAuthenticationTest) {
   const std::vector<uint8_t> fake_info1 = {0x00, 0x01};
   const std::vector<uint8_t> fake_challenge = {0x02, 0x03};
-  EXPECT_CALL(smdp_tester_, OnInitiateAuth(_, _, _, _)).Times(1);
+  EXPECT_CALL(smdp_tester_, OnInitiateAuth(_, _, _, _, _)).Times(1);
   EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
 
   smdp_.InitiateAuthentication(
@@ -46,14 +47,16 @@ TEST_F(SmdpImplTest, InitiateAuthenticationTest) {
 }
 
 TEST_F(SmdpImplTest, AuthenticateClientTest) {
+  const std::string transaction_id = "1";
   const std::vector<uint8_t> esim_data = {0, 1, 2, 3, 4};
   EXPECT_CALL(smdp_tester_, OnAuthClient()).Times(1);
   EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
 
   smdp_.AuthenticateClient(
-      esim_data,
-      base::Bind(&SmdpFiTester::OnAuthClient, base::Unretained(&smdp_tester_)),
-      base::Bind(&SmdpFiTester::FakeError, base::Unretained(&smdp_tester_)));
+    transaction_id,
+    esim_data,
+    base::Bind(&SmdpFiTester::OnAuthClient, base::Unretained(&smdp_tester_)),
+    base::Bind(&SmdpFiTester::FakeError, base::Unretained(&smdp_tester_)));
 }
 
 }  // namespace hermes

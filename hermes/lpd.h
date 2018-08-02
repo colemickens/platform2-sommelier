@@ -6,6 +6,7 @@
 #define HERMES_LPD_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -80,6 +81,7 @@ class Lpd {
                              const std::vector<uint8_t>& challenge);
   void OnInitiateAuthenticationResult(
       const SuccessCallback& success_callback,
+      const std::string& transaction_id,
       const std::vector<uint8_t>& server_signed1,
       const std::vector<uint8_t>& server_signature1,
       const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
@@ -92,6 +94,8 @@ class Lpd {
 
   void HandleSmdpError(const LpdErrorCallback& lpd_callback,
                        const std::vector<uint8_t>& smdp_error_data);
+
+  std::string transaction_id_;
 
   std::unique_ptr<Esim> esim_;
   std::unique_ptr<Smdp> smdp_;

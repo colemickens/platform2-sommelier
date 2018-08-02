@@ -4,6 +4,7 @@
 
 #include "hermes/smdp_impl.h"
 
+#include <string>
 #include <utility>
 
 #include <base/base64.h>
@@ -57,6 +58,8 @@ void SmdpImpl::OnHttpResponse(
 
   std::string raw_data = response->ExtractDataAsString();
 
+  LOG(INFO) << raw_data;
+
   std::unique_ptr<base::Value> result = base::JSONReader::Read(raw_data);
   if (result) {
     data_callback.Run(base::DictionaryValue::From(std::move(result)));
@@ -99,7 +102,14 @@ void SmdpImpl::OnInitiateAuthenticationResponse(
   }
   base::Base64Decode(encoded_buffer, &server_certificate);
 
+  std::string transaction_id;
+  if (!json_dict->GetString("transactionId", &transaction_id)) {
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+
   data_callback.Run(
+      transaction_id,
       std::vector<uint8_t>(server_signed1.begin(), server_signed1.end()),
       std::vector<uint8_t>(server_signature1.begin(), server_signature1.end()),
       std::vector<uint8_t>(euicc_ci_pk_id_to_be_used.begin(),
@@ -108,16 +118,19 @@ void SmdpImpl::OnInitiateAuthenticationResponse(
                            server_certificate.end()));
 }
 
-void SmdpImpl::OnInitiateAuthenticationError(
-    const ErrorCallback& error_callback,
-    brillo::http::RequestID request_id,
-    const brillo::Error* error) {}
+void SmdpImpl::OnHttpError(const ErrorCallback& error_callback,
+                           brillo::http::RequestID request_id,
+                           const brillo::Error* error) {
+  LOG(INFO) << "here";
+  error_callback.Run(std::vector<uint8_t>());
+}
 
 void SmdpImpl::SendJsonRequest(
     const std::string& url,
     const std::string& json_data,
     const base::Callback<void(DictionaryPtr)>& data_callback,
     const ErrorCallback& error_callback) {
+  LOG(INFO) << "sending : " << json_data;
   brillo::ErrorPtr error = nullptr;
   brillo::http::Request request(url, brillo::http::request_type::kPost,
                                 server_transport_);
@@ -129,13 +142,46 @@ void SmdpImpl::SendJsonRequest(
   request.GetResponse(
       base::Bind(&SmdpImpl::OnHttpResponse, weak_factory_.GetWeakPtr(),
                  data_callback, error_callback),
-      base::Bind(&SmdpImpl::OnInitiateAuthenticationError,
-                 weak_factory_.GetWeakPtr(), error_callback));
+      base::Bind(&SmdpImpl::OnHttpError, weak_factory_.GetWeakPtr(),
+                 error_callback));
 }
 
-// TODO(jruthe): update data_callback to the correct base::Callback signature
-void SmdpImpl::AuthenticateClient(const std::vector<uint8_t>& data,
+void SmdpImpl::AuthenticateClient(std::string transaction_id,
+                                  const std::vector<uint8_t>& data,
                                   const base::Closure& data_callback,
-                                  const ErrorCallback& error_callback) const {}
+                                  const ErrorCallback& error_callback) {
+  std::string encoded_data(data.begin(), data.end());
+  base::Base64Encode(encoded_data, &encoded_data);
+
+  base::DictionaryValue http_params;
+  http_params.SetString("transactionId", transaction_id);
+  http_params.SetString("authenticateServerResponse", encoded_data);
+  std::string http_body;
+  base::JSONWriter::Write(http_params, &http_body);
+
+  SendJsonRequest(
+      "https://" + server_hostname_ + "/gsma/rsp2/es9plus/authenticateClient",
+      http_body,
+      base::Bind(&SmdpImpl::OnAuthenticateClientResponse,
+                 weak_factory_.GetWeakPtr(), data_callback, error_callback),
+      error_callback);
+}
+
+void SmdpImpl::OnAuthenticateClientResponse(
+    const base::Closure& success_callback,
+    const ErrorCallback& error_callback,
+    DictionaryPtr json_dict) {
+  LOG(INFO) << "Client authenticated successfully";
+  std::string encoded_buffer;
+  std::string smdp_signed2;
+  if (!json_dict->GetString("smdpSigned2", &encoded_buffer)) {
+    LOG(ERROR) << __func__ << ": smdpSigned2 not received";
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &smdp_signed2);
+
+  success_callback.Run();
+}
 
 }  // namespace hermes

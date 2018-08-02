@@ -4,6 +4,7 @@
 
 #include "hermes/lpd.h"
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -91,11 +92,12 @@ void Lpd::OnEsimChallengeResult(const Lpd::SuccessCallback& success_callback,
 
 void Lpd::OnInitiateAuthenticationResult(
     const Lpd::SuccessCallback& success_callback,
+    const std::string& transaction_id,
     const std::vector<uint8_t>& server_signed1,
     const std::vector<uint8_t>& server_signature1,
     const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
     const std::vector<uint8_t>& server_certificate) {
-  // TODO(jruthe): update parameters to Esim::AuthenticateServer
+  transaction_id_ = transaction_id;
   esim_->AuthenticateServer(
       server_signed1, server_signature1, euicc_ci_pk_id_to_be_used,
       server_certificate,
@@ -107,7 +109,8 @@ void Lpd::OnInitiateAuthenticationResult(
 void Lpd::OnAuthenticateServerResult(
     const Lpd::SuccessCallback& success_callback,
     const std::vector<uint8_t>& data) {
-  success_callback.Run();
+  smdp_->AuthenticateClient(transaction_id_, data, success_callback,
+                            smdp_error_handler_);
 }
 
 void Lpd::HandleEsimError(const Lpd::LpdErrorCallback& lpd_callback,

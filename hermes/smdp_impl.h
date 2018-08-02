@@ -28,22 +28,26 @@ class SmdpImpl : public Smdp {
       const ErrorCallback& error_callback) override;
 
   // TODO(jruthe): update data_callback to the correct base::Callback signature
-  void AuthenticateClient(const std::vector<uint8_t>& data,
-                          const base::Closure& data_callback,
-                          const ErrorCallback& error_callback) const override;
+  void AuthenticateClient(std::string transaction_id,
+                          const std::vector<uint8_t>& data,
+                          const base::Closure& success_callback,
+                          const ErrorCallback& error_callback) override;
 
  private:
   void OnHttpResponse(const base::Callback<void(DictionaryPtr)>& data_callback,
                       const ErrorCallback& error_callback,
                       brillo::http::RequestID request_id,
                       std::unique_ptr<brillo::http::Response> response);
+  void OnHttpError(const ErrorCallback& error_callback,
+                   brillo::http::RequestID request_id,
+                   const brillo::Error* error);
   void OnInitiateAuthenticationResponse(
       const InitiateAuthenticationCallback& data_callback,
       const ErrorCallback& error_callback,
       DictionaryPtr json_dict);
-  void OnInitiateAuthenticationError(const ErrorCallback& error_callback,
-                                     brillo::http::RequestID request_id,
-                                     const brillo::Error* error);
+  void OnAuthenticateClientResponse(const base::Closure& success_callback,
+                                    const ErrorCallback& error_callback,
+                                    DictionaryPtr json_dict);
   void SendJsonRequest(const std::string& url,
                        const std::string& json_data,
                        const base::Callback<void(DictionaryPtr)>& data_callback,

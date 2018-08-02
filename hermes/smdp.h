@@ -21,7 +21,8 @@ namespace hermes {
 class Smdp {
  public:
   using InitiateAuthenticationCallback =
-      base::Callback<void(const std::vector<uint8_t>& server_signed1,
+      base::Callback<void(const std::string& transaction_id,
+                          const std::vector<uint8_t>& server_signed1,
                           const std::vector<uint8_t>& server_signature1,
                           const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
                           const std::vector<uint8_t>& server_certificate)>;
@@ -47,10 +48,10 @@ class Smdp {
       const ErrorCallback& error_callback) = 0;
 
   // TODO(jruthe): update callback parameters
-  virtual void AuthenticateClient(
-      const std::vector<uint8_t>& data,
-      const base::Closure& callback,
-      const ErrorCallback& error_callback) const = 0;
+  virtual void AuthenticateClient(std::string transaction_id,
+                                  const std::vector<uint8_t>& data,
+                                  const base::Closure& callback,
+                                  const ErrorCallback& error_callback) = 0;
 };
 
 }  // namespace hermes

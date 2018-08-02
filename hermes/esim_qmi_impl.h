@@ -7,9 +7,9 @@
 
 #include <libqrtr.h>
 
+#include <deque>
 #include <map>
 #include <memory>
-#include <deque>
 #include <utility>
 #include <vector>
 
