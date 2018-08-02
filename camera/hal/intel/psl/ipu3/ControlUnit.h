@@ -17,7 +17,7 @@
 #ifndef CAMERA3_HAL_CONTROLUNIT_H_
 #define CAMERA3_HAL_CONTROLUNIT_H_
 #include <memory>
-#include <vector>
+#include <deque>
 #include <map>
 #include "ImguUnit.h"
 #include "CaptureUnit.h"
@@ -139,8 +139,7 @@ private:  /* Members */
      * Settings history
      */
     static const int16_t MAX_SETTINGS_HISTORY_SIZE = 10;
-    std::vector<std::shared_ptr<CaptureUnitSettings>>    mSettingsHistory;
-
+    std::deque<std::shared_ptr<CaptureUnitSettings>> mSettingsHistory;
     int mBaseIso;
 
     /*

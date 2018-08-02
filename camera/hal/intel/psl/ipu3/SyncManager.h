@@ -17,7 +17,7 @@
 #ifndef CAMERA3_HAL_SYNCMANAGER_H_
 #define CAMERA3_HAL_SYNCMANAGER_H_
 
-#include <vector>
+#include <deque>
 #include <memory>
 #include <linux/media.h>
 #include <linux/videodev2.h>
@@ -140,7 +140,7 @@ private:
     /**
      * Settings Q control
      */
-    std::vector<std::shared_ptr<CaptureUnitSettings>> mQueuedSettings;
+    std::deque<std::shared_ptr<CaptureUnitSettings>> mQueuedSettings;
     /**
      * Sensor delay model characterization, these are static values from
      * the XML config.

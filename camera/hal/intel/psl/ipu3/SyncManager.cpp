@@ -411,8 +411,12 @@ status_t SyncManager::setParameters(std::shared_ptr<CaptureUnitSettings> setting
 status_t SyncManager::handleSetParams(std::shared_ptr<CaptureUnitSettings> settings)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOGP("%s add one hold for %p in mCaptureUnitSettingsPool", __FUNCTION__, settings.get());
     mQueuedSettings.push_back(std::move(settings));
-    if(mQueuedSettings.size() > MAX_SETTINGS_QUEUE_SIZE) {
+
+    if (mQueuedSettings.size() > MAX_SETTINGS_QUEUE_SIZE) {
+        LOGP("%s size>max delete one hold for %p in mCaptureUnitSettingsPool",
+              __FUNCTION__, mQueuedSettings.begin()->get());
         mQueuedSettings.erase(mQueuedSettings.begin());
     }
     return OK;
@@ -517,6 +521,8 @@ status_t SyncManager::handleSOF(MessageFrameEvent msg)
          * Then remove it from the Q.
          */
         mQueuedSettings[0]->inEffectFrom = msg.exp_id + mExposureDelay;
+        LOGP("%s sof come, delete one hold for %p in mCaptureUnitSettingsPool",
+              __FUNCTION__, mQueuedSettings.begin()->get());
         mQueuedSettings.erase(mQueuedSettings.begin());
     }
     return status;

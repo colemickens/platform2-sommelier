@@ -576,7 +576,16 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
      */
     if (reqState->aaaControls.controlMode != ANDROID_CONTROL_MODE_OFF_KEEP_STATE &&
         reqState->aaaControls.controlMode != ANDROID_CONTROL_MODE_OFF) {
+        // Keep the size of the history fixed
+        if (mSettingsHistory.size() >= MAX_SETTINGS_HISTORY_SIZE) {
+            LOGP("%s delete one hold for %p in mCaptureUnitSettingsPool",
+                 __FUNCTION__, mSettingsHistory.begin()->get());
+            mSettingsHistory.erase(mSettingsHistory.begin());
+        }
+
         mSettingsHistory.push_back(reqState->captureSettings);
+        LOGP("%s add one hold for %p in mCaptureUnitSettingsPool",
+             __FUNCTION__, reqState->captureSettings.get());
     }
 
     int jpegBufCount = reqState->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
@@ -1032,7 +1041,7 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
 std::shared_ptr<CaptureUnitSettings> ControlUnit::findSettingsInEffect(uint64_t expId)
 {
     std::shared_ptr<CaptureUnitSettings> settingsInEffect = nullptr;
-    std::vector<std::shared_ptr<CaptureUnitSettings>>::iterator it;
+    std::deque<std::shared_ptr<CaptureUnitSettings>>::iterator it;
     for (it = mSettingsHistory.begin(); it != mSettingsHistory.end(); ++it) {
         if ((*it)->inEffectFrom == expId) {
             // we found the exact settings
@@ -1052,9 +1061,7 @@ std::shared_ptr<CaptureUnitSettings> ControlUnit::findSettingsInEffect(uint64_t 
              mSettingsHistory[0]->inEffectFrom);
         settingsInEffect = mSettingsHistory[0];
     }
-    // Keep the size of the history fixed
-    if (mSettingsHistory.size() == MAX_SETTINGS_HISTORY_SIZE)
-        mSettingsHistory.erase(mSettingsHistory.begin());
+
     return settingsInEffect;
 }
 
