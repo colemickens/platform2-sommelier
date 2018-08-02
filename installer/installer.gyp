@@ -47,11 +47,8 @@
     {
       'target_name': 'evwaitkey',
       'type': 'executable',
-      'variables': {
-        'deps': ['libchrome-<(libbase_ver)'],
-      },
       'sources': [
-        'util/evwaitkey.cc',
+        'util/evwaitkey.c',
       ],
     },
     {
