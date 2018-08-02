@@ -1231,7 +1231,7 @@ void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
     // that we can send a message back to the host to notify it. Long term the
     // plan is to use the LXD REST API, and once we do that we can remove this.
     if (!info.wait_for_exit && info.argv.size() > 0 &&
-        info.argv[0] == "run_container.sh" &&
+        info.argv[0] == "/sbin/minijail0" &&
         (WIFSIGNALED(status) || (WIFEXITED(status) && WEXITSTATUS(status)))) {
       // There was a failure in the script, it exited with a signal or a failure
       // code. We don't need to log the details of it because we already did
