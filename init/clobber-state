@@ -146,7 +146,7 @@ wipe_block_dev() {
     FS_BLOCKSIZE=$(dumpe2fs -h "${dev}" | grep "Block size" | sed "s/^.*:\W*//")
   else
     FS_BLOCKS=$(numsectors "${dev}")
-    FS_BLOCKSIZE=512
+    FS_BLOCKSIZE=$(blocksize "${dev}")
   fi
   BLOCKS_4M=$((4 * 1024 * 1024 / $FS_BLOCKSIZE))  # 4MiB in sectors
   FULL_BLKS=$(($FS_BLOCKS / $BLOCKS_4M))
