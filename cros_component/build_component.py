@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-"
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -47,7 +48,9 @@ def GetParser():
   required.add_argument('--platform', metavar='PLATFORM',
                         help='Name for the platform folder in Omaha.',
                         choices=['chromeos_arm32-archive',
-                                 'chromeos_intel64-archive'], required=True)
+                                 'chromeos_intel64-archive',
+                                 'chromeos_arm32',
+                                 'chromeos_intel64'], required=True)
   # Positional arguments:
   parser.add_argument('component', metavar='COMPONENT',
                       help='The component to build (key inside the config '
@@ -193,6 +196,27 @@ def CheckComponentFilesExistence(paths):
   return True
 
 
+def AddDirectoryToZip(zip_file, dir_path):
+  """Adds a directory to a zip file.
+
+  This will add the whole directory to the zip, rather than contents of the
+  directory. Empty (sub)directories will be ignored.
+
+  Args:
+    zip_file: (zipfile.ZipFile) the zip file to which to add the dir.
+    dir_path: (string) the directory to add to the zip file.
+  """
+  # The directories parent path, used to calculate the target paths in the zip
+  # file, which should include the |dir_path| itself.
+  dir_parent = os.path.normpath(os.path.join(dir_path, os.pardir))
+
+  for current_dir, _subdirs, file_names in os.walk(dir_path):
+    for file_name in file_names:
+      file_path = os.path.normpath(os.path.join(current_dir, file_name))
+      zip_path = os.path.relpath(file_path, dir_parent)
+      zip_file.write(file_path, zip_path)
+
+
 def UploadComponent(component_dir, gsbucket):
   """Upload a component.
 
@@ -206,13 +230,14 @@ def UploadComponent(component_dir, gsbucket):
   ctx.DoCommand(['cp', '-r', component_dir, gsbucket])
 
 
-def CreateComponent(manifest_path, version, package_version, platform, files,
-                    upload, gsbucket):
+def CreateComponent(manifest_path, version, package_name, package_version,
+                    platform, files, upload, gsbucket):
   """Create component zip file.
 
   Args:
     manifest_path: (str) path to raw manifest file.
     version: (str) component version.
+    package_name: (str) the package name
     package_version: (str) package version.
     platform: (str) platform folder name on Omaha.
     files: ([str]) paths for component files.
@@ -235,7 +260,10 @@ def CreateComponent(manifest_path, version, package_version, platform, files,
       zf = zipfile.ZipFile(component_zipfile, 'w', zipfile.ZIP_DEFLATED)
       # Move component files into zip file.
       for f in files:
-        zf.write(f, os.path.basename(f))
+        if os.path.isdir(f):
+          AddDirectoryToZip(zf, f)
+        else:
+          zf.write(f, os.path.basename(f))
       # Write manifest file into zip file.
       zf.writestr(MANIFEST_FILE_NAME, json.dumps(data))
       logger.info('component is generated at %s', zf.filename)
@@ -243,6 +271,9 @@ def CreateComponent(manifest_path, version, package_version, platform, files,
 
       # Upload component to gs bucket.
       if upload:
+        if '9999' in package_version:
+          cros_build_lib.Die('Cannot upload component while the %s package '
+                             'is being worked on.', package_name)
         UploadComponent(os.path.join(tempdir, data[MANIFEST_VERSION_FIELD]),
                         gsbucket)
 
@@ -336,6 +367,9 @@ def BuildComponent(component_to_build, components, board, platform,
       if pkg == component_to_build:
         if not CheckValidMetadata(metadata):
           continue
+        if (metadata.get('valid_platforms') and
+            not platform in metadata['valid_platforms']):
+          cros_build_lib.Die('Invalid platform')
         logger.info('build component:%s', pkg)
         # Check if component files are built successfully.
         files = [os.path.join(cros_build_lib.GetSysroot(), 'build', board, x) \
@@ -377,8 +411,8 @@ def BuildComponent(component_to_build, components, board, platform,
             manifest_path = os.path.join(cros_build_lib.GetSysroot(), 'build',
                                          board, metadata["manifest"])
 
-            CreateComponent(manifest_path, version, package_version, platform,
-                            files, upload, gsbucket)
+            CreateComponent(manifest_path, version, name, package_version,
+                            platform, files, upload, gsbucket)
             return
         cros_build_lib.Die('Package could not be found, component could not be'
                            'built.')
