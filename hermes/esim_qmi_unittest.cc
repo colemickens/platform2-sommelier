@@ -34,7 +34,7 @@ class EsimQmiImplTest : public testing::Test {
   }
   ~EsimQmiImplTest() = default;
 
-  void FakeSuccess(const Esim::DataBlob& data) {}
+  void FakeSuccess() {}
   void FakeError(EsimError error) {}
 
  protected:
@@ -51,7 +51,7 @@ TEST_F(EsimQmiImplTest, GetInfoTest) {
 
   // This should call OnInfoResult
   esim_->GetInfo(
-      kEsimInfo1,
+      kEsimInfo1Tag,
       base::Bind(&EsimQmiTester::OnInfoResult, base::Unretained(&esim_tester_)),
       base::Bind(&EsimQmiTester::FakeError, base::Unretained(&esim_tester_)));
 

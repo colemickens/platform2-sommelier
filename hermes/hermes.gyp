@@ -51,7 +51,7 @@
           },
           'sources': [
             'esim_qmi_unittest.cc',
-            'smdp_fi_unittest.cc',
+            'smdp_unittest.cc',
           ],
         },
       ],
