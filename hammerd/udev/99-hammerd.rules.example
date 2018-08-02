@@ -5,3 +5,7 @@
 ACTION=="add", ENV{ID_MODEL}=="Hammer", SUBSYSTEM=="usb", \
   DEVPATH=="/devices/pci0000:00/0000:00:12.0/usb1/1-1", \
   RUN+="/sbin/initctl emit --no-wait hammer-device-added"
+
+ACTION=="remove", ENV{ID_MODEL}=="Hammer", SUBSYSTEM=="usb", \
+  DEVPATH=="/devices/pci0000:00/0000:00:12.0/usb1/1-1", \
+  RUN+="/sbin/initctl emit --no-wait hammer-device-removed"
