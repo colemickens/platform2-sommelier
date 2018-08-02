@@ -49,7 +49,6 @@ arc::Mode GetMode(const std::string& mode) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
   DEFINE_string(log_tag, "", "Tag to be used in syslog");
   DEFINE_string(mode, "", "arc-setup mode of operation");
 
@@ -61,10 +60,8 @@ int main(int argc, char** argv) {
   CHECK(!FLAGS_log_tag.empty()) << "Must specify --log_tag";
   brillo::OpenLog(FLAGS_log_tag.c_str(), true /*log_pid*/);
 
-  int flags = brillo::kLogToSyslog | brillo::kLogHeader;
-  if (FLAGS_log_to_stderr)
-    flags |= brillo::kLogToStderr;
-  brillo::InitLog(flags);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
+                  brillo::kLogToStderrIfTty);
 
   const std::string command_line =
       base::CommandLine::ForCurrentProcess()->GetCommandLineString();
