@@ -21,6 +21,7 @@
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
+#include "power_manager/powerd/policy/sar_handler.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
@@ -47,6 +48,7 @@ class MetricsCollector;
 namespace policy {
 class BacklightController;
 class InputDeviceController;
+class SarHandler;
 class StateController;
 class Suspender;
 class WifiController;
@@ -66,6 +68,7 @@ class InputWatcherInterface;
 class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
+class SarWatcherInterface;
 class UdevInterface;
 }  // namespace system
 
@@ -264,6 +267,8 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<system::PeripheralBatteryWatcher>
       peripheral_battery_watcher_;  // May be null.
   std::unique_ptr<system::PowerSupplyInterface> power_supply_;
+  std::unique_ptr<system::SarWatcherInterface> sar_watcher_;
+  std::unique_ptr<policy::SarHandler> sar_handler_;
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::Suspender> suspender_;
   std::unique_ptr<policy::WifiController> wifi_controller_;

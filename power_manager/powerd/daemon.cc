@@ -51,6 +51,7 @@
 #include "power_manager/powerd/system/lockfile_checker.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/sar_watcher_interface.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
@@ -390,6 +391,11 @@ void Daemon::Init() {
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
       base::FilePath(kPowerOverrideLockfileDir), {});
+
+  sar_watcher_ = delegate_->CreateSarWatcher(prefs_.get(), udev_.get());
+  sar_handler_ = std::make_unique<policy::SarHandler>();
+  // TODO(egranata): create LteController and pass it in
+  sar_handler_->Init(sar_watcher_.get(), wifi_controller_.get(), nullptr);
 
   arc_timer_manager_->Init(dbus_wrapper_.get());
 

@@ -39,6 +39,7 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
+#include "power_manager/powerd/system/sar_watcher_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
@@ -67,6 +68,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_acpi_wakeup_helper_(new system::AcpiWakeupHelperStub()),
         passed_ec_wakeup_helper_(new system::EcWakeupHelperStub()),
         passed_power_supply_(new system::PowerSupplyStub()),
+        passed_sar_watcher_(new system::SarWatcherStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
         passed_lockfile_checker_(new system::LockfileCheckerStub()),
@@ -89,6 +91,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         acpi_wakeup_helper_(passed_acpi_wakeup_helper_.get()),
         ec_wakeup_helper_(passed_ec_wakeup_helper_.get()),
         power_supply_(passed_power_supply_.get()),
+        sar_watcher_(passed_sar_watcher_.get()),
         dark_resume_(passed_dark_resume_.get()),
         audio_client_(passed_audio_client_.get()),
         lockfile_checker_(passed_lockfile_checker_.get()),
@@ -245,6 +248,12 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_power_supply_);
   }
+  std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(
+      PrefsInterface* prefs, system::UdevInterface* udev) override {
+    EXPECT_EQ(prefs_, prefs);
+    EXPECT_EQ(udev_, udev);
+    return std::move(passed_sar_watcher_);
+  }
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       system::PowerSupplyInterface* power_supply,
       PrefsInterface* prefs,
@@ -322,6 +331,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::AcpiWakeupHelperStub> passed_acpi_wakeup_helper_;
   std::unique_ptr<system::EcWakeupHelperStub> passed_ec_wakeup_helper_;
   std::unique_ptr<system::PowerSupplyStub> passed_power_supply_;
+  std::unique_ptr<system::SarWatcherStub> passed_sar_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
@@ -345,6 +355,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::AcpiWakeupHelperStub* acpi_wakeup_helper_;
   system::EcWakeupHelperStub* ec_wakeup_helper_;
   system::PowerSupplyStub* power_supply_;
+  system::SarWatcherStub* sar_watcher_;
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;
   system::LockfileCheckerStub* lockfile_checker_;

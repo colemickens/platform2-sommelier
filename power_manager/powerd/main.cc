@@ -49,6 +49,7 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/sar_watcher.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/wakeup_device.h"
 
@@ -194,6 +195,13 @@ class DaemonDelegateImpl : public DaemonDelegate {
     auto supply = base::WrapUnique(new system::PowerSupply());
     supply->Init(power_supply_path, prefs, udev, dbus_wrapper);
     return supply;
+  }
+
+  std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(
+      PrefsInterface* prefs, system::UdevInterface* udev) override {
+    auto watcher = base::WrapUnique(new system::SarWatcher());
+    watcher->Init(prefs, udev);
+    return watcher;
   }
 
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
