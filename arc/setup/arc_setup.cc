@@ -2115,7 +2115,9 @@ void ArcSetup::Run() {
       OnStop();
       break;
     case Mode::BOOT_CONTINUE:
+      bootstat_log("android-start");
       OnBootContinue();
+      bootstat_log("arc-setup-end");
       break;
     case Mode::ONETIME_SETUP:
       OnOnetimeSetup();
