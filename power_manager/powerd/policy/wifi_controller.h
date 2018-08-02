@@ -10,6 +10,7 @@
 #include <base/macros.h>
 
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/sar_handler.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
@@ -20,7 +21,8 @@ class PrefsInterface;
 namespace policy {
 
 // WifiController initiates power-related changes to the wifi chipset.
-class WifiController : public system::UdevSubsystemObserver {
+class WifiController : public system::UdevSubsystemObserver,
+                       public SarHandler::Delegate {
  public:
   // Performs work on behalf of WifiController.
   class Delegate {
@@ -47,22 +49,42 @@ class WifiController : public system::UdevSubsystemObserver {
   // Called when the tablet mode changes.
   void HandleTabletModeChange(TabletMode mode);
 
+  // SarHandler::Delegate overrides:
+  void ProximitySensorDetected(UserProximity proximity) override;
+  void HandleProximityChange(UserProximity proximity) override;
+
   // system::UdevSubsystemObserver:
   void OnUdevEvent(const system::UdevEvent& event) override;
 
  private:
-  // Updates transmit power via |delegate_| if
-  // |set_transmit_power_for_tablet_mode_| is true.
+  enum class UpdatePowerInputSource {
+    NONE,
+    TABLET_MODE,
+    PROXIMITY,
+  };
+
+  // Updates transmit power via |delegate_|. Ends up invoking either one of
+  // UpdateTransmitPowerFor*() depending on |update_power_input_source_|.
   void UpdateTransmitPower();
 
+  void UpdateTransmitPowerForTabletMode();
+  void UpdateTransmitPowerForProximity();
+
+  UpdatePowerInputSource update_power_input_source_ =
+      UpdatePowerInputSource::NONE;
   Delegate* delegate_ = nullptr;           // Not owned.
   system::UdevInterface* udev_ = nullptr;  // Not owned.
 
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
+  UserProximity proximity_ = UserProximity::UNKNOWN;
 
   // True if powerd has been configured to set wifi transmit power in response
   // to tablet mode changes.
   bool set_transmit_power_for_tablet_mode_ = false;
+
+  // True if powerd has been configured to set wifi transmit power in response
+  // to proximity changes.
+  bool set_transmit_power_for_proximity_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(WifiController);
 };

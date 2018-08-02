@@ -22,7 +22,9 @@ class TestWifiControllerDelegate : public WifiController::Delegate {
   ~TestWifiControllerDelegate() override = default;
 
   int num_set_calls() const { return num_set_calls_; }
-  RadioTransmitPower last_transmit_power() const { return last_transmit_power_; }
+  RadioTransmitPower last_transmit_power() const {
+    return last_transmit_power_;
+  }
 
   // Resets stat members.
   void ResetStats() {
@@ -58,7 +60,9 @@ class WifiControllerTest : public ::testing::Test {
   // Calls |controller_|'s Init() method.
   void Init(TabletMode tablet_mode) {
     prefs_.SetInt64(kSetWifiTransmitPowerForTabletModePref,
-                    set_transmit_power_pref_value_);
+                    set_transmit_power_tablet_pref_value_);
+    prefs_.SetInt64(kSetWifiTransmitPowerForProximityPref,
+                    set_transmit_power_proximity_pref_value_);
     controller_.Init(&delegate_, &prefs_, &udev_, tablet_mode);
   }
 
@@ -70,7 +74,10 @@ class WifiControllerTest : public ::testing::Test {
   }
 
   // Initial value for kSetWifiTransmitPowerForTabletModePref.
-  bool set_transmit_power_pref_value_ = true;
+  bool set_transmit_power_tablet_pref_value_ = true;
+
+  // Initial value for kSetWifiTransmitPowerForProximityPref.
+  bool set_transmit_power_proximity_pref_value_ = false;
 
   system::UdevStub udev_;
   FakePrefs prefs_;
@@ -142,13 +149,35 @@ TEST_F(WifiControllerTest, DontSetTransmitPowerWhenUnsupported) {
 
 TEST_F(WifiControllerTest, DontSetTransmitPowerWhenDisabled) {
   // The delegate should never be called when the pref is set to false.
-  set_transmit_power_pref_value_ = false;
+  set_transmit_power_tablet_pref_value_ = false;
   Init(TabletMode::ON);
   EXPECT_EQ(0, delegate_.num_set_calls());
   controller_.HandleTabletModeChange(TabletMode::OFF);
   EXPECT_EQ(0, delegate_.num_set_calls());
   SendUdevEvent();
   EXPECT_EQ(0, delegate_.num_set_calls());
+}
+
+TEST_F(WifiControllerTest, ProximitySensor) {
+  set_transmit_power_proximity_pref_value_ = true;
+  Init(TabletMode::UNSUPPORTED);
+  controller_.ProximitySensorDetected(UserProximity::NEAR);
+  EXPECT_EQ(1, delegate_.num_set_calls());
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+  controller_.HandleProximityChange(UserProximity::NEAR);
+  EXPECT_EQ(1, delegate_.num_set_calls());
+  controller_.HandleProximityChange(UserProximity::FAR);
+  EXPECT_EQ(2, delegate_.num_set_calls());
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+}
+
+TEST_F(WifiControllerTest, IgnoreTabletEventIfProximity) {
+  set_transmit_power_proximity_pref_value_ = true;
+  Init(TabletMode::UNSUPPORTED);
+  controller_.ProximitySensorDetected(UserProximity::NEAR);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+  controller_.HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
 }
 
 }  // namespace policy

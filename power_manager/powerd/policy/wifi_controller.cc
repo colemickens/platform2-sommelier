@@ -33,6 +33,12 @@ void WifiController::Init(Delegate* delegate,
 
   prefs->GetBool(kSetWifiTransmitPowerForTabletModePref,
                  &set_transmit_power_for_tablet_mode_);
+  prefs->GetBool(kSetWifiTransmitPowerForProximityPref,
+                 &set_transmit_power_for_proximity_);
+
+  if (set_transmit_power_for_tablet_mode_)
+    update_power_input_source_ = UpdatePowerInputSource::TABLET_MODE;
+
   udev_->AddSubsystemObserver(kUdevSubsystem, this);
   UpdateTransmitPower();
 }
@@ -45,6 +51,23 @@ void WifiController::HandleTabletModeChange(TabletMode mode) {
   UpdateTransmitPower();
 }
 
+void WifiController::ProximitySensorDetected(UserProximity value) {
+  if (!set_transmit_power_for_proximity_)
+    return;
+
+  update_power_input_source_ = UpdatePowerInputSource::PROXIMITY;
+  LOG(INFO) << "Wifi power will be handled by proximity sensor";
+  HandleProximityChange(value);
+}
+
+void WifiController::HandleProximityChange(UserProximity proximity) {
+  if (proximity_ == proximity)
+    return;
+
+  proximity_ = proximity;
+  UpdateTransmitPower();
+}
+
 void WifiController::OnUdevEvent(const system::UdevEvent& event) {
   DCHECK_EQ(event.device_info.subsystem, kUdevSubsystem);
   if (event.action == system::UdevEvent::Action::ADD &&
@@ -53,17 +76,41 @@ void WifiController::OnUdevEvent(const system::UdevEvent& event) {
 }
 
 void WifiController::UpdateTransmitPower() {
-  if (set_transmit_power_for_tablet_mode_) {
-    switch (tablet_mode_) {
-      case TabletMode::UNSUPPORTED:
-        break;
-      case TabletMode::ON:
-        delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW);
-        break;
-      case TabletMode::OFF:
-        delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH);
-        break;
-    }
+  switch (update_power_input_source_) {
+    case UpdatePowerInputSource::TABLET_MODE:
+      UpdateTransmitPowerForTabletMode();
+      break;
+    case UpdatePowerInputSource::PROXIMITY:
+      UpdateTransmitPowerForProximity();
+      break;
+    case UpdatePowerInputSource::NONE:
+      break;
+  }
+}
+
+void WifiController::UpdateTransmitPowerForTabletMode() {
+  switch (tablet_mode_) {
+    case TabletMode::UNSUPPORTED:
+      break;
+    case TabletMode::ON:
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW);
+      break;
+    case TabletMode::OFF:
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH);
+      break;
+  }
+}
+
+void WifiController::UpdateTransmitPowerForProximity() {
+  switch (proximity_) {
+    case UserProximity::UNKNOWN:
+      break;
+    case UserProximity::NEAR:
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW);
+      break;
+    case UserProximity::FAR:
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH);
+      break;
   }
 }
 
