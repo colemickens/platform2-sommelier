@@ -296,8 +296,8 @@ void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
             static_cast<uint8_t>(kStoreDataCla | channel_),
             kGetMoreResponseCommand, 0x00, 0x00, sw2_};
 
-        SendApdu(get_more_request, callback_pair.data_callback,
-                 callback_pair.error_callback);
+        SendApdu(get_more_request, transaction_callbacks.data_callback,
+                 transaction_callbacks.error_callback);
         return;
       }
       transaction_callbacks.data_callback.Run(payload_);
