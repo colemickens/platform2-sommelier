@@ -235,8 +235,7 @@ TEST_F(TpmStateTest, AlgorithmSupport) {
   TpmStateImpl tpm_state(factory_);
   ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
   EXPECT_TRUE(tpm_state.IsRSASupported());
-  // TODO(crosbug.com/p/57910): re-enable ECC keys
-  // EXPECT_TRUE(tpm_state.IsECCSupported());
+  EXPECT_TRUE(tpm_state.IsECCSupported());
 
   fake_algorithm_properties_.clear();
   // Use a new instance because algorithm properties will not be queried again.

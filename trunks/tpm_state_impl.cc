@@ -129,9 +129,7 @@ bool TpmStateImpl::IsRSASupported() {
 
 bool TpmStateImpl::IsECCSupported() {
   CHECK(initialized_);
-  // TODO(crosbug.com/p/57910): re-enable ECC keys
-  // return (algorithm_properties_.count(TPM_ALG_ECC) > 0);
-  return false;
+  return (algorithm_properties_.count(TPM_ALG_ECC) > 0);
 }
 
 uint32_t TpmStateImpl::GetLockoutCounter() {
