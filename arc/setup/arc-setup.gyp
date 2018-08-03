@@ -38,6 +38,7 @@
         'arc_setup_metrics.cc',
         'arc_setup_util.cc',
         'art_container.cc',
+        'config.cc',
       ],
       'variables': {
         'USE_houdini%': 0,
@@ -129,15 +130,16 @@
               'libchrome-test-<(libbase_ver)',
             ],
           },
+          # TODO(xzhou): Move boot_lockbox_client.cc and
+          # priv_code_verifier.cc back to libarc_setup.
           'sources': [
             'arc_read_ahead_unittest.cc',
             'arc_setup_metrics_unittest.cc',
             'arc_setup_unittest.cc',
             'arc_setup_util_unittest.cc',
             'art_container_unittest.cc',
-            # TODO(xzhou): Move boot_lockbox_client.cc and
-            # priv_code_verifier.cc back to libarc_setup.
             'boot_lockbox_client.cc',
+            'config_unittest.cc',
             'priv_code_verifier.cc',
           ],
         },
