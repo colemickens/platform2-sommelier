@@ -61,7 +61,7 @@ bool InstallAttributes::PrepareSystem() {
   }
 
   set_is_first_install(true);
-  Lockbox::ErrorId error_id;
+  LockboxError error_id;
   // Delete the attributes file if it exists.
   if (platform_->FileExists(data_file_) &&
       !platform_->DeleteFile(data_file_, false)) {
@@ -96,7 +96,7 @@ void InstallAttributes::SetTpm(Tpm* tpm) {
 }
 
 bool InstallAttributes::Init(TpmInit* tpm_init) {
-  Lockbox::ErrorId error_id;
+  LockboxError error_id;
 
   // Insure that if Init() was called and it failed, we can retry cleanly.
   attributes_->Clear();
@@ -110,7 +110,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       return true;
     }
     if (!lockbox()->Create(&error_id)) {
-      if (error_id == Lockbox::kErrorIdInsufficientAuthorization)
+      if (error_id == LockboxError::kInsufficientAuthorization)
         LOG(ERROR) << "First install, but no TPM credentials provided.";
       SetIsInvalid(true);
       return false;
@@ -130,15 +130,15 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
     // 2. NVRAM space exists and is unlocked. It means the system was powered
     //    off before any data was stored.
     switch (error_id) {
-    case Lockbox::kErrorIdNoNvramSpace:
+    case LockboxError::kNoNvramSpace:
       LOG(INFO) << "Resuming interrupted InstallAttributes. (Create needed.)";
       if (!lockbox()->Create(&error_id)) {
-        if (error_id == Lockbox::kErrorIdInsufficientAuthorization)
+        if (error_id == LockboxError::kInsufficientAuthorization)
           DLOG(INFO) << "Legacy install. (Can never create NVRAM space.)";
         else
           LOG(ERROR) << "Create failed, Lockbox error: " << error_id;
       } else {
-        // Create worked, so act like the kErrorIdNoNvramData path now.
+        // Create worked, so act like the LockboxError::kNoNvramData path now.
         set_is_first_install(true);
       }
       set_is_initialized(true);
@@ -147,7 +147,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       // No data.
       return true;
       break;
-    case Lockbox::kErrorIdNoNvramData:
+    case LockboxError::kNoNvramData:
       LOG(INFO) << "Resuming interrupted InstallAttributes. (Store needed.)";
       set_is_first_install(true);
       set_is_initialized(true);
@@ -292,7 +292,7 @@ bool InstallAttributes::Finalize() {
     return false;
   }
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   DLOG(INFO) << "Finalizing() " << attr_bytes.size() << " bytes.";
   if (is_secure() && !lockbox()->Store(attr_bytes, &error)) {
     LOG(ERROR) << "Finalize() failed with Lockbox error: " << error;

@@ -26,6 +26,11 @@ using base::FilePath;
 using brillo::SecureBlob;
 
 namespace cryptohome {
+
+std::ostream& operator<<(std::ostream& out, LockboxError error) {
+  return out << static_cast<int>(error);
+}
+
 const uint32_t Lockbox::kNvramVersion1 = 1;
 const uint32_t Lockbox::kNvramVersion2 = 2;
 const uint32_t Lockbox::kNvramVersionDefault = 2;
@@ -89,27 +94,27 @@ bool Lockbox::HasAuthorization() const {
   return false;
 }
 
-bool Lockbox::Destroy(ErrorId* error) {
+bool Lockbox::Destroy(LockboxError* error) {
   CHECK(error);
-  *error = kErrorIdNone;
+  *error = LockboxError::kNone;
   if (!HasAuthorization())
     return false;
   // This is only an error if authorization is supplied.
   if (tpm_->IsNvramDefined(nvram_index_) &&
       !tpm_->DestroyNvram(nvram_index_)) {
-    *error = kErrorIdTpmError;
+    *error = LockboxError::kTpmError;
     return false;
   }
   return true;
 }
 
-bool Lockbox::Create(ErrorId* error) {
+bool Lockbox::Create(LockboxError* error) {
   uint32_t nvram_bytes;
   CHECK(error);
-  *error = kErrorIdNone;
+  *error = LockboxError::kNone;
   // Make sure we have what we need now.
   if (!HasAuthorization()) {
-    *error = kErrorIdInsufficientAuthorization;
+    *error = LockboxError::kInsufficientAuthorization;
     LOG(ERROR) << "Create() called with insufficient authorization.";
     return false;
   }
@@ -132,7 +137,7 @@ bool Lockbox::Create(ErrorId* error) {
   uint32_t nvram_perm = Tpm::kTpmNvramWriteDefine |
     (IsEncryptionSaltInLockbox() ? Tpm::kTpmNvramBindToPCR0 : 0);
   if (!tpm_->DefineNvram(nvram_index_, nvram_bytes, nvram_perm)) {
-    *error = kErrorIdTpmError;
+    *error = LockboxError::kTpmError;
     LOG(ERROR) << "Create() failed to defined NVRAM space.";
     return false;
   }
@@ -140,7 +145,7 @@ bool Lockbox::Create(ErrorId* error) {
   return true;
 }
 
-bool Lockbox::Load(ErrorId* error) {
+bool Lockbox::Load(LockboxError* error) {
   CHECK(error);
 
   // TODO(wad) Determine if we want to allow reloading later.
@@ -149,26 +154,26 @@ bool Lockbox::Load(ErrorId* error) {
 
   if (!TpmIsReady()) {
     LOG(ERROR) << "Load() TPM is not ready.";
-    *error = kErrorIdTpmNotReady;
+    *error = LockboxError::kTpmNotReady;
     return false;
   }
 
   if (!tpm_->IsNvramDefined(nvram_index_)) {
     LOG(INFO) << "Load() called with no NVRAM space defined.";
-    *error = kErrorIdNoNvramSpace;
+    *error = LockboxError::kNoNvramSpace;
     return false;
   }
 
   if (!tpm_->IsNvramLocked(nvram_index_)) {
     LOG(INFO) << "Load() called prior to a successful Store()";
-    *error = kErrorIdNoNvramData;
+    *error = LockboxError::kNoNvramData;
     return false;
   }
 
   SecureBlob nvram_data(0);
   if (!tpm_->ReadNvram(nvram_index_, &nvram_data)) {
     LOG(ERROR) << "Load() could not read from NVRAM space.";
-    *error = kErrorIdTpmError;
+    *error = LockboxError::kTpmError;
     return false;
   }
 
@@ -185,14 +190,14 @@ bool Lockbox::Load(ErrorId* error) {
     break;
   default:
     LOG(ERROR) << "Load() found unexpected NVRAM size: " << nvram_data.size();
-    *error = kErrorIdNvramInvalid;
+    *error = LockboxError::kNvramInvalid;
     return false;
   }
 
   // Extract the expected data size from the NVRAM.
   if (!ParseSizeBlob(nvram_data, &contents_->size)) {
     LOG(ERROR) << "Load() unable to parse NVRAM data.";
-    *error = kErrorIdNvramInvalid;
+    *error = LockboxError::kNvramInvalid;
     return false;
   }
 
@@ -222,11 +227,11 @@ bool Lockbox::Load(ErrorId* error) {
   return true;
 }
 
-bool Lockbox::Verify(const brillo::Blob& blob, ErrorId* error) {
+bool Lockbox::Verify(const brillo::Blob& blob, LockboxError* error) {
   CHECK(error);
   // It's not possible to verify without a locked space.
   if (!contents_->loaded) {
-    *error = kErrorIdNoNvramData;
+    *error = LockboxError::kNoNvramData;
     return false;
   }
 
@@ -234,7 +239,7 @@ bool Lockbox::Verify(const brillo::Blob& blob, ErrorId* error) {
   if (blob.size() != contents_->size) {
     LOG(ERROR) << "Verify() expected " << contents_->size
                << " , but read " << blob.size() << " bytes.";
-    *error = kErrorIdSizeMismatch;
+    *error = LockboxError::kSizeMismatch;
     return false;
   }
 
@@ -254,7 +259,7 @@ bool Lockbox::Verify(const brillo::Blob& blob, ErrorId* error) {
   if (brillo::SecureMemcmp(contents_->hash, hash.data(),
                              sizeof(contents_->hash))) {
     LOG(ERROR) << "Verify() hash mismatch!";
-    *error = kErrorIdHashMismatch;
+    *error = LockboxError::kHashMismatch;
     return false;
   }
   DLOG(INFO) << "Verify() verified "
@@ -262,24 +267,24 @@ bool Lockbox::Verify(const brillo::Blob& blob, ErrorId* error) {
   return true;
 }
 
-bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
+bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   unsigned int nvram_size;
 
   if (!TpmIsReady()) {
     LOG(ERROR) << "Store() called when TPM was not ready!";
-    *error = kErrorIdTpmError;
+    *error = LockboxError::kTpmError;
     return false;
   }
 
   // Ensure we have the space ready.
   if (!tpm_->IsNvramDefined(nvram_index_)) {
     LOG(ERROR) << "Store() called with no NVRAM space.";
-    *error = kErrorIdNoNvramSpace;
+    *error = LockboxError::kNoNvramSpace;
     return false;
   }
   if (tpm_->IsNvramLocked(nvram_index_)) {
     LOG(ERROR) << "Store() called with a locked NVRAM space.";
-    *error = kErrorIdNvramInvalid;
+    *error = LockboxError::kNvramInvalid;
     return false;
   }
   // Check defined NVRAM size.
@@ -295,7 +300,7 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
     break;
   default:
     LOG(ERROR) << "Store() found unexpected NVRAM size " << nvram_size << ".";
-    *error = kErrorIdNvramInvalid;
+    *error = LockboxError::kNvramInvalid;
     return false;
   }
 
@@ -304,7 +309,7 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
   if (IsEncryptionSaltInLockbox()) {
     if (!tpm_->GetRandomDataBlob(contents_->salt_size, &salt)) {
       LOG(ERROR) << "Store() failed to get a salt from the TPM.";
-      *error = kErrorIdTpmError;
+      *error = LockboxError::kTpmError;
       return false;
     }
   } else {
@@ -321,7 +326,7 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
   brillo::Blob size_blob;
   if (!GetSizeBlob(blob, &size_blob)) {
     LOG(ERROR) << "Store() data blob is too large.";
-    *error = kErrorIdTooLarge;
+    *error = LockboxError::kTooLarge;
     return false;
   }
   contents_->size = blob.size();
@@ -355,19 +360,19 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
   if (!tpm_->WriteNvram(nvram_index_, SecureBlob(nvram_blob.begin(),
                         nvram_blob.end()))) {
     LOG(ERROR) << "Store() failed to write the attribute hash to NVRAM";
-    *error = kErrorIdTpmError;
+    *error = LockboxError::kTpmError;
     return false;
   }
   // Lock nvram index for writing.
   if (!tpm_->WriteLockNvram(nvram_index_)) {
     LOG(ERROR) << "Store() failed to lock the NVRAM space";
-    *error = kErrorIdTpmError;
+    *error = LockboxError::kTpmError;
     return false;
   }
   // Ensure the space is now locked.
   if (!tpm_->IsNvramLocked(nvram_index_)) {
     LOG(ERROR) << "NVRAM space did not lock as expected.";
-    *error = kErrorIdNvramFailedToLock;
+    *error = LockboxError::kNvramFailedToLock;
     return false;
   }
 

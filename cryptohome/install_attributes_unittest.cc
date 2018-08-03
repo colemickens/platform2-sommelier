@@ -23,14 +23,14 @@
 #include "cryptohome/mock_tpm_init.h"
 
 namespace cryptohome {
-using base::FilePath;
-using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
+using ::testing::_;
+using base::FilePath;
 
 // Provides a test fixture for ensuring Lockbox-flows work as expected.
 //
@@ -282,10 +282,10 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_secure());
 
-  Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramData;
+  LockboxError error = LockboxError::kNoNvramData;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
   ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
@@ -311,10 +311,10 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_secure());
 
-  Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
+  LockboxError error = LockboxError::kNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(Return(true));
@@ -334,10 +334,10 @@ TEST_F(InstallAttributesTest, NormalBootLoadError) {
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  Lockbox::ErrorId error_id = Lockbox::kErrorIdTpmError;
+  LockboxError error = LockboxError::kTpmError;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
   ExpectNotRemovingOwnerDependency();
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -376,7 +376,7 @@ TEST_F(InstallAttributesTest, NormalBootVerifyError) {
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  Lockbox::ErrorId error_id = Lockbox::kErrorIdHashMismatch;
+  LockboxError error = LockboxError::kHashMismatch;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(Return(true));
@@ -387,7 +387,7 @@ TEST_F(InstallAttributesTest, NormalBootVerifyError) {
 
   EXPECT_CALL(lockbox_, Verify(_, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<1>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<1>(error), Return(false)));
 
   ExpectNotRemovingOwnerDependency();
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
@@ -405,14 +405,14 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
+  LockboxError error = LockboxError::kNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
-  Lockbox::ErrorId create_error_id = Lockbox::kErrorIdInsufficientAuthorization;
+    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
+  LockboxError create_error = LockboxError::kInsufficientAuthorization;
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(create_error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(create_error), Return(false)));
   ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -431,14 +431,14 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
+  LockboxError error = LockboxError::kNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
-  Lockbox::ErrorId create_error_id = Lockbox::kErrorIdTpmError;
+    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
+  LockboxError create_error = LockboxError::kTpmError;
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(create_error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(create_error), Return(false)));
   ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());

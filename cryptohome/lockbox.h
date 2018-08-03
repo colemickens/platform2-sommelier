@@ -23,6 +23,24 @@ namespace cryptohome {
 
 struct LockboxContents;
 
+enum class LockboxError {
+  kNone = 0,
+  kHashMismatch,               // Tampering or disk corruption.
+  kSizeMismatch,               // Tampering or disk corruption.
+  kInsufficientAuthorization,  // Bad call order or TPM state.
+  kNoNvramSpace,               // No space is defined. (legacy install)
+  kNoNvramData,                // Empty (unlocked) lockbox
+  // All errors below indicate any number of system errors.
+  kNvramInvalid,
+  kNvramFailedToLock,
+  kTpmNotReady,
+  kTooLarge,
+  kTpmError,  // Transient or unknown TPM error.
+};
+
+// Enable LockboxError to be used in LOG output.
+std::ostream& operator<<(std::ostream& out, LockboxError error);
+
 // Lockbox stores a blob of data in a tamper-evident manner.
 //
 // This class provides system integration for supporting tamper-evident
@@ -36,7 +54,7 @@ struct LockboxContents;
 //
 // Initializing new data against a lockbox (except with error checking :)
 //   Lockbox lockbox(tpm, kNvramSpace);
-//   Lockbox::ErrorId error;
+//   LockboxError error;
 //   lockbox->Destroy(&error);
 //   lockbox->Create(&error);
 //   lockbox->Store(mah_locked_data, &error);
@@ -48,21 +66,6 @@ struct LockboxContents;
 // ...
 class Lockbox {
  public:
-  typedef enum {
-    kErrorIdNone = 0,
-    kErrorIdHashMismatch,  // Tampering or disk corruption.
-    kErrorIdSizeMismatch,  // Tampering or disk corruption.
-    kErrorIdInsufficientAuthorization,  // Bad call order or TPM state.
-    kErrorIdNoNvramSpace,  // No space is defined. (legacy install)
-    kErrorIdNoNvramData,  // Empty (unlocked) lockbox
-    // All errors below indicate any number of system errors.
-    kErrorIdNvramInvalid,
-    kErrorIdNvramFailedToLock,
-    kErrorIdTpmNotReady,
-    kErrorIdTooLarge,
-    kErrorIdTpmError,  // Transient or unknown TPM error.
-  } ErrorId;
-
   // Populates the basic internal state of the Lockbox.
   //
   // Parameters
@@ -81,53 +84,53 @@ class Lockbox {
   // the hash and blob size of the data to lock away.
   //
   // Parameters
-  // - error: will contain the ErrorId if false.
+  // - error: will contain the LockboxError if false.
   // Returns
   // - true if a new space was instantiated or an old one could be used.
   // - false if the space cannot be created or claimed.
-  virtual bool Create(ErrorId* error);
+  virtual bool Create(LockboxError* error);
 
   // Destroys all backend state for this Lockbox.
   //
   // This call deletes the NVRAM space if defined.
   //
   // Parameters
-  // - error: will contain the ErrorId if false.
+  // - error: will contain the LockboxError if false.
   // Returns
   // - false if TPM Owner authorization is missing or the space cannot be
   //   destroyed.
   // - true if the space is already undefined or has been destroyed.
-  virtual bool Destroy(ErrorId* error);
+  virtual bool Destroy(LockboxError* error);
 
   // Loads the TPM NVRAM state date into memory
   //
   // Parameters
-  // - error: ErrorId populated only on failure
+  // - error: LockboxError populated only on failure
   // Returns
   // - true if TPM NVRAM data is properly retrieved.
   // - false if the NVRAM data does not exist, is incorrect, or is unlocked.
-  virtual bool Load(ErrorId* error);
+  virtual bool Load(LockboxError* error);
 
   // Verifies the given blob against Load()d data.
   //
   // Parameters
   // - blob: data blob to verify.
-  // - error: ErrorId populated only on failure
+  // - error: LockboxError populated only on failure
   // Returns
   // - true if verified
   // - false if the data could not be validated.
-  virtual bool Verify(const brillo::Blob& blob, ErrorId* error);
+  virtual bool Verify(const brillo::Blob& blob, LockboxError* error);
 
   // Hashes, salts, sizes, and stores metadata required for verifying |data|
   // in TPM NVRAM for later verification.
   //
   // Parameters
   // - data: blob to store.
-  // - error: ErrorId populated only on failure
+  // - error: LockboxError populated only on failure
   // Returns
   // - true if written to disk and NVRAM (if there is a tpm).
   // - false if the data could not be persisted.
-  virtual bool Store(const brillo::Blob& data, ErrorId* error);
+  virtual bool Store(const brillo::Blob& data, LockboxError* error);
 
   // Replaces the tpm implementation.
   // Does NOT take ownership of the pointer.

@@ -17,11 +17,11 @@ class MockLockbox : public Lockbox {
  public:
   MockLockbox();
   virtual ~MockLockbox();
-  MOCK_METHOD1(Create, bool(ErrorId*));  // NOLINT
-  MOCK_METHOD1(Destroy, bool(ErrorId*));  // NOLINT
-  MOCK_METHOD1(Load, bool(ErrorId*));  // NOLINT
-  MOCK_METHOD2(Verify, bool(const brillo::Blob&, ErrorId*));
-  MOCK_METHOD2(Store, bool(const brillo::Blob&, ErrorId*));
+  MOCK_METHOD1(Create, bool(LockboxError*));  // NOLINT
+  MOCK_METHOD1(Destroy, bool(LockboxError*));  // NOLINT
+  MOCK_METHOD1(Load, bool(LockboxError*));  // NOLINT
+  MOCK_METHOD2(Verify, bool(const brillo::Blob&, LockboxError*));
+  MOCK_METHOD2(Store, bool(const brillo::Blob&, LockboxError*));
 
   MOCK_METHOD1(set_tpm, void(Tpm*));  // NOLINT
   MOCK_METHOD0(tpm, Tpm*());

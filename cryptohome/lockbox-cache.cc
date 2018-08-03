@@ -45,7 +45,7 @@ bool LockboxCache::LoadAndVerify(uint32_t index,
     return false;
   }
   Lockbox lockbox(tpm_, index);
-  Lockbox::ErrorId error;
+  LockboxError error;
   if (!lockbox.Load(&error)) {
     LOG(INFO) << "Lockbox failed to load NVRAM data: " << error;
     return false;

@@ -17,8 +17,6 @@
 #include "cryptohome/mock_tpm.h"
 
 namespace cryptohome {
-using brillo::SecureBlob;
-using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::InSequence;
@@ -27,6 +25,8 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
+using ::testing::_;
+using brillo::SecureBlob;
 
 // Provides a test fixture for ensuring Lockbox-flows work as expected.
 //
@@ -73,7 +73,7 @@ class LockboxTest : public ::testing::Test {
     lockbox->set_tpm(&tpm_);
     lockbox->set_nvram_version(nvram_version);
     lockbox->set_process(&process_);
-    Lockbox::ErrorId error;
+    LockboxError error;
 
     // Ensure an enabled, owned TPM.
     EXPECT_CALL(tpm_, IsEnabled())
@@ -142,7 +142,7 @@ const char* LockboxTest::kFileData = "42";
 
 // First install on a system ever.
 TEST_F(LockboxTest, CreateFirstInstall) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   // Ensure an enabled, owned-this-time TPM.
   EXPECT_CALL(tpm_, IsEnabled())
@@ -172,7 +172,7 @@ TEST_F(LockboxTest, CreateFirstInstall) {
 }
 
 TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   // Ensure an enabled, owned-this-time TPM.
   EXPECT_CALL(tpm_, IsEnabled())
@@ -204,7 +204,7 @@ TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
 }
 
 TEST_F(LockboxTest, CreateWithNoAuth) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   // Ensure an enabled, owned-this-time TPM.
   EXPECT_CALL(tpm_, IsEnabled())
@@ -220,7 +220,7 @@ TEST_F(LockboxTest, CreateWithNoAuth) {
 }
 
 TEST_F(LockboxTest, DestroyPristine) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
@@ -243,7 +243,7 @@ TEST_F(LockboxTest, DestroyPristine) {
 }
 
 TEST_F(LockboxTest, DestroyWithOldData) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
@@ -274,7 +274,7 @@ TEST_F(LockboxTest, StoreOk) {
 }
 
 TEST_F(LockboxTest, StoreLockedNvram) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   // Ensure an enabled, owned TPM.
   EXPECT_CALL(tpm_, IsEnabled())
@@ -288,11 +288,11 @@ TEST_F(LockboxTest, StoreLockedNvram) {
   EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))
     .WillOnce(Return(true));
   EXPECT_FALSE(lockbox_.Store(file_data_, &error));
-  EXPECT_EQ(error, Lockbox::kErrorIdNvramInvalid);
+  EXPECT_EQ(error, LockboxError::kNvramInvalid);
 }
 
 TEST_F(LockboxTest, StoreUnlockedNvramSizeBad) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   // Ensure an enabled, owned TPM.
   EXPECT_CALL(tpm_, IsEnabled())
@@ -309,12 +309,12 @@ TEST_F(LockboxTest, StoreUnlockedNvramSizeBad) {
   EXPECT_CALL(tpm_, GetNvramSize(0xdeadbeef))
     .WillOnce(Return(0));
   EXPECT_FALSE(lockbox_.Store(file_data_, &error));
-  EXPECT_EQ(error, Lockbox::kErrorIdNvramInvalid);
+  EXPECT_EQ(error, LockboxError::kNvramInvalid);
 }
 
 TEST_F(LockboxTest, StoreNoNvram) {
   lockbox_.set_tpm(&tpm_);
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   // Ensure an enabled, owned TPM.
   EXPECT_CALL(tpm_, IsEnabled())
@@ -327,11 +327,11 @@ TEST_F(LockboxTest, StoreNoNvram) {
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
     .WillOnce(Return(false));
   EXPECT_FALSE(lockbox_.Store(file_data_, &error));
-  EXPECT_EQ(error, Lockbox::kErrorIdNoNvramSpace);
+  EXPECT_EQ(error, LockboxError::kNoNvramSpace);
 }
 
 TEST_F(LockboxTest, StoreTpmNotReady) {
-  Lockbox::ErrorId error;
+  LockboxError error;
 
   // Ensure an enabled, owned TPM.
   EXPECT_CALL(tpm_, IsEnabled())
@@ -341,7 +341,7 @@ TEST_F(LockboxTest, StoreTpmNotReady) {
     .Times(1)
     .WillRepeatedly(Return(false));
   EXPECT_FALSE(lockbox_.Store(file_data_, &error));
-  EXPECT_EQ(error, Lockbox::kErrorIdTpmError);
+  EXPECT_EQ(error, LockboxError::kTpmError);
 }
 
 TEST_F(LockboxTest, LoadAndVerifyOkTpmDefault) {
@@ -364,7 +364,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmDefault) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   EXPECT_TRUE(lockbox_.Load(&error));
   EXPECT_TRUE(lockbox_.Verify(file_data_, &error));
 }
@@ -389,7 +389,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV1) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   EXPECT_TRUE(lockbox_.Load(&error));
   EXPECT_TRUE(lockbox_.Verify(file_data_, &error));
 }
@@ -414,7 +414,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV2) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   EXPECT_TRUE(lockbox_.Load(&error));
   EXPECT_TRUE(lockbox_.Verify(file_data_, &error));
 }
@@ -439,7 +439,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV2Downgrade) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   EXPECT_TRUE(lockbox_.Load(&error));
   EXPECT_TRUE(lockbox_.Verify(file_data_, &error));
 }
@@ -469,10 +469,10 @@ TEST_F(LockboxTest, LoadAndVerifyBadSize) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   EXPECT_TRUE(lockbox_.Load(&error));
   EXPECT_FALSE(lockbox_.Verify(file_data_, &error));
-  EXPECT_EQ(error, Lockbox::kErrorIdSizeMismatch);
+  EXPECT_EQ(error, LockboxError::kSizeMismatch);
 }
 
 TEST_F(LockboxTest, LoadAndVerifyBadHash) {
@@ -499,10 +499,10 @@ TEST_F(LockboxTest, LoadAndVerifyBadHash) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   EXPECT_TRUE(lockbox_.Load(&error));
   EXPECT_FALSE(lockbox_.Verify(file_data_, &error));
-  EXPECT_EQ(Lockbox::kErrorIdHashMismatch, error);
+  EXPECT_EQ(LockboxError::kHashMismatch, error);
 }
 
 TEST_F(LockboxTest, LoadAndVerifyBadData) {
@@ -525,7 +525,7 @@ TEST_F(LockboxTest, LoadAndVerifyBadData) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
-  Lockbox::ErrorId error;
+  LockboxError error;
   EXPECT_TRUE(lockbox_.Load(&error));
   // Insert bad data.
   file_data_[0] = 0;
