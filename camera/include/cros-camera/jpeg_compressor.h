@@ -30,7 +30,7 @@ class CROS_CAMERA_EXPORT JpegCompressor {
   virtual ~JpegCompressor() {}
 
   // Compresses YU12 image to JPEG format with HW encode acceleration. It would
-  // fallback to SW encode if HW encode fails.
+  // fallback to SW encode if HW encode fails by default.
   // |quality| is the resulted jpeg image quality. It ranges from 1
   // (poorest quality) to 100 (highest quality).
   // |app1_buffer| is the buffer of APP1 segment (exif) which will be added to
@@ -38,9 +38,7 @@ class CROS_CAMERA_EXPORT JpegCompressor {
   // |out_buffer_size|. Encoded result will be written into |output_buffer|.
   // The actually encoded size will be written into |out_data_size| if image
   // encoded successfully. Returns false if errors occur during compression.
-  // |skip_sw|: when set to true, it won't fallback to SW encode after HW
-  // encode failing.
-  // |skip_hw|: when set to true, it won't try to do HW encode.
+  // |mode| controls the HW/SW encode selection strategy.
   virtual bool CompressImage(const void* image,
                      int width,
                      int height,
