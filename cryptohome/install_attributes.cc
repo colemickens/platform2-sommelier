@@ -337,7 +337,8 @@ std::unique_ptr<base::Value> InstallAttributes::GetStatus() {
   dv->SetBoolean("initialized", is_initialized());
   dv->SetInteger("version", version());
   dv->SetInteger("lockbox_index", lockbox()->nvram_index());
-  dv->SetInteger("lockbox_nvram_version", lockbox()->nvram_version());
+  dv->SetInteger("lockbox_nvram_version",
+                 GetNvramVersionNumber(lockbox()->nvram_version()));
   dv->SetBoolean("secure", is_secure());
   dv->SetBoolean("invalid", is_invalid());
   dv->SetBoolean("first_install", is_first_install());

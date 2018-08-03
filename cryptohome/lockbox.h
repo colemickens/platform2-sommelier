@@ -21,7 +21,15 @@
 
 namespace cryptohome {
 
-struct LockboxContents;
+class LockboxContents;
+
+// NVRAM structure versions. The enumerator values are chosen to reflect the
+// corresponding key material sizes for code convenience.
+enum class NvramVersion : size_t {
+  kVersion1 = 7,
+  kVersion2 = 32,
+  kDefault = kVersion2,
+};
 
 enum class LockboxError {
   kNone = 0,
@@ -40,6 +48,9 @@ enum class LockboxError {
 
 // Enable LockboxError to be used in LOG output.
 std::ostream& operator<<(std::ostream& out, LockboxError error);
+
+// Translates an |NvramVersion| value to a numeric value.
+int GetNvramVersionNumber(NvramVersion version);
 
 // Lockbox stores a blob of data in a tamper-evident manner.
 //
@@ -147,36 +158,24 @@ class Lockbox {
   // Return NVRAM index.
   virtual uint32_t nvram_index() const { return nvram_index_; }
   // Return NVRAM version.
-  virtual uint32_t nvram_version() const { return nvram_version_; }
+  virtual NvramVersion nvram_version() const { return nvram_version_; }
   // Replaces the default NVRAM structure version.
-  virtual void set_nvram_version(uint32_t version) { nvram_version_ = version; }
+  virtual void set_nvram_version(NvramVersion version) {
+    nvram_version_ = version;
+  }
 
   virtual Tpm* tpm() { return tpm_; }
 
   // Provide a simple means to access the expected NVRAM contents.
-  virtual const LockboxContents* contents() const { return contents_.get(); }
+//  virtual const LockboxContents* contents() const { return contents_.get(); }
 
-  // Tells if on this platform we store disk encryption salt in lockbox.
+  // Tells if on this platform we store disk encryption key material in lockbox.
   // If true, it also requires additional protection for lockbox.
-  // If false, the salt field is just filled with zeroes and not used.
-  // Currently, the salt is stored separately for TPM 2.0.
-  virtual bool IsEncryptionSaltInLockbox() const {
+  // If false, the key material field is just filled with zeroes and not used.
+  // Currently, the key material is stored separately for TPM 2.0.
+  virtual bool IsKeyMaterialInLockbox() const {
     return tpm_->GetVersion() != Tpm::TpmVersion::TPM_2_0;
   }
-
-  // NVRAM structure versions.
-  static const uint32_t kNvramVersion1;
-  static const uint32_t kNvramVersion2;
-  static const uint32_t kNvramVersionDefault;
-  // Space reserved for the blob data size.
-  static const uint32_t kReservedSizeBytes;
-  static const uint32_t kReservedFlagsBytes;
-  static const uint32_t kReservedSaltBytesV1;
-  static const uint32_t kReservedSaltBytesV2;
-  static const uint32_t kReservedDigestBytes;
-  // The sum of the above sizes, accounting for possible salts.
-  static const uint32_t kReservedNvramBytesV1;
-  static const uint32_t kReservedNvramBytesV2;
 
   // Literals for running mount-encrypted helper.
   static const char * const kMountEncrypted;
@@ -190,20 +189,13 @@ class Lockbox {
   // Returns true if the tpm is owned and connected.
   virtual bool TpmIsReady() const;
 
-  // Serialize the size of data to a Blob.
-  virtual bool GetSizeBlob(const brillo::Blob& data,
-                           brillo::Blob* size_bytes) const;
-
-  // Parse a serialized size from the front of |blob|.
-  virtual bool ParseSizeBlob(const brillo::Blob& blob, uint32_t* size) const;
-
   // Call out to the mount-encrypted helper to encrypt the key.
   virtual void FinalizeMountEncrypted(const brillo::Blob &entropy) const;
 
  private:
   Tpm* tpm_;
   uint32_t nvram_index_;
-  uint32_t nvram_version_;
+  NvramVersion nvram_version_ = NvramVersion::kDefault;
   std::unique_ptr<brillo::Process> default_process_;
   brillo::Process* process_;
   std::unique_ptr<LockboxContents> contents_;
@@ -213,16 +205,52 @@ class Lockbox {
   DISALLOW_COPY_AND_ASSIGN(Lockbox);
 };
 
-// Defines the unmarshalled NVRAM contents.
-#define CRYPTOHOME_LOCKBOX_SALT_LENGTH 32
-struct LockboxContents {
-  uint32_t size;
-  uint8_t flags;
-  uint8_t salt[CRYPTOHOME_LOCKBOX_SALT_LENGTH];
-  uint8_t hash[SHA256_DIGEST_LENGTH];
-  // Remaining variables are used internally and not stored to the NVRAM.
-  uint32_t salt_size;
-  bool loaded;
+// Represents decoded lockbox NVRAM space contents and provides operations to
+// encode/decode, as well as setting up and verifying integrity of a specific
+// data blob.
+class LockboxContents {
+ private:
+  static constexpr size_t kFixedPartSize =
+      sizeof(uint32_t) + sizeof(uint8_t) + SHA256_DIGEST_LENGTH;
+
+ public:
+  // Creates a LockboxContents instance that'll handle encoded lockbox contents
+  // corresponding to an NVRAM space of size |nvram_size|. Returns nullptr in
+  // case the passed |nvram_size| isn't supported.
+  static std::unique_ptr<LockboxContents> New(size_t nvram_size);
+
+  NvramVersion version() const {
+    return static_cast<NvramVersion>(key_material_.size());
+  }
+  size_t key_material_size() const { return key_material_.size(); }
+
+  // Serialize to |nvram_data|.
+  bool Encode(brillo::SecureBlob* nvram_data);
+
+  // Deserialize from |nvram_data|.
+  bool Decode(const brillo::SecureBlob& nvram_data);
+
+  // Sets key material, which must be of key_material_size().
+  bool SetKeyMaterial(const brillo::SecureBlob& key_material);
+
+  // Protect |blob|, i.e. compute the digest that will later make Verify() to
+  // succeed if and only if a copy of |blob| is being passed.
+  bool Protect(const brillo::Blob& blob);
+
+  // Verify |blob| against the lockbox contents.
+  bool Verify(const brillo::Blob& blob, LockboxError* error);
+
+  static size_t GetNvramSize(NvramVersion version) {
+    return static_cast<size_t>(version) + kFixedPartSize;
+  }
+
+ private:
+  LockboxContents() = default;
+
+  uint32_t size_ = 0;
+  uint8_t flags_ = 0;
+  brillo::SecureBlob key_material_ = {0};
+  uint8_t hash_[SHA256_DIGEST_LENGTH] = {0};
 };
 
 }  // namespace cryptohome

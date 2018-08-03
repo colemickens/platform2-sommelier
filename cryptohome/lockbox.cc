@@ -9,12 +9,15 @@
 #include <openssl/sha.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <base/sys_byteorder.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
@@ -31,33 +34,25 @@ std::ostream& operator<<(std::ostream& out, LockboxError error) {
   return out << static_cast<int>(error);
 }
 
-const uint32_t Lockbox::kNvramVersion1 = 1;
-const uint32_t Lockbox::kNvramVersion2 = 2;
-const uint32_t Lockbox::kNvramVersionDefault = 2;
-const uint32_t Lockbox::kReservedSizeBytes = sizeof(uint32_t);
-const uint32_t Lockbox::kReservedFlagsBytes = sizeof(uint8_t);
-const uint32_t Lockbox::kReservedSaltBytesV1 = 7;
-const uint32_t Lockbox::kReservedSaltBytesV2 = CRYPTOHOME_LOCKBOX_SALT_LENGTH;
-const uint32_t Lockbox::kReservedDigestBytes = SHA256_DIGEST_LENGTH;
-const uint32_t Lockbox::kReservedNvramBytesV1 = kReservedSizeBytes +
-                                                kReservedFlagsBytes +
-                                                kReservedSaltBytesV1 +
-                                                kReservedDigestBytes;
-const uint32_t Lockbox::kReservedNvramBytesV2 = kReservedSizeBytes +
-                                                kReservedFlagsBytes +
-                                                kReservedSaltBytesV2 +
-                                                kReservedDigestBytes;
 const char * const Lockbox::kMountEncrypted = "/usr/sbin/mount-encrypted";
 const char * const Lockbox::kMountEncryptedFinalize = "finalize";
 
+int GetNvramVersionNumber(NvramVersion version) {
+  switch (version) {
+    case NvramVersion::kVersion1:
+      return 1;
+    case NvramVersion::kVersion2:
+      return 2;
+  }
+  NOTREACHED();
+  return 0;
+}
 
 Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
   : tpm_(tpm),
     nvram_index_(nvram_index),
-    nvram_version_(kNvramVersionDefault),
     default_process_(new brillo::ProcessImpl()),
     process_(default_process_.get()),
-    contents_(new LockboxContents()),
     default_platform_(new Platform()),
     platform_(default_platform_.get()) {
 }
@@ -109,7 +104,6 @@ bool Lockbox::Destroy(LockboxError* error) {
 }
 
 bool Lockbox::Create(LockboxError* error) {
-  uint32_t nvram_bytes;
   CHECK(error);
   *error = LockboxError::kNone;
   // Make sure we have what we need now.
@@ -122,20 +116,12 @@ bool Lockbox::Create(LockboxError* error) {
     LOG(ERROR) << "Failed to destroy lockbox data before creation.";
     return false;
   }
-  switch (nvram_version_) {
-  case kNvramVersion1:
-    nvram_bytes = kReservedNvramBytesV1;
-    break;
-  case kNvramVersion2:
-  default:
-    nvram_bytes = kReservedNvramBytesV2;
-    break;
-  }
 
   // If we store the encryption salt in lockbox, protect it from reading
   // in non-verified boot mode.
   uint32_t nvram_perm = Tpm::kTpmNvramWriteDefine |
-    (IsEncryptionSaltInLockbox() ? Tpm::kTpmNvramBindToPCR0 : 0);
+    (IsKeyMaterialInLockbox() ? Tpm::kTpmNvramBindToPCR0 : 0);
+  uint32_t nvram_bytes = LockboxContents::GetNvramSize(nvram_version_);
   if (!tpm_->DefineNvram(nvram_index_, nvram_bytes, nvram_perm)) {
     *error = LockboxError::kTpmError;
     LOG(ERROR) << "Create() failed to defined NVRAM space.";
@@ -149,7 +135,7 @@ bool Lockbox::Load(LockboxError* error) {
   CHECK(error);
 
   // TODO(wad) Determine if we want to allow reloading later.
-  if (contents_->loaded)
+  if (contents_)
     return true;
 
   if (!TpmIsReady()) {
@@ -177,99 +163,31 @@ bool Lockbox::Load(LockboxError* error) {
     return false;
   }
 
-  // If the read is successful, but the size is not an expected value,
-  // we've got tampering or an unexpected bug/race during set.
-  switch (nvram_data.size()) {
-  case kReservedNvramBytesV1:
-    contents_->salt_size = kReservedSaltBytesV1;
-    nvram_version_ = kNvramVersion1;
-    break;
-  case kReservedNvramBytesV2:
-    contents_->salt_size = kReservedSaltBytesV2;
-    nvram_version_ = kNvramVersion2;
-    break;
-  default:
-    LOG(ERROR) << "Load() found unexpected NVRAM size: " << nvram_data.size();
+  std::unique_ptr<LockboxContents> decoded_contents =
+      LockboxContents::New(nvram_data.size());
+  if (!decoded_contents || !decoded_contents->Decode(nvram_data)) {
     *error = LockboxError::kNvramInvalid;
     return false;
   }
 
-  // Extract the expected data size from the NVRAM.
-  if (!ParseSizeBlob(nvram_data, &contents_->size)) {
-    LOG(ERROR) << "Load() unable to parse NVRAM data.";
-    *error = LockboxError::kNvramInvalid;
-    return false;
-  }
-
-  // Drop the size bytes
-  nvram_data.erase(nvram_data.begin(),
-                   nvram_data.begin() + kReservedSizeBytes);
-
-  contents_->flags = nvram_data.front();
-  // Erase the reserved flags byte(s).
-  nvram_data.erase(nvram_data.begin(),
-                   nvram_data.begin() + kReservedFlagsBytes);
-
-  // Grab the salt.
-  DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
-  DCHECK(sizeof(contents_->salt) >= contents_->salt_size);
-  memcpy(contents_->salt, nvram_data.data(), contents_->salt_size);
-  nvram_data.erase(nvram_data.begin(),
-                   nvram_data.begin() + contents_->salt_size);
-
-  // Grab the hash.
-  DCHECK(nvram_data.size() == kReservedDigestBytes);
-  DCHECK(sizeof(contents_->hash) == kReservedDigestBytes);
-  memcpy(contents_->hash, nvram_data.data(), sizeof(contents_->hash));
-
+  contents_ = std::move(decoded_contents);
+  nvram_version_ = contents_->version();
   DLOG(INFO) << "Load() successfully loaded NVRAM data.";
-  contents_->loaded = true;
   return true;
 }
 
 bool Lockbox::Verify(const brillo::Blob& blob, LockboxError* error) {
   CHECK(error);
   // It's not possible to verify without a locked space.
-  if (!contents_->loaded) {
+  if (!contents_) {
     *error = LockboxError::kNoNvramData;
     return false;
   }
 
-  // Make sure that the file size matches what was stored in nvram.
-  if (blob.size() != contents_->size) {
-    LOG(ERROR) << "Verify() expected " << contents_->size
-               << " , but read " << blob.size() << " bytes.";
-    *error = LockboxError::kSizeMismatch;
-    return false;
-  }
-
-  // Append the salt to the data.
-  brillo::Blob salty_blob(blob);
-  salty_blob.insert(salty_blob.end(),
-                    contents_->salt,
-                    contents_->salt + contents_->salt_size);
-
-  SecureBlob hash = CryptoLib::Sha256(salty_blob);
-  // Maybe release the duplicate blob data.
-  // TODO(wad) Add Crypto::GatherSha256 which takes a vector of blobs.
-  salty_blob.resize(0);
-
-  DCHECK(hash.size() == kReservedDigestBytes);
-  // Validate the data hash versus the stored hash.
-  if (brillo::SecureMemcmp(contents_->hash, hash.data(),
-                             sizeof(contents_->hash))) {
-    LOG(ERROR) << "Verify() hash mismatch!";
-    *error = LockboxError::kHashMismatch;
-    return false;
-  }
-  DLOG(INFO) << "Verify() verified "
-             << blob.size() << " of " << contents_->size << " bytes.";
-  return true;
+  return contents_->Verify(blob, error);
 }
 
 bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
-  unsigned int nvram_size;
-
   if (!TpmIsReady()) {
     LOG(ERROR) << "Store() called when TPM was not ready!";
     *error = LockboxError::kTpmError;
@@ -287,74 +205,37 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
     *error = LockboxError::kNvramInvalid;
     return false;
   }
-  // Check defined NVRAM size.
-  nvram_size = tpm_->GetNvramSize(nvram_index_);
-  switch (nvram_size) {
-  case kReservedNvramBytesV1:
-    contents_->salt_size = kReservedSaltBytesV1;
-    nvram_version_ = kNvramVersion1;
-    break;
-  case kReservedNvramBytesV2:
-    contents_->salt_size = kReservedSaltBytesV2;
-    nvram_version_ = kNvramVersion2;
-    break;
-  default:
-    LOG(ERROR) << "Store() found unexpected NVRAM size " << nvram_size << ".";
+
+  // Check defined NVRAM size and construct a suitable LockboxContents instance.
+  unsigned int nvram_size = tpm_->GetNvramSize(nvram_index_);
+  std::unique_ptr<LockboxContents> new_contents =
+      LockboxContents::New(nvram_size);
+  if (!new_contents) {
+    LOG(ERROR) << "Unsupported NVRAM space size " << nvram_size << ".";
     *error = LockboxError::kNvramInvalid;
     return false;
   }
 
-  // Grab a salt from the TPM.
-  brillo::Blob salt(0);
-  if (IsEncryptionSaltInLockbox()) {
-    if (!tpm_->GetRandomDataBlob(contents_->salt_size, &salt)) {
-      LOG(ERROR) << "Store() failed to get a salt from the TPM.";
+  // Grab key material from the TPM.
+  brillo::SecureBlob key_material(new_contents->key_material_size());
+  if (IsKeyMaterialInLockbox()) {
+    if (!tpm_->GetRandomDataBlob(key_material.size(), &key_material)) {
+      LOG(ERROR) << "Failed to get key material from the TPM.";
       *error = LockboxError::kTpmError;
       return false;
     }
   } else {
     // Save a TPM command, and just fill the salt field with zeroes.
     LOG(INFO) << "Skipping random salt generation.";
-    salt.resize(contents_->salt_size);
   }
-  // Keep the data locally too.
-  DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
-  DCHECK(sizeof(contents_->salt) >= contents_->salt_size);
-  memcpy(contents_->salt, salt.data(), contents_->salt_size);
 
-  // Get the size of the data blob
-  brillo::Blob size_blob;
-  if (!GetSizeBlob(blob, &size_blob)) {
-    LOG(ERROR) << "Store() data blob is too large.";
-    *error = LockboxError::kTooLarge;
+  brillo::SecureBlob nvram_blob;
+  if (!new_contents->SetKeyMaterial(key_material) ||
+      !new_contents->Protect(blob) || !new_contents->Encode(&nvram_blob)) {
+    LOG(ERROR) << "Failed to set up lockbox contents.";
+    *error = LockboxError::kNvramInvalid;
     return false;
   }
-  contents_->size = blob.size();
-
-  // Append the salt to the data and hash.
-  brillo::Blob salty_blob(blob);
-  salty_blob.insert(salty_blob.end(), salt.begin(), salt.end());
-
-  // Insert the hash into the NVRAM.
-  SecureBlob nvram_blob = CryptoLib::Sha256(salty_blob);
-  DCHECK(kReservedDigestBytes == nvram_blob.size());
-  memcpy(contents_->hash, nvram_blob.data(), sizeof(contents_->hash));
-
-  // Insert the salt into the NVRAM.
-  nvram_blob.insert(nvram_blob.begin(), salt.begin(), salt.end());
-
-  // Insert the flags byte. At present, this is always 0. It exists
-  // to allow for future format changes that can be indicated without relying
-  // on untrusted-file parsing-based detection, such as digest algorithm
-  // changes or the addition of encryption.
-  nvram_blob.insert(nvram_blob.begin(), static_cast<unsigned char>(0));
-  contents_->flags = 0;
-
-  // Insert size prefix.
-  nvram_blob.insert(nvram_blob.begin(), size_blob.begin(), size_blob.end());
-
-  // The resulting NVRAM space should look like:
-  //   [size_blob][flags][salt][hash_blob]
 
   // Write the hash to nvram
   if (!tpm_->WriteNvram(nvram_index_, SecureBlob(nvram_blob.begin(),
@@ -376,41 +257,13 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
     return false;
   }
 
+  contents_ = std::move(new_contents);
+
   // Call out to mount-encrypted now that salt has been written.
-  FinalizeMountEncrypted(nvram_version_ == 1 ? nvram_blob : salt);
+  FinalizeMountEncrypted(contents_->version() == NvramVersion::kVersion1
+                             ? nvram_blob
+                             : key_material);
 
-  return true;
-}
-
-bool Lockbox::GetSizeBlob(const brillo::Blob& data,
-                          brillo::Blob* size_bytes) const {
-  uint32_t serializable_size = 0;
-  if (data.size() > UINT32_MAX)
-    return false;
-  // Use network byte order prior to marshalling to ensure safe
-  // unmarshalling if we somehow change endianness.
-  serializable_size = htonl(static_cast<uint32_t>(data.size()));
-  // Push it back starting with the first byte.
-  size_bytes->resize(0);
-  for (uint32_t bytes = 0; bytes < kReservedSizeBytes; ++bytes) {
-    size_bytes->push_back(
-      static_cast<char>((serializable_size >> (CHAR_BIT * bytes)) & 0xff));
-  }
-  return true;
-}
-
-bool Lockbox::ParseSizeBlob(const brillo::Blob& blob, uint32_t* size) const {
-  CHECK(size);
-  *size = 0;
-  if (blob.size() < kReservedSizeBytes)
-    return false;
-  // Unmarshal it from NVRAM based on how it was written.
-  uint32_t stored_size = 0;
-  for (uint32_t bytes = 0; bytes < kReservedSizeBytes; ++bytes) {
-    stored_size |= static_cast<uint32_t>(blob.at(bytes)) << (bytes * CHAR_BIT);
-  }
-  // Now convert back from network byte order.
-  *size = ntohl(stored_size);
   return true;
 }
 
@@ -465,6 +318,119 @@ void Lockbox::FinalizeMountEncrypted(const brillo::Blob &entropy) const {
     platform_->CloseFile(outfile);
 
   return;
+}
+
+// static
+std::unique_ptr<LockboxContents> LockboxContents::New(size_t nvram_size) {
+  // Make sure |nvram_size| corresponds to one of the encoding versions.
+  if (GetNvramSize(NvramVersion::kVersion1) != nvram_size &&
+      GetNvramSize(NvramVersion::kVersion2) != nvram_size) {
+    return nullptr;
+  }
+
+  std::unique_ptr<LockboxContents> result(new LockboxContents());
+  result->key_material_.resize(nvram_size - kFixedPartSize);
+  return result;
+}
+
+bool LockboxContents::Decode(const brillo::SecureBlob& nvram_data) {
+  // Reject data of incorrect size.
+  if (nvram_data.size() != GetNvramSize(version())) {
+    return false;
+  }
+
+  brillo::SecureBlob::const_iterator cursor = nvram_data.begin();
+
+  // Extract the expected data size from the NVRAM. For historic reasons, this
+  // is encoded in reverse host byte order (!).
+  uint32_t reversed_size;
+  uint8_t* reversed_size_ptr = reinterpret_cast<uint8_t*>(&reversed_size);
+  std::copy(cursor, cursor + sizeof(reversed_size), reversed_size_ptr);
+  cursor += sizeof(reversed_size);
+  size_ = base::ByteSwap(reversed_size);
+
+  // Grab the flags.
+  flags_ = *cursor++;
+
+  // Grab the key material.
+  key_material_.assign(cursor, cursor + key_material_size());
+  cursor += key_material_size();
+
+  // Grab the hash.
+  std::copy(cursor, cursor + sizeof(hash_), hash_);
+  cursor += sizeof(hash_);
+
+  // Per the checks at function entry we should have exactly reached the end.
+  CHECK(cursor == nvram_data.end());
+
+  return true;
+}
+
+bool LockboxContents::Encode(brillo::SecureBlob* blob) {
+  // Encode the data size. For historic reasons, this is encoded in reverse host
+  // byte order (!).
+  uint32_t reversed_size = base::ByteSwap(size_);
+  uint8_t* reversed_size_ptr = reinterpret_cast<uint8_t*>(&reversed_size);
+  blob->insert(blob->end(), reversed_size_ptr,
+               reversed_size_ptr + sizeof(reversed_size));
+
+  // Append the flags byte.
+  blob->push_back(flags_);
+
+  // Append the key material.
+  blob->insert(blob->end(), std::begin(key_material_), std::end(key_material_));
+
+  // Append the hash.
+  blob->insert(blob->end(), std::begin(hash_), std::end(hash_));
+
+  return true;
+}
+
+bool LockboxContents::SetKeyMaterial(const brillo::SecureBlob& key_material) {
+  if (key_material.size() != key_material_size()) {
+    return false;
+  }
+
+  key_material_ = key_material;
+  return true;
+}
+
+bool LockboxContents::Protect(const brillo::Blob& blob) {
+  brillo::SecureBlob salty_blob(blob);
+  salty_blob.insert(salty_blob.end(), key_material_.begin(),
+                    key_material_.end());
+  SecureBlob salty_blob_hash = CryptoLib::Sha256(salty_blob);
+  CHECK_EQ(sizeof(hash_), salty_blob_hash.size());
+  std::copy(salty_blob_hash.begin(), salty_blob_hash.end(), std::begin(hash_));
+  size_ = blob.size();
+  return true;
+}
+
+bool LockboxContents::Verify(const brillo::Blob& blob,
+                             LockboxError* error) {
+  // Make sure that the file size matches what was stored in nvram.
+  if (blob.size() != size_) {
+    LOG(ERROR) << "Verify() expected " << size_ << " , but received "
+               << blob.size() << " bytes.";
+    *error = LockboxError::kSizeMismatch;
+    return false;
+  }
+
+  // Compute the hash of the blob to verify.
+  brillo::SecureBlob salty_blob(blob);
+  salty_blob.insert(salty_blob.end(), key_material_.begin(),
+                    key_material_.end());
+  SecureBlob salty_blob_hash = CryptoLib::Sha256(salty_blob);
+
+  // Validate the blob hash versus the stored hash.
+  if (sizeof(hash_) != salty_blob_hash.size() ||
+      brillo::SecureMemcmp(hash_, salty_blob_hash.data(), sizeof(hash_))) {
+    LOG(ERROR) << "Verify() hash mismatch!";
+    *error = LockboxError::kHashMismatch;
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace cryptohome

@@ -39,10 +39,10 @@ using base::FilePath;
 // boots.
 class InstallAttributesTest : public ::testing::Test {
  public:
-  InstallAttributesTest() : install_attrs_(NULL) { }
-  virtual ~InstallAttributesTest() { }
+  InstallAttributesTest() : install_attrs_(NULL) {}
+  ~InstallAttributesTest() override = default;
 
-  virtual void SetUp() {
+  void SetUp() override {
     install_attrs_.set_lockbox(&lockbox_);
     install_attrs_.set_platform(&platform_);
     // No pre-existing data and no TPM auth.
@@ -54,8 +54,6 @@ class InstallAttributesTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(&lockbox_);
     Mock::VerifyAndClearExpectations(&tpm_);
   }
-
-  virtual void TearDown() { }
 
   void GetAndCheck(InstallAttributes *install_attrs) {
     if (!install_attrs)
