@@ -7,9 +7,6 @@ $ModLoad immark.so # provides --MARK-- message capability
 $ModLoad imuxsock.so # provides support for local system logging (e.g. via logger command)
 $ModLoad imklog.so # kernel logging (formerly provided by rklogd)
 
-# Merge and include all *.conf files.
-$IncludeConfig /etc/rsyslog.d/*.conf
-
 $PrivDropToUser syslog
 $PrivDropToGroup syslog
 
@@ -22,6 +19,11 @@ $ActionFileDefaultTemplate LogWithoutHostname
 
 $SystemLogRateLimitInterval 0
 $RepeatedMsgReduction on
+
+# Merge and include all *.conf files.
+# This should come after any settings that are meant to be inherited by the
+# *.conf files that are to be included.
+$IncludeConfig /etc/rsyslog.d/*.conf
 
 # Allow messages from upstart, which logs through /dev/klog.
 $KLogPermitNonKernelFacility on
