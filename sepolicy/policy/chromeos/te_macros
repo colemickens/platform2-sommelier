@@ -6,3 +6,8 @@
 define(`minijail_netns_new', `
 allowxperm $1 $1:unix_dgram_socket ioctl { SIOCSIFFLAGS SIOCGIFFLAGS };
 ')
+
+define(`execute_file_follow_link', `
+allow $1 $2:file rx_file_perms;
+allow $1 $2:lnk_file r_file_perms;
+')

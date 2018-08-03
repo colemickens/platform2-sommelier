@@ -1,0 +1,5 @@
+type minijailed, cros_miscdomain, chromeos_domain, domain;
+
+permissive minijailed;
+
+domain_auto_trans(minijail, unlabeled, minijailed);

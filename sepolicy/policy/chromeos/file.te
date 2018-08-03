@@ -5,14 +5,20 @@ type cros_crash_reporter_exec, exec_type, file_type;
 type cros_shill_exec, exec_type, file_type;
 type cros_modprobe_exec, exec_type, file_type;
 type cros_wpa_supplicant_exec, exec_type, file_type;
-
-type cros_syslog, file_type;
-
+type cros_minijail_exec, exec_type, file_type;
+type cros_debugd_exec, exec_type, file_type;
+type upstart_socket_bridge_exec, exec_type, file_type;
 type chrome_browser_exec, exec_type, file_type;
+type sh_exec, exec_type, file_type;
+type frecon_exec, exec_type, file_type;
+type cros_chrt_exec, exec_type, file_type;
+
+type cros_init_shell_scripts, exec_type, file_type;
 
 type cros_init_conf_file, file_type;
-
 type cros_selinux_config_file, file_type;
+
+type cros_syslog, file_type;
 
 allow fs_type self:filesystem associate;
 allow file_type labeledfs:filesystem associate;

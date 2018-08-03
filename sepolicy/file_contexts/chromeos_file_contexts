@@ -1,11 +1,25 @@
 # Chrome OS file contexts.
 /                               u:object_r:rootfs:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0
-/sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
-/bin/kmod                       u:object_r:cros_modprobe_exec:s0
 
+/sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
+/sbin/debugd                    u:object_r:cros_debugd_exec:s0
+/sbin/frecon                    u:object_r:frecon_exec:s0
+/sbin/minijail0                 u:object_r:cros_minijail_exec:s0
+/sbin/upstart-socket-bridge     u:object_r:upstart_socket_bridge_exec:s0
+
+/bin/bash                       u:object_r:sh_exec:s0
+/bin/dash                       u:object_r:sh_exec:s0
+/bin/kmod                       u:object_r:cros_modprobe_exec:s0
+/bin/sh                         u:object_r:sh_exec:s0
+
+/usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
+
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
+
+/usr/share/cros/init/.*         u:object_r:cros_init_shell_scripts:s0
+/usr/bin/start_bluetooth.sh     u:object_r:cros_init_shell_scripts:s0
 
 /var/log/messages               u:object_r:cros_syslog:s0
 

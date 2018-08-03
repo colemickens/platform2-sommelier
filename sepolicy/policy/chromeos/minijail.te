@@ -1,0 +1,7 @@
+type minijail, chromeos_domain, domain, mlstrustedobject;
+
+permissive minijail;
+
+#TODO(fqj): init boot-update-firmware.conf didn't enter minijail.
+
+domain_auto_trans(cros_init, cros_minijail_exec, minijail);
