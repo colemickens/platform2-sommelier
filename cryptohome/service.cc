@@ -116,7 +116,7 @@ const char kAttestationMode[] = "attestation_mode";
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
 
-const base::FilePath::CharType kHome[] = "/home";
+const char kHome[] = "/home";
 
 class TpmInitStatus : public CryptohomeEventBase {
  public:

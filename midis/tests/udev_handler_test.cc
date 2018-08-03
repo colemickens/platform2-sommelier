@@ -68,7 +68,7 @@ class UdevHandlerTest : public ::testing::Test {
     info2_->flags = kFakeFlags2;
 
     // Create fake dev nod files
-    CreateNewTempDirectory(base::FilePath::StringType(), &temp_fp_);
+    CreateNewTempDirectory(std::string(), &temp_fp_);
     if (temp_fp_.empty()) {
       LOG(ERROR) << "Unable to create temporary directory.";
       return;

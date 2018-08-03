@@ -28,8 +28,7 @@ namespace system {
 namespace {
 
 // Default path examined for backlight device directories.
-const base::FilePath::CharType kDefaultDeviceListPath[] =
-    FILE_PATH_LITERAL("/sys/bus/iio/devices");
+const char kDefaultDeviceListPath[] = "/sys/bus/iio/devices";
 
 // Default interval for polling the ambient light sensor.
 const int kDefaultPollIntervalMs = 1000;

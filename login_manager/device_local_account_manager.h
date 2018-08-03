@@ -31,7 +31,7 @@ class PolicyService;
 class DeviceLocalAccountManager {
  public:
   // Name of the subdirectory to store policy in.
-  static const base::FilePath::CharType kPolicyDir[];
+  static const char kPolicyDir[];
 
   DeviceLocalAccountManager(const base::FilePath& state_dir,
                             PolicyKey* owner_key);

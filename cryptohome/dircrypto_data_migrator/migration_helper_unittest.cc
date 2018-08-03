@@ -544,9 +544,9 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   const base::FilePath kLinkTarget = base::FilePath("foo");
-  const base::FilePath kLink(FILE_PATH_LITERAL("link"));
-  const base::FilePath kFile(FILE_PATH_LITERAL("file"));
-  const base::FilePath kDir(FILE_PATH_LITERAL("dir"));
+  const base::FilePath kLink("link");
+  const base::FilePath kFile("file");
+  const base::FilePath kDir("dir");
   const base::FilePath kFromLink = from_dir_.GetPath().Append(kLink);
   const base::FilePath kFromFile = from_dir_.GetPath().Append(kFile);
   const base::FilePath kFromDir = from_dir_.GetPath().Append(kDir);

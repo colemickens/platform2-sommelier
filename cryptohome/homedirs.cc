@@ -41,7 +41,7 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-const FilePath::CharType *kShadowRoot = "/home/.shadow";
+const char *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
 // xattr used to mark Google Drive cache files, should match the
 // constant in Chrome Browser in
@@ -56,9 +56,9 @@ const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
 const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 // Name of the vault directory which is used with eCryptfs cryptohome.
-const FilePath::CharType kEcryptfsVaultDir[] = "vault";
+const char kEcryptfsVaultDir[] = "vault";
 // Name of the mount directory.
-const FilePath::CharType kMountDir[] = "mount";
+const char kMountDir[] = "mount";
 
 namespace {
 

@@ -215,8 +215,7 @@ enum class OldDataDirType {
 };
 
 constexpr char kSaneEmail[] = "user@somewhere.com";
-constexpr base::FilePath::CharType kDeviceLocalAccountsDir[] =
-    FILE_PATH_LITERAL("device_local_accounts");
+constexpr char kDeviceLocalAccountsDir[] = "device_local_accounts";
 
 #if USE_CHEETS
 constexpr char kDefaultLocale[] = "en_US";
@@ -384,10 +383,8 @@ class SessionManagerImplTest : public ::testing::Test,
 #endif  // USE_CHEETS
 
     // AtomicFileWrite calls in TEST_F assume that these directories exist.
-    ASSERT_TRUE(utils_.CreateDir(
-        base::FilePath(FILE_PATH_LITERAL("/run/session_manager"))));
-    ASSERT_TRUE(utils_.CreateDir(
-        base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
+    ASSERT_TRUE(utils_.CreateDir(base::FilePath("/run/session_manager")));
+    ASSERT_TRUE(utils_.CreateDir(base::FilePath("/mnt/stateful_partition")));
 
     init_controller_ = new MockInitDaemonController();
     impl_ = std::make_unique<SessionManagerImpl>(

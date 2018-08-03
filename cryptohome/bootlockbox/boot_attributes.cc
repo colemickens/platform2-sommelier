@@ -19,11 +19,11 @@ namespace cryptohome {
 
 const int BootAttributes::kAttributeFileVersion = 1;
 
-const FilePath::CharType BootAttributes::kAttributeFile[] =
-  FILE_PATH_LITERAL("/var/lib/boot-lockbox/boot_attributes.pb");
+const char BootAttributes::kAttributeFile[] =
+  "/var/lib/boot-lockbox/boot_attributes.pb";
 
-const FilePath::CharType BootAttributes::kSignatureFile[] =
-  FILE_PATH_LITERAL("/var/lib/boot-lockbox/boot_attributes.sig");
+const char BootAttributes::kSignatureFile[] =
+  "/var/lib/boot-lockbox/boot_attributes.sig";
 
 BootAttributes::BootAttributes(BootLockbox* boot_lockbox, Platform* platform)
     : boot_lockbox_(boot_lockbox),

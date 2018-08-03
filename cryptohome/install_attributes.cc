@@ -24,11 +24,11 @@ using base::FilePath;
 namespace cryptohome {
 
 // By default, we store this with other cryptohome state.
-const FilePath::CharType InstallAttributes::kDefaultDataFile[] =
+const char InstallAttributes::kDefaultDataFile[] =
   "/home/.shadow/install_attributes.pb";
 const mode_t InstallAttributes::kDataFilePermissions = 0644;
 // This is the default location for the cache file.
-const FilePath::CharType InstallAttributes::kDefaultCacheFile[] =
+const char InstallAttributes::kDefaultCacheFile[] =
   "/run/lockbox/install_attributes.pb";
 const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 

@@ -206,7 +206,7 @@ bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
   //
   base::FilePath file_path(source_path);
   if (base::FilePath(kUserRootDirectory).IsParent(file_path)) {
-    std::vector<base::FilePath::StringType> components;
+    std::vector<std::string> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
     // The file path of an image file under a user's Downloads or GCache
     // directory path is split into the following components:
@@ -221,7 +221,7 @@ bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
   }
 
   if (base::FilePath(kMediaDirectory).IsParent(file_path)) {
-    std::vector<base::FilePath::StringType> components;
+    std::vector<std::string> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
     // A mount directory is always created under /media/<sub type>/<mount dir>,
     // so the file path of an image file under a mount directory is split

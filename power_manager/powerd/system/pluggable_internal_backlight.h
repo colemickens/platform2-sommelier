@@ -35,7 +35,7 @@ class PluggableInternalBacklight : public BacklightInterface,
   void Init(UdevInterface* udev,
             const std::string& udev_subsystem,
             const base::FilePath& base_path,
-            const base::FilePath::StringType& pattern);
+            const std::string& pattern);
 
   // BacklightInterface:
   void AddObserver(BacklightObserver* observer) override;
@@ -63,7 +63,7 @@ class PluggableInternalBacklight : public BacklightInterface,
   // Information used to find the backlight device. See the InternalBacklight
   // class for details.
   base::FilePath base_path_;
-  base::FilePath::StringType pattern_;
+  std::string pattern_;
 
   // The underlying backlight device, or null when the device isn't present.
   std::unique_ptr<InternalBacklight> device_;

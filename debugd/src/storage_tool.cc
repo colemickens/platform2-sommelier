@@ -26,10 +26,8 @@ namespace {
 
 const char kSmartctl[] = "/usr/sbin/smartctl";
 const char kBadblocks[] = "/sbin/badblocks";
-const base::FilePath::CharType kMountFile[] =
-    FILE_PATH_LITERAL("/proc/mounts");
-const base::FilePath::CharType kSource[] =
-    FILE_PATH_LITERAL("/mnt/stateful_partition");
+const char kMountFile[] = "/proc/mounts";
+const char kSource[] = "/mnt/stateful_partition";
 
 }  // namespace
 

@@ -25,8 +25,8 @@ namespace {
 // The path of temporary file to be saved when policy cleanup is done. The path
 // is extended with policy path hash as suffix. The file is stored on tmpfs, so
 // it is intentionally lost on each shutdown/restart of the device.
-const base::FilePath::CharType kCleanupDoneFilePrefix[] =
-    FILE_PATH_LITERAL("/run/session_manager/policy_cleanup_done-");
+const char kCleanupDoneFilePrefix[] =
+    "/run/session_manager/policy_cleanup_done-";
 
 // Maximum number of valid policy files to be kept by policy cleanup.
 const int kMaxPolicyFileCount = 3;

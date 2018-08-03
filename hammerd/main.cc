@@ -64,7 +64,7 @@ int main(int argc, const char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
 
-  base::FilePath file_path(FILE_PATH_LITERAL(kLockFile));
+  base::FilePath file_path(kLockFile);
   hammerd::ProcessLock lock(file_path);
   if (!lock.Acquire()) {
     LOG(INFO) << "Other hammerd process is running, exit.";

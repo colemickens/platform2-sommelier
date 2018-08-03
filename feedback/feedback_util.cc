@@ -27,7 +27,7 @@ bool ZipString(const base::FilePath& filename,
 
   // Create a temporary directory, put the logs into a file in it. Create
   // another temporary file to receive the zip file in.
-  if (!base::CreateNewTempDirectory(base::FilePath::StringType(), &temp_path))
+  if (!base::CreateNewTempDirectory(std::string(), &temp_path))
     return false;
   if (base::WriteFile(temp_path.Append(filename),
                       data.c_str(), data.size()) == -1)

@@ -59,35 +59,35 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-const FilePath::CharType kDefaultHomeDir[] = "/home/chronos/user";
-const FilePath::CharType kDefaultShadowRoot[] = "/home/.shadow";
-const FilePath::CharType kEphemeralCryptohomeDir[] = "/run/cryptohome";
-const FilePath::CharType kSparseFileDir[] = "ephemeral_data";
+const char kDefaultHomeDir[] = "/home/chronos/user";
+const char kDefaultShadowRoot[] = "/home/.shadow";
+const char kEphemeralCryptohomeDir[] = "/run/cryptohome";
+const char kSparseFileDir[] = "ephemeral_data";
 const char kDefaultSharedUser[] = "chronos";
 const char kChapsUserName[] = "chaps";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
-const FilePath::CharType kDefaultSkeletonSource[] = "/etc/skel";
+const char kDefaultSkeletonSource[] = "/etc/skel";
 const uid_t kMountOwnerUid = 0;
 const gid_t kMountOwnerGid = 0;
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
 const char kIncognitoUser[] = "incognito";
 // Tracked directories - special sub-directories of the cryptohome
 // vault, that are visible even if not mounted. Contents is still encrypted.
-const FilePath::CharType kCacheDir[] = "Cache";
-const FilePath::CharType kDownloadsDir[] = "Downloads";
-const FilePath::CharType kGCacheDir[] = "GCache";
-const FilePath::CharType kGCacheVersion1Dir[] = "v1";
-const FilePath::CharType kGCacheVersion2Dir[] = "v2";
-const FilePath::CharType kGCacheBlobsDir[] = "blobs";
-const FilePath::CharType kGCacheTmpDir[] = "tmp";
+const char kCacheDir[] = "Cache";
+const char kDownloadsDir[] = "Downloads";
+const char kGCacheDir[] = "GCache";
+const char kGCacheVersion1Dir[] = "v1";
+const char kGCacheVersion2Dir[] = "v2";
+const char kGCacheBlobsDir[] = "blobs";
+const char kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
-const FilePath::CharType kEphemeralMountDir[] = "ephemeral_mount";
-const FilePath::CharType kTemporaryMountDir[] = "temporary_mount";
-const FilePath::CharType kKeyFile[] = "master";
+const char kEphemeralMountDir[] = "ephemeral_mount";
+const char kTemporaryMountDir[] = "temporary_mount";
+const char kKeyFile[] = "master";
 const int kKeyFileMax = 100;  // master.0 ... master.99
 const mode_t kKeyFilePermissions = 0600;
-const FilePath::CharType kKeyLegacyPrefix[] = "legacy-";
+const char kKeyLegacyPrefix[] = "legacy-";
 const char kEphemeralMountType[] = "ext4";
 const char kEphemeralMountOptions[] = "";
 

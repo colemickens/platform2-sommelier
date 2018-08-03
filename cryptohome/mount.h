@@ -46,31 +46,31 @@
 namespace cryptohome {
 
 // Paths to sparse file for ephemeral mounts.
-extern const base::FilePath::CharType kEphemeralCryptohomeDir[];
-extern const base::FilePath::CharType kSparseFileDir[];
+extern const char kEphemeralCryptohomeDir[];
+extern const char kSparseFileDir[];
 // Directories that we intend to track (make pass-through in cryptohome vault)
-extern const base::FilePath::CharType kAndroidDataDir[];
-extern const base::FilePath::CharType kCacheDir[];
-extern const base::FilePath::CharType kDownloadsDir[];
-extern const base::FilePath::CharType kGCacheDir[];
+extern const char kAndroidDataDir[];
+extern const char kCacheDir[];
+extern const char kDownloadsDir[];
+extern const char kGCacheDir[];
 // subdir of kGCacheDir
-extern const base::FilePath::CharType kGCacheVersion1Dir[];
-extern const base::FilePath::CharType kGCacheVersion2Dir[];
+extern const char kGCacheVersion1Dir[];
+extern const char kGCacheVersion2Dir[];
 // subdir of kGCacheVersion1Dir
-extern const base::FilePath::CharType kGCacheTmpDir[];
+extern const char kGCacheTmpDir[];
 extern const char kUserHomeSuffix[];
 extern const char kRootHomeSuffix[];
 // Name of the temporary mount directory.
-extern const base::FilePath::CharType kTemporaryMountDir[];
+extern const char kTemporaryMountDir[];
 // Name of the key file.
-extern const base::FilePath::CharType kKeyFile[];
+extern const char kKeyFile[];
 // Automatic label prefix of a legacy key ("%s%d")
 extern const char kKeyLegacyPrefix[];
 // Maximum number of key files.
 extern const int kKeyFileMax;
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
-extern const base::FilePath::CharType kEphemeralDir[];
+extern const char kEphemeralDir[];
 
 class BootLockbox;
 class ChapsClientFactory;

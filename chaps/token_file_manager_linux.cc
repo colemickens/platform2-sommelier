@@ -29,13 +29,12 @@ namespace chaps {
 
 namespace {
 
-const FilePath::CharType kTokenFilePath[] =
-    FILE_PATH_LITERAL("/var/lib/chaps/tokens/");
+const char kTokenFilePath[] = "/var/lib/chaps/tokens/";
 
 const mode_t kTokenDirectoryPermissions = (S_IRUSR | S_IWUSR | S_IXUSR);
 const mode_t kFilePermissionsMask = (S_IRWXU | S_IRWXG | S_IRWXO);
 
-const FilePath::CharType kSaltFileName[] = "salt";
+const char kSaltFileName[] = "salt";
 const uint32_t kSaltIterations = 4096;
 const size_t kSaltBytes = 32;
 const size_t kSaltedKeyBytes = 32;

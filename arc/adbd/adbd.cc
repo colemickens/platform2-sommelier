@@ -33,14 +33,10 @@
 
 namespace {
 
-constexpr base::FilePath::CharType kRuntimePath[] =
-    FILE_PATH_LITERAL("/run/arc/adbd");
-constexpr base::FilePath::CharType kConfigFSPath[] =
-    FILE_PATH_LITERAL("/dev/config");
-constexpr base::FilePath::CharType kFunctionFSPath[] =
-    FILE_PATH_LITERAL("/dev/usb-ffs/adb");
-constexpr base::FilePath::CharType kConfigPath[] =
-    FILE_PATH_LITERAL("/etc/arc/adbd.json");
+constexpr char kRuntimePath[] = "/run/arc/adbd";
+constexpr char kConfigFSPath[] = "/dev/config";
+constexpr char kFunctionFSPath[] = "/dev/usb-ffs/adb";
+constexpr char kConfigPath[] = "/etc/arc/adbd.json";
 
 // The shifted u/gid of the shell user, used by Android's adbd.
 constexpr uid_t kShellUgid = 657360;

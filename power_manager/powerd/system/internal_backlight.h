@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <string>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -43,8 +44,7 @@ class InternalBacklight : public BacklightInterface {
   //   base: "/sys/class/leds", pattern: "*:kbd_backlight"
   //
   // On success, return true; otherwise return false.
-  bool Init(const base::FilePath& base_path,
-            const base::FilePath::StringType& pattern);
+  bool Init(const base::FilePath& base_path, const std::string& pattern);
 
   const base::FilePath& device_path() const { return device_path_; }
   bool transition_timer_is_running() const {

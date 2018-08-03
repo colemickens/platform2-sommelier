@@ -28,8 +28,8 @@ class Thread;
 namespace cryptohome {
 namespace dircrypto_data_migrator {
 
-extern const base::FilePath::CharType kMigrationStartedFileName[];
-extern const base::FilePath::CharType kSkippedFileListFileName[];
+extern const char kMigrationStartedFileName[];
+extern const char kSkippedFileListFileName[];
 extern const char kSourceURLXattrName[];
 extern const char kReferrerURLXattrName[];
 

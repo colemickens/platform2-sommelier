@@ -23,8 +23,8 @@ class Platform;
 class BootAttributes {
  public:
   static const int kAttributeFileVersion;
-  static const base::FilePath::CharType kAttributeFile[];
-  static const base::FilePath::CharType kSignatureFile[];
+  static const char kAttributeFile[];
+  static const char kSignatureFile[];
 
   // Does not take ownership of pointers.
   BootAttributes(BootLockbox* boot_lockbox, Platform* platform);

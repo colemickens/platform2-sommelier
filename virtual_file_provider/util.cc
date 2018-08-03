@@ -21,8 +21,7 @@ namespace virtual_file_provider {
 // Clears all capabilities.
 bool ClearCapabilities() {
   // Read cap_last_cap.
-  const base::FilePath last_cap_path(FILE_PATH_LITERAL(
-      "/proc/sys/kernel/cap_last_cap"));
+  const base::FilePath last_cap_path("/proc/sys/kernel/cap_last_cap");
   std::string contents;
   int last_cap = 0;
   if (!base::ReadFileToString(last_cap_path, &contents) ||

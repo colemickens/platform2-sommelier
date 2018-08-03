@@ -48,13 +48,13 @@ extern PolicyNamespace MakeChromePolicyNamespace();
 class PolicyService {
  public:
   // File name of Chrome policy.
-  static const base::FilePath::CharType kChromePolicyFileName[];
+  static const char kChromePolicyFileName[];
   // Prefix of the filename of extension policy. The full file name is suffixed
   // by the extension ID.
-  static const base::FilePath::CharType kExtensionsPolicyFileNamePrefix[];
+  static const char kExtensionsPolicyFileNamePrefix[];
   // Prefix of the filename of sign-in extension policy. The full file name is
   // suffixed by the extension ID.
-  static const base::FilePath::CharType kSignInExtensionsPolicyFileNamePrefix[];
+  static const char kSignInExtensionsPolicyFileNamePrefix[];
 
   // Flags determining what do to with new keys in Store().
   enum KeyInstallFlags {

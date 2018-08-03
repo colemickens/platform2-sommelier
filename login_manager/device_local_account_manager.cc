@@ -22,8 +22,7 @@ namespace em = enterprise_management;
 namespace login_manager {
 
 // Device-local account state directory.
-constexpr base::FilePath::CharType DeviceLocalAccountManager::kPolicyDir[] =
-    FILE_PATH_LITERAL("policy");
+constexpr char DeviceLocalAccountManager::kPolicyDir[] = "policy";
 
 DeviceLocalAccountManager::DeviceLocalAccountManager(
     const base::FilePath& state_dir, PolicyKey* owner_key)

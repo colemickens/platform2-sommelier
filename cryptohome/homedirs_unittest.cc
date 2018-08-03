@@ -334,11 +334,11 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
   const FilePath mount_dir = temp_dir.GetPath().Append(FilePath(kMountDir));
   ASSERT_TRUE(base::CreateDirectory(mount_dir));
 
-  const FilePath::CharType* const kDirectories[] = {
-    FILE_PATH_LITERAL("aaa"),
-    FILE_PATH_LITERAL("bbb"),
-    FILE_PATH_LITERAL("bbb/ccc"),
-    FILE_PATH_LITERAL("bbb/ccc/ddd"),
+  const char* const kDirectories[] = {
+    "aaa",
+    "bbb",
+    "bbb/ccc",
+    "bbb/ccc/ddd",
   };
   // Prepare directories.
   for (const auto& directory : kDirectories) {
@@ -362,9 +362,9 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
   // Return false for unknown directories.
   FilePath result;
   EXPECT_FALSE(homedirs_.GetTrackedDirectory(
-      temp_dir.GetPath(), FilePath(FILE_PATH_LITERAL("zzz")), &result));
+      temp_dir.GetPath(), FilePath("zzz"), &result));
   EXPECT_FALSE(homedirs_.GetTrackedDirectory(
-      temp_dir.GetPath(), FilePath(FILE_PATH_LITERAL("aaa/zzz")), &result));
+      temp_dir.GetPath(), FilePath("aaa/zzz"), &result));
 }
 
 TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {

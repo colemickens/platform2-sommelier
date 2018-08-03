@@ -42,7 +42,7 @@ namespace cryptohome {
 extern const int kDefaultUmask;
 
 // Loop devices prefix.
-extern const base::FilePath::CharType kLoopPrefix[];
+extern const char kLoopPrefix[];
 
 class ProcessInformation;
 

@@ -27,8 +27,7 @@ static const char kSwitchCustomServer[] = "url";
 static const int kMaxPoolThreads = 1;
 static const char kPoolName[] = "FeedbackWorkerPool";
 
-static const base::FilePath::CharType kFeedbackReportPath[] =
-    FILE_PATH_LITERAL("/run/");
+static const char kFeedbackReportPath[] = "/run/";
 
 static const char kFeedbackTestUrl[] =
     "http://sandbox.google.com/tools/feedback/chrome/__submit";

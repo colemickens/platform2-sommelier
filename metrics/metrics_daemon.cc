@@ -825,7 +825,7 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
   // both calls fail, since some platforms do not support zram.
   bool success = ProcessMeminfo(meminfo_raw);
   bool reschedule =
-      ReportZram(base::FilePath(FILE_PATH_LITERAL("/sys/block/zram0"))) ||
+      ReportZram(base::FilePath("/sys/block/zram0")) ||
       success;
   if (reschedule) {
     base::MessageLoop::current()->task_runner()->PostDelayedTask(
@@ -907,7 +907,7 @@ bool MetricsDaemon::GetDetachableBaseTimes(
     return false;
   base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
 
-  sysfs_path = base::FilePath(FILE_PATH_LITERAL(content));
+  sysfs_path = base::FilePath(content);
   if (!base::ReadFileToString(sysfs_path.Append(
       kDetachableBaseSysfsLevelName), &content))
     return false;

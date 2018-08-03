@@ -47,19 +47,14 @@ namespace run_oci {
 
 namespace {
 
-constexpr base::FilePath::CharType kRunContainersPath[] =
-    FILE_PATH_LITERAL("/run/containers");
+constexpr char kRunContainersPath[] = "/run/containers";
 
-constexpr base::FilePath::CharType kProcSelfMountsPath[] =
-    FILE_PATH_LITERAL("/proc/self/mounts");
+constexpr char kProcSelfMountsPath[] = "/proc/self/mounts";
 
-constexpr base::FilePath::CharType kContainerPidFilename[] =
-    FILE_PATH_LITERAL("container.pid");
-constexpr base::FilePath::CharType kConfigJsonFilename[] =
-    FILE_PATH_LITERAL("config.json");
-constexpr base::FilePath::CharType kRunOciFilename[] =
-    FILE_PATH_LITERAL(".run_oci");
-constexpr base::FilePath::CharType kLogFilename[] = FILE_PATH_LITERAL("log");
+constexpr char kContainerPidFilename[] = "container.pid";
+constexpr char kConfigJsonFilename[] = "config.json";
+constexpr char kRunOciFilename[] = ".run_oci";
+constexpr char kLogFilename[] = "log";
 
 // PIDs can be up to 8 characters, plus the terminating NUL byte. Rounding it up
 // to the next power-of-two.

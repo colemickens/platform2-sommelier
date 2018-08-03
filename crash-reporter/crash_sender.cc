@@ -23,18 +23,17 @@
 namespace {
 
 // The base directory where we keep various state flags.
-#define RUN_STATE_DIR FILE_PATH_LITERAL("/run/crash_reporter")
+#define RUN_STATE_DIR "/run/crash_reporter"
 
 // File whose existence mocks crash sending.  If empty we pretend the
 // crash sending was successful, otherwise unsuccessful.
-constexpr base::FilePath::CharType kMockCrashSending[] =
-    RUN_STATE_DIR "/mock-crash-sending";
+constexpr char kMockCrashSending[] = RUN_STATE_DIR "/mock-crash-sending";
 
 // Crash sender lock in case the sender is already running.
-constexpr base::FilePath::CharType kLockFile[] = "/run/lock/crash_sender";
+constexpr char kLockFile[] = "/run/lock/crash_sender";
 
 // File whose existence implies we're running and not to start again.
-constexpr base::FilePath::CharType kRunFile[] = "/run/crash_sender.pid";
+constexpr char kRunFile[] = "/run/crash_sender.pid";
 
 // Returns true if mock is enabled.
 bool IsMock() {

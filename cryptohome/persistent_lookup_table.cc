@@ -158,7 +158,7 @@ uint32_t PersistentLookupTable::FindLatestVersion(const uint64_t key) {
   }
 
   base::FileEnumerator file(key_dir, false, base::FileEnumerator::FILES,
-                            FILE_PATH_LITERAL("*.value"));
+                            "*.value");
   uint32_t latest_version = 0;
   for (base::FilePath cur_file = file.Next(); !cur_file.empty();
        cur_file = file.Next()) {

@@ -168,8 +168,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return std::move(passed_external_backlight_controller_);
   }
   std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
-      const base::FilePath& base_path,
-      const base::FilePath::StringType& pattern) override {
+      const base::FilePath& base_path, const std::string& pattern) override {
     // This should only be called for the display backlight.
     EXPECT_EQ(kInternalBacklightPath, base_path.value());
     EXPECT_EQ(kInternalBacklightPattern, pattern);
@@ -179,7 +178,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       system::UdevInterface* udev,
       const std::string& udev_subsystem,
       const base::FilePath& base_path,
-      const base::FilePath::StringType& pattern) override {
+      const std::string& pattern) override {
     // This should only be called for the keyboard backlight.
     EXPECT_EQ(udev_, udev);
     EXPECT_EQ(kKeyboardBacklightUdevSubsystem, udev_subsystem);

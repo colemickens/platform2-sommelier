@@ -20,11 +20,10 @@ PluggableInternalBacklight::~PluggableInternalBacklight() {
     udev_->RemoveSubsystemObserver(udev_subsystem_, this);
 }
 
-void PluggableInternalBacklight::Init(
-    UdevInterface* udev,
-    const std::string& udev_subsystem,
-    const base::FilePath& base_path,
-    const base::FilePath::StringType& pattern) {
+void PluggableInternalBacklight::Init(UdevInterface* udev,
+                                      const std::string& udev_subsystem,
+                                      const base::FilePath& base_path,
+                                      const std::string& pattern) {
   DCHECK(udev);
   udev_ = udev;
   udev_subsystem_ = udev_subsystem;

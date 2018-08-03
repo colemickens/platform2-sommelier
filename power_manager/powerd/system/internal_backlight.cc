@@ -44,7 +44,7 @@ InternalBacklight::InternalBacklight()
 InternalBacklight::~InternalBacklight() {}
 
 bool InternalBacklight::Init(const base::FilePath& base_path,
-                             const base::FilePath::StringType& pattern) {
+                             const std::string& pattern) {
   base::FileEnumerator enumerator(base_path, false,
                                   base::FileEnumerator::DIRECTORIES, pattern);
 

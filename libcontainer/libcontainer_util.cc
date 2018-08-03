@@ -42,11 +42,9 @@ namespace libcontainer {
 
 namespace {
 
-constexpr base::FilePath::CharType kLoopdevCtlPath[] =
-    FILE_PATH_LITERAL("/dev/loop-control");
+constexpr char kLoopdevCtlPath[] = "/dev/loop-control";
 #if USE_device_mapper
-constexpr base::FilePath::CharType kDevMapperPath[] =
-    FILE_PATH_LITERAL("/dev/mapper/");
+constexpr char kDevMapperPath[] = "/dev/mapper/";
 #endif
 
 // Gets the namespace name for |nstype|.

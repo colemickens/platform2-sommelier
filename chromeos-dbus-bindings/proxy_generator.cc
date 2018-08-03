@@ -138,9 +138,9 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
     } else {
       // Generate a relative path from |mock_file| to |proxy_file|.
       // First, get the path components for both source and destination paths.
-      std::vector<base::FilePath::StringType> src_components;
+      std::vector<std::string> src_components;
       mock_file.DirName().GetComponents(&src_components);
-      std::vector<base::FilePath::StringType> dest_components;
+      std::vector<std::string> dest_components;
       proxy_file.DirName().GetComponents(&dest_components);
 
       // Find the common root.
@@ -152,7 +152,7 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
       // parent directory references ("..").
       size_t src_count = std::distance(mismatch_pair.first,
                                        src_components.end());
-      std::vector<base::FilePath::StringType> components{
+      std::vector<std::string> components{
           src_count, base::FilePath::kParentDirectory};
       // Append the remaining components from |dest_components|.
       components.insert(components.end(),

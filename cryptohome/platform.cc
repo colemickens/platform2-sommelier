@@ -140,15 +140,15 @@ const int kDefaultMountOptions = MS_NOEXEC | MS_NOSUID | MS_NODEV;
 const int kDefaultPwnameLength = 1024;
 const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
                                | S_IXOTH;
-const FilePath::CharType kProcDir[] = "/proc";
-const FilePath::CharType kMountInfoFile[] = "mountinfo";
-const FilePath::CharType kPathTune2fs[] = "/sbin/tune2fs";
+const char kProcDir[] = "/proc";
+const char kMountInfoFile[] = "mountinfo";
+const char kPathTune2fs[] = "/sbin/tune2fs";
 const char kEcryptFS[] = "ecryptfs";
-const FilePath::CharType kLoopControl[] = "/dev/loop-control";
-const FilePath::CharType kLoopPrefix[] = "/dev/loop";
-const FilePath::CharType kSysBlockPath[] = "/sys/block";
-const FilePath::CharType kDevPath[] = "/dev";
-const FilePath::CharType kLoopBackingFile[] = "loop/backing_file";
+const char kLoopControl[] = "/dev/loop-control";
+const char kLoopPrefix[] = "/dev/loop";
+const char kSysBlockPath[] = "/sys/block";
+const char kDevPath[] = "/dev";
+const char kLoopBackingFile[] = "loop/backing_file";
 
 Platform::Platform() {
     pid_t pid = getpid();
@@ -1323,8 +1323,8 @@ bool Platform::InvalidateDirCryptoKey(key_serial_t key_id,
     // will stay visible. This should invalidate the key provided no one touches
     // the encrypted directories while this function is running.
     constexpr char kData = '3';
-    if (base::WriteFile(FilePath(FILE_PATH_LITERAL(
-        "/proc/sys/vm/drop_caches")), &kData, sizeof(kData))
+    if (base::WriteFile(FilePath("/proc/sys/vm/drop_caches"),
+                        &kData, sizeof(kData))
         != sizeof(kData)) {
       LOG(ERROR) << "Failed to drop all caches.";
       return false;

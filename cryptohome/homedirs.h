@@ -45,8 +45,8 @@ extern const char kAndroidCacheFilesAttribute[];
 extern const char kAndroidCacheInodeAttribute[];
 extern const char kAndroidCodeCacheInodeAttribute[];
 extern const char kTrackedDirectoryNameAttribute[];
-extern const base::FilePath::CharType kEcryptfsVaultDir[];
-extern const base::FilePath::CharType kMountDir[];
+extern const char kEcryptfsVaultDir[];
+extern const char kMountDir[];
 
 class Credentials;
 class Crypto;

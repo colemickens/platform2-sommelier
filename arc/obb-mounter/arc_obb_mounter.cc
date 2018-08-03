@@ -25,8 +25,7 @@ namespace {
 bool DropUnnecessaryCapabilities() {
   const cap_value_t kKeep[2] = {CAP_SYS_ADMIN, CAP_DAC_READ_SEARCH};
   // Read cap_last_cap.
-  base::FilePath last_cap_path(
-      FILE_PATH_LITERAL("/proc/sys/kernel/cap_last_cap"));
+  base::FilePath last_cap_path("/proc/sys/kernel/cap_last_cap");
   std::string contents;
   int last_cap = 0;
   if (!base::ReadFileToString(last_cap_path, &contents) ||

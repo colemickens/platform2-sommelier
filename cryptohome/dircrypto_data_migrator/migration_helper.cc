@@ -143,24 +143,24 @@ class MigrationStartAndEndStatusReporter {
 };
 
 struct PathTypeMapping {
-  const base::FilePath::CharType* path;
+  const char* path;
   DircryptoMigrationFailedPathType type;
 };
 
 const PathTypeMapping kPathTypeMappings[] = {
-  {FILE_PATH_LITERAL("root/android-data"), kMigrationFailedUnderAndroidOther},
-  {FILE_PATH_LITERAL("user/Downloads"), kMigrationFailedUnderDownloads},
-  {FILE_PATH_LITERAL("user/Cache"), kMigrationFailedUnderCache},
-  {FILE_PATH_LITERAL("user/GCache"), kMigrationFailedUnderGcache},
+  {"root/android-data", kMigrationFailedUnderAndroidOther},
+  {"user/Downloads", kMigrationFailedUnderDownloads},
+  {"user/Cache", kMigrationFailedUnderCache},
+  {"user/GCache", kMigrationFailedUnderGcache},
 };
 
 }  // namespace
 
-constexpr base::FilePath::CharType kMigrationStartedFileName[] =
+constexpr char kMigrationStartedFileName[] =
     "crypto-migration.started";
 // A file to store a list of files skipped during migration.  This lives in
 // root/ of the destination directory so that it is encrypted.
-constexpr base::FilePath::CharType kSkippedFileListFileName[] =
+constexpr char kSkippedFileListFileName[] =
     "root/crypto-migration.files-skipped";
 // TODO(dspaid): Determine performance impact so we can potentially increase
 // frequency.
@@ -980,19 +980,19 @@ void MigrationHelper::RecordFileError(
   //   root/android-data/data/data/<package name>/cache
   //   root/android-data/data/media/0/Android/data/<package name>/cache
   if (path == kMigrationFailedUnderAndroidOther) {
-    std::vector<base::FilePath::StringType> components;
+    std::vector<std::string> components;
     child.GetComponents(&components);
     if ((components.size() >= 7u &&
-         components[2] == FILE_PATH_LITERAL("data") &&
-         components[3] == FILE_PATH_LITERAL("data") &&
-         components[5] == FILE_PATH_LITERAL("cache")) ||
+         components[2] == "data" &&
+         components[3] == "data" &&
+         components[5] == "cache") ||
         (components.size() >= 10u &&
-         components[2] == FILE_PATH_LITERAL("data") &&
-         components[3] == FILE_PATH_LITERAL("media") &&
-         components[4] == FILE_PATH_LITERAL("0") &&
-         components[5] == FILE_PATH_LITERAL("Android") &&
-         components[6] == FILE_PATH_LITERAL("data") &&
-         components[8] == FILE_PATH_LITERAL("cache"))) {
+         components[2] == "data" &&
+         components[3] == "media" &&
+         components[4] == "0" &&
+         components[5] == "Android" &&
+         components[6] == "data" &&
+         components[8] == "cache")) {
        path = kMigrationFailedUnderAndroidCache;
     }
   }

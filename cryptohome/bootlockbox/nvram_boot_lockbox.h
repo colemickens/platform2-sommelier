@@ -20,8 +20,8 @@ namespace cryptohome {
 // A map that stores key-value pairs.
 using KeyValueMap = std::map<std::string, std::string>;
 
-const base::FilePath::CharType kNVRamBootLockboxFilePath[] =
-    FILE_PATH_LITERAL("/var/lib/bootlockbox/nvram_boot_lockbox.pb");
+const char kNVRamBootLockboxFilePath[] =
+    "/var/lib/bootlockbox/nvram_boot_lockbox.pb";
 // The max file file size for nvram_boot_lockbox.pb. Currently set
 // to 1MB.
 constexpr size_t kMaxFileSize = 1024 * 1024;

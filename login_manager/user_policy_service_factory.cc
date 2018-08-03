@@ -33,19 +33,17 @@ namespace {
 // Daemon name we use for storing per-user data on the file system.
 const char kDaemonName[] = "session_manager";
 // Name of the subdirectory to store policy in.
-const base::FilePath::CharType kPolicyDir[] = FILE_PATH_LITERAL("policy");
+const char kPolicyDir[] = "policy";
 // Holds the public key for policy signing.
-const base::FilePath::CharType kPolicyKeyFile[] = FILE_PATH_LITERAL("key");
+const char kPolicyKeyFile[] = "key";
 
 // Directory that contains the public keys for user policy verification.
 // These keys are duplicates from the key contained in the vault, so that the
 // chrome process can read them; the authoritative version of the key is still
 // the vault's.
-const base::FilePath::CharType kPolicyKeyCopyDir[] =
-    FILE_PATH_LITERAL("/run/user_policy");
+const char kPolicyKeyCopyDir[] = "/run/user_policy";
 // Name of the policy key files.
-const base::FilePath::CharType kPolicyKeyCopyFile[] =
-    FILE_PATH_LITERAL("policy.pub");
+const char kPolicyKeyCopyFile[] = "policy.pub";
 
 }  // namespace
 

@@ -34,7 +34,7 @@ const uint32_t kPCRIndex = 15;
 // This is an arbitrary value, our only goal is for the PCR to be non-zero.
 const char kPCRExtension[] = "CROS_PCR15_845A4A757B94";
 
-const FilePath::CharType kKeyFilePath[] = "/var/lib/boot-lockbox/key";
+const char kKeyFilePath[] = "/var/lib/boot-lockbox/key";
 
 const mode_t kKeyFilePermissions = 0600;
 

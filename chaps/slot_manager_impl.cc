@@ -45,8 +45,7 @@ const char kManufacturerID[] = "Chromium OS";
 const CK_ULONG kMaxPinLen = 127;
 const CK_ULONG kMinPinLen = 6;
 const char kSlotDescription[] = "TPM Slot";
-const FilePath::CharType kSystemTokenPath[] =
-    FILE_PATH_LITERAL("/var/lib/chaps");
+const char kSystemTokenPath[] = "/var/lib/chaps";
 const char kSystemTokenAuthData[] = "000000";
 const char kSystemTokenLabel[] = "System TPM Token";
 const char kTokenLabel[] = "User-Specific TPM Token";

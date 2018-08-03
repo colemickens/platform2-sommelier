@@ -29,8 +29,7 @@ namespace system {
 namespace {
 
 // Default path examined for peripheral battery directories.
-const base::FilePath::CharType kDefaultPeripheralBatteryPath[] =
-    FILE_PATH_LITERAL("/sys/class/power_supply/");
+const char kDefaultPeripheralBatteryPath[] = "/sys/class/power_supply/";
 
 // Default interval for polling the device battery info.
 const int kDefaultPollIntervalMs = 600000;

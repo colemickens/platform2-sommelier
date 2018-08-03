@@ -181,7 +181,7 @@ base::FilePath MountImage(scoped_refptr<dbus::Bus> bus,
     // This temporary directory ensures imageloader can see the
     // image files.
     base::FilePath temp_dir;
-    if (!base::CreateNewTempDirectory(base::FilePath::StringType(),
+    if (!base::CreateNewTempDirectory(std::string(),
                                       &temp_dir)) {
       LOG(ERROR) << "Failed to create temp dir";
       return base::FilePath();

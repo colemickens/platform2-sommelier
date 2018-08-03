@@ -30,8 +30,7 @@ namespace {
 
 static const int kMaxPoolThreads = 1;
 static const char kPoolName[] = "FeedbackWorkerPool";
-static const base::FilePath::CharType kFeedbackReportPath[] =
-    FILE_PATH_LITERAL("Feedback Reports");
+static const char kFeedbackReportPath[] = "Feedback Reports";
 static const int kTestProductId = 84;
 
 }  // namespace

@@ -86,7 +86,7 @@ bool ArchiveManager::CanMount(const string& source_path) const {
   //
   FilePath file_path(source_path);
   if (FilePath(kUserRootDirectory).IsParent(file_path)) {
-    vector<FilePath::StringType> components;
+    vector<std::string> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
     // The file path of an archive file under a user's Downloads or GCache
     // directory path is split into the following components:
@@ -103,7 +103,7 @@ bool ArchiveManager::CanMount(const string& source_path) const {
   }
 
   if (FilePath(kMediaDirectory).IsParent(file_path)) {
-    vector<FilePath::StringType> components;
+    vector<std::string> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
     // A mount directory is always created under /media/<sub type>/<mount dir>,
     // so the file path of an archive file under a mount directory is split

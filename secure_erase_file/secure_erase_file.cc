@@ -292,7 +292,7 @@ bool DropCaches() {
   // https://www.kernel.org/doc/Documentation/sysctl/vm.txt
   constexpr char kData = '3';
   if (!base::WriteFile(
-          base::FilePath(FILE_PATH_LITERAL("/proc/sys/vm/drop_caches")),
+          base::FilePath("/proc/sys/vm/drop_caches"),
           &kData,
           sizeof(kData))) {
     PLOG(ERROR) << "Failed to drop cache.";

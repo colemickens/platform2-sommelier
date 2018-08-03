@@ -70,9 +70,8 @@ namespace cryptohome {
 
 namespace {
 
-constexpr FilePath::CharType kImageDir[] = FILE_PATH_LITERAL("test_image_dir");
-constexpr FilePath::CharType kSaltFile[] =
-    FILE_PATH_LITERAL("test_image_dir/salt");
+constexpr char kImageDir[] = "test_image_dir";
+constexpr char kSaltFile[] = "test_image_dir/salt";
 
 class FakeEventSourceSink : public CryptohomeEventSourceSink {
  public:

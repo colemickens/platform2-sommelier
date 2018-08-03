@@ -11,7 +11,6 @@
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <brillo/flag_helper.h>
 
 #include <fcntl.h>
 
@@ -19,8 +18,7 @@ using base::FilePath;
 
 namespace {
 
-const FilePath::StringType kDpDevPath = FILE_PATH_LITERAL("/dev/drm_dp_aux");
-
+const char kDpDevPath[] = "/dev/drm_dp_aux";
 }
 
 int main(int argc, char* argv[]) {

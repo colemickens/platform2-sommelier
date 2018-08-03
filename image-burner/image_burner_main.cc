@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_ALL;
-  settings.log_file = FILE_PATH_LITERAL("/var/log/image_burner.log");
+  settings.log_file = "/var/log/image_burner.log";
   settings.lock_log = logging::LOCK_LOG_FILE;
   settings.delete_old = logging::DELETE_OLD_LOG_FILE;
   logging::InitLogging(settings);

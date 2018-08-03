@@ -167,8 +167,7 @@ std::vector<std::string> GetArtFileList(std::string isa) {
   std::vector<std::string> art_file_list;
   const base::FilePath isa_dir = base::FilePath(kFrameworkPath).Append(isa);
   base::FileEnumerator art_files(isa_dir, false /* recursive */,
-                                 base::FileEnumerator::FILES,
-                                 FILE_PATH_LITERAL("*.art"));
+                                 base::FileEnumerator::FILES, "*.art");
   for (auto src_file = art_files.Next(); !src_file.empty();
        src_file = art_files.Next()) {
     art_file_list.push_back(kArtFilePrefix + src_file.BaseName().value());
@@ -181,8 +180,7 @@ std::vector<std::string> GetArtFileList(std::string isa) {
 bool IsSynced(const base::FilePath system_isa_image_dir,
               const base::FilePath cache_isa_image_dir) {
   base::FileEnumerator art_files(system_isa_image_dir, false /* recursive */,
-                                 base::FileEnumerator::FILES,
-                                 FILE_PATH_LITERAL("*.art"));
+                                 base::FileEnumerator::FILES, "*.art");
   for (auto art_file = art_files.Next(); !art_file.empty();
        art_file = art_files.Next()) {
     const base::FilePath cache_art_file = cache_isa_image_dir.Append(

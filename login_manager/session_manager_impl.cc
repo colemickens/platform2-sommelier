@@ -128,23 +128,20 @@ namespace {
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 
 // Device-local account state directory.
-const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
-    FILE_PATH_LITERAL("/var/lib/device_local_accounts");
+const char kDeviceLocalAccountStateDir[] = "/var/lib/device_local_accounts";
 
 #if USE_CHEETS
 // To launch ARC, certain amount of free disk space is needed.
 // Path and the amount for the check.
-constexpr base::FilePath::CharType kArcDiskCheckPath[] = "/home";
+constexpr char kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
 constexpr size_t kArcContainerInstanceIdLength = 16;
 
 // Name of android-data directory.
-const base::FilePath::CharType kAndroidDataDirName[] =
-    FILE_PATH_LITERAL("android-data");
+const char kAndroidDataDirName[] = "android-data";
 
 // Name of android-data-old directory which RemoveArcDataInternal uses.
-const base::FilePath::CharType kAndroidDataOldDirName[] =
-    FILE_PATH_LITERAL("android-data-old");
+const char kAndroidDataOldDirName[] = "android-data-old";
 
 // To set the CPU limits of the Android container.
 const char kCpuSharesFile[] =

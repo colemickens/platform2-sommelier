@@ -98,8 +98,7 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
   FilePath biod_path =
       root_path_.Append(user_id).Append(kBiod).Append(biometrics_manager_name_);
   base::FileEnumerator enum_records(biod_path, false,
-                                    base::FileEnumerator::FILES,
-                                    FILE_PATH_LITERAL("Record*"));
+                                    base::FileEnumerator::FILES, "Record*");
   bool read_all_records_successfully = true;
   for (FilePath record_path = enum_records.Next(); !record_path.empty();
        record_path = enum_records.Next()) {

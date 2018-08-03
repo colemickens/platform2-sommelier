@@ -113,8 +113,8 @@ class BasicCgroupManipulationTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     base::FilePath cgroup_root;
-    ASSERT_TRUE(base::CreateTemporaryDirInDir(
-        temp_dir_.GetPath(), FILE_PATH_LITERAL("cgtest"), &cgroup_root));
+    ASSERT_TRUE(base::CreateTemporaryDirInDir(temp_dir_.GetPath(), "cgtest",
+                                              &cgroup_root));
 
     for (const char* subsystem :
          {"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"}) {

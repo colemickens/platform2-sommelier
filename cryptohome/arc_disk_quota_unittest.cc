@@ -25,8 +25,8 @@ namespace cryptohome {
 
 namespace {
 
-constexpr base::FilePath::CharType kHome[] = "/home";
-constexpr base::FilePath::CharType kDev[] = "/dev/mmcblk0p1";
+constexpr char kHome[] = "/home";
+constexpr char kDev[] = "/dev/mmcblk0p1";
 
 }  // namespace
 

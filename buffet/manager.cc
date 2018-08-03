@@ -68,7 +68,7 @@ bool LoadFile(const base::FilePath& file_path,
 void LoadCommandDefinitions(const BuffetConfig::Options& options,
                             weave::Device* device) {
   auto load_packages = [device](const base::FilePath& root,
-                                const base::FilePath::StringType& pattern) {
+                                const std::string& pattern) {
     base::FilePath dir{root.Append("commands")};
     LOG(INFO) << "Looking for command schemas in " << dir.value();
     base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
@@ -81,8 +81,8 @@ void LoadCommandDefinitions(const BuffetConfig::Options& options,
       device->AddCommandDefinitionsFromJson(json);
     }
   };
-  load_packages(options.definitions, FILE_PATH_LITERAL("*.json"));
-  load_packages(options.test_definitions, FILE_PATH_LITERAL("*test.json"));
+  load_packages(options.definitions, "*.json");
+  load_packages(options.test_definitions, "*test.json");
 }
 
 void LoadStateDefinitions(const BuffetConfig::Options& options,
@@ -91,7 +91,7 @@ void LoadStateDefinitions(const BuffetConfig::Options& options,
   base::FilePath dir{options.definitions.Append("states")};
   LOG(INFO) << "Looking for state definitions in " << dir.value();
   base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.schema.json"));
+                                  "*.schema.json");
   std::vector<std::string> result;
   for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {
@@ -108,7 +108,7 @@ void LoadStateDefaults(const BuffetConfig::Options& options,
   base::FilePath dir{options.definitions.Append("states")};
   LOG(INFO) << "Looking for state defaults in " << dir.value();
   base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.defaults.json"));
+                                  "*.defaults.json");
   std::vector<std::string> result;
   for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {

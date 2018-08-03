@@ -446,7 +446,7 @@ bool MountManager::ShouldReserveMountPathOnError(
 
 bool MountManager::IsPathImmediateChildOfParent(const string& path,
                                                 const string& parent) const {
-  vector<FilePath::StringType> path_components, parent_components;
+  vector<std::string> path_components, parent_components;
   FilePath(path).StripTrailingSeparators().GetComponents(&path_components);
   FilePath(parent).StripTrailingSeparators().GetComponents(&parent_components);
   if (path_components.size() != parent_components.size() + 1)

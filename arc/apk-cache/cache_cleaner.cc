@@ -53,8 +53,7 @@ bool RemoveUnexpectedFilesFromCacheRoot(const base::FilePath& cache_root) {
 }
 
 // Returns if |file_name| matches the |pattern|.
-bool IsMatch(const base::FilePath::StringType& file_name,
-             const base::FilePath::StringType& pattern) {
+bool IsMatch(const std::string& file_name, const std::string& pattern) {
   return fnmatch(pattern.c_str(), file_name.c_str(), FNM_NOESCAPE) == 0;
 }
 
@@ -127,7 +126,7 @@ bool IsPackageValid(const base::FilePath& package_path) {
       return false;
     }
 
-    const base::FilePath::StringType file_name = file_path.BaseName().value();
+    const std::string file_name = file_path.BaseName().value();
     if (IsMatch(file_name, apk_file_name)) {
       apk_count++;
     } else if (IsMatch(file_name, kAttrJson)) {

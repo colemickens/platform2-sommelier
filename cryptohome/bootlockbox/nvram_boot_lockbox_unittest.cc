@@ -14,8 +14,7 @@
 #include <gtest/gtest.h>
 
 namespace {
-  const base::FilePath::CharType kTestFilePath[] =
-    FILE_PATH_LITERAL("test_file_path.pb");
+const char kTestFilePath[] = "test_file_path.pb";
 }
 
 namespace cryptohome {

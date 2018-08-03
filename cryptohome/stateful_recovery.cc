@@ -24,16 +24,16 @@ using base::FilePath;
 
 namespace cryptohome {
 
-const FilePath::CharType StatefulRecovery::kRecoverSource[] =
-  FILE_PATH_LITERAL("/mnt/stateful_partition/encrypted");
-const FilePath::CharType StatefulRecovery::kRecoverDestination[] =
-  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypted");
-const FilePath::CharType StatefulRecovery::kRecoverBlockUsage[] =
-  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypted/block-usage.txt");
-const FilePath::CharType StatefulRecovery::kRecoverFilesystemDetails[] =
-  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypted/filesystem-details.txt");
-const FilePath::CharType StatefulRecovery::kFlagFile[] =
-  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypt_stateful");
+const char StatefulRecovery::kRecoverSource[] =
+  "/mnt/stateful_partition/encrypted";
+const char StatefulRecovery::kRecoverDestination[] =
+  "/mnt/stateful_partition/decrypted";
+const char StatefulRecovery::kRecoverBlockUsage[] =
+  "/mnt/stateful_partition/decrypted/block-usage.txt";
+const char StatefulRecovery::kRecoverFilesystemDetails[] =
+  "/mnt/stateful_partition/decrypted/filesystem-details.txt";
+const char StatefulRecovery::kFlagFile[] =
+  "/mnt/stateful_partition/decrypt_stateful";
 
 StatefulRecovery::StatefulRecovery(Platform *platform, Service *service)
     : requested_(false), platform_(platform), service_(service) { }

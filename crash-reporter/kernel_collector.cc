@@ -586,9 +586,8 @@ std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
   // Scan /sys/fs/pstore/.
   std::string efi_crash_pattern =
       StringPrintf("%s-%s-*", kDumpRecordDmesgName, kDumpDriverEfiName);
-  base::FileEnumerator efi_file_iter(pstore_dir, false,
-                                     base::FileEnumerator::FILES,
-                                     FILE_PATH_LITERAL(efi_crash_pattern));
+  base::FileEnumerator efi_file_iter(
+      pstore_dir, false, base::FileEnumerator::FILES, efi_crash_pattern);
 
   for (auto efi_file = efi_file_iter.Next(); !efi_file.empty();
        efi_file = efi_file_iter.Next()) {

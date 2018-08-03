@@ -236,7 +236,7 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
   // It will be made write-only below; we need to be able to read it
   // when trying to create a unique name inside it.
   base::FilePath temp_dir_path;
-  if (!base::CreateNewTempDirectory(FILE_PATH_LITERAL(""), &temp_dir_path)) {
+  if (!base::CreateNewTempDirectory("", &temp_dir_path)) {
     PLOG(ERROR) << "Can't create temp dir";
     return false;
   }

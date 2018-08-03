@@ -14,8 +14,7 @@ namespace login_manager {
 
 namespace {
 
-const base::FilePath::CharType kPrefsFileName[] =
-    FILE_PATH_LITERAL("preferences");
+const char kPrefsFileName[] = "preferences";
 
 }  // namespace
 

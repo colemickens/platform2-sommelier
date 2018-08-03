@@ -111,8 +111,7 @@ void StartFakeLogCollectorService(
   }
 }
 
-constexpr base::FilePath::CharType kServerSocket[] =
-    FILE_PATH_LITERAL("server");
+constexpr char kServerSocket[] = "server";
 
 // Test fixture for actually testing the Collector functionality.
 class CollectorTest : public ::testing::Test {

@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cfm-device-updater/bizlink-updater/src/mcdp_chip_ctrl.h"
+#include <memory>
+
 #include "cfm-device-updater/bizlink-updater/src/dp_aux_ctrl.h"
+#include "cfm-device-updater/bizlink-updater/src/mcdp_chip_ctrl.h"
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -88,8 +90,6 @@ const McdpChipBranchInfo kMcdpChipBrandIdTable[] = {
      6,
      {' ', ' ', ' ', ' ', ' ', ' '},
      0}};
-
-const base::FilePath::StringType DP_AUX_DEV_PATH = "/dev/drm_dp_aux";
 
 }  // namespace
 
