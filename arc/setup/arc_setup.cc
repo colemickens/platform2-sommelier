@@ -151,6 +151,13 @@ constexpr base::TimeDelta kReadAheadTimeout = base::TimeDelta::FromSeconds(7);
 // The maximum time to wait for /data/media setup.
 constexpr base::TimeDelta kInstalldTimeout = base::TimeDelta::FromSeconds(60);
 
+// The IPV4 address of the container.
+constexpr char kArcContainerIPv4Address[] = "100.115.92.2/30";
+
+// The IPV4 address of the gateway inside the container. This corresponds to the
+// address of "br0".
+constexpr char kArcGatewayIPv4Address[] = "100.115.92.1";
+
 bool RegisterAllBinFmtMiscEntries(ArcMounter* mounter,
                                   const base::FilePath& entry_directory,
                                   const base::FilePath& binfmt_misc_directory) {
@@ -1071,11 +1078,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       GetEnvOrDie(arc_paths_->env.get(), "ARC_UI_SCALE");
   LOG(INFO) << "ui_scale is " << arc_ui_scale;
 
-  const std::string arc_container_ipv4_address =
-      GetEnvOrDie(arc_paths_->env.get(), "ARC_CONTAINER_IPV4_ADDRESS");
-  const std::string arc_gateway_ipv4_address =
-      GetEnvOrDie(arc_paths_->env.get(), "ARC_GATEWAY_IPV4_ADDRESS");
-
   std::string native_bridge;
   switch (IdentifyBinaryTranslationType()) {
     case ArcBinaryTranslationType::NONE:
@@ -1124,9 +1126,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       "androidboot.chromeos_channel=%s "
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
       is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable,
-      arc_lcd_density.c_str(), arc_ui_scale.c_str(),
-      arc_container_ipv4_address.c_str(), arc_gateway_ipv4_address.c_str(),
-      native_bridge.c_str(), chromeos_channel.c_str(),
+      arc_lcd_density.c_str(), arc_ui_scale.c_str(), kArcContainerIPv4Address,
+      kArcGatewayIPv4Address, native_bridge.c_str(), chromeos_channel.c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
@@ -1344,10 +1345,8 @@ void ArcSetup::SetUpNetwork() {
   const base::FilePath eth_dir = misc_dir.Append("ethernet");
   const base::FilePath ipconfig_dest = eth_dir.Append("ipconfig.txt");
 
-  std::string ip_addr =
-      GetEnvOrDie(arc_paths_->env.get(), "ARC_CONTAINER_IPV4_ADDRESS");
-  std::string gateway =
-      GetEnvOrDie(arc_paths_->env.get(), "ARC_GATEWAY_IPV4_ADDRESS");
+  std::string ip_addr(kArcContainerIPv4Address);
+  std::string gateway(kArcGatewayIPv4Address);
 
   // Get rid of prefix length from ip address.
   const size_t mask_position = ip_addr.find('/');

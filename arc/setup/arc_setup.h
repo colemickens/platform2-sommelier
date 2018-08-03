@@ -220,9 +220,8 @@ class ArcSetup {
   // /data/misc/ethernet/ipconfig.txt so that the container can set up
   // networking by itself.
   //
-  // This file is populated with a static address and default gateway from the
-  // ARC_CONTAINER_IPV4_ADDRESS and ARC_GATEWAY_IPV4_ADDRESS environment
-  // variables respectively.  The Google Public DNS servers (8.8.8.8 and
+  // This file is populated with a static address and default gateway defined
+  // in arc_setup.cc.  The Google Public DNS servers (8.8.8.8 and
   // 8.8.4.4) as set as the DNS resolvers.
   void SetUpNetwork();
 
