@@ -56,29 +56,44 @@ bool JpegCompressorImpl::CompressImage(const void* image,
   }
 
   if (out_data_size == nullptr || out_buffer == nullptr) {
-    LOGF(ERROR) << "Output should not be nullptr. ";
+    LOGF(ERROR) << "Output should not be nullptr";
     return false;
   }
 
-  uint32_t input_data_size = static_cast<uint32_t>(width * height * 3 / 2);
-  if (mode != JpegCompressor::Mode::kSwOnly &&
-      EncodeHw(static_cast<const uint8_t*>(image), input_data_size, width,
-               height, static_cast<const uint8_t*>(app1_buffer), app1_size,
-               out_buffer_size, out_buffer, out_data_size)) {
-    return true;
-  }
+  auto method_used = [&]() -> const char* {
+    if (mode != JpegCompressor::Mode::kSwOnly) {
+      // Try HW encode.
+      uint32_t input_data_size = static_cast<uint32_t>(width * height * 3 / 2);
+      if (EncodeHw(static_cast<const uint8_t*>(image), input_data_size, width,
+                   height, static_cast<const uint8_t*>(app1_buffer), app1_size,
+                   out_buffer_size, out_buffer, out_data_size)) {
+        return "hardware";
+      }
+      if (mode != JpegCompressor::Mode::kHwOnly) {
+        LOGF(WARNING) << "Tried HW encode but failed. Fall back to SW encode";
+      }
+    }
 
-  if (mode == JpegCompressor::Mode::kHwOnly) {
+    if (mode != JpegCompressor::Mode::kHwOnly) {
+      // Try SW encode.
+      if (Encode(image, width, height, quality, app1_buffer, app1_size,
+                 out_buffer_size, out_buffer, out_data_size)) {
+        return "software";
+      }
+    }
+
+    return nullptr;
+  }();
+
+  if (method_used == nullptr) {
+    // TODO(shik): Map mode from enum to string for better readability.
+    LOGF(ERROR) << "Failed to compress image with mode = " << mode;
     return false;
   }
 
-  LOGF(INFO) << "HW encode failed. Fallback to SW encode.";
-  if (!Encode(image, width, height, quality, app1_buffer, app1_size,
-              out_buffer_size, out_buffer, out_data_size)) {
-    return false;
-  }
-  LOGF(INFO) << "Compressed JPEG: " << (width * height * 12) / 8 << "[" << width
-             << "x" << height << "] -> " << *out_data_size << " bytes";
+  LOGF(INFO) << "Compressed JPEG with " << method_used << ": "
+             << (width * height * 12) / 8 << "[" << width << "x" << height
+             << "] -> " << *out_data_size << " bytes";
   return true;
 }
 
@@ -303,7 +318,8 @@ void JpegCompressorImpl::SetJpegCompressStruct(int width,
   cinfo->comp_info[2].v_samp_factor = 1;
 }
 
-bool JpegCompressorImpl::Compress(jpeg_compress_struct* cinfo, const uint8_t* yuv) {
+bool JpegCompressorImpl::Compress(jpeg_compress_struct* cinfo,
+                                  const uint8_t* yuv) {
   JSAMPROW y[kCompressBatchSize];
   JSAMPROW cb[kCompressBatchSize / 2];
   JSAMPROW cr[kCompressBatchSize / 2];
