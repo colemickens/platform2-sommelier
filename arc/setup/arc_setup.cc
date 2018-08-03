@@ -1627,17 +1627,16 @@ void ArcSetup::ShouldDeleteDataExecutables(
     ArcBootType boot_type,
     bool* out_should_delete_data_dalvik_cache_directory,
     bool* out_should_delete_data_app_executables) {
-  if (boot_type == ArcBootType::FIRST_BOOT_AFTER_UPDATE &&
-      GetBooleanEnvOrDie(arc_paths_->env.get(),
-                         "DELETE_DATA_EXECUTABLES_AFTER_OTA")) {
+  if (boot_type == ArcBootType::FIRST_BOOT_AFTER_UPDATE) {
+    // Delete /data/dalvik-cache and /data/app/<package_name>/oat before the
+    // container starts since this is the first boot after OTA.
     *out_should_delete_data_dalvik_cache_directory = true;
     *out_should_delete_data_app_executables = true;
     return;
   }
-  *out_should_delete_data_dalvik_cache_directory =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "DELETE_DATA_DALVIK_CACHE_DIR");
-  *out_should_delete_data_app_executables =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "DELETE_DATA_APP_EXECUTABLES");
+  // Otherwise, clear neither /data/dalvik-cache nor /data/app/*/oat.
+  *out_should_delete_data_dalvik_cache_directory = false;
+  *out_should_delete_data_app_executables = false;
 }
 
 std::string ArcSetup::GetSalt() {
