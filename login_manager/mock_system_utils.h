@@ -72,6 +72,8 @@ class MockSystemUtils : public SystemUtils {
                ScopedPlatformHandle(const NamedPlatformHandle& named_handle));
 
   MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
+  MOCK_METHOD2(WriteStringToFile,
+               bool(const base::FilePath&, const std::string&));
 
   MOCK_METHOD2(ChangeBlockedSignals,
                bool(int how, const std::vector<int>& signals));

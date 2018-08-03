@@ -80,6 +80,8 @@ class SystemUtilsImpl : public SystemUtils {
       const NamedPlatformHandle& named_handle) override;
   bool ReadFileToString(const base::FilePath& path,
                         std::string* str_out) override;
+  bool WriteStringToFile(const base::FilePath& path,
+                         const std::string& data) override;
   bool ChangeBlockedSignals(int how, const std::vector<int>& signals) override;
   bool LaunchAndWait(const std::vector<std::string>& args,
                      int* exit_code_out) override;

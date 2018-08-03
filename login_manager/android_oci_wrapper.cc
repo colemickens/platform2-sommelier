@@ -221,6 +221,19 @@ void AndroidOciWrapper::ExecuteRunOciToStartContainer(
   constexpr const char* const args[] = {
       kRunOciPath, kRunOciLogging, kRunOciStartCommand, kContainerId, nullptr};
 
+  // Increase oom_score_adj to -100.
+  // Android system processes should be killable in case they exhibit memory
+  // leaks.  Without this change, they would have an oom_score_adj of -1000,
+  // making them unkillable. Android application processes will later have their
+  // oom_score_adj furthur increased. This value was chosen so that as long as a
+  // process is using less than 10% of memory, it will have an oom badness score
+  // of 1 (the lowest possible not counting unkillable processes). The threshold
+  // of 10% is an arbitrary line in the sand.
+  if (!system_utils_->WriteStringToFile(
+          base::FilePath("/proc/self/oom_score_adj"), "-100")) {
+    PLOG(FATAL) << "Failed to set oom_score_adj";
+  }
+
   std::vector<const char*> cstr_env;
   cstr_env.reserve(env.size() + 1);
   for (const std::string& keyval : env)

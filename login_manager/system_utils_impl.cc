@@ -386,6 +386,11 @@ bool SystemUtilsImpl::ReadFileToString(const base::FilePath& path,
   return base::ReadFileToString(path, str_out);
 }
 
+bool SystemUtilsImpl::WriteStringToFile(const base::FilePath& path,
+                                        const std::string& data) {
+  return brillo::WriteStringToFile(path, data);
+}
+
 bool SystemUtilsImpl::ChangeBlockedSignals(int how,
                                            const std::vector<int>& signals) {
   sigset_t sigset;

@@ -182,6 +182,10 @@ class SystemUtils {
   virtual bool ReadFileToString(const base::FilePath& path,
                                 std::string* str_out) = 0;
 
+  // Writes string |data| to file at |path|.
+  virtual bool WriteStringToFile(const base::FilePath& path,
+                                 const std::string& data) = 0;
+
   // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK| and
   // |SIG_SETMASK|. See man page of sigprocmask(2) for more details. |signals|
   // contains all signals to operate on.

@@ -247,6 +247,9 @@ TEST_F(AndroidOciWrapperTest, StartContainerChildProcess) {
   EXPECT_CALL(system_utils_, close(13)).WillOnce(Return(0));
 
   EXPECT_CALL(system_utils_, setsid()).WillOnce(Return(0));
+  EXPECT_CALL(system_utils_,
+              WriteStringToFile(base::FilePath("/proc/self/oom_score_adj"), _))
+      .WillOnce(Return(true));
 
   EXPECT_CALL(system_utils_,
               execve(base::FilePath(AndroidOciWrapper::kRunOciPath), _, _));
