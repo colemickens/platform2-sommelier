@@ -670,9 +670,9 @@ int RunOci(const base::FilePath& bundle_dir,
   libcontainer::Container container(oci_config->hostname,
                                     base::FilePath("/unused"));
 
-  // Close all open FDs in the container except stdout/stderr, so that we get
-  // unified logs.
-  const int inherited_fds[] = {STDOUT_FILENO, STDERR_FILENO};
+  // Close all open FDs in the container except stdio, so that we get unified
+  // logs.
+  const int inherited_fds[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
   if (container_config_inherit_fds(config.get(), inherited_fds,
                                    arraysize(inherited_fds))) {
     LOG(WARNING) << "Failed to inherit stdout/stderr.";
