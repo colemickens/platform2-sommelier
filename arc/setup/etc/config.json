@@ -1,3 +1,7 @@
 {
-  "TODO":"Replace this with a real config file and remove arc-setup-env."
+  "ANDROID_DEBUGGABLE": false,
+  "ARC_LCD_DENSITY": -1,
+  "ARC_UI_SCALE": -1,
+  "USE_ESDFS": false,
+  "WRITABLE_MOUNT": false
 }

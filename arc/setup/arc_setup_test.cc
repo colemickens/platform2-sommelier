@@ -116,14 +116,11 @@ TEST(ArcSetup, TestOnetimeSetupStop) {
   base::CommandLine::ForCurrentProcess()->InitFromArgv(arraysize(argv), argv);
   std::unique_ptr<base::Environment> env(base::Environment::Create());
 
-  // ArcSetup needs some environment variables.
-  ASSERT_TRUE(env->SetVar("WRITABLE_MOUNT", "0"));
-
-  // ..and a JSON file.
+  // ArcSetup needs some config variables.
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
   const base::FilePath config_json(temp_directory.GetPath().Append("json"));
-  ASSERT_TRUE(WriteToFile(config_json, 0700, "{\"a\":true,\"b\":42}"));
+  ASSERT_TRUE(WriteToFile(config_json, 0700, "{\"WRITABLE_MOUNT\": false}"));
 
   ArcSetup setup(Mode::ONETIME_SETUP, config_json);
   setup.set_arc_mounter_for_testing(std::make_unique<MockArcMounter>());

@@ -326,9 +326,12 @@
 	"hooks": {
 		"precreate": [
 			{
-				"path": "/usr/sbin/arc_setup_wrapper.sh",
+				"path": "/usr/sbin/arc-setup",
 				"args": [
-					"arc_setup_wrapper.sh"
+					"arc-setup",
+					"--log_to_stderr",
+					"--log_tag=arc-setup-precreate",
+					"--mode=setup"
 				],
 				"timeout": 20
 			}
