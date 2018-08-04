@@ -58,7 +58,7 @@ void SmdpImpl::OnHttpResponse(
 
   std::string raw_data = response->ExtractDataAsString();
 
-  LOG(INFO) << raw_data;
+  VLOG(1) << __func__ << ": Response raw_data : " << raw_data;
 
   std::unique_ptr<base::Value> result = base::JSONReader::Read(raw_data);
   if (result) {
@@ -121,7 +121,6 @@ void SmdpImpl::OnInitiateAuthenticationResponse(
 void SmdpImpl::OnHttpError(const ErrorCallback& error_callback,
                            brillo::http::RequestID request_id,
                            const brillo::Error* error) {
-  LOG(INFO) << "here";
   error_callback.Run(std::vector<uint8_t>());
 }
 
@@ -130,7 +129,7 @@ void SmdpImpl::SendJsonRequest(
     const std::string& json_data,
     const base::Callback<void(DictionaryPtr)>& data_callback,
     const ErrorCallback& error_callback) {
-  LOG(INFO) << "sending : " << json_data;
+  VLOG(1) << __func__ << ": sending data : " << json_data;
   brillo::ErrorPtr error = nullptr;
   brillo::http::Request request(url, brillo::http::request_type::kPost,
                                 server_transport_);
@@ -171,7 +170,7 @@ void SmdpImpl::OnAuthenticateClientResponse(
     const base::Closure& success_callback,
     const ErrorCallback& error_callback,
     DictionaryPtr json_dict) {
-  LOG(INFO) << "Client authenticated successfully";
+  VLOG(1) << __func__ << ": Client authenticated successfully";
   std::string encoded_buffer;
   std::string smdp_signed2;
   if (!json_dict->GetString("smdpSigned2", &encoded_buffer)) {

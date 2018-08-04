@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
 
 namespace {
 // This allows testing of EsimQmiImpl without actually needing to open a real
@@ -114,8 +115,13 @@ void EsimQmiImpl::Initialize(const base::Closure& success_callback,
       qrtr_socket_fd_.get(), true /* persistant */,
       base::MessageLoopForIO::WATCH_READ, &watcher_, this);
   CHECK(ret);
-  qrtr_new_lookup(qrtr_socket_fd_.get(), kQrtrUimService, 1 /* version */,
-                  0 /* instance */);
+  int success = qrtr_new_lookup(qrtr_socket_fd_.get(), kQrtrUimService,
+                                1 /* version */, 0 /* instance */);
+  if (success < 0) {
+    LOG(ERROR) << __func__ << ": qrtr_new_lookup failed";
+    error_callback.Run(EsimError::kEsimError);
+    return;
+  }
   initialize_callback_ = success_callback;
 }
 
@@ -124,8 +130,12 @@ std::unique_ptr<EsimQmiImpl> EsimQmiImpl::Create(std::string imei,
                                                  std::string matching_id) {
   base::ScopedFD fd(qrtr_open(kQrtrPort));
   if (!fd.is_valid()) {
+    LOG(ERROR) << __func__ << ": Could not open socket";
     return nullptr;
   }
+
+  VLOG(1) << "Constructing Esim object with slot : "
+          << static_cast<int>(kEsimSlot) << " and imei " << imei;
 
   return base::WrapUnique(
       new EsimQmiImpl(kEsimSlot, imei, matching_id, std::move(fd)));
@@ -136,8 +146,12 @@ std::unique_ptr<EsimQmiImpl> EsimQmiImpl::CreateForTest(
     base::ScopedFD* sock, std::string imei, std::string matching_id) {
   base::ScopedFD fd;
   if (!CreateSocketPair(&fd, sock)) {
+    LOG(ERROR) << __func__ << ": Could not open socket";
     return nullptr;
   }
+
+  VLOG(1) << __func__ << ": Constructing test Esim object with slot : "
+          << static_cast<int>(kEsimSlot) << " and imei " << imei;
 
   return base::WrapUnique(
       new EsimQmiImpl(kEsimSlot, imei, matching_id, std::move(fd)));
@@ -163,10 +177,15 @@ void EsimQmiImpl::OpenLogicalChannel(const DataCallback& data_callback,
       current_transaction_, &request, uim_open_logical_channel_req_ei);
 
   if (len < 0) {
+    LOG(ERROR) << __func__ << ": qmi_encode_message failed";
     error_callback.Run(EsimError::kEsimError);
     return;
   }
 
+  VLOG(1) << __func__
+          << ": Initiating OpenLogicalChannel Transaction with request (size : "
+          << buffer.data_len
+          << ") : " << base::HexEncode(buffer.data, buffer.data_len);
   InitiateTransaction(buffer, data_callback, error_callback);
 }
 
@@ -174,6 +193,7 @@ void EsimQmiImpl::GetInfo(int which,
                           const DataCallback& data_callback,
                           const ErrorCallback& error_callback) {
   if (!qrtr_socket_fd_.is_valid()) {
+    LOG(ERROR) << __func__ << ": File Descriptor to QRTR invalid";
     error_callback.Run(EsimError::kEsimNotConnected);
     return;
   }
@@ -185,13 +205,20 @@ void EsimQmiImpl::GetInfo(int which,
   };
 
   payload_.clear();
+
+  VLOG(1) << __func__
+          << ": Added GetInfo APDU (size : " << get_info_request.size()
+          << ") to queue : "
+          << base::HexEncode(get_info_request.data(), get_info_request.size());
   QueueStoreData(get_info_request);
+
   SendApdu(data_callback, error_callback);
 }
 
 void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
                                const ErrorCallback& error_callback) {
   if (!qrtr_socket_fd_.is_valid()) {
+    LOG(ERROR) << __func__ << ": File Descriptor to QRTR invalid";
     error_callback.Run(EsimError::kEsimNotConnected);
     return;
   }
@@ -202,7 +229,13 @@ void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
       0x00,  // APDU Length
   };
   payload_.clear();
+
+  VLOG(1) << __func__ << ": Added GetChallenge APDU (size : "
+          << get_challenge_request.size() << ") to queue : "
+          << base::HexEncode(get_challenge_request.data(),
+                             get_challenge_request.size());
   QueueStoreData(get_challenge_request);
+
   SendApdu(data_callback, error_callback);
 }
 
@@ -216,6 +249,7 @@ void EsimQmiImpl::AuthenticateServer(
     const DataCallback& data_callback,
     const ErrorCallback& error_callback) {
   if (!qrtr_socket_fd_.is_valid()) {
+    LOG(ERROR) << __func__ << ": File Descriptor to QRTR invalid";
     error_callback.Run(EsimError::kEsimNotConnected);
     return;
   }
@@ -264,6 +298,9 @@ void EsimQmiImpl::FragmentAndQueueApdu(
     uint8_t cla, uint8_t ins, const std::vector<uint8_t>& apdu_payload) {
   size_t total_packets = std::max(1u,
       (apdu_payload.size() + kMaxApduDataSize - 1) / kMaxApduDataSize);
+
+  VLOG(1) << __func__ << ": constructing " << total_packets << " packets";
+
   auto front_iterator = apdu_payload.begin();
   size_t i;
   for (i = 0; i < total_packets - 1; ++i) {
@@ -271,6 +308,8 @@ void EsimQmiImpl::FragmentAndQueueApdu(
                              kMaxApduDataSize};
     buf.reserve(kMaxApduDataSize + 5);
     buf.insert(buf.end(), front_iterator, front_iterator + kMaxApduDataSize);
+    VLOG(1) << __func__ << ": Queuing APDU fragment (size : " << buf.size()
+            << ") : " << base::HexEncode(buf.data(), buf.size());
     apdu_queue_.push_back(std::move(buf));
     std::advance(front_iterator, kMaxApduDataSize);
   }
@@ -280,13 +319,15 @@ void EsimQmiImpl::FragmentAndQueueApdu(
   buf.reserve(final_packet_size + 6);
   buf.insert(buf.end(), front_iterator, front_iterator + final_packet_size);
   buf.push_back(kLeByte);
+  VLOG(1) << __func__ << ": Queuing final APDU fragment (size : " << buf.size()
+          << ") : " << base::HexEncode(buf.data(), buf.size());
   apdu_queue_.push_back(std::move(buf));
 }
 
 void EsimQmiImpl::SendApdu(const DataCallback& data_callback,
                            const ErrorCallback& error_callback) {
   if (apdu_queue_.empty()) {
-    LOG(ERROR) << __func__ << " called with empty queue";
+    LOG(ERROR) << __func__ << ": called with empty queue";
     error_callback.Run(EsimError::kEsimError);
     return;
   }
@@ -312,9 +353,14 @@ void EsimQmiImpl::SendApdu(const DataCallback& data_callback,
       current_transaction_, &request, uim_send_apdu_req_ei);
 
   if (len < 0) {
+    LOG(ERROR) << __func__ << ": qmi_encode_message failed";
     error_callback.Run(EsimError::kEsimError);
     return;
   }
+
+  VLOG(1) << __func__ << ": Initiating APDU Transaction with buffer (size : "
+          << buffer.data_len
+          << ") : " << base::HexEncode(buffer.data, buffer.data_len);
 
   InitiateTransaction(buffer, data_callback, error_callback);
 }
@@ -326,9 +372,12 @@ void EsimQmiImpl::InitiateTransaction(const qrtr_packet& packet,
                                packet.data_len);
 
   if (bytes_sent < 0) {
+    LOG(ERROR) << __func__ << ": qrtr_sendto failed";
     error_callback.Run(EsimError::kEsimError);
     return;
   }
+
+  VLOG(1) << __func__ << ": Packet sent to eSIM, saving callbacks";
 
   response_callbacks_[current_transaction_++] =
       TransactionCallback(data_callback, error_callback);
@@ -338,19 +387,21 @@ void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
   uint32_t qmi_type;
   int ret = qmi_decode_header(&packet, &qmi_type);
   if (ret < 0) {
-    LOG(ERROR) << "Got invalid data packet.";
+    LOG(ERROR) << __func__ << ": Got invalid data packet.";
     return;
   }
   uint32_t transaction_number = GetTransactionNumber(packet);
 
   if (transaction_number > current_transaction_ || transaction_number == 0) {
-    LOG(ERROR) << "Got invalid transaction number.";
+    LOG(ERROR) << __func__
+               << ": Got invalid transaction number : " << transaction_number;
     return;
   }
 
   const auto& callbacks = response_callbacks_.find(transaction_number);
   if (callbacks == response_callbacks_.end()) {
-    LOG(ERROR) << "Couldn't find transaction " << transaction_number;
+    LOG(ERROR) << __func__ << ": Couldn't find transaction "
+               << transaction_number;
     return;
   }
 
@@ -392,7 +443,7 @@ void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
                          static_cast<uint32_t>(QmiUimCommand::kSendApdu),
                          uim_send_apdu_resp_ei);
       if (!ResponseSuccess(resp.result.result)) {
-        LOG(ERROR) << "Response invalid.";
+        LOG(ERROR) << __func__ << ": APDU response invalid.";
 
         // TODO(jruthe): ditto
         response_callbacks_.erase(callbacks);
@@ -427,7 +478,7 @@ void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
     case static_cast<uint32_t>(QmiUimCommand::kReset):
       break;
     default:
-      DLOG(INFO) << "Unknown QMI data type: " << qmi_type;
+      LOG(WARNING) << __func__ << ": Unknown QMI data type: " << qmi_type;
       break;
   }
 }
@@ -469,6 +520,8 @@ bool EsimQmiImpl::ConstructCtxParams(std::vector<uint8_t>* ctx_params) {
 
   std::vector<uint8_t> tac(imei_bytes.begin(), imei_bytes.begin() + 4);
 
+  VLOG(1) << "converted imei : " << base::HexEncode(imei_.data(), imei_.size());
+
   std::vector<uint8_t> matching_id_bytes;
   if (!StringToBcdBytes(matching_id_, &matching_id_bytes)) {
     LOG(ERROR) << __func__ << ": failed to convert matching_id ("
@@ -498,6 +551,9 @@ bool EsimQmiImpl::ConstructCtxParams(std::vector<uint8_t>* ctx_params) {
   ctx_params->push_back(kAsn1TagCtx2);
   ctx_params->push_back(static_cast<uint8_t>(imei_.size()));
   ctx_params->insert(ctx_params->end(), imei_.begin(), imei_.end());
+
+  VLOG(1) << "ctxParams : "
+          << base::HexEncode(ctx_params->data(), ctx_params->size());
 
   return true;
 }
@@ -529,7 +585,7 @@ void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
   int bytes_received = qrtr_recvfrom(qrtr_socket_fd_.get(), buffer_.data(),
                                      buffer_.size(), &node, &port);
   if (bytes_received < 0) {
-    LOG(ERROR) << "Recvfrom failed.";
+    LOG(ERROR) << __func__ << ": Recvfrom failed.";
     return;
   }
 
@@ -541,7 +597,7 @@ void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
   qrtr_packet pkt;
   int ret = qrtr_decode(&pkt, buffer_.data(), bytes_received, &qrtr_sock);
   if (ret < 0) {
-    LOG(ERROR) << "Qrtr_decode failed.";
+    LOG(ERROR) << __func__ << ": Qrtr_decode failed.";
     return;
   }
 
@@ -555,10 +611,14 @@ void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
       }
       break;
     case QRTR_TYPE_DATA:
+      VLOG(1)
+          << __func__
+          << ": calling EsimQmiImpl::FinalizeTransaction with packet (size : "
+          << pkt.data_len << ") : " << base::HexEncode(pkt.data, pkt.data_len);
       FinalizeTransaction(pkt);
       break;
     default:
-      DLOG(INFO) << "Unkown QRTR packet type: " << pkt.type;
+      LOG(WARNING) << __func__ << ": Unkown QRTR packet type: " << pkt.type;
       break;
   }
 }

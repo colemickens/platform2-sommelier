@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/macros.h>
 
 #include "hermes/esim.h"
