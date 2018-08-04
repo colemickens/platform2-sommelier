@@ -14,13 +14,16 @@
 // limitations under the License.
 //
 
-#include "shill/net/ip_address.h"
-
-#include <gtest/gtest.h>
-
 #include <arpa/inet.h>
 
+#include <tuple>
+#include <vector>
+
+#include <base/macros.h>
+#include <gtest/gtest.h>
+
 #include "shill/net/byte_string.h"
+#include "shill/net/ip_address.h"
 
 using std::string;
 using testing::Test;
@@ -469,5 +472,86 @@ INSTANTIATE_TEST_CASE_P(
                                "192.168.1.1/16", "192.168.2.2/24", true),
         CanReachAddressMapping(IPAddress::kFamilyIPv4,
                                "192.168.1.1/24", "192.168.2.2/16", false)));
+
+namespace {
+
+// The order which these addresses are declared is important.  They
+// should be listed in ascending order.
+const IPAddress kIPv4OrderedAddresses[] = {IPAddress("127.0.0.1"),
+                                           IPAddress("192.168.1.1"),
+                                           IPAddress("192.168.1.32"),
+                                           IPAddress("192.168.2.1"),
+                                           IPAddress("192.168.2.32"),
+                                           IPAddress("255.255.255.255")};
+
+const IPAddress kIPv6OrderedAddresses[] = {IPAddress("::1"),
+                                           IPAddress("2401:fa00:480:c6::30"),
+                                           IPAddress("2401:fa00:480:c6::1:10"),
+                                           IPAddress("2401:fa00:480:f6::6"),
+                                           IPAddress("2401:fa01:480:f6::1"),
+                                           IPAddress("fe80:1000::"),
+                                           IPAddress("ff02::1")};
+
+}  // namespace
+
+class IPAddressIPv4ComparisonTest
+    : public testing::TestWithParam<std::tuple<size_t, size_t>> {};
+
+class IPAddressIPv6ComparisonTest
+    : public testing::TestWithParam<std::tuple<size_t, size_t>> {};
+
+class IPAddressCrossComparisonTest
+    : public testing::TestWithParam<std::tuple<size_t, size_t>> {};
+
+TEST_P(IPAddressIPv4ComparisonTest, LessThanTest) {
+  size_t i = std::get<0>(GetParam());
+  size_t j = std::get<1>(GetParam());
+
+  if (i < j) {
+    EXPECT_LT(kIPv4OrderedAddresses[i], kIPv4OrderedAddresses[j]);
+  } else {
+    EXPECT_FALSE(kIPv4OrderedAddresses[i] < kIPv4OrderedAddresses[j]);
+  }
+}
+
+TEST_P(IPAddressIPv6ComparisonTest, LessThanTest) {
+  size_t i = std::get<0>(GetParam());
+  size_t j = std::get<1>(GetParam());
+
+  if (i < j) {
+    EXPECT_LT(kIPv6OrderedAddresses[i], kIPv6OrderedAddresses[j]);
+  } else {
+    EXPECT_FALSE(kIPv6OrderedAddresses[i] < kIPv6OrderedAddresses[j]);
+  }
+}
+
+TEST_P(IPAddressCrossComparisonTest, LessThanTest) {
+  size_t i4 = std::get<0>(GetParam());
+  size_t i6 = std::get<1>(GetParam());
+
+  EXPECT_TRUE(kIPv4OrderedAddresses[i4] < kIPv6OrderedAddresses[i6]);
+  EXPECT_FALSE(kIPv6OrderedAddresses[i6] < kIPv4OrderedAddresses[i4]);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ComparisonTest,
+    IPAddressIPv4ComparisonTest,
+    testing::Combine(
+        testing::Range<size_t>(0, arraysize(kIPv4OrderedAddresses) - 1),
+        testing::Range<size_t>(0, arraysize(kIPv4OrderedAddresses) - 1)));
+
+INSTANTIATE_TEST_CASE_P(
+    ComparisonTest,
+    IPAddressIPv6ComparisonTest,
+    testing::Combine(
+        testing::Range<size_t>(0, arraysize(kIPv6OrderedAddresses) - 1),
+        testing::Range<size_t>(0, arraysize(kIPv6OrderedAddresses) - 1)));
+
+INSTANTIATE_TEST_CASE_P(
+    ComparisonTest,
+    IPAddressCrossComparisonTest,
+    testing::Combine(
+        testing::Range<size_t>(0, arraysize(kIPv4OrderedAddresses) - 1),
+        testing::Range<size_t>(0, arraysize(kIPv6OrderedAddresses) - 1)));
 
 }  // namespace shill

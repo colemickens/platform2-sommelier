@@ -315,4 +315,14 @@ bool IPAddress::CanReachAddress(const IPAddress& b) const {
   return GetNetworkPart().Equals(b_prefixed.GetNetworkPart());
 }
 
+bool IPAddress::operator<(const IPAddress& b) const {
+  CHECK(IsValid());
+  CHECK(b.IsValid());
+  if (family() == b.family()) {
+    return address_ < b.address_;
+  }
+  // All IPv4 address are less than IPv6 addresses.
+  return family() == kFamilyIPv4 && b.family() == kFamilyIPv6;
+}
+
 }  // namespace shill

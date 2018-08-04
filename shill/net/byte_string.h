@@ -114,6 +114,7 @@ class SHILL_EXPORT ByteString {
   void BitwiseInvert();
 
   bool Equals(const ByteString& b) const;
+  bool operator==(const ByteString& b) const { return Equals(b); }
   void Append(const ByteString& b);
   void Clear();
   void Resize(int size);
@@ -126,6 +127,8 @@ class SHILL_EXPORT ByteString {
   bool CopyData(size_t size, void* output) const;
 
   static bool IsLessThan(const ByteString& lhs, const ByteString& rhs);
+
+  bool operator<(const ByteString& b) const { return IsLessThan(*this, b); }
 
  private:
   using Vector = std::vector<unsigned char>;
@@ -142,6 +145,5 @@ class SHILL_EXPORT ByteString {
 };
 
 }  // namespace shill
-
 
 #endif  // SHILL_NET_BYTE_STRING_H_

@@ -133,6 +133,7 @@ class SHILL_EXPORT IPAddress {
 
   // Returns whether |b| has the same family, address and prefix as |this|.
   bool Equals(const IPAddress& b) const;
+  bool operator==(const IPAddress& b) const { return Equals(b); }
 
   // Returns whether |b| has the same family and address as |this|.
   bool HasSameAddressAs(const IPAddress& b) const;
@@ -162,6 +163,11 @@ class SHILL_EXPORT IPAddress {
   // part of |b| is the same as the network part of |this|, using the
   // prefix of |this|.  Returns true if |b| is reachable, false otherwise.
   bool CanReachAddress(const IPAddress& b) const;
+
+  // Compares the byte value of this IPAddress with the byte value of
+  // |b|.  This is used for allow binary search on IP addresses of the
+  // same type.
+  bool operator<(const IPAddress& b) const;
 
  private:
   Family family_;

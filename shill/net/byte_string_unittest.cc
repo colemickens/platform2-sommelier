@@ -310,4 +310,26 @@ TEST_F(ByteStringTest, LessThan) {
   EXPECT_FALSE(ByteString::IsLessThan(bs5, bs5));
 }
 
+TEST_F(ByteStringTest, LessThanOperator) {
+  ByteString bs1(kTest1, sizeof(kTest1));
+  ByteString bs2(kTest2, sizeof(kTest2));
+  ByteString bs3(kTest3, sizeof(kTest3));
+  ByteString bs5(kTest5, sizeof(kTest5));
+
+  // This testcase mirror the LessThan testcase.
+  EXPECT_LT(bs1, bs2);
+  EXPECT_FALSE(bs2 < bs1);
+
+  EXPECT_LT(bs1, bs2);
+  EXPECT_FALSE(bs2 < bs3);
+
+  EXPECT_LT(bs1, bs2);
+  EXPECT_FALSE(bs1 < bs3);
+
+  EXPECT_LT(bs1, bs2);
+  EXPECT_FALSE(bs2 < bs5);
+
+  EXPECT_FALSE(bs5 < bs5);
+}
+
 }  // namespace shill
