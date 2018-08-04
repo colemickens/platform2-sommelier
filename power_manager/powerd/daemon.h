@@ -20,6 +20,7 @@
 #include <dbus/exported_object.h>
 
 #include "power_manager/common/prefs_observer.h"
+#include "power_manager/powerd/policy/cellular_controller.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
 #include "power_manager/powerd/policy/sar_handler.h"
 #include "power_manager/powerd/policy/suspender.h"
@@ -47,6 +48,7 @@ class MetricsCollector;
 
 namespace policy {
 class BacklightController;
+class CellularController;
 class InputDeviceController;
 class SarHandler;
 class StateController;
@@ -78,6 +80,7 @@ class Daemon;
 class Daemon : public policy::InputEventHandler::Delegate,
                public policy::Suspender::Delegate,
                public policy::WifiController::Delegate,
+               public policy::CellularController::Delegate,
                public system::AudioObserver,
                public system::DBusWrapperInterface::Observer,
                public system::PowerSupplyObserver {
@@ -134,6 +137,9 @@ class Daemon : public policy::InputEventHandler::Delegate,
 
   // Overridden from policy::WifiController::Delegate:
   void SetWifiTransmitPower(RadioTransmitPower power) override;
+
+  // Overridden from policy::CellularController::Delegate:
+  void SetCellularTransmitPower(RadioTransmitPower power) override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;
@@ -272,6 +278,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::Suspender> suspender_;
   std::unique_ptr<policy::WifiController> wifi_controller_;
+  std::unique_ptr<policy::CellularController> cellular_controller_;
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
 
