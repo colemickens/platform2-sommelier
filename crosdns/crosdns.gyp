@@ -85,5 +85,28 @@
         },
       ],
     }],
+    # Fuzzer target.
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'hosts_modifier_fuzzer',
+          'type': 'executable',
+          'includes': [
+            '../common-mk/common_fuzzer.gypi',
+          ],
+          'dependencies': [
+            'libcrosdns_static',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'hosts_modifier_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
