@@ -455,6 +455,9 @@ const uint8_t DeauthenticateMessage::kCommand = NL80211_CMD_DEAUTHENTICATE;
 const char DeauthenticateMessage::kCommandString[] =
     "NL80211_CMD_DEAUTHENTICATE";
 
+const uint8_t DelInterfaceMessage::kCommand = NL80211_CMD_DEL_INTERFACE;
+const char DelInterfaceMessage::kCommandString[] = "NL80211_CMD_DEL_INTERFACE";
+
 const uint8_t DeleteStationMessage::kCommand = NL80211_CMD_DEL_STATION;
 const char DeleteStationMessage::kCommandString[] = "NL80211_CMD_DEL_STATION";
 
@@ -647,6 +650,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<ConnectMessage>();
     case DeauthenticateMessage::kCommand:
       return std::make_unique<DeauthenticateMessage>();
+    case DelInterfaceMessage::kCommand:
+      return std::make_unique<DelInterfaceMessage>();
     case DeleteStationMessage::kCommand:
       return std::make_unique<DeleteStationMessage>();
     case DisassociateMessage::kCommand:

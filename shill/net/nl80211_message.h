@@ -172,6 +172,18 @@ class SHILL_EXPORT DeauthenticateMessage : public Nl80211Message {
 };
 
 
+class SHILL_EXPORT DelInterfaceMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  DelInterfaceMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DelInterfaceMessage);
+};
+
+
 class SHILL_EXPORT DeleteStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
