@@ -70,40 +70,67 @@ die() {
 }
 
 fast_dd() {
-  # Usage: fast_dd <block size> <count> <seek> <skip> other dd args
-  local user_block_size="$1"
-  shift
+  # Usage: fast_dd <count> <seek> <skip> other dd args
+  # Note: <count> and <seek> are in units of SRC_BLKSIZE, while <skip> is in
+  # units of DST_BLKSIZE. Supply 0 for <count> to not include any count=
+  # argument in dd.
   local user_count="$1"
   shift
   local user_seek="$1"
   shift
   local user_skip="$1"
   shift
+  # Try to convert count, seek, and skip into a common large block size.
   local ideal_block_size=$((2 * 1024 * 1024))  # 2 MiB
-  if [ $(($ideal_block_size % $user_block_size)) -eq 0 ]; then
-    local factor=$(($ideal_block_size / $user_block_size))
-    if [ $(($user_count % $factor)) -eq 0 -a \
-         $(($user_seek % $factor)) -eq 0 -a \
-         $(($user_skip % $factor)) -eq 0 ]; then
-      local count_arg=""
-      if [ "$user_count" -ne 0 ]; then
-        count_arg="count=$(($user_count / $factor))"
-      fi
-      dd $* bs="$ideal_block_size" seek=$(($user_seek / $factor)) \
-          skip=$(($user_skip / $factor)) $count_arg
-      return
+  local count_ideal=$((user_count * SRC_BLKSIZE / ideal_block_size))
+  local seek_ideal=$((user_seek * DST_BLKSIZE / ideal_block_size))
+  local skip_ideal=$((user_skip * SRC_BLKSIZE / ideal_block_size))
+
+  # Convert back to the original units to see if it's exact.
+  local count_verify=$((count_ideal * ideal_block_size / SRC_BLKSIZE))
+  local seek_verify=$((seek_ideal * ideal_block_size / DST_BLKSIZE))
+  local skip_verify=$((skip_ideal * ideal_block_size / SRC_BLKSIZE))
+
+  # If the conversion back matches the original numbers, then there was no
+  # remainder, and all the parameters are exact multiples of the larger block
+  # size.
+  if [ "${count_verify}" -eq "${user_count}" -a \
+       "${seek_verify}" -eq "${user_seek}" -a \
+       "${skip_verify}" -eq "${user_skip}" ]; then
+
+    local count_arg=""
+    if [ "${count_ideal}" -ne 0 ]; then
+      count_arg="count=${count_ideal}"
     fi
+
+    dd "$@" bs="${ideal_block_size}" seek="${seek_ideal}" skip="${skip_ideal}" \
+        "${count_arg}"
+
+    return
   fi
+
   # Give up and do the user's slow dd
   echo
-  echo "WARNING: DOING A SLOW dd OPERATION. PLEASE FIX"
-  echo
-  local count_arg=""
-  if [ "$user_count" -ne 0 ]; then
-    count_arg="count=$user_count"
+  echo "WARNING: DOING A SLOW MISALIGNED dd OPERATION. PLEASE FIX"
+
+  # Describe which variables are off, for the forlorn developer.
+  if [ "${count_verify}" -ne "${user_count} " ]; then
+    echo "count=${user_count}, but aligned would have been ${count_verify}"
   fi
-  dd $* bs="$user_block_size" seek="$user_seek" skip="$user_skip" \
-    $count_arg
+  if [ "${seek_verify}" -ne "${user_seek} " ]; then
+    echo "seek=${user_seek}, but aligned would have been ${seek_verify}"
+  fi
+  if [ "${skip_verify}" -ne "${user_skip} " ]; then
+    echo "skip=${user_skip}, but aligned would have been ${skip_verify}"
+  fi
+  echo
+
+  local count_arg=""
+  if [ "${user_count}" -ne 0 ]; then
+    count_arg="count=${user_count}"
+  fi
+  dd "$@" ibs="${SRC_BLKSIZE}" obs="${DST_BLKSIZE}" seek="${user_seek}" \
+    skip="${user_skip}" ${count_arg}
 }
 
 # Get the specified env var for the specified partition.
@@ -224,7 +251,7 @@ write_partition() {
     ;;
 
   *)
-    fast_dd "${SRC_BLKSIZE}" "${user_count}" "${user_seek}" "${user_skip}" \
+    fast_dd "${user_count}" "${user_seek}" "${user_skip}" \
       if="${src}" of="${dst}" conv=notrunc
     ;;
   esac
