@@ -4,7 +4,6 @@
  * found in the LICENSE file.
  */
 
-#include <libyuv.h>
 #include <vector>
 
 #include <base/at_exit.h>
@@ -15,6 +14,7 @@
 #include <base/strings/string_split.h>
 #include <base/threading/thread.h>
 #include <gtest/gtest.h>
+#include <libyuv.h>
 
 #include "cros-camera/exif_utils.h"
 #include "cros-camera/future.h"
@@ -31,17 +31,17 @@ JpegEncodeTestEnvironment* g_env;
 namespace {
 // Download test image URI.
 const char* kDownloadTestImageURI1 =
-    "https://pantheon.corp.google.com/storage/browser/chromiumos-test-assets-public/jpeg_test/"
-    "bali_640x360_P420.yuv";
+    "https://pantheon.corp.google.com/storage/browser/"
+    "chromiumos-test-assets-public/jpeg_test/bali_640x360_P420.yuv";
 const char* kDownloadTestImageURI2 =
-    "https://pantheon.corp.google.com/storage/browser/chromiumos-test-assets-public/jpeg_test/"
-    "lake_4160x3120.yuv";
+    "https://pantheon.corp.google.com/storage/browser/"
+    "chromiumos-test-assets-public/jpeg_test/lake_4160x3120.yuv";
 
 // Default test image file.
 const base::FilePath::CharType* kDefaultJpegFilename1 =
-    FILE_PATH_LITERAL("bali_640x360_P420.yuv");
+    FILE_PATH_LITERAL("bali_640x360_P420.yuv:640x360");
 const base::FilePath::CharType* kDefaultJpegFilename2 =
-    FILE_PATH_LITERAL("lake_4160x3120.yuv");
+    FILE_PATH_LITERAL("lake_4160x3120.yuv:4160x3120");
 // Threshold for mean absolute difference of hardware and software encode.
 // Absolute difference is to calculate the difference between each pixel in two
 // images. This is used for measuring of the similarity of two images.
@@ -364,11 +364,11 @@ int main(int argc, char** argv) {
     return -EINVAL;
   }
 
-  cros::tests::g_env = reinterpret_cast<cros::tests::JpegEncodeTestEnvironment*>(
-      testing::AddGlobalTestEnvironment(
-          new cros::tests::JpegEncodeTestEnvironment(yuv_filename1,
-                                                     yuv_filename2,
-                                                     save_to_file)));
+  cros::tests::g_env =
+      reinterpret_cast<cros::tests::JpegEncodeTestEnvironment*>(
+          testing::AddGlobalTestEnvironment(
+              new cros::tests::JpegEncodeTestEnvironment(
+                  yuv_filename1, yuv_filename2, save_to_file)));
 
   return RUN_ALL_TESTS();
 }
