@@ -86,6 +86,11 @@ class SHILL_EXPORT RTNLHandler {
   // has a kernel index of |interface_index|.
   virtual void SetInterfaceMTU(int interface_index, unsigned int mtu);
 
+  // Set the MAC address for the network interface that has a kernel index of
+  // |interface_index|.
+  virtual void SetInterfaceMac(int interface_index,
+                               const ByteString& mac_address);
+
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
   virtual bool AddInterfaceAddress(int interface_index,

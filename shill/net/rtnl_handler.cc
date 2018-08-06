@@ -180,6 +180,21 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
   CHECK(SendMessage(&msg));
 }
 
+void RTNLHandler::SetInterfaceMac(int interface_index,
+                                  const ByteString& mac_address) {
+  RTNLMessage msg(RTNLMessage::kTypeLink,
+                  RTNLMessage::kModeAdd,
+                  NLM_F_REQUEST,
+                  0,  // sequence to be filled in by RTNLHandler::SendMessage().
+                  0,  // pid.
+                  interface_index,
+                  IPAddress::kFamilyUnknown);
+
+  msg.SetAttribute(IFLA_ADDRESS, mac_address);
+
+  CHECK(SendMessage(&msg));
+}
+
 void RTNLHandler::RequestDump(int request_flags) {
   if (rtnl_socket_ == Sockets::kInvalidFileDescriptor) {
     LOG(ERROR) << __func__ << " called while not started.  "
