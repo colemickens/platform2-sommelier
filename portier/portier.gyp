@@ -25,6 +25,7 @@
         'group_mgr.cc',
         'ipv6_util.cc',
         'll_address.cc',
+        'nd_bpf.cc',
         'nd_msg.cc',
         'neighbor_cache.cc',
         'network_socket.cc',
