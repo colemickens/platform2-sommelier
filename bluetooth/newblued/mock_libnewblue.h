@@ -42,6 +42,9 @@ class MockLibNewblue : public LibNewblue {
   // sm.h
   MOCK_METHOD1(SmInit, bool(uint8_t));
   MOCK_METHOD0(SmDeinit, void());
+  MOCK_METHOD2(SmRegisterPairStateObserver,
+               uniq_t(void*, smPairStateChangeCbk));
+  MOCK_METHOD1(SmUnregisterPairStateObserver, void(uniq_t));
 };
 
 }  // namespace bluetooth

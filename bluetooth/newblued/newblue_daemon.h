@@ -18,6 +18,7 @@
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/stack_sync_monitor.h"
+#include "bluetooth/newblued/util.h"
 
 namespace bluetooth {
 
@@ -54,12 +55,20 @@ class NewblueDaemon : public BluetoothDaemon {
   bool HandleStartDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
   bool HandleStopDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
 
+  // Installs org.bluez.Device1 method handlers.
+  void AddDeviceMethodHandlers(ExportedInterface* device_interface);
+
   // D-Bus method handlers for device objects.
   bool HandlePair(brillo::ErrorPtr* error, dbus::Message* message);
   bool HandleConnect(brillo::ErrorPtr* error, dbus::Message* message);
 
   // Called when an update of a device info is received.
   void OnDeviceDiscovered(const Device& device);
+
+  // Called when a pairing state changed event is received.
+  void OnPairStateChanged(const Device& device,
+                          PairState pair_state,
+                          const std::string& dbus_error);
 
   // Exposes or updates the device object's property depends on the whether it
   // was exposed before or should be forced updated.
@@ -112,6 +121,8 @@ class NewblueDaemon : public BluetoothDaemon {
   // Keeps the discovered devices.
   // TODO(sonnysasaka): Clear old devices according to BlueZ mechanism.
   std::map<std::string, Device> discovered_devices_;
+
+  UniqueId pair_observer_id_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

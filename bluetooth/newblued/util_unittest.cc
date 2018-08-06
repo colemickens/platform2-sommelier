@@ -23,4 +23,14 @@ TEST(UtilTest, GetFromLE) {
   EXPECT_TRUE(GetBytesFromLE(le_bytes, 0).empty());
 }
 
+TEST(UtilTest, GetNextId) {
+  UniqueId id1 = GetNextId();
+  UniqueId id2 = GetNextId();
+
+  EXPECT_NE(kInvalidUniqueId, id1);
+  EXPECT_NE(kInvalidUniqueId, id2);
+  EXPECT_NE(id1, id2);
+  EXPECT_LT(id1, id2);
+}
+
 }  // namespace bluetooth

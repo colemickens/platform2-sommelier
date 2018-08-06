@@ -4,6 +4,8 @@
 
 #include "bluetooth/newblued/newblue.h"
 
+#include <newblue/sm.h>
+
 #include <algorithm>
 #include <memory>
 #include <utility>
@@ -12,8 +14,7 @@
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
-
-#include "bluetooth/newblued/util.h"
+#include <chromeos/dbus/service_constants.h>
 
 namespace bluetooth {
 
@@ -84,6 +85,53 @@ std::string ConvertAppearanceToIcon(uint16_t appearance) {
       break;
   }
   return std::string();
+}
+
+// Converts the uint8_t[6] MAC address into std::string form, e.g.
+// {0x05, 0x04, 0x03, 0x02, 0x01, 0x00} will be 00:01:02:03:04:05.
+std::string ConvertBtAddrToString(const struct bt_addr& addr) {
+  return base::StringPrintf("%02X:%02X:%02X:%02X:%02X:%02X", addr.addr[5],
+                            addr.addr[4], addr.addr[3], addr.addr[2],
+                            addr.addr[1], addr.addr[0]);
+}
+
+// Converts the security manager pairing errors to BlueZ's D-Bus errors.
+std::string ConvertSmPairErrorToDbusError(SmPairErr error_code) {
+  switch (error_code) {
+    case SM_PAIR_ERR_NONE:
+      // This comes along with the pairing states other than
+      // SM_PAIR_STATE_FAILED.
+      return std::string();
+    case SM_PAIR_ERR_ALREADY_PAIRED:
+      return bluetooth_device::kErrorAlreadyExists;
+    case SM_PAIR_ERR_IN_PROGRESS:
+      return bluetooth_device::kErrorInProgress;
+    case SM_PAIR_ERR_INVALID_PAIR_REQ:
+      return bluetooth_device::kErrorInvalidArguments;
+    case SM_PAIR_ERR_L2C_CONN:
+      return bluetooth_device::kErrorConnectionAttemptFailed;
+    case SM_PAIR_ERR_NO_SUCH_DEVICE:
+      return bluetooth_device::kErrorDoesNotExist;
+    case SM_PAIR_ERR_PASSKEY_FAILED:
+    case SM_PAIR_ERR_OOB_NOT_AVAILABLE:
+    case SM_PAIR_ERR_AUTH_REQ_INFEASIBLE:
+    case SM_PAIR_ERR_CONF_VALUE_MISMATCHED:
+    case SM_PAIR_ERR_PAIRING_NOT_SUPPORTED:
+    case SM_PAIR_ERR_ENCR_KEY_SIZE:
+    case SM_PAIR_ERR_REPEATED_ATTEMPT:
+    case SM_PAIR_ERR_INVALID_PARAM:
+    case SM_PAIR_ERR_UNEXPECTED_SM_CMD:
+    case SM_PAIR_ERR_SEND_SM_CMD:
+    case SM_PAIR_ERR_ENCR_CONN:
+    case SM_PAIR_ERR_UNEXPECTED_L2C_EVT:
+      return bluetooth_device::kErrorAuthenticationFailed;
+    case SM_PAIR_ERR_STALLED:
+      return bluetooth_device::kErrorAuthenticationTimeout;
+    case SM_PAIR_ERR_MEMORY:
+    case SM_PAIR_ERR_UNKNOWN:
+    default:
+      return bluetooth_device::kErrorFailed;
+  }
 }
 
 }  // namespace
@@ -158,8 +206,17 @@ bool Newblue::BringUp() {
     return false;
   }
 
+  // TODO(mcchou): Change the IO capability to HCI_DISP_CAP_KBD_DISP once the
+  // handlers for passkey display and request are in place.
   if (!libnewblue_->SmInit(HCI_DISP_CAP_NONE)) {
     LOG(ERROR) << "Failed to init SM";
+    return false;
+  }
+
+  pair_state_handle_ = libnewblue_->SmRegisterPairStateObserver(
+      this, &Newblue::PairStateCallbackThunk);
+  if (!pair_state_handle_) {
+    LOG(ERROR) << "Failed to register as an observer of pairing state";
     return false;
   }
 
@@ -341,6 +398,17 @@ void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
   device->service_data.SetValue(std::move(service_data));
 }
 
+UniqueId Newblue::RegisterAsPairObserver(PairStateChangedCallback callback) {
+  UniqueId observer_id = GetNextId();
+  if (observer_id != kInvalidUniqueId)
+    pair_observers_.emplace(observer_id, callback);
+  return observer_id;
+}
+
+void Newblue::UnregisterAsPairObserver(UniqueId observer_id) {
+  pair_observers_.erase(observer_id);
+}
+
 bool Newblue::PostTask(const tracked_objects::Location& from_here,
                        const base::Closure& task) {
   CHECK(origin_task_runner_.get());
@@ -376,10 +444,7 @@ void Newblue::DiscoveryCallbackThunk(void* data,
   Newblue* newblue = static_cast<Newblue*>(data);
   std::vector<uint8_t> eir_vector(static_cast<const uint8_t*>(eir),
                                   static_cast<const uint8_t*>(eir) + eir_len);
-  const uint8_t* mac = addr->addr;
-  std::string address =
-      base::StringPrintf("%02X:%02X:%02X:%02X:%02X:%02X", mac[5], mac[4],
-                         mac[3], mac[2], mac[1], mac[0]);
+  std::string address = ConvertBtAddrToString(*addr);
   newblue->PostTask(
       FROM_HERE, base::Bind(&Newblue::DiscoveryCallback, newblue->GetWeakPtr(),
                             address, addr->type, rssi, reply_type, eir_vector));
@@ -469,6 +534,66 @@ void Newblue::ClearPropertiesUpdated(Device* device) {
   device->service_uuids.ClearUpdated();
   device->service_data.ClearUpdated();
   device->manufacturer.ClearUpdated();
+}
+
+void Newblue::PairStateCallbackThunk(void* data,
+                                     const void* pair_state_change,
+                                     uniq_t observer_id) {
+  CHECK(data && pair_state_change);
+
+  Newblue* newblue = static_cast<Newblue*>(data);
+  const smPairStateChange* change =
+      static_cast<const smPairStateChange*>(pair_state_change);
+
+  newblue->PostTask(
+      FROM_HERE, base::Bind(&Newblue::PairStateCallback, newblue->GetWeakPtr(),
+                            *change, observer_id));
+}
+
+void Newblue::PairStateCallback(const smPairStateChange& change,
+                                uniq_t observer_id) {
+  CHECK_EQ(observer_id, pair_state_handle_);
+
+  std::string address = ConvertBtAddrToString(change.peerAddr);
+
+  // BlueZ doesn't allow the pairing with an undiscovered device, so if
+  // receiving pairing state changed with an undiscovered device, we drop it.
+  if (!base::ContainsKey(discovered_devices_, address)) {
+    VLOG(1) << "Dropping the pairing state change (" << change.pairState
+            << ") for an undiscovered device " << address;
+    return;
+  }
+
+  PairState state = static_cast<PairState>(change.pairState);
+  Device* device = discovered_devices_[address].get();
+  std::string dbus_error;
+
+  switch (state) {
+    case PairState::CANCELED:
+      device->paired.SetValue(false);
+      dbus_error = bluetooth_device::kErrorAuthenticationCanceled;
+    case PairState::NOT_PAIRED:
+      device->paired.SetValue(false);
+      break;
+    case PairState::FAILED:
+      // If a device is previously paired, security manager will throw a
+      // SM_PAIR_ERR_ALREADY_PAIRED error which should not set the pairing state
+      // to false.
+      device->paired.SetValue(change.pairErr == SM_PAIR_ERR_ALREADY_PAIRED);
+      dbus_error = ConvertSmPairErrorToDbusError(change.pairErr);
+      break;
+    case PairState::PAIRED:
+      device->paired.SetValue(true);
+      break;
+    case PairState::STARTED:
+    default:
+      // Do not change paired property.
+      break;
+  }
+
+  // Notify |pair_observers|.
+  for (const auto& observer : pair_observers_)
+    observer.second.Run(*device, state, dbus_error);
 }
 
 }  // namespace bluetooth

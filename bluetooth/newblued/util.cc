@@ -54,4 +54,14 @@ std::vector<uint8_t> GetBytesFromLE(const uint8_t* buf, size_t buf_len) {
   return ret;
 }
 
+UniqueId GetNextId() {
+  static UniqueId next_id = 1;
+  uint64_t id = next_id++;
+  if (id)
+    return id;
+  next_id -= 1;
+  LOG(ERROR) << "Run out of unique IDs";
+  return 0;
+}
+
 }  // namespace bluetooth

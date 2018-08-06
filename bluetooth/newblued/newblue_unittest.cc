@@ -26,6 +26,8 @@ namespace bluetooth {
 namespace {
 
 constexpr uniq_t kDiscoveryHandle = 11;
+// A random handle value.
+constexpr uniq_t kPairStateChangeHandle = 3;
 
 }  // namespace
 
@@ -37,6 +39,7 @@ class NewblueTest : public ::testing::Test {
     std::string name;
     int16_t rssi;
     uint32_t eir_class;
+    bool paired;
   };
 
   void SetUp() override {
@@ -55,9 +58,37 @@ class NewblueTest : public ::testing::Test {
   void OnReadyForUp() { is_ready_for_up_ = true; }
 
   void OnDeviceDiscovered(const Device& device) {
-    discovered_devices_.push_back({device.address, device.name.value(),
-                                   device.rssi.value(),
-                                   device.eir_class.value()});
+    discovered_devices_.push_back(
+        {device.address, device.name.value(), device.rssi.value(),
+         device.eir_class.value(), device.paired.value()});
+  }
+
+  void OnPairStateChanged(const Device& device,
+                          PairState pair_state,
+                          const std::string& dbus_error) {
+    for (auto& dev : discovered_devices_) {
+      if (dev.address == device.address)
+        dev.paired = device.paired.value();
+    }
+  }
+
+  void ExpectBringUp() {
+    newblue_->Init();
+    EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(false));
+    EXPECT_FALSE(newblue_->BringUp());
+
+    EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, L2cInit()).WillOnce(Return(0));
+    EXPECT_CALL(*libnewblue_, AttInit()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, GattProfileInit()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, GattBuiltinInit()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, SmInit(HCI_DISP_CAP_NONE)).WillOnce(Return(true));
+    pair_state_changed_callback_data_ = newblue_.get();
+    EXPECT_CALL(*libnewblue_, SmRegisterPairStateObserver(_, _))
+        .WillOnce(DoAll(SaveArg<0>(&pair_state_changed_callback_data_),
+                        SaveArg<1>(&pair_state_changed_callback_),
+                        Return(kPairStateChangeHandle)));
+    EXPECT_TRUE(newblue_->BringUp());
   }
 
  protected:
@@ -66,6 +97,8 @@ class NewblueTest : public ::testing::Test {
   std::unique_ptr<Newblue> newblue_;
   MockLibNewblue* libnewblue_;
   std::vector<MockDevice> discovered_devices_;
+  smPairStateChangeCbk pair_state_changed_callback_;
+  void* pair_state_changed_callback_data_ = nullptr;
 };
 
 TEST_F(NewblueTest, ListenReadyForUp) {
@@ -99,28 +132,11 @@ TEST_F(NewblueTest, ListenReadyForUpFailed) {
 }
 
 TEST_F(NewblueTest, BringUp) {
-  EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(false));
-  EXPECT_FALSE(newblue_->BringUp());
-
-  EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, L2cInit()).WillOnce(Return(0));
-  EXPECT_CALL(*libnewblue_, AttInit()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, GattProfileInit()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, GattBuiltinInit()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, SmInit(HCI_DISP_CAP_NONE)).WillOnce(Return(true));
-  EXPECT_TRUE(newblue_->BringUp());
+  ExpectBringUp();
 }
 
 TEST_F(NewblueTest, StartDiscovery) {
-  newblue_->Init();
-
-  EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, L2cInit()).WillOnce(Return(0));
-  EXPECT_CALL(*libnewblue_, AttInit()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, GattProfileInit()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, GattBuiltinInit()).WillOnce(Return(true));
-  EXPECT_CALL(*libnewblue_, SmInit(HCI_DISP_CAP_NONE)).WillOnce(Return(true));
-  EXPECT_TRUE(newblue_->BringUp());
+  ExpectBringUp();
 
   hciDeviceDiscoveredLeCbk inquiry_response_callback;
   void* inquiry_response_callback_data;
@@ -303,6 +319,163 @@ TEST_F(NewblueTest, UpdateEirAbnormal) {
   EXPECT_EQ(0x0000, device.appearance.value());
   EXPECT_THAT(device.manufacturer.value(),
               UnorderedElementsAre(Pair(0xFFFF, std::vector<uint8_t>())));
+}
+
+TEST_F(NewblueTest, PairStateChangedToFailed) {
+  ExpectBringUp();
+
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kDiscoveryHandle)));
+  newblue_->StartDiscovery(
+      base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
+
+  // 1 device discovered.
+  struct bt_addr addr1 = {.type = BT_ADDR_TYPE_LE_RANDOM,
+                          .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  uint8_t eir1[] = {
+      6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
+  inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
+                            HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+
+  // Register as a pairing state observer.
+  UniqueId pair_observer_handle = newblue_->RegisterAsPairObserver(
+      base::Bind(&NewblueTest::OnPairStateChanged, base::Unretained(this)));
+  EXPECT_NE(kInvalidUniqueId, pair_observer_handle);
+
+  // Pairing started.
+  struct smPairStateChange state_change = {.pairState = SM_PAIR_STATE_START,
+                                           .pairErr = SM_PAIR_ERR_NONE,
+                                           .peerAddr = addr1};
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+
+  // Pairing failed with SM_PAIR_ERR_L2C_CONN error.
+  state_change.pairState = SM_PAIR_STATE_FAILED;
+  state_change.pairErr = SM_PAIR_ERR_L2C_CONN;
+
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+}
+
+TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
+  ExpectBringUp();
+
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kDiscoveryHandle)));
+  newblue_->StartDiscovery(
+      base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
+
+  // 1 device discovered.
+  struct bt_addr addr1 = {.type = BT_ADDR_TYPE_LE_RANDOM,
+                          .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  uint8_t eir1[] = {
+      6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
+  inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
+                            HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+
+  // Register as a pairing state observer.
+  UniqueId pair_observer_handle = newblue_->RegisterAsPairObserver(
+      base::Bind(&NewblueTest::OnPairStateChanged, base::Unretained(this)));
+  EXPECT_NE(kInvalidUniqueId, pair_observer_handle);
+
+  // Pairing started.
+  struct smPairStateChange state_change = {.pairState = SM_PAIR_STATE_START,
+                                           .pairErr = SM_PAIR_ERR_NONE,
+                                           .peerAddr = addr1};
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+
+  // Pairing finished successfully.
+  state_change.pairState = SM_PAIR_STATE_PAIRED;
+  state_change.pairErr = SM_PAIR_ERR_NONE;
+
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(true, discovered_devices_[0].paired);
+
+  // Pairing forgotten.
+  state_change.pairState = SM_PAIR_STATE_NOT_PAIRED;
+  state_change.pairErr = SM_PAIR_ERR_NONE;
+
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+
+  // Unregister as a pairing state observer.
+  newblue_->UnregisterAsPairObserver(pair_observer_handle);
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  // Pairing finished successfully.
+  state_change.pairState = SM_PAIR_STATE_PAIRED;
+  state_change.pairErr = SM_PAIR_ERR_NONE;
+
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("alice", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  // There should be no update on the pairing state.
+  EXPECT_EQ(false, discovered_devices_[0].paired);
 }
 
 }  // namespace bluetooth

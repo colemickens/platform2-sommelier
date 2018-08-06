@@ -19,6 +19,7 @@
 
 #include "bluetooth/newblued/libnewblue.h"
 #include "bluetooth/newblued/property.h"
+#include "bluetooth/newblued/util.h"
 #include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
@@ -43,6 +44,15 @@ enum class EirType : uint8_t {
   SVC_DATA32 = 0x20,
   SVC_DATA128 = 0x21,
   MANUFACTURER_DATA = 0xff,
+};
+
+// These are based on the pairing state defined in newblue/sm.h.
+enum class PairState : uint8_t {
+  NOT_PAIRED,
+  STARTED,
+  PAIRED,
+  CANCELED,
+  FAILED,
 };
 
 // Structure representing a discovered device.
@@ -104,8 +114,15 @@ struct Device {
 class Newblue {
  public:
   using DeviceDiscoveredCallback = base::Callback<void(const Device&)>;
+  // dbus_error_code refers to namespace bluetooth_device
+  // chromeos/dbus/service_constants.h.
+  using PairStateChangedCallback =
+      base::Callback<void(const Device& device,
+                          PairState pair_state,
+                          const std::string& dbus_error)>;
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
+
   virtual ~Newblue() = default;
 
   base::WeakPtr<Newblue> GetWeakPtr();
@@ -133,6 +150,11 @@ class Newblue {
 
   // Updates EIR data of |device|.
   static void UpdateEir(Device* device, const std::vector<uint8_t>& eir);
+
+  // Registers as an observer of pairing states of devices.
+  virtual UniqueId RegisterAsPairObserver(PairStateChangedCallback callback);
+  // Unregisters as an observer of pairing states.
+  virtual void UnregisterAsPairObserver(UniqueId observer_id);
 
  private:
   // Posts task to the thread which created this Newblue object.
@@ -179,6 +201,12 @@ class Newblue {
   // Resets the update status of device properties.
   void ClearPropertiesUpdated(Device* device);
 
+  static void PairStateCallbackThunk(void* data,
+                                     const void* pair_state_change,
+                                     uniq_t observer_id);
+  // Called when pairing state changed events are received.
+  void PairStateCallback(const smPairStateChange& change, uniq_t observer_id);
+
   std::unique_ptr<LibNewblue> libnewblue_;
 
   scoped_refptr<base::SingleThreadTaskRunner> origin_task_runner_;
@@ -188,6 +216,15 @@ class Newblue {
   DeviceDiscoveredCallback device_discovered_callback_;
   uniq_t discovery_handle_ = 0;
   std::map<std::string, std::unique_ptr<Device>> discovered_devices_;
+
+  // Handle from security manager of being a central pairing observer. We are
+  // responsible of receiving pairing state changed events and informing clients
+  // whoever registered as pairing observers.
+  uniq_t pair_state_handle_;
+  // Contains pairs of <observer ID, callback>. Clients who registered for the
+  // pairing update can expect to be notified via callback provided in
+  // RegisterAsPairObserver(). For now, Newblued is the only client.
+  std::map<UniqueId, PairStateChangedCallback> pair_observers_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

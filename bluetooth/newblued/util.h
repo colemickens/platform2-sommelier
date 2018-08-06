@@ -10,9 +10,17 @@
 
 namespace bluetooth {
 
+using UniqueId = uint64_t;
+
+constexpr UniqueId kInvalidUniqueId = 0;
+
 uint16_t GetNumFromLE16(const uint8_t* buf);
 uint32_t GetNumFromLE24(const uint8_t* buf);
 std::vector<uint8_t> GetBytesFromLE(const uint8_t* buf, size_t buf_len);
+
+// Retrieves a unique identifier which can be used for tracking the clients and
+// the data associated with them.
+UniqueId GetNextId();
 
 }  // namespace bluetooth
 

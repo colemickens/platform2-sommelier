@@ -57,6 +57,12 @@ class LibNewblue {
   // sm.h
   LIBNEWBLUE_METHOD1(SmInit, smInit, bool(uint8_t));
   LIBNEWBLUE_METHOD0(SmDeinit, smDeinit, void());
+  LIBNEWBLUE_METHOD2(SmRegisterPairStateObserver,
+                     smRegisterPairStateObserver,
+                     uniq_t(void*, smPairStateChangeCbk));
+  LIBNEWBLUE_METHOD1(SmUnregisterPairStateObserver,
+                     smUnregisterPairStateObserver,
+                     void(uniq_t));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LibNewblue);

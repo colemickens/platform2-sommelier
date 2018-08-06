@@ -29,8 +29,6 @@ namespace {
 // TODO(sonnysasaka): Add support for more than 1 adapters.
 constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
 
-constexpr char kErrorBluezFailed[] = "org.bluez.Failed";
-
 constexpr char kDeviceTypeLe[] = "LE";
 
 // Called when an interface of a D-Bus object is exported.
@@ -61,6 +59,15 @@ std::map<std::string, std::vector<uint8_t>> CanonicalizeServiceData(
     result.emplace(data.first.canonical_value(), data.second);
 
   return result;
+}
+
+// Converts device object path from device address, e.g.
+// 00:01:02:03:04:05 will be /org/bluez/hci0/dev_00_01_02_03_04_05
+std::string ConvertDeviceAddressToObjectPath(const std::string& address) {
+  std::string path =
+      base::StringPrintf("%s/dev_%s", kAdapterObjectPath, address.c_str());
+  std::replace(path.begin(), path.end(), ':', '_');
+  return path;
 }
 
 }  // namespace
@@ -109,6 +116,8 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
 }
 
 void NewblueDaemon::Shutdown() {
+  newblue_->UnregisterAsPairObserver(pair_observer_id_);
+
   newblue_.reset();
   exported_object_manager_wrapper_.reset();
 }
@@ -132,6 +141,15 @@ void NewblueDaemon::OnHciReadyForUp() {
       bus_.get(),
       base::Bind(&NewblueDaemon::OnBluezDown, weak_ptr_factory_.GetWeakPtr()));
   LOG(INFO) << "NewBlue is up";
+
+  // Register for pairing state changed events.
+  pair_observer_id_ = newblue_->RegisterAsPairObserver(
+      base::Bind(&NewblueDaemon::OnPairStateChanged, base::Unretained(this)));
+  if (pair_observer_id_ == kInvalidUniqueId) {
+    LOG(ERROR) << "Failed to register as a pairing observer";
+    dbus_daemon_->QuitWithExitCode(EX_UNAVAILABLE);
+    return;
+  }
 }
 
 void NewblueDaemon::SetupPropertyMethodHandlers(
@@ -195,7 +213,8 @@ bool NewblueDaemon::HandleStartDiscovery(brillo::ErrorPtr* error,
       base::Bind(&NewblueDaemon::OnDeviceDiscovered, base::Unretained(this)));
   if (!ret) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         kErrorBluezFailed, "Failed to start discovery");
+                         bluetooth_adapter::kErrorFailed,
+                         "Failed to start discovery");
   }
   return ret;
 }
@@ -206,9 +225,22 @@ bool NewblueDaemon::HandleStopDiscovery(brillo::ErrorPtr* error,
   bool ret = newblue_->StopDiscovery();
   if (!ret) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         kErrorBluezFailed, "Failed to start discovery");
+                         bluetooth_adapter::kErrorFailed,
+                         "Failed to start discovery");
   }
   return ret;
+}
+
+void NewblueDaemon::AddDeviceMethodHandlers(
+    ExportedInterface* device_interface) {
+  CHECK(device_interface);
+
+  device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+      bluetooth_device::kPair, base::Unretained(this),
+      &NewblueDaemon::HandlePair);
+  device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+      bluetooth_device::kConnect, base::Unretained(this),
+      &NewblueDaemon::HandleConnect);
 }
 
 bool NewblueDaemon::HandlePair(brillo::ErrorPtr* error,
@@ -217,8 +249,9 @@ bool NewblueDaemon::HandlePair(brillo::ErrorPtr* error,
   VLOG(1) << "Handling Pair for object " << message->GetPath().value();
   bool ret = false;
   if (!ret) {
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   kErrorBluezFailed, "Failed to pair");
+    *error =
+        brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                              bluetooth_device::kErrorFailed, "Failed to pair");
   }
   return ret;
 }
@@ -230,7 +263,8 @@ bool NewblueDaemon::HandleConnect(brillo::ErrorPtr* error,
   bool ret = false;
   if (!ret) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   kErrorBluezFailed, "Failed to connect");
+                                   bluetooth_device::kErrorFailed,
+                                   "Failed to connect");
   }
   return ret;
 }
@@ -241,10 +275,8 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
                                 device.address.c_str(), device.rssi.value());
 
   bool is_new_device = false;
-  std::string device_path_string = base::StringPrintf(
-      "%s/dev_%s", kAdapterObjectPath, device.address.c_str());
-  std::replace(device_path_string.begin(), device_path_string.end(), ':', '_');
-  dbus::ObjectPath device_path(device_path_string);
+  dbus::ObjectPath device_path(
+      ConvertDeviceAddressToObjectPath(device.address.c_str()));
 
   ExportedInterface* device_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
@@ -259,12 +291,7 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
     device_interface = exported_object_manager_wrapper_->GetExportedInterface(
         device_path, bluetooth_device::kBluetoothDeviceInterface);
 
-    device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-        bluetooth_device::kPair, base::Unretained(this),
-        &NewblueDaemon::HandlePair);
-    device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-        bluetooth_device::kConnect, base::Unretained(this),
-        &NewblueDaemon::HandleConnect);
+    AddDeviceMethodHandlers(device_interface);
 
     // The "Adapter" property of this device object has to be set before
     // ExportAsync() below. This is to make sure that as soon as a client
@@ -282,6 +309,21 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
   }
 
   UpdateDeviceProperties(device_interface, device, is_new_device);
+}
+
+void NewblueDaemon::OnPairStateChanged(const Device& device,
+                                       PairState pair_state,
+                                       const std::string& dbus_error) {
+  dbus::ObjectPath device_path(
+      ConvertDeviceAddressToObjectPath(device.address.c_str()));
+
+  ExportedInterface* device_interface =
+      exported_object_manager_wrapper_->GetExportedInterface(
+          device_path, bluetooth_device::kBluetoothDeviceInterface);
+
+  UpdateDeviceProperties(device_interface, device, false);
+
+  // TODO(mcchou): Reply to the original D-Bus call.
 }
 
 void NewblueDaemon::UpdateDeviceProperties(ExportedInterface* interface,
