@@ -7,7 +7,10 @@ include(sepolicy/file_contexts/chromeos_unconfined)
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/debugd                    u:object_r:cros_debugd_exec:s0
 /sbin/frecon                    u:object_r:frecon_exec:s0
+/sbin/insmod                    u:object_r:cros_modprobe_exec:s0
 /sbin/minijail0                 u:object_r:cros_minijail_exec:s0
+/sbin/modprobe                  u:object_r:cros_modprobe_exec:s0
+/sbin/rmmod                     u:object_r:cros_modprobe_exec:s0
 /sbin/upstart-socket-bridge     u:object_r:upstart_socket_bridge_exec:s0
 
 /bin/bash                       u:object_r:sh_exec:s0

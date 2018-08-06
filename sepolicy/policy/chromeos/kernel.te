@@ -6,8 +6,6 @@ permissive kernel;
 r_dir_file(kernel, rootfs)
 r_dir_file(kernel, sysfs)
 
-# allow kernel unlabeled:file { execute execute_no_trans };
-
 allow kernel selinuxfs:dir r_dir_perms;
 allow kernel selinuxfs:file rw_file_perms;
 allow kernel self:security setcheckreqprot;
@@ -25,8 +23,11 @@ allow kernel device:chr_file write;
 )
 allow kernel device:dir add_name; # for dm-X device.
 allow kernel device:blk_file create_file_perms;
+allow kernel device:dir open;
 
 allow kernel self:global_capability_class_set sys_nice;
+allow kernel self:system { module_request };
+allow kernel self:capability { mknod };
 
 allow kernel sysfs:filesystem getattr;
 allow kernel labeledfs:filesystem getattr;
