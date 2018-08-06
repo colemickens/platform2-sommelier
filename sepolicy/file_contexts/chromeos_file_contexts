@@ -1,3 +1,5 @@
+include(sepolicy/file_contexts/chromeos_unconfined)
+
 # Chrome OS file contexts.
 /                               u:object_r:rootfs:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0

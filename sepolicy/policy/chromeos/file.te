@@ -13,6 +13,8 @@ type sh_exec, exec_type, file_type;
 type frecon_exec, exec_type, file_type;
 type cros_chrt_exec, exec_type, file_type;
 
+type cros_unconfined_exec, exec_type, file_type;
+
 type cros_init_shell_scripts, exec_type, file_type;
 
 type cros_init_conf_file, file_type;
