@@ -53,6 +53,7 @@ class MockDevicePolicy : public DevicePolicy {
   ~MockDevicePolicy() override = default;
 
   MOCK_METHOD0(LoadPolicy, bool(void));
+  MOCK_CONST_METHOD0(IsEnterpriseEnrolled, bool(void));
 
   MOCK_CONST_METHOD1(GetPolicyRefreshRate,
                      bool(int*));  // NOLINT(readability/function)

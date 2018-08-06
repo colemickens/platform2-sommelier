@@ -40,6 +40,7 @@ class DevicePolicyImpl : public DevicePolicy {
 
   // DevicePolicy overrides:
   bool LoadPolicy() override;
+  bool IsEnterpriseEnrolled() const override;
   bool GetPolicyRefreshRate(int* rate) const override;
   bool GetUserWhitelist(
       std::vector<std::string>* user_whitelist) const override;

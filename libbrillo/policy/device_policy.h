@@ -69,6 +69,10 @@ class DevicePolicy {
   // Returns true unless there is a policy on disk and loading it fails.
   virtual bool LoadPolicy() = 0;
 
+  // Returns true if OOBE has been completed and if the device has been enrolled
+  // as an enterprise or enterpriseAD device.
+  virtual bool IsEnterpriseEnrolled() const = 0;
+
   // Writes the value of the DevicePolicyRefreshRate policy in |rate|. Returns
   // true on success.
   virtual bool GetPolicyRefreshRate(int* rate) const = 0;

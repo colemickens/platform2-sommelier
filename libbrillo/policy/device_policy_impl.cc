@@ -196,6 +196,17 @@ bool DevicePolicyImpl::LoadPolicy() {
   return policy_loaded;
 }
 
+bool DevicePolicyImpl::IsEnterpriseEnrolled() const {
+  DCHECK(install_attributes_reader_);
+  if (!install_attributes_reader_->IsLocked())
+    return false;
+
+  const std::string& device_mode = install_attributes_reader_->GetAttribute(
+      InstallAttributesReader::kAttrMode);
+  return device_mode == InstallAttributesReader::kDeviceModeEnterprise ||
+      device_mode == InstallAttributesReader::kDeviceModeEnterpriseAD;
+}
+
 bool DevicePolicyImpl::GetPolicyRefreshRate(int* rate) const {
   if (!device_policy_.has_device_policy_refresh_rate())
     return false;
@@ -331,6 +342,9 @@ bool DevicePolicyImpl::GetReleaseChannelDelegated(
 }
 
 bool DevicePolicyImpl::GetUpdateDisabled(bool* update_disabled) const {
+  if (!IsEnterpriseEnrolled())
+    return false;
+
   if (!device_policy_.has_auto_update_settings())
     return false;
 
@@ -345,6 +359,9 @@ bool DevicePolicyImpl::GetUpdateDisabled(bool* update_disabled) const {
 
 bool DevicePolicyImpl::GetTargetVersionPrefix(
     std::string* target_version_prefix) const {
+  if (!IsEnterpriseEnrolled())
+    return false;
+
   if (!device_policy_.has_auto_update_settings())
     return false;
 
@@ -374,14 +391,7 @@ bool DevicePolicyImpl::GetRollbackToTargetVersion(
 bool DevicePolicyImpl::GetRollbackAllowedMilestones(
     int* rollback_allowed_milestones) const {
   // This policy can be only set for devices which are enterprise enrolled.
-  if (!install_attributes_reader_->IsLocked())
-    return false;
-  if (install_attributes_reader_->GetAttribute(
-          InstallAttributesReader::kAttrMode) !=
-          InstallAttributesReader::kDeviceModeEnterprise &&
-      install_attributes_reader_->GetAttribute(
-          InstallAttributesReader::kAttrMode) !=
-          InstallAttributesReader::kDeviceModeEnterpriseAD)
+  if (!IsEnterpriseEnrolled())
     return false;
 
   if (device_policy_.has_auto_update_settings()) {
@@ -419,6 +429,9 @@ bool DevicePolicyImpl::GetScatterFactorInSeconds(
 
 bool DevicePolicyImpl::GetAllowedConnectionTypesForUpdate(
     std::set<std::string>* connection_types) const {
+  if (!IsEnterpriseEnrolled())
+    return false;
+
   if (!device_policy_.has_auto_update_settings())
     return false;
 
@@ -616,6 +629,8 @@ bool DevicePolicyImpl::GetSecondFactorAuthenticationMode(int* mode_out) const {
 bool DevicePolicyImpl::GetDisallowedTimeIntervals(
     std::vector<WeeklyTimeInterval>* intervals_out) const {
   intervals_out->clear();
+  if (!IsEnterpriseEnrolled())
+    return false;
 
   if (!device_policy_.has_auto_update_settings()) {
     return false;

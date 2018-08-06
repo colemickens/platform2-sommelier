@@ -247,4 +247,60 @@ TEST_F(DevicePolicyImplTest,
                                             DayPercentagePair{28, 100}));
 }
 
+// Updates should only be disabled for enterprise managed devices.
+TEST_F(DevicePolicyImplTest, GetUpdateDisabled_SetConsumer) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_update_disabled(true);
+  InitializePolicy(InstallAttributesReader::kDeviceModeConsumer,
+                   device_policy_proto);
+
+  bool value;
+  ASSERT_FALSE(device_policy_.GetUpdateDisabled(&value));
+}
+
+// Updates should only be pinned on enterprise managed devices.
+TEST_F(DevicePolicyImplTest, GetTargetVersionPrefix_SetConsumer) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_target_version_prefix("hello");
+  InitializePolicy(InstallAttributesReader::kDeviceModeConsumer,
+                   device_policy_proto);
+
+  std::string value = "";
+  ASSERT_FALSE(device_policy_.GetTargetVersionPrefix(&value));
+}
+
+// The allowed connection types should only be changed in enterprise devices.
+TEST_F(DevicePolicyImplTest, GetAllowedConnectionTypesForUpdate_SetConsumer) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->add_allowed_connection_types(
+      em::AutoUpdateSettingsProto::CONNECTION_TYPE_ETHERNET);
+  InitializePolicy(InstallAttributesReader::kDeviceModeConsumer,
+                   device_policy_proto);
+
+  std::set<std::string> value;
+  ASSERT_FALSE(device_policy_.GetAllowedConnectionTypesForUpdate(&value));
+}
+
+// Update time restrictions should only be used in enterprise devices.
+TEST_F(DevicePolicyImplTest, GetDisallowedTimeIntervals_SetConsumer) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_disallowed_time_intervals(
+      "[{\"start\": {\"day_of_week\": \"Monday\", \"hours\": 10, \"minutes\": "
+      "0}, \"end\": {\"day_of_week\": \"Monday\", \"hours\": 10, \"minutes\": "
+      "0}}]");
+  InitializePolicy(InstallAttributesReader::kDeviceModeConsumer,
+                   device_policy_proto);
+
+  std::vector<WeeklyTimeInterval> value;
+  ASSERT_FALSE(device_policy_.GetDisallowedTimeIntervals(&value));
+}
+
 }  // namespace policy
