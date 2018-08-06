@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "hal_adapter/reprocess_effect/portrait_mode_effect.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect.h"
 
 namespace cros {
@@ -63,6 +64,8 @@ class ReprocessEffectManager {
   uint32_t max_vendor_tag_;
 
   CameraBufferManager* buffer_manager_;
+
+  std::unique_ptr<PortraitModeEffect> portrait_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(ReprocessEffectManager);
 };

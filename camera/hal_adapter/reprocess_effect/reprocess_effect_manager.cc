@@ -15,6 +15,7 @@
 #include <hardware/gralloc.h>
 
 #include "cros-camera/common.h"
+#include "hal_adapter/reprocess_effect/portrait_mode_effect.h"
 #include "hal_adapter/vendor_tags.h"
 
 namespace cros {
@@ -25,9 +26,37 @@ ReprocessEffectManager::ReprocessEffectManager()
 
 int32_t ReprocessEffectManager::Initialize() {
   VLOGF_ENTER();
-
-  // Initialize reprocess effect here
-
+  portrait_mode_ = std::make_unique<PortraitModeEffect>();
+  std::vector<std::pair<std::string, uint8_t>> request_vendor_tags;
+  std::vector<std::pair<std::string, uint8_t>> result_vendor_tags;
+  if (portrait_mode_->InitializeAndGetVendorTags(&request_vendor_tags,
+                                                 &result_vendor_tags) != 0) {
+    LOGF(ERROR) << "Failed to initialize portrait mode effect";
+    return -ENODEV;
+  }
+  if (!request_vendor_tags.empty() || !result_vendor_tags.empty()) {
+    uint32_t request_vendor_tag_start = max_vendor_tag_;
+    for (const auto& it : request_vendor_tags) {
+      vendor_tag_info_map_.emplace(
+          max_vendor_tag_,
+          VendorTagInfo(it.first, it.second, portrait_mode_.get()));
+      max_vendor_tag_++;
+    }
+    uint32_t result_vendor_tag_start = max_vendor_tag_;
+    for (const auto& it : result_vendor_tags) {
+      vendor_tag_info_map_.emplace(max_vendor_tag_,
+                                   VendorTagInfo(it.first, it.second, nullptr));
+      max_vendor_tag_++;
+    }
+    if (portrait_mode_->SetVendorTags(
+            request_vendor_tag_start,
+            result_vendor_tag_start - request_vendor_tag_start,
+            result_vendor_tag_start,
+            max_vendor_tag_ - result_vendor_tag_start) != 0) {
+      LOGF(ERROR) << "Failed to set portrait mode effect vendor tags";
+      return -ENODEV;
+    }
+  }
   return 0;
 }
 
