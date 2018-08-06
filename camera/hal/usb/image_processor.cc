@@ -527,23 +527,31 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     return false;
   }
 
-  float focal_length;
-  camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FOCAL_LENGTH);
-  if (entry.count) {
-    focal_length = entry.data.f[0];
+  if (metadata.exists(ANDROID_LENS_FOCAL_LENGTH)) {
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FOCAL_LENGTH);
+    float focal_length = entry.data.f[0];
+    if (!utils->SetFocalLength(
+            static_cast<uint32_t>(focal_length * kRationalPrecision),
+            kRationalPrecision)) {
+      LOGF(ERROR) << "Setting focal length failed.";
+      return false;
+    }
   } else {
-    LOGF(ERROR) << "Cannot find focal length in metadata.";
-    return false;
-  }
-  if (!utils->SetFocalLength(
-          static_cast<uint32_t>(focal_length * kRationalPrecision),
-          kRationalPrecision)) {
-    LOGF(ERROR) << "Setting focal length failed.";
-    return false;
+    if (metadata.exists(ANDROID_LENS_FACING)) {
+      camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FACING);
+      if (entry.data.u8[0] != ANDROID_LENS_FACING_EXTERNAL) {
+        LOGF(ERROR)
+            << "Cannot find focal length in metadata from a built-in camera.";
+        return false;
+      }
+    } else {
+      LOGF(WARNING) << "Cannot find focal length in metadata.";
+    }
   }
 
   if (metadata.exists(ANDROID_JPEG_GPS_COORDINATES)) {
-    entry = metadata.find(ANDROID_JPEG_GPS_COORDINATES);
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_JPEG_GPS_COORDINATES);
     if (entry.count < 3) {
       LOGF(ERROR) << "Gps coordinates in metadata is not complete.";
       return false;
@@ -563,7 +571,8 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
   }
 
   if (metadata.exists(ANDROID_JPEG_GPS_PROCESSING_METHOD)) {
-    entry = metadata.find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
     std::string method_str(reinterpret_cast<const char*>(entry.data.u8));
     if (!utils->SetGpsProcessingMethod(method_str)) {
       LOGF(ERROR) << "Setting gps processing method failed.";
@@ -572,7 +581,7 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
   }
 
   if (time_available && metadata.exists(ANDROID_JPEG_GPS_TIMESTAMP)) {
-    entry = metadata.find(ANDROID_JPEG_GPS_TIMESTAMP);
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_GPS_TIMESTAMP);
     time_t timestamp = static_cast<time_t>(entry.data.i64[0]);
     if (gmtime_r(&timestamp, &time_info)) {
       if (!utils->SetGpsTimestamp(time_info)) {
@@ -586,7 +595,7 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
   }
 
   if (metadata.exists(ANDROID_JPEG_ORIENTATION)) {
-    entry = metadata.find(ANDROID_JPEG_ORIENTATION);
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_ORIENTATION);
     if (!utils->SetOrientation(entry.data.i32[0])) {
       LOGF(ERROR) << "Setting orientation failed.";
       return false;
@@ -602,7 +611,7 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
 
   if (metadata.exists(ANDROID_LENS_APERTURE)) {
     const int kAperturePrecision = 10000;
-    entry = metadata.find(ANDROID_LENS_APERTURE);
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_APERTURE);
     if (!utils->SetFNumber(entry.data.f[0] * kAperturePrecision,
                            kAperturePrecision)) {
       LOGF(ERROR) << "Setting F number failed.";
@@ -611,7 +620,8 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
   }
 
   if (metadata.exists(ANDROID_FLASH_INFO_AVAILABLE)) {
-    entry = metadata.find(ANDROID_FLASH_INFO_AVAILABLE);
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_FLASH_INFO_AVAILABLE);
     if (entry.data.u8[0] == ANDROID_FLASH_INFO_AVAILABLE_FALSE) {
       const uint32_t kNoFlashFunction = 0x20;
       if (!utils->SetFlash(kNoFlashFunction)) {
@@ -625,7 +635,7 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
   }
 
   if (metadata.exists(ANDROID_CONTROL_AWB_MODE)) {
-    entry = metadata.find(ANDROID_CONTROL_AWB_MODE);
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AWB_MODE);
     if (entry.data.u8[0] == ANDROID_CONTROL_AWB_MODE_AUTO) {
       const uint16_t kAutoWhiteBalance = 0;
       if (!utils->SetWhiteBalance(kAutoWhiteBalance)) {
