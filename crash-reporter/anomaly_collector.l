@@ -39,6 +39,7 @@ char *selinux_audit_comm;
 char *selinux_audit_name;
 char *selinux_audit_scontext;
 char *selinux_audit_tcontext;
+char *selinux_audit_permission;
 
 int ReportServiceFailure(const char *service_name, const int exit_status);
 int ReportSELinuxViolation(void);
@@ -75,6 +76,8 @@ void CleanUpSELinuxVariables() {
   selinux_audit_scontext = NULL;
   free(selinux_audit_tcontext);
   selinux_audit_tcontext = NULL;
+  free(selinux_audit_permission);
+  selinux_audit_permission = NULL;
 }
 
 #define YY_INPUT(buf, result, max_size) CollectorInput(buf, &result, max_size)
@@ -106,7 +109,7 @@ SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
 SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
 
 /* Use exclusive start conditions. */
-%x PRE_WARN WARN SERVICE_FAIL SERVICE_FAIL_SKIP SERVICE_FAIL_EXIT SELINUX_AUDIT SELINUX_AUDIT_NON_VIOLATION
+%x PRE_WARN WARN SERVICE_FAIL SERVICE_FAIL_SKIP SERVICE_FAIL_EXIT SELINUX_AUDIT
 
 %%
  /* The scanner itself. */
@@ -170,7 +173,10 @@ SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
                                   selinux_audit_tcontext = strdup(yytext + 9);
                                   AppendSELinuxText();
                                 }
-<SELINUX_AUDIT>avc:[ ]*granted  BEGIN(SELINUX_AUDIT_NON_VIOLATION);
+<SELINUX_AUDIT>[{][ ][^ ]*      {
+                                  selinux_audit_permission = strdup(yytext + 2);
+                                  AppendSELinuxText();
+                                }
 <SELINUX_AUDIT>\n               {
                                   BEGIN(0);
                                   AppendSELinuxText();
@@ -178,11 +184,6 @@ SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
                                   CleanUpSELinuxVariables();
                                 }
 <SELINUX_AUDIT>.                AppendSELinuxText();
-
-<SELINUX_AUDIT_NON_VIOLATION>.*$ {
-                                  BEGIN(0);
-                                  CleanUpSELinuxVariables();
-                                }
 
 
 .|\n                            /* ignore all other input in state 0 */
@@ -248,6 +249,25 @@ static uint32_t StringHash(const char *string) {
     hash = (hash << 5) + hash + *string++;
   }
   return hash;
+}
+
+static char *AlphabetOnly(const char *string) {
+  char *alphabet_only = strdup(string);
+  char *current = alphabet_only, *next = alphabet_only;
+  while (*next != '\0') {
+    if (isalpha(*next)) {
+      *current++ = *next;
+    }
+    next++;
+  }
+  *current = '\0';
+  return alphabet_only;
+}
+
+static void AppendAlphabetToString(char **dest, char *src) {
+  char *alphabet_only = AlphabetOnly(src);
+  AppendToString(dest, alphabet_only);
+  free(alphabet_only);
 }
 
 static uint32_t StringHashAlphabetOnly(const char *string) {
@@ -328,15 +348,21 @@ int ReportSELinuxViolation(void) {
                     selinux_violation_hash_bitmap, hash))
     return 0;
 
-  char *selinux_violation_sig;
-  if (selinux_audit_comm != NULL && selinux_audit_name != NULL) {
-    if (asprintf(&selinux_violation_sig, "%s-%s",
-                 selinux_audit_comm, selinux_audit_name) == -1)
-      // We try to collect these error without a human readable signature, but
-      // hash-only.
-      selinux_violation_sig = "failed-to-sig";
-  } else
-    selinux_violation_sig = selinux_audit_comm ? : selinux_audit_name;
+  char *selinux_violation_sig = NULL;
+  if (selinux_audit_scontext != NULL)
+    AppendToString(&selinux_violation_sig, selinux_audit_scontext);
+  AppendToString(&selinux_violation_sig, "-");
+  if (selinux_audit_tcontext != NULL)
+    AppendToString(&selinux_violation_sig, selinux_audit_tcontext);
+  AppendToString(&selinux_violation_sig, "-");
+  if (selinux_audit_permission != NULL)
+    AppendToString(&selinux_violation_sig, selinux_audit_permission);
+  AppendToString(&selinux_violation_sig, "-");
+  if (selinux_audit_comm != NULL)
+    AppendAlphabetToString(&selinux_violation_sig, selinux_audit_comm);
+  AppendToString(&selinux_violation_sig, "-");
+  if (selinux_audit_name != NULL)
+    AppendAlphabetToString(&selinux_violation_sig, selinux_audit_name);
 
   if (selinux_violation_sig)
     fprintf(yyout, "%08x-selinux-%s\n", hash, selinux_violation_sig);
