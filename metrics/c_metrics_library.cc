@@ -75,6 +75,14 @@ extern "C" int CMetricsLibrarySendCrashToUMA(CMetricsLibrary handle,
   return lib->SendCrashToUMA(crash_kind);
 }
 
+extern "C" int CMetricsLibrarySendCrosEventToUMA(CMetricsLibrary handle,
+                                                 const char *event) {
+  MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
+  if (lib == NULL)
+    return 0;
+  return lib->SendCrosEventToUMA(event);
+}
+
 extern "C" int CMetricsLibraryAreMetricsEnabled(CMetricsLibrary handle) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)

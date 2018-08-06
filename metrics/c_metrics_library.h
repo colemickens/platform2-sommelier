@@ -46,6 +46,10 @@ int CMetricsLibrarySendUserActionToUMA(CMetricsLibrary handle,
 int CMetricsLibrarySendCrashToUMA(CMetricsLibrary handle,
                                   const char* crash_kind);
 
+// C wrapper for MetricsLibrary::SendCrosEventToUMA.
+int CMetricsLibrarySendCrosEventToUMA(CMetricsLibrary handle,
+                                      const char *event);
+
 // C wrapper for MetricsLibrary::AreMetricsEnabled.
 int CMetricsLibraryAreMetricsEnabled(CMetricsLibrary handle);
 
