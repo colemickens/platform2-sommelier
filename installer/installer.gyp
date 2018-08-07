@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# TODO: Rename these files to pass this check.
+# gyplint: disable=GypLintSourceFileNames
+
 {
   'target_defaults': {
     'include_dirs': [

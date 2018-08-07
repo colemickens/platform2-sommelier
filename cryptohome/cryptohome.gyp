@@ -1,4 +1,8 @@
 # Executable targets that belong to the main cryptohome package.
+
+# TODO: Rename these files to pass this check.
+# gyplint: disable=GypLintSourceFileNames
+
 {
   'includes': ['cryptohome-libs.gypi'],
   'variables': {

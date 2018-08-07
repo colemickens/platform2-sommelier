@@ -182,6 +182,23 @@ def GypLintOrderedFiles(gypdata):
   return WalkGyp(CheckNode, gypdata)
 
 
+def GypLintSourceFileNames(gypdata):
+  """Enforce various filename conventions."""
+  re_unittest = re.compile(r'_unittest\.(cc|c|h)$')
+
+  def CheckNode(key, value):
+    ret = []
+    if key == 'sources':
+      for path in value:
+        # Enforce xxx_test.cc naming.
+        if re_unittest.search(path):
+          ret.append('%s: rename unittest file to "%s"' %
+                     (path, path.replace('_unittest', '_test')))
+    return ret
+
+  return WalkGyp(CheckNode, gypdata)
+
+
 # It's not easy to auto-discover pkg-config files as we don't require a chroot
 # or a fully installed sysroot to run this linter.  Plus, there's no clean way
 # to correlate -lfoo names with pkg-config .pc file names.  List the packages

@@ -109,6 +109,14 @@ class GypLintTests(LintTestCase):
         {'sources': ['zzz.cc', 'a.h']},
     ))
 
+  def testGypLintSourceFileNames(self):
+    """Verify GypLintSourceFileNames catches bad filenames."""
+    self._CheckLinter(gyplint.GypLintSourceFileNames, (
+        {'sources': ['foo_unittest.cc']},
+        {'sources': ['foo_unittest.h']},
+        {'sources': ['foo_unittest.c']},
+    ))
+
   def testGypLintPkgConfigs(self):
     """Verify GypLintPkgConfigs catches bad inputs."""
     self._CheckLinter(gyplint.GypLintPkgConfigs, (

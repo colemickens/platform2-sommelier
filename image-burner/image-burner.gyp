@@ -1,3 +1,6 @@
+# TODO: Rename these files to pass this check.
+# gyplint: disable=GypLintSourceFileNames
+
 {
   'target_defaults': {
     'link_settings': {
