@@ -65,12 +65,12 @@ status_t AicLibrary::init(void* pData, int dataSize)
 
     ISPPipe *tempISPPipes[NUM_ISP_PIPES];
     for (int i = 0; i < numPipes; i++) {
-        mIspPipes[i].reset(new IPU3ISPPipe);
-        tempISPPipes[i] = mIspPipes[i].get();
+        mIspPipes[transport->aicMode][i].reset(new IPU3ISPPipe);
+        tempISPPipes[i] = mIspPipes[transport->aicMode][i].get();
     }
 
-    mSkyCam = nullptr;
-    mSkyCam.reset(new KBL_AIC(tempISPPipes,
+    mSkyCam[transport->aicMode] = nullptr;
+    mSkyCam[transport->aicMode].reset(new KBL_AIC(tempISPPipes,
                                 numPipes,
                                 cmc,
                                 &aiqb,
@@ -92,7 +92,7 @@ void AicLibrary::run(void* pData, int dataSize)
     bool ret = mIpc.serverUnflattenRun(*transport, &params);
     CheckError(ret == false, VOID_VALUE, "@%s, serverUnflattenRun fails", __FUNCTION__);
 
-    mSkyCam->Run(params, 1);
+    mSkyCam[transport->aicMode]->Run(params, 1);
 }
 
 void AicLibrary::reset(void* pData, int dataSize)
@@ -106,7 +106,7 @@ void AicLibrary::reset(void* pData, int dataSize)
     bool ret = mIpc.serverUnflattenRun(*transport, &params);
     CheckError(ret == false, VOID_VALUE, "@%s, serverUnflattenRun fails", __FUNCTION__);
 
-    mSkyCam->Reset(*params);
+    mSkyCam[transport->aicMode]->Reset(*params);
 }
 
 status_t AicLibrary::getAicVersion(void* pData, int dataSize)
@@ -115,10 +115,10 @@ status_t AicLibrary::getAicVersion(void* pData, int dataSize)
     CheckError((pData == nullptr), UNKNOWN_ERROR, "@%s, pData is nullptr", __FUNCTION__);
     CheckError((dataSize < sizeof(ia_aic_version_params)), UNKNOWN_ERROR, "@%s, buffer is small", __FUNCTION__);
 
-    std::string version = mSkyCam->GetAICVersion();
+    ia_aic_version_params* params = static_cast<ia_aic_version_params*>(pData);
+    std::string version = mSkyCam[params->aicMode]->GetAICVersion();
     CheckError(version.size() == 0, UNKNOWN_ERROR, "@%s, GetAICVersion fails", __FUNCTION__);
 
-    ia_aic_version_params* params = static_cast<ia_aic_version_params*>(pData);
     strncpy(params->data, version.c_str(), sizeof(params->data));
     params->data[MAX_IA_AIC_VERSION_PARAMS_DATA_SIZE - 1] = '\0';
     params->size = MIN(version.size(), sizeof(params->data));
@@ -133,10 +133,11 @@ status_t AicLibrary::getAicConfig(void* pData, int dataSize)
     CheckError((pData == nullptr), UNKNOWN_ERROR, "@%s, pData is nullptr", __FUNCTION__);
     CheckError((dataSize < sizeof(aic_config)), UNKNOWN_ERROR, "@%s, buffer is small", __FUNCTION__);
 
-    aic_config* cfg = mIspPipes[0]->GetAicConfig();
+    IPU3AicConfig* params = static_cast<IPU3AicConfig*>(pData);
+    aic_config* cfg = mIspPipes[params->aicMode][0]->GetAicConfig();
     CheckError(cfg == nullptr, UNKNOWN_ERROR, "@%s, BUG: GetAicConfig fails", __FUNCTION__);
 
-    MEMCPY_S(pData, dataSize, cfg, sizeof(aic_config));
+    MEMCPY_S(&params->aicConfig, dataSize, cfg, sizeof(aic_config));
 
     return OK;
 }

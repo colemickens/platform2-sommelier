@@ -39,9 +39,8 @@ public:
     status_t getAicConfig(void* pData, int dataSize);
 
 private:
-#define NUM_ISP_PIPES 1
-    std::unique_ptr<IPU3ISPPipe> mIspPipes[NUM_ISP_PIPES];
-    std::unique_ptr<KBL_AIC> mSkyCam;
+    std::unique_ptr<IPU3ISPPipe> mIspPipes[AIC_MODE_MAX][NUM_ISP_PIPES];
+    std::unique_ptr<KBL_AIC> mSkyCam[AIC_MODE_MAX];
 
     IPCAic mIpc;
 };

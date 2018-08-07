@@ -54,12 +54,19 @@ struct Transport {
     IPU3AICRuntimeParams_data input;
     unsigned int dumpAicParameters;
     int test_frameworkDump;
+    AicMode aicMode;
 };
 
 #define MAX_IA_AIC_VERSION_PARAMS_DATA_SIZE 100
 struct ia_aic_version_params {
     char data[MAX_IA_AIC_VERSION_PARAMS_DATA_SIZE];
     unsigned int size;
+    AicMode aicMode;
+};
+
+struct IPU3AicConfig {
+    aic_config aicConfig;
+    AicMode aicMode;
 };
 
 class IPCAic {

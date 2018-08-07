@@ -36,7 +36,7 @@ class SkyCamProxy
 public:
 
     static std::shared_ptr<SkyCamProxy> createProxy(
-            int cameraId, IPU3ISPPipe **pipes, unsigned int numPipes,
+            int cameraId, AicMode aicMode, IPU3ISPPipe **pipes, unsigned int numPipes,
             const ia_cmc_t* cmcParsed,
             const ia_binary_data* aiqb,
             IPU3AICRuntimeParams *runtimeParams,

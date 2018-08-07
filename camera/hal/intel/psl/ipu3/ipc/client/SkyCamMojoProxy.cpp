@@ -20,15 +20,20 @@
 #include "SkyCamMojoProxy.h"
 
 NAMESPACE_DECLARATION {
-SkyCamMojoProxy::SkyCamMojoProxy():
-        mInitialized(false)
+SkyCamMojoProxy::SkyCamMojoProxy(AicMode aicMode):
+        mInitialized(false),
+        mAicMode(aicMode)
 {
-    LOG1("@%s", __FUNCTION__);
+    LOG1("@%s, aicMode %d", __FUNCTION__, aicMode);
+
+    std::string aicCommonShm = "/aicCommon" + std::to_string(aicMode) + "Shm";
+    std::string aicCfgShm = "/aicCfg" + std::to_string(aicMode) + "Shm";
+    std::string aicVersionShm = "/aicVersion" + std::to_string(aicMode) + "Shm";
 
     mMems = {
-        {"/aicCommonShm", sizeof(Transport), &mMemCommon, false},
-        {"/aicCfgShm", sizeof(aic_config), &mMemCfg, false},
-        {"/aicVersionShm", sizeof(ia_aic_version_params), &mMemVersion, false}};
+        {aicCommonShm.c_str(), sizeof(Transport), &mMemCommon, false},
+        {aicCfgShm.c_str(), sizeof(IPU3AicConfig), &mMemCfg, false},
+        {aicVersionShm.c_str(), sizeof(ia_aic_version_params), &mMemVersion, false}};
 
     bool success = mCommon.allocateAllShmMems(mMems);
     if (!success) {
@@ -55,6 +60,8 @@ status_t SkyCamMojoProxy::init(int cameraId, IPU3ISPPipe** pipe, unsigned int nu
     CheckError(mInitialized == false, UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
 
     Transport* transport = static_cast<Transport*>(mMemCommon.mAddr);
+    transport->aicMode = mAicMode;
+
     bool ret = mIpc.clientFlattenInit(*runtimeParams,
                                             numPipes,
                                             aiqb,
@@ -76,6 +83,8 @@ void SkyCamMojoProxy::Run(IPU3AICRuntimeParams& runtimeParams)
     CheckError(mInitialized == false, VOID_VALUE, "@%s, mInitialized is false", __FUNCTION__);
 
     Transport* transport = static_cast<Transport*>(mMemCommon.mAddr);
+    transport->aicMode = mAicMode;
+
     bool ret = mIpc.clientFlattenRun(runtimeParams, transport);
     CheckError(ret == false, VOID_VALUE, "@%s, clientFlattenRun fails", __FUNCTION__);
 
@@ -89,6 +98,8 @@ void SkyCamMojoProxy::Reset(IPU3AICRuntimeParams& runtimeParams)
     CheckError(mInitialized == false, VOID_VALUE, "@%s, mInitialized is false", __FUNCTION__);
 
     Transport* transport = static_cast<Transport*>(mMemCommon.mAddr);
+    transport->aicMode = mAicMode;
+
     bool ret = mIpc.clientFlattenRun(runtimeParams, transport);
     CheckError(ret == false, VOID_VALUE, "@%s, clientFlattenRun fails", __FUNCTION__);
 
@@ -101,10 +112,11 @@ std::string SkyCamMojoProxy::GetAICVersion()
     LOG1("@%s", __FUNCTION__);
     CheckError(mInitialized == false, "", "@%s, mInitialized is false", __FUNCTION__);
 
+    ia_aic_version_params* params = static_cast<ia_aic_version_params*>(mMemVersion.mAddr);
+    params->aicMode = mAicMode;
+
     bool ret = mCommon.requestSync(IPC_3A_AIC_GETAICVERSION, mMemVersion.mHandle);
     CheckError(ret == false, "", "@%s, requestSync fails", __FUNCTION__);
-
-    ia_aic_version_params* params = static_cast<ia_aic_version_params*>(mMemVersion.mAddr);
 
     std::string version(params->data);
     LOG2("@%s, version:%s", __FUNCTION__, version.c_str());
@@ -116,11 +128,12 @@ aic_config* SkyCamMojoProxy::GetAicConfig()
     LOG1("@%s", __FUNCTION__);
     CheckError(mInitialized == false, nullptr, "@%s, mInitialized is false", __FUNCTION__);
 
+    IPU3AicConfig* config = static_cast<IPU3AicConfig*>(mMemCfg.mAddr);
+    config->aicMode = mAicMode;
+
     bool ret = mCommon.requestSync(IPC_3A_AIC_GETAICCONFIG, mMemCfg.mHandle);
     CheckError(ret == false, nullptr, "@%s, requestSync fails", __FUNCTION__);
 
-    aic_config* cfg = static_cast<aic_config*>(mMemCfg.mAddr);
-
-    return cfg;
+    return &config->aicConfig;
 }
 } NAMESPACE_DECLARATION_END

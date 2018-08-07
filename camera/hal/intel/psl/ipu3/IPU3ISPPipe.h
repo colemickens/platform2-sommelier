@@ -23,12 +23,19 @@
 namespace android {
 namespace camera2 {
 
+#define NUM_ISP_PIPES 1
+
+typedef enum AicMode {
+    AIC_MODE_STILL = 0,
+    AIC_MODE_VIDEO,
+    AIC_MODE_MAX,
+} AicMode;
+
 class IPU3ISPPipe: public ISPPipe
 {
 public:
     IPU3ISPPipe();
     virtual ~IPU3ISPPipe();
-
 
 public:
 

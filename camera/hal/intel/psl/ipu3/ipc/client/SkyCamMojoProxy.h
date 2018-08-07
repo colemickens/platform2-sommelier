@@ -26,7 +26,7 @@
 NAMESPACE_DECLARATION {
 class SkyCamMojoProxy: public SkyCamProxy {
 public:
-    SkyCamMojoProxy();
+    SkyCamMojoProxy(AicMode aicMode);
     virtual ~SkyCamMojoProxy();
     status_t init(int cameraId, IPU3ISPPipe** pipe, unsigned int numPipes,
                   const ia_cmc_t* cmcParsed,
@@ -44,6 +44,7 @@ private:
     Intel3aCommon mCommon;
 
     bool mInitialized;
+    AicMode mAicMode;
 
     ShmMemInfo mMemCommon;
     ShmMemInfo mMemCfg;

@@ -137,8 +137,11 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         }
     }
 
+    // TODO hardcode it to AIC_MODE_VIDEO for only one pipe currently.
+    // Will select AicMode per IPU pipe.
+    AicMode aicMode = AIC_MODE_VIDEO;
     if (mSkyCamAIC == nullptr) {
-        mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, mCurRuntimeParams, 0, 0);
+        mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, aicMode, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, mCurRuntimeParams, 0, 0);
         CheckError((mSkyCamAIC == nullptr), NO_MEMORY, "Not able to create SkyCam AIC");
     }
 

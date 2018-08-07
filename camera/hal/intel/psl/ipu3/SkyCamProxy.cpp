@@ -39,7 +39,7 @@ SkyCamProxy::~SkyCamProxy()
     // TODO Auto-generated destructor stub
 }
 
-std::shared_ptr<SkyCamProxy> SkyCamProxy::createProxy(int cameraId, IPU3ISPPipe **pipes, unsigned int numPipes, const ia_cmc_t* cmcParsed,
+std::shared_ptr<SkyCamProxy> SkyCamProxy::createProxy(int cameraId, AicMode aicMode, IPU3ISPPipe **pipes, unsigned int numPipes, const ia_cmc_t* cmcParsed,
         const ia_binary_data* aiqb, IPU3AICRuntimeParams *runtimeParams,
         unsigned int dumpAicParameters, int testFrameworkDump)
 {
@@ -47,7 +47,7 @@ std::shared_ptr<SkyCamProxy> SkyCamProxy::createProxy(int cameraId, IPU3ISPPipe 
     std::shared_ptr<SkyCamProxy> proxyObject = nullptr;
 
     LOGD("Use IPC implementation");
-    proxyObject = std::make_shared<SkyCamMojoProxy>();
+    proxyObject = std::make_shared<SkyCamMojoProxy>(aicMode);
     CheckError(proxyObject == nullptr, nullptr, "@%s: proxyObject is nullptr", __FUNCTION__);
 
     status_t ret = proxyObject->init(cameraId, pipes, numPipes, cmcParsed, aiqb, runtimeParams,

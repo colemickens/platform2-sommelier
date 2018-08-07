@@ -25,8 +25,6 @@
 namespace android {
 namespace camera2 {
 
-const int NUM_ISP_PIPES = 1;
-
 struct PipeConfig
 {
     unsigned short valid;                   // boolean, but using unsigned short for DWORD alignment for static size check.
