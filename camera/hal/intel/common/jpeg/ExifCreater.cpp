@@ -46,10 +46,8 @@ ExifCreater::~ExifCreater()
 
 exif_status ExifCreater::setThumbData(const void *thumbBuf, unsigned int thumbSize)
 {
-    // TODO: Maybe we should take into account the rest of the EXIF data as well here,
-    // not just the thumbnail size.
-    if (thumbSize >= EXIF_SIZE_LIMITATION) {
-        LOGE("ERROR: Too big thumb size %d (limit: %d)", thumbSize, EXIF_SIZE_LIMITATION);
+    if (thumbSize >= THUMBNAIL_SIZE_LIMITATION) {
+        LOGE("ERROR: Too big thumb size %d (limit: %d)", thumbSize, THUMBNAIL_SIZE_LIMITATION);
         m_thumbBuf = nullptr;
         m_thumbSize = 0;
         return EXIF_FAIL;

@@ -36,10 +36,9 @@
 #define NUM_1TH_IFD_TIFF            9
 // For QVGA: 320 * 240 * 1.5
 #define EXIF_SIZE_LIMITATION        0x10000
-// Limite the thumbnail size to 32k, to make sure the whole exif size does
-// not exceed the exif size limitation. We guess the total size of all the
-// other fields is smaller than 32k. (Currently the size is about 26k.)
-#define THUMBNAIL_SIZE_LIMITATION   0x8000
+// Limit the thumbnail size to 25k, the other part of the exif is between 38K and 39K.
+// thumbnail + other part of the exif must not exceed 64K.
+#define THUMBNAIL_SIZE_LIMITATION   0x6400
 
 /* Type */
 #define EXIF_TYPE_BYTE              1
