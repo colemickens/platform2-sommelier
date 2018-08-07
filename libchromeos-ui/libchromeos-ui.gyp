@@ -1,6 +1,9 @@
 # TODO: Rename these files to pass this check.
 # gyplint: disable=GypLintSourceFileNames
 
+# TODO: Fix the visibility on these shared libs.
+# gyplint: disable=GypLintVisibilityFlags
+
 {
   'target_defaults': {
     'variables': {

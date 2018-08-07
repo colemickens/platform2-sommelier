@@ -1,3 +1,6 @@
+# TODO: Fix the visibility on these shared libs.
+# gyplint: disable=GypLintVisibilityFlags
+
 {
   'target_defaults': {
     'variables': {
