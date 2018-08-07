@@ -549,7 +549,6 @@ install_stateful() {
   local dirlist="
     unencrypted/demo_mode_resources
     unencrypted/import_extensions
-    unencrypted/oobe_auto_config
   "
 
   if crossystem 'cros_debug?1'; then
