@@ -20,8 +20,10 @@
 #include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 #include <mojo/public/cpp/bindings/binding.h>
+#include <system/camera_metadata.h>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "hal_adapter/camera_metadata_inspector.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
@@ -51,6 +53,7 @@ class Camera3CaptureRequest : public camera3_capture_request_t {
 class CameraDeviceAdapter : public camera3_callback_ops_t {
  public:
   explicit CameraDeviceAdapter(camera3_device_t* camera_device,
+                               const camera_metadata_t* static_info,
                                base::Callback<void()> close_callback);
 
   ~CameraDeviceAdapter();
@@ -183,6 +186,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // The real camera device.
   camera3_device_t* camera_device_;
 
+  // The non-owning read-only view of the static camera characteristics of this
+  // device.
+  const camera_metadata_t* static_info_;
+
   // A mapping from Andoird HAL for all the configured streams.
   internal::ScopedStreams streams_;
 
@@ -222,6 +229,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // The callback to handle reprocessing effect.
   ReprocessEffectCallback reprocess_effect_callback_;
+
+  // The metadata inspector to dump capture requests / results in realtime
+  // for debugging if enabled.
+  std::unique_ptr<CameraMetadataInspector> camera_metadata_inspector_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraDeviceAdapter);
 };

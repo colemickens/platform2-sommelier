@@ -44,6 +44,7 @@ Camera3CaptureRequest::Camera3CaptureRequest(
 }
 
 CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
+                                         const camera_metadata_t* static_info,
                                          base::Callback<void()> close_callback)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
@@ -51,7 +52,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       reprocess_effect_thread_("ReprocessEffectThread"),
       close_callback_(close_callback),
       device_closed_(false),
-      camera_device_(camera_device) {
+      camera_device_(camera_device),
+      static_info_(static_info) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
@@ -85,6 +87,16 @@ bool CameraDeviceAdapter::Start(
   }
   device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(
       this, camera_device_ops_thread_.task_runner()));
+  int partial_result_count = [&]() {
+    camera_metadata_ro_entry entry;
+    if (find_camera_metadata_ro_entry(
+            static_info_, ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &entry) != 0) {
+      return 1;
+    }
+    return entry.data.i32[0];
+  }();
+  camera_metadata_inspector_ =
+      CameraMetadataInspector::Create(partial_result_count);
   has_reprocess_effect_vendor_tag_callback_ =
       std::move(has_reprocess_effect_vendor_tag_callback);
   reprocess_effect_callback_ = std::move(reprocess_effect_callback);
@@ -257,6 +269,10 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
   }
 
+  if (camera_metadata_inspector_) {
+    camera_metadata_inspector_->InspectRequest(&req);
+  }
+
   // Apply reprocessing effects
   if (req.input_buffer &&
       has_reprocess_effect_vendor_tag_callback_.Run(*req.settings)) {
@@ -392,6 +408,9 @@ void CameraDeviceAdapter::ProcessCaptureResult(
 
   base::AutoLock l(self->callback_ops_delegate_lock_);
   if (self->callback_ops_delegate_) {
+    if (self->camera_metadata_inspector_) {
+      self->camera_metadata_inspector_->InspectResult(result);
+    }
     self->callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
   }
 }

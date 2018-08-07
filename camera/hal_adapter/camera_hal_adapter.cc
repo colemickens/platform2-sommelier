@@ -144,6 +144,12 @@ int32_t CameraHalAdapter::OpenDevice(
     return ret;
   }
 
+  camera_info_t info;
+  ret = camera_module->get_camera_info(internal_camera_id, &info);
+  if (ret != 0) {
+    LOGF(ERROR) << "Failed to get camera info of camera " << camera_id;
+    return ret;
+  }
   // This method is called by |camera_module_delegate_| on its mojo IPC
   // handler thread.
   // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
@@ -152,8 +158,9 @@ int32_t CameraHalAdapter::OpenDevice(
   base::Callback<void()> close_callback =
       base::Bind(&CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
                  base::ThreadTaskRunnerHandle::Get(), camera_id);
-  device_adapters_[camera_id].reset(
-      new CameraDeviceAdapter(camera_device, close_callback));
+  device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
+      camera_device, info.static_camera_characteristics, close_callback);
+
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback =
           base::Bind(&ReprocessEffectManager::HasReprocessEffectVendorTag,
