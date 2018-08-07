@@ -93,8 +93,6 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
   builder.AddListeningPort(
       base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, VMADDR_PORT_ANY),
       grpc::InsecureServerCredentials(), vsock_listen_port);
-  builder.AddListeningPort(base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
-                           grpc::InsecureServerCredentials());
 
   vm_tools::garcon::ServiceImpl garcon_service(pk_proxy);
   builder.RegisterService(&garcon_service);

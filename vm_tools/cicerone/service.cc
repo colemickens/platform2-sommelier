@@ -99,8 +99,7 @@ void HandleSynchronousDBusMethodCall(
 // the pointer to the grpc server in |server_copy| and then signals |event|.
 // It will listen on the address specified in |listener_address|.
 void RunListenerService(grpc::Service* listener,
-                        const std::string& vsock_listener_address,
-                        const std::string& ipv4_listener_address,
+                        const std::string& listener_address,
                         base::WaitableEvent* event,
                         std::shared_ptr<grpc::Server>* server_copy) {
   // We are not interested in getting SIGCHLD or SIGTERM on this thread.
@@ -112,12 +111,7 @@ void RunListenerService(grpc::Service* listener,
 
   // Build the grpc server.
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(vsock_listener_address,
-                           grpc::InsecureServerCredentials());
-  if (!ipv4_listener_address.empty()) {
-    builder.AddListeningPort(ipv4_listener_address,
-                             grpc::InsecureServerCredentials());
-  }
+  builder.AddListeningPort(listener_address, grpc::InsecureServerCredentials());
   builder.RegisterService(listener);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
@@ -136,8 +130,7 @@ void RunListenerService(grpc::Service* listener,
 // |server_copy|. Returns true if setup & started successfully, false otherwise.
 bool SetupListenerService(base::Thread* grpc_thread,
                           grpc::Service* listener_impl,
-                          const std::string& vsock_listener_address,
-                          const std::string& ipv4_listener_address,
+                          const std::string& listener_address,
                           std::shared_ptr<grpc::Server>* server_copy) {
   // Start the grpc thread.
   if (!grpc_thread->Start()) {
@@ -148,9 +141,8 @@ bool SetupListenerService(base::Thread* grpc_thread,
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
   bool ret = grpc_thread->task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&RunListenerService, listener_impl, vsock_listener_address,
-                 ipv4_listener_address, &event, server_copy));
+      FROM_HERE, base::Bind(&RunListenerService, listener_impl,
+                            listener_address, &event, server_copy));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return false;
@@ -804,7 +796,6 @@ bool Service::Init() {
           &grpc_thread_container_, container_listener_.get(),
           base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
                              vm_tools::kGarconPort),
-          base::StringPrintf("[::]:%u", vm_tools::kGarconPort),
           &grpc_server_container_)) {
     LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
@@ -813,7 +804,7 @@ bool Service::Init() {
   if (!SetupListenerService(&grpc_thread_tremplin_, tremplin_listener_.get(),
                             base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
                                                vm_tools::kTremplinListenerPort),
-                            "", &grpc_server_tremplin_)) {
+                            &grpc_server_tremplin_)) {
     LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
     return false;
   }
