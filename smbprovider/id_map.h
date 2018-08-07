@@ -30,14 +30,14 @@ class IdMap {
     const int32_t next_id = GetNextId();
     DCHECK_EQ(0, ids_.count(next_id));
 
-    ids_.insert({next_id, std::move(value)});
+    ids_.emplace(next_id, std::move(value));
     return next_id;
   }
 
   void InsertWithSpecificId(int32_t id, T value) {
     DCHECK_EQ(0, ids_.count(id));
 
-    ids_.insert({id, std::move(value)});
+    ids_.emplace(id, std::move(value));
     next_unused_id_ = std::max(next_unused_id_, id) + 1;
   }
 
