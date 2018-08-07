@@ -473,14 +473,14 @@ int32_t SmbProvider::ContinueCopy(int32_t mount_id, int32_t copy_token) {
   DCHECK_GE(copy_token, 0);
 
   int32_t error_code;
-  if (!copy_tracker_.count(copy_token)) {
+  if (!copy_tracker_.Contains(copy_token)) {
     LogAndSetError(kContinueCopyMethod, mount_id, ERROR_COPY_FAILED,
                    &error_code);
     return error_code;
   }
 
   if (!mount_manager_->IsAlreadyMounted(mount_id)) {
-    copy_tracker_.erase(copy_token);
+    copy_tracker_.Remove(copy_token);
     LogAndSetError(kContinueCopyMethod, mount_id, ERROR_COPY_FAILED,
                    &error_code);
     return error_code;
@@ -1058,8 +1058,7 @@ ErrorType SmbProvider::StartCopyProgress(const CopyEntryOptionsProto& options,
       copy_progress->StartCopy(source_path, target_path, &copy_result);
   if (should_continue_copy) {
     // The copy needs to be continued.
-    *copy_token = copy_counter_++;
-    copy_tracker_[*copy_token] = std::move(copy_progress);
+    *copy_token = copy_tracker_.Insert(std::move(copy_progress));
     return ERROR_COPY_PENDING;
   }
   if (copy_result == 0) {
@@ -1092,10 +1091,11 @@ ErrorType SmbProvider::StartFileCopy(const CopyEntryOptionsProto& options,
 
 ErrorType SmbProvider::ContinueCopy(int32_t copy_token) {
   DCHECK_GE(copy_token, 0);
+  DCHECK(copy_tracker_.Contains(copy_token));
 
   int32_t copy_result;
   const bool should_continue_copy =
-      copy_tracker_[copy_token]->ContinueCopy(&copy_result);
+      copy_tracker_.Find(copy_token)->second->ContinueCopy(&copy_result);
   if (should_continue_copy) {
     // The copy needs to be continued.
     return ERROR_COPY_PENDING;
@@ -1103,7 +1103,7 @@ ErrorType SmbProvider::ContinueCopy(int32_t copy_token) {
 
   // The copy no longer needs to be continued as it has either completed
   // successfully or it failed so remove it from |copy_tracker_|.
-  copy_tracker_.erase(copy_token);
+  copy_tracker_.Remove(copy_token);
 
   if (copy_result == 0) {
     // The copy is complete.

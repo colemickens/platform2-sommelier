@@ -5,7 +5,6 @@
 #ifndef SMBPROVIDER_SMBPROVIDER_H_
 #define SMBPROVIDER_SMBPROVIDER_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -14,6 +13,7 @@
 #include <dbus_adaptors/org.chromium.SmbProvider.h>
 
 #include "smbprovider/copy_progress_interface.h"
+#include "smbprovider/id_map.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -449,8 +449,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   TempFileManager temp_file_manager_;
   // Keeps track of in-progress copy operations. Maps a copy token to a
   // CopyProgress.
-  int32_t copy_counter_ = 0;
-  std::map<int32_t, std::unique_ptr<CopyProgressInterface>> copy_tracker_;
+  IdMap<std::unique_ptr<CopyProgressInterface>> copy_tracker_;
   bool metadata_cache_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbProvider);
