@@ -111,7 +111,6 @@ def CheckSubdirs():
       'avtest_label_detect',
       'buffet',
       'container_utils',
-      'crash-reporter',
       'cromo',
       'cros-disks',
       'cryptohome',
