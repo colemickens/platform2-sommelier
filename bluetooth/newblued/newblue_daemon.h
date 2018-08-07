@@ -17,6 +17,7 @@
 #include "bluetooth/common/bluetooth_daemon.h"
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/newblue.h"
+#include "bluetooth/newblued/stack_sync_monitor.h"
 
 namespace bluetooth {
 
@@ -95,6 +96,8 @@ class NewblueDaemon : public BluetoothDaemon {
                               const Device& device,
                               bool is_new_device);
 
+  void OnBluezDown();
+
   scoped_refptr<dbus::Bus> bus_;
 
   std::unique_ptr<ExportedObjectManagerWrapper>
@@ -103,6 +106,8 @@ class NewblueDaemon : public BluetoothDaemon {
   std::unique_ptr<Newblue> newblue_;
 
   DBusDaemon* dbus_daemon_;
+
+  StackSyncMonitor stack_sync_monitor_;
 
   // Keeps the discovered devices.
   // TODO(sonnysasaka): Clear old devices according to BlueZ mechanism.

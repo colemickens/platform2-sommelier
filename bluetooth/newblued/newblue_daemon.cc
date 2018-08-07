@@ -128,6 +128,9 @@ void NewblueDaemon::OnHciReadyForUp() {
     return;
   }
   ExportAdapterInterface();
+  stack_sync_monitor_.RegisterBluezDownCallback(
+      bus_.get(),
+      base::Bind(&NewblueDaemon::OnBluezDown, weak_ptr_factory_.GetWeakPtr()));
   LOG(INFO) << "NewBlue is up";
 }
 
@@ -163,6 +166,10 @@ void NewblueDaemon::ExportAdapterInterface() {
       ->EnsureExportedPropertyRegistered<bool>(
           bluetooth_adapter::kPoweredProperty)
       ->SetValue(true);
+  adapter_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_adapter::kStackSyncQuittingProperty)
+      ->SetValue(false);
 
   AddAdapterMethodHandlers(adapter_interface);
 
@@ -333,6 +340,22 @@ void NewblueDaemon::UpdateDeviceProperties(ExportedInterface* interface,
                        false);
   UpdateDeviceProperty(interface, bluetooth_device::kManufacturerDataProperty,
                        device.manufacturer, false);
+}
+
+void NewblueDaemon::OnBluezDown() {
+  ExportedInterface* adapter_interface =
+      exported_object_manager_wrapper_->GetExportedInterface(
+          dbus::ObjectPath(kAdapterObjectPath),
+          bluetooth_adapter::kBluetoothAdapterInterface);
+  if (!adapter_interface)
+    return;
+
+  LOG(INFO) << "Quitting due to BlueZ down detected";
+  adapter_interface
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_adapter::kStackSyncQuittingProperty)
+      ->SetValue(true);
+  exit(0);  // TODO(crbug/873905): Quit gracefully after this is fixed.
 }
 
 }  // namespace bluetooth

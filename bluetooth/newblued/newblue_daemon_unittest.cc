@@ -14,6 +14,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <dbus/mock_object_manager.h>
+#include <dbus/mock_object_proxy.h>
 #include <dbus/object_manager.h>
 #include <gtest/gtest.h>
 
@@ -51,12 +53,16 @@ class NewblueDaemonTest : public ::testing::Test {
 
   void SetUp() override {
     bus_ = new dbus::MockBus(dbus::Bus::Options());
+    EXPECT_CALL(*bus_, GetDBusTaskRunner())
+        .WillRepeatedly(Return(message_loop_.task_runner().get()));
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     auto libnewblue = std::make_unique<MockLibNewblue>();
     libnewblue_ = libnewblue.get();
     auto newblue = std::make_unique<MockNewblue>(std::move(libnewblue));
     newblue_ = newblue.get();
     newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue));
+    SetupBluezObjectProxy();
+    SetupBluezObjectManager();
   }
 
   // The mocked dbus::ExportedObject::ExportMethod needs to call its callback.
@@ -112,6 +118,30 @@ class NewblueDaemonTest : public ::testing::Test {
     EXPECT_CALL(*bus_, GetExportedObject(root_path))
         .WillRepeatedly(Return(exported_root_object.get()));
     return exported_root_object;
+  }
+
+  void SetupBluezObjectProxy() {
+    dbus::ObjectPath object_path(
+        bluez_object_manager::kBluezObjectManagerServicePath);
+    bluez_object_proxy_ = new dbus::MockObjectProxy(
+        bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
+        object_path);
+    EXPECT_CALL(*bus_, GetObjectProxy(
+                           bluez_object_manager::kBluezObjectManagerServiceName,
+                           object_path))
+        .WillRepeatedly(Return(bluez_object_proxy_.get()));
+  }
+
+  void SetupBluezObjectManager() {
+    dbus::ObjectPath object_path(
+        bluez_object_manager::kBluezObjectManagerServicePath);
+    bluez_object_manager_ = new dbus::MockObjectManager(
+        bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
+        object_path);
+    EXPECT_CALL(*bus_, GetObjectManager(
+                           bluez_object_manager::kBluezObjectManagerServiceName,
+                           object_path))
+        .WillRepeatedly(Return(bluez_object_manager_.get()));
   }
 
   void ExpectTestInit(
@@ -182,6 +212,8 @@ class NewblueDaemonTest : public ::testing::Test {
 
   base::MessageLoop message_loop_;
   scoped_refptr<dbus::MockBus> bus_;
+  scoped_refptr<dbus::MockObjectProxy> bluez_object_proxy_;
+  scoped_refptr<dbus::MockObjectManager> bluez_object_manager_;
   std::unique_ptr<NewblueDaemon> newblue_daemon_;
   MockNewblue* newblue_;
   MockLibNewblue* libnewblue_;

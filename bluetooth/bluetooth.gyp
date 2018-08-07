@@ -51,6 +51,7 @@
       'sources': [
         'newblued/newblue.cc',
         'newblued/newblue_daemon.cc',
+        'newblued/stack_sync_monitor.cc',
         'newblued/util.cc',
         'newblued/uuid.cc',
       ],
@@ -99,6 +100,7 @@
             'newblued/newblue_daemon_unittest.cc',
             'newblued/newblue_unittest.cc',
             'newblued/property_unittest.cc',
+            'newblued/stack_sync_monitor_unittest.cc',
             'newblued/util_unittest.cc',
             'newblued/uuid_unittest.cc',
           ],
