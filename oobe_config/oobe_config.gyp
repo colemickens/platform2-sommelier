@@ -4,11 +4,6 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        # system_api depends on protobuf (or protobuf-lite). It must
-        # appear before protobuf or the linker flags won't be in the right
-        # order.
-        'system_api',
-        'protobuf-lite',
       ],
     },
   },
@@ -23,8 +18,6 @@
         'gen_src_in_dir': '<(SHARED_INTERMEDIATE_DIR)/include/bindings',
         'deps': [
           'dbus-1',
-          'libbrillo-<(libbase_ver)',
-          'libchrome-<(libbase_ver)',
         ],
       },
       'sources': [
