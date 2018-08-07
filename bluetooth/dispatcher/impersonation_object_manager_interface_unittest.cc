@@ -70,20 +70,21 @@ class TestInterfaceHandler : public InterfaceHandler {
     property_factory_map_[kBoolPropertyName] =
         std::make_unique<PropertyFactory<bool>>();
 
-    method_names_.insert(kTestMethodName1);
-    method_names_.insert(kTestMethodName2);
+    method_forwardings_[kTestMethodName1] = ForwardingRule::FORWARD_DEFAULT;
+    method_forwardings_[kTestMethodName2] = ForwardingRule::FORWARD_DEFAULT;
   }
   const PropertyFactoryMap& GetPropertyFactoryMap() const override {
     return property_factory_map_;
   }
 
-  const std::set<std::string>& GetMethodNames() const override {
-    return method_names_;
+  const std::map<std::string, ForwardingRule>& GetMethodForwardings()
+      const override {
+    return method_forwardings_;
   }
 
  private:
   InterfaceHandler::PropertyFactoryMap property_factory_map_;
-  std::set<std::string> method_names_;
+  std::map<std::string, ForwardingRule> method_forwardings_;
 };
 
 class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
@@ -140,7 +141,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
         &ImpersonationObjectManagerInterfaceTest::SetupPropertyMethodHandlers,
         base::Unretained(this),
         base::Bind(&ImpersonationObjectManagerInterface::HandleForwardMessage,
-                   base::Unretained(impersonation_om_interface), bus_)));
+                   base::Unretained(impersonation_om_interface),
+                   ForwardingRule::FORWARD_DEFAULT, bus_)));
   }
 
   void SetupPropertyMethodHandlers(

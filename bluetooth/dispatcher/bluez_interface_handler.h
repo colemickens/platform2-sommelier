@@ -23,8 +23,9 @@ class BluezInterfaceHandler : public InterfaceHandler {
     return property_factory_map_;
   }
 
-  const std::set<std::string>& GetMethodNames() const override {
-    return method_names_;
+  const std::map<std::string, ForwardingRule>& GetMethodForwardings()
+      const override {
+    return method_forwardings_;
   }
 
  protected:
@@ -34,13 +35,13 @@ class BluezInterfaceHandler : public InterfaceHandler {
                                   std::make_unique<PropertyFactory<T>>());
   }
 
-  void AddMethodName(const std::string& method_name) {
-    method_names_.insert(method_name);
+  void AddMethodForwarding(const std::string& method_name) {
+    method_forwardings_[method_name] = ForwardingRule::FORWARD_DEFAULT;
   }
 
  private:
   InterfaceHandler::PropertyFactoryMap property_factory_map_;
-  std::set<std::string> method_names_;
+  std::map<std::string, ForwardingRule> method_forwardings_;
 
   DISALLOW_COPY_AND_ASSIGN(BluezInterfaceHandler);
 };

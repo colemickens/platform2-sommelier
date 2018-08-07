@@ -28,14 +28,14 @@ BluezAdapterInterfaceHandler::BluezAdapterInterfaceHandler() {
       bluetooth_adapter::kUUIDsProperty);
   AddPropertyFactory<std::string>(bluetooth_adapter::kModaliasProperty);
 
-  AddMethodName(bluetooth_adapter::kStartDiscovery);
-  AddMethodName(bluetooth_adapter::kSetDiscoveryFilter);
-  AddMethodName(bluetooth_adapter::kStopDiscovery);
-  AddMethodName(bluetooth_adapter::kPauseDiscovery);
-  AddMethodName(bluetooth_adapter::kUnpauseDiscovery);
-  AddMethodName(bluetooth_adapter::kRemoveDevice);
-  AddMethodName(bluetooth_adapter::kCreateServiceRecord);
-  AddMethodName(bluetooth_adapter::kRemoveServiceRecord);
+  AddMethodForwarding(bluetooth_adapter::kStartDiscovery);
+  AddMethodForwarding(bluetooth_adapter::kSetDiscoveryFilter);
+  AddMethodForwarding(bluetooth_adapter::kStopDiscovery);
+  AddMethodForwarding(bluetooth_adapter::kPauseDiscovery);
+  AddMethodForwarding(bluetooth_adapter::kUnpauseDiscovery);
+  AddMethodForwarding(bluetooth_adapter::kRemoveDevice);
+  AddMethodForwarding(bluetooth_adapter::kCreateServiceRecord);
+  AddMethodForwarding(bluetooth_adapter::kRemoveServiceRecord);
 }
 
 BluezDeviceInterfaceHandler::BluezDeviceInterfaceHandler() {
@@ -65,13 +65,13 @@ BluezDeviceInterfaceHandler::BluezDeviceInterfaceHandler() {
   AddPropertyFactory<std::vector<uint8_t>>(
       bluetooth_device::kAdvertisingDataFlagsProperty);
 
-  AddMethodName(bluetooth_device::kConnect);
-  AddMethodName(bluetooth_device::kDisconnect);
-  AddMethodName(bluetooth_device::kConnectProfile);
-  AddMethodName(bluetooth_device::kDisconnectProfile);
-  AddMethodName(bluetooth_device::kPair);
-  AddMethodName(bluetooth_device::kCancelPairing);
-  AddMethodName(bluetooth_device::kGetServiceRecords);
+  AddMethodForwarding(bluetooth_device::kConnect);
+  AddMethodForwarding(bluetooth_device::kDisconnect);
+  AddMethodForwarding(bluetooth_device::kConnectProfile);
+  AddMethodForwarding(bluetooth_device::kDisconnectProfile);
+  AddMethodForwarding(bluetooth_device::kPair);
+  AddMethodForwarding(bluetooth_device::kCancelPairing);
+  AddMethodForwarding(bluetooth_device::kGetServiceRecords);
 }
 
 BluezGattCharacteristicInterfaceHandler::
@@ -85,10 +85,10 @@ BluezGattCharacteristicInterfaceHandler::
   AddPropertyFactory<std::vector<std::string>>(
       bluetooth_gatt_characteristic::kFlagsProperty);
 
-  AddMethodName(bluetooth_gatt_characteristic::kReadValue);
-  AddMethodName(bluetooth_gatt_characteristic::kWriteValue);
-  AddMethodName(bluetooth_gatt_characteristic::kStartNotify);
-  AddMethodName(bluetooth_gatt_characteristic::kStopNotify);
+  AddMethodForwarding(bluetooth_gatt_characteristic::kReadValue);
+  AddMethodForwarding(bluetooth_gatt_characteristic::kWriteValue);
+  AddMethodForwarding(bluetooth_gatt_characteristic::kStartNotify);
+  AddMethodForwarding(bluetooth_gatt_characteristic::kStopNotify);
 }
 
 BluezInputInterfaceHandler::BluezInputInterfaceHandler() {
@@ -105,10 +105,10 @@ BluezGattServiceInterfaceHandler::BluezGattServiceInterfaceHandler() {
 
 BluezLeAdvertisingManagerInterfaceHandler::
     BluezLeAdvertisingManagerInterfaceHandler() {
-  AddMethodName(bluetooth_advertising_manager::kRegisterAdvertisement);
-  AddMethodName(bluetooth_advertising_manager::kUnregisterAdvertisement);
-  AddMethodName(bluetooth_advertising_manager::kSetAdvertisingIntervals);
-  AddMethodName(bluetooth_advertising_manager::kResetAdvertising);
+  AddMethodForwarding(bluetooth_advertising_manager::kRegisterAdvertisement);
+  AddMethodForwarding(bluetooth_advertising_manager::kUnregisterAdvertisement);
+  AddMethodForwarding(bluetooth_advertising_manager::kSetAdvertisingIntervals);
+  AddMethodForwarding(bluetooth_advertising_manager::kResetAdvertising);
 }
 
 BluezGattDescriptorInterfaceHandler::BluezGattDescriptorInterfaceHandler() {
@@ -118,8 +118,8 @@ BluezGattDescriptorInterfaceHandler::BluezGattDescriptorInterfaceHandler() {
   AddPropertyFactory<std::vector<uint8_t>>(
       bluetooth_gatt_descriptor::kValueProperty);
 
-  AddMethodName(bluetooth_gatt_descriptor::kReadValue);
-  AddMethodName(bluetooth_gatt_descriptor::kWriteValue);
+  AddMethodForwarding(bluetooth_gatt_descriptor::kReadValue);
+  AddMethodForwarding(bluetooth_gatt_descriptor::kWriteValue);
 }
 
 BluezMediaTransportInterfaceHandler::BluezMediaTransportInterfaceHandler() {
@@ -135,14 +135,14 @@ BluezMediaTransportInterfaceHandler::BluezMediaTransportInterfaceHandler() {
 }
 
 BluezAgentManagerInterfaceHandler::BluezAgentManagerInterfaceHandler() {
-  AddMethodName(bluetooth_agent_manager::kRegisterAgent);
-  AddMethodName(bluetooth_agent_manager::kUnregisterAgent);
-  AddMethodName(bluetooth_agent_manager::kRequestDefaultAgent);
+  AddMethodForwarding(bluetooth_agent_manager::kRegisterAgent);
+  AddMethodForwarding(bluetooth_agent_manager::kUnregisterAgent);
+  AddMethodForwarding(bluetooth_agent_manager::kRequestDefaultAgent);
 }
 
 BluezProfileManagerInterfaceHandler::BluezProfileManagerInterfaceHandler() {
-  AddMethodName(bluetooth_profile_manager::kRegisterProfile);
-  AddMethodName(bluetooth_profile_manager::kUnregisterProfile);
+  AddMethodForwarding(bluetooth_profile_manager::kRegisterProfile);
+  AddMethodForwarding(bluetooth_profile_manager::kUnregisterProfile);
 }
 
 }  // namespace bluetooth

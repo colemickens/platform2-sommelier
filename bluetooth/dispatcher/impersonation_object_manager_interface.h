@@ -22,6 +22,11 @@
 
 namespace bluetooth {
 
+enum class ForwardingRule {
+  // Forwards to default service only.
+  FORWARD_DEFAULT,
+};
+
 // Clients of ImpersonationObjectManagerInterface should sub-class a
 // InterfaceHandler and implement GetPropertyFactoryMap to
 // specify the impersonated properties.
@@ -38,7 +43,8 @@ class InterfaceHandler {
   virtual const PropertyFactoryMap& GetPropertyFactoryMap() const = 0;
 
   // Returns a list of method names that this interface exposes.
-  virtual const std::set<std::string>& GetMethodNames() const = 0;
+  virtual const std::map<std::string, ForwardingRule>& GetMethodForwardings()
+      const = 0;
 };
 
 // Impersonates other services' object manager interface to another exported
@@ -76,6 +82,7 @@ class ImpersonationObjectManagerInterface
 
   // Forwards any message to the impersonated service.
   void HandleForwardMessage(
+      ForwardingRule forwarding_rule,
       scoped_refptr<dbus::Bus> bus,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
@@ -105,6 +112,7 @@ class ImpersonationObjectManagerInterface
   // D-Bus connection specific per client (based on the sender address of
   // |method_call|).
   void HandleForwardMessageWithClientConnection(
+      ForwardingRule forwarding_rule,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 

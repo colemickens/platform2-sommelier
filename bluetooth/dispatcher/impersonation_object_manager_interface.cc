@@ -94,11 +94,15 @@ void ImpersonationObjectManagerInterface::ObjectAdded(
   // Export the methods that are defined by |interface_handler_|.
   // Any method call will be forwarded the the impersonated service via a
   // specific per-client D-Bus connection.
-  for (const std::string& method_name : interface_handler_->GetMethodNames())
+  for (const auto& kv : interface_handler_->GetMethodForwardings()) {
+    const std::string& method_name = kv.first;
+    ForwardingRule forwarding_rule = kv.second;
     exported_interface->AddRawMethodHandler(
-        method_name, base::Bind(&ImpersonationObjectManagerInterface::
-                                    HandleForwardMessageWithClientConnection,
-                                weak_ptr_factory_.GetWeakPtr()));
+        method_name,
+        base::Bind(&ImpersonationObjectManagerInterface::
+                       HandleForwardMessageWithClientConnection,
+                   weak_ptr_factory_.GetWeakPtr(), forwarding_rule));
+  }
 
   exported_interface->ExportAsync(
       base::Bind(&OnInterfaceExported, object_path.value(), interface_name));
@@ -132,6 +136,7 @@ void ImpersonationObjectManagerInterface::ObjectRemoved(
 }
 
 void ImpersonationObjectManagerInterface::HandleForwardMessage(
+    ForwardingRule forwarding_rule,
     scoped_refptr<dbus::Bus> bus,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -144,8 +149,14 @@ void ImpersonationObjectManagerInterface::HandleForwardMessage(
     return;
   }
 
+  VLOG(2) << "Method to be forwarded: " << method_call->ToString();
+
   std::string service_name =
       GetDefaultServiceForObject(method_call->GetPath().value());
+  VLOG(1) << "Impersonation interface " << interface_name()
+          << " forwarding method " << method_call->GetInterface() << "."
+          << method_call->GetMember() << " to " << service_name;
+
   DBusUtil::ForwardMethodCall(bus, service_name, method_call, response_sender);
 }
 
@@ -222,6 +233,7 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
 
 void ImpersonationObjectManagerInterface::
     HandleForwardMessageWithClientConnection(
+        ForwardingRule forwarding_rule,
         dbus::MethodCall* method_call,
         dbus::ExportedObject::ResponseSender response_sender) {
   VLOG(1) << "Method " << method_call->GetMember() << " called by "
@@ -229,7 +241,8 @@ void ImpersonationObjectManagerInterface::
   std::string client_address = method_call->GetSender();
   DispatcherClient* client = client_manager_->EnsureClientAdded(client_address);
   VLOG(1) << "client = " << client;
-  HandleForwardMessage(client->GetClientBus(), method_call, response_sender);
+  HandleForwardMessage(forwarding_rule, client->GetClientBus(), method_call,
+                       response_sender);
 }
 
 }  // namespace bluetooth

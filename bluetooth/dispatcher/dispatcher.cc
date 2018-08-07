@@ -148,7 +148,8 @@ void Dispatcher::HandleForwardSetProperty(
   }
 
   impersonation_object_manager_interfaces_[interface_name]
-      ->HandleForwardMessage(bus, method_call, response_sender);
+      ->HandleForwardMessage(ForwardingRule::FORWARD_DEFAULT, bus, method_call,
+                             response_sender);
 }
 
 void Dispatcher::SetupPropertyMethodHandlers(
