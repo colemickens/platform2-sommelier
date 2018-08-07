@@ -67,7 +67,11 @@ class Lpd {
   // procedure can be executed.
   void Authenticate();
 
-  void OnAuthenticateSuccess();
+  void OnAuthenticateSuccess(const std::string& transaction_id,
+                             const std::vector<uint8_t>& profile_metadata,
+                             const std::vector<uint8_t>& smdp_signed2,
+                             const std::vector<uint8_t>& smdp_signature2,
+                             const std::vector<uint8_t>& smdp_certificate);
 
   void OnAuthenticateError(LpdError error);
 
@@ -82,6 +86,7 @@ class Lpd {
       const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
       const std::vector<uint8_t>& server_certificate);
   void OnAuthenticateServerResult(const std::vector<uint8_t>& data);
+  void OnPrepareDownloadRequest(const std::vector<uint8_t>& data);
 
   void HandleEsimError(const LpdErrorCallback& lpd_callback,
                        EsimError esim_error);

@@ -32,6 +32,8 @@ constexpr uint16_t kEsimChallengeTag = 0xBF2E;
 // ES10b.AuthenticateServer
 constexpr uint16_t kAuthenticateServerTag = 0xBF38;
 
+constexpr uint16_t kPrepareDownloadRequestTag = 0xBF21;
+
 // TODO(jruthe): this is currently the slot on Cheza, but Esim should be able to
 // support different slots in the future.
 constexpr uint8_t kEsimSlot = 0x01;

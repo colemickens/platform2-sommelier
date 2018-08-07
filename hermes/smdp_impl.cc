@@ -145,10 +145,11 @@ void SmdpImpl::SendJsonRequest(
                  error_callback));
 }
 
-void SmdpImpl::AuthenticateClient(std::string transaction_id,
-                                  const std::vector<uint8_t>& data,
-                                  const base::Closure& data_callback,
-                                  const ErrorCallback& error_callback) {
+void SmdpImpl::AuthenticateClient(
+    std::string transaction_id,
+    const std::vector<uint8_t>& data,
+    const AuthenticateClientCallback& data_callback,
+    const ErrorCallback& error_callback) {
   std::string encoded_data(data.begin(), data.end());
   base::Base64Encode(encoded_data, &encoded_data);
 
@@ -167,11 +168,23 @@ void SmdpImpl::AuthenticateClient(std::string transaction_id,
 }
 
 void SmdpImpl::OnAuthenticateClientResponse(
-    const base::Closure& success_callback,
+    const AuthenticateClientCallback& data_callback,
     const ErrorCallback& error_callback,
     DictionaryPtr json_dict) {
-  VLOG(1) << __func__ << ": Client authenticated successfully";
+  std::string transaction_id;
+  if (!json_dict->GetString("transactionId", &transaction_id)) {
+    LOG(ERROR) << __func__ << ": transactionId not receieved";
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+
   std::string encoded_buffer;
+  std::string profile_metadata;
+  if (!json_dict->GetString("profileMetadata", &encoded_buffer)) {
+    LOG(ERROR) << __func__ << ": profileMetadata not received";
+  }
+  base::Base64Decode(encoded_buffer, &profile_metadata);
+
   std::string smdp_signed2;
   if (!json_dict->GetString("smdpSigned2", &encoded_buffer)) {
     LOG(ERROR) << __func__ << ": smdpSigned2 not received";
@@ -180,7 +193,31 @@ void SmdpImpl::OnAuthenticateClientResponse(
   }
   base::Base64Decode(encoded_buffer, &smdp_signed2);
 
-  success_callback.Run();
+  std::string smdp_signature2;
+  if (!json_dict->GetString("smdpSignature2", &encoded_buffer)) {
+    LOG(ERROR) << __func__ << ": smdpSignature2 not received";
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &smdp_signature2);
+
+  std::string server_certificate;
+  if (!json_dict->GetString("smdpCertificate", &encoded_buffer)) {
+    LOG(ERROR) << __func__ << ": CERT.DPpb.ECDSA not received";
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &server_certificate);
+
+  VLOG(1) << __func__ << ": Client authenticated successfully";
+
+  data_callback.Run(
+      transaction_id,
+      std::vector<uint8_t>(profile_metadata.begin(), profile_metadata.end()),
+      std::vector<uint8_t>(smdp_signed2.begin(), smdp_signed2.end()),
+      std::vector<uint8_t>(smdp_signature2.begin(), smdp_signature2.end()),
+      std::vector<uint8_t>(server_certificate.begin(),
+                           server_certificate.end()));
 }
 
 }  // namespace hermes

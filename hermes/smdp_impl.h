@@ -30,7 +30,7 @@ class SmdpImpl : public Smdp {
   // TODO(jruthe): update data_callback to the correct base::Callback signature
   void AuthenticateClient(std::string transaction_id,
                           const std::vector<uint8_t>& data,
-                          const base::Closure& success_callback,
+                          const AuthenticateClientCallback& data_callback,
                           const ErrorCallback& error_callback) override;
 
  private:
@@ -45,9 +45,10 @@ class SmdpImpl : public Smdp {
       const InitiateAuthenticationCallback& data_callback,
       const ErrorCallback& error_callback,
       DictionaryPtr json_dict);
-  void OnAuthenticateClientResponse(const base::Closure& success_callback,
-                                    const ErrorCallback& error_callback,
-                                    DictionaryPtr json_dict);
+  void OnAuthenticateClientResponse(
+      const AuthenticateClientCallback& data_callback,
+      const ErrorCallback& error_callback,
+      DictionaryPtr json_dict);
   void SendJsonRequest(const std::string& url,
                        const std::string& json_data,
                        const base::Callback<void(DictionaryPtr)>& data_callback,

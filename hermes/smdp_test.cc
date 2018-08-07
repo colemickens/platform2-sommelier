@@ -19,7 +19,11 @@ class SmdpFiTester {
                                     const std::vector<uint8_t>&,
                                     const std::vector<uint8_t>&,
                                     const std::vector<uint8_t>&));
-  MOCK_METHOD0(OnAuthClient, void());
+  MOCK_METHOD5(OnAuthClient, void(const std::string&,
+                                  const std::vector<uint8_t>&,
+                                  const std::vector<uint8_t>&,
+                                  const std::vector<uint8_t>&,
+                                  const std::vector<uint8_t>&));
   MOCK_METHOD1(FakeError, void(const std::vector<uint8_t>& error_data));
 };
 
@@ -49,7 +53,7 @@ TEST_F(SmdpImplTest, InitiateAuthenticationTest) {
 TEST_F(SmdpImplTest, AuthenticateClientTest) {
   const std::string transaction_id = "1";
   const std::vector<uint8_t> esim_data = {0, 1, 2, 3, 4};
-  EXPECT_CALL(smdp_tester_, OnAuthClient()).Times(1);
+  EXPECT_CALL(smdp_tester_, OnAuthClient(_, _, _, _, _)).Times(1);
   EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
 
   smdp_.AuthenticateClient(

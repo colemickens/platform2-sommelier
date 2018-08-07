@@ -96,6 +96,13 @@ class Esim {
       const std::vector<uint8_t>& server_certificate,
       const DataCallback& data_callback,
       const ErrorCallback& error_callback) = 0;
+
+  virtual void PrepareDownloadRequest(
+      const std::vector<uint8_t>& smdp_signed2,
+      const std::vector<uint8_t>& smdp_signature2,
+      const std::vector<uint8_t>& smdp_certificate,
+      const DataCallback& data_callback,
+      const ErrorCallback& error_callback) = 0;
 };
 
 }  // namespace hermes

@@ -51,8 +51,23 @@ void Lpd::OnOpenLogicalChannel(const std::vector<uint8_t>&) {
                  esim_error_handler_);
 }
 
-void Lpd::OnAuthenticateSuccess() {
+void Lpd::OnAuthenticateSuccess(const std::string& transaction_id,
+                                const std::vector<uint8_t>& profile_metadata,
+                                const std::vector<uint8_t>& smdp_signed2,
+                                const std::vector<uint8_t>& smdp_signature2,
+                                const std::vector<uint8_t>& smdp_certificate) {
+  if (transaction_id != transaction_id_) {
+    OnAuthenticateError(LpdError::kFailure);
+    return;
+  }
   // TODO(jruthe): DownloadProfile call
+  esim_->PrepareDownloadRequest(
+      smdp_signed2, smdp_signature2, smdp_certificate,
+      base::Bind(&Lpd::OnPrepareDownloadRequest, base::Unretained(this)),
+      esim_error_handler_);
+}
+
+void Lpd::OnPrepareDownloadRequest(const std::vector<uint8_t>& data) {
 }
 
 void Lpd::OnAuthenticateError(LpdError error) {

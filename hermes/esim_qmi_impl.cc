@@ -294,6 +294,44 @@ void EsimQmiImpl::QueueStoreData(const std::vector<uint8_t>& payload) {
   FragmentAndQueueApdu(kClaStoreData, kInsStoreData, payload);
 }
 
+void EsimQmiImpl::PrepareDownloadRequest(
+    const std::vector<uint8_t>& smdp_signed2,
+    const std::vector<uint8_t>& smdp_signature2,
+    const std::vector<uint8_t>& smdp_certificate,
+    const DataCallback& data_callback,
+    const ErrorCallback& error_callback) {
+  if (!qrtr_socket_fd_.is_valid()) {
+    LOG(ERROR) << __func__ << ": File Descriptor to QRTR invalid";
+    error_callback.Run(EsimError::kEsimNotConnected);
+    return;
+  }
+
+  size_t payload_size =
+      smdp_signed2.size() + smdp_signature2.size() + smdp_certificate.size();
+
+  std::vector<uint8_t> raw_data_buffer;
+  raw_data_buffer.push_back(
+      static_cast<uint8_t>((kPrepareDownloadRequestTag >> 8) & 0xFF));
+  raw_data_buffer.push_back(
+      static_cast<uint8_t>(kPrepareDownloadRequestTag & 0xFF));
+
+  // Magic number
+  raw_data_buffer.push_back(0x82);
+  raw_data_buffer.push_back(static_cast<uint8_t>((payload_size >> 8) & 0xFF));
+  raw_data_buffer.push_back(static_cast<uint8_t>(payload_size & 0xFF));
+  raw_data_buffer.insert(raw_data_buffer.end(), smdp_signed2.begin(),
+                         smdp_signed2.end());
+  raw_data_buffer.insert(raw_data_buffer.end(), smdp_signature2.begin(),
+                         smdp_signature2.end());
+  raw_data_buffer.insert(raw_data_buffer.end(), smdp_certificate.begin(),
+                         smdp_certificate.end());
+
+  payload_.clear();
+  QueueStoreData(raw_data_buffer);
+
+  SendApdu(data_callback, error_callback);
+}
+
 void EsimQmiImpl::FragmentAndQueueApdu(
     uint8_t cla, uint8_t ins, const std::vector<uint8_t>& apdu_payload) {
   size_t total_packets = std::max(1u,

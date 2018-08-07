@@ -26,6 +26,12 @@ class Smdp {
                           const std::vector<uint8_t>& server_signature1,
                           const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
                           const std::vector<uint8_t>& server_certificate)>;
+  using AuthenticateClientCallback =
+      base::Callback<void(const std::string& transaction_id,
+                          const std::vector<uint8_t>& profile_metadata,
+                          const std::vector<uint8_t>& smdp_signed2,
+                          const std::vector<uint8_t>& smdp_signature2,
+                          const std::vector<uint8_t>& public_key)>;
   using ErrorCallback =
       base::Callback<void(const std::vector<uint8_t>& error_data)>;
   using DictionaryPtr = std::unique_ptr<base::DictionaryValue>;
@@ -48,10 +54,11 @@ class Smdp {
       const ErrorCallback& error_callback) = 0;
 
   // TODO(jruthe): update callback parameters
-  virtual void AuthenticateClient(std::string transaction_id,
-                                  const std::vector<uint8_t>& data,
-                                  const base::Closure& callback,
-                                  const ErrorCallback& error_callback) = 0;
+  virtual void AuthenticateClient(
+      std::string transaction_id,
+      const std::vector<uint8_t>& data,
+      const AuthenticateClientCallback& data_callback,
+      const ErrorCallback& error_callback) = 0;
 };
 
 }  // namespace hermes
