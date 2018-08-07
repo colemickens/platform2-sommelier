@@ -21,6 +21,13 @@ namespace util {
 
 namespace {
 
+// getenv() wrapper that returns an empty string, if the environment variable is
+// not defined.
+std::string GetEnv(const std::string& name) {
+  const char* value = getenv(name.c_str());
+  return value ? value : "";
+}
+
 // Shows the usage of crash_sender and exits the process as a success.
 void ShowUsageAndExit() {
   printf(
@@ -86,6 +93,11 @@ void ParseCommandLine(int argc, const char* const* argv) {
 
 bool IsMock() {
   return base::PathExists(paths::Get(paths::kMockCrashSending));
+}
+
+bool ShouldPauseSending() {
+  return (base::PathExists(paths::Get(paths::kPauseCrashSending)) &&
+          GetEnv("OVERRIDE_PAUSE_SENDING") == "0");
 }
 
 }  // namespace util

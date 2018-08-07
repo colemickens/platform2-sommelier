@@ -46,6 +46,9 @@ void ParseCommandLine(int argc, const char* const* argv);
 // Returns true if mock is enabled.
 bool IsMock();
 
+// Returns true if the sending should be paused.
+bool ShouldPauseSending();
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_CRASH_SENDER_UTIL_H_

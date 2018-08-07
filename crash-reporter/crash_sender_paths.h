@@ -22,6 +22,10 @@ constexpr char kLockFile[] = "/run/lock/crash_sender";
 // File whose existence implies we're running and not to start again.
 constexpr char kRunFile[] = "/run/crash_sender.pid";
 
+// File whose existence causes crash sending to be delayed (for testing).
+// Must be stateful to enable testing kernel crashes.
+constexpr char kPauseCrashSending[] = "/var/lib/crash_sender_paused";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

@@ -37,10 +37,6 @@ METRICS_CLIENT="/usr/bin/metrics_client"
 # crash sending was successful, otherwise unsuccessful.
 MOCK_CRASH_SENDING="${CRASH_RUN_STATE_DIR}/mock-crash-sending"
 
-# File whose existence causes crash sending to be delayed (for testing).
-# Must be stateful to enable testing kernel crashes.
-PAUSE_CRASH_SENDING="/var/lib/crash_sender_paused"
-
 # URL to send official build crash reports to.
 REPORT_UPLOAD_PROD_URL="https://clients2.google.com/cr/report"
 
@@ -677,12 +673,6 @@ send_crashes() {
 main() {
   if [ $# -ne 0 ]; then
     lecho "Command line flags should not be passed: $*"
-    exit 1
-  fi
-
-  if [ -e "${PAUSE_CRASH_SENDING}" ] && \
-     [ ${OVERRIDE_PAUSE_SENDING} -eq 0 ]; then
-    lecho "Exiting early due to ${PAUSE_CRASH_SENDING}."
     exit 1
   fi
 

@@ -90,6 +90,11 @@ int RunChildMain(int argc, char* argv[]) {
   CreatePidFile(getpid());
   util::ParseCommandLine(argc, argv);
 
+  if (util::ShouldPauseSending()) {
+    LOG(ERROR) << "Exiting early due to " << paths::kPauseCrashSending;
+    return EXIT_FAILURE;
+  }
+
   char shell_script_path[] = "/sbin/crash_sender.sh";
   char* shell_argv[] = {shell_script_path, nullptr};
   execve(shell_argv[0], shell_argv, environ);

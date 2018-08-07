@@ -103,4 +103,17 @@ TEST_F(CrashSenderUtilTest, IsMock) {
   EXPECT_TRUE(IsMock());
 }
 
+TEST_F(CrashSenderUtilTest, ShouldPauseSending) {
+  EXPECT_FALSE(ShouldPauseSending());
+
+  ASSERT_TRUE(CreateFile(paths::Get(paths::kPauseCrashSending), ""));
+  EXPECT_FALSE(ShouldPauseSending());
+
+  setenv("OVERRIDE_PAUSE_SENDING", "0", 1 /* overwrite */);
+  EXPECT_TRUE(ShouldPauseSending());
+
+  setenv("OVERRIDE_PAUSE_SENDING", "1", 1 /* overwrite */);
+  EXPECT_FALSE(ShouldPauseSending());
+}
+
 }  // namespace util
