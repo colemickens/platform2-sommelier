@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
 
 #include "portier/ll_address.h"
@@ -21,9 +22,10 @@ class NetworkSocket {
  public:
   enum class State { UNINITIALIZED, READY, CLOSED };
   static std::string GetStateName(State state);
+  virtual ~NetworkSocket() = default;
 
   // Socket file descriptor.  Returns -1 if the socket is closed.
-  int fd() const { return fd_; }
+  int fd() const { return fd_.get(); }
   // Index of network interface as assigned by the kernel.  Used for various
   // system calls.
   int index() const { return index_; }
@@ -61,6 +63,8 @@ class NetworkSocket {
   explicit NetworkSocket(const std::string& if_name);
   virtual Status Init() = 0;
 
+  void set_fd(int fd) { fd_.reset(fd); }
+
   bool IsUnitialized() const;
 
   // A special close function used internally.  Does not make much
@@ -84,7 +88,7 @@ class NetworkSocket {
   int index_;
 
   // Socket file descriptor.
-  int fd_;
+  base::ScopedFD fd_;
 
   // Internal state of socket.
   State state_;

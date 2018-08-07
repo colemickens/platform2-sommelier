@@ -48,7 +48,7 @@ string NetworkSocket::GetStateName(State state) {
 }
 
 NetworkSocket::NetworkSocket(const string& if_name)
-    : name_(if_name), index_(-1), fd_(-1), state_(State::UNINITIALIZED) {}
+    : name_(if_name), index_(-1), state_(State::UNINITIALIZED) {}
 
 // State getters.
 
@@ -81,10 +81,7 @@ Status NetworkSocket::Close() {
 }
 
 void NetworkSocket::CloseFd() {
-  if (fd() != -1) {
-    close(fd_);
-    fd_ = -1;
-  }
+  fd_.reset();
 }
 
 // Interface information getters.

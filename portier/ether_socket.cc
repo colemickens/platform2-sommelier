@@ -106,7 +106,7 @@ Status EtherSocket::Init() {
     return Status(Code::UNEXPECTED_FAILURE)
            << "socket(): " << safe_strerror(saved_errno);
   }
-  fd_ = ether_fd;
+  set_fd(ether_fd);
 
   // Bind socket to interface.
   struct sockaddr_ll ether_addr;

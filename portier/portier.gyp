@@ -23,6 +23,7 @@
       'sources': [
         'ether_socket.cc',
         'group_mgr.cc',
+        'icmpv6_socket.cc',
         'ipv6_util.cc',
         'll_address.cc',
         'nd_bpf.cc',
