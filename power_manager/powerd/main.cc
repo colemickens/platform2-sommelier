@@ -86,7 +86,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::AmbientLightSensorInterface>
   CreateAmbientLightSensor() override {
     auto sensor = base::WrapUnique(new system::AmbientLightSensor());
-    sensor->Init();
+    sensor->Init(false /* read_immediately */);
     return sensor;
   }
 

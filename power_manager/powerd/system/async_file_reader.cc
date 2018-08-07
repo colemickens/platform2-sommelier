@@ -39,15 +39,15 @@ AsyncFileReader::~AsyncFileReader() {
   close(fd_);
 }
 
-bool AsyncFileReader::Init(const std::string& filename) {
+bool AsyncFileReader::Init(const base::FilePath& path) {
   CHECK_EQ(fd_, -1) << "Attempting to open new file when a valid file "
                     << "descriptor exists.";
-  fd_ = open(filename.c_str(), O_RDONLY, 0);
+  fd_ = open(path.value().c_str(), O_RDONLY, 0);
   if (fd_ == -1) {
-    PLOG(ERROR) << "Could not open file " << filename;
+    PLOG(ERROR) << "Could not open file " << path.value();
     return false;
   }
-  filename_ = filename;
+  path_ = path;
   return true;
 }
 
@@ -114,7 +114,7 @@ void AsyncFileReader::UpdateState() {
       break;
     }
     default: {
-      LOG(ERROR) << "Error during read of file " << filename_
+      LOG(ERROR) << "Error during read of file " << path_.value()
                  << ", status=" << status;
       if (!error_cb_.is_null())
         error_cb_.Run();
@@ -159,7 +159,7 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
   aio_control_.aio_buf = aio_buffer_;
 
   if (aio_read(&aio_control_) == -1) {
-    LOG(ERROR) << "Unable to access " << filename_;
+    LOG(ERROR) << "Unable to access " << path_.value();
     delete[] aio_buffer_;
     aio_buffer_ = NULL;
     return false;

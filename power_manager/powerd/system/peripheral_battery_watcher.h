@@ -58,15 +58,15 @@ class PeripheralBatteryWatcher {
   void GetBatteryList(std::vector<base::FilePath>* battery_list);
 
   // Sends the battery status through D-Bus.
-  void SendBatteryStatus(const std::string& path,
+  void SendBatteryStatus(const base::FilePath& path,
                          const std::string& model_name,
                          int level);
 
   // Asynchronous I/O success and error handlers, respectively.
-  void ReadCallback(const std::string& path,
+  void ReadCallback(const base::FilePath& path,
                     const std::string& model_name,
                     const std::string& data);
-  void ErrorCallback(const std::string& path, const std::string& model_name);
+  void ErrorCallback(const base::FilePath& path, const std::string& model_name);
 
   DBusWrapperInterface* dbus_wrapper_;  // weak
 

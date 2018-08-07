@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/timer/timer.h>
 
@@ -21,6 +22,8 @@ class AsyncFileReader {
  public:
   AsyncFileReader();
   ~AsyncFileReader();
+
+  const base::FilePath& path() const { return path_; }
 
   void set_initial_read_size_for_testing(size_t size) {
     initial_read_size_ = size;
@@ -34,7 +37,7 @@ class AsyncFileReader {
 
   // The file reader will open a file handle and keep it open even over
   // repeated reads.
-  bool Init(const std::string& filename);
+  bool Init(const base::FilePath& path);
 
   // Indicates whether a file handle has been opened.
   bool HasOpenedFile() const;
@@ -61,8 +64,8 @@ class AsyncFileReader {
   // AIO control object.
   aiocb aio_control_;
 
-  // Name of file from which to read.
-  std::string filename_;
+  // Path to file to read.
+  base::FilePath path_;
 
   // File for AIO reads.
   int fd_;

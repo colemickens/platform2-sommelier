@@ -55,9 +55,14 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
     poll_interval_ms_ = interval_ms;
   }
 
-  // Starts polling.  This is separate from c'tor so that tests can call
-  // set_*_for_testing() first.
-  void Init();
+  // Starts polling. If |read_immediately| is true, ReadAls() will also
+  // immediately be called synchronously. This is separate from c'tor so that
+  // tests can call set_*_for_testing() first.
+  void Init(bool read_immediately);
+
+  // Returns the path to the illuminance file being monitored, or an empty path
+  // if a device has not yet been found.
+  base::FilePath GetIlluminancePath() const;
 
   // If |poll_timer_| is running, calls ReadAls() and returns true. Otherwise,
   // returns false.

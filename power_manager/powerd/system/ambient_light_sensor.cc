@@ -46,8 +46,14 @@ AmbientLightSensor::AmbientLightSensor()
 
 AmbientLightSensor::~AmbientLightSensor() {}
 
-void AmbientLightSensor::Init() {
+void AmbientLightSensor::Init(bool read_immediately) {
+  if (read_immediately)
+    ReadAls();
   StartTimer();
+}
+
+base::FilePath AmbientLightSensor::GetIlluminancePath() const {
+  return als_file_.HasOpenedFile() ? als_file_.path() : base::FilePath();
 }
 
 bool AmbientLightSensor::TriggerPollTimerForTesting() {
@@ -136,7 +142,7 @@ bool AmbientLightSensor::InitAlsFile() {
       base::FilePath als_path = check_path.Append(input_names[i]);
       if (!base::PathExists(als_path))
         continue;
-      if (als_file_.Init(als_path.value())) {
+      if (als_file_.Init(als_path)) {
         LOG(INFO) << "Using lux file " << als_path.value();
         return true;
       }

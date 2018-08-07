@@ -68,7 +68,7 @@ class AmbientLightSensorTest : public ::testing::Test {
     sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
     sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
     sensor_->AddObserver(&observer_);
-    sensor_->Init();
+    sensor_->Init(false /* read_immediately */);
   }
 
   void TearDown() override { sensor_->RemoveObserver(&observer_); }

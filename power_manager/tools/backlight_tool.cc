@@ -24,6 +24,7 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -38,6 +39,7 @@ using power_manager::TabletMode;
 using power_manager::policy::BacklightController;
 using power_manager::policy::InternalBacklightController;
 using power_manager::policy::KeyboardBacklightController;
+using power_manager::system::AmbientLightSensor;
 using power_manager::system::AmbientLightSensorStub;
 using power_manager::system::BacklightStub;
 using power_manager::system::DBusWrapperStub;
@@ -146,6 +148,27 @@ class Converter {
   DISALLOW_COPY_AND_ASSIGN(Converter);
 };
 
+// Prints the path to the ambient light sensor illuminance file that powerd
+// would monitor and a trailing newline to stdout. Prints an error and aborts
+// with status code 1 if the ALS has been disabled or no path was found.
+void PrintAmbientLightPath() {
+  Prefs prefs;
+  CHECK(prefs.Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
+  bool has_als = false;
+  if (prefs.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
+      !has_als) {
+    Abort("Ambient light sensor not enabled");
+  }
+
+  AmbientLightSensor als;
+  als.Init(true /* read_immediately */);
+  const base::FilePath path = als.GetIlluminancePath();
+  if (path.empty())
+    Abort("Ambient light sensor illuminance file not found");
+
+  printf("%s\n", path.value().c_str());
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -179,6 +202,8 @@ int main(int argc, char* argv[]) {
                 "linearly-calculated percent in [0.0, 100.0]");
 
   // Other flags.
+  DEFINE_bool(get_ambient_light_path, false,
+              "Print path to ambient light sensor illuminance file");
   DEFINE_bool(force_battery, false,
               "Act as if on battery even if currently on AC (for "
               "-get_initial_brightness)");
@@ -196,15 +221,20 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_get_brightness + FLAGS_get_max_brightness +
           FLAGS_get_initial_brightness + FLAGS_get_brightness_percent +
-          (FLAGS_nonlinear_to_level >= 0.0) + (FLAGS_level_to_nonlinear >= 0) +
-          (FLAGS_linear_to_level >= 0.0) + (FLAGS_level_to_linear >= 0) +
-          (FLAGS_linear_to_nonlinear >= 0.0) +
+          FLAGS_get_ambient_light_path + (FLAGS_nonlinear_to_level >= 0.0) +
+          (FLAGS_level_to_nonlinear >= 0) + (FLAGS_linear_to_level >= 0.0) +
+          (FLAGS_level_to_linear >= 0) + (FLAGS_linear_to_nonlinear >= 0.0) +
           (FLAGS_nonlinear_to_linear >= 0.0) >
       1) {
     Abort("At most one flag that prints a level or percent may be passed.");
   }
   if (FLAGS_set_brightness >= 0 && FLAGS_set_brightness_percent >= 0.0)
     Abort("At most one of -set_brightness* may be passed.");
+
+  if (FLAGS_get_ambient_light_path) {
+    PrintAmbientLightPath();
+    return 0;
+  }
 
   InternalBacklight backlight;
   base::FilePath path(FLAGS_keyboard ? power_manager::kKeyboardBacklightPath

@@ -111,12 +111,11 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
     battery_readers_.push_back(std::make_unique<AsyncFileReader>());
     AsyncFileReader* reader = battery_readers_.back().get();
 
-    if (reader->Init(capacity_path.value())) {
-      reader->StartRead(
-          base::Bind(&PeripheralBatteryWatcher::ReadCallback,
-                     base::Unretained(this), path.value(), model_name),
-          base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
-                     base::Unretained(this), path.value(), model_name));
+    if (reader->Init(capacity_path)) {
+      reader->StartRead(base::Bind(&PeripheralBatteryWatcher::ReadCallback,
+                                   base::Unretained(this), path, model_name),
+                        base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
+                                   base::Unretained(this), path, model_name));
     } else {
       LOG(ERROR) << "Can't read battery capacity " << capacity_path.value();
     }
@@ -126,11 +125,11 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
                     &PeripheralBatteryWatcher::ReadBatteryStatuses);
 }
 
-void PeripheralBatteryWatcher::SendBatteryStatus(const std::string& path,
+void PeripheralBatteryWatcher::SendBatteryStatus(const base::FilePath& path,
                                                  const std::string& model_name,
                                                  int level) {
   PeripheralBatteryStatus proto;
-  proto.set_path(path);
+  proto.set_path(path.value());
   proto.set_name(model_name);
   if (level >= 0)
     proto.set_level(level);
@@ -138,7 +137,7 @@ void PeripheralBatteryWatcher::SendBatteryStatus(const std::string& path,
                                               proto);
 }
 
-void PeripheralBatteryWatcher::ReadCallback(const std::string& path,
+void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
                                             const std::string& model_name,
                                             const std::string& data) {
   std::string trimmed_data;
@@ -148,11 +147,11 @@ void PeripheralBatteryWatcher::ReadCallback(const std::string& path,
     SendBatteryStatus(path, model_name, level);
   } else {
     LOG(ERROR) << "Invalid battery level reading : [" << data << "]"
-               << " from " << path;
+               << " from " << path.value();
   }
 }
 
-void PeripheralBatteryWatcher::ErrorCallback(const std::string& path,
+void PeripheralBatteryWatcher::ErrorCallback(const base::FilePath& path,
                                              const std::string& model_name) {
   SendBatteryStatus(path, model_name, -1);
 }

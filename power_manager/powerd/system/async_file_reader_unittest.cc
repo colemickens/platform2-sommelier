@@ -89,7 +89,7 @@ class AsyncFileReaderTest : public ::testing::Test {
 
     CreateFile(path_, file_size);
     file_reader_->set_initial_read_size_for_testing(initial_read_size);
-    if (!file_reader_->Init(path_.value()))
+    if (!file_reader_->Init(path_))
       return false;
     file_reader_->StartRead(
         base::Bind(&AsyncFileReaderTest::ReadCallback, base::Unretained(this)),
@@ -173,7 +173,7 @@ TEST_F(AsyncFileReaderTest, MultipleBlockReadFull) {
 
 // Initializing the reader with a nonexistent file should fail.
 TEST_F(AsyncFileReaderTest, InitWithMissingFile) {
-  EXPECT_FALSE(file_reader_->Init(path_.value()));
+  EXPECT_FALSE(file_reader_->Init(path_));
 }
 
 }  // namespace system
