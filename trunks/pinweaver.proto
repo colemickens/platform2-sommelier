@@ -38,3 +38,12 @@ message PinWeaverLogEntry {
     PinWeaverResetTreeLogEntry reset_tree = 6;
   }
 }
+
+message ValidPcrValue {
+    bytes bitmask = 1;
+    string digest = 2;
+}
+
+message ValidPcrCriteria {
+    repeated ValidPcrValue valid_pcr_values = 1;
+}

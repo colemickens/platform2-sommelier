@@ -20,10 +20,12 @@ void Serialize(const void* value, size_t length, std::string* buffer) {
   buffer->append(value_bytes, length);
 }
 
-void Serialize_pw_request_header_t(uint8_t message_type, uint16_t data_length,
+void Serialize_pw_request_header_t(uint8_t protocol_version,
+                                   uint8_t message_type,
+                                   uint16_t data_length,
                                    std::string* buffer) {
-  struct pw_request_header_t header = {PW_PROTOCOL_VERSION, {message_type},
-                                       htole16(data_length)};
+  struct pw_request_header_t header = {
+      protocol_version, {message_type}, htole16(data_length)};
   Serialize(&header, sizeof(header), buffer);
 }
 
@@ -58,37 +60,53 @@ TPM_RC Validate_cred_metadata(const std::string& cred_metadata) {
 
 }  // namespace
 
-TPM_RC Serialize_pw_ping_t(std::string* buffer) {
+TPM_RC Serialize_pw_ping_t(uint8_t request_version, std::string* buffer) {
   buffer->reserve(buffer->size() + sizeof(pw_request_header_t));
 
-  Serialize_pw_request_header_t(PW_MT_INVALID, 0, buffer);
+  Serialize_pw_request_header_t(request_version, PW_MT_INVALID, 0, buffer);
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Serialize_pw_reset_tree_t(uint8_t bits_per_level, uint8_t height,
+TPM_RC Serialize_pw_reset_tree_t(uint8_t protocol_version,
+                                 uint8_t bits_per_level,
+                                 uint8_t height,
                                  std::string* buffer) {
   struct pw_request_reset_tree_t data = {{bits_per_level}, {height}};
   buffer->reserve(buffer->size() + sizeof(pw_request_header_t) + sizeof(data));
 
-  Serialize_pw_request_header_t(PW_RESET_TREE, sizeof(data), buffer);
+  Serialize_pw_request_header_t(protocol_version, PW_RESET_TREE, sizeof(data),
+                                buffer);
   Serialize(&data, sizeof(data), buffer);
   return TPM_RC_SUCCESS;
 }
 
 TPM_RC Serialize_pw_insert_leaf_t(
-    uint64_t label, const std::string& h_aux,
-    const brillo::SecureBlob& le_secret, const brillo::SecureBlob& he_secret,
+    uint8_t protocol_version,
+    uint64_t label,
+    const std::string& h_aux,
+    const brillo::SecureBlob& le_secret,
+    const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
-    const std::map<uint32_t, uint32_t>& delay_schedule, std::string* buffer) {
+    const std::map<uint32_t, uint32_t>& delay_schedule,
+    const ValidPcrCriteria& valid_pcr_criteria,
+    std::string* buffer) {
   if (h_aux.length() > PW_MAX_PATH_SIZE || le_secret.size() != PW_SECRET_SIZE ||
       he_secret.size() != PW_SECRET_SIZE ||
       reset_secret.size() != PW_SECRET_SIZE ||
-      delay_schedule.size() > PW_SCHED_COUNT) {
+      delay_schedule.size() > PW_SCHED_COUNT ||
+      valid_pcr_criteria.valid_pcr_values_size() > PW_MAX_PCR_CRITERIA_COUNT) {
     return SAPI_RC_BAD_PARAMETER;
   }
 
   struct pw_request_insert_leaf_t data = {};
-  buffer->reserve(buffer->size() + sizeof(pw_request_header_t) + sizeof(data) +
+  int pcr_criteria_size =
+      sizeof(struct valid_pcr_value_t) * PW_MAX_PCR_CRITERIA_COUNT;
+  int data_size = sizeof(data);
+  if (protocol_version == 0) {
+    data_size -= pcr_criteria_size;
+  }
+
+  buffer->reserve(buffer->size() + sizeof(pw_request_header_t) + data_size +
                   h_aux.size());
 
   data.label = {htole64(label)};
@@ -98,19 +116,41 @@ TPM_RC Serialize_pw_insert_leaf_t(
     data.delay_schedule[x].time_diff = {htole32(itr.second)};
     ++x;
   }
+
+  if (protocol_version > 0) {
+    x = 0;
+    for (const ValidPcrValue value : valid_pcr_criteria.valid_pcr_values()) {
+      data.valid_pcr_criteria[x].bitmask[0] = value.bitmask()[0];
+      data.valid_pcr_criteria[x].bitmask[1] = value.bitmask()[1];
+      std::copy(value.digest().begin(), value.digest().end(),
+                data.valid_pcr_criteria[x].digest);
+      ++x;
+    }
+    for (; x < PW_MAX_PCR_CRITERIA_COUNT; ++x) {
+      memset(data.valid_pcr_criteria[x].bitmask, 0,
+             sizeof(data.valid_pcr_criteria[x].bitmask));
+    }
+  } else if (valid_pcr_criteria.valid_pcr_values_size() > 0) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
   std::copy(le_secret.begin(), le_secret.end(), data.low_entropy_secret);
   std::copy(he_secret.begin(), he_secret.end(), data.high_entropy_secret);
   std::copy(reset_secret.begin(), reset_secret.end(), data.reset_secret);
 
-  Serialize_pw_request_header_t(PW_INSERT_LEAF, sizeof(data) + h_aux.size(),
-                                buffer);
-  Serialize(&data, sizeof(data), buffer);
+  Serialize_pw_request_header_t(protocol_version, PW_INSERT_LEAF,
+                                data_size + h_aux.size(), buffer);
+  Serialize(&data, data_size, buffer);
+
   buffer->append(h_aux);
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Serialize_pw_remove_leaf_t(uint64_t label, const std::string& h_aux,
-                                  const std::string& mac, std::string* buffer) {
+TPM_RC Serialize_pw_remove_leaf_t(uint8_t protocol_version,
+                                  uint64_t label,
+                                  const std::string& h_aux,
+                                  const std::string& mac,
+                                  std::string* buffer) {
   if (h_aux.length() > PW_MAX_PATH_SIZE || mac.size() != PW_HASH_SIZE) {
     return SAPI_RC_BAD_PARAMETER;
   }
@@ -122,16 +162,18 @@ TPM_RC Serialize_pw_remove_leaf_t(uint64_t label, const std::string& h_aux,
   data.leaf_location = {htole64(label)};
   std::copy(mac.begin(), mac.end(), data.leaf_hmac);
 
-  Serialize_pw_request_header_t(PW_REMOVE_LEAF, sizeof(data) + h_aux.size(),
-                                buffer);
+  Serialize_pw_request_header_t(protocol_version, PW_REMOVE_LEAF,
+                                sizeof(data) + h_aux.size(), buffer);
   Serialize(&data, sizeof(data), buffer);
   buffer->append(h_aux);
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Serialize_pw_try_auth_t(
-    const brillo::SecureBlob& le_secret, const std::string& h_aux,
-    const std::string& cred_metadata, std::string* buffer) {
+TPM_RC Serialize_pw_try_auth_t(uint8_t protocol_version,
+                               const brillo::SecureBlob& le_secret,
+                               const std::string& h_aux,
+                               const std::string& cred_metadata,
+                               std::string* buffer) {
   if (le_secret.size() != PW_SECRET_SIZE || h_aux.length() > PW_MAX_PATH_SIZE ||
       Validate_cred_metadata(cred_metadata) != TPM_RC_SUCCESS) {
     return SAPI_RC_BAD_PARAMETER;
@@ -142,8 +184,8 @@ TPM_RC Serialize_pw_try_auth_t(
       (cred_metadata.size() - sizeof(unimported_leaf_data_t)) + h_aux.size());
 
   Serialize_pw_request_header_t(
-      PW_TRY_AUTH, le_secret.size() + cred_metadata.size() + h_aux.size(),
-      buffer);
+      protocol_version, PW_TRY_AUTH,
+      le_secret.size() + cred_metadata.size() + h_aux.size(), buffer);
 
   buffer->append(le_secret.to_string());
   buffer->append(cred_metadata);
@@ -151,9 +193,11 @@ TPM_RC Serialize_pw_try_auth_t(
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Serialize_pw_reset_auth_t(
-    const brillo::SecureBlob& reset_secret, const std::string& h_aux,
-    const std::string& cred_metadata, std::string* buffer) {
+TPM_RC Serialize_pw_reset_auth_t(uint8_t protocol_version,
+                                 const brillo::SecureBlob& reset_secret,
+                                 const std::string& h_aux,
+                                 const std::string& cred_metadata,
+                                 std::string* buffer) {
   if (reset_secret.size() != PW_SECRET_SIZE ||
       h_aux.length() > PW_MAX_PATH_SIZE ||
       Validate_cred_metadata(cred_metadata) != TPM_RC_SUCCESS) {
@@ -165,8 +209,8 @@ TPM_RC Serialize_pw_reset_auth_t(
       (cred_metadata.size() - sizeof(unimported_leaf_data_t)) + h_aux.size());
 
   Serialize_pw_request_header_t(
-      PW_RESET_AUTH, reset_secret.size() + cred_metadata.size() + h_aux.size(),
-      buffer);
+      protocol_version, PW_RESET_AUTH,
+      reset_secret.size() + cred_metadata.size() + h_aux.size(), buffer);
 
   buffer->append(reset_secret.to_string());
   buffer->append(cred_metadata);
@@ -174,21 +218,24 @@ TPM_RC Serialize_pw_reset_auth_t(
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Serialize_pw_get_log_t(
-    const std::string& root, std::string* buffer) {
+TPM_RC Serialize_pw_get_log_t(uint8_t protocol_version,
+                              const std::string& root,
+                              std::string* buffer) {
   if (root.size() != PW_HASH_SIZE) {
     return SAPI_RC_BAD_PARAMETER;
   }
 
-  Serialize_pw_request_header_t(PW_GET_LOG,
+  Serialize_pw_request_header_t(protocol_version, PW_GET_LOG,
                                 sizeof(struct pw_request_get_log_t), buffer);
   buffer->append(root);
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Serialize_pw_log_replay_t(
-    const std::string& log_root, const std::string& h_aux,
-    const std::string& cred_metadata, std::string* buffer) {
+TPM_RC Serialize_pw_log_replay_t(uint8_t protocol_version,
+                                 const std::string& log_root,
+                                 const std::string& h_aux,
+                                 const std::string& cred_metadata,
+                                 std::string* buffer) {
   if (log_root.size() != PW_HASH_SIZE ||
       h_aux.length() > PW_MAX_PATH_SIZE ||
       Validate_cred_metadata(cred_metadata) != TPM_RC_SUCCESS) {
@@ -200,7 +247,8 @@ TPM_RC Serialize_pw_log_replay_t(
       (cred_metadata.size() - sizeof(unimported_leaf_data_t)) +
       h_aux.size());
 
-  Serialize_pw_request_header_t(PW_LOG_REPLAY, sizeof(pw_request_log_replay_t) -
+  Serialize_pw_request_header_t(protocol_version, PW_LOG_REPLAY,
+                                sizeof(pw_request_log_replay_t) -
                                     sizeof(struct unimported_leaf_data_t) +
                                     cred_metadata.size() + h_aux.size(),
                                 buffer);
@@ -223,10 +271,10 @@ TPM_RC Parse_pw_response_header_t(const std::string& buffer,
   }
 
   uint8_t version = (uint8_t)buffer[0];
-  if (version != PW_PROTOCOL_VERSION) {
+  if (version > PW_PROTOCOL_VERSION) {
     LOG(ERROR) << "Pinweaver protocol version mismatch: got "
                << static_cast<uint32_t>(version) << " expected "
-               << PW_PROTOCOL_VERSION << ".";
+               << PW_PROTOCOL_VERSION << " or lower.";
     return SAPI_RC_ABI_MISMATCH;
   }
 
@@ -268,13 +316,14 @@ TPM_RC Parse_pw_short_message(const std::string& buffer, uint32_t* result_code,
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC Parse_pw_pong_t(const std::string& buffer) {
+TPM_RC Parse_pw_pong_t(const std::string& buffer, uint8_t* protocol_version) {
   uint32_t result_code;
   TPM_RC rc = Parse_pw_short_message(buffer, &result_code, nullptr);
   if (rc != TPM_RC_SUCCESS)
     return rc;
   if (result_code != PW_ERR_TYPE_INVALID)
     return SAPI_RC_ABI_MISMATCH;
+  *protocol_version = (uint8_t)buffer[0];
   return TPM_RC_SUCCESS;
 }
 
@@ -302,10 +351,11 @@ TPM_RC Parse_pw_insert_leaf_t(
 TPM_RC Parse_pw_try_auth_t(
     const std::string& buffer, uint32_t* result_code,
     std::string* root_hash, uint32_t* seconds_to_wait,
-    brillo::SecureBlob* he_secret, std::string* cred_metadata_out,
-    std::string* mac_out) {
+    brillo::SecureBlob* he_secret, brillo::SecureBlob* reset_secret,
+    std::string* cred_metadata_out, std::string* mac_out) {
   *seconds_to_wait = 0;
   he_secret->clear();
+  reset_secret->clear();
   cred_metadata_out->clear();
   mac_out->clear();
 
@@ -334,8 +384,16 @@ TPM_RC Parse_pw_try_auth_t(
   // he_secret is only valid for EC_SUCCESS.
   if (*result_code == 0) {
     he_secret->assign(itr, itr + PW_SECRET_SIZE);
+    // reset_secret is present only starting from protocol_version = 1.
+    if ((uint8_t)buffer[0] > 0) {
+      reset_secret->assign(itr + PW_SECRET_SIZE, itr + 2 * PW_SECRET_SIZE);
+    }
   }
-  itr += PW_SECRET_SIZE;
+  if ((uint8_t)buffer[0] > 0) {
+      itr += 2 * PW_SECRET_SIZE;
+  } else {
+      itr += PW_SECRET_SIZE;
+  }
 
   // For PW_ERR_RATE_LIMIT_REACHED the only valid result field is
   // seconds_to_wait.

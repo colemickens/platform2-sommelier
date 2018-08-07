@@ -23,34 +23,44 @@ extern "C" {
 
 namespace trunks {
 
-TPM_RC Serialize_pw_ping_t(std::string* buffer);
+TPM_RC Serialize_pw_ping_t(uint8_t request_version, std::string* buffer);
 
-TPM_RC Serialize_pw_reset_tree_t(uint8_t bits_per_level, uint8_t height,
+TPM_RC Serialize_pw_reset_tree_t(uint8_t protocol_version,
+                                 uint8_t bits_per_level, uint8_t height,
                                  std::string* buffer);
 
 TPM_RC Serialize_pw_insert_leaf_t(
-    uint64_t label, const std::string& h_aux,
-    const brillo::SecureBlob& le_secret, const brillo::SecureBlob& he_secret,
+    uint8_t protocol_version,
+    uint64_t label,
+    const std::string& h_aux,
+    const brillo::SecureBlob& le_secret,
+    const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
-    const std::map<uint32_t, uint32_t>& delay_schedule, std::string* buffer);
+    const std::map<uint32_t, uint32_t>& delay_schedule,
+    const ValidPcrCriteria& valid_pcr_criteria,
+    std::string* buffer);
 
-TPM_RC Serialize_pw_remove_leaf_t(uint64_t label, const std::string& h_aux,
+TPM_RC Serialize_pw_remove_leaf_t(uint8_t protocol_version, uint64_t label,
+                                  const std::string& h_aux,
                                   const std::string& mac, std::string* buffer);
 
 TPM_RC Serialize_pw_try_auth_t(
-    const brillo::SecureBlob& le_secret, const std::string& h_aux,
-    const std::string& cred_metadata, std::string* buffer);
+    uint8_t protocol_version, const brillo::SecureBlob& le_secret,
+    const std::string& h_aux, const std::string& cred_metadata,
+    std::string* buffer);
 
 TPM_RC Serialize_pw_reset_auth_t(
-    const brillo::SecureBlob& reset_secret, const std::string& h_aux,
-    const std::string& cred_metadata, std::string* buffer);
+    uint8_t protocol_version, const brillo::SecureBlob& reset_secret,
+    const std::string& h_aux, const std::string& cred_metadata,
+    std::string* buffer);
 
 TPM_RC Serialize_pw_get_log_t(
-    const std::string& root, std::string* buffer);
+    uint8_t protocol_version, const std::string& root, std::string* buffer);
 
 TPM_RC Serialize_pw_log_replay_t(
-    const std::string& log_root, const std::string& h_aux,
-    const std::string& cred_metadata, std::string* buffer);
+    uint8_t protocol_version, const std::string& log_root,
+    const std::string& h_aux, const std::string& cred_metadata,
+    std::string* buffer);
 
 // If TPM_RC_SUCCESS is returned, |result_code| and |root_hash| will be valid.
 // The other fields generally will not be valid unless |result_code| is zero.
@@ -65,7 +75,7 @@ TPM_RC Parse_pw_response_header_t(const std::string& buffer,
 TPM_RC Parse_pw_short_message(const std::string& buffer, uint32_t* result_code,
                               std::string* root_hash);
 
-TPM_RC Parse_pw_pong_t(const std::string& buffer);
+TPM_RC Parse_pw_pong_t(const std::string& buffer, uint8_t* protocol_version);
 
 TPM_RC Parse_pw_insert_leaf_t(
     const std::string& buffer, uint32_t* result_code,
@@ -74,8 +84,8 @@ TPM_RC Parse_pw_insert_leaf_t(
 TPM_RC Parse_pw_try_auth_t(
     const std::string& buffer, uint32_t* result_code,
     std::string* root_hash, uint32_t* seconds_to_wait,
-    brillo::SecureBlob* he_secret, std::string* cred_metadata_out,
-    std::string* mac_out);
+    brillo::SecureBlob* he_secret, brillo::SecureBlob* reset_secret,
+    std::string* cred_metadata_out, std::string* mac_out);
 
 TPM_RC Parse_pw_reset_auth_t(
     const std::string& buffer, uint32_t* result_code,

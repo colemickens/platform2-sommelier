@@ -427,71 +427,84 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->ManageCCDPwd(allow_pwd);
   }
 
-  TPM_RC PinWeaverIsSupported() override {
-    return target_->PinWeaverIsSupported();
+  TPM_RC PinWeaverIsSupported(uint8_t request_version,
+                              uint8_t* protocol_version) override {
+    return target_->PinWeaverIsSupported(request_version, protocol_version);
   }
 
-  TPM_RC PinWeaverResetTree(uint8_t bits_per_level, uint8_t height,
+  TPM_RC PinWeaverResetTree(uint8_t protocol_version,
+                            uint8_t bits_per_level, uint8_t height,
                             uint32_t* result_code,
                             std::string* root_hash) override {
-    return target_->PinWeaverResetTree(bits_per_level, height, result_code,
-                                       root_hash);
+    return target_->PinWeaverResetTree(protocol_version, bits_per_level, height,
+                                       result_code, root_hash);
   }
 
-  TPM_RC PinWeaverInsertLeaf(
-      uint64_t label, const std::string& h_aux,
-      const brillo::SecureBlob& le_secret, const brillo::SecureBlob& he_secret,
-      const brillo::SecureBlob& reset_secret,
-      const std::map<uint32_t, uint32_t>& delay_schedule,
-      uint32_t* result_code, std::string* root_hash, std::string* cred_metadata,
-      std::string* mac) override {
+  TPM_RC PinWeaverInsertLeaf(uint8_t protocol_version,
+                             uint64_t label,
+                             const std::string& h_aux,
+                             const brillo::SecureBlob& le_secret,
+                             const brillo::SecureBlob& he_secret,
+                             const brillo::SecureBlob& reset_secret,
+                             const std::map<uint32_t, uint32_t>& delay_schedule,
+                             const ValidPcrCriteria& valid_pcr_criteria,
+                             uint32_t* result_code,
+                             std::string* root_hash,
+                             std::string* cred_metadata,
+                             std::string* mac) override {
     return target_->PinWeaverInsertLeaf(
-        label, h_aux, le_secret, he_secret, reset_secret, delay_schedule,
-        result_code, root_hash, cred_metadata, mac);
+        protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
+        delay_schedule, valid_pcr_criteria, result_code, root_hash,
+        cred_metadata, mac);
   }
 
   TPM_RC PinWeaverRemoveLeaf(
-      uint64_t label, const std::string& h_aux, const std::string& mac,
-      uint32_t* result_code, std::string* root_hash) override {
-    return target_->PinWeaverRemoveLeaf(label, h_aux, mac, result_code,
-                                        root_hash);
+      uint8_t protocol_version, uint64_t label, const std::string& h_aux,
+      const std::string& mac, uint32_t* result_code, std::string* root_hash)
+      override {
+    return target_->PinWeaverRemoveLeaf(protocol_version, label, h_aux, mac,
+                                        result_code, root_hash);
   }
 
   TPM_RC PinWeaverTryAuth(
-      const brillo::SecureBlob& le_secret, const std::string& h_aux,
-      const std::string& cred_metadata, uint32_t* result_code,
-      std::string* root_hash, uint32_t* seconds_to_wait,
-      brillo::SecureBlob* he_secret, std::string* cred_metadata_out,
-      std::string* mac_out) override {
+      uint8_t protocol_version, const brillo::SecureBlob& le_secret,
+      const std::string& h_aux, const std::string& cred_metadata,
+      uint32_t* result_code, std::string* root_hash, uint32_t* seconds_to_wait,
+      brillo::SecureBlob* he_secret, brillo::SecureBlob* reset_secret,
+      std::string* cred_metadata_out, std::string* mac_out) override {
     return target_->PinWeaverTryAuth(
-        le_secret, h_aux, cred_metadata, result_code, root_hash,
-        seconds_to_wait, he_secret, cred_metadata_out, mac_out);
+        protocol_version, le_secret, h_aux, cred_metadata, result_code,
+        root_hash, seconds_to_wait, he_secret, reset_secret, cred_metadata_out,
+        mac_out);
   }
 
   TPM_RC PinWeaverResetAuth(
-      const brillo::SecureBlob& reset_secret, const std::string& h_aux,
-      const std::string& cred_metadata, uint32_t* result_code,
-      std::string* root_hash, brillo::SecureBlob* he_secret,
-      std::string* cred_metadata_out, std::string* mac_out) override {
+      uint8_t protocol_version, const brillo::SecureBlob& reset_secret,
+      const std::string& h_aux, const std::string& cred_metadata,
+      uint32_t* result_code, std::string* root_hash,
+      brillo::SecureBlob* he_secret, std::string* cred_metadata_out,
+      std::string* mac_out) override {
     return target_->PinWeaverResetAuth(
-        reset_secret, h_aux, cred_metadata, result_code, root_hash, he_secret,
-        cred_metadata_out, mac_out);
+        protocol_version, reset_secret, h_aux, cred_metadata, result_code,
+        root_hash, he_secret, cred_metadata_out, mac_out);
   }
 
   TPM_RC PinWeaverGetLog(
-      const std::string& root, uint32_t* result_code, std::string* root_hash,
-      std::vector<trunks::PinWeaverLogEntry>* log) override {
-    return target_->PinWeaverGetLog(root, result_code, root_hash, log);
+      uint8_t protocol_version, const std::string& root, uint32_t* result_code,
+      std::string* root_hash, std::vector<trunks::PinWeaverLogEntry>* log)
+      override {
+    return target_->PinWeaverGetLog(protocol_version, root, result_code,
+                                    root_hash, log);
   }
 
   TPM_RC PinWeaverLogReplay(
-      const std::string& log_root, const std::string& h_aux,
-      const std::string& cred_metadata, uint32_t* result_code,
-      std::string* root_hash, std::string* cred_metadata_out,
-      std::string* mac_out) override {
+      uint8_t protocol_version, const std::string& log_root,
+      const std::string& h_aux, const std::string& cred_metadata,
+      uint32_t* result_code, std::string* root_hash,
+      std::string* cred_metadata_out, std::string* mac_out) override {
     return target_->PinWeaverLogReplay(
-        log_root, h_aux, cred_metadata, result_code, root_hash,
-        cred_metadata_out, mac_out);
+        protocol_version, log_root, h_aux, cred_metadata, result_code,
+        root_hash, cred_metadata_out, mac_out);
   }
 
 

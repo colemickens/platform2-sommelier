@@ -12,6 +12,7 @@
 #include <brillo/syslog_logging.h>
 #include <openssl/sha.h>
 
+#include <algorithm>
 #include <cinttypes>
 #include <memory>
 
@@ -46,6 +47,8 @@ const uint8_t DEFAULT_RESET_SECRET[PW_SECRET_SIZE] =
      0x14, 0xb0, 0xad, 0xe6, 0xb7, 0x6a, 0x10, 0xfc,
      0x03, 0x22, 0xcb, 0x71, 0x31, 0xd3, 0x74, 0xd6};
 
+uint8_t protocol_version = PW_PROTOCOL_VERSION;
+
 using trunks::CommandTransceiver;
 using trunks::TrunksFactory;
 using trunks::TrunksFactoryImpl;
@@ -53,19 +56,28 @@ using trunks::TrunksFactoryImpl;
 void PrintUsage() {
   puts("Usage:");
   puts("  help - prints this help message.");
-  puts("  resettree [<bits_per_level> <height>] - sends a reset tree command.");
-  puts("      The default parameters are bits_per_level=2 height=6.");
+  puts("  resettree [<bits_per_level> <height> --protocol=<protocol>]");
+  puts("            - sends a reset tree command.");
+  puts("      The default parameters are bits_per_level=2 height=6 protocol=");
+  puts("      PW_PROTOCOL_VERSION.");
   puts("  insert [...] - sends an insert leaf command.");
   puts("  remove [...] - sends an remove leaf command.");
   puts("  auth [...] - sends an try auth command.");
   puts("  resetleaf [...] - sends an reset auth command.");
   puts("  getlog [...] - sends an get log command.");
   puts("  replay [...] - sends an log replay command.");
-  puts("  selftest - runs a self test with the following commands:");
+  puts("  selftest [--protocol=<version>] - runs a self test with the");
+  puts("           following commands:");
 }
 
 std::string HexEncode(const std::string& bytes) {
   return base::HexEncode(bytes.data(), bytes.size());
+}
+
+std::string HexDecode(const std::string& hex) {
+  std::vector<uint8_t> output;
+  CHECK(base::HexStringToBytes(hex, &output));
+  return std::string(output.begin(), output.end());
 }
 
 std::string PwErrorStr(int code) {
@@ -141,10 +153,13 @@ void GetEmptyPath(uint8_t bits_per_level, uint8_t height, std::string* h_aux) {
   }
 }
 
-void GetInsertLeafDefaults(
-    uint64_t* label, std::string* h_aux, brillo::SecureBlob* le_secret,
-    brillo::SecureBlob* he_secret, brillo::SecureBlob* reset_secret,
-    std::map<uint32_t, uint32_t>* delay_schedule) {
+void GetInsertLeafDefaults(uint64_t* label,
+                           std::string* h_aux,
+                           brillo::SecureBlob* le_secret,
+                           brillo::SecureBlob* he_secret,
+                           brillo::SecureBlob* reset_secret,
+                           std::map<uint32_t, uint32_t>* delay_schedule,
+                           trunks::ValidPcrCriteria* valid_pcr_criteria) {
   *label = 0x1b1llu;  // {0, 1, 2, 3, 0, 1}
 
   GetEmptyPath(DEFAULT_BITS_PER_LEVEL, DEFAULT_HEIGHT, h_aux);
@@ -162,6 +177,13 @@ void GetInsertLeafDefaults(
   delay_schedule->emplace(9, 1800);
   delay_schedule->emplace(10, 3600);
   delay_schedule->emplace(50, PW_BLOCK_ATTEMPTS);
+  valid_pcr_criteria->Clear();
+  if (protocol_version > 0) {
+    trunks::ValidPcrValue* default_pcr_value =
+      valid_pcr_criteria->add_valid_pcr_values();
+    uint8_t bitmask[2] {0, 0};
+    default_pcr_value->set_bitmask(&bitmask, sizeof(bitmask));
+  }
 }
 
 void SetupBaseOutcome(uint32_t result_code, const std::string& root,
@@ -200,7 +222,7 @@ int HandleResetTree(base::CommandLine::StringVector::const_iterator begin,
   std::string root;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverResetTree(
-      bits_per_level, height, &result_code, &root);
+      protocol_version, bits_per_level, height, &result_code, &root);
 
   if (result) {
     LOG(ERROR) << "PinWeaverResetTree: " << trunks::GetErrorString(result);
@@ -221,9 +243,10 @@ int HandleInsert(base::CommandLine::StringVector::const_iterator begin,
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   std::map<uint32_t, uint32_t> delay_schedule;
+  trunks::ValidPcrCriteria valid_pcr_criteria;
   if (begin == end) {
-    GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret,
-                          &reset_secret, &delay_schedule);
+    GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret, &reset_secret,
+                          &delay_schedule, &valid_pcr_criteria);
   } else if (end - begin < 6) {
     puts("Invalid options!");
     PrintUsage();
@@ -264,8 +287,9 @@ int HandleInsert(base::CommandLine::StringVector::const_iterator begin,
   std::string mac;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverInsertLeaf(
-      label, h_aux, le_secret, he_secret, reset_secret, delay_schedule,
-      &result_code, &root, &cred_metadata, &mac);
+      protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
+      delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
+      &mac);
 
   if (result) {
     LOG(ERROR) << "PinWeaverInsertLeaf: " << trunks::GetErrorString(result);
@@ -303,7 +327,7 @@ int HandleRemove(base::CommandLine::StringVector::const_iterator begin,
   std::string root;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverRemoveLeaf(
-      label, h_aux, mac, &result_code, &root);
+      protocol_version, label, h_aux, mac, &result_code, &root);
 
   if (result) {
     LOG(ERROR) << "PinWeaverRemoveLeaf: " << trunks::GetErrorString(result);
@@ -346,12 +370,14 @@ int HandleAuth(base::CommandLine::StringVector::const_iterator begin,
   std::string root;
   uint32_t seconds_to_wait;
   brillo::SecureBlob he_secret;
+  brillo::SecureBlob reset_secret;
   std::string cred_metadata_out;
   std::string mac_out;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverTryAuth(
-      le_secret, h_aux, cred_metadata, &result_code, &root, &seconds_to_wait,
-      &he_secret, &cred_metadata_out, &mac_out);
+      protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+      &seconds_to_wait, &he_secret, &reset_secret, &cred_metadata_out,
+      &mac_out);
 
   if (result) {
     LOG(ERROR) << "PinWeaverTryAuth: " << trunks::GetErrorString(result);
@@ -401,8 +427,8 @@ int HandleResetLeaf(base::CommandLine::StringVector::const_iterator begin,
   std::string mac_out;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverResetAuth(
-      reset_secret, h_aux, cred_metadata, &result_code, &root, &he_secret,
-      &cred_metadata_out, &mac_out);
+      protocol_version, reset_secret, h_aux, cred_metadata, &result_code, &root,
+      &he_secret, &cred_metadata_out, &mac_out);
 
   if (result) {
     LOG(ERROR) << "PinWeaverResetAuth: " << trunks::GetErrorString(result);
@@ -439,7 +465,7 @@ int HandleGetLog(base::CommandLine::StringVector::const_iterator begin,
   std::vector<trunks::PinWeaverLogEntry> log;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverGetLog(
-      root, &result_code, &root_hash, &log);
+      protocol_version, root, &result_code, &root_hash, &log);
 
   if (result) {
     LOG(ERROR) << "PinWeaverGetLog: " << trunks::GetErrorString(result);
@@ -520,8 +546,8 @@ int HandleReplay(base::CommandLine::StringVector::const_iterator begin,
   std::string mac_out;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverLogReplay(
-      log_root, h_aux, cred_metadata, &result_code, &root, &cred_metadata_out,
-      &mac_out);
+      protocol_version, log_root, h_aux, cred_metadata, &result_code, &root,
+      &cred_metadata_out, &mac_out);
 
   if (result) {
     LOG(ERROR) << "PinWeaverResetAuth: " << trunks::GetErrorString(result);
@@ -548,8 +574,9 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   uint32_t result_code = 0;
   std::string root;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
-  trunks::TPM_RC result = tpm_utility->PinWeaverResetTree(
-      DEFAULT_BITS_PER_LEVEL, DEFAULT_HEIGHT, &result_code, &root);
+  trunks::TPM_RC result =
+      tpm_utility->PinWeaverResetTree(protocol_version, DEFAULT_BITS_PER_LEVEL,
+                                      DEFAULT_HEIGHT, &result_code, &root);
   if (result || result_code) {
     LOG(ERROR) << "reset_tree failed! " << result_code << " "
                << PwErrorStr(result_code);
@@ -563,14 +590,17 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   brillo::SecureBlob le_secret;
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
+  brillo::SecureBlob test_reset_secret;
   std::map<uint32_t, uint32_t> delay_schedule;
-  GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret,
-                        &reset_secret, &delay_schedule);
+  trunks::ValidPcrCriteria valid_pcr_criteria;
+  GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret, &reset_secret,
+                        &delay_schedule, &valid_pcr_criteria);
   std::string cred_metadata;
   std::string mac;
   result = tpm_utility->PinWeaverInsertLeaf(
-      label, h_aux, le_secret, he_secret, reset_secret, delay_schedule,
-      &result_code, &root, &cred_metadata, &mac);
+      protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
+      delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
+      &mac);
   if (result || result_code) {
     LOG(ERROR) << "insert_leaf failed! " << result_code << " "
                << PwErrorStr(result_code);
@@ -581,17 +611,25 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   result_code = 0;
   uint32_t seconds_to_wait;
   result = tpm_utility->PinWeaverTryAuth(
-      le_secret, h_aux, cred_metadata, &result_code, &root, &seconds_to_wait,
-      &he_secret, &cred_metadata, &mac);
+      protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+      &seconds_to_wait, &he_secret, &test_reset_secret, &cred_metadata, &mac);
   if (result || result_code) {
     LOG(ERROR) << "try_auth failed! " << result_code << " "
                << PwErrorStr(result_code);
     return EXIT_FAILURE;
   }
 
-  if (std::mismatch(he_secret.begin(), he_secret.end(),
-                    DEFAULT_HE_SECRET).first != he_secret.end()) {
+  if (he_secret.size() != PW_SECRET_SIZE ||
+      std::mismatch(he_secret.begin(), he_secret.end(), DEFAULT_HE_SECRET)
+              .first != he_secret.end()) {
     LOG(ERROR) << "try_auth credential retrieval failed!";
+    return EXIT_FAILURE;
+  }
+
+  if (protocol_version > 0 && (test_reset_secret.size() != PW_SECRET_SIZE ||
+      std::mismatch(test_reset_secret.begin(), test_reset_secret.end(),
+                    DEFAULT_RESET_SECRET).first != test_reset_secret.end())) {
+    LOG(ERROR) << "try_auth reset_secret retrieval failed!";
     return EXIT_FAILURE;
   }
 
@@ -601,8 +639,9 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   std::string old_metadata = cred_metadata;
   brillo::SecureBlob wrong_le_secret = he_secret;
   result = tpm_utility->PinWeaverTryAuth(
-      wrong_le_secret, h_aux, cred_metadata, &result_code, &root,
-      &seconds_to_wait, &he_secret, &cred_metadata, &mac);
+      protocol_version, wrong_le_secret, h_aux, cred_metadata, &result_code,
+      &root, &seconds_to_wait, &he_secret, &test_reset_secret, &cred_metadata,
+      &mac);
   if (result) {
     LOG(ERROR) << "try_auth failed! " << result_code << " "
                << PwErrorStr(result_code);
@@ -618,8 +657,8 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   LOG(INFO) << "get_log";
   result_code = 0;
   std::vector<trunks::PinWeaverLogEntry> log;
-  result = tpm_utility->PinWeaverGetLog(pre_fail_root, &result_code, &root,
-                                        &log);
+  result = tpm_utility->PinWeaverGetLog(protocol_version, pre_fail_root,
+                                        &result_code, &root, &log);
   if (result || result_code) {
     LOG(ERROR) << "get_log failed! " << result_code << " "
                << PwErrorStr(result_code);
@@ -653,9 +692,9 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   result_code = 0;
   std::string replay_metadata = cred_metadata;
   std::string replay_mac = mac;
-  result = tpm_utility->PinWeaverLogReplay(
-      root, h_aux, old_metadata, &result_code, &root, &replay_metadata,
-      &replay_mac);
+  result = tpm_utility->PinWeaverLogReplay(protocol_version, root, h_aux,
+                                           old_metadata, &result_code, &root,
+                                           &replay_metadata, &replay_mac);
   if (result) {
     LOG(ERROR) << "log_replay failed! " << result_code << " "
                << PwErrorStr(result_code);
@@ -673,28 +712,128 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   LOG(INFO) << "reset_auth";
   result_code = 0;
   result = tpm_utility->PinWeaverResetAuth(
-      reset_secret, h_aux, cred_metadata, &result_code, &root, &he_secret,
-      &cred_metadata, &mac);
+      protocol_version, reset_secret, h_aux, cred_metadata, &result_code, &root,
+      &he_secret, &cred_metadata, &mac);
   if (result || result_code) {
     LOG(ERROR) << "reset_auth failed! " << result_code << " "
                << PwErrorStr(result_code);
     return EXIT_FAILURE;
   }
 
-  if (std::mismatch(he_secret.begin(), he_secret.end(),
-                    DEFAULT_HE_SECRET).first != he_secret.end()) {
+  if (he_secret.size() != PW_SECRET_SIZE ||
+      std::mismatch(he_secret.begin(), he_secret.end(), DEFAULT_HE_SECRET)
+              .first != he_secret.end()) {
     LOG(ERROR) << "reset_auth credential retrieval failed!";
     return EXIT_FAILURE;
   }
 
   LOG(INFO) << "remove_leaf";
   result_code = 0;
-  result = tpm_utility->PinWeaverRemoveLeaf(
-      label, h_aux, mac, &result_code, &root);
+  result = tpm_utility->PinWeaverRemoveLeaf(protocol_version, label, h_aux, mac,
+                                            &result_code, &root);
   if (result || result_code) {
     LOG(ERROR) << "remove_leaf failed! " << result_code << " "
                << PwErrorStr(result_code);
     return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "insert new leaf with good PCR (PCR4 must be empty)";
+  GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret, &reset_secret,
+                        &delay_schedule, &valid_pcr_criteria);
+  if (protocol_version > 0) {
+    std::string digest = HexDecode(
+      "66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925");
+    trunks::ValidPcrValue* value =
+      valid_pcr_criteria.mutable_valid_pcr_values(0);
+    const uint8_t bitmask[2] = {1<<4 /* PCR 4 */, 0};
+    value->set_bitmask(&bitmask, sizeof(bitmask));
+    value->set_digest(digest);
+  }
+  result = tpm_utility->PinWeaverInsertLeaf(
+      protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
+      delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
+      &mac);
+  if (result || result_code) {
+    LOG(ERROR) << "insert_leaf failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "try_auth should succeed";
+  result_code = 0;
+  he_secret.clear();
+  result = tpm_utility->PinWeaverTryAuth(
+      protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+      &seconds_to_wait, &he_secret, &reset_secret, &cred_metadata, &mac);
+  if (result || result_code) {
+    LOG(ERROR) << "try_auth failed";
+    return EXIT_FAILURE;
+  }
+
+  if (he_secret.size() != PW_SECRET_SIZE ||
+      std::mismatch(he_secret.begin(), he_secret.end(), DEFAULT_HE_SECRET)
+              .first != he_secret.end()) {
+    LOG(ERROR) << "try_auth credential retrieval failed!";
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "remove_leaf";
+  result_code = 0;
+  result = tpm_utility->PinWeaverRemoveLeaf(protocol_version, label, h_aux, mac,
+                                            &result_code, &root);
+  if (result || result_code) {
+    LOG(ERROR) << "remove_leaf failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+
+  if (protocol_version > 0) {
+    LOG(INFO) << "insert new leaf with bad PCR";
+    GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret, &reset_secret,
+                          &delay_schedule, &valid_pcr_criteria);
+    trunks::ValidPcrValue* value =
+        valid_pcr_criteria.mutable_valid_pcr_values(0);
+    const uint8_t bitmask[2] = {16, 0};
+    value->set_bitmask(&bitmask, sizeof(bitmask));
+    value->set_digest("bad_digest");
+    result = tpm_utility->PinWeaverInsertLeaf(
+        protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
+        delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
+        &mac);
+    if (result || result_code) {
+      LOG(ERROR) << "insert_leaf failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "try_auth should fail";
+    result_code = 0;
+    he_secret.clear();
+    replay_mac = mac;
+    result = tpm_utility->PinWeaverTryAuth(
+        protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+        &seconds_to_wait, &he_secret, &test_reset_secret, &cred_metadata,
+        &mac);
+    if (!result && !result_code) {
+      LOG(ERROR) << "try_auth with wrong PCR failed to fail";
+      return EXIT_FAILURE;
+    }
+
+    // Make sure that he_secret was not leaked.
+    if (he_secret.size() > 0 || test_reset_secret.size() > 0) {
+      LOG(ERROR) << "try_auth populated the he_secret";
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "remove_leaf";
+    result_code = 0;
+    result = tpm_utility->PinWeaverRemoveLeaf(protocol_version, label, h_aux,
+                                              replay_mac, &result_code, &root);
+    if (result || result_code) {
+      LOG(ERROR) << "remove_leaf failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
   }
 
   puts("Success!");
@@ -707,15 +846,21 @@ int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToStderr);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  const auto& args = cl->argv();
+  int requested_protocol = PW_PROTOCOL_VERSION;
+  if (cl->HasSwitch("protocol")) {
+    requested_protocol =
+        std::min(PW_PROTOCOL_VERSION,
+                 std::stoi(cl->GetSwitchValueASCII("protocol")));
+  }
+  const auto& args = cl->GetArgs();
 
-  if (args.size() < 2) {
+  if (args.size() < 1) {
     puts("Invalid options!");
     PrintUsage();
     return EXIT_FAILURE;
   }
 
-  const auto& command = args[1];
+  const auto& command = args[0];
 
   if (command == "help") {
     puts("Pinweaver Client: A command line tool to invoke PinWeaver on Cr50.");
@@ -728,14 +873,20 @@ int main(int argc, char** argv) {
 
   {
     std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
-    trunks::TPM_RC result = tpm_utility->PinWeaverIsSupported();
+    trunks::TPM_RC result = tpm_utility->PinWeaverIsSupported(
+        requested_protocol, &protocol_version);
+    if (result == trunks::SAPI_RC_ABI_MISMATCH) {
+      result = tpm_utility->PinWeaverIsSupported(0, &protocol_version);
+    }
     if (result) {
       LOG(ERROR) << "PinWeaver is not supported on this device!";
       return EXIT_PINWEAVER_NOT_SUPPORTED;
     }
+    protocol_version = std::min(protocol_version, (uint8_t)requested_protocol);
+    LOG(INFO) << "Protocol version: " << static_cast<int>(protocol_version);
   }
 
-  auto command_args_start = args.begin() + 2;
+  auto command_args_start = args.begin() + 1;
 
   const struct {
     const std::string command;
@@ -755,7 +906,9 @@ int main(int argc, char** argv) {
 
   for (const auto& command_handler : command_handlers) {
     if (command_handler.command == command) {
-      return command_handler.handler(command_args_start, args.end(), &factory);
+      return command_handler.handler(command_args_start,
+                                     args.end(),
+                                     &factory);
     }
   }
 
