@@ -319,10 +319,27 @@ class OptionsTests(cros_test_lib.TestCase):
     """We should get a dummy object when no inputs are specified."""
     ret = gyplint.ParseOptions([])
     self.assertTrue(isinstance(ret, gyplint.LintSettings))
+    self.assertEqual(ret.skip, set())
+    self.assertEqual(ret.errors, [])
 
   def testInvalid(self):
-    """Throw an error when invalid options are found."""
-    self.assertRaises(ValueError, gyplint.ParseOptions, ['disab=foo'])
+    """Flag invalid options as errors."""
+    ret = gyplint.ParseOptions(['disab=foo'])
+    self.assertNotEqual(ret.errors, [])
+
+  def testUnknownLinters(self):
+    """Flag unknown linters as errors."""
+    ret = gyplint.ParseOptions(['disable=foo'])
+    self.assertNotEqual(ret.errors, [])
+
+  def testKnownLinters(self):
+    """Don't flag known linters as errors."""
+    ret = gyplint.ParseOptions([
+        'disable=GypLintOrderedFiles',
+        'disable=RawLintWhitespace',
+        'disable=LinesLintWhitespace',
+    ])
+    self.assertEqual(ret.errors, [])
 
   def testDisabled(self):
     """Check that all the right values are extracted."""

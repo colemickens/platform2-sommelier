@@ -402,6 +402,8 @@ OPTIONS_RE = re.compile(r'^\s*#.*\bgyplint:\s*([^\n;]+)', flags=re.MULTILINE)
 LintSettings = collections.namedtuple('LinterSettings', (
     # Linters to skip.
     'skip',
+    # Problems we found in the lint settings themselves.
+    'errors',
 ))
 
 def ParseOptions(options, name=None):
@@ -418,29 +420,57 @@ def ParseOptions(options, name=None):
     A LintSettings object.
   """
   skip = set()
+  errors = []
 
+  # Parse all the gyplint directives.
   for option in options:
     key, value = option.split('=', 1)
     key = key.strip()
     value = value.strip()
 
+    # Parse each sub-option.
     if key == 'disable':
       skip.update(x.strip() for x in value.split(','))
     else:
-      raise ValueError('%s: unknown gyplint option: %s' % (name, key))
+      errors.append(LintResult('ParseOptions', name,
+                               'unknown gyplint option: %s' % (key,),
+                               logging.ERROR))
 
-  return LintSettings(skip)
+  # Validate the options.
+  all_linters = FindAllLinters()
+  bad_linters = skip - all_linters
+  if bad_linters:
+    errors.append(LintResult('ParseOptions', name,
+                             'unknown linters: %s' % (bad_linters,),
+                             logging.ERROR))
+
+  return LintSettings(skip, errors)
+
+
+def FindLinters(prefix):
+  """Find all linters starting with |prefix|."""
+  return set(x for x in globals() if x.startswith(prefix))
+
+
+def FindAllLinters():
+  """Return all valid linters we know about."""
+  return set(
+      FindLinters('GypLint') |
+      FindLinters('RawLint') |
+      FindLinters('LinesLint')
+  )
 
 
 def RunLinters(prefix, name, data, settings=None):
   """Run linters starting with |prefix| against |data|."""
+  ret = []
+
   if settings is None:
     settings = ParseOptions([])
+    ret += settings.errors
 
-  linters = [x for x in globals()
-             if x.startswith(prefix) and x not in settings.skip]
+  linters = [x for x in FindLinters(prefix) if x not in settings.skip]
 
-  ret = []
   for linter in linters:
     functor = globals().get(linter)
     for result in functor(data):
@@ -461,12 +491,14 @@ def CheckGypData(name, data):
     return [LintResult('gyp.input.CheckedEval', name, 'invalid format: %s' % e,
                        logging.ERROR)]
 
+  ret = []
+
   # Parse the gyplint flags in the file.
   m = OPTIONS_RE.findall(data)
-  settings = ParseOptions(m, name=name)
+  settings = ParseOptions(m)
 
+  ret += settings.errors
   lines = data.splitlines()
-  ret = []
 
   # Run linters on the raw data first (for style/syntax).
   ret += RunLinters('RawLint', name, data, settings=settings)
