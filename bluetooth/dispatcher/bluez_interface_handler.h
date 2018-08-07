@@ -39,6 +39,11 @@ class BluezInterfaceHandler : public InterfaceHandler {
     method_forwardings_[method_name] = ForwardingRule::FORWARD_DEFAULT;
   }
 
+  void AddMethodForwarding(const std::string& method_name,
+                           ForwardingRule forwarding_rule) {
+    method_forwardings_[method_name] = forwarding_rule;
+  }
+
  private:
   InterfaceHandler::PropertyFactoryMap property_factory_map_;
   std::map<std::string, ForwardingRule> method_forwardings_;

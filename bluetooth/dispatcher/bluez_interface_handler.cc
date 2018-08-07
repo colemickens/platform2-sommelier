@@ -28,9 +28,11 @@ BluezAdapterInterfaceHandler::BluezAdapterInterfaceHandler() {
       bluetooth_adapter::kUUIDsProperty);
   AddPropertyFactory<std::string>(bluetooth_adapter::kModaliasProperty);
 
-  AddMethodForwarding(bluetooth_adapter::kStartDiscovery);
+  AddMethodForwarding(bluetooth_adapter::kStartDiscovery,
+                      ForwardingRule::FORWARD_ALL);
   AddMethodForwarding(bluetooth_adapter::kSetDiscoveryFilter);
-  AddMethodForwarding(bluetooth_adapter::kStopDiscovery);
+  AddMethodForwarding(bluetooth_adapter::kStopDiscovery,
+                      ForwardingRule::FORWARD_ALL);
   AddMethodForwarding(bluetooth_adapter::kPauseDiscovery);
   AddMethodForwarding(bluetooth_adapter::kUnpauseDiscovery);
   AddMethodForwarding(bluetooth_adapter::kRemoveDevice);

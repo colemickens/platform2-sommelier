@@ -25,6 +25,8 @@ namespace bluetooth {
 enum class ForwardingRule {
   // Forwards to default service only.
   FORWARD_DEFAULT,
+  // Forwards to all services.
+  FORWARD_ALL,
 };
 
 // Clients of ImpersonationObjectManagerInterface should sub-class a
@@ -115,6 +117,16 @@ class ImpersonationObjectManagerInterface
       ForwardingRule forwarding_rule,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
+
+  // Forwards a method to service |service_index|. Once the method return is
+  // received, this will forward the same method to the next service, until
+  // there is no more service or the last response contains error.
+  void ForwardMessageToNextService(
+      scoped_refptr<dbus::Bus> bus,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender,
+      int service_index,
+      std::unique_ptr<dbus::Response> last_response);
 
   scoped_refptr<dbus::Bus> bus_;
 

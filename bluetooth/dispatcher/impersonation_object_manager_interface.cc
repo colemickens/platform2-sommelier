@@ -151,6 +151,19 @@ void ImpersonationObjectManagerInterface::HandleForwardMessage(
 
   VLOG(2) << "Method to be forwarded: " << method_call->ToString();
 
+  if (forwarding_rule == ForwardingRule::FORWARD_ALL) {
+    // Forward to all services, one after another.
+    VLOG(1) << "Impersonation interface " << interface_name()
+            << " forwarding method " << method_call->GetInterface() << "."
+            << method_call->GetMember() << " to all services";
+    // Start with forwarding the method to the first service (index 0).
+    ForwardMessageToNextService(bus, method_call, response_sender,
+                                0 /* service_index */,
+                                nullptr /* last_response */);
+    return;
+  }
+
+  // Default forwarding: forward to default service only.
   std::string service_name =
       GetDefaultServiceForObject(method_call->GetPath().value());
   VLOG(1) << "Impersonation interface " << interface_name()
@@ -243,6 +256,36 @@ void ImpersonationObjectManagerInterface::
   VLOG(1) << "client = " << client;
   HandleForwardMessage(forwarding_rule, client->GetClientBus(), method_call,
                        response_sender);
+}
+
+void ImpersonationObjectManagerInterface::ForwardMessageToNextService(
+    scoped_refptr<dbus::Bus> bus,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender,
+    int service_index,
+    std::unique_ptr<dbus::Response> last_response) {
+  if (service_index >= service_names().size()) {
+    // We have reached the end of services. Send the response back to client.
+    CHECK(last_response) << "no last response";
+    response_sender.Run(std::move(last_response));
+    return;
+  }
+
+  if (last_response && !last_response->GetErrorName().empty()) {
+    // The last response contains error. Stop forwarding to next service and
+    // send this error response back to client.
+    response_sender.Run(std::move(last_response));
+    return;
+  }
+
+  // Do the forwarding to service |service_index|, when the forwarded method
+  // has returned recursively initiate the forwarding to next service.
+  DBusUtil::ForwardMethodCall(
+      bus, service_names()[service_index], method_call,
+      base::Bind(
+          &ImpersonationObjectManagerInterface::ForwardMessageToNextService,
+          weak_ptr_factory_.GetWeakPtr(), bus, method_call, response_sender,
+          service_index + 1));
 }
 
 }  // namespace bluetooth

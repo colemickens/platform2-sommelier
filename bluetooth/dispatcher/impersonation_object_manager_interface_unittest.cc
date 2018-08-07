@@ -71,7 +71,7 @@ class TestInterfaceHandler : public InterfaceHandler {
         std::make_unique<PropertyFactory<bool>>();
 
     method_forwardings_[kTestMethodName1] = ForwardingRule::FORWARD_DEFAULT;
-    method_forwardings_[kTestMethodName2] = ForwardingRule::FORWARD_DEFAULT;
+    method_forwardings_[kTestMethodName2] = ForwardingRule::FORWARD_ALL;
   }
   const PropertyFactoryMap& GetPropertyFactoryMap() const override {
     return property_factory_map_;
@@ -253,6 +253,60 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     writer.AppendString(kTestMethodCallString);
     EXPECT_CALL(*object_proxy1, CallMethodWithErrorCallback(_, _, _, _))
         .WillOnce(Invoke(this, stub_method_handler));
+    std::unique_ptr<dbus::Response> saved_response;
+    tested_method_handler->Run(
+        &method_call, base::Bind(
+                          [](std::unique_ptr<dbus::Response>* saved_response,
+                             std::unique_ptr<dbus::Response> response) {
+                            *saved_response = std::move(response);
+                          },
+                          &saved_response));
+    EXPECT_TRUE(saved_response.get() != nullptr);
+    std::string saved_response_string;
+    dbus::MessageReader reader(saved_response.get());
+    reader.PopString(&saved_response_string);
+    // Check that the response is the forwarded response of the stub method
+    // handler.
+    EXPECT_EQ(kTestSender, saved_response->GetDestination());
+    EXPECT_EQ(kTestSerial, saved_response->GetReplySerial());
+    EXPECT_EQ(kTestResponseString, saved_response_string);
+  }
+
+  void TestMethodForwardingMultiService(
+      const std::string& interface_name,
+      const std::string& method_name,
+      const dbus::ObjectPath object_path,
+      scoped_refptr<dbus::MockBus> forwarding_bus,
+      dbus::ExportedObject::MethodCallCallback* tested_method_handler,
+      void (ImpersonationObjectManagerInterfaceTest::*stub_method_handler)(
+          dbus::MethodCall*,
+          int,
+          dbus::ObjectProxy::ResponseCallback,
+          dbus::ObjectProxy::ErrorCallback)) {
+    scoped_refptr<dbus::MockObjectProxy> object_proxy1 =
+        new dbus::MockObjectProxy(forwarding_bus.get(), kTestServiceName1,
+                                  object_path);
+    scoped_refptr<dbus::MockObjectProxy> object_proxy2 =
+        new dbus::MockObjectProxy(forwarding_bus.get(), kTestServiceName2,
+                                  object_path);
+    EXPECT_CALL(*forwarding_bus, GetObjectProxy(kTestServiceName1, object_path))
+        .WillOnce(Return(object_proxy1.get()));
+    EXPECT_CALL(*forwarding_bus, GetObjectProxy(kTestServiceName2, object_path))
+        .WillOnce(Return(object_proxy2.get()));
+    EXPECT_CALL(*forwarding_bus, Connect()).WillRepeatedly(Return(true));
+    dbus::MethodCall method_call(interface_name, method_name);
+    method_call.SetPath(object_path);
+    method_call.SetSender(kTestSender);
+    method_call.SetSerial(kTestSerial);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendString(kTestMethodCallString);
+
+    // Check that the object proxies of both services receive method forwarding.
+    EXPECT_CALL(*object_proxy1, CallMethodWithErrorCallback(_, _, _, _))
+        .WillOnce(Invoke(this, stub_method_handler));
+    EXPECT_CALL(*object_proxy2, CallMethodWithErrorCallback(_, _, _, _))
+        .WillOnce(Invoke(this, stub_method_handler));
+
     std::unique_ptr<dbus::Response> saved_response;
     tested_method_handler->Run(
         &method_call, base::Bind(
@@ -803,7 +857,10 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultiService) {
                          kTestBoolPropertyValue);
 
   // ObjectAdded events
-  ExpectExportTestMethods(exported_object1.get(), kTestInterfaceName1);
+  dbus::ExportedObject::MethodCallCallback method1_handler;
+  dbus::ExportedObject::MethodCallCallback method2_handler;
+  ExpectExportTestMethods(exported_object1.get(), kTestInterfaceName1,
+                          &method1_handler, &method2_handler);
   EXPECT_CALL(*exported_object_manager_,
               ClaimInterface(object_path1, kTestInterfaceName1, _))
       .Times(1);
@@ -814,6 +871,26 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultiService) {
       .Times(0);
   impersonation_om_interface->ObjectAdded(kTestServiceName2, object_path1,
                                           kTestInterfaceName1);
+
+  // Method forwarding
+  scoped_refptr<dbus::MockBus> client_bus =
+      new dbus::MockBus(dbus::Bus::Options());
+  EXPECT_CALL(*client_bus, AssertOnDBusThread()).Times(AnyNumber());
+  EXPECT_CALL(*dbus_connection_factory_, GetNewBus())
+      .WillOnce(Return(client_bus));
+
+  // Method1's rule is FORWARD_DEFAULT, so test that only Service1 receives
+  // method forwarding.
+  TestMethodForwarding(
+      kTestInterfaceName1, kTestMethodName1, object_path1, client_bus,
+      &method1_handler,
+      &ImpersonationObjectManagerInterfaceTest::StubHandleTestMethod1);
+  // Method2's rule is FORWARD_ALL, so test that all services receive method
+  // forwarding.
+  TestMethodForwardingMultiService(
+      kTestInterfaceName1, kTestMethodName2, object_path1, client_bus,
+      &method2_handler,
+      &ImpersonationObjectManagerInterfaceTest::StubHandleTestMethod2);
 
   // ObjectRemoved events
   EXPECT_CALL(*exported_object_manager_,
