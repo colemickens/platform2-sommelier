@@ -1369,7 +1369,7 @@ class Metrics {
   MetricsLibraryInterface* library_;
   ServiceMetricsLookupMap services_metrics_;
   Technology::Identifier last_default_technology_;
-  bool was_online_;
+  bool was_last_online_;
   std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;

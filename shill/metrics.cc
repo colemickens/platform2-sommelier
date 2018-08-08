@@ -485,7 +485,7 @@ Metrics::Metrics(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
-      was_online_(false),
+      was_last_online_(false),
       time_online_timer_(new chromeos_metrics::Timer),
       time_to_drop_timer_(new chromeos_metrics::Timer),
       time_resume_to_ready_timer_(new chromeos_metrics::Timer),
@@ -766,11 +766,12 @@ void Metrics::NotifyDefaultServiceChanged(const Service* service) {
     time_online_timer_->Start();
   }
 
-  // Ignore changes that are not online/offline transitions; e.g.
-  // switching between wired and wireless.  TimeToDrop measures
-  // time online regardless of how we are connected.
-  if ((service == nullptr && !was_online_) ||
-      (service != nullptr && was_online_))
+  // Only consider transitions from online to offline and vice-versa; i.e.
+  // ignore switching between wired and wireless or wireless and cellular.
+  // TimeToDrop measures time online regardless of how we are connected.
+  bool staying_online = ((service != nullptr) && was_last_online_);
+  bool staying_offline = ((service == nullptr) && !was_last_online_);
+  if (staying_online || staying_offline)
     return;
 
   if (service == nullptr) {
@@ -784,7 +785,7 @@ void Metrics::NotifyDefaultServiceChanged(const Service* service) {
     time_to_drop_timer_->Start();
   }
 
-  was_online_ = (service != nullptr);
+  was_last_online_ = (service != nullptr);
 }
 
 void Metrics::NotifyServiceStateChanged(const Service& service,
