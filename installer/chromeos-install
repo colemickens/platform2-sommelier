@@ -58,6 +58,10 @@ DEFINE_string lab_preserve_logs "" "Path to a file containing logs to be \
 preserved"
 DEFINE_boolean storage_diags "${FLAGS_FALSE}" "Print storage diagnostic \
 information on failure"
+DEFINE_string oobe_pub_key "" "Path to public key for OOBE auto-configuration \
+validation"
+DEFINE_string oobe_priv_key "" "Path to private key for OOBE \
+auto-configuration signing"
 
 
 # Parse command line
@@ -621,6 +625,23 @@ install_stateful() {
     mkdir -p "${TMPMNT}/${parent}"
     cp -au "${ROOT}/mnt/stateful_partition/${dir}" "${TMPMNT}/${dir}"
   done
+
+  if [ -n "${FLAGS_oobe_pub_key}" ] && [ -n "${FLAGS_oobe_priv_key}" ]; then
+    echo "Finalizing OOBE auto-config setup..."
+
+    # Start udevd since it might not be running, and finish_oobe_auto_config
+    # needs it for walking /dev/disk/by-id/.
+    udevd --daemon
+    udevadm trigger
+    udevadm settle
+
+    finish_oobe_auto_config \
+      --priv_key="${FLAGS_oobe_priv_key}" \
+      --pub_key="${FLAGS_oobe_pub_key}" \
+      --src_device="${FLAGS_payload_image}" \
+      --src_stateful="${ROOT}/mnt/stateful_partition" \
+      --dst_stateful="${TMPMNT}"
+  fi
 
   umount_from_loop_dev
   case ${STATEFUL_FORMAT} in
