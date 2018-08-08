@@ -400,10 +400,12 @@ imageloader() {
     2>&1 >/dev/null
 }
 
-USAGE_vmc='[ start <name> | stop <name> | destroy <name> | export <vm name> <file name> [removable storage name] | list ]
+USAGE_vmc='[ start <name> | stop <name> | destroy <name> |
+      export <vm name> <file name> [removable storage name] |
+      list | share <vm name> <path> ]
 '
 HELP_vmc='
-  Start or stop a VM.
+  Manage a VM.
 '
 EXEC_vmc='/usr/bin/concierge_client'
 cmd_vmc() (
@@ -463,6 +465,16 @@ cmd_vmc() (
       echo "Unable to stop vm"
       return 1
     fi
+    ;;
+  share)
+    if [ $# -ne 2 ]; then
+      help "Specify the name of the VM and a path to be shared"
+      return 1
+    fi
+    local name="$1"; shift
+    local path="$1"; shift
+    seneschal_client --share_path --vm_name="${name}" \
+      --owner_id="${CROS_USER_ID_HASH}" --path="${path}" 2>/dev/null
     ;;
   destroy)
     if [ $# -ne 1 ]; then
