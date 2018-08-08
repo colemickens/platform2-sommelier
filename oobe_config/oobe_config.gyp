@@ -25,6 +25,13 @@
       ],
     },
     {
+      'target_name': 'finish_oobe_auto_config',
+      'type': 'executable',
+      'sources': [
+        'finish_oobe_auto_config.cc',
+      ],
+    },
+    {
       'target_name': 'oobe_config_save',
       'type': 'executable',
       'dependencies': [
