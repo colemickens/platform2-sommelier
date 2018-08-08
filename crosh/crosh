@@ -1283,19 +1283,6 @@ cmd_upload_devcoredumps() (
   esac
 )
 
-USAGE_inputcontrol=''
-HELP_inputcontrol='
-  Manually adjust advanced touchpad and mouse settings. Run
-  "inputcontrol help" for full list of options.
-'
-EXEC_inputcontrol='/opt/google/input/inputcontrol'
-cmd_inputcontrol() (
-  if [ "$1" = "help" ]; then
-    set -- -h
-  fi
-  "${EXEC_inputcontrol}" "$@"
-)
-
 USAGE_rlz='< status | enable | disable >'
 HELP_rlz="
   Enable or disable RLZ.  See this site for details:
