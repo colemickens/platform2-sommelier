@@ -5,8 +5,8 @@
 #
 # Install Chrome/Chromium OS from the recovery installer.
 
-if [ $# -ne 1 ]; then
-  echo "usage:  $0 <source-device>" >&2
+if [ $# -lt 1 ]; then
+  echo "usage:  $0 <source-device> [ ... extra flags for chromeos-install]" >&2
   exit 1
 fi
 
@@ -16,4 +16,6 @@ fi
 crossystem kernel_max_rollforward=0
 
 export IS_RECOVERY_INSTALL=1
-exec chromeos-install --storage_diags --yes --payload_image="$1"
+src_device="$1"
+shift
+exec chromeos-install --storage_diags --yes --payload_image="${src_device}" "$@"
