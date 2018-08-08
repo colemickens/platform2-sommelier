@@ -1344,9 +1344,9 @@ void ArcSetup::SetUpGraphicsSysfsContext() {
   const base::FilePath sysfs_drm_path("/sys/class/drm");
   const std::string sysfs_drm_context("u:object_r:gpu_device:s0");
   const std::string render_node_pattern("renderD*");
-  const std::vector<std::string> attrs{"uevent",           "config",
-                                       "vendor",           "device",
-                                       "subsystem_vendor", "subsystem_device"};
+  const std::vector<std::string> attrs{
+      "uevent",           "config",           "vendor", "device",
+      "subsystem_vendor", "subsystem_device", "drm"};
 
   base::FileEnumerator drm_directory(
       sysfs_drm_path, false,
