@@ -71,15 +71,6 @@ void LockOrExit(const base::File& lock_file) {
   }
 }
 
-// Creates a PID file. This pid file is for the system (like autotests) to keep
-// track that crash_sender is still running.
-void CreatePidFile(int pid) {
-  std::string content = base::IntToString(pid) + "\n";
-  const int size = base::WriteFile(paths::Get(paths::kRunFile), content.data(),
-                                   content.size());
-  CHECK_EQ(size, content.size());
-}
-
 // Runs the main function for the child process.
 int RunChildMain(int argc, char* argv[]) {
   // Ensure only one instance of crash_sender runs at the same time.
@@ -87,7 +78,6 @@ int RunChildMain(int argc, char* argv[]) {
                        base::File::FLAG_OPEN_ALWAYS);
   LockOrExit(lock_file);
 
-  CreatePidFile(getpid());
   util::ParseCommandLine(argc, argv);
 
   if (util::ShouldPauseSending()) {
@@ -106,9 +96,6 @@ int RunChildMain(int argc, char* argv[]) {
 // that's a unique tmpfs provided by minijail, that'll automatically go away
 // when the child process is terminated.
 void CleanUp() {
-  // TODO(crbug.com/868166): Remove the PID file creation once the autotest is
-  // fixed.
-  base::DeleteFile(paths::Get(paths::kRunFile), false /* recursive */);
   RecordCrashDone();
 }
 
