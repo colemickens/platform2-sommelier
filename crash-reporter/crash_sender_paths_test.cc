@@ -20,4 +20,11 @@ TEST(CrashSenderPathsTest, SetPrefixForTesting) {
   EXPECT_EQ("/run/foo", paths::Get("/run/foo").value());
 }
 
+TEST(CrashSenderPathsTest, GetAtWithPrefix) {
+  paths::SetPrefixForTesting(base::FilePath("/tmp"));
+  EXPECT_EQ("/tmp/run/foo", paths::GetAt("/run", "foo").value());
+  paths::SetPrefixForTesting(base::FilePath());
+  EXPECT_EQ("/run/foo", paths::GetAt("/run", "foo").value());
+}
+
 }  // namespace util

@@ -14,7 +14,7 @@ namespace paths {
 
 // File whose existence mocks crash sending.  If empty we pretend the
 // crash sending was successful, otherwise unsuccessful.
-constexpr char kMockCrashSending[] = "/run/crash_reporter/mock-crash-sending";
+constexpr char kMockCrashSending[] = "mock-crash-sending";
 
 // Crash sender lock in case the sender is already running.
 constexpr char kLockFile[] = "/run/lock/crash_sender";
@@ -29,6 +29,10 @@ constexpr char kPauseCrashSending[] = "/var/lib/crash_sender_paused";
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);
+
+// Gets a FilePath from the given directory and the base name. A prefix will be
+// added if the prefix is set with SetPrefixForTesting().
+base::FilePath GetAt(base::StringPiece directory, base::StringPiece base_name);
 
 // Sets a prefix that'll be added when Get() is called, for unit testing.
 // For example, if "/tmp" is set as the prefix, Get("/run/foo") will return

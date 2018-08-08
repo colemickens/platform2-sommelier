@@ -15,6 +15,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 
+#include "crash-reporter/crash_common_paths.h"
 #include "crash-reporter/crash_sender_paths.h"
 
 namespace util {
@@ -92,7 +93,8 @@ void ParseCommandLine(int argc, const char* const* argv) {
 }
 
 bool IsMock() {
-  return base::PathExists(paths::Get(paths::kMockCrashSending));
+  return base::PathExists(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending));
 }
 
 bool ShouldPauseSending() {

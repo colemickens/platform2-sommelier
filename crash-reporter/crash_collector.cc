@@ -32,6 +32,8 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 
+#include "crash-reporter/crash_common_paths.h"
+
 namespace {
 
 const char kCollectChromeFile[] =
@@ -44,7 +46,6 @@ const char kLeaveCoreFile[] = "/root/.leave_core";
 const char kLsbRelease[] = "/etc/lsb-release";
 const char kShellPath[] = "/bin/sh";
 const char kSystemCrashPath[] = "/var/spool/crash";
-const char kSystemRunStatePath[] = "/run/crash_reporter";
 const char kUploadVarPrefix[] = "upload_var_";
 const char kUploadTextPrefix[] = "upload_text_";
 const char kUploadFilePrefix[] = "upload_file_";
@@ -72,7 +73,7 @@ const mode_t kSystemCrashPathMode = 01755;
 
 // Directory mode of the run time state directory.
 // Since we place flag files in here for checking by tests, we make it readable.
-constexpr mode_t kSystemRunStatePathMode = 0755;
+constexpr mode_t kSystemRunStateDirectoryMode = 0755;
 
 // Directory mode of /var/lib/crash_reporter.
 constexpr mode_t kCrashReporterStatePathMode = 0700;
@@ -830,8 +831,8 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
 }
 
 bool CrashCollector::IsCrashTestInProgress() {
-  return base::PathExists(
-      FilePath(kSystemRunStatePath).Append(kCrashTestInProgressPath));
+  return base::PathExists(FilePath(paths::kSystemRunStateDirectory)
+                              .Append(kCrashTestInProgressPath));
 }
 
 bool CrashCollector::IsDeveloperImage() {
@@ -890,8 +891,8 @@ bool CrashCollector::InitializeSystemCrashDirectories() {
                                    nullptr))
     return false;
 
-  if (!CreateDirectoryWithSettings(FilePath(kSystemRunStatePath),
-                                   kSystemRunStatePathMode, kRootUid,
+  if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunStateDirectory),
+                                   kSystemRunStateDirectoryMode, kRootUid,
                                    kRootGroup, nullptr))
     return false;
 

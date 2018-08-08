@@ -13,6 +13,7 @@
 #include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/crash_common_paths.h"
 #include "crash-reporter/crash_sender_paths.h"
 
 namespace util {
@@ -99,7 +100,9 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Usage) {
 
 TEST_F(CrashSenderUtilTest, IsMock) {
   EXPECT_FALSE(IsMock());
-  ASSERT_TRUE(CreateFile(paths::Get(paths::kMockCrashSending), ""));
+  ASSERT_TRUE(CreateFile(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending),
+      ""));
   EXPECT_TRUE(IsMock());
 }
 

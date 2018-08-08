@@ -31,4 +31,7 @@ base::FilePath Get(base::StringPiece file_path) {
   return base::FilePath(file_path);
 }
 
+base::FilePath GetAt(base::StringPiece directory, base::StringPiece base_name) {
+  return Get(directory).Append(base_name);
+}
 }  // namespace paths
