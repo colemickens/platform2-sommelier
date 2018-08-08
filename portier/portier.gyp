@@ -30,6 +30,7 @@
         'nd_msg.cc',
         'neighbor_cache.cc',
         'network_socket.cc',
+        'proxy_interface.cc',
         'status.cc',
       ],
     },
