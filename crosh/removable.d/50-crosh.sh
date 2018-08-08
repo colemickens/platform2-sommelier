@@ -1,3 +1,4 @@
+#!/bin/dash
 # Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -6,8 +7,10 @@
 # media.
 
 do_install() {
-  if [ "$1" ]; then
-    if [ $(expr "$1" : '^/dev/[[:alnum:]]\+$') == 0 ]; then
+  local CHROMEOS_INSTALL="/usr/sbin/chromeos-install"
+
+  if [ -n "$1" ]; then
+    if [ "$(expr "$1" : '^/dev/[[:alnum:]]\+$')" = 0 ]; then
       help "invalid device name: $1"
       return 1
     fi
@@ -15,9 +18,9 @@ do_install() {
     local dst="$1"
     shift
 
-    $CHROMEOS_INSTALL --dst="$dst" "$@"
+    "${CHROMEOS_INSTALL}" --dst="${dst}" "$@"
   else
-    $CHROMEOS_INSTALL "$@"
+    "${CHROMEOS_INSTALL}" "$@"
   fi
 }
 

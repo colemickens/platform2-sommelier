@@ -1,3 +1,4 @@
+#!/bin/dash
 # Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -38,7 +39,8 @@ cmd_packet_capture() (
   done
 
   local downloads_dir="/home/${USER}/user/Downloads"
-  if ! capture_file=$(mktemp ${downloads_dir}/packet_capture_XXXX.pcap); then
+  if ! capture_file="$(mktemp "${downloads_dir}/packet_capture_XXXXXX.pcap")"
+  then
     echo "Couldn't create capture file."
     return 1
   fi
@@ -98,7 +100,7 @@ cmd_systrace() (
     ;;
   xstop)
     local downloads_dir="/home/${USER}/user/Downloads"
-    local data_file=$(mktemp ${downloads_dir}/systrace.XXXX)
+    local data_file="$(mktemp "${downloads_dir}/systrace.XXXXXX")"
     if [ $? -ne 0 ]; then
       echo "Cannot create data file ${data_file}"
       return 1
@@ -106,7 +108,7 @@ cmd_systrace() (
     debugd SystraceStop "fd:1" > "${data_file}"
     echo "Trace data saved to ${data_file}"
     # add symlink to the latest capture file
-    ln -sf $(basename $data_file) ${downloads_dir}/systrace.latest
+    ln -sf "$(basename "${data_file}")" "${downloads_dir}/systrace.latest"
     ;;
   xstatus|x)
     debugd SystraceStatus

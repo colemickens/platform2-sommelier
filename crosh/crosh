@@ -65,7 +65,6 @@ CROSH_DEVMODE=
 # Gets set to "1" when running on removable media (e.g. USB stick).
 CROSH_REMOVABLE=
 CROSH_MODPATH="/usr/share/crosh"
-CHROMEOS_INSTALL=/usr/sbin/chromeos-install
 
 check_digits() {
   expr "$1" : '^[[:digit:]]*$' > /dev/null
@@ -101,7 +100,8 @@ load_extra_crosh() {
       . "/usr/share/misc/chromeos-common.sh" || exit 1
 
       src=$(get_block_dev_from_partition_dev "$(rootdev -s)")
-      if [ "$(cat /sys/block/${src#/dev/}/removable 2>/dev/null)" = "1" ]; then
+      local removable="$(cat "/sys/block/${src#/dev/}/removable" 2>/dev/null)"
+      if [ "${removable}" = "1" ]; then
         CROSH_REMOVABLE="1"
       fi
     fi
@@ -132,9 +132,9 @@ shell_read() {
 
   if [ "$IS_BASH" -eq "1" ]; then
     # In bash, -e gives readline support.
-    read -p "$prompt" -e $@
+    read -p "$prompt" -e "$@"
   else
-    read -p "$prompt" $@
+    read -p "$prompt" "$@"
   fi
 }
 
@@ -381,7 +381,7 @@ is_chrome_feature_enabled() {
     "org.chromium.ChromeFeaturesServiceInterface.${method}" \
     "string:${CROS_USER_ID_HASH}" 2>/dev/null)
   status=$?
-  [ ${status} -eq 0 -a ${reply##* } == "true" ]
+  [ ${status} -eq 0 -a "${reply##* }" = "true" ]
 }
 
 
@@ -1844,9 +1844,9 @@ dispatch() {
   local params=""
   local p
 
-  local space_pos=$(expr index "$line" ' ')
+  local space_pos="$(expr index "${line}" ' ')"
 
-  if [ $space_pos = 0 ]; then
+  if [ "${space_pos}" = "0" ]; then
     command=$line
   else
     command=$(substr "$line" "0" "$space_pos")
