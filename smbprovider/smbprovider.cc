@@ -487,7 +487,7 @@ int32_t SmbProvider::ContinueCopy(int32_t mount_id, int32_t copy_token) {
   }
 
   ErrorType error = ContinueCopy(copy_token);
-  if (error != ERROR_OK || error != ERROR_COPY_PENDING) {
+  if (error != ERROR_OK && error != ERROR_COPY_PENDING) {
     LogAndSetError(kContinueCopyMethod, mount_id, error, &error_code);
     return error_code;
   }
