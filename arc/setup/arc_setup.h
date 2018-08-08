@@ -265,12 +265,6 @@ class ArcSetup {
       bool* out_should_delete_data_dalvik_cache_directory,
       bool* out_should_delete_data_app_executables);
 
-  // Reads the 16-byte per-machine random salt. The salt is created once when
-  // the machine is first used, and wiped/regenerated on powerwash/recovery.
-  // When it's not available yet (which could happen only on OOBE boot), returns
-  // an empty string.
-  std::string GetSalt();
-
   // Returns a serial number for the user.
   std::string GetSerialNumber();
 

@@ -38,7 +38,9 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <brillo/file_utils.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <crypto/random.h>
 #include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
 
@@ -157,6 +159,9 @@ constexpr char kArcContainerIPv4Address[] = "100.115.92.2/30";
 // The IPV4 address of the gateway inside the container. This corresponds to the
 // address of "br0".
 constexpr char kArcGatewayIPv4Address[] = "100.115.92.1";
+
+// System salt and arc salt file size.
+constexpr size_t kSaltFileSize = 16;
 
 bool RegisterAllBinFmtMiscEntries(ArcMounter* mounter,
                                   const base::FilePath& entry_directory,
@@ -376,6 +381,55 @@ bool WaitForSdcardSource(const base::FilePath& android_root) {
     LOG(ERROR) << "Timed out waiting for /data setup.";
 
   return ret;
+}
+
+// Don't use this, use GetOrCreateArcSalt instead. Reads the 16-byte per-machine
+// random salt. The salt is created once when the machine is first used, and
+// wiped/regenerated on powerwash/recovery. When it's not available yet (which
+// could happen only on OOBE boot), returns an empty string.
+// TODO(yusukes): Remove this function after M73.
+std::string GetSystemSalt() {
+  constexpr char kSaltFile[] = "/home/.shadow/salt";
+
+  std::string per_machine_salt;
+  if (!base::ReadFileToString(base::FilePath(kSaltFile), &per_machine_salt) ||
+      per_machine_salt.size() < kSaltFileSize) {
+    LOG(WARNING) << kSaltFile << " is not available yet. OOBE boot?";
+    return std::string();
+  }
+  if (per_machine_salt.size() != kSaltFileSize) {
+    LOG(WARNING) << "Unexpected " << kSaltFile
+                 << " size: " << per_machine_salt.size();
+  }
+  return per_machine_salt;
+}
+
+// Reads a random number for the container from /var/lib/misc/arc_salt. If
+// the file does not exist, generates a new one. This file will be cleared
+// and regenerated after powerwash.
+std::string GetOrCreateArcSalt() {
+  constexpr char kArcSaltFile[] = "/var/lib/misc/arc_salt";
+  constexpr mode_t kArcSaltFilePermissions = 0400;
+
+  std::string arc_salt;
+  const base::FilePath arc_salt_file(kArcSaltFile);
+  if (!base::ReadFileToString(arc_salt_file, &arc_salt) ||
+      arc_salt.size() != kSaltFileSize) {
+    // If system salt value is available, reuse the system salt to avoid
+    // clearing existing relocated boot*.art code.
+    arc_salt = GetSystemSalt();
+    if (arc_salt.size() != kSaltFileSize) {
+      char rand_value[kSaltFileSize];
+      crypto::RandBytes(rand_value, kSaltFileSize);
+      arc_salt = std::string(rand_value, kSaltFileSize);
+    }
+    if (!brillo::WriteToFileAtomic(arc_salt_file, arc_salt.data(),
+                                   arc_salt.size(), kArcSaltFilePermissions)) {
+      LOG(ERROR) << "Failed to write arc salt file.";
+      return std::string();
+    }
+  }
+  return arc_salt;
 }
 
 }  // namespace
@@ -938,7 +992,7 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     LOG(ERROR) << "Failed to create art container";
     return false;
   }
-  const std::string salt = GetSalt();
+  const std::string salt = GetOrCreateArcSalt();
   if (salt.empty()) {
     *result = ArcCodeRelocationResult::SALT_EMPTY;
     return false;
@@ -1639,27 +1693,10 @@ void ArcSetup::ShouldDeleteDataExecutables(
   *out_should_delete_data_app_executables = false;
 }
 
-std::string ArcSetup::GetSalt() {
-  constexpr char kSaltFile[] = "/home/.shadow/salt";
-  constexpr size_t kSaltFileSize = 16;
-
-  std::string per_machine_salt;
-  if (!base::ReadFileToString(base::FilePath(kSaltFile), &per_machine_salt) ||
-      per_machine_salt.size() < kSaltFileSize) {
-    LOG(WARNING) << kSaltFile << " is not available yet. OOBE boot?";
-    return std::string();
-  }
-  if (per_machine_salt.size() != kSaltFileSize) {
-    LOG(WARNING) << "Unexpected " << kSaltFile
-                 << " size: " << per_machine_salt.size();
-  }
-  return per_machine_salt;
-}
-
 std::string ArcSetup::GetSerialNumber() {
   const std::string chromeos_user =
       GetEnvOrDie(arc_paths_->env.get(), "CHROMEOS_USER");
-  const std::string salt = GetSalt();
+  const std::string salt = GetOrCreateArcSalt();
   EXIT_IF(salt.empty());  // at this point, the salt file should always exist.
   return arc::GenerateFakeSerialNumber(chromeos_user, salt);
 }
