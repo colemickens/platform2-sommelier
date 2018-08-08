@@ -140,4 +140,9 @@ BluezAgentManagerInterfaceHandler::BluezAgentManagerInterfaceHandler() {
   AddMethodName(bluetooth_agent_manager::kRequestDefaultAgent);
 }
 
+BluezProfileManagerInterfaceHandler::BluezProfileManagerInterfaceHandler() {
+  AddMethodName(bluetooth_profile_manager::kRegisterProfile);
+  AddMethodName(bluetooth_profile_manager::kUnregisterProfile);
+}
+
 }  // namespace bluetooth
