@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Chromium OS Authors. All rights reserved.
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,9 +19,7 @@ FilePrefsStore::FilePrefsStore(const base::FilePath& pref_path)
     : pref_path_(pref_path) {}
 
 std::string FilePrefsStore::GetDescription() const {
-  // Per the documentation of AsUTF8Unsafe, this is actually safe on CrOS which
-  // uses utf8 locale for file names.
-  return pref_path_.AsUTF8Unsafe();
+  return pref_path_.value();
 }
 
 bool FilePrefsStore::ReadPrefString(const std::string& name,

@@ -51,7 +51,7 @@ bool MountObb(const std::string& obb_file,
     return false;
   }
   // Make destination directory.
-  if (!base::CreateDirectory(base::FilePath::FromUTF8Unsafe(mount_path))) {
+  if (!base::CreateDirectory(base::FilePath(mount_path))) {
     PLOG(ERROR) << "Failed to create the destination directory.";
     return false;
   }
@@ -111,8 +111,7 @@ bool UnmountObb(const std::string& mount_path) {
     PLOG(ERROR) << "umount failed";
     return false;
   }
-  if (!base::DeleteFile(base::FilePath::FromUTF8Unsafe(mount_path),
-                        true /* recursive */)) {
+  if (!base::DeleteFile(base::FilePath(mount_path), true /* recursive */)) {
     LOG(ERROR) << "Failed to delete the destination directory.";
     return false;
   }

@@ -326,7 +326,7 @@ gboolean GobiCdmaModem::OmadmStateClientPrlUpdateCallback(gpointer data) {
 
 void GobiCdmaModem::SignalStrengthHandler(INT8 signal_strength,
                                           ULONG radio_interface) {
-  unsigned long ss_percent = MapDbmToPercent(signal_strength);
+  ULONG ss_percent = MapDbmToPercent(signal_strength);
 
   ULONG cdma_evdo_state;
   ULONG cdma_1x_state;
@@ -857,7 +857,7 @@ FilePath GobiCdmaModem::GetExecPostActivationStepsCookieCrumbPath() const {
   string path =
       StringPrintf(kExecPostActivationStepsCookieCrumbFormat,
                    device_.deviceKey);
-  return FilePath::FromUTF8Unsafe(path);
+  return FilePath(path);
 }
 
 void GobiCdmaModem::MarkForExecPostActivationStepsAfterReset() {
