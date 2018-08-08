@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "crash-reporter/user_collector_base.h"
+
 #include <pcrecpp.h>
 
 #if USE_DIRENCRYPTION
@@ -13,7 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 
-#include "crash-reporter/user_collector_base.h"
+#include "crash-reporter/util.h"
 
 using base::FilePath;
 using base::ReadFileToString;
@@ -295,7 +297,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   // crash report.
   WriteCrashMetaData(meta_path, exec, minidump_path.value());
 
-  if (!IsDeveloperImage()) {
+  if (!util::IsDeveloperImage()) {
     base::DeleteFile(core_path, false);
   } else {
     LOG(INFO) << "Leaving core file at " << core_path.value()

@@ -5,6 +5,27 @@
       'type': 'static_library',
       'variables': {
         'exported_deps': [
+          'libchrome-<(libbase_ver)',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        'paths.cc',
+        'util.cc',
+      ],
+    },
+    {
+      'target_name': 'libcrash_reporter',
+      'type': 'static_library',
+      'variables': {
+        'exported_deps': [
           'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
           'libdebugd-client',
@@ -63,6 +84,7 @@
       },
       'dependencies': [
         'libcrash',
+        'libcrash_reporter',
       ],
       'defines': [
         'USE_CHEETS=<(USE_cheets)',
@@ -81,9 +103,11 @@
           'libminijail',
         ],
       },
+      'dependencies': [
+        'libcrash',
+      ],
       'sources': [
         'crash_sender.cc',
-        'crash_sender_paths.cc',
         'crash_sender_util.cc',
       ],
     },
@@ -159,20 +183,22 @@
           'target_name': 'crash_reporter_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
-          'dependencies': ['libcrash'],
+          'dependencies': [
+            'libcrash',
+            'libcrash_reporter',
+          ],
           'sources': [
             'chrome_collector_test.cc',
             'crash_collector_test.cc',
             'crash_collector_test.h',
             'crash_reporter_logs_test.cc',
-            'crash_sender_paths.cc',
-            'crash_sender_paths_test.cc',
             'crash_sender_util.cc',
             'crash_sender_util_test.cc',
             'ec_collector_test.cc',
             'kernel_collector_test.cc',
             'kernel_collector_test.h',
             'kernel_warning_collector_test.cc',
+            'paths_test.cc',
             'selinux_violation_collector_test.cc',
             'service_failure_collector_test.cc',
             'test_util.cc',
@@ -180,6 +206,7 @@
             'udev_collector_test.cc',
             'unclean_shutdown_collector_test.cc',
             'user_collector_test.cc',
+            'util_test.cc',
           ],
           'conditions': [
             ['USE_cheets == 1', {

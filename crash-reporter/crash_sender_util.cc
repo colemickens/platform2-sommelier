@@ -15,8 +15,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 
-#include "crash-reporter/crash_common_paths.h"
 #include "crash-reporter/crash_sender_paths.h"
+#include "crash-reporter/paths.h"
 
 namespace util {
 

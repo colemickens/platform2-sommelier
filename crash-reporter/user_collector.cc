@@ -19,6 +19,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process.h>
 
+#include "crash-reporter/util.h"
+
 using base::FilePath;
 using base::StringPrintf;
 
@@ -289,8 +291,9 @@ bool UserCollector::ShouldDump(pid_t pid,
                                uid_t,
                                const std::string& exec,
                                std::string* reason) {
-  return ShouldDump(pid, is_feedback_allowed_function_(), IsDeveloperImage(),
-                    ShouldHandleChromeCrashes(), exec, reason);
+  return ShouldDump(pid, is_feedback_allowed_function_(),
+                    util::IsDeveloperImage(), ShouldHandleChromeCrashes(), exec,
+                    reason);
 }
 
 UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(

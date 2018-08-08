@@ -13,8 +13,8 @@
 #include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
-#include "crash-reporter/crash_common_paths.h"
 #include "crash-reporter/crash_sender_paths.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
 namespace util {

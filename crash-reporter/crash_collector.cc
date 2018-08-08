@@ -32,17 +32,16 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 
-#include "crash-reporter/crash_common_paths.h"
+#include "crash-reporter/paths.h"
+#include "crash-reporter/util.h"
 
 namespace {
 
 const char kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
-const char kCrashTestInProgressPath[] = "crash-test-in-progress";
 const char kCrashReporterStatePath[] = "/var/lib/crash_reporter";
 const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
-const char kLeaveCoreFile[] = "/root/.leave_core";
 const char kLsbRelease[] = "/etc/lsb-release";
 const char kShellPath[] = "/bin/sh";
 const char kSystemCrashPath[] = "/var/spool/crash";
@@ -832,24 +831,11 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
   }
 }
 
-bool CrashCollector::IsCrashTestInProgress() {
-  return base::PathExists(FilePath(paths::kSystemRunStateDirectory)
-                              .Append(kCrashTestInProgressPath));
-}
-
-bool CrashCollector::IsDeveloperImage() {
-  // If we're testing crash reporter itself, we don't want to special-case
-  // for developer images.
-  if (IsCrashTestInProgress())
-    return false;
-  return base::PathExists(FilePath(kLeaveCoreFile));
-}
-
 bool CrashCollector::ShouldHandleChromeCrashes() {
   // If we're testing crash reporter itself, we don't want to allow an
   // override for chrome crashes.  And, let's be conservative and only
   // allow an override for developer images.
-  if (!IsCrashTestInProgress() && IsDeveloperImage()) {
+  if (!util::IsCrashTestInProgress() && util::IsDeveloperImage()) {
     // Check if there's an override to indicate we should indeed collect
     // chrome crashes.  This allows the crashes to still be tracked when
     // they occur in autotests.  See "crosbug.com/17987".

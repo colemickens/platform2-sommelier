@@ -10,6 +10,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "crash-reporter/util.h"
+
 namespace {
 const char kGenericWarningExecName[] = "kernel-warning";
 const char kWifiWarningExecName[] = "kernel-wifi-warning";
@@ -47,7 +49,7 @@ bool KernelWarningCollector::LoadKernelWarning(std::string* content,
 bool KernelWarningCollector::Collect(WarningType type) {
   std::string reason = "normal collection";
   bool feedback = true;
-  if (IsDeveloperImage()) {
+  if (util::IsDeveloperImage()) {
     reason = "always collect from developer builds";
     feedback = true;
   } else if (!is_feedback_allowed_function_()) {

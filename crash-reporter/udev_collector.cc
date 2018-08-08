@@ -17,6 +17,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process.h>
 
+#include "crash-reporter/util.h"
+
 using base::FilePath;
 
 namespace {
@@ -38,7 +40,7 @@ UdevCollector::UdevCollector()
 UdevCollector::~UdevCollector() {}
 
 bool UdevCollector::HandleCrash(const std::string& udev_event) {
-  if (IsDeveloperImage()) {
+  if (util::IsDeveloperImage()) {
     LOG(INFO) << "developer image - collect udev crash info.";
   } else if (is_feedback_allowed_function_()) {
     LOG(INFO) << "Consent given - collect udev crash info.";
@@ -80,7 +82,7 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
 
 bool UdevCollector::Enable() {
   return base::WriteFile(FilePath(kDevCoredumpDisabledPath),
-                         IsDeveloperImage() ? "0" : "1", 1);
+                         util::IsDeveloperImage() ? "0" : "1", 1);
 }
 
 bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,

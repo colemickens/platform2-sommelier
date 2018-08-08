@@ -86,14 +86,14 @@ is_official_image() {
 }
 
 # Returns 0 if the a crash test is currently running.  NOTE: Mirrors
-# crash_collector.cc:CrashCollector::IsCrashTestInProgress().
+# util.cc:IsCrashTestInProgress().
 is_crash_test_in_progress() {
   [ -f "${CRASH_TEST_IN_PROGRESS_FILE}" ] && return 0
   return 1
 }
 
 # Returns 0 if we should consider ourselves to be running on a developer
-# image.  NOTE: Mirrors crash_collector.cc:CrashCollector::IsDeveloperImage().
+# image.  NOTE: Mirrors util.cc:IsDeveloperImage().
 is_developer_image() {
   # If we're testing crash reporter itself, we don't want to special-case
   # for developer images.

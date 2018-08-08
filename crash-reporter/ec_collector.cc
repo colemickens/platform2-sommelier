@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "crash-reporter/util.h"
+
 using base::FilePath;
 using base::StringPiece;
 using base::StringPrintf;
@@ -55,7 +57,7 @@ bool ECCollector::Collect() {
 
   std::string reason = "handling";
   bool feedback = true;
-  if (IsDeveloperImage()) {
+  if (util::IsDeveloperImage()) {
     reason = "developer build - always dumping";
     feedback = true;
   } else if (!is_feedback_allowed_function_()) {

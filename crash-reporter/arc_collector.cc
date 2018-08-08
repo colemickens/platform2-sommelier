@@ -24,6 +24,8 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 
+#include "crash-reporter/util.h"
+
 using base::File;
 using base::FilePath;
 using base::ReadFileToString;
@@ -153,7 +155,7 @@ bool ArcCollector::HandleJavaCrash(const std::string& crash_type,
                                    const std::string& cpu_abi) {
   std::string reason;
   const bool should_dump = UserCollectorBase::ShouldDump(
-      is_feedback_allowed_function_(), IsDeveloperImage(), &reason);
+      is_feedback_allowed_function_(), util::IsDeveloperImage(), &reason);
 
   std::ostringstream message;
   message << "Received " << crash_type << " notification";
@@ -335,7 +337,7 @@ bool ArcCollector::ShouldDump(pid_t pid,
   }
 
   return UserCollectorBase::ShouldDump(is_feedback_allowed_function_(),
-                                       IsDeveloperImage(), reason);
+                                       util::IsDeveloperImage(), reason);
 }
 
 UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(

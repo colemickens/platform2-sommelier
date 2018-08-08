@@ -8,6 +8,8 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "crash-reporter/util.h"
+
 namespace {
 const char kExecName[] = "service-failure";
 const char kSignatureKey[] = "sig";
@@ -41,7 +43,7 @@ bool ServiceFailureCollector::LoadServiceFailure(std::string* signature) {
 bool ServiceFailureCollector::Collect() {
   std::string reason = "normal collection";
   bool feedback = true;
-  if (IsDeveloperImage()) {
+  if (util::IsDeveloperImage()) {
     reason = "always collect from developer builds";
     feedback = true;
   } else if (!is_feedback_allowed_function_()) {

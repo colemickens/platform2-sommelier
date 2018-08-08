@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/crash_sender_paths.h"
+#include "crash-reporter/paths.h"
 
 namespace paths {
 

@@ -212,11 +212,6 @@ class CrashCollector {
                           const std::string& exec_name,
                           const std::string& payload_name);
 
-  // Returns true if the a crash test is currently running.
-  bool IsCrashTestInProgress();
-  // Returns true if we should consider ourselves to be running on a
-  // developer image.
-  bool IsDeveloperImage();
   // Returns true if chrome crashes should be handled.
   bool ShouldHandleChromeCrashes();
   // Returns true if user crash directory may be used.

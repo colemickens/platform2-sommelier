@@ -19,6 +19,8 @@ using base::FilePath;
 using base::StringPiece;
 using base::StringPrintf;
 
+#include "crash-reporter/util.h"
+
 namespace {
 
 const char kDefaultKernelStackSignature[] = "kernel-UnspecifiedStackSignature";
@@ -628,7 +630,7 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
   FilePath root_crash_directory;
   std::string reason = "handling";
   bool feedback = true;
-  if (IsDeveloperImage()) {
+  if (util::IsDeveloperImage()) {
     reason = "developer build - always dumping";
     feedback = true;
   } else if (!is_feedback_allowed_function_()) {

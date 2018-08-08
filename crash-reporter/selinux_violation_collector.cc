@@ -11,6 +11,8 @@
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "crash-reporter/util.h"
+
 namespace {
 constexpr char kExecName[] = "selinux-violation";
 constexpr char kSignatureKey[] = "sig";
@@ -66,7 +68,7 @@ bool SELinuxViolationCollector::LoadSELinuxViolation(
 bool SELinuxViolationCollector::Collect() {
   std::string reason = "normal collection";
   bool feedback = true;
-  if (IsDeveloperImage() || developer_image_for_testing_) {
+  if (util::IsDeveloperImage() || developer_image_for_testing_) {
     feedback = true;
     reason = "always collect from developer builds";
   } else if (!is_feedback_allowed_function_()) {

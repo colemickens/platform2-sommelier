@@ -20,6 +20,7 @@
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crash_sender_util.h"
+#include "crash-reporter/paths.h"
 
 namespace {
 
