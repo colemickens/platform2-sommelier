@@ -90,6 +90,3 @@ authpriv.*                                              /var/log/secure
 
 # Save boot messages also to boot.log
 local7.*                                                /var/log/boot.log
-
-# laptop-mode can be configured to log to local5
-local5.info                                             /var/log/laptopmode.log
