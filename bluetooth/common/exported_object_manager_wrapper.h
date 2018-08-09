@@ -190,11 +190,6 @@ class ExportedObjectManagerWrapper {
   // outside the lifespan of this object.
   ExportedObject* GetExportedObject(const dbus::ObjectPath& object_path);
 
-  // Does nothing, used to handle methods that would otherwise pollute the log
-  // if unhandled.
-  void HandleDoNothing(dbus::MethodCall* method_call,
-                       dbus::ExportedObject::ResponseSender response_sender) {}
-
   scoped_refptr<dbus::Bus> bus_;
 
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager>

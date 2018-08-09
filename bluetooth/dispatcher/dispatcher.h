@@ -9,7 +9,13 @@
 #include <memory>
 #include <string>
 
+#include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
+#include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
+#include <brillo/dbus/exported_property_set.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
 #include <dbus/object_manager.h>
 
 #include "bluetooth/dispatcher/client_manager.h"
@@ -44,6 +50,17 @@ class Dispatcher {
   void Shutdown();
 
  private:
+  // Forwards org.freedesktop.DBus.Properties.Set methods.
+  void HandleForwardSetProperty(
+      scoped_refptr<dbus::Bus> bus,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  // Registers our custom GetAll/Get/Set method handlers.
+  void SetupPropertyMethodHandlers(
+      brillo::dbus_utils::DBusInterface* prop_interface,
+      brillo::dbus_utils::ExportedPropertySet* property_set);
+
   scoped_refptr<dbus::Bus> bus_;
 
   // The exported ObjectManager interface which is the impersonation of BlueZ's
@@ -59,6 +76,10 @@ class Dispatcher {
       impersonation_object_manager_interfaces_;
 
   std::unique_ptr<ClientManager> client_manager_;
+
+  // Must come last so that weak pointers will be invalidated before other
+  // members are destroyed.
+  base::WeakPtrFactory<Dispatcher> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Dispatcher);
 };

@@ -39,11 +39,7 @@ ImpersonationObjectManagerInterface::ImpersonationObjectManagerInterface(
       exported_object_manager_wrapper_(exported_object_manager_wrapper),
       interface_handler_(std::move(interface_handler)),
       client_manager_(client_manager),
-      weak_ptr_factory_(this) {
-  exported_object_manager_wrapper_->SetPropertyHandlerSetupCallback(base::Bind(
-      &ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers,
-      weak_ptr_factory_.GetWeakPtr()));
-}
+      weak_ptr_factory_(this) {}
 
 dbus::PropertySet* ImpersonationObjectManagerInterface::CreateProperties(
     const std::string& service_name,
@@ -135,6 +131,24 @@ void ImpersonationObjectManagerInterface::ObjectRemoved(
   }
 }
 
+void ImpersonationObjectManagerInterface::HandleForwardMessage(
+    scoped_refptr<dbus::Bus> bus,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  if (!HasImpersonatedServicesForObject(method_call->GetPath().value())) {
+    LOG(WARNING) << "No destination to forward method "
+                 << method_call->GetInterface() << "."
+                 << method_call->GetMember() << " for object  "
+                 << method_call->GetPath().value() << " on interface "
+                 << interface_name();
+    return;
+  }
+
+  std::string service_name =
+      GetDefaultServiceForObject(method_call->GetPath().value());
+  DBusUtil::ForwardMethodCall(bus, service_name, method_call, response_sender);
+}
+
 bool ImpersonationObjectManagerInterface::HasImpersonatedServicesForObject(
     const std::string& object_path) const {
   return base::ContainsKey(impersonated_services_, object_path);
@@ -206,30 +220,6 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
           property_factory);
 }
 
-void ImpersonationObjectManagerInterface::HandlePropertiesChanged(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  // Do nothing, needed only to suppress unhandled signal warning.
-}
-
-void ImpersonationObjectManagerInterface::HandleForwardMessage(
-    scoped_refptr<dbus::Bus> bus,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  if (!HasImpersonatedServicesForObject(method_call->GetPath().value())) {
-    LOG(WARNING) << "No destination to forward method "
-                 << method_call->GetInterface() << "."
-                 << method_call->GetMember() << " for object  "
-                 << method_call->GetPath().value() << " on interface "
-                 << interface_name();
-    return;
-  }
-
-  std::string service_name =
-      GetDefaultServiceForObject(method_call->GetPath().value());
-  DBusUtil::ForwardMethodCall(bus, service_name, method_call, response_sender);
-}
-
 void ImpersonationObjectManagerInterface::
     HandleForwardMessageWithClientConnection(
         dbus::MethodCall* method_call,
@@ -240,28 +230,6 @@ void ImpersonationObjectManagerInterface::
   DispatcherClient* client = client_manager_->EnsureClientAdded(client_address);
   VLOG(1) << "client = " << client;
   HandleForwardMessage(client->GetClientBus(), method_call, response_sender);
-}
-
-void ImpersonationObjectManagerInterface::SetupPropertyMethodHandlers(
-    brillo::dbus_utils::DBusInterface* prop_interface,
-    brillo::dbus_utils::ExportedPropertySet* property_set) {
-  // Install standard property handlers.
-  prop_interface->AddSimpleMethodHandler(
-      dbus::kPropertiesGetAll, base::Unretained(property_set),
-      &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
-  prop_interface->AddSimpleMethodHandlerWithError(
-      dbus::kPropertiesGet, base::Unretained(property_set),
-      &brillo::dbus_utils::ExportedPropertySet::HandleGet);
-  prop_interface->AddRawMethodHandler(
-      dbus::kPropertiesSet,
-      base::Bind(&ImpersonationObjectManagerInterface::HandleForwardMessage,
-                 weak_ptr_factory_.GetWeakPtr(), bus_));
-
-  // Suppress unhandled method warning by installing a no-op handler for
-  // PropertiesChanged signals.
-  prop_interface->AddRawMethodHandler(
-      dbus::kPropertiesChanged, weak_ptr_factory_.GetWeakPtr(),
-      &ImpersonationObjectManagerInterface::HandlePropertiesChanged);
 }
 
 }  // namespace bluetooth

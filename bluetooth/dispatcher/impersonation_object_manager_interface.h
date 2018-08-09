@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <brillo/dbus/exported_object_manager.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_manager.h>
 
@@ -75,6 +74,12 @@ class ImpersonationObjectManagerInterface
                      const dbus::ObjectPath& object_path,
                      const std::string& interface_name) override;
 
+  // Forwards any message to the impersonated service.
+  void HandleForwardMessage(
+      scoped_refptr<dbus::Bus> bus,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
  private:
   bool HasImpersonatedServicesForObject(const std::string& object_path) const;
   void AddImpersonatedServiceForObject(const std::string& object_path,
@@ -96,28 +101,12 @@ class ImpersonationObjectManagerInterface
                          const std::string& interface_name,
                          const std::string& property_name);
 
-  // Handles PropertiesChanged signal of this object.
-  void HandlePropertiesChanged(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-
-  // Forwards any message to the impersonated service.
-  void HandleForwardMessage(
-      scoped_refptr<dbus::Bus> bus,
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-
   // Forwards any message to the impersonated service, but uses a different
   // D-Bus connection specific per client (based on the sender address of
   // |method_call|).
   void HandleForwardMessageWithClientConnection(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
-
-  // Registers our custom GetAll/Get/Set method handlers.
-  void SetupPropertyMethodHandlers(
-      brillo::dbus_utils::DBusInterface* prop_interface,
-      brillo::dbus_utils::ExportedPropertySet* property_set);
 
   scoped_refptr<dbus::Bus> bus_;
 

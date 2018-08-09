@@ -76,14 +76,6 @@ class DispatcherTest : public ::testing::Test {
                 ExportMethod(dbus::kObjectManagerInterface,
                              dbus::kObjectManagerGetManagedObjects, _, _))
         .Times(1);
-    EXPECT_CALL(*exported_root_object,
-                ExportMethod(dbus::kObjectManagerInterface,
-                             dbus::kObjectManagerInterfacesAdded, _, _))
-        .Times(1);
-    EXPECT_CALL(*exported_root_object,
-                ExportMethod(dbus::kObjectManagerInterface,
-                             dbus::kObjectManagerInterfacesRemoved, _, _))
-        .Times(1);
 
     // org.freedesktop.DBus.Properties interface methods should be exported.
     EXPECT_CALL(*exported_root_object, ExportMethod(dbus::kPropertiesInterface,

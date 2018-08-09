@@ -128,14 +128,6 @@ class NewblueDaemonTest : public ::testing::Test {
                 ExportMethod(dbus::kObjectManagerInterface,
                              dbus::kObjectManagerGetManagedObjects, _, _))
         .Times(1);
-    EXPECT_CALL(*exported_root_object,
-                ExportMethod(dbus::kObjectManagerInterface,
-                             dbus::kObjectManagerInterfacesAdded, _, _))
-        .Times(1);
-    EXPECT_CALL(*exported_root_object,
-                ExportMethod(dbus::kObjectManagerInterface,
-                             dbus::kObjectManagerInterfacesRemoved, _, _))
-        .Times(1);
     // Standard methods on org.freedesktop.DBus.Properties interface should be
     // exported.
     ExpectPropertiesMethodsExported(exported_root_object);

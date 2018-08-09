@@ -179,20 +179,6 @@ ExportedObjectManagerWrapper::ExportedObjectManagerWrapper(
     : bus_(bus),
       exported_object_manager_(std::move(exported_object_manager)),
       weak_ptr_factory_(this) {
-  // We may receive signals InterfacesAdded/InterfacesRemoved from BlueZ. These
-  // signals are handled by a dbus::ObjectManager, but not handling it here will
-  // pollute the logs with unknown signals warning. So here we handle these
-  // signals and do nothing about them to suppress log pollution.
-  brillo::dbus_utils::DBusInterface* dbus_interface =
-      exported_object_manager_->dbus_object()->AddOrGetInterface(
-          dbus::kObjectManagerInterface);
-  dbus_interface->AddRawMethodHandler(
-      dbus::kObjectManagerInterfacesAdded, base::Unretained(this),
-      &ExportedObjectManagerWrapper::HandleDoNothing);
-  dbus_interface->AddRawMethodHandler(
-      dbus::kObjectManagerInterfacesRemoved, base::Unretained(this),
-      &ExportedObjectManagerWrapper::HandleDoNothing);
-
   exported_object_manager_->RegisterAsync(
       base::Bind(&OnExportedObjectManagerRegistered));
 }
