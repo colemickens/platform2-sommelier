@@ -39,12 +39,9 @@ namespace {
 
 const char kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
-const char kCrashReporterStatePath[] = "/var/lib/crash_reporter";
 const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
-const char kLsbRelease[] = "/etc/lsb-release";
 const char kShellPath[] = "/bin/sh";
-const char kSystemCrashPath[] = "/var/spool/crash";
 const char kUploadVarPrefix[] = "upload_var_";
 const char kUploadTextPrefix[] = "upload_text_";
 const char kUploadFilePrefix[] = "upload_file_";
@@ -68,14 +65,14 @@ const char kFallbackUserCrashPath[] = "/home/chronos/crash";
 const mode_t kUserCrashPathMode = 0755;
 
 // Directory mode of the system crash spool directory.
-const mode_t kSystemCrashPathMode = 01755;
+const mode_t kSystemCrashDirectoryMode = 01755;
 
 // Directory mode of the run time state directory.
 // Since we place flag files in here for checking by tests, we make it readable.
 constexpr mode_t kSystemRunStateDirectoryMode = 0755;
 
 // Directory mode of /var/lib/crash_reporter.
-constexpr mode_t kCrashReporterStatePathMode = 0700;
+constexpr mode_t kCrashReporterStateDirectoryMode = 0700;
 
 const uid_t kRootGroup = 0;
 
@@ -206,9 +203,9 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
 CrashCollector::CrashCollector() : CrashCollector(false) {}
 
 CrashCollector::CrashCollector(bool force_user_crash_dir)
-    : lsb_release_(kLsbRelease),
-      system_crash_path_(kSystemCrashPath),
-      crash_reporter_state_path_(kCrashReporterStatePath),
+    : lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
+      system_crash_path_(paths::kSystemCrashDirectory),
+      crash_reporter_state_path_(paths::kCrashReporterStateDirectory),
       log_config_path_(kDefaultLogConfig),
       max_log_size_(kMaxLogSize),
       force_user_crash_dir_(force_user_crash_dir) {}
@@ -446,7 +443,7 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
     *directory_group = default_user_group;
     return GetUserCrashPath();
   } else {
-    *mode = kSystemCrashPathMode;
+    *mode = kSystemCrashDirectoryMode;
     *directory_owner = kRootUid;
     *directory_group = kRootGroup;
     return system_crash_path_;
@@ -773,33 +770,18 @@ void CrashCollector::AddCrashMetaUploadText(const std::string& key,
 }
 
 std::string CrashCollector::GetVersion() const {
-  brillo::KeyValueStore store;
-  if (!store.Load(lsb_release_)) {
-    LOG(WARNING) << "Problem parsing " << lsb_release_.value();
-    // Even though there was some failure, take as much as we could read.
-  }
-  FilePath saved_lsb =
-      crash_reporter_state_path_.Append(lsb_release_.BaseName());
-  if (!base::PathExists(saved_lsb)) {
-    // TODO(bmgordon): Remove this fallback here and in crash_sender around
-    // 2019-01-01.  By then, all machines should have upgraded to at least one
-    // build that writes cached files in crash_reporter_state_path_.
-    saved_lsb = system_crash_path_.Append(lsb_release_.BaseName());
-  }
-  if (!store.Load(saved_lsb)) {
-    if (base::PathExists(saved_lsb)) {
-      LOG(WARNING) << "Unable to parse " << saved_lsb.value();
-      // We already loaded the system file, so no need to error out here.
-    }
-  }
+  // TODO(bmgordon): Remove system_crash_path_ fallback here and in crash_sender
+  // around 2019-01-01.  By then, all machines should have upgraded to at least
+  // one build that writes cached files in crash_reporter_state_path_.
+  std::vector<base::FilePath> directories = {
+      crash_reporter_state_path_, system_crash_path_, lsb_release_.DirName()};
 
-  std::string version = kUnknownVersion;
-  if (!store.GetString(kLsbVersionKey, &version)) {
-    LOG(WARNING) << "Unable to read " << kLsbVersionKey << " from "
-                 << saved_lsb.value() << " or " << lsb_release_.value();
+  std::string version;
+  if (util::GetCachedKeyValue(lsb_release_.BaseName(), kLsbVersionKey,
+                              directories, &version)) {
+    return version;
   }
-
-  return version;
+  return kUnknownVersion;
 }
 
 void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
@@ -874,9 +856,9 @@ unsigned CrashCollector::HashString(base::StringPiece input) {
 }
 
 bool CrashCollector::InitializeSystemCrashDirectories() {
-  if (!CreateDirectoryWithSettings(FilePath(kSystemCrashPath),
-                                   kSystemCrashPathMode, kRootUid, kRootGroup,
-                                   nullptr))
+  if (!CreateDirectoryWithSettings(FilePath(paths::kSystemCrashDirectory),
+                                   kSystemCrashDirectoryMode, kRootUid,
+                                   kRootGroup, nullptr))
     return false;
 
   if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunStateDirectory),
@@ -884,9 +866,9 @@ bool CrashCollector::InitializeSystemCrashDirectories() {
                                    kRootGroup, nullptr))
     return false;
 
-  if (!CreateDirectoryWithSettings(FilePath(kCrashReporterStatePath),
-                                   kCrashReporterStatePathMode, kRootUid,
-                                   kRootGroup, nullptr))
+  if (!CreateDirectoryWithSettings(
+          FilePath(paths::kCrashReporterStateDirectory),
+          kCrashReporterStateDirectoryMode, kRootUid, kRootGroup, nullptr))
     return false;
 
   return true;

@@ -10,8 +10,17 @@
 
 namespace paths {
 
-// The base directory where we keep various state flags.
+// Directory where we keep various state flags.
 constexpr char kSystemRunStateDirectory[] = "/run/crash_reporter";
+
+// Directory where crash_reporter stores files (ex. saved version info).
+constexpr char kCrashReporterStateDirectory[] = "/var/lib/crash_reporter";
+
+// Directory where system crashes are saved.
+constexpr char kSystemCrashDirectory[] = "/var/spool/crash";
+
+// Directory where system configuration files are located.
+constexpr char kEtcDirectory[] = "/etc";
 
 // File whose existence indicates this is a developer image.
 constexpr char kLeaveCoreFile[] = "/root/.leave_core";
@@ -19,6 +28,9 @@ constexpr char kLeaveCoreFile[] = "/root/.leave_core";
 // Base name of file whose existence indicates a crash test is currently
 // running.
 constexpr char kCrashTestInProgress[] = "crash-test-in-progress";
+
+// Base name of file that contains Chrome OS version info.
+constexpr char kLsbRelease[] = "lsb-release";
 
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().

@@ -13,6 +13,14 @@
 #include "crash-reporter/test_util.h"
 
 namespace util {
+namespace {
+
+const char kLsbReleaseContents[] =
+    "CHROMEOS_RELEASE_BOARD=bob\n"
+    "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+    "CHROMEOS_RELEASE_VERSION=10964.0.2018_08_13_1405\n";
+
+}  // namespace
 
 class CrashCommonUtilTest : public testing::Test {
  private:
@@ -48,6 +56,75 @@ TEST_F(CrashCommonUtilTest, IsDeveloperImage) {
                                          paths::kCrashTestInProgress),
                             ""));
   EXPECT_FALSE(IsDeveloperImage());
+}
+
+TEST_F(CrashCommonUtilTest, GetCachedKeyValue) {
+  ASSERT_TRUE(test_util::CreateFile(paths::Get("/etc/lsb-release"),
+                                    kLsbReleaseContents));
+  ASSERT_TRUE(test_util::CreateFile(paths::Get("/empty/lsb-release"), ""));
+
+  std::string value;
+  // No directories are specified.
+  EXPECT_FALSE(GetCachedKeyValue(base::FilePath("lsb-release"),
+                                 "CHROMEOS_RELEASE_VERSION", {}, &value));
+  // A non-existent directory is specified.
+  EXPECT_FALSE(GetCachedKeyValue(base::FilePath("lsb-release"),
+                                 "CHROMEOS_RELEASE_VERSION",
+                                 {paths::Get("/non-existent")}, &value));
+
+  // A non-existent base name is specified.
+  EXPECT_FALSE(GetCachedKeyValue(base::FilePath("non-existent"),
+                                 "CHROMEOS_RELEASE_VERSION",
+                                 {paths::Get("/etc")}, &value));
+
+  // A wrong key is specified.
+  EXPECT_FALSE(GetCachedKeyValue(base::FilePath("lsb-release"), "WRONG_KEY",
+                                 {paths::Get("/etc")}, &value));
+
+  // This should succeed.
+  EXPECT_TRUE(GetCachedKeyValue(base::FilePath("lsb-release"),
+                                "CHROMEOS_RELEASE_VERSION",
+                                {paths::Get("/etc")}, &value));
+  EXPECT_EQ("10964.0.2018_08_13_1405", value);
+
+  // A non-existent directory is included, but this should still succeed.
+  EXPECT_TRUE(GetCachedKeyValue(
+      base::FilePath("lsb-release"), "CHROMEOS_RELEASE_VERSION",
+      {paths::Get("/non-existent"), paths::Get("/etc")}, &value));
+  EXPECT_EQ("10964.0.2018_08_13_1405", value);
+
+  // A empty file is included, but this should still succeed.
+  EXPECT_TRUE(GetCachedKeyValue(
+      base::FilePath("lsb-release"), "CHROMEOS_RELEASE_VERSION",
+      {paths::Get("/empty"), paths::Get("/etc")}, &value));
+  EXPECT_EQ("10964.0.2018_08_13_1405", value);
+}
+
+TEST_F(CrashCommonUtilTest, GetCachedKeyValueDefault) {
+  std::string value;
+  EXPECT_FALSE(
+      GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
+
+  // kEtcDirectory is the third candidate directory.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kEtcDirectory, "test.txt"), "FOO=3\n"));
+  EXPECT_TRUE(
+      GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
+  EXPECT_EQ("3", value);
+
+  // kSystemCrashDirectory is the second candidate directory.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kSystemCrashDirectory, "test.txt"), "FOO=2\n"));
+  EXPECT_TRUE(
+      GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
+  EXPECT_EQ("2", value);
+
+  // kCrashReporterStateDirectory is the first candidate directory.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kSystemCrashDirectory, "test.txt"), "FOO=1\n"));
+  EXPECT_TRUE(
+      GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
+  EXPECT_EQ("1", value);
 }
 
 }  // namespace util

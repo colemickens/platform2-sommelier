@@ -226,6 +226,7 @@ get_file_path() {
 #   2. /var/spool/crash
 #   3. /etc
 # Return "undefined" if $key is not found in any path.
+# NOTE: Mirrors util.cc:GetCachedKeyValueDefault().
 get_cached_key_value() {
   local file="$1" key="$2"
 
