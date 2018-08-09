@@ -203,6 +203,11 @@
       'sources': ['powerd/powerd_setuid_helper.cc'],
     },
     {
+      'target_name': 'set_cellular_transmit_power',
+      'type': 'executable',
+      'sources': ['powerd/set_cellular_transmit_power.cc'],
+    },
+    {
       'target_name': 'set_wifi_transmit_power',
       'type': 'executable',
       'sources': ['powerd/set_wifi_transmit_power.cc'],
