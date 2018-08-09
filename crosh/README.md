@@ -79,6 +79,11 @@ USAGE_foo='<some args>'
 HELP_foo='
   Extended description of this command.
 '
+# Not required, but lets crosh detect if the foo program is available in the
+# current system (e.g. the package is not installed on all devices).  If it
+# isn't available, crosh will automatically display an error message and never
+# call cmd_foo.
+EXEC_foo='/full/path/to/program'
 cmd_foo() (
   # Implementation for the foo command.
   # You should sanity check $# and "$@" and process them first.
