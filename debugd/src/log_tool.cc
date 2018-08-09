@@ -51,6 +51,8 @@ const Log kCommandLogs[] = {
   { "LOGDATE", "/bin/date" },
   { "atrus_logs", "cat /var/log/atrus.log 2>/dev/null" },
   { "authpolicy", "cat /var/log/authpolicy.log" },
+  { "biod.LATEST", "cat /var/log/biod/biod.LATEST" },
+  { "biod.PREVIOUS", "cat /var/log/biod/biod.PREVIOUS" },
   { "bios_info", "cat /var/log/bios_info.txt" },
   { "bios_log",
     "cat /sys/firmware/log "
