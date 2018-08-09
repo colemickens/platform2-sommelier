@@ -1140,6 +1140,7 @@ void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
   }
   status->can_load_srk = true;
   status->can_load_srk_public_key = true;
+  status->srk_vulnerable_roca = false;
 
   // Check the Cryptohome key by using what we have been told.
   status->has_cryptohome_key = (key != 0);

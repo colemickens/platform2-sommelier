@@ -110,15 +110,16 @@ class Tpm {
   };
 
   struct TpmStatusInfo {
-    uint32_t last_tpm_error;
-    bool can_connect;
-    bool can_load_srk;
-    bool can_load_srk_public_key;
-    bool has_cryptohome_key;
-    bool can_encrypt;
-    bool can_decrypt;
-    bool this_instance_has_context;
-    bool this_instance_has_key_handle;
+    uint32_t last_tpm_error = 0;
+    bool can_connect = false;
+    bool can_load_srk = false;
+    bool can_load_srk_public_key = false;
+    bool srk_vulnerable_roca = false;
+    bool has_cryptohome_key = false;
+    bool can_encrypt = false;
+    bool can_decrypt = false;
+    bool this_instance_has_context = false;
+    bool this_instance_has_key_handle = false;
   };
 
   // Holds TPM version info.

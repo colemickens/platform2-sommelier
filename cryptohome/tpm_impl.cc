@@ -21,11 +21,11 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
-#include <crypto/scoped_openssl_types.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
@@ -33,6 +33,10 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm_metrics.h"
+
+#define TPM_LOG(severity, result)                                      \
+  LOG(severity) << base::StringPrintf("TPM error 0x%x (%s): ", result, \
+                                      Trspi_Error_String(result))
 
 using base::PlatformThread;
 using brillo::Blob;
@@ -105,11 +109,70 @@ Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
   return status;
 }
 
-}  // namespace
+// Decodes a serialized TPM_PUBKEY into an OpenSSL RSA key object.
+// |public_key| is the serialized TPM_PUBKEY structure. Returns the key object
+// wrapped in ScopedRSA (containing a nullptr if decoding failed).
+crypto::ScopedRSA ParsePublicKey(const SecureBlob& public_key) {
+  // Parse the serialized TPM_PUBKEY.
+  UINT64 offset = 0;
+  BYTE* buffer = const_cast<BYTE*>(public_key.data());
+  TPM_PUBKEY parsed;
+  TSS_RESULT result = Trspi_UnloadBlob_PUBKEY(&offset, buffer, &parsed);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Failed to parse TPM_PUBKEY.";
+    return nullptr;
+  }
+  ScopedByteArray scoped_key(parsed.pubKey.key);
+  ScopedByteArray scoped_parms(parsed.algorithmParms.parms);
+  TPM_RSA_KEY_PARMS* parms =
+      reinterpret_cast<TPM_RSA_KEY_PARMS*>(parsed.algorithmParms.parms);
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK(rsa.get());
+  // Get the public exponent.
+  if (parms->exponentSize == 0) {
+    rsa.get()->e = BN_new();
+    CHECK(rsa.get()->e);
+    BN_set_word(rsa.get()->e, kWellKnownExponent);
+  } else {
+    rsa.get()->e = BN_bin2bn(parms->exponent, parms->exponentSize, NULL);
+    CHECK(rsa.get()->e);
+  }
+  // Get the modulus.
+  rsa.get()->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, NULL);
+  CHECK(rsa.get()->n);
 
-#define TPM_LOG(severity, result)                                      \
-  LOG(severity) << base::StringPrintf("TPM error 0x%x (%s): ", result, \
-                                      Trspi_Error_String(result))
+  return rsa;
+}
+
+// Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
+//
+// Parameters
+//   public_key - A serialized TPM_PUBKEY as returned by Tspi_Key_GetPubKey.
+//   public_key_der - The same public key in DER encoded form.
+bool ConvertPublicKeyToDER(const SecureBlob& public_key,
+                           SecureBlob* public_key_der) {
+  crypto::ScopedRSA rsa = ParsePublicKey(public_key);
+  if (!rsa) {
+    return false;
+  }
+
+  int der_length = i2d_RSAPublicKey(rsa.get(), NULL);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key.";
+    return false;
+  }
+  public_key_der->resize(der_length);
+  unsigned char* der_buffer = public_key_der->data();
+  der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key.";
+    return false;
+  }
+  public_key_der->resize(der_length);
+  return true;
+}
+
+}  // namespace
 
 const unsigned char kDefaultSrkAuth[] = { };
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
@@ -246,14 +309,20 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle,
   status->can_load_srk = true;
 
   // Check the SRK public key
-  unsigned int size_n;
-  ScopedTssMemory public_srk(context_handle);
-  if (TPM_ERROR(result = Tspi_Key_GetPubKey(srk_handle, &size_n,
-                                            public_srk.ptr()))) {
+  unsigned int public_srk_size;
+  ScopedTssMemory public_srk_bytes(context_handle);
+  if (TPM_ERROR(result = Tspi_Key_GetPubKey(srk_handle, &public_srk_size,
+                                            public_srk_bytes.ptr()))) {
     status->last_tpm_error = result;
     return;
   }
   status->can_load_srk_public_key = true;
+
+  // Perform ROCA vulnerability check.
+  crypto::ScopedRSA public_srk = ParsePublicKey(SecureBlob(
+      public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
+  status->srk_vulnerable_roca =
+      public_srk && CryptoLib::TestRocaVulnerable(public_srk.get()->n);
 
   // Check the Cryptohome key by using what we have been told.
   status->has_cryptohome_key = (tpm_context_.value() != 0) && (key_handle != 0);
@@ -1679,53 +1748,6 @@ bool TpmImpl::DecryptIdentityRequest(RSA* pca_key,
       &proof.conformanceCredential[0],
       &proof.conformanceCredential[proof.conformanceSize]);
   brillo::SecureMemset(proof.conformanceCredential, 0, proof.conformanceSize);
-  return true;
-}
-
-bool TpmImpl::ConvertPublicKeyToDER(const SecureBlob& public_key,
-                                    SecureBlob* public_key_der) {
-  // Parse the serialized TPM_PUBKEY.
-  UINT64 offset = 0;
-  BYTE* buffer = const_cast<BYTE*>(public_key.data());
-  TPM_PUBKEY parsed;
-  TSS_RESULT result = Trspi_UnloadBlob_PUBKEY(&offset, buffer, &parsed);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Failed to parse TPM_PUBKEY.";
-    return false;
-  }
-  ScopedByteArray scoped_key(parsed.pubKey.key);
-  ScopedByteArray scoped_parms(parsed.algorithmParms.parms);
-  TPM_RSA_KEY_PARMS* parms =
-      reinterpret_cast<TPM_RSA_KEY_PARMS*>(parsed.algorithmParms.parms);
-  crypto::ScopedRSA rsa(RSA_new());
-  CHECK(rsa.get());
-  // Get the public exponent.
-  if (parms->exponentSize == 0) {
-    rsa.get()->e = BN_new();
-    CHECK(rsa.get()->e);
-    BN_set_word(rsa.get()->e, kWellKnownExponent);
-  } else {
-    rsa.get()->e = BN_bin2bn(parms->exponent, parms->exponentSize, NULL);
-    CHECK(rsa.get()->e);
-  }
-  // Get the modulus.
-  rsa.get()->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, NULL);
-  CHECK(rsa.get()->n);
-
-  // DER encode.
-  int der_length = i2d_RSAPublicKey(rsa.get(), NULL);
-  if (der_length < 0) {
-    LOG(ERROR) << "Failed to DER-encode public key.";
-    return false;
-  }
-  public_key_der->resize(der_length);
-  unsigned char* der_buffer = public_key_der->data();
-  der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
-  if (der_length < 0) {
-    LOG(ERROR) << "Failed to DER-encode public key.";
-    return false;
-  }
-  public_key_der->resize(der_length);
   return true;
 }
 

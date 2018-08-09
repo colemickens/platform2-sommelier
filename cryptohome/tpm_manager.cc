@@ -48,6 +48,7 @@ void PrintUsage() {
          "information.\n");
   printf("    get_ifx_field_upgrade_info: Prints status information pertaining "
          "to firmware updates on Infineon TPMs.\n");
+  printf("    get_srk_status: Prints SRK status information.\n");
 }
 
 static void PrintIFXFirmwarePackage(
@@ -62,8 +63,9 @@ int TakeOwnership(bool finalize);
 int VerifyEK(bool is_cros_core);
 int DumpStatus();
 int GetRandom(unsigned int random_bytes_count);
-int GetVersionInfo(Tpm::TpmVersionInfo* version_info);
-int GetIFXFieldUpgradeInfo(Tpm::IFXFieldUpgradeInfo* info);
+bool GetVersionInfo(Tpm::TpmVersionInfo* version_info);
+bool GetIFXFieldUpgradeInfo(Tpm::IFXFieldUpgradeInfo* info);
+bool GetTpmStatus(Tpm::TpmStatusInfo* status);
 
 }  // namespace tpm_manager
 
@@ -72,6 +74,7 @@ int GetIFXFieldUpgradeInfo(Tpm::IFXFieldUpgradeInfo* info);
 using cryptohome::tpm_manager::DumpStatus;
 using cryptohome::tpm_manager::GetIFXFieldUpgradeInfo;
 using cryptohome::tpm_manager::GetRandom;
+using cryptohome::tpm_manager::GetTpmStatus;
 using cryptohome::tpm_manager::GetVersionInfo;
 using cryptohome::tpm_manager::PrintIFXFirmwarePackage;
 using cryptohome::tpm_manager::PrintUsage;
@@ -149,6 +152,21 @@ int main(int argc, char **argv) {
     PrintIFXFirmwarePackage(info.process_fw, "process_fw");
     printf("field_upgrade_counter %u\n", info.field_upgrade_counter);
 
+    return 0;
+  }
+  if (command == "get_srk_status") {
+    cryptohome::Tpm::TpmStatusInfo status;
+    if (!GetTpmStatus(&status)) {
+      return -1;
+    }
+
+    printf(
+        "can_connect %d\n"
+        "can_load_srk %d\n"
+        "can_load_srk_public_key %d\n"
+        "srk_vulnerable_roca %d\n",
+        status.can_connect, status.can_load_srk, status.can_load_srk_public_key,
+        status.srk_vulnerable_roca);
     return 0;
   }
   PrintUsage();

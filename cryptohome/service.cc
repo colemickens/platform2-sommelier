@@ -2935,6 +2935,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   tpm->SetBoolean("can_load_srk", tpm_status_info.can_load_srk);
   tpm->SetBoolean("can_load_srk_pubkey",
                   tpm_status_info.can_load_srk_public_key);
+  tpm->SetBoolean("srk_vulnerable_roca", tpm_status_info.srk_vulnerable_roca);
   tpm->SetBoolean("has_cryptohome_key", tpm_status_info.has_cryptohome_key);
   tpm->SetBoolean("can_encrypt", tpm_status_info.can_encrypt);
   tpm->SetBoolean("can_decrypt", tpm_status_info.can_decrypt);

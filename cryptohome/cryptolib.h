@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <openssl/bn.h>
 #include <openssl/rsa.h>
 
 #include <base/files/file_path.h>
@@ -170,6 +171,11 @@ class CryptoLib {
   static bool TpmCompatibleOAEPEncrypt(RSA* key,
                                        const brillo::SecureBlob& input,
                                        brillo::SecureBlob* output);
+
+  // Checks an RSA key modulus for the ROCA fingerprint (i.e. whether the RSA
+  // modulus has a discrete logarithm modulus small primes). See research paper
+  // for details: https://crocs.fi.muni.cz/public/papers/rsa_ccs17
+  static bool TestRocaVulnerable(BIGNUM* rsa_modulus);
 };
 
 }  // namespace cryptohome

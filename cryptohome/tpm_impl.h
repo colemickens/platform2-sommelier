@@ -315,14 +315,6 @@ class TpmImpl : public Tpm {
                               brillo::SecureBlob* platform_credential,
                               brillo::SecureBlob* conformance_credential);
 
-  // Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
-  //
-  // Parameters
-  //   public_key - A serialized TPM_PUBKEY as returned by Tspi_Key_GetPubKey.
-  //   public_key_der - The same public key in DER encoded form.
-  bool ConvertPublicKeyToDER(const brillo::SecureBlob& public_key,
-                             brillo::SecureBlob* public_key_der);
-
   // Wrapper for Tspi_TPM_GetCapability. If |data| is not NULL, the raw
   // capability data will be assigned. If |value| is not NULL, the capability
   // data must be exactly 4 bytes and it will be decoded into |value|.

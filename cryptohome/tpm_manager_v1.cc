@@ -180,14 +180,20 @@ int GetRandom(unsigned int random_bytes_count) {
   return 0;
 }
 
-int GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
+bool GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
   return tpm->GetVersionInfo(version_info);
 }
 
-int GetIFXFieldUpgradeInfo(cryptohome::Tpm::IFXFieldUpgradeInfo* info) {
+bool GetIFXFieldUpgradeInfo(cryptohome::Tpm::IFXFieldUpgradeInfo* info) {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
   return tpm->GetIFXFieldUpgradeInfo(info);
+}
+
+bool GetTpmStatus(cryptohome::Tpm::TpmStatusInfo* status) {
+  cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
+  tpm->GetStatus(0, status);
+  return true;
 }
 
 }  // namespace tpm_manager

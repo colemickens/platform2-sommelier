@@ -690,4 +690,36 @@ bool CryptoLib::TpmCompatibleOAEPEncrypt(RSA* key,
   return true;
 }
 
+// Checks an RSA key modulus for the ROCA fingerprint (i.e. whether the RSA
+// modulus has a discrete logarithm modulus small primes). See research paper
+// for details: https://crocs.fi.muni.cz/public/papers/rsa_ccs17
+bool CryptoLib::TestRocaVulnerable(BIGNUM* rsa_modulus) {
+  const BN_ULONG kPrimes[] = {
+      3,   5,   7,   11,  13,  17,  19,  23,  29,  31,  37,  41,  43,  47,
+      53,  59,  61,  67,  71,  73,  79,  83,  89,  97,  101, 103, 107, 109,
+      113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179,
+  };
+
+  for (BN_ULONG prime : kPrimes) {
+    BN_ULONG remainder = BN_mod_word(rsa_modulus, prime);
+
+    // Enumerate all elements F4 generates in the small |prime| subgroup and
+    // check whether |remainder| is among them.
+    BN_ULONG power = 1;
+    do {
+      power = (power * 65537) % prime;
+    } while (power != 1 && power != remainder);
+
+    // No discrete logarithm -> modulus isn't of the ROCA form and thus not
+    // vulnerable.
+    if (power != remainder) {
+      return false;
+    }
+  }
+
+  // Discrete logarithms exist for all small primes -> vulnerable with
+  // negligible chance of false positive result.
+  return true;
+}
+
 }  // namespace cryptohome
