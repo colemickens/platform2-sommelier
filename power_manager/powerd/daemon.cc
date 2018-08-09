@@ -709,7 +709,8 @@ void Daemon::SetWifiTransmitPower(RadioTransmitPower power) {
   RunSetuidHelper("set_wifi_transmit_power", args, false);
 }
 
-void Daemon::SetCellularTransmitPower(RadioTransmitPower power) {
+void Daemon::SetCellularTransmitPower(RadioTransmitPower power,
+                                      int64_t dpr_gpio_number) {
   // TODO(benchan): write the helper to change power
   // TODO(egranata): run the helper tool here
   NOTIMPLEMENTED() << "Cellular antenna power should be set to "

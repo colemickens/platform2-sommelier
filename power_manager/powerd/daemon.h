@@ -139,7 +139,8 @@ class Daemon : public policy::InputEventHandler::Delegate,
   void SetWifiTransmitPower(RadioTransmitPower power) override;
 
   // Overridden from policy::CellularController::Delegate:
-  void SetCellularTransmitPower(RadioTransmitPower power) override;
+  void SetCellularTransmitPower(RadioTransmitPower power,
+                                int64_t dpr_gpio_number) override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;

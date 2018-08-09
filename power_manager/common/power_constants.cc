@@ -86,6 +86,8 @@ const char kSetWifiTransmitPowerForProximityPref[] =
     "set_wifi_transmit_power_for_proximity";
 const char kSetCellularTransmitPowerForProximityPref[] =
     "set_cellular_transmit_power_for_proximity";
+const char kSetCellularTransmitPowerDprGpioPref[] =
+    "set_cellular_transmit_power_dpr_gpio";
 
 // Miscellaneous constants.
 const char kInternalBacklightPath[] = "/sys/class/backlight";

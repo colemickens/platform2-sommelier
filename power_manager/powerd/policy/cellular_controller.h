@@ -28,8 +28,10 @@ class CellularController : public SarHandler::Delegate {
    public:
     virtual ~Delegate() = default;
 
-    // Updates the transmit power to |power|.
-    virtual void SetCellularTransmitPower(RadioTransmitPower power) = 0;
+    // Updates the transmit power to |power| via the dynamic power reduction
+    // signal controlled by the specified GPIO number.
+    virtual void SetCellularTransmitPower(RadioTransmitPower power,
+                                          int64_t dpr_gpio_number) = 0;
   };
 
   CellularController();
@@ -53,6 +55,10 @@ class CellularController : public SarHandler::Delegate {
   // True if powerd has been configured to set cellular transmit power in
   // response to proximity changes.
   bool set_transmit_power_for_proximity_ = false;
+
+  // GPIO number for the dynamic power reduction signal of a built-in cellular
+  // modem.
+  int64_t dpr_gpio_number_ = -1;
 
   DISALLOW_COPY_AND_ASSIGN(CellularController);
 };

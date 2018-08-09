@@ -21,6 +21,10 @@ void CellularController::Init(Delegate* delegate, PrefsInterface* prefs) {
 
   prefs->GetBool(kSetCellularTransmitPowerForProximityPref,
                  &set_transmit_power_for_proximity_);
+  prefs->GetInt64(kSetCellularTransmitPowerDprGpioPref, &dpr_gpio_number_);
+
+  if (set_transmit_power_for_proximity_)
+    CHECK_GE(dpr_gpio_number_, 0) << "DPR GPIO is unspecified or invalid";
 }
 
 void CellularController::ProximitySensorDetected(UserProximity value) {
@@ -46,10 +50,12 @@ void CellularController::UpdateTransmitPower() {
     case UserProximity::UNKNOWN:
       break;
     case UserProximity::NEAR:
-      delegate_->SetCellularTransmitPower(RadioTransmitPower::LOW);
+      delegate_->SetCellularTransmitPower(RadioTransmitPower::LOW,
+                                          dpr_gpio_number_);
       break;
     case UserProximity::FAR:
-      delegate_->SetCellularTransmitPower(RadioTransmitPower::HIGH);
+      delegate_->SetCellularTransmitPower(RadioTransmitPower::HIGH,
+                                          dpr_gpio_number_);
       break;
   }
 }

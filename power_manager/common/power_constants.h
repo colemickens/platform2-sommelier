@@ -219,6 +219,10 @@ extern const char kSetWifiTransmitPowerForProximityPref[];
 // If true, update cellular transmit power based on proximity sensors.
 extern const char kSetCellularTransmitPowerForProximityPref[];
 
+// GPIO number for the dynamic power reduction signal of a built-in cellular
+// modem.
+extern const char kSetCellularTransmitPowerDprGpioPref[];
+
 // Miscellaneous constants.
 
 // sysfs directory containing internal backlight devices and a glob-style
