@@ -25,10 +25,10 @@ struct CameraMetadataDeleter {
   }
 };
 
-typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
-    CameraMetadataUniquePtr;
+using ScopedCameraMetadata =
+    std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>;
 
-typedef std::map<uint64_t, std::unique_ptr<camera3_stream_t>> UniqueStreams;
+using ScopedStreams = std::map<uint64_t, std::unique_ptr<camera3_stream_t>>;
 
 }  // namespace internal
 }  // namespace cros

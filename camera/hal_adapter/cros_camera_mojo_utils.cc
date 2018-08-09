@@ -20,7 +20,7 @@ namespace internal {
 
 cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
-    const UniqueStreams& streams,
+    const ScopedStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles) {
   cros::mojom::Camera3StreamBufferPtr ret =
@@ -81,7 +81,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
 
 int DeserializeStreamBuffer(
     const cros::mojom::Camera3StreamBufferPtr& ptr,
-    const UniqueStreams& streams,
+    const ScopedStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles,
     camera3_stream_buffer_t* out_buffer) {
@@ -171,9 +171,9 @@ cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
   return result;
 }
 
-CameraMetadataUniquePtr DeserializeCameraMetadata(
+ScopedCameraMetadata DeserializeCameraMetadata(
     const cros::mojom::CameraMetadataPtr& metadata) {
-  CameraMetadataUniquePtr result;
+  ScopedCameraMetadata result;
   if (!metadata->entries.is_null()) {
     camera_metadata_t* allocated_data = allocate_camera_metadata(
         metadata->entry_capacity, metadata->data_capacity);

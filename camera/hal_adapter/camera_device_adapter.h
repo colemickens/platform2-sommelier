@@ -132,7 +132,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   camera3_device_t* camera_device_;
 
   // A mapping from Andoird HAL for all the configured streams.
-  internal::UniqueStreams streams_;
+  internal::ScopedStreams streams_;
 
   // A mutex to guard |streams_|.
   base::Lock streams_lock_;

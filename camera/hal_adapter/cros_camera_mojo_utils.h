@@ -38,13 +38,13 @@ namespace internal {
 // passed down when the frameworks called process_capture_request.
 cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
-    const UniqueStreams& streams,
+    const ScopedStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles);
 
 int DeserializeStreamBuffer(
     const cros::mojom::Camera3StreamBufferPtr& ptr,
-    const UniqueStreams& streams,
+    const ScopedStreams& streams,
     const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles,
     camera3_stream_buffer_t* buffer);
@@ -52,7 +52,7 @@ int DeserializeStreamBuffer(
 cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
     const camera_metadata_t* metadata);
 
-CameraMetadataUniquePtr DeserializeCameraMetadata(
+ScopedCameraMetadata DeserializeCameraMetadata(
     const cros::mojom::CameraMetadataPtr& metadata);
 // Template classes for Mojo IPC delegates
 

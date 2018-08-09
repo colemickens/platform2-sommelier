@@ -102,7 +102,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 
   base::AutoLock l(streams_lock_);
 
-  std::map<uint64_t, std::unique_ptr<camera3_stream_t>> new_streams;
+  internal::ScopedStreams new_streams;
   for (const auto& s : config->streams) {
     uint64_t id = s->id;
     std::unique_ptr<camera3_stream_t>& stream = new_streams[id];
@@ -175,7 +175,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
   req.frame_number = request->frame_number;
 
-  internal::CameraMetadataUniquePtr settings =
+  internal::ScopedCameraMetadata settings =
       internal::DeserializeCameraMetadata(request->settings);
   req.settings = settings.get();
 
