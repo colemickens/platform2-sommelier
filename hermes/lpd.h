@@ -87,6 +87,9 @@ class Lpd {
       const std::vector<uint8_t>& server_certificate);
   void OnAuthenticateServerResult(const std::vector<uint8_t>& data);
   void OnPrepareDownloadRequest(const std::vector<uint8_t>& data);
+  void OnGetBoundProfilePackage(
+      const std::string& transaction_id,
+      const std::vector<uint8_t>& bound_profile_package);
 
   void HandleEsimError(const LpdErrorCallback& lpd_callback,
                        EsimError esim_error);

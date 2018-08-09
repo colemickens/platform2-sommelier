@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "hermes/qmi_constants.h"
 
@@ -57,7 +58,8 @@ void Lpd::OnAuthenticateSuccess(const std::string& transaction_id,
                                 const std::vector<uint8_t>& smdp_signature2,
                                 const std::vector<uint8_t>& smdp_certificate) {
   if (transaction_id != transaction_id_) {
-    OnAuthenticateError(LpdError::kFailure);
+    LOG(ERROR) << __func__ << ": transaction_id does not match";
+    user_error_.Run(LpdError::kFailure);
     return;
   }
   // TODO(jruthe): DownloadProfile call
@@ -68,10 +70,27 @@ void Lpd::OnAuthenticateSuccess(const std::string& transaction_id,
 }
 
 void Lpd::OnPrepareDownloadRequest(const std::vector<uint8_t>& data) {
+  smdp_->GetBoundProfilePackage(
+      transaction_id_, data,
+      base::Bind(&Lpd::OnGetBoundProfilePackage, base::Unretained(this)),
+      smdp_error_handler_);
 }
 
-void Lpd::OnAuthenticateError(LpdError error) {
-  user_error_.Run(error);
+void Lpd::OnGetBoundProfilePackage(
+    const std::string& transaction_id,
+    const std::vector<uint8_t>& bound_profile_package) {
+  if (transaction_id != transaction_id_) {
+    LOG(ERROR) << __func__ << ": transaction id does not match";
+    user_error_.Run(LpdError::kFailure);
+    return;
+  }
+
+  VLOG(1) << __func__ << ": bound_profile_package : "
+          << base::HexEncode(bound_profile_package.data(),
+                             bound_profile_package.size());
+
+  // TODO(jruthe): Install |bound_profile_package| through Esim interface
+  user_success_.Run();
 }
 
 void Lpd::OnEsimInfoResult(const std::vector<uint8_t>& info) {

@@ -27,11 +27,16 @@ class SmdpImpl : public Smdp {
       const InitiateAuthenticationCallback& data_callback,
       const ErrorCallback& error_callback) override;
 
-  // TODO(jruthe): update data_callback to the correct base::Callback signature
-  void AuthenticateClient(std::string transaction_id,
+  void AuthenticateClient(const std::string& transaction_id,
                           const std::vector<uint8_t>& data,
                           const AuthenticateClientCallback& data_callback,
                           const ErrorCallback& error_callback) override;
+
+  void GetBoundProfilePackage(
+      const std::string& transaction_id,
+      const std::vector<uint8_t>& data,
+      const GetBoundProfilePackageCallback& data_callback,
+      const ErrorCallback& error_callback) override;
 
  private:
   void OnHttpResponse(const base::Callback<void(DictionaryPtr)>& data_callback,
@@ -49,6 +54,11 @@ class SmdpImpl : public Smdp {
       const AuthenticateClientCallback& data_callback,
       const ErrorCallback& error_callback,
       DictionaryPtr json_dict);
+  void OnGetBoundProfilePackageResponse(
+      const GetBoundProfilePackageCallback& data_callback,
+      const ErrorCallback& error_callback,
+      DictionaryPtr json_dict);
+
   void SendJsonRequest(const std::string& url,
                        const std::string& json_data,
                        const base::Callback<void(DictionaryPtr)>& data_callback,

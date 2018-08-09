@@ -146,7 +146,7 @@ void SmdpImpl::SendJsonRequest(
 }
 
 void SmdpImpl::AuthenticateClient(
-    std::string transaction_id,
+    const std::string& transaction_id,
     const std::vector<uint8_t>& data,
     const AuthenticateClientCallback& data_callback,
     const ErrorCallback& error_callback) {
@@ -173,7 +173,7 @@ void SmdpImpl::OnAuthenticateClientResponse(
     DictionaryPtr json_dict) {
   std::string transaction_id;
   if (!json_dict->GetString("transactionId", &transaction_id)) {
-    LOG(ERROR) << __func__ << ": transactionId not receieved";
+    LOG(ERROR) << __func__ << ": transactionId not received";
     error_callback.Run(std::vector<uint8_t>());
     return;
   }
@@ -203,7 +203,7 @@ void SmdpImpl::OnAuthenticateClientResponse(
 
   std::string server_certificate;
   if (!json_dict->GetString("smdpCertificate", &encoded_buffer)) {
-    LOG(ERROR) << __func__ << ": CERT.DPpb.ECDSA not received";
+    LOG(ERROR) << __func__ << ": smdpCertificate not received";
     error_callback.Run(std::vector<uint8_t>());
     return;
   }
@@ -218,6 +218,55 @@ void SmdpImpl::OnAuthenticateClientResponse(
       std::vector<uint8_t>(smdp_signature2.begin(), smdp_signature2.end()),
       std::vector<uint8_t>(server_certificate.begin(),
                            server_certificate.end()));
+}
+
+void SmdpImpl::GetBoundProfilePackage(
+    const std::string& transaction_id,
+    const std::vector<uint8_t>& data,
+    const GetBoundProfilePackageCallback& data_callback,
+    const ErrorCallback& error_callback) {
+  std::string encoded_data(data.begin(), data.end());
+  base::Base64Encode(encoded_data, &encoded_data);
+  // base::Base64Encode(transaction_id, &transaction_id);
+
+  base::DictionaryValue http_params;
+  http_params.SetString("transactionId", transaction_id);
+  http_params.SetString("prepareDownloadResponse", encoded_data);
+  std::string http_body;
+  base::JSONWriter::Write(http_params, &http_body);
+
+  SendJsonRequest(
+      "https://" + server_hostname_ +
+          "/gsma/rsp2/es9plus/getBoundProfilePackage",
+      http_body,
+      base::Bind(&SmdpImpl::OnGetBoundProfilePackageResponse,
+                 weak_factory_.GetWeakPtr(), data_callback, error_callback),
+      error_callback);
+}
+
+void SmdpImpl::OnGetBoundProfilePackageResponse(
+    const GetBoundProfilePackageCallback& data_callback,
+    const ErrorCallback& error_callback,
+    DictionaryPtr json_dict) {
+  std::string transaction_id;
+  if (!json_dict->GetString("transactionId", &transaction_id)) {
+    LOG(ERROR) << __func__ << ": transactionId not received";
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+
+  std::string encoded_buffer;
+  std::string bound_profile_package;
+  if (!json_dict->GetString("boundProfilePackage", &encoded_buffer)) {
+    LOG(ERROR) << __func__ << ": boundProfilePackage not received";
+    error_callback.Run(std::vector<uint8_t>());
+    return;
+  }
+  base::Base64Decode(encoded_buffer, &bound_profile_package);
+
+  data_callback.Run(transaction_id,
+                    std::vector<uint8_t>(bound_profile_package.begin(),
+                                         bound_profile_package.end()));
 }
 
 }  // namespace hermes
