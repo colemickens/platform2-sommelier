@@ -2,3 +2,4 @@
 /key.proto
 /rpc.proto
 /signed_secret.proto
+/bootlockbox/boot_lockbox_rpc.proto
