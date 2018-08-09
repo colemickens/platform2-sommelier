@@ -8,6 +8,19 @@
     },
   },
   'targets': [
+    {
+      'target_name': 'oobe_config_restore_adaptors',
+      'type': 'none',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/dbus_adaptors',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+        'new_fd_bindings': 1,
+      },
+      'sources': [
+        'dbus_bindings/org.chromium.OobeConfigRestore.xml',
+      ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+    },
    # oobe_config library.
     {
       'target_name': 'liboobeconfig',
@@ -46,6 +59,7 @@
       'type': 'executable',
       'dependencies': [
         'liboobeconfig',
+        'oobe_config_restore_adaptors',
       ],
       'sources': [
         'oobe_config_restore_main.cc',
