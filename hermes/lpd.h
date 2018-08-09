@@ -71,24 +71,17 @@ class Lpd {
 
   void OnAuthenticateError(LpdError error);
 
-  // Second parameter is not needed in this case, but this keeps the function
-  // signature the same as the rest of the Esim callbacks.
-  void OnOpenLogicalChannel(const SuccessCallback& success_callback,
-                            const std::vector<uint8_t>&);
-  void OnEsimInfoResult(const SuccessCallback& success_callback,
-                        const std::vector<uint8_t>& info);
-  void OnEsimChallengeResult(const SuccessCallback& success_callback,
-                             const std::vector<uint8_t>& info1,
+  void OnOpenLogicalChannel(const std::vector<uint8_t>&);
+  void OnEsimInfoResult(const std::vector<uint8_t>& info);
+  void OnEsimChallengeResult(const std::vector<uint8_t>& info1,
                              const std::vector<uint8_t>& challenge);
   void OnInitiateAuthenticationResult(
-      const SuccessCallback& success_callback,
       const std::string& transaction_id,
       const std::vector<uint8_t>& server_signed1,
       const std::vector<uint8_t>& server_signature1,
       const std::vector<uint8_t>& euicc_ci_pk_id_to_be_used,
       const std::vector<uint8_t>& server_certificate);
-  void OnAuthenticateServerResult(const SuccessCallback& success_callback,
-                                  const std::vector<uint8_t>& data);
+  void OnAuthenticateServerResult(const std::vector<uint8_t>& data);
 
   void HandleEsimError(const LpdErrorCallback& lpd_callback,
                        EsimError esim_error);
@@ -101,7 +94,7 @@ class Lpd {
   std::unique_ptr<Esim> esim_;
   std::unique_ptr<Smdp> smdp_;
 
-  base::Closure user_success_;
+  SuccessCallback user_success_;
   LpdErrorCallback user_error_;
   EsimErrorCallback esim_error_handler_;
   SmdpErrorCallback smdp_error_handler_;

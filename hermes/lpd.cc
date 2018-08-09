@@ -41,17 +41,13 @@ void Lpd::Initialize(const SuccessCallback& success_callback,
 
 void Lpd::Authenticate() {
   esim_->OpenLogicalChannel(
-      base::Bind(
-          &Lpd::OnOpenLogicalChannel, base::Unretained(this),
-          base::Bind(&Lpd::OnAuthenticateSuccess, base::Unretained(this))),
+      base::Bind(&Lpd::OnOpenLogicalChannel, base::Unretained(this)),
       esim_error_handler_);
 }
 
-void Lpd::OnOpenLogicalChannel(const Lpd::SuccessCallback& success_callback,
-                               const std::vector<uint8_t>&) {
+void Lpd::OnOpenLogicalChannel(const std::vector<uint8_t>&) {
   esim_->GetInfo(kEsimInfo1Tag,
-                 base::Bind(&Lpd::OnEsimInfoResult, base::Unretained(this),
-                            success_callback),
+                 base::Bind(&Lpd::OnEsimInfoResult, base::Unretained(this)),
                  esim_error_handler_);
 }
 
@@ -63,16 +59,13 @@ void Lpd::OnAuthenticateError(LpdError error) {
   user_error_.Run(error);
 }
 
-void Lpd::OnEsimInfoResult(const Lpd::SuccessCallback& success_callback,
-                           const std::vector<uint8_t>& info) {
+void Lpd::OnEsimInfoResult(const std::vector<uint8_t>& info) {
   esim_->GetChallenge(
-      base::Bind(&Lpd::OnEsimChallengeResult, base::Unretained(this),
-                 success_callback, info),
+      base::Bind(&Lpd::OnEsimChallengeResult, base::Unretained(this), info),
       esim_error_handler_);
 }
 
-void Lpd::OnEsimChallengeResult(const Lpd::SuccessCallback& success_callback,
-                                const std::vector<uint8_t>& info1,
+void Lpd::OnEsimChallengeResult(const std::vector<uint8_t>& info1,
                                 const std::vector<uint8_t>& challenge) {
   if (challenge.size() - kChallengeHeaderLength != kEsimChallengeLength) {
     user_error_.Run(LpdError::kFailure);
@@ -85,13 +78,11 @@ void Lpd::OnEsimChallengeResult(const Lpd::SuccessCallback& success_callback,
       info1,
       std::vector<uint8_t>(challenge.begin() + 5 /* length of header */,
                            challenge.end()),
-      base::Bind(&Lpd::OnInitiateAuthenticationResult, base::Unretained(this),
-                 success_callback),
+      base::Bind(&Lpd::OnInitiateAuthenticationResult, base::Unretained(this)),
       smdp_error_handler_);
 }
 
 void Lpd::OnInitiateAuthenticationResult(
-    const Lpd::SuccessCallback& success_callback,
     const std::string& transaction_id,
     const std::vector<uint8_t>& server_signed1,
     const std::vector<uint8_t>& server_signature1,
@@ -101,16 +92,16 @@ void Lpd::OnInitiateAuthenticationResult(
   esim_->AuthenticateServer(
       server_signed1, server_signature1, euicc_ci_pk_id_to_be_used,
       server_certificate,
-      base::Bind(&Lpd::OnAuthenticateServerResult, base::Unretained(this),
-                 success_callback),
+      base::Bind(&Lpd::OnAuthenticateServerResult, base::Unretained(this)),
       esim_error_handler_);
 }
 
 void Lpd::OnAuthenticateServerResult(
-    const Lpd::SuccessCallback& success_callback,
     const std::vector<uint8_t>& data) {
-  smdp_->AuthenticateClient(transaction_id_, data, success_callback,
-                            smdp_error_handler_);
+  smdp_->AuthenticateClient(
+      transaction_id_, data,
+      base::Bind(&Lpd::OnAuthenticateSuccess, base::Unretained(this)),
+      smdp_error_handler_);
 }
 
 void Lpd::HandleEsimError(const Lpd::LpdErrorCallback& lpd_callback,
