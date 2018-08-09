@@ -337,7 +337,10 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
 
     TAGINFO(ANDROID_STATISTICS_FACE_DETECT_MODE, bogusValue);
 
-    TAGINFO(ANDROID_LENS_FOCAL_LENGTH, bogusValue);
+    entry = metadata.find(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+    if (entry.count > 0) {
+        TAGINFO(ANDROID_LENS_FOCAL_LENGTH, entry.data.f[0]);
+    }
     // todo enable when region support is implemented
     // TAGINFO_ARRAY(ANDROID_CONTROL_AE_REGIONS, bogusValueArray, 5);
     TAGINFO(ANDROID_SENSOR_EXPOSURE_TIME, bogusValue);
