@@ -7,8 +7,10 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process.h>
@@ -23,6 +25,8 @@ constexpr char kOobeConfigDir[] = "unencrypted/oobe_auto_config/";
 constexpr char kConfigFile[] = "config.json";
 constexpr char kDomainFile[] = "enrollment_domain";
 constexpr char kKeyFile[] = "validation_key.pub";
+constexpr char kDevDiskById[] = "/dev/disk/by-id/";
+constexpr char kUsbDevicePathSigFile[] = "usb_device_path.sig";
 
 // TODO(tbrindus): move this into a util file.
 int RunCommand(const vector<string>& command) {
@@ -37,6 +41,27 @@ int RunCommand(const vector<string>& command) {
   return proc.Run();
 }
 
+// Enumerates /dev/disk/by-id/ to find which persistent disk identifier
+// |mount_dev| corresponds to.
+FilePath FindPersistentMountDevice(const FilePath& mount_dev) {
+  base::FileEnumerator by_id(FilePath(kDevDiskById), false,
+                             base::FileEnumerator::FILES);
+  for (auto link = by_id.Next(); !link.empty(); link = by_id.Next()) {
+    // |link| points to something like:
+    //   usb-_Some_Memory_<serial>-0:0-part1 -> ../../sdb1
+    FilePath target;
+    CHECK(base::NormalizeFilePath(link, &target));
+    if (target == mount_dev) {
+      LOG(INFO) << link.value() << " points to " << target.value();
+      return link;
+    }
+  }
+
+  LOG(ERROR) << "Couldn't find persistent device mapping for "
+             << mount_dev.value();
+  return FilePath();
+}
+
 // Using |priv_key|, signs |src|, and writes the digest into |dst|.
 void SignFile(const FilePath& priv_key, const FilePath& src,
               const FilePath& dst) {
@@ -49,6 +74,21 @@ void SignFile(const FilePath& priv_key, const FilePath& src,
         "-out", dst.value(),
         src.value()
   }), 0);
+}
+
+// Finds the persistent block device that |src_dir| is mounted on, and signs
+// the path using |priv_key|, and writes it to |dst_dir|/.../block_device.sig.
+void SignSourcePartitionFile(const FilePath& priv_key, const FilePath& src_dev,
+                             const FilePath& dst_dir) {
+  auto mount_dev = FindPersistentMountDevice(src_dev);
+  CHECK(base::PathExists(mount_dev));
+  auto disk = mount_dev.value();
+  FilePath temp_disk;
+  CHECK(base::CreateTemporaryFile(&temp_disk));
+  CHECK(base::WriteFile(temp_disk, disk.c_str(), disk.length()) ==
+        disk.length());
+  SignFile(priv_key, temp_disk, dst_dir.Append(kOobeConfigDir)
+                                       .Append(kUsbDevicePathSigFile));
 }
 
 void SignOobeFiles(const FilePath& priv_key, const FilePath& pub_key,
@@ -93,7 +133,9 @@ int main(int argc, char** argv) {
       "* creates $dst_stateful/unencrypted/oobe_auto_config/\n"
       "* signs $src_stateful/config.json\n"
       "* if it exists, signs $src_stateful/enrollment_domain\n"
-      "* writes public key to target device stateful\n");
+      "* writes public key to target device stateful\n"
+      "* determines a persistent block device for $src_device and writes a\n"
+      "  digest of it to target device stateful\n");
 
   FilePath priv_key(FLAGS_priv_key);
   FilePath pub_key(FLAGS_pub_key);
@@ -109,6 +151,9 @@ int main(int argc, char** argv) {
 
   // Generate digests for the configuration and domain files.
   SignOobeFiles(priv_key, pub_key, src_stateful, dst_stateful);
+
+  // Generate digest for the source stateful device name.
+  SignSourcePartitionFile(priv_key, src_device, dst_stateful);
 
   // Copy the public key into the target stateful for use in validation.
   CHECK(base::CopyFile(pub_key,
