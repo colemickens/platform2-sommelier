@@ -19,6 +19,9 @@ int main(int argc, char* argv[]) {
               "Exit with success if ambient light sensor support is enabled");
   DEFINE_bool(hover_detection, false,
               "Exit with success if hover detection is enabled");
+  DEFINE_bool(internal_backlight_ambient_light_steps, false,
+              "Print the value of the internal_backlight_als_steps pref to "
+              "stdout");
   DEFINE_bool(keyboard_backlight, false,
               "Exit with success if keyboard backlight support is enabled");
   DEFINE_bool(low_battery_shutdown_percent, false,
@@ -39,6 +42,7 @@ int main(int argc, char* argv[]) {
   logging::SetMinLogLevel(logging::LOG_WARNING);
 
   if (FLAGS_ambient_light_sensor + FLAGS_hover_detection +
+          FLAGS_internal_backlight_ambient_light_steps +
           FLAGS_keyboard_backlight + FLAGS_low_battery_shutdown_percent +
           FLAGS_low_battery_shutdown_time + FLAGS_suspend_to_idle !=
       1) {
@@ -58,6 +62,11 @@ int main(int argc, char* argv[]) {
     bool hover_enabled = false;
     prefs.GetBool(power_manager::kDetectHoverPref, &hover_enabled);
     exit(hover_enabled ? 0 : 1);
+  } else if (FLAGS_internal_backlight_ambient_light_steps) {
+    std::string steps;
+    prefs.GetString(power_manager::kInternalBacklightAlsStepsPref, &steps);
+    printf("%s\n", steps.c_str());
+    exit(0);
   } else if (FLAGS_keyboard_backlight) {
     bool backlight_enabled = false;
     prefs.GetBool(power_manager::kHasKeyboardBacklightPref, &backlight_enabled);
