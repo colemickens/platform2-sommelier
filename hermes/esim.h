@@ -103,6 +103,11 @@ class Esim {
       const std::vector<uint8_t>& smdp_certificate,
       const DataCallback& data_callback,
       const ErrorCallback& error_callback) = 0;
+
+  virtual void LoadBoundProfilePackage(
+      const std::vector<uint8_t>& bound_profile_package,
+      const DataCallback& success_callback,
+      const ErrorCallback& error_callback) = 0;
 };
 
 }  // namespace hermes

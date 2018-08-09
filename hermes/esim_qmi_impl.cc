@@ -332,6 +332,22 @@ void EsimQmiImpl::PrepareDownloadRequest(
   SendApdu(data_callback, error_callback);
 }
 
+void EsimQmiImpl::LoadBoundProfilePackage(
+    const std::vector<uint8_t>& bound_profile_package,
+    const DataCallback& data_callback,
+    const ErrorCallback& error_callback) {
+  if (!qrtr_socket_fd_.is_valid()) {
+    LOG(ERROR) << __func__ << ": File Descriptor to QRTR invalid";
+    error_callback.Run(EsimError::kEsimNotConnected);
+    return;
+  }
+
+  payload_.clear();
+  QueueStoreData(bound_profile_package);
+
+  SendApdu(data_callback, error_callback);
+}
+
 void EsimQmiImpl::FragmentAndQueueApdu(
     uint8_t cla, uint8_t ins, const std::vector<uint8_t>& apdu_payload) {
   size_t total_packets = std::max(1u,

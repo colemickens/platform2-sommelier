@@ -98,6 +98,11 @@ void Lpd::OnEsimInfoResult(const std::vector<uint8_t>& info) {
       base::Bind(&Lpd::OnEsimChallengeResult, base::Unretained(this), info),
       esim_error_handler_);
 }
+void Lpd::OnLoadBoundProfilePackage(
+    const std::vector<uint8_t>& profile_installation_result) {
+  LOG(INFO) << __func__ << ": Profile installation succeeded";
+  user_success_.Run();
+}
 
 void Lpd::OnEsimChallengeResult(const std::vector<uint8_t>& info1,
                                 const std::vector<uint8_t>& challenge) {

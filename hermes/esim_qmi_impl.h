@@ -61,6 +61,10 @@ class EsimQmiImpl : public Esim, public base::MessageLoopForIO::Watcher {
                               const std::vector<uint8_t>& smdp_certificate,
                               const DataCallback& data_callback,
                               const ErrorCallback& error_callback) override;
+  void LoadBoundProfilePackage(
+      const std::vector<uint8_t>& bound_profile_package,
+      const DataCallback& success_callback,
+      const ErrorCallback& error_callback) override;
 
  private:
   // TODO(jruthe): IMEI is hardware specific and should be retrieved from the

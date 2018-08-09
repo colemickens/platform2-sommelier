@@ -90,6 +90,8 @@ class Lpd {
   void OnGetBoundProfilePackage(
       const std::string& transaction_id,
       const std::vector<uint8_t>& bound_profile_package);
+  void OnLoadBoundProfilePackage(
+      const std::vector<uint8_t>& profile_installation_result);
 
   void HandleEsimError(const LpdErrorCallback& lpd_callback,
                        EsimError esim_error);
