@@ -62,9 +62,10 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
 
   // Use static_auth_callback as a C function pointer by converting it to a
   // lambda.
-  smbc_setFunctionAuthData(
-      context, +[](const char* srv, const char* shr, char* wg, int32_t wglen,
-                   char* un, int32_t unlen, char* pw, int32_t pwlen) {
+  smbc_setFunctionAuthDataWithContext(
+      context,
+      +[](SMBCCTX* context, const char* srv, const char* shr, char* wg,
+          int32_t wglen, char* un, int32_t unlen, char* pw, int32_t pwlen) {
         static_auth_callback->Run(GetMountRoot(srv, shr), wg, wglen, un, unlen,
                                   pw, pwlen);
       });

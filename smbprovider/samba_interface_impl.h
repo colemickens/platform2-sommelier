@@ -23,6 +23,8 @@ namespace smbprovider {
 class SambaInterfaceImpl : public SambaInterface {
  public:
   // SMB authentication callback.
+  // TODO(jimmyxgong): WIP, will include SMBCCTX* to param in future CL
+  // to incorporate smbc_setFunctionAuthDataWithContext.
   using AuthCallback = base::Callback<void(const std::string& share_path,
                                            char* workgroup,
                                            int32_t workgroup_length,
@@ -30,7 +32,6 @@ class SambaInterfaceImpl : public SambaInterface {
                                            int32_t username_length,
                                            char* password,
                                            int32_t password_length)>;
-
   ~SambaInterfaceImpl() override;
 
   // This should be called instead of constructor.
