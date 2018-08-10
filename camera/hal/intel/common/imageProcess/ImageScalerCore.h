@@ -25,11 +25,11 @@ public:
     template<typename T>
     static void scaleFrame(std::shared_ptr<T> input, std::shared_ptr<T> output) {
         // Y plane
-        libyuv::ScalePlane(static_cast<uint8*>(input->data()),
+        libyuv::ScalePlane(static_cast<uint8_t*>(input->data()),
                             input->stride(),
                             input->width(),
                             input->height(),
-                            static_cast<uint8*>(output->data()),
+                            static_cast<uint8_t*>(output->data()),
                             output->stride(),
                             output->width(),
                             output->height(),
@@ -38,11 +38,11 @@ public:
         // UV plane
         int inUVOffsetByte = input->stride() * input->height();
         int outUVOffsetByte = output->stride() * output->height();
-        libyuv::ScalePlane_16(static_cast<uint16*>(input->data()) + inUVOffsetByte / sizeof(uint16),
+        libyuv::ScalePlane_16(static_cast<uint16_t*>(input->data()) + inUVOffsetByte / sizeof(uint16_t),
                                 input->stride() / 2,
                                 input->width() / 2,
                                 input->height() / 2,
-                                static_cast<uint16*>(output->data()) + outUVOffsetByte / sizeof(uint16),
+                                static_cast<uint16_t*>(output->data()) + outUVOffsetByte / sizeof(uint16_t),
                                 output->stride() / 2,
                                 output->width() / 2,
                                 output->height() / 2,
@@ -57,8 +57,8 @@ public:
                     input->width(), input->height(), output->width(), output->height());
         CheckError((angle != 90 && angle != 270), BAD_VALUE, "angle value:%d is wrong", angle);
 
-        const uint8* inBuffer = static_cast<uint8*>(input->data());
-        uint8* outBuffer = static_cast<uint8*>(output->data());
+        const uint8_t* inBuffer = static_cast<uint8_t*>(input->data());
+        uint8_t* outBuffer = static_cast<uint8_t*>(output->data());
         int outW = output->width();
         int outH = output->height();
         int outStride = output->stride();
@@ -70,7 +70,7 @@ public:
         }
 
         // TODO: find a way to rotate NV12 directly.
-        uint8* I420Buffer = rotateBuf.data();
+        uint8_t* I420Buffer = rotateBuf.data();
         int ret = libyuv::NV12ToI420Rotate(
             inBuffer, inStride, inBuffer + inH * inStride, inStride,
             I420Buffer, outW,
