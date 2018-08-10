@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 
 #include <string>
+#include <utility>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/shill_export.h"
@@ -58,10 +59,28 @@ class SHILL_EXPORT IPAddress {
     : family_(b.family_),
       address_(b.address_),
       prefix_(b.prefix_) {}
+  IPAddress(IPAddress&& b)
+      : family_(b.family_),
+        address_(std::move(b.address_)),
+        prefix_(b.prefix_) {
+    b.family_ = kFamilyUnknown;
+  }
+
   IPAddress& operator=(const IPAddress& b) {
-    family_ = b.family_;
-    address_ = b.address_;
-    prefix_ = b.prefix_;
+    if (this != &b) {
+      family_ = b.family_;
+      address_ = b.address_;
+      prefix_ = b.prefix_;
+    }
+    return *this;
+  }
+  IPAddress& operator=(IPAddress&& b) {
+    if (this != &b) {
+      family_ = b.family_;
+      b.family_ = kFamilyUnknown;
+      address_ = std::move(b.address_);
+      prefix_ = b.prefix_;
+    }
     return *this;
   }
 

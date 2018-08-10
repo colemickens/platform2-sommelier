@@ -31,6 +31,7 @@ class SHILL_EXPORT ByteString {
  public:
   ByteString() {}
   ByteString(const ByteString& b);
+  ByteString(ByteString&&) = default;
 
   explicit ByteString(const std::vector<unsigned char>& data) : data_(data) {}
 
@@ -53,6 +54,7 @@ class SHILL_EXPORT ByteString {
                                                      1 : 0))) {}
 
   ByteString& operator=(const ByteString& b);
+  ByteString& operator=(ByteString&&) = default;
 
   unsigned char* GetData();
   const unsigned char* GetConstData() const;

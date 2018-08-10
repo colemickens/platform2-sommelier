@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
@@ -553,5 +554,30 @@ INSTANTIATE_TEST_CASE_P(
     testing::Combine(
         testing::Range<size_t>(0, arraysize(kIPv4OrderedAddresses) - 1),
         testing::Range<size_t>(0, arraysize(kIPv6OrderedAddresses) - 1)));
+
+TEST(IPAddressMoveTest, MoveConstructor) {
+  const IPAddress const_address(kV4String1);
+  IPAddress source_address(kV4String1);
+  EXPECT_EQ(const_address, source_address);
+
+  const IPAddress dest_address(std::move(source_address));
+  EXPECT_EQ(source_address.GetLength(), 0);
+  EXPECT_FALSE(source_address.IsValid());
+  EXPECT_EQ(const_address, dest_address);
+}
+
+TEST(IPAddressMoveTest, MoveAssignmentOperator) {
+  const IPAddress const_address(kV4String1);
+  IPAddress source_address(kV4String1);
+  IPAddress dest_address(kV4String2);
+
+  EXPECT_EQ(const_address, source_address);
+  EXPECT_FALSE(const_address.Equals(dest_address));
+
+  dest_address = std::move(source_address);
+  EXPECT_EQ(source_address.GetLength(), 0);
+  EXPECT_FALSE(source_address.IsValid());
+  EXPECT_EQ(const_address, dest_address);
+}
 
 }  // namespace shill

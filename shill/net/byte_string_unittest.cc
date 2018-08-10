@@ -19,9 +19,10 @@
 #include <arpa/inet.h>
 #include <endian.h>
 
-#include <gtest/gtest.h>
-
 #include <string>
+#include <utility>
+
+#include <gtest/gtest.h>
 
 using testing::Test;
 using std::string;
@@ -330,6 +331,29 @@ TEST_F(ByteStringTest, LessThanOperator) {
   EXPECT_FALSE(bs2 < bs5);
 
   EXPECT_FALSE(bs5 < bs5);
+}
+
+TEST_F(ByteStringTest, MoveConstructor) {
+  const ByteString const_data(kTest1, sizeof(kTest1));
+  ByteString source_data(kTest1, sizeof(kTest1));
+  EXPECT_EQ(const_data, source_data);
+
+  const ByteString dest_data(std::move(source_data));
+  EXPECT_TRUE(source_data.IsEmpty());
+  EXPECT_EQ(const_data, dest_data);
+}
+
+TEST_F(ByteStringTest, MoveAssignmentOperator) {
+  const ByteString const_data(kTest1, sizeof(kTest1));
+  ByteString source_data(kTest1, sizeof(kTest1));
+  ByteString dest_data(kTest2, sizeof(kTest2));
+
+  EXPECT_EQ(const_data, source_data);
+  EXPECT_FALSE(const_data.Equals(dest_data));
+
+  dest_data = std::move(source_data);
+  EXPECT_TRUE(source_data.IsEmpty());
+  EXPECT_EQ(const_data, dest_data);
 }
 
 }  // namespace shill
