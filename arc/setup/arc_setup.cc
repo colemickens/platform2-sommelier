@@ -1984,7 +1984,7 @@ void ArcSetup::OnSetup() {
 
   // Unconditionally generate host-side code here.
   base::ElapsedTimer timer;
-  GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory);
+  EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
 
   // For now, integrity checking time is the time needed to relocate
   // boot*.art files because of b/67912719. Once TPM is enabled, this will
