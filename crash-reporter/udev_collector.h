@@ -53,6 +53,12 @@ class UdevCollector : public CrashCollector {
                          int instance_number);
   // Clear the device coredump file by performing a dummy write to it.
   bool ClearDevCoredump(const base::FilePath& coredump_path);
+  // Generate the driver path of the failing device from instance and sub-path.
+  base::FilePath GetFailingDeviceDriverPath(int instance_number,
+                                            const std::string& sub_path);
+  // Get the driver name of the failing device from uevent path.
+  std::string ExtractFailingDeviceDriverName(
+      const base::FilePath& failing_uevent_path);
   // Return the driver name of the device that generates the coredump.
   std::string GetFailingDeviceDriverName(int instance_number);
 

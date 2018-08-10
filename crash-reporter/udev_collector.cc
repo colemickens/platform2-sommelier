@@ -199,10 +199,16 @@ bool UdevCollector::ClearDevCoredump(const FilePath& coredump_path) {
   return true;
 }
 
-std::string UdevCollector::GetFailingDeviceDriverName(int instance_number) {
-  FilePath failing_uevent_path = FilePath(
-      base::StringPrintf("%s/devcd%d/failing_device/uevent",
-                         dev_coredump_directory_.c_str(), instance_number));
+FilePath UdevCollector::GetFailingDeviceDriverPath(
+    int instance_number, const std::string& sub_path) {
+  const FilePath dev_coredump_path(dev_coredump_directory_);
+  FilePath failing_uevent_path = dev_coredump_path.Append(
+      base::StringPrintf("devcd%d/%s", instance_number, sub_path.c_str()));
+  return failing_uevent_path;
+}
+
+std::string UdevCollector::ExtractFailingDeviceDriverName(
+    const FilePath& failing_uevent_path) {
   if (!base::PathExists(failing_uevent_path)) {
     LOG(ERROR) << "Failing uevent path " << failing_uevent_path.value()
                << " does not exist";
@@ -225,4 +231,18 @@ std::string UdevCollector::GetFailingDeviceDriverName(int instance_number) {
   }
 
   return "";
+}
+
+std::string UdevCollector::GetFailingDeviceDriverName(int instance_number) {
+  FilePath failing_uevent_path =
+      GetFailingDeviceDriverPath(instance_number, "failing_device/uevent");
+  std::string name = ExtractFailingDeviceDriverName(failing_uevent_path);
+  if (name.empty()) {
+    LOG(WARNING)
+        << "Failed to obtain driver name; trying alternate uevent paths.";
+    failing_uevent_path = GetFailingDeviceDriverPath(
+        instance_number, "failing_device/device/uevent");
+    name = ExtractFailingDeviceDriverName(failing_uevent_path);
+  }
+  return name;
 }
