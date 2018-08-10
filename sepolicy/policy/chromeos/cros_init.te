@@ -20,6 +20,9 @@ allow cros_init self:key { write search setattr };
 
 allow domain cros_init:key search;
 
+# Allow reaping by init.
+allow domain cros_init:process sigchld;
+
 # Transition from kernel to cros_init by executing chromeos's init.
 domain_auto_trans(kernel, chromeos_init_exec, cros_init)
 
