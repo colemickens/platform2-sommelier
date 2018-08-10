@@ -166,6 +166,8 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
     return LE_CRED_ERROR_HASH_TREE;
   }
 
+  const char *uma_log_op = is_le_secret ? kLEOpCheck : kLEOpReset;
+
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
 
   std::vector<uint8_t> orig_cred, orig_mac;
@@ -175,13 +177,18 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
       RetrieveLabelInfo(label_object, &orig_cred, &orig_mac, &h_aux,
                         &metadata_lost);
   if (ret != LE_CRED_SUCCESS) {
+    ReportLEResult(uma_log_op, kLEActionLoadFromDisk, ret);
     return ret;
   }
 
   if (metadata_lost) {
     LOG(ERROR) << "Invalid cred metadata for label: " << label;
+    ReportLEResult(uma_log_op, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_INVALID_METADATA);
     return LE_CRED_ERROR_INVALID_METADATA;
   }
+
+  ReportLEResult(uma_log_op, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
 
   brillo::Blob new_cred, new_mac;
   LECredBackendError err;
@@ -194,10 +201,13 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
                                      &new_mac, &err, &root_hash_);
   }
 
+  ReportLEResult(uma_log_op, kLEActionBackend, ConvertTpmError(err));
+
   // Store the new credential meta data and MAC in case the backend performed a
   // state change. Note that this might also be needed for some failure cases.
   if (!new_cred.empty() && !new_mac.empty()) {
     if (!hash_tree_->StoreLabel(label_object, new_mac, new_cred, false)) {
+      ReportLEResult(uma_log_op, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
       LOG(ERROR) << "Failed to update credential in disk hash tree for label: "
                  << label;
       // This is an un-salvageable state. We can't make LE updates anymore,
@@ -210,6 +220,8 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
       return LE_CRED_ERROR_HASH_TREE;
     }
   }
+
+  ReportLEResult(uma_log_op, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   return ConvertTpmError(err);
 }
