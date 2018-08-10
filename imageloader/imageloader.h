@@ -82,6 +82,11 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   bool UnmountComponent(brillo::ErrorPtr* err, const std::string& name,
                         bool* out_success) override;
 
+  // Unmount the Dlc image mount point given Dlc |id|.
+  bool UnloadDlcImage(brillo::ErrorPtr* err,
+                      const std::string& id,
+                      bool* out_success) override;
+
   // Sandboxes the runtime environment, using minijail. This is publicly exposed
   // so that imageloader_main.cc can sandbox when not running as a daemon.
   static void EnterSandbox();

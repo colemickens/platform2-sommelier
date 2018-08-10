@@ -156,5 +156,20 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="UnloadDlcImage">
+    <tp:docstring>
+      Unmounts a DLC image.
+    </tp:docstring>
+    <arg name="id" type="s" direction="in">
+      <tp:docstring>
+        ID of the DLC.
+      </tp:docstring>
+    </arg>
+    <arg name="success" type="b" direction="out">
+      <tp:docstring>
+        The result of the Dlc unmount (success or failure).
+      </tp:docstring>
+    </arg>
+  </method>
 </interface>
 </node>

@@ -168,4 +168,12 @@ bool ImageLoader::UnmountComponent(
   return true;
 }
 
+bool ImageLoader::UnloadDlcImage(brillo::ErrorPtr* err,
+                                 const std::string& id,
+                                 bool* out_success) {
+  *out_success = impl_.UnloadDlcImage(id, helper_process_proxy_.get());
+  PostponeShutdown();
+  return true;
+}
+
 }  // namespace imageloader

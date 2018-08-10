@@ -137,6 +137,12 @@ bool ImageLoaderImpl::Cleanup(const base::FilePath& path,
   return proxy->SendUnmountCommand(path.value());
 }
 
+bool ImageLoaderImpl::UnloadDlcImage(const std::string& id,
+                                     HelperProcessProxy* proxy) {
+  return proxy->SendUnmountCommand(
+      GetMountPoint(config_.mount_path, id).value());
+}
+
 bool ImageLoaderImpl::RemoveComponentAtPath(
     const std::string& name,
     const base::FilePath& component_root,

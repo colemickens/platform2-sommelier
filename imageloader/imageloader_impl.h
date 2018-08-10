@@ -55,6 +55,9 @@ class ImageLoaderImpl {
   // Cleanup a mount point at |path|.
   bool Cleanup(const base::FilePath& path, HelperProcessProxy* proxy);
 
+  // Cleanup a Dlc mount point given Dlc |id|.
+  bool UnloadDlcImage(const std::string& id, HelperProcessProxy* proxy);
+
   // Get component version given component name.
   std::string GetComponentVersion(const std::string& name);
 

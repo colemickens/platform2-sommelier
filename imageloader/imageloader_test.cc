@@ -246,6 +246,30 @@ TEST_F(ImageLoaderTest, LoadExt4Image) {
   EXPECT_EQ(expected_path, mnt_path);
 }
 
+TEST_F(ImageLoaderTest, UnloadDlcImage) {
+  Keys keys;
+  keys.push_back(
+      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
+
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+
+  const std::string dlc_id = "dlc_id";
+  auto helper_mock = std::make_unique<MockHelperProcessProxy>();
+  EXPECT_CALL(*helper_mock,
+              SendUnmountCommand(
+                  scoped_mount_dir.GetPath().Append(dlc_id).value().c_str()))
+      .Times(1);
+  ON_CALL(*helper_mock, SendUnmountCommand(_))
+      .WillByDefault(testing::Return(true));
+
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
+                           scoped_mount_dir.GetPath().value().c_str());
+  ImageLoaderImpl loader(std::move(config));
+
+  loader.UnloadDlcImage(dlc_id, helper_mock.get());
+}
+
 TEST_F(ImageLoaderTest, RemoveImageAtPathRemovable) {
   Keys keys;
   keys.push_back(
