@@ -29,13 +29,16 @@ namespace cicerone {
 namespace {
 
 // How long to wait before timing out on regular RPCs.
-constexpr int64_t kDefaultTimeoutSeconds = 2;
+constexpr int64_t kDefaultTimeoutSeconds = 10;
 
 // How long to wait while setting up a user.
 constexpr int64_t kSetUpUserTimeoutSeconds = 15;
 
+// How long to wait while creating a container.
+constexpr int64_t kCreateLxdContainerTimeoutSeconds = 30;
+
 // How long to wait while starting a container.
-constexpr int64_t kStartLxdContainerTimeoutSeconds = 15;
+constexpr int64_t kStartLxdContainerTimeoutSeconds = 30;
 
 }  // namespace
 
@@ -176,7 +179,7 @@ VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
       gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+      gpr_time_from_seconds(kCreateLxdContainerTimeoutSeconds, GPR_TIMESPAN)));
 
   grpc::Status status =
       tremplin_stub_->CreateContainer(&ctx, request, &response);
