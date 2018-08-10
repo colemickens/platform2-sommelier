@@ -81,6 +81,25 @@ const int kMemuseIntervals[] = {
     600 * kSecondsPerMinute,  // 12.5 hour mark
 };
 
+constexpr char kDailyUseTimeName[] = "Platform.DailyUseTime";
+constexpr char kCumulativeUseTimeName[] = "Platform.CumulativeUseTime";
+constexpr char kCumulativeCpuTimeName[] = "Platform.CumulativeCpuTime";
+constexpr char kKernelCrashIntervalName[] = "Platform.KernelCrashInterval";
+constexpr char kUncleanShutdownIntervalName[] =
+    "Platform.UncleanShutdownInterval";
+constexpr char kUserCrashIntervalName[] = "Platform.UserCrashInterval";
+constexpr char kAnyCrashesDailyName[] = "Platform.AnyCrashesDaily";
+constexpr char kAnyCrashesWeeklyName[] = "Platform.AnyCrashesWeekly";
+constexpr char kUserCrashesDailyName[] = "Platform.UserCrashesDaily";
+constexpr char kUserCrashesWeeklyName[] = "Platform.UserCrashesWeekly";
+constexpr char kKernelCrashesDailyName[] = "Platform.KernelCrashesDaily";
+constexpr char kKernelCrashesWeeklyName[] = "Platform.KernelCrashesWeekly";
+constexpr char kKernelCrashesSinceUpdateName[] =
+    "Platform.KernelCrashesSinceUpdate";
+constexpr char kUncleanShutdownsDailyName[] = "Platform.UncleanShutdownsDaily";
+constexpr char kUncleanShutdownsWeeklyName[] =
+    "Platform.UncleanShutdownsWeekly";
+
 }  // namespace
 
 // disk stats metrics
@@ -262,12 +281,14 @@ void MetricsDaemon::Init(bool testing,
                          const base::TimeDelta& upload_interval,
                          const string& server,
                          const string& metrics_file,
-                         const string& config_root) {
+                         const string& config_root,
+                         const base::FilePath& backing_dir) {
   testing_ = testing;
   uploader_active_ = uploader_active;
   config_root_ = config_root;
   DCHECK(metrics_lib != nullptr);
   metrics_lib_ = metrics_lib;
+  backing_dir_ = backing_dir;
 
   upload_interval_ = upload_interval;
   server_ = server;
@@ -277,41 +298,44 @@ void MetricsDaemon::Init(bool testing,
   // Sysconf cannot fail, so no sanity checks are needed.
   ticks_per_second_ = sysconf(_SC_CLK_TCK);
 
-  daily_active_use_.reset(new PersistentInteger("Platform.DailyUseTime"));
+  daily_active_use_.reset(
+      new PersistentInteger(backing_dir_.Append(kDailyUseTimeName)));
   version_cumulative_active_use_.reset(
-      new PersistentInteger("Platform.CumulativeUseTime"));
+      new PersistentInteger(backing_dir_.Append(kCumulativeUseTimeName)));
   version_cumulative_cpu_use_.reset(
-      new PersistentInteger("Platform.CumulativeCpuTime"));
-
+      new PersistentInteger(backing_dir_.Append(kCumulativeCpuTimeName)));
   kernel_crash_interval_.reset(
-      new PersistentInteger("Platform.KernelCrashInterval"));
+      new PersistentInteger(backing_dir_.Append(kKernelCrashIntervalName)));
   unclean_shutdown_interval_.reset(
-      new PersistentInteger("Platform.UncleanShutdownInterval"));
+      new PersistentInteger(backing_dir_.Append(kUncleanShutdownIntervalName)));
   user_crash_interval_.reset(
-      new PersistentInteger("Platform.UserCrashInterval"));
-
+      new PersistentInteger(backing_dir_.Append(kUserCrashIntervalName)));
   any_crashes_daily_count_.reset(
-      new PersistentInteger("Platform.AnyCrashesDaily"));
+      new PersistentInteger(backing_dir_.Append(kAnyCrashesDailyName)));
   any_crashes_weekly_count_.reset(
-      new PersistentInteger("Platform.AnyCrashesWeekly"));
+      new PersistentInteger(backing_dir_.Append(kAnyCrashesWeeklyName)));
   user_crashes_daily_count_.reset(
-      new PersistentInteger("Platform.UserCrashesDaily"));
+      new PersistentInteger(backing_dir_.Append(kUserCrashesDailyName)));
   user_crashes_weekly_count_.reset(
-      new PersistentInteger("Platform.UserCrashesWeekly"));
+      new PersistentInteger(backing_dir_.Append(kUserCrashesWeeklyName)));
   kernel_crashes_daily_count_.reset(
-      new PersistentInteger("Platform.KernelCrashesDaily"));
+      new PersistentInteger(backing_dir_.Append(kKernelCrashesDailyName)));
   kernel_crashes_weekly_count_.reset(
-      new PersistentInteger("Platform.KernelCrashesWeekly"));
+      new PersistentInteger(backing_dir_.Append(kKernelCrashesWeeklyName)));
   kernel_crashes_version_count_.reset(
-      new PersistentInteger("Platform.KernelCrashesSinceUpdate"));
+      new PersistentInteger(
+          backing_dir_.Append(kKernelCrashesSinceUpdateName)));
   unclean_shutdowns_daily_count_.reset(
-      new PersistentInteger("Platform.UncleanShutdownsDaily"));
+      new PersistentInteger(backing_dir_.Append(kUncleanShutdownsDailyName)));
   unclean_shutdowns_weekly_count_.reset(
-      new PersistentInteger("Platform.UncleanShutdownsWeekly"));
+      new PersistentInteger(backing_dir_.Append(kUncleanShutdownsWeeklyName)));
 
-  daily_cycle_.reset(new PersistentInteger("daily.cycle"));
-  weekly_cycle_.reset(new PersistentInteger("weekly.cycle"));
-  version_cycle_.reset(new PersistentInteger("version.cycle"));
+  daily_cycle_.reset(
+      new PersistentInteger(backing_dir_.Append("daily.cycle")));
+  weekly_cycle_.reset(
+      new PersistentInteger(backing_dir_.Append("weekly.cycle")));
+  version_cycle_.reset(
+      new PersistentInteger(backing_dir_.Append("version.cycle")));
 
   diskstats_path_ = diskstats_path;
   vmstats_path_ = vmstats_path;
@@ -496,7 +520,7 @@ void MetricsDaemon::ProcessUserCrash() {
   UpdateStats(TimeTicks::Now(), Time::Now());
 
   // Reports the active use time since the last crash and resets it.
-  SendAndResetCrashIntervalSample(user_crash_interval_);
+  SendAndResetCrashIntervalSample(user_crash_interval_, kUserCrashIntervalName);
 
   any_crashes_daily_count_->Add(1);
   any_crashes_weekly_count_->Add(1);
@@ -509,7 +533,8 @@ void MetricsDaemon::ProcessKernelCrash() {
   UpdateStats(TimeTicks::Now(), Time::Now());
 
   // Reports the active use time since the last crash and resets it.
-  SendAndResetCrashIntervalSample(kernel_crash_interval_);
+  SendAndResetCrashIntervalSample(kernel_crash_interval_,
+                                  kKernelCrashIntervalName);
 
   any_crashes_daily_count_->Add(1);
   any_crashes_weekly_count_->Add(1);
@@ -524,7 +549,8 @@ void MetricsDaemon::ProcessUncleanShutdown() {
   UpdateStats(TimeTicks::Now(), Time::Now());
 
   // Reports the active use time since the last crash and resets it.
-  SendAndResetCrashIntervalSample(unclean_shutdown_interval_);
+  SendAndResetCrashIntervalSample(unclean_shutdown_interval_,
+                                  kUncleanShutdownIntervalName);
 
   unclean_shutdowns_daily_count_->Add(1);
   unclean_shutdowns_weekly_count_->Add(1);
@@ -1227,14 +1253,14 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   // Report the number of crashes for this OS version, but don't clear the
   // counter.  It is cleared elsewhere on version change.
   int64_t crashes_count = kernel_crashes_version_count_->Get();
-  SendSample(kernel_crashes_version_count_->Name(),
+  SendSample(kKernelCrashesSinceUpdateName,
              crashes_count,
              1,     // value of first bucket
              500,   // value of last bucket
              100);  // number of buckets
 
   int64_t cpu_use_ms = version_cumulative_cpu_use_->Get();
-  SendSample(version_cumulative_cpu_use_->Name(),
+  SendSample(kCumulativeCpuTimeName,
              cpu_use_ms / 1000,  // stat is in seconds
              1,                  // device may be used very little...
              8 * 1000 * 1000,    // ... or a lot (a little over 90 days)
@@ -1253,7 +1279,7 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
 
   int64_t active_use_seconds = version_cumulative_active_use_->Get();
   if (active_use_seconds > 0) {
-    SendSample(version_cumulative_active_use_->Name(),
+    SendSample(kCumulativeUseTimeName,
                active_use_seconds,
                1,                // device may be used very little...
                8 * 1000 * 1000,  // ... or a lot (about 90 days)
@@ -1267,18 +1293,18 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   }
 }
 
-void MetricsDaemon::SendAndResetDailyUseSample(
-    const std::unique_ptr<PersistentInteger>& use) {
-  SendSample(use->Name(),
-             use->GetAndClear(),
+void MetricsDaemon::SendAndResetDailyUseSample() {
+  SendSample(kDailyUseTimeName,
+             daily_active_use_->GetAndClear(),
              1,               // value of first bucket
              kSecondsPerDay,  // value of last bucket
              50);             // number of buckets
 }
 
 void MetricsDaemon::SendAndResetCrashIntervalSample(
-    const std::unique_ptr<PersistentInteger>& interval) {
-  SendSample(interval->Name(),
+    const std::unique_ptr<PersistentInteger>& interval,
+    const std::string& name) {
+  SendSample(name,
              interval->GetAndClear(),
              1,                    // value of first bucket
              4 * kSecondsPerWeek,  // value of last bucket
@@ -1286,8 +1312,9 @@ void MetricsDaemon::SendAndResetCrashIntervalSample(
 }
 
 void MetricsDaemon::SendAndResetCrashFrequencySample(
-    const std::unique_ptr<PersistentInteger>& frequency) {
-  SendSample(frequency->Name(),
+    const std::unique_ptr<PersistentInteger>& frequency,
+    const std::string& name) {
+  SendSample(name,
              frequency->GetAndClear(),
              1,    // value of first bucket
              100,  // value of last bucket
@@ -1332,20 +1359,28 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
 
   if (daily_cycle_->Get() != day) {
     daily_cycle_->Set(day);
-    SendAndResetDailyUseSample(daily_active_use_);
-    SendAndResetCrashFrequencySample(any_crashes_daily_count_);
-    SendAndResetCrashFrequencySample(user_crashes_daily_count_);
-    SendAndResetCrashFrequencySample(kernel_crashes_daily_count_);
-    SendAndResetCrashFrequencySample(unclean_shutdowns_daily_count_);
+    SendAndResetDailyUseSample();
+    SendAndResetCrashFrequencySample(any_crashes_daily_count_,
+                                     kAnyCrashesDailyName);
+    SendAndResetCrashFrequencySample(user_crashes_daily_count_,
+                                     kUserCrashesDailyName);
+    SendAndResetCrashFrequencySample(kernel_crashes_daily_count_,
+                                     kKernelCrashesDailyName);
+    SendAndResetCrashFrequencySample(unclean_shutdowns_daily_count_,
+                                     kUncleanShutdownsDailyName);
     SendKernelCrashesCumulativeCountStats();
   }
 
   if (weekly_cycle_->Get() != week) {
     weekly_cycle_->Set(week);
-    SendAndResetCrashFrequencySample(any_crashes_weekly_count_);
-    SendAndResetCrashFrequencySample(user_crashes_weekly_count_);
-    SendAndResetCrashFrequencySample(kernel_crashes_weekly_count_);
-    SendAndResetCrashFrequencySample(unclean_shutdowns_weekly_count_);
+    SendAndResetCrashFrequencySample(any_crashes_weekly_count_,
+                                     kAnyCrashesWeeklyName);
+    SendAndResetCrashFrequencySample(user_crashes_weekly_count_,
+                                     kUserCrashesWeeklyName);
+    SendAndResetCrashFrequencySample(kernel_crashes_weekly_count_,
+                                     kKernelCrashesWeeklyName);
+    SendAndResetCrashFrequencySample(unclean_shutdowns_weekly_count_,
+                                     kUncleanShutdownsWeeklyName);
   }
 }
 

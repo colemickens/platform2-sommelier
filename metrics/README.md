@@ -84,23 +84,12 @@ for example, aggregate data and send the histogram samples.
 
 The CumulativeMetrics class in libmetrics helps keep track of quantities across
 boot sessions, so that the quantities can be accumulated over stretches of time
-(for instance, a day or a week) and then reported as samples.  For this
-purpose, some persistent state (i.e. partial accumulations) is maintained as
-files on the device.  The file names use a prefix supplied by the user of the
-CumulativeMetrics class.  Typically the prefix should be the name of the daemon
-(or other program) using the class.  The following prefixes are currently
-reserved.  New prefixes should be added to this list.
-
-`metrics_daemon`:
-
-- `Platform.`
-- `daily.`
-- `weekly.`
-- `version.`
-
-`shill`:
-
-- `shill.`
+(for instance, a day or a week) without concerns about intervening reboots or
+version changes, and then reported as samples.  For this purpose, some
+persistent state (i.e. partial accumulations) is maintained as files on the
+device.  These "backing files" are typically placed in
+/var/lib/<daemon-name>/metrics.  (The metrics daemon is an exception, with its
+backing files being in /var/lib/metrics.)
 
 # Memory Daemon
 

@@ -40,7 +40,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
             const base::TimeDelta& upload_interval,
             const std::string& server,
             const std::string& metrics_file,
-            const std::string& config_root);
+            const std::string& config_root,
+            const base::FilePath& persistent_dir_path);
 
   // Initializes DBus and MessageLoop variables before running the MessageLoop.
   int OnInit() override;
@@ -213,18 +214,19 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // Sends a sample representing the number of seconds of active use
   // for a 24-hour period and reset |use|.
-  void SendAndResetDailyUseSample(
-      const std::unique_ptr<PersistentInteger>& use);
+  void SendAndResetDailyUseSample();
 
   // Sends a sample representing a time interval between two crashes of the
   // same type and reset |interval|.
   void SendAndResetCrashIntervalSample(
-      const std::unique_ptr<PersistentInteger>& interval);
+      const std::unique_ptr<PersistentInteger>& interval,
+      const std::string& name);
 
   // Sends a sample representing a frequency of crashes of some type and reset
   // |frequency|.
   void SendAndResetCrashFrequencySample(
-      const std::unique_ptr<PersistentInteger>& frequency);
+      const std::unique_ptr<PersistentInteger>& frequency,
+      const std::string& name);
 
   // Initializes vm and disk stats reporting.
   void StatsReporterInit();
@@ -406,6 +408,9 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   std::unique_ptr<UploadService> upload_service_;
   std::unique_ptr<VmlogWriter> vmlog_writer_;
+
+  // The backing directory for persistent integers.
+  base::FilePath backing_dir_;
 
   DISALLOW_COPY_AND_ASSIGN(MetricsDaemon);
 };

@@ -42,20 +42,16 @@ std::string ChannelToString(
   }
 }
 
-SystemProfileCache::SystemProfileCache()
-    : initialized_(false),
-      testing_(false),
-      config_root_("/"),
-      session_id_(new chromeos_metrics::PersistentInteger(
-          kPersistentSessionIdFilename)) {}
+SystemProfileCache::SystemProfileCache() : SystemProfileCache(false, "/") {}
 
 SystemProfileCache::SystemProfileCache(bool testing,
                                        const std::string& config_root)
     : initialized_(false),
       testing_(testing),
-      config_root_(config_root),
-      session_id_(new chromeos_metrics::PersistentInteger(
-          kPersistentSessionIdFilename)) {}
+      config_root_(config_root) {
+  base::FilePath backing_file(kPersistentSessionIdFilename);
+  session_id_.reset(new chromeos_metrics::PersistentInteger(backing_file));
+}
 
 bool SystemProfileCache::Initialize() {
   CHECK(!initialized_)

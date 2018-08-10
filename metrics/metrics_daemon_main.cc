@@ -14,6 +14,8 @@
 
 namespace {
 
+const char kPersistentIntegerBackingDir[] = "/var/lib/metrics";
+
 const char kScalingMaxFreqPath[] =
     "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq";
 const char kCpuinfoMaxFreqPath[] =
@@ -79,6 +81,7 @@ int main(int argc, char** argv) {
     return errno;
   }
 
+  base::FilePath backing_dir_path(kPersistentIntegerBackingDir);
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   chromeos_metrics::MetricsDaemon daemon;
@@ -92,7 +95,8 @@ int main(int argc, char** argv) {
               base::TimeDelta::FromSeconds(FLAGS_upload_interval_secs),
               FLAGS_server,
               FLAGS_metrics_file,
-              FLAGS_config_root);
+              FLAGS_config_root,
+              backing_dir_path);
 
   if (FLAGS_uploader_test) {
     daemon.RunUploaderTest();

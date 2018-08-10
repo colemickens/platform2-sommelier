@@ -5,17 +5,19 @@
 #include "metrics/cumulative_metrics.h"
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/strings/string_util.h>
 #include <base/sys_info.h>
 #include <memory>
 #include <utility>
 
+using base::FilePath;
 using base::Time;
 
 namespace chromeos_metrics {
 namespace {
 
-constexpr char kValidPrefixCharacters[] =
+constexpr char kValidNameCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "0123456789_.";
@@ -23,31 +25,31 @@ constexpr char kValidPrefixCharacters[] =
 }  // namespace
 
 CumulativeMetrics::CumulativeMetrics(
-    const std::string& prefix,
+    const FilePath& backing_dir,
     const std::vector<std::string>& names,
     base::TimeDelta update_period,
     Callback update_callback,
     base::TimeDelta accumulation_period,
     Callback cycle_end_callback) :
-        prefix_(prefix), update_period_(update_period),
+        backing_dir_(backing_dir),
+        update_period_(update_period),
         accumulation_period_(accumulation_period) {
   int64_t new_version_hash = 0;
-  PersistentInteger persistent_version_hash(prefix + "version.hash");
 
-  if (!base::ContainsOnlyChars(prefix, kValidPrefixCharacters))
-      LOG(FATAL) << "invalid cumulative metrics prefix \"" << prefix << "\"";
-
-  prefix_ = prefix;
+  PersistentInteger persistent_version_hash(backing_dir.Append("version.hash"));
   update_callback_ = std::move(update_callback);
   cycle_end_callback_ = std::move(cycle_end_callback);
 
-  cycle_start_.reset(new PersistentInteger(prefix + "cycle.start"));
+  cycle_start_.reset(new PersistentInteger(backing_dir.Append("cycle.start")));
   last_update_time_ = base::TimeTicks::Now();
 
   // Associate |names| with accumulated values (which may already exist from
   // previous sessions).
   for (const auto& name : names) {
-    values_.emplace(name, std::make_unique<PersistentInteger>(prefix + name));
+    CHECK(base::ContainsOnlyChars(name, kValidNameCharacters))
+        << "bad cumulative metrics name \"" << name << "\"";
+    values_.emplace(
+        name, std::make_unique<PersistentInteger>(backing_dir.Append(name)));
   }
 
   // Check version hash.  This only needs to happen at init time because we
@@ -113,8 +115,8 @@ void CumulativeMetrics::Update() {
 
 void CumulativeMetrics::PanicFromBadName(const char* action,
                                          const std::string& name) const {
-  LOG(FATAL) << "cannot execute action \"" << action << " on \"" << name <<
-      "\" because it is not in CumulativeMetrics \"" << prefix_ << "\"";
+  LOG(FATAL) << "cannot execute action \"" << action << "\": unknown name \""
+             << name << "\"";
 }
 
 PersistentInteger* CumulativeMetrics::Find(const std::string& name) const {

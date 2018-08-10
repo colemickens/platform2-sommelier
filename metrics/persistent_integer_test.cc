@@ -7,23 +7,23 @@
 #include <gtest/gtest.h>
 
 #include <base/compiler_specific.h>
+#include <base/files/scoped_temp_dir.h>
 
 #include "metrics/persistent_integer.h"
-#include "metrics/persistent_integer_test_base.h"
 
 using chromeos_metrics::PersistentInteger;
 
-class PersistentIntegerTest :
-    public chromeos_metrics::PersistentIntegerTestBase {
+class PersistentIntegerTest : public testing::Test {
 };
 
 TEST_F(PersistentIntegerTest, BasicChecks) {
-  const std::string pi_name("xyz");
-  std::unique_ptr<PersistentInteger> pi(new PersistentInteger(pi_name));
+  base::ScopedTempDir temp_dir;
+  CHECK(temp_dir.CreateUniqueTempDir());
+  const base::FilePath backing_path = temp_dir.GetPath().Append("xyz");
+  auto pi = std::make_unique<PersistentInteger>(backing_path);
 
   // Test initialization.
   EXPECT_EQ(0, pi->Get());
-  EXPECT_EQ(pi_name, pi->Name());  // not too useful really
 
   // Test set and add.
   pi->Set(2);
@@ -31,7 +31,7 @@ TEST_F(PersistentIntegerTest, BasicChecks) {
   EXPECT_EQ(5, pi->Get());
 
   // Test persistence.
-  pi.reset(new PersistentInteger(pi_name));
+  pi.reset(new PersistentInteger(backing_path));
   EXPECT_EQ(5, pi->Get());
 
   // Test GetAndClear.
@@ -39,6 +39,6 @@ TEST_F(PersistentIntegerTest, BasicChecks) {
   EXPECT_EQ(pi->Get(), 0);
 
   // Another persistence test.
-  pi.reset(new PersistentInteger(pi_name));
+  pi.reset(new PersistentInteger(backing_path));
   EXPECT_EQ(0, pi->Get());
 }

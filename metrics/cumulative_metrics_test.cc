@@ -6,11 +6,12 @@
 
 #include "base/at_exit.h"
 #include "base/bind.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/run_loop.h"
 #include "base/sys_info.h"
 #include "base/time/time.h"
 #include "metrics/cumulative_metrics.h"
-#include "metrics/persistent_integer_test_base.h"
 
 using chromeos_metrics::CumulativeMetrics;
 
@@ -28,8 +29,7 @@ static int accumulator_report_count = 0;
 
 }  // namespace
 
-class CumulativeMetricsTest : public PersistentIntegerTestBase {
-};
+class CumulativeMetricsTest : public testing::Test {};
 
 static void UpdateAccumulators(CumulativeMetrics *cm) {
   cm->Add(kMetricNameX, 111);
@@ -56,10 +56,14 @@ static void ReportAccumulators(CumulativeMetrics *cm) {
 
 TEST_F(CumulativeMetricsTest, TestLoop) {
   base::MessageLoop message_loop;
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  const base::FilePath pi_path = temp_dir.GetPath().Append("cumulative");
+  ASSERT_TRUE(base::CreateDirectory(pi_path));
 
   std::vector<std::string> names = {kMetricNameX, kMetricNameY};
   CumulativeMetrics cm(
-      "cumulative.testing.",
+      pi_path,
       names,
       base::TimeDelta::FromMilliseconds(100),
       base::Bind(&UpdateAccumulators),

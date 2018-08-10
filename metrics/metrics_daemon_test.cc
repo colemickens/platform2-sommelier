@@ -65,11 +65,9 @@ class MetricsDaemonTest : public testing::Test {
     CreateUint64ValueFile(base::FilePath(kFakeCpuinfoMaxFreqPath), 10000000);
     CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath), 10000000);
 
-    CHECK(test_dir_.CreateUniqueTempDir());
-    std::string test_dir_name = test_dir_.GetPath().MaybeAsASCII() + "/";
-    CHECK(!test_dir_name.empty());
-    PersistentInteger::SetTestingMode(test_dir_name);
-    chromeos_metrics::PersistentInteger::SetTestingMode(test_dir_name);
+    // Create the backing directory.
+    CHECK(persistent_integer_backing_dir_.CreateUniqueTempDir());
+    base::FilePath backing_dir_path = persistent_integer_backing_dir_.GetPath();
 
     daemon_.Init(true,
                  false,
@@ -81,21 +79,25 @@ class MetricsDaemonTest : public testing::Test {
                  base::TimeDelta::FromMinutes(30),
                  kMetricsServer,
                  kMetricsFilePath,
-                 "/");
+                 "/",
+                 backing_dir_path);
 
     // Replace original persistent values with mock ones.
-    daily_active_use_mock_ = new StrictMock<PersistentIntegerMock>("1.mock");
+    base::FilePath m1 = backing_dir_path.Append("1.mock");
+    daily_active_use_mock_ = new StrictMock<PersistentIntegerMock>(m1);
     daemon_.daily_active_use_.reset(daily_active_use_mock_);
 
-    kernel_crash_interval_mock_ =
-        new StrictMock<PersistentIntegerMock>("2.mock");
+    base::FilePath m2 = backing_dir_path.Append("2.mock");
+    kernel_crash_interval_mock_ = new StrictMock<PersistentIntegerMock>(m2);
     daemon_.kernel_crash_interval_.reset(kernel_crash_interval_mock_);
 
-    user_crash_interval_mock_ = new StrictMock<PersistentIntegerMock>("3.mock");
+    base::FilePath m3 = backing_dir_path.Append("3.mock");
+    user_crash_interval_mock_ = new StrictMock<PersistentIntegerMock>(m3);
     daemon_.user_crash_interval_.reset(user_crash_interval_mock_);
 
+    base::FilePath m4 = backing_dir_path.Append("4.mock");
     unclean_shutdown_interval_mock_ =
-        new StrictMock<PersistentIntegerMock>("4.mock");
+        new StrictMock<PersistentIntegerMock>(m4);
     daemon_.unclean_shutdown_interval_.reset(unclean_shutdown_interval_mock_);
   }
 
@@ -189,12 +191,13 @@ class MetricsDaemonTest : public testing::Test {
 
   // The MetricsDaemon under test.
   MetricsDaemon daemon_;
-  // Directory for temp files.
-  base::ScopedTempDir test_dir_;
+  // The temporary directory for backing files.
+  base::ScopedTempDir persistent_integer_backing_dir_;
 
   // Mocks. They are strict mock so that all unexpected
   // calls are marked as failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
+  // These are assigned into unique_ptrs owned by daemon_, so they don't leak.
   StrictMock<PersistentIntegerMock>* daily_active_use_mock_;
   StrictMock<PersistentIntegerMock>* kernel_crash_interval_mock_;
   StrictMock<PersistentIntegerMock>* user_crash_interval_mock_;

@@ -116,7 +116,6 @@
             '../common-mk/testrunner.cc',
             'persistent_integer.cc',
             'persistent_integer_test.cc',
-            'persistent_integer_test_base.cc',
           ],
         },
         {
@@ -128,7 +127,6 @@
             'cumulative_metrics.cc',
             'cumulative_metrics_test.cc',
             'persistent_integer.cc',
-            'persistent_integer_test_base.cc',
           ],
         },
         {

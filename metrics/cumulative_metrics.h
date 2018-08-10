@@ -9,15 +9,15 @@
 // {
 //   // initialization, at daemon startup
 //   ...
-//   std::vector<std::string> stat_names = {"wifi", "lte", "total"};
+//   base::FilePath backing_dir("/var/lib/metrics/shill");
+//   std::vector<std::string> stat_names = {"wifi", "cellular", "total"};
 //   CumulativeMetrics cm(
-//     "shill.time.",
+//     backing_dir,
 //     stat_names,
 //     TimeDelta::FromMinutes(5),
 //     base::Bind(&UpdateConnectivityStats),
 //     TimeDelta::FromDays(1),
-//     base::Bind(&ReportConnectivityStats,
-//                base::Unretained(metrics_lib_));
+//     base::Bind(&ReportConnectivityStats, base::Unretained(metrics_lib_));
 //
 //   ...
 // }
@@ -27,7 +27,7 @@
 //     cm->Add("wifi", cm->ActiveTimeSinceLastUpdate());
 //   }
 //   if (lte_connected) {
-//     cm->Add("lte", cm->ActiveTimeSinceLastUpdate());
+//     cm->Add("cellular", cm->ActiveTimeSinceLastUpdate());
 //   }
 //   cm->Add("total", cm->ActiveTimeSinceLastUpdate());
 // }
@@ -41,7 +41,7 @@
 // }
 //
 // In the above example, the cumulative metrics object helps maintain three
-// quantities (wifi, lte, and total) persistently across boot sessions and
+// quantities (wifi, cellular, and total) persistently across boot sessions and
 // other daemon restarts.  The quantities are updated every 5 minutes, and
 // samples are sent at most once a day.
 //
@@ -70,12 +70,11 @@ class CumulativeMetrics {
   using Callback = base::Callback<void(CumulativeMetrics*)>;
   // Constructor.
   //
-  // |prefix| must be unique across all programs and is used to name the files
-  // storing the persistent integers.  We recommend using the name of the
-  // daemon using this class.  Please ensure that the prefix is not already
-  // in use by consulting README.md, and add new prefixes there.
+  // |backing_dir| points to a subdirectory for the backing files, for instance
+  // "/var/lib/shill/metrics".
   //
-  // |names| are the names of the quantities to be maintained.
+  // |names| are the names of the quantities to be maintained.  They also name
+  // the corresponding backing files.
   //
   // |update_callback| and |cycle_end_callback| are partial closures which take
   // one argument of type CumulativeMetrics* and return void.  The former is
@@ -85,12 +84,12 @@ class CumulativeMetrics {
   //
   // Note that the accumulated values are cleared at the end of each cycle
   // after calling |cycle_end_callback_|, which typically sends those
-  // quantities as histogram values).  They are also cleared on Chrome OS
+  // quantities as histogram values.  They are also cleared on Chrome OS
   // version changes, but in that case |cycle_end_callback_| is not called
-  // (unless the version change is noticed together with the end of a cycle).
-  // The assumption is that we want to ship correct histograms for each
-  // version, so we can notice the impact of the version change.
-  CumulativeMetrics(const std::string& prefix,
+  // unless the version change happens together with the end of a cycle.  The
+  // reason is that we want to ship correct histograms for each version, so we
+  // can notice the impact of the version change.
+  CumulativeMetrics(const base::FilePath& backing_dir,
                     const std::vector<std::string>& names,
                     base::TimeDelta update_period,
                     Callback update_callback,
@@ -125,7 +124,7 @@ class CumulativeMetrics {
   void PanicFromBadName(const char* action, const std::string& name) const;
 
  private:
-  std::string prefix_;                    // for persistent integer filenames
+  base::FilePath backing_dir_;            // for PersistentInteger backing files
   std::map<std::string, std::unique_ptr<PersistentInteger>> values_;
                                           // name -> accumulated value
   base::TimeDelta update_period_;         // interval between update callbacks
