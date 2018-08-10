@@ -10,20 +10,15 @@
 #include <base/macros.h>
 #include <base/run_loop.h>
 #include <base/callback_helpers.h>
-#include <base/command_line.h>
-#include <base/threading/thread_task_runner_handle.h>
-#include <brillo/flag_helper.h>
-#include <brillo/message_loops/base_message_loop.h>
 #include <brillo/test_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tensorflow/contrib/lite/context.h>
 #include <tensorflow/contrib/lite/interpreter.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/process_delegate.h>
 
 #include "ml/graph_executor_impl.h"
 #include "ml/tensor_view.h"
+#include "ml/test_utils.h"
 #include "mojom/graph_executor.mojom.h"
 #include "mojom/tensor.mojom.h"
 
@@ -39,28 +34,6 @@ using ::chromeos::machine_learning::mojom::Tensor;
 using ::chromeos::machine_learning::mojom::TensorPtr;
 using ::chromeos::machine_learning::mojom::ValueList;
 using ::testing::ElementsAre;
-
-// Create a tensor with the given shape and values. Does no validity checking
-// (by design, as we sometimes need to pass bad tensors to test error handling).
-template <typename T>
-TensorPtr NewTensor(const std::vector<int64_t>& shape,
-                    const std::vector<T>& values) {
-  TensorPtr tensor(Tensor::New());
-  TensorView<T> tensor_view(tensor);
-  tensor_view.Allocate();
-
-  mojo::Array<int64_t>& tensor_shape = tensor_view.GetShape();
-  for (const int64_t dim : shape) {
-    tensor_shape.push_back(dim);
-  }
-
-  mojo::Array<T>& tensor_values = tensor_view.GetValues();
-  for (const T& value : values) {
-    tensor_values.push_back(value);
-  }
-
-  return tensor;
-}
 
 // Make the simplest possible model: one that copies its input to its output.
 std::unique_ptr<tflite::Interpreter> IdentityInterpreter() {
@@ -683,21 +656,3 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeShape) {
 
 }  // namespace
 }  // namespace ml
-
-// A ProcessDelegate that does nothing upon IPC system shutdown.
-class DoNothingProcessDelegate : public mojo::edk::ProcessDelegate {
- public:
-  void OnShutdownComplete() override {}
-};
-
-int main(int argc, char** argv) {
-  SetUpTests(&argc, argv, true);
-
-  (new brillo::BaseMessageLoop())->SetAsCurrent();
-
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(new DoNothingProcessDelegate(),
-                            base::ThreadTaskRunnerHandle::Get());
-
-  return RUN_ALL_TESTS();
-}

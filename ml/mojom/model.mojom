@@ -20,6 +20,12 @@ enum ModelId {
   POWER_MANAGER
 };
 
+enum CreateGraphExecutorResult {
+  OK = 0,
+  MODEL_INTERPRETATION_ERROR,
+  MEMORY_ALLOCATION_ERROR,
+};
+
 struct ModelSpec {
   ModelId id;
 };
@@ -28,5 +34,6 @@ struct ModelSpec {
 // interface pipe. The Model interface pipe can be used to acquire multiple
 // separate GraphExecutor instances.
 interface Model {
-  CreateGraphExecutor(GraphExecutor& request);
+  CreateGraphExecutor(GraphExecutor& request) =>
+      (CreateGraphExecutorResult result);
 };
