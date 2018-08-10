@@ -2,13 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Standard C++ Library.
-#include <utility>
+#include "portier/nd_msg.h"
 
-// Linux Netowkring Library.
 #include <netinet/icmp6.h>
 
-#include "portier/nd_msg.h"
+#include <utility>
 
 namespace portier {
 

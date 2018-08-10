@@ -5,7 +5,6 @@
 #ifndef PORTIER_STATUS_H_
 #define PORTIER_STATUS_H_
 
-// Standard C++ Library.
 #include <ostream>
 #include <string>
 

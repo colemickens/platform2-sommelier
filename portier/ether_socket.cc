@@ -2,21 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string.h>
+#include "portier/ether_socket.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
 #include <net/ethernet.h>  // L2 stuff.
 #include <net/if.h>        // Interface stuff.
 #include <netinet/ip6.h>   // IPv6 stuff.
+#include <string.h>
 #include <sys/socket.h>
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
-
-#include "portier/ether_socket.h"
 
 namespace portier {
 

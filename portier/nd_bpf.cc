@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <limits.h>
-#include <stddef.h>
+#include "portier/nd_bpf.h"
 
+#include <limits.h>
 #include <linux/filter.h>
 #include <net/ethernet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip6.h>
-
-#include "portier/nd_bpf.h"
+#include <stddef.h>
 
 namespace portier {
 

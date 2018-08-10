@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "portier/group_mgr.h"
+
 #include <algorithm>
 #include <utility>
 
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
-
-#include "portier/group_mgr.h"
 
 namespace portier {
 

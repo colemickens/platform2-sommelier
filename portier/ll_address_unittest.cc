@@ -2,22 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Standard C Library.
-#include <string>
+#include "portier/ll_address.h"
 
-// Linux Header Files.
 #include <linux/if_packet.h>
 #include <net/if_arp.h>
 #include <sys/socket.h>
 
-// Chrome OS Library.
-#include <shill/net/byte_string.h>
-
-// Chrome OS Testing Library.
 #include <gtest/gtest.h>
-
-// Portier Library.
-#include "portier/ll_address.h"
+#include <shill/net/byte_string.h>
 
 namespace portier {
 

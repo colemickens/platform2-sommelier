@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "portier/icmpv6_socket.h"
+
 #include <errno.h>
 #include <net/ethernet.h>
 #include <netinet/icmp6.h>
@@ -15,8 +17,6 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/posix/safe_strerror.h>
-
-#include "portier/icmpv6_socket.h"
 
 namespace portier {
 

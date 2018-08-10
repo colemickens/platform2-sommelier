@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "portier/nd_msg.h"
+
 #include <arpa/inet.h>
 
 #include <base/time/time.h>
+#include <gtest/gtest.h>
 #include <shill/net/byte_string.h>
 #include <shill/net/ip_address.h>
-
-#include <gtest/gtest.h>
-
-#include "portier/nd_msg.h"
 
 namespace portier {
 

@@ -2,14 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Standard C++ Library.
+#include "portier/status.h"
+
 #include <utility>
 
-// Chrome OS Library.
 #include <base/strings/stringprintf.h>
-
-// Portier Library.
-#include "portier/status.h"
 
 namespace portier {
 

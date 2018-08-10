@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "portier/ipv6_util.h"
+
 #include <arpa/inet.h>
 #include <netinet/icmp6.h>
 
+#include <gtest/gtest.h>
 #include <shill/net/byte_string.h>
 #include <shill/net/ip_address.h>
-
-#include <gtest/gtest.h>
-
-#include "portier/ipv6_util.h"
 
 namespace portier {
 

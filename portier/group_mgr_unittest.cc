@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "portier/group_mgr.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -9,8 +11,6 @@
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <shill/net/ip_address.h>
-
-#include "portier/group_mgr.h"
 
 namespace portier {
 

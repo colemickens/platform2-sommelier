@@ -5,13 +5,10 @@
 #ifndef PORTIER_LL_ADDRESS_H_
 #define PORTIER_LL_ADDRESS_H_
 
-// Standard C++ Library.
+#include <linux/if_packet.h>
+
 #include <string>
 
-// Linux Header Files.
-#include <linux/if_packet.h>  // struct sockaddr_ll.
-
-// Chrome OS Library.
 #include <shill/net/byte_string.h>
 
 namespace portier {

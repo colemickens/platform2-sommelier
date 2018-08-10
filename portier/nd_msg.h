@@ -5,20 +5,15 @@
 #ifndef PORTIER_ND_MSG_H_
 #define PORTIER_ND_MSG_H_
 
-// Standard C Library.
-
-// Standard C++ Library.
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-// Chrome OS Library.
 #include <base/time/time.h>
 #include <shill/net/byte_string.h>
 #include <shill/net/ip_address.h>
 
-// Portier Library.
 #include "portier/ll_address.h"
 
 namespace portier {

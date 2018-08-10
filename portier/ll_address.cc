@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <ctype.h>
-#include <stdio.h>
+#include "portier/ll_address.h"
 
+#include <ctype.h>
 #include <net/if_arp.h>
+#include <stdio.h>
 
 #include <algorithm>
 
@@ -13,16 +14,12 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 
-#include "portier/ll_address.h"
-
 namespace portier {
 
 using shill::ByteString;
 using std::string;
 
 using Type = LLAddress::Type;
-
-// Static methods for Type.
 
 namespace {
 
