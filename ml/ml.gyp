@@ -44,6 +44,7 @@
         'graph_executor_impl.cc',
         'machine_learning_service_impl.cc',
         'model_impl.cc',
+        'model_metadata.cc',
         'tensor_view.cc',
       ],
     },
@@ -68,6 +69,7 @@
           'dependencies': ['ml_common'],
           'sources': [
             'graph_executor_impl_test.cc',
+            'machine_learning_service_impl_test.cc',
             'model_impl_test.cc',
             'testrunner.cc',
           ],

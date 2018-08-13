@@ -16,8 +16,7 @@ import "mojom/graph_executor.mojom";
 
 enum ModelId {
   UNKNOWN,
-  TAB_DISCARDER,
-  POWER_MANAGER
+  TEST_MODEL,  // Only available in tests.
 };
 
 enum CreateGraphExecutorResult {
