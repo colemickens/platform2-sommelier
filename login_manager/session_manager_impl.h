@@ -51,8 +51,8 @@ class PolicyDescriptor;
 class PolicyKey;
 class ProcessManagerServiceInterface;
 class StartArcMiniContainerRequest;
-class UpgradeArcContainerRequest;
 class SystemUtils;
+class UpgradeArcContainerRequest;
 class UserPolicyServiceFactory;
 class VpdProcess;
 
@@ -79,6 +79,9 @@ class SessionManagerImpl
 
   // File containing the path to the updated TPM firmware binary.
   static const char kTPMFirmwareUpdateLocationFile[];
+
+  // Flag file indicating SRK ROCA vulnerability status.
+  static const char kTPMFirmwareUpdateSRKVulnerableROCAFile[];
 
   // Flag file indicating a request to update TPM firmware after reboot.
   static const char kTPMFirmwareUpdateRequestFlagFile[];

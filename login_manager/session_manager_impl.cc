@@ -69,8 +69,8 @@ using base::FilePath;
 using brillo::cryptohome::home::GetHashedUserPath;
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
-using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using brillo::cryptohome::home::kGuestUserName;
 
 namespace login_manager {  // NOLINT
 
@@ -85,6 +85,8 @@ constexpr char SessionManagerImpl::kResetFile[] =
 
 constexpr char SessionManagerImpl::kTPMFirmwareUpdateLocationFile[] =
     "/run/tpm_firmware_update_location";
+constexpr char SessionManagerImpl::kTPMFirmwareUpdateSRKVulnerableROCAFile[] =
+    "/run/tpm_firmware_update_srk_vulnerable_roca";
 constexpr char SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile[] =
     "/mnt/stateful_partition/unencrypted/preserve/tpm_firmware_update_request";
 constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
@@ -157,6 +159,7 @@ constexpr base::TimeDelta kSystemClockLastSyncInfoRetryDelay =
 // TPM firmware update modes.
 constexpr char kTPMFirmwareUpdateModeFirstBoot[] = "first_boot";
 constexpr char kTPMFirmwareUpdateModePreserveStateful[] = "preserve_stateful";
+constexpr char kTPMFirmwareUpdateModeCleanup[] = "cleanup";
 
 // Policy storage constants.
 constexpr char kEmptyAccountId[] = "";
@@ -883,7 +886,8 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     brillo::ErrorPtr* error, const std::string& update_mode) {
   // Make sure |update_mode| is supported.
   if (update_mode != kTPMFirmwareUpdateModeFirstBoot &&
-      update_mode != kTPMFirmwareUpdateModePreserveStateful) {
+      update_mode != kTPMFirmwareUpdateModePreserveStateful &&
+      update_mode != kTPMFirmwareUpdateModeCleanup) {
     constexpr char kMessage[] = "Bad update mode.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kInvalidParameter, kMessage);
@@ -911,18 +915,34 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
       allowed_modes.insert(kTPMFirmwareUpdateModePreserveStateful);
     }
 
-    if (allowed_modes.count(update_mode) == 0) {
+    // See whether the requested mode is allowed. Cleanup is permitted when at
+    // least one of the actual modes are allowed.
+    bool allowed = (update_mode == kTPMFirmwareUpdateModeCleanup)
+                       ? !allowed_modes.empty()
+                       : allowed_modes.count(update_mode) > 0;
+    if (!allowed) {
       *error = CreateError(dbus_error::kNotAvailable,
                            "Policy doesn't allow TPM firmware update.");
       return false;
     }
   }
 
-  // Validate that a firmware update is actually available.
-  std::string update_location;
-  if (!system_->ReadFileToString(base::FilePath(kTPMFirmwareUpdateLocationFile),
-                                 &update_location) ||
-      !update_location.size()) {
+  // Validate that a firmware update is actually available to make sure
+  // enterprise users can't abuse TPM firmware update to trigger powerwash.
+  bool available = false;
+  if (update_mode == kTPMFirmwareUpdateModeFirstBoot ||
+      update_mode == kTPMFirmwareUpdateModePreserveStateful) {
+    std::string update_location;
+    available =
+        system_->ReadFileToString(
+            base::FilePath(kTPMFirmwareUpdateLocationFile), &update_location) &&
+        update_location.size();
+  } else if (update_mode == kTPMFirmwareUpdateModeCleanup) {
+    available = system_->Exists(
+        base::FilePath(kTPMFirmwareUpdateSRKVulnerableROCAFile));
+  }
+
+  if (!available) {
     constexpr char kMessage[] = "No update available.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kNotAvailable, kMessage);
@@ -938,9 +958,10 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     return false;
   }
 
-  if (update_mode == kTPMFirmwareUpdateModeFirstBoot) {
+  if (update_mode == kTPMFirmwareUpdateModeFirstBoot ||
+      update_mode == kTPMFirmwareUpdateModeCleanup) {
     InitiateDeviceWipe("tpm_firmware_update_" + update_mode);
-  } else {
+  } else if (update_mode == kTPMFirmwareUpdateModePreserveStateful) {
     // This flag file indicates that encrypted stateful should be preserved.
     if (!system_->AtomicFileWrite(
             base::FilePath(kStatefulPreservationRequestFile), update_mode)) {
@@ -959,6 +980,9 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     }
 
     RestartDevice("tpm_firmware_update " + update_mode);
+  } else {
+    NOTREACHED();
+    return false;
   }
 
   return true;

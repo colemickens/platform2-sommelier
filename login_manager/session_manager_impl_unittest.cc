@@ -75,7 +75,6 @@
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/system_utils_impl.h"
 
-using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::AtMost;
@@ -97,11 +96,12 @@ using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::WithArg;
+using ::testing::_;
 
 using brillo::cryptohome::home::GetRootPath;
-using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SetSystemSalt;
+using brillo::cryptohome::home::kGuestUserName;
 
 using std::map;
 using std::string;
@@ -3074,6 +3074,8 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 
     SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile,
                     "/lib/firmware/tpm/dummy.bin");
+    SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateSRKVulnerableROCAFile,
+                    "");
   }
 
   void TearDown() override {
@@ -3185,6 +3187,24 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulAllowed) {
   ExpectDeviceRestart();
 }
 
+TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupDisallowed) {
+  SetUpdateMode("cleanup");
+  SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
+  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(true));
+  ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupAllowed) {
+  SetUpdateMode("cleanup");
+  SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
+  em::ChromeDeviceSettingsProto settings;
+  settings.mutable_tpm_firmware_update_settings()
+      ->set_allow_user_initiated_preserve_device_state(true);
+  SetDevicePolicy(settings);
+  ExpectDeviceRestart();
+}
+
 TEST_F(StartTPMFirmwareUpdateTest, AvailabilityNotDecided) {
   DeleteFile(SessionManagerImpl::kTPMFirmwareUpdateLocationFile);
   ExpectError(dbus_error::kNotAvailable);
@@ -3192,6 +3212,17 @@ TEST_F(StartTPMFirmwareUpdateTest, AvailabilityNotDecided) {
 
 TEST_F(StartTPMFirmwareUpdateTest, NoUpdateAvailable) {
   SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
+  ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, CleanupSRKVulnerable) {
+  SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
+  ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, CleanupSRKNotVulnerable) {
+  SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
+  DeleteFile(SessionManagerImpl::kTPMFirmwareUpdateSRKVulnerableROCAFile);
   ExpectError(dbus_error::kNotAvailable);
 }
 
