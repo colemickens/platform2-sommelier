@@ -1,6 +1,6 @@
 define(`has_arc', ifelse(arc_version, `none', $2, $1))
 define(`no_arc', has_arc(, $1))
-define(`is_arc_nyc', has_arc(ifelse(arc_version, `n', $1, $2), ))
+define(`is_arc_nyc', ifelse(arc_version, `n', $1, $2))
 
 # Wraps policy that fails NYC CTS.
 define(`arc_nyc_cts_fails', ifelse(arc_version, `n', , $1))

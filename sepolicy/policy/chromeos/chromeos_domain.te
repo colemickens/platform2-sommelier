@@ -20,13 +20,43 @@ allow chromeos_domain self:process {
     setrlimit
 };
 
-allow chromeos_domain self:unix_stream_socket { create_stream_socket_perms connectto };
-allow chromeos_domain self:{ fifo_file file } rw_file_perms;
-allow chromeos_domain cros_system_file:file execute;
+allow chromeos_domain self:fd use;
 
-r_dir_file(chromeos_domain, self)
+r_dir_file(chromeos_domain, self);
 r_dir_file(chromeos_domain, proc)
 
+allow chromeos_domain self:{ fifo_file file } rw_file_perms;
+allow chromeos_domain self:unix_dgram_socket { create_socket_perms sendto };
+allow chromeos_domain self:unix_stream_socket { create_stream_socket_perms connectto };
+allow chromeos_domain self:{ fifo_file file } rw_file_perms;
 
+allow chromeos_domain rootfs:dir search;
+allow chromeos_domain rootfs:lnk_file r_file_perms;
+
+allow chromeos_domain device:dir search;
+allow chromeos_domain cros_labeled_dev_type:lnk_file r_file_perms;
+allow chromeos_domain devpts:dir search;
+
+
+allow chromeos_domain cros_system_file:file execute;
 r_dir_file(chromeos_domain, cros_system_file)
 
+
+# Do the same xperm restriction as Android for ioctl.
+
+# Restrict all domains to a whitelist for common socket types. Additional
+# ioctl commands may be added to individual domains, but this sets safe
+# defaults for all processes. Note that granting this whitelist to domain does
+# not grant the ioctl permission on these socket types. That must be granted
+# separately.
+allowxperm is_arc_nyc(chromeos_domain, domain) is_arc_nyc(chromeos_domain, domain):{ rawip_socket tcp_socket udp_socket }
+  ioctl { unpriv_sock_ioctls unpriv_tty_ioctls };
+# default whitelist for unix sockets.
+allowxperm is_arc_nyc(chromeos_domain, domain) is_arc_nyc(chromeos_domain, domain):{ unix_dgram_socket unix_stream_socket }
+  ioctl unpriv_unix_sock_ioctls;
+
+# Restrict PTYs to only whitelisted ioctls.
+# Note that granting this whitelist to domain does
+# not grant the wider ioctl permission. That must be granted
+# separately.
+allowxperm chromeos_domain devpts:chr_file ioctl unpriv_tty_ioctls;
