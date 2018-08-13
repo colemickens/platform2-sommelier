@@ -148,25 +148,14 @@ void CrosDisksServer::UnmountAll() {
   }
 }
 
-vector<string> CrosDisksServer::DoEnumerateDevices(
-    bool auto_mountable_only) const {
+vector<string> CrosDisksServer::EnumerateDevices() {
   vector<Disk> disks = disk_manager_->EnumerateDisks();
   vector<string> devices;
   devices.reserve(disks.size());
   for (const auto& disk : disks) {
-    if (!auto_mountable_only || disk.is_auto_mountable) {
-      devices.push_back(disk.native_path);
-    }
+    devices.push_back(disk.native_path);
   }
   return devices;
-}
-
-vector<string> CrosDisksServer::EnumerateDevices() {
-  return DoEnumerateDevices(false);
-}
-
-vector<string> CrosDisksServer::EnumerateAutoMountableDevices() {
-  return DoEnumerateDevices(true);
 }
 
 vector<CrosDisksServer::DBusMountEntry>

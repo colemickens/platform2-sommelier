@@ -86,11 +86,6 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   // the system.
   std::vector<std::string> EnumerateDevices() override;
 
-  // Returns a list of device sysfs paths for all auto-mountable disk devices
-  // attached to the system. Currently, all external disk devices, which are
-  // neither on the boot device nor virtual, are considered auto-mountable.
-  std::vector<std::string> EnumerateAutoMountableDevices() override;
-
   // Returns a list of mount entries (<error type, source path, source type,
   // mount path>) that are currently managed by cros-disks.
   using DBusMountEntry =
@@ -132,11 +127,6 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   // Implements the DeviceEventDispatcherInterface to dispatch a device event
   // by emitting the corresponding D-Bus signal.
   void DispatchDeviceEvent(const DeviceEvent& event) override;
-
-  // Returns a list of device sysfs paths for all disk devices attached to
-  // the system. If auto_mountable_only is true, only auto-mountable disk
-  // devices are returned.
-  std::vector<std::string> DoEnumerateDevices(bool auto_mountable_only) const;
 
   // Finds and returns a mounter which can mount |source_path|, or nullptr if no
   // one can.

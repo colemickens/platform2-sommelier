@@ -49,10 +49,6 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="devices" type="as" direction="out" />
     </method>
-    <method name="EnumerateAutoMountableDevices">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="devices" type="as" direction="out" />
-    </method>
     <method name="EnumerateMountEntries">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="mount_entries" type="a(usus)" direction="out"
