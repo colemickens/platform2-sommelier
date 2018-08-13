@@ -16,6 +16,8 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "bluetooth/newblued/util.h"
+
 namespace bluetooth {
 
 namespace {
@@ -60,12 +62,30 @@ std::string ConvertAppearanceToIcon(uint16_t appearance) {
       return "phone";
     case 0x02:
       return "computer";
+    case 0x03:
+      return "watch";
+    case 0x04:
+      return "clock";
     case 0x05:
       return "video-display";
+    case 0x06:
+      return "remote-control";
+    case 0x07:
+      return "eye-glasses";
+    case 0x08:
+      return "tag";
+    case 0x09:
+      return "key-ring";
     case 0x0a:
       return "multimedia-player";
     case 0x0b:
       return "scanner";
+    case 0x0c:
+      return "thermometer";
+    case 0x0d:
+      return "heart-rate-sensor";
+    case 0x0e:
+      return "blood-pressure";
     case 0x0f:  // HID Generic
       switch (appearance & 0x3f) {
         case 0x01:
@@ -81,6 +101,26 @@ std::string ConvertAppearanceToIcon(uint16_t appearance) {
           return "scanner";
       }
       break;
+    case 0x10:
+      return "glucose-meter";
+    case 0x11:
+      return "running-walking-sensor";
+    case 0x12:
+      return "cycling";
+    case 0x31:
+      return "pulse-oximeter";
+    case 0x32:
+      return "weight-scale";
+    case 0x33:
+      return "personal-mobility-device";
+    case 0x34:
+      return "continuous-glucose-monitor";
+    case 0x35:
+      return "insulin-pump";
+    case 0x36:
+      return "medication-delivery";
+    case 0x51:
+      return "outdoor-sports-activity";
     default:
       break;
   }
@@ -460,10 +500,11 @@ void Newblue::DiscoveryCallback(const std::string& address,
     return;
   }
 
-  if (!base::ContainsKey(discovered_devices_, address))
+  Device* device = FindDevice(address);
+  if (!device) {
     discovered_devices_[address] = std::make_unique<Device>(address);
-
-  Device* device = discovered_devices_[address].get();
+    device = discovered_devices_[address].get();
+  }
   device->is_random_address = (address_type == BT_ADDR_TYPE_LE_RANDOM);
   device->rssi.SetValue(rssi);
   UpdateEir(device, eir);
@@ -534,6 +575,36 @@ void Newblue::ClearPropertiesUpdated(Device* device) {
   device->manufacturer.ClearUpdated();
 }
 
+bool Newblue::Pair(const std::string& device_address) {
+  // BlueZ doesn't allow pairing with an unknown device.
+  const Device* device = FindDevice(device_address);
+  if (!device)
+    return false;
+
+  struct bt_addr address;
+  if (!ConvertToBtAddr(device->is_random_address, device_address, &address))
+    return false;
+
+  struct smPairSecurityRequirements security_requirement =
+      DetermineSecurityRequirements(*device);
+  libnewblue_->SmPair(&address, &security_requirement);
+  return true;
+}
+
+bool Newblue::CancelPair(const std::string& device_address) {
+  // BlueZ doesn't allow cancel pairing with an unknown device.
+  const Device* device = FindDevice(device_address);
+  if (!device)
+    return false;
+
+  struct bt_addr address;
+  if (!ConvertToBtAddr(device->is_random_address, device_address, &address))
+    return false;
+
+  libnewblue_->SmUnpair(&address);
+  return true;
+}
+
 void Newblue::PairStateCallbackThunk(void* data,
                                      const void* pair_state_change,
                                      uniq_t observer_id) {
@@ -550,20 +621,22 @@ void Newblue::PairStateCallbackThunk(void* data,
 
 void Newblue::PairStateCallback(const smPairStateChange& change,
                                 uniq_t observer_id) {
+  VLOG(1) << __func__;
+
   CHECK_EQ(observer_id, pair_state_handle_);
 
   std::string address = ConvertBtAddrToString(change.peerAddr);
 
   // BlueZ doesn't allow the pairing with an undiscovered device, so if
   // receiving pairing state changed with an undiscovered device, we drop it.
-  if (!base::ContainsKey(discovered_devices_, address)) {
+  Device* device = FindDevice(address);
+  if (!device) {
     VLOG(1) << "Dropping the pairing state change (" << change.pairState
             << ") for an undiscovered device " << address;
     return;
   }
 
   PairState state = static_cast<PairState>(change.pairState);
-  Device* device = discovered_devices_[address].get();
   std::string dbus_error;
 
   switch (state) {
@@ -592,6 +665,91 @@ void Newblue::PairStateCallback(const smPairStateChange& change,
   // Notify |pair_observers|.
   for (const auto& observer : pair_observers_)
     observer.second.Run(*device, state, dbus_error);
+}
+
+struct smPairSecurityRequirements Newblue::DetermineSecurityRequirements(
+    const Device& device) {
+  struct smPairSecurityRequirements security_requirement = {.bond = false,
+                                                            .mitm = false};
+  bool security_determined = false;
+
+  // TODO(mcchou): Determine the security requirement for different type of
+  // devices based on appearance.
+  // These value are defined at https://www.bluetooth.com/specifications/gatt/
+  // viewer?attributeXmlFile=org.bluetooth.characteristic.gap.appearance.xml.
+  // The translated strings come from BlueZ.
+  switch ((device.appearance.value() & 0xffc0) >> 6) {
+    case 0x01:  // phone
+    case 0x02:  // computer
+      security_requirement.bond = true;
+      security_requirement.mitm = true;
+      security_determined = true;
+      break;
+    case 0x03:  // watch
+      security_requirement.bond = true;
+      security_determined = true;
+      break;
+    case 0x0f:  // HID Generic
+      switch (device.appearance.value() & 0x3f) {
+        case 0x01:  // keyboard
+        case 0x05:  // tablet
+          security_requirement.bond = true;
+          security_requirement.mitm = true;
+          security_determined = true;
+          break;
+        case 0x02:  // mouse
+        case 0x03:  // joystick
+        case 0x04:  // gamepad
+          security_requirement.bond = true;
+          security_determined = true;
+          break;
+        case 0x08:  // barcode-scanner
+        default:
+          break;
+      }
+      break;
+    case 0x00:  // unknown
+    case 0x04:  // clock
+    case 0x05:  // video-display
+    case 0x06:  // remote-control
+    case 0x07:  // eye-glasses
+    case 0x08:  // tag
+    case 0x09:  // key-ring
+    case 0x0a:  // multimedia-player
+    case 0x0b:  // barcode-scanner
+    case 0x0c:  // thermometer
+    case 0x0d:  // heart-rate-sensor
+    case 0x0e:  // blood-pressure
+    case 0x10:  // glucose-meter
+    case 0x11:  // running-walking-sensor
+    case 0x12:  // cycling
+    case 0x31:  // pulse-oximeter
+    case 0x32:  // weight-scale
+    case 0x33:  // personal-mobility-device
+    case 0x34:  // continuous-glucose-monitor
+    case 0x35:  // insulin-pump
+    case 0x36:  // medication-delivery
+    case 0x51:  // outdoor-sports-activity
+    default:
+      break;
+  }
+
+  if (!security_determined) {
+    security_requirement.bond = true;
+    LOG(WARNING) << base::StringPrintf(
+        "The default security level (bond:%s MITM:%s) will be "
+        "used in pairing with device with appearance 0x%4X",
+        security_requirement.bond ? "true" : "false",
+        security_requirement.mitm ? "true" : "false",
+        device.appearance.value());
+  }
+
+  return security_requirement;
+}
+
+Device* Newblue::FindDevice(const std::string& device_address) {
+  auto iter = discovered_devices_.find(device_address);
+  return iter != discovered_devices_.end() ? iter->second.get() : nullptr;
 }
 
 }  // namespace bluetooth

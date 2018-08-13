@@ -20,6 +20,7 @@
 
 #include "bluetooth/common/dbus_daemon.h"
 #include "bluetooth/newblued/libnewblue.h"
+#include "bluetooth/newblued/util.h"
 
 namespace bluetooth {
 
@@ -68,6 +69,24 @@ std::string ConvertDeviceAddressToObjectPath(const std::string& address) {
       base::StringPrintf("%s/dev_%s", kAdapterObjectPath, address.c_str());
   std::replace(path.begin(), path.end(), ':', '_');
   return path;
+}
+
+// Converts pair state to string.
+std::string ConvertPairStateToString(PairState state) {
+  switch (state) {
+    case PairState::CANCELED:
+      return "canceled";
+    case PairState::NOT_PAIRED:
+      return "not paired";
+    case PairState::FAILED:
+      return "failed";
+    case PairState::PAIRED:
+      return "paired";
+    case PairState::STARTED:
+      return "started";
+    default:
+      return "unknown";
+  }
 }
 
 }  // namespace
@@ -198,6 +217,8 @@ void NewblueDaemon::ExportAdapterInterface() {
 
 void NewblueDaemon::AddAdapterMethodHandlers(
     ExportedInterface* adapter_interface) {
+  CHECK(adapter_interface);
+
   adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       bluetooth_adapter::kStartDiscovery, base::Unretained(this),
       &NewblueDaemon::HandleStartDiscovery);
@@ -235,38 +256,89 @@ void NewblueDaemon::AddDeviceMethodHandlers(
     ExportedInterface* device_interface) {
   CHECK(device_interface);
 
-  device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-      bluetooth_device::kPair, base::Unretained(this),
-      &NewblueDaemon::HandlePair);
-  device_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-      bluetooth_device::kConnect, base::Unretained(this),
-      &NewblueDaemon::HandleConnect);
+  device_interface->AddMethodHandlerWithMessage(
+      bluetooth_device::kPair,
+      base::Bind(&NewblueDaemon::HandlePair, base::Unretained(this)));
+  device_interface->AddMethodHandlerWithMessage(
+      bluetooth_device::kCancelPairing,
+      base::Bind(&NewblueDaemon::HandleCancelPairing, base::Unretained(this)));
+  device_interface->AddMethodHandlerWithMessage(
+      bluetooth_device::kConnect,
+      base::Bind(&NewblueDaemon::HandleConnect, base::Unretained(this)));
 }
 
-bool NewblueDaemon::HandlePair(brillo::ErrorPtr* error,
-                               dbus::Message* message) {
-  // TODO(sonnysasaka): Implement org.bluez.Device1.Pair.
-  VLOG(1) << "Handling Pair for object " << message->GetPath().value();
-  bool ret = false;
-  if (!ret) {
-    *error =
-        brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                              bluetooth_device::kErrorFailed, "Failed to pair");
+void NewblueDaemon::HandlePair(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    dbus::Message* message) {
+  CHECK(message);
+
+  std::string device_address =
+      ConvertDeviceObjectPathToAddress(message->GetPath().value());
+
+  VLOG(1) << "Handling Pair for device " << device_address;
+
+  if (!ongoing_pairing_.address.empty()) {
+    LOG(WARNING) << "Pairing in progress with " << device_address;
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorInProgress,
+                             "Pairing in progress");
+    return;
   }
-  return ret;
+
+  ongoing_pairing_.address = device_address;
+  ongoing_pairing_.pair_response = std::move(response);
+  ongoing_pairing_.cancel_pair_response.reset();
+
+  if (!newblue_->Pair(device_address)) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorFailed, "Unknown device");
+
+    // Clear the existing pairing to allow the new pairing request.
+    ongoing_pairing_.address.clear();
+    ongoing_pairing_.pair_response.reset();
+  }
 }
 
-bool NewblueDaemon::HandleConnect(brillo::ErrorPtr* error,
-                                  dbus::Message* message) {
-  // TODO(sonnysasaka): Implement org.bluez.Device1.Connect.
-  VLOG(1) << "Handling Connect for object " << message->GetPath().value();
-  bool ret = false;
-  if (!ret) {
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   bluetooth_device::kErrorFailed,
-                                   "Failed to connect");
+void NewblueDaemon::HandleCancelPairing(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    dbus::Message* message) {
+  CHECK(message);
+
+  std::string device_address =
+      ConvertDeviceObjectPathToAddress(message->GetPath().value());
+
+  VLOG(1) << "Handling CancelPairing for device " << device_address;
+
+  if (device_address.empty() || !ongoing_pairing_.pair_response) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorDoesNotExist,
+                             "No ongoing pairing");
+    return;
   }
-  return ret;
+
+  ongoing_pairing_.cancel_pair_response = std::move(response);
+
+  if (!newblue_->CancelPair(device_address)) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorFailed, "Unknown device");
+    ongoing_pairing_.cancel_pair_response.reset();
+  }
+}
+
+void NewblueDaemon::HandleConnect(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    dbus::Message* message) {
+  CHECK(message);
+
+  std::string device_address =
+      ConvertDeviceObjectPathToAddress(message->GetPath().value());
+
+  VLOG(1) << "Handling Connect for device " << device_address;
+
+  // TODO(mcchou): Implement org.bluez.Device1.Connect.
+  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                           bluetooth_device::kErrorFailed,
+                           "Not implemented yet");
 }
 
 void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
@@ -314,16 +386,97 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
 void NewblueDaemon::OnPairStateChanged(const Device& device,
                                        PairState pair_state,
                                        const std::string& dbus_error) {
+  VLOG(1) << "Pairing state changed to " << ConvertPairStateToString(pair_state)
+          << " for device " << device.address;
+
   dbus::ObjectPath device_path(
       ConvertDeviceAddressToObjectPath(device.address.c_str()));
-
   ExportedInterface* device_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
           device_path, bluetooth_device::kBluetoothDeviceInterface);
 
-  UpdateDeviceProperties(device_interface, device, false);
+  if (device.address != ongoing_pairing_.address) {
+    UpdateDeviceProperties(device_interface, device, false);
+    return;
+  }
 
-  // TODO(mcchou): Reply to the original D-Bus call.
+  CHECK(!ongoing_pairing_.address.empty());
+  CHECK(ongoing_pairing_.pair_response);
+
+  // Reply to the Pair/CancelPairing method calls according to the pairing
+  // state.
+  switch (pair_state) {
+    case PairState::NOT_PAIRED:
+      // Falling back to this state indicate an unknown error, so the cancel
+      // pairing request should fail as well.
+      ongoing_pairing_.pair_response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain,
+          bluetooth_device::kErrorFailed, "Unknown");
+
+      if (ongoing_pairing_.cancel_pair_response) {
+        ongoing_pairing_.cancel_pair_response->ReplyWithError(
+            FROM_HERE, brillo::errors::dbus::kDomain,
+            bluetooth_device::kErrorDoesNotExist, "No ongoing pairing");
+      }
+      break;
+    case PairState::STARTED:
+      // For the start of the pairing, we wait for the result.
+      CHECK(!ongoing_pairing_.cancel_pair_response);
+      break;
+    case PairState::PAIRED:
+      ongoing_pairing_.pair_response->SendRawResponse(
+          ongoing_pairing_.pair_response->CreateCustomResponse());
+
+      if (ongoing_pairing_.cancel_pair_response) {
+        ongoing_pairing_.cancel_pair_response->ReplyWithError(
+            FROM_HERE, brillo::errors::dbus::kDomain,
+            bluetooth_device::kErrorFailed, "Unknown - pairing done");
+      }
+      break;
+    case PairState::CANCELED:
+      ongoing_pairing_.pair_response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain, dbus_error,
+          "Pairing canceled");
+
+      if (ongoing_pairing_.cancel_pair_response) {
+        ongoing_pairing_.cancel_pair_response->SendRawResponse(
+            ongoing_pairing_.cancel_pair_response->CreateCustomResponse());
+      }
+      break;
+    case PairState::FAILED:
+      ongoing_pairing_.pair_response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain, dbus_error,
+          "Pairing failed");
+
+      if (ongoing_pairing_.cancel_pair_response) {
+        ongoing_pairing_.cancel_pair_response->ReplyWithError(
+            FROM_HERE, brillo::errors::dbus::kDomain,
+            bluetooth_device::kErrorDoesNotExist, "No ongoing pairing");
+      }
+      break;
+    default:
+      LOG(WARNING) << "Unexpected pairing state change";
+
+      ongoing_pairing_.pair_response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain,
+          bluetooth_device::kErrorFailed, "Unknown");
+
+      if (ongoing_pairing_.cancel_pair_response) {
+        ongoing_pairing_.cancel_pair_response->ReplyWithError(
+            FROM_HERE, brillo::errors::dbus::kDomain,
+            bluetooth_device::kErrorFailed, "Unknown");
+      }
+      break;
+  }
+
+  if (pair_state != PairState::STARTED) {
+    ongoing_pairing_.address.clear();
+    ongoing_pairing_.pair_response.reset();
+  }
+
+  ongoing_pairing_.cancel_pair_response.reset();
+
+  UpdateDeviceProperties(device_interface, device, false);
 }
 
 void NewblueDaemon::UpdateDeviceProperties(ExportedInterface* interface,

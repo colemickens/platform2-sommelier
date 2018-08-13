@@ -156,6 +156,11 @@ class Newblue {
   // Unregisters as an observer of pairing states.
   virtual void UnregisterAsPairObserver(UniqueId observer_id);
 
+  // Performs LE pairing.
+  virtual bool Pair(const std::string& device_address);
+  // Cancels LE pairing.
+  virtual bool CancelPair(const std::string& device_address);
+
  private:
   // Posts task to the thread which created this Newblue object.
   // libnewblue callbacks should always post task using this method rather than
@@ -206,6 +211,16 @@ class Newblue {
                                      uniq_t observer_id);
   // Called when pairing state changed events are received.
   void PairStateCallback(const smPairStateChange& change, uniq_t observer_id);
+
+  // Determines the security requirements based on the appearance of a device.
+  // Returns true if determined. The default security requirements
+  // (bond:true MITM:false) are used.
+  struct smPairSecurityRequirements DetermineSecurityRequirements(
+      const Device& device);
+
+  // Finds a device from |discovered_devices_| with the given |device_address|.
+  // Returns nullptr if no such device is found.
+  Device* FindDevice(const std::string& device_address);
 
   std::unique_ptr<LibNewblue> libnewblue_;
 

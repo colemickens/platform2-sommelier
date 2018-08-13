@@ -5,6 +5,8 @@
 #ifndef BLUETOOTH_NEWBLUED_MOCK_NEWBLUE_H_
 #define BLUETOOTH_NEWBLUED_MOCK_NEWBLUE_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "bluetooth/newblued/newblue.h"
@@ -21,6 +23,9 @@ class MockNewblue : public Newblue {
 
   MOCK_METHOD1(StartDiscovery, bool(DeviceDiscoveredCallback));
   MOCK_METHOD0(StopDiscovery, bool());
+
+  MOCK_METHOD1(Pair, bool(const std::string&));
+  MOCK_METHOD1(CancelPair, bool(const std::string&));
 };
 
 }  // namespace bluetooth

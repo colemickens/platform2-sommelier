@@ -4,9 +4,14 @@
 
 #include "bluetooth/newblued/util.h"
 
+#include <newblue/bt.h>
+
 #include <algorithm>
+#include <regex>  // NOLINT(build/c++11)
 
 #include <base/stl_util.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_number_conversions.h>
 
 namespace {
 
@@ -62,6 +67,43 @@ UniqueId GetNextId() {
   next_id -= 1;
   LOG(ERROR) << "Run out of unique IDs";
   return 0;
+}
+
+bool ConvertToBtAddr(bool is_random_address,
+                     const std::string& address,
+                     struct bt_addr* result) {
+  CHECK(result);
+
+  std::vector<std::string> tokens = base::SplitString(
+      address, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (tokens.size() != BT_MAC_LEN)
+    return false;
+
+  uint8_t addr[BT_MAC_LEN];
+  uint8_t* ptr = addr + BT_MAC_LEN;
+  for (const auto& token : tokens) {
+    uint32_t value;
+    if (token.size() != 2 || !base::HexStringToUInt(token, &value))
+      return false;
+    *(--ptr) = static_cast<uint8_t>(value);
+  }
+
+  memcpy(result->addr, addr, BT_MAC_LEN);
+  result->type =
+      is_random_address ? BT_ADDR_TYPE_LE_RANDOM : BT_ADDR_TYPE_LE_PUBLIC;
+  return true;
+}
+
+std::string ConvertDeviceObjectPathToAddress(const std::string& path) {
+  std::string address;
+  std::regex rgx("dev_([0-9a-fA-F]{2}_){5}[0-9a-fA-F]{2}$");
+  std::smatch match;
+
+  if (std::regex_search(path, match, rgx)) {
+    address = std::string(match[0]).substr(4);
+    std::replace(address.begin(), address.end(), '_', ':');
+  }
+  return address;
 }
 
 }  // namespace bluetooth

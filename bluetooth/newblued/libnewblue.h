@@ -63,6 +63,11 @@ class LibNewblue {
   LIBNEWBLUE_METHOD1(SmUnregisterPairStateObserver,
                      smUnregisterPairStateObserver,
                      void(uniq_t));
+  LIBNEWBLUE_METHOD2(SmPair,
+                     smPair,
+                     void(const struct bt_addr*,
+                          const struct smPairSecurityRequirements*));
+  LIBNEWBLUE_METHOD1(SmUnpair, smUnpair, void(const struct bt_addr*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LibNewblue);

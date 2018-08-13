@@ -110,6 +110,10 @@ class NewblueDaemonTest : public ::testing::Test {
         .Times(1);
     EXPECT_CALL(*exported_object,
                 ExportMethod(bluetooth_device::kBluetoothDeviceInterface,
+                             bluetooth_device::kCancelPairing, _, _))
+        .Times(1);
+    EXPECT_CALL(*exported_object,
+                ExportMethod(bluetooth_device::kBluetoothDeviceInterface,
                              bluetooth_device::kConnect, _, _))
         .Times(1);
   }

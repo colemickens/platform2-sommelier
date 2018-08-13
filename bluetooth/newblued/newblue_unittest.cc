@@ -40,6 +40,7 @@ class NewblueTest : public ::testing::Test {
     int16_t rssi;
     uint32_t eir_class;
     bool paired;
+    uint16_t appearance;
   };
 
   void SetUp() override {
@@ -60,7 +61,8 @@ class NewblueTest : public ::testing::Test {
   void OnDeviceDiscovered(const Device& device) {
     discovered_devices_.push_back(
         {device.address, device.name.value(), device.rssi.value(),
-         device.eir_class.value(), device.paired.value()});
+         device.eir_class.value(), device.paired.value(),
+         device.appearance.value()});
   }
 
   void OnPairStateChanged(const Device& device,
@@ -476,6 +478,126 @@ TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
   EXPECT_EQ(-101, discovered_devices_[0].rssi);
   // There should be no update on the pairing state.
   EXPECT_EQ(false, discovered_devices_[0].paired);
+}
+
+TEST_F(NewblueTest, Pair) {
+  ExpectBringUp();
+
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kDiscoveryHandle)));
+  newblue_->StartDiscovery(
+      base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
+
+  // 1 device discovered.
+  struct bt_addr addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
+                         .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  std::string device_addr("06:05:04:03:02:01");
+  uint8_t eir[] = {
+      // Flag
+      3, static_cast<uint8_t>(EirType::FLAGS), 0xAA, 0xBB,
+      // Name
+      6, static_cast<uint8_t>(EirType::NAME_SHORT), 'm', 'o', 'u', 's', 'e',
+      // Appearance
+      3, static_cast<uint8_t>(EirType::GAP_APPEARANCE), 0xc2, 0x03};
+
+  inquiry_response_callback(inquiry_response_callback_data, &addr, -101,
+                            HCI_ADV_TYPE_SCAN_RSP, &eir, arraysize(eir));
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("mouse", discovered_devices_[0].name);
+  EXPECT_EQ(device_addr, discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+  EXPECT_EQ(0x03c2, discovered_devices_[0].appearance);
+
+  EXPECT_CALL(*libnewblue_, SmPair(_, _)).WillOnce(Return());
+
+  EXPECT_TRUE(newblue_->Pair(device_addr));
+  message_loop_.RunUntilIdle();
+}
+
+TEST_F(NewblueTest, PairWithUnknownDevice) {
+  ExpectBringUp();
+
+  std::string device_addr("06:05:04:03:02:01");
+  EXPECT_FALSE(newblue_->Pair(device_addr));
+}
+
+TEST_F(NewblueTest, CancelPairing) {
+  ExpectBringUp();
+
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kDiscoveryHandle)));
+  newblue_->StartDiscovery(
+      base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
+
+  // 1 device discovered.
+  struct bt_addr addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
+                         .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  std::string device_addr("06:05:04:03:02:01");
+  uint8_t eir[] = {
+      // Flag
+      3, static_cast<uint8_t>(EirType::FLAGS), 0xAA, 0xBB,
+      // Name
+      6, static_cast<uint8_t>(EirType::NAME_SHORT), 'm', 'o', 'u', 's', 'e',
+      // Appearance
+      3, static_cast<uint8_t>(EirType::GAP_APPEARANCE), 0xc2, 0x03};
+
+  inquiry_response_callback(inquiry_response_callback_data, &addr, -101,
+                            HCI_ADV_TYPE_SCAN_RSP, &eir, arraysize(eir));
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("mouse", discovered_devices_[0].name);
+  EXPECT_EQ(device_addr, discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+  EXPECT_EQ(0x03c2, discovered_devices_[0].appearance);
+
+  // Register as a pairing state observer.
+  UniqueId pair_observer_handle = newblue_->RegisterAsPairObserver(
+      base::Bind(&NewblueTest::OnPairStateChanged, base::Unretained(this)));
+  EXPECT_NE(kInvalidUniqueId, pair_observer_handle);
+
+  EXPECT_CALL(*libnewblue_, SmPair(_, _)).WillOnce(Return());
+  EXPECT_TRUE(newblue_->Pair(device_addr));
+  message_loop_.RunUntilIdle();
+
+  // Pairing started.
+  struct smPairStateChange state_change = {.pairState = SM_PAIR_STATE_START,
+                                           .pairErr = SM_PAIR_ERR_NONE,
+                                           .peerAddr = addr};
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  message_loop_.RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("mouse", discovered_devices_[0].name);
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(-101, discovered_devices_[0].rssi);
+  EXPECT_EQ(false, discovered_devices_[0].paired);
+  EXPECT_EQ(0x03c2, discovered_devices_[0].appearance);
+
+  // Cancel pairing.
+  EXPECT_CALL(*libnewblue_, SmUnpair(_)).WillOnce(Return());
+  EXPECT_TRUE(newblue_->CancelPair(device_addr));
+  message_loop_.RunUntilIdle();
+}
+
+TEST_F(NewblueTest, CancelPairingWithUnknownDevice) {
+  ExpectBringUp();
+
+  std::string device_addr("06:05:04:03:02:01");
+  EXPECT_FALSE(newblue_->CancelPair(device_addr));
 }
 
 }  // namespace bluetooth

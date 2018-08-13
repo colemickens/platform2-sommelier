@@ -54,6 +54,16 @@ class ExportedInterface {
                                                     handler);
   }
 
+  // Adds an async method handler for |method_name| in this interface.
+  template <typename Response, typename... Args>
+  void AddMethodHandlerWithMessage(
+      const std::string& method_name,
+      const base::Callback<
+          void(std::unique_ptr<Response>, dbus::Message*, Args...)>& handler) {
+    dbus_object_->AddOrGetInterface(interface_name_)
+        ->AddMethodHandlerWithMessage(method_name, handler);
+  }
+
   // Copies the value of the property having name |property_name| to the
   // corresponding exported property, or unregisters the corresponding exported
   // property if property |property_name| is no longer valid.

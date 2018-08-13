@@ -23,6 +23,14 @@
 namespace bluetooth {
 
 class NewblueDaemon : public BluetoothDaemon {
+  // Represents a pairing session.
+  struct PairSession {
+    std::string address;
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> pair_response;
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+        cancel_pair_response;
+  };
+
  public:
   explicit NewblueDaemon(std::unique_ptr<Newblue> newblue);
   ~NewblueDaemon() override = default;
@@ -59,8 +67,22 @@ class NewblueDaemon : public BluetoothDaemon {
   void AddDeviceMethodHandlers(ExportedInterface* device_interface);
 
   // D-Bus method handlers for device objects.
-  bool HandlePair(brillo::ErrorPtr* error, dbus::Message* message);
-  bool HandleConnect(brillo::ErrorPtr* error, dbus::Message* message);
+  void HandlePair(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
+  void HandleCancelPairing(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
+  void HandleConnect(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
+  // TODO(mcchou): Handle the rest of the D-Bus methods of the device interface.
+  // Connect()
+  // Disconnect()
+  // ConnectProfile() - No op, but we may need dummy implementation later.
+  // DisconnectPorfile() - No op, but we may need dummy implementation later.
+  // GetServiceRecords() - No op, but we may need dummy implementation later.
+  // ExecuteWrite()
 
   // Called when an update of a device info is received.
   void OnDeviceDiscovered(const Device& device);
@@ -123,6 +145,11 @@ class NewblueDaemon : public BluetoothDaemon {
   std::map<std::string, Device> discovered_devices_;
 
   UniqueId pair_observer_id_;
+
+  // Device object path and its response to the ongoing pairing/cancelpairing
+  // request. <device address, D-Bus method response to pairing, D-Bus
+  // method response to cancel pairing>
+  struct PairSession ongoing_pairing_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
