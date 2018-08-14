@@ -20,10 +20,6 @@ mount -n -o remount,ro /
 # to unmount for a clean shutdown.
 kill_with_open_files_on /mnt/stateful_partition /home/chronos /var
 
-# Signal that the clean shutdown point was reached (or at least as
-# close to that point as we can be before stateful is unmounted).
-crash_reporter --clean_shutdown
-
 # CROS_DEBUG equals one if we've booted in developer mode or we've booted a
 # developer image.
 crossystem "cros_debug?1"
@@ -69,6 +65,10 @@ if [ "${CROS_DEBUG}" = "1" -a -f "${STATEFUL_UPDATE}" ]; then
     bootstat_archive "${PRESERVE_METRICS}/shutdown.$(date '+%Y%m%d%H%M%S')"
   fi
 fi
+
+# Signal that the clean shutdown point was reached (or at least as
+# close to that point as we can be before stateful is unmounted).
+crash_reporter --clean_shutdown
 
 # Flush buffers to disk to reflect this part of shutdown in the metrics.
 sync
