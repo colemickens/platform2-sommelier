@@ -22,7 +22,7 @@ using base::StringPrintf;
 namespace {
 
 const char kDefaultKernelStackSignature[] = "kernel-UnspecifiedStackSignature";
-const char kDumpParentPath[] = "/dev";
+const char kDumpParentPath[] = "/sys/fs";
 const char kDumpPath[] = "/sys/fs/pstore";
 const char kDumpRecordDmesgName[] = "dmesg";
 const char kDumpRecordConsoleName[] = "console";
