@@ -20,7 +20,11 @@ constexpr char kRootPath[] = "/";
 
 void SendResponse(scoped_refptr<dbus::Bus> bus,
                   std::unique_ptr<dbus::Response> response) {
-  bus->Send(response->raw_message(), nullptr);
+  // |bus| is an ad-hoc client-specific Bus which is not guaranteed to be always
+  // connected. So check whether it's still connected before sending the
+  // response.
+  if (bus->IsConnected())
+    bus->Send(response->raw_message(), nullptr);
 }
 
 }  // namespace
@@ -49,7 +53,7 @@ void CatchAllForwarder::Init() {
 }
 
 void CatchAllForwarder::Shutdown() {
-  if (from_bus_->is_connected())
+  if (from_bus_->IsConnected())
     from_bus_->UnregisterObjectPath(dbus::ObjectPath(kRootPath));
 }
 

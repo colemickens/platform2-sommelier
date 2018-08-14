@@ -66,6 +66,7 @@ class CatchAllForwarderTest : public ::testing::Test {
 
 TEST_F(CatchAllForwarderTest, ForwardMethod) {
   DBusObjectPathVTable vtable;
+  EXPECT_CALL(*from_bus_, IsConnected()).WillRepeatedly(Return(true));
   EXPECT_CALL(*from_bus_,
               TryRegisterFallback(dbus::ObjectPath(kRootPath), _, _, _))
       .WillOnce(DoAll(SaveArgPointee<1>(&vtable), Return(true)));
