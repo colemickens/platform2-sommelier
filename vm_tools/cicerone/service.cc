@@ -380,7 +380,6 @@ void Service::LxdContainerDownloading(const uint32_t cid,
 void Service::ContainerStartupCompleted(const std::string& container_token,
                                         const uint32_t cid,
                                         const uint32_t garcon_vsock_port,
-                                        uint32_t container_ip,
                                         bool* result,
                                         base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -390,9 +389,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
-      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
-                                       &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -406,26 +403,22 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
       return;
     }
   }
-  if (container_ip == 0) {
-    VirtualMachine::LxdContainerInfo info;
-    std::string error;
-    VirtualMachine::GetLxdContainerInfoStatus status =
-        vm->GetLxdContainerInfo(container->name(), &info, &error);
-    if (status != VirtualMachine::GetLxdContainerInfoStatus::RUNNING) {
-      LOG(ERROR) << "Failed to retreive IPv4 address for container: " << error;
-      return;
-    }
-    container_ip = info.ipv4_address;
-    container->set_ipv4_address(info.ipv4_address);
-  } else {
-    container->set_ipv4_address(container_ip);
+  VirtualMachine::LxdContainerInfo info;
+  std::string error;
+  VirtualMachine::GetLxdContainerInfoStatus status =
+      vm->GetLxdContainerInfo(container->name(), &info, &error);
+  if (status != VirtualMachine::GetLxdContainerInfoStatus::RUNNING) {
+    LOG(ERROR) << "Failed to retreive IPv4 address for container: " << error;
+    return;
   }
+  container->set_ipv4_address(info.ipv4_address);
 
   // Found the VM with a matching container subnet, register the IP address
   // for the container with that VM object.
   std::string string_ip;
-  if (!IPv4AddressToString(container_ip, &string_ip)) {
-    LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
+  if (!IPv4AddressToString(info.ipv4_address, &string_ip)) {
+    LOG(ERROR) << "Failed converting IP address to string: "
+               << info.ipv4_address;
     event->Signal();
     return;
   }
@@ -473,7 +466,6 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
 
 void Service::ContainerShutdown(const std::string& container_token,
                                 const uint32_t cid,
-                                const uint32_t container_ip,
                                 bool* result,
                                 base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -484,9 +476,7 @@ void Service::ContainerShutdown(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
-      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
-                                       &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -522,7 +512,6 @@ void Service::ContainerShutdown(const std::string& container_token,
 
 void Service::UpdateApplicationList(const std::string& container_token,
                                     const uint32_t cid,
-                                    const uint32_t container_ip,
                                     vm_tools::apps::ApplicationList* app_list,
                                     bool* result,
                                     base::WaitableEvent* event) {
@@ -534,9 +523,7 @@ void Service::UpdateApplicationList(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
-      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
-                                       &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -573,7 +560,6 @@ void Service::UpdateApplicationList(const std::string& container_token,
 void Service::OpenUrl(const std::string& container_token,
                       const std::string& url,
                       uint32_t cid,
-                      uint32_t container_ip,
                       bool* result,
                       base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -587,9 +573,7 @@ void Service::OpenUrl(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
-      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
-                                       &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -601,7 +585,8 @@ void Service::OpenUrl(const std::string& container_token,
   }
   std::string container_ip_str;
   if (!IPv4AddressToString(container->ipv4_address(), &container_ip_str)) {
-    LOG(ERROR) << "Failed converting IP address to string: " << container_ip;
+    LOG(ERROR) << "Failed converting IP address to string: "
+               << container->ipv4_address();
     event->Signal();
     return;
   }
@@ -623,7 +608,6 @@ void Service::OpenUrl(const std::string& container_token,
 void Service::InstallLinuxPackageProgress(
     const std::string& container_token,
     const uint32_t cid,
-    const uint32_t container_ip,
     InstallLinuxPackageProgressSignal* progress_signal,
     bool* result,
     base::WaitableEvent* event) {
@@ -636,9 +620,7 @@ void Service::InstallLinuxPackageProgress(
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name) &&
-      !GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
-                                       &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -661,7 +643,7 @@ void Service::InstallLinuxPackageProgress(
 
 void Service::OpenTerminal(const std::string& container_token,
                            vm_tools::apps::TerminalParams terminal_params,
-                           uint32_t container_ip,
+                           uint32_t cid,
                            bool* result,
                            base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequencedThread());
@@ -671,8 +653,7 @@ void Service::OpenTerminal(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForContainerIp(container_ip, &vm, &owner_id,
-                                       &vm_name)) {
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -1613,27 +1594,6 @@ std::unique_ptr<dbus::Response> Service::GetDebugInformation(
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
-}
-
-bool Service::GetVirtualMachineForContainerIp(uint32_t container_ip,
-                                              VirtualMachine** vm_out,
-                                              std::string* owner_id_out,
-                                              std::string* name_out) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
-  CHECK(vm_out);
-  CHECK(owner_id_out);
-  CHECK(name_out);
-  for (const auto& vm : vms_) {
-    const uint32_t netmask = vm.second->container_netmask();
-    if ((vm.second->container_subnet() & netmask) != (container_ip & netmask)) {
-      continue;
-    }
-    *owner_id_out = vm.first.first;
-    *name_out = vm.first.second;
-    *vm_out = vm.second.get();
-    return true;
-  }
-  return false;
 }
 
 bool Service::GetVirtualMachineForCid(const uint32_t cid,

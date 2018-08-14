@@ -88,7 +88,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void ContainerStartupCompleted(const std::string& container_token,
                                  const uint32_t cid,
                                  const uint32_t garcon_vsock_port,
-                                 uint32_t container_ip,
                                  bool* result,
                                  base::WaitableEvent* event);
 
@@ -98,7 +97,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // security token for that VM; false otherwise. Signals |event| when done.
   void ContainerShutdown(const std::string& container_token,
                          const uint32_t cid,
-                         const uint32_t container_ip,
                          bool* result,
                          base::WaitableEvent* event);
 
@@ -111,7 +109,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // success, false otherwise. Signals |event| when done.
   void UpdateApplicationList(const std::string& container_token,
                              const uint32_t cid,
-                             const uint32_t container_ip,
                              vm_tools::apps::ApplicationList* app_list,
                              bool* result,
                              base::WaitableEvent* event);
@@ -122,7 +119,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OpenUrl(const std::string& container_token,
                const std::string& url,
                uint32_t cid,
-               uint32_t container_ip,
                bool* result,
                base::WaitableEvent* event);
 
@@ -135,7 +131,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void InstallLinuxPackageProgress(
       const std::string& container_token,
       const uint32_t cid,
-      const uint32_t container_ip,
       InstallLinuxPackageProgressSignal* progress_signal,
       bool* result,
       base::WaitableEvent* event);
@@ -143,12 +138,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Sends a D-Bus message to Chrome to tell it to open a terminal that is
   // connected back to the VM/container and if there are params in
   // |terminal_params| then those should be executed in that terminal.
-  // It will use |container_ip| to resolve the request to a VM and then
+  // It will use |cid| to resolve the request to a VM and then
   // |container_token| to resolve it to a container.  |result| is set to true on
   // success, false otherwise. Signals |event| when done.
   void OpenTerminal(const std::string& container_token,
                     vm_tools::apps::TerminalParams terminal_params,
-                    uint32_t container_ip,
+                    const uint32_t cid,
                     bool* result,
                     base::WaitableEvent* event);
 
@@ -219,15 +214,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to get debug information.
   std::unique_ptr<dbus::Response> GetDebugInformation(
       dbus::MethodCall* method_call);
-
-  // Gets the VirtualMachine that corresponds to a container at |container_ip|
-  // and sets |vm_out| to the VirtualMachine, |owner_id_out| to the owner id of
-  // the VM, and |name_out| to the name of the VM. Returns false if no such
-  // mapping exists.
-  bool GetVirtualMachineForContainerIp(uint32_t container_ip,
-                                       VirtualMachine** vm_out,
-                                       std::string* owner_id_out,
-                                       std::string* name_out);
 
   // Gets the VirtualMachine that corresponds to a container at |cid|
   // and sets |vm_out| to the VirtualMachine, |owner_id_out| to the owner id of

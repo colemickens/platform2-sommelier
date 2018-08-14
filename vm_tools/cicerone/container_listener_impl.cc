@@ -22,35 +22,10 @@
 #include "vm_tools/cicerone/service.h"
 
 namespace {
-constexpr char kIpv4Prefix[] = "ipv4:";
-constexpr size_t kIpv4PrefixSize = sizeof(kIpv4Prefix) - 1;
 // These rate limit settings ensure that calls that open a new window/tab can't
 // be made more than 10 times in a 15 second interval approximately.
 constexpr base::TimeDelta kOpenRateWindow = base::TimeDelta::FromSeconds(15);
 constexpr uint32_t kOpenRateLimit = 10;
-
-// Returns 0 on failure, otherwise the parsed 32 bit IP address from an
-// ipv4:aaa.bbb.ccc.ddd:eee string.
-uint32_t ExtractIpFromPeerAddress(const std::string& peer_address) {
-  if (!base::StartsWith(peer_address, kIpv4Prefix,
-                        base::CompareCase::INSENSITIVE_ASCII)) {
-    LOG(ERROR) << "Failed parsing non-IPv4 address: " << peer_address;
-    return 0;
-  }
-  auto colon_pos = peer_address.find(':', kIpv4PrefixSize);
-  if (colon_pos == std::string::npos) {
-    LOG(ERROR) << "Invalid peer address, missing port: " << peer_address;
-    return 0;
-  }
-  uint32_t int_ip;
-  std::string peer_ip =
-      peer_address.substr(kIpv4PrefixSize, colon_pos - kIpv4PrefixSize);
-  if (inet_pton(AF_INET, peer_ip.c_str(), &int_ip) != 1) {
-    LOG(ERROR) << "Failed parsing IPv4 address: " << peer_ip;
-    return 0;
-  }
-  return int_ip;
-}
 
 // Returns 0 on failure, otherwise the parsed vsock cid from a
 // vsock:cid:port string.
@@ -77,14 +52,10 @@ grpc::Status ContainerListenerImpl::ContainerReady(
     const vm_tools::container::ContainerStartupInfo* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = 0;
   uint32_t cid = ExtractCidFromPeerAddress(peer_address);
   if (cid == 0) {
-    ip = ExtractIpFromPeerAddress(peer_address);
-  }
-  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid/IP for ContainerListener");
+                        "Failed parsing cid for ContainerListener");
   }
   bool result = false;
   base::WaitableEvent event(false /*manual_reset*/,
@@ -92,7 +63,7 @@ grpc::Status ContainerListenerImpl::ContainerReady(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::ContainerStartupCompleted,
-                 service_, request->token(), cid, request->garcon_port(), ip,
+                 service_, request->token(), cid, request->garcon_port(),
                  &result, &event));
   event.Wait();
   if (!result) {
@@ -110,22 +81,17 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
     const vm_tools::container::ContainerShutdownInfo* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = 0;
   uint32_t cid = ExtractCidFromPeerAddress(peer_address);
   if (cid == 0) {
-    ip = ExtractIpFromPeerAddress(peer_address);
-  }
-  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid/IP for ContainerListener");
+                        "Failed parsing cid for ContainerListener");
   }
   bool result = false;
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
   task_runner_->PostTask(
-      FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ContainerShutdown, service_,
-                 request->token(), cid, ip, &result, &event));
+      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ContainerShutdown,
+                            service_, request->token(), cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerShutdown but could not find matching VM: "
@@ -142,14 +108,10 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
     const vm_tools::container::UpdateApplicationListRequest* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = 0;
   uint32_t cid = ExtractCidFromPeerAddress(peer_address);
   if (cid == 0) {
-    ip = ExtractIpFromPeerAddress(peer_address);
-  }
-  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid/IP for ContainerListener");
+                        "Failed parsing cid for ContainerListener");
   }
   vm_tools::apps::ApplicationList app_list;
   // vm_name and container_name are set in the UpdateApplicationList call but we
@@ -189,7 +151,7 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::UpdateApplicationList, service_,
-                 request->token(), cid, ip, &app_list, &result, &event));
+                 request->token(), cid, &app_list, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating application list from ContainerListener";
@@ -210,14 +172,10 @@ grpc::Status ContainerListenerImpl::OpenUrl(
                         "OpenUrl rate limit exceeded, blocking request");
   }
   std::string peer_address = ctx->peer();
-  uint32_t ip = 0;
   uint32_t cid = ExtractCidFromPeerAddress(peer_address);
   if (cid == 0) {
-    ip = ExtractIpFromPeerAddress(peer_address);
-  }
-  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid/IP for ContainerListener");
+                        "Failed parsing cid for ContainerListener");
   }
   base::WaitableEvent event(false /*manual_reset*/,
                             false /*initially_signaled*/);
@@ -225,7 +183,7 @@ grpc::Status ContainerListenerImpl::OpenUrl(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::OpenUrl, service_,
-                 request->token(), request->url(), cid, ip, &result, &event));
+                 request->token(), request->url(), cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure opening URL from ContainerListener";
@@ -239,14 +197,10 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
     const vm_tools::container::InstallLinuxPackageProgressInfo* request,
     vm_tools::EmptyMessage* response) {
   std::string peer_address = ctx->peer();
-  uint32_t ip = 0;
   uint32_t cid = ExtractCidFromPeerAddress(peer_address);
   if (cid == 0) {
-    ip = ExtractIpFromPeerAddress(peer_address);
-  }
-  if (ip == 0 && cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid/IP for ContainerListener");
+                        "Failed parsing cid for ContainerListener");
   }
   InstallLinuxPackageProgressSignal progress_signal;
   if (!InstallLinuxPackageProgressSignal::Status_IsValid(
@@ -265,7 +219,7 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::InstallLinuxPackageProgress,
-                 service_, request->token(), cid, ip, &progress_signal, &result,
+                 service_, request->token(), cid, &progress_signal, &result,
                  &event));
   event.Wait();
   if (!result) {
@@ -288,10 +242,10 @@ grpc::Status ContainerListenerImpl::OpenTerminal(
                         "OpenTerminal rate limit exceeded, blocking request");
   }
   std::string peer_address = ctx->peer();
-  uint32_t ip = ExtractIpFromPeerAddress(peer_address);
-  if (ip == 0) {
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing IPv4 address for ContainerListener");
+                        "Failed parsing cid for ContainerListener");
   }
   vm_tools::apps::TerminalParams terminal_params;
   terminal_params.mutable_params()->CopyFrom(request->params());
@@ -301,7 +255,7 @@ grpc::Status ContainerListenerImpl::OpenTerminal(
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&vm_tools::cicerone::Service::OpenTerminal,
                             service_, request->token(),
-                            std::move(terminal_params), ip, &result, &event));
+                            std::move(terminal_params), cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure opening terminal from ContainerListener";
