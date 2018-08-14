@@ -683,39 +683,48 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
 
   // Reference: camera2/cts/CameraDeviceTest.java#checkRequestForTemplate
   // 3A settings--control mode
-  EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AE_MODE,
-                      ANDROID_CONTROL_AE_MODE_ON);
+  if (type == CAMERA3_TEMPLATE_MANUAL) {
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_MODE,
+                        ANDROID_CONTROL_MODE_OFF);
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AE_MODE,
+                        ANDROID_CONTROL_AE_MODE_OFF);
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AWB_MODE,
+                        ANDROID_CONTROL_AWB_MODE_OFF);
+  } else {
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AE_MODE,
+                        ANDROID_CONTROL_AE_MODE_ON);
 
-  EXPECT_KEY_VALUE_EQ(default_settings,
-                      ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, 0);
+    EXPECT_KEY_VALUE_EQ(default_settings,
+                        ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, 0);
 
-  EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
-                      ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
+                        ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
 
-  // if AE lock is not supported, expect the control key to be non-existent or
-  // false
-  if (static_info->IsAELockSupported() ||
-      IsMetadataKeyAvailable(default_settings, ANDROID_CONTROL_AE_LOCK)) {
-    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AE_LOCK,
-                        ANDROID_CONTROL_AE_LOCK_OFF);
+    // if AE lock is not supported, expect the control key to be non-existent or
+    // false
+    if (static_info->IsAELockSupported() ||
+        IsMetadataKeyAvailable(default_settings, ANDROID_CONTROL_AE_LOCK)) {
+      EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AE_LOCK,
+                          ANDROID_CONTROL_AE_LOCK_OFF);
+    }
+
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AF_TRIGGER,
+                        ANDROID_CONTROL_AF_TRIGGER_IDLE);
+
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AWB_MODE,
+                        ANDROID_CONTROL_AWB_MODE_AUTO);
+
+    // if AWB lock is not supported, expect the control key to be non-existent
+    // or false
+    if (static_info->IsAWBLockSupported() ||
+        IsMetadataKeyAvailable(default_settings, ANDROID_CONTROL_AWB_LOCK)) {
+      EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AWB_LOCK,
+                          ANDROID_CONTROL_AWB_LOCK_OFF);
+    }
+
+    // Check 3A regions
+    // TODO(hywu): CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
   }
-
-  EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AF_TRIGGER,
-                      ANDROID_CONTROL_AF_TRIGGER_IDLE);
-
-  EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AWB_MODE,
-                      ANDROID_CONTROL_AWB_MODE_AUTO);
-
-  // if AWB lock is not supported, expect the control key to be non-existent or
-  // false
-  if (static_info->IsAWBLockSupported() ||
-      IsMetadataKeyAvailable(default_settings, ANDROID_CONTROL_AWB_LOCK)) {
-    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_CONTROL_AWB_LOCK,
-                        ANDROID_CONTROL_AWB_LOCK_OFF);
-  }
-
-  // Check 3A regions
-  // TODO(hywu): CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
 
   // Sensor settings
   // TODO(hywu): LENS_APERTURE, LENS_FILTER_DENSITY, LENS_FOCAL_LENGTH,
