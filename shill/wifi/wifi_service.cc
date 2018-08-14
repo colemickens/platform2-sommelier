@@ -87,7 +87,7 @@ WiFiService::WiFiService(ControlInterface* control_interface,
       security_(security),
       mode_(mode),
       hidden_ssid_(hidden_ssid),
-      ft_enabled_(true),
+      ft_enabled_(false),
       frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       raw_signal_strength_(0),
@@ -443,7 +443,7 @@ bool WiFiService::Unload() {
   preferred_device_.clear();
   roam_threshold_db_ = 0;
   roam_threshold_db_set_ = false;
-  ft_enabled_ = true;
+  ft_enabled_ = false;
   return provider_->OnServiceUnloaded(this);
 }
 
