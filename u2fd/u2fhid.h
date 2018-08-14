@@ -16,6 +16,26 @@
 
 namespace u2f {
 
+constexpr uint32_t kDefaultVendorId = 0x18d1;
+constexpr uint32_t kDefaultProductId = 0x502c;
+
+// Mandatory length of the U2F HID report.
+constexpr size_t kU2fReportSize = 64;
+
+// HID frame CMD/SEQ byte definitions.
+constexpr uint8_t kFrameTypeMask = 0x80;
+constexpr uint8_t kFrameTypeInit = 0x80;
+// when bit 7 is not set, the frame type is CONTinuation.
+
+// INIT command parameters
+constexpr uint32_t kCidBroadcast = -1U;
+constexpr size_t kInitNonceSize = 8;
+
+constexpr uint8_t kCapFlagWink = 0x01;
+constexpr uint8_t kCapFlagLock = 0x02;
+
+constexpr size_t kMaxPayloadSize = (64 - 7 + 128 * (64 - 5));  // 7609 bytes
+
 // U2fHid emulates U2FHID protocol on top of the TPM U2F implementation.
 // The object reads the HID report sent by the HIDInterface passed to the
 // constructor, parses it and extracts the U2FHID command. If this is a U2F
@@ -24,6 +44,31 @@ namespace u2f {
 // error code) inside an HID report through the HIDInterface.
 class U2fHid {
  public:
+  // U2FHID Command codes
+  enum class U2fHidCommand : uint8_t {
+    kPing = 1,
+    kMsg = 3,
+    kLock = 4,
+    kVendorSysInfo = 5,
+    kInit = 6,
+    kWink = 8,
+    kError = 0x3f,
+  };
+
+  // U2FHID error codes
+  enum class U2fHidError : uint8_t {
+    kNone = 0,
+    kInvalidCmd = 1,
+    kInvalidPar = 2,
+    kInvalidLen = 3,
+    kInvalidSeq = 4,
+    kMsgTimeout = 5,
+    kChannelBusy = 6,
+    kLockRequired = 10,
+    kInvalidCid = 11,
+    kOther = 127,
+  };
+
   // Callback to send the raw U2F APDU in |req| and get the corresponding
   // response APDU in |resp|.
   using TransmitApduCallback =
@@ -46,9 +91,6 @@ class U2fHid {
   bool GetU2fVersion(std::string* version_out);
 
  private:
-  enum class U2fHidCommand : uint8_t;
-  enum class U2fHidError : uint8_t;
-
   // U2FHID protocol commands implementation.
   void CmdInit(uint32_t cid, const std::string& payload);
   int CmdLock(std::string* resp);

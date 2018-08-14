@@ -30,8 +30,6 @@
 namespace {
 
 constexpr char kDeviceName[] = "Integrated U2F";
-constexpr uint32_t kDefaultVendorId = 0x18d1;
-constexpr uint32_t kDefaultProductId = 0x502c;
 
 namespace em = enterprise_management;
 
@@ -160,8 +158,10 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(force_u2f, false, "force U2F mode even if disabled by policy");
   DEFINE_bool(
       force_g2f, false, "force U2F mode plus extensions regardless of policy");
-  DEFINE_int32(product_id, kDefaultProductId, "Product ID for the HID device");
-  DEFINE_int32(vendor_id, kDefaultVendorId, "Vendor ID for the HID device");
+  DEFINE_int32(product_id, u2f::kDefaultProductId,
+               "Product ID for the HID device");
+  DEFINE_int32(vendor_id, u2f::kDefaultVendorId,
+               "Vendor ID for the HID device");
   DEFINE_bool(verbose, false, "verbose logging");
 
   brillo::FlagHelper::Init(argc, argv, "u2fd, U2FHID emulation daemon.");

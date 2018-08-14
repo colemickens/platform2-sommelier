@@ -16,31 +16,14 @@
 
 namespace {
 
-// Mandatory length of the U2F HID report.
-constexpr size_t kU2fReportSize = 64;
-
 // Size of the payload for an INIT U2F HID report.
 constexpr size_t kInitReportPayloadSize = 57;
 // Size of the payload for a Continuation U2F HID report.
 constexpr size_t kContReportPayloadSize = 59;
 
-// HID frame CMD/SEQ byte definitions.
-constexpr uint8_t kFrameTypeMask = 0x80;
-constexpr uint8_t kFrameTypeInit = 0x80;
-// when bit 7 is not set, the frame type is CONTinuation.
-
-// INIT command parameters
-constexpr uint32_t kCidBroadcast = -1U;
-constexpr size_t kInitNonceSize = 8;
-
 constexpr uint8_t kInterfaceVersion = 2;
 
-constexpr uint8_t kCapFlagWink = 0x01;
-constexpr uint8_t kCapFlagLock = 0x02;
-
 constexpr int kU2fHidTimeoutMs = 500;
-
-constexpr size_t kMaxPayloadSize = (64 - 7 + 128 * (64 - 5));  // 7609 bytes
 
 // Maximum duration one can keep the channel lock as specified by the U2FHID
 // specification
@@ -72,31 +55,6 @@ constexpr uint8_t kU2fReportDesc[] = {
 }  // namespace
 
 namespace u2f {
-
-// U2FHID Command codes
-enum class U2fHid::U2fHidCommand : uint8_t {
-  kPing = 1,
-  kMsg = 3,
-  kLock = 4,
-  kVendorSysInfo = 5,
-  kInit = 6,
-  kWink = 8,
-  kError = 0x3f,
-};
-
-// U2FHID error codes
-enum class U2fHid::U2fHidError : uint8_t {
-  kNone = 0,
-  kInvalidCmd = 1,
-  kInvalidPar = 2,
-  kInvalidLen = 3,
-  kInvalidSeq = 4,
-  kMsgTimeout = 5,
-  kChannelBusy = 6,
-  kLockRequired = 10,
-  kInvalidCid = 11,
-  kOther = 127,
-};
 
 class U2fHid::HidPacket {
  public:
