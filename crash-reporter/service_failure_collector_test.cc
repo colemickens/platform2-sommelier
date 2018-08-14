@@ -65,11 +65,20 @@ class ServiceFailureCollectorTest : public ::testing::Test {
   FilePath test_crash_directory_;
 };
 
-TEST_F(ServiceFailureCollectorTest, CollectOK) {
+TEST_F(ServiceFailureCollectorTest, CollectOKMain) {
   // Collector produces a crash report.
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash main process (2563) terminated with status 2\n"));
+  EXPECT_TRUE(collector_.Collect());
+  EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
+}
+
+TEST_F(ServiceFailureCollectorTest, CollectOKPreStart) {
+  // Collector produces a crash report.
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "crash-crash pre-start process (2563) terminated with status 2\n"));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
 }

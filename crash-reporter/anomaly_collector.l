@@ -103,7 +103,7 @@ END_TRACE       {PREFIX}" ---[ end trace".*
  * that failed, and its exit status.
  */
 UPSTART_WARN {PREFIX}" init: "
-SERVICE_FAIL [^ ]+" main process ("{D}+") terminated with status "{D}+
+SERVICE_FAIL [^ ]+" "[a-z-]+" process ("{D}+") terminated with status "{D}+
 
 
 SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
