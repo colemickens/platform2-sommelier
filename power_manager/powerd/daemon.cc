@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/daemon.h"
 
+#include <inttypes.h>
+
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -711,11 +713,11 @@ void Daemon::SetWifiTransmitPower(RadioTransmitPower power) {
 
 void Daemon::SetCellularTransmitPower(RadioTransmitPower power,
                                       int64_t dpr_gpio_number) {
-  // TODO(benchan): write the helper to change power
-  // TODO(egranata): run the helper tool here
-  NOTIMPLEMENTED() << "Cellular antenna power should be set to "
-                   << (power == RadioTransmitPower::LOW ? "low " : "high ")
-                   << "at this point - but that's a TODO";
+  std::string command = base::StringPrintf(
+      "set_cellular_transmit_power --gpio=%" PRId64 " %s", dpr_gpio_number,
+      (power == RadioTransmitPower::LOW ? " --low" : ""));
+  LOG(INFO) << "Running " << command;
+  delegate_->Launch(command.c_str());
 }
 
 void Daemon::OnAudioStateChange(bool active) {
