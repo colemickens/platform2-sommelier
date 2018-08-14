@@ -103,6 +103,7 @@ is_developer_image() {
 }
 
 # Returns 0 if we should consider ourselves to be running on a test image.
+# NOTE: Mirrors util.cc:IsTestImage().
 is_test_image() {
   # If we're testing crash reporter itself, we don't want to special-case
   # for test images.
@@ -676,11 +677,6 @@ send_crashes() {
 main() {
   if [ $# -ne 0 ]; then
     lecho "Command line flags should not be passed: $*"
-    exit 1
-  fi
-
-  if is_test_image; then
-    lecho "Exiting early due to test image."
     exit 1
   fi
 

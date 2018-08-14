@@ -25,6 +25,20 @@ bool IsDeveloperImage() {
   return base::PathExists(paths::Get(paths::kLeaveCoreFile));
 }
 
+bool IsTestImage() {
+  // If we're testing crash reporter itself, we don't want to special-case
+  // for test images.
+  if (IsCrashTestInProgress())
+    return false;
+
+  std::string channel;
+  if (!GetCachedKeyValueDefault(base::FilePath(paths::kLsbRelease),
+                                "CHROMEOS_RELEASE_TRACK", &channel)) {
+    return false;
+  }
+  return base::StartsWith(channel, "test", base::CompareCase::SENSITIVE);
+}
+
 bool GetCachedKeyValue(const base::FilePath& base_name,
                        const std::string& key,
                        const std::vector<base::FilePath>& directories,

@@ -58,6 +58,29 @@ TEST_F(CrashCommonUtilTest, IsDeveloperImage) {
   EXPECT_FALSE(IsDeveloperImage());
 }
 
+TEST_F(CrashCommonUtilTest, IsTestImage) {
+  EXPECT_FALSE(IsTestImage());
+
+  // Should return false because the channel is stable.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kEtcDirectory, paths::kLsbRelease),
+      "CHROMEOS_RELEASE_TRACK=stable-channel"));
+  EXPECT_FALSE(IsTestImage());
+
+  // Should return true because the channel is testimage.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kEtcDirectory, paths::kLsbRelease),
+      "CHROMEOS_RELEASE_TRACK=testimage-channel"));
+  EXPECT_TRUE(IsTestImage());
+
+  // Should return false if kCrashTestInProgress is present.
+  ASSERT_TRUE(
+      test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
+                                         paths::kCrashTestInProgress),
+                            ""));
+  EXPECT_FALSE(IsTestImage());
+}
+
 TEST_F(CrashCommonUtilTest, GetCachedKeyValue) {
   ASSERT_TRUE(test_util::CreateFile(paths::Get("/etc/lsb-release"),
                                     kLsbReleaseContents));

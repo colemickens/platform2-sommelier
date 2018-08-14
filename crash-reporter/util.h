@@ -18,6 +18,9 @@ bool IsCrashTestInProgress();
 // Returns true if running on a developer image.
 bool IsDeveloperImage();
 
+// Returns true if running on a test image.
+bool IsTestImage();
+
 // Tries to find |key| in a key-value file named |base_name| in |directories| in
 // the specified order, and writes the value to |value|. This function returns
 // as soon as the key is found (i.e. if the key is found in the first directory,

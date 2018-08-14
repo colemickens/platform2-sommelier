@@ -21,6 +21,7 @@
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crash_sender_util.h"
 #include "crash-reporter/paths.h"
+#include "crash-reporter/util.h"
 
 namespace {
 
@@ -63,7 +64,7 @@ void SetUpSandbox(struct minijail* jail) {
 void LockOrExit(const base::File& lock_file) {
   if (flock(lock_file.GetPlatformFile(), LOCK_EX | LOCK_NB) != 0) {
     if (errno == EWOULDBLOCK) {
-      LOG(ERROR) << "Already running; quitting.";
+      LOG(INFO) << "Already running; quitting.";
     } else {
       PLOG(ERROR) << "Failed to acquire a lock.";
     }
@@ -82,7 +83,12 @@ int RunChildMain(int argc, char* argv[]) {
   util::ParseCommandLine(argc, argv);
 
   if (util::ShouldPauseSending()) {
-    LOG(ERROR) << "Exiting early due to " << paths::kPauseCrashSending;
+    LOG(INFO) << "Exiting early due to " << paths::kPauseCrashSending;
+    return EXIT_FAILURE;
+  }
+
+  if (util::IsTestImage()) {
+    LOG(INFO) << "Exiting early due to test image.";
     return EXIT_FAILURE;
   }
 
