@@ -93,6 +93,7 @@ GrpcCompletionQueueDispatcher::~GrpcCompletionQueueDispatcher() {
 void GrpcCompletionQueueDispatcher::Start() {
   CHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(!monitoring_thread_);
+  CHECK(!shut_down_);
   // Create the delegate which will be run on the background thread.
   // It is OK to pass unowned pointers and use |base::Unretained|  because:
   // - |GrpcCompletionQueueDispatcher| CHECK-fails if it's destroyed
@@ -115,8 +116,15 @@ void GrpcCompletionQueueDispatcher::Start() {
 
 void GrpcCompletionQueueDispatcher::Shutdown(
     base::Closure on_shutdown_callback) {
+  CHECK(!shut_down_);
+  shut_down_ = true;
+
+  if (!monitoring_thread_) {
+    on_shutdown_callback.Run();
+    return;
+  }
+
   CHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(monitoring_thread_);
   CHECK(on_shutdown_callback_.is_null());
   CHECK(!on_shutdown_callback.is_null());
 

@@ -43,6 +43,11 @@
           '<@(exported_deps)',
         ],
       },
+      'link_settings': {
+        'libraries': [
+          '-lgpr',
+        ],
+      },
       'all_dependent_settings': {
         'variables': {
           'deps': [
@@ -51,7 +56,10 @@
         },
       },
       'sources': [
+        'grpc_async_adapter/async_grpc_client.cc',
+        'grpc_async_adapter/async_grpc_server.cc',
         'grpc_async_adapter/grpc_completion_queue_dispatcher.cc',
+        'grpc_async_adapter/rpc_state.cc',
       ],
     },
     {
@@ -93,14 +101,43 @@
       'targets': [
         # Unit tests.
         {
+          'target_name': 'libgrpc_async_adapter_test_rpcs',
+          'type': 'static_library',
+          'variables': {
+            'proto_in_dir': 'grpc_async_adapter',
+            'proto_out_dir': 'include',
+            'gen_grpc': 1,
+            'exported_deps': [
+              'grpc++',
+              'protobuf',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'all_dependent_settings': {
+            'variables': {
+              'deps': [
+                '<@(exported_deps)',
+              ],
+            },
+          },
+          'sources': [
+            'grpc_async_adapter/test_rpcs.proto',
+          ],
+          'includes': [
+            '../common-mk/protoc.gypi',
+          ],
+        },
+        {
           'target_name': 'libgrpc_async_adapter_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             '../common-mk/testrunner.gyp:testrunner',
             'libgrpc_async_adapter',
+            'libgrpc_async_adapter_test_rpcs',
           ],
           'sources': [
+            'grpc_async_adapter/async_grpc_client_server_test.cc',
             'grpc_async_adapter/grpc_completion_queue_dispatcher_test.cc',
           ],
           'variables': {

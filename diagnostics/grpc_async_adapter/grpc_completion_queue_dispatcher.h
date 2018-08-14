@@ -65,6 +65,9 @@ class GrpcCompletionQueueDispatcher {
   // |on_shutdown_callback| will be called when the |CompletionQueue| is fully
   // drained and background thread has shut down. Only then may this instance be
   // destroyed.
+  // If |Shutdown| has been called before this |GrpcCompletionQueueDispatcher|
+  // has been |Start|ed, |on_shutdown_callback| is called immediately.
+  // |Shutdown| may only be called once.
   void Shutdown(base::Closure on_shutdown_callback);
 
   // Starts waiting for an event with |tag|. If |tag| has been or will be sent
@@ -105,6 +108,8 @@ class GrpcCompletionQueueDispatcher {
 
   // This callback will be invoked when the moniting thread is exiting.
   base::Closure on_shutdown_callback_;
+  bool shut_down_ = false;
+
   // Maps tags to the callbacks that should be run on the |task_runner_| when
   // the corresponding event fires.
   std::map<const void*, TagAvailableCallback> tag_to_callback_map_;
