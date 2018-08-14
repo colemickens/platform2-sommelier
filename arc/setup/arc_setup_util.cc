@@ -599,21 +599,6 @@ ScopedMountNamespace::CreateScopedMountNamespaceForPid(pid_t pid) {
       std::move(original_mount_namespace_fd));
 }
 
-std::string GetEnvOrDie(base::Environment* env, const char* name) {
-  DCHECK(env);
-  std::string result;
-  CHECK(env->GetVar(name, &result)) << name << " not found";
-  return result;
-}
-
-bool GetBooleanEnvOrDie(base::Environment* env, const char* name) {
-  return GetEnvOrDie(env, name) == "1";
-}
-
-base::FilePath GetFilePathOrDie(base::Environment* env, const char* name) {
-  return base::FilePath(GetEnvOrDie(env, name));
-}
-
 base::FilePath Realpath(const base::FilePath& path) {
   // We cannot use base::NormalizeFilePath because the function fails
   // if |path| points to a directory (for Windows compatibility.)

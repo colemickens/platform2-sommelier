@@ -14,6 +14,7 @@
 #include "arc/setup/android_sdk_version.h"
 #include "arc/setup/arc_setup_metrics.h"
 #include "arc/setup/arc_setup_util.h"
+#include "arc/setup/config.h"
 
 namespace base {
 
@@ -74,7 +75,7 @@ enum class Mode {
 // A class that does the actual setup (and stop) operations.
 class ArcSetup {
  public:
-  explicit ArcSetup(Mode mode);
+  ArcSetup(Mode mode, const base::FilePath& config_json);
   ~ArcSetup();
 
   // Does the setup or stop operations depending on the environment variable.
@@ -363,6 +364,8 @@ class ArcSetup {
   // Called when arc-setup is called with --mode=update-restorecon-last.
   void OnUpdateRestoreconLast();
 
+  const Mode mode_;
+  const Config config_;
   std::unique_ptr<ArcMounter> arc_mounter_;
   std::unique_ptr<ArcPaths> arc_paths_;
   std::unique_ptr<ArcSetupMetrics> arc_setup_metrics_;

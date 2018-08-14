@@ -139,18 +139,6 @@ class ScopedMountNamespace {
   DISALLOW_COPY_AND_ASSIGN(ScopedMountNamespace);
 };
 
-// Finds an environment variable |name| from |env| and returns it as string.
-// Otherwise calls exit(1).
-std::string GetEnvOrDie(base::Environment* env, const char* name);
-
-// Does the same as GetEnvOrDie but returns true when the variable is "1".
-// When it is not, returns false.
-bool GetBooleanEnvOrDie(base::Environment* env, const char* name);
-
-// The same as GetEnvOrDie except that this version returns the variable as
-// FilePath.
-base::FilePath GetFilePathOrDie(base::Environment* env, const char* name);
-
 // Resolves |path| to an absolute path that does not include symbolic links
 // or the special .  or ..  directory entries.
 base::FilePath Realpath(const base::FilePath& path);

@@ -12,6 +12,7 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/timer/elapsed_timer.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
@@ -20,6 +21,8 @@
 #include "arc/setup/arc_setup.h"
 
 namespace {
+
+constexpr char kConfigJson[] = "/usr/share/arc-setup/config.json";
 
 arc::Mode GetMode(const std::string& mode) {
   static constexpr std::pair<const char*, arc::Mode> kModeNameMapping[] = {
@@ -67,7 +70,7 @@ int main(int argc, char** argv) {
       base::CommandLine::ForCurrentProcess()->GetCommandLineString();
   LOG(INFO) << "Starting " << command_line;
   {
-    arc::ArcSetup setup(GetMode(FLAGS_mode));
+    arc::ArcSetup setup(GetMode(FLAGS_mode), base::FilePath(kConfigJson));
     setup.Run();
   }
   LOG(INFO) << command_line << " took "

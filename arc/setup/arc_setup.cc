@@ -31,6 +31,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -434,11 +435,21 @@ std::string GetOrCreateArcSalt() {
 
 }  // namespace
 
+// A struct that holds all the FilePaths ArcSetup uses.
 struct ArcPaths {
-  explicit ArcPaths(Mode mode) : mode(mode) {}
-
-  std::unique_ptr<base::Environment> env{base::Environment::Create()};
-  const Mode mode;
+  static std::unique_ptr<ArcPaths> Create(Mode mode, const Config& config) {
+    base::FilePath android_data;
+    base::FilePath android_data_old;
+    if (mode == Mode::BOOT_CONTINUE) {
+      // session_manager must start arc-setup job with ANDROID_DATA_DIR
+      // parameter containing the path of the real android-data directory. They
+      // are passed only when the mode is boot-continue.
+      android_data = base::FilePath(config.GetStringOrDie("ANDROID_DATA_DIR"));
+      android_data_old =
+          base::FilePath(config.GetStringOrDie("ANDROID_DATA_OLD_DIR"));
+    }
+    return base::WrapUnique(new ArcPaths(android_data, android_data_old));
+  }
 
   // Lexicographically sorted.
   const base::FilePath adbd_mount_directory{kAdbdMountDirectory};
@@ -479,21 +490,24 @@ struct ArcPaths {
   const base::FilePath usb_devices_directory{kUsbDevicesDirectory};
 
   const base::FilePath restorecon_whitelist_sync{kRestoreconWhitelistSync};
-  // session_manager must start arc-setup job with ANDROID_DATA_DIR parameter
-  // containing the path of the real android-data directory. They are passed
-  // only when the mode is boot-continue.
-  const bool kHasAndroidDataDir = mode == Mode::BOOT_CONTINUE;
-  const base::FilePath android_data_directory =
-      kHasAndroidDataDir ? GetFilePathOrDie(env.get(), "ANDROID_DATA_DIR")
-                         : base::FilePath();
-  const base::FilePath android_data_old_directory =
-      kHasAndroidDataDir ? GetFilePathOrDie(env.get(), "ANDROID_DATA_OLD_DIR")
-                         : base::FilePath();
+
+  const base::FilePath android_data_directory;
+  const base::FilePath android_data_old_directory;
+
+ private:
+  ArcPaths(const base::FilePath& android_data_directory,
+           const base::FilePath& android_data_old_directory)
+      : android_data_directory(android_data_directory),
+        android_data_old_directory(android_data_old_directory) {}
+
+  DISALLOW_COPY_AND_ASSIGN(ArcPaths);
 };
 
-ArcSetup::ArcSetup(Mode mode)
-    : arc_mounter_(GetDefaultMounter()),
-      arc_paths_(std::make_unique<ArcPaths>(mode)),
+ArcSetup::ArcSetup(Mode mode, const base::FilePath& config_json)
+    : mode_(mode),
+      config_(config_json, base::WrapUnique(base::Environment::Create())),
+      arc_mounter_(GetDefaultMounter()),
+      arc_paths_(ArcPaths::Create(mode_, config_)),
       arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()),
       sdk_version_(GetSdkVersion()) {}
 
@@ -586,7 +600,7 @@ ArcBinaryTranslationType ArcSetup::IdentifyBinaryTranslationType() {
 
   const bool prefer_ndk_translation =
       (!is_houdini_available ||
-       GetBooleanEnvOrDie(arc_paths_->env.get(), "NATIVE_BRIDGE_EXPERIMENT"));
+       config_.GetBoolOrDie("NATIVE_BRIDGE_EXPERIMENT"));
 
   if (is_ndk_translation_available && prefer_ndk_translation)
     return ArcBinaryTranslationType::NDK_TRANSLATION;
@@ -653,7 +667,7 @@ void ArcSetup::SetUpAndroidData() {
 bool ArcSetup::SetUpPackagesCache() {
   base::ElapsedTimer timer;
 
-  if (GetBooleanEnvOrDie(arc_paths_->env.get(), "SKIP_PACKAGES_CACHE_SETUP")) {
+  if (config_.GetBoolOrDie("SKIP_PACKAGES_CACHE_SETUP")) {
     LOG(INFO) << "Packages cache setup is disabled.";
     return false;
   }
@@ -762,8 +776,7 @@ void ArcSetup::SetUpGservicesCache() {
 
 void ArcSetup::UnmountSdcard() {
   // Teardown mounts. pkglist are teared down in an upstart file.
-  const bool is_esdfs_supported =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "USE_ESDFS");
+  const bool is_esdfs_supported = config_.GetBoolOrDie("USE_ESDFS");
 
   // If USE_ESDFS is not set, then /system/bin/sdcard manages the mount instead.
   if (!is_esdfs_supported) {
@@ -908,13 +921,10 @@ void ArcSetup::SetUpSdcard() {
   const base::FilePath source_directory =
       arc_paths_->android_mutable_source.Append("data/media");
 
-  const bool is_esdfs_supported =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "USE_ESDFS");
+  const bool is_esdfs_supported = config_.GetBoolOrDie("USE_ESDFS");
 
   // Get the container's user namespace file descriptor.
-  int container_pid;
-  base::StringToInt(GetEnvOrDie(arc_paths_->env.get(), "CONTAINER_PID"),
-                    &container_pid);
+  const int container_pid = config_.GetIntOrDie("CONTAINER_PID");
   base::ScopedFD container_userns_fd(HANDLE_EINTR(
       open(base::StringPrintf("/proc/%d/ns/user", container_pid).c_str(),
            O_RDONLY)));
@@ -1125,11 +1135,9 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
   const std::string chromeos_channel =
       GetChromeOsChannelFromFile(lsb_release_file_path);
   LOG(INFO) << "ChromeOS channel is \"" << chromeos_channel << "\"";
-  const std::string arc_lcd_density =
-      GetEnvOrDie(arc_paths_->env.get(), "ARC_LCD_DENSITY");
+  const std::string arc_lcd_density = config_.GetStringOrDie("ARC_LCD_DENSITY");
   LOG(INFO) << "lcd_density is " << arc_lcd_density;
-  const std::string arc_ui_scale =
-      GetEnvOrDie(arc_paths_->env.get(), "ARC_UI_SCALE");
+  const std::string arc_ui_scale = config_.GetStringOrDie("ARC_UI_SCALE");
   LOG(INFO) << "ui_scale is " << arc_ui_scale;
 
   std::string native_bridge;
@@ -1694,8 +1702,7 @@ void ArcSetup::ShouldDeleteDataExecutables(
 }
 
 std::string ArcSetup::GetSerialNumber() {
-  const std::string chromeos_user =
-      GetEnvOrDie(arc_paths_->env.get(), "CHROMEOS_USER");
+  const std::string chromeos_user = config_.GetStringOrDie("CHROMEOS_USER");
   const std::string salt = GetOrCreateArcSalt();
   EXIT_IF(salt.empty());  // at this point, the salt file should always exist.
   return arc::GenerateFakeSerialNumber(chromeos_user, salt);
@@ -1752,7 +1759,7 @@ void ArcSetup::MountSharedAndroidDirectories() {
                                nullptr, MS_BIND, nullptr));
 
   const std::string demo_session_apps =
-      GetEnvOrDie(arc_paths_->env.get(), "DEMO_SESSION_APPS_PATH");
+      config_.GetStringOrDie("DEMO_SESSION_APPS_PATH");
   if (!demo_session_apps.empty()) {
     MountDemoApps(base::FilePath(demo_session_apps),
                   arc_paths_->shared_mount_directory.Append("demo_apps"));
@@ -1807,7 +1814,7 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   constexpr char kCommand[] = "/system/bin/arcbootcontinue";
 
   const bool mount_demo_apps =
-      !GetEnvOrDie(arc_paths_->env.get(), "DEMO_SESSION_APPS_PATH").empty();
+      !config_.GetStringOrDie("DEMO_SESSION_APPS_PATH").empty();
 
   // Run |kCommand| on the container side. The binary does the following:
   // * Bind-mount the actual cache and data in /var/arc/shared_mounts to /cache
@@ -1819,8 +1826,7 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   // instead run the command with UID 0 (host's root) because our goal is to
   // remove or reduce [u]mount operations from the container, especially from
   // its /init, and then to enforce it with SELinux.
-  const std::string pid_str =
-      GetEnvOrDie(arc_paths_->env.get(), "CONTAINER_PID");
+  const std::string pid_str = config_.GetStringOrDie("CONTAINER_PID");
   const std::vector<std::string> command_line = {
       "/usr/bin/nsenter", "-t", pid_str,
       "-m",  // enter mount namespace
@@ -1831,26 +1837,24 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       "-r",  // set the root directory
       "-w",  // set the working directory
       "--", kCommand, "--serialno", serialnumber, "--disable-boot-completed",
-      GetEnvOrDie(arc_paths_->env.get(), "DISABLE_BOOT_COMPLETED_BROADCAST"),
-      "--vendor-privileged",
-      GetEnvOrDie(arc_paths_->env.get(), "ENABLE_VENDOR_PRIVILEGED"),
+      config_.GetStringOrDie("DISABLE_BOOT_COMPLETED_BROADCAST"),
+      "--vendor-privileged", config_.GetStringOrDie("ENABLE_VENDOR_PRIVILEGED"),
       "--container-boot-type", std::to_string(static_cast<int>(boot_type)),
       // When this COPY_PACKAGES_CACHE is set to "1", SystemServer copies
       // /data/system/pacakges.xml to /data/system/pacakges_copy.xml after the
       // initialization stage of PackageManagerService.
-      "--copy-packages-cache",
-      GetEnvOrDie(arc_paths_->env.get(), "COPY_PACKAGES_CACHE"),
+      "--copy-packages-cache", config_.GetStringOrDie("COPY_PACKAGES_CACHE"),
       "--mount-demo-apps", mount_demo_apps ? "1" : "0", "--is-demo-session",
-      GetEnvOrDie(arc_paths_->env.get(), "IS_DEMO_SESSION"), "--is-child",
-      GetEnvOrDie(arc_paths_->env.get(), "IS_CHILD"), "--locale",
-      GetEnvOrDie(arc_paths_->env.get(), "LOCALE"), "--preferred-languages",
-      GetEnvOrDie(arc_paths_->env.get(), "PREFERRED_LANGUAGES"),
+      config_.GetStringOrDie("IS_DEMO_SESSION"), "--is-child",
+      config_.GetStringOrDie("IS_CHILD"), "--locale",
+      config_.GetStringOrDie("LOCALE"), "--preferred-languages",
+      config_.GetStringOrDie("PREFERRED_LANGUAGES"),
       // Whether ARC should transition the supervision setup
       //   "0": No transition necessary.
       //   "1": Child -> regular transition, should disable supervision.
       //   "2": Regular -> child transition, should enable supervision.
       "--supervision-transition",
-      GetEnvOrDie(arc_paths_->env.get(), "SUPERVISION_TRANSITION")};
+      config_.GetStringOrDie("SUPERVISION_TRANSITION")};
 
   base::ElapsedTimer timer;
   if (!LaunchAndWait(command_line)) {
@@ -1877,8 +1881,7 @@ void ArcSetup::EnsureContainerDirectories() {
 }
 
 void ArcSetup::MountOnOnetimeSetup() {
-  const bool is_writable =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "WRITABLE_MOUNT");
+  const bool is_writable = config_.GetBoolOrDie("WRITABLE_MOUNT");
   const unsigned long writable_flag =  // NOLINT(runtime/int)
       is_writable ? 0 : MS_RDONLY;
 
@@ -1965,12 +1968,9 @@ void ArcSetup::CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs) {
 }
 
 void ArcSetup::OnSetup() {
-  const bool is_dev_mode =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_DEV_MODE");
-  const bool is_inside_vm =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_INSIDE_VM");
-  const bool is_debuggable =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "ANDROID_DEBUGGABLE");
+  const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
+  const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
+  const bool is_debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
 
   // The host-side dalvik-cache directory is mounted into the container
   // via the json file. Create it regardless of whether the code integrity
@@ -2017,10 +2017,8 @@ void ArcSetup::OnSetup() {
 }
 
 void ArcSetup::OnBootContinue() {
-  const bool is_dev_mode =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_DEV_MODE");
-  const bool is_inside_vm =
-      GetBooleanEnvOrDie(arc_paths_->env.get(), "CHROMEOS_INSIDE_VM");
+  const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
+  const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
   const std::string serialnumber = GetSerialNumber();
 
   ArcBootType boot_type;
@@ -2180,7 +2178,7 @@ void ArcSetup::OnUpdateRestoreconLast() {
 }
 
 void ArcSetup::Run() {
-  switch (arc_paths_->mode) {
+  switch (mode_) {
     case Mode::SETUP:
       bootstat_log("mini-android-start");
       OnSetup();

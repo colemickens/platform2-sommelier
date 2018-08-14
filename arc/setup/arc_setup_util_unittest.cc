@@ -76,39 +76,6 @@ void ValidateResourcesMatch(const base::FilePath& path1,
 
 }  // namespace
 
-TEST(ArcSetupUtil, TestEnvironmentUtils) {
-  std::unique_ptr<base::Environment> env(base::Environment::Create());
-
-  const uint64_t random = base::RandUint64();
-  const std::string random_var =
-      base::StringPrintf("ARC_SETUP_UTIL_UNITTEST_%" PRIu64 "", random);
-
-  EXPECT_FALSE(env->HasVar(random_var.c_str()));
-  EXPECT_DEATH(GetEnvOrDie(env.get(), random_var.c_str()), ".*");
-  EXPECT_DEATH(GetFilePathOrDie(env.get(), random_var.c_str()), ".*");
-
-  const base::FilePath test_path("/tmp");
-  EXPECT_TRUE(env->SetVar(random_var.c_str(), test_path.value()));
-
-  EXPECT_EQ(test_path.value(), GetEnvOrDie(env.get(), random_var.c_str()));
-  EXPECT_EQ(test_path.value(),
-            GetFilePathOrDie(env.get(), random_var.c_str()).value());
-
-  EXPECT_TRUE(env->SetVar(random_var.c_str(), "0"));
-  EXPECT_FALSE(GetBooleanEnvOrDie(env.get(), random_var.c_str()));
-  EXPECT_TRUE(env->SetVar(random_var.c_str(), "1"));
-  EXPECT_TRUE(GetBooleanEnvOrDie(env.get(), random_var.c_str()));
-  // Unexpected values evaluate to false.
-  EXPECT_TRUE(env->SetVar(random_var.c_str(), "2"));
-  EXPECT_FALSE(GetBooleanEnvOrDie(env.get(), random_var.c_str()));
-  EXPECT_TRUE(env->SetVar(random_var.c_str(), "bad value"));
-  EXPECT_FALSE(GetBooleanEnvOrDie(env.get(), random_var.c_str()));
-  EXPECT_TRUE(env->SetVar(random_var.c_str(), ""));
-  EXPECT_FALSE(GetBooleanEnvOrDie(env.get(), random_var.c_str()));
-
-  env->UnSetVar(random_var.c_str());
-}
-
 TEST(ArcSetupUtil, TestCreateOrTruncate) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());

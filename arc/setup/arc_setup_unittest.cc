@@ -10,6 +10,8 @@
 
 #include <base/command_line.h>
 #include <base/environment.h>
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <gtest/gtest.h>
 
@@ -117,7 +119,13 @@ TEST(ArcSetup, TestOnetimeSetupStop) {
   // ArcSetup needs some environment variables.
   ASSERT_TRUE(env->SetVar("WRITABLE_MOUNT", "0"));
 
-  ArcSetup setup(Mode::ONETIME_SETUP);
+  // ..and a JSON file.
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  const base::FilePath config_json(temp_directory.GetPath().Append("json"));
+  ASSERT_TRUE(WriteToFile(config_json, 0700, "{\"a\":true,\"b\":42}"));
+
+  ArcSetup setup(Mode::ONETIME_SETUP, config_json);
   setup.set_arc_mounter_for_testing(std::make_unique<MockArcMounter>());
 
   // Do the one-time setup and confirm both loop and non-loop mount points are
