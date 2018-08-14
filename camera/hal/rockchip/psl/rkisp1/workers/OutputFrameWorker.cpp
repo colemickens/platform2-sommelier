@@ -823,7 +823,7 @@ status_t OutputFrameWorker::SWPostProcessor::cropRotateScaleFrame(
     int width = input->width();
     int height = input->height();
     int inStride = input->stride();
-    const uint8* inBuffer = (uint8*)(input->data());
+    const uint8_t* inBuffer = (uint8_t*)(input->data());
     int cropped_width = height * height / width;
     if (cropped_width % 2 == 1) {
       // Make cropped_width to the closest even number.
@@ -853,7 +853,7 @@ status_t OutputFrameWorker::SWPostProcessor::cropRotateScaleFrame(
         mRotateBuffer.resize(input->size());
     }
 
-    uint8* I420RotateBuffer = mRotateBuffer.data();
+    uint8_t* I420RotateBuffer = mRotateBuffer.data();
     int ret = libyuv::ConvertToI420(
         inBuffer, inStride,
         I420RotateBuffer, rotated_width,
@@ -870,7 +870,7 @@ status_t OutputFrameWorker::SWPostProcessor::cropRotateScaleFrame(
         mScaleBuffer.resize(input->size());
     }
 
-    uint8* I420ScaleBuffer = mScaleBuffer.data();
+    uint8_t* I420ScaleBuffer = mScaleBuffer.data();
     ret = libyuv::I420Scale(
         I420RotateBuffer, rotated_width,
         I420RotateBuffer + rotated_width * rotated_height, rotated_width / 2,
@@ -885,7 +885,7 @@ status_t OutputFrameWorker::SWPostProcessor::cropRotateScaleFrame(
       LOGE("I420Scale failed: %d", ret);
     }
     //convert to NV12
-    uint8* outBuffer = (uint8*)(output->data());
+    uint8_t* outBuffer = (uint8_t*)(output->data());
     int outStride = output->stride();
     ret = libyuv::I420ToNV12(I420ScaleBuffer, width,
                              I420ScaleBuffer + width * height, width / 2,
@@ -901,11 +901,11 @@ status_t OutputFrameWorker::SWPostProcessor::scaleFrame(
                                std::shared_ptr<CameraBuffer> output)
 {
     // Y plane
-    libyuv::ScalePlane((uint8*)input->data(),
+    libyuv::ScalePlane((uint8_t*)input->data(),
                 input->stride(),
                 input->width(),
                 input->height(),
-                (uint8*)output->data(),
+                (uint8_t*)output->data(),
                 output->stride(),
                 output->width(),
                 output->height(),
@@ -915,11 +915,11 @@ status_t OutputFrameWorker::SWPostProcessor::scaleFrame(
     // TODO: should get bpl to calculate offset
     int inUVOffsetByte = input->stride() * input->height();
     int outUVOffsetByte = output->stride() * output->height();
-    libyuv::ScalePlane_16((uint16*)input->data() + inUVOffsetByte / 2,
+    libyuv::ScalePlane_16((uint16_t*)input->data() + inUVOffsetByte / 2,
                 input->stride() / 2,
                 input->width() / 2,
                 input->height() / 2,
-                (uint16*)output->data() + outUVOffsetByte / 2,
+                (uint16_t*)output->data() + outUVOffsetByte / 2,
                 output->stride() / 2,
                 output->width() / 2,
                 output->height() / 2,
