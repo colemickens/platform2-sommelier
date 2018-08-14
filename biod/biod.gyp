@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -75,7 +72,7 @@
             ],
           },
           'sources': [
-            'biod_storage_unittest.cc',
+            'biod_storage_test.cc',
           ],
         },
       ],
