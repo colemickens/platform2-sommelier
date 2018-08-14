@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/id_map.h"
@@ -28,7 +29,7 @@ class CredentialStore;
 
 // MountManager maintains a mapping of open mounts and the metadata associated
 // with each mount.
-class MountManager {
+class MountManager : public base::SupportsWeakPtr<MountManager> {
  public:
   using SambaInterfaceFactory =
       base::Callback<std::unique_ptr<SambaInterface>()>;
