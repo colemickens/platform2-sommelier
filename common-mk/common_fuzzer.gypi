@@ -7,10 +7,48 @@
 # Fuzzing only works for amd64 boards at this point.
 
 {
-  'cflags': [
-    '-fsanitize=fuzzer-no-link,address',
-  ],
-  'ldflags': [
-    '-fsanitize=fuzzer,address',
-  ],
+  'conditions': [
+   ['USE_asan == 1', {
+      'cflags': [
+        '-fsanitize=address',
+      ],
+      'ldflags': [
+        '-fsanitize=address',
+        ],
+    }],
+   ['USE_coverage == 1', {
+      'cflags': [
+        '-fprofile-instr-generate',
+        '-fcoverage-mapping',
+      ],
+      'ldflags': [
+        '-fprofile-instr-generate',
+        '-fcoverage-mapping',
+        ],
+    }],
+    ['USE_fuzzer == 1', {
+       'cflags': [
+         '-fsanitize=fuzzer-no-link',
+       ],
+       'ldflags': [
+         '-fsanitize=fuzzer',
+       ],
+    }],
+    ['USE_msan == 1', {
+      'cflags': [
+        '-fsanitize=memory',
+      ],
+      'ldflags': [
+        '-fsanitize=memory',
+        ],
+    }],
+    ['USE_ubsan == 1', {
+      'cflags': [
+        '-fsanitize=undefined',
+      ],
+      'ldflags': [
+        '-fsanitize=undefined',
+        ],
+    }],
+  ]
 }
