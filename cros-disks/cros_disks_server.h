@@ -75,9 +75,8 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
              const std::vector<std::string>& options) override;
 
   // Unmounts a path when invoked.
-  bool Unmount(brillo::ErrorPtr* error,
-               const std::string& path,
-               const std::vector<std::string>& options) override;
+  uint32_t Unmount(const std::string& path,
+                   const std::vector<std::string>& options) override;
 
   // Unmounts all paths mounted by Mount() when invoked.
   void UnmountAll() override;

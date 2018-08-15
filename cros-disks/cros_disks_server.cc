@@ -121,9 +121,8 @@ void CrosDisksServer::Mount(const string& source,
   SendMountCompletedSignal(error_type, source, source_type, mount_path);
 }
 
-bool CrosDisksServer::Unmount(brillo::ErrorPtr* error,
-                              const string& path,
-                              const vector<string>& options) {
+uint32_t CrosDisksServer::Unmount(const string& path,
+                                  const vector<string>& options) {
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   for (const auto& manager : mount_managers_) {
     if (manager->CanUnmount(path)) {
@@ -132,14 +131,11 @@ bool CrosDisksServer::Unmount(brillo::ErrorPtr* error,
     }
   }
 
-  if (error_type == MOUNT_ERROR_NONE) {
-    return true;
+  if (error_type != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Failed to unmount '" << path << "' with error "
+               << error_type;
   }
-
-  string message = "Failed to unmount '" + path + "'";
-  brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                       kCrosDisksServiceError, message);
-  return false;
+  return error_type;
 }
 
 void CrosDisksServer::UnmountAll() {
