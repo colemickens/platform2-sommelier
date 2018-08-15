@@ -22,7 +22,7 @@
       },
       'sources': [
         'ether_socket.cc',
-        'group_mgr.cc',
+        'group.cc',
         'icmpv6_socket.cc',
         'ipv6_util.cc',
         'll_address.cc',
@@ -53,7 +53,8 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'group_mgr_unittest.cc',
+            'group_manager_unittest.cc',
+            'group_unittest.cc',
             'ipv6_util_unittest.cc',
             'll_address_unittest.cc',
             'nd_msg_unittest.cc',
