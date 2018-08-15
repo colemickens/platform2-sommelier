@@ -17,11 +17,12 @@
 #ifndef PSL_IPU3_WORKERS_OUTPUTFRAMEWORKER_H_
 #define PSL_IPU3_WORKERS_OUTPUTFRAMEWORKER_H_
 
+#include "cameraOrientationDetector/CameraOrientationDetector.h"
+#include <cros-camera/camera_thread.h>
+#include "FaceEngine.h"
 #include "FrameWorker.h"
 #include "tasks/ICaptureEventSource.h"
 #include "tasks/JpegEncodeTask.h"
-
-#include <cros-camera/camera_thread.h>
 
 namespace android {
 namespace camera2 {
@@ -30,7 +31,7 @@ class OutputFrameWorker: public FrameWorker, public ICaptureEventSource
 {
 public:
     OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId, camera3_stream_t* stream,
-                      IPU3NodeNames nodeName, size_t pipelineDepth);
+                      IPU3NodeNames nodeName, size_t pipelineDepth, FaceEngine* faceEngine);
     virtual ~OutputFrameWorker();
 
     void addListener(camera3_stream_t* stream);
@@ -111,6 +112,10 @@ private:
     IPU3NodeNames mNodeName;
 
     SWPostProcessor mProcessor;
+
+    int mSensorOrientation;
+    FaceEngine* mFaceEngine;
+    std::unique_ptr<CameraOrientationDetector> mCamOriDetector;
 
     // For listeners
     std::vector<camera3_stream_t*> mListeners;

@@ -29,12 +29,15 @@ namespace android {
 namespace camera2 {
 
 OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
-                camera3_stream_t* stream, IPU3NodeNames nodeName, size_t pipelineDepth) :
+                camera3_stream_t* stream, IPU3NodeNames nodeName, size_t pipelineDepth, FaceEngine* faceEngine) :
                 FrameWorker(node, cameraId, pipelineDepth, "OutputFrameWorker"),
                 mStream(stream),
                 mNeedPostProcess(false),
                 mNodeName(nodeName),
                 mProcessor(cameraId),
+                mSensorOrientation(0),
+                mFaceEngine(faceEngine),
+                mCamOriDetector(nullptr),
                 mCameraThread("OutputFrameWorker" + std::to_string(nodeName)),
                 mDoAsyncProcess(false)
 {
@@ -50,6 +53,15 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, 
 
     if (!mCameraThread.Start()) {
         LOGE("Camera thread failed to start");
+    }
+    LOG2("@%s, mStream:%p, mFaceEngine:%p", __FUNCTION__, mStream, mFaceEngine);
+
+    if (mFaceEngine) {
+        struct camera_info info;
+        PlatformData::getCameraInfo(cameraId, &info);
+        mSensorOrientation = info.orientation;
+        mCamOriDetector = std::unique_ptr<CameraOrientationDetector>(new CameraOrientationDetector(info.facing));
+        mCamOriDetector->prepare();
     }
 }
 
@@ -373,6 +385,23 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
     }
 
     dump(processingData.mOutputBuffer, stream);
+
+    if (mFaceEngine && (mFaceEngine->getMode() != FD_MODE_OFF)) {
+        if (!processingData.mOutputBuffer->isLocked()) {
+            status_t ret = processingData.mOutputBuffer->lock();
+            CheckError(ret != NO_ERROR, NO_MEMORY, "@%s, lock fails", __FUNCTION__);
+        }
+
+        pvl_image image;
+        image.data = static_cast<uint8_t*>(processingData.mOutputBuffer->data());
+        image.size = processingData.mOutputBuffer->size();
+        image.width = processingData.mOutputBuffer->width();
+        image.height = processingData.mOutputBuffer->height();
+        image.format = pvl_image_format_nv12;
+        image.stride = processingData.mOutputBuffer->stride();
+        image.rotation = (mSensorOrientation + mCamOriDetector->getOrientation()) % 360;
+        mFaceEngine->run(image);
+    }
 
     // call capturedone for the stream of the buffer
     stream->captureDone(processingData.mOutputBuffer, request);

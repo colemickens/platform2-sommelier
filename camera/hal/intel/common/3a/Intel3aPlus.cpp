@@ -385,16 +385,16 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
     aiqInputParams->aeInputParams.frame_use = getFrameUseFromIntent(settings);
 
     // ******** aec_features
-    aiqInputParams->aeInputParams.aec_features->backlight_compensation =
-                                        ia_aiq_ae_feature_setting_disabled;
-    aiqInputParams->aeInputParams.aec_features->face_utilization =
-                                        ia_aiq_ae_feature_setting_disabled;
-    aiqInputParams->aeInputParams.aec_features->fill_in_flash =
-                                        ia_aiq_ae_feature_setting_disabled;
-    aiqInputParams->aeInputParams.aec_features->motion_blur_control =
-                                        ia_aiq_ae_feature_setting_disabled;
-    aiqInputParams->aeInputParams.aec_features->red_eye_reduction_flash =
-                                        ia_aiq_ae_feature_setting_disabled;
+    ia_aiq_ae_features* aec_features = aiqInputParams->aeInputParams.aec_features;
+    aec_features->backlight_compensation = ia_aiq_ae_feature_setting_disabled;
+    if (PlatformData::isFaceAeEnabled(mCameraId) == false) {
+        aec_features->face_utilization =  ia_aiq_ae_feature_setting_disabled;
+    } else {
+        aec_features->face_utilization =  ia_aiq_ae_feature_setting_tuning;
+    }
+    aec_features->fill_in_flash = ia_aiq_ae_feature_setting_disabled;
+    aec_features->motion_blur_control = ia_aiq_ae_feature_setting_disabled;
+    aec_features->red_eye_reduction_flash = ia_aiq_ae_feature_setting_disabled;
 
     // ******** manual_limits (defaults)
     aiqInputParams->aeInputParams.manual_limits->manual_exposure_time_min = -1;
@@ -406,8 +406,6 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
 
     // ******** flash_mode  is not support, so set ture off to aiq parameter.
     aiqInputParams->aeInputParams.flash_mode = ia_aiq_flash_mode_off;
-    aiqInputParams->aeInputParams.aec_features->red_eye_reduction_flash
-            = ia_aiq_ae_feature_setting_disabled;
 
     //# METADATA_Control control.mode done
     entry = settings->find(ANDROID_CONTROL_MODE);

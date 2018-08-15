@@ -16,12 +16,12 @@
 #ifndef _CAMERA3_HAL_IPU3CAMERAHW_H_
 #define _CAMERA3_HAL_IPU3CAMERAHW_H_
 
-#include "ICameraHw.h"
-
-#include "HwStreamBase.h"
 #include "GraphConfigManager.h"
-#include "MediaController.h"
+#include "HwStreamBase.h"
+#include "ICameraHw.h"
 #include "IErrorCallback.h"
+#include "IPCFaceEngine.h"
+#include "MediaController.h"
 
 namespace android {
 namespace camera2 {
@@ -29,6 +29,7 @@ namespace camera2 {
 class ControlUnit;
 class CaptureUnit;
 class ImguUnit;
+class FaceEngine;
 
 /**
  * \enum
@@ -92,6 +93,10 @@ class IPU3CameraHw: public ICameraHw {
     uint32_t mOperationMode;
     int32_t mTestPatternMode;
     status_t getTestPatternMode(Camera3Request* request, int32_t* testPatternMode);
+
+    std::unique_ptr<FaceEngine> mFaceEngine;
+    face_detection_mode mFDMode;
+    int mMaxFaceNum;
 };
 
 } /* namespace camera2 */

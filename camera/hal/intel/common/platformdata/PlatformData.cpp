@@ -817,6 +817,12 @@ status_t PlatformData::getCpfAndCmc(ia_binary_data& cpfData,
     return OK;
 }
 
+bool PlatformData::isFaceAeEnabled(int cameraId)
+{
+    CheckError(mInstance == nullptr, false, "@%s, mInstance is nullptr", __FUNCTION__);
+    return mInstance->isFaceAeEnabled(cameraId);
+}
+
 CameraHWInfo::CameraHWInfo() :
         mMainDevicePathName(DEFAULT_MAIN_DEVICE),
         mHasMediaController(false)

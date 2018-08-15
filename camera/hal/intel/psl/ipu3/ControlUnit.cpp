@@ -39,7 +39,8 @@ namespace camera2 {
 ControlUnit::ControlUnit(ImguUnit *thePU,
                          CaptureUnit *theCU,
                          int cameraId,
-                         IStreamConfigProvider &aStreamCfgProv) :
+                         IStreamConfigProvider &aStreamCfgProv,
+                         FaceEngine* faceEngine) :
         mRequestStatePool("CtrlReqState"),
         mCaptureUnitSettingsPool("CapUSettings"),
         mProcUnitSettingsPool("ProcUSettings"),
@@ -56,7 +57,8 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mSettingsProcessor(nullptr),
         mMetadata(nullptr),
         m3ARunner(nullptr),
-        mLensController(nullptr)
+        mLensController(nullptr),
+        mFaceEngine(faceEngine)
 {
 }
 
@@ -1014,6 +1016,19 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
               - params->frame_ae_parameters->exposures[0].exposure->exposure_time_us;
     LOG2("frame expo start timestamp %lld, sequence %llu", params->frame_timestamp,
               params->frame_id);
+
+    ia_face faces[MAX_FACES_DETECTABLE] = {};
+    ia_face_state facesState;
+    if (mFaceEngine && mFaceEngine->getMode() != FD_MODE_OFF) {
+        facesState.num_faces = 0;
+        facesState.faces = faces;
+        int ret = mFaceEngine->getResult(&facesState);
+        if (ret == OK && facesState.num_faces > 0) {
+            LOG2("@%s, face number:%d", __FUNCTION__, facesState.num_faces);
+            params->faces = &facesState;
+        }
+    }
+
     /**
      * Pass stats to all 3A algorithms
      * Since at the moment we do not have separate events for AF and AA stats

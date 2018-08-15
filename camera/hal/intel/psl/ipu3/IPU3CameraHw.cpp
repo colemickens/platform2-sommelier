@@ -27,6 +27,7 @@
 #include "ControlUnit.h"
 #include "CaptureUnit.h"
 #include "CameraProfiles.h"
+#include "FaceEngine.h"
 
 namespace android {
 namespace camera2 {
@@ -45,7 +46,9 @@ IPU3CameraHw::IPU3CameraHw(int cameraId):
         mCaptureUnit(nullptr),
         mGCM(cameraId),
         mOperationMode(0),
-        mTestPatternMode(ANDROID_SENSOR_TEST_PATTERN_MODE_OFF)
+        mTestPatternMode(ANDROID_SENSOR_TEST_PATTERN_MODE_OFF),
+        mFDMode(FD_MODE_OFF),
+        mMaxFaceNum(MAX_FACES_DETECTABLE)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
@@ -61,6 +64,15 @@ IPU3CameraHw::init()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
+
+    status = initStaticMetadata();
+    CheckError(status != NO_ERROR, status, "initStaticMetadata fails, status:%d", status);
+
+    if (PlatformData::isFaceAeEnabled(mCameraId)) {
+        mFDMode = FD_MODE_SIMPLE;
+    }
+    mFaceEngine = std::unique_ptr<FaceEngine>(new FaceEngine(mCameraId, MAX_FACES_DETECTABLE,
+                                              RESOLUTION_1080P_WIDTH, RESOLUTION_1080P_HEIGHT, mFDMode));
 
     std::string sensorMediaDevice = CameraProfiles::getSensorMediaDevice();
     mMediaCtl = std::make_shared<MediaController>(sensorMediaDevice.c_str());
@@ -87,12 +99,12 @@ IPU3CameraHw::init()
         return status;
     }
 
-    mImguUnit = new ImguUnit(mCameraId, mGCM, mImguMediaCtl);
+    mImguUnit = new ImguUnit(mCameraId, mGCM, mImguMediaCtl, mFaceEngine.get());
 
     mControlUnit = new ControlUnit(mImguUnit,
                                    mCaptureUnit,
                                    mCameraId,
-                                   mGCM);
+                                   mGCM, mFaceEngine.get());
     status = mControlUnit->init();
     if (status != NO_ERROR) {
         LOGE("Error initializing ControlUnit. ret code:%x", status);
@@ -106,12 +118,6 @@ IPU3CameraHw::init()
     // Reset all links
     mMediaCtl->resetLinks();
     mImguMediaCtl->resetLinks();
-
-    status = initStaticMetadata();
-    if (status != NO_ERROR) {
-        LOGE("Error call initStaticMetadata, status:%d", status);
-        return status;
-    }
 
     return status;
 }
@@ -414,12 +420,10 @@ IPU3CameraHw::initStaticMetadata(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
-    status_t status = NO_ERROR;
     /**
     * Initialize the CameraMetadata object with the static metadata tags
     */
-    camera_metadata_t* staticMeta;
-    staticMeta = (camera_metadata_t*)PlatformData::getStaticMetadata(mCameraId);
+    camera_metadata_t* staticMeta = const_cast<camera_metadata_t*>(PlatformData::getStaticMetadata(mCameraId));
     mStaticMeta = new CameraMetadata(staticMeta);
 
     camera_metadata_entry entry;
@@ -440,9 +444,9 @@ IPU3CameraHw::initStaticMetadata(void)
             LOGW("Partial result count does not match current implementation "
                  " got %d should be %d, fix the XML!", xmlPartialCount,
                  PARTIAL_RESULT_COUNT);
-            status = NO_INIT;
+            return NO_INIT;
     }
-    return status;
+    return NO_ERROR;
 }
 
 }  // namespace camera2

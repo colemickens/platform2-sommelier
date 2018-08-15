@@ -57,6 +57,7 @@ CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
     mCameraCommon(cameraHWInfo)
 {
     CLEAR(mProfileEnd);
+    CLEAR(mFaceAeEnabled);
 }
 
 status_t CameraProfiles::init()
@@ -100,6 +101,12 @@ int CameraProfiles::getXmlCameraId(int cameraId) const
         findMatchCameraId = true;
 
     return findMatchCameraId ? cameraId : NAME_NOT_FOUND;
+}
+
+bool CameraProfiles::isFaceAeEnabled(int cameraId) const
+{
+    CheckError(cameraId < 0 || cameraId >= MAX_CAMERAS, false, "cameraId:%d is incorrect", cameraId);
+    return mFaceAeEnabled[cameraId];
 }
 
 CameraProfiles::~CameraProfiles()
@@ -1357,10 +1364,42 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
     } else if (strcmp(name, "MediaCtl_elements_IPU3") == 0) {
         mCurrentDataField = FIELD_MEDIACTL_ELEMENTS_IPU3;
         mItemsCount = -1;
+    } else if (strcmp(name, "Common") == 0) {
+        mCurrentDataField = FIELD_COMMON;
+        mItemsCount = -1;
     }
 
     LOG1("@%s: name:%s, field %d", __FUNCTION__, name, mCurrentDataField);
     return;
+}
+
+/**
+ * This function will handle all the common related elements.
+ *
+ * It will be called in the function startElement
+ *
+ * \param name: the element's name.
+ * \param atts: the element's attribute.
+ */
+void CameraProfiles::handleCommon(const char *name, const char **atts)
+{
+    LOG1("@%s, name:%s, atts[0]:%s", __FUNCTION__, name, atts[0]);
+
+    if (strcmp(atts[0], "value") != 0) {
+        LOGE("name:%s, atts[0]:%s, xml format wrong", name, atts[0]);
+        return;
+    }
+
+    CheckError(atts[1] == nullptr, VOID_VALUE, "atts[1] is nullptr");
+    CheckError(mXmlSensorIndex >= MAX_CAMERAS, VOID_VALUE, "mXmlSensorIndex:%d >= MAX_CAMERAS", mXmlSensorIndex);
+
+    if (strcmp(name, "faceAeEnabled") == 0) {
+        if (strcmp("true", atts[1]) == 0) {
+            mFaceAeEnabled[mXmlSensorIndex] = true;
+        } else {
+            mFaceAeEnabled[mXmlSensorIndex] = false;
+        }
+    }
 }
 
 /**
@@ -1903,22 +1942,25 @@ void CameraProfiles::startElement(void *userData, const char *name, const char *
 
     profiles->mItemsCount++;
 
+    if (!profiles->mUseEntry) {
+        return;
+    }
+
     switch (profiles->mCurrentDataField) {
         case FIELD_ANDROID_STATIC_METADATA:
-            if (profiles->mUseEntry)
-                profiles->handleAndroidStaticMetadata(name, atts);
+            profiles->handleAndroidStaticMetadata(name, atts);
             break;
         case FIELD_HAL_TUNING_IPU3:
-            if (profiles->mUseEntry)
-                profiles->handleHALTuning(name, atts);
+            profiles->handleHALTuning(name, atts);
             break;
         case FIELD_SENSOR_INFO_IPU3:
-            if (profiles->mUseEntry)
-                profiles->handleSensorInfo(name, atts);
+            profiles->handleSensorInfo(name, atts);
             break;
         case FIELD_MEDIACTL_ELEMENTS_IPU3:
-            if (profiles->mUseEntry)
-                profiles->handleMediaCtlElements(name, atts);
+            profiles->handleMediaCtlElements(name, atts);
+            break;
+        case FIELD_COMMON:
+            profiles->handleCommon(name, atts);
             break;
         default:
             LOGE("line:%d, go to default handling", __LINE__);

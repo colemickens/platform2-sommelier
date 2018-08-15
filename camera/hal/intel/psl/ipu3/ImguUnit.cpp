@@ -31,12 +31,13 @@ namespace camera2 {
 
 ImguUnit::ImguUnit(int cameraId,
                    GraphConfigManager &gcm,
-                   std::shared_ptr<MediaController> mediaCtl) :
+                   std::shared_ptr<MediaController> mediaCtl,
+                   FaceEngine* faceEngine) :
         mCameraId(cameraId),
         mGCM(gcm),
         mMediaCtl(mediaCtl),
-        mErrCb(nullptr)
-
+        mErrCb(nullptr),
+        mFaceEngine(faceEngine)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mActiveStreams.inputStream = nullptr;
@@ -223,7 +224,7 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 
     if (yuvNum > 0) {
         mImguPipe[GraphConfig::PIPE_VIDEO] =
-            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_VIDEO, mMediaCtl, mListeners, mErrCb));
+            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_VIDEO, mMediaCtl, mListeners, mErrCb, mFaceEngine));
 
         // only statistics from VIDEO pipe is used to run 3A, register stats buffer for VIDEO pipe.
         status = mImguPipe[GraphConfig::PIPE_VIDEO]->configStreams(mActiveStreams.yuvStreams,
@@ -233,7 +234,7 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 
     if (blobNum > 0) {
         mImguPipe[GraphConfig::PIPE_STILL] =
-            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_STILL, mMediaCtl, mListeners, mErrCb));
+            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_STILL, mMediaCtl, mListeners, mErrCb, nullptr));
 
         status = mImguPipe[GraphConfig::PIPE_STILL]->configStreams(mActiveStreams.blobStreams,
                           mGCM, nullptr, nullptr);
@@ -314,7 +315,8 @@ status_t ImguUnit::flush(void)
 ImguUnit::ImguPipe::ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
                              std::shared_ptr<MediaController> mediaCtl,
                              std::vector<ICaptureEventListener*> listeners,
-                             IErrorCallback *errCb) :
+                             IErrorCallback *errCb,
+                             FaceEngine* faceEngine) :
         mCameraId(cameraId),
         mPipeType(pipeType),
         mMediaCtlHelper(mediaCtl, nullptr),
@@ -326,7 +328,8 @@ ImguUnit::ImguPipe::ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
         mFirstRequest(true),
         mFirstPollCallbacked(false),
         mPollErrorTimes(0),
-        mErrCb(errCb)
+        mErrCb(errCb),
+        mFace(faceEngine)
 {
     pthread_condattr_t attr;
     int ret = pthread_condattr_init(&attr);
@@ -533,6 +536,22 @@ status_t ImguUnit::ImguPipe::createProcessingTasks(std::shared_ptr<GraphConfig> 
         entry = MetadataHelper::getMetadataEntry(meta, ANDROID_REQUEST_PIPELINE_MAX_DEPTH);
     size_t pipelineDepth = entry.count == 1 ? entry.data.u8[0] : 1;
 
+    camera3_stream_t* preStream = nullptr;
+    if (mFace && GraphConfig::PIPE_VIDEO == mPipeType) {
+        int maxWidth = 0, maxHeight = 0;
+        mFace->getMaxSupportedResolution(&maxWidth, &maxHeight);
+        for (const auto &it : mStreamNodeMapping) {
+            camera3_stream_t* s = it.second;
+            if (!s || s->stream_type != CAMERA3_STREAM_OUTPUT
+                || s->width > maxWidth || s->height > maxHeight) {
+                continue;
+            }
+            if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+                preStream = s;
+            }
+        }
+    }
+
     for (const auto &it : mConfiguredNodesPerName) {
         std::shared_ptr<FrameWorker> worker = nullptr;
         if (it.first == IMGU_NODE_INPUT) {
@@ -555,9 +574,14 @@ status_t ImguUnit::ImguPipe::createProcessingTasks(std::shared_ptr<GraphConfig> 
             mPipeConfig.deviceWorkers.push_back(worker); // parameters
         } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_VIDEO
                 || it.first == IMGU_NODE_PREVIEW) {
+            // only one stream could have the face engine
+            FaceEngine* face = nullptr;
+            if (preStream && (preStream == mStreamNodeMapping[it.first])) {
+                face = mFace;
+            }
             std::shared_ptr<OutputFrameWorker> outWorker =
                 std::make_shared<OutputFrameWorker>(it.second, mCameraId,
-                    mStreamNodeMapping[it.first], it.first, pipelineDepth);
+                    mStreamNodeMapping[it.first], it.first, pipelineDepth, face);
             mPipeConfig.deviceWorkers.push_back(outWorker);
             mPipeConfig.pollableWorkers.push_back(outWorker);
             mPipeConfig.nodes.push_back(outWorker->getNode());

@@ -41,7 +41,8 @@ class ImguUnit {
 
 public:
     ImguUnit(int cameraId, GraphConfigManager &gcm,
-            std::shared_ptr<MediaController> mediaCtl);
+            std::shared_ptr<MediaController> mediaCtl,
+            FaceEngine* faceEngine);
     virtual ~ImguUnit();
 
     void registerErrorCallback(IErrorCallback *errCb);
@@ -63,7 +64,8 @@ private:
         ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
                  std::shared_ptr<MediaController> mediaCtl,
                  std::vector<ICaptureEventListener*> listeners,
-                 IErrorCallback *errCb);
+                 IErrorCallback *errCb,
+                 FaceEngine* faceEngine);
         virtual ~ImguPipe();
 
         void cleanListener();
@@ -145,6 +147,8 @@ private:
 
         std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
         std::map<camera3_stream_t*, IPU3NodeNames> mStreamListenerMapping;
+
+        FaceEngine* mFace;
     };
 
     int mCameraId;
@@ -162,6 +166,8 @@ private:
     std::unique_ptr<ImguPipe> mImguPipe[GraphConfig::PIPE_MAX];
 
     std::vector<ICaptureEventListener*> mListeners;
+
+    FaceEngine* mFaceEngine;
 };
 
 } /* namespace camera2 */

@@ -134,6 +134,14 @@ status_t AiqLibrary::statistics_set(void* pData, int dataSize)
     bool ret = mIpc.serverUnflattenStat(*params, &stat);
     CheckError(ret == false, UNKNOWN_ERROR, "@%s, serverUnflattenStat fails", __FUNCTION__);
 
+    if (stat->faces) {
+        LOG2("@%s, num_faces:%d", __FUNCTION__, stat->faces->num_faces);
+        if (stat->faces->num_faces > 0) {
+            ia_rectangle& rect = stat->faces->faces[0].face_area;
+            LOG2("@%s, left:%d, top:%d, right:%d, bottom:%d",
+            __FUNCTION__, rect.left, rect.top, rect.right, rect.bottom);
+        }
+    }
     ia_err err = ia_aiq_statistics_set((ia_aiq*)params->ia_aiq, stat);
     CheckError((err != 0), UNKNOWN_ERROR, "@%s, ia_aiq_statistics_set failed %d", __FUNCTION__, err);
 

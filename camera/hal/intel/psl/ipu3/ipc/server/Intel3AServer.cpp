@@ -160,7 +160,7 @@ void Intel3AServer::handleRequest(MsgReq msg)
          __FUNCTION__, req_id, Intel3AIpcCmdToString(static_cast<IPC_CMD>(req_id)),
          reqeustSize, addr, buffer_handle);
 
-    if (req_id != IPC_3A_AIC_RESET && req_id != IPC_3A_CMC_DEINIT && addr == nullptr) {
+    if (req_id != IPC_FACE_UNINIT && addr == nullptr) {
         LOGE("@%s, addr is nullptr", __FUNCTION__);
         returnCallback(req_id, UNKNOWN_ERROR, buffer_handle);
         return;
@@ -242,6 +242,15 @@ void Intel3AServer::handleRequest(MsgReq msg)
             break;
         case IPC_3A_COORDINATE_COVERT:
             status = mCoordinate.convert(addr, reqeustSize);
+            break;
+        case IPC_FACE_INIT:
+            status = mFace.init(addr, reqeustSize);
+            break;
+        case IPC_FACE_UNINIT:
+            status = mFace.uninit();
+            break;
+        case IPC_FACE_RUN:
+            status = mFace.run(addr, reqeustSize);
             break;
         default:
             LOGE("@%s, req_id:%d is not defined", __FUNCTION__, req_id);

@@ -17,22 +17,21 @@
 #ifndef PSL_IPU3_IPC_SERVER_INTEL3ASERVER_H_
 #define PSL_IPU3_IPC_SERVER_INTEL3ASERVER_H_
 
-#include <sys/un.h>
+#include <unordered_map>
 
-#include "IPU3ISPPipe.h"
-#include "IPCCommon.h"
 #include "AicLibrary.h"
 #include "AiqLibrary.h"
 #include "CmcLibrary.h"
-#include "MknLibrary.h"
 #include "CoordinateLibrary.h"
 #include "ExcLibrary.h"
+#include "FaceEngineLibrary.h"
+#include "IPCCommon.h"
+#include "IPU3ISPPipe.h"
+#include "MknLibrary.h"
 
 #include <base/bind.h>
 #include <base/threading/thread.h>
 #include "cros-camera/camera_algorithm.h"
-
-#include <unordered_map>
 
 namespace intel {
 namespace camera {
@@ -92,6 +91,8 @@ private:
     AiqLibrary mAiq;
     MknLibrary mMkn;
     CoordinateLibrary mCoordinate;
+
+    FaceEngineLibrary mFace;
 
     int32_t mHandleSeed;
 };

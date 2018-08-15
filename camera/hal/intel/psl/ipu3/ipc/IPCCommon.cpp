@@ -48,6 +48,9 @@ const char* Intel3AIpcCmdToString(IPC_CMD cmd)
         "IPC_3A_MKN_ENABLE",
         "IPC_3A_COORDINATE_COVERT",
         "IPC_3A_COORDINATE_FACES",
+        "IPC_FACE_INIT",
+        "IPC_FACE_UNINIT",
+        "IPC_FACE_RUN"
     };
 
     unsigned int num = sizeof(gIpcCmdMapping) / sizeof(gIpcCmdMapping[0]);

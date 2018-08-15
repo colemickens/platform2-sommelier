@@ -364,6 +364,7 @@ public:
     static bool readAiqdData(int cameraId, ia_binary_data* data);
     static void saveAiqdData(int cameraId, const ia_binary_data& data);
 
+    static bool isFaceAeEnabled(int cameraId);
 private:
     static void initAiqdInfo(int cameraIdx);
     static unsigned int getAiqdFileSize(std::string fileName);

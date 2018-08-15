@@ -19,13 +19,15 @@
 #include <memory>
 #include <deque>
 #include <map>
-#include "ImguUnit.h"
-#include "CaptureUnit.h"
-#include "SharedItemPool.h"
-#include "CaptureUnitSettings.h"
-#include "RequestCtrlState.h"
-#include <linux/intel-ipu3.h>
 
+#include "CaptureUnit.h"
+#include "CaptureUnitSettings.h"
+#include "FaceEngine.h"
+#include "ImguUnit.h"
+#include "RequestCtrlState.h"
+#include "SharedItemPool.h"
+
+#include <linux/intel-ipu3.h>
 #include <cros-camera/camera_thread.h>
 
 namespace android {
@@ -54,7 +56,8 @@ public:
     explicit ControlUnit(ImguUnit *thePU,
                          CaptureUnit *theCU,
                          int CameraId,
-                         IStreamConfigProvider &aStreamCfgProv);
+                         IStreamConfigProvider &aStreamCfgProv,
+                         FaceEngine* faceEngine);
     virtual ~ControlUnit();
     void registerErrorCallback(IErrorCallback *errCb);
     status_t init();
@@ -168,6 +171,8 @@ private:  /* Members */
      * from the first real image and do not drop too many frames as well.
      */
     static const int16_t PENDING_REQUEST_FOR_AWB_CONVERGENCE = 0;
+
+    FaceEngine* mFaceEngine;
 };  // class ControlUnit
 
 }  // namespace camera2

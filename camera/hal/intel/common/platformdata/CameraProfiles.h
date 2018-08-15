@@ -48,6 +48,7 @@ public:
     int getXmlCameraId(int cameraId) const;
     static std::string getSensorMediaDevice();
     static std::string getImguMediaDevice();
+    bool isFaceAeEnabled(int cameraId) const;
 
 public:
     std::vector<camera_metadata_t*> mStaticMeta;
@@ -61,7 +62,8 @@ private:
         FIELD_ANDROID_STATIC_METADATA,
         FIELD_HAL_TUNING_IPU3,
         FIELD_SENSOR_INFO_IPU3,
-        FIELD_MEDIACTL_ELEMENTS_IPU3
+        FIELD_MEDIACTL_ELEMENTS_IPU3,
+        FIELD_COMMON
     } mCurrentDataField;
 
     struct MetaValueRefTable {
@@ -87,6 +89,7 @@ private:
     void handleHALTuning(const char *name, const char **atts);
     void handleSensorInfo(const char *name, const char **atts);
     void handleMediaCtlElements(const char *name, const char **atts);
+    void handleCommon(const char *name, const char **atts);
 
     void dumpStaticMetadataSection(int cameraId);
     void dumpHalTuningSection(int cameraId);
@@ -169,6 +172,9 @@ private:
     CameraHWInfo *mCameraCommon;
     std::vector<int> mCameraIdPool;
     std::vector<int> mCharacteristicsKeys[MAX_CAMERAS];
+
+    bool mFaceAeEnabled[MAX_CAMERAS];
+
     std::vector<SensorDriverDescriptor> mSensorNames;
     std::vector<CameraCapInfo *> mCaps;
     std::vector<std::string> mElementNames;

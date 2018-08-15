@@ -17,6 +17,7 @@
 #ifndef PSL_IPU3_IPC_IPCAIQ_H_
 #define PSL_IPU3_IPC_IPCAIQ_H_
 #include <ia_aiq.h>
+#include "IPCFaceEngine.h"
 
 namespace android {
 namespace camera2 {
@@ -134,6 +135,11 @@ struct pa_run_params_results {
     unsigned short ir_weight_grid_B[MAX_NUM_IR_BLOCKS];
 };
 
+struct ia_face_state_data {
+    ia_face_state base;
+    ia_face faces[MAX_FACES_DETECTABLE];
+};
+
 struct pa_run_params {
     uintptr_t aiq_handle;
 
@@ -237,6 +243,8 @@ struct set_statistics_params_data {
     ia_aiq_af_grid_data af_grids[MAX_NUMBER_OF_AF_GRIDS];
 
     pa_run_params_results frame_pa_parameters;
+
+    ia_face_state_data faces;
 
     ia_aiq_awb_results awb_results;
 
