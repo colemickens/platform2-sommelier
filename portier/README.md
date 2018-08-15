@@ -1,7 +1,7 @@
 # Portier
 
-A Neighbor Discovery Proxy (ND Proxy) service for Chrome OS.  This is an
-expanded implementation of a ND Proxy as defined in [RFC 4389].
+A Multi-Network Neighbor Discovery Proxy (ND Proxy) service for Chrome OS.
+This is an expanded implementation of a ND Proxy as defined in [RFC 4389].
 
 ## Neighbor Discovery Proxy Summary
 
