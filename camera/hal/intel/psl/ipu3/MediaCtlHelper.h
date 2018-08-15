@@ -36,24 +36,14 @@ public:
     };
 
     MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
-            IOpenCallBack *openCallBack, bool isIMGU = false);
+            IOpenCallBack *openCallBack);
     virtual ~MediaCtlHelper();
 
     status_t configure(IStreamConfigProvider &graphConfigMgr,
             IStreamConfigProvider::MediaType type);
-    status_t configurePipe(IStreamConfigProvider &graphConfigMgr,
-                           IStreamConfigProvider::MediaType pipeType,
-                           bool resetFormat = false);
-    bool isMediaTypeForPipe(IStreamConfigProvider::MediaType pipeType) const {
-        return (pipeType == IStreamConfigProvider::IMGU_VIDEO
-             || pipeType == IStreamConfigProvider::IMGU_STILL);
-    }
-    status_t configureImguNodes(IStreamConfigProvider &graphConfigMgr);
-
-    std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> getConfiguredNodesPerName()
-    {
-        return mConfiguredNodesPerName;
-    }
+    std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>>
+        getConfiguredNodesPerName(IStreamConfigProvider::MediaType mediaType);
+    status_t closeVideoNodes();
 
 public:
     /**
@@ -81,10 +71,9 @@ public:
     }
 
 private:
-    status_t openVideoNodes();
+    status_t openVideoNodesPerPipe();
     status_t openVideoNode(const char *entityName, IPU3NodeNames isysNodeName);
-    status_t resetLinks(const MediaCtlConfig *config);
-    status_t closeVideoNodes();
+    status_t resetLinks();
 
 private:
     ConfigurationResults mConfigResults;
@@ -93,10 +82,11 @@ private:
     std::shared_ptr<MediaController> mMediaCtl;
 
     const MediaCtlConfig *mMediaCtlConfig;
-    const MediaCtlConfig *mPipeConfig;
-    IStreamConfigProvider::MediaType mConfigedPipeType;
+    std::vector<MediaCtlLinkParams> mPrevMediaCtlLinks;
+    IStreamConfigProvider::MediaType mPipeType;
+    IStreamConfigProvider *mGCM;
 
-    std::vector<std::shared_ptr<cros::V4L2VideoNode>>  mConfiguredNodes;        /**< Configured video nodes */
+    std::vector<std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodes;
     std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
 };
 

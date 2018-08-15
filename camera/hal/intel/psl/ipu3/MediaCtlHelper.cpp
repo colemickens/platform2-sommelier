@@ -16,83 +16,55 @@
 
 #define LOG_TAG "MediaCtlHelper"
 
+#include <algorithm>
+#include <linux/intel-ipu3.h>
 #include "LogHelper.h"
 #include "Camera3GFXFormat.h"
 #include "MediaCtlHelper.h"
 #include "MediaEntity.h"
 
-const char* STATISTICS = "3a statistics";
-const char* PARAMS = "parameters";
-const char* IMGU_NAME = "ipu3-imgu";
-
 namespace android {
 namespace camera2 {
 
 MediaCtlHelper::MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
-        IOpenCallBack *openCallBack, bool isIMGU) :
+        IOpenCallBack *openCallBack) :
         mOpenVideoNodeCallBack(openCallBack),
         mMediaCtl(mediaCtl),
         mMediaCtlConfig(nullptr),
-        mPipeConfig(nullptr),
-        mConfigedPipeType(IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT)
+        mPipeType(IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT),
+        mGCM(nullptr)
 {
-    if (isIMGU)
-        mMediaCtl->resetLinks();
 }
 
 MediaCtlHelper::~MediaCtlHelper()
 {
     closeVideoNodes();
-    resetLinks(mMediaCtlConfig);
-    resetLinks(mPipeConfig);
+    resetLinks();
 }
 
-status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStreamConfigProvider::MediaType type)
+status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr,
+                                   IStreamConfigProvider::MediaType type)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    if (isMediaTypeForPipe(type)) {
-        LOGE("%d is type for pipe!", type);
-        return BAD_VALUE;
-    }
+    LOG1("@%s, media type: %d", __FUNCTION__, type);
 
-    std::shared_ptr<GraphConfig> gc = graphConfigMgr.getBaseGraphConfig();
+    mPipeType = type;
+    mGCM = &graphConfigMgr;
+
     media_device_info deviceInfo;
     CLEAR(deviceInfo);
 
-    closeVideoNodes();
-
-    // Reset pipe config
-    status_t status = resetLinks(graphConfigMgr.getMediaCtlConfigPrev(mConfigedPipeType));
-    if (status != NO_ERROR) {
-        LOGE("Cannot reset MediaCtl links");
-        return status;
-    }
-    mConfigedPipeType = IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT;
-    mPipeConfig = nullptr;
-
-    // Reset common config
-    mMediaCtlConfig = graphConfigMgr.getMediaCtlConfigPrev(type);
-    status = resetLinks(mMediaCtlConfig);
-    if (status != NO_ERROR) {
-        LOGE("Cannot reset MediaCtl links");
-        return status;
-    }
-
     // Handle new common config
     mMediaCtlConfig = graphConfigMgr.getMediaCtlConfig(type);
-    if (mMediaCtlConfig == nullptr) {
-        LOGE("Not able to pick up Media Ctl configuration ");
-        status = BAD_VALUE;
-        return status;
-    }
+    CheckError(mMediaCtlConfig == nullptr, UNKNOWN_ERROR, "mMediaCtlConfig is nullptr");
 
-    status = mMediaCtl->getMediaDevInfo(deviceInfo);
+    status_t status = mMediaCtl->getMediaDevInfo(deviceInfo);
     if (status != NO_ERROR) {
         LOGE("Error getting device info");
         return status;
     }
 
-    status = openVideoNodes();
+    status = openVideoNodesPerPipe();
     if (status != NO_ERROR) {
         LOGE("Failed to open video nodes (ret = %d)", status);
         return status;
@@ -106,17 +78,18 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
             LOGE("Cannot set MediaCtl links (ret = %d)", status);
             return status;
         }
+        mPrevMediaCtlLinks.push_back(pipeLink);
     }
 
-    // HFLIP must be set before setting formats. Other controls need to be set after formats.
+    // PIPE_MODE must be set before setting formats. Other controls need to be set after formats.
     for (unsigned int i = 0; i < mMediaCtlConfig->mControlParams.size(); i++) {
         MediaCtlControlParams pipeControl = mMediaCtlConfig->mControlParams[i];
-        if (pipeControl.controlId == V4L2_CID_HFLIP) {
+        if (pipeControl.controlId == V4L2_CID_INTEL_IPU3_MODE) {
             status = mMediaCtl->setControl(pipeControl.entityName.c_str(),
                     pipeControl.controlId, pipeControl.value,
                     pipeControl.controlName.c_str());
             if (status != NO_ERROR) {
-                LOGE("Cannot set HFLIP control (ret = %d)", status);
+                LOGE("Cannot set PIPE_MODE control (ret = %d)", status);
                 return status;
             }
             break;
@@ -149,7 +122,14 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
         }
     }
 
-    // setting all the selections
+
+    string imgu_name = "ipu3-imgu";
+    if (type == IStreamConfigProvider::IMGU_VIDEO)
+        imgu_name += " 0";
+    else if (type == IStreamConfigProvider::IMGU_STILL)
+        imgu_name += " 1";
+
+    // setting all the selections for imgu
     for (auto& it :mMediaCtlConfig->mSelectionVideoParams) {
         std::shared_ptr<MediaEntity> entity;
         std::shared_ptr<cros::V4L2VideoNode> vNode;
@@ -166,7 +146,7 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
         }
 
         // set selection control to imgu node
-        status = mMediaCtl->setSelection(IMGU_NAME,
+        status = mMediaCtl->setSelection(imgu_name.c_str(),
                                        it.select.pad,
                                        it.select.target,
                                        it.select.r.top,
@@ -174,7 +154,7 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
                                        it.select.r.width,
                                        it.select.r.height);
         if (status != NO_ERROR) {
-            LOGE("Cannot set MediaCtl format selection (ret = %d)", status);
+            LOGE("Cannot set MediaCtl format selection %s (ret = %d)", imgu_name.c_str(), status);
             return status;
         }
      }
@@ -183,7 +163,8 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
     // HFLIP already set earlier, so no need to set it again.
     for (unsigned int i = 0; i < mMediaCtlConfig->mControlParams.size(); i++) {
         MediaCtlControlParams pipeControl = mMediaCtlConfig->mControlParams[i];
-        if (pipeControl.controlId != V4L2_CID_HFLIP) {
+        if (pipeControl.controlId != V4L2_CID_HFLIP &&
+            pipeControl.controlId != V4L2_CID_INTEL_IPU3_MODE) {
             status = mMediaCtl->setControl(pipeControl.entityName.c_str(),
                     pipeControl.controlId, pipeControl.value,
                     pipeControl.controlName.c_str());
@@ -197,73 +178,21 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
     return status;
 }
 
-status_t MediaCtlHelper::configurePipe(IStreamConfigProvider &graphConfigMgr,
-                                       IStreamConfigProvider::MediaType pipeType,
-                                       bool resetFormat)
+std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> MediaCtlHelper::
+        getConfiguredNodesPerName(IStreamConfigProvider::MediaType mediaType)
 {
-    LOG1("%s: %d ->%d", __FUNCTION__, mConfigedPipeType, pipeType);
-    status_t status = OK;
-    if (!isMediaTypeForPipe(pipeType)) {
-        LOGE("%d is not type for pipe!", pipeType);
-        return BAD_VALUE;
-    }
+    std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> configuredNodes;
+    CheckError((mediaType != IStreamConfigProvider::IMGU_VIDEO) &&
+               (mediaType != IStreamConfigProvider::IMGU_STILL),
+               configuredNodes, "Invalid media types: %d", mediaType);
 
-    if (mConfigedPipeType == pipeType)
-        return OK;
-
-    // Disable link for the old MediaCtlData
-    const MediaCtlConfig* config = graphConfigMgr.getMediaCtlConfig(mConfigedPipeType);
-    if (config) {
-        for (size_t i = 0; i < config->mLinkParams.size(); i++) {
-            MediaCtlLinkParams pipeLink = config->mLinkParams[i];
-            pipeLink.enable = false;
-            status = mMediaCtl->configureLink(pipeLink);
-            if (status != NO_ERROR) {
-                LOGE("Cannot set MediaCtl links (ret = %d)", status);
-                return status;
-            }
-        }
-    }
-
-    // Config for the new MediaCtlData
-    config = graphConfigMgr.getMediaCtlConfig(pipeType);
-    if (!config) {
-        return OK;
-    }
-
-    mPipeConfig = config; // Remeber it for disabling link in ~MediaCtlHelper()
-    mConfigedPipeType = pipeType;
-    for (size_t i = 0; i < config->mLinkParams.size(); i++) {
-        MediaCtlLinkParams pipeLink = config->mLinkParams[i];
-        status = mMediaCtl->configureLink(pipeLink);
-        if (status != NO_ERROR) {
-            LOGE("Cannot set MediaCtl links (ret = %d)", status);
-            return status;
-        }
-    }
-    if (!resetFormat)
-        return OK;
-
-    for (size_t i = 0; i < config->mFormatParams.size(); i++) {
-        MediaCtlFormatParams pipeFormat = config->mFormatParams[i];
-        pipeFormat.field = 0;
-        pipeFormat.stride = widthToStride(pipeFormat.formatCode, pipeFormat.width);
-
-        status = mMediaCtl->setFormat(pipeFormat);
-        if (status != NO_ERROR) {
-            LOGE("Cannot set MediaCtl format (ret = %d)", status);
-            return status;
-        }
-    }
-    return OK;
+    return mConfiguredNodesPerName;
 }
 
-status_t MediaCtlHelper::openVideoNodes()
+status_t MediaCtlHelper::openVideoNodesPerPipe()
 {
-    LOG1("@%s", __FUNCTION__);
-    status_t status = UNKNOWN_ERROR;
-
-    mConfiguredNodes.clear();
+    LOG1("@%s, media type: %d", __FUNCTION__, mPipeType);
+    status_t status = NO_ERROR;
 
     // Open video nodes that are listed in the current config
     for (unsigned int i = 0; i < mMediaCtlConfig->mVideoNodes.size(); i++) {
@@ -276,13 +205,13 @@ status_t MediaCtlHelper::openVideoNodes()
         }
     }
 
-    return NO_ERROR;
+    return status;
 }
 
 status_t MediaCtlHelper::openVideoNode(const char *entityName, IPU3NodeNames isysNodeName)
 {
     LOG1("@%s: %s, node: %d", __FUNCTION__, entityName, isysNodeName);
-    status_t status = UNKNOWN_ERROR;
+    status_t status = NO_ERROR;
     std::shared_ptr<MediaEntity> entity = nullptr;
     std::shared_ptr<cros::V4L2VideoNode> videoNode = nullptr;
 
@@ -299,9 +228,11 @@ status_t MediaCtlHelper::openVideoNode(const char *entityName, IPU3NodeNames isy
             return status;
         }
 
-        mConfiguredNodes.push_back(videoNode);
         // mConfiguredNodesPerName is sorted from lowest to highest IPU3NodeNames value
-        mConfiguredNodesPerName.insert(std::make_pair(isysNodeName, videoNode));
+        mConfiguredNodes.push_back(videoNode);
+        if (mPipeType != IStreamConfigProvider::CIO2)
+            mConfiguredNodesPerName.insert(std::make_pair(isysNodeName, videoNode));
+
         if (mOpenVideoNodeCallBack) {
             status = mOpenVideoNodeCallBack->opened(isysNodeName, videoNode);
         }
@@ -312,45 +243,44 @@ status_t MediaCtlHelper::openVideoNode(const char *entityName, IPU3NodeNames isy
 
 status_t MediaCtlHelper::closeVideoNodes()
 {
-    LOG1("@%s", __FUNCTION__);
+    LOG1("@%s, media type: %d", __FUNCTION__, mPipeType);
     status_t status = NO_ERROR;
 
     for (size_t i = 0; i < mConfiguredNodes.size(); i++) {
         status = mConfiguredNodes[i]->Close();
         if (status != NO_ERROR)
-            LOGW("Error in closing video node (%zu)", i);
+            LOGW("Error in closing video node for video pipe(%zu)", i);
     }
+
     mConfiguredNodes.clear();
     mConfiguredNodesPerName.clear();
 
     return NO_ERROR;
 }
 
-
-status_t MediaCtlHelper::resetLinks(const MediaCtlConfig *config)
+status_t MediaCtlHelper::resetLinks()
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    if (config == nullptr) {
-        LOG2("%s mMediaCtlConfig is NULL", __FUNCTION__);
+    if (mPrevMediaCtlLinks.empty()) {
+        LOG2("%s no links to reset", __FUNCTION__);
         return status;
     }
 
-    for (size_t i = 0; i < config->mLinkParams.size(); i++) {
-        MediaCtlLinkParams pipeLink = config->mLinkParams[i];
+    for (size_t i = 0; i < mPrevMediaCtlLinks.size(); i++) {
+        MediaCtlLinkParams pipeLink = mPrevMediaCtlLinks[i];
         pipeLink.enable = false;
         status = mMediaCtl->configureLink(pipeLink);
-
         if (status != NO_ERROR) {
             LOGE("Cannot reset MediaCtl link (ret = %d)", status);
             return status;
         }
     }
+    mPrevMediaCtlLinks.clear();
 
     return status;
 }
-
 
 } /* namespace camera2 */
 } /* namespace android */
