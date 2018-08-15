@@ -16,12 +16,18 @@ namespace portier {
 using std::string;
 using std::vector;
 
+using base::TimeDelta;
+using base::TimeTicks;
 using shill::IPAddress;
 
 using KeyPair = std::pair<const IPAddress, const string>;
 using NeighPair = std::pair<KeyPair, NeighborCacheEntry>;
 
 namespace {
+
+// Amount of time  between an entry being inserted and it being removed
+// as obsolete.
+constexpr TimeDelta kEntryExpiryTimeout = TimeDelta::FromSeconds(30);
 
 // Checks if the specified |nud_state| is one of the valid NUD states
 // recognized by the Linux kernel.  These states are specified in
@@ -107,8 +113,9 @@ bool NeighborCache::HasEntry(const IPAddress& ip_address,
   return base::ContainsKey(entries_, key);
 }
 
-bool NeighborCache::InsertEntry(const std::string& pg_name,
-                                const NeighborCacheEntry& entry) {
+bool NeighborCache::InsertEntry(const string& pg_name,
+                                const NeighborCacheEntry& entry,
+                                TimeTicks now) {
   // Validating based on needs of IPv6 ND Proxying.
   if (!entry.ip_address.IsValid() ||
       entry.ip_address.family() != IPAddress::kFamilyIPv6 ||
@@ -117,7 +124,9 @@ bool NeighborCache::InsertEntry(const std::string& pg_name,
     return false;
   }
   const KeyPair key(entry.ip_address, pg_name);
-  entries_[key] = entry;
+  NeighborCacheEntry& new_entry = entries_[key];
+  new_entry = entry;
+  entries_[key].expiry_time = now + kEntryExpiryTimeout;
   return true;
 }
 
@@ -148,6 +157,16 @@ void NeighborCache::ClearForGroup(const string& pg_name) {
 
 void NeighborCache::Clear() {
   entries_.clear();
+}
+
+void NeighborCache::ClearExpired(TimeTicks now) {
+  for (auto it = entries_.begin(); it != entries_.end();) {
+    if (it->second.expiry_time <= now) {
+      it = entries_.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 }  // namespace portier

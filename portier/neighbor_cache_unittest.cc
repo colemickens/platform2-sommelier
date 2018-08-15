@@ -14,9 +14,24 @@
 namespace portier {
 
 using std::string;
+
+using base::TimeDelta;
+using base::TimeTicks;
 using shill::IPAddress;
 
 namespace {
+
+constexpr TimeDelta kEntryExpiryTimeout = TimeDelta::FromSeconds(30);
+
+// Time differences which will not cause an entry to become expired.
+constexpr TimeDelta kSmallTimeDiff1 = TimeDelta::FromSeconds(1);
+constexpr TimeDelta kSmallTimeDiff2 = TimeDelta::FromSeconds(12);
+constexpr TimeDelta kSmallTimeDiff3 = TimeDelta::FromSeconds(29);
+
+// Time differences which will cause an entry to become expired.
+constexpr TimeDelta kLargeTimeDiff1 = TimeDelta::FromSeconds(30);
+constexpr TimeDelta kLargeTimeDiff2 = TimeDelta::FromMinutes(30);
+constexpr TimeDelta kLargeTimeDiff3 = TimeDelta::FromHours(30);
 
 constexpr char kGroupName1[] = "lan";
 constexpr char kGroupName2[] = "wifi";
@@ -90,10 +105,11 @@ bool CompareEntries(const NeighborCacheEntry& entry1,
 //   Router 2 (REACHABLE)   |               |     Node 4 (STALE)
 //   Router 3 (DELAY)   ----+ wan0   vmtap1 +---- Node 5 (STALE)
 //                          +---------------+
-
 class NeighborCacheTest : public testing::Test {
  protected:
   virtual void SetUp() {
+    now_ = base::TimeTicks::Now();
+
     router1_.ip_address = kRouterAddress1;
     router1_.ll_address = kRouterMacAddress1;
     router1_.if_name = kUpsteamInterface1;
@@ -144,15 +160,18 @@ class NeighborCacheTest : public testing::Test {
   }
 
   bool InsertAll(NeighborCache* cache) {
-    return cache->InsertEntry(kGroupName1, router1_) &&
-           cache->InsertEntry(kGroupName2, router2_) &&
-           cache->InsertEntry(kGroupName2, router3_) &&
-           cache->InsertEntry(kGroupName1, node1_) &&
-           cache->InsertEntry(kGroupName1, node2_) &&
-           cache->InsertEntry(kGroupName1, node3_) &&
-           cache->InsertEntry(kGroupName2, node4_) &&
-           cache->InsertEntry(kGroupName2, node5_);
+    return cache->InsertEntry(kGroupName1, router1_, now_) &&
+           cache->InsertEntry(kGroupName2, router2_, now_) &&
+           cache->InsertEntry(kGroupName2, router3_, now_) &&
+           cache->InsertEntry(kGroupName1, node1_, now_) &&
+           cache->InsertEntry(kGroupName1, node2_, now_) &&
+           cache->InsertEntry(kGroupName1, node3_, now_) &&
+           cache->InsertEntry(kGroupName2, node4_, now_) &&
+           cache->InsertEntry(kGroupName2, node5_, now_);
   }
+
+  // A fake now entry.
+  TimeTicks now_;
 
   NeighborCacheEntry router1_;
   NeighborCacheEntry router2_;
@@ -371,6 +390,52 @@ TEST_F(NeighborCacheTest, NoFailedRouter) {
   NeighborCacheEntry entry;
   EXPECT_FALSE(
       cache.GetInterfaceRouter(kUpsteamInterface1, kGroupName1, &entry));
+}
+
+TEST_F(NeighborCacheTest, ExpiredRemoval) {
+  NeighborCache cache;
+  // Change some of the times.
+  cache.InsertEntry(kGroupName1, router1_, now_ - kSmallTimeDiff1);
+  cache.InsertEntry(kGroupName2, router2_, now_ - kSmallTimeDiff2);
+  cache.InsertEntry(kGroupName2, router3_, now_ - kLargeTimeDiff2);
+  cache.InsertEntry(kGroupName1, node1_, now_ - kSmallTimeDiff3);
+  cache.InsertEntry(kGroupName1, node2_, now_ - kLargeTimeDiff1);
+  cache.InsertEntry(kGroupName1, node3_, now_ - kLargeTimeDiff3);
+  cache.InsertEntry(kGroupName2, node4_, now_ - kSmallTimeDiff3);
+  cache.InsertEntry(kGroupName2, node5_, now_ - kLargeTimeDiff3);
+
+  // Remove all of the currently expired entries.
+  // Expected to clear: Nodes 2, 3 and 5 and router 3.
+  cache.ClearExpired(now_);
+
+  EXPECT_TRUE(cache.HasEntry(router1_.ip_address, kGroupName1));
+  EXPECT_TRUE(cache.HasEntry(router2_.ip_address, kGroupName2));
+  EXPECT_FALSE(cache.HasEntry(router3_.ip_address, kGroupName2));
+
+  EXPECT_TRUE(cache.HasEntry(node1_.ip_address, kGroupName1));
+  EXPECT_FALSE(cache.HasEntry(node2_.ip_address, kGroupName1));
+  EXPECT_FALSE(cache.HasEntry(node3_.ip_address, kGroupName1));
+  EXPECT_TRUE(cache.HasEntry(node4_.ip_address, kGroupName2));
+  EXPECT_FALSE(cache.HasEntry(node5_.ip_address, kGroupName2));
+}
+
+TEST_F(NeighborCacheTest, UpdateExpiry) {
+  NeighborCache cache;
+  EXPECT_TRUE(InsertAll(&cache));
+
+  NeighborCacheEntry entry;
+  EXPECT_TRUE(cache.GetEntry(router1_.ip_address, kGroupName1, &entry));
+  const TimeTicks original_expiry = entry.expiry_time;
+  EXPECT_EQ(original_expiry, now_ + kEntryExpiryTimeout);
+
+  // Reinsert a node at a different time, should update.
+  EXPECT_TRUE(cache.InsertEntry(kGroupName1, router1_, now_ + kLargeTimeDiff2));
+  EXPECT_TRUE(cache.GetEntry(router1_.ip_address, kGroupName1, &entry));
+
+  const TimeTicks new_expiry = entry.expiry_time;
+
+  EXPECT_NE(original_expiry, new_expiry);
+  EXPECT_EQ(new_expiry - original_expiry, kLargeTimeDiff2);
 }
 
 }  // namespace portier

@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/time/time.h>
 #include <shill/net/ip_address.h>
 
 #include "portier/ll_address.h"
@@ -24,6 +25,10 @@ struct NeighborCacheEntry {
   std::string if_name;
   bool is_router;
   uint8_t nud_state;
+
+  // The time which the entry is considered expired an should be removed.  This
+  // time should be updated when and entry is being re-inserted.
+  base::TimeTicks expiry_time;
 
   NeighborCacheEntry();
   ~NeighborCacheEntry() = default;
@@ -68,7 +73,12 @@ class NeighborCache {
   // - |entry.ll_address| is invalid.
   // - |entry.if_name| is empty.
   // - |entry.nud_state| is not one of the Linux recognized states.
-  bool InsertEntry(const std::string& pg_name, const NeighborCacheEntry& entry);
+  // The new entry will be assigned an expiry time based on the time
+  // provided by the |now| parameter.  This parameter is not validated
+  // against existing entries to check if the time is non-decreasing.
+  bool InsertEntry(const std::string& pg_name,
+                   const NeighborCacheEntry& entry,
+                   base::TimeTicks now = base::TimeTicks::Now());
 
   // Clear the specific entry assocated to the provided |ip_address|.
   void RemoveEntry(const shill::IPAddress& ip_address,
@@ -85,6 +95,10 @@ class NeighborCache {
 
   // Clears out the entire cache.
   void Clear();
+
+  // Clears all entries which have an |entry.expiry_time| less than
+  // or equal to the provided |now| time.
+  void ClearExpired(base::TimeTicks now = base::TimeTicks::Now());
 
  private:
   // Maps the pair of the string representation of the IPv6 address
