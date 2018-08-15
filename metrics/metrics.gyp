@@ -29,7 +29,6 @@
         ],
       },
       'sources': [
-        'crosvm_process_list.cc',
         'metrics_daemon.cc',
         'metrics_daemon_main.cc',
         'vmlog_writer.cc',
@@ -186,7 +185,6 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'crosvm_process_list_test.cc',
             'metrics_daemon_test.cc',
             'vmlog_writer_test.cc',
           ],
