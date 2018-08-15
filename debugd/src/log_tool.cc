@@ -92,7 +92,7 @@ const Log kCommandLogs[] = {
   // The sed command replaces the EDID serial number (4 bytes at position 12)
   // with zeroes. See https://en.wikipedia.org/wiki/EDID#EDID_1.4_data_format.
   { "edid-decode",
-    "for f in /sys/class/drm/card0-*/edid; do"
+    "for f in /sys/class/drm/card0-*/edid; do "
         "echo \"----------- ${f}\"; "
         "sed -E 's/.{4}/\x00\x00\x00\x00/4' \"${f}\" | edid-decode;"
         "done"
