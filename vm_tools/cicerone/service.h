@@ -147,6 +147,17 @@ class Service final : public base::MessageLoopForIO::Watcher {
                     bool* result,
                     base::WaitableEvent* event);
 
+  // Sends a D-Bus message to Chrome to update the list of file extensions to
+  // MIME type mapping in the container, the mappings are contained in
+  // |mime_types|. It will use |cid| to resolve the request to a VM and then
+  // |container_token| to resolve it to a container.  |result| is set to true on
+  // success, false otherwise. Signals |event| when done.
+  void UpdateMimeTypes(const std::string& container_token,
+                       vm_tools::apps::MimeTypes mime_types,
+                       const uint32_t cid,
+                       bool* result,
+                       base::WaitableEvent* event);
+
  private:
   explicit Service(base::Closure quit_closure);
 

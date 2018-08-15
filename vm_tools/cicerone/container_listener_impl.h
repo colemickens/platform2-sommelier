@@ -52,6 +52,10 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::OpenTerminalRequest* request,
       vm_tools::EmptyMessage* response) override;
+  grpc::Status UpdateMimeTypes(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::UpdateMimeTypesRequest* request,
+      vm_tools::EmptyMessage* response) override;
 
  private:
   // Returns true if the performing an open window/tab operation will be within

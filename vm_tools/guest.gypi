@@ -33,6 +33,7 @@
         'garcon/icon_finder.cc',
         'garcon/icon_index_file.cc',
         'garcon/ini_parse_util.cc',
+        'garcon/mime_types_parser.cc',
         'garcon/package_kit_proxy.cc',
         'garcon/service_impl.cc',
       ],
@@ -173,6 +174,18 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'garcon/icon_finder_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'garcon_mime_types_parser_test',
+          'type': 'executable',
+          'dependencies': [
+            'libgarcon',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'garcon/mime_types_parser_test.cc',
           ],
         },
       ],

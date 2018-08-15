@@ -264,6 +264,36 @@ grpc::Status ContainerListenerImpl::OpenTerminal(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::UpdateMimeTypes(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::UpdateMimeTypesRequest* request,
+    vm_tools::EmptyMessage* response) {
+  std::string peer_address = ctx->peer();
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+  vm_tools::apps::MimeTypes mime_types;
+  mime_types.mutable_mime_type_mappings()->insert(
+      request->mime_type_mappings().begin(),
+      request->mime_type_mappings().end());
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::UpdateMimeTypes,
+                            service_, request->token(), std::move(mime_types),
+                            cid, &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure updating MIME types from ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in UpdateMimeTypes");
+  }
+  return grpc::Status::OK;
+}
+
 bool ContainerListenerImpl::CheckOpenRateLimit() {
   base::TimeTicks now = base::TimeTicks::Now();
   if (now - open_rate_window_start_ > kOpenRateWindow) {

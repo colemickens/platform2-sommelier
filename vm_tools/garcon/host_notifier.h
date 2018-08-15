@@ -79,8 +79,15 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // Sends a list of the installed applications to the host.
   void SendAppListToHost();
 
+  // Sends a list of the system configured MIME types to the host.
+  void SendMimeTypesToHost();
+
   // Callback for when desktop file path changes occur.
   void DesktopPathsChanged(const base::FilePath& path, bool error);
+
+  // Callback for when changes to /etc/ or $HOME occur which hold the MIME types
+  // files.
+  void MimeTypesChanged(const base::FilePath& path, bool error);
 
   // Creates a ContainerListener::Stub, defaulting to vsock but falling back
   // to IPv4 if the host doesn't support vsock.
@@ -92,12 +99,17 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // Security token for communicating with cicerone.
   std::string token_;
 
-  // Watchers for tracking filesystem changes to .desktop files/dirs.
+  // Watchers for tracking filesystem changes to .desktop files/dirs,
+  // /etc/mime.types and $HOME/.mime.types files.
   std::vector<std::unique_ptr<base::FilePathWatcher>> watchers_;
 
   // True if there is currently a delayed task pending for updating the
   // application list.
   bool update_app_list_posted_;
+
+  // True if there is currently a delayed task pending for updating the
+  // MIME types list.
+  bool update_mime_types_posted_;
 
   // Closure for stopping the MessageLoop.  Posted to the thread's TaskRunner
   // when this program receives a SIGTERM.

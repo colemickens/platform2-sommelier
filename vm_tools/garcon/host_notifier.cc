@@ -31,6 +31,7 @@
 #include "vm_tools/common/constants.h"
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
+#include "vm_tools/garcon/mime_types_parser.h"
 
 namespace {
 
@@ -39,6 +40,12 @@ constexpr char kSecurityTokenFile[] = "/dev/.container_token";
 constexpr int kSecurityTokenLength = 36;
 // File extension for desktop files.
 constexpr char kDesktopFileExtension[] = ".desktop";
+// Directory where the MIME types file is stored for watching with inotify.
+constexpr char kMimeTypesDir[] = "/etc";
+// File where MIME type information is stored in the container.
+constexpr char kMimeTypesFilePath[] = "/etc/mime.types";
+// Filename for the user's MIME types file in their home dir.
+constexpr char kUserMimeTypesFile[] = ".mime.types";
 // Duration over which we coalesce changes to the desktop file system.
 constexpr base::TimeDelta kFilesystemChangeCoalesceTime =
     base::TimeDelta::FromSeconds(5);
@@ -152,7 +159,9 @@ bool HostNotifier::OpenTerminal(std::vector<std::string> args) {
 }
 
 HostNotifier::HostNotifier(base::Closure shutdown_closure)
-    : shutdown_closure_(std::move(shutdown_closure)),
+    : update_app_list_posted_(false),
+      update_mime_types_posted_(false),
+      shutdown_closure_(std::move(shutdown_closure)),
       signal_controller_(FROM_HERE),
       weak_ptr_factory_(this) {}
 
@@ -274,9 +283,37 @@ bool HostNotifier::Init(uint32_t vsock_port) {
     watchers_.emplace_back(std::move(watcher));
   }
 
+  // We can only watch directories and on changes we aren't notified which
+  // file changes, so we end up watching for any changes in /etc or $HOME.
+
+  // Also setup the watcher for the /etc/mime.types file.
+  std::unique_ptr<base::FilePathWatcher> mime_type_watcher =
+      std::make_unique<base::FilePathWatcher>();
+  base::FilePath mime_type_path(kMimeTypesDir);
+  if (!mime_type_watcher->Watch(mime_type_path, false,
+                                base::Bind(&HostNotifier::MimeTypesChanged,
+                                           weak_ptr_factory_.GetWeakPtr()))) {
+    LOG(ERROR) << "Failed setting up filesystem path watcher for: "
+               << kMimeTypesDir;
+  }
+  watchers_.emplace_back(std::move(mime_type_watcher));
+
+  // Also setup the watcher for the $HOME/.mime.types file.
+  std::unique_ptr<base::FilePathWatcher> home_mime_type_watcher =
+      std::make_unique<base::FilePathWatcher>();
+  if (!home_mime_type_watcher->Watch(
+          base::GetHomeDir(), false,
+          base::Bind(&HostNotifier::MimeTypesChanged,
+                     weak_ptr_factory_.GetWeakPtr()))) {
+    LOG(ERROR) << "Failed setting up filesystem path watcher for: "
+               << base::GetHomeDir().value();
+  }
+  watchers_.emplace_back(std::move(home_mime_type_watcher));
+
   // If this fails, don't terminate ourself, this could be some kind of
   // transient failure.
   SendAppListToHost();
+  SendMimeTypesToHost();
 
   return true;
 }
@@ -400,10 +437,43 @@ void HostNotifier::SendAppListToHost() {
   }
 }
 
+void HostNotifier::SendMimeTypesToHost() {
+  vm_tools::container::UpdateMimeTypesRequest request;
+  request.set_token(token_);
+  vm_tools::EmptyMessage empty;
+
+  // Clear this in case it was set, this all happens on the same thread.
+  update_mime_types_posted_ = false;
+
+  MimeTypeMap mime_type_map;
+  if (!ParseMimeTypes(kMimeTypesFilePath, &mime_type_map)) {
+    LOG(ERROR) << "Failed parsing system mime types, will not send the list to "
+               << "host";
+    return;
+  }
+  // The user MIME types may not be set up, so we ignore failures here. User
+  // values override system values, so parse this one second so they get
+  // overridden.
+  ParseMimeTypes(base::GetHomeDir().Append(kUserMimeTypesFile).value(),
+                 &mime_type_map);
+
+  request.mutable_mime_type_mappings()->insert(
+      std::make_move_iterator(mime_type_map.begin()),
+      std::make_move_iterator(mime_type_map.end()));
+
+  // Now make the gRPC call to send this list to the host.
+  grpc::ClientContext ctx;
+  grpc::Status status = stub_->UpdateMimeTypes(&ctx, request, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to notify host of the MIME types: "
+                 << status.error_message();
+  }
+}
+
 void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
   if (error) {
-    // TODO(jkardatzke): Determine best how to handle errors here. We may want
-    // to restart this specific watcher in that case.
+    // This should never occur because the implementation for Linux never calls
+    // this with an error.
     LOG(ERROR) << "Error detected in file path watching for path: "
                << path.value();
     return;
@@ -423,6 +493,27 @@ void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
                  weak_ptr_factory_.GetWeakPtr()),
       kFilesystemChangeCoalesceTime);
   update_app_list_posted_ = true;
+}
+
+void HostNotifier::MimeTypesChanged(const base::FilePath& path, bool error) {
+  if (error) {
+    // This should never occur because the implementation for Linux never calls
+    // this with an error.
+    LOG(ERROR) << "Error detected in file path watching for path: "
+               << path.value();
+    return;
+  }
+
+  // Coalesce these calls if we have one pending.
+  if (update_mime_types_posted_) {
+    return;
+  }
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&HostNotifier::SendMimeTypesToHost,
+                 weak_ptr_factory_.GetWeakPtr()),
+      kFilesystemChangeCoalesceTime);
+  update_mime_types_posted_ = true;
 }
 
 void HostNotifier::SetUpContainerListenerStub(const std::string& host_ip) {
