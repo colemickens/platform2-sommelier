@@ -26,6 +26,7 @@
 #include <GCSSParser.h>
 #include <cros-camera/v4l2_device.h>
 #include <linux/v4l2-subdev.h>
+#include <linux/intel-ipu3.h>
 #include <algorithm>
 
 #include "MediaEntity.h"
@@ -51,37 +52,27 @@ namespace gcu = graphconfig::utils;
 
 #define MEDIACTL_PAD_OUTPUT_NUM 2
 #define MEDIACTL_PAD_VF_NUM 3
-#define MEDIACTL_PAD_PV_NUM 4
 #define SCALING_FACTOR 1
 
-const string csi2_without_port = "ipu3-csi2 ";
+const string csi2WithoutPort = "ipu3-csi2 ";
+const string imguWithoutPort = "ipu3-imgu ";
 
-const string MEDIACTL_INPUTNAME = "ipu3-imgu input";
-
-const string MEDIACTL_PARAMETERNAME = "ipu3-imgu parameters";
-
-const string MEDIACTL_VIDEONAME = "ipu3-imgu output";
-const string MEDIACTL_STILLNAME = "ipu3-imgu output";
-
-const string MEDIACTL_PREVIEWNAME = "ipu3-imgu viewfinder";
-const string MEDIACTL_POSTVIEWNAME = "ipu3-imgu postview";
-
-const string MEDIACTL_STATNAME = "ipu3-imgu 3a stat";
+const string MEDIACTL_INPUTNAME = " input";
+const string MEDIACTL_PARAMETERNAME = " parameters";
+const string MEDIACTL_VIDEONAME = " output";
+const string MEDIACTL_STILLNAME = " viewfinder";
+const string MEDIACTL_PREVIEWNAME = " viewfinder";
+const string MEDIACTL_STATNAME = " 3a stat";
 
 GraphConfig::GraphConfig() :
-        mSettings(nullptr),
         mReqId(0),
-        mCIO2Format(V4L2_PIX_FMT_IPU3_SGRBG10),
         mPipeType(PIPE_VIDEO),
         mSourceType(SRC_NONE)
 {
-    //CLEAR(mProgramGroup);
     mSinkPeerPort.clear();
     mStreamToSinkIdMap.clear();
     mStream2TuningMap.clear();
     mCSIBE = CSI_BE + "0";
-    mMainNodeName.clear();
-    mSecondNodeName.clear();
 }
 
 GraphConfig::~GraphConfig()
@@ -97,9 +88,6 @@ void GraphConfig::fullReset()
 {
     mSinkPeerPort.clear();
     mStreamToSinkIdMap.clear();
-    mStreamIds.clear();
-    delete mSettings;
-    mSettings = nullptr;
     mReqId = 0;
     mStream2TuningMap.clear();
 }
@@ -147,16 +135,15 @@ void GraphConfig::init(int32_t reqId)
  * \param[in] active
  */
 status_t GraphConfig::prepare(Node *settings,
-                             StreamToSinkMap &streamToSinkIdMap)
+                              StreamToSinkMap &streamToSinkIdMap)
 {
-    mStreamIds.clear();
-    mSettings = settings;
-    status_t ret = OK;
-
     if (CC_UNLIKELY(settings == nullptr)) {
         LOGW("Settings is nullptr!! - BUG?");
         return UNKNOWN_ERROR;
     }
+
+    mSettings = settings;
+    status_t ret = OK;
 
     analyzeSourceType();
 
@@ -193,7 +180,7 @@ void GraphConfig::storeTuningModes()
             ret = result->getValue(GCSS_KEY_STREAM_ID, streamId);
             if (ret != css_err_none) {
                 string pgName;
-                // This should  not fail
+                // This should not fail
                 ret = result->getValue(GCSS_KEY_NAME, pgName);
                 LOGW("Failed to find stream id for PG %s", pgName.c_str());
                 continue;
@@ -202,7 +189,7 @@ void GraphConfig::storeTuningModes()
             ret = result->getValue(GCSS_KEY_TUNING_MODE, tuningMode);
             if (ret != css_err_none) {
                 string pgName;
-                // This should  not fail
+                // This should not fail
                 ret = result->getValue(GCSS_KEY_NAME, pgName);
                 LOGW("Failed t find tuning mode for PG %s, defaulting to %d",
                         pgName.c_str(), tuningMode);
@@ -266,7 +253,7 @@ status_t GraphConfig::getActiveOutputPorts(const StreamToSinkMap &streamToSinkId
 
         // Get the sinkname for getting the output port
         string sinkName;
-        ret =  sink->getValue(GCSS_KEY_NAME, sinkName);
+        ret = sink->getValue(GCSS_KEY_NAME, sinkName);
         if (CC_UNLIKELY(ret != css_err_none)) {
             LOGE("Failed to get sink name");
             return BAD_VALUE;
@@ -455,8 +442,6 @@ void GraphConfig::calculateSinkDependencies()
     std::string sinkName;
     SinkDependency aSinkDependency;
     uint32_t stageId; //not needed
-    mSinkDependencies.clear();
-    mIsaOutputPort2StreamId.clear();
     map<Node*, Node*>::iterator sinkIter = mSinkPeerPort.begin();
 
     for (; sinkIter != mSinkPeerPort.end(); sinkIter++) {
@@ -479,7 +464,6 @@ void GraphConfig::calculateSinkDependencies()
             continue;
         }
         LOG2("Adding dependency %s stream id %d", sinkName.c_str(), aSinkDependency.streamId);
-        mSinkDependencies.push_back(aSinkDependency);
 
         // get the output port of capture unit
         Node* isaOutPutPort = nullptr;
@@ -494,97 +478,7 @@ void GraphConfig::calculateSinkDependencies()
             LOGE("Fail to get isa output port name");
             continue;
         }
-        int32_t streamId = portGetStreamId(isaOutPutPort);
-        if (streamId != -1 &&
-            mIsaOutputPort2StreamId.find(fullName) == mIsaOutputPort2StreamId.end())
-            mIsaOutputPort2StreamId[fullName] = streamId;
     }
-}
-
-/**
- * This method is used by the GC Manager that has access to the request
- * to inform us of what are the active sinks.
- * Using the sink dependency information we can then know which ISA ports
- * are active for this GC.
- *
- * Once we have different settings per request then we can incorporate this
- * method into calculateSinkDependencies.
- *
- * \param[in] activeSinks Vector with GCSS_KEY's of the active sinks in a
- *                        request
- */
-void GraphConfig::setActiveSinks(std::vector<uid_t> &activeSinks)
-{
-    mIsaActiveDestinations.clear();
-    uid_t activeDest = 0;
-
-    for (size_t i = 0; i < activeSinks.size(); i++) {
-        for (size_t j = 0; j < mSinkDependencies.size(); j++) {
-            if (mSinkDependencies[j].sinkGCKey == activeSinks[i]) {
-                activeDest = mSinkDependencies[j].streamInputPortId;
-                mIsaActiveDestinations[activeDest] = activeDest;
-            }
-        }
-    }
-}
-
-/**
- * This method is used by the GC Manager that has access to the request
- * to inform us of what will the stream id be used.
- * Using the sink dependency information we can then know which stream ids
- * are active for this GC.
- *
- * Once we have different settings per request then we can incorporate this
- * method into calculateSinkDependencies.
- *
- * \param[in] activeSinks Vector with GCSS_KEY's of the active sinks in a
- *                        request
- */
-void GraphConfig::setActiveStreamId(const std::vector<uid_t> &activeSinks)
-{
-    mActiveStreamId.clear();
-    int32_t activeStreamId = 0;
-    status_t status = NO_ERROR;
-
-    for (size_t i = 0; i < activeSinks.size(); i++) {
-        for (size_t j = 0; j < mSinkDependencies.size(); j++) {
-            if (mSinkDependencies[j].sinkGCKey == activeSinks[i]) {
-                activeStreamId = mSinkDependencies[j].streamId;
-                mActiveStreamId.insert(activeStreamId);
-                // get the input port for this stream
-                GraphConfig::Node *port;
-                GraphConfig::Node *peer;
-                status = streamGetInputPort(activeStreamId, &port);
-                if (status != NO_ERROR) {
-                    LOGD("Fail to get input port for this stream %d", activeStreamId);
-                    continue;
-                }
-
-                status = portGetPeer(port, &peer);
-                if (status != NO_ERROR) {
-                    LOGE("fail to get peer for the port");
-                    continue;
-                }
-
-                // get peer's stream Id
-                activeStreamId = portGetStreamId(peer);
-                if (activeStreamId == -1) {
-                    LOGE("fail to get the stream id for %s peer port %s", NODE_NAME(port), NODE_NAME(peer));
-                    continue;
-                }
-                if (mActiveStreamId.find(activeStreamId) == mActiveStreamId.end())
-                    mActiveStreamId.insert(activeStreamId);
-            }
-        }
-    }
-}
-
-/**
- * returns the number of buffers the ISA will produce for a given request.
- */
-int32_t GraphConfig::getIsaOutputCount() const
-{
-    return mIsaActiveDestinations.size();
 }
 
 /**
@@ -663,26 +557,6 @@ int32_t GraphConfig::sinkGetStreamId(Node *sink)
     ret = sink->getValue(GCSS_KEY_STREAM_ID, streamId);
     if (CC_UNLIKELY(ret != css_err_none)) {
         LOGE("Failed to get stream ID");
-        return -1;
-    }
-    return streamId;
-}
-
-int32_t GraphConfig::portGetStreamId(Node *port)
-{
-    css_err_t ret = css_err_none;
-    GraphConfig::Node *ancestor = nullptr;
-    int32_t streamId = -1;
-
-    if (CC_UNLIKELY(port == nullptr)) {
-        LOGE("Invalid Node, cannot get the port stream id");
-        return -1;
-    }
-    ret = port->getAncestor(&ancestor);
-
-    ret = ancestor->getValue(GCSS_KEY_STREAM_ID, streamId);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        LOGE("Failed to get stream ID %s", NODE_NAME(ancestor));
         return -1;
     }
     return streamId;
@@ -1086,9 +960,6 @@ status_t GraphConfig::parseSensorNodeInfo(Node* sensorNode,
     int32_t bpp = gcu::getBpp(info.output.mbusFormat);
     info.pa.out.mbusFormat = gcu::getMBusFormat(info.nativeBayer, bpp);
 
-    // CIO2 format is same with pixel array format.
-    mCIO2Format = info.pa.out.mbusFormat;
-
     return OK;
 }
 
@@ -1099,12 +970,13 @@ status_t GraphConfig::parseSensorNodeInfo(Node* sensorNode,
  * TODO a lot of string values because of android gcss keys, which does not
  * have support for ints. Some could be moved to gcss_keys
  *
+ * \param[in/out] cio2Format   the format to use
  * \param[out] mediaCtlConfig  the struct to populate
  * \return OK              at success
  * \return UNKNOWN ERROR   at failure
  */
 
-status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
+status_t GraphConfig::getCio2MediaCtlData(int *cio2Format, MediaCtlConfig *mediaCtlConfig)
 {
     CheckError((!mediaCtlConfig), BAD_VALUE, "@%s null ptr\n", __FUNCTION__);
 
@@ -1127,6 +999,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
             LOGE("Error: Couldn't get sensor node info");
             return UNKNOWN_ERROR;
         }
+        *cio2Format = sourceInfo.pa.out.mbusFormat;
 
         // get the next entity port of the "ov5670 binner 11-0010" which is dynamical.
         // it could "ipu3-csi2 0" or "ipu3-csi2 1", then it will get 0 or 1.
@@ -1160,7 +1033,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
         }
 
         // get csi2 and cio2 names
-        csi2 = csi2_without_port + std::to_string(port);
+        csi2 = csi2WithoutPort + std::to_string(port);
         mCSIBE = CSI_BE + std::to_string(port);
         LOG1(" csi2 is:%s, cio2 is:%s\n", csi2.c_str(), mCSIBE.c_str());
     } else {
@@ -1344,7 +1217,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
     addFormatParams(csi2, csiBEOutW, csiBEOutH, 1, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
 
     // Imgu cio2 format
-    addFormatParams(mCSIBE, csiBEOutW, csiBEOutH, 0, mCIO2Format, 0, mediaCtlConfig);
+    addFormatParams(mCSIBE, csiBEOutW, csiBEOutH, 0, sourceInfo.pa.out.mbusFormat, 0, mediaCtlConfig);
 
     /* Start populating selections into mediaCtlConfig
      * entity name, width, height, left crop, top crop, target, pad, config */
@@ -1404,25 +1277,43 @@ status_t GraphConfig::getNodeInfo(const ia_uid uid, const Node &parent, int* wid
     return status;
 }
 
+bool GraphConfig::doesStillSettingExist(Node *imgu)
+{
+    Node *stillPipe = nullptr;
+    int isEnabled = 1;
+    int ret = imgu->getDescendant(GCSS_KEY_IMGU_STILL, &stillPipe);
+    if (ret != css_err_none) {
+        LOGD("<%u> node is not present in graph settings)", GCSS_KEY_IMGU_STILL);
+        return false;
+    }
+
+    stillPipe->getValue(GCSS_KEY_ENABLED, isEnabled);
+    return !!isEnabled;
+}
 
 /*
  * Imgu specific function
  */
 status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
+                                          int cio2Format,
                                           int32_t testPatternMode,
-                                          MediaCtlConfig *mediaCtlConfig,
-                                          MediaCtlConfig *mediaCtlConfigVideo,
-                                          MediaCtlConfig *mediaCtlConfigStill)
+                                          bool enableStill,
+                                          MediaCtlConfig *mediaCtlConfig)
 {
-    CheckError((!mediaCtlConfig || !mediaCtlConfigVideo || !mediaCtlConfigStill), \
-               BAD_VALUE, "@%s null ptr\n", __FUNCTION__);
+    CheckError(!mediaCtlConfig, BAD_VALUE, "@%s null ptr\n", __func__);
 
     int ret;
 
     Node *imgu = nullptr;
     int width = 0, height = 0, format = 0;
     int enabled = 1;
-    std::string kImguName = "ipu3-imgu";
+
+    string imgu_index = enableStill ? "1" : "0";
+    string kImguName = imguWithoutPort + imgu_index;
+    string inputName = imguWithoutPort + imgu_index + MEDIACTL_INPUTNAME;
+    string statName = imguWithoutPort + imgu_index + MEDIACTL_STATNAME;
+    string parameterName = imguWithoutPort + imgu_index + MEDIACTL_PARAMETERNAME;
+    string outputName = imguWithoutPort + imgu_index + MEDIACTL_VIDEONAME;
 
     ret = mSettings->getDescendant(GCSS_KEY_IMGU, &imgu);
     if (ret != css_err_none) {
@@ -1430,10 +1321,11 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
         return UNKNOWN_ERROR;
     }
 
+    bool hasStillSetting = doesStillSettingExist(imgu);
+
     for (size_t i = 0; i < mLut.size(); i++) {
         Node *pipe = nullptr;
         ret = imgu->getDescendant(mLut[i].uid, &pipe);
-
         if (ret != css_err_none) {
             LOGD("<%u> node is not present in graph (descriptor or settings) - continuing.", mLut[i].uid);
             continue;
@@ -1475,7 +1367,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
         if (fourccFormat == "NV12")
             format = V4L2_PIX_FMT_NV12;
         else if (fourccFormat == "CIO2")
-            format = mCIO2Format;
+            format = cio2Format;
         else if (fourccFormat == "YUYV")
             format = V4L2_PIX_FMT_YUYV;
         else
@@ -1513,7 +1405,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
             select.r.top = 0;
             select.r.width = nodeWidth;
             select.r.height = nodeHeight;
-            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, mediaCtlConfig);
+            addSelectionVideoParams(inputName, select, mediaCtlConfig);
             LOG2("pipe log name: %s  if size %dx%d", mLut[i].nodeName.c_str(), nodeWidth, nodeHeight);
 
             // Get BDS info
@@ -1531,55 +1423,56 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
             select.r.top = 0;
             select.r.width = nodeWidth;
             select.r.height = nodeHeight;
-            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, mediaCtlConfig);
+            addSelectionVideoParams(inputName, select, mediaCtlConfig);
             LOG2("pipe log name: %s  bds size %dx%d", mLut[i].nodeName.c_str(), nodeWidth, nodeHeight);
         }
 
         /* if node active add it to mediactl config */
         if (width != 0) {
-            LOG2("Adding video node: %s", NODE_NAME(pipe));
+            /* W/A: still pipe must outputs data through viewfinder node, currently its settings is aqcuired
+            * from setting of key <preview>, need to convert its name to still for ImguUnit processing, will remove
+            * this workaround after GCSS xml files are sorted */
+            if ((mLut[i].uid == GCSS_KEY_IMGU_PREVIEW || mLut[i].uid == GCSS_KEY_IMGU_VIDEO)
+                   && enableStill && hasStillSetting) {
+                mLut[i].pad = MEDIACTL_PAD_OUTPUT_NUM;
+                mLut[i].nodeName = outputName;
+                mLut[i].ipuNodeName = IMGU_NODE_VIDEO;
+            } else if (mLut[i].pad == MEDIACTL_PAD_VF_NUM && enableStill && !hasStillSetting) {
+                mLut[i].ipuNodeName = IMGU_NODE_STILL;
+            }
+            LOG2("Adding video node: %d %s %s", mLut[i].ipuNodeName, NODE_NAME(pipe), mLut[i].nodeName.c_str());
             addImguVideoNode(mLut[i].ipuNodeName, mLut[i].nodeName, mediaCtlConfig);
         }
-
-        MediaCtlConfig* pipeConfig = (mLut[i].pad == MEDIACTL_PAD_PV_NUM) ? mediaCtlConfigStill
-                                   : (mLut[i].pad == MEDIACTL_PAD_VF_NUM) ? mediaCtlConfigVideo
-                                   :                                        mediaCtlConfig;
 
         /* Use BGGR as bayer format when specific sensor receives test pattern request */
         if (testPatternMode != ANDROID_SENSOR_TEST_PATTERN_MODE_OFF) {
             const IPU3CameraCapInfo* capInfo = getIPU3CameraCapInfo(cameraId);
             CheckError(capInfo == nullptr, UNKNOWN_ERROR, "@%s: failed to get cameraCapInfo", __FUNCTION__);
-            if (mLut[i].nodeName.compare(MEDIACTL_INPUTNAME) == 0 &&
+            if (mLut[i].nodeName.compare(inputName) == 0 &&
                 !capInfo->getTestPatternBayerFormat().empty()) {
                 format = gcu::getV4L2Format(capInfo->getTestPatternBayerFormat());
             }
         }
-        addFormatParams(mLut[i].nodeName, width, height, 1,
-                        format, 0, pipeConfig);
+        addFormatParams(mLut[i].nodeName, width, height, 1, format, 0, mediaCtlConfig);
 
         if (mLut[i].uidStr != GC_INPUT) {
-            addLinkParams(kImguName, mLut[i].pad, mLut[i].nodeName, 0, 1, MEDIA_LNK_FL_ENABLED, pipeConfig);
+            addLinkParams(kImguName, mLut[i].pad, mLut[i].nodeName, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+        } else {
+            addLinkParams(mLut[i].nodeName, 0, kImguName, mLut[i].pad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
         }
-#ifdef VIDEO_PIPE_FOR_STILL_PREVIEW
-        // Add video pipe config also when still pipe is enabled.
-        // Video pipe will be used for still preview phase because still pipe has no stats output
-        // Related node is added to common MediaCtlData for device opening.
-        if (mLut[i].pad == MEDIACTL_PAD_PV_NUM) {
-            addFormatParams(MEDIACTL_PREVIEWNAME, width, height, 1,
-                            format, 0, mediaCtlConfigVideo);
-            addLinkParams(kImguName, MEDIACTL_PAD_VF_NUM, MEDIACTL_PREVIEWNAME, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfigVideo);
-
-            addImguVideoNode(IMGU_NODE_VF_PREVIEW, MEDIACTL_PREVIEWNAME, mediaCtlConfig);
-        }
-#endif
     }
 
-    addImguVideoNode(IMGU_NODE_STAT, MEDIACTL_STATNAME, mediaCtlConfig);
-    addLinkParams(kImguName, 5, MEDIACTL_STATNAME, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+    LOG2("Adding stat node");
+    addImguVideoNode(IMGU_NODE_STAT, statName, mediaCtlConfig);
+    addLinkParams(kImguName, 4, statName, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
     LOG2("Adding parameter node");
-    addImguVideoNode(IMGU_NODE_PARAM, MEDIACTL_PARAMETERNAME, mediaCtlConfig);
-    addLinkParams(MEDIACTL_PARAMETERNAME, 0, kImguName, 1, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+    addImguVideoNode(IMGU_NODE_PARAM, parameterName, mediaCtlConfig);
+    addLinkParams(parameterName, 0, kImguName, 1, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+
+    std::string runningMode = std::to_string(enableStill ? IPU3_RUNNING_MODE_STILL : IPU3_RUNNING_MODE_VIDEO);
+    addCtlParams(kImguName, 0, V4L2_CID_INTEL_IPU3_MODE, runningMode, mediaCtlConfig);
+
     return ret;
 }
 
@@ -1589,47 +1482,49 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
 {
     mMediaCtl = mediaCtl;
 
-    const int mainPad = !swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM
-                      : enableStill       ? MEDIACTL_PAD_PV_NUM
-                      :                     MEDIACTL_PAD_VF_NUM;
-    const int secondPad = swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM
-                        : enableStill      ? MEDIACTL_PAD_PV_NUM
-                        :                    MEDIACTL_PAD_VF_NUM;
+    // imgu 0 for video pipe, imgu 1 for still pipe
+    string imgu_index = enableStill ? "1" : "0";
+    const string stillName = imguWithoutPort + imgu_index + MEDIACTL_STILLNAME;
+    const string inputName = imguWithoutPort + imgu_index + MEDIACTL_INPUTNAME;
+    const string videoName = imguWithoutPort + imgu_index + MEDIACTL_VIDEONAME;
+    const string previewName = imguWithoutPort + imgu_index + MEDIACTL_PREVIEWNAME;
+
+    const int mainPad = !swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
+    const int secondPad = swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
     mLut.clear();
     MediaCtlLut lut;
     lut.ipuNodeName = IMGU_NODE_NULL;
 
-    lut.uid = GCSS_KEY_IMGU_STILL;
+    lut.uid = GCSS_KEY_IMGU_VIDEO;
     lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-    lut.pad = -1;
-    lut.nodeName = MEDIACTL_STILLNAME;
+    lut.pad = mainPad;
+    lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
+    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
     mLut.push_back(lut);
 
     lut.uid = GCSS_KEY_INPUT;
     lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
     lut.pad = 0;
-    lut.nodeName = MEDIACTL_INPUTNAME;
-    mLut.push_back(lut);
-
-    lut.uid = GCSS_KEY_IMGU_VIDEO;
-    lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-    lut.pad = mainPad;
-    lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? MEDIACTL_VIDEONAME
-                 : (lut.pad == MEDIACTL_PAD_PV_NUM)     ? MEDIACTL_POSTVIEWNAME
-                                                        : MEDIACTL_PREVIEWNAME;
+    lut.nodeName = inputName;
+    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
     mLut.push_back(lut);
 
     lut.uid = GCSS_KEY_IMGU_PREVIEW;
     lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
     lut.pad = secondPad;
-    lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? MEDIACTL_VIDEONAME
-                 : (lut.pad == MEDIACTL_PAD_PV_NUM)     ? MEDIACTL_POSTVIEWNAME
-                                                        : MEDIACTL_PREVIEWNAME;
+    lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
+    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
     mLut.push_back(lut);
 
-    int previewNodeName = enableStill ? IMGU_NODE_PV_PREVIEW : IMGU_NODE_VF_PREVIEW;
+    lut.uid = GCSS_KEY_IMGU_STILL;
+    lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
+    lut.pad = MEDIACTL_PAD_VF_NUM;
+    lut.nodeName = stillName;
+    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
+    mLut.push_back(lut);
+
     for (auto & it : mLut) {
-         it.ipuNodeName = (it.uid == GCSS_KEY_IMGU_PREVIEW) ? previewNodeName
+         it.ipuNodeName = (it.uid == GCSS_KEY_IMGU_PREVIEW) ? IMGU_NODE_PREVIEW
                         : (it.uid == GCSS_KEY_IMGU_VIDEO)   ? IMGU_NODE_VIDEO
                         : (it.uid == GCSS_KEY_IMGU_STILL)   ? IMGU_NODE_STILL
                         : (it.uid == GCSS_KEY_INPUT)        ? IMGU_NODE_INPUT
@@ -1957,7 +1852,9 @@ void GraphConfig::addCtlParams(const string &entityName,
 {
     if (!entityName.empty() && config) {
         int value = atoi(strValue.c_str());
-        string controlNameStr = GCSS::ItemUID::key2str(controlName);
+        string controlNameStr("");
+        if (controlName)
+            controlNameStr = GCSS::ItemUID::key2str(controlName);
 
         MediaCtlControlParams mediaCtlControlParams;
         mediaCtlControlParams.entityName = entityName;

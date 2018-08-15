@@ -102,7 +102,6 @@ public:
     typedef GCSS::GraphConfigNode Node;
     typedef std::vector<Node*> NodesPtrVector;
     typedef std::vector<int32_t> StreamsVector;
-    typedef std::map<int32_t, int32_t> StreamsMap;
     typedef std::map<camera3_stream_t*, uid_t> StreamToSinkMap;
     static const int32_t PORT_DIRECTION_INPUT = 0;
     static const int32_t PORT_DIRECTION_OUTPUT = 1;
@@ -132,7 +131,6 @@ public:
      * Sink Interrogation methods
      */
     int32_t sinkGetStreamId(Node *sink);
-    int32_t portGetStreamId(Node *port);
     /*
      * Stream Interrogation methods
      */
@@ -148,10 +146,6 @@ public:
                                  uid_t &terminalId);
     status_t getDimensions(const Node *node, int &w, int &h) const;
     status_t getDimensions(const Node *node, int &w, int &h, int &l,int &t) const;
-    /*
-     * ISA support methods
-     */
-    int32_t getIsaOutputCount() const;
 
     /*
      * re-cycler static method
@@ -244,8 +238,6 @@ private:
     status_t prepare(Node *settings,
                      StreamToSinkMap &streamToSinkIdMap);
     status_t analyzeSourceType();
-    void setActiveSinks(std::vector<uid_t> &activeSinks);
-    void setActiveStreamId(const std::vector<uid_t> &activeSinks);
     void calculateSinkDependencies();
     void storeTuningModes();
 
@@ -253,12 +245,12 @@ private:
      * Helpers for constructing mediaCtlConfigs from graph config
      */
     status_t parseSensorNodeInfo(Node* sensorNode, SourceNodeInfo &info);
-    status_t getMediaCtlData(MediaCtlConfig* mediaCtlConfig);
+    status_t getCio2MediaCtlData(int *cio2Format, MediaCtlConfig* mediaCtlConfig);
     status_t getImguMediaCtlData(int32_t cameraId,
+                                 int cio2Format,
                                  int32_t testPatternMode,
-                                 MediaCtlConfig* mediaCtlConfig,
-                                 MediaCtlConfig* mediaCtlConfigVideo,
-                                 MediaCtlConfig* mediaCtlConfigStill);
+                                 bool enableStill,
+                                 MediaCtlConfig* mediaCtlConfig);
     status_t addControls(const Node *sensorNode,
                          const SourceNodeInfo &sensorInfo,
                          MediaCtlConfig* config);
@@ -320,14 +312,13 @@ private:
     // Disable copy constructor and assignment operator
     GraphConfig(const GraphConfig &);
     GraphConfig& operator=(const GraphConfig &);
+    bool doesStillSettingExist(Node *imgu);
 
 private:
     GCSS::GraphConfigNode *mSettings;
     int32_t mReqId;
-    StreamsMap mStreamIds;
     std::map<int32_t, size_t> mKernelCountsMap; // key is stream id
 
-    int mCIO2Format;
     PipeType mPipeType;
     enum SourceType {
         SRC_NONE = 0,
@@ -347,14 +338,6 @@ private:
      * that are generated from the same pipe.
      */
     std::map<uid_t, uid_t> mIsaActiveDestinations;
-    std::set<int32_t> mActiveStreamId;
-    /**
-     * vector holding one structure per virtual sink that stores the stream id
-     * (pipeline id) associated with it and the terminal id of the input port
-     * of that stream.
-     * This vector is updated once per stream config.
-     */
-    std::vector<SinkDependency> mSinkDependencies;
     /**
      * vector holding the peers to the sink nodes. Map contains pairs of
      * {sink, peer}.
@@ -365,7 +348,6 @@ private:
      *copy of the map provided from GraphConfigManager to be used internally.
      */
     StreamToSinkMap mStreamToSinkIdMap;
-    std::map<std::string, int32_t> mIsaOutputPort2StreamId;
     /**
      * Map of tuning modes per stream id
      * Key: stream id
@@ -377,8 +359,6 @@ private:
     std::shared_ptr<MediaController> mMediaCtl;
 
     std::vector<MediaCtlLut> mLut;
-    string mMainNodeName;
-    string mSecondNodeName;
 };
 
 } // namespace camera2

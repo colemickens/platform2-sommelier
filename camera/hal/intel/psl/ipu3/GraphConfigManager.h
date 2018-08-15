@@ -76,6 +76,7 @@ private:
     GCSS::GraphConfigNode *mDesc;
     GCSS::GraphConfigNode *mSettings;
 };
+
 /**
  * \interface IStreamConfigProvider
  *
@@ -91,7 +92,6 @@ class IStreamConfigProvider {
 public:
     enum MediaType {
         CIO2 = 0,
-        IMGU_COMMON,
         IMGU_VIDEO,
         IMGU_STILL,
 
@@ -100,8 +100,7 @@ public:
 
     virtual ~IStreamConfigProvider() { };
     virtual const MediaCtlConfig *getMediaCtlConfig(MediaType type) const = 0;
-    virtual const MediaCtlConfig *getMediaCtlConfigPrev(MediaType type) const = 0;
-    virtual std::shared_ptr<GraphConfig> getBaseGraphConfig() = 0;
+    virtual std::shared_ptr<GraphConfig> getBaseGraphConfig(MediaType type) = 0;
 };
 
 /**
@@ -149,16 +148,9 @@ public:
     /*
      * Implementation of IStreamConfigProvider
      */
-    const MediaCtlConfig *getMediaCtlConfig(IStreamConfigProvider::MediaType type) const;
-    const MediaCtlConfig *getMediaCtlConfigPrev(IStreamConfigProvider::MediaType type) const;
-    std::shared_ptr<GraphConfig> getBaseGraphConfig();
+    const MediaCtlConfig *getMediaCtlConfig(MediaType type) const;
+    std::shared_ptr<GraphConfig> getBaseGraphConfig(MediaType type);
 
-    /*
-     * Second query
-     */
-    std::shared_ptr<GraphConfig> getGraphConfig(Camera3Request &request);
-
-    camera3_stream_t* getStreamByVirtualId(uid_t vPortId);
 public:
     static const char *DEFAULT_DESCRIPTOR_FILE;
     static const char *DEFAULT_SETTINGS_FILE;
@@ -176,60 +168,60 @@ private:
     // Disable copy constructor and assignment operator
     GraphConfigManager(const GraphConfigManager &);
     GraphConfigManager& operator=(const GraphConfigManager &);
-    void initStreamResolutionIds();
-    bool isVideoStream(camera3_stream_t *stream);
-    void detectActiveSinks(Camera3Request &request,
-                           std::shared_ptr<GraphConfig> gc);
-    status_t selectDefaultSetting(int videoStreamCount,
-                                  int stillStreamCount,
-                                  string &settingsId);
+    void initStreamConfigurations();
+
     // Debuging helpers
     void dumpStreamConfig(const std::vector<camera3_stream_t*> &streams);
     void dumpQuery(const std::map<GCSS::ItemUID, std::string> &query);
-    status_t prepareGraphConfig(std::shared_ptr<GraphConfig> gc);
+    status_t prepareGraphConfig();
+    status_t prepareMediaCtlConfig(int32_t testPatternMode);
 
     bool needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNode, int32_t id);
+    bool needSwapStillPreview(GCSS::GraphConfigNode* graphCfgNode, int32_t id);
 
     void handleVideoStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     void handleStillStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey);
-    void handleMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
+    void handleVideoMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
+    void handleStillMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     status_t mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
-                                    int& videoStreamCnt, int& stillStreamCnt,
-                                    int& needEnableStill);
+                            int *hasVideoStream, int *hasStillStream);
+    status_t queryVideoGraphSettings();
+    status_t queryStillGraphSettings();
+
+    status_t matchQueryResultByCsiSetting(int *videoResultIdx, int *stillResultIdx);
+
 private:
     std::unique_ptr<GCSS::GraphQueryManager> mGraphQueryManager;
-    /*
-     * The query interface uses types that are actually STL maps and vectors
-     * to avoid the creation/deletion on the stack for every call we
-     * have them as member variables.
-     * - mQuery is reused between first and second level queries.
-     * - mFirstQueryResults will be not be modified during request processing.
-     *   only at stream config time.
-     * - mSecondQueryResults is a temporary container, the settings that come
-     *   here will be finally stored in a GraphConfig object.
-     */
-    std::map<GCSS::ItemUID, std::string> mQuery;
-    std::vector<GCSS::GraphConfigNode*> mFirstQueryResults;
-    std::vector<GCSS::GraphConfigNode*> mSecondQueryResults;
+
+    std::map<GCSS::ItemUID, std::string> mQueryVideo;
+    std::map<GCSS::ItemUID, std::string> mQueryStill;
+    std::vector<GCSS::GraphConfigNode*> mVideoQueryResults;
+    std::vector<GCSS::GraphConfigNode*> mStillQueryResults;
+
+    bool mNeedSwapVideoPreview;
+    bool mNeedSwapStillPreview;
 
     std::vector<PlatformGraphConfigKey> mVideoStreamKeys;
     std::vector<PlatformGraphConfigKey> mStillStreamKeys;
     std::vector<ResolutionItem> mVideoStreamResolutions;
     std::vector<ResolutionItem> mStillStreamResolutions;
-    std::shared_ptr<GraphConfig> mGraphConfig;
+
+    std::unique_ptr<GCSS::GraphConfigNode> mVideoGraphResult;
+    std::unique_ptr<GCSS::GraphConfigNode> mStillGraphResult;
+
+    std::map<MediaType, std::shared_ptr<GraphConfig>> mGraphConfigMap;
 
     /**
      * Map to get the virtual sink id from a client stream pointer.
      * The uid is one of the GCSS keys defined for the virtual sinks, like
-     * GCSS_KEY_VIDEO0 or GCSS_KEY_STILL1
+     * GCSS_KEY_VIDEO or GCSS_KEY_STILL
      * From that we can derive the name using the id to string methods from
      * ItemUID class
      */
-    std::map<camera3_stream_t*, uid_t> mStreamToSinkIdMap;
+    std::map<camera3_stream_t*, uid_t> mVideoStreamToSinkIdMap;
+    std::map<camera3_stream_t*, uid_t> mStillStreamToSinkIdMap;
 
-    bool mFallback; /**< This is to tell if we need to use fallback settings */
     MediaCtlConfig mMediaCtlConfigs[MEDIA_TYPE_MAX_COUNT];
-    MediaCtlConfig mMediaCtlConfigsPrev[MEDIA_TYPE_MAX_COUNT];
 
     std::shared_ptr<MediaController> mMediaCtl;
 };

@@ -28,18 +28,20 @@ using namespace GCSS;
 using std::vector;
 using std::map;
 
-// Settings to use in fallback cases
-#define DEFAULT_SETTING_1_VIDEO_1_STILL "8302" // 7002, 1 video, 1 still stream
-#define DEFAULT_SETTING_2_VIDEO_2_STILL "7004" // 7004, 2 video, 2 stills streams
-#define DEFAULT_SETTING_2_STILL "7005" // 7005, 2 still streams
-#define DEFAULT_SETTING_1_STILL "7006" // 7006, 1 still stream
-
 namespace android {
 namespace camera2 {
 
+#define MIN_GRAPH_SETTING_STREAM 1
+#define MAX_GRAPH_SETTING_STREAM 2
 #define MAX_NUM_STREAMS    3
 const char *GraphConfigManager::DEFAULT_DESCRIPTOR_FILE = "/etc/camera/graph_descriptor.xml";
 const char *GraphConfigManager::DEFAULT_SETTINGS_FILE = "/etc/camera/graph_settings.xml";
+
+// save csi be output resolution settings
+struct csi_be_output_res {
+    int width;
+    int height;
+};
 
 GraphConfigNodes::GraphConfigNodes() :
         mDesc(nullptr),
@@ -50,14 +52,14 @@ GraphConfigNodes::GraphConfigNodes() :
 GraphConfigNodes::~GraphConfigNodes()
 {
     delete mDesc;
-    delete mSettings;
 }
 
 GraphConfigManager::GraphConfigManager(int32_t camId,
                                        GraphConfigNodes *testNodes) :
     mCameraId(camId),
     mGraphQueryManager(new GraphQueryManager()),
-    mFallback(false)
+    mNeedSwapVideoPreview(false),
+    mNeedSwapStillPreview(false)
 {
     const CameraCapInfo *info = PlatformData::getCameraCapInfo(mCameraId);
     if (CC_UNLIKELY(!info || !info->getGraphConfigNodes())) {
@@ -80,21 +82,24 @@ GraphConfigManager::GraphConfigManager(int32_t camId,
 }
 
 /**
- * Generate the helper vectors mVideoStreamResolutions and
- *  mStillStreamResolutions used during stream configuration.
- *
  * This is a helper member to store the ItemUID's for the width and height of
- * each stream. Each ItemUID points to items like :
- *  video0.width
- *  video0.height
- * This vector needs to be regenerated after each stream configuration.
+ * each stream. It also clear all the vector/map that saves GraphConfig settings.
+ * This function needs to be called when reconfiguration is needed.
  */
-void GraphConfigManager::initStreamResolutionIds()
+void GraphConfigManager::initStreamConfigurations()
 {
+    mVideoStreamToSinkIdMap.clear();
+    mStillStreamToSinkIdMap.clear();
     mVideoStreamResolutions.clear();
     mStillStreamResolutions.clear();
+    mVideoQueryResults.clear();
+    mStillQueryResults.clear();
     mVideoStreamKeys.clear();
     mStillStreamKeys.clear();
+    mQueryVideo.clear();
+    mQueryStill.clear();
+
+    mGraphConfigMap.clear();
 
     // Will map streams in this order
     mVideoStreamKeys.push_back(GCSS_KEY_IMGU_VIDEO);
@@ -149,6 +154,7 @@ void GraphConfigManager::addAndroidMap()
      */
     ItemUID::addCustomKeyMap(ANDROID_GRAPH_KEYS);
 }
+
 /**
  *
  * Static method to parse the XML graph configurations and settings
@@ -185,31 +191,6 @@ GraphConfigNodes* GraphConfigManager::parse(const char *descriptorXmlFile,
     }
 
     return nodes;
-}
-
-/**
- * Perform a reverse lookup on the map that associates client streams to
- * virtual sinks.
- *
- * This method is used during pipeline configuration to find a stream associated
- * with the id (GCSS key) of the virtual sink
- *
- * \param[in] vPortId GCSS key representing one of the virtual sinks in the
- *                    graph, like GCSS_KEY_VIDEO1
- * \return nullptr if not found
- * \return pointer to the client stream associated with that virtual sink.
- */
-camera3_stream_t* GraphConfigManager::getStreamByVirtualId(uid_t vPortId)
-{
-    std::map<camera3_stream_t*, uid_t>::iterator it;
-    it = mStreamToSinkIdMap.begin();
-
-    for (; it != mStreamToSinkIdMap.end(); ++it) {
-        if (it->second == vPortId) {
-            return it->first;
-        }
-    }
-    return nullptr;
 }
 
 bool GraphConfigManager::needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNode, int32_t id)
@@ -258,9 +239,60 @@ bool GraphConfigManager::needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNod
             && previewHeight > videoHeight)
             swapVideoPreview = true;
     }
-    LOG2("@%s, swapVideoPreview:%d", __FUNCTION__, swapVideoPreview);
+    LOG2("@%s :%d", __FUNCTION__, swapVideoPreview);
 
     return swapVideoPreview;
+}
+
+bool GraphConfigManager::needSwapStillPreview(GCSS::GraphConfigNode* graphCfgNode, int32_t id)
+{
+    bool swapStillPreview = false;
+    int previewWidth = 0;
+    int previewHeight = 0;
+    int stillWidth = 0;
+    int stillHeight = 0;
+    status_t ret1 = OK;
+    status_t ret2 = OK;
+
+    GraphConfigNode* node = nullptr;
+    std::string nodeName = GC_PREVIEW;
+    graphCfgNode->getDescendantByString(nodeName, &node);
+    if (node) {
+        ret1 = node->getValue(GCSS_KEY_WIDTH, previewWidth);
+        ret2 = node->getValue(GCSS_KEY_HEIGHT, previewHeight);
+        if (ret1 != OK || ret2 != OK) {
+            LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
+                __FUNCTION__, nodeName.c_str(), ret1, ret2);
+            return swapStillPreview;
+        }
+    }
+    LOG2("@%s, settings id:%d, for %s, width:%d, height:%d",
+        __FUNCTION__, id, nodeName.c_str(), previewWidth, previewHeight);
+
+    node = nullptr;
+    nodeName = GC_STILL;
+    graphCfgNode->getDescendantByString(nodeName, &node);
+    if (node) {
+        ret1 = node->getValue(GCSS_KEY_WIDTH, stillWidth);
+        ret2 = node->getValue(GCSS_KEY_HEIGHT, stillHeight);
+        if (ret1 != OK || ret2 != OK) {
+            LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
+                __FUNCTION__, nodeName.c_str(), ret1, ret2);
+            return swapStillPreview;
+        }
+    }
+    LOG2("@%s, settings id:%d, for %s, width:%d, height:%d",
+        __FUNCTION__, id, nodeName.c_str(), stillWidth, stillHeight);
+
+    if (previewWidth != 0 && previewHeight != 0
+        && stillWidth != 0 && stillHeight != 0) {
+        if (previewWidth > stillWidth
+            && previewHeight > stillHeight)
+            swapStillPreview = true;
+    }
+    LOG2("@%s :%d", __FUNCTION__, swapStillPreview);
+
+    return swapStillPreview;
 }
 
 void GraphConfigManager::handleVideoStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey)
@@ -279,18 +311,32 @@ void GraphConfigManager::handleStillStream(ResolutionItem& res, PlatformGraphCon
     mStillStreamKeys.erase(mStillStreamKeys.begin());
 }
 
-void GraphConfigManager::handleMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey)
+void GraphConfigManager::handleVideoMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey)
 {
-    LOG1("Adding stream %p to map %s", stream, ItemUID::key2str(streamKey));
-    mStreamToSinkIdMap[stream] = streamKey;
+    LOG1("Adding video stream %p to map %s", stream, ItemUID::key2str(streamKey));
+    mVideoStreamToSinkIdMap[stream] = streamKey;
 
     ItemUID w = res.first;
     ItemUID h = res.second;
     bool rotate = stream->stream_type == CAMERA3_STREAM_OUTPUT &&
                   (stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_90
                    || stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_270);
-    mQuery[w] = std::to_string(rotate ? stream->height : stream->width);
-    mQuery[h] = std::to_string(rotate ? stream->width : stream->height);
+    mQueryVideo[w] = std::to_string(rotate ? stream->height : stream->width);
+    mQueryVideo[h] = std::to_string(rotate ? stream->width : stream->height);
+}
+
+void GraphConfigManager::handleStillMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey)
+{
+    LOG1("Adding still stream %p to map %s", stream, ItemUID::key2str(streamKey));
+    mStillStreamToSinkIdMap[stream] = streamKey;
+
+    ItemUID w = res.first;
+    ItemUID h = res.second;
+    bool rotate = stream->stream_type == CAMERA3_STREAM_OUTPUT &&
+                  (stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_90
+                   || stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_270);
+    mQueryStill[w] = std::to_string(rotate ? stream->height : stream->width);
+    mQueryStill[h] = std::to_string(rotate ? stream->width : stream->height);
 }
 
 #define streamSizeGT(s1, s2) (((s1)->width * (s1)->height) > ((s2)->width * (s2)->height))
@@ -298,122 +344,212 @@ void GraphConfigManager::handleMap(camera3_stream_t* stream, ResolutionItem& res
 #define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
 
 status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
-                                                    int& videoStreamCnt, int& stillStreamCnt,
-                                                    int& needEnableStill)
+                                            int *hasVideoStream, int *hasStillStream)
 {
+    std::vector<camera3_stream_t *> videoStreams, stillStream;
+    ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
+    int yuvNum = 0;
+    int blobNum = 0;
+
     for (int i = 0; i < streams.size(); i++) {
         if ( streams[i]->stream_type != CAMERA3_STREAM_OUTPUT) {
             LOGE("@%s, the streamd[%d] is not CAMERA3_STREAM_OUTPUT, it's:%d",
                 __FUNCTION__, i, streams[i]->stream_type);
             return UNKNOWN_ERROR;
         }
-    }
 
-    // Don't support RAW currently
-    // Keep streams in order: BLOB, IMPL, YUV...
-    std::vector<camera3_stream_t *> availableStreams;
-    camera3_stream_t * blobStream = nullptr;
-    int yuvNum = 0;
-    int blobNum = 0;
-    for (int i = 0; i < streams.size(); i++) {
-        switch (streams[i]->format) {
-            case HAL_PIXEL_FORMAT_BLOB:
-                blobNum++;
-                blobStream = streams[i];
-                break;
-            case HAL_PIXEL_FORMAT_YCbCr_420_888:
-                yuvNum++;
-                availableStreams.push_back(streams[i]);
-                break;
-            case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-                yuvNum++;
-                availableStreams.insert(availableStreams.begin(), streams[i]);
-                break;
-            default:
-                LOGE("Unsupported stream format %d", streams.at(i)->format);
-                return BAD_VALUE;
-        }
-    }
-
-    // Current only one BLOB stream supported and always insert as fisrt stream
-    if (blobStream) {
-        availableStreams.insert(availableStreams.begin(), blobStream);
-    }
-    LOG2("@%s, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
-
-    // Main output produces full size frames
-    // Secondary output produces small size frames
-    int mainOutputIndex = -1;
-    int secondaryOutputIndex = -1;
-    bool isVideoSnapshot = false;
-
-    if (availableStreams.size() == 1) {
-        mainOutputIndex = 0;
-    } else if (availableStreams.size() == 2) {
-        mainOutputIndex = (streamSizeGE(availableStreams[0], availableStreams[1])) ? 0 : 1;
-        secondaryOutputIndex = mainOutputIndex ? 0 : 1;
-
-        if (streamSizeGE(availableStreams[1], availableStreams[0])) {
-            // yuv >= blob
-            isVideoSnapshot = true;
-        }
-    } else if (availableStreams.size() == 3 && blobNum == 1) {
-        // Check if it is video snapshot case: jpeg size = yuv size
-        // Otherwise it is still capture case
-        if (streamSizeEQ(availableStreams[0], availableStreams[1])
-            || streamSizeEQ(availableStreams[0], availableStreams[2])) {
-            // Ignore jpeg stream here, it will use frames of video stream as input.
-            isVideoSnapshot = true;
-            mainOutputIndex = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For video stream
-            secondaryOutputIndex = (mainOutputIndex == 1) ? 2 : 1; // For preview stream
+        if (streams[i]-> format == HAL_PIXEL_FORMAT_BLOB) {
+            stillStream.push_back(streams[i]);
+            *hasStillStream = true;
+            blobNum++;
+        } else if (streams[i]->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+            streams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+            videoStreams.push_back(streams[i]);
+            *hasVideoStream = true;
+            yuvNum++;
         } else {
-            // Ignore 3rd stream, it will use frames of preview stream as input.
-            secondaryOutputIndex = (streamSizeGT(availableStreams[1], availableStreams[2])) ? 1
-                                 : (streamSizeGT(availableStreams[2], availableStreams[1])) ? 2
-                                 : (availableStreams[1]->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) ? 2
-                                 : 1; // For preview stream
-
-            if (streamSizeGT(availableStreams[0], availableStreams[secondaryOutputIndex])) {
-                mainOutputIndex = 0; // For JPEG stream
-            } else {
-                mainOutputIndex = secondaryOutputIndex;
-                secondaryOutputIndex = 0;
-            }
+            LOGE("Unsupported stream format %d", streams.at(i)->format);
+            return BAD_VALUE;
         }
-    } else {
-        LOGE("@%s, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
-        return UNKNOWN_ERROR;
     }
 
-    if (blobNum && !isVideoSnapshot) {
-        needEnableStill = true;
-        LOGD("@%s, it has BLOB, needEnableStill:%d", __FUNCTION__, needEnableStill);
-    }
-
-    LOG2("@%s, mainOutputIndex %d, secondaryOutputIndex %d ", __FUNCTION__, mainOutputIndex, secondaryOutputIndex);
+    LOG2("@%s, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
 
     PlatformGraphConfigKey streamKey;
     ResolutionItem res;
 
-    if (needEnableStill) {
-        // use postview node only for still pipe due to FOV issue
-        // Select settings only according to jpeg stream
-        LOG1(" select settings according %p", availableStreams[0]);
-        stillStreamCnt++;
-        handleStillStream(res, streamKey);
-        handleMap(availableStreams[0], res, streamKey);
-    } else {
-        videoStreamCnt++;
-        handleVideoStream(res, streamKey);
-        handleMap(availableStreams[mainOutputIndex], res, streamKey);
-        if (secondaryOutputIndex >= 0) {
-            videoStreamCnt++;
-            handleVideoStream(res, streamKey);
-            handleMap(availableStreams[secondaryOutputIndex], res, streamKey);
+    // map video stream settings
+    if (*hasVideoStream) {
+        // store active output number for video pipe
+        CheckError(yuvNum > MAX_GRAPH_SETTING_STREAM,
+            UNKNOWN_ERROR, "yuv stream number out of range: %d", yuvNum);
+        mQueryVideo[streamCount] = std::to_string(yuvNum);
+
+        // Main output produces full size frames
+        // Secondary output produces small size frames
+        int mainOutputIndex = -1;
+        int secondaryOutputIndex = -1;
+
+        if (videoStreams.size() == 1) {
+            mainOutputIndex = 0;
+        } else if (videoStreams.size() == 2) {
+            // compare both streams and select the one with larger size as mainOutput
+            mainOutputIndex = (streamSizeGE(videoStreams[0], videoStreams[1])) ? 0 : 1;
+            secondaryOutputIndex = mainOutputIndex ? 0 : 1;
         }
+        // map video stream settings
+        handleVideoStream(res, streamKey);
+        handleVideoMap(videoStreams[mainOutputIndex], res, streamKey);
+        if (secondaryOutputIndex >= 0) {
+            handleVideoStream(res, streamKey);
+            handleVideoMap(videoStreams[secondaryOutputIndex], res, streamKey);
+        }
+        LOG2("@%s, video pipe: mainOutput %p, secondaryOutput %p", __func__,
+            videoStreams[mainOutputIndex], videoStreams[secondaryOutputIndex]);
+    }
+
+    // map still stream settings
+    if (*hasStillStream) {
+        // store active output number for still pipe
+        mQueryStill[streamCount] = std::to_string(MIN_GRAPH_SETTING_STREAM);
+
+        memset(&streamKey, 0, sizeof(PlatformGraphConfigKey));
+        memset(&res, 0, sizeof(ResolutionItem));
+        handleStillStream(res, streamKey);
+        handleStillMap(stillStream[0], res, streamKey);
+        LOG2("@%s, still pipe: %p", __func__, stillStream[0]);
     }
 
     return OK;
+}
+
+status_t GraphConfigManager::queryVideoGraphSettings()
+{
+    mGraphQueryManager->queryGraphs(mQueryVideo, mVideoQueryResults);
+    if (mVideoQueryResults.empty()) {
+        LOGE("Can't find fitting graph settings");
+        return UNKNOWN_ERROR;
+    }
+
+    return OK;
+}
+
+status_t GraphConfigManager::queryStillGraphSettings()
+{
+    mGraphQueryManager->queryGraphs(mQueryStill, mStillQueryResults);
+    if (mStillQueryResults.empty()) {
+        LOGE("Failed to retrieve default settings");
+        return UNKNOWN_ERROR;
+    }
+
+    return OK;
+}
+
+/**
+ * Graph settings of both video pipe and still pipe must have the same cio2 settings,
+ * and there might be serveral sets of graph settings for both pipes, need to find the match
+ * settings with common cio2 configure
+ */
+status_t GraphConfigManager::matchQueryResultByCsiSetting(int *videoResultIdx,
+                                                           int *stillResultIdx)
+{
+    status_t status = NO_ERROR;
+    std::string csiName = "csi_be:output";
+    std::vector<csi_be_output_res> videoCsiOutRes, stillCsiOutRes;
+    int32_t id = 0;
+
+    LOG2("@%s, find csi be output setting of video pipe, query result: %ld",
+        __func__, mVideoQueryResults.size());
+    for (auto& videoResultIter : mVideoQueryResults) {
+        csi_be_output_res res = {};
+        GraphConfigNode result = {};
+        std::shared_ptr<GraphConfig> videoGc = mGraphConfigMap[IMGU_VIDEO];
+        CheckError(videoGc.get() == nullptr, UNKNOWN_ERROR, "Video graph config is nullptr");
+
+        css_err_t ret = mGraphQueryManager->getGraph(videoResultIter, &result);
+        if (ret != css_err_none) {
+            videoGc.reset();
+            return UNKNOWN_ERROR;
+        }
+
+        status = videoGc->prepare(&result, mVideoStreamToSinkIdMap);
+        CheckError(status != OK, UNKNOWN_ERROR, "failed to compare graph config for video pipe");
+
+        status = videoGc->graphGetDimensionsByName(csiName, res.width, res.height);
+        CheckError(status != OK, UNKNOWN_ERROR, "Cannot find <%s> node", csiName.c_str());
+
+        videoResultIter->getValue(GCSS_KEY_KEY, id);
+        LOG2("@%s, setting id: %d, video pipe csi be output width: %d, height: %d",
+            __func__, id, res.width, res.height);
+        videoCsiOutRes.push_back(res);
+    }
+
+    LOG2("@%s, find csi be output setting of still pipe, query result: %ld",
+        __func__, mStillQueryResults.size());
+    for (auto& stillResultIter : mStillQueryResults) {
+        csi_be_output_res res = {};
+        GraphConfigNode result = {};
+        std::shared_ptr<GraphConfig> stillGc = mGraphConfigMap[IMGU_STILL];
+        CheckError(stillGc.get() == nullptr, UNKNOWN_ERROR, "Still graph config is nullptr");
+
+        css_err_t ret = mGraphQueryManager->getGraph(stillResultIter, &result);
+        if (ret != css_err_none) {
+            stillGc.reset();
+            return UNKNOWN_ERROR;
+        }
+
+        status = stillGc->prepare(&result, mStillStreamToSinkIdMap);
+        CheckError(status != OK, UNKNOWN_ERROR, "failed to compare graph config for still pipe");
+
+        status = stillGc->graphGetDimensionsByName(csiName, res.width, res.height);
+        CheckError(status != OK, UNKNOWN_ERROR, "Cannot find <%s> node", csiName.c_str());
+
+        stillResultIter->getValue(GCSS_KEY_KEY, id);
+        LOG2("@%s, setting id: %d, still pipe csi be output width: %d, height: %d",
+            __func__, id, res.width, res.height);
+        stillCsiOutRes.push_back(res);
+    }
+
+    if (videoCsiOutRes.empty() || stillCsiOutRes.empty()) {
+        *videoResultIdx = videoCsiOutRes.empty() ? *videoResultIdx : 0;
+        *stillResultIdx = stillCsiOutRes.empty() ? *stillResultIdx : 0;
+    } else {
+        bool matchFound = false;
+        for (size_t i = 0; i < videoCsiOutRes.size(); i++) {
+            for (size_t j = 0; j < stillCsiOutRes.size(); j++) {
+                if (videoCsiOutRes[i].width == stillCsiOutRes[j].width &&
+                    videoCsiOutRes[i].height == stillCsiOutRes[j].height) {
+                    LOG2("@%s, find match csi be resolution, width: %d height: %d",
+                        __func__, videoCsiOutRes[i].width, videoCsiOutRes[i].height);
+                    *videoResultIdx = i;
+                    *stillResultIdx = j;
+                    matchFound = true;
+                    break;
+                }
+            }
+            if (matchFound)
+                break;
+        }
+
+        if (*videoResultIdx < 0 && *stillResultIdx < 0) {
+            LOGE("@%s, failed to find match csi be resolution!", __func__);
+            return UNKNOWN_ERROR;
+        }
+    }
+
+    if (*videoResultIdx >= 0) {
+        mVideoQueryResults[*videoResultIdx]->getValue(GCSS_KEY_KEY, id);
+        LOG1("@%s, Video graph config settings id %d", __func__, id);
+        mNeedSwapVideoPreview = needSwapVideoPreview(mVideoQueryResults[*videoResultIdx], id);
+    }
+
+    if (*stillResultIdx >= 0) {
+        mStillQueryResults[*stillResultIdx]->getValue(GCSS_KEY_KEY, id);
+        LOG1("@%s, Still graph config settings id %d", __func__, id);
+        mNeedSwapStillPreview = needSwapStillPreview(mStillQueryResults[*stillResultIdx], id);
+    }
+
+    return status;
 }
 
 /**
@@ -421,10 +557,6 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
  * configuration.
  * Perform the first level query to find a subset of settings that fulfill the
  * constrains from the stream configuration.
- *
- * TODO: Pass the new stream config modifier
- *
- * \param[in] streams List of streams required by the client.
  */
 status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &streams,
                                            uint32_t operationMode,
@@ -434,116 +566,39 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     HAL_KPI_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, 1000000); /* 1 ms*/
     UNUSED(operationMode);
     ResolutionItem res;
-    int needEnableStill = false;
+    int hasVideoStream = false, hasStillStream = false;
     status_t ret = OK;
 
-    mFirstQueryResults.clear();
-    mQuery.clear();
-    mFallback = false;
-
-    /*
-     * Add to the query the number of active outputs
-     */
-    ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
     if (streams.size() > MAX_NUM_STREAMS) {
         LOGE("Maximum number of streams %u exceeded: %zu",
             MAX_NUM_STREAMS, streams.size());
         return BAD_VALUE;
     }
-    /*
-     * regenerate the stream resolutions vector if needed
-     * We do this because we consume this vector for each stream configuration.
-     * This allows us to have sequential stream numbers even when an input
-     * stream is present.
-     */
-    initStreamResolutionIds();
-    mStreamToSinkIdMap.clear();
 
-    int videoStreamCount = 0, stillStreamCount = 0;
-    ret = mapStreamToKey(streams, videoStreamCount, stillStreamCount, needEnableStill);
-    if (ret != OK) {
-        LOGE("@%s, call mapStreamToKey fail, ret:%d", __FUNCTION__, ret);
-        return ret;
+    initStreamConfigurations();
+
+    ret = mapStreamToKey(streams, &hasVideoStream, &hasStillStream);
+    CheckError(ret != OK, ret, "@%s, call mapStreamToKey fail, ret:%d", __func__, ret);
+
+    if (hasVideoStream) {
+        ret = queryVideoGraphSettings();
+        CheckError(ret != OK, ret, "@%s, Failed to query graph settings for video pipe", __func__);
+        mGraphConfigMap[IMGU_VIDEO] = std::make_shared<GraphConfig>();
+        mVideoGraphResult = std::unique_ptr<GraphConfigNode>(new GraphConfigNode);
     }
-    // W/A: Only support 2 streams in GC due to ISP pipe outputs.
-    int streamNum = (streams.size() > 2) ? 2 : streams.size();
-    mQuery[streamCount] = std::to_string(streamNum);
-    // W/A: only pv node is used due to FOV issue,
-    // so here consider one stream only for still case
-    if(needEnableStill) {
-       mQuery[streamCount] = std::to_string(1);
-    }
-
-    /**
-     * Look for settings. If query results are empty, get default settings
-     */
-    int32_t id = 0;
-    string settingsId = "0";
-    mGraphQueryManager->queryGraphs(mQuery, mFirstQueryResults);
-    if (mFirstQueryResults.empty()) {
-
-        dumpQuery(mQuery);
-        mFallback = true;
-        mQuery.clear();
-        status_t status = OK;
-        status = selectDefaultSetting(videoStreamCount, stillStreamCount, settingsId);
-        if (status != OK) {
-            return UNKNOWN_ERROR;
-        }
-
-        ItemUID content1({GCSS_KEY_KEY});
-        mQuery.insert(std::make_pair(content1, settingsId));
-        mGraphQueryManager->queryGraphs(mQuery, mFirstQueryResults);
-
-        if (!mFirstQueryResults.empty()) {
-            mFirstQueryResults[0]->getValue(GCSS_KEY_KEY, id);
-            LOGD("CAM[%d]Default settings in use for this stream configuration. Settings id %d", mCameraId, id);
-        } else {
-            LOGE("Failed to retrieve default settings(%s)", settingsId.c_str());
-            return UNKNOWN_ERROR;
-        }
-
-    } else {
-        mFirstQueryResults[0]->getValue(GCSS_KEY_KEY, id);
-        LOGD("CAM[%d]Graph config in use for this stream configuration - SUCCESS, settings id %d", mCameraId, id);
+    if (hasStillStream) {
+        ret = queryStillGraphSettings();
+        CheckError(ret != OK, ret, "@%s, Failed to query graph settings for still pipe", __func__);
+        mGraphConfigMap[IMGU_STILL] = std::make_shared<GraphConfig>();
+        mStillGraphResult = std::unique_ptr<GraphConfigNode>(new GraphConfigNode);
     }
     dumpStreamConfig(streams); // TODO: remove this when GC integration is done
 
-    mGraphConfig = std::make_shared<GraphConfig>();
-    ret = prepareGraphConfig(mGraphConfig);
-    if (ret != OK) {
-        LOGE("Failed to prepare graph config");
-        dumpQuery(mQuery);
-        return UNKNOWN_ERROR;
-    }
+    ret = prepareGraphConfig();
+    CheckError(ret != OK, UNKNOWN_ERROR, "Failed to prepare graph config");
 
-    bool swapVideoPreview = needSwapVideoPreview(mFirstQueryResults[0], id);
-    mGraphConfig->setMediaCtlConfig(mMediaCtl, swapVideoPreview, needEnableStill);
-
-    // Get media control config
-    for (size_t i = 0; i < MEDIA_TYPE_MAX_COUNT; i++) {
-        mMediaCtlConfigsPrev[i] = mMediaCtlConfigs[i];
-
-        // Reset old values
-        mMediaCtlConfigs[i].mLinkParams.clear();
-        mMediaCtlConfigs[i].mFormatParams.clear();
-        mMediaCtlConfigs[i].mSelectionParams.clear();
-        mMediaCtlConfigs[i].mSelectionVideoParams.clear();
-        mMediaCtlConfigs[i].mControlParams.clear();
-        mMediaCtlConfigs[i].mVideoNodes.clear();
-    }
-    ret = mGraphConfig->getMediaCtlData(&mMediaCtlConfigs[CIO2]);
-    if (ret != OK) {
-        LOGE("Couldn't get mediaCtl data");
-    }
-    ret = mGraphConfig->getImguMediaCtlData(mCameraId,
-                                  testPatternMode,
-                                  &mMediaCtlConfigs[IMGU_COMMON],
-                                  &mMediaCtlConfigs[IMGU_VIDEO],
-                                  &mMediaCtlConfigs[IMGU_STILL]);
-    if (ret != OK) {
-        LOGE("Couldn't get Imgu mediaCtl data");
-    }
+    ret = prepareMediaCtlConfig(testPatternMode);
+    CheckError(ret != OK, UNKNOWN_ERROR, "failed to prepare media control config");
 
     return OK;
 }
@@ -553,112 +608,108 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
  *
  * Use graph query results as a parameter to getGraph. The result will be given
  * to graph config object.
- *
- * \param[in/out] gc     Graph Config object.
  */
-status_t GraphConfigManager::prepareGraphConfig(std::shared_ptr<GraphConfig> gc)
+status_t GraphConfigManager::prepareGraphConfig()
 {
-    css_err_t ret;
     status_t status = OK;
-    GraphConfigNode *result = new GraphConfigNode;
-    ret  = mGraphQueryManager->getGraph(mFirstQueryResults[0], result);
-    if (CC_UNLIKELY(ret != css_err_none)) {
-        gc.reset();
-        delete result;
-        return UNKNOWN_ERROR;
+    LOG2("@%s, graph config size: %ld", __func__, mGraphConfigMap.size());
+
+    int videoResultIndex = -1, stillResultIndex = -1;
+    status = matchQueryResultByCsiSetting(&videoResultIndex, &stillResultIndex);
+    CheckError(status != NO_ERROR, status, "failed to find match query result by csi be settings");
+
+    for (auto& it : mGraphConfigMap) {
+        bool isVideoPipe = (it.first == IMGU_VIDEO) ? true : false;
+        std::shared_ptr<GraphConfig> gc = it.second;
+        CheckError(gc.get() == nullptr, UNKNOWN_ERROR, "Graph config is nullptr");
+
+        GCSS::GraphConfigNode *queryResult = isVideoPipe ?
+                     mVideoQueryResults[videoResultIndex] : mStillQueryResults[stillResultIndex];
+        std::map<camera3_stream_t*, uid_t> streamToSinkIdMap = isVideoPipe ?
+                                     mVideoStreamToSinkIdMap : mStillStreamToSinkIdMap;
+        std::map<GCSS::ItemUID, std::string> query = isVideoPipe ?
+                                       mQueryVideo : mQueryStill;
+        GraphConfigNode *result = isVideoPipe ?
+            mVideoGraphResult.get() : mStillGraphResult.get();
+
+        css_err_t ret = mGraphQueryManager->getGraph(queryResult, result);
+        if (CC_UNLIKELY(ret != css_err_none)) {
+           LOGE("Failed to get graph from graph query manager for %s pipe", isVideoPipe ? "video" : "still");
+           gc.reset();
+           return UNKNOWN_ERROR;
+        }
+
+        status = gc->prepare(result, streamToSinkIdMap);
+        if (status != OK) {
+            LOGE("Failed to compare graph config for %s pipe", isVideoPipe ? "video" : "still");
+            dumpQuery(query);
+            return UNKNOWN_ERROR;
+        }
     }
 
-    status = gc->prepare(result, mStreamToSinkIdMap);
     LOG1("Graph config object prepared");
 
     return status;
 }
 
-/**
- * Find suitable default setting based on stream config.
- *
- * \param[in] videoStreamCount
- * \param[in] stillStreamCount
- * \param[out] settingsId
- * \return OK when success, UNKNOWN_ERROR on failure
- */
-status_t GraphConfigManager::selectDefaultSetting(int videoStreamCount,
-                                                  int stillStreamCount,
-                                                  string &settingsId)
+status_t GraphConfigManager::prepareMediaCtlConfig(int32_t testPatternMode)
 {
-    // Determine which default setting to use
-    switch (videoStreamCount) {
-    case 0:
-        if (stillStreamCount == 1) {
-            settingsId = DEFAULT_SETTING_1_STILL; // 0 video, 1 still
-        } else if (stillStreamCount == 2) {
-            settingsId = DEFAULT_SETTING_2_STILL; // 0 video, 2 still
-        } else {
-            LOGE("Default settings cannot support 0 video, >2 still streams");
-            return UNKNOWN_ERROR;
-        }
-        break;
-    case 1:
-        if ((stillStreamCount == 0) || (stillStreamCount == 1)) {
-            settingsId = DEFAULT_SETTING_1_VIDEO_1_STILL; // 1 video, 1 still
-        } else if (stillStreamCount == 2) {
-            settingsId = DEFAULT_SETTING_2_VIDEO_2_STILL; // 2 video, 2 still
-        } else {
-            LOGE("Default settings cannot support 1 video, >2 still streams");
-            return UNKNOWN_ERROR;
-        }
-        break;
-    case 2:
-        // Works for 2 video 2 still, and 2 video 1 still.
-        settingsId = DEFAULT_SETTING_2_VIDEO_2_STILL; // 2 video, 2 still
-        if (stillStreamCount > 2) {
-            LOGE("Default settings cannot support 2 video, >2 still streams");
-            return UNKNOWN_ERROR;
-        }
-        break;
-    default:
-        LOGE("Default settings cannot support > 2 video streams");
-        return UNKNOWN_ERROR;
+    status_t status = OK;
+    // both imgu should share the same cio2 pixel array format
+    int cio2Format = 0;
+    // CIO2 media control data only need to save once
+    bool isCIO2MediaCtlConfiged = false;
+    LOG2("@%s, graph config size: %ld", __func__, mGraphConfigMap.size());
+
+    // clear media control configs
+    for (size_t i = 0; i < MEDIA_TYPE_MAX_COUNT; i++) {
+        // Reset old values
+        mMediaCtlConfigs[i].mLinkParams.clear();
+        mMediaCtlConfigs[i].mFormatParams.clear();
+        mMediaCtlConfigs[i].mSelectionParams.clear();
+        mMediaCtlConfigs[i].mSelectionVideoParams.clear();
+        mMediaCtlConfigs[i].mControlParams.clear();
+        mMediaCtlConfigs[i].mVideoNodes.clear();
     }
-    return OK;
+
+    // save media control data into mMediaCtlConfigs
+    for (auto& it : mGraphConfigMap) {
+        MediaType type = it.first;
+        bool isVideoPipe = (type == IMGU_VIDEO) ? true : false;
+        bool swapOutput = isVideoPipe ? mNeedSwapVideoPreview : mNeedSwapStillPreview;
+        LOG2("get media control config for %s pipe", isVideoPipe ? "video" : "still");
+        std::shared_ptr<GraphConfig> gc = it.second;
+
+        gc->setMediaCtlConfig(mMediaCtl, swapOutput, !isVideoPipe);
+
+        if (!isCIO2MediaCtlConfiged) {
+            status = gc->getCio2MediaCtlData(&cio2Format, &mMediaCtlConfigs[CIO2]);
+            CheckError(status != OK, status, "Couldn't get mediaCtl data");
+            isCIO2MediaCtlConfiged = true;
+        }
+
+        status = gc->getImguMediaCtlData(mCameraId,
+                                         cio2Format,
+                                         testPatternMode,
+                                         !isVideoPipe,
+                                         &mMediaCtlConfigs[type]);
+        CheckError(status != OK, status, "Couldn't get Imgu mediaCtl data for %s pipe",
+                   isVideoPipe ? "video" : "still");
+    }
+
+    return status;
 }
 
+
 /**
- * Retrieve the current active media controller configuration for Sensor + ISA
- *
- * This method will be removed as we clean up the CaptureUnit
+ * Retrieve the current active media controller configuration for Sensor + ISA by Mediatype
  *
  */
 const MediaCtlConfig* GraphConfigManager::getMediaCtlConfig(IStreamConfigProvider::MediaType type) const
 {
-    vector<int> foundConfigId;
-    int id = 0;
-
     if (type >= MEDIA_TYPE_MAX_COUNT) {
         return nullptr;
     }
-
-    if (mFirstQueryResults.empty()) {
-        LOGE("Invalid operation, first level query no done yet");
-        return nullptr;
-    }
-
-    for (size_t i = 0; i < mFirstQueryResults.size(); i++) {
-        foundConfigId.push_back(id);
-    }
-    LOG1("Number of available Sensor+ISA configs for this stream config: %zu",
-            foundConfigId.size());
-    if (foundConfigId.empty()) {
-        LOGE("Could not find any sensor config id - BUG");
-        return nullptr;
-    }
-    /*
-     * The size of this vector should be ideally 1, but in the future we will
-     * have different sensor modes for the high-speed video. We should
-     * know this at stream config time to filter them.
-     * If there is more than one it means that there could be a potential change
-     * of sensor mode for a new request.
-     */
 
     if (type == CIO2) {
         if (mMediaCtlConfigs[type].mControlParams.size() < 1) {
@@ -671,125 +722,34 @@ const MediaCtlConfig* GraphConfigManager::getMediaCtlConfig(IStreamConfigProvide
 }
 
 /**
- * Retrieve the previous media control configuration.
- */
-const MediaCtlConfig* GraphConfigManager::getMediaCtlConfigPrev(IStreamConfigProvider::MediaType type) const
-{
-    if (type >= MEDIA_TYPE_MAX_COUNT) {
-        return nullptr;
-    }
-    if (type == CIO2) {
-        if (mMediaCtlConfigsPrev[type].mControlParams.size() < 1) {
-            return nullptr;
-        }
-    } else if (mMediaCtlConfigsPrev[type].mLinkParams.size() < 1) {
-        return nullptr;
-    }
-    return &mMediaCtlConfigsPrev[type];
-}
-
-std::shared_ptr<GraphConfig>
-GraphConfigManager::getGraphConfig(Camera3Request &request)
-{
-    std::shared_ptr<GraphConfig> gc = mGraphConfig;
-    status_t status = OK;
-
-    if (CC_UNLIKELY(status != OK) || gc == nullptr) {
-        LOGE("Failed to acquire GraphConfig from pool!!- BUG");
-        return gc;
-    }
-
-    /*
-     * Do second level query.
-     *
-     * TODO: Do it based on number of output buffers
-     *
-     * TODO 2: add intent and other constrains
-     * Currently we just take the first result from the stream config query
-     *
-     *mGraphQueryManager->queryGraphs(mQuery,
-                                    mFirstQueryResults,
-                                    mSecondQueryResults);*/
-
-    // Init graph config with the current request id
-    gc->init(request.getId());
-
-    detectActiveSinks(request, gc);
-    return gc;
-}
-
-/**
  * Used at stream configuration time to get the base graph that covers all
  * the possible request outputs that we have. This is used for pipeline
  * initialization.
  */
-std::shared_ptr<GraphConfig> GraphConfigManager::getBaseGraphConfig()
+std::shared_ptr<GraphConfig> GraphConfigManager::getBaseGraphConfig(MediaType type)
 {
-    std::shared_ptr<GraphConfig> gc = mGraphConfig;
-    status_t status = OK;
+    CheckError(mGraphConfigMap.empty(), nullptr, "@%s, no valid graph config found", __func__);
+    std::shared_ptr<GraphConfig> gc = nullptr;
 
-    if (CC_UNLIKELY(status != OK || gc.get() == nullptr)) {
-        LOGE("Failed to acquire GraphConfig from pool!!- BUG");
-        return gc;
+    if (type == CIO2) {
+        // select graph config for CIO2 in mGraphConfigMap
+        for (auto& it : mGraphConfigMap) {
+            /* graph config from either video/still pipe is workable
+             * as they have the same CIO2 graph config */
+            gc = it.second;
+            break;
+        }
+    } else if (type == IMGU_VIDEO || type == IMGU_STILL) {
+        gc = mGraphConfigMap[type];
+    } else {
+        LOGE("@%s, not a valid media type: %d", __func__, type);
+        return nullptr;
     }
+
+    CheckError(gc.get() == nullptr, nullptr, "Failed to acquire GraphConfig!!- BUG");
+
     gc->init(0);
     return gc;
-}
-
-/**
- * Analyze the request to get the active streams (the ones with buffer in this
- * request) and find the corresponding virtual sink id's (stored in the map
- * we create at stream config time).
- * Pass this list of active virtual sinks to the GraphConfig object so it can
- * determine with links are active.
- *
- * This is an intermediate step because we are re-using the same GC settings for
- * all request. Once this changes this step will be done inside the GC object
- * itself during init.
- *
- * \param[in] request
- * \param[out] gc GraphConfig object that we inform of the active sinks in the
- *                request
- */
-void GraphConfigManager::detectActiveSinks(Camera3Request &request,
-                                           std::shared_ptr<GraphConfig> gc)
-{
-    vector<uid_t> activeSinks;
-    camera3_stream *stream = nullptr;
-
-    const std::vector<camera3_stream_buffer>* outBufs = request.getOutputBuffers();
-    if (CC_UNLIKELY(outBufs == nullptr)) {
-        // This is impossible, but just to cover all cases
-        LOGE("No output bufs in a request -- BUG");
-        return;
-    }
-
-    for (size_t i = 0; i < outBufs->size(); i++) {
-        stream = outBufs->at(i).stream;
-        activeSinks.push_back(mStreamToSinkIdMap[stream]);
-    }
-
-    gc->setActiveSinks(activeSinks);
-    gc->setActiveStreamId(activeSinks);
-}
-/******************************************************************************
- *  HELPER METHODS
- ******************************************************************************/
-/**
- * Check the gralloc hint flags and decide whether this stream should be served
- * by Video Pipe or Still Pipe
- */
-bool GraphConfigManager::isVideoStream(camera3_stream_t *stream)
-{
-    bool display = false;
-    bool videoEnc = false;
-    display = CHECK_FLAG(stream->usage, GRALLOC_USAGE_HW_COMPOSER);
-    display |= CHECK_FLAG(stream->usage, GRALLOC_USAGE_HW_TEXTURE);
-    display |= CHECK_FLAG(stream->usage, GRALLOC_USAGE_HW_RENDER);
-
-    videoEnc = CHECK_FLAG(stream->usage, GRALLOC_USAGE_HW_VIDEO_ENCODER);
-
-    return (display || videoEnc);
 }
 
 void GraphConfigManager::dumpStreamConfig(const vector<camera3_stream_t*> &streams)
