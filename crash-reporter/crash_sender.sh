@@ -131,7 +131,9 @@ is_device_coredump_upload_allowed() {
 # Generate a uniform random number in 0..max-1.
 generate_uniform_random() {
   local max=$1
-  local random="$(od -An -N4 -tu /dev/urandom)"
+  # We limit ourselves to 3 bytes to avoid portability issues where shells
+  # use signed 32-bit integers in arithmetic expressions.
+  local random="$(od -An -N3 -tu /dev/urandom)"
   echo $((random % max))
 }
 
