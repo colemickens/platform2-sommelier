@@ -8,7 +8,8 @@
 		"terminal": true,
 		"user": {
 			"uid": 0,
-			"gid": 0
+			"gid": 0,
+			"additionalGids": [5005]
 		},
 		"umask": 0,
 		"args": [
