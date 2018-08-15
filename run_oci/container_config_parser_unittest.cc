@@ -6,6 +6,7 @@
 
 #include <linux/securebits.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/mount.h>
 #include <sys/resource.h>
 
@@ -34,7 +35,8 @@ const char kBasicJsonData[] = R"json(
             "terminal": true,
             "user": {
                 "uid": 0,
-                "gid": 0
+                "gid": 0,
+                "additionalGids": [1, 2]
             },
             "args": [
                 "sh"
@@ -442,7 +444,8 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->process.terminal, true);
   EXPECT_EQ(basic_config->process.user.uid, 0);
   EXPECT_EQ(basic_config->process.user.gid, 0);
-  EXPECT_EQ(basic_config->process.user.additionalGids.size(), 0);
+  EXPECT_EQ(basic_config->process.user.additionalGids,
+            std::vector<uint32_t>({1, 2}));
   EXPECT_EQ(basic_config->process.args.size(), 1);
   EXPECT_EQ(basic_config->process.args[0], "sh");
   EXPECT_EQ(basic_config->process.env.size(), 2);

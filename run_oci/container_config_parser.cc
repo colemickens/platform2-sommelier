@@ -37,6 +37,19 @@ bool ParseIntFromDict(const base::DictionaryValue& dict,
   return true;
 }
 
+// Parse a ListValue structure as vector of integers.
+template <typename T>
+bool ParseIntList(const base::ListValue& list_val, std::vector<T>* val_out) {
+  for (const base::Value* entry : list_val) {
+    double double_val;
+    if (!entry->GetAsDouble(&double_val)) {
+      return false;
+    }
+    val_out->emplace_back(static_cast<T>(double_val));
+  }
+  return true;
+}
+
 // Parses basic platform configuration.
 bool ParsePlatformConfig(const base::DictionaryValue& config_root_dict,
                          OciConfigPtr const& config_out) {
@@ -207,6 +220,15 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
     return false;
   if (!ParseIntFromDict(*user_dict, "gid", &config_out->process.user.gid))
     return false;
+
+  // If additionalGids field is specified, parse it as a valid list of integers.
+  const base::ListValue* list_val;
+  if (user_dict->GetList("additionalGids", &list_val) &&
+      !ParseIntList(*list_val, &config_out->process.user.additionalGids)) {
+    LOG(ERROR) << "Invalid process.user.additionalGids";
+    return false;
+  }
+
   // |args_list| stays owned by |process_dict|
   const base::ListValue* args_list = nullptr;
   if (!process_dict->GetList("args", &args_list)) {

@@ -159,6 +159,9 @@ struct container_config {
   // Mapping of GIDs in the container, e.g. "0 100000 1024"
   std::string gid_map;
 
+  // The supplementary gids that attached to the container.
+  std::vector<gid_t> additional_gids;
+
   // Syscall table to use or nullptr if none.
   std::string alt_syscall_table;
 
@@ -926,6 +929,12 @@ int container_config_gid_map(struct container_config* c, const char* gid_map) {
   return 0;
 }
 
+void container_config_additional_gids(struct container_config* c,
+                                      const gid_t* gids,
+                                      size_t num_gids) {
+  c->additional_gids.assign(gids, gids + num_gids);
+}
+
 int container_config_alt_syscall_table(struct container_config* c,
                                        const char* alt_syscall_table) {
   c->alt_syscall_table = alt_syscall_table;
@@ -1390,7 +1399,7 @@ int container_start(struct container* c,
   if (getuid() != 0)
     minijail_namespace_user_disable_setgroups(c->jail.get());
 
-  /* Set the UID/GID inside the container if not 0. */
+  // Set the UID/GID inside the container if not 0.
   if (!GetUsernsOutsideId(config->uid_map, config->uid, nullptr))
     return -1;
   else if (config->uid > 0)
@@ -1399,6 +1408,17 @@ int container_start(struct container* c,
     return -1;
   else if (config->gid > 0)
     minijail_change_gid(c->jail.get(), config->gid);
+
+  // Set the supplementary GIDs inside the container, if specified.
+  if (!config->additional_gids.empty()) {
+    for (const gid_t additional_gid : config->additional_gids) {
+      if (!GetUsernsOutsideId(config->gid_map, additional_gid, nullptr))
+        return -1;
+    }
+    minijail_set_supplementary_gids(c->jail.get(),
+                                    config->additional_gids.size(),
+                                    config->additional_gids.data());
+  }
 
   if (minijail_enter_pivot_root(c->jail.get(), c->runfsroot.value().c_str()) !=
       0) {

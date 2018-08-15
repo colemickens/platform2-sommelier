@@ -278,6 +278,9 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   container_config_config_root(config_out, bundle_dir.value().c_str());
   container_config_uid(config_out, oci.process.user.uid);
   container_config_gid(config_out, oci.process.user.gid);
+  container_config_additional_gids(config_out,
+                                   oci.process.user.additionalGids.data(),
+                                   oci.process.user.additionalGids.size());
   base::FilePath root_dir =
       MakeAbsoluteFilePathRelativeTo(bundle_dir, oci.root.path);
   container_config_premounted_runfs(config_out, root_dir.value().c_str());

@@ -96,6 +96,11 @@ BRILLO_EXPORT gid_t container_config_get_gid(const struct container_config* c);
 BRILLO_EXPORT int container_config_gid_map(struct container_config* c,
                                            const char* gid_map);
 
+/* Sets the additional gids the container will run as. */
+BRILLO_EXPORT void container_config_additional_gids(struct container_config* c,
+                                                    const gid_t* gids,
+                                                    size_t num_gids);
+
 /* Alt-Syscall table to use or NULL if none. */
 BRILLO_EXPORT int container_config_alt_syscall_table(
     struct container_config* c, const char* alt_syscall_table);
