@@ -339,49 +339,54 @@ Status EtherSocket::SendIPv6Packet(const IPv6EtherHeader& header_fields,
            << "Source and destination IP addresses must be IPv6";
   }
 
-  // Ethernet header + IPv6 header size.
-  ByteString packet(sizeof(struct ether_header) + sizeof(struct ip6_hdr));
-  memset(packet.GetData(), 0, packet.GetLength());
+  struct msghdr message_header = {};
+  // Ether header + IP header + message (optional)
+  struct iovec message_parts[3];
+  message_header.msg_iov = message_parts;
+  message_header.msg_iovlen = 2;
 
   // Construct ethernet header.
-  uint8_t* const ether_ptr = packet.GetData();
-  struct ether_header* ether_hdr =
-      reinterpret_cast<struct ether_header*>(ether_ptr);
+  struct ether_header ether_hdr = {};
 
   // Destination and source link-layer address.
-  memcpy(ether_hdr->ether_dhost,
+  memcpy(ether_hdr.ether_dhost,
          header_fields.destination_ll_address.GetConstData(), ETHER_ADDR_LEN);
-  memcpy(ether_hdr->ether_shost, header_fields.source_ll_address.GetConstData(),
+  memcpy(ether_hdr.ether_shost, header_fields.source_ll_address.GetConstData(),
          ETHER_ADDR_LEN);
   // Ethernet type to IPv6.
-  ether_hdr->ether_type = htons(ETHERTYPE_IPV6);
+  ether_hdr.ether_type = htons(ETHERTYPE_IPV6);
+  // Add to message.
+  message_parts[0].iov_base = &ether_hdr;
+  message_parts[0].iov_len = sizeof(struct ether_header);
 
   // Construct IPv6 header.
-  uint8_t* const ip6_ptr = &ether_ptr[sizeof(struct ether_header)];
-  struct ip6_hdr* ip6_hdr = reinterpret_cast<struct ip6_hdr*>(ip6_ptr);
-
+  struct ip6_hdr ip6_hdr = {};
   // IPv6 flow control.
-  ip6_hdr->ip6_flow = header_fields.ip6_header_flow;
+  ip6_hdr.ip6_flow = header_fields.ip6_header_flow;
   // Force the IP version field to be version 6.  The ip6_vfc
   // attribute is unioned with the ip6_flow.  This operation preserves
   // the upper 4-bits of "Traffic Class" (lower 4-bits of the first
   // oclet).
-  ip6_hdr->ip6_vfc = (ip6_hdr->ip6_vfc & ~kIPVersionMask) | kIPv6VersionBits;
-
+  ip6_hdr.ip6_vfc = (ip6_hdr.ip6_vfc & ~kIPVersionMask) | kIPv6VersionBits;
   // Payload length.
-  ip6_hdr->ip6_plen = htons(payload.GetLength());
-
-  ip6_hdr->ip6_nxt = header_fields.next_header;
-  ip6_hdr->ip6_hops = header_fields.hop_limit;
-
+  ip6_hdr.ip6_plen = htons(payload.GetLength());
+  ip6_hdr.ip6_nxt = header_fields.next_header;
+  ip6_hdr.ip6_hops = header_fields.hop_limit;
   // Source and destination IPv6 address.
-  memcpy(&ip6_hdr->ip6_src, header_fields.source_address.GetConstData(),
+  memcpy(&ip6_hdr.ip6_src, header_fields.source_address.GetConstData(),
          header_fields.source_address.GetLength());
-  memcpy(&ip6_hdr->ip6_dst, header_fields.destination_address.GetConstData(),
+  memcpy(&ip6_hdr.ip6_dst, header_fields.destination_address.GetConstData(),
          header_fields.destination_address.GetLength());
+  // Add to message.
+  message_parts[1].iov_base = &ip6_hdr;
+  message_parts[1].iov_len = sizeof(struct ip6_hdr);
 
   // Append payload.
-  packet.Append(payload);
+  if (payload.GetLength() > 0) {
+    message_parts[2].iov_base = const_cast<uint8_t*>(payload.GetConstData());
+    message_parts[2].iov_len = payload.GetLength();
+    message_header.msg_iovlen++;
+  }
 
   // Prepare socket address for sendto().
   struct sockaddr_ll addr;
@@ -391,9 +396,7 @@ Status EtherSocket::SendIPv6Packet(const IPv6EtherHeader& header_fields,
   memcpy(addr.sll_addr, header_fields.destination_ll_address.GetConstData(),
          ETHER_ADDR_LEN);
 
-  const int32_t res = HANDLE_EINTR(sendto(
-      fd(), packet.GetConstData(), packet.GetLength(), 0,
-      reinterpret_cast<struct sockaddr*>(&addr), sizeof(struct sockaddr_ll)));
+  const int32_t res = HANDLE_EINTR(sendmsg(fd(), &message_header, 0));
   if (res < 0) {
     const int saved_errno = errno;
     return Status(Code::UNEXPECTED_FAILURE)
