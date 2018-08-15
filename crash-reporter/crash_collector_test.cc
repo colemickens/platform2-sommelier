@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
@@ -48,18 +49,19 @@ class CrashCollectorTest : public ::testing::Test {
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(Return());
 
     collector_.Initialize(CountCrash, IsMetrics);
-    test_dir_ = FilePath("test");
-    base::CreateDirectory(test_dir_);
+
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+
     brillo::ClearLog();
   }
-
-  void TearDown() { base::DeleteFile(test_dir_, true); }
 
   bool CheckHasCapacity();
 
  protected:
   CrashCollectorMock collector_;
   FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
 };
 
 TEST_F(CrashCollectorTest, Initialize) {
@@ -328,9 +330,10 @@ TEST_F(CrashCollectorTest, GetUptime) {
 }
 
 bool CrashCollectorTest::CheckHasCapacity() {
-  static const char kFullMessage[] = "Crash directory test already full";
+  std::string full_message = StringPrintf("Crash directory %s already full",
+                                          test_dir_.value().c_str());
   bool has_capacity = collector_.CheckHasCapacity(test_dir_);
-  bool has_message = FindLog(kFullMessage);
+  bool has_message = FindLog(full_message.c_str());
   EXPECT_EQ(has_message, !has_capacity);
   return has_capacity;
 }

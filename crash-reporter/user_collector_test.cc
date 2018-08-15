@@ -61,16 +61,20 @@ class UserCollectorTest : public ::testing::Test {
     EXPECT_CALL(collector_, GetCommandLine(testing::_))
         .WillRepeatedly(testing::Return(default_command_line));
 
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+
     const pid_t pid = getpid();
     collector_.Initialize(CountCrash, kFilePath, IsMetrics, false, false, false,
                           "", [pid](pid_t p) { return p == pid + 1; });
-    base::DeleteFile(FilePath("test"), true);
-    mkdir("test", 0777);
     // Setup paths for output files.
-    collector_.set_core_pattern_file("test/core_pattern");
-    collector_.set_core_pipe_limit_file("test/core_pipe_limit");
-    collector_.set_filter_path("test/no_filter");
+    test_core_pattern_file_ = test_dir_.Append("core_pattern");
+    collector_.set_core_pattern_file(test_core_pattern_file_.value());
+    test_core_pipe_limit_file_ = test_dir_.Append("core_pipe_limit");
+    collector_.set_core_pipe_limit_file(test_core_pipe_limit_file_.value());
+    collector_.set_filter_path(test_dir_.Append("no_filter").value());
     pid_ = pid;
+
     brillo::ClearLog();
   }
 
@@ -88,13 +92,16 @@ class UserCollectorTest : public ::testing::Test {
 
   UserCollectorMock collector_;
   pid_t pid_;
+  FilePath test_dir_;
+  FilePath test_core_pattern_file_;
+  FilePath test_core_pipe_limit_file_;
+  base::ScopedTempDir scoped_temp_dir_;
 };
 
 TEST_F(UserCollectorTest, EnableOK) {
   ASSERT_TRUE(collector_.Enable());
-  ExpectFileEquals("|/my/path --user=%P:%s:%u:%g:%e",
-                   FilePath("test/core_pattern"));
-  ExpectFileEquals("4", FilePath("test/core_pipe_limit"));
+  ExpectFileEquals("|/my/path --user=%P:%s:%u:%g:%e", test_core_pattern_file_);
+  ExpectFileEquals("4", test_core_pipe_limit_file_);
   ASSERT_EQ(s_crashes, 0);
   EXPECT_TRUE(FindLog("Enabling user crash handling"));
 }
@@ -113,14 +120,14 @@ TEST_F(UserCollectorTest, EnableNoPipeLimitFileAccess) {
   ASSERT_EQ(s_crashes, 0);
   // Core pattern should not be written if we cannot access the pipe limit
   // or otherwise we may set a pattern that results in infinite recursion.
-  ASSERT_FALSE(base::PathExists(FilePath("test/core_pattern")));
+  ASSERT_FALSE(base::PathExists(test_core_pattern_file_));
   EXPECT_TRUE(FindLog("Enabling user crash handling"));
   EXPECT_TRUE(FindLog("Unable to write /does_not_exist"));
 }
 
 TEST_F(UserCollectorTest, DisableOK) {
   ASSERT_TRUE(collector_.Disable());
-  ExpectFileEquals("core", FilePath("test/core_pattern"));
+  ExpectFileEquals("core", test_core_pattern_file_);
   ASSERT_EQ(s_crashes, 0);
   EXPECT_TRUE(FindLog("Disabling user crash handling"));
 }
@@ -294,20 +301,23 @@ TEST_F(UserCollectorTest, GetSymlinkTarget) {
   ASSERT_FALSE(
       collector_.GetSymlinkTarget(FilePath("/does_not_exist"), &result));
   ASSERT_TRUE(FindLog("Readlink failed on /does_not_exist with 2"));
+
+  // Create a really long link.  The path doesn't matter as long as it's more
+  // than 500 bytes.
   std::string long_link;
   for (int i = 0; i < 50; ++i)
     long_link += "0123456789";
   long_link += "/gold";
 
+  // Create symlinks where the target gets longer and longer.  Make sure each
+  // one is created correctly.
+  const FilePath this_link = test_dir_.Append("this_link");
   for (size_t len = 1; len <= long_link.size(); ++len) {
-    std::string this_link;
-    static const char kLink[] = "test/this_link";
-    this_link.assign(long_link.c_str(), len);
-    ASSERT_EQ(len, this_link.size());
-    unlink(kLink);
-    ASSERT_EQ(0, symlink(this_link.c_str(), kLink));
-    ASSERT_TRUE(collector_.GetSymlinkTarget(FilePath(kLink), &result));
-    ASSERT_EQ(this_link, result.value());
+    const FilePath link_target = FilePath(long_link.substr(0, len));
+    ASSERT_TRUE(base::DeleteFile(this_link, false));
+    ASSERT_TRUE(base::CreateSymbolicLink(link_target, this_link));
+    ASSERT_TRUE(collector_.GetSymlinkTarget(this_link, &result));
+    ASSERT_EQ(link_target.value(), result.value());
   }
 }
 
@@ -472,9 +482,7 @@ TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
 }
 
 TEST_F(UserCollectorTest, ValidateProcFiles) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath container_dir = temp_dir.GetPath();
+  FilePath container_dir = test_dir_;
 
   // maps file not exists (i.e. GetFileSize fails)
   EXPECT_FALSE(collector_.ValidateProcFiles(container_dir));
@@ -493,10 +501,7 @@ TEST_F(UserCollectorTest, ValidateProcFiles) {
 }
 
 TEST_F(UserCollectorTest, ValidateCoreFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath container_dir = temp_dir.GetPath();
-  FilePath core_file = container_dir.Append("core");
+  FilePath core_file = test_dir_.Append("core");
 
   // Core file does not exist
   EXPECT_EQ(UserCollector::kErrorReadCoreData,

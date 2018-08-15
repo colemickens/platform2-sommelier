@@ -25,10 +25,6 @@ namespace {
 int s_crashes = 0;
 bool s_metrics = true;
 
-const char kTestDirectory[] = "test";
-const char kTestSuspended[] = "test/suspended";
-const char kTestUnclean[] = "test/unclean";
-
 void CountCrash() {
   ++s_crashes;
 }
@@ -51,18 +47,19 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
     collector_.Initialize(CountCrash, IsMetrics);
-    rmdir(kTestDirectory);
-    test_unclean_ = FilePath(kTestUnclean);
-    collector_.unclean_shutdown_file_ = kTestUnclean;
-    base::DeleteFile(test_unclean_, true);
-    // Set up an alternate power manager state file as well
-    collector_.powerd_suspended_file_ = FilePath(kTestSuspended);
-    brillo::ClearLog();
 
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
     test_crash_spool_ = test_dir_.Append("crash");
     test_crash_lib_dir_ = test_dir_.Append("var_lib_crash_reporter");
+
+    test_unclean_ = test_crash_lib_dir_.Append("unclean");
+    collector_.unclean_shutdown_file_ = test_unclean_.value().c_str();
+
+    // Set up an alternate power manager state file as well
+    collector_.powerd_suspended_file_ = test_dir_.Append("suspended");
+
+    brillo::ClearLog();
   }
 
  protected:
@@ -80,7 +77,7 @@ TEST_F(UncleanShutdownCollectorTest, EnableWithoutParent) {
 }
 
 TEST_F(UncleanShutdownCollectorTest, EnableWithParent) {
-  mkdir(kTestDirectory, 0777);
+  ASSERT_TRUE(base::CreateDirectory(test_crash_lib_dir_));
   ASSERT_TRUE(collector_.Enable());
   ASSERT_TRUE(base::PathExists(test_unclean_));
 }
@@ -129,16 +126,9 @@ TEST_F(UncleanShutdownCollectorTest, DisableWhenNotEnabled) {
 }
 
 TEST_F(UncleanShutdownCollectorTest, CantDisable) {
-  mkdir(kTestDirectory, 0700);
-  if (mkdir(kTestUnclean, 0700)) {
-    ASSERT_EQ(EEXIST, errno) << "Error while creating directory '"
-                             << kTestUnclean << "': " << strerror(errno);
-  }
-  ASSERT_TRUE(test_util::CreateFile(test_unclean_.Append("foo"), ""))
-      << "Error while creating empty file '"
-      << test_unclean_.Append("foo").value() << "': " << strerror(errno);
+  ASSERT_TRUE(base::CreateDirectory(test_unclean_));
+  ASSERT_TRUE(test_util::CreateFile(test_unclean_.Append("foo"), ""));
   ASSERT_FALSE(collector_.Disable());
-  rmdir(kTestUnclean);
 }
 
 TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
