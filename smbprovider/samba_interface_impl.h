@@ -129,6 +129,7 @@ class SambaInterfaceImpl : public SambaInterface {
   smbc_open_fn smbc_open_ctx_ = nullptr;
   smbc_opendir_fn smbc_opendir_ctx_ = nullptr;
   smbc_read_fn smbc_read_ctx_ = nullptr;
+  smbc_readdir_fn smbc_readdir_ctx_ = nullptr;
   smbc_readdirplus_fn smbc_readdirplus_ctx_ = nullptr;
   smbc_rename_fn smbc_rename_ctx_ = nullptr;
   smbc_rmdir_fn smbc_rmdir_ctx_ = nullptr;

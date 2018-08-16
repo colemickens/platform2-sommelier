@@ -386,6 +386,7 @@ SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {
   smbc_open_ctx_ = smbc_getFunctionOpen(context);
   smbc_opendir_ctx_ = smbc_getFunctionOpendir(context);
   smbc_read_ctx_ = smbc_getFunctionRead(context);
+  smbc_readdir_ctx_ = smbc_getFunctionReaddir(context);
   smbc_readdirplus_ctx_ = smbc_getFunctionReaddirPlus(context);
   smbc_rename_ctx_ = smbc_getFunctionRename(context);
   smbc_rmdir_ctx_ = smbc_getFunctionRmdir(context);
