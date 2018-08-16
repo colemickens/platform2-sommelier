@@ -15,6 +15,8 @@
 
 namespace smbprovider {
 
+constexpr size_t kDirEntBufSize = 1024;
+
 // Fake implementation of SambaInterface. Uses a map to simulate a fake file
 // system that can open and close directories. It can also store entries through
 // |FakeEntry| which hold entry metadata.
@@ -375,6 +377,9 @@ class FakeSambaInterface : public SambaInterface {
   // Populates the |file_info_| member struct and returns a pointer to it.
   const struct libsmb_file_info* PopulateFileInfo(const FakeEntry& entry);
 
+  // Populates |dirent_buf_| member and returns a pointer to it.
+  const struct smbc_dirent* PopulateDirEnt(const FakeEntry& entry);
+
   // Counter for assigning file descriptor when opening.
   uint32_t next_fd = 0;
 
@@ -394,14 +399,17 @@ class FakeSambaInterface : public SambaInterface {
   // Value: OpenInfo that corresponds with the key.
   OpenEntries open_fds;
 
-  // Struct to hold a single entry from readdir plus. The real API
+  // Struct to hold a single entry from readdir and readdirplus. The real API
   // stores these in a list correlated to the open directory and returns
   // a pointer into that list. This means that GetDirectoryEntryWithMetadata
   // returns a pointer and the caller is not expected to free it. The fake
-  // only maintains the state for a single call to
+  // only maintains the state for a single call to GetDirectoryEntry or
   // GetDirectoryEntryWithMetadata. Subsequent calls overwrite the values
-  // in this struct.
+  // in these structs.
   struct libsmb_file_info file_info_;
+  alignas(struct smbc_dirent) uint8_t dirent_buf_[kDirEntBufSize];
+  struct smbc_dirent* dirent_ =
+      reinterpret_cast<struct smbc_dirent*>(dirent_buf_);
 
   DISALLOW_COPY_AND_ASSIGN(FakeSambaInterface);
 };

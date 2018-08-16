@@ -413,6 +413,68 @@ TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataInvalidDirId) {
             fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
 }
 
+TEST_F(FakeSambaTest, GetDirectoryEntryEmptyDir) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
+  EXPECT_GE(dir_id, 0);
+
+  const struct smbc_dirent* dirent = nullptr;
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntry(dir_id, &dirent));
+  EXPECT_EQ(nullptr, dirent);
+}
+
+TEST_F(FakeSambaTest, GetDirectoryEntryOneFile) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+  const std::string filename = GetDefaultDirectoryPath() + "/file";
+  const size_t expected_size = 7;
+
+  fake_samba_.AddFile(filename, expected_size, kFileDate);
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
+  EXPECT_GE(dir_id, 0);
+
+  const struct smbc_dirent* dirent = nullptr;
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntry(dir_id, &dirent));
+  EXPECT_NE(nullptr, dirent);
+  EXPECT_EQ(SMBC_FILE, dirent->smbc_type);
+
+  // No more files.
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntry(dir_id, &dirent));
+  EXPECT_EQ(nullptr, dirent);
+}
+
+TEST_F(FakeSambaTest, GetDirectoryEntryOneDirectory) {
+  fake_samba_.AddDirectory(GetDefaultDirectoryPath());
+  const std::string directory_name = GetDefaultDirectoryPath() + "/dir";
+
+  fake_samba_.AddDirectory(directory_name, false /* locked */, SMBC_DIR,
+                           kFileDate);
+
+  int32_t dir_id;
+  EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
+  EXPECT_GE(dir_id, 0);
+
+  const struct smbc_dirent* dirent = nullptr;
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntry(dir_id, &dirent));
+  EXPECT_NE(nullptr, dirent);
+  EXPECT_EQ(SMBC_DIR, dirent->smbc_type);
+
+  // No more entries.
+  EXPECT_EQ(0, fake_samba_.GetDirectoryEntry(dir_id, &dirent));
+  EXPECT_EQ(nullptr, dirent);
+}
+
+TEST_F(FakeSambaTest, GetDirectoryEntryInvalidDirId) {
+  const struct smbc_dirent* dirent;
+
+  // Invalid dir id.
+  int32_t dir_id = 0;
+  EXPECT_EQ(EBADF, fake_samba_.GetDirectoryEntry(dir_id, &dirent));
+}
+
 TEST_F(FakeSambaTest, GetEntryStatusFailsOnLockedEntries) {
   fake_samba_.AddLockedDirectory(GetDefaultDirectoryPath());
   fake_samba_.AddLockedFile(GetDefaultFilePath());

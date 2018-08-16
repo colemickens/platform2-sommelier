@@ -105,8 +105,25 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
 
 int32_t FakeSambaInterface::GetDirectoryEntry(
     int32_t dir_id, const struct smbc_dirent** dirent) {
-  NOTREACHED();
-  return -1;
+  DCHECK(dirent);
+  *dirent = nullptr;
+  if (!IsDirectoryFDOpen(dir_id)) {
+    return EBADF;
+  }
+
+  OpenInfo& open_info = FindOpenFD(dir_id)->second;
+  FakeDirectory* directory = GetDirectory(RemoveURLScheme(open_info.full_path));
+  DCHECK(directory);
+
+  if (open_info.current_index >= directory->entries.size()) {
+    // Reached the end of directory.
+    return 0;
+  }
+
+  FakeEntry* entry = directory->entries[open_info.current_index].get();
+  *dirent = PopulateDirEnt(*entry);
+  open_info.current_index++;
+  return 0;
 }
 
 int32_t FakeSambaInterface::GetDirectoryEntryWithMetadata(
@@ -943,6 +960,15 @@ const struct libsmb_file_info* FakeSambaInterface::PopulateFileInfo(
   file_info_.name = const_cast<char*>(entry.name.c_str());
 
   return &file_info_;
+}
+
+const struct smbc_dirent* FakeSambaInterface::PopulateDirEnt(
+    const FakeEntry& entry) {
+  bool result =
+      WriteEntry(entry.name, entry.smbc_type, kDirEntBufSize, dirent_);
+  DCHECK(result);
+
+  return dirent_;
 }
 
 }  // namespace smbprovider
