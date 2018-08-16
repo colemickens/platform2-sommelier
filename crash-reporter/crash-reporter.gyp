@@ -131,6 +131,8 @@
       'variables': {
         'lexer_out_dir': 'crash-reporter',
         'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
           'libmetrics-<(libbase_ver)',
         ],
       },
@@ -142,6 +144,7 @@
         ],
       },
       'sources': [
+        'anomaly_collector.cc',
         'anomaly_collector.l',
       ],
       'includes': ['../common-mk/lex.gypi'],

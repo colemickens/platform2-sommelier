@@ -18,6 +18,8 @@
 
 %{
 
+#include "crash-reporter/anomaly_collector.h"
+
 #include <ctype.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -498,23 +500,12 @@ void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
   }
 }
 
-int main(int argc, char **argv) {
+int AnomalyLexer(bool flag_filter, bool flag_test) {
   struct passwd *user;
-  prog_name = argv[0];
+  prog_name = "anomaly_collector";
 
-  if (argc == 2 && strcmp(argv[1], "--test") == 0)
-    testing = 1;
-  else if (argc == 2 && strcmp(argv[1], "--filter") == 0)
-    filter = 1;
-  else if (argc != 1) {
-    fprintf(stderr,
-            "usage: %s [single-flag]\n"
-            "flags (for testing only):\n"
-            "--filter\tinput is stdin, output is stdout\n"
-            "--test\trun self-test\n",
-            prog_name);
-    exit(1);
-  }
+  testing = flag_test;
+  filter = flag_filter;
 
   metrics_library = CMetricsLibraryNew();
   CMetricsLibraryInit(metrics_library);
