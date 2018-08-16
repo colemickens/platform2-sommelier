@@ -3,6 +3,7 @@
     {
       'target_name': 'diagnosticsd',
       'type': 'executable',
+      'includes': ['mojom_generator.gypi'],
       'variables': {
         'deps': [
           'libbrillo-<(libbase_ver)',
@@ -10,6 +11,7 @@
       },
       'sources': [
         'diagnosticsd/main.cc',
+        'mojo/diagnosticsd.mojom',
       ],
     },
   ],
