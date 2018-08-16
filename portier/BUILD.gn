@@ -51,6 +51,7 @@ static_library("libportier") {
     "ll_address.cc",
     "nd_bpf.cc",
     "nd_msg.cc",
+    "nd_proxy.cc",
     "neighbor_cache.cc",
     "network_socket.cc",
     "proxy_interface.cc",
