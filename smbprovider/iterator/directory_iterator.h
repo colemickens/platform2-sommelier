@@ -31,12 +31,12 @@ class BaseDirectoryIterator {
  public:
   BaseDirectoryIterator(const std::string& dir_path,
                         SambaInterface* samba_interface,
-                        size_t buffer_size,
+                        size_t batch_size,
                         bool include_metadata);
 
   BaseDirectoryIterator(const std::string& dir_path,
                         SambaInterface* samba_interface,
-                        size_t buffer_size);
+                        size_t batch_size);
 
   BaseDirectoryIterator(const std::string& dir_path,
                         SambaInterface* samba_interface);

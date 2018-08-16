@@ -243,32 +243,16 @@ TEST_F(DirectoryIteratorTest, DirItOmitsSelfAndParentEntries) {
   EXPECT_TRUE(it.IsDone());
 }
 
-// DirectoryIterator succeeds but does not return files when each entry
-// exceeds the buffer size.
-TEST_F(DirectoryIteratorTest, DirItDoesNotReturnEntryWithSmallBuffer) {
-  CreateDefaultMountRoot();
-
-  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
-  fake_samba_.AddFile(GetAddedFullFilePath());
-
-  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_,
-                       1 /* buffer_size */);
-
-  EXPECT_EQ(0, it.Init());
-  EXPECT_TRUE(it.IsDone());
-}
-
-// DirectoryIterator succeeds with multiple entries when the buffer size is
+// DirectoryIterator succeeds with multiple entries when the batch size is
 // large enough for just one entry at a time.
-TEST_F(DirectoryIteratorTest, DirItSucceedsWithMultipleUsesOfSmallBuffer) {
-  const size_t buffer_size = CalculateEntrySize("file1.jpg") + 1;
+TEST_F(DirectoryIteratorTest, DirItSucceedsWithMultipleUsesOfSmallBatch) {
   CreateDefaultMountRoot();
 
   fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
   fake_samba_.AddFile(GetDefaultFullPath("/path/file1.jpg"));
   fake_samba_.AddFile(GetDefaultFullPath("/path/file2.jpg"));
 
-  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_, buffer_size);
+  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_, 1);
 
   EXPECT_EQ(0, it.Init());
   EXPECT_FALSE(it.IsDone());

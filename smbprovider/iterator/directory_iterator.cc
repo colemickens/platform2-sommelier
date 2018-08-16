@@ -22,24 +22,22 @@ BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
                                              SambaInterface* samba_interface)
     : BaseDirectoryIterator(dir_path,
                             samba_interface,
-                            kDirEntBufferSize,
+                            kDefaultMetadataBatchSize,
                             false /* include_metadata */) {}
 
 BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
                                              SambaInterface* samba_interface,
-                                             size_t buffer_size)
-    : BaseDirectoryIterator(dir_path,
-                            samba_interface,
-                            buffer_size,
-                            false /* include_metadata */) {}
+                                             size_t batch_size)
+    : BaseDirectoryIterator(
+          dir_path, samba_interface, batch_size, false /* include_metadata */) {
+}
 
 BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
                                              SambaInterface* samba_interface,
-                                             size_t buffer_size,
+                                             size_t batch_size,
                                              bool include_metadata)
     : dir_path_(dir_path),
-      dir_buf_(include_metadata ? 0 : buffer_size),
-      batch_size_(include_metadata ? buffer_size : 0),
+      batch_size_(batch_size),
       include_metadata_(include_metadata),
       samba_interface_(samba_interface) {}
 
@@ -137,14 +135,29 @@ int32_t BaseDirectoryIterator::FillBuffer() {
 
 int32_t BaseDirectoryIterator::ReadEntriesToVector() {
   DCHECK(!include_metadata_);
+  DCHECK_GT(batch_size_, 0);
 
-  int32_t bytes_read;
-  int32_t fetch_error = ReadEntriesToBuffer(&bytes_read);
-  if (fetch_error != 0) {
-    return fetch_error;
+  ClearVector();
+
+  for (size_t i = 0; i < batch_size_; i++) {
+    const struct smbc_dirent* dirent = nullptr;
+    int fetch_error = samba_interface_->GetDirectoryEntry(dir_id_, &dirent);
+    if (fetch_error) {
+      return fetch_error;
+    }
+
+    if (!dirent) {
+      // There are no more files, but this is not an error. The next call to
+      // refill the buffer will hit this case on the first iteration of the
+      // loop and will return an empty vector which will cause FillBuffer()
+      // to set |done_| and return |kNoMoreEntriesError|.
+      return 0;
+    }
+
+    AddEntryIfValid(*dirent);
   }
 
-  ConvertBufferToVector(bytes_read);
+  // Completed the batch successfully.
   return 0;
 }
 
