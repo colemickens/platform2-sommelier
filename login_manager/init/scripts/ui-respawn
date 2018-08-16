@@ -103,53 +103,59 @@ start_service() {
   fi
 }
 
+log() {
+  local message="$1"
+  logger -t "${RUNNING_JOB}" "${message}"
+}
+
 create_variables_for_systemd
 
 # Create the directory where reboot timestamps (which must persist across
 # reboots) will live.
 mkdir -p "${REBOOT_TIMESTAMP_DIR}"
 
-# if ${RESULT} = "ok", that means the job was stopped manually, so we want
-# to avoid respawning. Otherwise, we want to kick in the logic.
-if [ "${RESULT}" != "ok" ]; then
-  if [ "${EXIT_STATUS}" = "0" ] ; then
-    # Start ui job again, always. This logic never kicks in for
-    # systemd.
-    start_service "${JOB}"
-  elif [ "${EXIT_STATUS}" = "${MUST_WIPE_DEVICE}" ]; then
-    logger -t ${RUNNING_JOB} "Device should be rebooting to powerwash."
+# If ${RESULT} = "ok", that means the job was stopped manually, so we want to
+# avoid respawning.
+if [ "${RESULT}" = "ok" ]; then
+  exit 0
+fi
+
+# If the job exited cleanly (e.g. logout), restart it.
+if [ "${EXIT_STATUS}" = "0" ] ; then
+  start_service "${JOB}"
+  exit 0
+fi
+
+if [ "${EXIT_STATUS}" = "${MUST_WIPE_DEVICE}" ]; then
+  log "Device should be rebooting to powerwash."
+  exit 0
+fi
+
+if [ "${EXIT_STATUS}" = "${CHILD_EXITING_TOO_FAST}" ]; then
+  if ! over_ui_crash_limit ; then
+    log "Haven't been too crashy too much yet."
+  elif crossystem "cros_debug?1"; then
+    log "Not auto-rebooting due to debug mode."
+  elif under_reboot_limit ; then
+    log "Rebooting to mitigate crashiness."
+    reboot
   else
-    if [ "${EXIT_STATUS}" = "${CHILD_EXITING_TOO_FAST}" ]; then
-      if over_ui_crash_limit ; then
-        if crossystem "cros_debug?1"; then
-          logger -t ${RUNNING_JOB} "Not auto-rebooting due to debug mode."
-        elif under_reboot_limit ; then
-          logger -t ${RUNNING_JOB} "Rebooting to mitigate crashiness."
-          reboot
-        else
-          logger -t ${RUNNING_JOB} "Rebooted too much; running respawn logic."
-        fi
-      else
-        logger -t ${RUNNING_JOB} "Haven't been too crashy too much yet."
-      fi
-    fi
-
-    if [ -n "${EXIT_STATUS}" ]; then
-      logger -t ${RUNNING_JOB} "${JOB} failed with exit status ${EXIT_STATUS}."
-    elif [ -n "${EXIT_SIGNAL}" ]; then
-      logger -t ${RUNNING_JOB} "${JOB} died on signal ${EXIT_SIGNAL}."
-    else
-      logger -t ${RUNNING_JOB} "${JOB} died for mysterious and unknown reasons."
-    fi
-
-    # Generic respawn handling.
-    if under_respawn_limit ; then
-      logger -t ${RUNNING_JOB} "Respawning ${JOB}."
-      start_service "${JOB}"
-    else
-      logger -t ${RUNNING_JOB} "Reached respawn limit for ${JOB}."
-    fi
+    log "Rebooted too much; running respawn logic."
   fi
-  # TODO(cmasone): http://crbug.com/266153 Show the user a splash
-  # screen telling them to keep calm and carry on.
+fi
+
+if [ -n "${EXIT_STATUS}" ]; then
+  log "${JOB} failed with exit status ${EXIT_STATUS}."
+elif [ -n "${EXIT_SIGNAL}" ]; then
+  log "${JOB} died on signal ${EXIT_SIGNAL}."
+else
+  log "${JOB} died for mysterious and unknown reasons."
+fi
+
+# Generic respawn handling.
+if under_respawn_limit ; then
+  log "Respawning ${JOB}."
+  start_service "${JOB}"
+else
+  log "Reached respawn limit for ${JOB}."
 fi
