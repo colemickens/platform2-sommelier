@@ -366,6 +366,13 @@ bool ProxyInterface::DisableProxy() {
   return true;
 }
 
+// Callbacks.
+
+// protected.
+void ProxyInterface::PostJoinGroup() {}
+
+void ProxyInterface::PostLeaveGroup() {}
+
 bool ProxyInterface::Deinitialize() {
   if (!IsInitialized()) {
     LOG(WARNING) << "Cannot deinitialize an uninitialized interface: "

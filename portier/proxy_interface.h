@@ -13,6 +13,8 @@
 #include <shill/net/ip_address.h>
 
 #include "portier/ether_socket.h"
+#include "portier/group.h"
+#include "portier/group_manager.h"
 #include "portier/icmpv6_socket.h"
 #include "portier/ll_address.h"
 #include "portier/nd_msg.h"
@@ -37,7 +39,7 @@ namespace portier {
 //
 // The initialization of this interface requires the process have
 // CAP_NET_RAW.
-class ProxyInterface {
+class ProxyInterface : public GroupMemberInterface<ProxyInterface> {
  public:
   enum class State {
     kInvalid,
@@ -176,6 +178,13 @@ class ProxyInterface {
                                  const IPv6EtherHeader& original_header,
                                  const shill::ByteString& original_body);
 
+ protected:
+  // Callbacks hook from GroupMemberInterface.
+
+  // Currently does nothing.
+  void PostJoinGroup() override;
+  void PostLeaveGroup() override;
+
  private:
   // Constructor.
   explicit ProxyInterface(const std::string& if_name);
@@ -226,6 +235,12 @@ class ProxyInterface {
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterface);
 };
+
+// A type alias for Groups of Proxy Interfaces.
+using ProxyGroup = Group<ProxyInterface>;
+
+// A type alias for the manager of Proxy Groups.
+using ProxyGroupManager = GroupManager<ProxyInterface>;
 
 }  // namespace portier
 
