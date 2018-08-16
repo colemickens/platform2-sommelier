@@ -713,11 +713,14 @@ void Daemon::SetWifiTransmitPower(RadioTransmitPower power) {
 
 void Daemon::SetCellularTransmitPower(RadioTransmitPower power,
                                       int64_t dpr_gpio_number) {
-  std::string command = base::StringPrintf(
-      "set_cellular_transmit_power --gpio=%" PRId64 " %s", dpr_gpio_number,
-      (power == RadioTransmitPower::LOW ? " --low" : ""));
-  LOG(INFO) << "Running " << command;
-  delegate_->Launch(command.c_str());
+  const bool is_power_low = (power == RadioTransmitPower::LOW);
+  const std::string args = base::StringPrintf(
+      "--cellular_transmit_power_low=%s "
+      "--cellular_transmit_power_gpio=%" PRId64,
+      is_power_low ? "true" : "false", dpr_gpio_number);
+  LOG(INFO) << "Setting cellular transmit power "
+            << (is_power_low ? "low" : "high");
+  RunSetuidHelper("set_cellular_transmit_power", args, false);
 }
 
 void Daemon::OnAudioStateChange(bool active) {

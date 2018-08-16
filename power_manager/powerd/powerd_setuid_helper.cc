@@ -55,7 +55,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(action, "",
                 "Action to perform.  Must be one of \"mosys_eventlog\", "
                 "\"reboot\", \"set_force_lid_open\", "
-                "\"set_wifi_transmit_power\", \"shut_down\", and \"suspend\".");
+                "\"set_cellular_transmit_power\" \"set_wifi_transmit_power\", "
+                "\"shut_down\", and \"suspend\".");
   DEFINE_bool(force_lid_open, false,
               "Whether lid should be forced open or not for "
               "\"set_force_lid_open\" action.");
@@ -79,6 +80,10 @@ int main(int argc, char* argv[]) {
               "Should the system suspend to idle (freeze)?");
   DEFINE_bool(wifi_transmit_power_tablet, false,
               "Set wifi transmit power mode to tablet mode");
+  DEFINE_bool(cellular_transmit_power_low, false,
+              "Set cellular transmit power mode to low");
+  DEFINE_int64(cellular_transmit_power_gpio, -1,
+               "GPIO pin to write to for changing cellular transmit power");
   brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
   if (FLAGS_action == "mosys_eventlog") {
@@ -107,6 +112,12 @@ int main(int argc, char* argv[]) {
   } else if (FLAGS_action == "set_force_lid_open") {
     const char* state = FLAGS_force_lid_open ? "1" : "0";
     RunCommand("ectool", "forcelidopen", state, NULL);
+  } else if (FLAGS_action == "set_cellular_transmit_power") {
+    std::string mode = FLAGS_cellular_transmit_power_low ? "--low" : "";
+    std::string target =
+        "--gpio=" + base::IntToString(FLAGS_cellular_transmit_power_gpio);
+    RunCommand("set_cellular_transmit_power", mode.c_str(), target.c_str(),
+               nullptr);
   } else if (FLAGS_action == "set_wifi_transmit_power") {
     const char* tablet =
         FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
