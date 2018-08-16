@@ -346,7 +346,7 @@ int MetricsDaemon::OnInit() {
   bus_->AssertOnDBusThread();
   CHECK(bus_->SetUpAsyncOperations());
 
-  if (bus_->is_connected()) {
+  if (bus_->IsConnected()) {
     const std::string match_rule =
         base::StringPrintf(kCrashReporterMatchRule,
                            kCrashReporterInterface,
@@ -391,7 +391,7 @@ int MetricsDaemon::OnInit() {
 }
 
 void MetricsDaemon::OnShutdown(int* return_code) {
-  if (!testing_ && bus_->is_connected()) {
+  if (!testing_ && bus_->IsConnected()) {
     const std::string match_rule =
         base::StringPrintf(kCrashReporterMatchRule,
                            kCrashReporterInterface,
