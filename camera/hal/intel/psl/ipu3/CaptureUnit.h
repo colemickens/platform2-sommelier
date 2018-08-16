@@ -156,6 +156,8 @@ public:
 
     /* ISofListener interface */
     virtual bool notifySofEvent(uint32_t sequence);
+
+    int64_t getRollingShutterSkew();
 private:
     /**
      * Similar state structure for a request than the one in control unit.
@@ -270,6 +272,8 @@ private:
 
     int mSensorSettingsDelay;
     int mGainDelay;
+    //in nanosecond
+    int64_t mRollingShutterSkew;
     bool mLensSupported;
     std::shared_ptr<LensHw> mLensController;
 

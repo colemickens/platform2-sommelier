@@ -41,6 +41,7 @@ CaptureUnit::CaptureUnit(int camId, IStreamConfigProvider &aStreamCfgProv, std::
         mInflightRequestPool("CaptureUnit"),
         mSensorSettingsDelay(0),
         mGainDelay(0),
+        mRollingShutterSkew(1000000L),
         mLensSupported(false),
         mLensController(nullptr)
 {}
@@ -319,8 +320,14 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
         return status;
     }
 
-    //AIQ vblanking should include IF crop size.
     ia_aiq_exposure_sensor_descriptor *desc = &outMsg.data.event.exposureDesc;
+
+    //get rolling shutter skew via sensor data.
+    mRollingShutterSkew = desc->pixel_periods_per_line * 1000L *
+        (desc->line_periods_per_field - desc->line_periods_vertical_blanking) /
+        desc->pixel_clock_freq_mhz;
+
+    //AIQ vblanking should include IF crop size.
     string baseNode = string("imgu:");
     string node;
     unsigned short ifWidth, ifHeight;
@@ -439,6 +446,11 @@ status_t CaptureUnit::getSensorModeData(ia_aiq_exposure_sensor_descriptor &desc)
     status = mSyncManager->getSensorModeData(desc);
 
     return status;
+}
+
+int64_t CaptureUnit::getRollingShutterSkew()
+{
+    return mRollingShutterSkew;
 }
 
 status_t CaptureUnit::doCapture(Camera3Request* request,

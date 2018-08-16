@@ -748,8 +748,7 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
         mMetadata->writeLensMetadata(*reqState);
         mMetadata->fillTonemapCurve(*reqState);
 
-        // TODO: calculate proper rolling shutter skew
-        int64_t rollingShutterSkew = 1000000; // default 1ms
+        int64_t rollingShutterSkew = mCaptureUnit->getRollingShutterSkew();
         //# ANDROID_METADATA_Dynamic android.sensor.rollingShutterSkew done
         reqState->ctrlUnitResult->update(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW,
                                          &rollingShutterSkew, 1);
