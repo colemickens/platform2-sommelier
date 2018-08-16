@@ -233,7 +233,7 @@ const char *selinux_violation_crash_reporter_command;
 
 static void RunCrashReporter(const char *crash_reporter_command) {
   stdin = freopen(dump_path, "r", stdin);
-  int status = system(crash_reporter_command);
+  int status = system(filter ? "/bin/cat" : crash_reporter_command);
   unlink(dump_path);
   stdin = freopen("/dev/null", "r", stdin);
   if (status != 0)
@@ -315,8 +315,6 @@ static int AnomalyStart(const char *histogram_name, uint32_t *hash_bitmap,
 }
 
 static void AnomalyEnd(const char *crash_reporter_command) {
-  if (filter)
-    return;
   fclose(yyout);
   yyout = stdout;               /* for debugging */
   RunCrashReporter(crash_reporter_command);
@@ -324,9 +322,6 @@ static void AnomalyEnd(const char *crash_reporter_command) {
 
 int ReportServiceFailure(const char *service_name, const int exit_status) {
   uint32_t hash;
-
-  if (filter)
-    return 1;
 
   hash = StringHash(service_name);
   if (!AnomalyStart(service_failure_hist_name, service_failure_hash_bitmap,
@@ -394,9 +389,6 @@ int ReportSELinuxViolation(void) {
 int KernelWarnStart(void) {
   uint32_t hash;
   char *spacep;
-
-  if (filter)
-    return 1;
 
   hash = StringHash(yytext);
   if (!AnomalyStart(warn_hist_name, warn_hash_bitmap, hash))
