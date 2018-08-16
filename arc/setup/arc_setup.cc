@@ -2103,6 +2103,11 @@ void ArcSetup::OnBootContinue() {
   UnmountSharedAndroidDirectories();
 
   DeleteUnusedCacheDirectory();
+
+  const std::string env_to_pass = base::StringPrintf(
+      "CONTAINER_PID=%d", config_.GetIntOrDie("CONTAINER_PID"));
+  EXIT_IF(!LaunchAndWait(
+      {"/sbin/initctl", "start", "--no-wait", "arc-sdcard", env_to_pass}));
 }
 
 void ArcSetup::OnStop() {
