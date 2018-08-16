@@ -17,10 +17,6 @@ allow kernel cros_system_file:dir search;
 allow kernel device:dir { search read write getattr };
 allow kernel cros_dev_type:chr_file { create setattr getattr };
 allow kernel cros_labeled_dev_type:chr_file write;
-arc_nyc_cts_fails(
-# For /dev/console before it relabels to console_device by init.
-allow kernel device:chr_file write;
-)
 allow kernel device:dir add_name; # for dm-X device.
 allow kernel device:blk_file create_file_perms;
 allow kernel device:dir open;
@@ -39,3 +35,5 @@ allow kernel cros_dev_type:chr_file relabelto;
 allow kernel cros_modprobe_exec:{ file lnk_file } r_file_perms;
 
 neverallow * kernel:process { transition dyntransition };
+
+dontaudit kernel device:chr_file write;
