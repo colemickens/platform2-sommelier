@@ -23,6 +23,7 @@ constexpr char kCodeRelocationTime[] = "Arc.CodeRelocationTime";
 constexpr char kCodeSigningTime[] = "Arc.CodeSigningTime";
 constexpr char kCodeIntegrityCheckingTotalTime[] =
     "Arc.CodeIntegrityCheckingTotalTime";
+constexpr char kSdkVersionUpgradeType[] = "Arc.SdkVersionUpgradeType";
 
 }  // namespace
 
@@ -68,6 +69,13 @@ bool ArcSetupMetrics::SendCodeSigningTime(base::TimeDelta signing_time) {
 bool ArcSetupMetrics::SendCodeIntegrityCheckingTotalTime(
     base::TimeDelta total_time) {
   return SendDurationToUMA(kCodeIntegrityCheckingTotalTime, total_time);
+}
+
+bool ArcSetupMetrics::SendSdkVersionUpgradeType(
+    ArcSdkVersionUpgradeType upgrade_type) {
+  return metrics_library_->SendEnumToUMA(
+      kSdkVersionUpgradeType, static_cast<int>(upgrade_type),
+      static_cast<int>(ArcSdkVersionUpgradeType::COUNT));
 }
 
 void ArcSetupMetrics::SetMetricsLibraryForTesting(

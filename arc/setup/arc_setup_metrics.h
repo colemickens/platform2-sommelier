@@ -45,6 +45,18 @@ enum class ArcCodeVerificationResult {
   COUNT
 };
 
+// Enum is append only and need to match the definition in
+// Chromium's src/tools/metrics/histograms/enums.xml.
+enum class ArcSdkVersionUpgradeType {
+  NO_UPGRADE = 0,
+  UNKNOWN_UPGRADE = 1,
+  UNKNOWN_DOWNGRADE = 2,
+  M_TO_N = 3,
+  M_TO_P = 4,
+  N_TO_P = 5,
+  COUNT
+};
+
 // A class that sends UMA metrics using MetricsLibrary. There is no D-Bus call
 // because MetricsLibrary writes the UMA data to /var/lib/metrics/uma-events.
 class ArcSetupMetrics {
@@ -76,6 +88,9 @@ class ArcSetupMetrics {
   // verification. And also the time on relocation and signing if verification
   // fails.
   bool SendCodeIntegrityCheckingTotalTime(base::TimeDelta total_time);
+
+  // Sends the type of SDK version upgrade.
+  bool SendSdkVersionUpgradeType(ArcSdkVersionUpgradeType upgrade_type);
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_library);

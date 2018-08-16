@@ -242,6 +242,33 @@ AndroidSdkVersion SdkVersionFromString(const std::string& version_str) {
   return AndroidSdkVersion::UNKNOWN;
 }
 
+// Returns SDK version upgrade type to be sent to UMA.
+ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
+                                        AndroidSdkVersion data_sdk_version) {
+  if (data_sdk_version == AndroidSdkVersion::UNKNOWN ||  // First boot
+      data_sdk_version == system_sdk_version) {
+    return ArcSdkVersionUpgradeType::NO_UPGRADE;
+  }
+  if (data_sdk_version == AndroidSdkVersion::ANDROID_M) {
+    if (system_sdk_version == AndroidSdkVersion::ANDROID_N_MR1)
+      return ArcSdkVersionUpgradeType::M_TO_N;
+    if (system_sdk_version == AndroidSdkVersion::ANDROID_P)
+      return ArcSdkVersionUpgradeType::M_TO_P;
+  }
+  if (data_sdk_version == AndroidSdkVersion::ANDROID_N_MR1 &&
+      system_sdk_version == AndroidSdkVersion::ANDROID_P) {
+    return ArcSdkVersionUpgradeType::N_TO_P;
+  }
+  if (data_sdk_version < system_sdk_version) {
+    LOG(ERROR) << "Unexpected Upgrade: data_sdk_version=" << data_sdk_version
+               << " system_sdk_version=" << system_sdk_version;
+    return ArcSdkVersionUpgradeType::UNKNOWN_UPGRADE;
+  }
+  LOG(ERROR) << "Unexpected Downgrade: data_sdk_version=" << data_sdk_version
+             << " system_sdk_version=" << system_sdk_version;
+  return ArcSdkVersionUpgradeType::UNKNOWN_DOWNGRADE;
+}
+
 // Checks whether to clear entire android data directory before starting the
 // container by comparing |system_sdk_version| from the current boot against
 // |data_sdk_version| from the previous boot.
@@ -2024,6 +2051,9 @@ void ArcSetup::OnBootContinue() {
   ArcBootType boot_type;
   AndroidSdkVersion data_sdk_version;
   GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
+
+  arc_setup_metrics_->SendSdkVersionUpgradeType(
+      GetUpgradeType(sdk_version_, data_sdk_version));
 
   if (ShouldDeleteAndroidData(sdk_version_, data_sdk_version)) {
     EXIT_IF(!MoveDirIntoDataOldDir(arc_paths_->android_data_directory,

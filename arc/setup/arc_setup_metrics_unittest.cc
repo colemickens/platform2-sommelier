@@ -85,5 +85,14 @@ TEST_F(ArcSetupMetricsTest, SendCodeIntegrityCheckingTotalTime) {
   arc_setup_metrics_.SendCodeIntegrityCheckingTotalTime(t);
 }
 
+TEST_F(ArcSetupMetricsTest, SendSdkVersionUpgradeType) {
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(_, static_cast<int>(ArcSdkVersionUpgradeType::N_TO_P), _))
+      .Times(1);
+  arc_setup_metrics_.SendSdkVersionUpgradeType(
+      ArcSdkVersionUpgradeType::N_TO_P);
+}
+
 }  // namespace
 }  // namespace arc
