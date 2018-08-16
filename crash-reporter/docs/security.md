@@ -23,7 +23,7 @@ Further splitting up these tools into discrete helpers/components will probably
 help with keeping clear lines for which tools need which privileges.
 
 [anomaly_collector] needs read access to `/var/log/messages` and write access
-to `/var/spool/crash/` and `/run/anomaly-collector/`.
+to `/var/spool/crash/`.
 [crash_reporter_logs.conf] needs read access to `dmesg` and some sysfs PCI
 registers for the [kernel_warning_collector].
 At the very least, we should be able to have this minijail itself.

@@ -17,7 +17,6 @@ const char kGenericWarningExecName[] = "kernel-warning";
 const char kWifiWarningExecName[] = "kernel-wifi-warning";
 const char kSuspendWarningExecName[] = "kernel-suspend-warning";
 const char kKernelWarningSignatureKey[] = "sig";
-const char kKernelWarningPath[] = "/run/anomaly-collector/warning";
 const pid_t kKernelPid = 0;
 }  // namespace
 
@@ -25,7 +24,7 @@ using base::FilePath;
 using base::StringPrintf;
 
 KernelWarningCollector::KernelWarningCollector()
-    : warning_report_path_(kKernelWarningPath) {}
+    : warning_report_path_("/dev/stdin") {}
 
 KernelWarningCollector::~KernelWarningCollector() {}
 

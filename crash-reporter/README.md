@@ -309,10 +309,6 @@ These spool dirs are covered in detail in [Crash Report Storage].
 These paths are guaranteed to be reset at every boot, so we only store active
 runtime details here.
 
-*   `/run/anomaly-collector/`: Used by [anomaly_collector] to pass flagged log
-    snippets to the collectors it manages.
-    *This is moving to a pipe approach to avoid `/run` entirely.
-    https://chromium-review.googlesource.com/1176640*
 *   `/run/crash_reporter/`: Used by all crash-reporter tools (i.e. both
     [crash_reporter] and [crash_sender]) for runtime state.
     *This should be moved to `/run/crash-reporter/` as the project name.*

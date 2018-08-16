@@ -3,19 +3,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Replacement for the crash reporter, for testing.  The file containing the
-# anomaly report should be passed in as an argument. Log the first line of the
-# file, which by convention contains the anomaly hash, and remove the file. If
-# there is a second argument, interpret it as a filename to touch.
+# Replacement for the crash reporter, for testing.  The anomaly report is passed
+# via stdin.  Log the first line of the file, which by convention contains the
+# anomaly hash.  If there is an argument, interpret it as a filename to touch.
 
 set -e
 
+# Send stdout & stderr to this log file.  This lets anomaly_collector_test.sh
+# check the runtime behavior of the collector being tested.
 exec 1>> anomaly-test-log
 exec 2>> anomaly-test-log
 
-head -1 "$1"
-rm "$1"
+head -1
 
-if [ $# -eq 2 ]; then
-  touch "$2"
+if [ $# -eq 1 ]; then
+  touch "$1"
 fi

@@ -217,14 +217,12 @@ int draining;                   /* 1 when draining renamed log file */
 KernelWarningType warn_type;    /* the type of kernel warning */
 
 const char *msg_path = "/var/log/messages";
-const char anomaly_dump_dir[]  = "/run/anomaly-collector";
-const char *warn_dump_path = "/run/anomaly-collector/warning";
+/* We'll reset this template everytime we use it. */
+char dump_path[] = "/tmp/anomaly_collector.------";
 const char *warn_crash_reporter_command;
 const char *wifi_warn_crash_reporter_command;
 const char *suspend_warn_crash_reporter_command;
-const char *service_fail_dump_path = "/run/anomaly-collector/service-fail";
 const char *service_fail_crash_reporter_command;
-const char *selinux_violation_dump_path = "/run/anomaly-collector/selinux-violation";
 const char *selinux_violation_crash_reporter_command;
 
 
@@ -238,7 +236,10 @@ static void Die(const char *format, ...) {
 }
 
 static void RunCrashReporter(const char *crash_reporter_command) {
+  stdin = freopen(dump_path, "r", stdin);
   int status = system(crash_reporter_command);
+  unlink(dump_path);
+  stdin = freopen("/dev/null", "r", stdin);
   if (status != 0)
     Die("%s exited with status %d\n", crash_reporter_command, status);
 }
@@ -297,8 +298,8 @@ static void SetHashSeen(uint32_t *hash_bitmap, uint32_t hash) {
   hash_bitmap[word_index] |= 1 << bit_index;
 }
 
-static int AnomalyStart(const char *dump_path, const char *histogram_name,
-                        uint32_t *hash_bitmap, uint32_t hash) {
+static int AnomalyStart(const char *histogram_name, uint32_t *hash_bitmap,
+                        uint32_t hash) {
   if (!(testing || fifo || filter)) {
     CMetricsLibrarySendSparseToUMA(metrics_library, histogram_name, (int) hash);
   }
@@ -306,9 +307,14 @@ static int AnomalyStart(const char *dump_path, const char *histogram_name,
     return 0;
   SetHashSeen(hash_bitmap, hash);
 
-  yyout = fopen(dump_path, "w");
+  /* Reset the template. */
+  memset(dump_path + sizeof(dump_path) - 7, 'X', 6);
+  int fd = mkostemp(dump_path, O_CLOEXEC);
+  if (fd < 0)
+    Die("mkostemp failed: %s\n", strerror(errno));
+  yyout = fdopen(fd, "w");
   if (yyout == NULL)
-    Die("fopen %s failed: %s\n", dump_path, strerror(errno));
+    Die("fdopen failed: %s\n", strerror(errno));
   return 1;
 }
 
@@ -327,8 +333,8 @@ int ReportServiceFailure(const char *service_name, const int exit_status) {
     return 1;
 
   hash = StringHash(service_name);
-  if (!AnomalyStart(service_fail_dump_path, service_failure_hist_name,
-                    service_failure_hash_bitmap, hash))
+  if (!AnomalyStart(service_failure_hist_name, service_failure_hash_bitmap,
+                    hash))
     return 0;
 
   /* Include exit status in the "stable signature" for crash reports. */
@@ -344,8 +350,8 @@ int ReportSELinuxViolation(void) {
 
   uint32_t hash = StringHashAlphabetOnly(selinux_audit_text);
 
-  if (!AnomalyStart(selinux_violation_dump_path, selinux_violation_hist_name,
-                    selinux_violation_hash_bitmap, hash))
+  if (!AnomalyStart(selinux_violation_hist_name, selinux_violation_hash_bitmap,
+                    hash))
     return 0;
 
   char *selinux_violation_sig = NULL;
@@ -395,8 +401,7 @@ int KernelWarnStart(void) {
     return 1;
 
   hash = StringHash(yytext);
-  if (!AnomalyStart(warn_dump_path, warn_hist_name,
-                    warn_hash_bitmap, hash))
+  if (!AnomalyStart(warn_hist_name, warn_hash_bitmap, hash))
     return 0;
 
   if (strstr(yytext, "drivers/net/wireless"))
@@ -495,7 +500,6 @@ void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
 }
 
 int main(int argc, char **argv) {
-  int result;
   struct passwd *user;
   prog_name = argv[0];
 
@@ -520,34 +524,31 @@ int main(int argc, char **argv) {
   CMetricsLibraryInit(metrics_library);
 
   warn_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh warning" :
+    "./anomaly_collector_test_reporter.sh" :
     "/sbin/crash_reporter --kernel_warning";
 
   wifi_warn_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh warning wifi-warning" :
+    "./anomaly_collector_test_reporter.sh wifi-warning" :
     "/sbin/crash_reporter --kernel_wifi_warning";
 
   suspend_warn_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh warning suspend-warning" :
+    "./anomaly_collector_test_reporter.sh suspend-warning" :
     "/sbin/crash_reporter --kernel_suspend_warning";
 
   service_fail_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh service-fail" :
+    "./anomaly_collector_test_reporter.sh" :
     "/sbin/crash_reporter --service_failure";
 
   selinux_violation_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh selinux-violation" :
+    "./anomaly_collector_test_reporter.sh" :
     "/sbin/crash_reporter --selinux_violation";
 
   /* When filtering with --filter (for development) use stdin for input.
    * Otherwise read input from a file or a fifo.
    */
-  yyin_fd = fileno(stdin);
+  yyin_fd = dup(fileno(stdin));
   if (testing) {
     msg_path = "messages";
-    warn_dump_path = "warning";
-    service_fail_dump_path = "service-fail";
-    selinux_violation_dump_path = "selinux-violation";
   }
   if (fifo) {
     msg_path = "fifo";
@@ -566,16 +567,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  /* Create directory for dump file.  Still need to be root here. */
-  unlink(warn_dump_path);
-  unlink(service_fail_dump_path);
-  if (!testing && !fifo && !filter) {
-    rmdir(anomaly_dump_dir);
-    result = mkdir(anomaly_dump_dir, 0755);
-    if (result < 0)
-      Die("could not create %s: %s\n",
-          anomaly_dump_dir, strerror(errno));
-  }
+  stdin = freopen("/dev/null", "r", stdin);
 
   if (0) {
     /* TODO(semenzato): put this back in once we decide it's safe
@@ -587,10 +579,6 @@ int main(int argc, char **argv) {
     user = getpwnam("chronos");
     if (user == NULL)
       Die("getpwnam failed\n");
-
-    /* Change dump directory ownership. */
-    if (chown(anomaly_dump_dir, user->pw_uid, user->pw_gid) < 0)
-      Die("chown: %s\n", strerror(errno));
 
     /* Drop privileges. */
     if (setuid(user->pw_uid) < 0) {

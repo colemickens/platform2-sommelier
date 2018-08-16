@@ -13,14 +13,13 @@
 namespace {
 const char kExecName[] = "service-failure";
 const char kSignatureKey[] = "sig";
-const char kFailureReportPath[] = "/run/anomaly-collector/service-fail";
 }  // namespace
 
 using base::FilePath;
 using base::StringPrintf;
 
 ServiceFailureCollector::ServiceFailureCollector()
-    : failure_report_path_(kFailureReportPath) {}
+    : failure_report_path_("/dev/stdin") {}
 
 ServiceFailureCollector::~ServiceFailureCollector() {}
 

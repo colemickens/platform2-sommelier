@@ -16,15 +16,13 @@
 namespace {
 constexpr char kExecName[] = "selinux-violation";
 constexpr char kSignatureKey[] = "sig";
-constexpr char kViolationReportPath[] =
-    "/run/anomaly-collector/selinux-violation";
 }  // namespace
 
 using base::FilePath;
 using base::StringPrintf;
 
 SELinuxViolationCollector::SELinuxViolationCollector()
-    : violation_report_path_(kViolationReportPath) {}
+    : violation_report_path_("/dev/stdin") {}
 
 SELinuxViolationCollector::~SELinuxViolationCollector() {}
 

@@ -205,9 +205,10 @@ Here are the collectors that [anomaly_collector] runs on syslog.
 That service is spawned early during boot via [anomaly-collector.conf].
 
 *   The [anomaly_collector] program runs a lexer on the syslog stream.
-*   When certain regexes match, the lines get packaged up and saved to a file
-    under `/run/anomaly-collector/` based on the specific collector.
+*   When certain regexes match, the lines get packaged up and saved to a temp
+    file under `/tmp`.
 *   crash_reporter is invoked for the specific collector.
+    *   The temp files are read via stdin.
     *   See sections below for more details.
 *   [anomaly_collector] runs only one collector at a time, and waits for it to
     finish running fully before processing more syslog entries.
