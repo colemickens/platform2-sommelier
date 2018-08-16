@@ -34,6 +34,11 @@ int32_t FakeSambaProxy::GetDirectoryEntries(int32_t dir_id,
       dir_id, dirp, dirp_buffer_size, bytes_read);
 }
 
+int32_t FakeSambaProxy::GetDirectoryEntry(int32_t dir_id,
+                                          const struct smbc_dirent** dirent) {
+  return fake_samba_interface_->GetDirectoryEntry(dir_id, dirent);
+}
+
 int32_t FakeSambaProxy::GetDirectoryEntryWithMetadata(
     int32_t dir_id, const struct libsmb_file_info** file_info) {
   return fake_samba_interface_->GetDirectoryEntryWithMetadata(dir_id,

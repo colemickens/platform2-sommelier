@@ -103,6 +103,12 @@ int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
   return 0;
 }
 
+int32_t FakeSambaInterface::GetDirectoryEntry(
+    int32_t dir_id, const struct smbc_dirent** dirent) {
+  NOTREACHED();
+  return -1;
+}
+
 int32_t FakeSambaInterface::GetDirectoryEntryWithMetadata(
     int32_t dir_id, const struct libsmb_file_info** file_info) {
   DCHECK(file_info);

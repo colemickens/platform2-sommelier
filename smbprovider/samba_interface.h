@@ -57,6 +57,9 @@ class SambaInterface {
                                       int32_t* bytes_read)
       WARN_UNUSED_RESULT = 0;
 
+  virtual int32_t GetDirectoryEntry(
+      int32_t dir_id, const struct smbc_dirent** dirent) WARN_UNUSED_RESULT = 0;
+
   // Gets the next directory entry with all metadata attached for |dir_id|.
   // |file_info| will be nullptr on failure or to indicate that there are
   // no more entries.
