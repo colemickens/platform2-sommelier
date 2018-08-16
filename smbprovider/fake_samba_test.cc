@@ -385,7 +385,7 @@ TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataOneDirectory) {
   fake_samba_.AddDirectory(GetDefaultDirectoryPath());
   const std::string directory_name = GetDefaultDirectoryPath() + "/dir";
 
-  const uint64_t expected_date = 9988776655;
+  const uint64_t expected_date = 999333222;
   fake_samba_.AddDirectory(directory_name, false /* locked */, SMBC_DIR,
                            expected_date);
 

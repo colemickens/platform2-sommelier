@@ -133,7 +133,7 @@ TEST_F(DirectoryIteratorTest, InitSucceedsOnNonEmptyDirectoryWithMetadata) {
   fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
 
   const uint64_t expected_size = 99;
-  const uint64_t expected_date = 88882222222;
+  const uint64_t expected_date = 888822222;
   fake_samba_.AddFile(GetAddedFullFilePath(), expected_size, expected_date);
 
   DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_,
