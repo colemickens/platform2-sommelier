@@ -13,6 +13,11 @@ extern "C" {
 
 extern int AnomalyLexer(bool flag_filter, bool flag_test);
 
+// Callback to run crash-reporter.
+extern void RunCrashReporter(int filter,
+                             const char* flag,
+                             const char* input_path);
+
 #ifdef __cplusplus
 }
 #endif

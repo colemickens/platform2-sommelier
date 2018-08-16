@@ -225,20 +225,6 @@ KernelWarningType warn_type;    /* the type of kernel warning */
 const char *msg_path = "/var/log/messages";
 /* We'll reset this template everytime we use it. */
 char dump_path[] = "/tmp/anomaly_collector.------";
-const char *warn_crash_reporter_command;
-const char *wifi_warn_crash_reporter_command;
-const char *suspend_warn_crash_reporter_command;
-const char *service_fail_crash_reporter_command;
-const char *selinux_violation_crash_reporter_command;
-
-static void RunCrashReporter(const char *crash_reporter_command) {
-  stdin = freopen(dump_path, "r", stdin);
-  int status = system(filter ? "/bin/cat" : crash_reporter_command);
-  unlink(dump_path);
-  stdin = freopen("/dev/null", "r", stdin);
-  if (status != 0)
-    err(status, "'%s' exited with status %d", crash_reporter_command, status);
-}
 
 static uint32_t StringHash(const char *string) {
   uint32_t hash = 0;
@@ -314,10 +300,11 @@ static int AnomalyStart(const char *histogram_name, uint32_t *hash_bitmap,
   return 1;
 }
 
-static void AnomalyEnd(const char *crash_reporter_command) {
+static void AnomalyEnd(const char *crash_reporter_flag) {
   fclose(yyout);
   yyout = stdout;               /* for debugging */
-  RunCrashReporter(crash_reporter_command);
+  RunCrashReporter(filter, crash_reporter_flag, dump_path);
+  unlink(dump_path);
 }
 
 int ReportServiceFailure(const char *service_name, const int exit_status) {
@@ -331,7 +318,7 @@ int ReportServiceFailure(const char *service_name, const int exit_status) {
   /* Include exit status in the "stable signature" for crash reports. */
   fprintf(yyout, "%08x-exit%d-%s\n", hash, exit_status, service_name);
 
-  AnomalyEnd(service_fail_crash_reporter_command);
+  AnomalyEnd("--service_failure");
   return 1;
 }
 
@@ -381,7 +368,7 @@ int ReportSELinuxViolation(void) {
   fputc('\n', yyout);
   fputs(selinux_audit_text, yyout);
 
-  AnomalyEnd(selinux_violation_crash_reporter_command);
+  AnomalyEnd("--selinux_violation");
 
   return 1;
 }
@@ -410,11 +397,11 @@ int KernelWarnStart(void) {
 
 void KernelWarnEnd(void) {
   if (warn_type == kWarningTypeWifi)
-    AnomalyEnd(wifi_warn_crash_reporter_command);
+    AnomalyEnd("--kernel_wifi_warning");
   else if (warn_type == kWarningTypeSuspend)
-    AnomalyEnd(suspend_warn_crash_reporter_command);
+    AnomalyEnd("--kernel_suspend_warning");
   else
-    AnomalyEnd(warn_crash_reporter_command);
+    AnomalyEnd("--kernel_warning");
 }
 
 static void CollectorOpenInput(const char *path) {
@@ -495,26 +482,6 @@ int AnomalyLexer(bool flag_filter, bool flag_test) {
 
   metrics_library = CMetricsLibraryNew();
   CMetricsLibraryInit(metrics_library);
-
-  warn_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh" :
-    "/sbin/crash_reporter --kernel_warning";
-
-  wifi_warn_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh wifi-warning" :
-    "/sbin/crash_reporter --kernel_wifi_warning";
-
-  suspend_warn_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh suspend-warning" :
-    "/sbin/crash_reporter --kernel_suspend_warning";
-
-  service_fail_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh" :
-    "/sbin/crash_reporter --service_failure";
-
-  selinux_violation_crash_reporter_command = testing ?
-    "./anomaly_collector_test_reporter.sh" :
-    "/sbin/crash_reporter --selinux_violation";
 
   /* When filtering with --filter (for development) use stdin for input.
    * Otherwise read input from a file.

@@ -10,9 +10,13 @@
 #include <string>
 
 #include <brillo/flag_helper.h>
+#include <brillo/process.h>
 #include <brillo/syslog_logging.h>
 
 namespace {
+
+// Path to crash-reporter.
+const char* crash_reporter_path = "/sbin/crash_reporter";
 
 // Set up all the state dirs.
 void Initialize() {
@@ -33,6 +37,16 @@ void Initialize() {
 
 }  // namespace
 
+// Callback to run crash-reporter.
+void RunCrashReporter(int filter, const char* flag, const char* input_path) {
+  brillo::ProcessImpl cmd;
+  cmd.RedirectInput(input_path);
+  cmd.AddArg(crash_reporter_path);
+  if (!filter)
+    cmd.AddArg(flag);
+  CHECK_EQ(0, cmd.Run());
+}
+
 int main(int argc, char* argv[]) {
   DEFINE_bool(filter, false, "Input is stdin and output is stdout");
   DEFINE_bool(test, false, "Run self-tests");
@@ -40,6 +54,11 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, "Crash Helper: Anomaly Collector");
   brillo::OpenLog("anomaly_collector", true);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+
+  if (FLAGS_filter)
+    crash_reporter_path = "/bin/cat";
+  else if (FLAGS_test)
+    crash_reporter_path = "./anomaly_collector_test_reporter.sh";
 
   if (!FLAGS_filter && !FLAGS_test)
     Initialize();
