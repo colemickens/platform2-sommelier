@@ -34,23 +34,23 @@
 
 #include "metrics/c_metrics_library.h"
 
-char *cur_service_name;
+static char *cur_service_name;
 
-char *selinux_audit_text;
-char *selinux_audit_comm;
-char *selinux_audit_name;
-char *selinux_audit_scontext;
-char *selinux_audit_tcontext;
-char *selinux_audit_permission;
-bool selinux_audit_granted;
+static char *selinux_audit_text;
+static char *selinux_audit_comm;
+static char *selinux_audit_name;
+static char *selinux_audit_scontext;
+static char *selinux_audit_tcontext;
+static char *selinux_audit_permission;
+static bool selinux_audit_granted;
 
-int ReportServiceFailure(const char *service_name, const int exit_status);
-int ReportSELinuxViolation(void);
-int KernelWarnStart(void);
-void KernelWarnEnd(void);
-void CollectorInput(char *buf, yy_size_t *result, size_t max_size);
+static int ReportServiceFailure(const char *service_name, const int exit_status);
+static int ReportSELinuxViolation(void);
+static int KernelWarnStart(void);
+static void KernelWarnEnd(void);
+static void CollectorInput(char *buf, yy_size_t *result, size_t max_size);
 
-void AppendToString(char** strp, const char *to_append) {
+static void AppendToString(char** strp, const char *to_append) {
   if (*strp == NULL) {
     *strp = strdup(to_append);
     return;
@@ -64,11 +64,11 @@ void AppendToString(char** strp, const char *to_append) {
   *strp = new;
 }
 
-void AppendSELinuxText() {
+static void AppendSELinuxText(void) {
   AppendToString(&selinux_audit_text, yytext);
 }
 
-void CleanUpSELinuxVariables() {
+static void CleanUpSELinuxVariables(void) {
   free(selinux_audit_text);
   selinux_audit_text = NULL;
   free(selinux_audit_comm);
@@ -201,13 +201,13 @@ SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
 #define HASH_BITMAP_SIZE        (1 << 15)  /* size in bits */
 #define HASH_BITMAP_MASK        (HASH_BITMAP_SIZE - 1)
 
-const char warn_hist_name[] = "Platform.KernelWarningHashes";
-uint32_t warn_hash_bitmap[HASH_BITMAP_SIZE / 32];
-const char selinux_violation_hist_name[] = "Platform.SELinuxViolationHashes";
-uint32_t selinux_violation_hash_bitmap[HASH_BITMAP_SIZE / 32];
-const char service_failure_hist_name[] = "Platform.ServiceFailureHashes";
-uint32_t service_failure_hash_bitmap[HASH_BITMAP_SIZE / 32];
-CMetricsLibrary metrics_library;
+static const char warn_hist_name[] = "Platform.KernelWarningHashes";
+static uint32_t warn_hash_bitmap[HASH_BITMAP_SIZE / 32];
+static const char selinux_violation_hist_name[] = "Platform.SELinuxViolationHashes";
+static uint32_t selinux_violation_hash_bitmap[HASH_BITMAP_SIZE / 32];
+static const char service_failure_hist_name[] = "Platform.ServiceFailureHashes";
+static uint32_t service_failure_hash_bitmap[HASH_BITMAP_SIZE / 32];
+static CMetricsLibrary metrics_library;
 
 typedef enum {
   kWarningTypeGeneric,
@@ -215,12 +215,12 @@ typedef enum {
   kWarningTypeSuspend,
 } KernelWarningType;
 
-int yyin_fd;                    /* instead of FILE *yyin to avoid buffering */
-int i_fd;                       /* for inotify, to detect file changes */
-int testing;                    /* 1 if running test */
-int filter;                     /* 1 when using as filter (for development) */
-int draining;                   /* 1 when draining renamed log file */
-KernelWarningType warn_type;    /* the type of kernel warning */
+static int yyin_fd;                    /* instead of FILE *yyin to avoid buffering */
+static int i_fd;                       /* for inotify, to detect file changes */
+static int testing;                    /* 1 if running test */
+static int filter;                     /* 1 when using as filter (for development) */
+static int draining;                   /* 1 when draining renamed log file */
+static KernelWarningType warn_type;    /* the type of kernel warning */
 
 const char *msg_path = "/var/log/messages";
 /* We'll reset this template everytime we use it. */
@@ -307,7 +307,7 @@ static void AnomalyEnd(const char *crash_reporter_flag) {
   unlink(dump_path);
 }
 
-int ReportServiceFailure(const char *service_name, const int exit_status) {
+static int ReportServiceFailure(const char *service_name, const int exit_status) {
   uint32_t hash;
 
   hash = StringHash(service_name);
@@ -322,7 +322,7 @@ int ReportServiceFailure(const char *service_name, const int exit_status) {
   return 1;
 }
 
-int ReportSELinuxViolation(void) {
+static int ReportSELinuxViolation(void) {
   if (selinux_audit_text == NULL)
     return 0;
 
@@ -373,7 +373,7 @@ int ReportSELinuxViolation(void) {
   return 1;
 }
 
-int KernelWarnStart(void) {
+static int KernelWarnStart(void) {
   uint32_t hash;
   char *spacep;
 
@@ -395,7 +395,7 @@ int KernelWarnStart(void) {
   return 1;
 }
 
-void KernelWarnEnd(void) {
+static void KernelWarnEnd(void) {
   if (warn_type == kWarningTypeWifi)
     AnomalyEnd("--kernel_wifi_warning");
   else if (warn_type == kWarningTypeSuspend)
@@ -426,7 +426,7 @@ static void CollectorOpenInput(const char *path) {
  *
  * 3.  We want to detect log rotation, and reopen the input file as needed.
  */
-void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
+static void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
   while (1) {
     ssize_t ret = read(yyin_fd, buf, max_size);
     if (ret < 0)
