@@ -680,14 +680,6 @@ main() {
     exit 1
   fi
 
-  for dependency in "${FIND}" "${METRICS_CLIENT}" \
-                    "${RESTRICTED_CERTIFICATES_PATH}"; do
-    if [ ! -x "${dependency}" ]; then
-      lecho "Fatal: Crash sending disabled: ${dependency} not found."
-      exit 1
-    fi
-  done
-
   TMP_DIR="$(mktemp -d /tmp/crash_sender.XXXXXX)"
 
   # Send system-wide crashes

@@ -92,6 +92,13 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  base::FilePath missing_path;
+  if (!util::CheckDependencies(&missing_path)) {
+    LOG(ERROR) << "Crash sending disabled: " << missing_path.value()
+               << " not found.";
+    return EXIT_FAILURE;
+  }
+
   char shell_script_path[] = "/sbin/crash_sender.sh";
   char* shell_argv[] = {shell_script_path, nullptr};
   execve(shell_argv[0], shell_argv, environ);

@@ -112,4 +112,34 @@ TEST_F(CrashSenderUtilTest, ShouldPauseSending) {
   EXPECT_FALSE(ShouldPauseSending());
 }
 
+TEST_F(CrashSenderUtilTest, CheckDependencies) {
+  base::FilePath missing_path;
+
+  const int permissions = 0755;  // rwxr-xr-x
+  const base::FilePath kFind = paths::Get(paths::kFind);
+  const base::FilePath kMetricsClient = paths::Get(paths::kMetricsClient);
+  const base::FilePath kRestrictedCertificatesDirectory =
+      paths::Get(paths::kRestrictedCertificatesDirectory);
+
+  // kFind is the missing path.
+  EXPECT_FALSE(CheckDependencies(&missing_path));
+  EXPECT_EQ(kFind.value(), missing_path.value());
+
+  // Create kFind and try again.
+  ASSERT_TRUE(test_util::CreateFile(kFind, ""));
+  ASSERT_TRUE(base::SetPosixFilePermissions(kFind, permissions));
+  EXPECT_FALSE(CheckDependencies(&missing_path));
+  EXPECT_EQ(kMetricsClient.value(), missing_path.value());
+
+  // Create kMetricsClient and try again.
+  ASSERT_TRUE(test_util::CreateFile(kMetricsClient, ""));
+  ASSERT_TRUE(base::SetPosixFilePermissions(kMetricsClient, permissions));
+  EXPECT_FALSE(CheckDependencies(&missing_path));
+  EXPECT_EQ(kRestrictedCertificatesDirectory.value(), missing_path.value());
+
+  // Create kRestrictedCertificatesDirectory and try again.
+  ASSERT_TRUE(base::CreateDirectory(kRestrictedCertificatesDirectory));
+  EXPECT_TRUE(CheckDependencies(&missing_path));
+}
+
 }  // namespace util

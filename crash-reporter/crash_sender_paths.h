@@ -18,6 +18,19 @@ constexpr char kLockFile[] = "/run/lock/crash_sender";
 // Must be stateful to enable testing kernel crashes.
 constexpr char kPauseCrashSending[] = "/var/lib/crash_sender_paused";
 
+// Directory of restricted certificates which includes certificate for
+// URL to send official build crash reports to.
+constexpr char kRestrictedCertificatesDirectory[] =
+    "/usr/share/chromeos-ca-certificates";
+
+// Path to find which is required for computing the crash rate.
+// TODO(satorux): Remove this once the computation is rewritten in C++.
+constexpr char kFind[] = "/usr/bin/find";
+
+// Path to metrics_client.
+// TODO(satorux): Remove this once metrics stuff is rewritten in C++.
+constexpr char kMetricsClient[] = "/usr/bin/metrics_client";
+
 }  // namespace paths
 
 #endif  // CRASH_REPORTER_CRASH_SENDER_PATHS_H_

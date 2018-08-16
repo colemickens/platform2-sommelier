@@ -5,6 +5,8 @@
 #ifndef CRASH_REPORTER_CRASH_SENDER_UTIL_H_
 #define CRASH_REPORTER_CRASH_SENDER_UTIL_H_
 
+#include <base/files/file_path.h>
+
 namespace util {
 
 // Represents a name-value pair for an environment variable.
@@ -48,6 +50,11 @@ bool IsMock();
 
 // Returns true if the sending should be paused.
 bool ShouldPauseSending();
+
+// Checks if the dependencies used in the shell script exist. On error, returns
+// false, and saves the first path that was missing in |missing_path|.
+// TODO(satorux): Remove this once rewriting to C++ is complete.
+bool CheckDependencies(base::FilePath* missing_path);
 
 }  // namespace util
 

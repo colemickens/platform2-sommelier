@@ -11,8 +11,9 @@
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
 
 #include "crash-reporter/crash_sender_paths.h"
@@ -100,6 +101,25 @@ bool IsMock() {
 bool ShouldPauseSending() {
   return (base::PathExists(paths::Get(paths::kPauseCrashSending)) &&
           GetEnv("OVERRIDE_PAUSE_SENDING") == "0");
+}
+
+bool CheckDependencies(base::FilePath* missing_path) {
+  const char* const kDependencies[] = {
+      paths::kFind, paths::kMetricsClient,
+      paths::kRestrictedCertificatesDirectory,
+  };
+
+  for (const char* dependency : kDependencies) {
+    const base::FilePath path = paths::Get(dependency);
+    int permissions = 0;
+    // Check if |path| is an executable or a directory.
+    if (!(base::GetPosixFilePermissions(path, &permissions) &&
+          (permissions & base::FILE_PERMISSION_EXECUTE_BY_USER))) {
+      *missing_path = path;
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace util
