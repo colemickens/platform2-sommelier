@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -24,6 +25,15 @@ pkg_config("libportier_config") {
   pkg_deps = [ "libshill-net-${libbase_ver}" ]
 }
 
+proto_library("portier-protos") {
+  configs = [ ":target_defaults" ]
+  proto_in_dir = "proto"
+  proto_out_dir = "include/portier"
+  sources = [
+    "${proto_in_dir}/portier.proto",
+  ]
+}
+
 static_library("libportier") {
   configs += [
     ":libportier_config",
@@ -41,6 +51,9 @@ static_library("libportier") {
     "network_socket.cc",
     "proxy_interface.cc",
     "status.cc",
+  ]
+  deps = [
+    ":portier-protos",
   ]
 }
 

@@ -1,0 +1,249 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package portier;
+
+// Managing interfaces.
+
+message BindInterfaceRequest {
+  // Name of the network interface to bind portierd to.
+  string interface_name = 1;
+}
+
+message BindInterfaceResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // Interface was successfully initialized.
+    SUCCESS = 1;
+
+    // A type of failure; the specified interface is already bound.
+    EXISTS = 2;
+
+    // An error occured while initializing the interface.
+    FAILED = 3;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
+
+message ReleaseInterfaceRequest {
+  // Name of the network interface to release.
+  string interface_name = 1;
+}
+
+message ReleaseInterfaceResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // Interface was successfully released and is no longer proxied.
+    SUCCESS = 1;
+
+    // A type of failure; the specified interface is unmanaged by the daemon.
+    DOES_NOT_EXIST = 2;
+
+    // An error occured while uninitializing the interface.
+    FAILED = 3;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
+
+// Managing proxy groups.
+
+message CreateProxyGroupRequest {
+  // Name of the proxy group to create.
+  string group_name = 1;
+}
+
+message CreateProxyGroupResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // Group was successfully created.
+    SUCCESS = 1;
+
+    // A type of failure; a group with the specified name already exists.
+    EXISTS = 2;
+
+    // An error occured while creating the group.
+    FAILED = 3;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
+
+message ReleaseProxyGroupRequest {
+  // Name of the proxy group to be released.
+  string group_name = 1;
+}
+
+message ReleaseProxyGroupResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // The group was successfully released.
+    SUCCESS = 1;
+
+    // A type of failure; the specified group does not exist.
+    DOES_NOT_EXIST = 2;
+
+    // An error occured while releasing the group.
+    FAILED = 3;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
+
+// Interface group membership.
+
+message AddToGroupRequest {
+  // Name of the interface to be added to a group
+  string interface_name = 1;
+
+  // Name of the group to add the interface to.
+  string group_name = 2;
+
+  // Indicates that when adding the interface to the group, that it
+  // should be added as the upstream interface of the group.
+  bool as_upstream = 3;
+}
+
+message AddToGroupResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // The specified interface was added to the specified group.
+    SUCCESS = 1;
+
+    // The interface is already a member of another group.
+    EXISTS = 2;
+
+    // A type of failure; the specified group and / or interfance does
+    // not exist.
+    DOES_NOT_EXIST = 3;
+
+    // An error occured while adding the interface to the group.
+    FAILED = 4;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
+
+message RemoveFromGroupRequest {
+  // The name of the interface to remove from a group.  The interface
+  // will be removed from whatever group it is a part of.
+  string interface_name = 1;
+}
+
+message RemoveFromGroupResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // The interface was removed from the group it was in.
+    SUCCESS = 1;
+
+    // The interface was not part of any group.
+    NO_OPERATION = 2;
+
+    // A type of failure; the interface does not exist.
+    DOES_NOT_EXIST = 3;
+
+    // An error occured while removing the interface from the group.
+    FAILED = 4;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
+
+message SetUpstreamInterfaceRequest {
+  // Name of the interface to be set as upstream of its current group.
+  string interface_name = 1;
+}
+
+message SetUpstreamInterfaceResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // Interface was successfully added as the upstream interface.
+    SUCCESS = 1;
+
+    // A type of failure; the specified interface does not exist.
+    IF_DOES_NOT_EXIST = 2;
+
+    // A type of failure; he specified interface was not part of any group.
+    GROUP_DOES_NOT_EXIST = 3;
+
+    // An error occured while setting the upstream interface.
+    FAILED = 4;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
+
+message UnsetUpstreamInterfaceRequest {
+  // Name of the group to unset its upstream interface.
+  string group_name = 1;
+}
+
+message UnsetUpstreamInterfaceResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // The specified group no longer has an upstream interface.
+    // Note that success is returned even if there was no upstream
+    // interface before the call was made.
+    SUCCESS = 1;
+
+    // A type of failure; the specified group does not exist.
+    DOES_NOT_EXIST = 2;
+
+    // An error occured while unsetting the upstream interface.
+    FAILED = 3;
+  }
+  // Operation status.
+  Status status = 1;
+
+  // An error message with some details of issues.  Only present when
+  // status is FAILED
+  string failure_reason = 2;
+}
