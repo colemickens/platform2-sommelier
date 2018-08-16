@@ -194,7 +194,7 @@
         ],
       },
       'sources': [
-        'mount_encrypted.cc',
+        'mount_encrypted/mount_encrypted.cc',
       ],
     },
     {

@@ -15,7 +15,7 @@
 #include <brillo/file_utils.h>
 
 #include "cryptohome/cryptolib.h"
-#include "cryptohome/mount_encrypted.h"
+#include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
 namespace paths {

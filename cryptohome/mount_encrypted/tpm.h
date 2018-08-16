@@ -20,7 +20,7 @@
 
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/mount_encrypted.h"
+#include "cryptohome/mount_encrypted/mount_encrypted.h"
 
 const uint32_t kLockboxSizeV1 = 0x2c;
 const uint32_t kLockboxSizeV2 = 0x45;
