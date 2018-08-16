@@ -1912,16 +1912,6 @@ void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
-void ArcSetup::MkdirInContainerNamespaceOnPreChroot(
-    const base::FilePath& rootfs) {
-  if (sdk_version() >= AndroidSdkVersion::ANDROID_P) {
-    // Android's init does this in its first stage (see system/core/init/) which
-    // we don't use.
-    EXIT_IF(!InstallDirectory(0755, kRootUid, kRootGid,
-                              rootfs.Append("mnt/vendor")));
-  }
-}
-
 void ArcSetup::BindMountInContainerNamespaceOnPreChroot(
     const base::FilePath& rootfs,
     const ArcBinaryTranslationType binary_translation_type) {
@@ -2129,7 +2119,6 @@ void ArcSetup::OnPreChroot() {
   PLOG_IF(FATAL, !container_mount_ns)
       << "Failed to enter the container mount namespace";
 
-  MkdirInContainerNamespaceOnPreChroot(rootfs);
   BindMountInContainerNamespaceOnPreChroot(rootfs, binary_translation_type);
   RestoreContextOnPreChroot(rootfs);
   CreateDevColdbootDoneOnPreChroot(rootfs);

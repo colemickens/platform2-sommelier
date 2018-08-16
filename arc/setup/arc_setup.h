@@ -316,10 +316,6 @@ class ArcSetup {
   // Unmounts image files that have been mounted in MountOnOnetimeSetup.
   void UnmountOnOnetimeStop();
 
-  // Sets up directories inside the container's mount namespace on pre-chroot
-  // stage.
-  void MkdirInContainerNamespaceOnPreChroot(const base::FilePath& rootfs);
-
   // Various bind-mounts inside the container's mount namespace on pre-chroot
   // stage.
   void BindMountInContainerNamespaceOnPreChroot(
