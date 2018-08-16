@@ -195,6 +195,10 @@ get_device_type() {
       # a USB controller.
       echo "USB"
       ;;
+    *ufs*)
+        # Check if it is a UFS device.
+        echo "UFS"
+        ;;
     *target*)
       # Other SCSI devices.
       # Check if it is an ATA device.
@@ -278,6 +282,27 @@ list_fixed_nvme_disks() {
     fi
   done
   echo "${all_nvme}" | tr '[:space:]' '\n' | sort -u
+}
+
+# UFS device
+# Exclude disks with size 0, it means they did not spin up properly.
+list_fixed_ufs_disks() {
+  local sd
+  local remo
+  local size
+  local type
+
+  for sd in /sys/block/sd*; do
+    if [ ! -r "${sd}/size" ]; then
+      continue
+    fi
+    type=$(get_device_type "${sd}")
+    size=$(cat "${sd}/size")
+    remo=$(cat "${sd}/removable")
+    if [ "${type}" = "UFS" -a ${remo:-0} -eq 0 -a ${size:-0} -gt 0 ]; then
+      echo "${sd##*/}"
+    fi
+  done
 }
 
 # Find the drive to install based on the build write_cgpt.sh
