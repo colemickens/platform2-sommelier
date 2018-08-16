@@ -1,0 +1,176 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef U2FD_G2F_TOOLS_G2F_CLIENT_H_
+#define U2FD_G2F_TOOLS_G2F_CLIENT_H_
+
+#include <cstdint>
+#include <string>
+
+#include <brillo/secure_blob.h>
+#include <hidapi/hidapi.h>
+
+#include "u2fd/u2fhid.h"
+
+namespace g2f_client {
+
+struct FrameBlob;
+
+// Represents the HID layer of a U2F HID device.
+class HidDevice {
+ public:
+  // Channel ID, as specifid in section 2.4 of FIDO U2F HID Spec.
+  struct Cid {
+    uint8_t raw[4];
+
+    constexpr uint32_t value() const {
+      // Cid is stored in little endian byte order.
+      // Note: Cid address may be unaligned, so can't use ntohl.
+      return static_cast<uint32_t>(raw[0]) |
+             (static_cast<uint32_t>(raw[1]) << 8) |
+             (static_cast<uint32_t>(raw[2]) << 16) |
+             (static_cast<uint32_t>(raw[3]) << 24);
+    }
+    constexpr uint32_t IsBroadcast() const {
+      return value() == 0xFFFFFFFFu;
+    }
+  } __attribute__((__packed__));
+  static_assert(sizeof(Cid) == 4, "Wrong Cid size");
+
+  // Broadcast Channel ID, used during INIT command to create a channel.
+  static constexpr Cid kCidBroadcast = { { 0xFF, 0xFF, 0xFF, 0xFF } };
+
+  // Creates a new instance for the device at the specified path.
+  // Does not open the device.
+  explicit HidDevice(const std::string& path);
+  virtual ~HidDevice();
+
+  virtual bool IsOpened() const { return dev_ != nullptr; }
+  // Attempts to open the device, returns true on success.
+  virtual bool Open();
+  // Closes the device, if open.
+  virtual void Close();
+  // Sends a message to the given channel, with the specified command
+  // and payload. Payload will be split into multiple messages if necessary.
+  // Returns true on success.
+  virtual bool SendRequest(const Cid& cid, uint8_t cmd,
+                           const brillo::Blob& payload);
+  // Reads a response for the given channel. This should follow a call
+  // to SendRequest. Returns true on success, false if a packet could
+  // not be read, or an unexpected packet was read.
+  virtual bool RecvResponse(const Cid& cid, uint8_t* cmd,
+                            brillo::Blob* payload,
+                            int timeout_ms);
+
+ private:
+  bool WriteBlob(const FrameBlob& blob);
+  bool ReadBlob(FrameBlob* blob, int timeout_ms);
+  // Returns true if res == expected, prints out an error message and
+  // returns false otherwise.
+  bool CheckDeviceError(const std::string& func, int res, int expected);
+
+  // Non-null iff the device is open.
+  hid_device* dev_ = nullptr;
+  // Path to the device.
+  std::string path_;
+};
+
+// Represents U2F layer of a U2F HID device.
+class U2FHid {
+ public:
+  using CommandCode = u2f::U2fHid::U2fHidCommand;
+  using ErrorCode = u2f::U2fHid::U2fHidError;
+
+  // Represents a U2F command, eg REGISTER or AUTHENTICATE.
+  struct Command {
+    uint8_t cmd;
+    brillo::Blob payload;
+
+    Command() = default;
+    Command(CommandCode code, const brillo::Blob& payload)
+        : cmd(static_cast<uint8_t>(code)), payload(payload) {}
+
+    constexpr bool IsError() const {
+      return cmd == static_cast<uint8_t>(CommandCode::kError);
+    }
+    constexpr uint8_t ErrorCode() const;
+    // Returns true if the command was succesful, and prints
+    // an error message if not.
+    bool CheckSuccess(const std::string& descr) const;
+    // Returns a description of the command.
+    std::string Description() const;
+    // Returns a hex-encoded dump of the command payload.
+    std::string FullDump() const;
+    // Returns a human-readable name for the command.
+    std::string CommandName() const;
+    // Returns a human-readable name for the error.
+    std::string ErrorName() const;
+  };
+
+  // U2F HID Device version information, returned as part of
+  // Init command.
+  struct Version {
+    uint8_t protocol;
+    uint8_t major;
+    uint8_t minor;
+    uint8_t build;
+  };
+
+  // Creates a new instance for the specified hid_device, which must
+  // outlive this instance.
+  explicit U2FHid(HidDevice* hid_device);
+
+  // Sends a raw Command and retrieves the response. Returns
+  // true on success.
+  bool RawCommand(const Command& request, Command* response);
+  // Creates a new U2F HID Channel if necessary. Must be called
+  // before calling any other commands below. If force_realloc is
+  // true then a new channel will be created even if one already
+  // exists. This sends a U2FHID_INIT command.
+  bool Init(bool force_realloc);
+  // Locks the device so that it only accepts commands from the
+  // most recently created channel for the specified time.
+  // This sends a U2FHID_LOCK command.
+  bool Lock(uint8_t lock_timeout_seconds);
+  // This sends the specified message to the device. The message
+  // should be formatted according to section 4.1.1 of the FIDO
+  // U2F HID spec. This sends a U2FHID_MSG command.
+  bool Msg(const brillo::Blob& request, brillo::Blob* response);
+  // This sends a ping of the specified size to the device.
+  // This is a U2FHID_PING command.
+  bool Ping(size_t size);
+  // This sends a U2FHID_WINK command, causing the device to
+  // blink (or similar).
+  bool Wink();
+
+  // Returns true if a channel has been created, and the device
+  // is ready to send commands (other than Init).
+  bool Initialized() const { return !cid_.IsBroadcast(); }
+  // Returns the device version information, provided by the
+  // device during initialization. Must successfully call Init()
+  // for this to be valid.
+  const Version& GetVersion() const { return version_; }
+  // Returns device capabilities, provided by the device during
+  // initialization. Must successfully call Init() for this to be
+  // valid. Capabilities format is specified in section 4.1.2 of
+  // the FIDO U2FHID spec.
+  uint8_t GetCaps() const { return caps_; }
+  // Sets the channel ID to use (which must already exist).
+  void SetCid(const HidDevice::Cid& cid) { cid_ = cid; }
+
+ private:
+  bool GetSuccessfulResponse(const Command& request, Command* response);
+
+  HidDevice* hid_device_;
+  HidDevice::Cid cid_ = HidDevice::kCidBroadcast;
+  int timeout_ms_ = -1;
+  Version version_;
+  uint8_t caps_;
+};
+
+// class U2F
+
+}  // namespace g2f_client
+
+#endif  // U2FD_G2F_TOOLS_G2F_CLIENT_H_
