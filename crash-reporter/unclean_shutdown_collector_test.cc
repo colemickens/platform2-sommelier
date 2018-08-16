@@ -15,6 +15,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/test_util.h"
+
 using base::FilePath;
 using ::brillo::FindLog;
 
@@ -64,10 +66,6 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
   }
 
  protected:
-  void WriteStringToFile(const FilePath& file_path, const char* data) {
-    ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
-  }
-
   UncleanShutdownCollectorMock collector_;
   FilePath test_unclean_;
   FilePath test_dir_;
@@ -110,7 +108,7 @@ TEST_F(UncleanShutdownCollectorTest, CollectFalse) {
 TEST_F(UncleanShutdownCollectorTest, CollectDeadBatterySuspended) {
   ASSERT_TRUE(collector_.Enable());
   ASSERT_TRUE(base::PathExists(test_unclean_));
-  base::WriteFile(collector_.powerd_suspended_file_, "", 0);
+  ASSERT_TRUE(test_util::CreateFile(collector_.powerd_suspended_file_, ""));
   ASSERT_FALSE(collector_.Collect());
   ASSERT_FALSE(base::PathExists(test_unclean_));
   ASSERT_FALSE(base::PathExists(collector_.powerd_suspended_file_));
@@ -136,7 +134,7 @@ TEST_F(UncleanShutdownCollectorTest, CantDisable) {
     ASSERT_EQ(EEXIST, errno) << "Error while creating directory '"
                              << kTestUnclean << "': " << strerror(errno);
   }
-  ASSERT_EQ(0, base::WriteFile(test_unclean_.Append("foo"), "", 0))
+  ASSERT_TRUE(test_util::CreateFile(test_unclean_.Append("foo"), ""))
       << "Error while creating empty file '"
       << test_unclean_.Append("foo").value() << "': " << strerror(errno);
   ASSERT_FALSE(collector_.Disable());
@@ -151,14 +149,14 @@ TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
       "CHROMEOS_RELEASE_BOARD=lumpy\n"
       "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
       "CHROMEOS_RELEASE_NAME=Chromium OS\n";
-  ASSERT_TRUE(base::WriteFile(lsb_release, kLsbContents, strlen(kLsbContents)));
+  ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
 
   FilePath os_release = test_dir_.Append("os-release");
   const char kOsContents[] =
       "BUILD_ID=9428.0.2017_04_04_0853\n"
       "ID=chromeos\n"
       "VERSION_ID=59\n";
-  ASSERT_TRUE(base::WriteFile(os_release, kOsContents, strlen(kOsContents)));
+  ASSERT_TRUE(test_util::CreateFile(os_release, kOsContents));
 
   collector_.set_lsb_release_for_test(lsb_release);
   collector_.set_os_release_for_test(os_release);

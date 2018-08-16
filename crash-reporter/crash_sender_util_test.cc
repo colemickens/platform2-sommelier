@@ -15,18 +15,11 @@
 
 #include "crash-reporter/crash_common_paths.h"
 #include "crash-reporter/crash_sender_paths.h"
+#include "crash-reporter/test_util.h"
 
 namespace util {
 
 class CrashSenderUtilTest : public testing::Test {
- protected:
-  // Creates a file at |file_path| with |content|, with parent directories.
-  bool CreateFile(const base::FilePath& file_path, base::StringPiece content) {
-    if (!base::CreateDirectory(file_path.DirName()))
-      return false;
-    return base::WriteFile(file_path, content.data(), content.size()) == 0;
-  }
-
  private:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -100,7 +93,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Usage) {
 
 TEST_F(CrashSenderUtilTest, IsMock) {
   EXPECT_FALSE(IsMock());
-  ASSERT_TRUE(CreateFile(
+  ASSERT_TRUE(test_util::CreateFile(
       paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending),
       ""));
   EXPECT_TRUE(IsMock());
@@ -109,7 +102,7 @@ TEST_F(CrashSenderUtilTest, IsMock) {
 TEST_F(CrashSenderUtilTest, ShouldPauseSending) {
   EXPECT_FALSE(ShouldPauseSending());
 
-  ASSERT_TRUE(CreateFile(paths::Get(paths::kPauseCrashSending), ""));
+  ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kPauseCrashSending), ""));
   EXPECT_FALSE(ShouldPauseSending());
 
   setenv("OVERRIDE_PAUSE_SENDING", "0", 1 /* overwrite */);

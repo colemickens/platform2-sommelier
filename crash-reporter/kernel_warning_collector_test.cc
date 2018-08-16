@@ -14,6 +14,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/test_util.h"
+
 using base::FilePath;
 
 namespace {
@@ -63,10 +65,6 @@ class KernelWarningCollectorTest : public ::testing::Test {
   }
 
  protected:
-  void WriteStringToFile(const FilePath& file_path, const char* data) {
-    ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
-  }
-
   KernelWarningCollectorMock collector_;
   base::ScopedTempDir scoped_temp_dir_;
   FilePath test_path_;
@@ -75,10 +73,11 @@ class KernelWarningCollectorTest : public ::testing::Test {
 
 TEST_F(KernelWarningCollectorTest, CollectOK) {
   // Collector produces a crash report.
-  WriteStringToFile(test_path_,
-                    "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
-                    "\n"
-                    "<remaining log contents>");
+  ASSERT_TRUE(
+      test_util::CreateFile(test_path_,
+                            "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
+                            "\n"
+                            "<remaining log contents>"));
   EXPECT_TRUE(
       collector_.Collect(KernelWarningCollector::WarningType::kGeneric));
   EXPECT_TRUE(DirectoryHasFileWithPattern(test_crash_directory_,
@@ -87,10 +86,11 @@ TEST_F(KernelWarningCollectorTest, CollectOK) {
 
 TEST_F(KernelWarningCollectorTest, CollectWifiWarningOK) {
   // Collector produces a crash report with a different exec name.
-  WriteStringToFile(test_path_,
-                    "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
-                    "\n"
-                    "<remaining log contents>");
+  ASSERT_TRUE(
+      test_util::CreateFile(test_path_,
+                            "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
+                            "\n"
+                            "<remaining log contents>"));
   EXPECT_TRUE(collector_.Collect(KernelWarningCollector::WarningType::kWifi));
   EXPECT_TRUE(DirectoryHasFileWithPattern(test_crash_directory_,
                                           "kernel_wifi_warning.*.meta"));
@@ -99,10 +99,11 @@ TEST_F(KernelWarningCollectorTest, CollectWifiWarningOK) {
 TEST_F(KernelWarningCollectorTest, FeedbackNotAllowed) {
   // Feedback not allowed.
   s_metrics = false;
-  WriteStringToFile(test_path_,
-                    "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
-                    "\n"
-                    "<remaining log contents>");
+  ASSERT_TRUE(
+      test_util::CreateFile(test_path_,
+                            "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
+                            "\n"
+                            "<remaining log contents>"));
   EXPECT_TRUE(
       collector_.Collect(KernelWarningCollector::WarningType::kGeneric));
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));

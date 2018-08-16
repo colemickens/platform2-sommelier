@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "crash-reporter/udev_collector.h"
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -10,7 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "crash-reporter/udev_collector.h"
+#include "crash-reporter/test_util.h"
 
 using base::FilePath;
 
@@ -82,9 +84,7 @@ class UdevCollectorTest : public ::testing::Test {
     FilePath data_path = FilePath(base::StringPrintf(
         "%s/%s/data", collector_.dev_coredump_directory_.c_str(),
         device_name.c_str()));
-    ASSERT_EQ(strlen(kDevCoredumpDataContents),
-              base::WriteFile(data_path, kDevCoredumpDataContents,
-                              strlen(kDevCoredumpDataContents)));
+    ASSERT_TRUE(test_util::CreateFile(data_path, kDevCoredumpDataContents));
     // Generate uevent file for failing device.
     ASSERT_TRUE(CreateDirectory(FilePath(base::StringPrintf(
         "%s/%s/failing_device", collector_.dev_coredump_directory_.c_str(),
@@ -92,9 +92,8 @@ class UdevCollectorTest : public ::testing::Test {
     FilePath uevent_path = FilePath(base::StringPrintf(
         "%s/%s/failing_device/uevent",
         collector_.dev_coredump_directory_.c_str(), device_name.c_str()));
-    ASSERT_EQ(strlen(kFailingDeviceUeventContents),
-              base::WriteFile(uevent_path, kFailingDeviceUeventContents,
-                              strlen(kFailingDeviceUeventContents)));
+    ASSERT_TRUE(
+        test_util::CreateFile(uevent_path, kFailingDeviceUeventContents));
   }
 
  private:
@@ -117,10 +116,7 @@ class UdevCollectorTest : public ::testing::Test {
     collector_.dev_coredump_directory_ = dev_coredump_path.value();
 
     // Write to a dummy log config file.
-    ASSERT_EQ(strlen(kLogConfigFileContents),
-              base::WriteFile(log_config_path, kLogConfigFileContents,
-                              strlen(kLogConfigFileContents)));
-
+    ASSERT_TRUE(test_util::CreateFile(log_config_path, kLogConfigFileContents));
     brillo::ClearLog();
   }
 

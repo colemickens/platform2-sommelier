@@ -175,6 +175,7 @@
             'kernel_warning_collector_test.cc',
             'selinux_violation_collector_test.cc',
             'service_failure_collector_test.cc',
+            'test_util.cc',
             'testrunner.cc',
             'udev_collector_test.cc',
             'unclean_shutdown_collector_test.cc',

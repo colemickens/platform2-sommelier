@@ -13,6 +13,8 @@
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/test_util.h"
+
 using base::FilePath;
 using base::StringPrintf;
 using brillo::FindLog;
@@ -36,10 +38,6 @@ bool IsMetrics() {
 
 class KernelCollectorTest : public ::testing::Test {
  protected:
-  void WriteStringToFile(const FilePath& file_path, const char* data) {
-    ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
-  }
-
   void SetUpSuccessfulCollect();
   void SetUpSuccessfulWatchdog(const FilePath&);
   void ComputeKernelStackSignatureCommon();
@@ -121,7 +119,7 @@ TEST_F(KernelCollectorTest, GetEfiCrashType) {
   sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
          &test_efi_crash_id);
   // Write header.
-  WriteStringToFile(efikcrash_file(1), "Panic#1 Part#20");
+  ASSERT_TRUE(test_util::CreateFile(efikcrash_file(1), "Panic#1 Part#20"));
   KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
   ASSERT_TRUE(efi_crash.GetType(&type));
   EXPECT_EQ("Panic", type);
@@ -142,7 +140,7 @@ TEST_F(KernelCollectorTest, LoadEfiCrash) {
     for (int j = 0; j < i; j++) {
       efi_part[i].append(StringPrintf("random blob %d\n", j));
     }
-    WriteStringToFile(efikcrash_file(i), efi_part[i].c_str());
+    ASSERT_TRUE(test_util::CreateFile(efikcrash_file(i), efi_part[i].c_str()));
   }
   KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
@@ -167,18 +165,19 @@ TEST_F(KernelCollectorTest, LoadPreservedDump) {
   std::string dump;
   dump.clear();
 
-  WriteStringToFile(kcrash_file(),
-                    "CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]");
+  ASSERT_TRUE(test_util::CreateFile(
+      kcrash_file(), "CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]"));
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
   ASSERT_EQ("CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]", dump);
 
-  WriteStringToFile(kcrash_file(), "====1.1\nsomething");
+  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
   ASSERT_EQ("something", dump);
 
-  WriteStringToFile(kcrash_file(), "\x01\x02\xfe\xff random blob");
+  ASSERT_TRUE(
+      test_util::CreateFile(kcrash_file(), "\x01\x02\xfe\xff random blob"));
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_FALSE(collector_.LoadPreservedDump(&dump));
   ASSERT_EQ("", dump);
@@ -192,7 +191,7 @@ TEST_F(KernelCollectorTest, EnableMissingKernel) {
 }
 
 TEST_F(KernelCollectorTest, EnableOK) {
-  WriteStringToFile(kcrash_file(), "");
+  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), ""));
   EXPECT_CALL(collector_, DumpDirMounted()).WillOnce(::testing::Return(true));
   ASSERT_TRUE(collector_.Enable());
   ASSERT_TRUE(collector_.is_enabled());
@@ -207,7 +206,7 @@ TEST_F(KernelCollectorTest, CollectPreservedFileMissing) {
 }
 
 TEST_F(KernelCollectorTest, CollectBadDirectory) {
-  WriteStringToFile(kcrash_file(), "====1.1\nsomething");
+  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("Unable to create crash directory"))
       << "Did not find expected error string in log: {\n"
@@ -217,17 +216,18 @@ TEST_F(KernelCollectorTest, CollectBadDirectory) {
 
 void KernelCollectorTest::SetUpSuccessfulCollect() {
   collector_.set_crash_directory_for_test(test_crash_directory());
-  WriteStringToFile(kcrash_file(), "====1.1\nsomething");
+  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
   ASSERT_EQ(0, s_crashes);
 }
 
 void KernelCollectorTest::SetUpSuccessfulWatchdog(const FilePath& path) {
   collector_.set_crash_directory_for_test(test_crash_directory());
-  WriteStringToFile(eventlog_file(),
-                    "112 | 2016-03-24 15:09:39 | System boot | 0\n"
-                    "113 | 2016-03-24 15:11:20 | System boot | 0\n"
-                    "114 | 2016-03-24 15:11:20 | Hardware watchdog reset\n");
-  WriteStringToFile(path, "\n[ 0.0000] I can haz boot!");
+  ASSERT_TRUE(test_util::CreateFile(
+      eventlog_file(),
+      "112 | 2016-03-24 15:09:39 | System boot | 0\n"
+      "113 | 2016-03-24 15:11:20 | System boot | 0\n"
+      "114 | 2016-03-24 15:11:20 | Hardware watchdog reset\n"));
+  ASSERT_TRUE(test_util::CreateFile(path, "\n[ 0.0000] I can haz boot!"));
 }
 
 TEST_F(KernelCollectorTest, CollectOptedOut) {
@@ -297,7 +297,7 @@ TEST_F(KernelCollectorTest, WatchdogOKOld) {
 void KernelCollectorTest::WatchdogOnlyLastBootHelper(const FilePath& path) {
   char next[] = "115 | 2016-03-24 15:24:27 | System boot | 0";
   SetUpSuccessfulWatchdog(path);
-  ASSERT_EQ(strlen(next), base::WriteFile(eventlog_file(), next, strlen(next)));
+  ASSERT_TRUE(test_util::CreateFile(eventlog_file(), next));
   ASSERT_FALSE(collector_.Collect());
   ASSERT_EQ(0, s_crashes);
 }

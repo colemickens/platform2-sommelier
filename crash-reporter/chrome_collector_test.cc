@@ -13,6 +13,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/test_util.h"
+
 using base::FilePath;
 
 namespace {
@@ -119,9 +121,7 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath dump_file = dir.Append("test.dmp");
-  ASSERT_EQ(strlen(kCrashFormatWithFile),
-            base::WriteFile(dump_file, kCrashFormatWithFile,
-                            strlen(kCrashFormatWithFile)));
+  ASSERT_TRUE(test_util::CreateFile(dump_file, kCrashFormatWithFile));
   collector_.set_crash_directory_for_test(dir);
 
   FilePath log_file;

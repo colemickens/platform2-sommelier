@@ -14,6 +14,8 @@
 #include <gtest/gtest.h>
 #include <base/files/file_enumerator.h>
 
+#include "crash-reporter/test_util.h"
+
 using base::FilePath;
 
 namespace {
@@ -80,10 +82,6 @@ class SELinuxViolationCollectorTest : public ::testing::Test {
   }
 
  protected:
-  void WriteStringToFile(const FilePath& file_path, const char* data) {
-    ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
-  }
-
   SELinuxViolationCollectorMock collector_;
   base::ScopedTempDir scoped_temp_dir_;
   FilePath test_path_;
@@ -93,7 +91,7 @@ class SELinuxViolationCollectorTest : public ::testing::Test {
 TEST_F(SELinuxViolationCollectorTest, CollectOK) {
   // Collector produces a violation report.
   collector_.set_developer_image_for_testing();
-  WriteStringToFile(test_path_, TestSELinuxViolationMessage);
+  ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   EXPECT_TRUE(DirectoryHasFileWithPattern(test_crash_directory_,
@@ -109,7 +107,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectOK) {
 TEST_F(SELinuxViolationCollectorTest, CollectSample) {
   // Collector produces a violation report.
   collector_.set_fake_random_for_statistic_sampling(1);
-  WriteStringToFile(test_path_, TestSELinuxViolationMessage);
+  ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   EXPECT_TRUE(DirectoryHasFileWithPattern(test_crash_directory_,
@@ -131,7 +129,7 @@ TEST_F(SELinuxViolationCollectorTest, FailureReportDoesNotExist) {
 TEST_F(SELinuxViolationCollectorTest, EmptyFailureReport) {
   // SELinux violation report file exists, but doesn't have the expected
   // contents.
-  WriteStringToFile(test_path_, "");
+  ASSERT_TRUE(test_util::CreateFile(test_path_, ""));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
@@ -139,7 +137,7 @@ TEST_F(SELinuxViolationCollectorTest, EmptyFailureReport) {
 TEST_F(SELinuxViolationCollectorTest, FeedbackNotAllowed) {
   // Feedback not allowed.
   s_metrics = false;
-  WriteStringToFile(test_path_, TestSELinuxViolationMessage);
+  ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
@@ -147,7 +145,7 @@ TEST_F(SELinuxViolationCollectorTest, FeedbackNotAllowed) {
 TEST_F(SELinuxViolationCollectorTest, DroppedSample) {
   // Drop sample.
   collector_.set_fake_random_for_statistic_sampling(999);
-  WriteStringToFile(test_path_, TestSELinuxViolationMessage);
+  ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
