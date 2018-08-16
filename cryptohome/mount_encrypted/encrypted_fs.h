@@ -16,7 +16,7 @@
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/secure_blob.h>
 
-#include <cryptohome/mount_encrypted.h>
+#include <cryptohome/mount_encrypted/mount_encrypted.h>
 #include <cryptohome/platform.h>
 
 #define STATEFUL_MNT "mnt/stateful_partition"

@@ -4,8 +4,8 @@
  *
  * Private header file for mount-encrypted helper tool.
  */
-#ifndef CRYPTOHOME_MOUNT_ENCRYPTED_H_
-#define CRYPTOHOME_MOUNT_ENCRYPTED_H_
+#ifndef CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_
+#define CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -185,4 +185,4 @@ static inline std::ostream& operator<<(std::ostream& out,
   return out << file_path.value();
 }
 
-#endif  // CRYPTOHOME_MOUNT_ENCRYPTED_H_
+#endif  // CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_

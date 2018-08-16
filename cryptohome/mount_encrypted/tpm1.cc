@@ -21,7 +21,7 @@
 #include <brillo/process.h>
 
 #include "cryptohome/cryptolib.h"
-#include "cryptohome/mount_encrypted.h"
+#include "cryptohome/mount_encrypted/mount_encrypted.h"
 
 namespace {
 

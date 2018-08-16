@@ -24,10 +24,10 @@
 #include <metrics/metrics_library.h>
 
 #include <cryptohome/cryptolib.h>
-#include "cryptohome/mount_encrypted.h"
-#include "cryptohome/mount_encrypted/encrypted_fs.h"
-#include "cryptohome/mount_encrypted/encryption_key.h"
-#include "cryptohome/mount_encrypted/tpm.h"
+#include <cryptohome/mount_encrypted/encrypted_fs.h>
+#include <cryptohome/mount_encrypted/encryption_key.h>
+#include <cryptohome/mount_encrypted/mount_encrypted.h>
+#include <cryptohome/mount_encrypted/tpm.h>
 
 #define PROP_SIZE 64
 
