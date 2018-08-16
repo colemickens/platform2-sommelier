@@ -85,7 +85,7 @@ class FakeSambaInterface : public SambaInterface {
   void AddDirectory(const std::string& path,
                     bool locked,
                     uint32_t smbc_type,
-                    uint64_t date);
+                    time_t date);
 
   // Adds a directory that has the type SMBC_FILE_SHARE.
   void AddShare(const std::string& path);
@@ -100,13 +100,10 @@ class FakeSambaInterface : public SambaInterface {
   // Adds a file at the specified path. All parents must exist.
   void AddFile(const std::string& path);
   void AddFile(const std::string& path, size_t size);
-  void AddFile(const std::string& path, size_t size, uint64_t date);
+  void AddFile(const std::string& path, size_t size, time_t date);
+  void AddFile(const std::string& path, size_t size, time_t date, bool locked);
   void AddFile(const std::string& path,
-               size_t size,
-               uint64_t date,
-               bool locked);
-  void AddFile(const std::string& path,
-               uint64_t date,
+               time_t date,
                std::vector<uint8_t> file_data);
 
   // Adds a file at the specified path with |locked| set to true. All parents
@@ -160,20 +157,20 @@ class FakeSambaInterface : public SambaInterface {
     std::string name;
     uint32_t smbc_type;
     size_t size;
-    uint64_t date;
+    time_t date;
     // Indicates whether the entry should be inacessable by the user.
     bool locked = false;
 
     FakeEntry(const std::string& full_path,
               uint32_t smbc_type,
               size_t size,
-              uint64_t date,
+              time_t date,
               bool locked);
 
     FakeEntry(const std::string& full_path,
               uint32_t smbc_type,
               size_t size,
-              uint64_t date);
+              time_t date);
 
     virtual ~FakeEntry() = default;
 
@@ -196,7 +193,7 @@ class FakeSambaInterface : public SambaInterface {
     FakeDirectory(const std::string& full_path,
                   bool locked,
                   uint32_t smbc_type,
-                  uint64_t date)
+                  time_t date)
         : FakeEntry(full_path, smbc_type, 0 /* size */, date, locked) {}
 
     FakeDirectory(const std::string& full_path, bool locked)
@@ -231,13 +228,13 @@ class FakeSambaInterface : public SambaInterface {
   struct FakeFile : FakeEntry {
     FakeFile(const std::string& full_path,
              size_t size,
-             uint64_t date,
+             time_t date,
              bool locked)
         : FakeEntry(full_path, SMBC_FILE, size, date, locked),
           has_data(false) {}
 
     FakeFile(const std::string& full_path,
-             uint64_t date,
+             time_t date,
              std::vector<uint8_t> file_data)
         : FakeEntry(
               full_path, SMBC_FILE, file_data.size(), date, false /* locked */),

@@ -14,7 +14,7 @@ namespace smbprovider {
 
 namespace {
 
-constexpr uint64_t kFileDate = 42;
+constexpr time_t kFileDate = 123456789;
 
 std::string GetDefaultServer() {
   return "smb://wdshare";
@@ -361,9 +361,8 @@ TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataOneFile) {
   fake_samba_.AddDirectory(GetDefaultDirectoryPath());
   const std::string filename = GetDefaultDirectoryPath() + "/file";
   const size_t expected_size = 7;
-  const uint64_t expected_date = 999333222;
 
-  fake_samba_.AddFile(filename, expected_size, expected_date);
+  fake_samba_.AddFile(filename, expected_size, kFileDate);
 
   int32_t dir_id;
   EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
@@ -373,7 +372,7 @@ TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataOneFile) {
   EXPECT_EQ(0, fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
   EXPECT_NE(nullptr, file_info);
   EXPECT_EQ(expected_size, file_info->size);
-  EXPECT_EQ(expected_date, file_info->mtime_ts.tv_sec);
+  EXPECT_EQ(kFileDate, file_info->mtime_ts.tv_sec);
   EXPECT_EQ(0, file_info->attrs & kFileAttributeDirectory);
 
   // No more files.
@@ -385,9 +384,8 @@ TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataOneDirectory) {
   fake_samba_.AddDirectory(GetDefaultDirectoryPath());
   const std::string directory_name = GetDefaultDirectoryPath() + "/dir";
 
-  const uint64_t expected_date = 999333222;
   fake_samba_.AddDirectory(directory_name, false /* locked */, SMBC_DIR,
-                           expected_date);
+                           kFileDate);
 
   int32_t dir_id;
   EXPECT_EQ(0, fake_samba_.OpenDirectory(GetDefaultDirectoryPath(), &dir_id));
@@ -397,7 +395,7 @@ TEST_F(FakeSambaTest, GetDirectoryEntryWithMetadataOneDirectory) {
   EXPECT_EQ(0, fake_samba_.GetDirectoryEntryWithMetadata(dir_id, &file_info));
   EXPECT_NE(nullptr, file_info);
   EXPECT_EQ(0, file_info->size);
-  EXPECT_EQ(expected_date, file_info->mtime_ts.tv_sec);
+  EXPECT_EQ(kFileDate, file_info->mtime_ts.tv_sec);
   EXPECT_EQ(kFileAttributeDirectory,
             file_info->attrs & kFileAttributeDirectory);
 

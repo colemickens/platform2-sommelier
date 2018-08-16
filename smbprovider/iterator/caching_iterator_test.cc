@@ -77,7 +77,7 @@ TEST_F(CachingIteratorTest, IteratorPopulatesTheCache) {
   fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
 
   const uint64_t expected_size = 99;
-  const uint64_t expected_date = 888822222;
+  const time_t expected_date = 888822222;
   fake_samba_.AddFile(GetAddedFullFilePath(), expected_size, expected_date);
 
   auto it = GetIterator(GetAddedFullDirectoryPath());

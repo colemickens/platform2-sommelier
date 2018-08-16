@@ -611,7 +611,7 @@ void FakeSambaInterface::FakeFile::WriteData(size_t offset,
 FakeSambaInterface::FakeEntry::FakeEntry(const std::string& full_path,
                                          uint32_t smbc_type,
                                          size_t size,
-                                         uint64_t date,
+                                         time_t date,
                                          bool locked)
     : name(GetFileName(full_path)),
       smbc_type(smbc_type),
@@ -640,7 +640,7 @@ void FakeSambaInterface::AddDirectory(const std::string& path,
 void FakeSambaInterface::AddDirectory(const std::string& path,
                                       bool locked,
                                       uint32_t smbc_type,
-                                      uint64_t date) {
+                                      time_t date) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
   DCHECK(!IsOpen(path));
@@ -664,13 +664,13 @@ void FakeSambaInterface::AddFile(const std::string& path, size_t size) {
 
 void FakeSambaInterface::AddFile(const std::string& path,
                                  size_t size,
-                                 uint64_t date) {
+                                 time_t date) {
   AddFile(path, size, date, false /* locked */);
 }
 
 void FakeSambaInterface::AddFile(const std::string& path,
                                  size_t size,
-                                 uint64_t date,
+                                 time_t date,
                                  bool locked) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
@@ -682,7 +682,7 @@ void FakeSambaInterface::AddFile(const std::string& path,
 }
 
 void FakeSambaInterface::AddFile(const std::string& path,
-                                 uint64_t date,
+                                 time_t date,
                                  std::vector<uint8_t> file_data) {
   // Make sure that no entry exists in that path.
   DCHECK(!EntryExists(path));
