@@ -344,7 +344,7 @@ TEST_F(MountManagerTest, TestMountAfterRemounts) {
   EXPECT_GT(mount_id_3, mount_id_1);
 }
 
-TEST_F(MountManagerTest, TestAddMountWithCredentials) {
+TEST_F(MountManagerTest, TestAddMountWithCredential) {
   const std::string root_path = "smb://server/share1";
   const std::string workgroup = "google";
   const std::string username = "user1";
@@ -360,7 +360,7 @@ TEST_F(MountManagerTest, TestAddMountWithCredentials) {
   ExpectCredentialsEqual(root_path, workgroup, username, password);
 }
 
-TEST_F(MountManagerTest, TestAddMountWithEmptyCredentials) {
+TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
   const std::string root_path = "smb://server/share1";
   const std::string workgroup = "";
   const std::string username = "";
@@ -406,7 +406,7 @@ TEST_F(MountManagerTest, TestRemovedMountCanBeRemounted) {
   EXPECT_TRUE(AddMount(root_path, &mount_id));
 }
 
-TEST_F(MountManagerTest, TestRemountWithCredentials) {
+TEST_F(MountManagerTest, TestRemountWithCredential) {
   const std::string root_path = "smb://server/share1";
   const std::string workgroup = "google";
   const std::string username = "user1";

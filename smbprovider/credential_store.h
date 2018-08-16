@@ -21,56 +21,56 @@ namespace smbprovider {
 std::unique_ptr<password_provider::Password> GetPassword(
     const base::ScopedFD& password_fd);
 
-struct SmbCredentials {
+struct SmbCredential {
   std::string workgroup;
   std::string username;
   std::unique_ptr<password_provider::Password> password;
 
-  SmbCredentials() = default;
-  SmbCredentials(const std::string& workgroup,
-                 const std::string& username,
-                 std::unique_ptr<password_provider::Password> password)
+  SmbCredential() = default;
+  SmbCredential(const std::string& workgroup,
+                const std::string& username,
+                std::unique_ptr<password_provider::Password> password)
       : workgroup(workgroup),
         username(username),
         password(std::move(password)) {}
 
-  SmbCredentials(SmbCredentials&& credentials) = default;
+  SmbCredential(SmbCredential&& credential) = default;
 
-  DISALLOW_COPY_AND_ASSIGN(SmbCredentials);
+  DISALLOW_COPY_AND_ASSIGN(SmbCredential);
 };
 
-// Manages the credentials for a given mount root. There can only be one set of
-// credentials per unique mount root.
+// Manages the credential for a given mount root. There can only be one
+// credential per unique mount root.
 class CredentialStore {
  public:
   CredentialStore();
   virtual ~CredentialStore();
 
-  // Adds the credentials for |mount_root| to the store. This will return false
+  // Adds the credential for |mount_root| to the store. This will return false
   // if a credential already exists for the given |mount_root|.
-  virtual bool AddCredentials(const std::string& mount_root,
-                              const std::string& workgroup,
-                              const std::string& username,
-                              const base::ScopedFD& password_fd) = 0;
+  virtual bool AddCredential(const std::string& mount_root,
+                             const std::string& workgroup,
+                             const std::string& username,
+                             const base::ScopedFD& password_fd) = 0;
 
-  // Adds an empty set of credentials for |mount_root|. This will return false
+  // Adds an empty set of credential for |mount_root|. This will return false
   // if a credential already exists for the given |mount_root|.
-  virtual bool AddEmptyCredentials(const std::string& mount_root) = 0;
+  virtual bool AddEmptyCredential(const std::string& mount_root) = 0;
 
-  // Removes credentials for |mount_root|. This will return false if credentials
+  // Removes credential for |mount_root|. This will return false if credential
   // do not exist for |mount_root|.
-  virtual bool RemoveCredentials(const std::string& mount_root) = 0;
+  virtual bool RemoveCredential(const std::string& mount_root) = 0;
 
-  // Returns true if credentials exist for |mount_root|. This returns true if
-  // the credentials exist but are empty.
-  virtual bool HasCredentials(const std::string& mount_root) const = 0;
+  // Returns true if credential exist for |mount_root|. This returns true if
+  // the credential exist but are empty.
+  virtual bool HasCredential(const std::string& mount_root) const = 0;
 
-  // Returns the number of credentials the store currently has.
-  virtual size_t CredentialsCount() const = 0;
+  // Returns the number of credential the store currently has.
+  virtual size_t CredentialCount() const = 0;
 
   // Samba authentication function callback. DCHECKS that the buffer lengths are
-  // non-zero. Returns false when buffer lengths cannot support credentials
-  // length or when credentials are not found for |share_path|.
+  // non-zero. Returns false when buffer lengths cannot support credential
+  // length or when credential is not found for |share_path|.
   bool GetAuthentication(const std::string& share_path,
                          char* workgroup,
                          int32_t workgroup_length,
@@ -80,9 +80,9 @@ class CredentialStore {
                          int32_t password_length) const;
 
  protected:
-  // Returns the credentials for |mount_root|. Error if there are no credentials
+  // Returns the credential for |mount_root|. Error if there isn't a credential
   // for |mount_root|.
-  virtual const SmbCredentials& GetCredentials(
+  virtual const SmbCredential& GetCredential(
       const std::string& mount_root) const = 0;
 
  private:

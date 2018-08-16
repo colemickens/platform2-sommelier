@@ -21,7 +21,7 @@ class KerberosArtifactClientInterface {
   virtual ~KerberosArtifactClientInterface() = default;
 
   // Calls GetUserKerberosFiles. If authpolicyd has Kerberos files for the user
-  // specified by |object_guid| it sends them in response: credentials cache and
+  // specified by |object_guid| it sends them in response: credential cache and
   // krb5 config files.
   virtual void GetUserKerberosFiles(const std::string& object_guid,
                                     GetUserKerberosFilesCallback callback) = 0;

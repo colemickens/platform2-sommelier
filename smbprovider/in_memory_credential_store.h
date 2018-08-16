@@ -24,27 +24,27 @@ class InMemoryCredentialStore
   ~InMemoryCredentialStore() override;
 
   // CredentialStore overrides.
-  bool AddCredentials(const std::string& mount_root,
-                      const std::string& workgroup,
-                      const std::string& username,
-                      const base::ScopedFD& password_fd) override;
-  bool AddEmptyCredentials(const std::string& mount_root) override;
-  bool RemoveCredentials(const std::string& mount_root) override;
+  bool AddCredential(const std::string& mount_root,
+                     const std::string& workgroup,
+                     const std::string& username,
+                     const base::ScopedFD& password_fd) override;
+  bool AddEmptyCredential(const std::string& mount_root) override;
+  bool RemoveCredential(const std::string& mount_root) override;
 
-  bool HasCredentials(const std::string& mount_root) const override;
+  bool HasCredential(const std::string& mount_root) const override;
 
-  size_t CredentialsCount() const override;
+  size_t CredentialCount() const override;
 
  protected:
   // This is called by CredentialStore::GetAuthentication when accessing the
-  // credentials. HasCredentials() should always be called before this. If the
+  // credential. HasCredential() should always be called before this. If the
   // |mount_root| isn't found, this will trigger a DCHECK crash.
-  const SmbCredentials& GetCredentials(
+  const SmbCredential& GetCredential(
       const std::string& mount_root) const override;
 
  private:
-  // Mapping of mount_root : credentials.
-  std::map<std::string, SmbCredentials> credentials_;
+  // Mapping of mount_root : credential.
+  std::map<std::string, SmbCredential> credential_;
 
   DISALLOW_COPY_AND_ASSIGN(InMemoryCredentialStore);
 };

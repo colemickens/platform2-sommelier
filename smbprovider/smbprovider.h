@@ -184,8 +184,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   bool RemoveMount(int32_t mount_id, int32_t* error_code);
 
   // Adds mount |mount_root| to mount_manager_ and sets |error_code| on failure.
-  // Credentials such as |workgroup|, |username| and |password_fd| will be used
-  // if provided. Sets |mount_id| when mount is successful.
+  // A Credential that has fields such as |workgroup|, |username| and
+  // |password_fd| will be used if provided. Sets |mount_id| when mount is
+  // successful.
   bool AddMount(const std::string& mount_root,
                 const std::string& workgroup,
                 const std::string& username,

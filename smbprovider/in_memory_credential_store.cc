@@ -12,48 +12,47 @@ namespace smbprovider {
 InMemoryCredentialStore::InMemoryCredentialStore() = default;
 InMemoryCredentialStore::~InMemoryCredentialStore() = default;
 
-bool InMemoryCredentialStore::AddCredentials(
-    const std::string& mount_root,
-    const std::string& workgroup,
-    const std::string& username,
-    const base::ScopedFD& password_fd) {
-  if (HasCredentials(mount_root)) {
+bool InMemoryCredentialStore::AddCredential(const std::string& mount_root,
+                                            const std::string& workgroup,
+                                            const std::string& username,
+                                            const base::ScopedFD& password_fd) {
+  if (HasCredential(mount_root)) {
     return false;
   }
 
-  credentials_.emplace(mount_root, SmbCredentials(workgroup, username,
-                                                  GetPassword(password_fd)));
+  credential_.emplace(
+      mount_root, SmbCredential(workgroup, username, GetPassword(password_fd)));
   return true;
 }
 
-bool InMemoryCredentialStore::AddEmptyCredentials(
+bool InMemoryCredentialStore::AddEmptyCredential(
     const std::string& mount_root) {
-  if (HasCredentials(mount_root)) {
+  if (HasCredential(mount_root)) {
     return false;
   }
 
-  credentials_.emplace(mount_root, SmbCredentials());
+  credential_.emplace(mount_root, SmbCredential());
   return true;
 }
 
-bool InMemoryCredentialStore::RemoveCredentials(const std::string& mount_root) {
-  return credentials_.erase(mount_root) != 0;
+bool InMemoryCredentialStore::RemoveCredential(const std::string& mount_root) {
+  return credential_.erase(mount_root) != 0;
 }
 
-bool InMemoryCredentialStore::HasCredentials(
+bool InMemoryCredentialStore::HasCredential(
     const std::string& mount_root) const {
-  return credentials_.count(mount_root) == 1;
+  return credential_.count(mount_root) == 1;
 }
 
-size_t InMemoryCredentialStore::CredentialsCount() const {
-  return credentials_.size();
+size_t InMemoryCredentialStore::CredentialCount() const {
+  return credential_.size();
 }
 
-const SmbCredentials& InMemoryCredentialStore::GetCredentials(
+const SmbCredential& InMemoryCredentialStore::GetCredential(
     const std::string& mount_root) const {
-  DCHECK(HasCredentials(mount_root));
+  DCHECK(HasCredential(mount_root));
 
-  return credentials_.find(mount_root)->second;
+  return credential_.find(mount_root)->second;
 }
 
 }  // namespace smbprovider

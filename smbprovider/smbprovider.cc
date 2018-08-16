@@ -85,7 +85,7 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   // The functions below will set the error if they fail.
   *error_code = static_cast<int32_t>(ERROR_OK);
 
-  // AddMount() has to be called first since the credentials have to be stored
+  // AddMount() has to be called first since the credential has to be stored
   // before calling CanAccessMount().
   MountOptionsProto options;
   const bool success =

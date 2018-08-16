@@ -31,13 +31,13 @@ bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
     return false;
   }
 
-  DCHECK(credential_store_->HasCredentials(mount_iter->second.mount_root));
+  DCHECK(credential_store_->HasCredential(mount_iter->second.mount_root));
   return true;
 }
 
 bool MountManager::IsAlreadyMounted(const std::string& mount_root) const {
-  const bool has_credentials = credential_store_->HasCredentials(mount_root);
-  if (!has_credentials) {
+  const bool has_credential = credential_store_->HasCredential(mount_root);
+  if (!has_credential) {
     DCHECK(!ExistsInMounts(mount_root));
     return false;
   }
@@ -53,8 +53,8 @@ bool MountManager::AddMount(const std::string& mount_root,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
-  if (!credential_store_->AddCredentials(mount_root, workgroup, username,
-                                         password_fd)) {
+  if (!credential_store_->AddCredential(mount_root, workgroup, username,
+                                        password_fd)) {
     return false;
   }
 
@@ -73,8 +73,8 @@ bool MountManager::Remount(const std::string& mount_root,
   DCHECK(!IsAlreadyMounted(mount_id));
   DCHECK_GE(mount_id, 0);
 
-  if (!credential_store_->AddCredentials(mount_root, workgroup, username,
-                                         password_fd)) {
+  if (!credential_store_->AddCredential(mount_root, workgroup, username,
+                                        password_fd)) {
     return false;
   }
 
@@ -91,7 +91,7 @@ bool MountManager::RemoveMount(int32_t mount_id) {
   }
 
   bool removed =
-      credential_store_->RemoveCredentials(mount_iter->second.mount_root);
+      credential_store_->RemoveCredential(mount_iter->second.mount_root);
   DCHECK(removed);
 
   mounts_.Remove(mount_iter->first);

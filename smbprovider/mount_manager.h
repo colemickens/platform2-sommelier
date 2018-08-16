@@ -50,7 +50,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // re-used within the lifetime of this class. If |mount_root| is already
   // mounted, this returns false and |mount_id| will be unmodified. If
   // |workgroup|, |username|, and |password_fd| are provided, they will be used
-  // as credentials when interacting with the mount.
+  // as a credential when interacting with the mount.
   // TODO(zentaro): Review if this should have a maximum number of mounts,
   // even if it is relatively large. It may already be enforced at a higher
   // level.
@@ -63,7 +63,8 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not
   // be called after AddMount is called for the first time. Returns false if
   // |mount_root| is already mounted. If |workgroup| and |username| are
-  // provided, they will be used as credentials when interacting with the mount.
+  // provided, they will be used as a credential when interacting with the
+  // mount.
   bool Remount(const std::string& mount_root,
                int32_t mount_id,
                const std::string& workgroup,
@@ -98,8 +99,8 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   SambaInterface* GetSystemSambaInterface() const;
 
   // Samba authentication function callback. DCHECKS that the buffer lengths are
-  // non-zero. Returns false when buffer lengths cannot support credentials
-  // length or when credentials are not found for |share_path|.
+  // non-zero. Returns false when buffer lengths cannot support credential
+  // length or when credential are not found for |share_path|.
   bool GetAuthentication(const std::string& share_path,
                          char* workgroup,
                          int32_t workgroup_length,

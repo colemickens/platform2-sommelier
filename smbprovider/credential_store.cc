@@ -50,20 +50,20 @@ void CopyPasswordToBuffer(
   buffer[password->size()] = '\0';
 }
 
-// Checks that the credentials can be inputted given the buffer sizes. Returns
-// false if the buffers are too small or if the credentials are empty.
-bool CanInputCredentials(int32_t workgroup_length,
-                         int32_t username_length,
-                         int32_t password_length,
-                         const SmbCredentials& credentials) {
-  if (!CanBufferHoldString(credentials.workgroup, workgroup_length) ||
-      !CanBufferHoldString(credentials.username, username_length)) {
+// Checks that the credential can be inputted given the buffer sizes. Returns
+// false if the buffers are too small or if the credential is empty.
+bool CanInputCredential(int32_t workgroup_length,
+                        int32_t username_length,
+                        int32_t password_length,
+                        const SmbCredential& credential) {
+  if (!CanBufferHoldString(credential.workgroup, workgroup_length) ||
+      !CanBufferHoldString(credential.username, username_length)) {
     LOG(ERROR) << "Credential buffers are too small for input.";
     return false;
   }
 
-  if (credentials.password &&
-      !CanBufferHoldPassword(credentials.password, password_length)) {
+  if (credential.password &&
+      !CanBufferHoldPassword(credential.password, password_length)) {
     LOG(ERROR) << "Password buffer is too small for input.";
     return false;
   }
@@ -71,25 +71,25 @@ bool CanInputCredentials(int32_t workgroup_length,
   return true;
 }
 
-// Populates the |credentials| into the specified buffers. CanInputCredentials()
+// Populates the |credential| into the specified buffers. CanInputCredential()
 // should be called first in order to verify the buffers can contain the
-// credentials.
-void PopulateCredentials(const SmbCredentials& credentials,
-                         char* workgroup_buffer,
-                         char* username_buffer,
-                         char* password_buffer) {
+// credential.
+void PopulateCredential(const SmbCredential& credential,
+                        char* workgroup_buffer,
+                        char* username_buffer,
+                        char* password_buffer) {
   DCHECK(workgroup_buffer);
   DCHECK(username_buffer);
   DCHECK(password_buffer);
 
-  CopyStringToBuffer(credentials.workgroup, workgroup_buffer);
-  CopyStringToBuffer(credentials.username, username_buffer);
+  CopyStringToBuffer(credential.workgroup, workgroup_buffer);
+  CopyStringToBuffer(credential.username, username_buffer);
 
-  const bool empty_password = !credentials.password;
+  const bool empty_password = !credential.password;
   if (empty_password) {
     SetBufferEmpty(password_buffer);
   } else {
-    CopyPasswordToBuffer(credentials.password, password_buffer);
+    CopyPasswordToBuffer(credential.password, password_buffer);
   }
 }
 
@@ -131,8 +131,8 @@ bool CredentialStore::GetAuthentication(const std::string& share_path,
   DCHECK_GT(username_length, 0);
   DCHECK_GT(password_length, 0);
 
-  if (!HasCredentials(share_path)) {
-    LOG(ERROR) << "Credentials not found for " << share_path;
+  if (!HasCredential(share_path)) {
+    LOG(ERROR) << "Credential not found for " << share_path;
 
     SetBufferEmpty(workgroup);
     SetBufferEmpty(username);
@@ -140,10 +140,10 @@ bool CredentialStore::GetAuthentication(const std::string& share_path,
     return false;
   }
 
-  const SmbCredentials& credentials = GetCredentials(share_path);
-  if (!CanInputCredentials(workgroup_length, username_length, password_length,
-                           credentials)) {
-    LOG(ERROR) << "Buffers cannot support credentials for " << share_path;
+  const SmbCredential& credential = GetCredential(share_path);
+  if (!CanInputCredential(workgroup_length, username_length, password_length,
+                          credential)) {
+    LOG(ERROR) << "Buffers cannot support credential for " << share_path;
 
     SetBufferEmpty(workgroup);
     SetBufferEmpty(username);
@@ -151,7 +151,7 @@ bool CredentialStore::GetAuthentication(const std::string& share_path,
     return false;
   }
 
-  PopulateCredentials(credentials, workgroup, username, password);
+  PopulateCredential(credential, workgroup, username, password);
   return true;
 }
 
