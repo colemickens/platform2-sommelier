@@ -23,7 +23,6 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <pwd.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <sys/inotify.h>
@@ -509,7 +508,6 @@ void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
 }
 
 int AnomalyLexer(bool flag_filter, bool flag_test) {
-  struct passwd *user;
   prog_name = "anomaly_collector";
 
   testing = flag_test;
@@ -558,23 +556,6 @@ int AnomalyLexer(bool flag_filter, bool flag_test) {
   }
 
   stdin = freopen("/dev/null", "r", stdin);
-
-  if (0) {
-    /* TODO(semenzato): put this back in once we decide it's safe
-     * to make /var/spool/crash rwxrwxrwx root, or use a different
-     * owner and setuid for the crash reporter as well.
-     */
-
-    /* Get low privilege uid, gid. */
-    user = getpwnam("chronos");
-    if (user == NULL)
-      Die("getpwnam failed\n");
-
-    /* Drop privileges. */
-    if (setuid(user->pw_uid) < 0) {
-      Die("setuid: %s\n", strerror(errno));
-    }
-  }
 
   /* Go! */
   return yylex();
