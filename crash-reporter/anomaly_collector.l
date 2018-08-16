@@ -212,7 +212,6 @@ int yyin_fd;                    /* instead of FILE *yyin to avoid buffering */
 int i_fd;                       /* for inotify, to detect file changes */
 int testing;                    /* 1 if running test */
 int filter;                     /* 1 when using as filter (for development) */
-int fifo;                       /* 1 when reading from fifo (for devel) */
 int draining;                   /* 1 when draining renamed log file */
 KernelWarningType warn_type;    /* the type of kernel warning */
 
@@ -300,7 +299,7 @@ static void SetHashSeen(uint32_t *hash_bitmap, uint32_t hash) {
 
 static int AnomalyStart(const char *histogram_name, uint32_t *hash_bitmap,
                         uint32_t hash) {
-  if (!(testing || fifo || filter)) {
+  if (!(testing || filter)) {
     CMetricsLibrarySendSparseToUMA(metrics_library, histogram_name, (int) hash);
   }
   if (HashSeen(hash_bitmap, hash))
@@ -455,7 +454,7 @@ void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
     if (ret < 0)
       Die("read: %s", strerror(errno));
     *result = ret;
-    if (*result > 0 || fifo || filter)
+    if (*result > 0 || filter)
       return;
     if (draining) {
       /* Assume we're done with this log, and move to next
@@ -507,13 +506,10 @@ int main(int argc, char **argv) {
     testing = 1;
   else if (argc == 2 && strcmp(argv[1], "--filter") == 0)
     filter = 1;
-  else if (argc == 2 && strcmp(argv[1], "--fifo") == 0) {
-    fifo = 1;
-  } else if (argc != 1) {
+  else if (argc != 1) {
     fprintf(stderr,
             "usage: %s [single-flag]\n"
             "flags (for testing only):\n"
-            "--fifo\tinput is fifo \"fifo\", output is stdout\n"
             "--filter\tinput is stdin, output is stdout\n"
             "--test\trun self-test\n",
             prog_name);
@@ -544,27 +540,22 @@ int main(int argc, char **argv) {
     "/sbin/crash_reporter --selinux_violation";
 
   /* When filtering with --filter (for development) use stdin for input.
-   * Otherwise read input from a file or a fifo.
+   * Otherwise read input from a file.
    */
   yyin_fd = dup(fileno(stdin));
   if (testing) {
     msg_path = "messages";
   }
-  if (fifo) {
-    msg_path = "fifo";
-  }
   if (!filter) {
     CollectorOpenInput(msg_path);
 
-    if (!fifo) {
-      /* Go directly to the end of the file.  We don't want to parse the same
-       * anomalies multiple times on reboot/restart.  We might miss some
-       * anomalies, but so be it---it's too hard to keep track reliably of the
-       * last parsed position in the syslog.
-       */
-      if (lseek(yyin_fd, 0, SEEK_END) < 0)
-        Die("could not lseek %s: %s\n", msg_path, strerror(errno));
-    }
+    /* Go directly to the end of the file.  We don't want to parse the same
+     * anomalies multiple times on reboot/restart.  We might miss some
+     * anomalies, but so be it---it's too hard to keep track reliably of the
+     * last parsed position in the syslog.
+     */
+    if (lseek(yyin_fd, 0, SEEK_END) < 0)
+      Die("could not lseek %s: %s\n", msg_path, strerror(errno));
   }
 
   stdin = freopen("/dev/null", "r", stdin);
