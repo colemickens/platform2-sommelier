@@ -53,18 +53,6 @@ gboolean cryptohome_list_keys_ex(Cryptohome* self,
                                  GArray* authorization,
                                  GArray* request,
                                  DBusGMethodInvocation* resp);
-gboolean cryptohome_migrate_key(Cryptohome* self,
-                                gchar* userid,
-                                gchar* from_key,
-                                gchar* to_key,
-                                gboolean* OUT_result,
-                                GError** error);
-gboolean cryptohome_async_migrate_key(Cryptohome* self,
-                                      gchar* userid,
-                                      gchar* from_key,
-                                      gchar* to_key,
-                                      gint* OUT_async_id,
-                                      GError** error);
 gboolean cryptohome_migrate_key_ex(Cryptohome* self,
                                    GArray* account,
                                    GArray* auth_request,

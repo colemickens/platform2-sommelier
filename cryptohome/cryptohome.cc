@@ -91,7 +91,6 @@ namespace switches {
                                    "remove_key_ex",
                                    "get_key_data_ex",
                                    "list_keys_ex",
-                                   "migrate_key",
                                    "migrate_key_ex",
                                    "add_key_ex",
                                    "update_key_ex",
@@ -151,7 +150,6 @@ namespace switches {
     ACTION_REMOVE_KEY_EX,
     ACTION_GET_KEY_DATA_EX,
     ACTION_LIST_KEYS_EX,
-    ACTION_MIGRATE_KEY,
     ACTION_MIGRATE_KEY_EX,
     ACTION_ADD_KEY_EX,
     ACTION_UPDATE_KEY_EX,
@@ -1046,55 +1044,6 @@ int main(int argc, char **argv) {
       return reply.error();
     }
     printf("Key authenticated.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY],
-                     action.c_str())) {
-    std::string account_id, password, old_password;
-
-    if (!GetAccountId(cl, &account_id)) {
-      return 1;
-    }
-
-    GetPassword(proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter the password for <%s>", account_id.c_str()),
-                &password);
-    GetPassword(
-        proxy, cl, switches::kOldPasswordSwitch,
-        StringPrintf("Enter the old password for <%s>", account_id.c_str()),
-        &old_password);
-
-    gboolean done = false;
-    brillo::glib::ScopedError error;
-
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      if (!org_chromium_CryptohomeInterface_migrate_key(proxy.gproxy(),
-               account_id.c_str(),
-               old_password.c_str(),
-               password.c_str(),
-               &done,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("MigrateKey call failed: %s.\n", error->message);
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_migrate_key(proxy.gproxy(),
-               account_id.c_str(),
-               old_password.c_str(),
-               password.c_str(),
-               &async_id,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("MigrateKey call failed: %s.\n", error->message);
-      } else {
-        client_loop.Run(async_id);
-        done = client_loop.get_return_status();
-      }
-    }
-    if (!done) {
-      printf("Key migration failed.\n");
-    } else {
-      printf("Key migration succeeded.\n");
-    }
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY_EX],
                      action.c_str())) {
     std::string account_id, password, old_password;

@@ -1245,48 +1245,6 @@ gboolean Service::GetKeyDataEx(GArray* account_id,
   return TRUE;
 }
 
-gboolean Service::MigrateKey(gchar *userid,
-                             gchar *from_key,
-                             gchar *to_key,
-                             gboolean *OUT_result,
-                             GError **error) {
-  UsernamePasskey credentials(userid,
-                              SecureBlob(to_key, to_key + strlen(to_key)));
-
-  MountTaskResult result;
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  scoped_refptr<MountTaskMigratePasskey> mount_task =
-      new MountTaskMigratePasskey(NULL, homedirs_, credentials, from_key,
-                                  NextSequence());
-  mount_task->set_result(&result);
-  mount_task->set_complete_event(&event);
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));
-  event.Wait();
-  *OUT_result = result.return_status();
-  return TRUE;
-}
-
-gboolean Service::AsyncMigrateKey(gchar *userid,
-                                  gchar *from_key,
-                                  gchar *to_key,
-                                  gint *OUT_async_id,
-                                  GError **error) {
-  UsernamePasskey credentials(userid,
-                              SecureBlob(to_key, to_key + strlen(to_key)));
-
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<MountTaskMigratePasskey> mount_task =
-      new MountTaskMigratePasskey(bridge, homedirs_, credentials, from_key,
-                                  NextSequence());
-  *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));
-  return TRUE;
-}
-
 void Service::DoMigrateKeyEx(AccountIdentifier* account,
                              AuthorizationRequest* auth_request,
                              MigrateKeyRequest* migrate_request,

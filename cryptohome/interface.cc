@@ -85,23 +85,6 @@ gboolean cryptohome_list_keys_ex(Cryptohome* self,
   // Leave the response called error to reuse WRAP.
   CRYPTOHOME_WRAP_METHOD(ListKeysEx, identifier, authorization, request);
 }
-gboolean cryptohome_migrate_key(Cryptohome* self,
-                                gchar* userid,
-                                gchar* from_key,
-                                gchar* to_key,
-                                gboolean* OUT_result,
-                                GError** error) {
-  CRYPTOHOME_WRAP_METHOD(MigrateKey, userid, from_key, to_key, OUT_result);
-}
-gboolean cryptohome_async_migrate_key(Cryptohome* self,
-                                      gchar* userid,
-                                      gchar* from_key,
-                                      gchar* to_key,
-                                      gint* OUT_async_id,
-                                      GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncMigrateKey, userid, from_key, to_key,
-                         OUT_async_id);
-}
 gboolean cryptohome_migrate_key_ex(Cryptohome* self,
                                    GArray* account,
                                    GArray* auth_request,
