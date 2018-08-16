@@ -145,8 +145,19 @@ int32_t SambaInterfaceImpl::GetDirectoryEntries(int32_t dir_id,
 
 int32_t SambaInterfaceImpl::GetDirectoryEntry(
     int32_t dir_id, const struct smbc_dirent** dirent) {
-  NOTREACHED();
-  return -1;
+  DCHECK(dirent);
+
+  SMBCFILE* dir = GetFile(dir_id);
+  if (!dir) {
+    return EBADF;
+  }
+
+  // errno must be set to 0 before the call because the function returns
+  // nullptr in both the error case and when there are no more files. When
+  // there are no more files errno remains untouched.
+  errno = 0;
+  *dirent = smbc_readdir_ctx_(context_, dir);
+  return errno;
 }
 
 int32_t SambaInterfaceImpl::GetDirectoryEntryWithMetadata(
