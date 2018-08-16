@@ -21,6 +21,7 @@
 #include "crash-reporter/anomaly_collector.h"
 
 #include <ctype.h>
+#include <err.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdarg.h>
@@ -214,7 +215,6 @@ typedef enum {
   kWarningTypeSuspend,
 } KernelWarningType;
 
-const char *prog_name;          /* the name of this program */
 int yyin_fd;                    /* instead of FILE *yyin to avoid buffering */
 int i_fd;                       /* for inotify, to detect file changes */
 int testing;                    /* 1 if running test */
@@ -231,23 +231,13 @@ const char *suspend_warn_crash_reporter_command;
 const char *service_fail_crash_reporter_command;
 const char *selinux_violation_crash_reporter_command;
 
-
-__attribute__((__format__(__printf__, 1, 2)))
-static void Die(const char *format, ...) {
-  va_list ap;
-  va_start(ap, format);
-  fprintf(stderr, "%s: ", prog_name);
-  vfprintf(stderr, format, ap);
-  exit(1);
-}
-
 static void RunCrashReporter(const char *crash_reporter_command) {
   stdin = freopen(dump_path, "r", stdin);
   int status = system(crash_reporter_command);
   unlink(dump_path);
   stdin = freopen("/dev/null", "r", stdin);
   if (status != 0)
-    Die("%s exited with status %d\n", crash_reporter_command, status);
+    err(status, "'%s' exited with status %d", crash_reporter_command, status);
 }
 
 static uint32_t StringHash(const char *string) {
@@ -317,10 +307,10 @@ static int AnomalyStart(const char *histogram_name, uint32_t *hash_bitmap,
   memset(dump_path + sizeof(dump_path) - 7, 'X', 6);
   int fd = mkostemp(dump_path, O_CLOEXEC);
   if (fd < 0)
-    Die("mkostemp failed: %s\n", strerror(errno));
+    err(1, "mkostemp failed");
   yyout = fdopen(fd, "w");
   if (yyout == NULL)
-    Die("fdopen failed: %s\n", strerror(errno));
+    err(1, "fdopen failed");
   return 1;
 }
 
@@ -438,14 +428,14 @@ void KernelWarnEnd(void) {
 static void CollectorOpenInput(const char *path) {
   yyin_fd = open(path, O_RDONLY);
   if (yyin_fd < 0)
-    Die("could not open %s: %s\n", path, strerror(errno));
+    err(1, "could not open %s", path);
 
   /* Set up notification of file growth and rename. */
   i_fd = inotify_init();
   if (i_fd < 0)
-    Die("inotify_init: %s\n", strerror(errno));
+    err(1, "inotify_init");
   if (inotify_add_watch(i_fd, path, IN_MODIFY | IN_MOVE_SELF) < 0)
-    Die("inotify_add_watch: %s\n", strerror(errno));
+    err(1, "inotify_add_watch");
 }
 
 /* We replace the default YY_INPUT() for the following reasons:
@@ -461,7 +451,7 @@ void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
   while (1) {
     ssize_t ret = read(yyin_fd, buf, max_size);
     if (ret < 0)
-      Die("read: %s", strerror(errno));
+      err(1, "read");
     *result = ret;
     if (*result > 0 || filter)
       return;
@@ -493,7 +483,7 @@ void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
         if (errno == EINTR)
           continue;
         else
-          Die("inotify: %s\n", strerror(errno));
+          err(1, "inotify");
       } else
         break;
     }
@@ -508,8 +498,6 @@ void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
 }
 
 int AnomalyLexer(bool flag_filter, bool flag_test) {
-  prog_name = "anomaly_collector";
-
   testing = flag_test;
   filter = flag_filter;
 
@@ -552,7 +540,7 @@ int AnomalyLexer(bool flag_filter, bool flag_test) {
      * last parsed position in the syslog.
      */
     if (lseek(yyin_fd, 0, SEEK_END) < 0)
-      Die("could not lseek %s: %s\n", msg_path, strerror(errno));
+      err(1, "could not lseek %s", msg_path);
   }
 
   stdin = freopen("/dev/null", "r", stdin);
