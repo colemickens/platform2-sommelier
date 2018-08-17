@@ -8,6 +8,8 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":libportier",
+    ":portier_cli",
+    ":portierd",
   ]
   if (use.test) {
     deps += [ ":portier_test" ]
@@ -18,6 +20,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "protobuf",
   ]
 }
 
@@ -54,6 +57,40 @@ static_library("libportier") {
   ]
   deps = [
     ":portier-protos",
+  ]
+}
+
+static_library("portier_cc_api") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "portier.cc",
+  ]
+  deps = [
+    ":libportier",
+  ]
+}
+
+executable("portier_cli") {
+  configs += [
+    ":libportier_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "client.cc",
+  ]
+  deps = [
+    ":portier_cc_api",
+  ]
+}
+
+executable("portierd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "portierd.cc",
+    "service.cc",
+  ]
+  deps = [
+    ":libportier",
   ]
 }
 
