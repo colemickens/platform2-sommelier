@@ -98,6 +98,8 @@ ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
     r'^OUT$',
     # Used by unit tests to access source data files.
     r'^SRC$',
+    # Used by unit tests to access data files outside of the source tree.
+    r'^T$',
 ])
 
 
@@ -342,11 +344,10 @@ class Platform2Test(object):
       # child creates after the child terminates.
       os.setpgid(0, 0)
 
-      # Remove sysroot from OUT & SRC environment variables.
-      if 'OUT' in os.environ:
-        os.environ['OUT'] = self.removeSysrootPrefix(os.environ['OUT'])
-      if 'SRC' in os.environ:
-        os.environ['SRC'] = self.removeSysrootPrefix(os.environ['SRC'])
+      # Remove sysroot from path environment variables.
+      for var in ('OUT', 'SRC', 'T'):
+        if var in os.environ:
+          os.environ[var] = self.removeSysrootPrefix(os.environ[var])
 
       # The TERM the user is leveraging might not exist in the sysroot.
       # Force a sane default that supports standard color sequences.
