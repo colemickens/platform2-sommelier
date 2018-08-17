@@ -16,6 +16,7 @@
 #include "portier/group.h"
 #include "portier/group_manager.h"
 #include "portier/icmpv6_socket.h"
+#include "portier/interface_disable_labels.h"
 #include "portier/ll_address.h"
 #include "portier/nd_msg.h"
 #include "portier/status.h"
@@ -39,7 +40,8 @@ namespace portier {
 //
 // The initialization of this interface requires the process have
 // CAP_NET_RAW.
-class ProxyInterface : public GroupMemberInterface<ProxyInterface> {
+class ProxyInterface : public GroupMemberInterface<ProxyInterface>,
+                       public InterfaceDisableLabels {
  public:
   enum class State {
     kInvalid,
@@ -179,11 +181,14 @@ class ProxyInterface : public GroupMemberInterface<ProxyInterface> {
                                  const shill::ByteString& original_body);
 
  protected:
-  // Callbacks hook from GroupMemberInterface.
+  // Callback hooks from GroupMemberInterface.
+  // Mark the interface as either being in a group or not.
+  void PostJoinGroup() override { ClearGroupless(); }
+  void PostLeaveGroup() override { MarkGroupless(); }
 
-  // Currently does nothing.
-  void PostJoinGroup() override;
-  void PostLeaveGroup() override;
+  // Callback hook from InterfaceDisableLabels.
+  void OnEnabled() override { EnableProxy(); }
+  void OnDisabled() override { DisableProxy(); }
 
  private:
   // Constructor.
@@ -232,6 +237,8 @@ class ProxyInterface : public GroupMemberInterface<ProxyInterface> {
   std::unique_ptr<EtherSocket> ipv6_sock_;
   // ICMP socket, used for sending only.
   std::unique_ptr<ICMPv6Socket> icmp_sock_;
+
+  friend class Group<ProxyInterface>;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterface);
 };

@@ -229,8 +229,10 @@ Status ProxyInterface::Init() {
            << "Failed to refresh IP address list on interface " << name();
   }
 
-  // Done.  Mark as disabled.
+  // Done.  Mark as disabled and groupless.
   state_ = State::kProxyDisabled;
+  // Don't call disable callback.
+  MarkGroupless(false);
 
   return Status();
 }
@@ -365,13 +367,6 @@ bool ProxyInterface::DisableProxy() {
   state_ = State::kProxyDisabled;
   return true;
 }
-
-// Callbacks.
-
-// protected.
-void ProxyInterface::PostJoinGroup() {}
-
-void ProxyInterface::PostLeaveGroup() {}
 
 bool ProxyInterface::Deinitialize() {
   if (!IsInitialized()) {

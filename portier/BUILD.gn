@@ -46,6 +46,7 @@ static_library("libportier") {
     "ether_socket.cc",
     "group.cc",
     "icmpv6_socket.cc",
+    "interface_disable_labels.cc",
     "ipv6_util.cc",
     "ll_address.cc",
     "nd_bpf.cc",
@@ -104,6 +105,7 @@ if (use.test) {
     sources = [
       "group_manager_test.cc",
       "group_test.cc",
+      "interface_disable_labels_test.cc",
       "ipv6_util_test.cc",
       "ll_address_test.cc",
       "nd_msg_test.cc",
