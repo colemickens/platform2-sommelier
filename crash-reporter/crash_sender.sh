@@ -675,12 +675,11 @@ send_crashes() {
 }
 
 main() {
-  if [ $# -ne 0 ]; then
-    lecho "Command line flags should not be passed: $*"
+  if [ $# -ne 1 ]; then
+    lecho "Wrong number of command line flags: $*"
     exit 1
   fi
-
-  TMP_DIR="$(mktemp -d /tmp/crash_sender.XXXXXX)"
+  TMP_DIR="$1"
 
   # Send system-wide crashes
   send_crashes "${CRASH_SPOOL}"

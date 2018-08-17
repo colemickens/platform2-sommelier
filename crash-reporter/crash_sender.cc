@@ -99,8 +99,15 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  base::FilePath temp_dir;
+  if (!base::CreateNewTempDirectory("crash_sender", &temp_dir)) {
+    PLOG(ERROR) << "Failed to create a temporary directory";
+    return EXIT_FAILURE;
+  }
+
   char shell_script_path[] = "/sbin/crash_sender.sh";
-  char* shell_argv[] = {shell_script_path, nullptr};
+  char* temp_dir_path = const_cast<char*>(temp_dir.value().c_str());
+  char* shell_argv[] = {shell_script_path, temp_dir_path, nullptr};
   execve(shell_argv[0], shell_argv, environ);
   return EXIT_FAILURE;  // execve() failed.
 }
