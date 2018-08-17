@@ -67,8 +67,9 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
       context,
       +[](SMBCCTX* context, const char* srv, const char* shr, char* wg,
           int32_t wglen, char* un, int32_t unlen, char* pw, int32_t pwlen) {
-        static_auth_callback->Run(GetMountRoot(srv, shr), wg, wglen, un, unlen,
-                                  pw, pwlen);
+        static_auth_callback->Run(
+            reinterpret_cast<SambaInterface::SambaInterfaceId>(context),
+            GetMountRoot(srv, shr), wg, wglen, un, unlen, pw, pwlen);
       });
 
   return base::WrapUnique(new SambaInterfaceImpl(context));

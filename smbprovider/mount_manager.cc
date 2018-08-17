@@ -160,13 +160,15 @@ std::unique_ptr<SambaInterface> MountManager::CreateSambaInterface() {
   return samba_interface_factory_.Run(this);
 }
 
-bool MountManager::GetAuthentication(const std::string& share_path,
-                                     char* workgroup,
-                                     int32_t workgroup_length,
-                                     char* username,
-                                     int32_t username_length,
-                                     char* password,
-                                     int32_t password_length) const {
+bool MountManager::GetAuthentication(
+    SambaInterface::SambaInterfaceId samba_interface_id,
+    const std::string& share_path,
+    char* workgroup,
+    int32_t workgroup_length,
+    char* username,
+    int32_t username_length,
+    char* password,
+    int32_t password_length) const {
   DCHECK_GT(workgroup_length, 0);
   DCHECK_GT(username_length, 0);
   DCHECK_GT(password_length, 0);

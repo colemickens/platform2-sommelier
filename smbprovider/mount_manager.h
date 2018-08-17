@@ -101,7 +101,8 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Samba authentication function callback. DCHECKS that the buffer lengths are
   // non-zero. Returns false when buffer lengths cannot support credential
   // length or when credential are not found for |share_path|.
-  bool GetAuthentication(const std::string& share_path,
+  bool GetAuthentication(SambaInterface::SambaInterfaceId samba_interface_id,
+                         const std::string& share_path,
                          char* workgroup,
                          int32_t workgroup_length,
                          char* username,

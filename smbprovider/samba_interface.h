@@ -19,6 +19,8 @@ namespace smbprovider {
 // smb:// urls. The methods will return errno on failure.
 class SambaInterface {
  public:
+  using SambaInterfaceId = uintptr_t;
+
   SambaInterface() = default;
   virtual ~SambaInterface() = default;
 
