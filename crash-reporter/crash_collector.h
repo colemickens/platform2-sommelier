@@ -7,9 +7,9 @@
 
 #include <sys/stat.h>
 
-#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -123,9 +123,8 @@ class CrashCollector {
   void StripMacAddresses(std::string* contents);
   void StripEmailAddresses(std::string* contents);
 
-  virtual bool GetActiveUserSessions(
-      std::map<std::string, std::string>* sessions);
-  base::FilePath GetUserCrashPath();
+  bool GetUserCrashDirectories(std::vector<base::FilePath>* directories);
+  base::FilePath GetUserCrashDirectory();
   base::FilePath GetCrashDirectoryInfo(uid_t process_euid,
                                        uid_t default_user_id,
                                        gid_t default_user_group,
@@ -235,7 +234,7 @@ class CrashCollector {
   scoped_refptr<dbus::Bus> bus_;
 
   // D-Bus proxy for session manager interface.
-  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy>
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;
 
   // Hash a string to a number.  We define our own hash function to not

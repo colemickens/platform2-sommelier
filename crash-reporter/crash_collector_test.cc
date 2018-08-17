@@ -20,7 +20,6 @@
 using base::FilePath;
 using base::StringPrintf;
 using brillo::FindLog;
-using ::testing::Invoke;
 using ::testing::Return;
 
 namespace {
@@ -32,13 +31,6 @@ void CountCrash() {
 bool IsMetrics() {
   ADD_FAILURE();
   return false;
-}
-
-bool GetActiveUserSessionsImpl(std::map<std::string, std::string>* sessions) {
-  char kUser[] = "chicken@butt.com";
-  char kHash[] = "hashcakes";
-  sessions->insert(std::pair<std::string, std::string>(kUser, kHash));
-  return true;
 }
 
 }  // namespace
@@ -248,8 +240,9 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kRootGid, directory_group);
 
-  EXPECT_CALL(collector_, GetActiveUserSessions(testing::_))
-      .WillOnce(Invoke(&GetActiveUserSessionsImpl));
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  test_util::SetActiveSessions(mock, {{"user", "hashcakes"}});
+  collector_.session_manager_proxy_.reset(mock);
 
   EXPECT_EQ(collector_.IsUserSpecificDirectoryEnabled(), true);
 

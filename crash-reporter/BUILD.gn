@@ -26,7 +26,10 @@ group("all") {
 }
 
 pkg_config("libcrash_config") {
-  pkg_deps = [ "libchrome-${libbase_ver}" ]
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libsession_manager-client",
+  ]
 }
 
 static_library("libcrash") {
@@ -179,8 +182,17 @@ if (use.cheets) {
 }
 
 if (use.test) {
+  pkg_config("crash_reporter_test_config") {
+    pkg_deps = [
+      "libsession_manager-client-test",
+    ]
+  }
+
   executable("crash_reporter_test") {
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":crash_reporter_test_config",
+    ]
     sources = [
       "chrome_collector_test.cc",
       "crash_collector_test.cc",

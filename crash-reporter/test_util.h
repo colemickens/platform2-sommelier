@@ -5,8 +5,13 @@
 #ifndef CRASH_REPORTER_TEST_UTIL_H_
 #define CRASH_REPORTER_TEST_UTIL_H_
 
+#include <map>
+#include <string>
+
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
+
+#include <session_manager/dbus-proxy-mocks.h>
 
 namespace test_util {
 
@@ -14,6 +19,10 @@ namespace test_util {
 // Returns true on success. If you want the test function to stop when the file
 // creation failed, wrap this function with ASSERT_TRUE().
 bool CreateFile(const base::FilePath& file_path, base::StringPiece content);
+
+// Configures |mock| so that RetrieveActiveSessions() returns |sessions|.
+void SetActiveSessions(org::chromium::SessionManagerInterfaceProxyMock* mock,
+                       const std::map<std::string, std::string>& sessions);
 
 }  // namespace test_util
 

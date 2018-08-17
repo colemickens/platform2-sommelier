@@ -8,6 +8,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include <memory>
+
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
@@ -148,6 +150,24 @@ TEST_F(CrashCommonUtilTest, GetCachedKeyValueDefault) {
   EXPECT_TRUE(
       GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
   EXPECT_EQ("1", value);
+}
+
+TEST_F(CrashCommonUtilTest, GetUserCrashDirectories) {
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+
+  std::vector<base::FilePath> directories;
+
+  test_util::SetActiveSessions(mock.get(), {});
+  EXPECT_TRUE(GetUserCrashDirectories(mock.get(), &directories));
+  EXPECT_TRUE(directories.empty());
+
+  test_util::SetActiveSessions(mock.get(),
+                               {{"user1", "hash1"}, {"user2", "hash2"}});
+  EXPECT_TRUE(GetUserCrashDirectories(mock.get(), &directories));
+  EXPECT_EQ(2, directories.size());
+  EXPECT_EQ("/home/user/hash1/crash", directories[0].value());
+  EXPECT_EQ("/home/user/hash2/crash", directories[1].value());
 }
 
 }  // namespace util

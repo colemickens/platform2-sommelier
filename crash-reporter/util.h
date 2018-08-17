@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <session_manager/dbus-proxies.h>
 
 namespace util {
 
@@ -35,6 +36,12 @@ bool GetCachedKeyValue(const base::FilePath& base_name,
 bool GetCachedKeyValueDefault(const base::FilePath& base_name,
                               const std::string& key,
                               std::string* value);
+
+// Gets the user crash directories via D-Bus using |session_manager_proxy|.
+// Returns true on success. The original contents of |directories| will be lost.
+bool GetUserCrashDirectories(
+    org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
+    std::vector<base::FilePath>* directories);
 
 }  // namespace util
 

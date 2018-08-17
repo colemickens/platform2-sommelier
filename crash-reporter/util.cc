@@ -4,8 +4,11 @@
 
 #include "crash-reporter/util.h"
 
+#include <map>
+
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
+#include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
 
 #include "crash-reporter/paths.h"
@@ -78,6 +81,31 @@ bool GetCachedKeyValueDefault(const base::FilePath& base_name,
       paths::Get(paths::kEtcDirectory),
   };
   return GetCachedKeyValue(base_name, key, kDirectories, value);
+}
+
+bool GetUserCrashDirectories(
+    org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
+    std::vector<base::FilePath>* directories) {
+  directories->clear();
+
+  brillo::ErrorPtr error;
+  std::map<std::string, std::string> sessions;
+  session_manager_proxy->RetrieveActiveSessions(&sessions, &error);
+
+  if (error) {
+    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
+               << "'" << session_manager_proxy->GetObjectPath().value()
+               << "': " << error->GetMessage();
+    return false;
+  }
+
+  for (auto iter : sessions) {
+    directories->push_back(
+        brillo::cryptohome::home::GetHashedUserPath(iter.second)
+            .Append("crash"));
+  }
+
+  return true;
 }
 
 }  // namespace util

@@ -14,6 +14,7 @@
 #include <unistd.h>        // For execv and fork.
 
 #include <ctime>
+#include <map>
 #include <set>
 #include <vector>
 
@@ -28,7 +29,6 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 
@@ -390,38 +390,26 @@ FilePath CrashCollector::GetCrashPath(const FilePath& crash_directory,
       StringPrintf("%s.%s", basename.c_str(), extension.c_str()));
 }
 
-bool CrashCollector::GetActiveUserSessions(
-    std::map<std::string, std::string>* sessions) {
-  brillo::ErrorPtr error;
+bool CrashCollector::GetUserCrashDirectories(
+    std::vector<FilePath>* directories) {
   SetUpDBus();
-  session_manager_proxy_->RetrieveActiveSessions(sessions, &error);
-
-  if (error) {
-    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
-               << "'" << session_manager_proxy_->GetObjectPath().value()
-               << "':" << error->GetMessage();
-    return false;
-  }
-
-  return true;
+  return util::GetUserCrashDirectories(session_manager_proxy_.get(),
+                                       directories);
 }
 
-FilePath CrashCollector::GetUserCrashPath() {
+FilePath CrashCollector::GetUserCrashDirectory() {
   // In this multiprofile world, there is no one-specific user dir anymore.
   // Ask the session manager for the active ones, then just run with the
   // first result we get back.
-  FilePath user_path = FilePath(kFallbackUserCrashPath);
-  std::map<std::string, std::string> active_sessions;
-  if (!GetActiveUserSessions(&active_sessions) || active_sessions.empty()) {
-    LOG(ERROR) << "Could not get active user sessions, using default.";
-    return user_path;
+  FilePath user_directory = FilePath(kFallbackUserCrashPath);
+  std::vector<FilePath> directories;
+  if (!GetUserCrashDirectories(&directories) || directories.empty()) {
+    LOG(ERROR) << "Could not get user crash directories, using default.";
+    return user_directory;
   }
 
-  user_path = brillo::cryptohome::home::GetHashedUserPath(
-                  active_sessions.begin()->second)
-                  .Append("crash");
-
-  return user_path;
+  user_directory = directories[0];
+  return user_directory;
 }
 
 FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
@@ -441,7 +429,7 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
     *directory_group = default_user_group;
-    return GetUserCrashPath();
+    return GetUserCrashDirectory();
   } else {
     *mode = kSystemCrashDirectoryMode;
     *directory_owner = kRootUid;
