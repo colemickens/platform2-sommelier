@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
 #include <metrics/metrics_library.h>
@@ -31,20 +32,22 @@
 
 #define PROP_SIZE 64
 
-constexpr char kBioCryptoInitPath[] = "/usr/bin/bio_crypto_init";
-constexpr char kBioTpmSeedSalt[] = "biod";
-constexpr char kBioTpmSeedTmpDir[] = "/run/bio_crypto_init";
-constexpr char kBioTpmSeedFile[] = "seed";
-static const gchar* const kNvramExport = "/tmp/lockbox.nvram";
-static const uid_t kBiodUid = 282;
-static const gid_t kBiodGid = 282;
-
 #if DEBUG_ENABLED
 struct timeval tick = {};
 struct timeval tick_start = {};
 #endif
 
-static const char kMountEncryptedMetricsPath[] = "/run/metrics.mount-encrypted";
+namespace {
+constexpr char kBioCryptoInitPath[] = "/usr/bin/bio_crypto_init";
+constexpr char kBioTpmSeedSalt[] = "biod";
+constexpr char kBioTpmSeedTmpDir[] = "/run/bio_crypto_init";
+constexpr char kBioTpmSeedFile[] = "seed";
+static const uid_t kBiodUid = 282;
+static const gid_t kBiodGid = 282;
+
+constexpr char kNvramExport[] = "/tmp/lockbox.nvram";
+constexpr char kMountEncryptedMetricsPath[] = "/run/metrics.mount-encrypted";
+}  // namespace
 
 namespace metrics {
 const char kSystemKeyStatus[] = "Platform.MountEncrypted.SystemKeyStatus";
@@ -57,9 +60,9 @@ static result_code get_system_property(const char* prop, char* buf,
                                        size_t length) {
   const char* rc;
 
-  DEBUG("Fetching System Property '%s'", prop);
+  LOG(INFO) << "Fetching System Property: " << prop;
   rc = VbGetSystemPropertyString(prop, buf, length);
-  DEBUG("Got System Property 'mainfw_type': %s", rc ? buf : "FAIL");
+  LOG(INFO) << "Got System Property 'mainfw_type': " << (rc ? buf : "FAIL");
 
   return rc != NULL ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
 }
@@ -117,7 +120,7 @@ static result_code finalize_from_cmdline(
   // Load the encryption key.
   brillo::SecureBlob encryption_key = encrypted_fs.GetKey();
   if (encryption_key.empty()) {
-    ERROR("Could not get mount encryption key");
+    LOG(ERROR) << "Could not get mount encryption key";
     return RESULT_FAIL_FATAL;
   }
 
@@ -161,14 +164,14 @@ static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs,
 /* Exports NVRAM contents to tmpfs for use by install attributes */
 void nvram_export(const brillo::SecureBlob& contents) {
   int fd;
-  DEBUG("Export NVRAM contents");
+  LOG(INFO) << "Export NVRAM contents";
   fd = open(kNvramExport, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
   if (fd < 0) {
-    perror("open(nvram_export)");
+    PLOG(ERROR) << "open(nvram_export)";
     return;
   }
   if (write(fd, contents.data(), contents.size()) != contents.size()) {
-    /* Don't leave broken files around */
+    // Don't leave broken files around
     unlink(kNvramExport);
   }
   close(fd);
@@ -182,12 +185,10 @@ void RecordEnumeratedHistogram(MetricsLibrary* metrics,
                          static_cast<int>(Enum::kCount));
 }
 
-/*
- * Send a secret derived from the system key to the biometric managers, if
- * available, via a tmpfs file which will be read by bio_crypto_init.
- */
+// Send a secret derived from the system key to the biometric managers, if
+// available, via a tmpfs file which will be read by bio_crypto_init.
 bool SendSecretToBiodTmpFile(const EncryptionKey& key) {
-  /* If there isn't a bio-sensor, don't bother. */
+  // If there isn't a bio-sensor, don't bother.
   if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
     LOG(INFO) << "There is no biod, so skip sending TPM seed.";
     return true;
@@ -241,7 +242,7 @@ int main(int argc, char* argv[]) {
   metrics.Init();
   metrics.SetOutputFile(kMountEncryptedMetricsPath);
 
-  INFO_INIT("Starting.");
+  LOG(INFO) << "Starting.";
 
   bool use_factory_system_key = false;
   if (argc > 1) {
@@ -261,10 +262,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
-   * chromeos_startup do the stateful wipe.
-   */
-
+  // For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
+  // chromeos_startup do the stateful wipe.
   RecordEnumeratedHistogram(&metrics, metrics::kEncryptedFsType,
                             encrypted_fs.GetType());
   rc = encrypted_fs.CheckStates();
@@ -317,8 +316,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  INFO_DONE("Done.");
+  LOG(INFO) << "Done.";
 
-  /* Continue boot. */
+  // Continue boot.
   return rc;
 }
