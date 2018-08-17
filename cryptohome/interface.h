@@ -109,13 +109,6 @@ gboolean cryptohome_is_mounted_for_user(Cryptohome* self,
                                         gboolean* OUT_is_mounted,
                                         gboolean* OUT_is_ephemeral_mount,
                                         GError** error);
-gboolean cryptohome_mount_guest(Cryptohome* self,
-                                gint* OUT_error_code,
-                                gboolean* OUT_result,
-                                GError** error);
-gboolean cryptohome_async_mount_guest(Cryptohome* self,
-                                      gint* OUT_async_id,
-                                      GError** error);
 gboolean cryptohome_mount_guest_ex(Cryptohome* self,
                                    GArray* request,
                                    DBusGMethodInvocation* resp);

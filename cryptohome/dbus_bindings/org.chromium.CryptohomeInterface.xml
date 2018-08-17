@@ -116,13 +116,6 @@
       <arg type="ay" name="mount_request" direction="in" />
       <arg type="ay" name="mount_reply" direction="out" />
     </method>
-    <method name="MountGuest">
-      <arg type="i" name="error_num" direction="out" />
-      <arg type="b" name="done" direction="out" />
-    </method>
-    <method name="AsyncMountGuest">
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <!-- This may be called asynchronously. -->
     <method name="MountGuestEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />

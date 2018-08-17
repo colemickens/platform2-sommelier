@@ -78,14 +78,6 @@ void MountTaskMount::Run() {
     mount_->UpdateCurrentUserActivityTimestamp(0);
 }
 
-void MountTaskMountGuest::Run() {
-  if (mount_) {
-    bool status = mount_->MountGuestCryptohome();
-    result()->set_return_status(status);
-  }
-  MountTask::Notify();
-}
-
 void MountTaskMigratePasskey::Run() {
   CHECK(homedirs_);
   bool status = homedirs_->Migrate(credentials_, old_key_);

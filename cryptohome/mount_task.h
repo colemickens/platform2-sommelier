@@ -323,21 +323,6 @@ class MountTaskMount : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskMount);
 };
 
-// Implements asychronous calls to Mount::MountGuest()
-class MountTaskMountGuest : public MountTask {
- public:
-  MountTaskMountGuest(MountTaskObserver* observer,
-                      Mount* mount,
-                      int sequence_id)
-      : MountTask(observer, mount, sequence_id) {}
-  virtual ~MountTaskMountGuest() {}
-
-  virtual void Run();
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MountTaskMountGuest);
-};
-
 // Implements asychronous calls to HomeDirs::Migrate()
 // TODO(ellyjones): move this out of MountTask, as it doesn't take a Mount.
 class MountTaskMigratePasskey : public MountTask {

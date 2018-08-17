@@ -801,38 +801,6 @@ int main(int argc, char **argv) {
       return reply.error();
     }
     printf("Mount succeeded.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST],
-                action.c_str())) {
-    gboolean done = false;
-    gint mount_error = 0;
-    brillo::glib::ScopedError error;
-
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      if (!org_chromium_CryptohomeInterface_mount_guest(proxy.gproxy(),
-               &mount_error,
-               &done,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("MountGuest call failed: %s, with reason code: %d.\n",
-               error->message, mount_error);
-      }
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_mount_guest(proxy.gproxy(),
-               &async_id,
-               &brillo::Resetter(&error).lvalue())) {
-        printf("Mount call failed: %s.\n", error->message);
-      } else {
-        client_loop.Run(async_id);
-        done = client_loop.get_return_status();
-      }
-    }
-    if (!done) {
-      printf("Mount failed.\n");
-      return 1;
-    }
-    printf("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST_EX],
                      action.c_str())) {
     cryptohome::BaseReply reply;
