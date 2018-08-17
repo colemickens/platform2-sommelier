@@ -108,6 +108,72 @@
         ],
       },
     },
+    {
+      'target_name': 'notification-protocol',
+      'type': 'static_library',
+      'variables': {
+        'wayland_in_dir': 'notificationd/protocol',
+        'wayland_out_dir': '.',
+      },
+      'sources': [
+        'notificationd/protocol/notification-shell-unstable-v1.xml',
+      ],
+      'includes': ['sommelier/wayland-protocol.gypi'],
+    },
+    {
+      'target_name': 'libnotificationd',
+      'type': 'static_library',
+      'variables': {
+        'exported_deps': [
+          'wayland-client',
+          'wayland-server',
+        ],
+        'deps': [
+          'dbus-1',
+          'libbrillo-<(libbase_ver)',
+          '<@(exported_deps)',
+        ],
+      },
+      'dependencies': [
+        'notification-protocol',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'sources': [
+        'notificationd/dbus_service.cc',
+        'notificationd/notification_daemon.cc',
+        'notificationd/notification_shell_client.cc',
+      ],
+      'defines': [
+        'WL_HIDE_DEPRECATED',
+      ],
+    },
+    {
+      'target_name': 'notificationd',
+      'type': 'executable',
+      'variables': {
+        'exported_deps': [
+          'wayland-client',
+          'wayland-server',
+        ],
+        'deps': [
+          'dbus-1',
+          'libbrillo-<(libbase_ver)',
+          '<@(exported_deps)',
+        ],
+      },
+      'dependencies': [
+        'notification-protocol',
+        'libnotificationd',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'sources': [
+        'notificationd/notificationd.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -183,6 +249,30 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'garcon/mime_types_parser_test.cc',
+          ],
+        },
+        {
+          'target_name': 'notificationd_test',
+          'type': 'executable',
+          'variables': {
+            'exported_deps': [
+              'wayland-client',
+              'wayland-server',
+            ],
+            'deps': [
+              'dbus-1',
+              'libbrillo-<(libbase_ver)',
+              '<@(exported_deps)',
+            ],
+          },
+          'dependencies': [
+            'notification-protocol',
+            'libnotificationd',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'notificationd/dbus_service_test.cc',
           ],
         },
       ],
