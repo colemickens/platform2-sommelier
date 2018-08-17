@@ -583,7 +583,12 @@ void CrosFpBiometricsManager::SetSessionFailedHandler(
 }
 
 bool CrosFpBiometricsManager::SendStatsOnLogin() {
-  return biod_metrics_->SendEnrolledFingerCount(records_.size());
+  bool rc = true;
+  rc = biod_metrics_->SendEnrolledFingerCount(records_.size()) && rc;
+  // Even though it looks a bit redundant with the finger count, it's easier to
+  // discover and interpret.
+  rc = biod_metrics_->SendFpUnlockEnabled(!records_.empty()) && rc;
+  return rc;
 }
 
 void CrosFpBiometricsManager::EndEnrollSession() {

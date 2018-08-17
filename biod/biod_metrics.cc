@@ -10,6 +10,7 @@ namespace biod {
 
 namespace metrics {
 
+constexpr char kFpUnlockEnabled[] = "Fingerprint.UnlockEnabled";
 constexpr char kFpEnrolledFingerCount[] =
     "Fingerprint.Unlock.EnrolledFingerCount";
 constexpr char kFpMatchDurationCapture[] =
@@ -37,24 +38,27 @@ bool BiodMetrics::SendEnrolledFingerCount(int finger_count) {
                                      finger_count, 10);
 }
 
-bool BiodMetrics::SendFpLatencyStats(bool matched, int capture_ms, int match_ms,
-                        int overall_ms) {
+bool BiodMetrics::SendFpUnlockEnabled(bool enabled) {
+  return metrics_lib_->SendBoolToUMA(metrics::kFpUnlockEnabled, enabled);
+}
+
+bool BiodMetrics::SendFpLatencyStats(bool matched,
+                                     int capture_ms,
+                                     int match_ms,
+                                     int overall_ms) {
   bool rc = true;
-  if (!metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationCapture :
-                               metrics::kFpNoMatchDurationCapture,
-                               capture_ms, 0, 200, 20)) {
-    rc = false;
-  }
-  if (!metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationMatcher :
-                               metrics::kFpNoMatchDurationMatcher,
-                               match_ms, 100, 800, 50)) {
-    rc = false;
-  }
-  if (!metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationOverall :
-                                     metrics::kFpNoMatchDurationOverall,
-                                     overall_ms, 100, 1000, 50)) {
-    rc = false;
-  }
+  rc = metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationCapture
+                                       : metrics::kFpNoMatchDurationCapture,
+                               capture_ms, 0, 200, 20) &&
+       rc;
+  rc = metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationMatcher
+                                       : metrics::kFpNoMatchDurationMatcher,
+                               match_ms, 100, 800, 50) &&
+       rc;
+  rc = metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationOverall
+                                       : metrics::kFpNoMatchDurationOverall,
+                               overall_ms, 100, 1000, 50) &&
+       rc;
   return rc;
 }
 

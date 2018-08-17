@@ -33,6 +33,9 @@ class BiodMetrics {
   // Send number of fingers enrolled.
   bool SendEnrolledFingerCount(int finger_count);
 
+  // Is unlocking with FP enabled or not?
+  bool SendFpUnlockEnabled(bool enabled);
+
   // Send matching/capture latency metrics.
   bool SendFpLatencyStats(bool matched, int capture_ms, int match_ms,
                           int overall_ms);

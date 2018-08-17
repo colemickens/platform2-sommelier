@@ -41,6 +41,13 @@ TEST_F(BiodMetricsTest, SendEnrolledFingerCount) {
   biod_metrics_.SendEnrolledFingerCount(finger_count);
 }
 
+TEST_F(BiodMetricsTest, SendFpUnlockEnabled) {
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, true)).Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, false)).Times(1);
+  biod_metrics_.SendFpUnlockEnabled(true);
+  biod_metrics_.SendFpUnlockEnabled(false);
+}
+
 TEST_F(BiodMetricsTest, SendFpLatencyStatsOnMatch) {
   EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
       metrics::kFpMatchDurationCapture, _, _, _, _)).Times(1);
