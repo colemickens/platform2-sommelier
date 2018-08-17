@@ -43,7 +43,6 @@ BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
 
 BaseDirectoryIterator::BaseDirectoryIterator(BaseDirectoryIterator&& other)
     : dir_path_(std::move(other.dir_path_)),
-      dir_buf_(std::move(other.dir_buf_)),
       entries_(std::move(other.entries_)),
       current_entry_index_(other.current_entry_index_),
       batch_size_(other.batch_size_),
@@ -193,29 +192,6 @@ int32_t BaseDirectoryIterator::ReadEntriesWithMetadataToVector() {
 void BaseDirectoryIterator::ClearVector() {
   entries_.clear();
   current_entry_index_ = 0;
-}
-
-int32_t BaseDirectoryIterator::ReadEntriesToBuffer(int32_t* bytes_read) {
-  return samba_interface_->GetDirectoryEntries(
-      dir_id_, GetDirentFromBuffer(dir_buf_.data()), dir_buf_.size(),
-      bytes_read);
-}
-
-void BaseDirectoryIterator::ConvertBufferToVector(int32_t bytes_read) {
-  ClearVector();
-  const smbc_dirent* dirent = GetDirentFromBuffer(dir_buf_.data());
-
-  int32_t bytes_left = bytes_read;
-  while (bytes_left > 0) {
-    AddEntryIfValid(*dirent);
-    DCHECK_GT(dirent->dirlen, 0);
-    DCHECK_GE(bytes_left, dirent->dirlen);
-
-    bytes_left -= dirent->dirlen;
-    dirent = AdvanceConstDirEnt(dirent);
-    DCHECK(dirent);
-  }
-  DCHECK_EQ(bytes_left, 0);
 }
 
 void BaseDirectoryIterator::AddEntryIfValid(const smbc_dirent& dirent) {

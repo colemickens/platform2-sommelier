@@ -79,14 +79,6 @@ class BaseDirectoryIterator {
   // Clears the |entries_| vector and resets |current_entry_index_| to 0.
   void ClearVector();
 
-  // Converts the buffer into the vector of entries. Also resets
-  // |current_entry_index_|.
-  void ConvertBufferToVector(int32_t bytes_read);
-
-  // Reads the next batch of entries for |dir_id_| into the buffer. Returns 0
-  // on success and errno on failure.
-  int32_t ReadEntriesToBuffer(int32_t* bytes_read);
-
   // Opens the directory at |dir_path_|, setting |dir_id|. Returns 0 on success
   // and errno on failure.
   int32_t OpenDirectory();
@@ -103,14 +95,9 @@ class BaseDirectoryIterator {
   void AddEntryIfValid(const struct libsmb_file_info& file_info);
 
   const std::string dir_path_;
-  // |dir_buf_| is used as the buffer for reading directory entries from Samba
-  // interface. Its initial capacity is specified in the BaseDirectoryIterator
-  // constructor.
-  std::vector<uint8_t> dir_buf_;
   std::vector<DirectoryEntry> entries_;
   uint32_t current_entry_index_ = 0;
-  // When include_metadata_ is true |batch_size_| is the number of entries to
-  // populate at one time. It is 0 when include_metadata_ is false.
+  // |batch_size_| is the number of entries to populate at one time.
   size_t batch_size_ = 0;
   // |dir_id_| represents the fd for the open directory at |dir_path_|.
   int32_t dir_id_ = -1;
