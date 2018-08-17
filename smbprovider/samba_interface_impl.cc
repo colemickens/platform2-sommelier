@@ -122,27 +122,6 @@ int32_t SambaInterfaceImpl::CloseDirectory(int32_t dir_id) {
   return smbc_closedir_ctx_(context_, dir) >= 0 ? 0 : errno;
 }
 
-int32_t SambaInterfaceImpl::GetDirectoryEntries(int32_t dir_id,
-                                                smbc_dirent* dirp,
-                                                int32_t dirp_buffer_size,
-                                                int32_t* bytes_read) {
-  DCHECK(dirp);
-  DCHECK(bytes_read);
-
-  SMBCFILE* dir = GetFile(dir_id);
-  if (!dir) {
-    return EBADF;
-  }
-
-  *bytes_read = smbc_getdents_ctx_(context_, dir, dirp, dirp_buffer_size);
-  if (*bytes_read < 0) {
-    *bytes_read = -1;
-    return errno;
-  }
-
-  return 0;
-}
-
 int32_t SambaInterfaceImpl::GetDirectoryEntry(
     int32_t dir_id, const struct smbc_dirent** dirent) {
   DCHECK(dirent);
@@ -397,7 +376,6 @@ SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {
   smbc_close_ctx_ = smbc_getFunctionClose(context);
   smbc_closedir_ctx_ = smbc_getFunctionClosedir(context);
   smbc_ftruncate_ctx_ = smbc_getFunctionFtruncate(context);
-  smbc_getdents_ctx_ = smbc_getFunctionGetdents(context);
   smbc_lseek_ctx_ = smbc_getFunctionLseek(context);
   smbc_mkdir_ctx_ = smbc_getFunctionMkdir(context);
   smbc_open_ctx_ = smbc_getFunctionOpen(context);

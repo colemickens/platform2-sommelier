@@ -45,18 +45,6 @@ class SambaInterface {
   // Returns 0 on success, and errno on failure.
   virtual int32_t CloseDirectory(int32_t dir_id) WARN_UNUSED_RESULT = 0;
 
-  // Gets multiple directory entries.
-  // Returns 0 on success, and errno on failure.
-  // |dir_id| is the directory_id from OpenDirectory().
-  // |dirp| is the pointer to a buffer that will receive the directory entries.
-  // |dirp_buffer_size| is the size of the |dirp| buffer in bytes.
-  // |bytes_read| is the number of bytes read, this will be -1 on failure.
-  virtual int32_t GetDirectoryEntries(int32_t dir_id,
-                                      smbc_dirent* dirp,
-                                      int32_t dirp_buffer_size,
-                                      int32_t* bytes_read)
-      WARN_UNUSED_RESULT = 0;
-
   virtual int32_t GetDirectoryEntry(
       int32_t dir_id, const struct smbc_dirent** dirent) WARN_UNUSED_RESULT = 0;
 

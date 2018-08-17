@@ -25,18 +25,11 @@ namespace smbprovider {
 
 using PathParts = const std::vector<std::string>;
 
-// Helper methods to advance |dirp| to the next entry.
-const smbc_dirent* AdvanceConstDirEnt(const smbc_dirent* dirp);
-smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp);
-
 // Helper method that appends a |base_path| to a |relative_path|. Base path may
 // or may not contain a trailing separator ('/'). If |relative_path| starts with
 // a leading "/", it is stripped before being appended to |base_path|.
 std::string AppendPath(const std::string& base_path,
                        const std::string& relative_path);
-
-// Helper method to get |smbc_dirent| struct from a |buffer|.
-smbc_dirent* GetDirentFromBuffer(uint8_t* buffer);
 
 // Helper method to check whether an entry is self (".") or parent ("..").
 bool IsSelfOrParentDir(const std::string& entry_name);

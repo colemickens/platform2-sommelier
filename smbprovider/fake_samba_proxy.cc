@@ -26,14 +26,6 @@ int32_t FakeSambaProxy::CloseDirectory(int32_t dir_id) {
   return fake_samba_interface_->CloseDirectory(dir_id);
 }
 
-int32_t FakeSambaProxy::GetDirectoryEntries(int32_t dir_id,
-                                            smbc_dirent* dirp,
-                                            int32_t dirp_buffer_size,
-                                            int32_t* bytes_read) {
-  return fake_samba_interface_->GetDirectoryEntries(
-      dir_id, dirp, dirp_buffer_size, bytes_read);
-}
-
 int32_t FakeSambaProxy::GetDirectoryEntry(int32_t dir_id,
                                           const struct smbc_dirent** dirent) {
   return fake_samba_interface_->GetDirectoryEntry(dir_id, dirent);

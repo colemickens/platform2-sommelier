@@ -90,40 +90,6 @@ int32_t FakeSambaInterface::CloseDirectory(int32_t dir_id) {
   return 0;
 }
 
-int32_t FakeSambaInterface::GetDirectoryEntries(int32_t dir_id,
-                                                smbc_dirent* dirp,
-                                                int32_t dirp_buffer_size,
-                                                int32_t* bytes_read) {
-  DCHECK(dirp);
-  DCHECK(bytes_read);
-  *bytes_read = 0;
-
-  if (!IsDirectoryFDOpen(dir_id)) {
-    return EBADF;
-  }
-
-  OpenInfo& open_info = FindOpenFD(dir_id)->second;
-
-  FakeDirectory* directory = GetDirectory(RemoveURLScheme(open_info.full_path));
-  DCHECK(directory);
-
-  DCHECK(open_info.current_index <= directory->entries.size());
-  while (open_info.current_index < directory->entries.size()) {
-    FakeEntry* entry = directory->entries[open_info.current_index].get();
-    if (!WriteEntry(entry->name, entry->smbc_type,
-                    dirp_buffer_size - *bytes_read, dirp)) {
-      // WriteEntry will fail if the buffer size is not large enough to fit the
-      // next entry. This is a valid case and will return with no error.
-      return 0;
-    }
-    *bytes_read += dirp->dirlen;
-    DCHECK_GE(dirp_buffer_size, *bytes_read);
-    dirp = AdvanceDirEnt(dirp);
-    ++open_info.current_index;
-  }
-  return 0;
-}
-
 int32_t FakeSambaInterface::GetDirectoryEntry(
     int32_t dir_id, const struct smbc_dirent** dirent) {
   DCHECK(dirent);

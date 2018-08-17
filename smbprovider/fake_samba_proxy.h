@@ -27,11 +27,6 @@ class FakeSambaProxy : public SambaInterface {
 
   int32_t CloseDirectory(int32_t dir_id) override;
 
-  int32_t GetDirectoryEntries(int32_t dir_id,
-                              smbc_dirent* dirp,
-                              int32_t dirp_buffer_size,
-                              int32_t* bytes_read) override;
-
   int32_t GetDirectoryEntry(int32_t dir_id,
                             const struct smbc_dirent** dirent) override;
 

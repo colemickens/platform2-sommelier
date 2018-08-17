@@ -49,11 +49,6 @@ class SambaInterfaceImpl : public SambaInterface {
 
   int32_t CloseDirectory(int32_t dir_id) override;
 
-  int32_t GetDirectoryEntries(int32_t dir_id,
-                              smbc_dirent* dirp,
-                              int32_t dirp_buffer_size,
-                              int32_t* bytes_read) override;
-
   int32_t GetDirectoryEntry(int32_t dir_id,
                             const struct smbc_dirent** dirent) override;
 
@@ -126,7 +121,6 @@ class SambaInterfaceImpl : public SambaInterface {
   smbc_close_fn smbc_close_ctx_ = nullptr;
   smbc_closedir_fn smbc_closedir_ctx_ = nullptr;
   smbc_ftruncate_fn smbc_ftruncate_ctx_ = nullptr;
-  smbc_getdents_fn smbc_getdents_ctx_ = nullptr;
   smbc_lseek_fn smbc_lseek_ctx_ = nullptr;
   smbc_mkdir_fn smbc_mkdir_ctx_ = nullptr;
   smbc_open_fn smbc_open_ctx_ = nullptr;

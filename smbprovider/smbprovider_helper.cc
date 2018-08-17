@@ -15,20 +15,6 @@
 
 namespace smbprovider {
 
-const smbc_dirent* AdvanceConstDirEnt(const smbc_dirent* dirp) {
-  DCHECK(dirp);
-  DCHECK_GE(dirp->dirlen, sizeof(smbc_dirent));
-  return reinterpret_cast<const smbc_dirent*>(
-      reinterpret_cast<const uint8_t*>(dirp) + dirp->dirlen);
-}
-
-smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp) {
-  DCHECK(dirp);
-  DCHECK_GE(dirp->dirlen, sizeof(smbc_dirent));
-  return reinterpret_cast<smbc_dirent*>(reinterpret_cast<uint8_t*>(dirp) +
-                                        dirp->dirlen);
-}
-
 std::string AppendPath(const std::string& base_path,
                        const std::string& relative_path) {
   const base::FilePath path(base_path);
@@ -40,10 +26,6 @@ std::string AppendPath(const std::string& base_path,
         base::StringPiece(relative_path.c_str() + 1, relative_path.size() - 1));
   }
   return path.Append(relative).value();
-}
-
-smbc_dirent* GetDirentFromBuffer(uint8_t* buffer) {
-  return reinterpret_cast<smbc_dirent*>(buffer);
 }
 
 bool IsSelfOrParentDir(const std::string& entry_name) {
