@@ -1,0 +1,23 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// gRPC API exposed by the diagnostics_processor daemon. Normally the consumer
+// of the API is the diagnosticsd daemon.
+
+syntax = "proto3";
+
+package diagnostics.grpc_api;
+
+service DiagnosticsProcessor {
+  // Called when a message is sent by the diagnostics UI extension (hosted by
+  // the browser).
+  rpc HandleMessageFromUi(HandleMessageFromUiRequest)
+      returns (HandleMessageFromUiResponse) {}
+}
+
+message HandleMessageFromUiRequest {
+  string json_message = 1;
+}
+
+message HandleMessageFromUiResponse {}

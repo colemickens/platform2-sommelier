@@ -1,5 +1,35 @@
 {
   'targets': [
+    # Library with generated gRPC API definitions.
+    {
+      'target_name': 'diagnostics-grpc-protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': 'grpc',
+        'proto_out_dir': 'include',
+        'gen_grpc': 1,
+        'exported_deps': [
+          'grpc++',
+          'protobuf',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        '<(proto_in_dir)/diagnostics_processor.proto',
+        '<(proto_in_dir)/diagnosticsd.proto',
+      ],
+      'includes': [
+        '../common-mk/protoc.gypi',
+      ],
+    },
+    # The diagnosticsd daemon executable.
     {
       'target_name': 'libgrpc_async_adapter',
       'type': 'static_library',
@@ -30,6 +60,9 @@
         'libgrpc_async_adapter',
       ],
       'includes': ['mojom_generator.gypi'],
+      'dependencies': [
+        'diagnostics-grpc-protos',
+      ],
       'variables': {
         'deps': [
           'libbrillo-<(libbase_ver)',
@@ -44,6 +77,7 @@
   'conditions': [
     ['USE_test == 1', {
       'targets': [
+        # Unit tests.
         {
           'target_name': 'libgrpc_async_adapter_test',
           'type': 'executable',

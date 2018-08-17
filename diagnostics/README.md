@@ -20,3 +20,8 @@ of the telemetry processing.
 The bidirectional API between `diagnosticsd` and the browser is based on
 Mojo. The bootstrapping of the Mojo connection is performed via D-Bus -
 specifically, by the browser calling the BootstrapMojoConnection method.
+
+## APIs between diagnosticsd and diagnostics_processor
+
+The bidirectional API between `diagnosticsd` and `diagnostics_processor`
+is based on gRPC running over Unix domain sockets.
