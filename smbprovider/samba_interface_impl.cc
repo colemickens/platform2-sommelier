@@ -55,8 +55,9 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
 
   smbc_set_context(context);
 
-  // Change auth_callback to a static pointer.
-  static uint8_t static_auth_callback_memory[sizeof(T)];
+  // Change auth_callback to a static pointer. This is a simplified version
+  // of base::NoDestructor which does not exist in libchrome.
+  static uint8_t static_auth_callback_memory alignas(T)[sizeof(T)];
   static T* static_auth_callback =
       new (static_auth_callback_memory) T(std::move(auth_callback));
 
