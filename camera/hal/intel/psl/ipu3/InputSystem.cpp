@@ -107,7 +107,7 @@ status_t InputSystem::handleConfigure(MessageConfigure msg)
     status_t status = NO_ERROR;
     FrameInfo videoNodeInfo;
     IStreamConfigProvider &graphConfigMgr = *msg.streamConfigProv;
-    std::shared_ptr<GraphConfig> gc = graphConfigMgr.getBaseGraphConfig();
+    std::shared_ptr<GraphConfig> gc = graphConfigMgr.getBaseGraphConfig(IStreamConfigProvider::CIO2);
 
     if (CC_UNLIKELY(gc.get() == nullptr)) {
         LOGE("ERROR: Graph config is nullptr");
@@ -118,6 +118,7 @@ status_t InputSystem::handleConfigure(MessageConfigure msg)
     mConfiguredNodes.clear();
     mStarted = false;
 
+    mMediaCtlHelper.closeVideoNodes();
     status = mMediaCtlHelper.configure(graphConfigMgr, IStreamConfigProvider::CIO2);
     if (status != OK) {
         LOGE("Failed to configure input system.");

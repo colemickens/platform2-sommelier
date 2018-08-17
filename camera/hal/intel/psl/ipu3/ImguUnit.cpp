@@ -32,109 +32,59 @@ namespace camera2 {
 ImguUnit::ImguUnit(int cameraId,
                    GraphConfigManager &gcm,
                    std::shared_ptr<MediaController> mediaCtl) :
-        mState(IMGU_IDLE),
         mCameraId(cameraId),
         mGCM(gcm),
-        mCameraThread("ImguThread"),
-        mCurPipeConfig(nullptr),
-        mMediaCtlHelper(mediaCtl, nullptr, true),
-        mPollerThread(new PollerThread("ImguPollerThread")),
-        mFirstRequest(true),
-        mFirstPollCallbacked(false),
-        mTakingPicture(false)
+        mMediaCtl(mediaCtl)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mActiveStreams.inputStream = nullptr;
-    status_t status = OK;
-
-    pthread_condattr_t attr;
-    int ret = pthread_condattr_init(&attr);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
-        pthread_condattr_destroy(&attr);
-        return;
-    }
-
-    ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
-        pthread_condattr_destroy(&attr);
-        return;
-    }
-
-    ret = pthread_cond_init(&mFirstCond, &attr);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
-        pthread_condattr_destroy(&attr);
-        return;
-    }
-
-    pthread_condattr_destroy(&attr);
-
-    ret = pthread_mutex_init(&mFirstLock, nullptr);
-    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
-
-    if (!mCameraThread.Start()) {
-        LOGE("Camera thread failed to start");
-        return;
-    }
 
     mRgbsGridBuffPool = std::make_shared<SharedItemPool<ia_aiq_rgbs_grid>>("RgbsGridBuffPool");
     mAfFilterBuffPool = std::make_shared<SharedItemPool<ia_aiq_af_grid>>("AfFilterBuffPool");
 
-    status = allocatePublicStatBuffers(PUBLIC_STATS_POOL_SIZE);
-    if (status != NO_ERROR)
+    status_t status = allocatePublicStatBuffers(PUBLIC_STATS_POOL_SIZE);
+    if (status != NO_ERROR) {
         LOGE("Failed to allocate statistics, status: %d.", status);
+    }
 }
 
 ImguUnit::~ImguUnit()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
-    int ret = pthread_mutex_destroy(&mFirstLock);
-    if (ret != 0)
-        LOGE("@%s, call pthread_mutex_destroy fails, ret: %d", __FUNCTION__, ret);
-
-    ret = pthread_cond_destroy(&mFirstCond);
-    if (ret != 0)
-        LOGE("@%s, call pthread_cond_destroy fails, ret: %d", __FUNCTION__, ret);
-
-    status_t status = NO_ERROR;
-
-    if (mPollerThread) {
-        status |= mPollerThread->requestExitAndWait();
-        mPollerThread.reset();
-    }
-
-    mCameraThread.Stop();
-
-    if (mMessagesUnderwork.size())
-        LOGW("There are messages that are not processed %zu:", mMessagesUnderwork.size());
-    if (mMessagesPending.size())
-        LOGW("There are pending messages %zu:", mMessagesPending.size());
-
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
     mActiveStreams.yuvStreams.clear();
 
     cleanListener();
-    clearWorkers();
+
+    for (size_t i = 0; i < GraphConfig::PIPE_MAX; i++) {
+        mImguPipe[i] = nullptr;
+    }
 
     freePublicStatBuffers();
     mRgbsGridBuffPool.reset();
     mAfFilterBuffPool.reset();
 }
 
-void ImguUnit::clearWorkers()
+void ImguUnit::cleanListener()
 {
-    for (size_t i = 0; i < PIPE_NUM; i++) {
-        PipeConfiguration* config = &(mPipeConfigs[i]);
-        config->deviceWorkers.clear();
-        config->pollableWorkers.clear();
-        config->nodes.clear();
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    for (size_t i = 0; i < GraphConfig::PIPE_MAX; i++) {
+        if (mImguPipe[i] != nullptr) {
+            mImguPipe[i]->cleanListener();
+        }
     }
-    mFirstWorkers.clear();
-    mListenerDeviceWorkers.clear();
+    mListeners.clear();
+}
+
+status_t ImguUnit::attachListener(ICaptureEventListener *aListener)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    mListeners.push_back(aListener);
+    return OK;
 }
 
 /**
@@ -160,15 +110,8 @@ void ImguUnit::clearWorkers()
  */
 status_t ImguUnit::allocatePublicStatBuffers(int numBufs)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = OK;
-    int maxGridSize;
-    int allocated = 0;
-    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
-    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
-
-    maxGridSize = IPU3_MAX_STATISTICS_WIDTH * IPU3_MAX_STATISTICS_HEIGHT;
-    status = mAfFilterBuffPool->init(numBufs);
+    LOG1("%s, numBufs %d", __FUNCTION__, numBufs);
+    int status = mAfFilterBuffPool->init(numBufs);
     status |= mRgbsGridBuffPool->init(numBufs);
     if (status != OK) {
         LOGE("Failed to initialize 3A statistics pools");
@@ -176,7 +119,11 @@ status_t ImguUnit::allocatePublicStatBuffers(int numBufs)
         return NO_MEMORY;
     }
 
-    for (allocated = 0; allocated < numBufs; allocated++) {
+    int maxGridSize = IPU3_MAX_STATISTICS_WIDTH * IPU3_MAX_STATISTICS_HEIGHT;
+    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
+    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
+
+    for (int allocated = 0; allocated < numBufs; allocated++) {
         status = mAfFilterBuffPool->acquireItem(afGrid);
         status |= mRgbsGridBuffPool->acquireItem(rgbsGrid);
 
@@ -205,9 +152,7 @@ status_t ImguUnit::allocatePublicStatBuffers(int numBufs)
 
 void ImguUnit::freePublicStatBuffers()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
-    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
+    LOG1("%s", __FUNCTION__);
     status_t status = OK;
     if (!mAfFilterBuffPool->isFull() ||
         !mRgbsGridBuffPool->isFull()) {
@@ -216,6 +161,7 @@ void ImguUnit::freePublicStatBuffers()
                 mRgbsGridBuffPool->isFull()? "NO" : "YES");
     }
     size_t availableItems = mAfFilterBuffPool->availableItems();
+    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
     for (size_t i = 0; i < availableItems; i++) {
         status = mAfFilterBuffPool->acquireItem(afGrid);
         if (status == OK && afGrid.get() != nullptr) {
@@ -226,6 +172,7 @@ void ImguUnit::freePublicStatBuffers()
         }
     }
     availableItems = mRgbsGridBuffPool->availableItems();
+    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
     for (size_t i = 0; i < availableItems; i++) {
         status = mRgbsGridBuffPool->acquireItem(rgbsGrid);
         if (status == OK && rgbsGrid.get() != nullptr) {
@@ -236,20 +183,18 @@ void ImguUnit::freePublicStatBuffers()
     }
 }
 
-status_t
-ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
+status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
-    std::shared_ptr<GraphConfig> graphConfig = mGCM.getBaseGraphConfig();
 
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
     mActiveStreams.yuvStreams.clear();
     mActiveStreams.inputStream = nullptr;
-    mFirstRequest = true;
-    mCurPipeConfig = nullptr;
-    mTakingPicture = false;
+
+    for (size_t i = 0; i < GraphConfig::PIPE_MAX; i++) {
+        mImguPipe[i] = nullptr;
+    }
 
     for (unsigned int i = 0; i < activeStreams.size(); ++i) {
         if (activeStreams.at(i)->stream_type == CAMERA3_STREAM_INPUT) {
@@ -260,249 +205,351 @@ ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
         switch (activeStreams.at(i)->format) {
         case HAL_PIXEL_FORMAT_BLOB:
              mActiveStreams.blobStreams.push_back(activeStreams.at(i));
-             graphConfig->setPipeType(GraphConfig::PIPE_STILL);
              break;
         case HAL_PIXEL_FORMAT_YCbCr_420_888:
+        case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
              mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
              break;
-        case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-             // Always put IMPL stream on the begin for mapping, in the
-             // 3 stream case, IMPL is prefered to use for preview
-             mActiveStreams.yuvStreams.insert(mActiveStreams.yuvStreams.begin(), activeStreams.at(i));
-             break;
         default:
-            LOGW("Unsupported stream format %d",
-                 activeStreams.at(i)->format);
+            LOGW("Unsupported stream format %x", activeStreams.at(i)->format);
             break;
         }
     }
-    status_t status = createProcessingTasks(graphConfig);
-    if (status != NO_ERROR) {
-       LOGE("Processing tasks creation failed (ret = %d)", status);
-       return UNKNOWN_ERROR;
+    int blobNum = mActiveStreams.blobStreams.size();
+    int yuvNum = mActiveStreams.yuvStreams.size();
+
+    CheckError(blobNum > 1, BAD_VALUE, "Don't support blobNum %d", blobNum);
+    CheckError(yuvNum > 2, BAD_VALUE, "Don't support yuvNum %d", yuvNum);
+
+    status_t status = OK;
+    if (yuvNum > 0) {
+        mImguPipe[GraphConfig::PIPE_VIDEO] =
+            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_VIDEO, mMediaCtl, mListeners));
+
+        // only statistics from VIDEO pipe is used to run 3A, register stats buffer for VIDEO pipe.
+        status = mImguPipe[GraphConfig::PIPE_VIDEO]->configStreams(mActiveStreams.yuvStreams,
+                          mGCM, mAfFilterBuffPool, mRgbsGridBuffPool);
+        CheckError(status != OK, status, "Configure Video Pipe failed");
     }
 
-    status = mPollerThread->init(mCurPipeConfig->nodes,
-                                 this, POLLPRI | POLLIN | POLLOUT | POLLERR, false);
-    if (status != NO_ERROR) {
-       LOGE("PollerThread init failed (ret = %d)", status);
-       return UNKNOWN_ERROR;
+    if (blobNum > 0) {
+        mImguPipe[GraphConfig::PIPE_STILL] =
+            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_STILL, mMediaCtl, mListeners));
+
+        status = mImguPipe[GraphConfig::PIPE_STILL]->configStreams(mActiveStreams.blobStreams,
+                          mGCM, nullptr, nullptr);
+        CheckError(status != OK, status, "Configure Still Pipe failed");
+    }
+
+    // Start works after configuring all IPU pipes
+    for (size_t i = 0; i < GraphConfig::PIPE_MAX; i++) {
+        if (mImguPipe[i] != nullptr) {
+            status = mImguPipe[i]->startWorkers();
+            CheckError(status != OK, status, "Start works failed, pipe %zu", i);
+        }
     }
 
     return OK;
 }
 
-#define streamSizeGT(s1, s2) (((s1)->width * (s1)->height) > ((s2)->width * (s2)->height))
-#define streamSizeEQ(s1, s2) (((s1)->width * (s1)->height) == ((s2)->width * (s2)->height))
-#define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
-
-status_t ImguUnit::mapStreamWithDeviceNode()
+status_t ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
+                                   ICaptureEventListener::CaptureBuffers &captureBufs,
+                                   bool updateMeta)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    int blobNum = mActiveStreams.blobStreams.size();
-    int yuvNum = mActiveStreams.yuvStreams.size();
-    int streamNum = blobNum + yuvNum;
+    LOG2("%s, updateMeta %d", __FUNCTION__, updateMeta);
+    Camera3Request *request = processingSettings->request;
+    if (CC_UNLIKELY(request == nullptr)) {
+        LOGE("ProcUnit: nullptr request - BUG");
+        return UNKNOWN_ERROR;
+    }
+    const std::vector<camera3_stream_buffer> *outBufs = request->getOutputBuffers();
 
-    if (blobNum > 1) {
-        LOGE("Don't support blobNum %d", blobNum);
-        return BAD_VALUE;
+    status_t status = OK;
+    if (mImguPipe[GraphConfig::PIPE_VIDEO] != nullptr) {
+        status = mImguPipe[GraphConfig::PIPE_VIDEO]->completeRequest(processingSettings,
+                           captureBufs, updateMeta);
+        CheckError(status != OK, status, "call video completeRequest failed");
     }
 
-    mStreamNodeMapping.clear();
-    mStreamListenerMapping.clear();
-
-    std::vector<camera3_stream_t *> availableStreams = mActiveStreams.yuvStreams;
-    if (blobNum) {
-        availableStreams.insert(availableStreams.begin(), mActiveStreams.blobStreams[0]);
-    }
-
-    LOG1("@%s, %d streams, blobNum:%d, yuvNum:%d", __FUNCTION__, streamNum, blobNum, yuvNum);
-
-    int videoIdx = -1;
-    int previewIdx = -1;
-    int listenerIdx = -1;
-    bool isVideoSnapshot = false;
-    IPU3NodeNames listenToNode = IMGU_NODE_NULL;
-
-    if (streamNum == 1) {
-        // Use preview for still capture to get same FOV with 2 streams preview case.
-        previewIdx = 0;
-    } else if (streamNum == 2) {
-        videoIdx = (streamSizeGE(availableStreams[0], availableStreams[1])) ? 0 : 1;
-        previewIdx = videoIdx ? 0 : 1;
-
-        if (streamSizeGE(availableStreams[1], availableStreams[0])) {
-            // yuv >= blob
-            isVideoSnapshot = true;
-        }
-    } else if (yuvNum == 2 && blobNum == 1) {
-        // Check if it is video snapshot case: jpeg size = yuv size
-        // Otherwise it is still capture case, same to GraphConfigManager::mapStreamToKey.
-        if (streamSizeEQ(availableStreams[0], availableStreams[1])
-            || streamSizeEQ(availableStreams[0], availableStreams[2])) {
-            videoIdx = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For video stream
-            previewIdx = (videoIdx == 1) ? 2 : 1; // For preview stream
-            listenerIdx = 0; // For jpeg stream
-            listenToNode = IMGU_NODE_VIDEO;
-            isVideoSnapshot = true;
-        } else {
-            previewIdx = (streamSizeGT(availableStreams[1], availableStreams[2])) ? 1
-                       : (streamSizeGT(availableStreams[2], availableStreams[1])) ? 2
-                       : (availableStreams[1]->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) ? 2
-                       : 1; // For preview stream
-
-            listenerIdx = (previewIdx == 1) ? 2 : 1; // For preview callback stream
-            if (streamSizeGT(availableStreams[0], availableStreams[previewIdx])) {
-                videoIdx = 0; // For JPEG stream
-                listenToNode = IMGU_NODE_PV_PREVIEW;
-            } else {
-                videoIdx = previewIdx;
-                previewIdx = 0; // For JPEG stream
-                listenToNode = IMGU_NODE_VIDEO;
+    if (mImguPipe[GraphConfig::PIPE_STILL] != nullptr) {
+        bool hasStillBuffer = false;
+        for (camera3_stream_buffer buf : *outBufs) {
+            CameraStream *s = reinterpret_cast<CameraStream *>(buf.stream->priv);
+            if (s->getStream() == mActiveStreams.blobStreams[0]) {
+                std::shared_ptr<CameraBuffer> buffer = request->findBuffer(s, false);
+                if (buffer != nullptr) {
+                    hasStillBuffer = true;
+                }
             }
         }
-    } else {
-        LOGE("@%s, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
+        if (hasStillBuffer) {
+            bool updateMetaInStill = mImguPipe[GraphConfig::PIPE_VIDEO] == nullptr ? true : false;
+            status = mImguPipe[GraphConfig::PIPE_STILL]->completeRequest(processingSettings,
+                               captureBufs, updateMetaInStill);
+            CheckError(status != OK, status, "call still completeRequest failed");
+        }
+    }
+
+    return OK;
+}
+
+status_t ImguUnit::flush(void)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    status_t status = OK;
+    for (size_t i = 0; i < GraphConfig::PIPE_MAX; i++) {
+        if (mImguPipe[i] != nullptr) {
+            status |= mImguPipe[i]->flush();
+        }
+    }
+
+    return status;
+}
+
+ImguUnit::ImguPipe::ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
+                             std::shared_ptr<MediaController> mediaCtl,
+                             std::vector<ICaptureEventListener*> listeners) :
+        mCameraId(cameraId),
+        mPipeType(pipeType),
+        mMediaCtlHelper(mediaCtl, nullptr),
+        mState(IMGU_IDLE),
+        mCameraThread("ImguThread" + std::to_string(pipeType)),
+        mPollerThread(new PollerThread("ImguPollerThread" + std::to_string(pipeType))),
+        mListeners(listeners),
+        mFirstRequest(true),
+        mFirstPollCallbacked(false)
+{
+    pthread_condattr_t attr;
+    int ret = pthread_condattr_init(&attr);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    ret = pthread_cond_init(&mFirstCond, &attr);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    pthread_condattr_destroy(&attr);
+
+    ret = pthread_mutex_init(&mFirstLock, nullptr);
+    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
+
+    if (!mCameraThread.Start()) {
+        LOGE("pipe %d thread failed to start", pipeType);
+        return;
+    }
+
+    LOG1("%s, Pipe Type %d", __FUNCTION__, mPipeType);
+}
+
+ImguUnit::ImguPipe::~ImguPipe()
+{
+    LOG1("%s, Pipe Type %d", __FUNCTION__, mPipeType);
+    int ret = pthread_mutex_destroy(&mFirstLock);
+    if (ret != 0)
+        LOGE("@%s, call pthread_mutex_destroy fails, ret: %d", __FUNCTION__, ret);
+
+    ret = pthread_cond_destroy(&mFirstCond);
+    if (ret != 0)
+        LOGE("@%s, call pthread_cond_destroy fails, ret: %d", __FUNCTION__, ret);
+
+    status_t status = NO_ERROR;
+
+    if (mPollerThread) {
+        status |= mPollerThread->requestExitAndWait();
+        mPollerThread.reset();
+    }
+
+    mCameraThread.Stop();
+
+    if (mMessagesUnderwork.size())
+        LOGW("There are messages that are not processed %zu:", mMessagesUnderwork.size());
+    if (mMessagesPending.size())
+        LOGW("There are pending messages %zu:", mMessagesPending.size());
+
+    clearWorkers();
+}
+
+void ImguUnit::ImguPipe::clearWorkers()
+{
+    LOG2("%s pipe type %d", __FUNCTION__, mPipeType);
+    mPipeConfig.deviceWorkers.clear();
+    mPipeConfig.pollableWorkers.clear();
+    mPipeConfig.nodes.clear();
+
+    mFirstWorkers.clear();
+    mListenerDeviceWorkers.clear();
+}
+
+void ImguUnit::ImguPipe::cleanListener()
+{
+    LOG2("%s pipe type %d", __FUNCTION__, mPipeType);
+
+    std::vector<ICaptureEventSource*>::iterator it = mListenerDeviceWorkers.begin();
+    for (;it != mListenerDeviceWorkers.end(); ++it) {
+        (*it)->cleanListener();
+    }
+    mListeners.clear();
+}
+
+status_t ImguUnit::ImguPipe::configStreams(std::vector<camera3_stream_t*> &streams,
+                       GraphConfigManager &gcm,
+                       std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> afGridBuffPool,
+                       std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> rgbsGridBuffPool)
+{
+    LOG1("%s, Pipe Type %d", __FUNCTION__, mPipeType);
+    mFirstRequest = true;
+
+    IStreamConfigProvider::MediaType mediaType = GraphConfig::PIPE_STILL == mPipeType ?
+                           IStreamConfigProvider::IMGU_STILL : IStreamConfigProvider::IMGU_VIDEO;
+
+    std::shared_ptr<GraphConfig> graphConfig = gcm.getBaseGraphConfig(mediaType);
+    if (CC_UNLIKELY(graphConfig.get() == nullptr)) {
+        LOGE("ERROR: Graph config is nullptr");
         return UNKNOWN_ERROR;
     }
 
-    // W/A: use postview node only for still pipe due to FOV issue
-    // Select settings only according to jpeg stream
-    if (blobNum && !isVideoSnapshot) {
-        LOG1("still case: map %p to pv node", mActiveStreams.blobStreams[0]);
-        mStreamNodeMapping[IMGU_NODE_PV_PREVIEW] = mActiveStreams.blobStreams[0];
-        for (auto* s : mActiveStreams.yuvStreams) {
-            mStreamListenerMapping[s] = IMGU_NODE_PV_PREVIEW;
+    status_t status = mMediaCtlHelper.configure(gcm, mediaType);
+    CheckError(status != OK, status, "failed to configure video MediaCtlHelper");
+
+    clearWorkers();
+
+    mConfiguredNodesPerName = mMediaCtlHelper.getConfiguredNodesPerName(mediaType);
+    CheckError(mConfiguredNodesPerName.size() == 0, UNKNOWN_ERROR, "No nodes present");
+
+    status = mapStreamWithDeviceNode(streams);
+    CheckError(status != OK, status, "failed to map stream with Device node");
+
+    status = createProcessingTasks(graphConfig, afGridBuffPool, rgbsGridBuffPool);
+    CheckError(status != NO_ERROR, status, "Tasks creation failed (ret = %d)", status);
+
+    status = mPollerThread->init(mPipeConfig.nodes,
+                                 this, POLLPRI | POLLIN | POLLOUT | POLLERR, false);
+    CheckError(status != NO_ERROR, status, "PollerThread init failed (ret = %d)", status);
+
+    return OK;
+}
+
+status_t ImguUnit::ImguPipe::startWorkers()
+{
+    LOG1("%s, Pipe Type %d", __FUNCTION__, mPipeType);
+
+    for (const auto &it : mPipeConfig.deviceWorkers) {
+        status_t status = (*it).startWorker();
+        CheckError(status != OK, status, "Failed to start workers, status %d", status);
+    }
+
+    return OK;
+}
+
+#define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
+
+status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_t*> &streams)
+{
+    int streamNum = streams.size();
+    LOG1("%s pipe type %d, streamNum %d", __FUNCTION__, mPipeType, streamNum);
+    mStreamNodeMapping.clear();
+
+    CheckError(streamNum == 0, UNKNOWN_ERROR, "streamNum is 0");
+
+    if (GraphConfig::PIPE_VIDEO == mPipeType) {
+        int videoIdx = -1;
+        int previewIdx = 0;
+        if (streamNum == 2) {
+            videoIdx = (streamSizeGE(streams[0], streams[1])) ? 0 : 1;
+            previewIdx = videoIdx ? 0 : 1;
         }
-        return OK;
-    }
 
-    mStreamNodeMapping[IMGU_NODE_VF_PREVIEW] = availableStreams[previewIdx];
-    mStreamNodeMapping[IMGU_NODE_PV_PREVIEW] = mStreamNodeMapping[IMGU_NODE_VF_PREVIEW];
-    LOG1("@%s, %d stream %p size preview: %dx%d, format %s", __FUNCTION__,
-         previewIdx, availableStreams[previewIdx],
-         availableStreams[previewIdx]->width, availableStreams[previewIdx]->height,
-         METAID2STR(android_scaler_availableFormats_values,
-                    availableStreams[previewIdx]->format));
-
-    if (videoIdx >= 0) {
-        mStreamNodeMapping[IMGU_NODE_VIDEO] = availableStreams[videoIdx];
-        LOG1("@%s, %d stream %p size video: %dx%d, format %s", __FUNCTION__,
-             videoIdx, availableStreams[videoIdx],
-             availableStreams[videoIdx]->width, availableStreams[videoIdx]->height,
+        mStreamNodeMapping[IMGU_NODE_PREVIEW] = streams[previewIdx];
+        LOG1("@%s, %d stream %p size preview: %dx%d, format %s", __FUNCTION__,
+             previewIdx, streams[previewIdx],
+             streams[previewIdx]->width, streams[previewIdx]->height,
              METAID2STR(android_scaler_availableFormats_values,
-                        availableStreams[videoIdx]->format));
-    }
-
-    if (listenerIdx >= 0) {
-        mStreamListenerMapping[availableStreams[listenerIdx]] = listenToNode;
-        LOG1("@%s (%dx%d 0x%x), %p listen to 0x%x", __FUNCTION__,
-             availableStreams[listenerIdx]->width, availableStreams[listenerIdx]->height,
-             availableStreams[listenerIdx]->format, availableStreams[listenerIdx], listenToNode);
+                        streams[previewIdx]->format));
+        if (videoIdx >= 0) {
+            mStreamNodeMapping[IMGU_NODE_VIDEO] = streams[videoIdx];
+            LOG1("@%s, %d stream %p size video: %dx%d, format %s", __FUNCTION__,
+                 videoIdx, streams[videoIdx],
+                 streams[videoIdx]->width, streams[videoIdx]->height,
+                 METAID2STR(android_scaler_availableFormats_values,
+                            streams[videoIdx]->format));
+        }
+    } else if (GraphConfig::PIPE_STILL == mPipeType) {
+        mStreamNodeMapping[IMGU_NODE_STILL] = streams[0];
+        LOG1("@%s, blob stream %p size video: %dx%d, format %s", __FUNCTION__,
+             streams[0], streams[0]->width, streams[0]->height,
+             METAID2STR(android_scaler_availableFormats_values,
+                        streams[0]->format));
     }
 
     return OK;
 }
 
 /**
- * Create the processing tasks and listening tasks.
+ * Create the processing tasks
  * Processing tasks are:
  *  - video task (wraps video pipeline)
  *  - capture task (wraps still capture)
  *  - raw bypass (not done yet)
  *
- * \param[in] activeStreams StreamConfig struct filled during configStreams
  * \param[in] graphConfig Configuration of the base graph
  */
-status_t
-ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
+status_t ImguUnit::ImguPipe::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig,
+                           std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> afGridBuffPool,
+                           std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> rgbsGridBuffPool)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = OK;
-
-    if (CC_UNLIKELY(graphConfig.get() == nullptr)) {
-        LOGE("ERROR: Graph config is nullptr");
-        return UNKNOWN_ERROR;
-    }
-
-    clearWorkers();
-    // Open and configure imgu video nodes
-    status = mMediaCtlHelper.configure(mGCM, IStreamConfigProvider::IMGU_COMMON);
-    if (status != OK)
-        return UNKNOWN_ERROR;
-    if (mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_STILL)) {
-        status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_STILL, true);
-        if (status != OK)
-            return UNKNOWN_ERROR;
-        mCurPipeConfig = &mPipeConfigs[PIPE_STILL_INDEX];
-    }
-    // Set video pipe by default
-    if (mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_VIDEO)) {
-        status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_VIDEO, true);
-        if (status != OK)
-            return UNKNOWN_ERROR;
-        mCurPipeConfig = &mPipeConfigs[PIPE_VIDEO_INDEX];
-    }
-
-    mConfiguredNodesPerName = mMediaCtlHelper.getConfiguredNodesPerName();
-    if (mConfiguredNodesPerName.size() == 0) {
-        LOGD("No nodes present");
-        return UNKNOWN_ERROR;
-    }
-
-    if (mapStreamWithDeviceNode() != OK)
-        return UNKNOWN_ERROR;
-
-    PipeConfiguration* videoConfig = &(mPipeConfigs[PIPE_VIDEO_INDEX]);
-    PipeConfiguration* stillConfig = &(mPipeConfigs[PIPE_STILL_INDEX]);
-
-    std::shared_ptr<OutputFrameWorker> vfWorker = nullptr;
-    std::shared_ptr<OutputFrameWorker> pvWorker = nullptr;
+    LOG1("%s pipe type %d", __FUNCTION__, mPipeType);
     const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
     camera_metadata_ro_entry entry;
     CLEAR(entry);
     if (meta)
-        entry = MetadataHelper::getMetadataEntry(
-            meta, ANDROID_REQUEST_PIPELINE_MAX_DEPTH);
+        entry = MetadataHelper::getMetadataEntry(meta, ANDROID_REQUEST_PIPELINE_MAX_DEPTH);
     size_t pipelineDepth = entry.count == 1 ? entry.data.u8[0] : 1;
+
     for (const auto &it : mConfiguredNodesPerName) {
         std::shared_ptr<FrameWorker> worker = nullptr;
         if (it.first == IMGU_NODE_INPUT) {
             worker = std::make_shared<InputFrameWorker>(it.second, mCameraId, pipelineDepth);
-            videoConfig->deviceWorkers.push_back(worker); // Input frame;
-            videoConfig->pollableWorkers.push_back(worker);
-            videoConfig->nodes.push_back(worker->getNode()); // Nodes are added for pollthread init
+            mPipeConfig.deviceWorkers.push_back(worker); // Input frame;
+            mPipeConfig.pollableWorkers.push_back(worker);
+            mPipeConfig.nodes.push_back(worker->getNode()); // Nodes are added for pollthread init
             mFirstWorkers.push_back(worker);
         } else if (it.first == IMGU_NODE_STAT) {
             std::shared_ptr<StatisticsWorker> statWorker =
-                std::make_shared<StatisticsWorker>(it.second, mCameraId,
-                    mAfFilterBuffPool, mRgbsGridBuffPool);
+                std::make_shared<StatisticsWorker>(it.second, mCameraId, mPipeType,
+                    afGridBuffPool, rgbsGridBuffPool);
             mListenerDeviceWorkers.push_back(statWorker.get());
-            videoConfig->deviceWorkers.push_back(statWorker);
-            videoConfig->pollableWorkers.push_back(statWorker);
-            videoConfig->nodes.push_back(statWorker->getNode());
+            mPipeConfig.deviceWorkers.push_back(statWorker);
+            mPipeConfig.pollableWorkers.push_back(statWorker);
+            mPipeConfig.nodes.push_back(statWorker->getNode());
         } else if (it.first == IMGU_NODE_PARAM) {
-            worker = std::make_shared<ParameterWorker>(it.second, mActiveStreams, mCameraId);
+            worker = std::make_shared<ParameterWorker>(it.second, mCameraId, mPipeType);
             mFirstWorkers.push_back(worker);
-            videoConfig->deviceWorkers.push_back(worker); // parameters
-        } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_VIDEO) {
+            mPipeConfig.deviceWorkers.push_back(worker); // parameters
+        } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_VIDEO
+                || it.first == IMGU_NODE_PREVIEW) {
             std::shared_ptr<OutputFrameWorker> outWorker =
                 std::make_shared<OutputFrameWorker>(it.second, mCameraId,
                     mStreamNodeMapping[it.first], it.first, pipelineDepth);
-            videoConfig->deviceWorkers.push_back(outWorker);
-            videoConfig->pollableWorkers.push_back(outWorker);
-            videoConfig->nodes.push_back(outWorker->getNode());
-            setStreamListeners(it.first, outWorker);
-        } else if (it.first == IMGU_NODE_VF_PREVIEW) {
-            vfWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId,
-                mStreamNodeMapping[it.first], it.first, pipelineDepth);
-            setStreamListeners(it.first, vfWorker);
-        } else if (it.first == IMGU_NODE_PV_PREVIEW) {
-            pvWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId,
-                mStreamNodeMapping[it.first], it.first, pipelineDepth);
-            setStreamListeners(it.first, pvWorker);
+            mPipeConfig.deviceWorkers.push_back(outWorker);
+            mPipeConfig.pollableWorkers.push_back(outWorker);
+            mPipeConfig.nodes.push_back(outWorker->getNode());
         } else if (it.first == IMGU_NODE_RAW) {
-            LOGW("Not implemented"); // raw
+            LOGW("RAW is not implemented"); // raw
             continue;
         } else {
             LOGE("Unknown NodeName: %d", it.first);
@@ -510,44 +557,9 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
         }
     }
 
-    if (pvWorker.get()) {
-        // Copy common part for still pipe, then add pv
-        *stillConfig = *videoConfig;
-        stillConfig->deviceWorkers.insert(stillConfig->deviceWorkers.begin(), pvWorker);
-        stillConfig->pollableWorkers.insert(stillConfig->pollableWorkers.begin(), pvWorker);
-        stillConfig->nodes.insert(stillConfig->nodes.begin(), pvWorker->getNode());
-
-        if (mCurPipeConfig == videoConfig) {
-            LOG1("%s: configure postview in advance", __FUNCTION__);
-            pvWorker->configure(graphConfig);
-        }
-    }
-
-    // Prepare for video pipe
-    if (vfWorker.get()) {
-        videoConfig->deviceWorkers.insert(videoConfig->deviceWorkers.begin(), vfWorker);
-        videoConfig->pollableWorkers.insert(videoConfig->pollableWorkers.begin(), vfWorker);
-        videoConfig->nodes.insert(videoConfig->nodes.begin(), vfWorker->getNode());
-
-        // vf node provides source frame during still preview instead of pv node.
-        if (pvWorker.get()) {
-            setStreamListeners(IMGU_NODE_PV_PREVIEW, vfWorker);
-        }
-
-        if (mCurPipeConfig == stillConfig) {
-            LOG1("%s: configure preview in advance", __FUNCTION__);
-            vfWorker->configure(graphConfig);
-        }
-    }
-
-    status_t ret = OK;
-    for (const auto &it : mCurPipeConfig->deviceWorkers) {
-        ret = (*it).configure(graphConfig);
-
-        if (ret != OK) {
-            LOGE("Failed to configure workers.");
-            return ret;
-        }
+    for (const auto &it : mPipeConfig.deviceWorkers) {
+        status_t status = (*it).configure(graphConfig);
+        CheckError(status != OK, status, "Failed to configure workers, status %d.", status);
     }
 
     std::vector<ICaptureEventSource*>::iterator it = mListenerDeviceWorkers.begin();
@@ -560,60 +572,22 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     return OK;
 }
 
-void ImguUnit::setStreamListeners(IPU3NodeNames nodeName,
-                                  std::shared_ptr<OutputFrameWorker>& source)
-{
-    for (const auto &it : mStreamListenerMapping) {
-        if (it.second == nodeName) {
-            LOG1("@%s stream %p listen to nodeName 0x%x",
-                 __FUNCTION__, it.first, nodeName);
-            source->addListener(it.first);
-        }
-    }
-}
-
-void
-ImguUnit::cleanListener()
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    // clean all the listening tasks
-    std::shared_ptr<ITaskEventListener> lTask = nullptr;
-    for (unsigned int i = 0; i < mListeningTasks.size(); i++) {
-        lTask = mListeningTasks.at(i);
-        if (lTask.get() == nullptr)
-            LOGE("Listening task null - BUG.");
-        else
-            lTask->cleanListeners();
-    }
-
-    mListeningTasks.clear();
-}
-
-status_t ImguUnit::attachListener(ICaptureEventListener *aListener)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
-    mListeners.push_back(aListener);
-
-    return OK;
-}
-
 status_t
-ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
-                          ICaptureEventListener::CaptureBuffers &captureBufs,
-                          bool updateMeta)
+ImguUnit::ImguPipe::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
+                                    ICaptureEventListener::CaptureBuffers &captureBufs,
+                                    bool updateMeta)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOG2("%s, pipe type %d, updateMeta %d", __FUNCTION__, mPipeType, updateMeta);
     Camera3Request *request = processingSettings->request;
     if (CC_UNLIKELY(request == nullptr)) {
         LOGE("ProcUnit: nullptr request - BUG");
         return UNKNOWN_ERROR;
     }
-    const std::vector<camera3_stream_buffer>* outBufs = request->getOutputBuffers();
+    const std::vector<camera3_stream_buffer> *outBufs = request->getOutputBuffers();
     int reqId = request->getId();
 
     LOG2("@%s: Req id %d,  Num outbufs %lu Num inbufs %d",
-         __FUNCTION__, reqId, outBufs ? outBufs->size() : 0, (request->hasInputBuf()? 1 : 0));
+         __FUNCTION__, reqId, outBufs ? outBufs->size() : 0, (request->hasInputBuf() ? 1 : 0));
 
     if (captureBufs.rawNonScaledBuffer.get() != nullptr) {
         LOG2("Using Non Scaled Buffer %p for req id %d",
@@ -634,38 +608,37 @@ ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
     msg.pMsg = procMsg;
     msg.cbMetadataMsg = cbMetadataMsg;
     base::Callback<status_t()> closure =
-            base::Bind(&ImguUnit::handleCompleteReq, base::Unretained(this),
+            base::Bind(&ImguUnit::ImguPipe::handleCompleteReq, base::Unretained(this),
                        base::Passed(std::move(msg)));
     mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
     return NO_ERROR;
 }
 
-status_t ImguUnit::handleCompleteReq(DeviceMessage msg)
+status_t ImguUnit::ImguPipe::handleCompleteReq(DeviceMessage msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOG2("%s, msg.id %d, pipe type %d", __FUNCTION__, static_cast<int>(msg.id), mPipeType);
 
     Camera3Request *request = msg.cbMetadataMsg.request;
     if (request == nullptr) {
         LOGE("Request is nullptr");
         return BAD_VALUE;
     }
+
     LOG2("order %s:enqueue for Req id %d, ", __FUNCTION__, request->getId());
     std::shared_ptr<DeviceMessage> tmp = std::make_shared<DeviceMessage>(msg);
     mMessagesPending.push_back(tmp);
 
     status_t status = processNextRequest();
     if (status != NO_ERROR)
-        LOGE("error %d in handling message: %d",
-             status, static_cast<int>(msg.id));
+        LOGE("error %d in handling message: %d", status, static_cast<int>(msg.id));
+
     return status;
 }
 
-status_t ImguUnit::processNextRequest()
+status_t ImguUnit::ImguPipe::processNextRequest()
 {
-    status_t status = NO_ERROR;
-    std::shared_ptr<DeviceMessage> msg = nullptr;
-
-    LOG2("%s: pending size %zu, state %d", __FUNCTION__, mMessagesPending.size(), mState);
+    LOG2("%s: pending size %zu, state %d, pipe type %d", __FUNCTION__,
+          mMessagesPending.size(), mState, mPipeType);
     if (mMessagesPending.empty())
         return NO_ERROR;
 
@@ -674,131 +647,59 @@ status_t ImguUnit::processNextRequest()
         return NO_ERROR;
     }
 
-    msg = mMessagesPending[0];
+    std::shared_ptr<DeviceMessage> msg = mMessagesPending[0];
     CheckError(msg == nullptr, BAD_VALUE, "@%s: mMessagePending[0] is nullptr", __FUNCTION__);
     mMessagesPending.erase(mMessagesPending.begin());
 
     // update and return metadata firstly
     Camera3Request *request = msg->cbMetadataMsg.request;
-    if (request == nullptr) {
-        LOGE("Request is nullptr");
-        return BAD_VALUE;
-    }
+    CheckError(request == nullptr, BAD_VALUE, "Request is nullptr");
+
+    if (GraphConfig::PIPE_STILL == mPipeType) mFirstRequest = true;
     LOG2("@%s:handleExecuteReq for Req id %d, ", __FUNCTION__, request->getId());
-
-    checkAndSwitchPipe(request);
-
-    // Pass settings to the listening tasks *before* sending metadata
-    // up to framework. Some tasks might need e.g. the result data.
-    std::shared_ptr<ITaskEventListener> lTask = nullptr;
-    for (unsigned int i = 0; i < mListeningTasks.size(); i++) {
-        lTask = mListeningTasks.at(i);
-        if (lTask.get() == nullptr) {
-            LOGE("Listening task null - BUG.");
-            return UNKNOWN_ERROR;
-        }
-        status |= lTask->settings(msg->pMsg);
-    }
 
     if (msg->cbMetadataMsg.updateMeta) {
         updateProcUnitResults(*request, msg->pMsg.processingSettings);
-        //return the metadata
         request->mCallback->metadataDone(request, CONTROL_UNIT_PARTIAL_RESULT);
     }
 
     mMessagesUnderwork.push_back(msg);
 
+    status_t status = NO_ERROR;
     if (mFirstRequest) {
         status = kickstart(request);
-        if (status != OK) {
-            return status;
-        }
+        CheckError(status != OK, status, "failed to kick start, status %d", status);
     }
 
-    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mCurPipeConfig->deviceWorkers.begin();
-    for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
+    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mPipeConfig.deviceWorkers.begin();
+    for (;it != mPipeConfig.deviceWorkers.end(); ++it) {
         status = (*it)->prepareRun(msg);
-        if (status != OK) {
-            return status;
-        }
+        CheckError(status != OK, status, "failed to prepare works, status %d", status);
     }
 
-    mCurPipeConfig->nodes.clear();
-    std::vector<std::shared_ptr<FrameWorker>>::iterator pollDevice = mCurPipeConfig->pollableWorkers.begin();
-    for (;pollDevice != mCurPipeConfig->pollableWorkers.end(); ++pollDevice) {
+    mPipeConfig.nodes.clear();
+    std::vector<std::shared_ptr<FrameWorker>>::iterator pollDevice = mPipeConfig.pollableWorkers.begin();
+    for (;pollDevice != mPipeConfig.pollableWorkers.end(); ++pollDevice) {
         bool needsPolling = (*pollDevice)->needPolling();
         if (needsPolling) {
-            mCurPipeConfig->nodes.push_back((*pollDevice)->getNode());
+            mPipeConfig.nodes.push_back((*pollDevice)->getNode());
         }
     }
 
     status = mPollerThread->pollRequest(request->getId(),
                                         IPU3_EVENT_POLL_TIMEOUT,
-                                        &(mCurPipeConfig->nodes));
-
-    if (status != OK)
-        return status;
+                                        &(mPipeConfig.nodes));
+    CheckError(status != OK, status, "failed to poll request, status %d", status);
 
     mState = IMGU_RUNNING;
 
     return status;
 }
 
-status_t ImguUnit::checkAndSwitchPipe(Camera3Request* request)
+status_t ImguUnit::ImguPipe::kickstart(Camera3Request* request)
 {
-    // Has 2 pipe configs?
-    if (!(mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_STILL)
-            && mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_VIDEO)) ) {
-        return OK;
-    }
-
-    bool isTakingPicture = request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
-    bool needSwitch = (isTakingPicture != mTakingPicture);
-    if (!needSwitch)
-        return OK;
-
-    LOG1("%s: need switch, capture? %d", __FUNCTION__, isTakingPicture);
+    LOG1("%s, pipe type %d", __FUNCTION__, mPipeType);
     status_t status = OK;
-    if (!mFirstRequest) {
-        // Stop all video nodes
-        for (const auto &it : mCurPipeConfig->deviceWorkers) {
-            status = (*it).stopWorker();
-            if (status != OK) {
-                 LOGE("Fail to stop wokers");
-                 return status;
-            }
-        }
-    }
-
-    // Switch pipe
-    if (isTakingPicture) {
-        // video pipe -> still pipe
-        mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_STILL);
-        mCurPipeConfig = &(mPipeConfigs[PIPE_STILL_INDEX]);
-    } else {
-        // Still pipe -> video pipe
-        mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_VIDEO);
-        mCurPipeConfig = &(mPipeConfigs[PIPE_VIDEO_INDEX]);
-    }
-
-    mFirstRequest = true;
-    mTakingPicture = isTakingPicture;
-    return NO_ERROR;
-}
-
-status_t
-ImguUnit::kickstart(Camera3Request* request)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = OK;
-
-    for (const auto &it : mCurPipeConfig->deviceWorkers) {
-        status = (*it).startWorker();
-        if (status != OK) {
-            LOGE("Failed to start workers.");
-            return status;
-        }
-    }
 
     std::vector<std::shared_ptr<cros::V4L2Device>> firstNodes;
     std::vector<std::shared_ptr<IDeviceWorker>>::iterator firstit = mFirstWorkers.begin();
@@ -844,37 +745,28 @@ ImguUnit::kickstart(Camera3Request* request)
     firstit = mFirstWorkers.begin();
     for (;firstit != mFirstWorkers.end(); ++firstit) {
         status |= (*firstit)->run();
-    }
-    if (status != OK) {
-        return status;
+        CheckError(status != OK, status, "failed to run works, status %d", status);
     }
 
     firstit = mFirstWorkers.begin();
     for (;firstit != mFirstWorkers.end(); ++firstit) {
         status |= (*firstit)->postRun();
-    }
-    if (status != OK) {
-        return status;
+        CheckError(status != OK, status, "failed to post-run works, status %d", status);
     }
 
     return status;
 }
 
 status_t
-ImguUnit::updateProcUnitResults(Camera3Request &request,
-                                std::shared_ptr<ProcUnitSettings> settings)
+ImguUnit::ImguPipe::updateProcUnitResults(Camera3Request &request,
+                                          std::shared_ptr<ProcUnitSettings> settings)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOG2("%s, pipe type %d", __FUNCTION__, mPipeType);
     status_t status = NO_ERROR;
-    CameraMetadata *ctrlUnitResult = nullptr;
 
-    ctrlUnitResult = request.getPartialResultBuffer(CONTROL_UNIT_PARTIAL_RESULT);
-
-    if (ctrlUnitResult == nullptr) {
-        LOGE("Failed to retrieve Metadata buffer for reqId = %d find the bug!",
-                request.getId());
-        return UNKNOWN_ERROR;
-    }
+    CameraMetadata *ctrlUnitResult = request.getPartialResultBuffer(CONTROL_UNIT_PARTIAL_RESULT);
+    CheckError(ctrlUnitResult == nullptr, UNKNOWN_ERROR,
+               "Failed to retrieve Metadata buffer for reqId = %d", request.getId());
 
     // update DVS metadata
     updateDVSMetadata(*ctrlUnitResult, settings);
@@ -893,11 +785,9 @@ ImguUnit::updateProcUnitResults(Camera3Request &request,
  * Check the map that links the input terminals of the pipelines to the
  * tasks that wrap them to decide which tasks need to be executed.
  */
-status_t
-ImguUnit::startProcessing()
+status_t ImguUnit::ImguPipe::startProcessing()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = OK;
+    LOG2("%s, pipe type %d", __FUNCTION__, mPipeType);
 
     /* skip processing the first frame */
     if (mFirstRequest) {
@@ -905,13 +795,14 @@ ImguUnit::startProcessing()
         return OK;
     }
 
-    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mCurPipeConfig->deviceWorkers.begin();
-    for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
+    status_t status = OK;
+    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mPipeConfig.deviceWorkers.begin();
+    for (;it != mPipeConfig.deviceWorkers.end(); ++it) {
         status |= (*it)->run();
     }
 
-    it = mCurPipeConfig->deviceWorkers.begin();
-    for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
+    it = mPipeConfig.deviceWorkers.begin();
+    for (;it != mPipeConfig.deviceWorkers.end(); ++it) {
         status |= (*it)->postRun();
     }
 
@@ -922,10 +813,9 @@ ImguUnit::startProcessing()
     return status;
 }
 
-status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
+status_t ImguUnit::ImguPipe::notifyPollEvent(PollEventMessage *pollMsg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
+    LOG2("%s pipe type %d", __FUNCTION__, mPipeType);
     if (pollMsg == nullptr || pollMsg->data.activeDevices == nullptr)
         return BAD_VALUE;
 
@@ -948,22 +838,15 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
             return OK;
         }
 
-        msg.pollEvent.activeDevices = new std::shared_ptr<cros::V4L2VideoNode>[numDevices];
-        for (int i = 0; i < numDevices; i++) {
-            msg.pollEvent.activeDevices[i] = (std::shared_ptr<cros::V4L2VideoNode>&) pollMsg->data.activeDevices->at(i);
-        }
         msg.pollEvent.numDevices = numDevices;
         msg.pollEvent.polledDevices = numPolledDevices;
 
         if (pollMsg->data.activeDevices->size() != pollMsg->data.polledDevices->size()) {
             LOG2("@%s: %zu inactive nodes for request %u, retry poll", __FUNCTION__,
-                                                                      pollMsg->data.inactiveDevices->size(),
-                                                                      pollMsg->data.reqId);
+                  pollMsg->data.inactiveDevices->size(), pollMsg->data.reqId);
             pollMsg->data.polledDevices->clear();
-            *pollMsg->data.polledDevices = *pollMsg->data.inactiveDevices; // retry with inactive devices
-
-            delete [] msg.pollEvent.activeDevices;
-
+            // retry with inactive devices
+            *pollMsg->data.polledDevices = *pollMsg->data.inactiveDevices;
             return -EAGAIN;
         }
 
@@ -973,15 +856,13 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
             int ret = pthread_cond_signal(&mFirstCond);
             if (ret != 0) {
                 LOGE("@%s, call pthread_cond_signal fails, ret: %d", __FUNCTION__, ret);
-                delete [] msg.pollEvent.activeDevices;
-                msg.pollEvent.activeDevices = nullptr;
                 pthread_mutex_unlock(&mFirstLock);
                 return UNKNOWN_ERROR;
             }
             pthread_mutex_unlock(&mFirstLock);
         }
         base::Callback<status_t()> closure =
-                base::Bind(&ImguUnit::handlePoll, base::Unretained(this),
+                base::Bind(&ImguUnit::ImguPipe::handlePoll, base::Unretained(this),
                            base::Passed(std::move(msg)));
         mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
 
@@ -991,7 +872,7 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
         msg.pollEvent.numDevices = 0;
         msg.pollEvent.polledDevices = 0;
         base::Callback<status_t()> closure =
-                base::Bind(&ImguUnit::handlePoll, base::Unretained(this),
+                base::Bind(&ImguUnit::ImguPipe::ImguPipe::handlePoll, base::Unretained(this),
                            base::Passed(std::move(msg)));
         mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
     }
@@ -1008,10 +889,10 @@ status_t ImguUnit::notifyPollEvent(PollEventMessage *pollMsg)
  *
  */
 void
-ImguUnit::updateMiscMetadata(CameraMetadata &procUnitResults,
-                             std::shared_ptr<const ProcUnitSettings> settings) const
+ImguUnit::ImguPipe::updateMiscMetadata(CameraMetadata &procUnitResults,
+                                       std::shared_ptr<const ProcUnitSettings> settings) const
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOG2("%s, pipe type %d", __FUNCTION__, mPipeType);
     if (settings.get() == nullptr) {
         LOGE("null settings for Metadata update");
         return;
@@ -1037,10 +918,10 @@ ImguUnit::updateMiscMetadata(CameraMetadata &procUnitResults,
  *
  */
 void
-ImguUnit::updateDVSMetadata(CameraMetadata &procUnitResults,
-                            std::shared_ptr<const ProcUnitSettings> settings) const
+ImguUnit::ImguPipe::updateDVSMetadata(CameraMetadata &procUnitResults,
+                                      std::shared_ptr<const ProcUnitSettings> settings) const
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOG2("%s, pipe type %d", __FUNCTION__, mPipeType);
     if (settings.get() == nullptr) {
         LOGE("null settings in UDVSMetadata");
         return;
@@ -1055,11 +936,9 @@ ImguUnit::updateDVSMetadata(CameraMetadata &procUnitResults,
                            1);
 }
 
-status_t ImguUnit::handlePoll(DeviceMessage msg)
+status_t ImguUnit::ImguPipe::handlePoll(DeviceMessage msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    delete [] msg.pollEvent.activeDevices;
-    msg.pollEvent.activeDevices = nullptr;
+    LOG2("%s, pipe type %d, req id %u", __FUNCTION__, mPipeType, msg.pollEvent.requestId);
 
     status_t status = startProcessing();
     if (status == NO_ERROR)
@@ -1073,23 +952,24 @@ status_t ImguUnit::handlePoll(DeviceMessage msg)
 }
 
 status_t
-ImguUnit::flush(void)
+ImguUnit::ImguPipe::flush(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOG2("%s pipe type %d", __FUNCTION__, mPipeType);
     status_t status = NO_ERROR;
     base::Callback<status_t()> closure =
-            base::Bind(&ImguUnit::handleFlush, base::Unretained(this));
+            base::Bind(&ImguUnit::ImguPipe::handleFlush, base::Unretained(this));
     mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
 }
 
-status_t ImguUnit::handleFlush(void)
+status_t ImguUnit::ImguPipe::handleFlush(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    LOG2("%s pipe type %d", __FUNCTION__, mPipeType);
     mPollerThread->flush(true);
 
     clearWorkers();
     return NO_ERROR;
 }
+
 } /* namespace camera2 */
 } /* namespace android */

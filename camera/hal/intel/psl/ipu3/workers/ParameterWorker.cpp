@@ -36,28 +36,25 @@ namespace camera2 {
 const unsigned int PARA_WORK_BUFFERS = 1;
 
 ParameterWorker::ParameterWorker(std::shared_ptr<cros::V4L2VideoNode> node,
-                                 const StreamConfig& activeStreams,
-                                 int cameraId) :
+                                 int cameraId,
+                                 GraphConfig::PipeType pipeType) :
         FrameWorker(node, cameraId, PARA_WORK_BUFFERS, "ParameterWorker"),
+        mPipeType(pipeType),
         mSkyCamAIC(nullptr),
-        mCurRuntimeParams(nullptr),
         mCmcData(nullptr),
-        mAicConfig(nullptr),
-        mActiveStreams(activeStreams)
+        mAicConfig(nullptr)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    LOG1("%s, mPipeType %d", __FUNCTION__, mPipeType);
     CLEAR(mIspPipes);
-    CLEAR(mVideoRuntimeParams);
-    CLEAR(mPreviewRuntimeParams);
+    CLEAR(mRuntimeParams);
     CLEAR(mCpfData);
     CLEAR(mGridInfo);
 }
 
 ParameterWorker::~ParameterWorker()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    RuntimeParamsHelper::deleteAiStructs(mVideoRuntimeParams);
-    RuntimeParamsHelper::deleteAiStructs(mPreviewRuntimeParams);
+    LOG1("%s, mPipeType %d", __FUNCTION__, mPipeType);
+    RuntimeParamsHelper::deleteAiStructs(mRuntimeParams);
     for (int i = 0; i < NUM_ISP_PIPES; i++) {
         delete mIspPipes[i];
         mIspPipes[i] = nullptr;
@@ -75,8 +72,7 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         return NO_INIT;
     }
 
-    RuntimeParamsHelper::allocateAiStructs(mVideoRuntimeParams);
-    RuntimeParamsHelper::allocateAiStructs(mPreviewRuntimeParams);
+    RuntimeParamsHelper::allocateAiStructs(mRuntimeParams);
 
     GraphConfig::NodesPtrVector sinks;
     std::string name = "csi_be:output";
@@ -94,28 +90,27 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     ia_aiq_frame_params sensorParams;
     config->getSensorFrameParams(sensorParams);
 
-    bool foundPreview = config->doesNodeExist("imgu:preview");
-    if (foundPreview) {
-        ret = getPipeConfig(mPreviewPipeConfig, config, GC_PREVIEW);
-        if (ret != OK) {
-            LOGE("Failed to get pipe config preview pipe");
-            return ret;
-        }
-        overrideCPFFMode(&mPreviewPipeConfig, config);
-        fillAicInputParams(sensorParams, mPreviewPipeConfig, mPreviewRuntimeParams);
-    }
+    PipeConfig pipeConfig;
 
-    bool foundVideo = config->doesNodeExist("imgu:video");
-    if (foundVideo) {
-        ret = getPipeConfig(mVideoPipeConfig, config, GC_VIDEO);
+    if (config->doesNodeExist("imgu:video")) {
+        ret = getPipeConfig(pipeConfig, config, GC_VIDEO);
         if (ret != OK) {
             LOGE("Failed to get pipe config for video pipe");
             return ret;
         }
-        overrideCPFFMode(&mVideoPipeConfig, config);
-        fillAicInputParams(sensorParams, mVideoPipeConfig, mVideoRuntimeParams);
-
-        foundPreview = false;
+        overrideCPFFMode(&pipeConfig, config);
+        fillAicInputParams(sensorParams, pipeConfig, mRuntimeParams);
+    } else if (config->doesNodeExist("imgu:preview")) {
+        ret = getPipeConfig(pipeConfig, config, GC_PREVIEW);
+        if (ret != OK) {
+            LOGE("Failed to get pipe config preview pipe");
+            return ret;
+        }
+        overrideCPFFMode(&pipeConfig, config);
+        fillAicInputParams(sensorParams, pipeConfig, mRuntimeParams);
+    } else {
+        LOGE("PipeType %d config is wrong", mPipeType);
+        return BAD_VALUE;
     }
 
     for (int i = 0; i < NUM_ISP_PIPES; i++) {
@@ -123,25 +118,10 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     }
 
     ia_cmc_t* cmc = reinterpret_cast<ia_cmc_t*>(cmcHandle);
-    if (mActiveStreams.blobStreams.empty() || mActiveStreams.yuvStreams.empty()) {
-        mCurRuntimeParams = foundVideo ? &mVideoRuntimeParams : &mPreviewRuntimeParams;
-    } else {
-        mCurRuntimeParams = &mVideoRuntimeParams;
-        // Check if jpeg stream has the largest resolution
-        for (auto it : mActiveStreams.yuvStreams) {
-            if (it->width > mActiveStreams.blobStreams[0]->width
-                || it->height > mActiveStreams.blobStreams[0]->height) {
-               mCurRuntimeParams = &mPreviewRuntimeParams;
-               break;
-            }
-        }
-    }
 
-    // TODO hardcode it to AIC_MODE_VIDEO for only one pipe currently.
-    // Will select AicMode per IPU pipe.
-    AicMode aicMode = AIC_MODE_VIDEO;
+    AicMode aicMode = mPipeType == GraphConfig::PIPE_STILL ? AIC_MODE_STILL : AIC_MODE_VIDEO;
     if (mSkyCamAIC == nullptr) {
-        mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, aicMode, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, mCurRuntimeParams, 0, 0);
+        mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, aicMode, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, &mRuntimeParams, 0, 0);
         CheckError((mSkyCamAIC == nullptr), NO_MEMORY, "Not able to create SkyCam AIC");
     }
 
@@ -183,13 +163,13 @@ status_t ParameterWorker::setGridInfo(uint32_t csiBeWidth)
 
 void ParameterWorker::dump()
 {
-    LOGD("mRuntimeParams");
-    if (mVideoRuntimeParams.awb_results)
-        LOGD("  mRuntimeParams.awb_results: %f", mVideoRuntimeParams.awb_results->accurate_b_per_g);
-    if (mVideoRuntimeParams.frame_resolution_parameters)
-        LOGD("  mRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding %d", mVideoRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding);
-    if (mVideoRuntimeParams.exposure_results)
-        LOGD("  mRuntimeParams.exposure_results->analog_gain: %f", mVideoRuntimeParams.exposure_results->analog_gain);
+    LOGD("dump mRuntimeParams");
+    if (mRuntimeParams.awb_results)
+        LOGD("  mRuntimeParams.awb_results: %f", mRuntimeParams.awb_results->accurate_b_per_g);
+    if (mRuntimeParams.frame_resolution_parameters)
+        LOGD("  mRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding %d", mRuntimeParams.frame_resolution_parameters->BDS_horizontal_padding);
+    if (mRuntimeParams.exposure_results)
+        LOGD("  mRuntimeParams.exposure_results->analog_gain: %f", mRuntimeParams.exposure_results->analog_gain);
 }
 
 status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
@@ -205,9 +185,9 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         return OK;
     }
 
-    updateAicInputParams(mMsg, *mCurRuntimeParams);
+    updateAicInputParams(mMsg, mRuntimeParams);
     if (mSkyCamAIC)
-        mSkyCamAIC->Run(*mCurRuntimeParams);
+        mSkyCamAIC->Run(mRuntimeParams);
     mAicConfig = mSkyCamAIC->GetAicConfig();
     if (mAicConfig == nullptr) {
         LOGE("Could not get AIC config");

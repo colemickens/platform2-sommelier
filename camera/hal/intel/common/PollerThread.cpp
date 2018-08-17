@@ -24,7 +24,7 @@
 
 NAMESPACE_DECLARATION {
 
-PollerThread::PollerThread(const char* name):
+PollerThread::PollerThread(std::string name):
     mName(name),
     mCameraThread(mName.c_str()),
     mListener (nullptr),

@@ -64,7 +64,7 @@ public:
 class PollerThread
 {
 public:
-    explicit PollerThread(const char* name);
+    explicit PollerThread(std::string name);
     ~PollerThread();
 
     // Public Methods

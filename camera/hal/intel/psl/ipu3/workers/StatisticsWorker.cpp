@@ -27,9 +27,11 @@ namespace camera2 {
 const unsigned int STAT_WORK_BUFFERS = 1;
 
 StatisticsWorker::StatisticsWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
+                     GraphConfig::PipeType pipeType,
                      std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
                      std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool):
         FrameWorker(node, cameraId, STAT_WORK_BUFFERS, "StatisticsWorker"),
+        mPipeType(pipeType),
         mAfFilterBuffPool(afFilterBuffPool),
         mRgbsGridBuffPool(rgbsGridBuffPool)
 {
@@ -113,6 +115,9 @@ status_t StatisticsWorker::run()
         LOGE("Failed to dequeue buffer from statistics device");
         return status;
     }
+
+    // Current only statistics from VIDEO pipe will be used to run 3A.
+    if (GraphConfig::PIPE_STILL == mPipeType) return OK;
 
     struct ipu3_uapi_stats_3a in;
     struct ipu3_stats_all_stats out;

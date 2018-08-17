@@ -31,6 +31,7 @@ class StatisticsWorker: public FrameWorker, public ICaptureEventSource
 {
 public:
     StatisticsWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
+                     GraphConfig::PipeType pipeType,
                      std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
                      std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool);
     virtual ~StatisticsWorker();
@@ -97,6 +98,7 @@ private:
                                      unsigned int grid_height, int filter_num);
 
 private:
+    GraphConfig::PipeType mPipeType;
     std::shared_ptr<SharedItemPool<ia_aiq_af_grid>>   mAfFilterBuffPool;
     std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> mRgbsGridBuffPool;
 };

@@ -222,7 +222,7 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
     std::vector<camera3_stream_t*> &activeStreams = *msg.activeStreams;
     bool configChanged = msg.configChanged;
     MediaCtlHelper::ConfigurationResults isysConfigResult;
-    std::shared_ptr<GraphConfig> baseConfig = mStreamCfgProvider.getBaseGraphConfig();
+    std::shared_ptr<GraphConfig> baseConfig = mStreamCfgProvider.getBaseGraphConfig(IStreamConfigProvider::CIO2);
 
     mActiveStreams.clear();
     for (unsigned int i = 0; i < activeStreams.size(); i++) {

@@ -37,105 +37,124 @@ namespace android {
 namespace camera2 {
 
 class OutputFrameWorker;
-class ImguUnit : public IPollEventListener {
+class ImguUnit {
 
 public:
     ImguUnit(int cameraId, GraphConfigManager &gcm,
             std::shared_ptr<MediaController> mediaCtl);
     virtual ~ImguUnit();
-    status_t flush(void);
-    status_t configStreams(std::vector<camera3_stream_t*> &activeStreams);
+
+    status_t attachListener(ICaptureEventListener *aListener);
     void cleanListener();
+
+    status_t configStreams(std::vector<camera3_stream_t*> &activeStreams);
     status_t completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
                              ICaptureEventListener::CaptureBuffers &captureBufs,
                              bool updateMeta);
-
-    status_t attachListener(ICaptureEventListener *aListener);
-
-    // IPollEvenListener
-    virtual status_t notifyPollEvent(PollEventMessage *msg);
+    status_t flush(void);
 
 private:
-    status_t handleCompleteReq(DeviceMessage msg);
-    status_t processNextRequest();
-    status_t handlePoll(DeviceMessage msg);
-    status_t handleFlush(void);
-    status_t updateProcUnitResults(Camera3Request &request,
-                                   std::shared_ptr<ProcUnitSettings> settings);
-    status_t startProcessing();
-    void updateMiscMetadata(CameraMetadata &result,
-                            std::shared_ptr<const ProcUnitSettings> settings) const;
-    void updateDVSMetadata(CameraMetadata &result,
-                           std::shared_ptr<const ProcUnitSettings> settings) const;
-    status_t mapStreamWithDeviceNode();
-    status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig);
-    void setStreamListeners(IPU3NodeNames nodeName,
-                            std::shared_ptr<OutputFrameWorker>& source);
-    status_t checkAndSwitchPipe(Camera3Request* request);
-    status_t kickstart(Camera3Request* request);
-    void clearWorkers();
-
     status_t allocatePublicStatBuffers(int numBufs);
     void freePublicStatBuffers();
-private:
-    enum ImguState {
-        IMGU_RUNNING,
-        IMGU_IDLE,
-    };
 
-    enum ImguPipeType {
-        PIPE_VIDEO_INDEX = 0,
-        PIPE_STILL_INDEX,
-        PIPE_NUM
-    };
+    class ImguPipe : public IPollEventListener {
+    public:
+        ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
+                 std::shared_ptr<MediaController> mediaCtl,
+                 std::vector<ICaptureEventListener*> listeners);
+        virtual ~ImguPipe();
 
-    struct PipeConfiguration {
-        std::vector<std::shared_ptr<IDeviceWorker>> deviceWorkers;
-        std::vector<std::shared_ptr<FrameWorker>> pollableWorkers;
-        std::vector<std::shared_ptr<cros::V4L2Device>> nodes; /* PollerThread owns this */
-    };
+        void cleanListener();
 
-private:
-    ImguState mState;
+        status_t configStreams(std::vector<camera3_stream_t*> &streams,
+                               GraphConfigManager &gcm,
+                               std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> afGridBuffPool,
+                               std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> rgbsGridBuffPool);
+        status_t startWorkers();
+        status_t completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
+                                 ICaptureEventListener::CaptureBuffers &captureBufs,
+                                 bool updateMeta);
+        // IPollEvenListener
+        virtual status_t notifyPollEvent(PollEventMessage *msg);
+
+        status_t flush(void);
+
+    private:
+        void clearWorkers();
+        status_t mapStreamWithDeviceNode(std::vector<camera3_stream_t*> &streams);
+        status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig,
+                                       std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> afGridBuffPool,
+                                       std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> rgbsGridBuffPool);
+
+        status_t handleCompleteReq(DeviceMessage msg);
+        status_t processNextRequest();
+        status_t kickstart(Camera3Request* request);
+
+        status_t startProcessing();
+        status_t handlePoll(DeviceMessage msg);
+
+        status_t updateProcUnitResults(Camera3Request &request,
+                                       std::shared_ptr<ProcUnitSettings> settings);
+        void updateMiscMetadata(CameraMetadata &result,
+                                std::shared_ptr<const ProcUnitSettings> settings) const;
+        void updateDVSMetadata(CameraMetadata &result,
+                               std::shared_ptr<const ProcUnitSettings> settings) const;
+
+        status_t handleFlush(void);
+
+        enum ImguState {
+            IMGU_RUNNING,
+            IMGU_IDLE,
+        };
+
+        struct PipeConfiguration {
+            std::vector<std::shared_ptr<IDeviceWorker>> deviceWorkers;
+            std::vector<std::shared_ptr<FrameWorker>> pollableWorkers;
+            std::vector<std::shared_ptr<cros::V4L2Device>> nodes; /* PollerThread owns this */
+        };
+
+        int mCameraId;
+        GraphConfig::PipeType mPipeType;
+        MediaCtlHelper mMediaCtlHelper;
+        ImguState mState;
+
+        /**
+         * Thread control members
+         */
+        cros::CameraThread mCameraThread;
+        std::unique_ptr<PollerThread> mPollerThread;
+
+        PipeConfiguration mPipeConfig;
+
+        std::vector<std::shared_ptr<IDeviceWorker>> mFirstWorkers;
+        std::vector<ICaptureEventSource *> mListenerDeviceWorkers; /* mListenerDeviceWorkers doesn't own ICaptureEventSource objects */
+        std::vector<ICaptureEventListener*> mListeners; /* mListeners doesn't own ICaptureEventListener objects */
+
+        std::vector<std::shared_ptr<DeviceMessage>> mMessagesPending; // Keep copy of message until workers start to handle it
+        std::vector<std::shared_ptr<DeviceMessage>> mMessagesUnderwork; // Keep copy of message until workers have processed it
+        std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
+        bool mFirstRequest;
+        bool mFirstPollCallbacked;
+        pthread_mutex_t mFirstLock;
+        pthread_cond_t mFirstCond;
+
+        std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
+    };
 
     int mCameraId;
     GraphConfigManager &mGCM;
-
-    /**
-     * Thread control members
-     */
-    cros::CameraThread mCameraThread;
-
-    StreamConfig mActiveStreams;
-    std::vector<std::shared_ptr<ITaskEventListener>> mListeningTasks;   // Tasks that listen for events from another task.
-
-    PipeConfiguration mPipeConfigs[PIPE_NUM];
-    std::vector<std::shared_ptr<IDeviceWorker>> mFirstWorkers;
-    std::vector<ICaptureEventSource *> mListenerDeviceWorkers; /* mListenerDeviceWorkers doesn't own ICaptureEventSource objects */
-    std::vector<ICaptureEventListener*> mListeners; /* mListeners doesn't own ICaptureEventListener objects */
-    PipeConfiguration* mCurPipeConfig;
-
-    MediaCtlHelper mMediaCtlHelper;
-    std::unique_ptr<PollerThread> mPollerThread;
-
-    std::vector<std::shared_ptr<DeviceMessage>> mMessagesPending; // Keep copy of message until workers start to handle it
-    std::vector<std::shared_ptr<DeviceMessage>> mMessagesUnderwork; // Keep copy of message until workers have processed it
-    std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
-    bool mFirstRequest;
-    bool mFirstPollCallbacked;
-    pthread_mutex_t mFirstLock;
-    pthread_cond_t mFirstCond;
-
-    std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
-    std::map<camera3_stream_t*, IPU3NodeNames> mStreamListenerMapping;
-
+    std::shared_ptr<MediaController> mMediaCtl;
     std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> mAfFilterBuffPool; /* 3A statistics buffers */
     std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> mRgbsGridBuffPool;
+
     static const int PUBLIC_STATS_POOL_SIZE = 9;
     static const int IPU3_MAX_STATISTICS_WIDTH = 80;
     static const int IPU3_MAX_STATISTICS_HEIGHT = 60;
 
-    bool mTakingPicture;
+    StreamConfig mActiveStreams;
+    std::unique_ptr<ImguPipe> mImguPipe[GraphConfig::PIPE_MAX];
+
+    std::vector<ICaptureEventListener*> mListeners;
 };
 
 } /* namespace camera2 */
