@@ -35,9 +35,6 @@ smbc_dirent* AdvanceDirEnt(smbc_dirent* dirp);
 std::string AppendPath(const std::string& base_path,
                        const std::string& relative_path);
 
-// Helper method to calculate entry size based on |entry_name|.
-size_t CalculateEntrySize(const std::string& entry_name);
-
 // Helper method to get |smbc_dirent| struct from a |buffer|.
 smbc_dirent* GetDirentFromBuffer(uint8_t* buffer);
 
@@ -46,13 +43,6 @@ bool IsSelfOrParentDir(const std::string& entry_name);
 
 // Helper method to check if the entry is a file or directory.
 bool IsFileOrDir(uint32_t smbc_type);
-
-// Helper method to write the contents of |entry| into the buffer |dirp|.
-// |dirlen| is the size of the smbc_dirent entry.
-bool WriteEntry(const std::string& entry_name,
-                int32_t entry_type,
-                size_t buffer_size,
-                smbc_dirent* dirp);
 
 // Maps errno to ErrorType.
 ErrorType GetErrorFromErrno(int32_t error_code);

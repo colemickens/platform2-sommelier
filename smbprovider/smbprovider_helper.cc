@@ -6,7 +6,6 @@
 
 #include <errno.h>
 
-#include <base/bits.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_piece.h>
 #include <libsmbclient.h>
@@ -43,11 +42,6 @@ std::string AppendPath(const std::string& base_path,
   return path.Append(relative).value();
 }
 
-size_t CalculateEntrySize(const std::string& entry_name) {
-  return base::bits::Align(sizeof(smbc_dirent) + entry_name.size(),
-                           alignof(smbc_dirent));
-}
-
 smbc_dirent* GetDirentFromBuffer(uint8_t* buffer) {
   return reinterpret_cast<smbc_dirent*>(buffer);
 }
@@ -62,21 +56,6 @@ bool IsFileOrDir(uint32_t smbc_type) {
 
 bool IsSmbShare(uint32_t smbc_type) {
   return smbc_type == SMBC_FILE_SHARE;
-}
-
-bool WriteEntry(const std::string& entry_name,
-                int32_t entry_type,
-                size_t buffer_size,
-                smbc_dirent* dirp) {
-  DCHECK(dirp);
-  size_t entry_size = CalculateEntrySize(entry_name);
-  if (entry_size > buffer_size) {
-    return false;
-  }
-  dirp->smbc_type = entry_type;
-  dirp->dirlen = entry_size;
-  memcpy(dirp->name, entry_name.c_str(), entry_name.size() + 1);
-  return true;
 }
 
 ErrorType GetErrorFromErrno(int32_t error_code) {

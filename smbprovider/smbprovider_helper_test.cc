@@ -28,36 +28,6 @@ class SmbProviderHelperTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(SmbProviderHelperTest);
 };
 
-// WriteEntry should fail in case the buffer size provided is too small. Even
-// one character filename should not fit if the buffer size is
-// sizeof(smbc_dirent).
-TEST_F(SmbProviderHelperTest, WriteEntryFailsWithSmallBuffer) {
-  smbc_dirent dirent;
-  EXPECT_FALSE(WriteEntry("a", SMBC_FILE, sizeof(smbc_dirent), &dirent));
-}
-
-// WriteEntry should succeed if given a proper sized buffer.
-TEST_F(SmbProviderHelperTest, WriteEntrySucceedsWithProperBufferSize) {
-  const std::string name("a");
-  std::vector<uint8_t> dir_buf(CalculateEntrySize(name));
-  EXPECT_TRUE(WriteEntry(name, SMBC_FILE, dir_buf.size(),
-                         GetDirentFromBuffer(dir_buf.data())));
-}
-
-// WriteEntry should write the proper fields.
-TEST_F(SmbProviderHelperTest, WriteEntrySucceeds) {
-  std::vector<uint8_t> dir_buf(kDirEntBufferSize);
-  smbc_dirent* dirent = GetDirentFromBuffer(dir_buf.data());
-  const std::string name("test_folder");
-  uint32_t type = SMBC_DIR;
-
-  DCHECK_GE(kDirEntBufferSize, CalculateEntrySize(name));
-  EXPECT_TRUE(WriteEntry(name, type, kDirEntBufferSize, dirent));
-  EXPECT_EQ(name, dirent->name);
-  EXPECT_EQ(type, dirent->smbc_type);
-  EXPECT_EQ(CalculateEntrySize(name), dirent->dirlen);
-}
-
 // Tests that AppendPath properly appends with or without the trailing separator
 // "/" on the base path.
 TEST_F(SmbProviderHelperTest, AppendPath) {
