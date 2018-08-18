@@ -94,7 +94,9 @@ const Log kCommandLogs[] = {
   { "edid-decode",
     "for f in /sys/class/drm/card0-*/edid; do "
         "echo \"----------- ${f}\"; "
-        "sed -E 's/.{4}/\x00\x00\x00\x00/4' \"${f}\" | edid-decode;"
+        "sed -E 's/^(.{11}).{4}/\\1\\x0\\x0\\x0\\x0/' \"${f}\" | "
+        // edid-decode's stderr output is redundant, so silence it.
+        "edid-decode 2>/dev/null; "
         "done"
   },
   { "eventlog", "cat /var/log/eventlog.txt" },
