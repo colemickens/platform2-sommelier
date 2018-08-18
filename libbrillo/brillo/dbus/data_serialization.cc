@@ -232,6 +232,9 @@ bool PopArrayValueFromReader(dbus::MessageReader* reader,
   else if (signature == "a(uu)")
     return PopTypedArrayFromReader<
         std::tuple<uint32_t, uint32_t>>(reader, value);
+  else if (signature == "a(ubay)")
+    return PopTypedArrayFromReader<
+        std::tuple<uint32_t, bool, std::vector<uint8_t>>>(reader, value);
 
   // When a use case for particular array signature is found, feel free
   // to add handing for it here.

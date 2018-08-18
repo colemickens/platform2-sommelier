@@ -472,19 +472,28 @@ TEST(DBusUtils, ArraysAsVariant) {
   std::vector<double> dbl_array_empty{};
   std::map<std::string, std::string> dict_ss{{"k1", "v1"}, {"k2", "v2"}};
   VariantDictionary dict_sv{{"k1", 1}, {"k2", "v2"}};
+  using ComplexStructArray =
+      std::vector<std::tuple<uint32_t, bool, std::vector<uint8_t>>>;
+  ComplexStructArray complex_struct_array{
+      {123, true, {0xaa, 0xbb, 0xcc}},
+      {456, false, {0xdd}},
+      {789, false, {}},
+  };
   AppendValueToWriterAsVariant(&writer, int_array);
   AppendValueToWriterAsVariant(&writer, str_array);
   AppendValueToWriterAsVariant(&writer, dbl_array_empty);
   AppendValueToWriterAsVariant(&writer, dict_ss);
   AppendValueToWriterAsVariant(&writer, dict_sv);
+  AppendValueToWriterAsVariant(&writer, complex_struct_array);
 
-  EXPECT_EQ("vvvvv", message->GetSignature());
+  EXPECT_EQ("vvvvvv", message->GetSignature());
 
   Any int_array_out;
   Any str_array_out;
   Any dbl_array_out;
   Any dict_ss_out;
   Any dict_sv_out;
+  Any complex_struct_array_out;
 
   MessageReader reader(message.get());
   EXPECT_TRUE(PopValueFromReader(&reader, &int_array_out));
@@ -492,6 +501,7 @@ TEST(DBusUtils, ArraysAsVariant) {
   EXPECT_TRUE(PopValueFromReader(&reader, &dbl_array_out));
   EXPECT_TRUE(PopValueFromReader(&reader, &dict_ss_out));
   EXPECT_TRUE(PopValueFromReader(&reader, &dict_sv_out));
+  EXPECT_TRUE(PopValueFromReader(&reader, &complex_struct_array_out));
   EXPECT_FALSE(reader.HasMoreData());
 
   EXPECT_EQ(int_array, int_array_out.Get<std::vector<int>>());
@@ -502,6 +512,8 @@ TEST(DBusUtils, ArraysAsVariant) {
             dict_sv_out.Get<VariantDictionary>().at("k1").Get<int>());
   EXPECT_EQ(dict_sv["k2"].Get<const char*>(),
             dict_sv_out.Get<VariantDictionary>().at("k2").Get<std::string>());
+  EXPECT_EQ(complex_struct_array,
+            complex_struct_array_out.Get<ComplexStructArray>());
 }
 
 TEST(DBusUtils, VariantDictionary) {
