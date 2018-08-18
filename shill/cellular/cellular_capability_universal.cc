@@ -34,6 +34,7 @@
 #include "shill/cellular/cellular_pco.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
+#include "shill/cellular/verizon_subscription_state.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/device_id.h"
@@ -1734,8 +1735,17 @@ void CellularCapabilityUniversal::OnPcoChanged(const PcoList& pco_list) {
                   << "";
 
     std::unique_ptr<CellularPco> pco = CellularPco::CreateFromRawData(data);
-    if (!pco)
+    if (!pco) {
       LOG(WARNING) << "Failed to parse PCO (session-id " << session_id << ")";
+      continue;
+    }
+
+    SubscriptionState subscription_state = SubscriptionState::kUnknown;
+    if (!FindVerizonSubscriptionStateFromPco(*pco, &subscription_state))
+      continue;
+
+    if (subscription_state != SubscriptionState::kUnknown)
+      OnSubscriptionStateChanged(subscription_state);
   }
 }
 
