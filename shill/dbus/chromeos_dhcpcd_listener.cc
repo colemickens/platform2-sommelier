@@ -57,7 +57,7 @@ ChromeosDHCPCDListener::ChromeosDHCPCDListener(
                                      kDBusInterfaceName)) {
   bus_->AssertOnDBusThread();
   CHECK(bus_->SetUpAsyncOperations());
-  if (!bus_->is_connected()) {
+  if (!bus_->IsConnected()) {
     LOG(FATAL) << "DBus isn't connected.";
   }
 
