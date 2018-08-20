@@ -399,6 +399,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     if (m->set_callbacks(aux.get()) != 0) {
       LOGF(ERROR) << "Failed to set_callbacks on camera module " << module_id;
       callback.Run(false);
+      return;
     }
     callbacks_auxs_.push_back(std::move(aux));
 
