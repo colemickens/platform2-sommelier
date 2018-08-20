@@ -23,34 +23,35 @@ using base::StringPrintf;
 
 namespace {
 
-const char kDefaultKernelStackSignature[] = "kernel-UnspecifiedStackSignature";
-const char kDumpParentPath[] = "/sys/fs";
-const char kDumpPath[] = "/sys/fs/pstore";
-const char kDumpRecordDmesgName[] = "dmesg";
-const char kDumpRecordConsoleName[] = "console";
-const char kDumpDriverRamoopsName[] = "ramoops";
-const char kDumpDriverEfiName[] = "efi";
+constexpr char kDefaultKernelStackSignature[] =
+    "kernel-UnspecifiedStackSignature";
+constexpr char kDumpParentPath[] = "/sys/fs";
+constexpr char kDumpPath[] = "/sys/fs/pstore";
+constexpr char kDumpRecordDmesgName[] = "dmesg";
+constexpr char kDumpRecordConsoleName[] = "console";
+constexpr char kDumpDriverRamoopsName[] = "ramoops";
+constexpr char kDumpDriverEfiName[] = "efi";
 // The files take the form <record type>-<driver name>-<record id>.
 // e.g. console-ramoops-0 or dmesg-ramoops-0.
-const char kDumpNameFormat[] = "%s-%s-%zu";
+constexpr char kDumpNameFormat[] = "%s-%s-%zu";
 // Like above, but for older systems when the kernel didn't add the record id.
-const char kDumpNameFormatOld[] = "%s-%s";
+constexpr char kDumpNameFormatOld[] = "%s-%s";
 
 const FilePath kEventLogPath("/var/log/eventlog.txt");
-const char kEventNameBoot[] = "System boot";
-const char kEventNameWatchdog[] = "Hardware watchdog reset";
-const char kKernelExecName[] = "kernel";
+constexpr char kEventNameBoot[] = "System boot";
+constexpr char kEventNameWatchdog[] = "Hardware watchdog reset";
+constexpr char kKernelExecName[] = "kernel";
 // Maximum number of records to examine in the kDumpPath.
-const size_t kMaxDumpRecords = 100;
-const pid_t kKernelPid = 0;
-const char kKernelSignatureKey[] = "sig";
+constexpr size_t kMaxDumpRecords = 100;
+constexpr pid_t kKernelPid = 0;
+constexpr char kKernelSignatureKey[] = "sig";
 // Byte length of maximum human readable portion of a kernel crash signature.
-const size_t kMaxHumanStringLength = 40;
+constexpr size_t kMaxHumanStringLength = 40;
 // Time in seconds from the final kernel log message for a call stack
 // to count towards the signature of the kcrash.
-const int kSignatureTimestampWindow = 2;
+constexpr int kSignatureTimestampWindow = 2;
 // Kernel log timestamp regular expression.
-const char kTimestampRegex[] = "^<.*>\\[\\s*(\\d+\\.\\d+)\\]";
+constexpr char kTimestampRegex[] = "^<.*>\\[\\s*(\\d+\\.\\d+)\\]";
 
 //
 // These regular expressions enable to us capture the PC in a backtrace.
