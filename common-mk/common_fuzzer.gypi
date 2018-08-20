@@ -45,9 +45,11 @@
     ['USE_ubsan == 1', {
       'cflags': [
         '-fsanitize=undefined',
+        '-fno-sanitize=vptr',
       ],
       'ldflags': [
         '-fsanitize=undefined',
+        '-fno-sanitize=vptr',
         ],
     }],
   ]
