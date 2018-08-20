@@ -182,6 +182,7 @@ void CameraHalServerImpl::OnServiceMojoChannelError() {
 void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
   VLOGF_ENTER();
   DCHECK(main_task_runner_->BelongsToCurrentThread());
+  camera_hal_adapter_.reset();
   exit(exit_status);
 }
 
