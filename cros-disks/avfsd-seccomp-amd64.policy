@@ -27,6 +27,7 @@ writev: 1
 access: 1
 madvise: 1
 dup2: 1
+dup: 1
 pause: 1
 sendmsg: 1
 recvmsg: 1

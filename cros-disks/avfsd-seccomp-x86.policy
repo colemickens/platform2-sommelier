@@ -27,6 +27,7 @@ brk: 1
 ioctl: arg1 == 0x5401
 umask: 1
 dup2: 1
+dup: 1
 setsid: 1
 getrlimit: 1
 gettimeofday: 1
