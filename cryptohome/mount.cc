@@ -2041,7 +2041,7 @@ bool Mount::MountDaemonStoreDirectories(
     // same as for |etc_daemon_store_path| (usually
     // <daemon_user>:<daemon_group>), which is what the daemon intended.
     // Otherwise, it would end up being root-owned.
-    const struct stat& etc_daemon_path_stat = file_enumerator->GetInfo().stat();
+    struct stat etc_daemon_path_stat = file_enumerator->GetInfo().stat();
     if (!platform_->SetOwnership(mount_source, etc_daemon_path_stat.st_uid,
                                  etc_daemon_path_stat.st_gid,
                                  false /* follow_links */)) {
