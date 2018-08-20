@@ -31,11 +31,11 @@ JpegEncodeTestEnvironment* g_env;
 namespace {
 // Download test image URI.
 const char* kDownloadTestImageURI1 =
-    "https://pantheon.corp.google.com/storage/browser/"
-    "chromiumos-test-assets-public/jpeg_test/bali_640x360_P420.yuv";
+    "https://storage.googleapis.com/chromiumos-test-assets-public/jpeg_test/"
+    "bali_640x360_P420.yuv";
 const char* kDownloadTestImageURI2 =
-    "https://pantheon.corp.google.com/storage/browser/"
-    "chromiumos-test-assets-public/jpeg_test/lake_4160x3120.yuv";
+    "https://storage.googleapis.com/chromiumos-test-assets-public/jpeg_test/"
+    "lake_4160x3120.yuv";
 
 // Default test image file.
 const base::FilePath::CharType* kDefaultJpegFilename1 =
