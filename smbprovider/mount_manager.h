@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include <base/callback.h>
@@ -144,6 +145,10 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
 
   bool can_remount_ = true;
   IdMap<MountInfo> mounts_;
+
+  // Maps SambaInterfaceId to MountId.
+  std::unordered_map<SambaInterface::SambaInterfaceId, int32_t>
+      samba_interface_map_;
   std::unique_ptr<CredentialStore> credential_store_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<SambaInterface> system_samba_interface_;
