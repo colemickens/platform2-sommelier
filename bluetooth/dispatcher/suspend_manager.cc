@@ -200,6 +200,10 @@ void SuspendManager::InitiatePauseDiscovery(int new_suspend_id) {
   is_pause_or_unpause_in_progress_ = true;
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kPauseDiscovery);
+  dbus::MessageWriter writer(&method_call);
+  // Indicate that this request is related to system suspend/resume.
+  writer.AppendBool(true);
+
   VLOG(1) << "Calling PauseDiscovery to BlueZ";
   bluez_dbus_proxy_->CallMethod(&method_call,
                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
@@ -223,6 +227,10 @@ void SuspendManager::InitiateUnpauseDiscovery() {
   is_pause_or_unpause_in_progress_ = true;
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kUnpauseDiscovery);
+  dbus::MessageWriter writer(&method_call);
+  // Indicate that this request is related to system suspend/resume.
+  writer.AppendBool(true);
+
   VLOG(1) << "Calling UnpauseDiscovery to BlueZ";
   bluez_dbus_proxy_->CallMethod(&method_call,
                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
