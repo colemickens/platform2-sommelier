@@ -232,8 +232,12 @@ void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
         // long. If the length is 1, then flags[0] is octet[0]. Store only
         // octet[0] for now due to lack of definition of the following octets
         // in Supplement to the Bluetooth Core Specification.
-        device->flags.SetValue(
-            std::vector<uint8_t>(data, data + (data_len > 0 ? 1 : 0)));
+        if (data_len > 0)
+          device->flags.SetValue(std::vector<uint8_t>(data, data + 1));
+        // If |data_len| is 0, we avoid setting zero-length advertising flags as
+        // this currently causes Chrome to crash.
+        // TODO(crbug.com/876908): Fix Chrome to not crash with zero-length
+        // advertising flags.
         break;
 
       // If there are more than one instance of either COMPLETE or INCOMPLETE

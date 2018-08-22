@@ -249,7 +249,7 @@ TEST_F(NewblueTest, UpdateEirNormal) {
   Newblue::UpdateEir(&device,
                      std::vector<uint8_t>(eir2, eir2 + arraysize(eir2)));
 
-  EXPECT_TRUE(device.flags.value().empty());
+  EXPECT_FALSE(device.flags.value().empty());
   EXPECT_THAT(device.service_uuids.value(),
               UnorderedElementsAre(bond_management_service_uuid32));
   EXPECT_EQ("foo", device.name.value());
