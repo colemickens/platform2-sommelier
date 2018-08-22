@@ -73,6 +73,21 @@
         'mojo/diagnosticsd.mojom',
       ],
     },
+    {
+      'target_name': 'diagnostics_processor',
+      'type': 'executable',
+      'dependencies': [
+        'libgrpc_async_adapter',
+      ],
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+        ],
+      },
+      'sources': [
+        'diagnostics_processor/main.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
