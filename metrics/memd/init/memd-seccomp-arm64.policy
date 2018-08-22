@@ -50,5 +50,6 @@ setsid: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
 sysinfo: 1
+tgkill: 1
 uname: 1
 write: 1
