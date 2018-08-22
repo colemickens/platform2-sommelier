@@ -59,9 +59,11 @@ bool MountManager::AddMount(const std::string& mount_root,
   }
 
   can_remount_ = false;
+
   // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
   // the SmbCredential.
   *mount_id = mounts_.Insert(CreateMountInfo(mount_root, SmbCredential()));
+  AddSambaInterfaceIdToSambaInterfaceMap(*mount_id);
   return true;
 }
 
@@ -83,6 +85,7 @@ bool MountManager::Remount(const std::string& mount_root,
   // the SmbCredential.
   mounts_.InsertWithSpecificId(mount_id,
                                CreateMountInfo(mount_root, SmbCredential()));
+  AddSambaInterfaceIdToSambaInterfaceMap(mount_id);
   return true;
 }
 
@@ -91,7 +94,9 @@ bool MountManager::RemoveMount(int32_t mount_id) {
   if (mount_iter == mounts_.End()) {
     return false;
   }
+  DeleteSambaInterfaceIdFromSambaInterfaceMap(mount_id);
 
+  // TODO(jimmyxgong): CredentialStore will be removed in future CL's.
   bool removed =
       credential_store_->RemoveCredential(mount_iter->second.mount_root);
   DCHECK(removed);
@@ -199,6 +204,31 @@ MountManager::MountInfo MountManager::CreateMountInfo(
 
 SambaInterface::SambaInterfaceId MountManager::GetSystemSambaInterfaceId() {
   return system_samba_interface_->GetSambaInterfaceId();
+}
+
+SambaInterface::SambaInterfaceId MountManager::GetSambaInterfaceIdForMountId(
+    int32_t mount_id) const {
+  DCHECK(mounts_.Contains(mount_id));
+
+  auto mount_iter = mounts_.Find(mount_id);
+  return mount_iter->second.samba_interface->GetSambaInterfaceId();
+}
+
+void MountManager::AddSambaInterfaceIdToSambaInterfaceMap(int32_t mount_id) {
+  const SambaInterface::SambaInterfaceId samba_interface_id =
+      GetSambaInterfaceIdForMountId(mount_id);
+  DCHECK_EQ(0, samba_interface_map_.count(samba_interface_id));
+
+  samba_interface_map_[samba_interface_id] = mount_id;
+}
+
+void MountManager::DeleteSambaInterfaceIdFromSambaInterfaceMap(
+    int32_t mount_id) {
+  SambaInterface::SambaInterfaceId samba_interface_id =
+      GetSambaInterfaceIdForMountId(mount_id);
+  DCHECK_NE(0, samba_interface_map_.count(samba_interface_id));
+
+  samba_interface_map_.erase(samba_interface_id);
 }
 
 }  // namespace smbprovider

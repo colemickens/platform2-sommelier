@@ -155,6 +155,16 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Returns the SambaInterfaceId from |system_samba_interface_|.
   SambaInterface::SambaInterfaceId GetSystemSambaInterfaceId();
 
+  // Returns the SambaInterfaceId corresponding to the |mount_id|.
+  SambaInterface::SambaInterfaceId GetSambaInterfaceIdForMountId(
+      int32_t mount_id) const;
+
+  // Adds |samba_interface_id| to |mount_id| mapping to |samba_interface_map_|.
+  void AddSambaInterfaceIdToSambaInterfaceMap(int32_t mount_id);
+
+  // Removes |samba_interface_id| from |samba_interface_map_|.
+  void DeleteSambaInterfaceIdFromSambaInterfaceMap(int32_t mount_id);
+
   bool can_remount_ = true;
   IdMap<MountInfo> mounts_;
 
