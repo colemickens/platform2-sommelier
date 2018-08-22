@@ -938,19 +938,19 @@ int PackageKitProxy::InstallLinuxPackage(const base::FilePath& file_path,
 
 void PackageKitProxy::AddPackageKitDeathObserver(
     PackageKitDeathObserver* observer) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   death_observers_.AddObserver(observer);
 }
 
 void PackageKitProxy::RemovePackageKitDeathObserver(
     PackageKitDeathObserver* observer) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   death_observers_.RemoveObserver(observer);
 }
 
 void PackageKitProxy::GetLinuxPackageInfoOnDBusThread(
     std::shared_ptr<PackageInfoTransactionData> data) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Getting information on local Linux package";
   // This object is intentionally leaked and will clean itself up when done
   // with all the D-Bus communication.
@@ -964,7 +964,7 @@ void PackageKitProxy::InstallLinuxPackageOnDBusThread(
     base::WaitableEvent* event,
     int* status,
     std::string* out_error) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(event);
   CHECK(status);
   CHECK(out_error);
@@ -999,7 +999,7 @@ void PackageKitProxy::InstallLinuxPackageOnDBusThread(
 
 void PackageKitProxy::OnPackageKitNameOwnerChanged(
     const std::string& old_owner, const std::string& new_owner) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   if (new_owner.empty()) {
     for (PackageKitDeathObserver& obs : death_observers_)
       obs.OnPackageKitDeath();

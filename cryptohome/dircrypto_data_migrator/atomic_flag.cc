@@ -18,7 +18,7 @@ AtomicFlag::AtomicFlag() {
 }
 
 void AtomicFlag::Set() {
-  DCHECK(set_sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(set_sequence_checker_.CalledOnValidSequence());
   base::subtle::Release_Store(&flag_, 1);
 }
 

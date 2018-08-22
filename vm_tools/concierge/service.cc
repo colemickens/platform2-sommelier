@@ -327,7 +327,7 @@ void Service::OnFileCanWriteWithoutBlocking(int fd) {
 
 void Service::ContainerStartupFailed(const std::string& container_name,
                                      const uint32_t cid) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   VmMap::key_type vm_key;
   for (auto& vm : vms_) {
     if (vm.second->cid() == cid) {
@@ -467,7 +467,7 @@ bool Service::Init() {
 }
 
 void Service::HandleChildExit() {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   // We can't just rely on the information in the siginfo structure because
   // more than one child may have exited but only one SIGCHLD will be
   // generated.
@@ -515,7 +515,7 @@ void Service::HandleSigterm() {
 
 std::unique_ptr<dbus::Response> Service::StartVm(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received StartVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -817,7 +817,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 }
 
 std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received StopVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -866,7 +866,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
 
 std::unique_ptr<dbus::Response> Service::StopAllVms(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received StopAllVms request";
 
   // Spawn a thread for each VM to shut it down.
@@ -886,7 +886,7 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
 
 std::unique_ptr<dbus::Response> Service::GetVmInfo(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received GetVmInfo request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -927,7 +927,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
 }
 
 bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Starting lxd";
 
   // Allocate the subnet for lxd's bridge to use.
@@ -996,7 +996,7 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
 
 std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received CreateDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -1089,7 +1089,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
 std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received DestroyDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -1152,7 +1152,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
 std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received ExportDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -1235,7 +1235,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
 
 std::unique_ptr<dbus::Response> Service::ListVmDisks(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -1302,7 +1302,7 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
 
 std::unique_ptr<dbus::Response> Service::StartContainer(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received StartContainer request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1421,7 +1421,7 @@ std::unique_ptr<dbus::Response> Service::StartContainer(
 
 std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received GetContainerSshKeys request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1471,7 +1471,7 @@ void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
                                         uint32_t container_netmask,
                                         uint32_t ipv4_address,
                                         uint32_t cid) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStartedMethod);
   dbus::MessageWriter writer(&method_call);
@@ -1493,7 +1493,7 @@ void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
 
 void Service::NotifyCiceroneOfVmStopped(const std::string& owner_id,
                                         const std::string& vm_name) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStoppedMethod);
   dbus::MessageWriter writer(&method_call);
@@ -1512,7 +1512,7 @@ void Service::NotifyCiceroneOfVmStopped(const std::string& owner_id,
 std::string Service::GetContainerToken(const std::string& owner_id,
                                        const std::string& vm_name,
                                        const std::string& container_name) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kGetContainerTokenMethod);
   dbus::MessageWriter writer(&method_call);
@@ -1540,7 +1540,7 @@ std::string Service::GetContainerToken(const std::string& owner_id,
 bool Service::IsContainerRunning(const std::string& owner_id,
                                  const std::string& vm_name,
                                  const std::string& container_name) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kIsContainerRunningMethod);
   dbus::MessageWriter writer(&method_call);

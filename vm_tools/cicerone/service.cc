@@ -270,7 +270,7 @@ void Service::OnFileCanWriteWithoutBlocking(int fd) {
 void Service::ConnectTremplin(uint32_t cid,
                               bool* result,
                               base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(result);
   CHECK(event);
   *result = false;
@@ -306,7 +306,7 @@ void Service::LxdContainerCreated(const uint32_t cid,
                                   std::string failure_reason,
                                   bool* result,
                                   base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(!container_name.empty());
   CHECK(result);
   CHECK(event);
@@ -353,7 +353,7 @@ void Service::LxdContainerDownloading(const uint32_t cid,
                                       int download_progress,
                                       bool* result,
                                       base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(!container_name.empty());
   CHECK(result);
   CHECK(event);
@@ -382,7 +382,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
                                         const uint32_t garcon_vsock_port,
                                         bool* result,
                                         base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(result);
   CHECK(event);
   *result = false;
@@ -468,7 +468,7 @@ void Service::ContainerShutdown(const std::string& container_token,
                                 const uint32_t cid,
                                 bool* result,
                                 base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(result);
   CHECK(event);
   *result = false;
@@ -515,7 +515,7 @@ void Service::UpdateApplicationList(const std::string& container_token,
                                     vm_tools::apps::ApplicationList* app_list,
                                     bool* result,
                                     base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(app_list);
   CHECK(result);
   CHECK(event);
@@ -562,7 +562,7 @@ void Service::OpenUrl(const std::string& container_token,
                       uint32_t cid,
                       bool* result,
                       base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(result);
   CHECK(event);
   *result = false;
@@ -611,7 +611,7 @@ void Service::InstallLinuxPackageProgress(
     InstallLinuxPackageProgressSignal* progress_signal,
     bool* result,
     base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(progress_signal);
   CHECK(result);
   CHECK(event);
@@ -646,7 +646,7 @@ void Service::OpenTerminal(const std::string& container_token,
                            uint32_t cid,
                            bool* result,
                            base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(result);
   CHECK(event);
   *result = false;
@@ -822,7 +822,7 @@ bool Service::Init() {
 }
 
 void Service::HandleChildExit() {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   // We can't just rely on the information in the siginfo structure because
   // more than one child may have exited but only one SIGCHLD will be
   // generated.
@@ -860,7 +860,7 @@ void Service::HandleSigterm() {
 
 std::unique_ptr<dbus::Response> Service::NotifyVmStarted(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received NotifyVmStarted request";
 
   std::unique_ptr<dbus::Response> dbus_response(
@@ -891,7 +891,7 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStarted(
 
 std::unique_ptr<dbus::Response> Service::NotifyVmStopped(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received NotifyVmStopped request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -925,7 +925,7 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStopped(
 
 std::unique_ptr<dbus::Response> Service::GetContainerToken(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received GetContainerToken request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -957,7 +957,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerToken(
 
 std::unique_ptr<dbus::Response> Service::IsContainerRunning(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received IsContainerRunning request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -998,7 +998,7 @@ std::unique_ptr<dbus::Response> Service::IsContainerRunning(
 
 std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received LaunchContainerApplication request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1061,7 +1061,7 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
 
 std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received GetContainerAppIcon request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1126,7 +1126,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
 
 std::unique_ptr<dbus::Response> Service::LaunchVshd(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received LaunchVshd request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1187,7 +1187,7 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
 
 std::unique_ptr<dbus::Response> Service::GetLinuxPackageInfo(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received GetLinuxPackageInfo request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1252,7 +1252,7 @@ std::unique_ptr<dbus::Response> Service::GetLinuxPackageInfo(
 
 std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received InstallLinuxPackage request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1306,7 +1306,7 @@ std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
 
 std::unique_ptr<dbus::Response> Service::CreateLxdContainer(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received CreateLxdContainer request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1361,7 +1361,7 @@ std::unique_ptr<dbus::Response> Service::CreateLxdContainer(
 
 std::unique_ptr<dbus::Response> Service::StartLxdContainer(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received StartLxdContainer request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1434,7 +1434,7 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
 
 std::unique_ptr<dbus::Response> Service::GetLxdContainerUsername(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received GetLxdContainerUsername request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1498,7 +1498,7 @@ std::unique_ptr<dbus::Response> Service::GetLxdContainerUsername(
 
 std::unique_ptr<dbus::Response> Service::SetUpLxdContainerUser(
     dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Received SetUpLxdContainerUser request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -1600,7 +1600,7 @@ bool Service::GetVirtualMachineForCid(const uint32_t cid,
                                       VirtualMachine** vm_out,
                                       std::string* owner_id_out,
                                       std::string* name_out) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(vm_out);
   CHECK(owner_id_out);
   CHECK(name_out);
@@ -1619,7 +1619,7 @@ bool Service::GetVirtualMachineForCid(const uint32_t cid,
 void Service::StartSshForwarding(const std::string& owner_id,
                                  const std::string& ip,
                                  const std::string& username) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
 
   std::string host_private_key, container_public_key, hostname;
   std::string error_msg;
@@ -1757,7 +1757,7 @@ bool Service::GetContainerSshKeys(const std::string& owner_id,
 
 void Service::RegisterHostname(const std::string& hostname,
                                const std::string& ip) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(crosdns::kCrosDnsInterfaceName,
                                crosdns::kSetHostnameIpMappingMethod);
   dbus::MessageWriter writer(&method_call);
@@ -1784,7 +1784,7 @@ void Service::RegisterHostname(const std::string& hostname,
 void Service::UnregisterVmContainers(VirtualMachine* vm,
                                      const std::string& owner_id,
                                      const std::string& vm_name) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   if (!vm)
     return;
   // When we were in concierge, this method was important because we shared a
@@ -1819,7 +1819,7 @@ void Service::UnregisterVmContainers(VirtualMachine* vm,
 }
 
 void Service::UnregisterHostname(const std::string& hostname) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(crosdns::kCrosDnsInterfaceName,
                                crosdns::kRemoveHostnameIpMappingMethod);
   dbus::MessageWriter writer(&method_call);
@@ -1841,7 +1841,7 @@ void Service::UnregisterHostname(const std::string& hostname) {
 
 void Service::OnCrosDnsNameOwnerChanged(const std::string& old_owner,
                                         const std::string& new_owner) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   if (!new_owner.empty()) {
     // Re-register everything in our map.
     for (auto& pair : hostname_mappings_) {

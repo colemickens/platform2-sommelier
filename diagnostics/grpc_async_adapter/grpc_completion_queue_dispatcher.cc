@@ -83,7 +83,7 @@ GrpcCompletionQueueDispatcher::GrpcCompletionQueueDispatcher(
 }
 
 GrpcCompletionQueueDispatcher::~GrpcCompletionQueueDispatcher() {
-  CHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(sequence_checker_.CalledOnValidSequence());
   // Ensure that this |GrpcCompletionQueueDispatcher| has been shut down
   // properly.
   CHECK(!monitoring_thread_);
@@ -91,7 +91,7 @@ GrpcCompletionQueueDispatcher::~GrpcCompletionQueueDispatcher() {
 }
 
 void GrpcCompletionQueueDispatcher::Start() {
-  CHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(!monitoring_thread_);
   // Create the delegate which will be run on the background thread.
   // It is OK to pass unowned pointers and use |base::Unretained|  because:
@@ -115,7 +115,7 @@ void GrpcCompletionQueueDispatcher::Start() {
 
 void GrpcCompletionQueueDispatcher::Shutdown(
     base::Closure on_shutdown_callback) {
-  CHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(monitoring_thread_);
   CHECK(on_shutdown_callback_.is_null());
   CHECK(!on_shutdown_callback.is_null());
@@ -126,13 +126,13 @@ void GrpcCompletionQueueDispatcher::Shutdown(
 
 void GrpcCompletionQueueDispatcher::RegisterTag(const void* tag,
                                                 TagAvailableCallback callback) {
-  CHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(tag_to_callback_map_.find(tag) == tag_to_callback_map_.end());
   tag_to_callback_map_.insert(std::make_pair(tag, callback));
 }
 
 void GrpcCompletionQueueDispatcher::OnTagAvailable(const void* tag, bool ok) {
-  CHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(sequence_checker_.CalledOnValidSequence());
   auto iter = tag_to_callback_map_.find(tag);
   // Treat tags received from the |CompletionQueue| that we're not expecting as
   // fatal errors.
@@ -143,7 +143,7 @@ void GrpcCompletionQueueDispatcher::OnTagAvailable(const void* tag, bool ok) {
 }
 
 void GrpcCompletionQueueDispatcher::OnShutdown() {
-  CHECK(sequence_checker_.CalledOnValidSequencedThread());
+  CHECK(sequence_checker_.CalledOnValidSequence());
   tag_to_callback_map_.clear();
 
   monitoring_thread_->Join();

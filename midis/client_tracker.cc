@@ -105,7 +105,7 @@ void ClientTracker::RemoveClient(uint32_t client_id) {
 }
 
 void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   mojo::edk::SetParentPipeHandle(
       mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
   mojo::ScopedMessagePipeHandle child_pipe =
@@ -119,7 +119,7 @@ bool ClientTracker::IsProxyConnected() {
 }
 
 void ClientTracker::OnShutdownComplete() {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   mojo::edk::ShutdownIPCSupport();
 }
 
