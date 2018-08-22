@@ -55,7 +55,7 @@ class LibNewblue {
   LIBNEWBLUE_METHOD0(L2cDeinit, l2cDeinit, void());
 
   // sm.h
-  LIBNEWBLUE_METHOD1(SmInit, smInit, bool(uint8_t));
+  LIBNEWBLUE_METHOD0(SmInit, smInit, bool());
   LIBNEWBLUE_METHOD0(SmDeinit, smDeinit, void());
   LIBNEWBLUE_METHOD2(SmRegisterPairStateObserver,
                      smRegisterPairStateObserver,

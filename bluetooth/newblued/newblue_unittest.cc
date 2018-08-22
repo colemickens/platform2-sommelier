@@ -82,7 +82,7 @@ class NewblueTest : public ::testing::Test {
     EXPECT_CALL(*libnewblue_, AttInit()).WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, GattProfileInit()).WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, GattBuiltinInit()).WillOnce(Return(true));
-    EXPECT_CALL(*libnewblue_, SmInit(HCI_DISP_CAP_NONE)).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, SmInit()).WillOnce(Return(true));
     pair_state_changed_callback_data_ = newblue_.get();
     EXPECT_CALL(*libnewblue_, SmRegisterPairStateObserver(_, _))
         .WillOnce(DoAll(SaveArg<0>(&pair_state_changed_callback_data_),

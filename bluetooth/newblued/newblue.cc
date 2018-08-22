@@ -206,9 +206,7 @@ bool Newblue::BringUp() {
     return false;
   }
 
-  // TODO(mcchou): Change the IO capability to HCI_DISP_CAP_KBD_DISP once the
-  // handlers for passkey display and request are in place.
-  if (!libnewblue_->SmInit(HCI_DISP_CAP_NONE)) {
+  if (!libnewblue_->SmInit()) {
     LOG(ERROR) << "Failed to init SM";
     return false;
   }

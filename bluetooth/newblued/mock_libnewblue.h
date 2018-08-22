@@ -40,7 +40,7 @@ class MockLibNewblue : public LibNewblue {
   MOCK_METHOD0(L2cDeinit, void());
 
   // sm.h
-  MOCK_METHOD1(SmInit, bool(uint8_t));
+  MOCK_METHOD0(SmInit, bool());
   MOCK_METHOD0(SmDeinit, void());
   MOCK_METHOD2(SmRegisterPairStateObserver,
                uniq_t(void*, smPairStateChangeCbk));
