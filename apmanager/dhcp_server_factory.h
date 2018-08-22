@@ -27,7 +27,7 @@ class DHCPServerFactory {
   DHCPServerFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<DHCPServerFactory>;
+  friend base::LazyInstanceTraitsBase<DHCPServerFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPServerFactory);
 };

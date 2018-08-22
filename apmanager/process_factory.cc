@@ -8,7 +8,7 @@ namespace apmanager {
 
 namespace {
 
-base::LazyInstance<ProcessFactory> g_process_factory
+base::LazyInstance<ProcessFactory>::DestructorAtExit g_process_factory
     = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace

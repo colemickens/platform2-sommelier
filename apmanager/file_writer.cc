@@ -10,7 +10,7 @@ namespace apmanager {
 
 namespace {
 
-base::LazyInstance<FileWriter> g_file_writer
+base::LazyInstance<FileWriter>::DestructorAtExit g_file_writer
     = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace

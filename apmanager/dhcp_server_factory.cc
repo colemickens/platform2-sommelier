@@ -8,7 +8,7 @@ namespace apmanager {
 
 namespace {
 
-base::LazyInstance<DHCPServerFactory> g_dhcp_server_factory
+base::LazyInstance<DHCPServerFactory>::DestructorAtExit g_dhcp_server_factory
     = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace

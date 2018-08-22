@@ -12,7 +12,7 @@ namespace apmanager {
 
 namespace {
 
-base::LazyInstance<EventDispatcher> g_event_dispatcher
+base::LazyInstance<EventDispatcher>::DestructorAtExit g_event_dispatcher
     = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace

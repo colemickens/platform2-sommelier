@@ -26,7 +26,7 @@ class ProcessFactory {
   ProcessFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<ProcessFactory>;
+  friend base::LazyInstanceTraitsBase<ProcessFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(ProcessFactory);
 };

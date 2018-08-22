@@ -26,7 +26,7 @@ class FileWriter {
   FileWriter();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<FileWriter>;
+  friend base::LazyInstanceTraitsBase<FileWriter>;
 
   DISALLOW_COPY_AND_ASSIGN(FileWriter);
 };

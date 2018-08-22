@@ -33,7 +33,8 @@ namespace webservd {
 namespace {
 
 // Singleton instance of LogManager class.
-base::LazyInstance<LogManager> g_log_manager = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<LogManager>::DestructorAtExit g_log_manager =
+    LAZY_INSTANCE_INITIALIZER;
 
 // The number of files to keep in the log directory. Since there is one log
 // file per day of logging, this is essentially how many days' worth of logs

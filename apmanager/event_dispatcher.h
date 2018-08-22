@@ -28,7 +28,7 @@ class EventDispatcher {
   EventDispatcher();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<EventDispatcher>;
+  friend base::LazyInstanceTraitsBase<EventDispatcher>;
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };
