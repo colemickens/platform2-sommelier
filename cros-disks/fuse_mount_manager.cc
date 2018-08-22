@@ -101,7 +101,14 @@ MountErrorType FUSEMountManager::DoUnmount(const string& path,
                                            const vector<string>& options) {
   // DoUnmount() is always called with |path| being the mount path.
   CHECK(!path.empty()) << "Invalid path argument";
-  if (platform()->Unmount(path)) {
+
+  int unmount_flags;
+  if (!ExtractUnmountOptions(options, &unmount_flags)) {
+    LOG(ERROR) << "Invalid unmount options";
+    return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
+  }
+
+  if (platform()->Unmount(path, unmount_flags)) {
     return MOUNT_ERROR_NONE;
   }
   return MOUNT_ERROR_UNKNOWN;

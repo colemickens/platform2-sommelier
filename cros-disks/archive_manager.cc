@@ -158,8 +158,15 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
 MountErrorType ArchiveManager::DoUnmount(const string& path,
                                          const vector<string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
+
+  int unmount_flags;
+  if (!ExtractUnmountOptions(options, &unmount_flags)) {
+    LOG(ERROR) << "Invalid unmount options";
+    return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
+  }
+
   // TODO(benchan): Extract error from low-level unmount operation.
-  if (platform()->Unmount(path)) {
+  if (platform()->Unmount(path, unmount_flags)) {
     // DoUnmount() is always called with |path| being the mount path.
     RemoveMountVirtualPath(path);
     return MOUNT_ERROR_NONE;
@@ -324,7 +331,7 @@ bool ArchiveManager::StopAVFS() {
     if (!base::PathExists(FilePath(path)))
       continue;
 
-    if (!platform()->Unmount(path))
+    if (!platform()->Unmount(path, 0))
       all_unmounted = false;
   }
   return all_unmounted;

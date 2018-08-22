@@ -246,12 +246,12 @@ bool Platform::SetPermissions(const string& path, mode_t mode) const {
   return true;
 }
 
-bool Platform::Unmount(const string& path) const {
-  if (umount(path.c_str()) != 0) {
-    PLOG(ERROR) << "Failed to unmount '" << path << "'";
+bool Platform::Unmount(const string& path, int flags) const {
+  if (umount2(path.c_str(), flags) != 0) {
+    PLOG(ERROR) << "Failed to unmount '" << path << "' with flags " << flags;
     return false;
   }
-  LOG(INFO) << "Unmount '" << path << "'";
+  LOG(INFO) << "Unmount '" << path << "' with flags " << flags;
   return true;
 }
 
