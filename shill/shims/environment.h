@@ -45,7 +45,7 @@ class Environment {
   Environment();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<Environment>;
+  friend base::LazyInstanceTraitsBase<Environment>;
 
   DISALLOW_COPY_AND_ASSIGN(Environment);
 };

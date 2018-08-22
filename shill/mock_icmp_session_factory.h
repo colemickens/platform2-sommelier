@@ -40,7 +40,7 @@ class MockIcmpSessionFactory : public IcmpSessionFactory {
   MockIcmpSessionFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<MockIcmpSessionFactory>;
+  friend base::LazyInstanceTraitsBase<MockIcmpSessionFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(MockIcmpSessionFactory);
 };

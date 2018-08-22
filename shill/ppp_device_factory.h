@@ -48,7 +48,7 @@ class PPPDeviceFactory {
   PPPDeviceFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<PPPDeviceFactory>;
+  friend base::LazyInstanceTraitsBase<PPPDeviceFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(PPPDeviceFactory);
 };

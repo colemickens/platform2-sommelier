@@ -59,7 +59,8 @@ static std::string ObjectID(const RTNLHandler* obj) {
 const int RTNLHandler::kErrorWindowSize = 16;
 
 namespace {
-base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<RTNLHandler>::DestructorAtExit g_rtnl_handler =
+    LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 RTNLHandler::RTNLHandler()

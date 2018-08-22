@@ -567,12 +567,11 @@ class Nl80211MessageDataCollector {
       const Nl80211Message& message, const NetlinkPacket& packet);
 
  protected:
-  friend struct
-      base::DefaultLazyInstanceTraits<Nl80211MessageDataCollector>;
-
   Nl80211MessageDataCollector();
 
  private:
+  friend base::LazyInstanceTraitsBase<Nl80211MessageDataCollector>;
+
   // In order to limit the output from this class, I keep track of types I
   // haven't yet printed.
   std::map<uint8_t, bool> need_to_print;

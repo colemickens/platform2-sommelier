@@ -67,7 +67,7 @@ class Resolver {
   Resolver();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<Resolver>;
+  friend base::LazyInstanceTraitsBase<Resolver>;
   friend class ResolverTest;
 
   base::FilePath path_;

@@ -137,7 +137,7 @@ class ProcessManager {
 
  private:
   friend class ProcessManagerTest;
-  friend struct base::DefaultLazyInstanceTraits<ProcessManager>;
+  friend base::LazyInstanceTraitsBase<ProcessManager>;
 
   using TerminationTimeoutCallback = base::CancelableClosure;
 

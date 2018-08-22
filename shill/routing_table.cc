@@ -60,7 +60,8 @@ static string ObjectID(RoutingTable* r) { return "(routing_table)"; }
 }
 
 namespace {
-base::LazyInstance<RoutingTable> g_routing_table = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<RoutingTable>::DestructorAtExit g_routing_table =
+    LAZY_INSTANCE_INITIALIZER;
 // These don't have named constants in the system header files, but they
 // are documented in ip-rule(8) and hardcoded in net/ipv4/fib_rules.c.
 const uint32_t kRulePriorityLocal = 0;

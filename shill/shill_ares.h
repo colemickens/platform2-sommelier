@@ -70,7 +70,7 @@ class Ares {
   Ares();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<Ares>;
+  friend base::LazyInstanceTraitsBase<Ares>;
 
   DISALLOW_COPY_AND_ASSIGN(Ares);
 };

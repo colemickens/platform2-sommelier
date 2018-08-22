@@ -127,7 +127,7 @@ class SHILL_EXPORT RTNLHandler {
   RTNLHandler();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<RTNLHandler>;
+  friend base::LazyInstanceTraitsBase<RTNLHandler>;
   friend class CellularTest;
   friend class DeviceInfoTest;
   friend class ModemTest;

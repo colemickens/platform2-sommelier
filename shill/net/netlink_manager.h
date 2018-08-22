@@ -269,11 +269,10 @@ class SHILL_EXPORT NetlinkManager {
   uint32_t GetSequenceNumber();
 
  protected:
-  friend struct base::DefaultLazyInstanceTraits<NetlinkManager>;
-
   NetlinkManager();
 
  private:
+  friend base::LazyInstanceTraitsBase<NetlinkManager>;
   friend class NetlinkManagerTest;
   friend class NetlinkMessageTest;
   friend class ShillDaemonTest;

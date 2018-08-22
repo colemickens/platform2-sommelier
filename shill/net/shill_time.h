@@ -81,7 +81,7 @@ class SHILL_EXPORT Time {
   Time();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<Time>;
+  friend base::LazyInstanceTraitsBase<Time>;
 
   DISALLOW_COPY_AND_ASSIGN(Time);
 };

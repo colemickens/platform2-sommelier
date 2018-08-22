@@ -50,7 +50,7 @@ class MockDnsClientFactory : public DnsClientFactory {
   MockDnsClientFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<MockDnsClientFactory>;
+  friend base::LazyInstanceTraitsBase<MockDnsClientFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(MockDnsClientFactory);
 };

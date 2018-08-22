@@ -45,7 +45,7 @@ class SHILL_EXPORT IOHandlerFactoryContainer {
   IOHandlerFactoryContainer();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<IOHandlerFactoryContainer>;
+  friend base::LazyInstanceTraitsBase<IOHandlerFactoryContainer>;
   std::unique_ptr<IOHandlerFactory> factory_;
 
   DISALLOW_COPY_AND_ASSIGN(IOHandlerFactoryContainer);

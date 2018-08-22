@@ -53,7 +53,7 @@ class PPP {
   PPP();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<PPP>;
+  friend base::LazyInstanceTraitsBase<PPP>;
 
   bool CreateProxy();
   void DestroyProxy();

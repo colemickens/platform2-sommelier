@@ -45,7 +45,7 @@ class MockPPPDeviceFactory : public PPPDeviceFactory {
   MockPPPDeviceFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<MockPPPDeviceFactory>;
+  friend base::LazyInstanceTraitsBase<MockPPPDeviceFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(MockPPPDeviceFactory);
 };

@@ -124,7 +124,7 @@ class ScopeLogger {
 
  private:
   // Required for constructing LazyInstance<ScopeLogger>.
-  friend struct base::DefaultLazyInstanceTraits<ScopeLogger>;
+  friend base::LazyInstanceTraitsBase<ScopeLogger>;
   friend class ScopeLoggerTest;
   FRIEND_TEST(ScopeLoggerTest, GetEnabledScopeNames);
   FRIEND_TEST(ScopeLoggerTest, SetScopeEnabled);

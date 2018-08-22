@@ -160,7 +160,7 @@ class RoutingTable {
   RoutingTable();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<RoutingTable>;
+  friend base::LazyInstanceTraitsBase<RoutingTable>;
   friend class RoutingTableTest;
 
   static bool ParseRoutingTableMessage(const RTNLMessage& message,

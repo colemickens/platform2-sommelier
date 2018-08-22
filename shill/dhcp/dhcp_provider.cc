@@ -45,7 +45,8 @@ static string ObjectID(DHCPProvider* d) { return "(dhcp_provider)"; }
 }
 
 namespace {
-base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<DHCPProvider>::DestructorAtExit g_dhcp_provider =
+    LAZY_INSTANCE_INITIALIZER;
 static const int kUnbindDelayMilliseconds = 2000;
 
 const char kDHCPCDExecutableName[] = "dhcpcd";

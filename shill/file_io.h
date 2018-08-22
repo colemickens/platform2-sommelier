@@ -38,7 +38,7 @@ class FileIO {
   FileIO();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<FileIO>;
+  friend base::LazyInstanceTraitsBase<FileIO>;
 
   DISALLOW_COPY_AND_ASSIGN(FileIO);
 };

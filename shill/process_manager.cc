@@ -39,7 +39,7 @@ static string ObjectID(const ProcessManager* pm) { return "process_manager"; }
 
 namespace {
 
-base::LazyInstance<ProcessManager> g_process_manager =
+base::LazyInstance<ProcessManager>::DestructorAtExit g_process_manager =
     LAZY_INSTANCE_INITIALIZER;
 
 static const int kTerminationTimeoutSeconds = 2;

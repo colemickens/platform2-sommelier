@@ -48,7 +48,7 @@ class DnsClientFactory {
   DnsClientFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<DnsClientFactory>;
+  friend base::LazyInstanceTraitsBase<DnsClientFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(DnsClientFactory);
 };

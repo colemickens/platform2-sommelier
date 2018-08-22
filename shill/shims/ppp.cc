@@ -58,7 +58,8 @@ namespace shill {
 
 namespace shims {
 
-static base::LazyInstance<PPP> g_ppp = LAZY_INSTANCE_INITIALIZER;
+static base::LazyInstance<PPP>::DestructorAtExit g_ppp =
+    LAZY_INSTANCE_INITIALIZER;
 
 PPP::PPP() : running_(false) {}
 

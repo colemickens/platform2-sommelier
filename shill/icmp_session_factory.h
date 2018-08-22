@@ -39,7 +39,7 @@ class IcmpSessionFactory {
   IcmpSessionFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<IcmpSessionFactory>;
+  friend base::LazyInstanceTraitsBase<IcmpSessionFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(IcmpSessionFactory);
 };

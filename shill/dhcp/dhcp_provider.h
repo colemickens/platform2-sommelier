@@ -113,7 +113,7 @@ class DHCPProvider {
   DHCPProvider();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<DHCPProvider>;
+  friend base::LazyInstanceTraitsBase<DHCPProvider>;
   friend class CellularTest;
   friend class DHCPProviderTest;
   friend class DeviceInfoTest;

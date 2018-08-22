@@ -44,7 +44,7 @@ class DBusServiceWatcherFactory {
   DBusServiceWatcherFactory();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<DBusServiceWatcherFactory>;
+  friend base::LazyInstanceTraitsBase<DBusServiceWatcherFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(DBusServiceWatcherFactory);
 };

@@ -56,7 +56,8 @@ static std::string ObjectID(const NetlinkManager* obj) {
 }  // namespace Logging
 
 namespace {
-LazyInstance<NetlinkManager> g_netlink_manager = LAZY_INSTANCE_INITIALIZER;
+LazyInstance<NetlinkManager>::DestructorAtExit g_netlink_manager =
+    LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 const char NetlinkManager::kEventTypeConfig[] = "config";
