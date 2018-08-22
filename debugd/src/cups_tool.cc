@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <ftw.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -43,32 +44,6 @@ const char kLpadminUser[] = "lpadmin";
 const char kLpadminGroup[] = "lpadmin";
 const char kLpGroup[] = "lp";
 
-// Temporary name for the ppd file, zipped and unzipped variants.
-const char kTempPPDFileName[] = "tmp.ppd";
-const char kGZippedTempPPDFileName[] = "tmp.ppd.gz";
-
-// Determine whether or not the contents look like gzipped data by
-// looking for the magic number in the header.
-bool IsGZipped(const std::vector<uint8_t>& contents) {
-  // Min header size is 10 bytes, min footer size is 8 bytes, so 18 bytes is a
-  // lower bound on size for gzip contents.
-  return contents.size() >= 18 && contents[0] == 0x1f && contents[1] == 0x8b;
-}
-
-bool SetPerms(const base::FilePath& fpath, mode_t mode, uid_t uid, gid_t gid) {
-  const std::string& path = fpath.value();
-  if (!base::SetPosixFilePermissions(fpath, mode)) {
-    PLOG(ERROR) << "Could not modify file permissions";
-    return false;
-  }
-
-  if (chown(path.c_str(), uid, gid) != 0) {
-    PLOG(ERROR) << "Could not take ownership of file";
-    return false;
-  }
-
-  return true;
-}
 
 int StopCups() {
   int result;
@@ -117,6 +92,7 @@ int RunAsUser(const std::string& user, const std::string& group,
               const std::string& command,
               const std::string& seccomp_policy,
               const ProcessWithOutput::ArgList& arg_list,
+              const std::vector<uint8_t>* std_input = nullptr,
               bool root_mount_ns = false,
               bool inherit_usergroups = false) {
   ProcessWithOutput process;
@@ -139,7 +115,29 @@ int RunAsUser(const std::string& user, const std::string& group,
   for (const std::string& arg : arg_list) {
     process.AddArg(arg);
   }
-  int result = process.Run();
+
+  // Prepares a buffer with standard input.
+  std::vector<char> buf;
+  if (std_input != nullptr) {
+    buf.reserve(std_input->size());
+    for (uint8_t byte : *std_input) {
+      buf.push_back(static_cast<char>(byte));
+    }
+  }
+
+  // Starts a process, writes data from the buffer to its standard input and
+  // waits for the process to finish.
+  int result = ProcessWithOutput::kRunError;
+  process.RedirectUsingPipe(STDIN_FILENO, true);
+  if (process.Start()) {
+    int stdin_fd = process.GetPipe(STDIN_FILENO);
+    // Kill the process if writing to or closing the pipe fails.
+    if (!base::WriteFileDescriptor(stdin_fd, buf.data(), buf.size()) ||
+        IGNORE_EINTR(close(stdin_fd)) < 0) {
+      process.Kill(SIGKILL, 0);
+    }
+    result = process.Wait();
+  }
 
   if (result != 0) {
     std::string error_msg;
@@ -150,64 +148,22 @@ int RunAsUser(const std::string& user, const std::string& group,
   return result;
 }
 
-// Runs cupstestppd on |file_name| returns the result code.  0 is the expected
+// Runs cupstestppd on |ppd_content| returns the result code.  0 is the expected
 // success code.
-int TestPPD(const std::string& path) {
+int TestPPD(const std::vector<uint8_t> & ppd_content) {
   return RunAsUser(kLpadminUser, kLpadminGroup, kTestPPDCommand,
-                   kTestPPDSeccompPolicy, {path},
+                   kTestPPDSeccompPolicy, {"-"}, &(ppd_content),
                    true /* root_mount_ns */);
 }
 
-// Runs lpadmin with the provided |arg_list|.
+// Runs lpadmin with the provided |arg_list| and |std_input|.
 int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
-            bool inherit_usergroups = false) {
+            bool inherit_usergroups = false,
+            const std::vector<uint8_t>* std_input = nullptr) {
   // Run in lp group so we can read and write /run/cups/cups.sock.
   return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
-                   kLpadminSeccompPolicy, arg_list, false, inherit_usergroups);
-}
-
-// Write |contents| to |filename| in |temp_ppd_dir| and set permissions so
-// it is usable by lpadmin to validate and install the ppd.
-//
-// Note that |temp_ppd_dir|'s parents must be readable by lpadmin, and
-// |temp_ppd_dir| should be dedicated to this particular purpose as we chown it
-// to lpadmin.
-//
-// Returns true and fills in temp_ppd_file with the full path to the written
-// file if the write is successful.
-bool WriteTempPPDFile(const base::FilePath& temp_ppd_dir,
-                      const std::vector<uint8_t>& contents,
-                      base::FilePath* temp_ppd_file) {
-  *temp_ppd_file = temp_ppd_dir.Append(
-      IsGZipped(contents) ? kGZippedTempPPDFileName : kTempPPDFileName);
-  if (!base::WriteFile(*temp_ppd_file,
-                       reinterpret_cast<const char*>(contents.data()),
-                       contents.size())) {
-    LOG(ERROR) << "Could not write to temporary file "
-               << temp_ppd_file->value();
-    return false;
-  }
-
-  // Transfer file ownership.
-  uid_t uid;
-  gid_t gid = 0;
-  // Set ownership to lpadmin:lpadmin so cupstestppd and lpadmin can use the
-  // file appropriately.  root:lpadmin doesn't work because lpadmin is run as
-  // lpadmin:lp.
-  if (!brillo::userdb::GetUserInfo(kLpadminUser, &uid, nullptr) ||
-      !brillo::userdb::GetGroupInfo(kLpadminGroup, &gid)) {
-    PLOG(ERROR) << "Could not retrieve owner information";
-    return false;
-  }
-  if (!SetPerms(temp_ppd_dir, 0750, uid, gid)) {
-    PLOG(FATAL) << "Could not change directory permissions";
-    return false;
-  }
-  if (!SetPerms(*temp_ppd_file, 0640, uid, gid)) {
-    PLOG(FATAL) << "Could not change file permissions";
-    return false;
-  }
-  return true;
+                   kLpadminSeccompPolicy, arg_list, std_input,
+                   false, inherit_usergroups);
 }
 
 // Checks whether the scheme for the given |uri| is one of the required schemes
@@ -255,26 +211,16 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
     const std::string& name,
     const std::string& uri,
     const std::vector<uint8_t>& ppd_contents) {
-  // Scoped temp dir will cleanup the directory when we're done.
-  base::ScopedTempDir temp_dir;
-  if (!temp_dir.CreateUniqueTempDir()) {
-    LOG(ERROR) << "Could not create temp directory";
-    return CupsResult::CUPS_FATAL;
-  }
 
-  base::FilePath temp_ppd;
-  if (!WriteTempPPDFile(temp_dir.GetPath(), ppd_contents, &temp_ppd)) {
-    return CupsResult::CUPS_FATAL;
-  }
-
-  int result = TestPPD(temp_ppd.value());
+  int result = TestPPD(ppd_contents);
   if (result != EXIT_SUCCESS) {
     LOG(ERROR) << "PPD failed validation";
     return CupsResult::CUPS_INVALID_PPD;
   }
 
   // lpadmin only returns 0 for success and 1 for failure.
-  result = Lpadmin({"-v", uri, "-p", name, "-P", temp_ppd.value(), "-E"});
+  result = Lpadmin({"-v", uri, "-p", name, "-P", "-", "-E"}, false,
+                   &ppd_contents);
   if (result != EXIT_SUCCESS) {
     return CupsResult::CUPS_LPADMIN_FAILURE;
   }
