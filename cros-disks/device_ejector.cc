@@ -38,13 +38,17 @@ bool DeviceEjector::Eject(const std::string& device_path) {
   process->AddArgument(kEjectProgram);
   process->AddArgument(device_path);
 
-  process_reaper_->WatchForChild(
-      FROM_HERE, process->pid(),
-      base::Bind(&DeviceEjector::OnEjectProcessTerminated,
-                 weak_ptr_factory_.GetWeakPtr(), device_path));
-
   // TODO(benchan): Set up a timeout to kill a hanging process.
-  return process->Start();
+  bool started = process->Start();
+  if (started) {
+    process_reaper_->WatchForChild(
+        FROM_HERE, process->pid(),
+        base::Bind(&DeviceEjector::OnEjectProcessTerminated,
+                   weak_ptr_factory_.GetWeakPtr(), device_path));
+  } else {
+    eject_process_.erase(device_path);
+  }
+  return started;
 }
 
 void DeviceEjector::OnEjectProcessTerminated(const std::string& device_path,
