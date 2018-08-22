@@ -19,6 +19,7 @@
 #include "smbprovider/id_map.h"
 #include "smbprovider/metadata_cache.h"
 #include "smbprovider/samba_interface.h"
+#include "smbprovider/smb_credential.h"
 
 namespace base {
 class TickClock;
@@ -119,8 +120,11 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
     MountInfo(MountInfo&& other) = default;
     MountInfo(const std::string& mount_root,
               base::TickClock* tick_clock,
+              SmbCredential credential,
               std::unique_ptr<SambaInterface> samba_interface)
-        : mount_root(mount_root), samba_interface(std::move(samba_interface)) {
+        : mount_root(mount_root),
+          credential(std::move(credential)),
+          samba_interface(std::move(samba_interface)) {
       cache = std::make_unique<MetadataCache>(
           tick_clock, base::TimeDelta::FromMicroseconds(
                           kMetadataCacheLifetimeMicroseconds));
@@ -129,6 +133,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
     MountInfo& operator=(MountInfo&& other) = default;
 
     std::string mount_root;
+    SmbCredential credential;
     std::unique_ptr<SambaInterface> samba_interface;
     std::unique_ptr<MetadataCache> cache;
 
@@ -142,6 +147,10 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
 
   // Runs |samba_interface_factory_|.
   std::unique_ptr<SambaInterface> CreateSambaInterface();
+
+  // Returns a new MountInfo.
+  MountInfo CreateMountInfo(const std::string& mount_root,
+                            SmbCredential credential);
 
   bool can_remount_ = true;
   IdMap<MountInfo> mounts_;

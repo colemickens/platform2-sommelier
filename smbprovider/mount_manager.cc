@@ -10,7 +10,6 @@
 #include <base/time/tick_clock.h>
 
 #include "smbprovider/credential_store.h"
-#include "smbprovider/smb_credential.h"
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
@@ -62,8 +61,7 @@ bool MountManager::AddMount(const std::string& mount_root,
   can_remount_ = false;
   // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
   // the SmbCredential.
-  *mount_id = mounts_.Insert(
-      MountInfo(mount_root, tick_clock_.get(), CreateSambaInterface()));
+  *mount_id = mounts_.Insert(CreateMountInfo(mount_root, SmbCredential()));
   return true;
 }
 
@@ -83,9 +81,8 @@ bool MountManager::Remount(const std::string& mount_root,
 
   // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
   // the SmbCredential.
-  mounts_.InsertWithSpecificId(
-      mount_id,
-      MountInfo(mount_root, tick_clock_.get(), CreateSambaInterface()));
+  mounts_.InsertWithSpecificId(mount_id,
+                               CreateMountInfo(mount_root, SmbCredential()));
   return true;
 }
 
@@ -192,6 +189,12 @@ bool MountManager::ExistsInMounts(const std::string& mount_root) const {
   }
 
   return false;
+}
+
+MountManager::MountInfo MountManager::CreateMountInfo(
+    const std::string& mount_root, SmbCredential credential) {
+  return MountInfo(mount_root, tick_clock_.get(), std::move(credential),
+                   CreateSambaInterface());
 }
 
 }  // namespace smbprovider

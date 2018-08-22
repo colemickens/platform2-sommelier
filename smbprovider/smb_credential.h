@@ -27,7 +27,8 @@ struct SmbCredential {
         username(username),
         password(std::move(password)) {}
 
-  SmbCredential(SmbCredential&& credentials) = default;
+  SmbCredential(SmbCredential&& other) = default;
+  SmbCredential& operator=(SmbCredential&& other) = default;
 
   DISALLOW_COPY_AND_ASSIGN(SmbCredential);
 };
