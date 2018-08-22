@@ -89,7 +89,7 @@ def _ReapUntilProcessExits(monitored_pid):
 # through.
 ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
     # Used by various sanitizers.
-    r'[AL]SAN_OPTIONS$',
+    r'[A-Z]{1,3}SAN_OPTIONS$',
     # Used by QEMU.
     r'QEMU_',
     # Used to select profiling output location for gcov.
