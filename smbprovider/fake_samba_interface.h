@@ -78,6 +78,8 @@ class FakeSambaInterface : public SambaInterface {
                      off_t length,
                      off_t* bytes_written) override;
 
+  SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
   void AddDirectory(const std::string& path);

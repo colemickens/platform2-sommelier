@@ -164,6 +164,12 @@ int32_t SambaInterfaceImpl::GetEntryStatus(const std::string& full_path,
   return smbc_stat_ctx_(context_, full_path.c_str(), stat) >= 0 ? 0 : errno;
 }
 
+SambaInterface::SambaInterfaceId SambaInterfaceImpl::GetSambaInterfaceId() {
+  // Cast the SMBCCTX* to an opaque ID type. Callers only care that this
+  // uniquely identifies the object.
+  return reinterpret_cast<SambaInterface::SambaInterfaceId>(context_);
+}
+
 int32_t SambaInterfaceImpl::ReadFile(int32_t file_id,
                                      uint8_t* buffer,
                                      size_t buffer_size,

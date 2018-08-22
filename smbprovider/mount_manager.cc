@@ -197,4 +197,8 @@ MountManager::MountInfo MountManager::CreateMountInfo(
                    CreateSambaInterface());
 }
 
+SambaInterface::SambaInterfaceId MountManager::GetSystemSambaInterfaceId() {
+  return system_samba_interface_->GetSambaInterfaceId();
+}
+
 }  // namespace smbprovider

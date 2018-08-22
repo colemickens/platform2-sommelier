@@ -12,7 +12,10 @@ namespace smbprovider {
 
 FakeSambaProxy::FakeSambaProxy(FakeSambaInterface* fake_samba_interface)
     : fake_samba_interface_(fake_samba_interface) {
+  // Every fake samba proxy interface must have its own unique id.
+  static SambaInterface::SambaInterfaceId samba_interface_counter = 1;
   DCHECK(fake_samba_interface_);
+  samba_interface_id_ = samba_interface_counter++;
 }
 
 FakeSambaProxy::~FakeSambaProxy() = default;
@@ -40,6 +43,10 @@ int32_t FakeSambaProxy::GetDirectoryEntryWithMetadata(
 int32_t FakeSambaProxy::GetEntryStatus(const std::string& entry_path,
                                        struct stat* stat) {
   return fake_samba_interface_->GetEntryStatus(entry_path, stat);
+}
+
+SambaInterface::SambaInterfaceId FakeSambaProxy::GetSambaInterfaceId() {
+  return samba_interface_id_;
 }
 
 int32_t FakeSambaProxy::OpenFile(const std::string& file_path,

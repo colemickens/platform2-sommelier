@@ -958,4 +958,12 @@ const struct smbc_dirent* FakeSambaInterface::PopulateDirEnt(
   return dirent_;
 }
 
+SambaInterface::SambaInterfaceId FakeSambaInterface::GetSambaInterfaceId() {
+  // GetSambaInterfaceId() should never be called directly on
+  // FakeSambaInterface. All tests should call FakeSambaProxy which provides a
+  // unique SambaInterfaceId for each instance.
+  NOTREACHED();
+  return 0;
+}
+
 }  // namespace smbprovider

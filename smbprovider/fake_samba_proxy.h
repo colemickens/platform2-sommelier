@@ -74,8 +74,11 @@ class FakeSambaProxy : public SambaInterface {
                      off_t length,
                      off_t* bytes_written) override;
 
+  SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+
  private:
   FakeSambaInterface* fake_samba_interface_;  // Not owned.
+  SambaInterface::SambaInterfaceId samba_interface_id_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeSambaProxy);
 };

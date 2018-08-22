@@ -148,6 +148,9 @@ class SambaInterface {
                              off_t length,
                              off_t* bytes_written) WARN_UNUSED_RESULT = 0;
 
+  // Returns the SambaInterfaceId of this interface.
+  virtual SambaInterface::SambaInterfaceId GetSambaInterfaceId() = 0;
+
  private:
   static_assert(std::is_same<int, int32_t>::value,
                 "Ensure that int32_t is same as int, due to casting of int to "

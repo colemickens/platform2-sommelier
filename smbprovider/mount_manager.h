@@ -152,6 +152,9 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   MountInfo CreateMountInfo(const std::string& mount_root,
                             SmbCredential credential);
 
+  // Returns the SambaInterfaceId from |system_samba_interface_|.
+  SambaInterface::SambaInterfaceId GetSystemSambaInterfaceId();
+
   bool can_remount_ = true;
   IdMap<MountInfo> mounts_;
 

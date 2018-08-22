@@ -58,6 +58,8 @@ class SambaInterfaceImpl : public SambaInterface {
   int32_t GetEntryStatus(const std::string& full_path,
                          struct stat* stat) override;
 
+  SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+
   int32_t ReadFile(int32_t file_id,
                    uint8_t* buffer,
                    size_t buffer_size,
