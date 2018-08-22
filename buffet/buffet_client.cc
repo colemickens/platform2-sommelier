@@ -134,8 +134,8 @@ template <typename T>
 brillo::Any GetJsonList(const base::ListValue& list) {
   std::vector<T> val;
   val.reserve(list.GetSize());
-  for (const base::Value* v : list)
-    val.push_back(JsonToAny(*v).Get<T>());
+  for (const base::Value& v : base::ValueReferenceAdapter(list))
+    val.push_back(JsonToAny(v).Get<T>());
   return val;
 }
 

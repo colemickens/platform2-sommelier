@@ -150,10 +150,11 @@ bool GetConfiguration(AdbdConfiguration* config) {
   const base::ListValue* kernel_module_list = nullptr;
   // kernelModules are optional.
   if (config_root_dict->GetList("kernelModules", &kernel_module_list)) {
-    for (const auto* kernel_module_value : *kernel_module_list) {
+    for (const auto& kernel_module_value :
+         base::ValueReferenceAdapter(*kernel_module_list)) {
       AdbdConfigurationKernelModule module;
       const base::DictionaryValue* kernel_module_dict = nullptr;
-      if (!kernel_module_value->GetAsDictionary(&kernel_module_dict)) {
+      if (!kernel_module_value.GetAsDictionary(&kernel_module_dict)) {
         LOG(ERROR) << "kernelModules contains a non-dictionary";
         return false;
       }
@@ -164,9 +165,10 @@ bool GetConfiguration(AdbdConfiguration* config) {
       const base::ListValue* parameter_list = nullptr;
       if (kernel_module_dict->GetList("parameters", &parameter_list)) {
         // Parameters are optional.
-        for (const auto* parameter_value : *parameter_list) {
+        for (const auto& parameter_value :
+             base::ValueReferenceAdapter(*parameter_list)) {
           std::string parameter;
-          if (!parameter_value->GetAsString(&parameter)) {
+          if (!parameter_value.GetAsString(&parameter)) {
             LOG(ERROR) << "kernelModules.parameters contains a non-string";
             return false;
           }

@@ -138,10 +138,11 @@ bool LoadConfigFromString(const std::string& config_json,
 
   const base::ListValue* protocol_handlers = nullptr;  // Owned by |dict_value|
   if (dict_value->GetList(kProtocolHandlersKey, &protocol_handlers)) {
-    for (base::Value* handler_value : *protocol_handlers) {
+    for (const base::Value& handler_value :
+             base::ValueReferenceAdapter(*protocol_handlers)) {
       const base::DictionaryValue* handler_dict = nullptr;  // Owned by
                                                             // |dict_value|
-      if (!handler_value->GetAsDictionary(&handler_dict)) {
+      if (!handler_value.GetAsDictionary(&handler_dict)) {
         brillo::Error::AddTo(
             error,
             FROM_HERE,
