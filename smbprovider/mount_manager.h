@@ -97,6 +97,17 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Returns a pointer to the system SambaInterface.
   SambaInterface* GetSystemSambaInterface() const;
 
+  // Samba authentication function callback. DCHECKS that the buffer lengths are
+  // non-zero. Returns false when buffer lengths cannot support credentials
+  // length or when credentials are not found for |share_path|.
+  bool GetAuthentication(const std::string& share_path,
+                         char* workgroup,
+                         int32_t workgroup_length,
+                         char* username,
+                         int32_t username_length,
+                         char* password,
+                         int32_t password_length) const;
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.

@@ -156,6 +156,22 @@ SambaInterface* MountManager::GetSystemSambaInterface() const {
   return system_samba_interface_.get();
 }
 
+bool MountManager::GetAuthentication(const std::string& share_path,
+                                     char* workgroup,
+                                     int32_t workgroup_length,
+                                     char* username,
+                                     int32_t username_length,
+                                     char* password,
+                                     int32_t password_length) const {
+  DCHECK_GT(workgroup_length, 0);
+  DCHECK_GT(username_length, 0);
+  DCHECK_GT(password_length, 0);
+
+  return credential_store_->GetAuthentication(
+      share_path, workgroup, workgroup_length, username, username_length,
+      password, password_length);
+}
+
 bool MountManager::ExistsInMounts(const std::string& mount_root) const {
   for (auto mount_iter = mounts_.Begin(); mount_iter != mounts_.End();
        ++mount_iter) {
