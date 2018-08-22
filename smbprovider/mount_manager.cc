@@ -163,6 +163,19 @@ SambaInterface* MountManager::GetSystemSambaInterface() const {
   return system_samba_interface_.get();
 }
 
+const SmbCredential& MountManager::GetCredential(
+    SambaInterface::SambaInterfaceId samba_interface_id) const {
+  DCHECK_NE(samba_interface_map_.count(samba_interface_id), 0);
+
+  // Double lookup of SambaInterfaceId => MountId followed by MountId =>
+  // MountInfo.credential
+  const int32_t mount_id = samba_interface_map_.at(samba_interface_id);
+
+  DCHECK(mounts_.Contains(mount_id));
+
+  return mounts_.Find(mount_id)->second.credential;
+}
+
 std::unique_ptr<SambaInterface> MountManager::CreateSambaInterface() {
   return samba_interface_factory_.Run(this);
 }

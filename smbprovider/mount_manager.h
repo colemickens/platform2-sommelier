@@ -165,6 +165,10 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Removes |samba_interface_id| from |samba_interface_map_|.
   void DeleteSambaInterfaceIdFromSambaInterfaceMap(int32_t mount_id);
 
+  // Returns the SmbCredential for |samba_interface_id|.
+  const SmbCredential& GetCredential(
+      SambaInterface::SambaInterfaceId samba_interface_id) const;
+
   bool can_remount_ = true;
   IdMap<MountInfo> mounts_;
 
