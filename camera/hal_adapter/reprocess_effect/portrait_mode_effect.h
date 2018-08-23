@@ -34,13 +34,13 @@ class PortraitModeEffect final : public ReprocessEffect {
                         uint32_t result_vendor_tag_count);
 
   int32_t ReprocessRequest(const camera_metadata_t& settings,
-                           buffer_handle_t input_buffer,
+                           ScopedYUVBufferHandle* input_buffer,
                            uint32_t width,
                            uint32_t height,
                            uint32_t orientation,
                            uint32_t v4l2_format,
                            android::CameraMetadata* result_metadata,
-                           buffer_handle_t output_buffer);
+                           ScopedYUVBufferHandle* output_buffer);
 
  private:
   base::Process LaunchPortraitProcessor(int input_rgb_buf_fd,

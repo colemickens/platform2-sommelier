@@ -55,7 +55,7 @@
         'cros_camera_mojo_utils.cc',
         'reprocess_effect/portrait_mode_effect.cc',
         'reprocess_effect/reprocess_effect_manager.cc',
-        'reprocess_effect/scoped_buffer_handle.cc',
+        'scoped_yuv_buffer_handle.cc',
         'vendor_tag_ops_delegate.cc',
       ],
     },

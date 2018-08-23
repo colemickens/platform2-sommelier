@@ -16,6 +16,8 @@
 #include <hardware/gralloc.h>
 #include <system/camera_metadata.h>
 
+#include "hal_adapter/scoped_yuv_buffer_handle.h"
+
 namespace cros {
 
 class ReprocessEffect {
@@ -58,13 +60,13 @@ class ReprocessEffect {
   // Returns:
   //    0 on success; corresponding error code on failure.
   virtual int32_t ReprocessRequest(const camera_metadata_t& settings,
-                                   buffer_handle_t input_buffer,
+                                   ScopedYUVBufferHandle* input_buffer,
                                    uint32_t width,
                                    uint32_t height,
                                    uint32_t orientation,
                                    uint32_t v4l2_format,
                                    android::CameraMetadata* result_metadata,
-                                   buffer_handle_t output_buffer) = 0;
+                                   ScopedYUVBufferHandle* output_buffer) = 0;
 };
 
 }  // namespace cros

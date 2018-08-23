@@ -26,7 +26,7 @@
 #include <system/camera_metadata.h>
 
 #include "cros-camera/common.h"
-#include "hal_adapter/reprocess_effect/scoped_buffer_handle.h"
+#include "hal_adapter/scoped_yuv_buffer_handle.h"
 
 namespace cros {
 
@@ -82,38 +82,35 @@ int32_t PortraitModeEffect::SetVendorTags(uint32_t request_vendor_tag_start,
 
 int32_t PortraitModeEffect::ReprocessRequest(
     const camera_metadata_t& settings,
-    buffer_handle_t input_buffer,
+    ScopedYUVBufferHandle* input_buffer,
     uint32_t width,
     uint32_t height,
     uint32_t orientation,
     uint32_t v4l2_format,
     android::CameraMetadata* result_metadata,
-    buffer_handle_t output_buffer) {
+    ScopedYUVBufferHandle* output_buffer) {
   VLOGF_ENTER();
+
+  const uint32_t kPortraitProcessorTimeoutSecs = 5;
+  if (!input_buffer || !*input_buffer || !output_buffer || !*output_buffer) {
+    return -EINVAL;
+  }
   camera_metadata_ro_entry_t entry = {};
   if (find_camera_metadata_ro_entry(&settings, enable_vendor_tag_, &entry) !=
       0) {
     LOGF(ERROR) << "Failed to find portrait mode vendor tag";
     return -EINVAL;
   }
-  ScopedYUVBufferHandle scoped_input_handle =
-      ScopedYUVBufferHandle::CreateScopedHandle(
-          input_buffer, GRALLOC_USAGE_SW_READ_OFTEN, width, height);
-  if (!scoped_input_handle) {
+  auto* input_ycbcr = input_buffer->LockYCbCr();
+  if (!input_ycbcr) {
     LOGF(ERROR) << "Failed to lock input buffer handle";
     return -EINVAL;
   }
-  auto* input_ycbcr = scoped_input_handle.GetYCbCr();
-  ScopedYUVBufferHandle scoped_output_handle =
-      ScopedYUVBufferHandle::CreateScopedHandle(
-          output_buffer,
-          GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN, width,
-          height);
-  if (!scoped_input_handle) {
+  auto* output_ycbcr = output_buffer->LockYCbCr();
+  if (!output_ycbcr) {
     LOGF(ERROR) << "Failed to lock output buffer handle";
     return -EINVAL;
   }
-  auto* output_ycbcr = scoped_output_handle.GetYCbCr();
 
   if (entry.data.u8[0] != 0) {
     const uint32_t kRGBNumOfChannels = 3;
@@ -152,8 +149,9 @@ int32_t PortraitModeEffect::ReprocessRequest(
       return -EINVAL;
     }
     int exit_code;
-    if (!process.WaitForExitWithTimeout(base::TimeDelta::FromSeconds(3),
-                                        &exit_code) ||
+    if (!process.WaitForExitWithTimeout(
+            base::TimeDelta::FromSeconds(kPortraitProcessorTimeoutSecs),
+            &exit_code) ||
         exit_code != 0) {
       PLOGF(ERROR) << "Wait for child process error";
       return -EINVAL;

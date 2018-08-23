@@ -33,16 +33,19 @@ class ReprocessEffectManager {
       std::unordered_map<uint32_t, std::pair<std::string, uint8_t>>*
           vendor_tag_map);
 
+  // Check whether there are vendor tags for reprocessing effects
+  bool HasReprocessEffectVendorTag(const camera_metadata_t& settings);
+
   // Handle the reprocessing request.  It returns -ENOENT error if no
   // corresponding vendor tag is found in |settings|.  On success, it stores
   // result vendor tags into |result_metadata| and the caller should merge them
   // into the result metadata of capture result.
   int32_t ReprocessRequest(const camera_metadata_t& settings,
-                           buffer_handle_t input_buffer,
+                           ScopedYUVBufferHandle* input_buffer,
                            uint32_t width,
                            uint32_t height,
                            android::CameraMetadata* result_metadata,
-                           buffer_handle_t output_buffer);
+                           ScopedYUVBufferHandle* output_buffer);
 
  private:
   struct VendorTagInfo {

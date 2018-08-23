@@ -149,10 +149,15 @@ int32_t CameraHalAdapter::OpenDevice(
                  base::ThreadTaskRunnerHandle::Get(), camera_id);
   device_adapters_[camera_id].reset(
       new CameraDeviceAdapter(camera_device, close_callback));
+  CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
+      has_reprocess_effect_vendor_tag_callback =
+          base::Bind(&ReprocessEffectManager::HasReprocessEffectVendorTag,
+                     base::Unretained(&reprocess_effect_manager_));
   CameraDeviceAdapter::ReprocessEffectCallback reprocess_effect_callback =
       base::Bind(&ReprocessEffectManager::ReprocessRequest,
                  base::Unretained(&reprocess_effect_manager_));
   if (!device_adapters_[camera_id]->Start(
+          std::move(has_reprocess_effect_vendor_tag_callback),
           std::move(reprocess_effect_callback))) {
     device_adapters_.erase(camera_id);
     return -ENODEV;

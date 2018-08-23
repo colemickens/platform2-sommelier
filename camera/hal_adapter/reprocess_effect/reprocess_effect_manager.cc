@@ -73,14 +73,35 @@ int32_t ReprocessEffectManager::GetAllVendorTags(
   return 0;
 }
 
+bool ReprocessEffectManager::HasReprocessEffectVendorTag(
+    const camera_metadata_t& settings) {
+  VLOGF_ENTER();
+  for (uint32_t tag = VENDOR_GOOGLE_START; tag < max_vendor_tag_; tag++) {
+    camera_metadata_ro_entry_t entry;
+    if (find_camera_metadata_ro_entry(&settings, tag, &entry) == 0) {
+      DCHECK(vendor_tag_info_map_.find(tag) != vendor_tag_info_map_.end());
+      if (!vendor_tag_info_map_.at(tag).effect) {
+        LOGF(WARNING) << "Received result vendor tag 0x" << std::hex << tag
+                      << " in request";
+        continue;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 int32_t ReprocessEffectManager::ReprocessRequest(
     const camera_metadata_t& settings,
-    buffer_handle_t input_buffer,
+    ScopedYUVBufferHandle* input_buffer,
     uint32_t width,
     uint32_t height,
     android::CameraMetadata* result_metadata,
-    buffer_handle_t output_buffer) {
+    ScopedYUVBufferHandle* output_buffer) {
   VLOGF_ENTER();
+  if (!input_buffer || !*input_buffer || !output_buffer || !*output_buffer) {
+    return -EINVAL;
+  }
   uint32_t orientation = 0;
   camera_metadata_ro_entry_t entry;
   if (find_camera_metadata_ro_entry(&settings, ANDROID_JPEG_ORIENTATION,
@@ -97,7 +118,8 @@ int32_t ReprocessEffectManager::ReprocessRequest(
         continue;
       }
       int result = 0;
-      uint32_t v4l2_format = buffer_manager_->GetV4L2PixelFormat(output_buffer);
+      uint32_t v4l2_format =
+          buffer_manager_->GetV4L2PixelFormat(*output_buffer->GetHandle());
       result = vendor_tag_info_map_.at(tag).effect->ReprocessRequest(
           settings, input_buffer, width, height, orientation, v4l2_format,
           result_metadata, output_buffer);
