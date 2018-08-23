@@ -146,6 +146,11 @@ status_t RequestThread::handleConfigureStreams(MessageConfigureStreams msg)
     camera3_stream_t *stream = nullptr;
     CameraStream * s = nullptr;
     LOG1("Received %d streams, operation mode %d :", streamsNum, operation_mode);
+    if (operation_mode != CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE &&
+        operation_mode != CAMERA3_STREAM_CONFIGURATION_CONSTRAINED_HIGH_SPEED_MODE) {
+        LOGE("Unknown operation mode %d!", operation_mode);
+        return BAD_VALUE;
+    }
     // Check number and type of streams
     for (uint32_t i = 0; i < streamsNum; i++) {
         stream = msg.list->streams[i];
