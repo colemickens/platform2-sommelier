@@ -81,11 +81,10 @@ const SAMPLE_QUEUE_LENGTH: usize =
 // if a mandatory field is missing, the program panics.  A missing optional
 // field (for instance, pgmajfault_f for some kernels) results in a value
 // of 0.
-const VMSTAT_VALUES_COUNT: usize = 7;           // Number of vmstat values we're tracking.
+const VMSTAT_VALUES_COUNT: usize = 6;           // Number of vmstat values we're tracking.
 #[cfg(target_arch = "x86_64")]
 const VMSTATS: [(&str, bool); VMSTAT_VALUES_COUNT] = [
     // name                     mandatory
-    ("nr_pages_scanned",        true),
     ("pswpin",                  true),
     ("pswpout",                 true),
     ("pgalloc_dma32",           true),
@@ -98,7 +97,6 @@ const VMSTATS: [(&str, bool); VMSTAT_VALUES_COUNT] = [
 // Wish there was some more concise mechanism.
 const VMSTATS: [(&str, bool); VMSTAT_VALUES_COUNT] = [
     // name                     mandatory
-    ("nr_pages_scanned",        true),
     ("pswpin",                  true),
     ("pswpout",                 true),
     ("pgalloc_dma",             true),
@@ -326,7 +324,7 @@ struct Sample {
 impl Sample {
     // Outputs a sample.
     fn output(&self, out: &mut File) -> Result<()> {
-        writeln!(out, "{}.{:02} {:6} {} {} {} {} {} {} {} {} {} {} {} {} {}",
+        writeln!(out, "{}.{:02} {:6} {} {} {} {} {} {} {} {} {} {} {} {}",
                self.uptime / 1000,
                self.uptime % 1000 / 10,
                self.sample_type,
@@ -342,7 +340,6 @@ impl Sample {
                self.vmstat_values[3],
                self.vmstat_values[4],
                self.vmstat_values[5],
-               self.vmstat_values[6]
         )?;
         Ok(())
     }
@@ -1160,6 +1157,8 @@ impl<'a> Sampler<'a> {
 fn oom_trace_setup(paths: &Paths) -> Result<File> {
     write_string("function", &paths.current_tracer, false)?;
     write_string("oom_kill_process", &paths.set_ftrace_filter, true)?;
+    write_string("1", &paths.tracing_enabled, false)?;
+    write_string("1", &paths.tracing_on, false)?;
     let tracing_enabled_file = open(&paths.tracing_enabled)?;
     if pread_u32(&tracing_enabled_file)? != 1 {
         return Err("tracing is disabled".into());
