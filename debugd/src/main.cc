@@ -40,6 +40,17 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/var", "/var", 1))
     LOG(FATAL) << "minijail_bind(\"/var\") failed";
 
+  // Hack a path for vpd until it can migrate to /var.
+  // https://crbug.com/876838
+  if (minijail_mount_with_data(j.get(), "tmpfs", "/mnt", "tmpfs",
+                               MS_NOSUID | MS_NOEXEC | MS_NODEV,
+                               "mode=0755,size=10M")) {
+    LOG(FATAL) << "minijail_mount_with_data(\"/mnt\") failed";
+  }
+  const char kVpdPath[] = "/mnt/stateful_partition/unencrypted/cache/vpd";
+  if (minijail_bind(j.get(), kVpdPath, kVpdPath, 1))
+    LOG(FATAL) << "minijail_bind(\"" << kVpdPath << "\") failed";
+
   // Mount /run/dbus to be able to communicate with D-Bus.
   if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
                                MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr)) {
