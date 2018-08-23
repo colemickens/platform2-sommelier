@@ -710,11 +710,19 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     return dbus_response;
   }
 
-  // Build the starting directory.
+  // Build the source and destination directories.
   base::FilePath src = base::FilePath("/home/user").Append(request.owner_id());
+  base::FilePath dst =
+      iter->second.root_dir().GetPath().Append(&kServerRoot[1]);
+
+  // Used later to strip out the prefix from the destination so that we return
+  // the relative path to the shared target.
+  const size_t prefix_len = dst.value().size();
+
   switch (request.storage_location()) {
     case SharePathRequest::DOWNLOADS:
       src = src.Append("Downloads");
+      dst = dst.Append("Downloads");
       break;
     default:
       LOG(ERROR) << "Unknown storage location: " << request.storage_location();
@@ -735,8 +743,8 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-  src = src.Append(path);
 
+  src = src.Append(path);
   if (!base::PathExists(src)) {
     LOG(ERROR) << "Requested path does not exist";
     response.set_failure_reason("Requested path does not exist");
@@ -744,41 +752,45 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     return dbus_response;
   }
 
-  base::FilePath dst = iter->second.root_dir()
-                           .GetPath()
-                           .Append(&kServerRoot[1])
-                           .Append(src.BaseName());
-  if (base::PathExists(dst)) {
-    LOG(ERROR) << "Destination path already exists";
-    response.set_failure_reason("Destination path already exists");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  struct stat info;
-  if (stat(src.value().c_str(), &info) != 0) {
-    PLOG(ERROR) << "Unable to stat source path";
-    response.set_failure_reason("Unable to stat source path");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (S_ISDIR(info.st_mode)) {
-    if (mkdir(dst.value().c_str(), 0700) != 0) {
-      PLOG(ERROR) << "Unable to create destination directory";
-      response.set_failure_reason("Unable to create destination directory");
+  dst = dst.Append(path);
+  // The destination directory may already exist either because one of its
+  // children was shared and it was automatically created or one of its parents
+  // was shared and it's already visible.
+  if (!base::PathExists(dst)) {
+    // First create everything up to the basename.
+    if (!MkdirRecursively(dst.DirName())) {
+      response.set_failure_reason(
+          "Failed to create parent directory for destination");
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
-  } else {
-    base::ScopedFD file(open(dst.value().c_str(),
-                             O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK,
-                             0600) != 0);
-    if (!file.is_valid()) {
-      PLOG(ERROR) << "Unable to create destination file";
-      response.set_failure_reason("Unable to create destination file");
+
+    // Then create a file or directory, as necessary.
+    struct stat info;
+    if (stat(src.value().c_str(), &info) != 0) {
+      PLOG(ERROR) << "Unable to stat source path";
+      response.set_failure_reason("Unable to stat source path");
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
+    }
+
+    if (S_ISDIR(info.st_mode)) {
+      if (mkdir(dst.value().c_str(), 0700) != 0 && errno != EEXIST) {
+        PLOG(ERROR) << "Unable to create destination directory";
+        response.set_failure_reason("Unable to create destination directory");
+        writer.AppendProtoAsArrayOfBytes(response);
+        return dbus_response;
+      }
+    } else {
+      base::ScopedFD file(open(dst.value().c_str(),
+                               O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK,
+                               0600) != 0);
+      if (!file.is_valid()) {
+        PLOG(ERROR) << "Unable to create destination file";
+        response.set_failure_reason("Unable to create destination file");
+        writer.AppendProtoAsArrayOfBytes(response);
+        return dbus_response;
+      }
     }
   }
 
@@ -814,7 +826,7 @@ std::unique_ptr<dbus::Response> Service::SharePath(
   // }
 
   response.set_success(true);
-  response.set_path(base::FilePath("/").Append(src.BaseName()).value());
+  response.set_path(dst.value().substr(prefix_len));
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
