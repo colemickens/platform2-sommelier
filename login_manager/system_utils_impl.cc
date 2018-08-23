@@ -171,25 +171,27 @@ bool SystemUtilsImpl::ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) {
 pid_t SystemUtilsImpl::Wait(pid_t child_spec,
                             base::TimeDelta timeout,
                             int* status_out) {
-  DCHECK_GE(timeout.InSeconds(), 0);
+  DCHECK_GE(timeout, base::TimeDelta());
 
-  base::TimeTicks start = base::TimeTicks::Now();
+  const base::TimeTicks start = base::TimeTicks::Now();
 
-  do {
+  while (true) {
     pid_t pid = waitpid(child_spec, status_out, WNOHANG);
-    // Error happens.
+
+    // Error (including no children remaining).
     if (pid == -1 && errno != EINTR)
       return -1;
 
-    // A process is reaped.
+    // Process was reaped.
     if (pid > 0)
       return pid;
 
-    base::PlatformThread::YieldCurrentThread();
-  } while (base::TimeTicks::Now() - start < timeout);
+    // Timeout.
+    if (base::TimeTicks::Now() - start > timeout)
+      return 0;
 
-  // Times out.
-  return 0;
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
+  }
 }
 
 bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,

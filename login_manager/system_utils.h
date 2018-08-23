@@ -97,7 +97,8 @@ class SystemUtils {
   // Returns PID of child process if we reap a child process within timeout, 0
   // if we time out or -1 if we fail. |status_out| is set only if we reap a
   // child process. Note unlike ProcessGroupIsGone, it only reaps at most one
-  // child per call.
+  // child per call. waitpid() will always be called at least once (i.e. even
+  // if |timeout| is zero).
   virtual pid_t Wait(pid_t child_spec,
                      base::TimeDelta timeout,
                      int* status_out) = 0;

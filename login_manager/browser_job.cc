@@ -174,6 +174,8 @@ void BrowserJob::WaitAndAbort(base::TimeDelta timeout) {
   if (pid < 0)
     return;
 
+  DLOG(INFO) << "Waiting up to " << timeout.InSeconds() << " seconds for "
+             << pid << "'s process group to exit";
   if (!system_->ProcessGroupIsGone(pid, timeout)) {
     LOG(WARNING) << "Aborting browser process " << pid << "'s process group "
                  << timeout.InSeconds() << " seconds after sending signal";

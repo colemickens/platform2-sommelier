@@ -209,7 +209,6 @@ int main(int argc, char* argv[]) {
   int kill_timeout = kKillTimeoutDefaultSeconds;
   if (BootDeviceIsRotationalDisk())
     kill_timeout = kKillTimeoutLongSeconds;
-  LOG(INFO) << "Will wait " << kill_timeout << "s for graceful browser exit.";
 
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
