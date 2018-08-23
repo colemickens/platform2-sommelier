@@ -580,7 +580,7 @@ int RunOci(const base::FilePath& bundle_dir,
       return -1;
     }
 
-    cleanup.Reset(base::Bind(CleanUpContainer, container_dir));
+    cleanup.ReplaceClosure(base::Bind(CleanUpContainer, container_dir));
 
     if (!base::CreateSymbolicLink(container_config_file,
                                   container_dir.Append(kConfigJsonFilename))) {

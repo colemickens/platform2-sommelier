@@ -124,11 +124,11 @@ bool CreateCgroupAsOwner(const base::FilePath& cgroup_path,
   if (getuid() == 0 && (cgroup_owner != 0 || cgroup_group != 0)) {
     if (setegid(cgroup_group) != 0)
       return false;
-    reset_setegid.Reset(base::Bind(base::IgnoreResult(&setegid), 0));
+    reset_setegid.ReplaceClosure(base::Bind(base::IgnoreResult(&setegid), 0));
 
     if (seteuid(cgroup_owner) != 0)
       return false;
-    reset_seteuid.Reset(base::Bind(base::IgnoreResult(&seteuid), 0));
+    reset_seteuid.ReplaceClosure(base::Bind(base::IgnoreResult(&seteuid), 0));
   }
 
   if (mkdir(cgroup_path.value().c_str(), S_IRWXU | S_IRWXG) < 0 &&
