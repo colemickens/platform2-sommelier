@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <libpasswordprovider/password.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/id_map.h"
