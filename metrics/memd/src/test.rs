@@ -4,6 +4,8 @@
 
 // Test code for memd.
 
+include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
+
 use libc;
 use std;
 use std::fs::{File,OpenOptions};
@@ -106,7 +108,7 @@ struct TestEvent {
 }
 
 impl TestEvent {
-    fn deliver(&self, paths: &Paths, dbus_fifo: &mut File, low_mem_device: &mut File) {
+    fn deliver(&self, paths: &Paths, dbus_fifo: &mut File, low_mem_device: &mut File, time: i64) {
         match self.event_type {
             TestEventType::EnterLowPressure =>
                 self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, &paths, low_mem_device),
@@ -114,9 +116,9 @@ impl TestEvent {
                 self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, &paths, low_mem_device),
             TestEventType::EnterHighPressure =>
                 self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, &paths, low_mem_device),
-            TestEventType::OomKillBrowser => self.send_signal("oom-kill", dbus_fifo),
+            TestEventType::OomKillBrowser => self.send_signal("oom-kill", time, dbus_fifo),
             TestEventType::OomKillKernel => self.mock_kill(&paths.trace_pipe),
-            TestEventType::TabDiscard => self.send_signal("tab-discard", dbus_fifo),
+            TestEventType::TabDiscard => self.send_signal("tab-discard", time, dbus_fifo),
         }
     }
 
@@ -133,8 +135,8 @@ impl TestEvent {
         }
     }
 
-    fn send_signal(&self, signal: &str, dbus_fifo: &mut File) {
-        write!(dbus_fifo, "{}\n", signal).expect("mock dbus: write failed");
+    fn send_signal(&self, signal: &str, time: i64, dbus_fifo: &mut File) {
+        write!(dbus_fifo, "{} {}\n", signal, time).expect("mock dbus: write failed");
     }
 
     fn mock_kill(&self, path: &PathBuf) {
@@ -238,7 +240,8 @@ impl Timer for MockTimer {
         while {
             self.test_events[self.event_index].deliver(&self.paths,
                                                        &mut self.dbus_fifo_out,
-                                                       &mut self.low_mem_device);
+                                                       &mut self.low_mem_device,
+                                                       first_event_time);
             self.event_index += 1;
             self.event_index < self.test_events.len() &&
                 self.test_events[self.event_index].time == first_event_time
@@ -262,7 +265,8 @@ impl Timer for MockTimer {
             self.test_events[self.event_index].time <= end_time {
                 self.test_events[self.event_index].deliver(&self.paths,
                                                            &mut self.dbus_fifo_out,
-                                                           &mut self.low_mem_device);
+                                                           &mut self.low_mem_device,
+                                                           self.current_time);
                 self.event_index += 1;
             }
         if self.event_index == self.test_events.len() {
@@ -286,21 +290,25 @@ impl Dbus for MockDbus {
     // Processes any mock chrome events.  Events are strings separated by
     // newlines sent to the event pipe.  We could check if the pipe fired in
     // the watcher, but it's less code to just do a non-blocking read.
-    fn process_chrome_events(&mut self, _watcher: &mut FileWatcher) -> Result<(i32, i32)> {
-        let mut buf = [0u8; 4096];
-        let read_bytes = read_nonblocking_pipe(&mut self.fifo_in, &mut buf)?;
-        let events = str::from_utf8(&buf[..read_bytes])?.lines();
-        let mut tab_discard_count = 0;
-        let mut oom_kill_count = 0;
-        for event in events {
-            match event {
-                "tab-discard" => tab_discard_count += 1,
-                "oom-kill" => oom_kill_count += 1,
-                other => return Err(format!("unexpected mock event {:?}", other).into()),
-            };
+    fn process_chrome_events(&mut self, _watcher: &mut FileWatcher) ->
+        Result<Vec<(Event_Type, i64)>> {
+            let mut events: Vec<(Event_Type, i64)> = Vec::new();
+            let mut buf = [0u8; 4096];
+            let read_bytes = read_nonblocking_pipe(&mut self.fifo_in, &mut buf)?;
+            let mock_events = str::from_utf8(&buf[..read_bytes])?.lines();
+            for mock_event in mock_events {
+                let mut split_iterator = mock_event.split_whitespace();
+                let event_type = split_iterator.next().unwrap();
+                let event_time_string = split_iterator.next().unwrap();
+                let event_time = event_time_string.parse::<i64>()?;
+                match event_type {
+                    "tab-discard" => events.push((Event_Type::TAB_DISCARD, event_time)),
+                    "oom-kill" => events.push((Event_Type::OOM_KILL, event_time)),
+                    other => return Err(format!("unexpected mock event {:?}", other).into()),
+                };
+            }
+            Ok(events)
         }
-        Ok((tab_discard_count, oom_kill_count))
-    }
 }
 
 impl MockDbus {
@@ -549,7 +557,8 @@ macro_rules! assert_approx_eq {
         let tolerance = $tolerance;
         let y_min = y - tolerance;
         let y_max = y + tolerance;
-        assert!(x < y_max && x > y_min, $format $(, $arg)*);
+        assert!(x < y_max && x > y_min, concat!("(expected: {}, actual: {}) ", $format),
+                y, x $(, $arg)*);
     }}
 }
 
@@ -559,6 +568,7 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
     let mut clip_file = File::open(&clip_path)?;
     let mut file_content = String::new();
     clip_file.read_to_string(&mut file_content)?;
+    debug!("clip {}:\n{}", clip_name, file_content);
     let lines = file_content.lines().collect::<Vec<&str>>();
     // First line is time stamp.  Second line is field names.  Check count of
     // field names and field values in the third line (don't bother to check

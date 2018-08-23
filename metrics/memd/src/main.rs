@@ -23,11 +23,16 @@ extern crate dbus;
 extern crate env_logger;
 extern crate syslog;
 
+extern crate protobuf;  // needed by proto_include.rs
+include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
+
 use chrono::prelude::*;
 use {libc::__errno_location, libc::c_void};
 
 #[cfg(not(test))]
 use dbus::{Connection, BusType, WatchEvent};
+#[cfg(not(test))]
+use protobuf::Message;
 
 use std::{io,mem,str};
 #[cfg(not(test))]
@@ -436,9 +441,13 @@ impl SampleQueue {
         // For now just do a linear search. ;)
         let mut start_index = modulo(self.ihead() - 1, SAMPLE_QUEUE_LENGTH);
         debug!("output_from_time: start_time {}, head {}", start_time, start_index);
-        while self.samples[start_index].uptime > start_time {
-            debug!("output_from_time: seeking uptime {}, index {}",
-                   self.samples[start_index].uptime, start_index);
+        loop {
+            let sample = self.samples[start_index];
+            // Ignore samples from external sources because their time stamp may be off.
+            if sample.uptime <= start_time && sample.sample_type.has_internal_timestamp() {
+                break;
+            }
+            debug!("output_from_time: seeking uptime {}, index {}", sample.uptime, start_index);
             start_index = modulo(start_index as isize - 1, SAMPLE_QUEUE_LENGTH);
             if start_index == self.head {
                 warn!("too many events in requested interval");
@@ -612,7 +621,8 @@ trait Dbus {
     fn get_fds(&self) -> &Vec<RawFd>;
     // Processes incoming Chrome dbus events as indicated by |watcher|.
     // Returns counts of tab discards and browser-detected OOMs.
-    fn process_chrome_events(&mut self, watcher: &mut FileWatcher) -> Result<(i32,i32)>;
+    fn process_chrome_events(&mut self, watcher: &mut FileWatcher) ->
+        Result<Vec<(Event_Type, i64)>>;
 }
 
 #[cfg(not(test))]
@@ -627,59 +637,51 @@ impl Dbus for GenuineDbus {
         &self.fds
     }
 
-    // Called if any of the dbus file descriptors fired.  Checks the incoming
-    // messages and return counts of relevant messages.
+    // Called if any of the dbus file descriptors fired.  Receives metrics
+    // event signals, and return a vector of pairs, each pair containing the
+    // event type and time stamp of each incoming event.
     //
     // For debugging:
     //
-    // dbus-monitor --system type=signal,interface=org.chromium.EventLogger
+    // INTERFACE=org.chromium.MetricsEventServiceInterface
+    // dbus-monitor --system type=signal,interface=$INTERFACE
+    // PAYLOAD=array:byte:0x10,0xa8,0xa2,0xc5,0x51
+    // dbus-send --system --type=signal / $INTERFACE.ChromeEvent $PAYLOAD
     //
-    // dbus-send --system --type=signal / org.chromium.EventLogger.ChromeEvent string:tab-discard
-    //
-    fn process_chrome_events(&mut self, watcher: &mut FileWatcher) -> Result<(i32, i32)> {
-        // Check all delivered messages, and count the messages of interest of
-        // each kind.  Then create events for those messages.  Counting first
-        // simplifies the borrowing.
-        let mut tab_discard_count = 0;
-        let mut oom_kill_browser_count = 0;
-        {
-            for &fd in self.fds.iter() {
-                if !watcher.has_fired_fd(fd)? {
-                    continue;
-                }
-                let handle = self.connection.watch_handle(fd, WatchEvent::Readable as libc::c_uint);
-                for connection_item in handle {
-                    // Only consider signals.
-                    if let dbus::ConnectionItem::Signal(ref message) = connection_item {
-                        // Only consider signals with "ChromeEvent" members.
-                        if let Some(member) = message.member() {
-                            if &*member != "ChromeEvent" {
-                                continue;
+    fn process_chrome_events(&mut self, watcher: &mut FileWatcher) ->
+        Result<(Vec<(Event_Type, i64)>)> {
+        let mut events: Vec<(Event_Type, i64)> = Vec::new();
+        for &fd in self.fds.iter() {
+            if !watcher.has_fired_fd(fd)? {
+                continue;
+            }
+            let handle = self.connection.watch_handle(fd, WatchEvent::Readable as libc::c_uint);
+            for connection_item in handle {
+                // Only consider signals.
+                if let dbus::ConnectionItem::Signal(ref message) = connection_item {
+                    // Only consider signals with "ChromeEvent" members.
+                    if let Some(member) = message.member() {
+                        if &*member != "ChromeEvent" {
+                            // Do not report spurious "NameAcquired" signal to avoid spam.
+                            if &*member != "NameAcquired" {
+                                warn!("unexpected dbus signal member {}", &*member);
                             }
-                        }
-                        let items = &message.get_items();
-                        if items.is_empty() {
                             continue;
                         }
-                        let item = &message.get_items()[0];
-                        match item {
-                            &dbus::MessageItem::Str(ref s) => match &s[..] {
-                                "tab-discard" | "oom-kill" => {
-                                    match sample_type_from_signal(s) {
-                                        SampleType::TabDiscard => tab_discard_count += 1,
-                                        SampleType::OomKillBrowser => oom_kill_browser_count += 1,
-                                        x => panic!("unexpected sample type {:?}", x),
-                                    }
-                                },
-                                _ => { warn!("unexpected chrome event type: {}", s); }
-                            }
-                            _ => warn!("ignoring chrome event with non-string arg1"),
-                        }
                     }
+                    // Read first item in signal message as byte blob and
+                    // parse blob into protobuf.
+                    let raw_buffer: Vec<u8> = message.read1()?;
+                    let mut protobuf = Event::new();
+                    protobuf.merge_from_bytes(&raw_buffer)?;
+
+                    let event_type = protobuf.get_field_type();
+                    let time_stamp = protobuf.get_timestamp();
+                    events.push((event_type, time_stamp))
                 }
             }
         }
-        Ok((tab_discard_count, oom_kill_browser_count))
+        Ok(events)
     }
 }
 
@@ -689,9 +691,10 @@ impl GenuineDbus {
     // information from Chrome about events of interest (e.g. tab discards).
     fn new() -> Result<GenuineDbus> {
         let connection = Connection::get_private(BusType::System)?;
-        let _m = connection.add_match(concat!("type='signal',",
-                                              "interface='org.chromium.EventLogger',",
-                                              "member='ChromeEvent'"));
+        let _m = connection.add_match(
+            concat!("type='signal',",
+                    "interface='org.chromium.MetricsEventServiceInterface',",
+                    "member='ChromeEvent'"));
         let fds = connection.watch_fds().iter().map(|w| w.fd()).collect();
         Ok(GenuineDbus { connection, fds })
     }
@@ -791,6 +794,12 @@ impl<'a> Sampler<'a> {
         self.enqueue_sample_at_time(sample_type, time)
     }
 
+    // Collect a sample with an externally-generated time stamp.
+    fn enqueue_sample_external(&mut self, sample_type: SampleType, time: i64) -> Result<()> {
+        assert!(!sample_type.has_internal_timestamp());
+        self.enqueue_sample_at_time(sample_type, time)
+    }
+
     // Collects a sample of memory manager stats and adds it to the sample
     // queue, possibly overwriting an old value.  |sample_type| indicates the
     // type of sample, and |time| the system uptime at the time the sample was
@@ -867,7 +876,7 @@ impl<'a> Sampler<'a> {
                 // other with the current time (firing of the trace event).  Collecting the
                 // data twice is a waste, but this is a rare event.
                 let time =  (reported_time * 1000.0) as i64;
-                self.enqueue_sample_at_time(SampleType::OomKillKernel, time)?;
+                self.enqueue_sample_external(SampleType::OomKillKernel, time)?;
                 self.enqueue_sample(SampleType::OomKillTrace)?;
             } else {
                 break;
@@ -1028,17 +1037,22 @@ impl<'a> Sampler<'a> {
                 }
 
                 // Check for Chrome events.
-                let (tab_discard_count, oom_kill_browser_count) =
-                    self.dbus.process_chrome_events(&mut self.watcher)?;
-                for _ in 0..tab_discard_count {
-                    self.enqueue_sample(SampleType::TabDiscard)?;
-                }
-                for _ in 0..oom_kill_browser_count {
-                    self.enqueue_sample(SampleType::OomKillBrowser)?;
-                }
-                if tab_discard_count + oom_kill_browser_count > 0 {
-                    debug!("chrome events at {}", self.current_time);
+                let events = self.dbus.process_chrome_events(&mut self.watcher)?;
+                if events.len() > 0 {
+                    debug!("chrome events at {}: {:?}", self.current_time, events);
                     event_is_interesting = true;
+                }
+                for event in events {
+                    let sample_type = match event.0 {
+                        Event_Type::TAB_DISCARD => SampleType::TabDiscard,
+                        Event_Type::OOM_KILL => SampleType::OomKillBrowser,
+                        _ => {
+                            warn!("unknown event type {:?}", event.0);
+                            continue;
+                        }
+                    };
+                    debug!("enqueue {:?}, {:?}", sample_type, event.1);
+                    self.enqueue_sample_external(sample_type, event.1)?;
                 }
 
                 // Check for OOM-kill event.
@@ -1214,11 +1228,6 @@ enum SampleType {
     TabDiscard,         // Chrome browser letting us know about a tab discard.
     Timer,              // Event was generated after FAST_POLL_PERIOD_DURATION with no other events.
     Uninitialized,      // Internal use.
-    #[cfg(not(test))]
-    Unknown,            // Unexpected D-Bus signal.
-    #[cfg(test)]
-    #[allow(dead_code)]
-    Unknown,            // Never created  when testing.
 }
 
 impl Default for SampleType {
@@ -1230,6 +1239,19 @@ impl Default for SampleType {
 impl fmt::Display for SampleType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.name())
+    }
+}
+
+impl SampleType {
+    // Returns true if the timestamp for this sample type is generated
+    // internally.  This knowledge is used in outputting samples to clip files,
+    // because the timestamps of samples generated externally may be skewed.
+    fn has_internal_timestamp(&self) -> bool {
+        match self {
+            &SampleType::TabDiscard | &SampleType::OomKillBrowser |
+            &SampleType::OomKillKernel => false,
+            _ => true
+        }
     }
 }
 
@@ -1246,19 +1268,7 @@ impl SampleType {
             SampleType::TabDiscard => "discrd",
             SampleType::Timer => "timer",
             SampleType::Uninitialized => "UNINIT",
-            SampleType::Unknown => "UNKNWN",
         }
-    }
-}
-
-#[cfg(not(test))]
-// Returns the sample type for a Chrome signal (the string payload in the DBus
-// message).
-fn sample_type_from_signal(signal: &str) -> SampleType {
-    match signal {
-        "oom-kill" => SampleType::OomKillBrowser,
-        "tab-discard" => SampleType::TabDiscard,
-        _ => SampleType::Unknown,
     }
 }
 
