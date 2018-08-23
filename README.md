@@ -65,6 +65,7 @@ copies.
 | [init](./init/) | CrOS common startup init scripts and boot time helpers |
 | [installer](./installer/) | CrOS installer utility (for AU/recovery/etc...) |
 | [ippusb_manager](./ippusb_manager/) | "Service" for ipp-over-usb printing |
+| [libbrillo](./libbrillo/) | Common platform utility library |
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
