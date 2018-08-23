@@ -69,7 +69,6 @@ copies.
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
-| [libweave](./libweave/) | Library for cloud messaging |
 | [login_manager](./login_manager/) | Session manager for handling the life cycle of the main session (e.g. Chrome) |
 | [lorgnette](./lorgnette/) | Daemon for managing attached USB scanners via [SANE](https://en.wikipedia.org/wiki/Scanner_Access_Now_Easy) |
 | [memd](./metrics/memd/) | Daemon that logs memory-related data and events |
