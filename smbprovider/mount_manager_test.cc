@@ -11,7 +11,6 @@
 
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/fake_samba_proxy.h"
-#include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/smbprovider_test_helper.h"
 #include "smbprovider/temp_file_manager.h"
@@ -29,9 +28,6 @@ std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
 class MountManagerTest : public testing::Test {
  public:
   MountManagerTest() {
-    auto credential_store = std::make_unique<InMemoryCredentialStore>();
-    credential_store_ = credential_store.get();
-
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
     tick_clock_ = tick_clock.get();
 
@@ -40,8 +36,7 @@ class MountManagerTest : public testing::Test {
         base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
 
     mounts_ = std::make_unique<MountManager>(
-        std::move(credential_store), std::move(tick_clock),
-        std::move(samba_interface_factory));
+        std::move(tick_clock), std::move(samba_interface_factory));
   }
 
   ~MountManagerTest() override = default;
@@ -76,28 +71,25 @@ class MountManagerTest : public testing::Test {
                             password_fd);
   }
 
-  void ExpectCredentialsEqual(const std::string& mount_root,
+  void ExpectCredentialsEqual(int32_t mount_id,
                               const std::string& workgroup,
                               const std::string& username,
                               const std::string& password) {
-    constexpr size_t kComparisonBufferSize = 256;
-    char workgroup_buffer[kComparisonBufferSize];
-    char username_buffer[kComparisonBufferSize];
-    char password_buffer[kComparisonBufferSize];
-
-    EXPECT_TRUE(credential_store_->GetAuthentication(
-        mount_root, workgroup_buffer, kComparisonBufferSize, username_buffer,
-        kComparisonBufferSize, password_buffer, kComparisonBufferSize));
-
-    EXPECT_EQ(std::string(workgroup_buffer), workgroup);
-    EXPECT_EQ(std::string(username_buffer), username);
-    EXPECT_EQ(std::string(password_buffer), password);
+    const SmbCredential& cred =
+        mounts_->GetCredentialFromMountIdForTesting(mount_id);
+    EXPECT_EQ(cred.workgroup, workgroup);
+    EXPECT_EQ(cred.username, username);
+    if (!password.empty()) {
+      EXPECT_EQ(std::string(cred.password->GetRaw()), password);
+    } else {
+      // Password is empty but Credential.Password isn't.
+      EXPECT_TRUE(cred.password.get() == nullptr);
+    }
   }
 
  protected:
   std::unique_ptr<MountManager> mounts_;
   TempFileManager temp_files_;
-  CredentialStore* credential_store_;
   base::SimpleTestTickClock* tick_clock_;
 
  private:
@@ -357,7 +349,7 @@ TEST_F(MountManagerTest, TestAddMountWithCredential) {
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
-  ExpectCredentialsEqual(root_path, workgroup, username, password);
+  ExpectCredentialsEqual(mount_id, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
@@ -373,7 +365,23 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
-  ExpectCredentialsEqual(root_path, workgroup, username, password);
+  ExpectCredentialsEqual(mount_id, workgroup, username, password);
+}
+
+TEST_F(MountManagerTest, TestAddMountWithEmptyPassword) {
+  const std::string root_path = "smb://server/share1";
+  const std::string workgroup = "google";
+  const std::string username = "user1";
+  const std::string password = "";
+  int32_t mount_id;
+
+  EXPECT_TRUE(AddMount(root_path, workgroup, username, password, &mount_id));
+
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
+  ExpectCredentialsEqual(mount_id, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestCantAddMountWithSamePath) {
@@ -421,7 +429,7 @@ TEST_F(MountManagerTest, TestRemountWithCredential) {
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
-  ExpectCredentialsEqual(root_path, workgroup, username, password);
+  ExpectCredentialsEqual(mount_id, workgroup, username, password);
 }
 
 }  // namespace smbprovider

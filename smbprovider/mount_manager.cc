@@ -9,7 +9,7 @@
 #include <base/strings/string_util.h>
 #include <base/time/tick_clock.h>
 
-#include "smbprovider/credential_store.h"
+#include "smbprovider/smb_credential.h"
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
@@ -99,11 +99,10 @@ void PopulateCredential(const SmbCredential& credential,
   }
 }
 
-// TODO(jimmyxgong): Rename back to GetPassword once CredentialStore is removed.
 // Gets a password_provider::Password object from |password_fd|. The data has to
 // be in the format of "{password_length}{password}". If the read fails, this
 // returns an empty unique_ptr.
-std::unique_ptr<password_provider::Password> GetPassword_(
+std::unique_ptr<password_provider::Password> GetPassword(
     const base::ScopedFD& password_fd) {
   size_t password_length = 0;
 
@@ -127,19 +126,11 @@ std::unique_ptr<password_provider::Password> GetPassword_(
 
 }  // namespace
 
-MountManager::MountManager(std::unique_ptr<CredentialStore> credential_store,
-                           std::unique_ptr<base::TickClock> tick_clock,
+MountManager::MountManager(std::unique_ptr<base::TickClock> tick_clock,
                            SambaInterfaceFactory samba_interface_factory)
-    : credential_store_(std::move(credential_store)),
-      tick_clock_(std::move(tick_clock)),
+    : tick_clock_(std::move(tick_clock)),
       samba_interface_factory_(std::move(samba_interface_factory)) {
   system_samba_interface_ = CreateSambaInterface();
-
-  // TODO(jimmyxgong): Temporary workaround to avoid "unused function" compiler
-  // warning. Will remove in future CL.
-  (void)CanInputCredential;
-  (void)PopulateCredential;
-  (void)GetPassword_;
 }
 
 MountManager::~MountManager() = default;
@@ -150,12 +141,12 @@ bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
     return false;
   }
 
-  DCHECK(credential_store_->HasCredential(mount_iter->second.mount_root));
+  DCHECK_EQ(mounted_share_paths_.count(mount_iter->second.mount_root), 1);
   return true;
 }
 
 bool MountManager::IsAlreadyMounted(const std::string& mount_root) const {
-  const bool has_credential = credential_store_->HasCredential(mount_root);
+  bool has_credential = mounted_share_paths_.count(mount_root) > 0;
   if (!has_credential) {
     DCHECK(!ExistsInMounts(mount_root));
     return false;
@@ -172,16 +163,15 @@ bool MountManager::AddMount(const std::string& mount_root,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
-  SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  if (!credential_store_->AddCredential(mount_root, std::move(credential))) {
+  if (IsAlreadyMounted(mount_root)) {
     return false;
   }
 
   can_remount_ = false;
 
-  // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
-  // the SmbCredential.
-  *mount_id = mounts_.Insert(CreateMountInfo(mount_root, SmbCredential()));
+  SmbCredential credential(workgroup, username, GetPassword(password_fd));
+  *mount_id =
+      mounts_.Insert(CreateMountInfo(mount_root, std::move(credential)));
 
   AddSambaInterfaceIdToSambaInterfaceMap(*mount_id);
   mounted_share_paths_.insert(mount_root);
@@ -197,15 +187,13 @@ bool MountManager::Remount(const std::string& mount_root,
   DCHECK(!IsAlreadyMounted(mount_id));
   DCHECK_GE(mount_id, 0);
 
-  SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  if (!credential_store_->AddCredential(mount_root, std::move(credential))) {
+  if (IsAlreadyMounted(mount_root)) {
     return false;
   }
 
-  // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
-  // the SmbCredential.
-  mounts_.InsertWithSpecificId(mount_id,
-                               CreateMountInfo(mount_root, SmbCredential()));
+  SmbCredential credential(workgroup, username, GetPassword(password_fd));
+  mounts_.InsertWithSpecificId(
+      mount_id, CreateMountInfo(mount_root, std::move(credential)));
 
   AddSambaInterfaceIdToSambaInterfaceMap(mount_id);
   mounted_share_paths_.insert(mount_root);
@@ -221,11 +209,6 @@ bool MountManager::RemoveMount(int32_t mount_id) {
 
   bool path_removed = mounted_share_paths_.erase(mount_iter->second.mount_root);
   DCHECK(path_removed);
-
-  // TODO(jimmyxgong): CredentialStore will be removed in future CL's.
-  bool removed =
-      credential_store_->RemoveCredential(mount_iter->second.mount_root);
-  DCHECK(removed);
 
   mounts_.Remove(mount_iter->first);
   return true;
@@ -319,20 +302,36 @@ bool MountManager::GetAuthentication(
   DCHECK_GT(username_length, 0);
   DCHECK_GT(password_length, 0);
 
-  return credential_store_->GetAuthentication(
-      share_path, workgroup, workgroup_length, username, username_length,
-      password, password_length);
-}
+  if (samba_interface_map_.count(samba_interface_id) == 0) {
+    LOG(ERROR) << "Credentials not found for " << share_path;
 
-bool MountManager::ExistsInMounts(const std::string& mount_root) const {
-  for (auto mount_iter = mounts_.Begin(); mount_iter != mounts_.End();
-       ++mount_iter) {
-    if (mount_iter->second.mount_root == mount_root) {
-      return true;
-    }
+    SetBufferEmpty(workgroup);
+    SetBufferEmpty(username);
+    SetBufferEmpty(password);
+    return false;
   }
 
-  return false;
+  const SmbCredential& credential = GetCredential(samba_interface_id);
+
+  if (!CanInputCredential(workgroup_length, username_length, password_length,
+                          credential)) {
+    LOG(ERROR) << "Buffers cannot support credentials for " << share_path;
+
+    SetBufferEmpty(workgroup);
+    SetBufferEmpty(username);
+    SetBufferEmpty(password);
+    return false;
+  }
+
+  PopulateCredential(credential, workgroup, username, password);
+  return true;
+}
+
+const SmbCredential& MountManager::GetCredentialFromMountIdForTesting(
+    int32_t mount_id) const {
+  auto mount_iter = mounts_.Find(mount_id);
+  DCHECK(mount_iter != mounts_.End());
+  return mount_iter->second.credential;
 }
 
 MountManager::MountInfo MountManager::CreateMountInfo(
@@ -368,6 +367,17 @@ void MountManager::DeleteSambaInterfaceIdFromSambaInterfaceMap(
   DCHECK_NE(0, samba_interface_map_.count(samba_interface_id));
 
   samba_interface_map_.erase(samba_interface_id);
+}
+
+bool MountManager::ExistsInMounts(const std::string& mount_root) const {
+  for (auto mount_iter = mounts_.Begin(); mount_iter != mounts_.End();
+       ++mount_iter) {
+    if (mount_iter->second.mount_root == mount_root) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace smbprovider

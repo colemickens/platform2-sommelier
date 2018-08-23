@@ -29,8 +29,6 @@ class TickClock;
 
 namespace smbprovider {
 
-class CredentialStore;
-
 // MountManager maintains a mapping of open mounts and the metadata associated
 // with each mount.
 class MountManager : public base::SupportsWeakPtr<MountManager> {
@@ -38,8 +36,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   using SambaInterfaceFactory =
       base::Callback<std::unique_ptr<SambaInterface>(MountManager*)>;
 
-  MountManager(std::unique_ptr<CredentialStore> credential_store,
-               std::unique_ptr<base::TickClock> tick_clock,
+  MountManager(std::unique_ptr<base::TickClock> tick_clock,
                SambaInterfaceFactory samba_interface_factory);
   ~MountManager();
 
@@ -114,6 +111,10 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
                          char* password,
                          int32_t password_length) const;
 
+  // For testing purposes only. Returns the credential for a given |mount_id|.
+  const SmbCredential& GetCredentialFromMountIdForTesting(
+      int32_t mount_id) const;
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.
@@ -142,11 +143,6 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
     DISALLOW_COPY_AND_ASSIGN(MountInfo);
   };
 
-  // Returns true if |mount_root| exists as a value in mounts_. This method is
-  // only used for DCHECK to ensure that credential_store_ is in sync with
-  // MountManager.
-  bool ExistsInMounts(const std::string& mount_root) const;
-
   // Runs |samba_interface_factory_|.
   std::unique_ptr<SambaInterface> CreateSambaInterface();
 
@@ -171,6 +167,11 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   const SmbCredential& GetCredential(
       SambaInterface::SambaInterfaceId samba_interface_id) const;
 
+  // Returns true if |mount_root| exists as a value in mounts_. This method is
+  // only used for DCHECK to ensure that credential_store_ is in sync with
+  // MountManager.
+  bool ExistsInMounts(const std::string& mount_root) const;
+
   bool can_remount_ = true;
   IdMap<MountInfo> mounts_;
 
@@ -178,7 +179,6 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   std::unordered_map<SambaInterface::SambaInterfaceId, int32_t>
       samba_interface_map_;
   std::unordered_set<std::string> mounted_share_paths_;
-  std::unique_ptr<CredentialStore> credential_store_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<SambaInterface> system_samba_interface_;
   SambaInterfaceFactory samba_interface_factory_;

@@ -15,7 +15,6 @@
 #include "smbprovider/fake_kerberos_artifact_client.h"
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/fake_samba_proxy.h"
-#include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/metadata_cache.h"
@@ -187,8 +186,8 @@ class SmbProviderTest : public testing::Test {
         base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
 
     auto mount_manager_ptr = std::make_unique<MountManager>(
-        std::make_unique<InMemoryCredentialStore>(), std::move(tick_clock),
-        std::move(samba_interface_factory));
+        std::move(tick_clock), std::move(samba_interface_factory));
+
     mount_manager_ = mount_manager_ptr.get();
 
     auto fake_artifact_client = std::make_unique<FakeKerberosArtifactClient>();

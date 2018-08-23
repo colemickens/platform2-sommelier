@@ -13,7 +13,6 @@
 #include <brillo/syslog_logging.h>
 
 #include "smbprovider/constants.h"
-#include "smbprovider/in_memory_credential_store.h"
 #include "smbprovider/kerberos_artifact_client.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/mount_manager.h"
@@ -145,8 +144,6 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    auto credential_store = std::make_unique<InMemoryCredentialStore>();
-
     auto dbus_object = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath());
 
@@ -163,8 +160,7 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
     auto samba_interface_factory = base::Bind(&SambaInterfaceFactoryFunction);
 
     auto mount_manager = std::make_unique<MountManager>(
-        std::move(credential_store), std::move(tick_clock),
-        std::move(samba_interface_factory));
+        std::move(tick_clock), std::move(samba_interface_factory));
 
     smb_provider_ = std::make_unique<SmbProvider>(
         std::move(dbus_object), std::move(mount_manager),
