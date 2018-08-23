@@ -58,6 +58,7 @@
       'libraries': ['-lmodp_b64'],
       'sources': [
         'brillo/asynchronous_signal_handler.cc',
+        'brillo/backoff_entry.cc',
         'brillo/daemons/daemon.cc',
         'brillo/data_encoding.cc',
         'brillo/errors/error.cc',
@@ -368,6 +369,7 @@
           ],
           'sources': [
             'brillo/asynchronous_signal_handler_unittest.cc',
+            'brillo/backoff_entry_unittest.cc',
             'brillo/data_encoding_unittest.cc',
             'brillo/enum_flags_unittest.cc',
             'brillo/errors/error_codes_unittest.cc',
