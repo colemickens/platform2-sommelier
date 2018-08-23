@@ -28,6 +28,8 @@ is available:
 -   [Logging](docs/logging.md) describes where and how powerd logs informative
     messages.
 -   [Power Buttons](docs/power_buttons.md) describes how power buttons work.
+-   [Power Supplies](docs/power_supplies.md) describes powerd's logic for
+    determining the state of power supplies (e.g. batteries or line power).
 -   [Screen Brightness](docs/screen_brightness.md) describes powerd's logic for
     controlling the display backlight.
 -   [Shutdown and Reboot](docs/shutdown.md) describes why and how Chrome OS

@@ -12,7 +12,8 @@ remaining-time estimate in the system tray.
 The "time-to-empty" estimate that powerd sends to Chrome is actually the
 estimated time until powerd will shut down the system automatically, which
 happens (by default) three minutes before the battery will be completely empty.
-See powerd's [PowerSupply] class for more details.
+See powerd's [PowerSupply] class and the [Power Supplies] document for more
+details.
 
 ## Notifying the User
 
@@ -62,4 +63,5 @@ difficult to reason about or write tests for and the estimates were even noisier
 
 [PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/power_supply_properties.proto
 [PowerSupply]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/power_supply.h
+[Power Supplies]: power_supplies.md
 [ash::TrayPower]: https://chromium.googlesource.com/chromium/src/+/master/ash/system/power/tray_power.cc
