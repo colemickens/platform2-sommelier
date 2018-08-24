@@ -21,7 +21,8 @@
 namespace {
 
 const char kPersistentGUIDFile[] = "/var/lib/metrics/Sysinfo.GUID";
-const char kPersistentSessionIdFilename[] = "Sysinfo.SessionId";
+const char kPersistentSessionIdFilename[] =
+    "/var/lib/metrics/Sysinfo.SessionId";
 const char kProductIdFieldName[] = "GOOGLE_METRICS_PRODUCT_ID";
 
 }  // namespace
