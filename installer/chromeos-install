@@ -84,58 +84,40 @@ fast_dd() {
   shift 3
   # Provide some simple progress updates to the user.
   set -- "$@" status=progress
+  # Find the largest block size that all the parameters are a factor of.
+  local block_size=$((2 * 1024 * 1024))
+  while [ $(((user_count * SRC_BLKSIZE) % block_size)) -ne 0 -o \
+          $(((user_skip * SRC_BLKSIZE) % block_size)) -ne 0 -o \
+          $(((user_seek * DST_BLKSIZE) % block_size)) -ne 0 ]; do
 
-  # Try to convert count, seek, and skip into a common large block size.
-  local ideal_block_size=$((2 * 1024 * 1024))  # 2 MiB
-  local count_ideal=$((user_count * SRC_BLKSIZE / ideal_block_size))
-  local seek_ideal=$((user_seek * DST_BLKSIZE / ideal_block_size))
-  local skip_ideal=$((user_skip * SRC_BLKSIZE / ideal_block_size))
+    : $((block_size /= 2))
+  done
 
-  # Convert back to the original units to see if it's exact.
-  local count_verify=$((count_ideal * ideal_block_size / SRC_BLKSIZE))
-  local seek_verify=$((seek_ideal * ideal_block_size / DST_BLKSIZE))
-  local skip_verify=$((skip_ideal * ideal_block_size / SRC_BLKSIZE))
-
-  # If the conversion back matches the original numbers, then there was no
-  # remainder, and all the parameters are exact multiples of the larger block
-  # size.
-  if [ "${count_verify}" -eq "${user_count}" -a \
-       "${seek_verify}" -eq "${user_seek}" -a \
-       "${skip_verify}" -eq "${user_skip}" ]; then
-
-    local count_arg=""
-    if [ "${count_ideal}" -ne 0 ]; then
-      count_arg="count=${count_ideal}"
+  # Print a humble info line if the block size is not super, and complain more
+  # loudly if it's really small.
+  if [ "${block_size}" -ne $((2 * 1024 * 1024)) ]; then
+    echo "DD with block size ${block_size}"
+    if [ "${block_size}" -lt $((128 * 1024)) ]; then
+      echo
+      echo "WARNING: DOING A SLOW MISALIGNED dd OPERATION. PLEASE FIX"
+      echo "count=${user_count} seek=${user_seek} skip=${user_skip}"
+      echo "SRC_BLKSIZE=${SRC_BLKSIZE} DST_BLKSIZE=${DST_BLKSIZE}"
+      echo
     fi
-
-    dd "$@" bs="${ideal_block_size}" seek="${seek_ideal}" skip="${skip_ideal}" \
-        "${count_arg}"
-
-    return
   fi
 
-  # Give up and do the user's slow dd.
-  echo
-  echo "WARNING: DOING A SLOW MISALIGNED dd OPERATION. PLEASE FIX"
-
-  # Describe which variables are off, for the forlorn developer.
-  if [ "${count_verify}" -ne "${user_count} " ]; then
-    echo "count=${user_count}, but aligned would have been ${count_verify}"
-  fi
-  if [ "${seek_verify}" -ne "${user_seek} " ]; then
-    echo "seek=${user_seek}, but aligned would have been ${seek_verify}"
-  fi
-  if [ "${skip_verify}" -ne "${user_skip} " ]; then
-    echo "skip=${user_skip}, but aligned would have been ${skip_verify}"
-  fi
-  echo
-
+  # Convert the block counts in their respective sizes into the common block
+  # size, and blast off.
+  local count_common=$((user_count * SRC_BLKSIZE / block_size))
+  local seek_common=$((user_seek * DST_BLKSIZE / block_size))
+  local skip_common=$((user_skip * SRC_BLKSIZE / block_size))
   local count_arg=""
-  if [ "${user_count}" -ne 0 ]; then
-    count_arg="count=${user_count}"
+  if [ "${count_common}" -ne 0 ]; then
+    count_arg="count=${count_common}"
   fi
-  dd "$@" ibs="${SRC_BLKSIZE}" obs="${DST_BLKSIZE}" seek="${user_seek}" \
-    skip="${user_skip}" ${count_arg}
+
+  dd "$@" bs="${block_size}" seek="${seek_common}" skip="${skip_common}" \
+      "${count_arg}"
 }
 
 # Get the specified env var for the specified partition.
