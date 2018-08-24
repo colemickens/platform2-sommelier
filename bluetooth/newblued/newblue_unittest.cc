@@ -292,7 +292,7 @@ TEST_F(NewblueTest, UpdateEirAbnormal) {
   Newblue::UpdateEir(&device, std::vector<uint8_t>(eir, eir + arraysize(eir)));
 
   // Non-ascii characters are replaced with spaces.
-  EXPECT_TRUE(device.flags.value().empty());
+  EXPECT_FALSE(device.flags.value().empty());
   EXPECT_THAT(
       device.service_uuids.value(),
       UnorderedElementsAre(battery_service_uuid16, blood_pressure_uuid16));

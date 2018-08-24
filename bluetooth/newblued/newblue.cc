@@ -103,6 +103,7 @@ Device::Device(const std::string& address)
       eir_class(kDefaultEirClass),
       appearance(kDefaultAppearance),
       icon(ConvertAppearanceToIcon(kDefaultAppearance)),
+      flags({0}),
       manufacturer(
           MakeManufacturer(kDefaultManufacturerId, std::vector<uint8_t>())) {}
 
