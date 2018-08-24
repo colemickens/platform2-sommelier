@@ -38,6 +38,9 @@ struct EnvVarDef {
 constexpr EnvVarDef kWhitelistedEnvVars[]{
     DEFINE_ENV_VAR("ASAN_OPTIONS"),
     DEFINE_ENV_VAR("LSAN_OPTIONS"),
+    DEFINE_ENV_VAR("MSAN_OPTIONS"),
+    DEFINE_ENV_VAR("TSAN_OPTIONS"),
+    DEFINE_ENV_VAR("UBSAN_OPTIONS"),
 };
 
 #undef DEFINE_ENV_VAR
