@@ -1345,6 +1345,7 @@ int main(int argc, char **argv) {
             &out_reply,
             &brillo::Resetter(&error).lvalue())) {
         printf("Failed to call UpdateKeyEx!\n");
+        return 1;
       }
       ParseBaseReply(out_reply, &reply);
     }
@@ -1378,6 +1379,7 @@ int main(int argc, char **argv) {
             proxy.gproxy(), account_ary.get(), &out_reply,
             &brillo::Resetter(&error).lvalue())) {
       printf("Remove call failed: %s.\n", error->message);
+      return 1;
     }
 
     cryptohome::BaseReply reply;
@@ -1657,6 +1659,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
       printf("IsReady call failed: %s.\n", error->message);
+      return 1;
     }
     if (result == FALSE) {
       printf("InstallAttributes() is not ready.\n");
@@ -1671,6 +1674,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
        printf("Get() failed: %s.\n", error->message);
+       return 1;
     }
     std::string value_str(value->data, value->len);
     if (result == TRUE) {
@@ -1699,6 +1703,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
       printf("IsReady call failed: %s.\n", error->message);
+      return 1;
     }
 
     if (result == FALSE) {
@@ -1715,6 +1720,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
        printf("Set() failed: %s.\n", error->message);
+       return 1;
     }
     if (result == FALSE)
       return 1;
@@ -1728,6 +1734,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
       printf("IsReady call failed: %s.\n", error->message);
+      return 1;
     }
     if (result == FALSE) {
       printf("InstallAttributes is not ready.\n");
@@ -1738,6 +1745,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
       printf("Finalize() failed: %s.\n", error->message);
+      return 1;
     }
     printf("InstallAttributesFinalize(): %d\n", result);
   } else if (!strcmp(
@@ -1802,6 +1810,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
       printf("TpmVerifyAttestationData call failed: %s.\n", error->message);
+      return 1;
     }
     if (result == FALSE) {
       printf("TPM attestation data is not valid or is not available.\n");
@@ -1818,6 +1827,7 @@ int main(int argc, char **argv) {
         &result,
         &brillo::Resetter(&error).lvalue())) {
       printf("TpmVerifyEK call failed: %s.\n", error->message);
+      return 1;
     }
     if (result == FALSE) {
       printf("TPM endorsement key is not valid or is not available.\n");
