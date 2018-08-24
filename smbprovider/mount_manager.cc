@@ -10,6 +10,7 @@
 #include <base/time/tick_clock.h>
 
 #include "smbprovider/credential_store.h"
+#include "smbprovider/smb_credential.h"
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
@@ -53,12 +54,14 @@ bool MountManager::AddMount(const std::string& mount_root,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
-  if (!credential_store_->AddCredential(mount_root, workgroup, username,
-                                        password_fd)) {
+  SmbCredential credential(workgroup, username, GetPassword(password_fd));
+  if (!credential_store_->AddCredential(mount_root, std::move(credential))) {
     return false;
   }
 
   can_remount_ = false;
+  // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
+  // the SmbCredential.
   *mount_id = mounts_.Insert(
       MountInfo(mount_root, tick_clock_.get(), CreateSambaInterface()));
   return true;
@@ -73,11 +76,13 @@ bool MountManager::Remount(const std::string& mount_root,
   DCHECK(!IsAlreadyMounted(mount_id));
   DCHECK_GE(mount_id, 0);
 
-  if (!credential_store_->AddCredential(mount_root, workgroup, username,
-                                        password_fd)) {
+  SmbCredential credential(workgroup, username, GetPassword(password_fd));
+  if (!credential_store_->AddCredential(mount_root, std::move(credential))) {
     return false;
   }
 
+  // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
+  // the SmbCredential.
   mounts_.InsertWithSpecificId(
       mount_id,
       MountInfo(mount_root, tick_clock_.get(), CreateSambaInterface()));

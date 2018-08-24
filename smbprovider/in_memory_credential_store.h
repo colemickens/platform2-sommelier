@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 
 #include "smbprovider/credential_store.h"
+#include "smbprovider/smb_credential.h"
 
 namespace smbprovider {
 
@@ -25,9 +26,7 @@ class InMemoryCredentialStore
 
   // CredentialStore overrides.
   bool AddCredential(const std::string& mount_root,
-                     const std::string& workgroup,
-                     const std::string& username,
-                     const base::ScopedFD& password_fd) override;
+                     SmbCredential credential) override;
   bool AddEmptyCredential(const std::string& mount_root) override;
   bool RemoveCredential(const std::string& mount_root) override;
 

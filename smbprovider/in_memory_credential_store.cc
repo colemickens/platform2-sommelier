@@ -4,10 +4,10 @@
 
 #include "smbprovider/in_memory_credential_store.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <libpasswordprovider/password.h>
-
-#include "smbprovider/smb_credential.h"
 
 namespace smbprovider {
 
@@ -15,15 +15,13 @@ InMemoryCredentialStore::InMemoryCredentialStore() = default;
 InMemoryCredentialStore::~InMemoryCredentialStore() = default;
 
 bool InMemoryCredentialStore::AddCredential(const std::string& mount_root,
-                                            const std::string& workgroup,
-                                            const std::string& username,
-                                            const base::ScopedFD& password_fd) {
+                                            SmbCredential credential) {
   if (HasCredential(mount_root)) {
     return false;
   }
 
-  credential_.emplace(
-      mount_root, SmbCredential(workgroup, username, GetPassword(password_fd)));
+  credential_.emplace(mount_root, std::move(credential));
+
   return true;
 }
 

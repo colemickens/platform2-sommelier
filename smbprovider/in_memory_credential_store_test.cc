@@ -3,12 +3,14 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
 #include <gtest/gtest.h>
 #include <libpasswordprovider/password.h>
 
 #include "smbprovider/in_memory_credential_store.h"
+#include "smbprovider/smb_credential.h"
 #include "smbprovider/smbprovider_test_helper.h"
 #include "smbprovider/temp_file_manager.h"
 
@@ -32,9 +34,10 @@ class InMemoryCredentialStoreTest : public testing::Test {
                      const std::string& workgroup,
                      const std::string& username,
                      const std::string& password) {
-    return credential_.AddCredential(
-        mount_root, workgroup, username,
-        WritePasswordToFile(&temp_files_, password));
+    SmbCredential credential(
+        workgroup, username,
+        GetPassword(WritePasswordToFile(&temp_files_, password)));
+    return credential_.AddCredential(mount_root, std::move(credential));
   }
 
   void ExpectCredentialsEqual(const std::string& mount_root,

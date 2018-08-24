@@ -32,9 +32,7 @@ class CredentialStore {
   // Adds the credential for |mount_root| to the store. This will return false
   // if a credential already exists for the given |mount_root|.
   virtual bool AddCredential(const std::string& mount_root,
-                             const std::string& workgroup,
-                             const std::string& username,
-                             const base::ScopedFD& password_fd) = 0;
+                             SmbCredential credential) = 0;
 
   // Adds an empty set of credential for |mount_root|. This will return false
   // if a credential already exists for the given |mount_root|.
