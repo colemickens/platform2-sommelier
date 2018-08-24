@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include <base/callback.h>
@@ -176,6 +177,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Maps SambaInterfaceId to MountId.
   std::unordered_map<SambaInterface::SambaInterfaceId, int32_t>
       samba_interface_map_;
+  std::unordered_set<std::string> mounted_share_paths_;
   std::unique_ptr<CredentialStore> credential_store_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<SambaInterface> system_samba_interface_;

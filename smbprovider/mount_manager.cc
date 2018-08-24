@@ -182,7 +182,9 @@ bool MountManager::AddMount(const std::string& mount_root,
   // TODO(jimmyxgong): Pass the credential into MountInfo. MountInfo will hold
   // the SmbCredential.
   *mount_id = mounts_.Insert(CreateMountInfo(mount_root, SmbCredential()));
+
   AddSambaInterfaceIdToSambaInterfaceMap(*mount_id);
+  mounted_share_paths_.insert(mount_root);
   return true;
 }
 
@@ -204,7 +206,9 @@ bool MountManager::Remount(const std::string& mount_root,
   // the SmbCredential.
   mounts_.InsertWithSpecificId(mount_id,
                                CreateMountInfo(mount_root, SmbCredential()));
+
   AddSambaInterfaceIdToSambaInterfaceMap(mount_id);
+  mounted_share_paths_.insert(mount_root);
   return true;
 }
 
@@ -214,6 +218,9 @@ bool MountManager::RemoveMount(int32_t mount_id) {
     return false;
   }
   DeleteSambaInterfaceIdFromSambaInterfaceMap(mount_id);
+
+  bool path_removed = mounted_share_paths_.erase(mount_iter->second.mount_root);
+  DCHECK(path_removed);
 
   // TODO(jimmyxgong): CredentialStore will be removed in future CL's.
   bool removed =
