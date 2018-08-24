@@ -265,7 +265,6 @@ static_library("libcryptohome") {
     "../homedirs.cc",
     "../interface.cc",
     "../le_credential_manager.cc",
-    "../lockbox-cache-tpm.cc",
     "../lockbox-cache.cc",
     "../mount.cc",
     "../mount_factory.cc",

@@ -162,7 +162,6 @@ executable("lockbox-cache") {
     "crc32.c",
     "dircrypto_util.cc",
     "lockbox-cache-main.cc",
-    "lockbox-cache-tpm.cc",
     "lockbox-cache.cc",
     "lockbox.cc",
     "platform.cc",
