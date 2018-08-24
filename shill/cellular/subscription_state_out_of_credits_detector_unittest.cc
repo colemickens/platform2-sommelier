@@ -87,10 +87,10 @@ const char
 
 TEST_F(SubscriptionStateOutOfCreditsDetectorTest, OutOfCreditsDetection) {
   out_of_credits_detector_->NotifySubscriptionStateChanged(
-      MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA);
+      SubscriptionState::kOutOfCredits);
   EXPECT_TRUE(out_of_credits_detector_->out_of_credits());
   out_of_credits_detector_->NotifySubscriptionStateChanged(
-      MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED);
+      SubscriptionState::kProvisioned);
   EXPECT_FALSE(out_of_credits_detector_->out_of_credits());
 }
 

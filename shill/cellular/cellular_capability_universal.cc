@@ -152,6 +152,26 @@ MMBearerAllowedAuth ApnAuthenticationToMMBearerAllowedAuth(
   return MM_BEARER_ALLOWED_AUTH_UNKNOWN;
 }
 
+// TODO(benchan): Remove this helper once MMModem3gppSubscriptionState is
+// removed from ModemManager.
+SubscriptionState FromMMModem3gppSubscriptionState(
+    MMModem3gppSubscriptionState subscription_state) {
+  switch (subscription_state) {
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN:
+      return SubscriptionState::kUnknown;
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED:
+      return SubscriptionState::kProvisioned;
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED:
+      return SubscriptionState::kUnprovisioned;
+    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA:
+      return SubscriptionState::kOutOfCredits;
+    default:
+      LOG(ERROR) << "Unrecognized MMModem3gppSubscriptionState: "
+                 << subscription_state;
+      return SubscriptionState::kUnknown;
+  }
+}
+
 }  // namespace
 
 CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
@@ -163,7 +183,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
       resetting_(false),
-      subscription_state_(kSubscriptionStateUnknown),
+      subscription_state_(SubscriptionState::kUnknown),
       reset_done_(false),
       registration_dropped_update_timeout_milliseconds_(
           kRegistrationDroppedUpdateTimeoutMilliseconds),
@@ -518,13 +538,13 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
       registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
 
   // We know a service is activated if |subscription_state_| is
-  // kSubscriptionStateProvisioned / kSubscriptionStateOutOfData
-  // In the case that |subscription_state_| is kSubscriptionStateUnknown, we
+  // SubscriptionState::kProvisioned / SubscriptionState::kOutOfCredits
+  // In the case that |subscription_state_| is SubscriptionState::kUnknown, we
   // fallback on checking for a valid MDN.
   bool activated =
-    ((subscription_state_ == kSubscriptionStateProvisioned) ||
-     (subscription_state_ == kSubscriptionStateOutOfData)) ||
-    ((subscription_state_ == kSubscriptionStateUnknown) && IsMdnValid());
+      ((subscription_state_ == SubscriptionState::kProvisioned) ||
+       (subscription_state_ == SubscriptionState::kOutOfCredits)) ||
+      ((subscription_state_ == SubscriptionState::kUnknown) && IsMdnValid());
 
   if (activated && !sim_identifier.empty())
       modem_info()->pending_activation_store()->RemoveEntry(
@@ -591,7 +611,8 @@ string CellularCapabilityUniversal::GetMdnForOLP(
   if (operator_info->uuid() == kVzwIdentifier) {
     // subscription_state_ is the definitive indicator of whether we need
     // activation. The OLP expects an all zero MDN in that case.
-    if (subscription_state_ == kSubscriptionStateUnprovisioned || mdn.empty()) {
+    if (subscription_state_ == SubscriptionState::kUnprovisioned ||
+        mdn.empty()) {
       return string(kVzwMdnLength, '0');
     }
     if (mdn.length() > kVzwMdnLength) {
@@ -626,10 +647,9 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
   string activation_state;
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierICCID,
-          sim_identifier);
-  if ((subscription_state_ == kSubscriptionStateUnknown ||
-       subscription_state_ == kSubscriptionStateUnprovisioned) &&
+          PendingActivationStore::kIdentifierICCID, sim_identifier);
+  if ((subscription_state_ == SubscriptionState::kUnknown ||
+       subscription_state_ == SubscriptionState::kUnprovisioned) &&
       !sim_identifier.empty() &&
       state == PendingActivationStore::kStatePending) {
     activation_state = kActivationStateActivating;
@@ -823,8 +843,8 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   const string& sim_identifier = cellular()->sim_identifier();
   // subscription_state_ is the definitive answer. If that does not work,
   // fallback on MDN based logic.
-  if (subscription_state_ == kSubscriptionStateProvisioned ||
-      subscription_state_ == kSubscriptionStateOutOfData)
+  if (subscription_state_ == SubscriptionState::kProvisioned ||
+      subscription_state_ == SubscriptionState::kOutOfCredits)
     return false;
 
   // We are in the process of activating, ignore all other clues from the
@@ -836,7 +856,7 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
     return false;
 
   // Network notification that the service needs to be activated.
-  if (subscription_state_ == kSubscriptionStateUnprovisioned)
+  if (subscription_state_ == SubscriptionState::kUnprovisioned)
     return true;
 
   // If there is no online payment portal information, it's safer to assume
@@ -1570,20 +1590,20 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
   }
   if (registration_changed)
     On3gppRegistrationChanged(state, operator_code, operator_name);
-  if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE))
-    On3gppSubscriptionStateChanged(
+
+  // TODO(benchan): Remove this helper once the SubscriptionState property is
+  // removed from ModemManager.
+  if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE)) {
+    SubscriptionState subscription_state = FromMMModem3gppSubscriptionState(
         static_cast<MMModem3gppSubscriptionState>(
             properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE)));
+    OnSubscriptionStateChanged(subscription_state);
 
-  CellularServiceRefPtr service = cellular()->service();
-  if (service.get() &&
-      properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE)) {
-    uint32_t subscription_state =
-        properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE);
-    SLOG(this, 3) << __func__ << ": Subscription state = "
-                              << subscription_state;
-    service->out_of_credits_detector()->NotifySubscriptionStateChanged(
-        subscription_state);
+    CellularServiceRefPtr service = cellular()->service();
+    if (service) {
+      service->out_of_credits_detector()->NotifySubscriptionStateChanged(
+          subscription_state);
+    }
   }
 
   if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS))
@@ -1665,36 +1685,15 @@ void CellularCapabilityUniversal::Handle3gppRegistrationChange(
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::On3gppSubscriptionStateChanged(
-    MMModem3gppSubscriptionState updated_state) {
+void CellularCapabilityUniversal::OnSubscriptionStateChanged(
+    SubscriptionState updated_subscription_state) {
   SLOG(this, 3) << __func__ << ": Updated subscription state = "
-                            << updated_state;
+                << SubscriptionStateToString(updated_subscription_state);
 
-  // A one-to-one enum mapping.
-  SubscriptionState new_subscription_state;
-  switch (updated_state) {
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN:
-      new_subscription_state = kSubscriptionStateUnknown;
-      break;
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED:
-      new_subscription_state = kSubscriptionStateProvisioned;
-      break;
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED:
-      new_subscription_state = kSubscriptionStateUnprovisioned;
-      break;
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA:
-      new_subscription_state = kSubscriptionStateOutOfData;
-      break;
-    default:
-      LOG(ERROR) << "Unrecognized MMModem3gppSubscriptionState: "
-                 << updated_state;
-      new_subscription_state = kSubscriptionStateUnknown;
-      return;
-  }
-  if (new_subscription_state == subscription_state_)
+  if (updated_subscription_state == subscription_state_)
     return;
 
-  subscription_state_ = new_subscription_state;
+  subscription_state_ = updated_subscription_state;
 
   UpdateServiceActivationState();
   UpdatePendingActivationState();

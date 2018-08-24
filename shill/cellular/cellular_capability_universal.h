@@ -33,12 +33,13 @@
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability.h"
-#include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
+#include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/cellular/mm1_modem_proxy_interface.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/cellular/out_of_credits_detector.h"
+#include "shill/cellular/subscription_state.h"
 
 namespace shill {
 
@@ -258,16 +259,6 @@ class CellularCapabilityUniversal : public CellularCapability {
     int32_t retries_left;
   };
 
-  // SubscriptionState represents the provisioned state of SIM. It is used
-  // currently by activation logic for LTE to determine if activation process is
-  // complete.
-  enum SubscriptionState {
-    kSubscriptionStateUnknown = 0,
-    kSubscriptionStateUnprovisioned = 1,
-    kSubscriptionStateProvisioned = 2,
-    kSubscriptionStateOutOfData = 3
-  };
-
   // Methods used in starting a modem
   void EnableModem(bool deferralbe,
                    Error* error,
@@ -347,7 +338,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Handle3gppRegistrationChange(MMModem3gppRegistrationState updated_state,
                                     const std::string& updated_operator_code,
                                     const std::string& updated_operator_name);
-  void On3gppSubscriptionStateChanged(MMModem3gppSubscriptionState state);
+  void OnSubscriptionStateChanged(SubscriptionState updated_subscription_state);
   void OnFacilityLocksChanged(uint32_t locks);
 
   // SIM property change handlers

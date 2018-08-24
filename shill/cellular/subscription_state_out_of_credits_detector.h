@@ -32,7 +32,8 @@ class SubscriptionStateOutOfCreditsDetector : public OutOfCreditsDetector {
   void NotifyServiceStateChanged(
       Service::ConnectState old_state,
       Service::ConnectState new_state) override {}
-  void NotifySubscriptionStateChanged(uint32_t subscription_state) override;
+  void NotifySubscriptionStateChanged(
+      SubscriptionState subscription_state) override;
 
  private:
   friend class SubscriptionStateOutOfCreditsDetectorTest;

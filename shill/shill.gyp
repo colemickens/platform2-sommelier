@@ -272,6 +272,7 @@
             'cellular/modem_manager.cc',
             'cellular/modem_manager_1.cc',
             'cellular/out_of_credits_detector.cc',
+            'cellular/subscription_state.cc',
             'cellular/subscription_state_out_of_credits_detector.cc',
             'dbus/chromeos_dbus_objectmanager_proxy.cc',
             'dbus/chromeos_dbus_properties_proxy.cc',

@@ -39,7 +39,8 @@ class NoOutOfCreditsDetector : public OutOfCreditsDetector {
       Service::ConnectState old_state,
       Service::ConnectState new_state) override {}
   // Notifies this object when the subscription state has changed.
-  void NotifySubscriptionStateChanged(uint32_t subscription_state) override {}
+  void NotifySubscriptionStateChanged(
+      SubscriptionState subscription_state) override {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NoOutOfCreditsDetector);
