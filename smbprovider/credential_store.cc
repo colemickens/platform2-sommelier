@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "smbprovider/credential_store.h"
+#include "smbprovider/smb_credential.h"
 
 #include <libpasswordprovider/password.h>
 

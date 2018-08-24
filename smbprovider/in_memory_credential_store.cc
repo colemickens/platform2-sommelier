@@ -7,6 +7,8 @@
 #include <base/logging.h>
 #include <libpasswordprovider/password.h>
 
+#include "smbprovider/smb_credential.h"
+
 namespace smbprovider {
 
 InMemoryCredentialStore::InMemoryCredentialStore() = default;

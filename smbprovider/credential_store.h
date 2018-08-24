@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/macros.h>
@@ -15,29 +14,13 @@
 
 namespace smbprovider {
 
+struct SmbCredential;
+
 // Gets a password_provider::Password object from |password_fd|. The data has to
 // be in the format of "{password_length}{password}". If the read fails, this
 // returns an empty unique_ptr.
 std::unique_ptr<password_provider::Password> GetPassword(
     const base::ScopedFD& password_fd);
-
-struct SmbCredential {
-  std::string workgroup;
-  std::string username;
-  std::unique_ptr<password_provider::Password> password;
-
-  SmbCredential() = default;
-  SmbCredential(const std::string& workgroup,
-                const std::string& username,
-                std::unique_ptr<password_provider::Password> password)
-      : workgroup(workgroup),
-        username(username),
-        password(std::move(password)) {}
-
-  SmbCredential(SmbCredential&& credential) = default;
-
-  DISALLOW_COPY_AND_ASSIGN(SmbCredential);
-};
 
 // Manages the credential for a given mount root. There can only be one
 // credential per unique mount root.
