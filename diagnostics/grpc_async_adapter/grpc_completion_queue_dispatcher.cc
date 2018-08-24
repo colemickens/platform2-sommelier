@@ -134,9 +134,14 @@ void GrpcCompletionQueueDispatcher::RegisterTag(const void* tag,
 void GrpcCompletionQueueDispatcher::OnTagAvailable(const void* tag, bool ok) {
   CHECK(sequence_checker_.CalledOnValidSequence());
   auto iter = tag_to_callback_map_.find(tag);
-  // Treat tags received from the |CompletionQueue| that we're not expecting as
-  // fatal errors.
-  CHECK(iter != tag_to_callback_map_.end());
+  if (iter == tag_to_callback_map_.end()) {
+    // Ignore tags received from the |CompletionQueue| that we're not expecting.
+    // gRPC documents situations where this may happen - see e.g. the
+    // documentation for the grpc::ServerInterface::Shutdown method:
+    // https://grpc.io/grpc/cpp/classgrpc_1_1_server_interface.html
+    DVLOG(2) << "CompletionQueue returned a tag that was not registered.";
+    return;
+  }
   TagAvailableCallback callback = iter->second;
   tag_to_callback_map_.erase(iter);
   callback.Run(ok);
