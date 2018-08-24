@@ -180,6 +180,8 @@ void XmlInterfaceParser::OnOpenElement(
       // Parse signal annotations...
     } else if (prev_element == kPropertyTag) {
       // Parse property annotations...
+    } else if (prev_element == kArgumentTag) {
+      // Argument annotations are ignored.
     } else {
       LOG(FATAL) << "Unexpected tag " << element_name
                  << " inside " << prev_element;
