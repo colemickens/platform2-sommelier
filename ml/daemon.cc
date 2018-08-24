@@ -49,6 +49,7 @@ int Daemon::OnInit() {
   if (exit_code != EX_OK)
     return exit_code;
 
+  metrics_.StartCollectingProcessMetrics();
   InitMojo();
   InitDBus();
 
@@ -75,6 +76,8 @@ void Daemon::InitDBus() {
 void Daemon::BootstrapMojoConnection(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
+  metrics_.RecordMojoConnectionEvent(
+      Metrics::MojoConnectionEvent::kBootstrapRequested);
   if (machine_learning_service_) {
     LOG(ERROR) << "MachineLearningService already instantiated";
     response_sender.Run(dbus::ErrorResponse::FromMethodCall(
@@ -117,11 +120,16 @@ void Daemon::BootstrapMojoConnection(
       mojo::edk::CreateChildMessagePipe(kBootstrapMojoConnectionChannelToken),
       base::Bind(&Daemon::OnConnectionError, base::Unretained(this)));
 
+  metrics_.RecordMojoConnectionEvent(
+      Metrics::MojoConnectionEvent::kBootstrapSucceeded);
+
   // Send success response.
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void Daemon::OnConnectionError() {
+  metrics_.RecordMojoConnectionEvent(
+      Metrics::MojoConnectionEvent::kConnectionError);
   // Die upon Mojo error. Reconnection can occur when the daemon is restarted.
   // (A future Mojo API may enable Mojo re-bootstrap without a process restart.)
   Quit();

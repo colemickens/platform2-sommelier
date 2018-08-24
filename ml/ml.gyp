@@ -31,6 +31,7 @@
         'exported_deps': [
           'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
+          'libmetrics-<(libbase_ver)',
           'libmojo-<(libbase_ver)',
         ],
         'deps': ['<@(exported_deps)'],
@@ -46,6 +47,7 @@
         'daemon.cc',
         'graph_executor_impl.cc',
         'machine_learning_service_impl.cc',
+        'metrics.cc',
         'model_impl.cc',
         'model_metadata.cc',
         'tensor_view.cc',

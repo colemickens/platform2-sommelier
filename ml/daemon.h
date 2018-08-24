@@ -7,9 +7,11 @@
 
 #include <memory>
 
+#include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
 
+#include "ml/metrics.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
 
 namespace dbus {
@@ -47,6 +49,9 @@ class Daemon : public brillo::DBusDaemon {
   // BootstrapMojoConnection.
   std::unique_ptr<chromeos::machine_learning::mojom::MachineLearningService>
       machine_learning_service_;
+
+  // For periodic and on-demand UMA metrics logging.
+  Metrics metrics_;
 
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;

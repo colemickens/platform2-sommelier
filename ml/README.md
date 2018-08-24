@@ -14,6 +14,29 @@ instructions](docs/publish_model.md).
 You can then load and use your model from Chromium using the client library
 provided at [//chromeos/services/machine_learning/public/cpp/].
 
+## Metrics
+
+The following metrics are currently recorded by the daemon process in order to
+understand its resource costs in the wild:
+
+* MachineLearningService.MojoConnectionEvent: Success/failure of the
+  D-Bus->Mojo bootstrap.
+* MachineLearningService.PrivateMemoryKb: Private (unshared) memory footprint
+  every 5 minutes.
+* MachineLearningService.PeakPrivateMemoryKb: Peak value of
+  MachineLearningService.PrivateMemoryKb per 24 hour period. Daemon code can
+  also call ml::Metrics::UpdateCumulativeMetricsNow() at any time to take a
+  peak-memory observation, to catch short-lived memory usage spikes.
+* MachineLearningService.CpuUsageMilliPercent: Fraction of total CPU resources
+  consumed by the daemon every 5 minutes, in units of milli-percent (1/100,000).
+
+TODO(amoylan): Additional metrics to be added, ideally per-model, to understand
+levels of performance that clients are getting:
+
+* LoadModel time
+* CreateGraphExecutor time
+* Model inference time
+
 ## Design docs
 
 * Overall design: [go/chromeos-ml-service]
