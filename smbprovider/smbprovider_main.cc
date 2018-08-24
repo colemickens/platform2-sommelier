@@ -130,10 +130,10 @@ bool CreateSmbConfFile() {
 }
 
 std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
-    InMemoryCredentialStore* credential_store) {
-  return SambaInterfaceImpl::Create(base::Bind(
-      base::IgnoreResult(&InMemoryCredentialStore::GetAuthentication),
-      credential_store->AsWeakPtr()));
+    MountManager* mount_manager) {
+  return SambaInterfaceImpl::Create(
+      base::Bind(base::IgnoreResult(&MountManager::GetAuthentication),
+                 mount_manager->AsWeakPtr()));
 }
 
 }  // namespace
@@ -159,8 +159,8 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
             std::move(kerberos_artifact_client));
 
     auto tick_clock = std::make_unique<base::DefaultTickClock>();
-    auto samba_interface_factory =
-        base::Bind(&SambaInterfaceFactoryFunction, credential_store.get());
+
+    auto samba_interface_factory = base::Bind(&SambaInterfaceFactoryFunction);
 
     auto mount_manager = std::make_unique<MountManager>(
         std::move(credential_store), std::move(tick_clock),

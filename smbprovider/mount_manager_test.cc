@@ -20,7 +20,7 @@ namespace smbprovider {
 namespace {
 
 std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
-    FakeSambaInterface* fake_samba) {
+    FakeSambaInterface* fake_samba, MountManager* mount_manager) {
   return std::make_unique<FakeSambaProxy>(fake_samba);
 }
 

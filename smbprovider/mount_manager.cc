@@ -20,7 +20,7 @@ MountManager::MountManager(std::unique_ptr<CredentialStore> credential_store,
     : credential_store_(std::move(credential_store)),
       tick_clock_(std::move(tick_clock)),
       samba_interface_factory_(std::move(samba_interface_factory)) {
-  system_samba_interface_ = samba_interface_factory_.Run();
+  system_samba_interface_ = CreateSambaInterface();
 }
 
 MountManager::~MountManager() = default;
@@ -60,7 +60,7 @@ bool MountManager::AddMount(const std::string& mount_root,
 
   can_remount_ = false;
   *mount_id = mounts_.Insert(
-      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run()));
+      MountInfo(mount_root, tick_clock_.get(), CreateSambaInterface()));
   return true;
 }
 
@@ -80,7 +80,7 @@ bool MountManager::Remount(const std::string& mount_root,
 
   mounts_.InsertWithSpecificId(
       mount_id,
-      MountInfo(mount_root, tick_clock_.get(), samba_interface_factory_.Run()));
+      MountInfo(mount_root, tick_clock_.get(), CreateSambaInterface()));
   return true;
 }
 
@@ -154,6 +154,10 @@ bool MountManager::GetSambaInterface(int32_t mount_id,
 
 SambaInterface* MountManager::GetSystemSambaInterface() const {
   return system_samba_interface_.get();
+}
+
+std::unique_ptr<SambaInterface> MountManager::CreateSambaInterface() {
+  return samba_interface_factory_.Run(this);
 }
 
 bool MountManager::GetAuthentication(const std::string& share_path,

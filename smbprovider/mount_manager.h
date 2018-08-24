@@ -32,7 +32,7 @@ class CredentialStore;
 class MountManager : public base::SupportsWeakPtr<MountManager> {
  public:
   using SambaInterfaceFactory =
-      base::Callback<std::unique_ptr<SambaInterface>()>;
+      base::Callback<std::unique_ptr<SambaInterface>(MountManager*)>;
 
   MountManager(std::unique_ptr<CredentialStore> credential_store,
                std::unique_ptr<base::TickClock> tick_clock,
@@ -136,6 +136,9 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // only used for DCHECK to ensure that credential_store_ is in sync with
   // MountManager.
   bool ExistsInMounts(const std::string& mount_root) const;
+
+  // Runs |samba_interface_factory_|.
+  std::unique_ptr<SambaInterface> CreateSambaInterface();
 
   bool can_remount_ = true;
   IdMap<MountInfo> mounts_;
