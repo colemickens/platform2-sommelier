@@ -16,6 +16,9 @@ to several events:
 *   Resume (after suspending)
 *   [udev] events concerning the `power_supply` subsystem
 
+The information is copied to [PowerSupplyProperties] protocol buffers that are
+included in `PowerSupplyPoll` D-Bus signals.
+
 ## Line Power
 
 "Line power" refers to chargers or other external power sources; it's sometimes
@@ -53,9 +56,17 @@ particularly relevant:
 
 If multiple line power directories are found, powerd will report all of them.
 This typically happens in the case of Chrome OS devices with multiple USB Type-C
-ports. Only one power source may deliver power at a given time; Chrome reports
-the active source at `chrome://settings/power`. If multiple sources are
-available, the user may use this page to select which one to use.
+ports.
+
+Only one power source may deliver power at a given time; Chrome displays the
+active source at `chrome://settings/power`. If multiple sources are available,
+the user may use this page to select which one to use. Chrome makes a
+`SetPowerSource` D-Bus method call to powerd containing the ID of the desired
+source (taken from an earlier [PowerSupplyProperties] protobuf), and
+`PowerSupply::SetPowerSource` writes `0` to the device's
+`charge_control_limit_max` sysfs node. Chrome can also pass an empty ID to
+switch to battery power; powerd writes `-1` to the active power source's node in
+this case.
 
 ## Batteries
 
@@ -112,4 +123,5 @@ battery is connected or disconnected.
 [sysfs]: https://en.wikipedia.org/wiki/Sysfs
 [kernel documentation]: https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-power
 [udev]: https://en.wikipedia.org/wiki/Udev
+[PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/power_supply_properties.proto
 [Battery Notifications]: battery_notifications.md
