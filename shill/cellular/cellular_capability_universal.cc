@@ -640,8 +640,11 @@ bool CellularCapabilityUniversal::AreProxiesInitialized() const {
 }
 
 void CellularCapabilityUniversal::UpdateServiceActivationState() {
-  if (!cellular()->service().get())
+  CellularServiceRefPtr service = cellular()->service();
+  if (!service)
     return;
+
+  service->NotifySubscriptionStateChanged(subscription_state_);
 
   const string& sim_identifier = cellular()->sim_identifier();
   string activation_state;
@@ -663,10 +666,10 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
     // property will be corrected based on the user data at that time.
     // NOTE: This function can be called outside the service initialization
     // path so make sure we don't overwrite the auto-connect setting.
-    if (cellular()->service()->activation_state() != activation_state)
-      cellular()->service()->SetAutoConnect(true);
+    if (service->activation_state() != activation_state)
+      service->SetAutoConnect(true);
   }
-  cellular()->service()->SetActivationState(activation_state);
+  service->SetActivationState(activation_state);
 }
 
 void CellularCapabilityUniversal::OnServiceCreated() {
@@ -677,15 +680,6 @@ void CellularCapabilityUniversal::OnServiceCreated() {
 
   cellular()->service()->SetActivationType(CellularService::kActivationTypeOTA);
   UpdateServiceActivationState();
-
-  // WORKAROUND:
-  // E362 modems on Verizon network does not properly redirect when a SIM
-  // runs out of credits, we need to enforce out-of-credits detection.
-  //
-  // The out-of-credits detection is also needed on ALT3100 modems until the PCO
-  // support is ready (crosbug.com/p/20461).
-  cellular()->service()->InitOutOfCreditsDetection(
-      GetOutOfCreditsDetectionType());
 
   // Make sure that the network technology is set when the service gets
   // created, just in case.
@@ -1598,12 +1592,6 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
         static_cast<MMModem3gppSubscriptionState>(
             properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE)));
     OnSubscriptionStateChanged(subscription_state);
-
-    CellularServiceRefPtr service = cellular()->service();
-    if (service) {
-      service->out_of_credits_detector()->NotifySubscriptionStateChanged(
-          subscription_state);
-    }
   }
 
   if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS))
@@ -1763,15 +1751,6 @@ void CellularCapabilityUniversal::OnOperatorIdChanged(
     const string& operator_id) {
   SLOG(this, 2) << "Operator ID = '" << operator_id << "'";
   cellular()->home_provider_info()->UpdateMCCMNC(operator_id);
-}
-
-OutOfCreditsDetector::OOCType
-CellularCapabilityUniversal::GetOutOfCreditsDetectionType() const {
-  if (cellular()->mm_plugin() == kAltairLTEMMPlugin) {
-    return OutOfCreditsDetector::OOCTypeSubscriptionState;
-  } else {
-    return OutOfCreditsDetector::OOCTypeNone;
-  }
 }
 
 }  // namespace shill

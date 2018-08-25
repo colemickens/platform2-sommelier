@@ -343,7 +343,6 @@ class Cellular : public Device,
   friend class CellularCapabilityUniversalCdmaTest;
   friend class CellularServiceTest;
   friend class ModemTest;
-  friend class SubscriptionStateOutOfCreditsDetectorTest;
   FRIEND_TEST(CellularCapabilityCdmaTest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityClassicTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityClassicTest, EnableModemFail);

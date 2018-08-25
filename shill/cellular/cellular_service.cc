@@ -42,9 +42,7 @@ const char CellularService::kAutoConnActivating[] = "activating";
 const char CellularService::kAutoConnBadPPPCredentials[] =
     "bad PPP credentials";
 const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
-const char CellularService::kAutoConnOutOfCredits[] = "device out of credits";
-const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
-    "device detecting out-of-credits";
+const char CellularService::kAutoConnOutOfCredits[] = "service out of credits";
 const char CellularService::kStorageIccid[] = "Cellular.Iccid";
 const char CellularService::kStorageImei[] = "Cellular.Imei";
 const char CellularService::kStorageImsi[] = "Cellular.Imsi";
@@ -83,7 +81,8 @@ CellularService::CellularService(ModemInfo* modem_info,
               Technology::kCellular),
       activation_type_(kActivationTypeUnknown),
       cellular_(device),
-      is_auto_connecting_(false) {
+      is_auto_connecting_(false),
+      out_of_credits_(false) {
   SetConnectable(true);
   PropertyStore* store = this->mutable_store();
   HelpRegisterDerivedString(kActivationTypeProperty,
@@ -125,10 +124,6 @@ CellularService::CellularService(ModemInfo* modem_info,
                          kTypeCellular,
                          device->GetEquipmentIdentifier().c_str(),
                          service_id.c_str()));
-
-  // Assume we are not performing any out-of-credits detection.
-  // The capability can reinitialize with the appropriate type later.
-  InitOutOfCreditsDetection(OutOfCreditsDetector::OOCTypeNone);
 }
 
 CellularService::~CellularService() { }
@@ -146,11 +141,7 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     *reason = kAutoConnBadPPPCredentials;
     return false;
   }
-  if (out_of_credits_detector_->IsDetecting()) {
-    *reason = kAutoConnOutOfCreditsDetectionInProgress;
-    return false;
-  }
-  if (out_of_credits_detector_->out_of_credits()) {
+  if (out_of_credits_) {
     *reason = kAutoConnOutOfCredits;
     return false;
   }
@@ -245,12 +236,6 @@ void CellularService::ClearLastGoodApn() {
   last_good_apn_info_.clear();
   adaptor()->EmitStringmapChanged(kCellularLastGoodApnProperty,
                                   last_good_apn_info_);
-}
-
-void CellularService::InitOutOfCreditsDetection(
-    OutOfCreditsDetector::OOCType ooc_type) {
-  out_of_credits_detector_ =
-      OutOfCreditsDetector::CreateDetector(ooc_type, this);
 }
 
 bool CellularService::Load(StoreInterface* storage) {
@@ -366,11 +351,20 @@ void CellularService::SaveApnField(StoreInterface* storage,
 }
 
 bool CellularService::IsOutOfCredits(Error* /*error*/) {
-  return out_of_credits_detector_->out_of_credits();
+  return out_of_credits_;
 }
 
-void CellularService::SignalOutOfCreditsChanged(bool state) const {
-  adaptor()->EmitBoolChanged(kOutOfCreditsProperty, state);
+void CellularService::NotifySubscriptionStateChanged(
+    SubscriptionState subscription_state) {
+  bool new_out_of_credits =
+      (subscription_state == SubscriptionState::kOutOfCredits);
+  if (out_of_credits_ == new_out_of_credits)
+    return;
+
+  out_of_credits_ = new_out_of_credits;
+  SLOG(this, 2) << (out_of_credits_ ? "Marking service out-of-credits"
+                                    : "Marking service as not out-of-credits");
+  adaptor()->EmitBoolChanged(kOutOfCreditsProperty, out_of_credits_);
 }
 
 void CellularService::AutoConnect() {
@@ -382,8 +376,6 @@ void CellularService::AutoConnect() {
 void CellularService::Connect(Error* error, const char* reason) {
   Service::Connect(error, reason);
   cellular_->Connect(error);
-  if (error->IsFailure())
-    out_of_credits_detector_->ResetDetector();
 }
 
 void CellularService::Disconnect(Error* error, const char* reason) {
@@ -399,11 +391,6 @@ void CellularService::ActivateCellularModem(const string& carrier,
 
 void CellularService::CompleteCellularActivation(Error* error) {
   cellular_->CompleteActivation(error);
-}
-
-void CellularService::SetState(ConnectState new_state) {
-  out_of_credits_detector_->NotifyServiceStateChanged(state(), new_state);
-  Service::SetState(new_state);
 }
 
 string CellularService::GetStorageIdentifier() const {

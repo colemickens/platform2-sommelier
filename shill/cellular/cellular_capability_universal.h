@@ -38,7 +38,6 @@
 #include "shill/cellular/mm1_modem_proxy_interface.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
-#include "shill/cellular/out_of_credits_detector.h"
 #include "shill/cellular/subscription_state.h"
 
 namespace shill {
@@ -200,8 +199,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetMdnForOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               GetNetworkTechnologyStringOnE362);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              GetOutOfCreditsDetectionType);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsRegistered);
@@ -381,9 +378,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnResetAfterActivationReply(const Error& error);
 
   static bool IsRegisteredState(MMModem3gppRegistrationState state);
-
-  // Returns the out-of-credits detection algorithm to be used on this modem.
-  OutOfCreditsDetector::OOCType GetOutOfCreditsDetectionType() const;
 
   void set_active_bearer_for_test(std::unique_ptr<CellularBearer> bearer) {
     active_bearer_ = std::move(bearer);

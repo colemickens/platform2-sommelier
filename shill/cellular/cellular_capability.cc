@@ -165,10 +165,6 @@ bool CellularCapability::IsActivating() const {
   return false;
 }
 
-bool CellularCapability::ShouldDetectOutOfCredit() const {
-  return false;
-}
-
 void CellularCapability::SetupLocation(uint32_t sources,
                                        bool signal_location,
                                        const ResultCallback& callback) {

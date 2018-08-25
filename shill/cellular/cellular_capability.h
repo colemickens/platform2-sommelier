@@ -208,11 +208,6 @@ class CellularCapability {
 
   virtual std::string GetRoamingStateString() const = 0;
 
-  // Returns true if the cellular device should initiate passive traffic
-  // monitoring to trigger active out-of-credit detection checks. The default
-  // implementation returns false by default.
-  virtual bool ShouldDetectOutOfCredit() const;
-
   // TODO(armansito): Remove this method once cromo is deprecated.
   virtual void GetSignalQuality() = 0;
 

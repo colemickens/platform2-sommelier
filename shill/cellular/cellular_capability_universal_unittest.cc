@@ -1939,15 +1939,6 @@ TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
   EXPECT_EQ(kNetworkTechnologyGprs, capability_->GetNetworkTechnologyString());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, GetOutOfCreditsDetectionType) {
-  cellular_->set_model_id("");;
-  EXPECT_EQ(OutOfCreditsDetector::OOCTypeNone,
-            capability_->GetOutOfCreditsDetectionType());
-  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
-  EXPECT_EQ(OutOfCreditsDetector::OOCTypeSubscriptionState,
-            capability_->GetOutOfCreditsDetectionType());
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
   Error error;
   KeyValueStore store = capability_->SimLockStatusToProperty(&error);

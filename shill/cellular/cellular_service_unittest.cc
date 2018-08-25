@@ -25,7 +25,6 @@
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/cellular/mock_out_of_credits_detector.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -70,12 +69,7 @@ class CellularServiceTest : public testing::Test {
   }
 
   void SetUp() override {
-    adaptor_ =
-        static_cast<ServiceMockAdaptor*>(service_->adaptor());
-
-    auto detector = std::make_unique<MockOutOfCreditsDetector>(service_.get());
-    out_of_credits_detector_ = detector.get();
-    service_->set_out_of_credits_detector_for_test(std::move(detector));
+    adaptor_ = static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   CellularCapabilityCdma* GetCapabilityCdma() {
@@ -92,7 +86,6 @@ class CellularServiceTest : public testing::Test {
   scoped_refptr<MockCellular> device_;
   CellularServiceRefPtr service_;
   ServiceMockAdaptor* adaptor_;  // Owned by |service_|.
-  MockOutOfCreditsDetector* out_of_credits_detector_;  // Owned by |service_|.
 };
 
 const char CellularServiceTest::kAddress[] = "000102030405";
@@ -316,9 +309,6 @@ TEST_F(CellularServiceTest, LastGoodApn) {
 TEST_F(CellularServiceTest, IsAutoConnectable) {
   const char* reason = nullptr;
 
-  ON_CALL(*out_of_credits_detector_, IsDetecting())
-      .WillByDefault(Return(false));
-
   // Auto-connect should be suppressed if the device is not running.
   device_->running_ = false;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
@@ -329,40 +319,18 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   // If we're waiting on a disconnect before an activation, don't auto-connect.
   GetCapabilityCdma()->activation_starting_ = true;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(CellularService::kAutoConnActivating, reason);
 
   // If we're waiting on an activation, also don't auto-connect.
   GetCapabilityCdma()->activation_starting_ = false;
   GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-
+  EXPECT_STREQ(CellularService::kAutoConnActivating, reason);
   GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
-
-  // Auto-connect should be suppressed if the we're undergoing an
-  // out-of-credits detection.
-  EXPECT_CALL(*out_of_credits_detector_, IsDetecting())
-      .WillOnce(Return(true));
-  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-  EXPECT_STREQ(CellularService::kAutoConnOutOfCreditsDetectionInProgress,
-               reason);
-  Mock::VerifyAndClearExpectations(out_of_credits_detector_);
-
-  // Auto-connect should be suppressed if we're out of credits.
-  EXPECT_CALL(*out_of_credits_detector_, IsDetecting())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*out_of_credits_detector_, out_of_credits())
-      .WillOnce(Return(true));
-  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-  EXPECT_STREQ(CellularService::kAutoConnOutOfCredits, reason);
-  Mock::VerifyAndClearExpectations(out_of_credits_detector_);
-
-  EXPECT_CALL(*out_of_credits_detector_, out_of_credits())
-      .WillRepeatedly(Return(false));
 
   // But other activation states are fine.
-  GetCapabilityCdma()->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
   GetCapabilityCdma()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
@@ -371,9 +339,16 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
       MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
+  // Auto-connect should be suppressed if we're out of credits.
+  service_->NotifySubscriptionStateChanged(SubscriptionState::kOutOfCredits);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(CellularService::kAutoConnOutOfCredits, reason);
+  service_->NotifySubscriptionStateChanged(SubscriptionState::kProvisioned);
+
   // A PPP authentication failure means the Service is not auto-connectable.
   service_->SetFailure(Service::kFailurePPPAuth);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(CellularService::kAutoConnBadPPPCredentials, reason);
 
   // Reset failure state, to make the Service auto-connectable again.
   service_->SetState(Service::kStateIdle);
@@ -587,10 +562,11 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   service_->SetNetworkTechnology(network_technology + "and some new stuff");
   Mock::VerifyAndClearExpectations(adaptor_);
 
-  bool out_of_credits = true;
-  EXPECT_CALL(*adaptor_,
-              EmitBoolChanged(kOutOfCreditsProperty, out_of_credits));
-  service_->SignalOutOfCreditsChanged(out_of_credits);
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kOutOfCreditsProperty, true));
+  service_->NotifySubscriptionStateChanged(SubscriptionState::kOutOfCredits);
+  Mock::VerifyAndClearExpectations(adaptor_);
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kOutOfCreditsProperty, false));
+  service_->NotifySubscriptionStateChanged(SubscriptionState::kProvisioned);
   Mock::VerifyAndClearExpectations(adaptor_);
 
   string roaming_state = service_->roaming_state();

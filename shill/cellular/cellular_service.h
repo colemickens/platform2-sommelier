@@ -27,7 +27,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular/cellular.h"
-#include "shill/cellular/out_of_credits_detector.h"
+#include "shill/cellular/subscription_state.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
@@ -57,7 +57,6 @@ class CellularService : public Service {
                              Error* error,
                              const ResultCallback& callback) override;
   void CompleteCellularActivation(Error* error) override;
-  void SetState(ConnectState new_state) override;
 
   std::string GetStorageIdentifier() const override;
 
@@ -97,11 +96,6 @@ class CellularService : public Service {
   const std::string& ppp_username() const { return ppp_username_; }
   const std::string& ppp_password() const { return ppp_password_; }
 
-  OutOfCreditsDetector* out_of_credits_detector() {
-    return out_of_credits_detector_.get();
-  }
-  void SignalOutOfCreditsChanged(bool state) const;
-
   // Overrides Load and Save from parent Service class.  We will call
   // the parent method.
   bool Load(StoreInterface* storage) override;
@@ -112,8 +106,7 @@ class CellularService : public Service {
   virtual void SetLastGoodApn(const Stringmap& apn_info);
   virtual void ClearLastGoodApn();
 
-  // Initialize out-of-credits detection.
-  void InitOutOfCreditsDetection(OutOfCreditsDetector::OOCType ooc_type);
+  void NotifySubscriptionStateChanged(SubscriptionState subscription_state);
 
  protected:
   // Overrides IsAutoConnectable from parent Service class.
@@ -152,7 +145,6 @@ class CellularService : public Service {
   static const char kAutoConnBadPPPCredentials[];
   static const char kAutoConnDeviceDisabled[];
   static const char kAutoConnOutOfCredits[];
-  static const char kAutoConnOutOfCreditsDetectionInProgress[];
   static const char kStorageIccid[];
   static const char kStorageImei[];
   static const char kStorageImsi[];
@@ -213,11 +205,6 @@ class CellularService : public Service {
                            Stringmap* apn_info);
   bool IsOutOfCredits(Error* /*error*/);
 
-  void set_out_of_credits_detector_for_test(
-      std::unique_ptr<OutOfCreditsDetector> detector) {
-    out_of_credits_detector_ = std::move(detector);
-  }
-
   // Properties
   ActivationType activation_type_;
   std::string activation_state_;
@@ -240,8 +227,8 @@ class CellularService : public Service {
   // call to Connect().  It does not remain set while the async request is
   // in flight.
   bool is_auto_connecting_;
-  // Out-of-credits detector.
-  std::unique_ptr<OutOfCreditsDetector> out_of_credits_detector_;
+  // Flag indicating if the user has run out of data credits.
+  bool out_of_credits_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };
