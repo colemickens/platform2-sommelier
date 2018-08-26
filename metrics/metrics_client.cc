@@ -152,8 +152,10 @@ int ShowConsentId() {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   std::string id;
-  if (metrics_lib.ConsentId(&id) == false)
+  if (metrics_lib.ConsentId(&id) == false) {
+    fprintf(stderr, "error: consent not given\n");
     return 1;
+  }
   printf("%s\n", id.c_str());
   return 0;
 }
