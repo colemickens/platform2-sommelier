@@ -9,15 +9,17 @@ syntax = "proto3";
 
 package diagnostics.grpc_api;
 
+import "common.proto";
+
 service DiagnosticsProcessor {
   // Called when a message is sent by the diagnostics UI extension (hosted by
   // the browser).
-  rpc HandleMessageFromUi(HandleMessageFromUiRequest)
-      returns (HandleMessageFromUiResponse) {}
+  rpc HandleMessageFromUi(HandleMessageFromUiRequest) returns (EmptyMessage) {}
 }
 
+// Parameters for the HandleMessageFromUi RPC.
 message HandleMessageFromUiRequest {
+  // Message contents, as sent by the diagnostics UI extension. Should be a
+  // valid JSON string.
   string json_message = 1;
 }
-
-message HandleMessageFromUiResponse {}

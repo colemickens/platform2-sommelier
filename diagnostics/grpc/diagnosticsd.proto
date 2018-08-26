@@ -9,16 +9,18 @@ syntax = "proto3";
 
 package diagnostics.grpc_api;
 
+import "common.proto";
+
 service Diagnosticsd {
   // Sends a message to the diagnostics UI extension (hosted by the browser).
   // Delivery of the message is not guaranteed (for example, if the diagnostics
   // UI extension isn't running at the moment).
-  rpc SendMessageToUi(SendMessageToUiRequest)
-      returns (SendMessageToUiResponse) {}
+  rpc SendMessageToUi(SendMessageToUiRequest) returns (EmptyMessage) {}
 }
 
+// Parameters for the SendMessageToUi RPC.
 message SendMessageToUiRequest {
+  // Message contents. Must be a valid JSON string.
   string json_message = 1;
 }
 
-message SendMessageToUiResponse {}

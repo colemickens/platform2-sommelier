@@ -22,6 +22,7 @@
         },
       },
       'sources': [
+        '<(proto_in_dir)/common.proto',
         '<(proto_in_dir)/diagnostics_processor.proto',
         '<(proto_in_dir)/diagnosticsd.proto',
       ],
@@ -57,12 +58,10 @@
       'target_name': 'diagnosticsd',
       'type': 'executable',
       'dependencies': [
+        'diagnostics-grpc-protos',
         'libgrpc_async_adapter',
       ],
       'includes': ['mojom_generator.gypi'],
-      'dependencies': [
-        'diagnostics-grpc-protos',
-      ],
       'variables': {
         'deps': [
           'libbrillo-<(libbase_ver)',
