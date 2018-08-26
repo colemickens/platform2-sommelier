@@ -16,6 +16,12 @@ service Diagnosticsd {
   // Delivery of the message is not guaranteed (for example, if the diagnostics
   // UI extension isn't running at the moment).
   rpc SendMessageToUi(SendMessageToUiRequest) returns (EmptyMessage) {}
+
+  // Returns the specified data from the proc filesystem.
+  rpc GetProcData(GetProcDataRequest) returns (GetProcDataResponse) {}
+
+  // Returns the specified data from the sysfs filesystem.
+  rpc GetSysfsData(GetSysfsDataRequest) returns (GetSysfsDataResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -24,3 +30,93 @@ message SendMessageToUiRequest {
   string json_message = 1;
 }
 
+// Holds a dump of a file contents.
+message FileDump {
+  // Absolute path to the file.
+  string path = 1;
+
+  // Contents of the file.
+  string contents = 2;
+}
+
+// Parameters for the GetProcData RPC.
+message GetProcDataRequest {
+  // Type of information to be retrieved from the proc filesystem.
+  //
+  // NOTE: The following enums correspond to hardcoded file paths on the proc
+  // filesystem provided by the OS kernel. There's NO guarantee that these files
+  // will continue to be present after the OS kernel version changes.
+  enum Type {
+    TYPE_UNSET = 0;
+    FILE_UPTIME = 1;   // request contents of "/proc/uptime"
+    FILE_MEMINFO = 2;  // request contents of “/proc/meminfo"
+    FILE_LOADAVG = 3;  // request contents of “/proc/loadavg"
+    FILE_STAT = 4;     // request contents of “/proc/stat"
+    DIRECTORY_ACPI_BUTTON =
+        5;  // request contents of files under “/proc/acpi/button/"
+    FILE_NET_NETSTAT = 6;  // request contents of “/proc/net/netstat"
+    FILE_NET_DEV = 7;      // request contents of “/proc/net/dev"
+  };
+
+  // Must not be |TYPE_UNSET|.
+  Type type = 1;
+}
+
+// Return value of the GetProcData RPC.
+message GetProcDataResponse {
+  // Contents of the requested file(s) from the proc filesystem, as specified by
+  // the |type| field of the request. The file paths are guaranteed to belong to
+  // the /proc/ directory. Symlinks will NOT be followed.
+  //
+  // Example value: an entry with |path| equal to
+  // "/proc/acpi/button/lid/LID0/state" and |contents| equal to "state: open".
+  //
+  // NOTE: There's NO guarantee that the file names or formats of the file
+  // contents will stay the same after the OS kernel version changes.
+  repeated FileDump file_dump = 1;
+}
+
+// Parameters for the GetSysfsData RPC.
+message GetSysfsDataRequest {
+  // Type of information to be retrieved from the sysfs filesystem.
+  enum Type {
+    TYPE_UNSET = 0;
+    HWMON = 1;    // request information about hwmon devices
+    THERMAL = 2;  // request information about thermal zone devices and cooling
+                  // devices
+  };
+
+  // Must not be |TYPE_UNSET|.
+  Type type = 1;
+}
+
+// Return value of the GetSysfsData RPC.
+message GetSysfsDataResponse {
+  // Information about a single device extracted from the sysfs filesystem.
+  message Device {
+    // Full path to the device's directory (located in the /sys/devices/
+    // subtree).
+    //
+    // Example value: "/sys/devices/platform/coretemp.0/hwmon/hwmon0".
+    string device_path = 1;
+
+    // Contents of files in the device's directory (i.e., |device_path|).
+    // Symlinks will NOT be followed.
+    //
+    // Example value: two entries, one having |path| equal to
+    // "/sys/devices/platform/coretemp.0/hwmon/hwmon0/name" and |contents| equal
+    // to "coretemp", and another having |path| equal to
+    // "/sys/devices/platform/coretemp.0/hwmon/hwmon0/power/control" and
+    // |contents| equal to "auto".
+    //
+    // NOTE: The set of files present here is determined by the set of
+    // attributes returned by the device driver through the sysfs interface.
+    // NOTE: There's NO guarantee that the file names or formats of the file
+    // contents will stay the same after the OS kernel version changes.
+    repeated FileDump file_dump = 2;
+  }
+
+  // Information for each device of the requested kind, as specified by the
+  // |type| field of the request.
+  repeated Device device = 1;
+}
