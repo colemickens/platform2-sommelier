@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults' : {
     'variables' : {
@@ -45,7 +42,7 @@
             ],
           },
           'sources': [
-            'goldfish_library_unittest.cc',
+            'goldfish_library_test.cc',
           ],
         },
       ],
