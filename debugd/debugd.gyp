@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -286,7 +283,7 @@
             'src/modem_status_tool_test.cc',
             'src/process_with_id_test.cc',
             'src/sandboxed_process_test.cc',
-            'src/storage_tool_unittest.cc',
+            'src/storage_tool_test.cc',
             'src/subprocess_tool_test.cc',
           ],
         },
