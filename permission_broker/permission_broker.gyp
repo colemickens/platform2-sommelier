@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'defines': [
@@ -84,7 +81,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'permission_broker_unittest',
+          'target_name': 'permission_broker_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
@@ -98,21 +95,21 @@
             ],
           },
           'sources': [
-            'allow_tty_device_rule_unittest.cc',
-            'allow_usb_device_rule_unittest.cc',
-            'deny_claimed_hidraw_device_rule_unittest.cc',
-            'deny_claimed_usb_device_rule_unittest.cc',
-            'deny_unsafe_hidraw_device_rule_unittest.cc',
-            'deny_usb_device_class_rule_unittest.cc',
-            'deny_usb_vendor_id_rule_unittest.cc',
+            'allow_tty_device_rule_test.cc',
+            'allow_usb_device_rule_test.cc',
+            'deny_claimed_hidraw_device_rule_test.cc',
+            'deny_claimed_usb_device_rule_test.cc',
+            'deny_unsafe_hidraw_device_rule_test.cc',
+            'deny_usb_device_class_rule_test.cc',
+            'deny_usb_vendor_id_rule_test.cc',
             'fake_libusb_wrapper.cc',
-            'firewall_unittest.cc',
-            'group_tty_device_rule_unittest.cc',
+            'firewall_test.cc',
+            'group_tty_device_rule_test.cc',
             'mock_firewall.cc',
-            'port_tracker_unittest.cc',
-            'rule_engine_unittest.cc',
+            'port_tracker_test.cc',
+            'rule_engine_test.cc',
             'rule_test.cc',
-            'usb_control_unittest.cc',
+            'usb_control_test.cc',
           ],
         },
       ],
