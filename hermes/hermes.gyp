@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -54,8 +51,8 @@
             ],
           },
           'sources': [
-            'esim_qmi_unittest.cc',
-            'smdp_unittest.cc',
+            'esim_qmi_test.cc',
+            'smdp_test.cc',
           ],
         },
       ],
