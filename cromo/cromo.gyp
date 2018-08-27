@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 # TODO: Fix the visibility on these shared libs.
 # gyplint: disable=GypLintVisibilityFlags
 
@@ -110,40 +107,40 @@
           ],
         },
         {
-          'target_name': 'cromo_server_unittest',
+          'target_name': 'cromo_server_test',
           'type': 'executable',
           'dependencies': ['libcromo'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'carrier.cc',
-            'cromo_server_unittest.cc',
+            'cromo_server_test.cc',
           ],
         },
         {
-          'target_name': 'utilities_unittest',
+          'target_name': 'utilities_test',
           'type': 'executable',
           'dependencies': ['libcromo'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'utilities_unittest.cc',
+            'utilities_test.cc',
           ],
         },
         {
-          'target_name': 'sms_message_unittest',
+          'target_name': 'sms_message_test',
           'type': 'executable',
           'dependencies': ['libcromo'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'sms_message_unittest.cc',
+            'sms_message_test.cc',
           ],
         },
         {
-          'target_name': 'sms_cache_unittest',
+          'target_name': 'sms_cache_test',
           'type': 'executable',
           'dependencies': ['libcromo'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'sms_cache_unittest.cc',
+            'sms_cache_test.cc',
           ],
         },
       ],
