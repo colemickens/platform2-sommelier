@@ -2794,36 +2794,14 @@ mno {
 
 mno {
   data {
-    uuid : "ce5d89c2-8372-4109-aa51-d8b2b2b785ba"
-    country : "de"
-    localized_name {
-      name : "Alice"
-    }
-    mccmnc : "26207"
-    mobile_apn {
-      apn : "internet.partner1"
-      localized_name {
-        name : "Option Mobile"
-      }
-      dns : "193.189.244.225"
-      dns : "193.189.244.206"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "24b5058a-e896-4828-a774-ba5c1e4df463"
     country : "de"
     localized_name {
-      name : "Congstar"
+      name : "Telekom"
     }
     mccmnc : "26201"
     mobile_apn {
-      apn : "internet.t-mobile"
-      localized_name {
-        name : "Prepaid Contracts"
-      }
+      apn : "internet.telekom"
       username : "t-mobile"
       password : "tm"
       dns : "193.254.160.1"
@@ -2837,7 +2815,7 @@ mno {
     uuid : "8727f2af-dc97-4efe-be27-f258ab8e076a"
     country : "de"
     localized_name {
-      name : "E-Plus"
+      name : "o2 - de"
     }
     mccmnc : "26203"
     mccmnc : "26205"
@@ -2845,7 +2823,7 @@ mno {
     mobile_apn {
       apn : "internet.eplus.de"
       username : "eplus"
-      password : "gprs"
+      password : "internet"
       dns : "212.23.97.2"
       dns : "212.23.97.3"
     }
@@ -2965,77 +2943,89 @@ mno {
 
 mno {
   data {
-    uuid : "eaaa4526-1c2b-484f-a313-7c2e571ee733"
-    country : "de"
-    localized_name {
-      name : "FONIC"
-    }
-    mccmnc : "26207"
-    mccmnc : "26208"
-    mccmnc : "26211"
-    mobile_apn {
-      apn : "pinternet.interkom.de"
-      username : "fonic"
-      password : "fonic"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "71100bdc-ffc5-4696-b9a8-62273c995165"
-    country : "de"
-    localized_name {
-      name : "Netzclub"
-    }
-    mccmnc : "26207"
-    mccmnc : "26208"
-    mccmnc : "26211"
-    mobile_apn {
-      apn : "pinternet.interkom.de"
-      localized_name {
-        name : "Internet"
-      }
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "eda63e8b-273d-4502-bebc-f74bbd451d35"
     country : "de"
     localized_name {
-      name : "O2"
+      name : "o2 - de"
     }
     mccmnc : "26207"
     mccmnc : "26208"
     mccmnc : "26211"
     mobile_apn {
-      apn : "pinternet.interkom.de"
-      localized_name {
-        name : "LOOP"
-      }
-      dns : "193.189.244.225"
-      dns : "193.189.244.206"
-    }
-    mobile_apn {
       apn : "internet"
       localized_name {
-        name : "Pay-by-MB"
+        name : "o2 Internet Postpaid"
       }
-      dns : "195.182.110.132"
-      dns : "62.134.11.4"
     }
     mobile_apn {
-      apn : "surfo2"
+      apn : "pinternet.interkom.de"
       localized_name {
-        name : "Pay-by-time"
+        name : "o2 Internet Prepaid"
       }
-      dns : "195.182.110.132"
-      dns : "62.134.11.4"
     }
   }
-  earmarked : true
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Alice"
+    }
+    data {
+      uuid : "ce5d89c2-8372-4109-aa51-d8b2b2b785ba"
+      country : "de"
+      localized_name {
+        name : "Alice"
+      }
+      mccmnc : "26207"
+      mccmnc : "26208"
+      mccmnc : "26211"
+      mobile_apn {
+        apn : "internet.partner1"
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      regex : "26207500[0-9]+"
+    }
+    data {
+      uuid : "fc72a630-06ef-49fc-a7a3-0ce9085e2bbc"
+      country : "de"
+      localized_name {
+        name : "Tchibo-Mobil"
+      }
+      mccmnc : "26207"
+      mccmnc : "26208"
+      mccmnc : "26211"
+      mobile_apn {
+        apn : "webmobil1"
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      regex : "26207515[0-9]+"
+    }
+    data {
+      uuid : "eaaa4526-1c2b-484f-a313-7c2e571ee733"
+      country : "de"
+      localized_name {
+        name : "Fonic"
+      }
+      mccmnc : "26207"
+      mccmnc : "26208"
+      mccmnc : "26211"
+      mobile_apn {
+        apn : "pinternet.interkom.de"
+        localized_name {
+          name : "Fonic Prepaid"
+        }
+        username : "fonic"
+        password : "fonic"
+      }
+    }
+  }
 }
 
 mno {
@@ -3043,42 +3033,15 @@ mno {
     uuid : "294269ce-b1f5-4a01-97fb-52e37039715a"
     country : "de"
     localized_name {
-      name : "T-Mobile(Telekom)"
+      name : "T-Mobile"
     }
-    mccmnc : "26201"
     mccmnc : "26206"
-    mobile_apn {
-      apn : "internet.t-d1.de"
-      password : "t-d1"
-      dns : "193.254.160.1"
-      dns : "193.254.160.130"
-    }
     mobile_apn {
       apn : "internet.t-mobile"
       username : "t-mobile"
       password : "tm"
       dns : "10.74.83.22"
       dns : "193.254.160.1"
-    }
-  }
-  earmarked : true
-}
-
-mno {
-  data {
-    uuid : "fc72a630-06ef-49fc-a7a3-0ce9085e2bbc"
-    country : "de"
-    localized_name {
-      name : "Tchibo-Mobil"
-    }
-    mccmnc : "26207"
-    mccmnc : "26208"
-    mccmnc : "26211"
-    mobile_apn {
-      apn : "webmobil1"
-      localized_name {
-        name : "Tagesflat / Monats-Flatrate L / Monats-Flatrate XL"
-      }
     }
   }
 }
@@ -3088,7 +3051,7 @@ mno {
     uuid : "0bbc0b13-8c69-414b-a9f9-6b08a7c98b68"
     country : "de"
     localized_name {
-      name : "Vodafone.de"
+      name : "Vodafone DE"
     }
     mccmnc : "26202"
     mccmnc : "26204"
