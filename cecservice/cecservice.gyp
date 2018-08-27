@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -65,8 +62,8 @@
             ],
           },
           'sources': [
-            'cec_device_unittest.cc',
-            'cec_manager_unittest.cc',
+            'cec_device_test.cc',
+            'cec_manager_test.cc',
           ],
         },
       ],
