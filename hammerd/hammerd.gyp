@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -70,10 +67,10 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'curve25519_unittest.cc',
-            'hammer_updater_unittest.cc',
-            'pair_utils_unittest.cc',
-            'update_fw_unittest.cc',
+            'curve25519_test.cc',
+            'hammer_updater_test.cc',
+            'pair_utils_test.cc',
+            'update_fw_test.cc',
           ],
         },
       ],
