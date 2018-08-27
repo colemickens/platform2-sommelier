@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -69,11 +66,11 @@
           },
           'sources': [
             'cgroup.cc',
-            'cgroup_unittest.cc',
+            'cgroup_test.cc',
             'config.cc',
             'container.cc',
             'libcontainer.cc',
-            'libcontainer_unittest.cc',
+            'libcontainer_test.cc',
             'libcontainer_util.cc',
           ],
         },
