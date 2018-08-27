@@ -117,7 +117,7 @@ TEST(UtilTest, ReadFileToStringTest) {
   EXPECT_EQ(result, LSB_CONTENTS);
 
   // A larger file, but without known contents
-  EXPECT_EQ(ReadFileToString(GetSourceFile("inst_util_unittest.cc"), &result),
+  EXPECT_EQ(ReadFileToString(GetSourceFile("inst_util_test.cc"), &result),
             true);
 }
 
@@ -185,7 +185,7 @@ TEST(UtilTest, CopyFileTest) {
   EXPECT_EQ(contents, read_contents);
 
   // Copy larger file to existent
-  string data_file = GetSourceFile("inst_util_unittest.cc");
+  string data_file = GetSourceFile("inst_util_test.cc");
   EXPECT_EQ(CopyFile(data_file, file2), true);
   EXPECT_EQ(ReadFileToString(data_file, &data_contents), true);
   EXPECT_EQ(ReadFileToString(file2, &read_contents), true);

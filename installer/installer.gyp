@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'include_dirs': [
@@ -85,7 +82,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'cros_installer_unittest',
+          'target_name': 'cros_installer_test',
           'type': 'executable',
           'dependencies': [
             'libcros_installer',
@@ -98,9 +95,9 @@
             ],
           },
           'sources': [
-            'chromeos_install_config_unittest.cc',
-            'chromeos_legacy_unittest.cc',
-            'inst_util_unittest.cc',
+            'chromeos_install_config_test.cc',
+            'chromeos_legacy_test.cc',
+            'inst_util_test.cc',
           ],
         },
       ],
