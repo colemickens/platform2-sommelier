@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -86,19 +83,19 @@
             ],
           },
           'sources': [
-            'config_loader_unittest.cc',
-            'event_dispatcher_unittest.cc',
+            'config_loader_test.cc',
+            'event_dispatcher_test.cc',
             'mist.cc',
             'mock_context.cc',
-            'usb_config_descriptor_unittest.cc',
-            'usb_constants_unittest.cc',
-            'usb_device_descriptor_unittest.cc',
-            'usb_device_event_notifier_unittest.cc',
-            'usb_endpoint_descriptor_unittest.cc',
-            'usb_error_unittest.cc',
-            'usb_interface_descriptor_unittest.cc',
-            'usb_modem_switch_context_unittest.cc',
-            'usb_transfer_unittest.cc',
+            'usb_config_descriptor_test.cc',
+            'usb_constants_test.cc',
+            'usb_device_descriptor_test.cc',
+            'usb_device_event_notifier_test.cc',
+            'usb_endpoint_descriptor_test.cc',
+            'usb_error_test.cc',
+            'usb_interface_descriptor_test.cc',
+            'usb_modem_switch_context_test.cc',
+            'usb_transfer_test.cc',
           ],
         },
       ],
