@@ -68,10 +68,6 @@ gboolean cryptohome_update_key_ex(Cryptohome* self,
                                   GArray* auth,
                                   GArray* params,
                                   DBusGMethodInvocation* resp);
-gboolean cryptohome_async_remove(Cryptohome* self,
-                                 gchar* userid,
-                                 gint* OUT_async_id,
-                                 GError** error);
 gboolean cryptohome_remove_ex(Cryptohome* self,
                               GArray* userid,
                               DBusGMethodInvocation* resp);

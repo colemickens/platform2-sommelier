@@ -280,9 +280,6 @@ class Service : public brillo::dbus::AbstractDbusService,
                               GArray *authorization_request,
                               GArray *list_keys_request,
                               DBusGMethodInvocation *context);
-  virtual gboolean AsyncRemove(gchar *user,
-                               gint *OUT_async_id,
-                               GError **error);
   virtual void DoRemoveEx(AccountIdentifier* account_id,
                           DBusGMethodInvocation* context);
   virtual gboolean RemoveEx(GArray* account, DBusGMethodInvocation* context);

@@ -186,22 +186,6 @@ TEST_F(MountTaskTest, UnmountTest) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
-TEST_F(MountTaskTest, RemoveTest) {
-  MockHomeDirs homedirs;
-  EXPECT_CALL(homedirs, Remove(_))
-      .WillOnce(Return(true));
-
-  ASSERT_FALSE(event_.IsSignaled());
-  scoped_refptr<MountTaskRemove> mount_task = new MountTaskRemove(
-      NULL, NULL, empty_credentials_, &homedirs, NextSequence());
-  mount_task->set_complete_event(&event_);
-  mount_task->set_result(&result_);
-  runner_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskRemove::Run, mount_task.get()));
-  event_.TimedWait(wait_time_);
-  ASSERT_TRUE(event_.IsSignaled());
-}
-
 TEST_F(MountTaskTest, ResetTpmContext) {
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskResetTpmContext> mount_task

@@ -1491,30 +1491,6 @@ gboolean Service::UpdateKeyEx(GArray* account_id,
   return TRUE;
 }
 
-gboolean Service::AsyncRemove(gchar *userid,
-                              gint *OUT_async_id,
-                              GError **error) {
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<cryptohome::Mount> user_mount = GetMountForUser(userid);
-  if (user_mount.get() && user_mount->IsMounted()) {
-    scoped_refptr<MountTaskNop> mount_task =
-        new MountTaskNop(bridge, NextSequence());
-    mount_task->result()->set_return_status(false);
-    *OUT_async_id = mount_task->sequence_id();
-    mount_thread_.task_runner()->PostTask(FROM_HERE,
-        base::Bind(&MountTaskNop::Run, mount_task.get()));
-  } else {
-    UsernamePasskey credentials(userid, SecureBlob());
-    scoped_refptr<MountTaskRemove> mount_task = new MountTaskRemove(
-        bridge, NULL, credentials, homedirs_, NextSequence());
-    *OUT_async_id = mount_task->sequence_id();
-    mount_thread_.task_runner()->PostTask(FROM_HERE,
-        base::Bind(&MountTaskRemove::Run, mount_task.get()));
-  }
-  return TRUE;
-}
-
 void Service::DoRemoveEx(AccountIdentifier* identifier,
                          DBusGMethodInvocation* context) {
   if (!identifier) {

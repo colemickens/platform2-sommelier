@@ -86,14 +86,6 @@ void MountTaskUnmount::Run() {
   MountTask::Notify();
 }
 
-void MountTaskRemove::Run() {
-  if (homedirs_) {
-    bool status = homedirs_->Remove(credentials_.username());
-    result()->set_return_status(status);
-  }
-  MountTask::Notify();
-}
-
 void MountTaskResetTpmContext::Run() {
   if (mount_) {
     Crypto* crypto = mount_->crypto();

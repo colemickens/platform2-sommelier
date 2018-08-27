@@ -339,25 +339,6 @@ class MountTaskUnmount : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskUnmount);
 };
 
-// Implements asychronous calls to Mount::RemoveCryptohome()
-class MountTaskRemove : public MountTask {
- public:
-  MountTaskRemove(MountTaskObserver* observer,
-                  Mount* mount,
-                  const UsernamePasskey& credentials,
-                  HomeDirs* homedirs,
-                  int sequence_id)
-      : MountTask(observer, mount, credentials, sequence_id),
-        homedirs_(homedirs) {}
-  virtual ~MountTaskRemove() { }
-
-  virtual void Run();
-
- private:
-  HomeDirs* homedirs_;
-  DISALLOW_COPY_AND_ASSIGN(MountTaskRemove);
-};
-
 // Implements asychronous reset of the TPM context
 class MountTaskResetTpmContext : public MountTask {
  public:

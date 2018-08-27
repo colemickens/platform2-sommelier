@@ -109,12 +109,6 @@ gboolean cryptohome_update_key_ex(Cryptohome* self,
   // Leave the response called error to reuse WRAP.
   CRYPTOHOME_WRAP_METHOD(UpdateKeyEx, id, auth, params);
 }
-gboolean cryptohome_async_remove(Cryptohome* self,
-                                 gchar* userid,
-                                 gint* OUT_async_id,
-                                 GError** error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncRemove, userid, OUT_async_id);
-}
 gboolean cryptohome_remove_ex(Cryptohome* self,
                               GArray* account,
                               DBusGMethodInvocation* error) {
