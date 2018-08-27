@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'defines': [
@@ -101,7 +98,7 @@
             'libmount_obb',
             '../../common-mk/testrunner.gyp:testrunner',
           ],
-          'sources': ['util_unittest.cc'],
+          'sources': ['util_test.cc'],
         },
       ],
     }],

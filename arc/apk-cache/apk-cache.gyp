@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'targets': [
     {
@@ -49,7 +46,7 @@
             ],
           },
           'sources': [
-            'cache_cleaner_unittest.cc',
+            'cache_cleaner_test.cc',
           ],
         },
       ],

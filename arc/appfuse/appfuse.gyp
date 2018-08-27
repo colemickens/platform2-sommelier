@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'defines': [
@@ -60,7 +57,7 @@
             'libarcappfuse',
             '../../common-mk/testrunner.gyp:testrunner',
           ],
-          'sources': ['data_filter_unittest.cc'],
+          'sources': ['data_filter_test.cc'],
         },
       ],
     }],

@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'defines': [
@@ -133,13 +130,13 @@
           # TODO(xzhou): Move boot_lockbox_client.cc and
           # priv_code_verifier.cc back to libarc_setup.
           'sources': [
-            'arc_read_ahead_unittest.cc',
-            'arc_setup_metrics_unittest.cc',
-            'arc_setup_unittest.cc',
-            'arc_setup_util_unittest.cc',
-            'art_container_unittest.cc',
+            'arc_read_ahead_test.cc',
+            'arc_setup_metrics_test.cc',
+            'arc_setup_test.cc',
+            'arc_setup_util_test.cc',
+            'art_container_test.cc',
             'boot_lockbox_client.cc',
-            'config_unittest.cc',
+            'config_test.cc',
             'priv_code_verifier.cc',
           ],
         },
