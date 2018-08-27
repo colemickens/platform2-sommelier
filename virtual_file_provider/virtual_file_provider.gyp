@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -61,7 +58,7 @@
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
-            'operation_throttle_unittest.cc',
+            'operation_throttle_test.cc',
           ],
         },
       ],
