@@ -21,6 +21,7 @@
 
 #include <base/bind.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <ModemManager/ModemManager.h>
@@ -30,6 +31,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular_bearer.h"
+#include "shill/cellular/cellular_pco.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/control_interface.h"
@@ -1597,6 +1599,11 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
   if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS))
     OnFacilityLocksChanged(
         properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS));
+
+  if (properties.Contains(MM_MODEM_MODEM3GPP_PROPERTY_PCO)) {
+    OnPcoChanged(
+        properties.Get(MM_MODEM_MODEM3GPP_PROPERTY_PCO).Get<PcoList>());
+  }
 }
 
 void CellularCapabilityUniversal::On3gppRegistrationChanged(
@@ -1710,6 +1717,25 @@ void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32_t locks) {
   if (sim_lock_status_.enabled != sim_enabled) {
     sim_lock_status_.enabled = sim_enabled;
     OnSimLockStatusChanged();
+  }
+}
+
+void CellularCapabilityUniversal::OnPcoChanged(const PcoList& pco_list) {
+  SLOG(this, 3) << __func__;
+
+  for (const auto& pco_info : pco_list) {
+    uint32_t session_id = std::get<0>(pco_info);
+    bool is_complete = std::get<1>(pco_info);
+    vector<uint8_t> data = std::get<2>(pco_info);
+
+    SLOG(this, 3) << "PCO: session-id=" << session_id
+                  << ", complete=" << is_complete
+                  << ", data=" << base::HexEncode(data.data(), data.size())
+                  << "";
+
+    std::unique_ptr<CellularPco> pco = CellularPco::CreateFromRawData(data);
+    if (!pco)
+      LOG(WARNING) << "Failed to parse PCO (session-id " << session_id << ")";
   }
 }
 

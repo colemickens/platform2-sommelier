@@ -55,6 +55,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   using SignalQuality = std::tuple<uint32_t, bool>;
   using ModesData = std::tuple<uint32_t, uint32_t>;
   using SupportedModes = std::vector<ModesData>;
+  using PcoList = std::vector<std::tuple<uint32_t, bool, std::vector<uint8_t>>>;
 
   // Constants used in connect method call.  Make available to test matchers.
   // TODO(jglasgow): Generate from modem manager into
@@ -337,6 +338,7 @@ class CellularCapabilityUniversal : public CellularCapability {
                                     const std::string& updated_operator_name);
   void OnSubscriptionStateChanged(SubscriptionState updated_subscription_state);
   void OnFacilityLocksChanged(uint32_t locks);
+  void OnPcoChanged(const PcoList& pco_list);
 
   // SIM property change handlers
   // TODO(armansito): Put these methods in a 3GPP-only subclass.
