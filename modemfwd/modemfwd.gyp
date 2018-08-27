@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -68,7 +65,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'modemfw_unittest',
+          'target_name': 'modemfw_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
@@ -82,9 +79,9 @@
           },
           'sources': [
             'firmware_directory_stub.cc',
-            'firmware_directory_unittest.cc',
-            'journal_unittest.cc',
-            'modem_flasher_unittest.cc',
+            'firmware_directory_test.cc',
+            'journal_test.cc',
+            'modem_flasher_test.cc',
           ],
         },
       ]},
