@@ -73,6 +73,15 @@ preserve_files() {
       unencrypted/preserve/update_engine/prefs/rollback-version
     "
 
+    # Preserve pre-installed demo mode resources for offline Demo Mode.
+    PRESERVED_FILES="
+      ${PRESERVED_FILES}
+      unencrypted/cros-components/demo_mode_resources/image.squash
+      unencrypted/cros-components/demo_mode_resources/imageloader.json
+      unencrypted/cros-components/demo_mode_resources/imageloader.sig.2
+      unencrypted/cros-components/demo_mode_resources/table
+    "
+
     # Powerwash count is only preserved for "safe" powerwashes.
     COUNT=1
     if [ -f $POWERWASH_COUNT ]; then
@@ -107,7 +116,7 @@ preserve_files() {
   if [ -n "$PRESERVED_FILES" ]; then
     # We want to preserve permissions and recreate the directory structure
     # for all of the files in the PRESERVED_FILES variable. In order to do
-    # so we run tar --no-recurison and specify the names of each of the
+    # so we run tar --no-recursion and specify the names of each of the
     # parent directories. For example for home/.shadow/install_attributes.pb
     # we pass to tar home home/.shadow home/.shadow/install_attributes.pb
     for file in $PRESERVED_FILES; do
