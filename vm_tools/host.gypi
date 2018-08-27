@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -225,8 +222,8 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'syslog/forwarder_unittest.cc',
-            'syslog/scrubber_unittest.cc',
+            'syslog/forwarder_test.cc',
+            'syslog/scrubber_test.cc',
           ],
         },
         {
@@ -238,7 +235,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'cicerone/virtual_machine_unittest.cc',
+            'cicerone/virtual_machine_test.cc',
           ],
         },
         {
@@ -250,9 +247,9 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'concierge/mac_address_generator_unittest.cc',
-            'concierge/subnet_pool_unittest.cc',
-            'concierge/virtual_machine_unittest.cc',
+            'concierge/mac_address_generator_test.cc',
+            'concierge/subnet_pool_test.cc',
+            'concierge/virtual_machine_test.cc',
           ],
         },
       ],

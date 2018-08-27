@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -124,7 +121,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'maitred/service_impl_unittest.cc',
+            'maitred/service_impl_test.cc',
           ],
         },
         {
@@ -136,8 +133,8 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'syslog/collector_unittest.cc',
-            'syslog/parser_unittest.cc',
+            'syslog/collector_test.cc',
+            'syslog/parser_test.cc',
           ],
         },
         {
@@ -149,7 +146,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'garcon/desktop_file_unittest.cc',
+            'garcon/desktop_file_test.cc',
           ],
         },
         {
@@ -161,7 +158,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'garcon/icon_index_file_unittest.cc',
+            'garcon/icon_index_file_test.cc',
           ],
         },
         {
@@ -173,7 +170,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'garcon/icon_finder_unittest.cc',
+            'garcon/icon_finder_test.cc',
           ],
         },
         {
