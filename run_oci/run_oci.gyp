@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -47,7 +44,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'container_config_parser_unittest',
+          'target_name': 'container_config_parser_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
@@ -60,11 +57,11 @@
           },
           'sources': [
             'container_config_parser.cc',
-            'container_config_parser_unittest.cc',
+            'container_config_parser_test.cc',
           ],
         },
         {
-          'target_name': 'run_oci_unittest',
+          'target_name': 'run_oci_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
@@ -76,7 +73,7 @@
             ],
           },
           'sources': [
-            'run_oci_unittest.cc',
+            'run_oci_test.cc',
             'run_oci_utils.cc',
           ],
         },
