@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -53,13 +50,13 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'group_manager_unittest.cc',
-            'group_unittest.cc',
-            'ipv6_util_unittest.cc',
-            'll_address_unittest.cc',
-            'nd_msg_unittest.cc',
-            'neighbor_cache_unittest.cc',
-            'status_unittest.cc',
+            'group_manager_test.cc',
+            'group_test.cc',
+            'ipv6_util_test.cc',
+            'll_address_test.cc',
+            'nd_msg_test.cc',
+            'neighbor_cache_test.cc',
+            'status_test.cc',
           ],
         },
       ],
