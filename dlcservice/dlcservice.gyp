@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -57,7 +54,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'dlcservice_unittests',
+          'target_name': 'dlcservice_tests',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
@@ -72,7 +69,7 @@
             ],
           },
           'sources': [
-            'dlc_service_dbus_adaptor_unittest.cc',
+            'dlc_service_dbus_adaptor_test.cc',
           ],
         },
       ],
