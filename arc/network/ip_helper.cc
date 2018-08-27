@@ -36,7 +36,10 @@ int IpHelper::OnInit() {
   VLOG(1) << "OnInit for " << *arc_ip_config_;
 
   // Prevent the main process from sending us any signals.
-  CHECK_GT(setsid(), 0);
+  if (setsid() < 0) {
+    PLOG(ERROR) << "Failed to created a new session with setsid: exiting";
+    return -1;
+  }
 
   if (!arc_ip_config_->Init()) {
     LOG(ERROR) << "Error initializing arc_ip_config_";
@@ -63,7 +66,8 @@ void IpHelper::InitialSetup() {
 
   if (!arc_ip_config_->ContainerInit()) {
     if (++con_init_tries_ >= kMaxContainerRetries) {
-      LOG(FATAL) << "Container failed to come up";
+      LOG(ERROR) << "Container failed to come up";
+      Quit();
     } else {
       base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
           FROM_HERE,
@@ -96,7 +100,8 @@ void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
   }
 
   if (!pending_command_.ParseFromArray(buffer, len)) {
-    LOG(FATAL) << "error parsing protobuf";
+    LOG(ERROR) << "Error parsing protobuf";
+    return;
   }
   HandleCommand();
 }

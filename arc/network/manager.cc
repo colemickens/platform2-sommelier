@@ -195,7 +195,8 @@ void Manager::OnShutdown(int* exit_code) {
 }
 
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
-  LOG(FATAL) << "Subprocess " << pid << " exited unexpectedly";
+  LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly";
+  Quit();
 }
 
 std::ostream& operator<<(std::ostream& stream, const Manager& manager) {
