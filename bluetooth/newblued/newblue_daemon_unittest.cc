@@ -127,6 +127,16 @@ class NewblueDaemonTest : public ::testing::Test {
     return exported_root_object;
   }
 
+  scoped_refptr<dbus::MockExportedObject> SetupExportedAgentManagerObject() {
+    dbus::ObjectPath agent_manager_path(
+        bluetooth_agent_manager::kBluetoothAgentManagerServicePath);
+    scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
+        new dbus::MockExportedObject(bus_.get(), agent_manager_path);
+    EXPECT_CALL(*bus_, GetExportedObject(agent_manager_path))
+        .WillRepeatedly(Return(exported_agent_manager_object.get()));
+    return exported_agent_manager_object;
+  }
+
   void SetupBluezObjectProxy() {
     dbus::ObjectPath object_path(
         bluez_object_manager::kBluezObjectManagerServicePath);
@@ -230,6 +240,8 @@ class NewblueDaemonTest : public ::testing::Test {
 TEST_F(NewblueDaemonTest, InitFailed) {
   scoped_refptr<dbus::MockExportedObject> exported_root_object =
       SetupExportedRootObject();
+  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
+      SetupExportedAgentManagerObject();
 
   // Newblue::Init() fails
   ExpectTestInit(exported_root_object);
@@ -252,6 +264,8 @@ TEST_F(NewblueDaemonTest, InitFailed) {
 TEST_F(NewblueDaemonTest, InitSuccessAndBringUp) {
   scoped_refptr<dbus::MockExportedObject> exported_root_object =
       SetupExportedRootObject();
+  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
+      SetupExportedAgentManagerObject();
 
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
@@ -274,6 +288,8 @@ TEST_F(NewblueDaemonTest, InitSuccessAndBringUp) {
 TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   scoped_refptr<dbus::MockExportedObject> exported_root_object =
       SetupExportedRootObject();
+  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
+      SetupExportedAgentManagerObject();
 
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   scoped_refptr<dbus::MockExportedObject> exported_adapter_object =

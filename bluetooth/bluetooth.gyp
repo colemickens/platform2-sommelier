@@ -49,6 +49,7 @@
       'target_name': 'libnewblued',
       'type': 'static_library',
       'sources': [
+        'newblued/agent_manager_interface_handler.cc',
         'newblued/newblue.cc',
         'newblued/newblue_daemon.cc',
         'newblued/stack_sync_monitor.cc',
@@ -97,6 +98,7 @@
             'dispatcher/object_manager_interface_multiplexer_unittest.cc',
             'dispatcher/suspend_manager_unittest.cc',
             'dispatcher/test_helper.cc',
+            'newblued/agent_manager_interface_handler_test.cc',
             'newblued/newblue_daemon_unittest.cc',
             'newblued/newblue_unittest.cc',
             'newblued/property_unittest.cc',

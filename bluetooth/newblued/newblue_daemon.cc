@@ -103,6 +103,12 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
+  agent_manager_interface_handler_ =
+      std::make_unique<AgentManagerInterfaceHandler>(
+          bus_, exported_object_manager_wrapper_.get());
+  agent_manager_interface_handler_->Init();
+  newblue_->RegisterPairingAgent(agent_manager_interface_handler_.get());
+
   if (!newblue_->ListenReadyForUp(base::Bind(&NewblueDaemon::OnHciReadyForUp,
                                              base::Unretained(this)))) {
     LOG(ERROR) << "Error listening to HCI ready for up";
@@ -114,9 +120,11 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
 }
 
 void NewblueDaemon::Shutdown() {
+  newblue_->UnregisterPairingAgent();
   newblue_->UnregisterAsPairObserver(pair_observer_id_);
 
   newblue_.reset();
+  agent_manager_interface_handler_.reset();
   exported_object_manager_wrapper_.reset();
 }
 

@@ -16,6 +16,7 @@
 
 #include "bluetooth/common/bluetooth_daemon.h"
 #include "bluetooth/common/exported_object_manager_wrapper.h"
+#include "bluetooth/newblued/agent_manager_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/stack_sync_monitor.h"
 #include "bluetooth/newblued/util.h"
@@ -139,6 +140,9 @@ class NewblueDaemon : public BluetoothDaemon {
   DBusDaemon* dbus_daemon_;
 
   StackSyncMonitor stack_sync_monitor_;
+
+  std::unique_ptr<AgentManagerInterfaceHandler>
+      agent_manager_interface_handler_;
 
   // Keeps the discovered devices.
   // TODO(sonnysasaka): Clear old devices according to BlueZ mechanism.
