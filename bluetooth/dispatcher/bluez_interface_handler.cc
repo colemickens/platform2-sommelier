@@ -137,9 +137,12 @@ BluezMediaTransportInterfaceHandler::BluezMediaTransportInterfaceHandler() {
 }
 
 BluezAgentManagerInterfaceHandler::BluezAgentManagerInterfaceHandler() {
-  AddMethodForwarding(bluetooth_agent_manager::kRegisterAgent);
-  AddMethodForwarding(bluetooth_agent_manager::kUnregisterAgent);
-  AddMethodForwarding(bluetooth_agent_manager::kRequestDefaultAgent);
+  AddMethodForwarding(bluetooth_agent_manager::kRegisterAgent,
+                      ForwardingRule::FORWARD_ALL);
+  AddMethodForwarding(bluetooth_agent_manager::kUnregisterAgent,
+                      ForwardingRule::FORWARD_ALL);
+  AddMethodForwarding(bluetooth_agent_manager::kRequestDefaultAgent,
+                      ForwardingRule::FORWARD_ALL);
 }
 
 BluezProfileManagerInterfaceHandler::BluezProfileManagerInterfaceHandler() {
