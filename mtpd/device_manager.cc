@@ -6,19 +6,22 @@
 
 #include <libudev.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include <memory>
 #include <set>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/message_loop/message_loop.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/thread.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "mtpd/device_event_delegate.h"
@@ -72,6 +75,99 @@ ScopedMtpFile CreateScopedMtpFile(LIBMTP_mtpdevice_t* mtp_device,
 
 }  // namespace
 
+class DeviceManager::MtpPoller : public base::Thread {
+ public:
+  using EventCallback = base::Callback<void(int ret_code,
+                                            LIBMTP_event_t event)>;
+
+  explicit MtpPoller(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+      : Thread("MTP poller"), main_thread_task_runner_(task_runner) {}
+  ~MtpPoller() override {
+    Stop();
+  }
+
+  void WaitForEvent(LIBMTP_mtpdevice_t* mtp_device,
+                    const EventCallback& callback) {
+    DCHECK(main_thread_task_runner_->BelongsToCurrentThread());
+
+    auto params = std::make_unique<Params>(this, callback);
+    int ret = LIBMTP_Read_Event_Async(mtp_device, &ReadEventFunction,
+                                      params.get());
+    if (ret) {
+      LOG(ERROR) << "LIBMTP_Read_Event_Async error " << ret;
+      return;
+    }
+    // On success, libmtp takes ownership of |params|, and transfers it to the
+    // event handler function on an event.
+    params.release();
+
+    base::AutoLock al(lock_);
+    if (num_pending_ == 0) {
+      // NOTE: There's a logical 'race' here where multiple DoEvents() can be
+      // posted to the task runner. This happens when an MTP device is rapidly
+      // disconnected and reconnected. If a device is removed, then a new device
+      // is added between the |num_pending_| decrement in ProcessEvent() and
+      // checking the loop condition in DoEvents(), this condition will be hit
+      // and a new task is posted while the current one is running. When all
+      // devices are eventually removed, the extra task will run and finish
+      // immediately since |num_pending_| should be 0.
+      task_runner()->PostTask(
+          FROM_HERE, base::Bind(&MtpPoller::DoEvents, base::Unretained(this)));
+    }
+    num_pending_++;
+  }
+
+ private:
+  struct Params {
+    Params(MtpPoller* poller, const EventCallback& callback)
+        : poller(poller), callback(callback) {}
+
+    MtpPoller* poller;
+    EventCallback callback;
+  };
+
+  void DoEvents() {
+    DCHECK(task_runner()->BelongsToCurrentThread());
+
+    base::AutoLock al(lock_);
+    while (num_pending_ > 0) {
+      base::AutoUnlock aul(lock_);
+      // libmtp requires a non-zero timeout. A day should be reasonable.
+      struct timeval tv = {86400, 0};
+      int err = LIBMTP_Handle_Events_Timeout_Completed(&tv, nullptr);
+      if (err) {
+        LOG(ERROR) << "LIBMTP_Handle_Events_Timeout_Completed error " << err;
+      }
+    }
+  }
+
+  static void ReadEventFunction(int ret_code, LIBMTP_event_t event,
+                                uint32_t unused_extra, void* user_data) {
+    std::unique_ptr<Params> params(static_cast<Params*>(user_data));
+    params->poller->ProcessEvent(ret_code, event, params->callback);
+  }
+
+  void ProcessEvent(int ret_code, LIBMTP_event_t event,
+                    const EventCallback& callback) {
+    DCHECK(task_runner()->BelongsToCurrentThread());
+    {
+      base::AutoLock al(lock_);
+      num_pending_--;
+    }
+    main_thread_task_runner_->PostTask(FROM_HERE, base::Bind(
+        callback, ret_code, event));
+  }
+
+  scoped_refptr<base::SingleThreadTaskRunner> const main_thread_task_runner_;
+
+  // Protects |num_pending_|.
+  base::Lock lock_;
+  // Number of waiters waiting for an event.
+  int num_pending_ = 0;
+
+  DISALLOW_COPY_AND_ASSIGN(MtpPoller);
+};
+
 DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
     : udev_(udev_new()),
       udev_monitor_(nullptr),
@@ -93,6 +189,11 @@ DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
 
   // Initialize libmtp.
   LIBMTP_Init();
+
+  // Create and start the libmtp poller thread.
+  mtp_poller_ = std::make_unique<MtpPoller>(
+      base::ThreadTaskRunnerHandle::Get());
+  CHECK(mtp_poller_->Start());
 
   // Trigger a device scan.
   AddDevices();
@@ -139,7 +240,6 @@ void DeviceManager::ProcessDeviceEvents() {
 
 std::vector<std::string> DeviceManager::EnumerateStorages() {
   std::vector<std::string> ret;
-  base::AutoLock al(device_map_lock_);
   for (const auto& device : device_map_) {
     const std::string& usb_bus_str = device.first;
     for (const auto& storage : device.second.storage_map) {
@@ -162,7 +262,6 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   if (!ParseStorageName(storage_name, &usb_bus_str, &storage_id))
     return nullptr;
 
-  base::AutoLock al(device_map_lock_);
   MtpDeviceMap::const_iterator device_it = device_map_.find(usb_bus_str);
   if (device_it == device_map_.end())
     return nullptr;
@@ -179,7 +278,6 @@ const StorageInfo* DeviceManager::GetStorageInfoFromDevice(
   if (!ParseStorageName(storage_name, &usb_bus_str, &storage_id))
     return nullptr;
 
-  base::AutoLock al(device_map_lock_);
   MtpDeviceMap::iterator device_it = device_map_.find(usb_bus_str);
   if (device_it == device_map_.end())
     return nullptr;
@@ -364,13 +462,12 @@ bool DeviceManager::AddStorageForTest(const std::string& storage_name,
   if (!ParseStorageName(storage_name, &device_location, &storage_id))
     return false;
 
-  base::AutoLock al(device_map_lock_);
   MtpDeviceMap::iterator it = device_map_.find(device_location);
   if (it == device_map_.end()) {
     // New device case.
     MtpStorageMap new_storage_map;
     new_storage_map.insert(std::make_pair(storage_id, storage_info));
-    MtpDevice new_mtp_device(nullptr, new_storage_map, nullptr);
+    MtpDevice new_mtp_device(nullptr, new_storage_map);
     device_map_.insert(std::make_pair(device_location, new_mtp_device));
     return true;
   }
@@ -486,7 +583,6 @@ bool DeviceManager::GetDeviceAndStorageId(const std::string& storage_name,
   if (!ParseStorageName(storage_name, &usb_bus_str, &id))
     return false;
 
-  base::AutoLock al(device_map_lock_);
   MtpDeviceMap::const_iterator device_it = device_map_.find(usb_bus_str);
   if (device_it == device_map_.end())
     return false;
@@ -552,32 +648,6 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
   // they have never been observed with real MTP/PTP devices in testing.
 }
 
-class MtpPollThread : public base::SimpleThread {
- public:
-  explicit MtpPollThread(const base::Closure& cb)
-      : SimpleThread("MTP polling"), callback_(cb) {}
-  ~MtpPollThread() override {}
-
- private:
-  void Run() override { callback_.Run(); }
-
-  base::Closure callback_;
-
-  DISALLOW_COPY_AND_ASSIGN(MtpPollThread);
-};
-
-void DeviceManager::PollDevice(LIBMTP_mtpdevice_t* mtp_device,
-                               const std::string& usb_bus_name) {
-  LIBMTP_event_t event;
-  uint32_t extra;
-  while (LIBMTP_Read_Event(mtp_device, &event, &extra) == 0) {
-    if (event == LIBMTP_EVENT_STORE_ADDED ||
-        event == LIBMTP_EVENT_STORE_REMOVED) {
-      UpdateDevice(usb_bus_name);
-    }
-  }
-}
-
 void DeviceManager::AddDevices() {
   AddOrUpdateDevices(true /* add */, "");
 }
@@ -589,8 +659,6 @@ void DeviceManager::UpdateDevice(const std::string& usb_bus_name) {
 void DeviceManager::AddOrUpdateDevices(
     bool add_update,
     const std::string& changed_usb_device_name) {
-  base::AutoLock al(device_map_lock_);
-
   // Get raw devices.
   LIBMTP_raw_device_t* raw_devices = nullptr;
   int raw_devices_count = 0;
@@ -696,21 +764,44 @@ void DeviceManager::AddOrUpdateDevices(
       return;
     }
 
-    base::Closure callback(base::Bind(&DeviceManager::PollDevice,
-                                      base::Unretained(this), mtp_device,
-                                      usb_bus_str));
-    auto p_thread = std::make_unique<MtpPollThread>(callback);
-    p_thread->Start();
+    mtp_poller_->WaitForEvent(mtp_device,
+                              base::Bind(&DeviceManager::HandleMtpEvent,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         usb_bus_str));
     bool device_added =
         device_map_
             .insert(std::make_pair(
                 usb_bus_str,
-                MtpDevice(mtp_device, *storage_map_ptr, p_thread.release())))
+                MtpDevice(mtp_device, *storage_map_ptr)))
             .second;
     CHECK(device_added);
     LOG(INFO) << "Added device " << usb_bus_str << " with "
               << storage_map_ptr->size() << " storages";
   }
+}
+
+void DeviceManager::HandleMtpEvent(const std::string& usb_bus_name,
+                                   int ret_code,
+                                   LIBMTP_event_t event) {
+  LOG(INFO) << "HandleMtpEvent " << usb_bus_name << " ret_code " << ret_code;
+  if (ret_code != LIBMTP_HANDLER_RETURN_OK) {
+    return;
+  }
+
+  if (event == LIBMTP_EVENT_STORE_ADDED ||
+      event == LIBMTP_EVENT_STORE_REMOVED) {
+    UpdateDevice(usb_bus_name);
+  }
+
+  auto it = device_map_.find(usb_bus_name);
+  if (it == device_map_.end()) {
+    return;
+  }
+
+  mtp_poller_->WaitForEvent(
+      it->second.device, base::Bind(&DeviceManager::HandleMtpEvent,
+                                    weak_ptr_factory_.GetWeakPtr(),
+                                    usb_bus_name));
 }
 
 void DeviceManager::RemoveDevices(bool remove_all) {
@@ -726,7 +817,6 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     }
   }
 
-  base::AutoLock al(device_map_lock_);
   // Populate |devices_set| with all known attached devices.
   std::set<std::string> devices_set;
   for (const auto& device : device_map_)
@@ -754,7 +844,6 @@ void DeviceManager::RemoveDevices(bool remove_all) {
 
     // Delete the device's map entry and cleanup.
     LIBMTP_mtpdevice_t* mtp_device = device_it->second.device;
-    linked_ptr<base::SimpleThread> p_thread(device_it->second.watcher_thread);
     device_map_.erase(device_it);
 
     // |mtp_device| can be NULL in testing.
@@ -766,9 +855,6 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     // likely fail and spew a bunch of error messages. Call it anyway to
     // let libmtp do any cleanup it can.
     LIBMTP_Release_Device(mtp_device);
-
-    // This shouldn't block now.
-    p_thread.get()->Join();
   }
 }
 

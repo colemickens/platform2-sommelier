@@ -8,6 +8,7 @@
 #include <libmtp.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,8 +16,6 @@
 #include <base/macros.h>
 #include <base/memory/linked_ptr.h>
 #include <base/memory/weak_ptr.h>
-#include <base/synchronization/lock.h>
-#include <base/threading/simple_thread.h>
 
 #include "mtpd/file_entry.h"
 #include "mtpd/storage_info.h"
@@ -126,6 +125,8 @@ class DeviceManager {
                          const StorageInfo& storage_info);
 
  private:
+  class MtpPoller;
+
   // Key: MTP storage id, Value: metadata for the given storage.
   using MtpStorageMap = std::map<uint32_t, StorageInfo>;
 
@@ -133,19 +134,14 @@ class DeviceManager {
   struct MtpDevice {
     LIBMTP_mtpdevice_t* device;
     MtpStorageMap storage_map;
-    linked_ptr<base::SimpleThread> watcher_thread;
 
     MtpDevice() : device(nullptr) {}
 
-    MtpDevice(LIBMTP_mtpdevice_t* d,
-              const MtpStorageMap& m,
-              base::SimpleThread* t)
-        : device(d), storage_map(m), watcher_thread(t) {}
+    MtpDevice(LIBMTP_mtpdevice_t* d, const MtpStorageMap& m)
+        : device(d), storage_map(m) {}
 
     MtpDevice(const MtpDevice& rhs)
-        : device(rhs.device),
-          storage_map(rhs.storage_map),
-          watcher_thread(rhs.watcher_thread) {}
+        : device(rhs.device), storage_map(rhs.storage_map) {}
   };
 
   // Key: device bus location, Value: MtpDevice.
@@ -200,10 +196,11 @@ class DeviceManager {
   // Callback for udev when something changes for |device|.
   void HandleDeviceNotification(udev_device* device);
 
-  // This is called by a separate thread which blocks in it
-  // polling the device specified by |mtp_device| and |usb_name|.
-  void PollDevice(LIBMTP_mtpdevice_t* mtp_device,
-                  const std::string& usb_bus_name);
+  // Callback for handling libmtp async events.
+  // |ret_code| is a LIBMTP_HANDLER_RETURN_* value.
+  void HandleMtpEvent(const std::string& usb_bus_name,
+                      int ret_code,
+                      LIBMTP_event_t event);
 
   // Iterates through attached devices and find ones that are newly attached.
   // Then populates |device_map_| for the newly attached devices.
@@ -232,9 +229,11 @@ class DeviceManager {
 
   DeviceEventDelegate* const delegate_;
 
-  // Map of devices and storages. Requires |device_map_lock_| to access.
+  // Map of devices and storages.
   MtpDeviceMap device_map_;
-  base::Lock device_map_lock_;
+
+  // Thread used to poll for libmtp events.
+  std::unique_ptr<MtpPoller> mtp_poller_;
 
   base::WeakPtrFactory<DeviceManager> weak_ptr_factory_;
 

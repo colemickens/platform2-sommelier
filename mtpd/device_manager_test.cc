@@ -10,13 +10,25 @@
 #include <gtest/gtest.h>
 
 #include <base/compiler_specific.h>
+#include <base/message_loop/message_loop.h>
 
 #include "mtpd/device_event_delegate.h"
 
 namespace mtpd {
 namespace {
 
-TEST(DeviceManagerTest, ParseStorageName) {
+class DeviceManagerTest : public testing::Test {
+ public:
+  DeviceManagerTest() = default;
+
+ private:
+  // DeviceManager needs the current thread to have a task runner.
+  base::MessageLoop message_loop_;
+
+  DISALLOW_COPY_AND_ASSIGN(DeviceManagerTest);
+};
+
+TEST_F(DeviceManagerTest, ParseStorageName) {
   struct ParseStorageNameTestCase {
     const char* input;
     bool expected_result;
@@ -72,7 +84,7 @@ class TestDeviceManager : public DeviceManager {
 };
 
 // Devices do not actually have a root node, so one is synthesized.
-TEST(DeviceManager, GetFileInfoForSynthesizedRootNode) {
+TEST_F(DeviceManagerTest, GetFileInfoForSynthesizedRootNode) {
   const std::string kDummyStorageName = "usb:1,2:65432";
   StorageInfo dummy_storage_info;
   TestDeviceEventDelegate dummy_device_event_delegate;
@@ -98,7 +110,7 @@ TEST(DeviceManager, GetFileInfoForSynthesizedRootNode) {
 
 // Devices do not actually have a root node, and it is not possible to read
 // from the synthesized one.
-TEST(DeviceManager, ReadFileFromSynthesizedRootNodeFails) {
+TEST_F(DeviceManagerTest, ReadFileFromSynthesizedRootNodeFails) {
   const std::string kDummyStorageName = "usb:1,2:65432";
   StorageInfo dummy_storage_info;
   TestDeviceEventDelegate dummy_device_event_delegate;
