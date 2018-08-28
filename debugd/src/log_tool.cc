@@ -357,6 +357,7 @@ const Log kBigFeedbackLogs[] = {
 // cryptohome mounts.
 const Log kUserLogs[] = {
   {"chrome_user_log", "log/chrome"},
+  {"libassistant_user_log", "log/libassistant.log"},
   {"login-times", "login-times"},
   {"logout-times", "logout-times"},
   { nullptr, nullptr}
