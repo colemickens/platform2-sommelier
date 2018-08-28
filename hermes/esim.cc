@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hermes/esim_qmi_impl.h"
+#include "hermes/esim.h"
 
 #include <algorithm>
 #include <iterator>
@@ -15,7 +15,7 @@
 #include <base/strings/string_number_conversions.h>
 
 namespace {
-// This allows testing of EsimQmiImpl without actually needing to open a real
+// This allows testing of Esim without actually needing to open a real
 // QRTR socket to a QRTR modem.
 bool CreateSocketPair(base::ScopedFD* one, base::ScopedFD* two) {
   int raw_socks[2];
@@ -89,10 +89,10 @@ constexpr std::array<uint8_t, 16> kIsdrAid = {
     0xFF, 0xFF, 0xFF, 0x89, 0x00, 0x00, 0x01, 0x00,
 };
 
-EsimQmiImpl::EsimQmiImpl(uint8_t slot,
-                         const std::string& imei,
-                         const std::string& matching_id,
-                         base::ScopedFD fd)
+Esim::Esim(uint8_t slot,
+           const std::string& imei,
+           const std::string& matching_id,
+           base::ScopedFD fd)
     : watcher_(FROM_HERE),
       current_transaction_(1),
       imei_(imei),
@@ -105,12 +105,12 @@ EsimQmiImpl::EsimQmiImpl(uint8_t slot,
       qrtr_socket_fd_(std::move(fd)),
       weak_factory_(this) {}
 
-EsimQmiImpl::TransactionCallback::TransactionCallback(
+Esim::TransactionCallback::TransactionCallback(
     const DataCallback& data_callback, const ErrorCallback& error_callback)
     : data_callback(data_callback), error_callback(error_callback) {}
 
-void EsimQmiImpl::Initialize(const base::Closure& success_callback,
-                             const ErrorCallback& error_callback) {
+void Esim::Initialize(const base::Closure& success_callback,
+                      const ErrorCallback& error_callback) {
   bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
       qrtr_socket_fd_.get(), true /* persistant */,
       base::MessageLoopForIO::WATCH_READ, &watcher_, this);
@@ -126,8 +126,8 @@ void EsimQmiImpl::Initialize(const base::Closure& success_callback,
 }
 
 // static
-std::unique_ptr<EsimQmiImpl> EsimQmiImpl::Create(std::string imei,
-                                                 std::string matching_id) {
+std::unique_ptr<Esim> Esim::Create(std::string imei,
+                                   std::string matching_id) {
   base::ScopedFD fd(qrtr_open(kQrtrPort));
   if (!fd.is_valid()) {
     LOG(ERROR) << __func__ << ": Could not open socket";
@@ -138,11 +138,11 @@ std::unique_ptr<EsimQmiImpl> EsimQmiImpl::Create(std::string imei,
           << static_cast<int>(kEsimSlot) << " and imei " << imei;
 
   return base::WrapUnique(
-      new EsimQmiImpl(kEsimSlot, imei, matching_id, std::move(fd)));
+      new Esim(kEsimSlot, imei, matching_id, std::move(fd)));
 }
 
 // static
-std::unique_ptr<EsimQmiImpl> EsimQmiImpl::CreateForTest(
+std::unique_ptr<Esim> Esim::CreateForTest(
     base::ScopedFD* sock, std::string imei, std::string matching_id) {
   base::ScopedFD fd;
   if (!CreateSocketPair(&fd, sock)) {
@@ -154,11 +154,11 @@ std::unique_ptr<EsimQmiImpl> EsimQmiImpl::CreateForTest(
           << static_cast<int>(kEsimSlot) << " and imei " << imei;
 
   return base::WrapUnique(
-      new EsimQmiImpl(kEsimSlot, imei, matching_id, std::move(fd)));
+      new Esim(kEsimSlot, imei, matching_id, std::move(fd)));
 }
 
-void EsimQmiImpl::OpenLogicalChannel(const DataCallback& data_callback,
-                                     const ErrorCallback& error_callback) {
+void Esim::OpenLogicalChannel(const DataCallback& data_callback,
+                              const ErrorCallback& error_callback) {
   std::vector<uint8_t> raw_buffer(kBufferDataSize, 0);
 
   qrtr_packet buffer;
@@ -189,9 +189,9 @@ void EsimQmiImpl::OpenLogicalChannel(const DataCallback& data_callback,
   InitiateTransaction(buffer, data_callback, error_callback);
 }
 
-void EsimQmiImpl::GetInfo(int which,
-                          const DataCallback& data_callback,
-                          const ErrorCallback& error_callback) {
+void Esim::GetInfo(int which,
+                   const DataCallback& data_callback,
+                   const ErrorCallback& error_callback) {
   if (!qrtr_socket_fd_.is_valid()) {
     LOG(ERROR) << __func__ << ": File Descriptor to QRTR invalid";
     error_callback.Run(EsimError::kEsimNotConnected);
@@ -215,8 +215,8 @@ void EsimQmiImpl::GetInfo(int which,
   SendApdu(data_callback, error_callback);
 }
 
-void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
-                               const ErrorCallback& error_callback) {
+void Esim::GetChallenge(const DataCallback& data_callback,
+                        const ErrorCallback& error_callback) {
   if (!qrtr_socket_fd_.is_valid()) {
     LOG(ERROR) << __func__ << ": File Descriptor to QRTR invalid";
     error_callback.Run(EsimError::kEsimNotConnected);
@@ -239,9 +239,9 @@ void EsimQmiImpl::GetChallenge(const DataCallback& data_callback,
   SendApdu(data_callback, error_callback);
 }
 
-// TODO(jruthe): pass |server_data| to EsimQmiImpl::SendEsimMessage to make
+// TODO(jruthe): pass |server_data| to Esim::SendEsimMessage to make
 // correct libqrtr call to the eSIM chip.
-void EsimQmiImpl::AuthenticateServer(
+void Esim::AuthenticateServer(
     const std::vector<uint8_t>& server_signed1,
     const std::vector<uint8_t>& server_signature,
     const std::vector<uint8_t>& public_key,
@@ -290,11 +290,11 @@ void EsimQmiImpl::AuthenticateServer(
   SendApdu(data_callback, error_callback);
 }
 
-void EsimQmiImpl::QueueStoreData(const std::vector<uint8_t>& payload) {
+void Esim::QueueStoreData(const std::vector<uint8_t>& payload) {
   FragmentAndQueueApdu(kClaStoreData, kInsStoreData, payload);
 }
 
-void EsimQmiImpl::PrepareDownloadRequest(
+void Esim::PrepareDownloadRequest(
     const std::vector<uint8_t>& smdp_signed2,
     const std::vector<uint8_t>& smdp_signature2,
     const std::vector<uint8_t>& smdp_certificate,
@@ -332,7 +332,7 @@ void EsimQmiImpl::PrepareDownloadRequest(
   SendApdu(data_callback, error_callback);
 }
 
-void EsimQmiImpl::LoadBoundProfilePackage(
+void Esim::LoadBoundProfilePackage(
     const std::vector<uint8_t>& bound_profile_package,
     const DataCallback& data_callback,
     const ErrorCallback& error_callback) {
@@ -348,7 +348,7 @@ void EsimQmiImpl::LoadBoundProfilePackage(
   SendApdu(data_callback, error_callback);
 }
 
-void EsimQmiImpl::FragmentAndQueueApdu(
+void Esim::FragmentAndQueueApdu(
     uint8_t cla, uint8_t ins, const std::vector<uint8_t>& apdu_payload) {
   size_t total_packets = std::max(1u,
       (apdu_payload.size() + kMaxApduDataSize - 1) / kMaxApduDataSize);
@@ -378,8 +378,8 @@ void EsimQmiImpl::FragmentAndQueueApdu(
   apdu_queue_.push_back(std::move(buf));
 }
 
-void EsimQmiImpl::SendApdu(const DataCallback& data_callback,
-                           const ErrorCallback& error_callback) {
+void Esim::SendApdu(const DataCallback& data_callback,
+                    const ErrorCallback& error_callback) {
   if (apdu_queue_.empty()) {
     LOG(ERROR) << __func__ << ": called with empty queue";
     error_callback.Run(EsimError::kEsimError);
@@ -419,9 +419,9 @@ void EsimQmiImpl::SendApdu(const DataCallback& data_callback,
   InitiateTransaction(buffer, data_callback, error_callback);
 }
 
-void EsimQmiImpl::InitiateTransaction(const qrtr_packet& packet,
-                                      const DataCallback& data_callback,
-                                      const ErrorCallback& error_callback) {
+void Esim::InitiateTransaction(const qrtr_packet& packet,
+                               const DataCallback& data_callback,
+                               const ErrorCallback& error_callback) {
   int bytes_sent = qrtr_sendto(qrtr_socket_fd_.get(), node_, port_, packet.data,
                                packet.data_len);
 
@@ -437,7 +437,7 @@ void EsimQmiImpl::InitiateTransaction(const qrtr_packet& packet,
       TransactionCallback(data_callback, error_callback);
 }
 
-void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
+void Esim::FinalizeTransaction(const qrtr_packet& packet) {
   uint32_t qmi_type;
   int ret = qmi_decode_header(&packet, &qmi_type);
   if (ret < 0) {
@@ -537,8 +537,8 @@ void EsimQmiImpl::FinalizeTransaction(const qrtr_packet& packet) {
   }
 }
 
-bool EsimQmiImpl::StringToBcdBytes(const std::string& source,
-                                   std::vector<uint8_t>* dest) {
+bool Esim::StringToBcdBytes(const std::string& source,
+                            std::vector<uint8_t>* dest) {
   DLOG_ASSERT(dest);
   dest->reserve((source.size() + 1) / 2);
   size_t i = 0;
@@ -559,7 +559,7 @@ bool EsimQmiImpl::StringToBcdBytes(const std::string& source,
   return true;
 }
 
-bool EsimQmiImpl::ConstructCtxParams(std::vector<uint8_t>* ctx_params) {
+bool Esim::ConstructCtxParams(std::vector<uint8_t>* ctx_params) {
   const std::vector<uint8_t> device_caps = {
       0x80, 0x03, 0x0D, 0x00, 0x00, 0x81, 0x03, 0x0D, 0x00, 0x00,
       0x85, 0x03, 0x0D, 0x00, 0x00, 0x87, 0x03, 0x02, 0x02, 0x00,
@@ -612,26 +612,26 @@ bool EsimQmiImpl::ConstructCtxParams(std::vector<uint8_t>* ctx_params) {
   return true;
 }
 
-uint16_t EsimQmiImpl::GetTransactionNumber(const qrtr_packet& packet) const {
+uint16_t Esim::GetTransactionNumber(const qrtr_packet& packet) const {
   if (packet.data_len < 3)
     return 0;
   const uint8_t* data = static_cast<uint8_t*>(packet.data);
   return ((data[2] << 8) | (data[1]));
 }
 
-bool EsimQmiImpl::ResponseSuccess(uint16_t response) const {
+bool Esim::ResponseSuccess(uint16_t response) const {
   return (response == 0);
 }
 
-bool EsimQmiImpl::MorePayloadIncoming() const {
+bool Esim::MorePayloadIncoming() const {
   return (sw1_ == kApduStatusMoreResponse);
 }
 
-uint8_t EsimQmiImpl::GetNextPayloadSize() const {
+uint8_t Esim::GetNextPayloadSize() const {
   return sw2_;
 }
 
-void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
+void Esim::OnFileCanReadWithoutBlocking(int fd) {
   DCHECK_EQ(qrtr_socket_fd_.get(), fd);
 
   uint32_t node, port;
@@ -667,7 +667,7 @@ void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
     case QRTR_TYPE_DATA:
       VLOG(1)
           << __func__
-          << ": calling EsimQmiImpl::FinalizeTransaction with packet (size : "
+          << ": calling Esim::FinalizeTransaction with packet (size : "
           << pkt.data_len << ") : " << base::HexEncode(pkt.data, pkt.data_len);
       FinalizeTransaction(pkt);
       break;
@@ -677,7 +677,7 @@ void EsimQmiImpl::OnFileCanReadWithoutBlocking(int fd) {
   }
 }
 
-void EsimQmiImpl::OnFileCanWriteWithoutBlocking(int fd) {
+void Esim::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
 }
 

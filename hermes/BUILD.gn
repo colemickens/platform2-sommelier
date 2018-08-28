@@ -25,10 +25,10 @@ pkg_config("target_defaults") {
 static_library("libhermes") {
   configs += [ ":target_defaults" ]
   sources = [
-    "esim_qmi_impl.cc",
+    "esim.cc",
     "lpd.cc",
     "qmi_uim.c",
-    "smdp_impl.cc",
+    "smdp.cc",
   ]
 }
 
@@ -56,7 +56,7 @@ if (use.test) {
       ":test_config",
     ]
     sources = [
-      "esim_qmi_test.cc",
+      "esim_test.cc",
       "smdp_test.cc",
     ]
     deps = [

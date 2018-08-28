@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hermes/smdp_impl.h"
+#include "hermes/smdp.h"
 
 #include <string>
 #include <utility>
@@ -15,12 +15,12 @@
 
 namespace hermes {
 
-SmdpImpl::SmdpImpl(const std::string& server_hostname)
+Smdp::Smdp(const std::string& server_hostname)
     : server_hostname_(server_hostname),
       server_transport_(brillo::http::Transport::CreateDefault()),
       weak_factory_(this) {}
 
-void SmdpImpl::InitiateAuthentication(
+void Smdp::InitiateAuthentication(
     const std::vector<uint8_t>& info1,
     const std::vector<uint8_t>& challenge,
     const InitiateAuthenticationCallback& data_callback,
@@ -41,12 +41,12 @@ void SmdpImpl::InitiateAuthentication(
       "https://" + server_hostname_ +
           "/gsma/rsp2/es9plus/initiateAuthentication",
       http_body,
-      base::Bind(&SmdpImpl::OnInitiateAuthenticationResponse,
+      base::Bind(&Smdp::OnInitiateAuthenticationResponse,
                  weak_factory_.GetWeakPtr(), data_callback, error_callback),
       error_callback);
 }
 
-void SmdpImpl::OnHttpResponse(
+void Smdp::OnHttpResponse(
     const base::Callback<void(DictionaryPtr)>& data_callback,
     const ErrorCallback& error_callback,
     brillo::http::RequestID request_id,
@@ -69,7 +69,7 @@ void SmdpImpl::OnHttpResponse(
   }
 }
 
-void SmdpImpl::OnInitiateAuthenticationResponse(
+void Smdp::OnInitiateAuthenticationResponse(
     const InitiateAuthenticationCallback& data_callback,
     const ErrorCallback& error_callback,
     std::unique_ptr<base::DictionaryValue> json_dict) {
@@ -118,13 +118,13 @@ void SmdpImpl::OnInitiateAuthenticationResponse(
                            server_certificate.end()));
 }
 
-void SmdpImpl::OnHttpError(const ErrorCallback& error_callback,
+void Smdp::OnHttpError(const ErrorCallback& error_callback,
                            brillo::http::RequestID request_id,
                            const brillo::Error* error) {
   error_callback.Run(std::vector<uint8_t>());
 }
 
-void SmdpImpl::SendJsonRequest(
+void Smdp::SendJsonRequest(
     const std::string& url,
     const std::string& json_data,
     const base::Callback<void(DictionaryPtr)>& data_callback,
@@ -139,13 +139,13 @@ void SmdpImpl::SendJsonRequest(
   request.AddRequestBody(json_data.data(), json_data.size(), &error);
   CHECK(!error);
   request.GetResponse(
-      base::Bind(&SmdpImpl::OnHttpResponse, weak_factory_.GetWeakPtr(),
+      base::Bind(&Smdp::OnHttpResponse, weak_factory_.GetWeakPtr(),
                  data_callback, error_callback),
-      base::Bind(&SmdpImpl::OnHttpError, weak_factory_.GetWeakPtr(),
+      base::Bind(&Smdp::OnHttpError, weak_factory_.GetWeakPtr(),
                  error_callback));
 }
 
-void SmdpImpl::AuthenticateClient(
+void Smdp::AuthenticateClient(
     const std::string& transaction_id,
     const std::vector<uint8_t>& data,
     const AuthenticateClientCallback& data_callback,
@@ -162,12 +162,12 @@ void SmdpImpl::AuthenticateClient(
   SendJsonRequest(
       "https://" + server_hostname_ + "/gsma/rsp2/es9plus/authenticateClient",
       http_body,
-      base::Bind(&SmdpImpl::OnAuthenticateClientResponse,
+      base::Bind(&Smdp::OnAuthenticateClientResponse,
                  weak_factory_.GetWeakPtr(), data_callback, error_callback),
       error_callback);
 }
 
-void SmdpImpl::OnAuthenticateClientResponse(
+void Smdp::OnAuthenticateClientResponse(
     const AuthenticateClientCallback& data_callback,
     const ErrorCallback& error_callback,
     DictionaryPtr json_dict) {
@@ -220,7 +220,7 @@ void SmdpImpl::OnAuthenticateClientResponse(
                            server_certificate.end()));
 }
 
-void SmdpImpl::GetBoundProfilePackage(
+void Smdp::GetBoundProfilePackage(
     const std::string& transaction_id,
     const std::vector<uint8_t>& data,
     const GetBoundProfilePackageCallback& data_callback,
@@ -239,12 +239,12 @@ void SmdpImpl::GetBoundProfilePackage(
       "https://" + server_hostname_ +
           "/gsma/rsp2/es9plus/getBoundProfilePackage",
       http_body,
-      base::Bind(&SmdpImpl::OnGetBoundProfilePackageResponse,
+      base::Bind(&Smdp::OnGetBoundProfilePackageResponse,
                  weak_factory_.GetWeakPtr(), data_callback, error_callback),
       error_callback);
 }
 
-void SmdpImpl::OnGetBoundProfilePackageResponse(
+void Smdp::OnGetBoundProfilePackageResponse(
     const GetBoundProfilePackageCallback& data_callback,
     const ErrorCallback& error_callback,
     DictionaryPtr json_dict) {
