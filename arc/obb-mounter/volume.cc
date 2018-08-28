@@ -45,7 +45,10 @@ base::Time Volume::Time::ToBaseTime() const {
   exploded.hour = (time >> 11) & 0x1f;
   exploded.minute = (time >> 5) & 0x3f;
   exploded.second = (time & 0x1f) * 2;
-  return base::Time::FromLocalExploded(exploded);
+
+  base::Time time;
+  CHECK(base::Time::FromLocalExploded(exploded, &time));
+  return time;
 }
 
 Volume::FileReader::FileReader(Volume* volume,

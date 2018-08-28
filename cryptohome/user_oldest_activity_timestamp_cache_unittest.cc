@@ -14,16 +14,20 @@ using base::FilePath;
 
 namespace {
 const base::Time::Exploded jan1st2011_exploded = { 2011, 1, 6, 1 };
-const base::Time time_jan1 = base::Time::FromUTCExploded(jan1st2011_exploded);
 const base::Time::Exploded feb1st2011_exploded = { 2011, 2, 2, 1 };
-const base::Time time_feb1 = base::Time::FromUTCExploded(feb1st2011_exploded);
 const base::Time::Exploded mar1st2011_exploded = { 2011, 3, 2, 1 };
-const base::Time time_mar1 = base::Time::FromUTCExploded(mar1st2011_exploded);
 }  // namespace
 
 namespace cryptohome {
 
 TEST(UserOldestActivityTimestampCache, Sequential) {
+  base::Time time_jan1;
+  CHECK(base::Time::FromUTCExploded(jan1st2011_exploded, &time_jan1));
+  base::Time time_feb1;
+  CHECK(base::Time::FromUTCExploded(feb1st2011_exploded, &time_feb1));
+  base::Time time_mar1;
+  CHECK(base::Time::FromUTCExploded(mar1st2011_exploded, &time_mar1));
+
   UserOldestActivityTimestampCache cache;
   cache.Initialize();
 
@@ -65,6 +69,11 @@ TEST(UserOldestActivityTimestampCache, Sequential) {
 }
 
 TEST(UserOldestActivityTimestampCache, OneUpdatedForward) {
+  base::Time time_feb1;
+  CHECK(base::Time::FromUTCExploded(feb1st2011_exploded, &time_feb1));
+  base::Time time_mar1;
+  CHECK(base::Time::FromUTCExploded(mar1st2011_exploded, &time_mar1));
+
   UserOldestActivityTimestampCache cache;
   cache.Initialize();
   EXPECT_TRUE(cache.oldest_known_timestamp().is_null());
@@ -81,6 +90,11 @@ TEST(UserOldestActivityTimestampCache, OneUpdatedForward) {
 }
 
 TEST(UserOldestActivityTimestampCache, OneUpdatedBackward) {
+  base::Time time_jan1;
+  CHECK(base::Time::FromUTCExploded(jan1st2011_exploded, &time_jan1));
+  base::Time time_feb1;
+  CHECK(base::Time::FromUTCExploded(feb1st2011_exploded, &time_feb1));
+
   UserOldestActivityTimestampCache cache;
   cache.Initialize();
   EXPECT_TRUE(cache.oldest_known_timestamp().is_null());

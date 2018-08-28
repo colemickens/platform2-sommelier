@@ -130,7 +130,8 @@ class HomeDirsTest
         user = hd.name;
       homedir_paths_.push_back(fp.Append(user));
       user_paths_.push_back(brillo::cryptohome::home::GetHashedUserPath(user));
-      base::Time t = base::Time::FromUTCExploded(hd.time);
+      base::Time t;
+      CHECK(base::Time::FromUTCExploded(hd.time, &t));
       homedir_times_.push_back(t);
     }
     EXPECT_CALL(platform_, HasExtendedFileAttribute(_, kRemovableFileAttribute))
