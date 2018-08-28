@@ -28,6 +28,7 @@ main() {
   local d
   for d in ${MOUNTS}; do
     mount -n --bind "${d}" "./${d}"
+    mount --make-slave "./${d}"
   done
 
   chroot . /usr/bin/cros_installer postinst "/" "$@"
