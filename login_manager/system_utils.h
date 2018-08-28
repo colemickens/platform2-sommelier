@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/posix/file_descriptor_shuffle.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -74,6 +75,9 @@ class SystemUtils {
   virtual int execve(const base::FilePath& exec_file,
                      const char* const argv[],
                      const char* const envp[]) = 0;
+
+  // Enters a new mount namespace.
+  virtual bool EnterNewMountNamespace() = 0;
 
   // Run an external program and collect its stdout in |output|.
   virtual bool GetAppOutput(const std::vector<std::string>& argv,
@@ -194,6 +198,10 @@ class SystemUtils {
   // Writes string |data| to file at |path|.
   virtual bool WriteStringToFile(const base::FilePath& path,
                                  const std::string& data) = 0;
+
+  // Calls base::CloseSuperfluousFds().
+  virtual void CloseSuperfluousFds(
+      const base::InjectiveMultimap& saved_mapping) = 0;
 
   // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK|, and
   // |SIG_SETMASK|. See man page of sigprocmask(2) for more details. |signals|

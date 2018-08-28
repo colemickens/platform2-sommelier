@@ -44,7 +44,7 @@ void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
 bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
                                      bool ignore_cache,
                                      const CompletionCallback& completion) {
-  subprocess_.reset(new Subprocess(0, system_utils_));
+  subprocess_.reset(new Subprocess(0 /*root*/, system_utils_));
 
   std::vector<std::string> argv = {"/usr/sbin/update_rw_vpd"};
   for (const auto& entry : updates) {

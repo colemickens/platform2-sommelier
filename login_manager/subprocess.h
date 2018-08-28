@@ -22,6 +22,8 @@ class SubprocessInterface {
  public:
   virtual ~SubprocessInterface() {}
 
+  virtual void UseNewMountNamespace() = 0;
+
   // fork(), export |environment_variables|, and exec(argv, env_vars).
   // Returns false if fork() fails, true otherwise.
   virtual bool ForkAndExec(const std::vector<std::string>& args,
@@ -42,10 +44,11 @@ class SubprocessInterface {
 // Intended to be embedded in an implementation of ChildJobInterface.
 class Subprocess : public SubprocessInterface {
  public:
-  Subprocess(uid_t desired_uid, SystemUtils* system);
+  Subprocess(uid_t uid, SystemUtils* system);
   ~Subprocess() override;
 
   // SubprocessInterface:
+  void UseNewMountNamespace() override;
   bool ForkAndExec(const std::vector<std::string>& args,
                    const std::vector<std::string>& env_vars) override;
   void Kill(int signal) override;
@@ -56,8 +59,13 @@ class Subprocess : public SubprocessInterface {
  private:
   // The pid of the managed subprocess, when running.
   base::Optional<pid_t> pid_;
-  // The uid the subprocess should be run as.
+
+  // Run-time options for the subprocess.
+  // The UID the subprocess should be run as.
   const uid_t desired_uid_;
+  // Whether to enter a new mount namespace before execve(2)-ing the subprocess.
+  bool new_mount_namespace_ = false;
+
   SystemUtils* const system_;  // weak; owned by embedder.
   DISALLOW_COPY_AND_ASSIGN(Subprocess);
 };

@@ -102,6 +102,10 @@ constexpr base::TimeDelta kHangDetectionIntervalDev =
 constexpr base::TimeDelta kHangDetectionIntervalTest =
     base::TimeDelta::FromSeconds(5);
 
+// Enable further isolation of the user session (including the browser process
+// tree), beyond merely running as user 'chronos'.
+constexpr bool kIsolateUserSession = true;
+
 // Time to wait for children to exit gracefully before killing them
 // with a SIGABRT.
 constexpr int kKillTimeoutDefaultSeconds = 3;
@@ -131,7 +135,7 @@ int main(int argc, char* argv[]) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
-  // Allow waiting for all descendants, not just immediate children
+  // Allow waiting for all descendants, not just immediate children.
   if (::prctl(PR_SET_CHILD_SUBREAPER, 1))
     PLOG(ERROR) << "Couldn't set child subreaper";
 
@@ -210,10 +214,29 @@ int main(int argc, char* argv[]) {
   if (BootDeviceIsRotationalDisk())
     kill_timeout = kKillTimeoutLongSeconds;
 
+  // Job configuration.
+  BrowserJob::Config config;
+  // TODO(crbug.com/188605, crbug.com/216789): Extend user session isolation and
+  // make it stricter.
+  // Back when the above bugs were filed, the interaction between
+  // session_manager and Chrome was a lot simpler: Chrome would display the
+  // login screen, the user would log in, and then and session_manager would
+  // relaunch Chrome after cryptohomed had mounted the user's encrypted home
+  // directory.
+  // Nowadays, big features like ARC and Crostini have added a lot of complexity
+  // to the runtime environment of a logged-in Chrome OS user: there are nested
+  // namespaces, bind mounts between them, and complex propagation of mount
+  // points. Blindly putting the user session (i.e. the Chrome browser process
+  // tree) in a bunch of namespaces is bound to subtly break things.
+  // Start shaving this yak by isolating Guest mode sessions, which don't
+  // support many of the above features. Put Guest mode process trees in a new
+  // mount namespace to test the waters.
+  config.new_mount_namespace_for_guest = kIsolateUserSession;
+
   // This job encapsulates the command specified on the command line, and the
-  // UID that the caller would like to run it as.
+  // runtime options for it.
   auto browser_job = std::make_unique<BrowserJob>(
-      command, env_vars, &checker, &metrics, &system,
+      command, env_vars, &checker, &metrics, &system, config,
       std::make_unique<login_manager::Subprocess>(uid, &system));
   bool should_run_browser = browser_job->ShouldRunBrowser();
 

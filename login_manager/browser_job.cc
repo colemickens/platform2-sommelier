@@ -42,6 +42,8 @@ static_assert(BrowserJob::kUseExtraArgsRuns > 1,
 const int BrowserJob::kRestartTries = BrowserJob::kUseExtraArgsRuns + 2;
 const time_t BrowserJob::kRestartWindowSeconds = 60;
 
+const char BrowserJobInterface::kGuestSessionFlag[] = "--bwsi";
+
 namespace {
 
 constexpr char kVmoduleFlag[] = "--vmodule=";
@@ -96,6 +98,7 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
                        FileChecker* checker,
                        LoginMetrics* metrics,
                        SystemUtils* utils,
+                       const BrowserJob::Config& cfg,
                        std::unique_ptr<SubprocessInterface> subprocess)
     : arguments_(arguments),
       environment_variables_(environment_variables),
@@ -105,6 +108,7 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
       start_times_(std::deque<time_t>(kRestartTries, 0)),
       removed_login_manager_flag_(false),
       session_already_started_(false),
+      config_(cfg),
       subprocess_(std::move(subprocess)) {
   // Take over managing kLoginManagerFlag.
   if (RemoveArgs(&arguments_, kLoginManagerFlag)) {
@@ -117,6 +121,10 @@ BrowserJob::~BrowserJob() {}
 
 pid_t BrowserJob::CurrentPid() const {
   return subprocess_->GetPid();
+}
+
+bool BrowserJob::IsGuestSession() {
+  return base::STLCount(arguments_, kGuestSessionFlag) > 0;
 }
 
 bool BrowserJob::ShouldRunBrowser() {
@@ -147,6 +155,10 @@ bool BrowserJob::RunInBackground() {
   const std::vector<std::string> env_vars(ExportEnvironmentVariables());
   LOG(INFO) << "Running browser " << base::JoinString(argv, " ");
   RecordTime();
+  if (config_.new_mount_namespace_for_guest && IsGuestSession()) {
+    LOG(INFO) << "Entering new mount namespace for browser.";
+    subprocess_->UseNewMountNamespace();
+  }
   return subprocess_->ForkAndExec(argv, env_vars);
 }
 

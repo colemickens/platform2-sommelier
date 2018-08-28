@@ -19,6 +19,10 @@ FakeBrowserJob::FakeBrowserJob(const std::string& name, bool schedule_exit)
 
 FakeBrowserJob::~FakeBrowserJob() {}
 
+bool FakeBrowserJob::IsGuestSession() {
+  return false;
+}
+
 bool FakeBrowserJob::ShouldRunBrowser() {
   return should_run_;
 }

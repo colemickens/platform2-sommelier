@@ -98,7 +98,7 @@ void BrowserJobTest::SetUp() {
   argv_ =
       std::vector<std::string>(kArgv, kArgv + arraysize(BrowserJobTest::kArgv));
   job_.reset(new BrowserJob(
-      argv_, env_, &checker_, &metrics_, &utils_,
+      argv_, env_, &checker_, &metrics_, &utils_, BrowserJob::Config{false},
       std::make_unique<login_manager::Subprocess>(getuid(), &utils_)));
 }
 
@@ -186,6 +186,7 @@ TEST_F(BrowserJobTest, ShouldRunTest) {
 
 TEST_F(BrowserJobTest, NullFileCheckerTest) {
   BrowserJob job(argv_, env_, NULL, &metrics_, &utils_,
+                 BrowserJob::Config{false},
                  std::make_unique<login_manager::Subprocess>(1, &utils_));
   EXPECT_TRUE(job.ShouldRunBrowser());
 }
@@ -245,6 +246,7 @@ TEST_F(BrowserJobTest, StartStopSessionTest) {
 
 TEST_F(BrowserJobTest, StartStopMultiSessionTest) {
   BrowserJob job(argv_, env_, &checker_, &metrics_, &utils_,
+                 BrowserJob::Config{false},
                  std::make_unique<login_manager::Subprocess>(1, &utils_));
   job.StartSession(kUser, kHash);
 
@@ -274,6 +276,7 @@ TEST_F(BrowserJobTest, StartStopSessionFromLoginTest) {
   std::vector<std::string> argv(
       kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
   BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
+                 BrowserJob::Config{false},
                  std::make_unique<login_manager::Subprocess>(1, &utils_));
 
   job.StartSession(kUser, kHash);
@@ -322,7 +325,8 @@ TEST_F(BrowserJobTest, SetExtraArguments) {
 TEST_F(BrowserJobTest, ExportArgv) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
   BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
-                 std::make_unique<login_manager::Subprocess>(-1, &utils_));
+                 BrowserJob::Config{false},
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
 
   const char* kExtraArgs[] = {"--ichi", "--ni", "--san"};
   std::vector<std::string> extra_args(kExtraArgs,
@@ -335,7 +339,8 @@ TEST_F(BrowserJobTest, ExportArgv) {
 TEST_F(BrowserJobTest, SetExtraEnvironmentVariables) {
   std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
   BrowserJob job(argv, {"A=a"}, &checker_, &metrics_, &utils_,
-                 std::make_unique<login_manager::Subprocess>(-1, &utils_));
+                 BrowserJob::Config{false},
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
   job.SetExtraEnvironmentVariables({"B=b", "C="});
   EXPECT_EQ((std::vector<std::string>{"A=a", "B=b", "C="}),
             job.ExportEnvironmentVariables());
@@ -360,7 +365,8 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
         kMultipleVmoduleArgs,
         kMultipleVmoduleArgs + arraysize(kMultipleVmoduleArgs));
     BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
-                   std::make_unique<login_manager::Subprocess>(-1, &utils_));
+                   BrowserJob::Config{false},
+                   std::make_unique<login_manager::Subprocess>(1, &utils_));
 
     const char* kCombinedVmodule =
         "--vmodule=file1=1,file2=2,file3=3,file4=4,file5=5,file6=6";
@@ -381,7 +387,8 @@ TEST_F(BrowserJobTest, CombineVModuleArgs) {
                                   kNoVmoduleArgs + arraysize(kNoVmoduleArgs));
 
     BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
-                   std::make_unique<login_manager::Subprocess>(-1, &utils_));
+                   BrowserJob::Config{false},
+                   std::make_unique<login_manager::Subprocess>(1, &utils_));
 
     auto job_argv = job.ExportArgv();
     ASSERT_EQ(4, job_argv.size());
@@ -417,7 +424,8 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
   // into args at the end of the command line, but the original args should be
   // preserved: https://crbug.com/767266
   BrowserJob job(kArgv, env_, &checker_, &metrics_, &utils_,
-                 std::make_unique<login_manager::Subprocess>(-1, &utils_));
+                 BrowserJob::Config{false},
+                 std::make_unique<login_manager::Subprocess>(1, &utils_));
   EXPECT_THAT(
       job.ExportArgv(),
       ElementsAre(kEnable1, kDisable1, kArg1, kEnable2, kDisable2, kArg2,

@@ -32,4 +32,33 @@ TEST(SubprocessTest, ForkAndKill) {
   subp->Kill(SIGUSR1);
 }
 
+TEST(SubprocessTest, ForkAndExec) {
+  MockSystemUtils utils;
+  auto subp = std::make_unique<login_manager::Subprocess>(getuid(), &utils);
+  EXPECT_CALL(utils, GetGidAndGroups(getuid(), _, _)).WillOnce(Return(true));
+  EXPECT_CALL(utils, SetIDs(getuid(), _, _)).WillOnce(Return(0));
+  EXPECT_CALL(utils, CloseSuperfluousFds(_));
+  // Pretend we're in the child process.
+  EXPECT_CALL(utils, fork()).WillOnce(Return(0));
+  // We need to make execve() return for the test to actually finish.
+  EXPECT_CALL(utils, execve(_, _, _)).WillOnce(Return(0));
+  ASSERT_FALSE(subp->ForkAndExec(std::vector<std::string>{"/bin/false"},
+                                 std::vector<std::string>()));
+}
+
+TEST(SubprocessTest, ForkAndExecInNewMountNamespace) {
+  MockSystemUtils utils;
+  auto subp = std::make_unique<login_manager::Subprocess>(getuid(), &utils);
+  subp->UseNewMountNamespace();
+  EXPECT_CALL(utils, GetGidAndGroups(getuid(), _, _)).WillOnce(Return(true));
+  EXPECT_CALL(utils, EnterNewMountNamespace()).WillOnce(Return(true));
+  EXPECT_CALL(utils, SetIDs(getuid(), _, _)).WillOnce(Return(0));
+  EXPECT_CALL(utils, CloseSuperfluousFds(_));
+  // Pretend we're in the child process.
+  EXPECT_CALL(utils, fork()).WillOnce(Return(0));
+  EXPECT_CALL(utils, execve(_, _, _)).WillOnce(Return(0));
+  ASSERT_FALSE(subp->ForkAndExec(std::vector<std::string>{"/bin/false"},
+                                 std::vector<std::string>()));
+}
+
 }  // namespace login_manager

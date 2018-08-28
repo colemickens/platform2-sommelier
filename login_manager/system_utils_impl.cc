@@ -166,6 +166,10 @@ int SystemUtilsImpl::execve(const base::FilePath& exec_file,
                   const_cast<char* const*>(envp));
 }
 
+bool SystemUtilsImpl::EnterNewMountNamespace() {
+  return ::unshare(CLONE_NEWNS) == 0;
+}
+
 bool SystemUtilsImpl::GetAppOutput(const std::vector<std::string>& argv,
                                    std::string* output) {
   return base::GetAppOutput(argv, output);
@@ -515,6 +519,11 @@ bool SystemUtilsImpl::ChangeBlockedSignals(int how,
   }
 
   return true;
+}
+
+void SystemUtilsImpl::CloseSuperfluousFds(
+    const base::InjectiveMultimap& saved_mapping) {
+  base::CloseSuperfluousFds(saved_mapping);
 }
 
 bool SystemUtilsImpl::LaunchAndWait(const std::vector<std::string>& argv,

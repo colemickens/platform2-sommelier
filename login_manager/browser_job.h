@@ -40,6 +40,8 @@ class BrowserJobInterface : public ChildJobInterface {
   const std::string GetName() const override = 0;
   pid_t CurrentPid() const override = 0;
 
+  virtual bool IsGuestSession() = 0;
+
   // Return true if the browser should be run, false if not.
   virtual bool ShouldRunBrowser() = 0;
 
@@ -77,15 +79,28 @@ class BrowserJobInterface : public ChildJobInterface {
 
   // The flag to pass to Chrome to tell it the hash of the user who's signed in.
   static const char kLoginProfileFlag[];
+
+  // The flag to pass to Chrome to tell it to run in Guest mode.
+  static const char kGuestSessionFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
  public:
+  // This describes a configuration for running the browser.
+  // Since the browser comprises several processes and runs in different modes,
+  // a BrowserJob::Config object similarly covers various process types and
+  // modes.
+  struct Config {
+    // When in Guest mode put the browser process tree in a new mount namespace.
+    bool new_mount_namespace_for_guest = false;
+  };
+
   BrowserJob(const std::vector<std::string>& arguments,
              const std::vector<std::string>& environment_variables,
              FileChecker* checker,
              LoginMetrics* metrics,
              SystemUtils* utils,
+             const BrowserJob::Config& cfg,
              std::unique_ptr<SubprocessInterface> subprocess);
   ~BrowserJob() override;
 
@@ -95,6 +110,7 @@ class BrowserJob : public BrowserJobInterface {
   void Kill(int signal, const std::string& message) override;
   void WaitAndAbort(base::TimeDelta timeout) override;
   pid_t CurrentPid() const override;
+  bool IsGuestSession() override;
   bool ShouldRunBrowser() override;
   bool ShouldStop() const override;
   void StartSession(const std::string& account_id,
@@ -174,6 +190,8 @@ class BrowserJob : public BrowserJobInterface {
   // browser requires us to track the _first_ user to start a session.
   // There is no issue filed to address this.
   bool session_already_started_;
+
+  Config config_;
 
   // The subprocess tracked by this job.
   std::unique_ptr<SubprocessInterface> subprocess_;

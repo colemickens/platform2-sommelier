@@ -24,10 +24,17 @@
 
 namespace login_manager {
 
-Subprocess::Subprocess(uid_t desired_uid, SystemUtils* system)
-    : desired_uid_(desired_uid), system_(system) {}
+Subprocess::Subprocess(uid_t uid, SystemUtils* system)
+    : pid_(-1),
+      desired_uid_(uid),
+      new_mount_namespace_(false),
+      system_(system) {}
 
 Subprocess::~Subprocess() {}
+
+void Subprocess::UseNewMountNamespace() {
+  new_mount_namespace_ = true;
+}
 
 // The reason that this method looks complex is because it's doing a
 // bunch of work to keep the code between fork() and exec/exit simple
@@ -87,6 +94,9 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
 
     CHECK_EQ(0, sigprocmask(SIG_UNBLOCK, &new_sigset, nullptr));
 
+    if (new_mount_namespace_)
+      CHECK(system_->EnterNewMountNamespace());
+
     // We try to set our UID/GID to the desired UID, and then exec
     // the command passed in.
     if (desired_uid_ != 0) {
@@ -94,7 +104,7 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
       if (exit_code)
         _exit(exit_code);
     }
-    base::CloseSuperfluousFds(saved_fds);
+    system_->CloseSuperfluousFds(saved_fds);
 
     if (system_->execve(base::FilePath(argv[0]),
                         const_cast<char* const*>(argv.get()),

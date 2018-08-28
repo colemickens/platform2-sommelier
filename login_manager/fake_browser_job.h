@@ -32,6 +32,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   void set_should_run(bool should) { should_run_ = should; }
 
   // Overridden from BrowserJobInterface
+  bool IsGuestSession() override;
   bool ShouldRunBrowser() override;
   MOCK_CONST_METHOD0(ShouldStop, bool());
   MOCK_METHOD2(KillEverything, void(int, const std::string&));

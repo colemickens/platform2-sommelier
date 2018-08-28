@@ -39,6 +39,7 @@ class SystemUtilsImpl : public SystemUtils {
   int execve(const base::FilePath& exec_file,
              const char* const argv[],
              const char* const envp[]) override;
+  bool EnterNewMountNamespace() override;
   bool GetAppOutput(const std::vector<std::string>& argv,
                     std::string* output) override;
   DevModeState GetDevModeState() override;
@@ -86,6 +87,8 @@ class SystemUtilsImpl : public SystemUtils {
                         std::string* str_out) override;
   bool WriteStringToFile(const base::FilePath& path,
                          const std::string& data) override;
+  void CloseSuperfluousFds(
+      const base::InjectiveMultimap& saved_mapping) override;
   bool ChangeBlockedSignals(int how, const std::vector<int>& signals) override;
   bool LaunchAndWait(const std::vector<std::string>& args,
                      int* exit_code_out) override;

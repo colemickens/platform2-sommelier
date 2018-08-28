@@ -33,6 +33,7 @@ class MockSystemUtils : public SystemUtils {
                int(const base::FilePath& exec_file,
                    const char* const argv[],
                    const char* const envp[]));
+  MOCK_METHOD0(EnterNewMountNamespace, bool(void));
   MOCK_METHOD2(GetAppOutput,
                bool(const std::vector<std::string>&, std::string*));
   MOCK_METHOD0(GetDevModeState, DevModeState(void));
@@ -78,6 +79,8 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
   MOCK_METHOD2(WriteStringToFile,
                bool(const base::FilePath&, const std::string&));
+  MOCK_METHOD1(CloseSuperfluousFds,
+               void(const base::InjectiveMultimap& saved_mapping));
 
   MOCK_METHOD2(ChangeBlockedSignals,
                bool(int how, const std::vector<int>& signals));
