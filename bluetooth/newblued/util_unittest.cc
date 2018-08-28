@@ -14,6 +14,8 @@ using testing::ElementsAre;
 namespace bluetooth {
 namespace {
 
+constexpr char device_object_prefix[] = "/org/bluez/hci0/dev_";
+
 const char* const kInvalidAddresses[] = {
     "",
     "11",
@@ -77,7 +79,7 @@ TEST(UtilTest, ConvertToBtAddr) {
 }
 
 TEST(UtilTest, ConvertDeviceObjectPathToAddress) {
-  const std::string prefix = "/org/bluez/hci0/dev_";
+  const std::string prefix = device_object_prefix;
   for (const char* address : kInvalidDeviceObjectPathes) {
     EXPECT_EQ("", ConvertDeviceObjectPathToAddress(address));
     EXPECT_EQ("", ConvertDeviceObjectPathToAddress(prefix + address));
@@ -87,6 +89,11 @@ TEST(UtilTest, ConvertDeviceObjectPathToAddress) {
             ConvertDeviceObjectPathToAddress(prefix + "12_34_56_78_9A_BC"));
   EXPECT_EQ("12:34:56:78:9a:bc",
             ConvertDeviceObjectPathToAddress(prefix + "12_34_56_78_9a_bc"));
+}
+
+TEST(UtilTest, ConvertDeviceAddressToObjectPath) {
+  EXPECT_EQ(std::string(device_object_prefix) + "11_22_33_44_55_66",
+            ConvertDeviceAddressToObjectPath("11:22:33:44:55:66"));
 }
 
 }  // namespace

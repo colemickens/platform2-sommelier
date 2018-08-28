@@ -10,6 +10,7 @@
 #include <regex>  // NOLINT(build/c++11)
 
 #include <base/stl_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -104,6 +105,20 @@ std::string ConvertDeviceObjectPathToAddress(const std::string& path) {
     std::replace(address.begin(), address.end(), '_', ':');
   }
   return address;
+}
+
+std::string ConvertDeviceAddressToObjectPath(const std::string& address) {
+  std::string path =
+      base::StringPrintf("%s/dev_%s", kAdapterObjectPath, address.c_str());
+  std::replace(path.begin(), path.end(), ':', '_');
+  return path;
+}
+
+void OnInterfaceExported(std::string object_path,
+                         std::string interface_name,
+                         bool success) {
+  VLOG(1) << "Completed interface export " << interface_name << " of object "
+          << object_path << ", success = " << success;
 }
 
 }  // namespace bluetooth

@@ -26,19 +26,7 @@ namespace bluetooth {
 
 namespace {
 
-// Chrome OS device has only 1 Bluetooth adapter, so the name is always hci0.
-// TODO(sonnysasaka): Add support for more than 1 adapters.
-constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
-
 constexpr char kDeviceTypeLe[] = "LE";
-
-// Called when an interface of a D-Bus object is exported.
-void OnInterfaceExported(std::string object_path,
-                         std::string interface_name,
-                         bool success) {
-  VLOG(1) << "Completed interface export " << interface_name << " of object "
-          << object_path << ", success = " << success;
-}
 
 // Canonicalizes UUIDs and wraps them as a vector for exposing or updating
 // service UUIDs.
@@ -60,15 +48,6 @@ std::map<std::string, std::vector<uint8_t>> CanonicalizeServiceData(
     result.emplace(data.first.canonical_value(), data.second);
 
   return result;
-}
-
-// Converts device object path from device address, e.g.
-// 00:01:02:03:04:05 will be /org/bluez/hci0/dev_00_01_02_03_04_05
-std::string ConvertDeviceAddressToObjectPath(const std::string& address) {
-  std::string path =
-      base::StringPrintf("%s/dev_%s", kAdapterObjectPath, address.c_str());
-  std::replace(path.begin(), path.end(), ':', '_');
-  return path;
 }
 
 // Converts pair state to string.
@@ -247,7 +226,7 @@ bool NewblueDaemon::HandleStopDiscovery(brillo::ErrorPtr* error,
   if (!ret) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          bluetooth_adapter::kErrorFailed,
-                         "Failed to start discovery");
+                         "Failed to stop discovery");
   }
   return ret;
 }

@@ -21,6 +21,7 @@
 
 #include "bluetooth/newblued/mock_libnewblue.h"
 #include "bluetooth/newblued/mock_newblue.h"
+#include "bluetooth/newblued/util.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -30,8 +31,6 @@ using ::testing::SaveArg;
 namespace bluetooth {
 
 namespace {
-
-constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
 
 constexpr char kTestSender[] = ":1.1";
 constexpr int kTestSerial = 10;
